@@ -193,18 +193,13 @@ impl BuildPlan {
         })
     }
 
-    pub fn from_old_manifest(
-        &mut self,
+    fn get_difference_with_manifest(
+        &self,
+        proj_node: NodeIx,
         manifest_file: &ManifestFile,
         sway_git_tag: &str,
-        offline_mode: bool,
-    ) -> Result<Self> {
-        let mut graph = self.graph.clone();
+    ) -> Result<(Vec<Pkg>, Vec<Pkg>)> {
         let manifest = Manifest::from_file(manifest_file.path(), sway_git_tag)?;
-        let proj_node = *self
-            .compilation_order
-            .last()
-            .ok_or_else(|| anyhow!("Invalid Graph"))?;
 
         // Collect dependency `Source`s from graph.
         let plan_dep_pkgs: BTreeSet<_> = self
@@ -212,14 +207,14 @@ impl BuildPlan {
             .edges_directed(proj_node, Direction::Outgoing)
             .map(|e| {
                 let dep_name = e.weight();
-                let dep_pkg = graph[e.target()].unpinned(&self.path_map);
+                let dep_pkg = self.graph[e.target()].unpinned(&self.path_map);
                 (dep_name, dep_pkg)
             })
             .clone()
             .collect();
 
         // Collect dependency `Source`s from manifest.
-        let proj_id = graph[proj_node].id();
+        let proj_id = self.graph[proj_node].id();
         let proj_path = &self.path_map[&proj_id];
         let manifest_dep_pkgs = manifest
             .deps()
@@ -241,14 +236,34 @@ impl BuildPlan {
                 Ok((dep_name, dep_pkg))
             })
             .collect::<Result<BTreeSet<_>>>()?;
-        let added: Vec<_> = manifest_dep_pkgs
+        let added: Vec<Pkg> = manifest_dep_pkgs
             .difference(&plan_dep_pkgs)
             .clone()
+            .map(|pkg| (pkg.1.clone()))
             .collect();
-        let removed: Vec<_> = plan_dep_pkgs
+        let removed: Vec<Pkg> = plan_dep_pkgs
             .difference(&manifest_dep_pkgs)
             .clone()
+            .map(|pkg| (pkg.1.clone()))
             .collect();
+
+        Ok((added, removed))
+    }
+
+    pub fn from_old_manifest(
+        &mut self,
+        manifest_file: &ManifestFile,
+        sway_git_tag: &str,
+        offline_mode: bool,
+    ) -> Result<Self> {
+        let mut graph = self.graph.clone();
+        let proj_node = *self
+            .compilation_order
+            .last()
+            .ok_or_else(|| anyhow!("Invalid Graph"))?;
+        let proj_id = graph[proj_node].id();
+        let (added, removed) =
+            self.get_difference_with_manifest(proj_node, manifest_file, sway_git_tag)?;
 
         use petgraph::visit::{Bfs, Walker};
         //find root_node_id
@@ -265,12 +280,16 @@ impl BuildPlan {
                 || removed
                     .clone()
                     .into_iter()
-                    .any(|removed_dep| *removed_dep.0 == graph[node].name)
+                    .any(|removed_dep| removed_dep.name == graph[node].name)
             {
                 graph.remove_node(node);
             }
         }
-        // I have a new dependency which depends on other stuff so i need a compilation order
+
+        let mut visited_map: HashMap<Pinned, NodeIx> = HashMap::new();
+        // After removing some nodes the index of project node can change.
+        // To find the root node again, create a new compilation order after
+        // removing removed packages, create the compilation order again
         let compilation_order_after_remove = compilation_order(&graph)?;
         let mut path_map = graph_to_path_map(
             manifest_file.dir(),
@@ -278,7 +297,6 @@ impl BuildPlan {
             &compilation_order_after_remove,
             sway_git_tag,
         )?;
-        let mut visited_map: HashMap<Pinned, NodeIx> = HashMap::new();
         compilation_order_after_remove
             .clone()
             .into_iter()
@@ -290,7 +308,7 @@ impl BuildPlan {
         let fetch_id = fetch_id(&self.path_map[&proj_id], fetch_ts);
         let proj_node_after_delete = compilation_order_after_remove.last().unwrap();
         for added_package in added {
-            let pkg = &added_package.1;
+            let pkg = &added_package;
             let pinned_pkg = pin_pkg(fetch_id, pkg, &mut path_map, sway_git_tag)?;
             let manifest = Manifest::from_dir(&path_map[&pinned_pkg.id()], sway_git_tag)?;
             let added_package_node = graph.add_node(pinned_pkg.clone());
@@ -307,7 +325,7 @@ impl BuildPlan {
             graph.add_edge(
                 *proj_node_after_delete,
                 added_package_node,
-                added_package.0.to_string(),
+                added_package.name.to_string(),
             );
         }
         let compilation_order = compilation_order(&graph)?;
