@@ -10,7 +10,7 @@
 
 * [#1387](https://github.com/FuelLabs/sway/issues/1387): In order to use `unwrap()` from the `result` library, all symbols of `result` needs to be imported via `use::result::*;`.
 
-* [#1665](https://github.com/FuelLabs/sway/issues/1665): Constants defined via the `const` keyword can only have primitive types. That is, it is not possible to define a `ContractId` or an `Address` as `const` for example.
+* [#996](https://github.com/FuelLabs/sway/issues/996): Constants defined via the `const` keyword can only have primitive types. That is, it is not possible to define a `ContractId` or an `Address` as `const` for example.
 
 * [#870](https://github.com/FuelLabs/sway/issues/870): All `impl` blocks need to be defined before any of the functions they define can be called.
 
