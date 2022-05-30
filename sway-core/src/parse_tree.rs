@@ -5,7 +5,9 @@ pub mod declaration;
 mod expression;
 pub mod ident;
 mod include_statement;
-pub mod literal;
+mod literal;
+mod module;
+mod program;
 mod return_statement;
 mod use_statement;
 mod visibility;
@@ -17,56 +19,13 @@ pub use declaration::*;
 pub use expression::*;
 pub(crate) use include_statement::IncludeStatement;
 pub use literal::Literal;
+pub use module::{DepName, ParseModule, ParseSubmodule};
+pub use program::{ParseProgram, TreeType};
 pub use return_statement::*;
-use sway_types::{ident::Ident, span::Span};
+use sway_types::span::Span;
 pub use use_statement::{ImportType, UseStatement};
 pub use visibility::Visibility;
 pub use while_loop::WhileLoop;
-
-/// A parsed, but not yet type-checked, Sway program.
-///
-/// Includes all modules in the form of a `ParseModule` tree accessed via the `root`.
-#[derive(Debug)]
-pub struct ParseProgram {
-    pub kind: TreeType,
-    pub root: ParseModule,
-}
-
-/// A module and its submodules in the form of a tree.
-#[derive(Debug)]
-pub struct ParseModule {
-    /// The content of this module in the form of a `ParseTree`.
-    pub tree: ParseTree,
-    /// Submodules introduced within this module using the `dep` syntax in order of declaration.
-    pub submodules: Vec<(DepName, ParseSubmodule)>,
-}
-
-/// The name used within a module to refer to one of its submodules.
-///
-/// If an alias was given to the `dep`, this will be the alias. If not, this is the submodule's
-/// library name.
-pub type DepName = Ident;
-
-/// A library module that was declared as a `dep` of another module.
-///
-/// Only submodules are guaranteed to be a `library` and have a `library_name`.
-#[derive(Debug)]
-pub struct ParseSubmodule {
-    /// The name of a submodule, parsed from the `library` declaration within the module itself.
-    pub library_name: Ident,
-    pub module: ParseModule,
-}
-
-/// A Sway program can be either a contract, script, predicate, or a library.
-///
-/// All submodules declared with `dep` should be `Library`s.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum TreeType {
-    Predicate,
-    Script,
-    Contract,
-    Library { name: Ident },
-}
 
 /// Represents some exportable information that results from compiling some
 /// Sway source code.
