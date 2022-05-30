@@ -1026,12 +1026,16 @@ impl TypeInfo {
 }
 
 fn print_inner_types(name: String, inner_types: impl Iterator<Item = TypeId>) -> String {
+    let inner_types = inner_types
+        .map(|x| x.friendly_type_str())
+        .collect::<Vec<_>>();
     format!(
-        "{}<{}>",
+        "{}{}",
         name,
-        inner_types
-            .map(|x| x.friendly_type_str())
-            .collect::<Vec<_>>()
-            .join(", ")
+        if inner_types.is_empty() {
+            "".into()
+        } else {
+            format!("<{}>", inner_types.join(", "))
+        }
     )
 }
