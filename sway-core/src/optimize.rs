@@ -2469,16 +2469,8 @@ fn convert_resolved_type(
 
 #[cfg(test)]
 mod tests {
-
+    use crate::semantic_analysis::{namespace, TypedProgram};
     use std::path::PathBuf;
-
-    use crate::{
-        control_flow_analysis::{ControlFlowGraph, Graph},
-        semantic_analysis::{
-            namespace::{self, Namespace},
-            TypedParseTree,
-        },
-    };
 
     // -------------------------------------------------------------------------------------------------
 
@@ -2516,8 +2508,8 @@ mod tests {
         let expected_bytes = std::fs::read(&ir_path).unwrap();
         let expected = String::from_utf8_lossy(&expected_bytes);
 
-        let typed_ast = parse_to_typed_ast(sw_path.clone(), &input);
-        let ir = super::compile_ast(typed_ast).unwrap();
+        let typed_program = parse_to_typed_program(sw_path.clone(), &input);
+        let ir = super::compile_program(typed_program).unwrap();
         let output = sway_ir::printer::to_string(&ir);
 
         // Use a tricky regex to replace the local path in the metadata with something generic.  It
@@ -2587,14 +2579,13 @@ mod tests {
 
     // -------------------------------------------------------------------------------------------------
 
-    fn parse_to_typed_ast(path: PathBuf, input: &str) -> TypedParseTree {
-        let dir_of_code = std::sync::Arc::new(path.parent().unwrap().into());
-        let file_name = std::sync::Arc::new(path);
+    fn parse_to_typed_program(path: PathBuf, input: &str) -> TypedProgram {
+        let root_module = std::sync::Arc::new(path);
+        let canonical_root_module = std::sync::Arc::new(root_module.canonicalize().unwrap());
 
         let build_config = crate::build_config::BuildConfig {
-            file_name,
-            dir_of_code,
-            manifest_path: std::sync::Arc::new(".".into()),
+            root_module,
+            canonical_root_module,
             use_orig_asm: false,
             print_intermediate_asm: false,
             print_finalized_asm: false,
@@ -2603,26 +2594,17 @@ mod tests {
         };
         let mut warnings = vec![];
         let mut errors = vec![];
+        let src = std::sync::Arc::from(input);
+        let parsed_program =
+            crate::parse(src, Some(&build_config)).unwrap(&mut warnings, &mut errors);
 
-        let parse_tree =
-            sway_parse::parse_file(std::sync::Arc::from(input), Some(build_config.path())).unwrap();
-        let parse_tree = crate::convert_parse_tree::convert_parse_tree(parse_tree)
+        let initial_namespace = namespace::Module::default();
+        let typed_program = TypedProgram::type_check(parsed_program, initial_namespace)
             .unwrap(&mut warnings, &mut errors);
 
-        let mut dead_code_graph = ControlFlowGraph {
-            graph: Graph::new(),
-            entry_points: vec![],
-            namespace: Default::default(),
-        };
-        let mut namespace = Namespace::init_root(namespace::Module::default());
-        TypedParseTree::type_check(
-            parse_tree.tree,
-            &mut namespace,
-            &parse_tree.tree_type,
-            &build_config,
-            &mut dead_code_graph,
-        )
-        .unwrap(&mut warnings, &mut errors)
+        crate::perform_control_flow_analysis(&typed_program).unwrap(&mut warnings, &mut errors);
+
+        typed_program
     }
 }
 

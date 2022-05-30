@@ -6,7 +6,12 @@ use std::{
 /// Configuration for the overall build and compilation process.
 #[derive(Clone)]
 pub struct BuildConfig {
-    pub(crate) file_name: Arc<PathBuf>,
+    // The file path to the root module relative to the manifest directory.
+    // E.g. `project/src/main.sw` or `project/src/lib.sw`.
+    pub(crate) root_module: Arc<PathBuf>,
+    // The canonical file path to the root module.
+    // E.g. `/home/user/project/src/main.sw`.
+    pub(crate) canonical_root_module: Arc<PathBuf>,
     pub(crate) use_orig_asm: bool,
     pub(crate) print_intermediate_asm: bool,
     pub(crate) print_finalized_asm: bool,
@@ -15,16 +20,34 @@ pub struct BuildConfig {
 }
 
 impl BuildConfig {
-    // note this is intentionally not the trait Default
-    // since we need at least a manifest path to work with
+    /// Construct a `BuildConfig` from a relative path to the root module and the canonical path to
+    /// the manifest directory.
+    ///
+    /// The `root_module` path must be relative to the directory containing the manifest.
+    /// E.g. `project/src/main.sw` or `project/src/lib.sw`.
+    ///
+    /// The `canonical_manifest_dir` must be the canonical (aka absolute) path to the directory
+    /// containing the `Forc.toml` file for the project.
+    /// E.g. `/home/user/project`.
     pub fn root_from_file_name_and_manifest_path(
-        file_name: PathBuf,
-        canonicalized_manifest_path: PathBuf,
+        root_module: PathBuf,
+        canonical_manifest_dir: PathBuf,
     ) -> Self {
-        let mut path = canonicalized_manifest_path.clone();
-        path.push("src");
+        assert!(
+            canonical_manifest_dir.has_root(),
+            "manifest dir must be a canonical path",
+        );
+        assert!(
+            root_module.starts_with(canonical_manifest_dir.file_stem().unwrap()),
+            "file_name must be relative to manifest directory",
+        );
+        let canonical_root_module = canonical_manifest_dir
+            .parent()
+            .expect("unable to retrieve manifest directory parent")
+            .join(&root_module);
         Self {
-            file_name: Arc::new(file_name),
+            root_module: Arc::new(root_module),
+            canonical_root_module: Arc::new(canonical_root_module),
             use_orig_asm: false,
             print_intermediate_asm: false,
             print_finalized_asm: false,
@@ -61,7 +84,11 @@ impl BuildConfig {
         }
     }
 
-    pub fn path(&self) -> Arc<PathBuf> {
-        self.file_name.clone()
+    pub fn canonical_root_module(&self) -> Arc<PathBuf> {
+        self.canonical_root_module.clone()
+    }
+
+    pub fn root_module(&self) -> Arc<PathBuf> {
+        self.root_module.clone()
     }
 }

@@ -77,7 +77,8 @@ fn parse_in_memory(src: Arc<str>) -> CompileResult<ParseProgram> {
 /// When a `BuildConfig` is given, the module source may declare `dep`s that must be parsed from
 /// other files.
 fn parse_files(src: Arc<str>, config: &BuildConfig) -> CompileResult<ParseProgram> {
-    parse_module_tree(src, config.path()).flat_map(|(kind, root)| {
+    let root_mod_path = config.canonical_root_module();
+    parse_module_tree(src, root_mod_path).flat_map(|(kind, root)| {
         let program = ParseProgram { kind, root };
         ok(program, vec![], vec![])
     })
@@ -149,7 +150,8 @@ fn module_path(parent_module_dir: &Path, dep: &sway_parse::Dependency) -> PathBu
     parent_module_dir
         .iter()
         .chain(dep.path.span().as_str().split('/').map(AsRef::as_ref))
-        .collect()
+        .collect::<PathBuf>()
+        .with_extension(crate::constants::DEFAULT_FILE_EXTENSION)
 }
 
 fn parse_file_error_to_compile_errors(error: sway_parse::ParseFileError) -> Vec<CompileError> {
@@ -660,7 +662,7 @@ fn test_unary_ordering() {
                 ..
             })),
         ..
-    } = &prog.tree.root_nodes[0]
+    } = &prog.root.tree.root_nodes[0]
     {
         if let AstNode {
             content: AstNodeContent::Expression(Expression::LazyOperator { op, .. }),
