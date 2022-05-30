@@ -37,6 +37,8 @@ Notes:
 
 ## Storage Maps
 
+> **Note**: The current implementation of `StorageMap` is still a work-in-progress and its API is subject to change in the future.
+
 Generic storage maps are available in the standard library as `StorageMap<K, V>` which have to be defined inside a `storage` block and allow you to call `insert()` and `get()` to insert values at specific keys and get those values respectively. Storage maps also have to be initialized using `new()`. For example:
 
 ```sway
