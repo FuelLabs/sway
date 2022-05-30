@@ -7,6 +7,12 @@ fn bar() {
     // do something
 }
 
+enum SomeEnum {
+    A: u64,
+    B: bool,
+    C: b256,
+}
+
 fn main() -> u64 {
     let x = 5;
 
@@ -33,6 +39,23 @@ fn main() -> u64 {
         },
         _ => {
             bar()
+        },
+    };
+
+    // Match an enum
+    let e = SomeEnum::A(42);
+    let v = match e {
+        SomeEnum::A(val) => {
+            val
+        },
+        SomeEnum::B(true) => {
+            1
+        },
+        SomeEnum::B(false) => {
+            0
+        },
+        _ => {
+            0
         },
     };
 

@@ -91,3 +91,23 @@ pub fn get<T>(key: b256) -> T {
         }
     }
 }
+
+pub struct StorageMap<K, V> {
+    seed: b256,
+}
+
+impl<K, V> StorageMap<K, V> {
+    fn new() -> StorageMap<K, V> {
+        StorageMap { seed: __generate_uid() }
+    }
+
+    fn insert(self, key: K, value: V) {
+        let key = sha256((key, self.seed));
+        store::<V>(key, value);
+    }
+
+    fn get(self, key: K) -> V {
+        let key = sha256((key, self.seed));
+        get::<V>(key)
+    }
+}
