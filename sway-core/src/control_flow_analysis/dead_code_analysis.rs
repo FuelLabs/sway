@@ -781,7 +781,7 @@ fn connect_expression(
             let then_expr = connect_expression(
                 &(*then).expression,
                 graph,
-                &condition_expr,
+                leaves,
                 exit_node,
                 "then branch",
                 tree_type,
@@ -792,7 +792,7 @@ fn connect_expression(
                 connect_expression(
                     &(*else_expr).expression,
                     graph,
-                    &condition_expr,
+                    leaves,
                     exit_node,
                     "else branch",
                     tree_type,
@@ -802,7 +802,7 @@ fn connect_expression(
                 vec![]
             };
 
-            Ok([then_expr, else_expr].concat())
+            Ok([condition_expr, then_expr, else_expr].concat())
         }
         CodeBlock(a @ TypedCodeBlock { .. }) => {
             connect_code_block(a, graph, leaves, exit_node, tree_type)
