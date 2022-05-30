@@ -375,27 +375,28 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             contract_call_params,
             ..
         } => {
-            let ident = method_name.easy_name();
-            let token = Token::from_ident(&ident, TokenType::MethodApplication);
-            tokens.push(token);
+            // Don't collect applications of desugared operators due to mismatched ident lengths.
+            if !desugared_op(&method_name) {
+                let ident = method_name.easy_name();
+                let token = Token::from_ident(&ident, TokenType::MethodApplication);
+                tokens.push(token);
+            }
 
             for exp in arguments {
                 handle_expression(exp, tokens);
             }
 
             //TODO handle methods from imported modules
-            if let MethodName::FromType {
-                type_name: Some(type_name),
-                ..
-            } = &method_name
-            {
+            if let MethodName::FromType { type_name, .. } = &method_name {
                 handle_custom_type(type_name, tokens);
             }
 
             for field in contract_call_params {
                 let token = Token::from_ident(
                     &field.name,
-                    TokenType::StructExpressionField(get_struct_field_details(&ident)),
+                    TokenType::StructExpressionField(get_struct_field_details(
+                        &method_name.easy_name(),
+                    )),
                 );
                 tokens.push(token);
                 handle_expression(field.value, tokens);
@@ -446,6 +447,9 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
         Expression::BuiltinGetTypeProperty { .. } => {
             //TODO handle built in get type property?
         }
+        Expression::BuiltinGenerateUid { .. } => {
+            //TODO handle built in generate uid?
+        }
     }
 }
 
@@ -454,6 +458,18 @@ fn handle_while_loop(while_loop: WhileLoop, tokens: &mut Vec<Token>) {
     for node in while_loop.body.contents {
         traverse_node(node, tokens);
     }
+}
+
+// Check if the given method is a `core::ops` application desugared from short-hand syntax like / + * - etc.
+fn desugared_op(method_name: &MethodName) -> bool {
+    if let MethodName::FromType { ref call_path, .. } = method_name {
+        let prefix0 = call_path.prefixes.get(0).map(|ident| ident.as_str());
+        let prefix1 = call_path.prefixes.get(1).map(|ident| ident.as_str());
+        if let (Some("core"), Some("ops")) = (prefix0, prefix1) {
+            return true;
+        }
+    }
+    false
 }
 
 fn get_range_from_span(span: &Span) -> Range {

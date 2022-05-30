@@ -1,42 +1,79 @@
 # Installation
 
-Note that if you want to run (e.g. for testing) Sway smart contracts, a Fuel Core full node is required. Otherwise, the Sway toolchain is sufficient to compile Sway smart contracts.
+Note that if you want to run Sway smart contracts (e.g. for testing), a Fuel Core full node is required. Otherwise, the Sway toolchain is sufficient to compile Sway smart contracts.
 
-## Dependencies
+## Installing from Pre-compiled Binaries
 
-A prerequisite for installing and using Sway is the Rust toolchain. Platform-specific instructions can be found [here](https://www.rust-lang.org/tools/install).
+Pre-compiled release binaries for Linux and macOS are available for the Sway toolchain. Native Windows is currently unsupported ([tracking issue for Windows support](https://github.com/FuelLabs/sway/issues/1526)). Windows Subsystem for Linux should work but is not officially supported.
+
+[`fuelup`](https://github.com/FuelLabs/fuelup) is the equivalent of Rust's `rustup` for the Sway toolchain. It enables easily downloading binary releases of the Sway toolchain.
+
+Start by installing `fuelup` with:
+
+```sh
+curl --proto '=https' --tlsv1.2 -sSf \
+    https://fuellabs.github.io/fuelup/fuelup-init.sh | sh -s install
+```
+
+You may need to add `~/.fuelup/bin` to your PATH. For Bash:
+
+```sh
+export PATH="${HOME}/.fuelup/bin/:${PATH}"
+```
+
+Then run
+
+```sh
+fuelup install
+```
+
+to install the latest Sway toolchain.
+
+> **Note**: A `curl: (22) The requested URL returned error: 404` error when running any of the steps above is most likely an indication that a new release was published but binaries were not yet uploaded by CI. See: <https://github.com/FuelLabs/fuelup/issues/44>. Simply re-try the commands after binaries are uploaded.
+
+## Installing from Source
+
+### Dependencies
+
+A prerequisite for installing and using Sway is the Rust toolchain. Platform-specific instructions for installing `rustup` can be found [here](https://www.rust-lang.org/tools/install). Then, install the Rust toolchain with:
+
+```sh
+# Install the latest stable Rust toolchain.
+rustup install stable
+```
 
 Installing `fuel-core` may require installing additional system dependencies. See [here](https://github.com/FuelLabs/fuel-core#building) for instructions.
 
-## Installing from Cargo
-
-The Sway toolchain and Fuel Core full node can be installed with:
+The Sway toolchain is built and tested against the `stable` Rust toolchain version (<https://github.com/rust-lang/rust/releases/latest>).  There is no guarantee it will work with the `nightly` Rust toolchain, or with earlier `stable` versions, so ensure you are using `stable` with:
 
 ```sh
-cargo install forc fuel-core
-```
-
-`forc` and `fuel-core` are built and tested against the `stable` Rust toolchain version 1.58 or later. If your install fails the first time, use `rustup update` and try again.
-
-There is no guarantee that either package will work with the `nightly` Rust toolchain, so ensure you are using `stable` with:
-
-```sh
+# Update installed Rust toolchain; can be used independently.
+rustup update
+# Set the stable Rust toolchain as default; can be used independently.
 rustup default stable
 ```
 
-### Updating `forc`
+### Installing from Cargo
 
-You can update `forc` and `fuel-core` with:
+The Sway toolchain and Fuel Core full node can be installed from source with Cargo with:
 
 ```sh
 cargo install forc fuel-core
 ```
 
-### Installing `forc` Plugins
+#### Updating `forc` from Cargo
 
-The Fuel ecosystem has a few plugins which can be easily installed via cargo.
+You can update the toolchain from source with Cargo with:
 
-Note, `forc` detects anything in your path prefixed with `forc-` as a plugin. Use `forc plugins` to see what you currently have installed.
+```sh
+cargo install forc fuel-core
+```
+
+#### Installing `forc` Plugins from Cargo
+
+The Fuel ecosystem has a few plugins which can be easily installed via Cargo.
+
+> **Note**: `forc` detects anything in your `$PATH` prefixed with `forc-` as a plugin. Use `forc plugins` to see what you currently have installed.
 
 ```sh
 # Sway Formatter
@@ -45,39 +82,36 @@ cargo install forc-fmt
 # Block Explorer
 cargo install forc-explore
 
-# Forc Language Server
+# Sway Language Server
 cargo install forc-lsp
 ```
 
-## Building from Source
+### Building from Source
 
-The Sway toolchain can be built from source by following instructions at <https://github.com/FuelLabs/sway>.
-
-The Fuel Core full node implementation can be built from source by following instructions at <https://github.com/FuelLabs/fuel-core>.
+Rather than installing from `cargo`, the Sway toolchain can be built from a local source checkout by following instructions at <https://github.com/FuelLabs/sway>. The Fuel Core full node implementation can be built from source by following instructions at <https://github.com/FuelLabs/fuel-core>.
 
 ## Enable tab completion for Bash, Fish, Zsh, or PowerShell
 
-`forc` now supports generating completion scripts for Bash, Fish, Zsh, and PowerShell. See `forc completions --help` for full details, but the gist is as simple as using one of the following:
+`forc` supports generating completion scripts for Bash, Fish, Zsh, and PowerShell. See `forc completions --help` for full details, but the gist is as simple as using one of the following:
 
-```
+```sh
 # Bash
-$ forc completions --shell=bash > ~/.local/share/bash-completion/completions/forc
+forc completions --shell=bash > ~/.local/share/bash-completion/completions/forc
 
 # Bash (macOS/Homebrew)
-$ forc completions --shell=bash > $(brew --prefix)/etc/bash_completion.d/forc.bash-completion
+forc completions --shell=bash > $(brew --prefix)/etc/bash_completion.d/forc.bash-completion
 
 # Fish
-$ mkdir -p ~/.config/fish/completions
-$ forc completions --shell=fish > ~/.config/fish/completions/forc.fish
+mkdir -p ~/.config/fish/completions
+forc completions --shell=fish > ~/.config/fish/completions/forc.fish
 
 # Zsh
-$ forc completions --shell=zsh > ~/.zfunc/_forc
+forc completions --shell=zsh > ~/.zfunc/_forc
 
 # PowerShell v5.0+
-$ forc completions --shell=powershell >> $PROFILE.CurrentUserCurrentHost
+forc completions --shell=powershell >> $PROFILE.CurrentUserCurrentHost
 # or
-$ forc completions --shell=powershell | Out-String | Invoke-Expression
+forc completions --shell=powershell | Out-String | Invoke-Expression
 ```
 
 Once the completions have been generated and properly installed, close and reopen your terminal for the new completions to take effect.
-

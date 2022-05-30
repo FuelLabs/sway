@@ -171,7 +171,11 @@ impl UnresolvedTypeCheck for TypedExpression {
             SizeOfValue { expr } => expr.check_for_unresolved_types(),
             AbiCast { address, .. } => address.check_for_unresolved_types(),
             // storage access can never be generic
-            StorageAccess { .. } | Literal(_) | AbiName(_) | FunctionParameter => vec![],
+            StorageAccess { .. }
+            | Literal(_)
+            | AbiName(_)
+            | FunctionParameter
+            | GenerateUid { .. } => vec![],
             EnumTag { exp } => exp.check_for_unresolved_types(),
             UnsafeDowncast { exp, variant } => exp
                 .check_for_unresolved_types()

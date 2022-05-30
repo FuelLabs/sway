@@ -176,6 +176,8 @@ pub enum ConvertParseTreeError {
     InvalidAttributeArgument { attribute: String, span: Span },
     #[error("cannot find type \"{ty_name}\" in this scope")]
     ConstrainedNonExistentType { ty_name: Ident, span: Span },
+    #[error("__generate_uid does not take arguments")]
+    GenerateUidTooManyArgs { span: Span },
 }
 
 impl ConvertParseTreeError {
@@ -225,6 +227,7 @@ impl ConvertParseTreeError {
             ConvertParseTreeError::ContractCallerNamedTypeGenericArg { span } => span.clone(),
             ConvertParseTreeError::InvalidAttributeArgument { span, .. } => span.clone(),
             ConvertParseTreeError::ConstrainedNonExistentType { span, .. } => span.clone(),
+            ConvertParseTreeError::GenerateUidTooManyArgs { span, .. } => span.clone(),
         }
     }
 }
@@ -1323,8 +1326,8 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                     Expression::MethodApplication {
                         method_name: MethodName::FromType {
                             call_path,
-                            type_name: Some(type_name),
-                            type_name_span: Some(type_name_span),
+                            type_name,
+                            type_name_span,
                         },
                         contract_call_params: Vec::new(),
                         arguments,
@@ -1361,6 +1364,20 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                             type_span,
                             span,
                         }
+                    } else if call_path.prefixes.is_empty()
+                        && !call_path.is_absolute
+                        && Intrinsic::try_from_str(call_path.suffix.as_str())
+                            == Some(Intrinsic::GenerateUid)
+                    {
+                        if !arguments.is_empty() {
+                            let error = ConvertParseTreeError::GenerateUidTooManyArgs { span };
+                            return Err(ec.error(error));
+                        }
+                        if generics_opt.is_some() {
+                            let error = ConvertParseTreeError::GenericsNotSupportedHere { span };
+                            return Err(ec.error(error));
+                        }
+                        Expression::BuiltinGenerateUid { span }
                     } else if call_path.prefixes.is_empty()
                         && !call_path.is_absolute
                         && Intrinsic::try_from_str(call_path.suffix.as_str())
@@ -1649,7 +1666,7 @@ fn binary_op_call(
     rhs: Expr,
 ) -> Result<Expression, ErrorEmitted> {
     Ok(Expression::MethodApplication {
-        method_name: MethodName::FromType {
+        method_name: MethodName::FromTrait {
             call_path: CallPath {
                 prefixes: vec![
                     Ident::new_with_override("core", op_span.clone()),
@@ -1658,8 +1675,6 @@ fn binary_op_call(
                 suffix: Ident::new_with_override(name, op_span),
                 is_absolute: true,
             },
-            type_name: None,
-            type_name_span: None,
         },
         contract_call_params: Vec::new(),
         arguments: vec![expr_to_expression(ec, lhs)?, expr_to_expression(ec, rhs)?],

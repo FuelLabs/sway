@@ -1,7 +1,10 @@
 use super::*;
 
 use crate::{
-    semantic_analysis::ast_node::{TypedEnumVariant, TypedExpression, TypedStructField},
+    semantic_analysis::{
+        ast_node::{TypedEnumVariant, TypedExpression, TypedStructField},
+        TypeMapping,
+    },
     CallPath, Ident, TypeArgument, TypeParameter,
 };
 
@@ -217,26 +220,30 @@ impl PartialEq for TypeInfo {
                 Self::Enum {
                     name: l_name,
                     variant_types: l_variant_types,
-                    ..
+                    type_parameters: l_type_parameters,
                 },
                 Self::Enum {
                     name: r_name,
                     variant_types: r_variant_types,
-                    ..
+                    type_parameters: r_type_parameters,
                 },
-            ) => l_name == r_name && l_variant_types == r_variant_types,
+            ) => {
+                l_name == r_name
+                    && l_variant_types == r_variant_types
+                    && l_type_parameters == r_type_parameters
+            }
             (
                 Self::Struct {
                     name: l_name,
                     fields: l_fields,
-                    ..
+                    type_parameters: l_type_parameters,
                 },
                 Self::Struct {
                     name: r_name,
                     fields: r_fields,
-                    ..
+                    type_parameters: r_type_parameters,
                 },
-            ) => l_name == r_name && l_fields == r_fields,
+            ) => l_name == r_name && l_fields == r_fields && l_type_parameters == r_type_parameters,
             (Self::Ref(l, _sp1), Self::Ref(r, _sp2)) => look_up_type_id(*l) == look_up_type_id(*r),
             (Self::Tuple(l), Self::Tuple(r)) => l
                 .iter()
@@ -304,15 +311,19 @@ impl TypeInfo {
             ErrorRecovery => "unknown due to error".into(),
             Enum {
                 name,
-                variant_types,
+                type_parameters,
                 ..
             } => print_inner_types(
-                format!("enum {}", name),
-                variant_types.iter().map(|x| x.r#type),
+                name.as_str().to_string(),
+                type_parameters.iter().map(|x| x.type_id),
             ),
-            Struct { name, fields, .. } => print_inner_types(
-                format!("struct {}", name),
-                fields.iter().map(|field| field.r#type),
+            Struct {
+                name,
+                type_parameters,
+                ..
+            } => print_inner_types(
+                name.as_str().to_string(),
+                type_parameters.iter().map(|x| x.type_id),
             ),
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {}", abi_name)
@@ -627,30 +638,21 @@ impl TypeInfo {
         }
     }
 
-    pub(crate) fn matches_type_parameter(
-        &self,
-        mapping: &[(TypeParameter, TypeId)],
-    ) -> Option<TypeId> {
+    pub(crate) fn matches_type_parameter(&self, mapping: &TypeMapping) -> Option<TypeId> {
         use TypeInfo::*;
         match self {
             TypeInfo::Custom { .. } => {
                 for (param, ty_id) in mapping.iter() {
-                    let param_type_info = look_up_type_id(param.type_id);
-                    if param_type_info == *self {
+                    if look_up_type_id(param.type_id) == *self {
                         return Some(*ty_id);
                     }
                 }
                 None
             }
-            TypeInfo::UnknownGeneric { name, .. } => {
+            TypeInfo::UnknownGeneric { .. } => {
                 for (param, ty_id) in mapping.iter() {
-                    if let TypeInfo::Custom {
-                        name: other_name, ..
-                    } = look_up_type_id(param.type_id)
-                    {
-                        if name.clone() == other_name {
-                            return Some(*ty_id);
-                        }
+                    if look_up_type_id(param.type_id) == *self {
+                        return Some(*ty_id);
                     }
                 }
                 None
@@ -793,9 +795,9 @@ impl TypeInfo {
             | TypeInfo::Tuple(_)
             | TypeInfo::Byte
             | TypeInfo::B256
+            | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Numeric => ok((), warnings, errors),
             TypeInfo::Unknown
-            | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Custom { .. }
             | TypeInfo::SelfType
@@ -1024,12 +1026,16 @@ impl TypeInfo {
 }
 
 fn print_inner_types(name: String, inner_types: impl Iterator<Item = TypeId>) -> String {
+    let inner_types = inner_types
+        .map(|x| x.friendly_type_str())
+        .collect::<Vec<_>>();
     format!(
-        "{}<{}>",
+        "{}{}",
         name,
-        inner_types
-            .map(|x| x.friendly_type_str())
-            .collect::<Vec<_>>()
-            .join(", ")
+        if inner_types.is_empty() {
+            "".into()
+        } else {
+            format!("<{}>", inner_types.join(", "))
+        }
     )
 }
