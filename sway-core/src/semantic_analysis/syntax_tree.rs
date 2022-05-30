@@ -135,7 +135,7 @@ impl TypedProgram {
                     )),
                 }
                 TypedProgramKind::Predicate {
-                    main_function: main_func.clone(),
+                    main_function: main_func,
                     declarations,
                 }
             }
