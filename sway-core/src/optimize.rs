@@ -16,33 +16,25 @@ use sway_ir::*;
 
 // -------------------------------------------------------------------------------------------------
 
-pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, CompileError> {
+pub(crate) fn compile_program(program: TypedProgram) -> Result<Context, CompileError> {
+    let TypedProgram { kind, root } = program;
     let mut ctx = Context::default();
-    match ast {
-        TypedParseTree::Script {
-            namespace,
+    match kind {
+        TypedProgramKind::Script {
             main_function,
             declarations,
-            all_nodes: _,
         }
-        | TypedParseTree::Predicate {
-            namespace,
+        | TypedProgramKind::Predicate {
             main_function,
             declarations,
-            all_nodes: _,
             // predicates and scripts have the same codegen, their only difference is static
             // type-check time checks.
-        } => compile_script(&mut ctx, main_function, &namespace, declarations),
-        TypedParseTree::Contract {
+        } => compile_script(&mut ctx, main_function, &root.namespace, declarations),
+        TypedProgramKind::Contract {
             abi_entries,
-            namespace,
             declarations,
-            all_nodes: _,
-        } => compile_contract(&mut ctx, abi_entries, &namespace, declarations),
-        TypedParseTree::Library {
-            namespace: _,
-            all_nodes: _,
-        } => unimplemented!("compile library to ir"),
+        } => compile_contract(&mut ctx, abi_entries, &root.namespace, declarations),
+        TypedProgramKind::Library { .. } => unimplemented!("compile library to ir"),
     }?;
     ctx.verify()
         .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))

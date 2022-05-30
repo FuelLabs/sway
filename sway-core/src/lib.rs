@@ -29,7 +29,7 @@ use std::sync::Arc;
 
 pub use semantic_analysis::{
     namespace::{self, Namespace},
-    TypedDeclaration, TypedFunctionDeclaration, TypedParseTree,
+    TypedDeclaration, TypedFunctionDeclaration, TypedParseTree, TypedProgram,
 };
 pub mod types;
 pub use crate::parse_tree::{
@@ -94,7 +94,7 @@ fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeTy
     let module_dir = path.parent().expect("module file has no parent directory");
 
     // Parse all submodules before converting to the `ParseTree`.
-    let init_res = ok(HashMap::default(), vec![], vec![]);
+    let init_res = ok(vec![], vec![], vec![]);
     let submodules_res = module.dependencies.iter().fold(init_res, |res, dep| {
         let dep_path = Arc::new(module_path(module_dir, dep));
         let dep_str: Arc<str> = match std::fs::read_to_string(&*dep_path) {
@@ -123,7 +123,7 @@ fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeTy
             };
             let key = dep.path.span().as_str().to_string();
             res.flat_map(|mut submods| {
-                submods.insert(key, submodule);
+                submods.push((key, submodule));
                 ok(submods, vec![], vec![])
             })
         })
@@ -175,8 +175,7 @@ pub enum CompilationResult {
 
 pub enum CompileAstResult {
     Success {
-        parse_tree: Box<TypedParseTree>,
-        tree_type: TreeType,
+        typed_program: Box<TypedProgram>,
         warnings: Vec<CompileWarning>,
     },
     Failure {
@@ -260,13 +259,13 @@ pub(crate) fn compile_inner_dependency(
     );
 
     // look for return path errors
-    let graph = ControlFlowGraph::construct_return_path_graph(&typed_parse_tree);
+    let graph = ControlFlowGraph::construct_return_path_graph(typed_parse_tree.all_nodes());
     errors.append(&mut graph.analyze_return_paths());
 
     // The dead code will be analyzed later wholistically with the rest of the program
     // since we can't tell what is dead and what isn't just from looking at this file
-    if let Err(e) = ControlFlowGraph::append_to_dead_code_graph(
-        &typed_parse_tree,
+    if let Err(e) = ControlFlowGraph::append_module_to_dead_code_graph(
+        typed_parse_tree.all_nodes(),
         &parse_program.kind,
         dead_code_graph,
     ) {
@@ -306,22 +305,20 @@ pub fn compile_to_ast(
         namespace: Default::default(),
     };
 
-    let mut namespace = Namespace::init_root(initial_namespace);
     let CompileResult {
-        value: typed_parse_tree_result,
+        value: typed_program_result,
         warnings: new_warnings,
         errors: new_errors,
-    } = TypedParseTree::type_check(
-        parse_program.root.tree,
-        &mut namespace,
-        &parse_program.kind,
+    } = TypedProgram::type_check(
+        parse_program,
+        initial_namespace,
         &build_config.clone(),
         &mut dead_code_graph,
     );
     warnings.extend(new_warnings);
     errors.extend(new_errors);
-    let typed_parse_tree = match typed_parse_tree_result {
-        Some(typed_parse_tree) => typed_parse_tree,
+    let typed_program = match typed_program_result {
+        Some(typed_program) => typed_program,
         None => {
             errors = dedup_unsorted(errors);
             warnings = dedup_unsorted(warnings);
@@ -330,7 +327,7 @@ pub fn compile_to_ast(
     };
 
     let (mut l_warnings, mut l_errors) =
-        perform_control_flow_analysis(&typed_parse_tree, &parse_program.kind, &mut dead_code_graph);
+        perform_control_flow_analysis(&typed_program, &mut dead_code_graph);
 
     errors.append(&mut l_errors);
     warnings.append(&mut l_warnings);
@@ -341,8 +338,7 @@ pub fn compile_to_ast(
     }
 
     CompileAstResult::Success {
-        parse_tree: Box::new(typed_parse_tree),
-        tree_type: parse_program.kind,
+        typed_program: Box::new(typed_program),
         warnings,
     }
 }
@@ -366,18 +362,18 @@ pub fn ast_to_asm(ast_res: CompileAstResult, build_config: &BuildConfig) -> Comp
             CompilationResult::Failure { warnings, errors }
         }
         CompileAstResult::Success {
-            parse_tree,
-            tree_type,
+            typed_program,
             mut warnings,
         } => {
             let mut errors = vec![];
+            let tree_type = typed_program.kind.tree_type();
             match tree_type {
                 TreeType::Contract | TreeType::Script | TreeType::Predicate => {
                     let asm = check!(
                         if build_config.use_orig_asm {
-                            compile_ast_to_asm(*parse_tree, build_config)
+                            compile_ast_to_asm(*typed_program, build_config)
                         } else {
-                            compile_ast_to_ir_to_asm(*parse_tree, tree_type, build_config)
+                            compile_ast_to_ir_to_asm(*typed_program, build_config)
                         },
                         return CompilationResult::Failure { errors, warnings },
                         warnings,
@@ -391,7 +387,7 @@ pub fn ast_to_asm(ast_res: CompileAstResult, build_config: &BuildConfig) -> Comp
                 TreeType::Library { name } => CompilationResult::Library {
                     warnings,
                     name,
-                    namespace: Box::new(parse_tree.into_namespace().into()),
+                    namespace: Box::new(typed_program.root.namespace.into()),
                 },
             }
         }
@@ -401,8 +397,7 @@ pub fn ast_to_asm(ast_res: CompileAstResult, build_config: &BuildConfig) -> Comp
 use sway_ir::{context::Context, function::Function};
 
 pub(crate) fn compile_ast_to_ir_to_asm(
-    ast: TypedParseTree,
-    tree_type: TreeType,
+    program: TypedProgram,
     build_config: &BuildConfig,
 ) -> CompileResult<FinalizedAsm> {
     let mut warnings = Vec::new();
@@ -420,13 +415,14 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // IR phase.
 
     check!(
-        ast.finalize_types(),
+        program.finalize_types(),
         return err(warnings, errors),
         warnings,
         errors
     );
 
-    let mut ir = match optimize::compile_ast(ast) {
+    let tree_type = program.kind.tree_type();
+    let mut ir = match optimize::compile_program(program) {
         Ok(ir) => ir,
         Err(e) => {
             errors.push(e);
@@ -547,21 +543,27 @@ pub fn asm_to_bytecode(
     }
 }
 
-/// Given a [TypedParseTree], which is type-checked Sway source, construct a graph to analyze
+/// Given a [TypedProgram], which is type-checked Sway source, construct a graph to analyze
 /// control flow and determine if it is valid.
 fn perform_control_flow_analysis(
-    tree: &TypedParseTree,
-    tree_type: &TreeType,
+    program: &TypedProgram,
     dead_code_graph: &mut ControlFlowGraph,
 ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-    match ControlFlowGraph::append_to_dead_code_graph(tree, tree_type, dead_code_graph) {
+    // TODO: Append all submodules, not just root.
+    let tree_type = program.kind.tree_type();
+
+    match ControlFlowGraph::append_module_to_dead_code_graph(
+        &program.root.all_nodes,
+        &tree_type,
+        dead_code_graph,
+    ) {
         Ok(_) => (),
         Err(e) => return (vec![], vec![e]),
     }
     let mut warnings = vec![];
     let mut errors = vec![];
     warnings.append(&mut dead_code_graph.find_dead_code());
-    let graph = ControlFlowGraph::construct_return_path_graph(tree);
+    let graph = ControlFlowGraph::construct_return_path_graph(&program.root.all_nodes);
     errors.append(&mut graph.analyze_return_paths());
     (warnings, errors)
 }

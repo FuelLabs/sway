@@ -18,7 +18,6 @@ pub use expression::*;
 pub(crate) use include_statement::IncludeStatement;
 pub use literal::Literal;
 pub use return_statement::*;
-use std::collections::HashMap;
 use sway_types::{ident::Ident, span::Span};
 pub use use_statement::{ImportType, UseStatement};
 pub use visibility::Visibility;
@@ -38,12 +37,12 @@ pub struct ParseProgram {
 pub struct ParseModule {
     /// The content of this module in the form of a `ParseTree`.
     pub tree: ParseTree,
-    /// Submodules introduced within this module using the `dep` syntax.
-    pub submodules: HashMap<DependencyPath, ParseSubmodule>,
+    /// Submodules introduced within this module using the `dep` syntax in order of declaration.
+    pub submodules: Vec<(DependencyPath, ParseSubmodule)>,
 }
 
 /// The dependency path span in the form of a `String`.
-type DependencyPath = String;
+pub type DependencyPath = String;
 
 /// A library module that was declared as a `dep` of another module.
 ///
