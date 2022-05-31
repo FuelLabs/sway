@@ -9,7 +9,7 @@ The `Forc.toml` (the _manifest_ file) is a compulsory file for each package and 
   * `license`— The project license.
   * `entry` — The entry point for the compiler to start parsing from.
     * For the recomended way of selecting an entry point of large libraries please take a look at: [Libraries](./../sway-program-types/libraries.md)
-  * `implicit_std` -  Controls whether provided `std` version (with the current `forc` version) will get added as a dependency _implicitly_. _Unless you know what you are doing, leave this as default._
+  * `implicit-std` -  Controls whether provided `std` version (with the current `forc` version) will get added as a dependency _implicitly_. _Unless you know what you are doing, leave this as default._
 
 * [`[dependencies]`](#the-dependencies-section) — Defines the dependencies.
 * `[network]` — Defines a network for forc to interact with.
