@@ -132,14 +132,21 @@ fn compile_constant_expression(
     context: &mut Context,
     const_expr: &TypedExpression,
 ) -> Result<Value, CompileError> {
-    if let TypedExpressionVariant::Literal(literal) = &const_expr.expression {
-        let span_md_idx = MetadataIndex::from_span(context, &const_expr.span);
-        Ok(convert_literal_to_value(context, literal, span_md_idx))
-    } else {
-        Err(CompileError::Internal(
-            "Unsupported constant expression type.",
-            const_expr.span.clone(),
-        ))
+    match &const_expr.expression {
+        TypedExpressionVariant::Literal(literal) => {
+            let span_md_idx = MetadataIndex::from_span(context, &const_expr.span);
+            Ok(convert_literal_to_value(context, literal, span_md_idx))
+        }
+        // Special case functions because the span in `const_expr` is to the inlined function
+        // definition, rather than the actual call site.
+        TypedExpressionVariant::FunctionApplication { call_path, .. } => {
+            Err(CompileError::NonLiteralConstantDeclValue {
+                span: call_path.span(),
+            })
+        }
+        _otherwise => Err(CompileError::NonLiteralConstantDeclValue {
+            span: const_expr.span.clone(),
+        }),
     }
 }
 

@@ -1,0 +1,6 @@
+[project]
+name = "non_literal_const_decl"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+implicit-std = false

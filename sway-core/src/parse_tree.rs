@@ -5,7 +5,7 @@ pub mod declaration;
 mod expression;
 pub mod ident;
 mod include_statement;
-mod literal;
+pub mod literal;
 mod return_statement;
 mod use_statement;
 mod visibility;
