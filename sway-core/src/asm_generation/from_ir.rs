@@ -1047,6 +1047,19 @@ impl<'ir> AsmBuilder<'ir> {
 
         let state_idx = instr_val.get_storage_key(self.context);
 
+        // Instead of calling `instr_span.get_span()` directly, do error checking first. This is a
+        // temporary workaround so that the IR test for `get_storage_key` pass because that test
+        // has invalid filepath. This can be changed when we refactor Span to not need a valid
+        // source string
+        let instr_span = match self.context.values[instr_val.0]
+            .span_md_idx
+            .map(|idx| idx.to_span(self.context))
+            .transpose()
+        {
+            Ok(span) => span,
+            Err(_) => None,
+        };
+
         let storage_slot_to_hash = match state_idx {
             Some(state_idx) => {
                 format!(
@@ -1058,9 +1071,7 @@ impl<'ir> AsmBuilder<'ir> {
             None => {
                 errors.push(CompileError::Internal(
                     "State index for __get_storage_key is not available as a metadata",
-                    instr_val
-                        .get_span(self.context)
-                        .unwrap_or_else(Self::empty_span),
+                    instr_span.unwrap_or_else(Self::empty_span),
                 ));
                 return err(warnings, errors);
             }
@@ -1074,10 +1085,11 @@ impl<'ir> AsmBuilder<'ir> {
 
         // Allocate a register for it, and a load instruction.
         let reg = self.reg_seqr.next();
+
         self.bytecode.push(Op {
             opcode: either::Either::Left(VirtualOp::LWDataId(reg.clone(), data_id)),
             comment: "literal instantiation".into(),
-            owning_span: None,
+            owning_span: instr_span,
         });
         self.reg_map.insert(*instr_val, reg);
         ok((), warnings, errors)
