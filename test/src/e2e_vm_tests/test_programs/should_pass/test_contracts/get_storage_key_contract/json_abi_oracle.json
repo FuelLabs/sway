@@ -1,54 +1,48 @@
 [
   {
-    "inputs": [
-      {
-        "components": [
-          {
-            "components": [
-              {
-                "components": [
-                  {
-                    "components": null,
-                    "name": "number",
-                    "type": "u64"
-                  }
-                ],
-                "name": "id",
-                "type": "struct Id"
-              }
-            ],
-            "name": "__array_element",
-            "type": "struct Wrapper"
-          }
-        ],
-        "name": "param",
-        "type": "[struct Wrapper; 2]"
-      }
-    ],
-    "name": "return_array_of_structs",
+    "inputs": [],
+    "name": "from_f1",
     "outputs": [
       {
-        "components": [
-          {
-            "components": [
-              {
-                "components": [
-                  {
-                    "components": null,
-                    "name": "number",
-                    "type": "u64"
-                  }
-                ],
-                "name": "id",
-                "type": "struct Id"
-              }
-            ],
-            "name": "__array_element",
-            "type": "struct Wrapper"
-          }
-        ],
+        "components": null,
         "name": "",
-        "type": "[struct Wrapper; 2]"
+        "type": "b256"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "from_f2",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "b256"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "from_f3",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "b256"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "from_f4",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "b256"
       }
     ],
     "type": "function"
