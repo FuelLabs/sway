@@ -77,7 +77,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
 
     let diff = plan.validate(&manifest, SWAY_GIT_TAG)?;
     if !diff.added.is_empty() || !diff.removed.is_empty() {
-        plan = plan.from_old_manifest(diff, SWAY_GIT_TAG, offline)?;
+        plan = plan.apply_new_manifest(diff, SWAY_GIT_TAG, offline)?;
         create_new_lock(&plan, &old_lock, &manifest, &lock_path)?;
     }
 

@@ -196,7 +196,8 @@ impl BuildPlan {
             compilation_order,
         })
     }
-    pub fn from_old_manifest(
+    /// Create a new build plan from an existing one. Needs the difference with the existing plan with the lock.
+    pub fn apply_new_manifest(
         &self,
         pkg_diff: PkgDiff,
         sway_git_tag: &str,
