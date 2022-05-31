@@ -86,7 +86,7 @@ impl Value {
             .span_md_idx
             .map(|idx| idx.to_span(context))
             .transpose()
-        .expect("A valid span.")
+            .expect("A valid span.")
     }
 
     /// Return the content of the state index metadata
