@@ -2414,32 +2414,71 @@ fn get_indices_for_struct_access<F: TypedNamedField>(
 ) -> Result<Vec<u64>, CompileError> {
     fields
         .iter()
-        .fold(Ok((Vec::new(), base_type)), |acc, field| {
-            // Make sure we have an aggregate to index into.
-            acc.and_then(|(mut fld_idcs, prev_type_id)| {
+        .try_fold(
+            (Vec::new(), base_type),
+            |(mut fld_idcs, prev_type_id), field| {
+                let field_kind = field.get_field_kind();
+                let ty_info = match resolve_type(prev_type_id, &field_kind.span()) {
+                    Ok(ty_info) => ty_info,
+                    Err(error) => {
+                        return Err(CompileError::InternalOwned(
+                            format!("type error resolving type for reassignment: {}", error),
+                            field_kind.span(),
+                        ));
+                    }
+                };
+                // Make sure we have an aggregate to index into.
                 // Get the field index and also its type for the next iteration.
-                match get_struct_name_field_index_and_type(prev_type_id, field.get_field_kind()) {
-                    None => Err(CompileError::Internal(
-                        "Unknown struct in in reassignment.",
-                        Span::dummy(),
+                match (ty_info, &field_kind) {
+                    (
+                        TypeInfo::Struct { name, fields, .. },
+                        ProjectionKind::StructField { name: field_name },
+                    ) => {
+                        let field_idx_and_type_opt = fields
+                            .iter()
+                            .enumerate()
+                            .find(|(_, field)| field.name == *field_name);
+                        let (field_idx, field_type) = match field_idx_and_type_opt {
+                            Some((idx, field)) => (idx as u64, field.r#type),
+                            None => {
+                                return Err(CompileError::InternalOwned(
+                                    format!(
+                                        "Unknown field '{}' for struct {} in reassignment.",
+                                        field_kind.pretty_print(),
+                                        name,
+                                    ),
+                                    field_kind.span(),
+                                ));
+                            }
+                        };
+                        // Save the field index.
+                        fld_idcs.push(field_idx);
+                        Ok((fld_idcs, field_type))
+                    }
+                    (TypeInfo::Tuple(fields), ProjectionKind::TupleField { index, .. }) => {
+                        let field_type = match fields.get(*index) {
+                            Some(field_type_argument) => field_type_argument.type_id,
+                            None => {
+                                return Err(CompileError::InternalOwned(
+                                    format!(
+                                        "index {} is out of bounds for tuple of length {}",
+                                        index,
+                                        fields.len(),
+                                    ),
+                                    field_kind.span(),
+                                ));
+                            }
+                        };
+                        fld_idcs.push(*index as u64);
+                        Ok((fld_idcs, field_type))
+                    }
+                    _ => Err(CompileError::Internal(
+                        "Unknown aggregate in reassignment.",
+                        field_kind.span(),
                     )),
-                    Some((struct_name, field_idx_and_type_opt)) => match field_idx_and_type_opt {
-                        None => Err(CompileError::InternalOwned(
-                            format!(
-                                "Unknown field '{}' for struct {struct_name} in reassignment.",
-                                field.get_field_kind().pretty_print(),
-                            ),
-                            field.get_field_kind().span(),
-                        )),
-                        Some((field_idx, field_type)) => {
-                            // Save the field index.
-                            fld_idcs.push(field_idx);
-                            Ok((fld_idcs, field_type))
-                        }
-                    },
                 }
-            })
-        })
+            },
+        )
         .map(|(fld_idcs, _)| fld_idcs)
 }
 
