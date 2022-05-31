@@ -98,11 +98,15 @@ mod ir_builder {
                 }
 
             rule instr_decl() -> IrAstInstruction
-                = value_name:value_assign()? op:operation() meta_idx:comma_metadata_idx()? {
+                = value_name:value_assign()? op:operation()
+                        meta_idx:comma_metadata_idx()?
+                    state_idx_md_idx:comma_metadata_idx()?
+                        {
                     IrAstInstruction {
                         value_name,
                         op,
                         meta_idx,
+                        state_idx_md_idx,
                     }
                 }
 
@@ -441,6 +445,9 @@ mod ir_builder {
                 / "span" _ "!" li:decimal() s:decimal() e:decimal() {
                     IrMetadatum::Span { loc_idx: li, start: s as usize, end: e as usize }
                 }
+                / "state_index" _ idx:decimal() {
+                    IrMetadatum::StateIndex { idx: idx as usize}
+                }
 
             rule id_char0()
                 = quiet!{ ['A'..='Z' | 'a'..='z' | '_'] }
@@ -527,6 +534,7 @@ mod ir_builder {
         value_name: Option<String>,
         op: IrAstOperation,
         meta_idx: Option<MdIdxRef>,
+        state_idx_md_idx: Option<MdIdxRef>,
     }
 
     #[derive(Debug)]
@@ -696,6 +704,9 @@ mod ir_builder {
             start: usize,
             end: usize,
         },
+        StateIndex {
+            idx: usize,
+        },
     }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -720,7 +731,14 @@ mod ir_builder {
         module: Module,
         fn_decl: IrAstFnDecl,
         md_map: &HashMap<MdIdxRef, MetadataIndex>,
-        unresolved_calls: &mut Vec<(Block, Value, String, Vec<Value>, Option<MetadataIndex>)>,
+        unresolved_calls: &mut Vec<(
+            Block,
+            Value,
+            String,
+            Vec<Value>,
+            Option<MetadataIndex>,
+            Option<MetadataIndex>,
+        )>,
     ) -> Result<(), IrError> {
         let args: Vec<(String, Type, Option<MetadataIndex>)> = fn_decl
             .args
@@ -800,11 +818,22 @@ mod ir_builder {
         ptr_map: &HashMap<String, Pointer>,
         val_map: &mut HashMap<String, Value>,
         md_map: &HashMap<MdIdxRef, MetadataIndex>,
-        unresolved_calls: &mut Vec<(Block, Value, String, Vec<Value>, Option<MetadataIndex>)>,
+        unresolved_calls: &mut Vec<(
+            Block,
+            Value,
+            String,
+            Vec<Value>,
+            Option<MetadataIndex>,
+            Option<MetadataIndex>,
+        )>,
     ) {
         let block = named_blocks.get(&ir_block.label).unwrap();
         for ins in ir_block.instructions {
             let opt_ins_md_idx = ins.meta_idx.map(|mdi| md_map.get(&mdi).unwrap()).copied();
+            let opt_ins_state_idx_md_idx = ins
+                .state_idx_md_idx
+                .map(|mdi| md_map.get(&mdi).unwrap())
+                .copied();
             let ins_val = match ins.op {
                 IrAstOperation::Asm(args, return_type, return_name, ops, meta_idx) => {
                     let args = args
@@ -868,6 +897,7 @@ mod ir_builder {
                             .cloned()
                             .collect::<Vec<Value>>(),
                         opt_ins_md_idx,
+                        opt_ins_state_idx_md_idx,
                     ));
                     nop
                 }
@@ -920,9 +950,9 @@ mod ir_builder {
                         opt_ins_md_idx,
                     )
                 }
-                IrAstOperation::GetStorageKey() => {
-                    block.ins(context).get_storage_key(opt_ins_md_idx, None)
-                }
+                IrAstOperation::GetStorageKey() => block
+                    .ins(context)
+                    .get_storage_key(opt_ins_md_idx, opt_ins_state_idx_md_idx),
                 IrAstOperation::GetPtr(base_ptr, ptr_ty, offset) => {
                     let ptr_ir_ty = ptr_ty.to_ir_type(context);
                     block.ins(context).get_ptr(
@@ -1035,7 +1065,10 @@ mod ir_builder {
                 _otherwise => None,
             })
             .fold(HashMap::new(), |mut md_map, (idx_ref, path)| {
-                let path_content = Arc::from(std::fs::read_to_string(path).unwrap().as_str());
+                let path_content = match std::fs::read_to_string(path) {
+                    Ok(res) => Arc::from(res.as_str()),
+                    Err(_) => Arc::from(""),
+                };
                 let md_idx = context.metadata.insert(Metadatum::FileLocation(
                     Arc::new(path.clone()),
                     path_content,
@@ -1045,18 +1078,26 @@ mod ir_builder {
             });
 
         for (idx_ref, md) in ir_metadata {
-            if let IrMetadatum::Span {
-                loc_idx,
-                start,
-                end,
-            } = md
-            {
-                let span_idx = context.metadata.insert(Metadatum::Span {
-                    loc_idx: md_map.get(loc_idx).copied().unwrap(),
-                    start: *start,
-                    end: *end,
-                });
-                md_map.insert(*idx_ref, MetadataIndex(span_idx));
+            match md {
+                IrMetadatum::Span {
+                    loc_idx,
+                    start,
+                    end,
+                } => {
+                    let span_idx = context.metadata.insert(Metadatum::Span {
+                        loc_idx: md_map.get(loc_idx).copied().unwrap(),
+                        start: *start,
+                        end: *end,
+                    });
+                    md_map.insert(*idx_ref, MetadataIndex(span_idx));
+                }
+                IrMetadatum::StateIndex { idx } => {
+                    md_map.insert(
+                        *idx_ref,
+                        MetadataIndex(context.metadata.insert(Metadatum::StateIndex(*idx))),
+                    );
+                }
+                _ => {}
             }
         }
         md_map
@@ -1065,13 +1106,21 @@ mod ir_builder {
     #[allow(clippy::type_complexity)]
     fn resolve_calls(
         context: &mut Context,
-        unresolved_calls: Vec<(Block, Value, String, Vec<Value>, Option<MetadataIndex>)>,
+        unresolved_calls: Vec<(
+            Block,
+            Value,
+            String,
+            Vec<Value>,
+            Option<MetadataIndex>,
+            Option<MetadataIndex>,
+        )>,
     ) -> Result<(), IrError> {
         // All of the call instructions are currently NOPs which need to be replaced with actual
         // calls.  We couldn't do it above until we'd gone and created all the functions first.
         //
         // Now we can loop and find the callee function for each call and replace the NOPs.
-        for (block, nop, callee, args, opt_ins_md_idx) in unresolved_calls {
+        for (block, nop, callee, args, opt_ins_md_idx, opt_ins_state_idx_md_idx) in unresolved_calls
+        {
             let function = context
                 .functions
                 .iter()
@@ -1087,7 +1136,7 @@ mod ir_builder {
                 context,
                 Instruction::Call(function, args),
                 opt_ins_md_idx,
-                None,
+                opt_ins_state_idx_md_idx,
             );
             block.replace_instruction(context, nop, call_val)?;
         }

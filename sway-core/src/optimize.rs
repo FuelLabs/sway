@@ -2596,13 +2596,13 @@ mod tests {
         let parsed_ctx = match sway_ir::parser::parse(&input) {
             Ok(p) => p,
             Err(e) => {
-                tracing::error!("{}: {}", path.display(), e);
+                println!("{}: {}", path.display(), e);
                 panic!();
             }
         };
         let printed = sway_ir::printer::to_string(&parsed_ctx);
         if printed != input {
-            tracing::error!("{}", prettydiff::diff_lines(&input, &printed));
+            println!("{}", prettydiff::diff_lines(&input, &printed));
             panic!("{} failed.", path.display());
         }
     }
