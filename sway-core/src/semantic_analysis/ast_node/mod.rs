@@ -868,14 +868,11 @@ fn reassignment(
 
                     let (ty_of_field, _ty_of_parent) = check!(
                         namespace.find_subfield_type(
-                            std::iter::once(base_name.clone())
-                                .chain(names_vec.iter().map(|ReassignmentLhs { kind, .. }| {
-                                    match kind {
-                                        ProjectionKind::StructField { name } => name.clone(),
-                                    }
-                                }))
-                                .collect::<Vec<_>>()
-                                .as_slice()
+                            &base_name,
+                            &names_vec
+                                .iter()
+                                .map(|ReassignmentLhs { kind, .. }| kind.clone())
+                                .collect::<Vec<_>>(),
                         ),
                         return err(warnings, errors),
                         warnings,

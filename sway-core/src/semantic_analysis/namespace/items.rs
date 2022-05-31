@@ -224,22 +224,22 @@ impl Items {
     /// the second is the [ResolvedType] of its parent, for control-flow analysis.
     pub(crate) fn find_subfield_type(
         &self,
-        subfield_exp: &[Ident],
+        base_name: &Ident,
+        projections: &[ProjectionKind],
     ) -> CompileResult<(TypeId, TypeId)> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let mut ident_iter = subfield_exp.iter().peekable();
-        let first_ident = ident_iter.next().unwrap();
-        let symbol = match self.symbols.get(first_ident).cloned() {
+        let mut projection_iter = projections.iter().peekable();
+        let symbol = match self.symbols.get(base_name).cloned() {
             Some(s) => s,
             None => {
                 errors.push(CompileError::UnknownVariable {
-                    var_name: first_ident.clone(),
+                    var_name: base_name.clone(),
                 });
                 return err(warnings, errors);
             }
         };
-        if ident_iter.peek().is_none() {
+        if projection_iter.peek().is_none() {
             let ty = check!(
                 symbol.return_type(),
                 return err(warnings, errors),
@@ -255,7 +255,7 @@ impl Items {
             errors
         );
         let mut type_fields =
-            self.get_struct_type_fields(symbol, first_ident.as_str(), first_ident.span());
+            self.get_struct_type_fields(symbol, base_name.as_str(), base_name.span());
         warnings.append(&mut type_fields.warnings);
         errors.append(&mut type_fields.errors);
         let (mut fields, struct_name): (Vec<TypedStructField>, Ident) = match type_fields.value {
@@ -267,7 +267,10 @@ impl Items {
 
         let mut parent_rover = symbol;
 
-        for ident in ident_iter {
+        for kind in projection_iter {
+            let ident = match kind {
+                ProjectionKind::StructField { name } => name,
+            };
             // find the ident in the currently available fields
             let TypedStructField { r#type, .. } =
                 match fields.iter().find(|x| x.name.as_str() == ident.as_str()) {
