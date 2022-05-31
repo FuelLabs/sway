@@ -843,11 +843,8 @@ fn reassignment(
                                 prefix,
                                 ..
                             } => {
-                                names_vec.push(ReassignmentLhs {
-                                    kind: ProjectionKind::StructField {
-                                        name: field_to_access,
-                                    },
-                                    r#type: type_checked.return_type,
+                                names_vec.push(ProjectionKind::StructField {
+                                    name: field_to_access,
                                 });
                                 expr = *prefix;
                             }
@@ -859,21 +856,12 @@ fn reassignment(
                     };
 
                     let mut names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
-                    names_vec.push(ReassignmentLhs {
-                        kind: ProjectionKind::StructField {
-                            name: field_to_access,
-                        },
-                        r#type: final_return_type,
+                    names_vec.push(ProjectionKind::StructField {
+                        name: field_to_access,
                     });
 
                     let (ty_of_field, _ty_of_parent) = check!(
-                        namespace.find_subfield_type(
-                            &base_name,
-                            &names_vec
-                                .iter()
-                                .map(|ReassignmentLhs { kind, .. }| kind.clone())
-                                .collect::<Vec<_>>(),
-                        ),
+                        namespace.find_subfield_type(&base_name, &names_vec),
                         return err(warnings, errors),
                         warnings,
                         errors

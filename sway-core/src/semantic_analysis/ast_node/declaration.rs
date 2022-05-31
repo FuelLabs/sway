@@ -500,16 +500,6 @@ impl PartialEq for ReassignmentLhs {
     }
 }
 
-impl ReassignmentLhs {
-    pub(crate) fn span(&self) -> Span {
-        self.kind.span()
-    }
-
-    pub(crate) fn pretty_print(&self) -> &str {
-        self.kind.pretty_print()
-    }
-}
-
 impl ProjectionKind {
     pub(crate) fn span(&self) -> Span {
         match self {
@@ -530,7 +520,7 @@ pub struct TypedReassignment {
     // at series of struct fields/array indices (array syntax)
     pub lhs_base_name: Ident,
     pub lhs_type: TypeId,
-    pub lhs_indices: Vec<ReassignmentLhs>,
+    pub lhs_indices: Vec<ProjectionKind>,
     pub rhs: TypedExpression,
 }
 
@@ -539,18 +529,5 @@ impl CopyTypes for TypedReassignment {
         self.rhs.copy_types(type_mapping);
         self.lhs_type
             .update_type(type_mapping, self.lhs_base_name.span());
-        self.lhs_indices.iter_mut().for_each(
-            |ReassignmentLhs {
-                 ref mut r#type,
-                 kind,
-                 ..
-             }| {
-                match kind {
-                    ProjectionKind::StructField { name } => {
-                        r#type.update_type(type_mapping, name.span());
-                    }
-                }
-            },
-        );
     }
 }
