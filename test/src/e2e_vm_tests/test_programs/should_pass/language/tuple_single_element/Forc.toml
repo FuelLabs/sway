@@ -3,4 +3,6 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
 name = "tuple_single_element"
 entry = "main.sw"
-implicit-std = true
+
+[dependencies]
+std = { path = "../../../../../../../sway-lib-std" }
