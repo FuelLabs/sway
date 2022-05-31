@@ -12,10 +12,6 @@ fn is_ref_type<T>(param: T) -> bool {
     is_reference_type::<T>()
 }
 
-fn get_size_of<T>(param: T) -> u64 {
-    size_of::<T>()
-}
-
 fn main() -> bool {
     let zero = ~b256::min();
     let a: u64 = 1;
@@ -43,12 +39,35 @@ fn main() -> bool {
     assert(is_ref_type(e));
     assert(is_ref_type(f));
 
-    assert(get_size_of(a) == 8);
-    assert(get_size_of(b) == 8);
-    assert(get_size_of(c) == 8);
-    assert(get_size_of(d) == 8);
-    assert(get_size_of(e) == 32);
-    assert(get_size_of(f) == 16);
+    assert(size_of::<u64>() == 8);
+    assert(size_of::<u32>() == 8);
+    assert(size_of::<u16>() == 8);
+    assert(size_of::<u8>() == 8);
+    assert(size_of::<b256>() == 32);
+    assert(size_of::<str[11]>() == 16);
+    assert(size_of::<[u16;
+    3]>() == 24);
+    assert(size_of::<TestStruct>() == 16);
+
+    assert(size_of_val(a) == 8);
+    assert(size_of_val(b) == 8);
+    assert(size_of_val(c) == 8);
+    assert(size_of_val(d) == 8);
+    assert(size_of_val(e) == 32);
+    assert(size_of_val(f) == 16);
+
+    assert(addr_of(test_struct) == asm(r1: test_struct) {
+        r1: u64
+    });
+
+    let test_struct_2 = TestStruct {
+        field_1: true,
+        field_2: 12,
+    };
+    assert(!raw_eq(addr_of(test_struct), addr_of(test_struct_2), size_of_val(test_struct)));
+
+    copy(addr_of(test_struct), addr_of(test_struct_2), size_of_val(test_struct));
+    assert(raw_eq(addr_of(test_struct), addr_of(test_struct_2), size_of_val(test_struct)));
 
     true
 }

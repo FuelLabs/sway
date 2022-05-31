@@ -2,6 +2,8 @@ library evm_address;
 
 //! A wrapper around the b256 type to help enhance type-safety.
 
+use ::intrinsics::{addr_of, raw_eq, size_of_val};
+
 /// The Address type, a struct wrappper around the inner `value`.
 pub struct EvmAddress {
     value: b256,
@@ -9,11 +11,7 @@ pub struct EvmAddress {
 
 impl core::ops::Eq for EvmAddress {
     fn eq(self, other: Self) -> bool {
-        // An `Address` in Sway is 32 bytes
-        asm(r1: self, r2: other, result, bytes_to_compare: 32) {
-            meq result r1 r2 bytes_to_compare;
-            result: bool
-        }
+        raw_eq(addr_of(self), addr_of(other), size_of_val(self))
     }
 }
 
