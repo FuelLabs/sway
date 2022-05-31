@@ -43,8 +43,6 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
 
     // Load the build plan from the lock file.
     let plan_result = pkg::BuildPlan::from_lock_file(&lock_path, SWAY_GIT_TAG);
-    let mut old_plan = pkg::BuildPlan::from_lock_file(&lock_path, SWAY_GIT_TAG)
-        .or_else(|_| pkg::BuildPlan::new(&manifest, SWAY_GIT_TAG, offline))?;
 
     // Retrieve the old lock file state so we can produce a diff.
     let old_lock = plan_result
@@ -58,7 +56,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         plan_result.and_then(|plan| plan.validate(&manifest, SWAY_GIT_TAG).map(|_| plan));
 
     // If necessary, construct a new build plan.
-    let plan: pkg::BuildPlan = plan_result.or_else(|e| -> Result<pkg::BuildPlan> {
+    let mut plan: pkg::BuildPlan = plan_result.or_else(|e| -> Result<pkg::BuildPlan> {
         if locked {
             bail!(
                 "The lock file {} needs to be updated but --locked was passed to prevent this.",
@@ -71,17 +69,17 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         } else {
             e
         };
-        let plan = old_plan.from_old_manifest(&manifest, SWAY_GIT_TAG, offline)?;
+        let plan = pkg::BuildPlan::new(&manifest, SWAY_GIT_TAG, offline)?;
         info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
-        let lock = Lock::from_graph(plan.graph());
-        let diff = lock.diff(&old_lock);
-        lock::print_diff(&manifest.project.name, &diff);
-        let string = toml::ser::to_string_pretty(&lock)
-            .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
-        fs::write(&lock_path, &string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
-        info!("   Created new lock file at {}", lock_path.display());
+        create_new_lock(&plan, &old_lock, &manifest, &lock_path)?;
         Ok(plan)
     })?;
+
+    let diff = plan.validate(&manifest, SWAY_GIT_TAG)?;
+    if !diff.added.is_empty() || !diff.removed.is_empty() {
+        plan = plan.from_old_manifest(diff, SWAY_GIT_TAG, offline)?;
+        create_new_lock(&plan, &old_lock, &manifest, &lock_path)?;
+    }
 
     // Build it!
     let (compiled, source_map) = pkg::build(&plan, &config, SWAY_GIT_TAG)?;
@@ -126,4 +124,15 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     info!("  Bytecode size is {} bytes.", compiled.bytecode.len());
 
     Ok(compiled)
+}
+
+fn create_new_lock(plan: &pkg::BuildPlan, old_lock: &Lock, manifest: &ManifestFile, lock_path: &PathBuf) -> Result<()> {
+    let lock = Lock::from_graph(plan.graph());
+    let diff = lock.diff(&old_lock);
+    lock::print_diff(&manifest.project.name, &diff);
+    let string = toml::ser::to_string_pretty(&lock)
+       .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
+    fs::write(&lock_path, &string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
+    info!("   Created new lock file at {}", lock_path.display());
+    Ok(())
 }

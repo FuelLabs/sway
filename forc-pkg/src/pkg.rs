@@ -12,7 +12,6 @@ use petgraph::{self, visit::EdgeRef, Directed, Direction};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map, BTreeSet, HashMap, HashSet},
-    fs,
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
     str::FromStr,
@@ -28,7 +27,7 @@ use url::Url;
 type GraphIx = u32;
 type Node = Pinned;
 type Edge = DependencyName;
-pub type Graph = petgraph::Graph<Node, Edge, Directed, GraphIx>;
+pub type Graph = petgraph::stable_graph::StableGraph<Node, Edge, Directed, GraphIx>;
 pub type NodeIx = petgraph::graph::NodeIndex<GraphIx>;
 pub type PathMap = HashMap<PinnedId, PathBuf>;
 
@@ -180,6 +179,11 @@ pub enum SourceGitPinnedParseError {
 /// ```
 pub type DependencyName = String;
 
+pub struct PkgDiff {
+    pub added: Vec<Pkg>,
+    pub removed: Vec<Pkg>,
+}
+
 impl BuildPlan {
     /// Create a new build plan for the project by fetching and pinning dependenies.
     pub fn new(manifest: &ManifestFile, sway_git_tag: &str, offline: bool) -> Result<Self> {
@@ -192,142 +196,38 @@ impl BuildPlan {
             compilation_order,
         })
     }
-
-    fn get_difference_with_manifest(
-        &self,
-        proj_node: NodeIx,
-        manifest_file: &ManifestFile,
-        sway_git_tag: &str,
-    ) -> Result<(Vec<Pkg>, Vec<Pkg>)> {
-        let manifest = Manifest::from_file(manifest_file.path(), sway_git_tag)?;
-
-        // Collect dependency `Source`s from graph.
-        let plan_dep_pkgs: BTreeSet<_> = self
-            .graph
-            .edges_directed(proj_node, Direction::Outgoing)
-            .map(|e| {
-                let dep_name = e.weight();
-                let dep_pkg = self.graph[e.target()].unpinned(&self.path_map);
-                (dep_name, dep_pkg)
-            })
-            .clone()
-            .collect();
-
-        // Collect dependency `Source`s from manifest.
-        let proj_id = self.graph[proj_node].id();
-        let proj_path = &self.path_map[&proj_id];
-        let manifest_dep_pkgs = manifest
-            .deps()
-            .map(|(dep_name, dep)| {
-                // NOTE: Temporarily warn about `version` until we have support for registries.
-                if let Dependency::Detailed(det) = dep {
-                    if det.version.is_some() {
-                        println_yellow_err(&format!(
-                            "  WARNING! Dependency \"{}\" specifies the unused `version` field: \
-                        consider using `branch` or `tag` instead",
-                            dep_name
-                        ));
-                    }
-                }
-
-                let name = dep.package().unwrap_or(dep_name).to_string();
-                let source = dep_to_source(proj_path, dep)?;
-                let dep_pkg = Pkg { name, source };
-                Ok((dep_name, dep_pkg))
-            })
-            .collect::<Result<BTreeSet<_>>>()?;
-        let added: Vec<Pkg> = manifest_dep_pkgs
-            .difference(&plan_dep_pkgs)
-            .clone()
-            .map(|pkg| (pkg.1.clone()))
-            .collect();
-        let removed: Vec<Pkg> = plan_dep_pkgs
-            .difference(&manifest_dep_pkgs)
-            .clone()
-            .map(|pkg| (pkg.1.clone()))
-            .collect();
-
-        Ok((added, removed))
-    }
-
     pub fn from_old_manifest(
-        &mut self,
-        manifest_file: &ManifestFile,
+        &self,
+        pkg_diff: PkgDiff,
         sway_git_tag: &str,
         offline_mode: bool,
     ) -> Result<Self> {
         let mut graph = self.graph.clone();
+        let mut path_map = self.path_map.clone();
+
         let proj_node = *self
             .compilation_order
             .last()
             .ok_or_else(|| anyhow!("Invalid Graph"))?;
-        let proj_id = graph[proj_node].id();
-        let (added, removed) =
-            self.get_difference_with_manifest(proj_node, manifest_file, sway_git_tag)?;
-
-        use petgraph::visit::{Bfs, Walker};
-        //find root_node_id
-        let root_node_id = *self.compilation_order().last().unwrap();
-        let visited_nodes: Vec<NodeIx> = Bfs::new(&graph, root_node_id).iter(&graph).collect();
-        for node in visited_nodes {
-            if node == root_node_id {
-                continue;
-            }
-            // if a -> b in the graph, a depends on b. if a is removed b will have 0
-            // incoming edge, if there is no other parent dependening on b remove it.
-            // to remove a either it will be in removed list or it needs to have 0 incoming edge.
-            if graph.edges_directed(node, Direction::Incoming).count() == 0
-                || removed
-                    .clone()
-                    .into_iter()
-                    .any(|removed_dep| removed_dep.name == graph[node].name)
-            {
-                graph.remove_node(node);
-            }
-        }
+        let (added, removed) = (pkg_diff.added, pkg_diff.removed);
+        remove_deps(&mut graph, &path_map, proj_node, &removed);
 
         let mut visited_map: HashMap<Pinned, NodeIx> = HashMap::new();
-        // After removing some nodes the index of project node can change.
-        // To find the root node again, create a new compilation order after
-        // removing removed packages, create the compilation order again
-        let compilation_order_after_remove = compilation_order(&graph)?;
-        let mut path_map = graph_to_path_map(
-            manifest_file.dir(),
-            &graph,
-            &compilation_order_after_remove,
-            sway_git_tag,
-        )?;
-        compilation_order_after_remove
+        self.compilation_order
             .clone()
             .into_iter()
             .for_each(|node_index| {
                 visited_map.insert(graph[node_index].clone(), node_index);
             });
 
-        let fetch_ts = std::time::Instant::now();
-        let fetch_id = fetch_id(&self.path_map[&proj_id], fetch_ts);
-        let proj_node_after_delete = compilation_order_after_remove.last().unwrap();
-        for added_package in added {
-            let pkg = &added_package;
-            let pinned_pkg = pin_pkg(fetch_id, pkg, &mut path_map, sway_git_tag)?;
-            let manifest = Manifest::from_dir(&path_map[&pinned_pkg.id()], sway_git_tag)?;
-            let added_package_node = graph.add_node(pinned_pkg.clone());
-            fetch_children(
-                fetch_id,
-                offline_mode,
-                added_package_node,
-                &manifest,
-                sway_git_tag,
-                &mut graph,
-                &mut path_map,
-                &mut visited_map,
-            )?;
-            graph.add_edge(
-                *proj_node_after_delete,
-                added_package_node,
-                added_package.name.to_string(),
-            );
-        }
+        add_deps(
+            &mut graph, 
+            &mut path_map, 
+            &self.compilation_order,
+            proj_node,
+            &added,sway_git_tag,
+            offline_mode,
+            &mut visited_map)?;
         let compilation_order = compilation_order(&graph)?;
         Ok(Self {
             graph,
@@ -355,7 +255,10 @@ impl BuildPlan {
     }
 
     /// Ensure that the build plan is valid for the given manifest.
-    pub fn validate(&self, manifest: &Manifest, sway_git_tag: &str) -> Result<()> {
+    pub fn validate(&self, manifest: &Manifest, sway_git_tag: &str) -> Result<PkgDiff> {
+
+        let mut added = vec!();
+        let mut removed = vec!();
         // Retrieve project's graph node.
         let proj_node = *self
             .compilation_order
@@ -397,10 +300,13 @@ impl BuildPlan {
             })
             .collect::<Result<BTreeSet<_>>>()?;
 
-        // Ensure both `pkg::Source` are equal. If not, error.
+        // Ensure both `pkg::Source` are equal. If not, produce added and removed.
         if plan_dep_pkgs != manifest_dep_pkgs {
-            bail!("Manifest dependencies do not match");
+            added = manifest_dep_pkgs.difference(&plan_dep_pkgs).into_iter().map(|pkg| pkg.1.clone()).collect();
+            removed = plan_dep_pkgs.difference(&manifest_dep_pkgs).into_iter().map(|pkg| pkg.1.clone()).collect();
         }
+
+        
 
         // Ensure the pkg names of all nodes match their associated manifests.
         for node in self.graph.node_indices() {
@@ -416,8 +322,12 @@ impl BuildPlan {
                 );
             }
         }
-
-        Ok(())
+        Ok(
+            PkgDiff {
+                added,
+                removed,
+        }
+    )
     }
 
     /// View the build plan's compilation graph.
@@ -436,7 +346,78 @@ impl BuildPlan {
         &self.compilation_order
     }
 }
+    /// Remove the given set of packages from `graph` along with any dependencies that are no
+    /// longer required as a result.
+    fn remove_deps(
+        graph: &mut Graph,
+        path_map: &PathMap,
+        proj_node: NodeIx,
+        to_remove: &Vec<Pkg>,
+    ) {
+        use petgraph::visit::{Bfs};
+        // Find the edges between the root and the removed packages.
+        let edges_to_remove: Vec<_> = graph
+            .edges_directed(proj_node, Direction::Outgoing)
+            .filter_map(|e| {
+                let dep_pkg = graph[e.target()].unpinned(path_map);
+                if to_remove.contains(&dep_pkg) {
+                    Some(e.id())
+                } else {
+                    None
+                }
+            })
+            .collect();
+    
+        // Remove the edges.
+        for e in edges_to_remove {
+            graph.remove_edge(e);
+        }
+    
+        // Do a BFS from the root and remove all nodes that are no longer connected to the root.
+        let mut bfs = Bfs::new(&*graph, proj_node);
+        bfs.next(&*graph); // Skip the root node (aka project node).
+        while let Some(node) = bfs.next(&*graph) {
+            if graph.edges_directed(node, Direction::Incoming).next().is_none() {
+                graph.remove_node(node);
+            }
+        }
+    }
 
+    fn add_deps(
+        graph: &mut Graph,
+        path_map: &mut PathMap,
+        compilation_order: &[NodeIx],
+        proj_node: NodeIx,
+        to_add: &Vec<Pkg>,
+        sway_git_tag: &str,
+        offline_mode: bool,
+        visited_map: &mut HashMap<Pinned, petgraph::graph::NodeIndex>,
+    ) -> Result<()>{
+        let fetch_ts = std::time::Instant::now();
+        let fetch_id = fetch_id(&path_map[&graph[proj_node].id()], fetch_ts);
+        let proj_node_after_delete = compilation_order.last().unwrap();
+            for added_package in to_add {
+                let pinned_pkg = pin_pkg(fetch_id, added_package, path_map, sway_git_tag)?;
+                let manifest = Manifest::from_dir(&path_map[&pinned_pkg.id()], sway_git_tag)?;
+                let added_package_node = graph.add_node(pinned_pkg.clone());
+                fetch_children(
+                    fetch_id,
+                    offline_mode,
+                    added_package_node,
+                    &manifest,
+                    sway_git_tag,
+                    graph,
+                    path_map,
+                    visited_map,
+                )?;
+                graph.add_edge(
+                    *proj_node_after_delete,
+                    added_package_node,
+                    added_package.name.to_string(),
+                );
+            }
+            Ok(())
+    }
 impl GitReference {
     /// Resolves the parsed forc git reference to the associated git ID.
     pub fn resolve(&self, repo: &git2::Repository) -> Result<git2::Oid> {
@@ -500,7 +481,7 @@ impl Pinned {
         let id = self.id();
         let source = match &self.source {
             SourcePinned::Git(git) => Source::Git(git.source.clone()),
-            SourcePinned::Path => Source::Path(fs::canonicalize(&path_map[&id]).unwrap()),
+            SourcePinned::Path => Source::Path(path_map[&id].clone()),
             SourcePinned::Registry(reg) => Source::Registry(reg.source.clone()),
         };
         let name = self.name.clone();
@@ -644,7 +625,7 @@ pub fn graph_to_path_map(
         .next()
         .ok_or_else(|| anyhow!("graph must contain at least the project node"))?;
     let proj_id = graph[proj_node].id();
-    path_map.insert(proj_id, proj_manifest_dir.to_path_buf());
+    path_map.insert(proj_id, proj_manifest_dir.to_path_buf().canonicalize()?);
 
     // Produce the unique `fetch_id` in case we need to fetch a missing git dep.
     let fetch_ts = std::time::Instant::now();
@@ -707,7 +688,7 @@ pub fn graph_to_path_map(
                 bail!("registry dependencies are not yet supported");
             }
         };
-        path_map.insert(dep.id(), dep_path);
+        path_map.insert(dep.id(), dep_path.canonicalize()?);
     }
 
     Ok(path_map)
@@ -728,7 +709,7 @@ pub(crate) fn fetch_deps(
 
     // Add the project to the graph as the root node.
     let name = proj_manifest.project.name.clone();
-    let path = proj_manifest_dir;
+    let path = proj_manifest_dir.canonicalize()?;
     let source = SourcePinned::Path;
     let pkg = Pinned { name, source };
     let pkg_id = pkg.id();
@@ -1047,7 +1028,7 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
         Dependency::Detailed(ref det) => match (&det.path, &det.version, &det.git) {
             (Some(relative_path), _, _) => {
                 let path = pkg_path.join(relative_path);
-                Source::Path(fs::canonicalize(path)?)
+                Source::Path(path.canonicalize()?)
             }
             (_, _, Some(repo)) => {
                 let reference = match (&det.branch, &det.tag, &det.rev) {
