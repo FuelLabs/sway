@@ -126,12 +126,17 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     Ok(compiled)
 }
 
-fn create_new_lock(plan: &pkg::BuildPlan, old_lock: &Lock, manifest: &ManifestFile, lock_path: &PathBuf) -> Result<()> {
+fn create_new_lock(
+    plan: &pkg::BuildPlan,
+    old_lock: &Lock,
+    manifest: &ManifestFile,
+    lock_path: &PathBuf,
+) -> Result<()> {
     let lock = Lock::from_graph(plan.graph());
-    let diff = lock.diff(&old_lock);
+    let diff = lock.diff(old_lock);
     lock::print_diff(&manifest.project.name, &diff);
     let string = toml::ser::to_string_pretty(&lock)
-       .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
+        .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
     fs::write(&lock_path, &string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
     info!("   Created new lock file at {}", lock_path.display());
     Ok(())
