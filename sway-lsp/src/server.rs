@@ -427,6 +427,39 @@ fn main() {
         assert_eq!(response, Ok(Some(err)));
     }
     
+    const SWAY_PROGRAM2: &str = r#"script;
+
+//use std::*;
+    
+/// A simple Particle struct
+struct Particle {
+    position: [u64; 3],
+    velocity: [u64; 3],
+    acceleration: [u64; 3],
+    mass: u64,
+}
+
+impl Particle {
+    /// Creates a new Particle with the given position, velocity, acceleration, and mass
+    fn new(position: [u64; 3], velocity: [u64; 3], acceleration: [u64; 3], mass: u64) -> Particle {
+        Particle {
+            position: position,
+            velocity: velocity,
+            acceleration: acceleration,
+            mass: mass,
+        }
+    }
+}
+
+fn main() {
+    let position = [0, 0, 0];
+    let velocity = [0, 1, 0];
+    let acceleration = [1, 1, 0];
+    let mass = 10;
+    let p = ~Particle::new(position, velocity, acceleration, mass);
+}
+    "#;
+
     #[tokio::test]
     async fn did_open() {
         let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
@@ -440,10 +473,10 @@ fn main() {
         // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
         messages.next().await.unwrap();
 
-        let uri = load_test_sway_file(SWAY_PROGRAM);
+        let uri = load_test_sway_file(SWAY_PROGRAM2);
 
         // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, SWAY_PROGRAM).await;
+        did_open_notification(&mut service, &uri, SWAY_PROGRAM2).await;
 
         // ignore the "textDocument/publishDiagnostics" notification
         messages.next().await.unwrap();

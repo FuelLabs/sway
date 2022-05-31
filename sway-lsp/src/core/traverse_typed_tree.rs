@@ -15,8 +15,7 @@ use sway_core::semantic_analysis::ast_node::{
     while_loop::TypedWhileLoop,
 };
 use sway_core::type_engine::TypeId;
-use sway_core::parse_tree::literal::Literal;
-use tower_lsp::lsp_types::{Position, Range, SymbolKind};
+use tower_lsp::lsp_types::{Position, Range};
 
 pub type TokenMap = HashMap<(Ident, Span), TokenType>;
 
@@ -26,15 +25,6 @@ pub enum TokenType {
     TypedExpression(TypedExpression),
 
     TypedFunctionDeclaration(TypedFunctionDeclaration),
-    // TypedVariableDeclaration(TypedVariableDeclaration),
-    // TypedConstantDeclaration(TypedConstantDeclaration),
-    // TypedFunctionDeclaration(TypedFunctionDeclaration),
-    // TypedTraitDeclaration(TypedTraitDeclaration),
-    // TypedStructDeclaration(TypedStructDeclaration),
-    // TypedEnumDeclaration(TypedEnumDeclaration),
-    // TypedReassignment(TypedReassignment),
-    // ImplTrait
-
     TypedFunctionParameter(TypedFunctionParameter),
     TypedStructField(TypedStructField),
     TypedEnumVariant(TypedEnumVariant),
@@ -62,7 +52,6 @@ fn to_ident_key(ident: &Ident) -> (Ident, Span) {
 }
 
 fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut TokenMap) {
-    //eprintln!("DECLARATION = {:#?}", declaration);
     match declaration {
         TypedDeclaration::VariableDeclaration(variable) => {
             tokens.insert(to_ident_key(&variable.name), TokenType::TypedDeclaration(declaration.clone()));
@@ -105,11 +94,13 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut TokenMap) {
                 tokens.insert(to_ident_key(&lhs.name), TokenType::ReassignmentLhs(lhs.clone()));
             }
         }  
-        TypedDeclaration::ImplTrait{trait_name, methods,..} => {
+        TypedDeclaration::ImplTrait{trait_name, methods, span, type_implementing_for,..} => {
             for ident in &trait_name.prefixes {
                 tokens.insert(to_ident_key(&ident), TokenType::TypedDeclaration(declaration.clone()));
             }
-            tokens.insert(to_ident_key(&trait_name.suffix), TokenType::TypedDeclaration(declaration.clone()));
+            // This is reporting the train name as r#Self and not the actual name
+            // Also the span is referencing the declerations span. 
+            //tokens.insert(to_ident_key(&trait_name.suffix), TokenType::TypedDeclaration(declaration.clone()));
 
             for method in methods {
                 tokens.insert(to_ident_key(&method.name), TokenType::TypedFunctionDeclaration(method.clone()));
@@ -160,6 +151,7 @@ fn handle_expression(expression: &TypedExpression, tokens: &mut TokenMap) {
 
             for (ident, exp) in arguments {
                 tokens.insert(to_ident_key(&ident), TokenType::TypedExpression(exp.clone()));
+                handle_expression(&exp, tokens);
             }
 
             for node in &function_body.contents {
@@ -191,6 +183,7 @@ fn handle_expression(expression: &TypedExpression, tokens: &mut TokenMap) {
             tokens.insert(to_ident_key(&struct_name), TokenType::TypedExpression(expression.clone()));
             for field in fields { 
                 tokens.insert(to_ident_key(&field.name), TokenType::TypedExpression(field.value.clone()));
+                handle_expression(&field.value, tokens);
             }
         }
         TypedExpressionVariant::CodeBlock(code_block) => {
@@ -254,8 +247,6 @@ fn handle_while_loop(while_loop: &TypedWhileLoop, tokens: &mut TokenMap) {
 }
 
 pub fn type_id(token: &TokenType) -> Option<TypeId> {
-    //eprintln!("token = {:#?}", token);
-
     match token {
         TokenType::TypedDeclaration(dec) => {
             match dec {
@@ -264,21 +255,6 @@ pub fn type_id(token: &TokenType) -> Option<TypeId> {
                 },
                 TypedDeclaration::ConstantDeclaration(const_decl) => {
                     Some(const_decl.value.return_type)
-                },
-                TypedDeclaration::FunctionDeclaration(_func_decl) => {
-                    None // Not sure what to do here just yet
-                },
-                TypedDeclaration::TraitDeclaration(_trait_decl) => {
-                    None // Not sure what to do here just yet
-                },
-                TypedDeclaration::StructDeclaration(_struct_decl) => {
-                    None // Not sure what to do here just yet
-                },
-                TypedDeclaration::EnumDeclaration(_enum_decl) => {
-                    None // Not sure what to do here just yet
-                },
-                TypedDeclaration::AbiDeclaration(_abi_decl) => {
-                    None // Not sure what to do here just yet
                 },
                 _ => None,
             }
@@ -311,45 +287,7 @@ pub fn type_id(token: &TokenType) -> Option<TypeId> {
     }
 }
 
-// fn to_symbol_kind(typed_ast_node: &TokenType) -> SymbolKind {
-//     match typed_ast_node {
-//         TypedAstNodeContent::Declaration(dec) => {
-//             match dec {
-//                 TypedDeclaration::VariableDeclaration(_) => SymbolKind::VARIABLE,
-//                 TypedDeclaration::ConstantDeclaration(_) => SymbolKind::CONSTANT,
-//                 TypedDeclaration::FunctionDeclaration(_) => SymbolKind::FUNCTION,
-//                 TypedDeclaration::StructDeclaration(_) => SymbolKind::STRUCT,
-//                 TypedDeclaration::EnumDeclaration(_) => SymbolKind::ENUM,
-//                 TypedDeclaration::Reassignment(_) => SymbolKind::OPERATOR,
-//                 TypedDeclaration::ImplTrait{..} => SymbolKind::INTERFACE,
-//                 TypedDeclaration::AbiDeclaration(_) => SymbolKind::INTERFACE,
-//                 TypedDeclaration::GenericTypeForFunctionScope{..} => SymbolKind::TYPE_PARAMETER,
-//                 // currently we return `variable` type as default
-//                 _ => SymbolKind::VARIABLE,
-//             }
-//         }
-//         TypedAstNodeContent::Expression(exp) => {
-//             match &exp.expression {
-//                 TypedExpressionVariant::Literal(lit) => {
-//                     match lit {
-//                         Literal::String(_) => SymbolKind::STRING,
-//                         Literal::Boolean(_) => SymbolKind::BOOLEAN,
-//                         _ => SymbolKind::NUMBER,
-//                     }
-//                 }
-//                 TypedExpressionVariant::FunctionApplication{..} => SymbolKind::FUNCTION,
-//                 TypedExpressionVariant::VariableExpression{..} => SymbolKind::VARIABLE,
-//                 TypedExpressionVariant::Array{..} => SymbolKind::ARRAY,
-//                 TypedExpressionVariant::StructExpression{..} => SymbolKind::STRUCT,
-//                 TypedExpressionVariant::StructFieldAccess{..} => SymbolKind::FIELD,
-//                 // currently we return `variable` type as default
-//                 _ => SymbolKind::VARIABLE,
-//             }
-//         }
-//         // currently we return `variable` type as default
-//         _ => SymbolKind::VARIABLE,
-//     }
-// }
+
 
 pub fn ident_and_span_at_position(cursor_position: Position, tokens: &TokenMap) -> Option<(Ident, Span)> {
     for (ident,span) in tokens.keys() {
