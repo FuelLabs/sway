@@ -14,8 +14,6 @@ storage {
 }
 
 abi StorageMapExample {
-    fn init();
-
     fn insert_into_map1(key: u64, value: u64);
 
     fn get_from_map1(key: u64, value: u64);
@@ -26,11 +24,6 @@ abi StorageMapExample {
 }
 
 impl StorageMapExample for Contract {
-    fn init() {
-        storage.map1 = ~StorageMap::new::<u64, u64>();
-        storage.map2 = ~StorageMap::new::<(b256, bool), Data>();
-    }
-
     fn insert_into_map1(key: u64, value: u64) {
         storage.map1.insert(key, value);
     }
