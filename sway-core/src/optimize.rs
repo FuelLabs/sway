@@ -1436,7 +1436,7 @@ impl FnCompiler {
     ) -> Result<Value, CompileError> {
         let name = self
             .lexical_map
-            .get(ast_reassignment.lhs[0].name.as_str())
+            .get(ast_reassignment.lhs_base_name.as_str())
             .expect("All local symbols must be in the lexical symbol map.");
 
         // First look for a local ptr with the required name
@@ -1455,7 +1455,7 @@ impl FnCompiler {
                     .ok_or_else(|| {
                         CompileError::InternalOwned(
                             format!("variable not found: {name}"),
-                            ast_reassignment.lhs[0].name.span().clone(),
+                            ast_reassignment.lhs_base_name.span().clone(),
                         )
                     })?
                     .1
@@ -1464,8 +1464,7 @@ impl FnCompiler {
 
         let reassign_val = self.compile_expression(context, ast_reassignment.rhs)?;
 
-        assert!(!ast_reassignment.lhs.is_empty());
-        if ast_reassignment.lhs.len() == 1 {
+        if ast_reassignment.lhs_indices.is_empty() {
             // A non-aggregate; use a `store`.
             self.current_block
                 .ins(context)
@@ -1474,17 +1473,20 @@ impl FnCompiler {
             // An aggregate.  Iterate over the field names from the left hand side and collect
             // field indices.  The struct type from the previous iteration is used to determine the
             // field type for the current iteration.
-            let field_idcs = get_indices_for_struct_access(&ast_reassignment.lhs)?;
+            let field_idcs = get_indices_for_struct_access(
+                ast_reassignment.lhs_type,
+                &ast_reassignment.lhs_indices,
+            )?;
 
             let ty = match val.get_type(context).unwrap() {
                 Type::Struct(aggregate) => aggregate,
                 _otherwise => {
                     let spans = ast_reassignment
-                        .lhs
+                        .lhs_indices
                         .iter()
-                        .map(|lhs| lhs.name.span().clone())
-                        .reduce(Span::join)
-                        .expect("Joined spans of LHS of reassignment.");
+                        .fold(ast_reassignment.lhs_base_name.span().clone(), |acc, lhs| {
+                            Span::join(acc, lhs.name.span().clone())
+                        });
                     return Err(CompileError::Internal(
                         "Reassignment with multiple accessors to non-aggregate.",
                         spans,
@@ -1527,7 +1529,8 @@ impl FnCompiler {
 
         // Get the list of indices used to access the storage field. This will be empty
         // if the storage field type is not a struct.
-        let field_idcs = get_indices_for_struct_access(fields)?;
+        let base_type = fields[0].get_type();
+        let field_idcs = get_indices_for_struct_access(base_type, &fields[1..])?;
 
         // Do the actual work. This is a recursive function because we want to drill down
         // to store each primitive type in the storage field in its own storage slot.
@@ -1871,7 +1874,9 @@ impl FnCompiler {
 
         // Get the list of indices used to access the storage field. This will be empty
         // if the storage field type is not a struct.
-        let field_idcs = get_indices_for_struct_access(fields)?;
+        // FIXME: shouldn't have to extract the first field like this.
+        let base_type = fields[0].get_type();
+        let field_idcs = get_indices_for_struct_access(base_type, &fields[1..])?;
 
         // Do the actual work. This is a recursive function because we want to drill down
         // to load each primitive type in the storage field in its own storage slot.
@@ -2396,11 +2401,12 @@ impl_typed_named_field_for!(TypeCheckedStorageAccessDescriptor);
 impl_typed_named_field_for!(TypeCheckedStorageReassignDescriptor);
 
 fn get_indices_for_struct_access<F: TypedNamedField>(
+    base_type: TypeId,
     fields: &[F],
 ) -> Result<Vec<u64>, CompileError> {
-    fields[1..]
+    fields
         .iter()
-        .fold(Ok((Vec::new(), fields[0].get_type())), |acc, field| {
+        .fold(Ok((Vec::new(), base_type)), |acc, field| {
             // Make sure we have an aggregate to index into.
             acc.and_then(|(mut fld_idcs, prev_type_id)| {
                 // Get the field index and also its type for the next iteration.

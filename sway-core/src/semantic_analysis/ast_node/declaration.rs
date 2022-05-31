@@ -280,9 +280,15 @@ impl TypedDeclaration {
             TraitDeclaration(TypedTraitDeclaration { name, .. }) => name.span().clone(),
             StructDeclaration(TypedStructDeclaration { name, .. }) => name.span().clone(),
             EnumDeclaration(TypedEnumDeclaration { span, .. }) => span.clone(),
-            Reassignment(TypedReassignment { lhs, .. }) => lhs
+            Reassignment(TypedReassignment {
+                lhs_base_name,
+                lhs_indices,
+                ..
+            }) => lhs_indices
                 .iter()
-                .fold(lhs[0].span(), |acc, this| Span::join(acc, this.span())),
+                .fold(lhs_base_name.span().clone(), |acc, this| {
+                    Span::join(acc, this.span())
+                }),
             AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
             ImplTrait { span, .. } => span.clone(),
             StorageDeclaration(decl) => decl.span(),
@@ -331,11 +337,15 @@ impl TypedDeclaration {
                     name.as_str().into(),
                 TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. }) =>
                     name.as_str().into(),
-                TypedDeclaration::Reassignment(TypedReassignment { lhs, .. }) => lhs
-                    .iter()
-                    .map(|x| x.name.as_str())
-                    .collect::<Vec<_>>()
-                    .join("."),
+                TypedDeclaration::Reassignment(TypedReassignment {
+                    lhs_base_name,
+                    lhs_indices,
+                    ..
+                }) => {
+                    std::iter::once(lhs_base_name.as_str())
+                        .chain(lhs_indices.iter().flat_map(|x| [".", x.name.as_str()]))
+                        .collect::<String>()
+                }
                 _ => String::new(),
             }
         )
@@ -495,14 +505,18 @@ impl ReassignmentLhs {
 pub struct TypedReassignment {
     // either a direct variable, so length of 1, or
     // at series of struct fields/array indices (array syntax)
-    pub lhs: Vec<ReassignmentLhs>,
+    pub lhs_base_name: Ident,
+    pub lhs_type: TypeId,
+    pub lhs_indices: Vec<ReassignmentLhs>,
     pub rhs: TypedExpression,
 }
 
 impl CopyTypes for TypedReassignment {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.rhs.copy_types(type_mapping);
-        self.lhs.iter_mut().for_each(
+        self.lhs_type
+            .update_type(type_mapping, self.lhs_base_name.span());
+        self.lhs_indices.iter_mut().for_each(
             |ReassignmentLhs {
                  ref mut r#type,
                  name,

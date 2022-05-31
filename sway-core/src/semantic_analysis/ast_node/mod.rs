@@ -778,10 +778,9 @@ fn reassignment(
 
                     ok(
                         TypedDeclaration::Reassignment(TypedReassignment {
-                            lhs: vec![ReassignmentLhs {
-                                name: variable_decl.name,
-                                r#type: rhs_type_id,
-                            }],
+                            lhs_base_name: variable_decl.name,
+                            lhs_type: rhs_type_id,
+                            lhs_indices: vec![],
                             rhs,
                         }),
                         warnings,
@@ -795,7 +794,7 @@ fn reassignment(
                 } => {
                     let mut expr = *prefix;
                     let mut names_vec = vec![];
-                    let final_return_type = loop {
+                    let (base_name, final_return_type) = loop {
                         let type_checked = check!(
                             TypedExpression::type_check(TypeCheckArguments {
                                 checkee: expr.clone(),
@@ -837,11 +836,7 @@ fn reassignment(
                                         return err(warnings, errors);
                                     }
                                 }
-                                names_vec.push(ReassignmentLhs {
-                                    name,
-                                    r#type: type_checked.return_type,
-                                });
-                                break type_checked.return_type;
+                                break (name, type_checked.return_type);
                             }
                             Expression::SubfieldExpression {
                                 field_to_access,
@@ -869,9 +864,12 @@ fn reassignment(
 
                     let (ty_of_field, _ty_of_parent) = check!(
                         namespace.find_subfield_type(
-                            names_vec
-                                .iter()
-                                .map(|ReassignmentLhs { name, .. }| name.clone())
+                            std::iter::once(base_name.clone())
+                                .chain(
+                                    names_vec
+                                        .iter()
+                                        .map(|ReassignmentLhs { name, .. }| name.clone())
+                                )
                                 .collect::<Vec<_>>()
                                 .as_slice()
                         ),
@@ -897,7 +895,9 @@ fn reassignment(
 
                     ok(
                         TypedDeclaration::Reassignment(TypedReassignment {
-                            lhs: names_vec,
+                            lhs_base_name: base_name,
+                            lhs_type: final_return_type,
+                            lhs_indices: names_vec,
                             rhs,
                         }),
                         warnings,
