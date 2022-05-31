@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+implicit-std = false
+license = "Apache-2.0"
+name = "get_storage_key_contract"
+
+[dependencies]
+get_storage_key_abi = { path = "../../test_abis/get_storage_key_abi" }

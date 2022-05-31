@@ -455,6 +455,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/test_contracts/abi_with_tuples_contract",
             ProgramState::Revert(0),
         ),
+        (
+            "should_pass/test_contracts/get_storage_key_contract",
+            ProgramState::Revert(0),
+        ),
     ];
 
     number_of_tests_run += positive_project_names_with_abi
@@ -601,8 +605,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ),
         (
             (
-                "should_pass/test_contracts/nested_struct_args_contract",
-                "should_pass/require_contract_deployment/nested_struct_args_caller",
+                "should_pass/test_contracts/get_storage_key_contract",
+                "should_pass/require_contract_deployment/get_storage_key_caller",
             ),
             1,
         ),

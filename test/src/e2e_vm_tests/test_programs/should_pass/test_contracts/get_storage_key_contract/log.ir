@@ -1,0 +1,117 @@
+.program:
+ji   i4
+noop
+DATA_SECTION_OFFSET[0..32]
+DATA_SECTION_OFFSET[32..64]
+lw   $ds $is 1
+add  $$ds $$ds $is
+lw   $r1 $fp i73              ; load input function selector
+lw   $r0 data_5               ; load fn selector for comparison
+eq   $r0 $r1 $r0              ; function selector comparison
+jnzi $r0 i20                  ; jump to selected function
+lw   $r0 data_6               ; load fn selector for comparison
+eq   $r0 $r1 $r0              ; function selector comparison
+jnzi $r0 i24                  ; jump to selected function
+lw   $r0 data_7               ; load fn selector for comparison
+eq   $r0 $r1 $r0              ; function selector comparison
+jnzi $r0 i28                  ; jump to selected function
+lw   $r0 data_8               ; load fn selector for comparison
+eq   $r0 $r1 $r0              ; function selector comparison
+jnzi $r0 i32                  ; jump to selected function
+rvrt $zero                    ; revert if no selectors matched
+lw   $r0 data_0               ; literal instantiation
+lw   $r1 data_1               ; loading size for RETD
+retd  $r0 $r1
+lw   $r1 data_2               ; literal instantiation
+lw   $r0 data_1               ; loading size for RETD
+retd  $r1 $r0
+lw   $r1 data_3               ; literal instantiation
+lw   $r0 data_1               ; loading size for RETD
+retd  $r1 $r0
+lw   $r0 data_4               ; literal instantiation
+lw   $r1 data_1               ; loading size for RETD
+retd  $r0 $r1
+noop                          ; word-alignment of data section
+.data:
+data_0 .b256 0xde9090cb50e71c2588c773487d1da7066d0c719849a7e58dc8b6397a25c567c0
+data_1 .u64 0x20
+data_2 .b256 0xb48b753af346966d0d169c0b2e3234611f65d5cfdb57c7b6e7cd6ca93707bee0
+data_3 .b256 0x6294951dcb0a9111a517be5cf4785670ff4e166fb5ab9c33b17e6881b48e964f
+data_4 .b256 0x94b2b70d20da552763c7614981b2a4d984380d7ed4e54c01b28c914e79e44bd5
+data_5 .u32 0xbfedbb3a
+data_6 .u32 0x924c4b6f
+data_7 .u32 0x42ea2f24
+data_8 .u32 0x1efb7e36
+
+[1;38;5;11mwarning[0m
+  [1;38;5;12m-->[0m get_storage_key_contract/src/main.sw:14:5
+[1;38;5;12m   |[0m
+[1;38;5;12m12 |[0m 
+[1;38;5;12m13 |[0m storage {
+[1;38;5;12m14 |[0m     x: u64,
+[1;38;5;12m   |[0m[1;38;5;11m     -[0m [1;38;5;11mThis storage declaration is never accessed and can be removed.[0m
+[1;38;5;12m15 |[0m     f1: Foo,
+[1;38;5;12m16 |[0m     f2: Foo,
+[1;38;5;12m   |[0m
+____
+
+[1;38;5;11mwarning[0m
+  [1;38;5;12m-->[0m get_storage_key_contract/src/main.sw:15:5
+[1;38;5;12m   |[0m
+[1;38;5;12m13 |[0m 
+[1;38;5;12m14 |[0m     x: u64,
+[1;38;5;12m15 |[0m     f1: Foo,
+[1;38;5;12m   |[0m[1;38;5;11m     --[0m [1;38;5;11mThis storage declaration is never accessed and can be removed.[0m
+[1;38;5;12m16 |[0m     f2: Foo,
+[1;38;5;12m17 |[0m     y: u64,
+[1;38;5;12m   |[0m
+____
+
+[1;38;5;11mwarning[0m
+  [1;38;5;12m-->[0m get_storage_key_contract/src/main.sw:16:5
+[1;38;5;12m   |[0m
+[1;38;5;12m14 |[0m 
+[1;38;5;12m15 |[0m     f1: Foo,
+[1;38;5;12m16 |[0m     f2: Foo,
+[1;38;5;12m   |[0m[1;38;5;11m     --[0m [1;38;5;11mThis storage declaration is never accessed and can be removed.[0m
+[1;38;5;12m17 |[0m     y: u64,
+[1;38;5;12m18 |[0m     f3: Foo,
+[1;38;5;12m   |[0m
+____
+
+[1;38;5;11mwarning[0m
+  [1;38;5;12m-->[0m get_storage_key_contract/src/main.sw:17:5
+[1;38;5;12m   |[0m
+[1;38;5;12m15 |[0m 
+[1;38;5;12m16 |[0m     f2: Foo,
+[1;38;5;12m17 |[0m     y: u64,
+[1;38;5;12m   |[0m[1;38;5;11m     -[0m [1;38;5;11mThis storage declaration is never accessed and can be removed.[0m
+[1;38;5;12m18 |[0m     f3: Foo,
+[1;38;5;12m19 |[0m     f4: Foo,
+[1;38;5;12m   |[0m
+____
+
+[1;38;5;11mwarning[0m
+  [1;38;5;12m-->[0m get_storage_key_contract/src/main.sw:18:5
+[1;38;5;12m   |[0m
+[1;38;5;12m16 |[0m 
+[1;38;5;12m17 |[0m     y: u64,
+[1;38;5;12m18 |[0m     f3: Foo,
+[1;38;5;12m   |[0m[1;38;5;11m     --[0m [1;38;5;11mThis storage declaration is never accessed and can be removed.[0m
+[1;38;5;12m19 |[0m     f4: Foo,
+[1;38;5;12m20 |[0m }
+[1;38;5;12m   |[0m
+____
+
+[1;38;5;11mwarning[0m
+  [1;38;5;12m-->[0m get_storage_key_contract/src/main.sw:19:5
+[1;38;5;12m   |[0m
+[1;38;5;12m17 |[0m 
+[1;38;5;12m18 |[0m     f3: Foo,
+[1;38;5;12m19 |[0m     f4: Foo,
+[1;38;5;12m   |[0m[1;38;5;11m     --[0m [1;38;5;11mThis storage declaration is never accessed and can be removed.[0m
+[1;38;5;12m20 |[0m }
+[1;38;5;12m   |[0m
+____
+
+  Bytecode size is 348 bytes.
