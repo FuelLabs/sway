@@ -13,12 +13,12 @@ use sway_types::{span::Span, state::StateIndex};
 use derivative::Derivative;
 use std::sync::Arc;
 
-use crate::semantic_analysis::ast_node::declaration::TypedStorageField;
+pub use crate::semantic_analysis::ast_node::declaration::TypedStorageField;
 
-pub(crate) use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
+pub use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
 
 pub mod declaration;
-use declaration::TypedTraitFn;
+pub use declaration::TypedTraitFn;
 
 pub use declaration::{
     TypedAbiDeclaration, TypedConstantDeclaration, TypedDeclaration, TypedEnumDeclaration,
@@ -38,13 +38,13 @@ pub(crate) use impl_trait::Mode;
 mod code_block;
 pub(crate) use code_block::TypedCodeBlock;
 
-mod expression;
+pub mod expression;
 pub(crate) use expression::*;
 
 mod return_statement;
 pub(crate) use return_statement::TypedReturnStatement;
 
-mod while_loop;
+pub mod while_loop;
 pub(crate) use while_loop::TypedWhileLoop;
 
 mod copy_types;
@@ -59,7 +59,7 @@ pub(crate) enum IsConstant {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum TypedAstNodeContent {
+pub enum TypedAstNodeContent {
     ReturnStatement(TypedReturnStatement),
     Declaration(TypedDeclaration),
     Expression(TypedExpression),
@@ -72,7 +72,7 @@ pub(crate) enum TypedAstNodeContent {
 #[derive(Clone, Debug, Eq, Derivative)]
 #[derivative(PartialEq)]
 pub struct TypedAstNode {
-    pub(crate) content: TypedAstNodeContent,
+    pub content: TypedAstNodeContent,
     #[derivative(PartialEq = "ignore")]
     pub(crate) span: Span,
 }
@@ -1531,9 +1531,9 @@ fn error_recovery_function_declaration(decl: FunctionDeclaration) -> TypedFuncti
 /// Describes each field being drilled down into in storage and its type.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeCheckedStorageReassignment {
-    pub(crate) fields: Vec<TypeCheckedStorageReassignDescriptor>,
+    pub fields: Vec<TypeCheckedStorageReassignDescriptor>,
     pub(crate) ix: StateIndex,
-    pub(crate) rhs: TypedExpression,
+    pub rhs: TypedExpression,
 }
 
 impl TypeCheckedStorageReassignment {
@@ -1556,8 +1556,8 @@ impl TypeCheckedStorageReassignment {
 /// storage.
 #[derive(Clone, Debug, Eq)]
 pub struct TypeCheckedStorageReassignDescriptor {
-    pub(crate) name: Ident,
-    pub(crate) r#type: TypeId,
+    pub name: Ident,
+    pub r#type: TypeId,
     pub(crate) span: Span,
 }
 
