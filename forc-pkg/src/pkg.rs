@@ -1,11 +1,11 @@
 use crate::{
     lock::Lock,
-    manifest::{Dependency, Manifest, ManifestFile},
+    manifest::{self, Dependency, Manifest, ManifestFile},
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
     find_file_name, git_checkouts_directory, kebab_to_snake_case, print_on_failure,
-    print_on_success, print_on_success_library, println_yellow_err,
+    print_on_success, print_on_success_library, println_yellow_err, user_forc_directory,
 };
 use fuels_types::JsonABI;
 use petgraph::{self, visit::EdgeRef, Directed, Direction};
@@ -238,10 +238,21 @@ impl BuildPlan {
         })
     }
     /// Attempt to load the build plan from the `Lock`.
-    pub fn from_lock(proj_path: &Path, lock: &Lock, sway_git_tag: &str) -> Result<Self> {
+    pub fn from_lock(
+        proj_path: &Path,
+        lock: &Lock,
+        sway_git_tag: &str,
+        unsafe_plan: bool,
+    ) -> Result<Self> {
         let graph = lock.to_graph()?;
         let compilation_order = compilation_order(&graph)?;
-        let path_map = graph_to_path_map(proj_path, &graph, &compilation_order, sway_git_tag)?;
+        let path_map = graph_to_path_map(
+            proj_path,
+            &graph,
+            &compilation_order,
+            sway_git_tag,
+            unsafe_plan,
+        )?;
         Ok(Self {
             graph,
             path_map,
@@ -250,10 +261,10 @@ impl BuildPlan {
     }
 
     /// Attempt to load the build plan from the `Forc.lock` file.
-    pub fn from_lock_file(lock_path: &Path, sway_git_tag: &str) -> Result<Self> {
+    pub fn from_lock_file(lock_path: &Path, sway_git_tag: &str, unsafe_plan: bool) -> Result<Self> {
         let proj_path = lock_path.parent().unwrap();
         let lock = Lock::from_path(lock_path)?;
-        Self::from_lock(proj_path, &lock, sway_git_tag)
+        Self::from_lock(proj_path, &lock, sway_git_tag, unsafe_plan)
     }
 
     /// Ensure that the build plan is valid for the given manifest.
@@ -616,6 +627,7 @@ pub fn graph_to_path_map(
     graph: &Graph,
     compilation_order: &[NodeIx],
     sway_git_tag: &str,
+    unsafe_plan: bool,
 ) -> Result<PathMap> {
     let mut path_map = PathMap::new();
 
@@ -633,6 +645,8 @@ pub fn graph_to_path_map(
     // Produce the unique `fetch_id` in case we need to fetch a missing git dep.
     let fetch_ts = std::time::Instant::now();
     let fetch_id = fetch_id(&path_map[&proj_id], fetch_ts);
+
+    let default_removed_dep = get_default_removed_dep();
 
     // Resolve all following dependencies, knowing their parents' paths will already be resolved.
     for dep_node in path_resolve_order {
@@ -664,7 +678,16 @@ pub fn graph_to_path_map(
                 let detailed = parent_manifest
                     .dependencies
                     .as_ref()
-                    .and_then(|deps| deps.get(&dep_name))
+                    .and_then(|deps| match deps.get(&dep_name) {
+                        Some(dep) => Some(dep),
+                        None => {
+                            if unsafe_plan {
+                                Some(&default_removed_dep)
+                            } else {
+                                None
+                            }
+                        }
+                    })
                     .ok_or_else(|| {
                         anyhow!(
                             "dependency required for path reconstruction \
@@ -683,6 +706,7 @@ pub fn graph_to_path_map(
                     .ok_or_else(|| anyhow!("missing path info for dependency: {}", dep.name))?;
                 let path = parent_path.join(rel_dep_path);
                 if !path.exists() {
+                    println!("{:?}", path);
                     bail!("pinned `path` dependency \"{}\" source missing", dep.name);
                 }
                 path
@@ -695,6 +719,16 @@ pub fn graph_to_path_map(
     }
 
     Ok(path_map)
+}
+
+fn get_default_removed_dep() -> Dependency {
+    let removed_path = user_forc_directory();
+    let removed_path_str = removed_path.to_str().map(|str| str.to_string());
+    let detail = manifest::DependencyDetails {
+        path: removed_path_str,
+        ..Default::default()
+    };
+    Dependency::Detailed(detail)
 }
 
 /// Fetch all depedencies and produce the dependency graph along with a map from each node's unique

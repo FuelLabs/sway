@@ -42,7 +42,10 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     let lock_path = lock_path(manifest.dir());
 
     // Load the build plan from the lock file.
-    let plan_result = pkg::BuildPlan::from_lock_file(&lock_path, SWAY_GIT_TAG);
+    // This BuildPlan would be unsafe (true as passed as unsafe_plan) meaning
+    // there might be some pinned dependency whose parent does not include itself,
+    // i.e: a removed dependency. For more information, please see https://github.com/FuelLabs/sway/issues/1778
+    let plan_result = pkg::BuildPlan::from_lock_file(&lock_path, SWAY_GIT_TAG, true);
 
     // Retrieve the old lock file state so we can produce a diff.
     let old_lock = plan_result
@@ -51,11 +54,8 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         .map(|plan| Lock::from_graph(plan.graph()))
         .unwrap_or_default();
 
-    // Validate the loaded build plan for the current manifest.
-    let plan_result =
-        plan_result.and_then(|plan| plan.validate(&manifest, SWAY_GIT_TAG).map(|_| plan));
-
-    // If necessary, construct a new build plan.
+    // Check if there are any errors coming from the BuildPlan geneartion from the lock file
+    // If there are errors we will need to create the lock file from scratch, i.e fetch & pin everything
     let mut plan: pkg::BuildPlan = plan_result.or_else(|e| -> Result<pkg::BuildPlan> {
         if locked {
             bail!(
@@ -75,6 +75,8 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         Ok(plan)
     })?;
 
+    // If there are no issues with the BuildPlan generated from the lock file
+    // Check for the diff and only apply the diff.
     let diff = plan.validate(&manifest, SWAY_GIT_TAG)?;
     if !diff.added.is_empty() || !diff.removed.is_empty() {
         plan = plan.apply_new_manifest(diff, SWAY_GIT_TAG, offline)?;
