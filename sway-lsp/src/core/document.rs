@@ -12,7 +12,7 @@ use std::sync::Arc;
 use sway_core::{
     parse,
     semantic_analysis::{ast_node::TypedAstNode, namespace},
-    BuildConfig, CompileAstResult, TreeType, TypedParseTree,
+    BuildConfig, CompileAstResult, TreeType,
 };
 use tower_lsp::lsp_types::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
 
@@ -168,10 +168,7 @@ impl TextDocument {
         let ast_res = sway_core::compile_to_ast(text, namespace, &build_config);
         match ast_res {
             CompileAstResult::Failure { .. } => None,
-            CompileAstResult::Success { parse_tree, .. } => match *parse_tree {
-                TypedParseTree::Script { all_nodes, .. } => Some(all_nodes),
-                _ => None,
-            },
+            CompileAstResult::Success { typed_program, .. } => Some(typed_program.root.all_nodes),
         }
     }
 
