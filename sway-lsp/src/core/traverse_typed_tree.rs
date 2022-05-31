@@ -182,20 +182,20 @@ fn handle_expression(expression: &TypedExpression, tokens: &mut TokenMap) {
     match &expression.expression {
         TypedExpressionVariant::Literal { .. } => {}
         TypedExpressionVariant::FunctionApplication {
-            name,
+            call_path,
             contract_call_params,
             arguments,
             function_body,
             ..
         } => {
-            for ident in &name.prefixes {
+            for ident in &call_path.prefixes {
                 tokens.insert(
                     to_ident_key(ident),
                     TokenType::TypedExpression(expression.clone()),
                 );
             }
             tokens.insert(
-                to_ident_key(&name.suffix),
+                to_ident_key(&call_path.suffix),
                 TokenType::TypedExpression(expression.clone()),
             );
 
@@ -281,30 +281,6 @@ fn handle_expression(expression: &TypedExpression, tokens: &mut TokenMap) {
                 TokenType::TypedExpression(expression.clone()),
             );
         }
-        TypedExpressionVariant::IfLet {
-            expr,
-            variant,
-            variable_to_assign,
-            then,
-            r#else,
-            ..
-        } => {
-            handle_expression(expr, tokens);
-            tokens.insert(
-                to_ident_key(&variant.name),
-                TokenType::TypedExpression(expression.clone()),
-            );
-            tokens.insert(
-                to_ident_key(variable_to_assign),
-                TokenType::TypedExpression(expression.clone()),
-            );
-            for node in &then.contents {
-                traverse_node(node, tokens);
-            }
-            if let Some(r#else) = r#else {
-                handle_expression(r#else, tokens);
-            }
-        }
         TypedExpressionVariant::TupleElemAccess { prefix, .. } => {
             handle_expression(prefix, tokens);
         }
@@ -333,10 +309,21 @@ fn handle_expression(expression: &TypedExpression, tokens: &mut TokenMap) {
             }
         }
         TypedExpressionVariant::TypeProperty { .. } => {}
+        TypedExpressionVariant::GenerateUid { .. } => {}
         TypedExpressionVariant::SizeOfValue { expr } => {
             handle_expression(expr, tokens);
         }
         TypedExpressionVariant::AbiName { .. } => {}
+        TypedExpressionVariant::EnumTag { exp } => {
+            handle_expression(exp, tokens);
+        }
+        TypedExpressionVariant::UnsafeDowncast { exp, variant } => {
+            handle_expression(exp, tokens);
+            tokens.insert(
+                to_ident_key(&variant.name),
+                TokenType::TypedExpression(expression.clone()),
+            );
+        }
     }
 }
 
