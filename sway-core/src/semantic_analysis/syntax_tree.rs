@@ -126,7 +126,7 @@ impl TypedParseTree {
     ///
     /// This is called from both the top-level `compile_*` functions, as well as internally for
     /// each submodule dependency library.
-    pub(crate) fn type_check(
+    pub fn type_check(
         parsed: ParseTree,
         namespace: &mut Namespace,
         tree_type: &TreeType,
