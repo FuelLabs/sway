@@ -43,7 +43,7 @@ Generic storage maps are available in the standard library as `StorageMap<K, V>`
 {{#include ../../../examples/storage_map/src/main.sw}}
 ```
 
-**Note**: Calling `get(k)` for some key `k` that does not exist in the map (i.e. `insert()` hasn't been called with key `k` yet) returns zero. This is because the FuelVM initializes all storage slots to zero.
+> **Note**: Calling `get(k)` for some key `k` that does not exist in the map (i.e. `insert()` hasn't been called with key `k` yet) returns zero. This is because the FuelVM initializes all storage slots to zero.
 
 ## Manual Storage Management
 
