@@ -132,7 +132,7 @@ mod ir_builder {
                 / op_contract_call()
                 / op_extract_element()
                 / op_extract_value()
-                / op_generate_uid()
+                / op_get_storage_key()
                 / op_get_ptr()
                 / op_insert_element()
                 / op_insert_value()
@@ -207,9 +207,9 @@ mod ir_builder {
                     IrAstOperation::ExtractValue(name, ty, idcs)
                 }
 
-            rule op_generate_uid() -> IrAstOperation
-                = "generate_uid" _ {
-                    IrAstOperation::GenerateUid()
+            rule op_get_storage_key() -> IrAstOperation
+                = "get_storage_key" _ {
+                    IrAstOperation::GetStorageKey()
                 }
 
             rule op_get_ptr() -> IrAstOperation
@@ -547,7 +547,7 @@ mod ir_builder {
         ContractCall(IrAstTy, String, String, String, String, String),
         ExtractElement(String, IrAstTy, String),
         ExtractValue(String, IrAstTy, Vec<u64>),
-        GenerateUid(),
+        GetStorageKey(),
         GetPtr(String, IrAstTy, u64),
         InsertElement(String, IrAstTy, String, String),
         InsertValue(String, IrAstTy, String, Vec<u64>),
@@ -920,7 +920,9 @@ mod ir_builder {
                         opt_ins_md_idx,
                     )
                 }
-                IrAstOperation::GenerateUid() => block.ins(context).generate_uid(opt_ins_md_idx),
+                IrAstOperation::GetStorageKey() => {
+                    block.ins(context).get_storage_key(opt_ins_md_idx, None)
+                }
                 IrAstOperation::GetPtr(base_ptr, ptr_ty, offset) => {
                     let ptr_ir_ty = ptr_ty.to_ir_type(context);
                     block.ins(context).get_ptr(
@@ -1081,8 +1083,12 @@ mod ir_builder {
                     }
                 })
                 .unwrap();
-            let call_val =
-                Value::new_instruction(context, Instruction::Call(function, args), opt_ins_md_idx);
+            let call_val = Value::new_instruction(
+                context,
+                Instruction::Call(function, args),
+                opt_ins_md_idx,
+                None,
+            );
             block.replace_instruction(context, nop, call_val)?;
         }
         Ok(())

@@ -176,8 +176,8 @@ pub enum ConvertParseTreeError {
     InvalidAttributeArgument { attribute: String, span: Span },
     #[error("cannot find type \"{ty_name}\" in this scope")]
     ConstrainedNonExistentType { ty_name: Ident, span: Span },
-    #[error("__generate_uid does not take arguments")]
-    GenerateUidTooManyArgs { span: Span },
+    #[error("__get_storage_key does not take arguments")]
+    GetStorageKeyTooManyArgs { span: Span },
 }
 
 impl ConvertParseTreeError {
@@ -227,7 +227,7 @@ impl ConvertParseTreeError {
             ConvertParseTreeError::ContractCallerNamedTypeGenericArg { span } => span.clone(),
             ConvertParseTreeError::InvalidAttributeArgument { span, .. } => span.clone(),
             ConvertParseTreeError::ConstrainedNonExistentType { span, .. } => span.clone(),
-            ConvertParseTreeError::GenerateUidTooManyArgs { span, .. } => span.clone(),
+            ConvertParseTreeError::GetStorageKeyTooManyArgs { span, .. } => span.clone(),
         }
     }
 }
@@ -1367,17 +1367,17 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                     } else if call_path.prefixes.is_empty()
                         && !call_path.is_absolute
                         && Intrinsic::try_from_str(call_path.suffix.as_str())
-                            == Some(Intrinsic::GenerateUid)
+                            == Some(Intrinsic::GetStorageKey)
                     {
                         if !arguments.is_empty() {
-                            let error = ConvertParseTreeError::GenerateUidTooManyArgs { span };
+                            let error = ConvertParseTreeError::GetStorageKeyTooManyArgs { span };
                             return Err(ec.error(error));
                         }
                         if generics_opt.is_some() {
                             let error = ConvertParseTreeError::GenericsNotSupportedHere { span };
                             return Err(ec.error(error));
                         }
-                        Expression::BuiltinGenerateUid { span }
+                        Expression::BuiltinGetStorageKey { span }
                     } else if call_path.prefixes.is_empty()
                         && !call_path.is_absolute
                         && Intrinsic::try_from_str(call_path.suffix.as_str())

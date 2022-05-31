@@ -24,6 +24,7 @@ pub(crate) enum TypedExpressionVariant {
         function_body: TypedCodeBlock,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
+        self_state_idx: Option<StateIndex>,
         #[derivative(Eq(bound = ""))]
         selector: Option<ContractCallMetadata>,
     },
@@ -102,7 +103,7 @@ pub(crate) enum TypedExpressionVariant {
         type_id: TypeId,
         span: Span,
     },
-    GenerateUid {
+    GetStorageKey {
         span: Span,
     },
     SizeOfValue {
@@ -430,7 +431,7 @@ impl CopyTypes for TypedExpressionVariant {
                 exp.copy_types(type_mapping);
                 variant.copy_types(type_mapping);
             }
-            GenerateUid { .. } => (),
+            GetStorageKey { .. } => (),
             AbiName(_) => (),
         }
     }
@@ -595,7 +596,7 @@ impl TypedExpressionVariant {
             TypedExpressionVariant::SizeOfValue { expr } => {
                 format!("size_of_val({:?})", expr.pretty_print())
             }
-            TypedExpressionVariant::GenerateUid { .. } => "generate_uid".to_string(),
+            TypedExpressionVariant::GetStorageKey { .. } => "get_storage_key".to_string(),
             TypedExpressionVariant::AbiName(n) => format!("ABI name {}", n),
             TypedExpressionVariant::EnumTag { exp } => {
                 format!(

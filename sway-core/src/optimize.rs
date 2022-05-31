@@ -609,6 +609,7 @@ impl FnCompiler {
                 contract_call_params,
                 arguments,
                 function_body,
+                self_state_idx,
                 selector,
             } => {
                 if let Some(metadata) = selector {
@@ -627,6 +628,7 @@ impl FnCompiler {
                         name.suffix.as_str(),
                         arguments,
                         Some(function_body),
+                        self_state_idx,
                         span_md_idx,
                     )
                 }
@@ -745,20 +747,23 @@ impl FnCompiler {
                 self.compile_unsafe_downcast(context, exp, variant)
             }
             TypedExpressionVariant::EnumTag { exp } => self.compile_enum_tag(context, exp),
-            TypedExpressionVariant::GenerateUid { span } => {
+            TypedExpressionVariant::GetStorageKey { span } => {
                 let span_md_idx = MetadataIndex::from_span(context, &span);
-                self.compile_generate_uid(context, span_md_idx)
+                self.compile_get_storage_key(context, span_md_idx)
             }
         }
     }
 
     // ---------------------------------------------------------------------------------------------
-    fn compile_generate_uid(
+    fn compile_get_storage_key(
         &mut self,
         context: &mut Context,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
-        Ok(self.current_block.ins(context).generate_uid(span_md_idx))
+        Ok(self
+            .current_block
+            .ins(context)
+            .get_storage_key(span_md_idx, None))
     }
 
     fn compile_return_statement(
@@ -1050,6 +1055,7 @@ impl FnCompiler {
         _ast_name: &str,
         ast_args: Vec<(Ident, TypedExpression)>,
         callee_body: Option<TypedCodeBlock>,
+        self_state_idx: Option<StateIndex>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         // XXX OK, now, the old compiler inlines everything very lazily.  Function calls include
@@ -1112,10 +1118,18 @@ impl FnCompiler {
                 .into_iter()
                 .map(|(_, expr)| self.compile_expression(context, expr))
                 .collect::<Result<Vec<Value>, CompileError>>()?;
-            Ok(self
-                .current_block
-                .ins(context)
-                .call(callee.unwrap(), &args, span_md_idx))
+            let state_idx_md_idx = match self_state_idx {
+                Some(self_state_idx) => {
+                    MetadataIndex::from_state_idx(context, self_state_idx.to_usize())
+                }
+                None => None,
+            };
+            Ok(self.current_block.ins(context).call(
+                callee.unwrap(),
+                &args,
+                span_md_idx,
+                state_idx_md_idx,
+            ))
         }
     }
 

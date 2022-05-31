@@ -6,6 +6,7 @@ use crate::{
     type_engine::TypeId,
 };
 use std::collections::{hash_map::RandomState, HashMap, VecDeque};
+use sway_types::state::StateIndex;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
@@ -82,6 +83,7 @@ pub(crate) fn instantiate_function_application(
             function_decl,
             None,
             IsConstant::No,
+            None,
             span,
         ),
         return err(warnings, errors),
@@ -91,6 +93,7 @@ pub(crate) fn instantiate_function_application(
     ok(exp, warnings, errors)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application_simple(
     call_path: CallPath,
     contract_call_params: HashMap<String, TypedExpression, RandomState>,
@@ -98,6 +101,7 @@ pub(crate) fn instantiate_function_application_simple(
     function_decl: TypedFunctionDeclaration,
     selector: Option<ContractCallMetadata>,
     is_constant: IsConstant,
+    self_state_idx: Option<StateIndex>,
     span: Span,
 ) -> CompileResult<TypedExpression> {
     let args_and_names = function_decl
@@ -113,10 +117,12 @@ pub(crate) fn instantiate_function_application_simple(
         function_decl,
         selector,
         is_constant,
+        self_state_idx,
         span,
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 #[allow(clippy::comparison_chain)]
 fn instantiate_function_application_inner(
     call_path: CallPath,
@@ -125,6 +131,7 @@ fn instantiate_function_application_inner(
     function_decl: TypedFunctionDeclaration,
     selector: Option<ContractCallMetadata>,
     is_constant: IsConstant,
+    self_state_idx: Option<StateIndex>,
     span: Span,
 ) -> CompileResult<TypedExpression> {
     let warnings = vec![];
@@ -137,6 +144,7 @@ fn instantiate_function_application_inner(
                     contract_call_params,
                     arguments,
                     function_body: function_decl.body.clone(),
+                    self_state_idx,
                     selector,
                 },
                 return_type: function_decl.return_type,

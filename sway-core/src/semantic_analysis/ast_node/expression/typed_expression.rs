@@ -109,6 +109,7 @@ impl TypedExpression {
             method,
             None,
             IsConstant::No,
+            None,
             span,
         )
     }
@@ -143,7 +144,7 @@ impl TypedExpression {
             | Literal(_)
             | StorageAccess { .. }
             | TypeProperty { .. }
-            | GenerateUid { .. }
+            | GetStorageKey { .. }
             | VariableExpression { .. }
             | FunctionParameter
             | TupleElemAccess { .. } => false,
@@ -232,7 +233,7 @@ impl TypedExpression {
             | TypedExpressionVariant::FunctionApplication { .. }
             | TypedExpressionVariant::EnumTag { .. }
             | TypedExpressionVariant::UnsafeDowncast { .. }
-            | TypedExpressionVariant::GenerateUid { .. } => vec![],
+            | TypedExpressionVariant::GetStorageKey { .. } => vec![],
         }
     }
 
@@ -526,9 +527,9 @@ impl TypedExpression {
                 },
                 span,
             ),
-            Expression::BuiltinGenerateUid { span } => ok(
+            Expression::BuiltinGetStorageKey { span } => ok(
                 TypedExpression {
-                    expression: TypedExpressionVariant::GenerateUid { span: span.clone() },
+                    expression: TypedExpressionVariant::GetStorageKey { span: span.clone() },
                     return_type: insert_type(TypeInfo::B256),
                     is_constant: IsConstant::No,
                     span,
