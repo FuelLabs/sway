@@ -82,10 +82,10 @@ impl Value {
     pub fn get_span(&self, context: &Context) -> Option<Span> {
         // We unwrap the Result for now, until we refactor Span to not need a source string, in
         // which case there will be no need to open and read a file, and no Result involved.
-        dbg!(context.values[self.0]
+        context.values[self.0]
             .span_md_idx
             .map(|idx| idx.to_span(context))
-            .transpose())
+            .transpose()
         .expect("A valid span.")
     }
 
