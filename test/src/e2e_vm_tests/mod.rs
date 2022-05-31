@@ -396,6 +396,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/generic_inside_generic",
             ProgramState::Return(7),
         ),
+        (
+            "should_pass/language/tuple_single_element",
+            ProgramState::Return(1),
+        ),
     ];
 
     let mut number_of_tests_run =

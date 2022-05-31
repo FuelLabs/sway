@@ -1,3 +1,5 @@
+use sway_parse::ty::TyTupleDescriptor;
+
 use {
     crate::{
         constants::{
@@ -926,12 +928,12 @@ fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
 fn ty_to_type_info(ec: &mut ErrorContext, ty: Ty) -> Result<TypeInfo, ErrorEmitted> {
     let type_info = match ty {
         Ty::Path(path_type) => path_type_to_type_info(ec, path_type)?,
-        Ty::Tuple(tys) => TypeInfo::Tuple(
-            tys.into_inner()
-                .into_iter()
-                .map(|ty| ty_to_type_argument(ec, ty))
-                .collect::<Result<_, _>>()?,
-        ),
+        Ty::Tuple(parenthesized_ty_tuple_descriptor) => {
+            TypeInfo::Tuple(ty_tuple_descriptor_to_type_arguments(
+                ec,
+                parenthesized_ty_tuple_descriptor.into_inner(),
+            )?)
+        }
         Ty::Array(bracketed_ty_array_descriptor) => {
             let ty_array_descriptor = bracketed_ty_array_descriptor.into_inner();
             TypeInfo::Array(
@@ -2465,7 +2467,7 @@ fn statement_let_to_ast_nodes(
                     span: span.clone(),
                 };
                 let tuple_tys_opt = match ty_opt {
-                    Some(Ty::Tuple(tys)) => Some(tys.into_inner().into_iter().collect::<Vec<_>>()),
+                    Some(Ty::Tuple(tys)) => Some(tys.into_inner().to_tys()),
                     _ => None,
                 };
                 for (index, pattern) in pat_tuple.into_inner().into_iter().enumerate() {
@@ -2759,6 +2761,23 @@ fn generic_args_to_type_arguments(
             Ok(TypeArgument { type_id, span })
         })
         .collect()
+}
+
+fn ty_tuple_descriptor_to_type_arguments(
+    ec: &mut ErrorContext,
+    ty_tuple_descriptor: TyTupleDescriptor,
+) -> Result<Vec<TypeArgument>, ErrorEmitted> {
+    let type_arguments = match ty_tuple_descriptor {
+        TyTupleDescriptor::Nil => vec![],
+        TyTupleDescriptor::Cons { head, tail, .. } => {
+            let mut type_arguments = vec![ty_to_type_argument(ec, *head)?];
+            for ty in tail.into_iter() {
+                type_arguments.push(ty_to_type_argument(ec, ty)?);
+            }
+            type_arguments
+        }
+    };
+    Ok(type_arguments)
 }
 
 fn path_type_to_type_info(
