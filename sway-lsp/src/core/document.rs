@@ -2,23 +2,17 @@
 
 use super::token::Token;
 use super::token_type::TokenType;
-use super::typed_token_type::TokenMap;
 use super::traverse_typed_tree;
+use super::typed_token_type::TokenMap;
 
-use crate::{capabilities, utils, core::token::traverse_node};
+use crate::{capabilities, core::token::traverse_node, utils};
 use ropey::Rope;
 use std::collections::HashMap;
 use std::sync::Arc;
 use sway_core::{
-    parse, 
-    TreeType,
-    BuildConfig,
-    CompileAstResult,
-    TypedParseTree,
-    semantic_analysis::{
-        namespace,
-        ast_node::TypedAstNode,
-    },
+    parse,
+    semantic_analysis::{ast_node::TypedAstNode, namespace},
+    BuildConfig, CompileAstResult, TreeType, TypedParseTree,
 };
 use tower_lsp::lsp_types::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
 
@@ -103,7 +97,7 @@ impl TextDocument {
     pub fn parse(&mut self) -> Result<Vec<Diagnostic>, DocumentError> {
         self.clear_tokens();
         self.clear_hash_maps();
-        
+
         //self.test_typed_parse();
 
         match self.parse_tokens_from_text() {
@@ -126,7 +120,7 @@ impl TextDocument {
         self.content.to_string()
     }
 
-    pub fn test_typed_parse(&mut self) {        
+    pub fn test_typed_parse(&mut self) {
         if let Some(all_nodes) = self.parse_typed_tokens_from_text() {
             for node in &all_nodes {
                 traverse_typed_tree::traverse_node(node, &mut self.token_map);
@@ -138,12 +132,14 @@ impl TextDocument {
         }
 
         //eprintln!("{:#?}", tokens.keys());
-    
+
         //let cursor_position = Position::new(25, 14); //Cursor's hovered over the position var decl in main()
         let cursor_position = Position::new(29, 18); //Cursor's hovered over the ~Particle in p = decl in main()
 
         // Check if the code editor's cursor is currently over an of our collected tokens
-        if let Some( (ident, span) ) = utils::common::ident_and_span_at_position(cursor_position, &self.token_map) {
+        if let Some((ident, span)) =
+            utils::common::ident_and_span_at_position(cursor_position, &self.token_map)
+        {
             // Retrieve the typed_ast_node from our BTreeMap
             if let Some(token) = self.token_map.get(&(ident, span)) {
                 //eprintln!("token = {:#?}", token);
@@ -156,12 +152,12 @@ impl TextDocument {
                     let type_info = sway_core::type_engine::look_up_type_id(type_id);
                     eprintln!("type_info = {:#?}", type_info);
                 }
-                
+
                 // Find the ident / span on the returned type
-    
+
                 // Contruct a go_to LSP request from the declerations span
             }
-        }    
+        }
     }
 }
 
@@ -171,26 +167,15 @@ impl TextDocument {
         let text = Arc::from(self.get_text());
         let namespace = namespace::Module::default();
         let file_name = std::path::PathBuf::from(self.get_uri());
-        let build_config = BuildConfig::root_from_file_name_and_manifest_path(
-            file_name,
-            Default::default(),
-        );
+        let build_config =
+            BuildConfig::root_from_file_name_and_manifest_path(file_name, Default::default());
         let ast_res = sway_core::compile_to_ast(text, namespace, &build_config);
         match ast_res {
-            CompileAstResult::Failure { .. } => {
-                None
+            CompileAstResult::Failure { .. } => None,
+            CompileAstResult::Success { parse_tree, .. } => match *parse_tree {
+                TypedParseTree::Script { all_nodes, .. } => Some(all_nodes),
+                _ => None,
             },
-            CompileAstResult::Success {
-                parse_tree,
-                ..
-            } => {
-                match *parse_tree {
-                    TypedParseTree::Script{ all_nodes, .. } => {
-                        return Some(all_nodes);
-                    }
-                    _ => None,
-                }
-            }
         }
     }
 

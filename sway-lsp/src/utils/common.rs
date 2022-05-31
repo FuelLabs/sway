@@ -1,7 +1,7 @@
-use sway_core::{Expression, Literal, VariableDeclaration, Visibility};
-use sway_types::{Ident, Span};
 use crate::core::token_type::VarBody;
 use crate::core::typed_token_type::TokenMap;
+use sway_core::{Expression, Literal, VariableDeclaration, Visibility};
+use sway_types::{Ident, Span};
 use tower_lsp::lsp_types::{Position, Range};
 
 pub(crate) fn extract_visibility(visibility: &Visibility) -> String {
@@ -34,12 +34,15 @@ pub(crate) fn extract_var_body(var_dec: &VariableDeclaration) -> VarBody {
     }
 }
 
-pub(crate) fn ident_and_span_at_position(cursor_position: Position, tokens: &TokenMap) -> Option<(Ident, Span)> {
-    for (ident,span) in tokens.keys() {
+pub(crate) fn ident_and_span_at_position(
+    cursor_position: Position,
+    tokens: &TokenMap,
+) -> Option<(Ident, Span)> {
+    for (ident, span) in tokens.keys() {
         let range = get_range_from_span(span);
         if cursor_position >= range.start && cursor_position <= range.end {
             return Some((ident.clone(), span.clone()));
-        }    
+        }
     }
     None
 }

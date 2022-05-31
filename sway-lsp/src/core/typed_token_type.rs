@@ -1,11 +1,11 @@
 use std::collections::HashMap;
-use sway_types::{Ident, Span};
-use sway_core::semantic_analysis::ast_node::{TypedDeclaration, TypedFunctionDeclaration, TypedFunctionParameter, TypedStructField, 
-    TypedEnumVariant, TypedTraitFn, TypedStorageField, TypeCheckedStorageReassignDescriptor, ReassignmentLhs,
-    expression::{
-        typed_expression::TypedExpression,
-    },
+use sway_core::semantic_analysis::ast_node::{
+    expression::typed_expression::TypedExpression, ReassignmentLhs,
+    TypeCheckedStorageReassignDescriptor, TypedDeclaration, TypedEnumVariant,
+    TypedFunctionDeclaration, TypedFunctionParameter, TypedStorageField, TypedStructField,
+    TypedTraitFn,
 };
+use sway_types::{Ident, Span};
 
 pub type TokenMap = HashMap<(Ident, Span), TokenType>;
 
