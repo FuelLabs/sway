@@ -131,8 +131,6 @@ impl TextDocument {
             utils::debug::debug_print_ident_and_token(ident, token);
         }
 
-        //eprintln!("{:#?}", tokens.keys());
-
         //let cursor_position = Position::new(25, 14); //Cursor's hovered over the position var decl in main()
         let cursor_position = Position::new(29, 18); //Cursor's hovered over the ~Particle in p = decl in main()
 
@@ -142,15 +140,13 @@ impl TextDocument {
         {
             // Retrieve the typed_ast_node from our BTreeMap
             if let Some(token) = self.token_map.get(&(ident, span)) {
-                //eprintln!("token = {:#?}", token);
-
                 // Look up the tokens TypeId
                 if let Some(type_id) = traverse_typed_tree::get_type_id(token) {
-                    eprintln!("type_id = {:#?}", type_id);
+                    tracing::info!("type_id = {:#?}", type_id);
 
                     // Use the TypeId to look up the actual type (I think there is a method in the type_engine for this)
                     let type_info = sway_core::type_engine::look_up_type_id(type_id);
-                    eprintln!("type_info = {:#?}", type_info);
+                    tracing::info!("type_info = {:#?}", type_info);
                 }
 
                 // Find the ident / span on the returned type
