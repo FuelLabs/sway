@@ -1,6 +1,6 @@
 use crate::cli::InitCommand;
 use crate::utils::{defaults, program_type::ProgramType::*};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use forc_util::{println_green, println_light_blue, validate_name};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -34,29 +34,38 @@ fn print_welcome_message() {
     );
 }
 
-pub fn canonicalize(path: &PathBuf) -> Result<String> {
-    match std::fs::canonicalize(path) {
-        Ok(p) => {
-            let as_str = String::from(p.to_string_lossy());
-            Ok(as_str)
-        }
-        Err(e) => anyhow::bail!("Could not derive canonical path: '{}'", e),
-    }
-}
-
 pub fn init(command: InitCommand) -> Result<()> {
     let project_dir = match &command.path {
         Some(p) => PathBuf::from(p),
-        None => std::env::current_dir().unwrap(),
+        None => {
+            std::env::current_dir().context("Failed to get current directory for forc init.")?
+        }
     };
+
+    if !project_dir.is_dir() {
+        anyhow::bail!("'{}' is not a valid directory.", project_dir.display());
+    }
+
+    if Path::exists(&Path::new(&project_dir).join("Forc.toml")) {
+        anyhow::bail!(
+            "'{}' already includes a Forc.toml file.",
+            project_dir.display()
+        );
+    }
+
+    if command.verbose {
+        println_light_blue(&format!(
+            "\nUsing project directory at {}",
+            project_dir.canonicalize()?.display()
+        ))
+    }
 
     let project_name = command.name.unwrap_or_else(|| {
         project_dir
-            .to_str()
+            .file_stem()
+            .context("Failed to infer project name from directory name.")
             .unwrap()
-            .split('/')
-            .last()
-            .unwrap()
+            .to_string_lossy()
             .to_string()
     });
 
@@ -80,13 +89,6 @@ pub fn init(command: InitCommand) -> Result<()> {
 
     // Make a new directory for the project
     fs::create_dir_all(Path::new(&project_dir).join("src"))?;
-
-    if command.verbose {
-        println_light_blue(&format!(
-            "\nUsing project directory at {}",
-            canonicalize(&project_dir)?
-        ))
-    }
 
     // Make directory for tests
     fs::create_dir_all(Path::new(&project_dir).join("tests"))?;
@@ -142,8 +144,8 @@ pub fn init(command: InitCommand) -> Result<()> {
 
     if command.verbose {
         println_light_blue(&format!(
-            "\nCreating test harness at {}",
-            canonicalize(&harness_path)?
+            "\nCreated test harness at {}",
+            harness_path.canonicalize()?.display()
         ));
     }
 
@@ -153,8 +155,8 @@ pub fn init(command: InitCommand) -> Result<()> {
 
     if command.verbose {
         println_light_blue(&format!(
-            "\nCreating .gitignore at {}",
-            canonicalize(&gitignore_path)?
+            "\nCreated .gitignore at {}",
+            gitignore_path.canonicalize()?.display()
         ));
     }
 

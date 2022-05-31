@@ -62,7 +62,7 @@ pub fn contains_invalid_char(name: &str, use_case: &str) -> Result<()> {
         }
     }
     for ch in chars {
-        if !(unicode_xid::UnicodeXID::is_xid_continue(ch) || ch == '-' || ch == '/') {
+        if !(unicode_xid::UnicodeXID::is_xid_continue(ch) || ch == '-') {
             bail!(
                 "invalid character `{ch}` in {use_case}: `{name}`, \
                 characters must be Unicode XID characters \

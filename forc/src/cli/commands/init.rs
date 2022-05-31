@@ -11,10 +11,10 @@ pub struct Command {
     /// Create a package with a script target (src/main.sw).
     #[clap(long)]
     pub script: bool,
-    /// Create a package with a library target (src/lib.sw). This is the default behavior.
+    /// Create a package with a library target (src/lib.sw).
     #[clap(long)]
     pub library: bool,
-    /// Create a package with a contract target (src/contract.rs).
+    /// Create a package with a contract target (src/contract.rs). This is the default behavior.
     #[clap(long)]
     pub contract: bool,
     /// Create a package with a predicate target (src/predicate.rs).
