@@ -12,6 +12,7 @@ use sway_core::{
     TreeType,
     BuildConfig,
     CompileResult,
+    CompileAstResult,
     TypedParseTree,
     semantic_analysis::{
         namespace, Namespace,
@@ -102,7 +103,7 @@ impl TextDocument {
         self.clear_tokens();
         self.clear_hash_maps();
         
-        self.test_typed_parse();
+        //self.test_typed_parse();
 
         match self.parse_tokens_from_text() {
             Ok((tokens, diagnostics)) => {
@@ -124,9 +125,7 @@ impl TextDocument {
         self.content.to_string()
     }
 
-    pub fn test_typed_parse(&mut self) {
-        self.token_map.clear();
-        
+    pub fn test_typed_parse(&mut self) {        
         if let Some(all_nodes) = self.parse_typed_tokens_from_text() {
             for node in &all_nodes {
                 traverse_typed_tree::traverse_node(node, &mut self.token_map);
@@ -169,38 +168,29 @@ impl TextDocument {
 impl TextDocument {
     fn parse_typed_tokens_from_text(&self) -> Option<Vec<TypedAstNode>> {
         let text = Arc::from(self.get_text());
-        let parse_tree = parse(text, None).value.unwrap();
-
-        let program_type = &parse_tree.tree_type;
+        let namespace = namespace::Module::default();
         let file_name = std::path::PathBuf::from(self.get_uri());
         let build_config = BuildConfig::root_from_file_name_and_manifest_path(
             file_name,
             Default::default(),
         );
-        let mut dead_code_graph = Default::default();
-        let mut namespace = Namespace::init_root(namespace::Module::default());
-
-        let CompileResult {
-            value: typed_parse_tree_result,
-            warnings: _new_warnings,
-            errors: _new_errors,
-        } = TypedParseTree::type_check(
-            parse_tree.tree,
-            &mut namespace,
-            program_type,
-            &build_config,
-            &mut dead_code_graph,
-        );
-
-        if let Some(typed_parse_tree) = typed_parse_tree_result {
-            match typed_parse_tree {
-                TypedParseTree::Script{ all_nodes, .. } => {
-                    return Some(all_nodes);
+        let ast_res = sway_core::compile_to_ast(text, namespace, &build_config);
+        match ast_res {
+            CompileAstResult::Failure { .. } => {
+                None
+            },
+            CompileAstResult::Success {
+                parse_tree,
+                ..,
+            } => {
+                match *parse_tree {
+                    TypedParseTree::Script{ all_nodes, .. } => {
+                        return Some(all_nodes);
+                    }
+                    _ => None,
                 }
-                _ => (),
             }
         }
-        None
     }
 
     fn parse_tokens_from_text(&self) -> Result<(Vec<Token>, Vec<Diagnostic>), Vec<Diagnostic>> {
@@ -270,6 +260,7 @@ impl TextDocument {
     fn clear_hash_maps(&mut self) {
         self.lines = HashMap::new();
         self.values = HashMap::new();
+        self.token_map = HashMap::new();
     }
 
     fn clear_tokens(&mut self) {
