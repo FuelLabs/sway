@@ -1,13 +1,9 @@
-use std::{
-    collections::HashMap,
-};
 use sway_types::{
     ident::Ident,
     span::Span,
 };
 use sway_core::semantic_analysis::ast_node::{
-    {TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration, TypedFunctionParameter, TypedStructField, 
-    TypedEnumVariant, TypedTraitFn, TypedStorageField, TypeCheckedStorageReassignDescriptor, ReassignmentLhs},
+    {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
     expression::{
         typed_expression::TypedExpression,
         typed_expression_variant::TypedExpressionVariant,
@@ -15,24 +11,8 @@ use sway_core::semantic_analysis::ast_node::{
     while_loop::TypedWhileLoop,
 };
 use sway_core::type_engine::TypeId;
-use tower_lsp::lsp_types::{Position, Range};
+use crate::core::typed_token_type::{TokenMap, TokenType};
 
-pub type TokenMap = HashMap<(Ident, Span), TokenType>;
-
-#[derive(Debug, Clone)]
-pub enum TokenType {
-    TypedDeclaration(TypedDeclaration),
-    TypedExpression(TypedExpression),
-
-    TypedFunctionDeclaration(TypedFunctionDeclaration),
-    TypedFunctionParameter(TypedFunctionParameter),
-    TypedStructField(TypedStructField),
-    TypedEnumVariant(TypedEnumVariant),
-    TypedTraitFn(TypedTraitFn),
-    TypedStorageField(TypedStorageField),
-    TypeCheckedStorageReassignDescriptor(TypeCheckedStorageReassignDescriptor),
-    ReassignmentLhs(ReassignmentLhs),
-}
 
 pub fn traverse_node(node: &TypedAstNode, tokens: &mut TokenMap) {
     match &node.content {
@@ -94,7 +74,7 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut TokenMap) {
                 tokens.insert(to_ident_key(&lhs.name), TokenType::ReassignmentLhs(lhs.clone()));
             }
         }  
-        TypedDeclaration::ImplTrait{trait_name, methods, span, type_implementing_for,..} => {
+        TypedDeclaration::ImplTrait{trait_name, methods, ..} => {
             for ident in &trait_name.prefixes {
                 tokens.insert(to_ident_key(&ident), TokenType::TypedDeclaration(declaration.clone()));
             }
@@ -246,7 +226,7 @@ fn handle_while_loop(while_loop: &TypedWhileLoop, tokens: &mut TokenMap) {
     }
 }
 
-pub fn type_id(token: &TokenType) -> Option<TypeId> {
+pub fn get_type_id(token: &TokenType) -> Option<TypeId> {
     match token {
         TokenType::TypedDeclaration(dec) => {
             match dec {
@@ -284,87 +264,5 @@ pub fn type_id(token: &TokenType) -> Option<TypeId> {
             Some(lhs.r#type)
         }
         _ => None,
-    }
-}
-
-
-
-pub fn ident_and_span_at_position(cursor_position: Position, tokens: &TokenMap) -> Option<(Ident, Span)> {
-    for (ident,span) in tokens.keys() {
-        let range = get_range_from_span(span);
-        if cursor_position >= range.start && cursor_position <= range.end {
-            return Some((ident.clone(), span.clone()));
-        }    
-    }
-    None
-}
-
-pub fn get_range_from_span(span: &Span) -> Range {
-    let start = span.start_pos().line_col();
-    let end = span.end_pos().line_col();
-
-    let start_line = start.0 as u32 - 1;
-    let start_character = start.1 as u32 - 1;
-
-    let end_line = end.0 as u32 - 1;
-    let end_character = end.1 as u32 - 1;
-
-    Range {
-        start: Position::new(start_line, start_character),
-        end: Position::new(end_line, end_character),
-    }
-}
-
-// DEBUG 
-pub fn debug_print_ident_and_token(ident: &Ident, token: &TokenType) {
-	let pos = ident.span().start_pos().line_col();
-	let line_num = pos.0 as u32;	
-    eprintln!("line num = {:?} | name: = {:?} | ast_node_type = {:?} | type_id = {:?}", 
-        line_num,
-        ident.as_str(),
-        ast_node_type(&token),
-        type_id(&token),
-    );
-}
-
-pub fn debug_print_ident(ident: &Ident) {
-	let pos = ident.span().start_pos().line_col();
-	let line_num = pos.0 as u32;	
-    eprintln!("line num = {:?} | name: = {:?}", 
-        line_num,
-        ident.as_str(),
-    );
-}
-
-fn ast_node_type(token: &TokenType) -> String {
-    match &token {
-        TokenType::TypedDeclaration(dec) => {
-            dec.friendly_name().to_string()
-        }
-        TokenType::TypedExpression(exp) => {
-            exp.expression.pretty_print()
-        }
-        TokenType::TypedFunctionParameter(_) => {
-            "function parameter".to_string()
-        }
-        TokenType::TypedStructField(_) => {
-            "struct field".to_string()
-        }
-        TokenType::TypedEnumVariant(_) => {
-            "enum variant".to_string()
-        }
-        TokenType::TypedTraitFn(_) => {
-            "trait function".to_string()
-        }
-        TokenType::TypedStorageField(_) => {
-            "storage field".to_string()
-        }
-        TokenType::TypeCheckedStorageReassignDescriptor(_) => {
-            "storage reassignment descriptor".to_string()
-        }
-        TokenType::ReassignmentLhs(_) => {
-            "reassignment lhs".to_string()
-        }        
-        _ => "".to_string()
     }
 }

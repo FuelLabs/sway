@@ -1,13 +1,15 @@
 use super::token::Token;
 use super::token_type::TokenType;
-use super::traverse_typed_tree as ttt;
+use super::typed_token_type::TokenMap;
+use super::traverse_typed_tree;
 
-use crate::{capabilities, core::token::traverse_node};
+use crate::{capabilities, utils, core::token::traverse_node};
 use ropey::Rope;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::sync::Arc;
-use sway_core::{parse, TreeType};
 use sway_core::{
+    parse, 
+    TreeType,
     BuildConfig,
     CompileResult,
     TypedParseTree,
@@ -16,13 +18,7 @@ use sway_core::{
         ast_node::TypedAstNode,
     },
 };
-use sway_types::{
-    ident::Ident,
-    span::Span,
-};
 use tower_lsp::lsp_types::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
-
-
 
 #[derive(Debug)]
 pub struct TextDocument {
@@ -35,7 +31,7 @@ pub struct TextDocument {
     tokens: Vec<Token>,
     lines: HashMap<u32, Vec<usize>>,
     values: HashMap<String, Vec<usize>>,
-    pub token_map: ttt::TokenMap,
+    token_map: TokenMap,
 }
 
 impl TextDocument {
@@ -66,7 +62,6 @@ impl TextDocument {
                 }
             }
         }
-
         None
     }
 
@@ -89,6 +84,10 @@ impl TextDocument {
             }
         }
         None
+    }
+
+    pub fn _get_token_map(&self) -> &TokenMap {
+        &self.token_map
     }
 
     pub fn get_tokens(&self) -> &Vec<Token> {
@@ -130,12 +129,12 @@ impl TextDocument {
         
         if let Some(all_nodes) = self.parse_typed_tokens_from_text() {
             for node in &all_nodes {
-                ttt::traverse_node(node, &mut self.token_map);
+                traverse_typed_tree::traverse_node(node, &mut self.token_map);
             }
         }
 
         for ((ident, _span), token) in &self.token_map {
-            ttt::debug_print_ident_and_token(ident, token);
+            utils::debug::debug_print_ident_and_token(ident, token);
         }
 
         //eprintln!("{:#?}", tokens.keys());
@@ -144,13 +143,13 @@ impl TextDocument {
         let cursor_position = Position::new(29, 18); //Cursor's hovered over the ~Particle in p = decl in main()
 
         // Check if the code editor's cursor is currently over an of our collected tokens
-        if let Some( (ident, span) ) = ttt::ident_and_span_at_position(cursor_position, &self.token_map) {
+        if let Some( (ident, span) ) = utils::common::ident_and_span_at_position(cursor_position, &self.token_map) {
             // Retrieve the typed_ast_node from our BTreeMap
             if let Some(token) = self.token_map.get(&(ident, span)) {
                 //eprintln!("token = {:#?}", token);
 
                 // Look up the tokens TypeId
-                if let Some(type_id) = ttt::type_id(token) {
+                if let Some(type_id) = traverse_typed_tree::get_type_id(token) {
                     eprintln!("type_id = {:#?}", type_id);
 
                     // Use the TypeId to look up the actual type (I think there is a method in the type_engine for this)
@@ -192,15 +191,10 @@ impl TextDocument {
             &build_config,
             &mut dead_code_graph,
         );
-        //eprintln!("typed_parse_tree_result: {:#?}", typed_parse_tree_result);
 
         if let Some(typed_parse_tree) = typed_parse_tree_result {
             match typed_parse_tree {
-                TypedParseTree::Script{ main_function, namespace, declarations, all_nodes } => {
-                    //eprintln!("main_function: {:#?}", main_function);
-                    //eprintln!("namespace: {:#?}", namespace);
-                    //eprintln!("declarations: {:#?}", declarations);
-                    //eprintln!("all_nodes: {:#?}", all_nodes);
+                TypedParseTree::Script{ all_nodes, .. } => {
                     return Some(all_nodes);
                 }
                 _ => (),

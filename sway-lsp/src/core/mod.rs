@@ -3,3 +3,4 @@ pub mod session;
 pub mod traverse_typed_tree;
 pub(crate) mod token;
 pub(crate) mod token_type;
+pub(crate) mod typed_token_type;
