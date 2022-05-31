@@ -270,8 +270,39 @@ impl Items {
                     full_span_for_error =
                         Span::join(full_span_for_error, field_name.span().clone());
                 }
+                (TypeInfo::Tuple(fields), ProjectionKind::TupleField { index, index_span }) => {
+                    let field_type_opt = {
+                        fields
+                            .get(*index)
+                            .map(|TypeArgument { type_id, .. }| type_id)
+                    };
+                    let field_type = match field_type_opt {
+                        Some(field_type) => field_type,
+                        None => {
+                            errors.push(CompileError::TupleIndexOutOfBounds {
+                                index: *index,
+                                count: fields.len(),
+                                span: Span::join(full_span_for_error, index_span.clone()),
+                            });
+                            return err(warnings, errors);
+                        }
+                    };
+                    parent_rover = symbol;
+                    symbol = *field_type;
+                    symbol_span = index_span.clone();
+                    full_name_for_error.push_str(&index.to_string());
+                    full_span_for_error = Span::join(full_span_for_error, index_span.clone());
+                }
                 (actually, ProjectionKind::StructField { .. }) => {
                     errors.push(CompileError::NotAStruct {
+                        name: full_name_for_error,
+                        span: full_span_for_error,
+                        actually: actually.friendly_type_str(),
+                    });
+                    return err(warnings, errors);
+                }
+                (actually, ProjectionKind::TupleField { .. }) => {
+                    errors.push(CompileError::NotATuple {
                         name: full_name_for_error,
                         span: full_span_for_error,
                         actually: actually.friendly_type_str(),
