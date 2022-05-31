@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use sway_types::{
     ident::Ident,
     span::Span,

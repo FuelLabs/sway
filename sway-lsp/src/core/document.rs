@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::token::Token;
 use super::token_type::TokenType;
 use super::typed_token_type::TokenMap;
@@ -11,11 +13,10 @@ use sway_core::{
     parse, 
     TreeType,
     BuildConfig,
-    CompileResult,
     CompileAstResult,
     TypedParseTree,
     semantic_analysis::{
-        namespace, Namespace,
+        namespace,
         ast_node::TypedAstNode,
     },
 };
@@ -181,7 +182,7 @@ impl TextDocument {
             },
             CompileAstResult::Success {
                 parse_tree,
-                ..,
+                ..
             } => {
                 match *parse_tree {
                     TypedParseTree::Script{ all_nodes, .. } => {
