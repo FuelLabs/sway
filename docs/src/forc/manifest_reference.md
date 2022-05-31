@@ -25,7 +25,7 @@ An example `Forc.toml` is shown below. Under `[project]` the following fields ar
 Also for the following fields, a default value is provided so omitting them is allowed:
 
 * `entry` - (default : _main.sw_)
-* `implicit_std` - (default : _true_)
+* `implicit-std` - (default : _true_)
 
 ```toml
 [project]
