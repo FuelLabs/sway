@@ -1049,7 +1049,11 @@ impl<'ir> AsmBuilder<'ir> {
 
         let storage_slot_to_hash = match state_idx {
             Some(state_idx) => {
-                format!("{}{}", sway_utils::constants::STORAGE_DOMAIN_SEPARATOR, state_idx)
+                format!(
+                    "{}{}",
+                    sway_utils::constants::STORAGE_DOMAIN_SEPARATOR,
+                    state_idx
+                )
             }
             None => {
                 errors.push(CompileError::Internal(

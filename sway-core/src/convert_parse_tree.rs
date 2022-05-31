@@ -178,6 +178,8 @@ pub enum ConvertParseTreeError {
     ConstrainedNonExistentType { ty_name: Ident, span: Span },
     #[error("__get_storage_key does not take arguments")]
     GetStorageKeyTooManyArgs { span: Span },
+    #[error("recursive types are not supported")]
+    RecursiveType { span: Span },
 }
 
 impl ConvertParseTreeError {
@@ -228,6 +230,7 @@ impl ConvertParseTreeError {
             ConvertParseTreeError::InvalidAttributeArgument { span, .. } => span.clone(),
             ConvertParseTreeError::ConstrainedNonExistentType { span, .. } => span.clone(),
             ConvertParseTreeError::GetStorageKeyTooManyArgs { span, .. } => span.clone(),
+            ConvertParseTreeError::RecursiveType { span } => span.clone(),
         }
     }
 }
@@ -479,16 +482,20 @@ fn item_struct_to_struct_declaration(
     item_struct: ItemStruct,
 ) -> Result<StructDeclaration, ErrorEmitted> {
     let span = item_struct.span();
+    let fields = item_struct
+        .fields
+        .into_inner()
+        .into_iter()
+        .map(|type_field| type_field_to_struct_field(ec, type_field))
+        .collect::<Result<Vec<_>, _>>()?;
+    if fields.iter().any(
+        |field| matches!(&field.r#type, TypeInfo::Custom { name, ..} if name == &item_struct.name),
+    ) {
+        return Err(ec.error(ConvertParseTreeError::RecursiveType { span }));
+    }
     let struct_declaration = StructDeclaration {
         name: item_struct.name,
-        fields: {
-            item_struct
-                .fields
-                .into_inner()
-                .into_iter()
-                .map(|type_field| type_field_to_struct_field(ec, type_field))
-                .collect::<Result<_, _>>()?
-        },
+        fields,
         type_parameters: generic_params_opt_to_type_parameters(
             ec,
             item_struct.generics,
@@ -505,6 +512,18 @@ fn item_enum_to_enum_declaration(
     item_enum: ItemEnum,
 ) -> Result<EnumDeclaration, ErrorEmitted> {
     let span = item_enum.span();
+    let variants = item_enum
+        .fields
+        .into_inner()
+        .into_iter()
+        .enumerate()
+        .map(|(tag, type_field)| type_field_to_enum_variant(ec, type_field, tag))
+        .collect::<Result<Vec<_>, _>>()?;
+    if variants.iter().any(|variant| {
+       matches!(&variant.r#type, TypeInfo::Custom { name, ..} if name == &item_enum.name)
+    }) {
+        return Err(ec.error(ConvertParseTreeError::RecursiveType { span }));
+    }
     let enum_declaration = EnumDeclaration {
         name: item_enum.name,
         type_parameters: generic_params_opt_to_type_parameters(
@@ -512,15 +531,7 @@ fn item_enum_to_enum_declaration(
             item_enum.generics,
             item_enum.where_clause_opt,
         )?,
-        variants: {
-            item_enum
-                .fields
-                .into_inner()
-                .into_iter()
-                .enumerate()
-                .map(|(tag, type_field)| type_field_to_enum_variant(ec, type_field, tag))
-                .collect::<Result<_, _>>()?
-        },
+        variants,
         span,
         visibility: pub_token_opt_to_visibility(item_enum.visibility),
     };

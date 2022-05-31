@@ -338,7 +338,9 @@ fn instruction_to_doc<'a>(
                     })
                     .append(match state_idx_md_idx {
                         None => Doc::Empty,
-                        Some(_) => Doc::text(md_namer.meta_as_string(context, state_idx_md_idx, true)),
+                        Some(_) => {
+                            Doc::text(md_namer.meta_as_string(context, state_idx_md_idx, true))
+                        }
                     }),
                 )),
             Instruction::Cmp(pred, lhs_value, rhs_value) => {
