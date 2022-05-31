@@ -168,6 +168,7 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
         ("should_pass/stdlib/u128_test", ProgramState::Return(1)), // true
         ("should_pass/stdlib/u128_div_test", ProgramState::Return(1)), // true
         ("should_pass/stdlib/u128_mul_test", ProgramState::Return(1)), // true
+        ("should_pass/stdlib/alloc", ProgramState::Return(1)),   // true
         (
             "should_pass/language/generic_structs",
             ProgramState::Return(1), // true
