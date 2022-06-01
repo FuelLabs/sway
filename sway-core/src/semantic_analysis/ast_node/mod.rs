@@ -3,15 +3,13 @@ use self::declaration::EnforceTypeArguments;
 use super::ERROR_RECOVERY_DECLARATION;
 
 use crate::{
-    build_config::BuildConfig, control_flow_analysis::ControlFlowGraph, error::*, parse_tree::*,
-    semantic_analysis::*, style::*, type_engine::*, AstNode, AstNodeContent, Ident,
-    ReturnStatement,
+    error::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*, AstNode,
+    AstNodeContent, Ident, ReturnStatement,
 };
 
 use sway_types::{span::Span, state::StateIndex};
 
 use derivative::Derivative;
-use std::sync::Arc;
 
 pub use crate::semantic_analysis::ast_node::declaration::TypedStorageField;
 
@@ -221,8 +219,6 @@ impl TypedAstNode {
             return_type_annotation,
             help_text,
             self_type,
-            build_config,
-            dead_code_graph,
             opts,
             ..
         } = arguments;
@@ -250,8 +246,6 @@ impl TypedAstNode {
                     help_text: "This declaration's type annotation  does \
                      not match up with the assigned expression's type.",
                     self_type,
-                    build_config,
-                    dead_code_graph,
                     mode: Mode::NonAbi,
                     opts,
                 })
@@ -274,17 +268,7 @@ impl TypedAstNode {
                     errors.append(&mut res.errors);
                     TypedAstNodeContent::SideEffect
                 }
-                AstNodeContent::IncludeStatement(ref a) => {
-                    // Import the file, parse it, put it in the namespace under the module name (alias or
-                    // last part of the import by default)
-                    check!(
-                        import_new_file(a, namespace, build_config, dead_code_graph),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    TypedAstNodeContent::SideEffect
-                }
+                AstNodeContent::IncludeStatement(_) => TypedAstNodeContent::SideEffect,
                 AstNodeContent::Declaration(a) => {
                     TypedAstNodeContent::Declaration(match a {
                         Declaration::VariableDeclaration(VariableDeclaration {
@@ -324,8 +308,6 @@ impl TypedAstNode {
                                     help_text: "Variable declaration's type annotation does \
                      not match up with the assigned expression's type.",
                                     self_type,
-                                    build_config,
-                                    dead_code_graph,
                                     mode: Mode::NonAbi,
                                     opts,
                                 })
@@ -411,8 +393,6 @@ impl TypedAstNode {
                                     return_type_annotation: insert_type(TypeInfo::Unknown),
                                     help_text,
                                     self_type,
-                                    build_config,
-                                    dead_code_graph,
                                     mode: Mode::NonAbi,
                                     opts
                                 }),
@@ -433,8 +413,6 @@ impl TypedAstNode {
                                     checkee: trait_decl,
                                     namespace,
                                     self_type,
-                                    build_config,
-                                    dead_code_graph,
                                     // this is unused by `type_check_trait`
                                     return_type_annotation: insert_type(TypeInfo::Unknown),
                                     help_text: Default::default(),
@@ -453,8 +431,6 @@ impl TypedAstNode {
                                         checkee: (lhs, rhs),
                                         namespace,
                                         self_type,
-                                        build_config,
-                                        dead_code_graph,
                                         // this is unused by `reassignment`
                                         return_type_annotation: insert_type(TypeInfo::Unknown),
                                         help_text: Default::default(),
@@ -469,13 +445,7 @@ impl TypedAstNode {
                             )
                         }
                         Declaration::ImplTrait(impl_trait) => check!(
-                            implementation_of_trait(
-                                impl_trait,
-                                namespace,
-                                build_config,
-                                dead_code_graph,
-                                opts,
-                            ),
+                            implementation_of_trait(impl_trait, namespace, opts),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -540,8 +510,6 @@ impl TypedAstNode {
                                     return_type_annotation: insert_type(TypeInfo::Unknown),
                                     help_text: "",
                                     self_type: implementing_for_type_id,
-                                    build_config,
-                                    dead_code_graph,
                                     mode: Mode::NonAbi,
                                     opts,
                                 };
@@ -607,13 +575,7 @@ impl TypedAstNode {
                             // type check these for errors but don't actually use them yet -- the real
                             // ones will be type checked with proper symbols when the ABI is implemented
                             let _methods = check!(
-                                type_check_trait_methods(
-                                    methods.clone(),
-                                    namespace,
-                                    self_type,
-                                    build_config,
-                                    dead_code_graph,
-                                ),
+                                type_check_trait_methods(methods.clone(), namespace, self_type,),
                                 vec![],
                                 warnings,
                                 errors
@@ -663,8 +625,6 @@ impl TypedAstNode {
                             return_type_annotation: insert_type(TypeInfo::Unknown),
                             help_text: Default::default(),
                             self_type,
-                            build_config,
-                            dead_code_graph,
                             mode: Mode::NonAbi,
                             opts
                         }),
@@ -693,8 +653,6 @@ impl TypedAstNode {
                                     "Returned value must match up with the function return type \
                                  annotation.",
                                 self_type,
-                                build_config,
-                                dead_code_graph,
                                 mode: Mode::NonAbi,
                                 opts
                             }),
@@ -712,8 +670,6 @@ impl TypedAstNode {
                             return_type_annotation,
                             help_text: "Implicit return must match up with block's type.",
                             self_type,
-                            build_config,
-                            dead_code_graph,
                             mode: Mode::NonAbi,
                             opts,
                         }),
@@ -732,8 +688,6 @@ impl TypedAstNode {
                             help_text:
                                 "A while loop's loop condition must be a boolean expression.",
                             self_type,
-                            build_config,
-                            dead_code_graph,
                             mode: Mode::NonAbi,
                             opts
                         }),
@@ -751,8 +705,6 @@ impl TypedAstNode {
                              assigning it to a mutable variable declared outside of the loop \
                              instead.",
                             self_type,
-                            build_config,
-                            dead_code_graph,
                             mode: Mode::NonAbi,
                             opts,
                         }),
@@ -795,56 +747,6 @@ impl TypedAstNode {
     }
 }
 
-/// Imports a new file, populates the given [Namespace] with its content,
-/// and appends the module's content to the control flow graph for later analysis.
-fn import_new_file(
-    statement: &IncludeStatement,
-    namespace: &mut Namespace,
-    build_config: &BuildConfig,
-    dead_code_graph: &mut ControlFlowGraph,
-) -> CompileResult<()> {
-    let canonical_path = build_config
-        .dir_of_code
-        .iter()
-        .chain(statement.path_span.as_str().split('/').map(AsRef::as_ref))
-        .collect::<std::path::PathBuf>()
-        .with_extension(crate::constants::DEFAULT_FILE_EXTENSION);
-
-    let manifest_dir = build_config.manifest_path.parent().unwrap();
-    let file_name = match canonical_path.strip_prefix(manifest_dir) {
-        Ok(file_name) => Arc::new(file_name.to_path_buf()),
-        Err(_) => return err(vec![], vec![]),
-    };
-
-    if !canonical_path.exists() {
-        let err = CompileError::FileNotFound {
-            file_path: canonical_path.to_string_lossy().to_string(),
-            span: statement.path_span.clone(),
-        };
-        return ok((), vec![], vec![err]);
-    }
-
-    let file_str: Arc<str> = match std::fs::read_to_string(&canonical_path) {
-        Ok(s) => Arc::from(s),
-        Err(e) => {
-            let err = CompileError::FileCouldNotBeRead {
-                span: statement.path_span.clone(),
-                file_path: canonical_path.to_string_lossy().to_string(),
-                stringified_error: e.to_string(),
-            };
-            return ok((), vec![], vec![err]);
-        }
-    };
-
-    let mut dep_config = build_config.clone();
-    let dep_path = canonical_path.parent().unwrap();
-    dep_config.file_name = file_name;
-    dep_config.dir_of_code = Arc::new(dep_path.to_owned());
-
-    let alias = statement.alias.as_ref();
-    crate::compile_inner_dependency(file_str, alias, dep_config, namespace, dead_code_graph)
-}
-
 fn reassignment(
     arguments: TypeCheckArguments<'_, (ReassignmentTarget, Expression)>,
     span: Span,
@@ -853,8 +755,6 @@ fn reassignment(
         checkee: (lhs, rhs),
         namespace,
         self_type,
-        build_config,
-        dead_code_graph,
         opts,
         ..
     } = arguments;
@@ -895,8 +795,6 @@ fn reassignment(
                             help_text:
                                 "You can only reassign a value of the same type to a variable.",
                             self_type,
-                            build_config,
-                            dead_code_graph,
                             mode: Mode::NonAbi,
                             opts
                         }),
@@ -932,8 +830,6 @@ fn reassignment(
                                 return_type_annotation: insert_type(TypeInfo::Unknown),
                                 help_text: Default::default(),
                                 self_type,
-                                build_config,
-                                dead_code_graph,
                                 mode: Mode::NonAbi,
                                 opts
                             }),
@@ -1018,8 +914,6 @@ fn reassignment(
                             return_type_annotation: ty_of_field,
                             help_text: Default::default(),
                             self_type,
-                            build_config,
-                            dead_code_graph,
                             mode: Mode::NonAbi,
                             opts,
                         }),
@@ -1049,8 +943,6 @@ fn reassignment(
             return_type_annotation: insert_type(TypeInfo::Unknown),
             help_text: Default::default(),
             self_type,
-            build_config,
-            dead_code_graph,
             mode: Mode::NonAbi,
             opts,
         })
@@ -1133,8 +1025,6 @@ fn type_check_trait_decl(
         namespace,
         return_type_annotation: _return_type_annotation,
         help_text: _help_text,
-        build_config,
-        dead_code_graph,
         ..
     } = arguments;
 
@@ -1180,8 +1070,6 @@ fn type_check_trait_decl(
             trait_decl.methods.clone(),
             &mut trait_namespace,
             insert_type(TypeInfo::SelfType),
-            build_config,
-            dead_code_graph,
         ),
         vec![],
         warnings,
@@ -1262,8 +1150,6 @@ fn type_check_trait_methods(
     methods: Vec<FunctionDeclaration>,
     namespace: &mut Namespace,
     self_type: TypeId,
-    build_config: &BuildConfig,
-    dead_code_graph: &mut ControlFlowGraph,
 ) -> CompileResult<Vec<TypedFunctionDeclaration>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -1401,8 +1287,6 @@ fn type_check_trait_methods(
                 help_text: "Trait method body's return type does not match up with \
                                          its return type annotation.",
                 self_type,
-                build_config,
-                dead_code_graph,
                 mode: Mode::NonAbi,
                 opts: TCOpts { purity }
             }),
@@ -1579,8 +1463,6 @@ fn reassign_storage_subfield(
         return_type_annotation: _return_type_annotation,
         help_text: _help_text,
         self_type,
-        build_config,
-        dead_code_graph,
         opts,
         ..
     } = arguments;
@@ -1671,8 +1553,6 @@ fn reassign_storage_subfield(
             return_type_annotation: curr_type,
             help_text: Default::default(),
             self_type,
-            build_config,
-            dead_code_graph,
             mode: Mode::NonAbi,
             opts,
         }),

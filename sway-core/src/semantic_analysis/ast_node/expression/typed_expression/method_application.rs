@@ -1,7 +1,5 @@
 use super::*;
-use crate::build_config::BuildConfig;
 use crate::constants;
-use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::{MethodName, StructExpressionField};
 use crate::semantic_analysis::namespace::Namespace;
 use crate::semantic_analysis::TCOpts;
@@ -16,8 +14,6 @@ pub(crate) fn type_check_method_application(
     span: Span,
     namespace: &mut Namespace,
     self_type: TypeId,
-    build_config: &BuildConfig,
-    dead_code_graph: &mut ControlFlowGraph,
     opts: TCOpts,
 ) -> CompileResult<TypedExpression> {
     let mut warnings = vec![];
@@ -32,8 +28,6 @@ pub(crate) fn type_check_method_application(
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: Default::default(),
                 self_type,
-                build_config,
-                dead_code_graph,
                 mode: Mode::NonAbi,
                 opts,
             }),
@@ -118,8 +112,6 @@ pub(crate) fn type_check_method_application(
                                 },
                                 help_text: Default::default(),
                                 self_type,
-                                build_config,
-                                dead_code_graph,
                                 mode: Mode::NonAbi,
                                 opts,
                             }),

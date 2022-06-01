@@ -1,6 +1,4 @@
 use crate::{
-    build_config::BuildConfig,
-    control_flow_analysis::ControlFlowGraph,
     error::*,
     semantic_analysis::{ast_node::*, TCOpts, TypeCheckArguments},
     type_engine::TypeId,
@@ -15,8 +13,6 @@ pub(crate) fn instantiate_function_application(
     arguments: Vec<Expression>,
     namespace: &mut Namespace,
     self_type: TypeId,
-    build_config: &BuildConfig,
-    dead_code_graph: &mut ControlFlowGraph,
     opts: TCOpts,
 ) -> CompileResult<TypedExpression> {
     let mut warnings = vec![];
@@ -60,8 +56,6 @@ pub(crate) fn instantiate_function_application(
                         not match the declared type of the parameter in the function \
                         declaration.",
                     self_type,
-                    build_config,
-                    dead_code_graph,
                     mode: Mode::NonAbi,
                     opts,
                 }),

@@ -12,9 +12,9 @@ use {
         ImplTrait, ImportType, IncludeStatement, LazyOp, Literal, MatchBranch, MethodName,
         ParseTree, Purity, Reassignment, ReassignmentTarget, ReturnStatement, Scrutinee,
         StorageDeclaration, StorageField, StructDeclaration, StructExpressionField, StructField,
-        StructScrutineeField, Supertrait, SwayParseTree, TraitConstraint, TraitDeclaration,
-        TraitFn, TreeType, TypeArgument, TypeInfo, TypeParameter, UseStatement,
-        VariableDeclaration, Visibility, WhileLoop,
+        StructScrutineeField, Supertrait, TraitConstraint, TraitDeclaration, TraitFn, TreeType,
+        TypeArgument, TypeInfo, TypeParameter, UseStatement, VariableDeclaration, Visibility,
+        WhileLoop,
     },
     std::{
         collections::HashMap,
@@ -30,9 +30,9 @@ use {
         ExprTupleDescriptor, FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition,
         IfExpr, Instruction, Intrinsic, Item, ItemAbi, ItemConst, ItemEnum, ItemFn, ItemImpl,
         ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse, LitInt, LitIntType, MatchBranchKind,
-        PathExpr, PathExprSegment, PathType, PathTypeSegment, Pattern, PatternStructField, Program,
-        ProgramKind, PubToken, QualifiedPathRoot, Statement, StatementLet, Traits, Ty, TypeField,
-        UseTree, WhereClause,
+        Module, ModuleKind, PathExpr, PathExprSegment, PathType, PathTypeSegment, Pattern,
+        PatternStructField, PubToken, QualifiedPathRoot, Statement, StatementLet, Traits, Ty,
+        TypeField, UseTree, WhereClause,
     },
     sway_types::{Ident, Span, Spanned},
     thiserror::Error,
@@ -235,56 +235,50 @@ impl ConvertParseTreeError {
     }
 }
 
-pub fn convert_parse_tree(program: Program) -> CompileResult<SwayParseTree> {
+pub fn convert_parse_tree(module: Module) -> CompileResult<(TreeType, ParseTree)> {
     let mut ec = ErrorContext {
         warnings: Vec::new(),
         errors: Vec::new(),
     };
-    let res = program_to_sway_parse_tree(&mut ec, program);
+    let tree_type = match module.kind {
+        ModuleKind::Script { .. } => TreeType::Script,
+        ModuleKind::Contract { .. } => TreeType::Contract,
+        ModuleKind::Predicate { .. } => TreeType::Predicate,
+        ModuleKind::Library { ref name, .. } => TreeType::Library { name: name.clone() },
+    };
+    let res = module_to_sway_parse_tree(&mut ec, module);
     let ErrorContext { warnings, errors } = ec;
     match res {
-        Ok(sway_parse_tree) => ok(sway_parse_tree, warnings, errors),
+        Ok(parse_tree) => ok((tree_type, parse_tree), warnings, errors),
         Err(_error_emitted) => err(warnings, errors),
     }
 }
 
-pub fn program_to_sway_parse_tree(
+pub fn module_to_sway_parse_tree(
     ec: &mut ErrorContext,
-    program: Program,
-) -> Result<SwayParseTree, ErrorEmitted> {
-    let span = program.span();
-    let tree_type = match program.kind {
-        ProgramKind::Script { .. } => TreeType::Script,
-        ProgramKind::Contract { .. } => TreeType::Contract,
-        ProgramKind::Predicate { .. } => TreeType::Predicate,
-        ProgramKind::Library { name, .. } => TreeType::Library { name },
-    };
+    module: Module,
+) -> Result<ParseTree, ErrorEmitted> {
+    let span = module.span();
     let root_nodes = {
         let mut root_nodes: Vec<AstNode> = {
-            program
+            module
                 .dependencies
-                .into_iter()
+                .iter()
                 .map(|dependency| {
                     let span = dependency.span();
-                    AstNode {
-                        content: AstNodeContent::IncludeStatement(dependency_to_include_statement(
-                            dependency,
-                        )),
-                        span,
-                    }
+                    let incl_stmt = dependency_to_include_statement(dependency);
+                    let content = AstNodeContent::IncludeStatement(incl_stmt);
+                    AstNode { content, span }
                 })
                 .collect()
         };
-        for item in program.items {
+        for item in module.items {
             let ast_nodes = item_to_ast_nodes(ec, item)?;
             root_nodes.extend(ast_nodes);
         }
         root_nodes
     };
-    Ok(SwayParseTree {
-        tree_type,
-        tree: ParseTree { span, root_nodes },
-    })
+    Ok(ParseTree { span, root_nodes })
 }
 
 fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, ErrorEmitted> {
@@ -2513,11 +2507,11 @@ fn statement_let_to_ast_nodes(
     )
 }
 
-fn dependency_to_include_statement(dependency: Dependency) -> IncludeStatement {
+fn dependency_to_include_statement(dependency: &Dependency) -> IncludeStatement {
     IncludeStatement {
-        alias: None,
+        _alias: None,
         span: dependency.span(),
-        path_span: dependency.path.span(),
+        _path_span: dependency.path.span(),
     }
 }
 
