@@ -697,7 +697,7 @@ impl TypedAstNode {
                     );
                     let (typed_body, _block_implicit_return) = check!(
                         TypedCodeBlock::type_check(TypeCheckArguments {
-                            checkee: body.clone(),
+                            checkee: body,
                             namespace,
                             return_type_annotation: insert_type(TypeInfo::Tuple(Vec::new())),
                             help_text:
@@ -709,10 +709,7 @@ impl TypedAstNode {
                             opts,
                         }),
                         (
-                            TypedCodeBlock {
-                                contents: vec![],
-                                whole_block_span: body.whole_block_span,
-                            },
+                            TypedCodeBlock { contents: vec![] },
                             insert_type(TypeInfo::Tuple(Vec::new()))
                         ),
                         warnings,
@@ -1333,10 +1330,7 @@ fn convert_trait_methods_to_dummy_funcs(
              }| TypedFunctionDeclaration {
                 purity: Default::default(),
                 name: name.clone(),
-                body: TypedCodeBlock {
-                    contents: vec![],
-                    whole_block_span: name.span().clone(),
-                },
+                body: TypedCodeBlock { contents: vec![] },
                 parameters: parameters
                     .iter()
                     .map(
@@ -1400,7 +1394,6 @@ fn error_recovery_function_declaration(decl: FunctionDeclaration) -> TypedFuncti
         name,
         body: TypedCodeBlock {
             contents: Default::default(),
-            whole_block_span: span.clone(),
         },
         span,
         is_contract_call: false,
