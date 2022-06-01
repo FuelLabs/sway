@@ -175,3 +175,91 @@ fn format_file(file: &Path, formatted_content: &str) -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::taplo_fmt;
+    use std::default::Default;
+
+    #[test]
+    fn test_forc_indentation() {
+        let correct_forc_manifest = r#"
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+name = "Fuel example project"
+
+
+[dependencies]
+core = { git = "https://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
+std = { git = "https://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
+"#;
+        let taplo_alphabetize = taplo_fmt::Options {
+            reorder_keys: true,
+            ..Default::default()
+        };
+        let formatted_content = taplo_fmt::format(correct_forc_manifest, taplo_alphabetize.clone());
+        assert_eq!(formatted_content, correct_forc_manifest);
+        let indented_forc_manifest = r#"
+        [project]
+    authors = ["Fuel Labs <contact@fuel.sh>"]
+                    license = "Apache-2.0"
+    name = "Fuel example project"
+
+
+    [dependencies]
+        core = { git = "https://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
+                    std = { git = "https://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
+"#;
+        let formatted_content =
+            taplo_fmt::format(indented_forc_manifest, taplo_alphabetize.clone());
+        assert_eq!(formatted_content, correct_forc_manifest);
+        let whitespace_forc_manifest = r#"
+[project]
+ authors=["Fuel Labs <contact@fuel.sh>"]
+license   =                                   "Apache-2.0"
+name = "Fuel example project"
+
+
+[dependencies]
+core = {git="https://github.com/FuelLabs/sway-lib-core",version="v0.0.1"}
+std         =     {   git     =  "https://github.com/FuelLabs/sway-lib-std"  , version = "v0.0.1"           }
+"#;
+        let formatted_content = taplo_fmt::format(whitespace_forc_manifest, taplo_alphabetize);
+        assert_eq!(formatted_content, correct_forc_manifest);
+    }
+
+    #[test]
+    fn test_forc_alphabetization() {
+        let correct_forc_manifest = r#"
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+name = "Fuel example project"
+
+
+[dependencies]
+core = { git = "https://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
+std = { git = "https://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
+"#;
+        let taplo_alphabetize = taplo_fmt::Options {
+            reorder_keys: true,
+            ..Default::default()
+        };
+        let formatted_content = taplo_fmt::format(correct_forc_manifest, taplo_alphabetize.clone());
+        assert_eq!(formatted_content, correct_forc_manifest);
+        let disordered_forc_manifest = r#"
+[project]
+name = "Fuel example project"
+license = "Apache-2.0"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+
+
+[dependencies]
+std = { git = "https://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
+core = { git = "https://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
+    "#;
+        let formatted_content = taplo_fmt::format(disordered_forc_manifest, taplo_alphabetize);
+        assert_eq!(formatted_content, correct_forc_manifest);
+    }
+}
