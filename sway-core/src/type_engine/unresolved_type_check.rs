@@ -175,7 +175,7 @@ impl UnresolvedTypeCheck for TypedExpression {
             | Literal(_)
             | AbiName(_)
             | FunctionParameter
-            | GenerateUid { .. } => vec![],
+            | GetStorageKey { .. } => vec![],
             EnumTag { exp } => exp.check_for_unresolved_types(),
             UnsafeDowncast { exp, variant } => exp
                 .check_for_unresolved_types()

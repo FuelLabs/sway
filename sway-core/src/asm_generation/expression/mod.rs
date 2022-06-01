@@ -53,6 +53,7 @@ pub(crate) fn convert_expression_to_asm(
             arguments,
             function_body,
             selector,
+            ..
         } => {
             if let Some(metadata) = selector {
                 convert_contract_call_to_asm(

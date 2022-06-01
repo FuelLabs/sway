@@ -3674,6 +3674,7 @@ dependencies = [
  "tokio",
  "tower",
  "tower-lsp",
+ "tracing",
 ]
 
 [[package]]

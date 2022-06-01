@@ -3,7 +3,7 @@ name = 'core'
 dependencies = []
 
 [[package]]
-name = 'generate_uid'
+name = 'reassignment_operators'
 dependencies = ['std']
 
 [[package]]

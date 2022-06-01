@@ -55,10 +55,10 @@ impl From<VariableMutability> for bool {
 }
 #[derive(Clone, Debug, Eq)]
 pub struct TypedVariableDeclaration {
-    pub(crate) name: Ident,
-    pub(crate) body: TypedExpression,
+    pub name: Ident,
+    pub body: TypedExpression,
     pub(crate) is_mutable: VariableMutability,
-    pub(crate) type_ascription: TypeId,
+    pub type_ascription: TypeId,
     pub(crate) const_decl_origin: bool,
 }
 

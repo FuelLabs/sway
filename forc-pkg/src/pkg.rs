@@ -18,7 +18,7 @@ use std::{
 };
 use sway_core::{
     semantic_analysis::namespace, source_map::SourceMap, BytecodeCompilationResult,
-    CompileAstResult, CompileError, TreeType, TypedParseTree,
+    CompileAstResult, CompileError, TreeType, TypedProgramKind,
 };
 use sway_utils::constants;
 use url::Url;
@@ -1023,25 +1023,24 @@ pub fn compile(
             bail!("Failed to compile {}", pkg.name);
         }
         CompileAstResult::Success {
-            parse_tree,
-            tree_type,
+            typed_program,
             warnings,
         } => {
-            let json_abi = generate_json_abi(&*parse_tree);
+            let json_abi = generate_json_abi(&typed_program.kind);
+            let tree_type = typed_program.kind.tree_type();
             match tree_type {
                 // If we're compiling a library, we don't need to compile any further.
                 // Instead, we update the namespace with the library's top-level module.
                 TreeType::Library { .. } => {
                     print_on_success_library(silent_mode, &pkg.name, warnings);
                     let bytecode = vec![];
-                    let lib_namespace = parse_tree.namespace().clone();
+                    let lib_namespace = typed_program.root.namespace.clone();
                     let compiled = Compiled { json_abi, bytecode };
                     Ok((compiled, Some(lib_namespace.into())))
                 }
 
                 // For all other program types, we'll compile the bytecode.
                 TreeType::Contract | TreeType::Predicate | TreeType::Script => {
-                    let tree_type = tree_type.clone();
                     let asm_res = sway_core::ast_to_asm(ast_res, &sway_build_config);
                     let bc_res = sway_core::asm_to_bytecode(asm_res, source_map);
                     match bc_res {
@@ -1123,9 +1122,9 @@ pub fn find_dir_within(dir: &Path, pkg_name: &str, sway_git_tag: &str) -> Option
 }
 
 // TODO: Update this to match behaviour described in the `compile` doc comment above.
-fn generate_json_abi(ast: &TypedParseTree) -> JsonABI {
-    match ast {
-        TypedParseTree::Contract { abi_entries, .. } => {
+fn generate_json_abi(kind: &TypedProgramKind) -> JsonABI {
+    match kind {
+        TypedProgramKind::Contract { abi_entries, .. } => {
             abi_entries.iter().map(|x| x.generate_json_abi()).collect()
         }
         _ => vec![],

@@ -1,10 +1,19 @@
+#![allow(dead_code)]
+
 use super::token::Token;
 use super::token_type::TokenType;
-use crate::{capabilities, core::token::traverse_node};
+use super::traverse_typed_tree;
+use super::typed_token_type::TokenMap;
+
+use crate::{capabilities, core::token::traverse_node, utils};
 use ropey::Rope;
 use std::collections::HashMap;
 use std::sync::Arc;
-use sway_core::{parse, TreeType};
+use sway_core::{
+    parse,
+    semantic_analysis::{ast_node::TypedAstNode, namespace},
+    BuildConfig, CompileAstResult, TreeType,
+};
 use tower_lsp::lsp_types::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
 
 #[derive(Debug)]
@@ -18,6 +27,7 @@ pub struct TextDocument {
     tokens: Vec<Token>,
     lines: HashMap<u32, Vec<usize>>,
     values: HashMap<String, Vec<usize>>,
+    token_map: TokenMap,
 }
 
 impl TextDocument {
@@ -31,6 +41,7 @@ impl TextDocument {
                 tokens: vec![],
                 lines: HashMap::new(),
                 values: HashMap::new(),
+                token_map: HashMap::new(),
             }),
             Err(_) => Err(DocumentError::DocumentNotFound),
         }
@@ -47,7 +58,6 @@ impl TextDocument {
                 }
             }
         }
-
         None
     }
 
@@ -72,6 +82,10 @@ impl TextDocument {
         None
     }
 
+    pub fn _get_token_map(&self) -> &TokenMap {
+        &self.token_map
+    }
+
     pub fn get_tokens(&self) -> &Vec<Token> {
         &self.tokens
     }
@@ -83,6 +97,8 @@ impl TextDocument {
     pub fn parse(&mut self) -> Result<Vec<Diagnostic>, DocumentError> {
         self.clear_tokens();
         self.clear_hash_maps();
+
+        //self.test_typed_parse();
 
         match self.parse_tokens_from_text() {
             Ok((tokens, diagnostics)) => {
@@ -103,10 +119,59 @@ impl TextDocument {
     pub fn get_text(&self) -> String {
         self.content.to_string()
     }
+
+    pub fn test_typed_parse(&mut self) {
+        if let Some(all_nodes) = self.parse_typed_tokens_from_text() {
+            for node in &all_nodes {
+                traverse_typed_tree::traverse_node(node, &mut self.token_map);
+            }
+        }
+
+        for ((ident, _span), token) in &self.token_map {
+            utils::debug::debug_print_ident_and_token(ident, token);
+        }
+
+        //let cursor_position = Position::new(25, 14); //Cursor's hovered over the position var decl in main()
+        let cursor_position = Position::new(29, 18); //Cursor's hovered over the ~Particle in p = decl in main()
+
+        // Check if the code editor's cursor is currently over an of our collected tokens
+        if let Some((ident, span)) =
+            utils::common::ident_and_span_at_position(cursor_position, &self.token_map)
+        {
+            // Retrieve the typed_ast_node from our BTreeMap
+            if let Some(token) = self.token_map.get(&(ident, span)) {
+                // Look up the tokens TypeId
+                if let Some(type_id) = traverse_typed_tree::get_type_id(token) {
+                    tracing::info!("type_id = {:#?}", type_id);
+
+                    // Use the TypeId to look up the actual type (I think there is a method in the type_engine for this)
+                    let type_info = sway_core::type_engine::look_up_type_id(type_id);
+                    tracing::info!("type_info = {:#?}", type_info);
+                }
+
+                // Find the ident / span on the returned type
+
+                // Contruct a go_to LSP request from the declerations span
+            }
+        }
+    }
 }
 
 // private methods
 impl TextDocument {
+    fn parse_typed_tokens_from_text(&self) -> Option<Vec<TypedAstNode>> {
+        let text = Arc::from(self.get_text());
+        let namespace = namespace::Module::default();
+        let file_name = std::path::PathBuf::from(self.get_uri());
+        let build_config =
+            BuildConfig::root_from_file_name_and_manifest_path(file_name, Default::default());
+        let ast_res = sway_core::compile_to_ast(text, namespace, &build_config);
+        match ast_res {
+            CompileAstResult::Failure { .. } => None,
+            CompileAstResult::Success { typed_program, .. } => Some(typed_program.root.all_nodes),
+        }
+    }
+
     fn parse_tokens_from_text(&self) -> Result<(Vec<Token>, Vec<Diagnostic>), Vec<Diagnostic>> {
         let text = Arc::from(self.get_text());
         let parsed_result = parse(text, None);
@@ -115,16 +180,16 @@ impl TextDocument {
                 parsed_result.warnings,
                 parsed_result.errors,
             )),
-            Some(value) => {
+            Some(parse_program) => {
                 let mut tokens = vec![];
 
-                if let TreeType::Library { name } = value.tree_type {
+                if let TreeType::Library { name } = parse_program.kind {
                     // TODO
                     // Is library name necessary to store for the LSP?
                     let token = Token::from_ident(&name, TokenType::Library);
                     tokens.push(token);
                 };
-                for node in value.tree.root_nodes {
+                for node in parse_program.root.tree.root_nodes {
                     traverse_node(node, &mut tokens);
                 }
 
@@ -174,6 +239,7 @@ impl TextDocument {
     fn clear_hash_maps(&mut self) {
         self.lines = HashMap::new();
         self.values = HashMap::new();
+        self.token_map = HashMap::new();
     }
 
     fn clear_tokens(&mut self) {
