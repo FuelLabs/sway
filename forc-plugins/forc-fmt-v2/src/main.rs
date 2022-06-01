@@ -2,7 +2,6 @@
 
 use anyhow::{bail, Result};
 use clap::Parser;
-use forc_util::{find_manifest_dir, init_tracing_subscriber, println_green, println_red};
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::{
     default::Default,
@@ -10,11 +9,13 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+use taplo::formatter as taplo_fmt;
+use tracing::{error, info};
+
+use forc_util::{find_manifest_dir, init_tracing_subscriber, println_green, println_red};
 use sway_core::BuildConfig;
 use sway_fmt_v2::{config::manifest::Config, Formatter};
 use sway_utils::{constants, get_sway_files};
-use taplo::formatter as taplo_fmt;
-use tracing::{error, info};
 
 #[derive(Debug, Parser)]
 #[clap(
