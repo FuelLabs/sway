@@ -1,6 +1,6 @@
 contract;
 
-use std::{address::Address, context::balance_of, contract_id::ContractId, token::*, identity::Identity};
+use std::{address::Address, context::balance_of, contract_id::ContractId, identity::Identity, token::*};
 
 abi TestFuelCoin {
     fn mint_coins(mint_amount: u64);
@@ -10,7 +10,8 @@ abi TestFuelCoin {
     fn get_balance(target: ContractId, asset_id: ContractId) -> u64;
     fn mint_and_send_to_contract(amount: u64, destination: ContractId);
     fn mint_and_send_to_address(amount: u64, recipient: Address);
-    fn mint_to(amount: u64, recipient: Identity);
+    fn mint_to_address(amount: u64, recipient: Address);
+    fn mint_to_contract(amount: u64, recipient: ContractId);
 }
 
 impl TestFuelCoin for Contract {
@@ -42,7 +43,11 @@ impl TestFuelCoin for Contract {
         mint_to_address(amount, recipient);
     }
 
-    fn mint_to(amount: u64, recipient: Identity) {
-        mint_to(amount, recipient);
+    fn mint_to_address(amount: u64, recipient: Address) {
+        mint_to(amount, Identity::Address(recipient));
+    }
+
+    fn mint_to_contract(amount: u64, recipient: ContractId) {
+        mint_to(amount, Identity::ContractId(recipient));
     }
 }
