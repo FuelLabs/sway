@@ -48,6 +48,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ProgramState::Return(0),
         ),
         (
+            "should_pass/language/tuple_field_reassignment",
+            ProgramState::Return(320),
+        ),
+        (
             "should_pass/language/enum_in_fn_decl",
             ProgramState::Return(255),
         ),
