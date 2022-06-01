@@ -38,8 +38,6 @@ impl TypedCodeBlock {
             return_type_annotation: type_annotation,
             help_text,
             self_type,
-            build_config,
-            dead_code_graph,
             opts,
             ..
         } = arguments;
@@ -56,8 +54,6 @@ impl TypedCodeBlock {
                     return_type_annotation: type_annotation,
                     help_text,
                     self_type,
-                    build_config,
-                    dead_code_graph,
                     mode: Mode::NonAbi,
                     opts,
                 })

@@ -165,7 +165,7 @@ pub enum Expr {
     },
     Reassignment {
         assignable: Assignable,
-        eq_token: EqToken,
+        reassignment_op: ReassignmentOp,
         expr: Box<Expr>,
     },
 }
@@ -235,6 +235,37 @@ impl Spanned for Expr {
             Expr::Reassignment {
                 assignable, expr, ..
             } => Span::join(assignable.span(), expr.span()),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ReassignmentOp {
+    pub variant: ReassignmentOpVariant,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub enum ReassignmentOpVariant {
+    Equals,
+    AddEquals,
+    SubEquals,
+    MulEquals,
+    DivEquals,
+    ShlEquals,
+    ShrEquals,
+}
+
+impl ReassignmentOpVariant {
+    pub fn core_name(&self) -> &'static str {
+        match self {
+            ReassignmentOpVariant::Equals => "eq",
+            ReassignmentOpVariant::AddEquals => "add",
+            ReassignmentOpVariant::SubEquals => "subtract",
+            ReassignmentOpVariant::MulEquals => "multiply",
+            ReassignmentOpVariant::DivEquals => "divide",
+            ReassignmentOpVariant::ShlEquals => "lsh",
+            ReassignmentOpVariant::ShrEquals => "rsh",
         }
     }
 }
@@ -544,7 +575,64 @@ fn parse_statement_expr(parser: &mut Parser) -> ParseResult<Expr> {
 
 fn parse_reassignment(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
     let expr = parse_logical_or(parser, ctx)?;
-    if let Some(eq_token) = parser.take() {
+    let mut reassignment_op = None;
+    if parser.peek::<AddEqToken>().is_some() {
+        if let Some(add_eq_token) = parser.take::<AddEqToken>() {
+            reassignment_op = Some(ReassignmentOp {
+                variant: ReassignmentOpVariant::AddEquals,
+                span: add_eq_token.span(),
+            });
+        }
+    }
+    if parser.peek::<SubEqToken>().is_some() {
+        if let Some(sub_eq_token) = parser.take::<SubEqToken>() {
+            reassignment_op = Some(ReassignmentOp {
+                variant: ReassignmentOpVariant::SubEquals,
+                span: sub_eq_token.span(),
+            });
+        }
+    }
+    if parser.peek::<StarEqToken>().is_some() {
+        if let Some(mul_eq_token) = parser.take::<StarEqToken>() {
+            reassignment_op = Some(ReassignmentOp {
+                variant: ReassignmentOpVariant::MulEquals,
+                span: mul_eq_token.span(),
+            });
+        }
+    }
+    if parser.peek::<DivEqToken>().is_some() {
+        if let Some(div_eq_token) = parser.take::<DivEqToken>() {
+            reassignment_op = Some(ReassignmentOp {
+                variant: ReassignmentOpVariant::DivEquals,
+                span: div_eq_token.span(),
+            });
+        }
+    }
+    if parser.peek::<ShlEqToken>().is_some() {
+        if let Some(shl_eq_token) = parser.take::<ShlEqToken>() {
+            reassignment_op = Some(ReassignmentOp {
+                variant: ReassignmentOpVariant::ShlEquals,
+                span: shl_eq_token.span(),
+            });
+        }
+    }
+    if parser.peek::<ShrEqToken>().is_some() {
+        if let Some(shr_eq_token) = parser.take::<ShrEqToken>() {
+            reassignment_op = Some(ReassignmentOp {
+                variant: ReassignmentOpVariant::ShrEquals,
+                span: shr_eq_token.span(),
+            });
+        }
+    }
+    if parser.peek::<EqToken>().is_some() {
+        if let Some(eq_token) = parser.take::<EqToken>() {
+            reassignment_op = Some(ReassignmentOp {
+                variant: ReassignmentOpVariant::Equals,
+                span: eq_token.span(),
+            });
+        }
+    }
+    if let Some(reassignment_op) = reassignment_op {
         let assignable = match expr.try_into_assignable() {
             Ok(assignable) => assignable,
             Err(expr) => {
@@ -557,7 +645,7 @@ fn parse_reassignment(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Exp
         let expr = Box::new(parse_reassignment(parser, ctx.not_statement())?);
         return Ok(Expr::Reassignment {
             assignable,
-            eq_token,
+            reassignment_op,
             expr,
         });
     }

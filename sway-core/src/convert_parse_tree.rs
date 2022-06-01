@@ -1,3 +1,5 @@
+use sway_parse::expr::{ReassignmentOp, ReassignmentOpVariant};
+
 use {
     crate::{
         constants::{
@@ -12,9 +14,9 @@ use {
         ImplTrait, ImportType, IncludeStatement, LazyOp, Literal, MatchBranch, MethodName,
         ParseTree, Purity, Reassignment, ReassignmentTarget, ReturnStatement, Scrutinee,
         StorageDeclaration, StorageField, StructDeclaration, StructExpressionField, StructField,
-        StructScrutineeField, Supertrait, SwayParseTree, TraitConstraint, TraitDeclaration,
-        TraitFn, TreeType, TypeArgument, TypeInfo, TypeParameter, UseStatement,
-        VariableDeclaration, Visibility, WhileLoop,
+        StructScrutineeField, Supertrait, TraitConstraint, TraitDeclaration, TraitFn, TreeType,
+        TypeArgument, TypeInfo, TypeParameter, UseStatement, VariableDeclaration, Visibility,
+        WhileLoop,
     },
     std::{
         collections::HashMap,
@@ -30,9 +32,9 @@ use {
         ExprTupleDescriptor, FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition,
         IfExpr, Instruction, Intrinsic, Item, ItemAbi, ItemConst, ItemEnum, ItemFn, ItemImpl,
         ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse, LitInt, LitIntType, MatchBranchKind,
-        PathExpr, PathExprSegment, PathType, PathTypeSegment, Pattern, PatternStructField, Program,
-        ProgramKind, PubToken, QualifiedPathRoot, Statement, StatementLet, Traits, Ty, TypeField,
-        UseTree, WhereClause,
+        Module, ModuleKind, PathExpr, PathExprSegment, PathType, PathTypeSegment, Pattern,
+        PatternStructField, PubToken, QualifiedPathRoot, Statement, StatementLet, Traits, Ty,
+        TypeField, UseTree, WhereClause,
     },
     sway_types::{Ident, Span, Spanned},
     thiserror::Error,
@@ -176,8 +178,8 @@ pub enum ConvertParseTreeError {
     InvalidAttributeArgument { attribute: String, span: Span },
     #[error("cannot find type \"{ty_name}\" in this scope")]
     ConstrainedNonExistentType { ty_name: Ident, span: Span },
-    #[error("__generate_uid does not take arguments")]
-    GenerateUidTooManyArgs { span: Span },
+    #[error("__get_storage_key does not take arguments")]
+    GetStorageKeyTooManyArgs { span: Span },
     #[error("recursive types are not supported")]
     RecursiveType { span: Span },
 }
@@ -229,62 +231,56 @@ impl ConvertParseTreeError {
             ConvertParseTreeError::ContractCallerNamedTypeGenericArg { span } => span.clone(),
             ConvertParseTreeError::InvalidAttributeArgument { span, .. } => span.clone(),
             ConvertParseTreeError::ConstrainedNonExistentType { span, .. } => span.clone(),
-            ConvertParseTreeError::GenerateUidTooManyArgs { span, .. } => span.clone(),
+            ConvertParseTreeError::GetStorageKeyTooManyArgs { span, .. } => span.clone(),
             ConvertParseTreeError::RecursiveType { span } => span.clone(),
         }
     }
 }
 
-pub fn convert_parse_tree(program: Program) -> CompileResult<SwayParseTree> {
+pub fn convert_parse_tree(module: Module) -> CompileResult<(TreeType, ParseTree)> {
     let mut ec = ErrorContext {
         warnings: Vec::new(),
         errors: Vec::new(),
     };
-    let res = program_to_sway_parse_tree(&mut ec, program);
+    let tree_type = match module.kind {
+        ModuleKind::Script { .. } => TreeType::Script,
+        ModuleKind::Contract { .. } => TreeType::Contract,
+        ModuleKind::Predicate { .. } => TreeType::Predicate,
+        ModuleKind::Library { ref name, .. } => TreeType::Library { name: name.clone() },
+    };
+    let res = module_to_sway_parse_tree(&mut ec, module);
     let ErrorContext { warnings, errors } = ec;
     match res {
-        Ok(sway_parse_tree) => ok(sway_parse_tree, warnings, errors),
+        Ok(parse_tree) => ok((tree_type, parse_tree), warnings, errors),
         Err(_error_emitted) => err(warnings, errors),
     }
 }
 
-pub fn program_to_sway_parse_tree(
+pub fn module_to_sway_parse_tree(
     ec: &mut ErrorContext,
-    program: Program,
-) -> Result<SwayParseTree, ErrorEmitted> {
-    let span = program.span();
-    let tree_type = match program.kind {
-        ProgramKind::Script { .. } => TreeType::Script,
-        ProgramKind::Contract { .. } => TreeType::Contract,
-        ProgramKind::Predicate { .. } => TreeType::Predicate,
-        ProgramKind::Library { name, .. } => TreeType::Library { name },
-    };
+    module: Module,
+) -> Result<ParseTree, ErrorEmitted> {
+    let span = module.span();
     let root_nodes = {
         let mut root_nodes: Vec<AstNode> = {
-            program
+            module
                 .dependencies
-                .into_iter()
+                .iter()
                 .map(|dependency| {
                     let span = dependency.span();
-                    AstNode {
-                        content: AstNodeContent::IncludeStatement(dependency_to_include_statement(
-                            dependency,
-                        )),
-                        span,
-                    }
+                    let incl_stmt = dependency_to_include_statement(dependency);
+                    let content = AstNodeContent::IncludeStatement(incl_stmt);
+                    AstNode { content, span }
                 })
                 .collect()
         };
-        for item in program.items {
+        for item in module.items {
             let ast_nodes = item_to_ast_nodes(ec, item)?;
             root_nodes.extend(ast_nodes);
         }
         root_nodes
     };
-    Ok(SwayParseTree {
-        tree_type,
-        tree: ParseTree { span, root_nodes },
-    })
+    Ok(ParseTree { span, root_nodes })
 }
 
 fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, ErrorEmitted> {
@@ -1073,14 +1069,39 @@ fn expr_to_ast_node(
             span,
         },
         Expr::Reassignment {
-            assignable, expr, ..
-        } => AstNode {
-            content: AstNodeContent::Declaration(Declaration::Reassignment(Reassignment {
-                lhs: assignable_to_reassignment_target(ec, assignable)?,
-                rhs: expr_to_expression(ec, *expr)?,
-                span: span.clone(),
-            })),
-            span,
+            assignable,
+            expr,
+            reassignment_op:
+                ReassignmentOp {
+                    variant: op_variant,
+                    span: op_span,
+                },
+        } => match op_variant {
+            ReassignmentOpVariant::Equals => AstNode {
+                content: AstNodeContent::Declaration(Declaration::Reassignment(Reassignment {
+                    lhs: assignable_to_reassignment_target(ec, assignable)?,
+                    rhs: expr_to_expression(ec, *expr)?,
+                    span: span.clone(),
+                })),
+                span,
+            },
+            op_variant => {
+                let lhs = assignable_to_reassignment_target(ec, assignable.clone())?;
+                let rhs = binary_op_call(
+                    op_variant.core_name(),
+                    op_span,
+                    span.clone(),
+                    assignable_to_expression(ec, assignable)?,
+                    expr_to_expression(ec, *expr)?,
+                )?;
+                let content =
+                    AstNodeContent::Declaration(Declaration::Reassignment(Reassignment {
+                        lhs,
+                        rhs,
+                        span: span.clone(),
+                    }));
+                AstNode { content, span }
+            }
         },
         expr => {
             let expression = expr_to_expression(ec, expr)?;
@@ -1378,17 +1399,17 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                     } else if call_path.prefixes.is_empty()
                         && !call_path.is_absolute
                         && Intrinsic::try_from_str(call_path.suffix.as_str())
-                            == Some(Intrinsic::GenerateUid)
+                            == Some(Intrinsic::GetStorageKey)
                     {
                         if !arguments.is_empty() {
-                            let error = ConvertParseTreeError::GenerateUidTooManyArgs { span };
+                            let error = ConvertParseTreeError::GetStorageKeyTooManyArgs { span };
                             return Err(ec.error(error));
                         }
                         if generics_opt.is_some() {
                             let error = ConvertParseTreeError::GenericsNotSupportedHere { span };
                             return Err(ec.error(error));
                         }
-                        Expression::BuiltinGenerateUid { span }
+                        Expression::BuiltinGetStorageKey { span }
                     } else if call_path.prefixes.is_empty()
                         && !call_path.is_absolute
                         && Intrinsic::try_from_str(call_path.suffix.as_str())
@@ -1550,82 +1571,146 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             lhs,
             star_token,
             rhs,
-        } => binary_op_call(ec, "multiply", star_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("multiply", star_token.span(), span, lhs, rhs)?
+        }
         Expr::Div {
             lhs,
             forward_slash_token,
             rhs,
-        } => binary_op_call(ec, "divide", forward_slash_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("divide", forward_slash_token.span(), span, lhs, rhs)?
+        }
         Expr::Modulo {
             lhs,
             percent_token,
             rhs,
-        } => binary_op_call(ec, "modulo", percent_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("modulo", percent_token.span(), span, lhs, rhs)?
+        }
         Expr::Add {
             lhs,
             add_token,
             rhs,
-        } => binary_op_call(ec, "add", add_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("add", add_token.span(), span, lhs, rhs)?
+        }
         Expr::Sub {
             lhs,
             sub_token,
             rhs,
-        } => binary_op_call(ec, "subtract", sub_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("subtract", sub_token.span(), span, lhs, rhs)?
+        }
         Expr::Shl {
             lhs,
             shl_token,
             rhs,
-        } => binary_op_call(ec, "lsh", shl_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("lsh", shl_token.span(), span, lhs, rhs)?
+        }
         Expr::Shr {
             lhs,
             shr_token,
             rhs,
-        } => binary_op_call(ec, "rsh", shr_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("rsh", shr_token.span(), span, lhs, rhs)?
+        }
         Expr::BitAnd {
             lhs,
             ampersand_token,
             rhs,
-        } => binary_op_call(ec, "binary_and", ampersand_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("binary_and", ampersand_token.span(), span, lhs, rhs)?
+        }
         Expr::BitXor {
             lhs,
             caret_token,
             rhs,
-        } => binary_op_call(ec, "binary_xor", caret_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("binary_xor", caret_token.span(), span, lhs, rhs)?
+        }
         Expr::BitOr {
             lhs,
             pipe_token,
             rhs,
-        } => binary_op_call(ec, "binary_or", pipe_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("binary_or", pipe_token.span(), span, lhs, rhs)?
+        }
         Expr::Equal {
             lhs,
             double_eq_token,
             rhs,
-        } => binary_op_call(ec, "eq", double_eq_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("eq", double_eq_token.span(), span, lhs, rhs)?
+        }
         Expr::NotEqual {
             lhs,
             bang_eq_token,
             rhs,
-        } => binary_op_call(ec, "neq", bang_eq_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("neq", bang_eq_token.span(), span, lhs, rhs)?
+        }
         Expr::LessThan {
             lhs,
             less_than_token,
             rhs,
-        } => binary_op_call(ec, "lt", less_than_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("lt", less_than_token.span(), span, lhs, rhs)?
+        }
         Expr::GreaterThan {
             lhs,
             greater_than_token,
             rhs,
-        } => binary_op_call(ec, "gt", greater_than_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("gt", greater_than_token.span(), span, lhs, rhs)?
+        }
         Expr::LessThanEq {
             lhs,
             less_than_eq_token,
             rhs,
-        } => binary_op_call(ec, "le", less_than_eq_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("le", less_than_eq_token.span(), span, lhs, rhs)?
+        }
         Expr::GreaterThanEq {
             lhs,
             greater_than_eq_token,
             rhs,
-        } => binary_op_call(ec, "ge", greater_than_eq_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("ge", greater_than_eq_token.span(), span, lhs, rhs)?
+        }
         Expr::LogicalAnd { lhs, rhs, .. } => Expression::LazyOperator {
             op: LazyOp::And,
             lhs: Box::new(expr_to_expression(ec, *lhs)?),
@@ -1669,12 +1754,11 @@ fn unary_op_call(
 }
 
 fn binary_op_call(
-    ec: &mut ErrorContext,
     name: &'static str,
     op_span: Span,
     span: Span,
-    lhs: Expr,
-    rhs: Expr,
+    lhs: Expression,
+    rhs: Expression,
 ) -> Result<Expression, ErrorEmitted> {
     Ok(Expression::MethodApplication {
         method_name: MethodName::FromTrait {
@@ -1688,7 +1772,7 @@ fn binary_op_call(
             },
         },
         contract_call_params: Vec::new(),
-        arguments: vec![expr_to_expression(ec, lhs)?, expr_to_expression(ec, rhs)?],
+        arguments: vec![lhs, rhs],
         type_arguments: Vec::new(),
         span,
     })
@@ -2513,11 +2597,11 @@ fn statement_let_to_ast_nodes(
     )
 }
 
-fn dependency_to_include_statement(dependency: Dependency) -> IncludeStatement {
+fn dependency_to_include_statement(dependency: &Dependency) -> IncludeStatement {
     IncludeStatement {
-        alias: None,
+        _alias: None,
         span: dependency.span(),
-        path_span: dependency.path.span(),
+        _path_span: dependency.path.span(),
     }
 }
 

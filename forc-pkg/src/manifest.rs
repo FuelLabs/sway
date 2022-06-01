@@ -158,10 +158,10 @@ impl ManifestFile {
     /// Parse and return the associated project's program type.
     pub fn program_type(&self) -> Result<TreeType> {
         let entry_string = self.entry_string()?;
-        let program_type = parse(entry_string, None);
-        match program_type.value {
-            Some(parse_tree) => Ok(parse_tree.tree_type),
-            None => bail!(parsing_failed(&self.project.name, program_type.errors)),
+        let parse_res = parse(entry_string, None);
+        match parse_res.value {
+            Some(parse_program) => Ok(parse_program.kind),
+            None => bail!(parsing_failed(&self.project.name, parse_res.errors)),
         }
     }
 

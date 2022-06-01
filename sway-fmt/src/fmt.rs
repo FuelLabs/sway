@@ -18,9 +18,9 @@ pub fn get_formatted_data(
     let parsed_res = sway_core::parse(file.clone(), build_config);
 
     match parsed_res.value {
-        Some(parse_tree) => {
+        Some(parse_program) => {
             // 1 Step: get all individual changes/updates of a Sway file
-            let changes = traverse_for_changes(&parse_tree);
+            let changes = traverse_for_changes(&parse_program.root.tree);
             let mut rope_file = Rope::from_str(&file);
 
             let mut offset: i32 = 0;

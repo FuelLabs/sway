@@ -11,6 +11,7 @@ use crate::{
     error::IrError,
     function::Function,
     instruction::Instruction,
+    metadata::MetadataIndex,
     pointer::Pointer,
     value::{Value, ValueContent, ValueDatum},
 };
@@ -94,6 +95,10 @@ pub fn inline_function_call(
         }
     }
 
+    // Get the state index metadata attached to the function call. This needs to be propagated to
+    // the __get_storage_key intrinsic
+    let state_idx_md_idx = context.values[call_site.0].state_idx_md_idx;
+
     // Now remove the call altogether.
     context.values.remove(call_site.0);
 
@@ -141,6 +146,7 @@ pub fn inline_function_call(
                 &block_map,
                 &mut value_map,
                 &ptr_map,
+                state_idx_md_idx,
             );
         }
     }
@@ -167,6 +173,7 @@ pub fn inline_function_call(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn inline_instruction(
     context: &mut Context,
     new_block: &Block,
@@ -175,6 +182,7 @@ fn inline_instruction(
     block_map: &HashMap<Block, Block>,
     value_map: &mut HashMap<Value, Value>,
     ptr_map: &HashMap<Pointer, Pointer>,
+    state_idx_md_idx: Option<MetadataIndex>,
 ) {
     // Util to translate old blocks to new.  If an old block isn't in the map then we panic, since
     // it should be guaranteed to be there...that's a bug otherwise.
@@ -195,6 +203,7 @@ fn inline_instruction(
     if let ValueContent {
         value: ValueDatum::Instruction(old_ins),
         span_md_idx,
+        ..
     } = context.values[instruction.0].clone()
     {
         let new_ins = match old_ins {
@@ -231,6 +240,7 @@ fn inline_instruction(
                     .collect::<Vec<Value>>()
                     .as_slice(),
                 span_md_idx,
+                state_idx_md_idx,
             ),
             Instruction::Cmp(pred, lhs_value, rhs_value) => new_block.ins(context).cmp(
                 pred,
@@ -284,7 +294,9 @@ fn inline_instruction(
                     .ins(context)
                     .extract_value(map_value(aggregate), ty, indices, span_md_idx)
             }
-            Instruction::GenerateUid => new_block.ins(context).generate_uid(span_md_idx),
+            Instruction::GetStorageKey => new_block
+                .ins(context)
+                .get_storage_key(span_md_idx, state_idx_md_idx),
             Instruction::GetPointer {
                 base_ptr,
                 ptr_ty,

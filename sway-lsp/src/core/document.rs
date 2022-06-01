@@ -12,7 +12,7 @@ use std::sync::Arc;
 use sway_core::{
     parse,
     semantic_analysis::{ast_node::TypedAstNode, namespace},
-    BuildConfig, CompileAstResult, TreeType, TypedParseTree,
+    BuildConfig, CompileAstResult, TreeType,
 };
 use tower_lsp::lsp_types::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
 
@@ -168,10 +168,7 @@ impl TextDocument {
         let ast_res = sway_core::compile_to_ast(text, namespace, &build_config);
         match ast_res {
             CompileAstResult::Failure { .. } => None,
-            CompileAstResult::Success { parse_tree, .. } => match *parse_tree {
-                TypedParseTree::Script { all_nodes, .. } => Some(all_nodes),
-                _ => None,
-            },
+            CompileAstResult::Success { typed_program, .. } => Some(typed_program.root.all_nodes),
         }
     }
 
@@ -183,16 +180,16 @@ impl TextDocument {
                 parsed_result.warnings,
                 parsed_result.errors,
             )),
-            Some(value) => {
+            Some(parse_program) => {
                 let mut tokens = vec![];
 
-                if let TreeType::Library { name } = value.tree_type {
+                if let TreeType::Library { name } = parse_program.kind {
                     // TODO
                     // Is library name necessary to store for the LSP?
                     let token = Token::from_ident(&name, TokenType::Library);
                     tokens.push(token);
                 };
-                for node in value.tree.root_nodes {
+                for node in parse_program.root.tree.root_nodes {
                     traverse_node(node, &mut tokens);
                 }
 
