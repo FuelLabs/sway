@@ -10,3 +10,8 @@ pub fn is_reference_type<T>() -> bool {
 pub fn size_of<T>() -> u64 {
     __size_of::<T>()
 }
+
+///
+pub fn get_storage_key() -> b256 {
+    __get_storage_key()
+}

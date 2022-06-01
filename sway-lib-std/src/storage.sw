@@ -2,10 +2,11 @@ library storage;
 
 use ::hash::sha256;
 use ::context::registers::stack_ptr;
+use ::intrinsics::*;
 
 /// Store a stack variable in storage.
 pub fn store<T>(key: b256, value: T) {
-    if !__is_reference_type::<T>() {
+    if !is_reference_type::<T>() {
         // If copy type, then it's a single word and can be stored with a single SWW.
         asm(k: key, v: value) {
             sww k v;
@@ -13,7 +14,7 @@ pub fn store<T>(key: b256, value: T) {
     } else {
         // If reference type, then it's more than a word. Loop over every 32
         // bytes and store sequentially.
-        let mut size_left = __size_of::<T>();
+        let mut size_left = size_of::<T>();
         let mut local_key = key;
 
         // Cast the the pointer to `value` to a u64. This lets us increment
@@ -46,7 +47,7 @@ pub fn store<T>(key: b256, value: T) {
 
 /// Load a stack variable from storage.
 pub fn get<T>(key: b256) -> T {
-    if !__is_reference_type::<T>() {
+    if !is_reference_type::<T>() {
         // If copy type, then it's a single word and can be read with a single
         // SRW.
         asm(k: key, v) {
@@ -56,7 +57,7 @@ pub fn get<T>(key: b256) -> T {
     } else {
         // If reference type, then it's more than a word. Loop over every 32
         // bytes and read sequentially.
-        let mut size_left = __size_of::<T>();
+        let mut size_left = size_of::<T>();
         let mut local_key = key;
 
         // Keep track of the base pointer for the final result
@@ -96,12 +97,12 @@ pub struct StorageMap<K, V> { }
 
 impl<K, V> StorageMap<K, V> {
     fn insert(self, key: K, value: V) {
-        let key = sha256((key, __get_storage_key()));
+        let key = sha256((key, get_storage_key()));
         store::<V>(key, value);
     }
 
     fn get(self, key: K) -> V {
-        let key = sha256((key, __get_storage_key()));
+        let key = sha256((key, get_storage_key()));
         get::<V>(key)
     }
 }
