@@ -99,13 +99,11 @@ impl Token for Contract {
         };
 
         // Reduce the balance of sender
-        let sender_storage_slot = sha256((STORAGE_BALANCES, sender));
         let sender_amount = storage.balances.get(sender);
         assert(sender_amount > amount);
         storage.balances.insert(sender, sender_amount - amount);
 
         // Increase the balance of receiver
-        let receiver_storage_slot = sha256((STORAGE_BALANCES, receiver));
         storage.balances.insert(receiver, storage.balances.get(receiver) + amount);
 
         log(Sent {
