@@ -9,7 +9,7 @@ use std::{
     logging::log,
     result::*,
     revert::revert,
-    storage::{get, store}
+    storage::StorageMap,
 };
 
 ////////////////////////////////////////
@@ -55,9 +55,10 @@ const MINTER: b256 = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7e
 ////////////////////////////////////////
 
 // Contract storage persists across transactions.
-// Note: Contract storage mappings are not implemented yet, so the domain
-//  separator needs to be provided manually.
-const STORAGE_BALANCES: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+storage {
+    balances: StorageMap<Address,
+    u64>, 
+}
 
 ////////////////////////////////////////
 // ABI definitions
@@ -80,9 +81,7 @@ impl Token for Contract {
         };
 
         // Increase the balance of receiver
-        let storage_slot = sha256((STORAGE_BALANCES, receiver));
-        let receiver_amount = get::<u64>(storage_slot);
-        store(storage_slot, receiver_amount + amount);
+        storage.balances.insert(receiver, storage.balances.get(receiver) + amount)
     }
 
     fn send(receiver: Address, amount: u64) {
@@ -101,14 +100,13 @@ impl Token for Contract {
 
         // Reduce the balance of sender
         let sender_storage_slot = sha256((STORAGE_BALANCES, sender));
-        let sender_amount = get::<u64>(sender_storage_slot);
+        let sender_amount = storage.balances.get(sender);
         assert(sender_amount > amount);
-        store(sender_storage_slot, sender_amount - amount);
+        storage.balances.insert(sender, sender_amount - amount);
 
         // Increase the balance of receiver
         let receiver_storage_slot = sha256((STORAGE_BALANCES, receiver));
-        let receiver_amount = get::<u64>(receiver_storage_slot);
-        store(receiver_storage_slot, receiver_amount + amount);
+        storage.balances.insert(receiver, storage.balances.get(receiver) + amount);
 
         log(Sent {
             from: sender, to: receiver, amount: amount

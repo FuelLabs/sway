@@ -49,14 +49,10 @@ Because storage maps have to be defined inside a `storage` block, the `storage` 
 
 ## Manual Storage Management
 
-Outside of the newer experimental `storage` syntax which is being stabalized, you can leverage FuelVM storage operations using the `store` and `get` methods provided in the standard library (`std`). Which currently works with primitive types.
-
-With this approach you will have to manually assign the internal key used for storage.
-
-An example is as follows:
+It is possible to leverage FuelVM storage operations using the `std::storage::store` and `std::storage::get` functions provided in the standard library. With this approach you will have to manually assign the internal key used for storage. An example is as follows:
 
 ```sway
 {{#include ../../../examples/storage_example/src/main.sw}}
 ```
 
-> **Note**: if you are looking to store non-primitive types (e.g. b256), please refer to [this issue](https://github.com/FuelLabs/sway/issues/1229).
+This is currently useful for variables of type `str[]`, `enum`, and arrays because those cannot be used in a `storage` block yet. They can, however, be used as types for keys and values in `StorageMap<K, V>`.
