@@ -123,7 +123,7 @@ impl<'a> InstructionVerifier<'a> {
                         ty,
                         indices,
                     } => self.verify_extract_value(aggregate, ty, indices)?,
-                    Instruction::GenerateUid => (),
+                    Instruction::GetStorageKey => (),
                     Instruction::GetPointer {
                         base_ptr,
                         ptr_ty,

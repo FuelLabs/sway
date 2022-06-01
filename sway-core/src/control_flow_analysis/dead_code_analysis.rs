@@ -1008,7 +1008,7 @@ fn connect_expression(
             )?;
             Ok(expr)
         }
-        GenerateUid { .. } => {
+        GetStorageKey { .. } => {
             let node = graph.add_node("Generate B256 Seed".into());
             for leaf in leaves {
                 graph.add_edge(*leaf, node, "".into());

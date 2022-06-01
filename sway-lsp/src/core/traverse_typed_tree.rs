@@ -309,7 +309,7 @@ fn handle_expression(expression: &TypedExpression, tokens: &mut TokenMap) {
             }
         }
         TypedExpressionVariant::TypeProperty { .. } => {}
-        TypedExpressionVariant::GenerateUid { .. } => {}
+        TypedExpressionVariant::GetStorageKey { .. } => {}
         TypedExpressionVariant::SizeOfValue { expr } => {
             handle_expression(expr, tokens);
         }

@@ -3,6 +3,7 @@ use crate::constants;
 use crate::parse_tree::{MethodName, StructExpressionField};
 use crate::semantic_analysis::namespace::Namespace;
 use crate::semantic_analysis::TCOpts;
+use crate::Expression::StorageAccess;
 use std::collections::{HashMap, VecDeque};
 
 #[allow(clippy::too_many_arguments)]
@@ -20,10 +21,10 @@ pub(crate) fn type_check_method_application(
     let mut errors = vec![];
     let mut args_buf = VecDeque::new();
     let mut contract_call_params_map = HashMap::new();
-    for arg in arguments {
+    for arg in &arguments {
         args_buf.push_back(check!(
             TypedExpression::type_check(TypeCheckArguments {
-                checkee: arg,
+                checkee: arg.clone(),
                 namespace,
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: Default::default(),
@@ -131,6 +132,39 @@ pub(crate) fn type_check_method_application(
         }
     }
 
+    // If this method was called with self being a `StorageAccess` (e.g. storage.map.insert(..)),
+    // then record the index of that storage variable and pass it on.
+    let mut self_state_idx = None;
+    if namespace.has_storage_declared() {
+        let storage_fields = check!(
+            namespace.get_storage_field_descriptors(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        self_state_idx = match arguments.first() {
+            Some(StorageAccess { field_names, .. }) => {
+                let first_field = field_names[0].clone();
+                let self_state_idx = match storage_fields
+                    .iter()
+                    .enumerate()
+                    .find(|(_, TypedStorageField { name, .. })| name == &first_field)
+                {
+                    Some((ix, _)) => StateIndex::new(ix),
+                    None => {
+                        errors.push(CompileError::StorageFieldDoesNotExist {
+                            name: first_field.clone(),
+                        });
+                        return err(warnings, errors);
+                    }
+                };
+                Some(self_state_idx)
+            }
+            _ => None,
+        }
+    };
+
     // type check all of the arguments against the parameters in the method declaration
     for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
         // if the return type cannot be cast into the annotation type then it is a type error
@@ -196,6 +230,7 @@ pub(crate) fn type_check_method_application(
                     method,
                     selector,
                     IsConstant::No,
+                    self_state_idx,
                     span,
                 ),
                 return err(warnings, errors),
@@ -245,6 +280,7 @@ pub(crate) fn type_check_method_application(
                     method,
                     selector,
                     IsConstant::No,
+                    self_state_idx,
                     span,
                 ),
                 return err(warnings, errors),

@@ -27,8 +27,6 @@ mod u64_to {
     async fn bool_map() {
         let instance = test_storage_map_instance().await;
 
-        instance.init().call().await.unwrap();
-
         let (key1, key2, key3) = (1, 2, 3);
         let (val1, val2, val3) = (true, false, true);
 
@@ -83,8 +81,6 @@ mod u64_to {
     async fn u8_map() {
         let instance = test_storage_map_instance().await;
 
-        instance.init().call().await.unwrap();
-
         let (key1, key2, key3) = (1, 2, 3);
         let (val1, val2, val3) = (8, 66, 99);
 
@@ -136,8 +132,6 @@ mod u64_to {
     #[tokio::test]
     async fn u16_map() {
         let instance = test_storage_map_instance().await;
-
-        instance.init().call().await.unwrap();
 
         let (key1, key2, key3) = (6, 9, 1);
         let (val1, val2, val3) = (9, 42, 100);
@@ -191,8 +185,6 @@ mod u64_to {
     async fn u32_map() {
         let instance = test_storage_map_instance().await;
 
-        instance.init().call().await.unwrap();
-
         let (key1, key2, key3) = (5, 99, 10);
         let (val1, val2, val3) = (90, 2, 100);
 
@@ -245,8 +237,6 @@ mod u64_to {
     async fn u64_map() {
         let instance = test_storage_map_instance().await;
 
-        instance.init().call().await.unwrap();
-
         let (key1, key2, key3) = (50, 99, 1);
         let (val1, val2, val3) = (90, 20, 10);
 
@@ -298,8 +288,6 @@ mod u64_to {
     #[tokio::test]
     async fn tuple_map() {
         let instance = test_storage_map_instance().await;
-
-        instance.init().call().await.unwrap();
 
         let (key1, key2, key3) = (50, 99, 10);
         let (val1, val2, val3) = (
@@ -356,8 +344,6 @@ mod u64_to {
     #[tokio::test]
     async fn struct_map() {
         let instance = test_storage_map_instance().await;
-
-        instance.init().call().await.unwrap();
 
         let (key1, key2, key3) = (5, 9, 1);
         let (val1, val2, val3) = (
@@ -427,8 +413,6 @@ mod u64_to {
     async fn enum_map() {
         let instance = test_storage_map_instance().await;
 
-        instance.init().call().await.unwrap();
-
         let (key1, key2, key3) = (44, 17, 1000);
         let (val1, val2, val3) = (Enum::V1([66; 32]), Enum::V2(42), Enum::V3([42; 32]));
 
@@ -480,8 +464,6 @@ mod u64_to {
     #[tokio::test]
     async fn string_map() {
         let instance = test_storage_map_instance().await;
-
-        instance.init().call().await.unwrap();
 
         let (key1, key2, key3) = (9001, 1980, 1000);
         let (val1, val2, val3) = (
@@ -544,8 +526,6 @@ mod to_u64_map {
     async fn from_bool() {
         let instance = test_storage_map_instance().await;
 
-        instance.init().call().await.unwrap();
-
         let (key1, key2) = (true, false);
         let (val1, val2) = (1, 2);
 
@@ -583,8 +563,6 @@ mod to_u64_map {
     #[tokio::test]
     async fn from_u8() {
         let instance = test_storage_map_instance().await;
-
-        instance.init().call().await.unwrap();
 
         let (key1, key2, key3) = (8, 66, 99);
         let (val1, val2, val3) = (1, 2, 3);
@@ -638,8 +616,6 @@ mod to_u64_map {
     async fn from_u16() {
         let instance = test_storage_map_instance().await;
 
-        instance.init().call().await.unwrap();
-
         let (key1, key2, key3) = (9, 42, 100);
         let (val1, val2, val3) = (6, 9, 1);
 
@@ -692,8 +668,6 @@ mod to_u64_map {
     async fn from_u32() {
         let instance = test_storage_map_instance().await;
 
-        instance.init().call().await.unwrap();
-
         let (key1, key2, key3) = (90, 2, 100);
         let (val1, val2, val3) = (5, 99, 10);
 
@@ -745,8 +719,6 @@ mod to_u64_map {
     #[tokio::test]
     async fn from_tuple() {
         let instance = test_storage_map_instance().await;
-
-        instance.init().call().await.unwrap();
 
         let (key1, key2, key3) = (
             ([1; 32], 42, true),
@@ -803,8 +775,6 @@ mod to_u64_map {
     #[tokio::test]
     async fn from_struct() {
         let instance = test_storage_map_instance().await;
-
-        instance.init().call().await.unwrap();
 
         let (key1, key2, key3) = (
             Struct {
@@ -875,8 +845,6 @@ mod to_u64_map {
     async fn from_enum() {
         let instance = test_storage_map_instance().await;
 
-        instance.init().call().await.unwrap();
-
         let (key1, key2, key3) = (Enum::V1([66; 32]), Enum::V2(42), Enum::V3([42; 32]));
         let (val1, val2, val3) = (44, 17, 1000);
 
@@ -924,8 +892,6 @@ mod to_u64_map {
     #[tokio::test]
     async fn from_string() {
         let instance = test_storage_map_instance().await;
-
-        instance.init().call().await.unwrap();
 
         let (key1, key2, key3) = (
             "fastest_modular_execution_layer_A",
@@ -983,8 +949,6 @@ mod to_u64_map {
 #[tokio::test]
 async fn test_multiple_maps() {
     let instance = test_storage_map_instance().await;
-
-    instance.init().call().await.unwrap();
 
     let (key1, key2, key3) = (1, 2, 3);
     let (val1_1, val2_1, val3_1) = (8, 66, 99);

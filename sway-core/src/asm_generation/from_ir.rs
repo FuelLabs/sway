@@ -8,7 +8,6 @@
 // - AsmNamespace is tied to data structures from other stages like Ident and Literal.
 
 use fuel_crypto::Hasher;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{collections::HashMap, sync::Arc};
 
 use crate::{
@@ -501,7 +500,14 @@ impl<'ir> AsmBuilder<'ir> {
                 Instruction::ExtractValue {
                     aggregate, indices, ..
                 } => self.compile_extract_value(instr_val, aggregate, indices),
-                Instruction::GenerateUid => self.compile_generate_uid(instr_val),
+                Instruction::GetStorageKey => {
+                    check!(
+                        self.compile_get_storage_key(instr_val),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    )
+                }
                 Instruction::GetPointer {
                     base_ptr,
                     ptr_ty,
@@ -1035,15 +1041,41 @@ impl<'ir> AsmBuilder<'ir> {
         self.reg_map.insert(*instr_val, instr_reg);
     }
 
-    fn compile_generate_uid(&mut self, instr_val: &Value) {
-        // Replace each call to __generate_uid with a new value
-        static COUNTER: AtomicUsize = AtomicUsize::new(0);
-        let storage_slot_to_hash = format!(
-            "{}{}",
-            crate::constants::GENERATE_UID_STORAGE_SEPARATOR,
-            COUNTER.load(Ordering::SeqCst)
-        );
-        COUNTER.fetch_add(1, Ordering::SeqCst);
+    fn compile_get_storage_key(&mut self, instr_val: &Value) -> CompileResult<()> {
+        let warnings: Vec<CompileWarning> = Vec::new();
+        let mut errors: Vec<CompileError> = Vec::new();
+
+        let state_idx = instr_val.get_storage_key(self.context);
+
+        // Instead of calling `instr_span.get_span()` directly, do error checking first. This is a
+        // temporary workaround so that the IR test for `get_storage_key` pass because that test
+        // has invalid filepath. This can be changed when we refactor Span to not need a valid
+        // source string
+        let instr_span = match self.context.values[instr_val.0]
+            .span_md_idx
+            .map(|idx| idx.to_span(self.context))
+            .transpose()
+        {
+            Ok(span) => span,
+            Err(_) => None,
+        };
+
+        let storage_slot_to_hash = match state_idx {
+            Some(state_idx) => {
+                format!(
+                    "{}{}",
+                    sway_utils::constants::STORAGE_DOMAIN_SEPARATOR,
+                    state_idx
+                )
+            }
+            None => {
+                errors.push(CompileError::Internal(
+                    "State index for __get_storage_key is not available as a metadata",
+                    instr_span.unwrap_or_else(Self::empty_span),
+                ));
+                return err(warnings, errors);
+            }
+        };
 
         let hashed_storage_slot = Hasher::hash(storage_slot_to_hash);
 
@@ -1053,12 +1085,14 @@ impl<'ir> AsmBuilder<'ir> {
 
         // Allocate a register for it, and a load instruction.
         let reg = self.reg_seqr.next();
+
         self.bytecode.push(Op {
             opcode: either::Either::Left(VirtualOp::LWDataId(reg.clone(), data_id)),
             comment: "literal instantiation".into(),
-            owning_span: instr_val.get_span(self.context),
+            owning_span: instr_span,
         });
         self.reg_map.insert(*instr_val, reg);
+        ok((), warnings, errors)
     }
 
     fn compile_get_pointer(
