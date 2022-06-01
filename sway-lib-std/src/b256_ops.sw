@@ -1,7 +1,8 @@
 library b256_ops;
 
-use ::u128::{disable_overflow, enable_overflow};
-use ::core::ops::{compose, decompose, Add};
+use ::flags::{disable_panic_on_overflow, enable_panic_on_overflow};
+use ::core::ops::Add;
+use utils::composition::*;
 use ::logging::log;
 
 impl Add for b256 {
@@ -28,7 +29,7 @@ impl Add for b256 {
 /// This is used to get both the sum and the overflow value from an addition.
 /// With normal addition, any overflow will cause a vm panic.
 fn overflowing_add(a: u64, b: u64) -> (u64, u64) {
-    disable_overflow();
+    disable_panic_on_overflow ();
     let mut result = (0u64, 0u64);
     asm(sum, overflow, a: a, b: b, result_ptr: result) {
         // Add left and right.
@@ -41,6 +42,6 @@ fn overflowing_add(a: u64, b: u64) -> (u64, u64) {
         // Store the overflow into the second word of result.
         sw result_ptr overflow i1;
     };
-    enable_overflow();
+    enable_panic_on_overflow();
     result
 }
