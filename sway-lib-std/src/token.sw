@@ -16,7 +16,7 @@ pub fn mint_to(amount: u64, recipient: Identity) {
             transfer_to_output(amount, contract_id(), addr);
         },
         Identity::ContractId(id) => {
-            force_transfer(amount, contract_id(), id);
+            force_transfer_to_contract(amount, contract_id(), id);
         },
     }
 }
@@ -27,7 +27,7 @@ pub fn mint_to(amount: u64, recipient: Identity) {
 /// Use of this function can lead to irretrievable loss of coins if not used with caution.
 pub fn mint_to_contract(amount: u64, destination: ContractId) {
     mint(amount);
-    force_transfer(amount, contract_id(), destination);
+    force_transfer_to_contract(amount, contract_id(), destination);
 }
 
 /// Mint `amount` coins of the current contract's `asset_id` and send them to the Address `recipient`.
@@ -53,7 +53,7 @@ pub fn burn(amount: u64) {
 /// !!! UNCONDITIONAL transfer of `amount` coins of type `asset_id` to contract at `destination`.
 /// This will allow the transfer of coins even if there is no way to retrieve them !!!
 /// Use of this function can lead to irretrievable loss of coins if not used with caution.
-pub fn force_transfer(amount: u64, asset_id: ContractId, destination: ContractId) {
+pub fn force_transfer_to_contract(amount: u64, asset_id: ContractId, destination: ContractId) {
     asm(r1: amount, r2: asset_id.value, r3: destination.value) {
         tr r3 r1 r2;
     }
