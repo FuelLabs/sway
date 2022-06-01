@@ -38,6 +38,8 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         output_directory: command.output_directory,
         minify_json_abi: command.minify_json_abi,
         locked: command.locked,
+        build_profile: None,
+        release: false,
     };
 
     let compiled = forc_build::build(build_command)?;

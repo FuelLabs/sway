@@ -51,6 +51,15 @@ pub struct Command {
     /// If url is specified overrides network url in manifest file (if there is one).
     #[clap(long, short)]
     pub url: Option<String>,
+    // Name of the build profile to use
+    ///
+    /// If it is not specified we are going to be using debug
+    #[clap(long)]
+    pub build_profile: Option<String>,
+    /// Use release build plan, it is implicitly added to the manifest file
+    /// If another build plan is specified produce a warning and use that one.
+    #[clap(long)]
+    pub release: bool,
 }
 
 pub(crate) async fn exec(command: Command) -> Result<()> {

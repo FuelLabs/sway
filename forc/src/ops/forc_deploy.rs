@@ -36,6 +36,8 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         minify_json_abi,
         locked,
         url,
+        build_profile,
+        release,
     } = command;
 
     let build_command = BuildCommand {
@@ -51,6 +53,8 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         output_directory,
         minify_json_abi,
         locked,
+        build_profile,
+        release,
     };
 
     let compiled = forc_build::build(build_command)?;

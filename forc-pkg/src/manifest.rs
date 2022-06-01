@@ -1,4 +1,7 @@
-use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
+use crate::{
+    pkg::{manifest_file_missing, parsing_failed, wrong_program_type},
+    BuildConfig,
+};
 use anyhow::{anyhow, bail, Result};
 use forc_util::{find_manifest_dir, println_yellow_err, validate_name};
 use serde::{Deserialize, Serialize};
@@ -27,6 +30,7 @@ pub struct Manifest {
     pub project: Project,
     pub network: Option<Network>,
     pub dependencies: Option<BTreeMap<String, Dependency>>,
+    pub build_profiles: Option<BTreeMap<String, BuildConfig>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -201,6 +205,7 @@ impl Manifest {
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
         manifest.implicitly_include_std_if_missing(sway_git_tag);
+        manifest.implicitly_include_default_build_profiles_if_missing();
         manifest.validate()?;
         Ok(manifest)
     }
@@ -230,6 +235,13 @@ impl Manifest {
     /// Produce an iterator yielding all listed dependencies.
     pub fn deps(&self) -> impl Iterator<Item = (&String, &Dependency)> {
         self.dependencies
+            .as_ref()
+            .into_iter()
+            .flat_map(|deps| deps.iter())
+    }
+
+    pub fn build_profiles(&self) -> impl Iterator<Item = (&String, &BuildConfig)> {
+        self.build_profiles
             .as_ref()
             .into_iter()
             .flat_map(|deps| deps.iter())
@@ -272,6 +284,38 @@ impl Manifest {
         // Add the missing dependency.
         let std_dep = implicit_std_dep(sway_git_tag.to_string());
         deps.insert(STD.to_string(), std_dep);
+    }
+
+    fn implicitly_include_default_build_profiles_if_missing(&mut self) {
+        const DEBUG: &str = "debug";
+        const RELEASE: &str = "release";
+
+        let build_profiles = self.build_profiles.get_or_insert_with(Default::default);
+
+        if build_profiles.get(DEBUG).is_none() {
+            build_profiles.insert(
+                DEBUG.to_string(),
+                BuildConfig {
+                    use_orig_asm: false,
+                    print_ir: false,
+                    print_finalized_asm: false,
+                    print_intermediate_asm: false,
+                    silent: false,
+                },
+            );
+        }
+        if build_profiles.get(RELEASE).is_none() {
+            build_profiles.insert(
+                RELEASE.to_string(),
+                BuildConfig {
+                    use_orig_asm: true,
+                    print_ir: true,
+                    print_finalized_asm: true,
+                    print_intermediate_asm: true,
+                    silent: true,
+                },
+            );
+        }
     }
 
     /// Retrieve a reference to the dependency with the given name.

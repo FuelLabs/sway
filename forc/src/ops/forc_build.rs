@@ -6,7 +6,7 @@ use std::{
     fs::{self, File},
     path::PathBuf,
 };
-use tracing::info;
+use tracing::{info, warn};
 
 pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     let BuildCommand {
@@ -22,7 +22,39 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         output_directory,
         minify_json_abi,
         locked,
+        build_profile,
+        release,
     } = command;
+
+    let key_debug: String = "debug".to_string();
+    let key_release: String = "release".to_string();
+
+    let mut selected_build_profile = key_debug;
+    if build_profile.is_none() && release {
+        selected_build_profile = key_release;
+    } else if build_profile.is_some() && release {
+        // Here build_profile is guaranteed to be a value.
+        warn!(
+            "Both {} and release provided as build profile. Using release!",
+            build_profile.unwrap()
+        );
+        selected_build_profile = key_release;
+    } else if let Some(build_profile) = build_profile {
+        // Here build_profile is guaranteed to be a value.
+        selected_build_profile = build_profile;
+    }
+
+    let this_dir = if let Some(ref path) = path {
+        PathBuf::from(path)
+    } else {
+        std::env::current_dir()?
+    };
+
+    let manifest = ManifestFile::from_dir(&this_dir, SWAY_GIT_TAG)?;
+
+    manifest.build_profiles().for_each(|a| {
+        println!("{:?}", a);
+    });
 
     let config = pkg::BuildConfig {
         use_orig_asm,
@@ -32,13 +64,13 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         silent: silent_mode,
     };
 
-    let this_dir = if let Some(ref path) = path {
-        PathBuf::from(path)
-    } else {
-        std::env::current_dir()?
-    };
+    let build_config = manifest.build_profiles.as_ref()
+                       .and_then(|profiles| profiles.get(&selected_build_profile))
+                       .unwrap_or_else(||{
+                           warn!("provided profile option {} is not present in the manifest file. Using default config.", selected_build_profile);
+                           &config
+                       });
 
-    let manifest = ManifestFile::from_dir(&this_dir, SWAY_GIT_TAG)?;
     let lock_path = lock_path(manifest.dir());
 
     // Load the build plan from the lock file.
@@ -82,7 +114,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     })?;
 
     // Build it!
-    let (compiled, source_map) = pkg::build(&plan, &config, SWAY_GIT_TAG)?;
+    let (compiled, source_map) = pkg::build(&plan, build_config, SWAY_GIT_TAG)?;
 
     if let Some(outfile) = binary_outfile {
         fs::write(&outfile, &compiled.bytecode)?;
