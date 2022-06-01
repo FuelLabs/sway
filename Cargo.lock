@@ -1153,6 +1153,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "forc-fmt-v2"
+version = "0.14.4"
+dependencies = [
+ "anyhow",
+ "clap 3.1.8",
+ "forc-util",
+ "prettydiff",
+ "sway-core",
+ "sway-fmt-v2",
+ "sway-utils",
+ "taplo",
+ "tracing",
+]
+
+[[package]]
 name = "forc-gm"
 version = "0.14.4"
 dependencies = [
@@ -3633,7 +3648,7 @@ dependencies = [
 
 [[package]]
 name = "sway-fmt-v2"
-version = "0.0.0"
+version = "0.14.4"
 dependencies = [
  "anyhow",
  "forc-util",

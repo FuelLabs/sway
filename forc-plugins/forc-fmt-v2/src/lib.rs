@@ -1,14 +1,15 @@
 use anyhow::{bail, Result};
 use clap::Parser;
-use forc_util::{find_manifest_dir, init_tracing_subscriber, println_green, println_red};
+use forc_util::{find_manifest_dir, println_green, println_red};
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::default::Default;
 use std::path::PathBuf;
 use std::{fs, path::Path, sync::Arc};
 use sway_core::BuildConfig;
-use sway_fmt_v2::Formatter;
+use sway_fmt_v2::{config::manifest::Config, Formatter};
 use sway_utils::{constants, get_sway_files};
 use taplo::formatter as taplo_fmt;
+use tracing::{error, info};
 
 #[derive(Debug, Parser)]
 #[clap(
@@ -34,12 +35,16 @@ impl App {
             Some(path) => PathBuf::from(path),
             None => std::env::current_dir()?,
         };
-        format_pkg_at_dir(app, &dir)
+        let config = match Config::from_dir(&dir) {
+            Ok(Config) => Config,
+            Err(ConfigError) => Config::default(),
+        };
+        format_pkg_at_dir(app, &dir, config)
     }
 }
 
 /// Format the package at the given directory.
-fn format_pkg_at_dir(app: App, dir: &Path) -> Result<()> {
+fn format_pkg_at_dir(app: App, dir: &Path, config: Config) -> Result<()> {
     match find_manifest_dir(dir) {
         Some(path) => {
             let manifest_path = path.clone();
@@ -49,19 +54,18 @@ fn format_pkg_at_dir(app: App, dir: &Path) -> Result<()> {
 
             for file in files {
                 if let Ok(file_content) = fs::read_to_string(&file) {
-                    // todo read options from manifest file
-                    let formatting_options = FormattingOptions::default();
+                    let formatting_options = &Formatter::from_opts(config);
                     let file_content: Arc<str> = Arc::from(file_content);
                     let build_config = BuildConfig::root_from_file_name_and_manifest_path(
                         file.clone(),
                         manifest_path.clone(),
                     );
-                    match get_formatted_data(
-                        file_content.clone(),
+                    match Formatter::format(
                         formatting_options,
+                        file_content.clone(),
                         Some(&build_config),
                     ) {
-                        Ok((_, formatted_content)) => {
+                        Ok(formatted_content) => {
                             if app.check {
                                 if *file_content != *formatted_content {
                                     contains_edits = true;
