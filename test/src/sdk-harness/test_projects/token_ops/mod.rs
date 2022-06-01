@@ -177,6 +177,62 @@ async fn can_mint_and_send_to_address() {
     );
 }
 
+#[tokio::test]
+async fn can_mint_to_using_address() {
+    let wallet = launch_provider_and_get_single_wallet().await;
+    let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallet.clone()).await;
+    let amount = 55u64;
+
+    let asset_id_array: [u8; 32] = fuelcoin_id.into();
+
+    let address = wallet.address();
+    let recipient = Identity::Address(address.clone());
+
+    fuelcoin_instance
+        .mint_to(amount, recipient)
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
+
+    assert_eq!(
+        wallet
+            .get_spendable_coins(&AssetId::from(asset_id_array), 1)
+            .await
+            .unwrap()[0]
+            .amount,
+        amount.into()
+    );
+}
+
+#[tokio::test]
+async fn can_mint_to_using_contract_id() {
+    let wallet = launch_provider_and_get_single_wallet().await;
+    let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallet.clone()).await;
+    let balance_id = get_balance_contract_id(wallet).await;
+    let amount = 55u64;
+
+    let asset_id_array: [u8; 32] = fuelcoin_id.into();
+
+    let recipient = Identity::ContractId(balance_id.clone());
+
+    fuelcoin_instance
+        .mint_to(amount, recipient)
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
+
+    assert_eq!(
+        wallet
+            .get_spendable_coins(&AssetId::from(asset_id_array), 1)
+            .await
+            .unwrap()[0]
+            .amount,
+        amount.into()
+    );
+}
+
 async fn get_fuelcoin_instance(wallet: Wallet) -> (TestFuelCoinContract, ContractId) {
     let fuelcoin_id = Contract::deploy(
         "test_projects/token_ops/out/debug/token_ops.bin",
