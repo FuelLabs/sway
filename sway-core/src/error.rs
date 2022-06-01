@@ -831,6 +831,14 @@ pub enum CompileError {
         call_chain: String, // Pretty list of symbols, e.g., "a, b and c".
         span: Span,
     },
+    #[error("Type {name} is recursive, which is unsupported at this time.")]
+    RecursiveType { name: Ident, span: Span },
+    #[error("Type {name} is recursive via {type_chain}, which is unsupported at this time.")]
+    RecursiveTypeChain {
+        name: Ident,
+        type_chain: String, // Pretty list of symbols, e.g., "a, b and c".
+        span: Span,
+    },
     #[error(
         "The size of this type is not known. Try putting it on the heap or changing the type."
     )]
@@ -1113,6 +1121,8 @@ impl CompileError {
             ArgumentParameterTypeMismatch { span, .. } => span.clone(),
             RecursiveCall { span, .. } => span.clone(),
             RecursiveCallChain { span, .. } => span.clone(),
+            RecursiveType { span, .. } => span.clone(),
+            RecursiveTypeChain { span, .. } => span.clone(),
             TypeWithUnknownSize { span, .. } => span.clone(),
             InfiniteDependencies { span, .. } => span.clone(),
             GMFromExternalContract { span, .. } => span.clone(),

@@ -20,6 +20,7 @@ pub enum Metadatum {
         start: usize,
         end: usize,
     },
+    StateIndex(usize),
 }
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -66,6 +67,19 @@ impl MetadataIndex {
                 }?;
                 Span::new(src, *start, *end, Some(path)).ok_or(IrError::InvalidMetadatum)
             }
+            _otherwise => Err(IrError::InvalidMetadatum),
+        }
+    }
+
+    pub fn from_state_idx(context: &mut Context, state_idx: usize) -> Option<MetadataIndex> {
+        Some(MetadataIndex(
+            context.metadata.insert(Metadatum::StateIndex(state_idx)),
+        ))
+    }
+
+    pub fn to_state_idx(&self, context: &Context) -> Result<usize, IrError> {
+        match &context.metadata[self.0] {
+            Metadatum::StateIndex(ix) => Ok(*ix),
             _otherwise => Err(IrError::InvalidMetadatum),
         }
     }

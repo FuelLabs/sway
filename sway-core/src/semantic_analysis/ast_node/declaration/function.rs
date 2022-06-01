@@ -25,9 +25,9 @@ use super::{EnforceTypeArguments, MonomorphizeHelper};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedFunctionDeclaration {
-    pub(crate) name: Ident,
-    pub(crate) body: TypedCodeBlock,
-    pub(crate) parameters: Vec<TypedFunctionParameter>,
+    pub name: Ident,
+    pub body: TypedCodeBlock,
+    pub parameters: Vec<TypedFunctionParameter>,
     pub(crate) span: Span,
     pub(crate) return_type: TypeId,
     pub(crate) type_parameters: Vec<TypeParameter>,
@@ -120,8 +120,6 @@ impl TypedFunctionDeclaration {
             checkee: fn_decl,
             namespace,
             self_type,
-            build_config,
-            dead_code_graph,
             mode,
             mut opts,
             ..
@@ -246,8 +244,6 @@ impl TypedFunctionDeclaration {
                 help_text:
                     "Function body's return type does not match up with its return type annotation.",
                 self_type,
-                build_config,
-                dead_code_graph,
                 mode: Mode::NonAbi,
                 opts,
             }),
