@@ -162,7 +162,7 @@
 <h2 id="general"><a class="header" href="#general">General</a></h2>
 <ul>
 <li>
-<p>Storage variables of types <code>str[]</code>, <code>b256</code>, <code>enum</code>, and arrays are not yet supported. After <a href="https://github.com/FuelLabs/sway/issues/1229">this issue</a> is closed, it will be possible to read and write these types using <a href="../blockchain-development/storage.html#manual-storage-management">manual storage management</a>. Moreover, storage mappings have to be managed manually for now as shown in the <a href="../examples/subcurrency.html">Subcurrency</a> example.</p>
+<p>Storage variables of types <code>str[]</code>, <code>b256</code>, <code>enum</code>, and arrays are not yet supported. After <a href="https://github.com/FuelLabs/sway/issues/1229">this issue</a> is closed, it will be possible to read and write these types using <a href="../blockchain-development/storage.html#manual-storage-management">manual storage management</a>.</p>
 </li>
 <li>
 <p>The optimizing pass of the compiler is not yet implemented, therefore bytecode will be more expensive and larger than it would be in production. Note that eventually the optimizer will support zero-cost abstractions, avoiding the need for developers to go down to inline assembly to produce optimal code.</p>

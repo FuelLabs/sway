@@ -158,9 +158,57 @@
 <p>Notes:</p>
 <ul>
 <li>The only types currently supported by the syntax above are integers, Booleans, and structs.</li>
-<li>The <code>storage</code> syntax cannot be used for mappings. Mappings need to be handled manually for now as shown in the <a href="../examples/subcurrency.html">Subcurrency</a> example.</li>
 <li>Storage, in general, is still work-in-progress and so, its use model may change in the future.</li>
 </ul>
+<h2 id="storage-maps"><a class="header" href="#storage-maps">Storage Maps</a></h2>
+<p>Generic storage maps are available in the standard library as <code>StorageMap&lt;K, V&gt;</code> which have to be defined inside a <code>storage</code> block and allow you to call <code>insert()</code> and <code>get()</code> to insert values at specific keys and get those values respectively. For example:</p>
+<pre><code class="language-sway">contract;
+
+use std::storage::StorageMap;
+
+struct Data {
+    x: b256,
+    y: str[4],
+}
+
+storage {
+    map1: StorageMap&lt;u64,
+    u64&gt;, map2: StorageMap&lt;(b256,
+    bool), Data&gt;, 
+}
+
+abi StorageMapExample {
+    fn insert_into_map1(key: u64, value: u64);
+
+    fn get_from_map1(key: u64, value: u64);
+
+    fn insert_into_map2(key: (b256, bool), value: Data);
+
+    fn get_from_map2(key: (b256, bool), value: Data);
+}
+
+impl StorageMapExample for Contract {
+    fn insert_into_map1(key: u64, value: u64) {
+        storage.map1.insert(key, value);
+    }
+
+    fn get_from_map1(key: u64, value: u64) {
+        storage.map1.insert(key, value);
+    }
+
+    fn insert_into_map2(key: (b256, bool), value: Data) {
+        storage.map2.get(key);
+    }
+
+    fn get_from_map2(key: (b256, bool), value: Data) {
+        storage.map2.get(key);
+    }
+}
+</code></pre>
+<p>Because storage maps have to be defined inside a <code>storage</code> block, the <code>storage</code> keyword is required to access the map itself and then access the appropriate method.</p>
+<blockquote>
+<p><strong>Note</strong>: Calling <code>get(k)</code> for some key <code>k</code> that does not exist in the map (i.e. <code>insert()</code> hasn't been called with key <code>k</code> yet) returns zero. This is because the FuelVM initializes all storage slots to zero.</p>
+</blockquote>
 <h2 id="manual-storage-management"><a class="header" href="#manual-storage-management">Manual Storage Management</a></h2>
 <p>Outside of the newer experimental <code>storage</code> syntax which is being stabalized, you can leverage FuelVM storage operations using the <code>store</code> and <code>get</code> methods provided in the standard library (<code>std</code>). Which currently works with primitive types.</p>
 <p>With this approach you will have to manually assign the internal key used for storage.</p>
