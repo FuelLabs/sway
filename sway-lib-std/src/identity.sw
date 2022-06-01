@@ -1,4 +1,4 @@
-//! A wrapper type with 2 variants; an `Address` and a `ContractId`
+//! A wrapper type with 2 variants (`Address` or `ContractId`) sed to represent either in a generic way. The use of this type allows for handling interactions with contracts and addresses in a consistent manner.
 library identity;
 
 use ::address::Address;
@@ -8,8 +8,3 @@ pub enum Identity {
     Address: Address,
     ContractId: ContractId,
 }
-
-// idea...
-// pub trait Indentify() {
-//     fn resolve
-// }
