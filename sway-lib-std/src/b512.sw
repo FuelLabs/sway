@@ -8,12 +8,13 @@ pub struct B512 {
     2],
 }
 
-// @todo use generic form when possible
+// TODO: use generic, centrally defined trait when possible
 pub trait From {
     fn from(h: b256, l: b256) -> Self;
 } {
-    // @todo add into() when tuples land, as it would probably return 2 b256 values
-    // fn into() {...}
+    fn into(self) -> (b256, b256) {
+        ((self.bytes)[0], (self.bytes)[1])
+    }
 }
 
 impl core::ops::Eq for B512 {
@@ -27,7 +28,7 @@ impl From for B512 {
     fn from(h: b256, l: b256) -> B512 {
         B512 {
             bytes: [h,
-            l], 
+            l],
         }
     }
 }
@@ -38,7 +39,7 @@ impl B512 {
     fn new() -> B512 {
         B512 {
             bytes: [0x0000000000000000000000000000000000000000000000000000000000000000,
-            0x0000000000000000000000000000000000000000000000000000000000000000], 
+            0x0000000000000000000000000000000000000000000000000000000000000000],
         }
     }
 }
