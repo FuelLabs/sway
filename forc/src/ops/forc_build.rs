@@ -50,8 +50,8 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         .map(|plan| Lock::from_graph(plan.graph()))
         .unwrap_or_default();
 
-    // Check if there are any errors coming from the BuildPlan geneartion from the lock file
-    // If there are errors we will need to create the lock file from scratch, i.e fetch & pin everything
+    // Check if there are any errors coming from the BuildPlan generation from the lock file
+    // If there are errors we will need to create the BuildPlan from scratch, i.e fetch & pin everything
     let mut new_lock_cause = None;
     let mut plan = plan_result.or_else(|e| -> Result<pkg::BuildPlan> {
         if locked {
@@ -70,7 +70,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     })?;
 
     // If there are no issues with the BuildPlan generated from the lock file
-    // Check for the diff and only apply the diff.
+    // Check and apply the diff.
     if new_lock_cause.is_none() {
         let diff = plan.validate(&manifest, SWAY_GIT_TAG)?;
         if !diff.added.is_empty() || !diff.removed.is_empty() {

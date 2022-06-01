@@ -381,7 +381,8 @@ fn remove_deps(graph: &mut Graph, path_map: &PathMap, proj_node: NodeIx, to_remo
         }
     }
 }
-
+/// Add the given set of packages to `graph`. If a dependency of an newly added package is already
+/// pinned use that. Otherwise fetch and pin it.
 fn add_deps(
     graph: &mut Graph,
     path_map: &mut PathMap,
