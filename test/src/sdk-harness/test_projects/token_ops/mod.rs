@@ -178,7 +178,7 @@ async fn can_mint_and_send_to_address() {
 }
 
 #[tokio::test]
-async fn can_mint_to_address() {
+async fn call_mint_to_with_address() {
     let wallet = launch_provider_and_get_single_wallet().await;
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallet.clone()).await;
     let amount = 55u64;
@@ -189,7 +189,7 @@ async fn can_mint_to_address() {
     let recipient = address.clone();
 
     fuelcoin_instance
-        .mint_to_address(amount, recipient)
+        .mint_to_using_an_address(amount, recipient)
         .append_variable_outputs(1)
         .call()
         .await
@@ -206,7 +206,7 @@ async fn can_mint_to_address() {
 }
 
 #[tokio::test]
-async fn can_mint_to_contract_id() {
+async fn call_mint_to_with_contract_id() {
     let num_wallets = 1;
     let coins_per_wallet = 1;
     let amount_per_coin = 1_000_000;
@@ -225,7 +225,7 @@ async fn can_mint_to_contract_id() {
     let target = balance_id.clone();
 
     fuelcoin_instance
-        .mint_to_contract(amount, target)
+        .mint_to_using_a_contract_id(amount, target)
         .set_contracts(&[balance_id])
         .call()
         .await
