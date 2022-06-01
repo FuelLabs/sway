@@ -39,8 +39,7 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
     if caller_is_external() {
         let owner_res = get_coins_owner();
         match owner_res {
-            Result::Ok(owner) => Result::Ok(owner),
-            owner_res => owner_res,
+            Result::Ok(owner) => Result::Ok(owner), owner_res => owner_res, 
         }
     } else {
         // Get caller's `ContractId`.
