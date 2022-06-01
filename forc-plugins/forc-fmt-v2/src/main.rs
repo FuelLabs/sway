@@ -1,7 +1,7 @@
 //! A `forc` plugin for running the Sway code formatter.
 
+use forc_fmt_v2::App;
 use forc_util::init_tracing_subscriber;
-use sway_fmt_v2::App;
 use tracing::error;
 
 fn main() {

@@ -29,15 +29,15 @@ pub struct App {
     pub path: Option<String>,
 }
 impl App {
-    fn run() -> Result<()> {
+    pub fn run() -> Result<()> {
         let app = Self::parse();
         let dir = match app.path.clone() {
             Some(path) => PathBuf::from(path),
             None => std::env::current_dir()?,
         };
         let config = match Config::from_dir(&dir) {
-            Ok(Config) => Config,
-            Err(ConfigError) => Config::default(),
+            Ok(config) => config,
+            Err(_) => Config::default(),
         };
         format_pkg_at_dir(app, &dir, config)
     }
@@ -50,11 +50,11 @@ fn format_pkg_at_dir(app: App, dir: &Path, config: Config) -> Result<()> {
             let manifest_path = path.clone();
             let manifest_file = manifest_path.join(constants::MANIFEST_FILE_NAME);
             let files = get_sway_files(path);
+            let formatting_options = &Formatter::from_opts(config);
             let mut contains_edits = false;
 
             for file in files {
                 if let Ok(file_content) = fs::read_to_string(&file) {
-                    let formatting_options = &Formatter::from_opts(config);
                     let file_content: Arc<str> = Arc::from(file_content);
                     let build_config = BuildConfig::root_from_file_name_and_manifest_path(
                         file.clone(),
@@ -79,7 +79,7 @@ fn format_pkg_at_dir(app: App, dir: &Path, config: Config) -> Result<()> {
                         Err(err) => {
                             // there could still be Sway files that are not part of the build
                             error!("\nThis file: {:?} is not part of the build", file);
-                            error!("{}", err.join("\n"));
+                            error!("{}\n", err);
                         }
                     }
                 }
