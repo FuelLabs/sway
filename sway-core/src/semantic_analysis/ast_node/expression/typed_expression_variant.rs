@@ -7,14 +7,14 @@ use sway_types::state::StateIndex;
 use derivative::Derivative;
 
 #[derive(Clone, Debug)]
-pub(crate) struct ContractCallMetadata {
+pub struct ContractCallMetadata {
     pub(crate) func_selector: [u8; 4],
     pub(crate) contract_address: Box<TypedExpression>,
 }
 
 #[derive(Clone, Debug, Derivative)]
 #[derivative(Eq)]
-pub(crate) enum TypedExpressionVariant {
+pub enum TypedExpressionVariant {
     Literal(Literal),
     FunctionApplication {
         call_path: CallPath,
@@ -439,7 +439,7 @@ impl CopyTypes for TypedExpressionVariant {
 /// Describes the full storage access including all the subfields
 #[derive(Clone, Debug)]
 pub struct TypeCheckedStorageAccess {
-    pub(crate) fields: Vec<TypeCheckedStorageAccessDescriptor>,
+    pub fields: Vec<TypeCheckedStorageAccessDescriptor>,
     pub(crate) ix: StateIndex,
 }
 
@@ -459,13 +459,13 @@ impl TypeCheckedStorageAccess {
 /// Describes a single subfield access in the sequence when accessing a subfield within storage.
 #[derive(Clone, Debug)]
 pub struct TypeCheckedStorageAccessDescriptor {
-    pub(crate) name: Ident,
+    pub name: Ident,
     pub(crate) r#type: TypeId,
     pub(crate) span: Span,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct TypedAsmRegisterDeclaration {
+pub struct TypedAsmRegisterDeclaration {
     pub(crate) initializer: Option<TypedExpression>,
     pub(crate) name: Ident,
 }
@@ -493,7 +493,7 @@ impl CopyTypes for TypedAsmRegisterDeclaration {
 }
 
 impl TypedExpressionVariant {
-    pub(crate) fn pretty_print(&self) -> String {
+    pub fn pretty_print(&self) -> String {
         match self {
             TypedExpressionVariant::Literal(lit) => format!(
                 "literal {}",

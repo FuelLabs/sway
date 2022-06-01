@@ -28,8 +28,8 @@ use ast_node::declaration::CreateTypeId;
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedExpression {
-    pub(crate) expression: TypedExpressionVariant,
-    pub(crate) return_type: TypeId,
+    pub expression: TypedExpressionVariant,
+    pub return_type: TypeId,
     /// whether or not this expression is constantly evaluable (if the result is known at compile
     /// time)
     pub(crate) is_constant: IsConstant,

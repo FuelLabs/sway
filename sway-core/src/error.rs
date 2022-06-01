@@ -831,6 +831,14 @@ pub enum CompileError {
         call_chain: String, // Pretty list of symbols, e.g., "a, b and c".
         span: Span,
     },
+    #[error("Type {name} is recursive, which is unsupported at this time.")]
+    RecursiveType { name: Ident, span: Span },
+    #[error("Type {name} is recursive via {type_chain}, which is unsupported at this time.")]
+    RecursiveTypeChain {
+        name: Ident,
+        type_chain: String, // Pretty list of symbols, e.g., "a, b and c".
+        span: Span,
+    },
     #[error(
         "The size of this type is not known. Try putting it on the heap or changing the type."
     )]
@@ -961,6 +969,11 @@ pub enum CompileError {
     Parse { error: sway_parse::ParseError },
     #[error("\"where\" clauses are not yet supported")]
     WhereClauseNotYetSupported { span: Span },
+    #[error(
+        "Initializing a constant value via `const` is currently limited to primitive values \
+        such as numbers, bools, strings or b256s."
+    )]
+    NonLiteralConstantDeclValue { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1108,6 +1121,8 @@ impl CompileError {
             ArgumentParameterTypeMismatch { span, .. } => span.clone(),
             RecursiveCall { span, .. } => span.clone(),
             RecursiveCallChain { span, .. } => span.clone(),
+            RecursiveType { span, .. } => span.clone(),
+            RecursiveTypeChain { span, .. } => span.clone(),
             TypeWithUnknownSize { span, .. } => span.clone(),
             InfiniteDependencies { span, .. } => span.clone(),
             GMFromExternalContract { span, .. } => span.clone(),
@@ -1153,6 +1168,7 @@ impl CompileError {
             Parse { error } => error.span.clone(),
             EnumNotFound { span, .. } => span.clone(),
             TupleIndexOutOfBounds { span, .. } => span.clone(),
+            NonLiteralConstantDeclValue { span } => span.clone(),
         }
     }
 

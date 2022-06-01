@@ -153,14 +153,13 @@ impl core::ops::Shiftable for U128 {
     pub fn lsh(self, rhs: u64) -> Self {
         // If shifting by at least the number of bits, then saturate with
         // zeroes.
-        if (rhs >= 128) {
+        if rhs >= 128 {
             return ~Self::new();
         }
 
         // If shifting by at least half the number of bits, then upper word can
         // be discarded.
-        // TODO remove the `else` once #1682 is fixed
-        else if (rhs >= 64) {
+        if rhs >= 64 {
             return ~Self::from(self.lower <<(rhs - 64), 0);
         }
 
