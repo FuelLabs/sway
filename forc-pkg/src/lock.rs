@@ -32,7 +32,8 @@ pub struct PkgLock {
     // project's `Manifest` yet. If we decide to enforce versions, we'll want to remove the
     // `Option`.
     version: Option<semver::Version>,
-    source: Option<String>,
+    // Short-hand string describing where this package is sourced from.
+    source: String,
     dependencies: Vec<PkgDepLine>,
 }
 
@@ -53,24 +54,31 @@ pub type PkgDepLine = String;
 /// Convert the given package source to a string for use in the package lock.
 ///
 /// Returns `None` for sources that refer to a direct `Path`.
-pub fn source_to_string(source: &pkg::SourcePinned) -> Option<String> {
+pub fn source_to_string(source: &pkg::SourcePinned) -> String {
     match source {
-        pkg::SourcePinned::Path => None,
-        pkg::SourcePinned::Git(git) => Some(git.to_string()),
+        pkg::SourcePinned::Root => "root".to_string(),
+        pkg::SourcePinned::Path(src) => src.to_string(),
+        pkg::SourcePinned::Git(src) => src.to_string(),
         pkg::SourcePinned::Registry(_reg) => unimplemented!("pkg registries not yet implemented"),
     }
 }
 
 /// Convert the given package source string read from a package lock to a `pkg::SourcePinned`.
 pub fn source_from_str(s: &str) -> Result<pkg::SourcePinned> {
-    if let Ok(src) = pkg::SourceGitPinned::from_str(s) {
-        return Ok(pkg::SourcePinned::Git(src));
-    }
-    // TODO: Try parse registry source.
-    Err(anyhow!(
-        "Unable to parse valid pinned source from given string {}",
-        s
-    ))
+    let source = if s == "root" {
+        pkg::SourcePinned::Root
+    } else if let Ok(src) = pkg::SourcePathPinned::from_str(s) {
+        pkg::SourcePinned::Path(src)
+    } else if let Ok(src) = pkg::SourceGitPinned::from_str(s) {
+        pkg::SourcePinned::Git(src)
+    } else {
+        // TODO: Try parse registry source.
+        return Err(anyhow!(
+            "Unable to parse valid pinned source from given string {}",
+            s
+        ));
+    };
+    Ok(source)
 }
 
 impl PkgLock {
@@ -95,7 +103,7 @@ impl PkgLock {
                     None
                 };
                 let source_string = source_to_string(&dep_pkg.source);
-                pkg_dep_line(dep_name, &dep_pkg.name, source_string.as_deref())
+                pkg_dep_line(dep_name, &dep_pkg.name, &source_string)
             })
             .collect();
         dependencies.sort();
@@ -109,7 +117,7 @@ impl PkgLock {
 
     /// The string representation used for specifying this package as a dependency.
     pub fn unique_string(&self) -> String {
-        pkg_unique_string(&self.name, self.source.as_deref())
+        pkg_unique_string(&self.name, &self.source)
     }
 }
 
@@ -141,13 +149,8 @@ impl Lock {
         for pkg in &self.package {
             let key = pkg.unique_string();
             let name = pkg.name.clone();
-            let pkg_source_string = pkg.source.clone();
-            let source = match &pkg_source_string {
-                None => pkg::SourcePinned::Path,
-                Some(s) => source_from_str(s).map_err(|e| {
-                    anyhow!("invalid 'source' entry for package {} lock: {}", name, e)
-                })?,
-            };
+            let source = source_from_str(&pkg.source)
+                .map_err(|e| anyhow!("invalid 'source' entry for package {} lock: {}", name, e))?;
             let pkg = pkg::Pinned { name, source };
             let node = graph.add_node(pkg);
             pkg_to_node.insert(key, node);
@@ -182,14 +185,11 @@ impl Lock {
     }
 }
 
-fn pkg_unique_string(name: &str, source: Option<&str>) -> String {
-    match source {
-        None => name.to_string(),
-        Some(s) => format!("{} {}", name, s),
-    }
+fn pkg_unique_string(name: &str, source: &str) -> String {
+    format!("{} {}", name, source)
 }
 
-fn pkg_dep_line(dep_name: Option<&str>, name: &str, source: Option<&str>) -> PkgDepLine {
+fn pkg_dep_line(dep_name: Option<&str>, name: &str, source: &str) -> PkgDepLine {
     let pkg_string = pkg_unique_string(name, source);
     match dep_name {
         None => pkg_string,

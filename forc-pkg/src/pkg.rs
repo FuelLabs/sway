@@ -38,7 +38,7 @@ pub type PathMap = HashMap<PinnedId, PathBuf>;
 /// A unique ID for a pinned package.
 ///
 /// The internal value is produced by hashing the package's name and `SourcePinned`.
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub struct PinnedId(u64);
 
 /// The result of successfully compiling a package.
@@ -72,6 +72,8 @@ pub struct Pinned {
 /// at which the current latest version may be located.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub enum Source {
+    /// Used to refer to the root project.
+    Root,
     /// A git repo with a `Forc.toml` manifest at its root.
     Git(SourceGit),
     /// A path to a directory with a `Forc.toml` manifest at its root.
@@ -117,6 +119,13 @@ pub struct SourceGitPinned {
     pub commit_hash: String,
 }
 
+/// A pinned instance of a path source.
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
+pub struct SourcePathPinned {
+    /// The ID of the package that this package's path is relative to.
+    pub relative_to: PinnedId,
+}
+
 /// A pinned instance of the registry source.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub struct SourceRegistryPinned {
@@ -132,8 +141,9 @@ pub struct SourceRegistryPinned {
 /// pinned version or commit is updated upon creation of the lock file and on `forc update`.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub enum SourcePinned {
+    Root,
     Git(SourceGitPinned),
-    Path,
+    Path(SourcePathPinned),
     Registry(SourceRegistryPinned),
 }
 
@@ -154,6 +164,10 @@ pub struct BuildConfig {
     pub print_intermediate_asm: bool,
     pub silent: bool,
 }
+
+/// Error returned upon failed parsing of `SourcePathPinned::from_str`.
+#[derive(Clone, Debug)]
+pub struct SourcePathPinnedParseError;
 
 /// Error returned upon failed parsing of `SourceGitPinned::from_str`.
 #[derive(Clone, Debug)]
@@ -473,8 +487,9 @@ impl Pinned {
     pub fn unpinned(&self, path_map: &PathMap) -> Pkg {
         let id = self.id();
         let source = match &self.source {
+            SourcePinned::Root => Source::Root,
             SourcePinned::Git(git) => Source::Git(git.source.clone()),
-            SourcePinned::Path => Source::Path(path_map[&id].clone()),
+            SourcePinned::Path(_) => Source::Path(path_map[&id].clone()),
             SourcePinned::Registry(reg) => Source::Registry(reg.source.clone()),
         };
         let name = self.name.clone();
@@ -492,13 +507,31 @@ impl PinnedId {
     }
 }
 
+impl SourcePathPinned {
+    const PREFIX: &'static str = "path";
+}
+
+impl SourceGitPinned {
+    const PREFIX: &'static str = "git";
+}
+
+impl ToString for SourcePathPinned {
+    fn to_string(&self) -> String {
+        // path+relative-to-<id>
+        format!("{}+relative-to-{}", Self::PREFIX, self.relative_to.0)
+    }
+}
+
 impl ToString for SourceGitPinned {
     fn to_string(&self) -> String {
         // git+<url/to/repo>?<ref_kind>=<ref_string>#<commit>
         let reference = self.source.reference.to_string();
         format!(
-            "git+{}?{}#{}",
-            self.source.repo, reference, self.commit_hash
+            "{}+{}?{}#{}",
+            Self::PREFIX,
+            self.source.repo,
+            reference,
+            self.commit_hash
         )
     }
 }
@@ -514,6 +547,32 @@ impl ToString for GitReference {
     }
 }
 
+impl FromStr for SourcePathPinned {
+    type Err = SourcePathPinnedParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // path+relative-to-<id>
+        let s = s.trim();
+
+        // Check for prefix at the start.
+        let prefix_plus = format!("{}+", Self::PREFIX);
+        if s.find(&prefix_plus) != Some(0) {
+            return Err(SourcePathPinnedParseError);
+        }
+        let s = &s[prefix_plus.len()..];
+
+        // Parse the `relative-to-*` section.
+        let relative_to = s
+            .split("relative-to-")
+            .nth(1)
+            .ok_or(SourcePathPinnedParseError)?
+            .parse()
+            .map_err(|_| SourcePathPinnedParseError)
+            .map(PinnedId)?;
+
+        Ok(Self { relative_to })
+    }
+}
+
 impl FromStr for SourceGitPinned {
     type Err = SourceGitPinnedParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -521,11 +580,11 @@ impl FromStr for SourceGitPinned {
         let s = s.trim();
 
         // Check for "git+" at the start.
-        const PREFIX: &str = "git+";
-        if s.find(PREFIX) != Some(0) {
+        let prefix_plus = format!("{}+", Self::PREFIX);
+        if s.find(&prefix_plus) != Some(0) {
             return Err(SourceGitPinnedParseError::Prefix);
         }
-        let s = &s[PREFIX.len()..];
+        let s = &s[prefix_plus.len()..];
 
         // Parse the `repo` URL.
         let repo_str = s.split('?').next().ok_or(SourceGitPinnedParseError::Url)?;
@@ -628,6 +687,7 @@ pub fn graph_to_path_map(
     for dep_node in path_resolve_order {
         let dep = &graph[dep_node];
         let dep_path = match &dep.source {
+            SourcePinned::Root => bail!("more than one root package detected in graph"),
             SourcePinned::Git(git) => {
                 let repo_path = git_commit_path(&dep.name, &git.source.repo, &git.commit_hash);
                 if !repo_path.exists() {
@@ -642,13 +702,23 @@ pub fn graph_to_path_map(
                     )
                 })?
             }
-            SourcePinned::Path => {
+            SourcePinned::Path(path) => {
+                // Retrieve the parent node to validate the ID.
                 let (parent_node, dep_name) = graph
                     .edges_directed(dep_node, Direction::Incoming)
                     .next()
                     .map(|edge| (edge.source(), edge.weight().clone()))
                     .ok_or_else(|| anyhow!("more than one root package detected in graph"))?;
                 let parent = &graph[parent_node];
+                if parent.id() != path.relative_to {
+                    bail!(
+                        "`path` dependency `{}` has unexpected parent `{}`",
+                        dep.name,
+                        parent.name
+                    );
+                }
+
+                // Construct the path relative to the parent's path.
                 let parent_path = &path_map[&parent.id()];
                 let parent_manifest = ManifestFile::from_dir(parent_path, sway_git_tag)?;
                 let detailed = parent_manifest
@@ -703,7 +773,7 @@ pub(crate) fn fetch_deps(
     // Add the project to the graph as the root node.
     let name = proj_manifest.project.name.clone();
     let path = proj_manifest_dir.canonicalize()?;
-    let source = SourcePinned::Path;
+    let source = SourcePinned::Root;
     let pkg = Pinned { name, source };
     let pkg_id = pkg.id();
     path_map.insert(pkg_id, path);
@@ -755,7 +825,8 @@ fn fetch_children(
     visited: &mut HashMap<Pinned, NodeIx>,
 ) -> Result<()> {
     let parent = &graph[node];
-    let parent_path = path_map[&parent.id()].clone();
+    let parent_id = parent.id();
+    let parent_path = path_map[&parent_id].clone();
     for (dep_name, dep) in manifest.deps() {
         let name = dep.package().unwrap_or(dep_name).to_string();
         let source = dep_to_source(&parent_path, dep)?;
@@ -763,7 +834,7 @@ fn fetch_children(
             bail!("Unable to fetch pkg {:?} in offline mode", source);
         }
         let pkg = Pkg { name, source };
-        let pinned = pin_pkg(fetch_id, &pkg, path_map, sway_git_tag)?;
+        let pinned = pin_pkg(fetch_id, parent_id, &pkg, path_map, sway_git_tag)?;
         let pkg_id = pinned.id();
         let manifest = Manifest::from_dir(&path_map[&pkg_id], sway_git_tag)?;
         if pinned.name != manifest.project.name {
@@ -915,11 +986,20 @@ pub fn pin_git(fetch_id: u64, name: &str, source: SourceGit) -> Result<SourceGit
 /// Given a package source, attempt to determine the pinned version or commit.
 ///
 /// Also updates the `path_map` with a path to the local copy of the source.
-fn pin_pkg(fetch_id: u64, pkg: &Pkg, path_map: &mut PathMap, sway_git_tag: &str) -> Result<Pinned> {
+fn pin_pkg(
+    fetch_id: u64,
+    parent_id: PinnedId,
+    pkg: &Pkg,
+    path_map: &mut PathMap,
+    sway_git_tag: &str,
+) -> Result<Pinned> {
     let name = pkg.name.clone();
     let pinned = match &pkg.source {
+        Source::Root => unreachable!("Root package is \"pinned\" prior to fetching"),
         Source::Path(path) => {
-            let source = SourcePinned::Path;
+            let relative_to = parent_id;
+            let path_pinned = SourcePathPinned { relative_to };
+            let source = SourcePinned::Path(path_pinned);
             let pinned = Pinned { name, source };
             let id = pinned.id();
             path_map.insert(id, path.clone());
