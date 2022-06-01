@@ -167,7 +167,7 @@ fn display_file_diff(file_content: &str, formatted_content: &str) -> Result<()> 
             }
         }
     }
-    Result::Ok(())
+    Ok(())
 }
 
 fn format_file(file: &Path, formatted_content: &str) -> Result<()> {
