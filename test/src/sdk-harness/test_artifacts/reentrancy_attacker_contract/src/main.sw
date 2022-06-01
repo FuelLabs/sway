@@ -10,8 +10,8 @@ fn get_msg_sender_id_or_panic(result: Result<Identity, AuthError>) -> ContractId
     match result {
         Result::Ok(s) => {
             match s {
-                Identity::ContractId(v) => {v},
-                _ => {revert(0);},
+                Identity::ContractId(v) => v,
+                _ => revert(0),
             }
         },
         _ => {revert(0);},
