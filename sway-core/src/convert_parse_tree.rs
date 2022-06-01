@@ -1,3 +1,5 @@
+use sway_parse::expr::{ReassignmentOp, ReassignmentOpVariant};
+
 use {
     crate::{
         constants::{
@@ -1067,14 +1069,39 @@ fn expr_to_ast_node(
             span,
         },
         Expr::Reassignment {
-            assignable, expr, ..
-        } => AstNode {
-            content: AstNodeContent::Declaration(Declaration::Reassignment(Reassignment {
-                lhs: assignable_to_reassignment_target(ec, assignable)?,
-                rhs: expr_to_expression(ec, *expr)?,
-                span: span.clone(),
-            })),
-            span,
+            assignable,
+            expr,
+            reassignment_op:
+                ReassignmentOp {
+                    variant: op_variant,
+                    span: op_span,
+                },
+        } => match op_variant {
+            ReassignmentOpVariant::Equals => AstNode {
+                content: AstNodeContent::Declaration(Declaration::Reassignment(Reassignment {
+                    lhs: assignable_to_reassignment_target(ec, assignable)?,
+                    rhs: expr_to_expression(ec, *expr)?,
+                    span: span.clone(),
+                })),
+                span,
+            },
+            op_variant => {
+                let lhs = assignable_to_reassignment_target(ec, assignable.clone())?;
+                let rhs = binary_op_call(
+                    op_variant.core_name(),
+                    op_span,
+                    span.clone(),
+                    assignable_to_expression(ec, assignable)?,
+                    expr_to_expression(ec, *expr)?,
+                )?;
+                let content =
+                    AstNodeContent::Declaration(Declaration::Reassignment(Reassignment {
+                        lhs,
+                        rhs,
+                        span: span.clone(),
+                    }));
+                AstNode { content, span }
+            }
         },
         expr => {
             let expression = expr_to_expression(ec, expr)?;
@@ -1544,82 +1571,146 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             lhs,
             star_token,
             rhs,
-        } => binary_op_call(ec, "multiply", star_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("multiply", star_token.span(), span, lhs, rhs)?
+        }
         Expr::Div {
             lhs,
             forward_slash_token,
             rhs,
-        } => binary_op_call(ec, "divide", forward_slash_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("divide", forward_slash_token.span(), span, lhs, rhs)?
+        }
         Expr::Modulo {
             lhs,
             percent_token,
             rhs,
-        } => binary_op_call(ec, "modulo", percent_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("modulo", percent_token.span(), span, lhs, rhs)?
+        }
         Expr::Add {
             lhs,
             add_token,
             rhs,
-        } => binary_op_call(ec, "add", add_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("add", add_token.span(), span, lhs, rhs)?
+        }
         Expr::Sub {
             lhs,
             sub_token,
             rhs,
-        } => binary_op_call(ec, "subtract", sub_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("subtract", sub_token.span(), span, lhs, rhs)?
+        }
         Expr::Shl {
             lhs,
             shl_token,
             rhs,
-        } => binary_op_call(ec, "lsh", shl_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("lsh", shl_token.span(), span, lhs, rhs)?
+        }
         Expr::Shr {
             lhs,
             shr_token,
             rhs,
-        } => binary_op_call(ec, "rsh", shr_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("rsh", shr_token.span(), span, lhs, rhs)?
+        }
         Expr::BitAnd {
             lhs,
             ampersand_token,
             rhs,
-        } => binary_op_call(ec, "binary_and", ampersand_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("binary_and", ampersand_token.span(), span, lhs, rhs)?
+        }
         Expr::BitXor {
             lhs,
             caret_token,
             rhs,
-        } => binary_op_call(ec, "binary_xor", caret_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("binary_xor", caret_token.span(), span, lhs, rhs)?
+        }
         Expr::BitOr {
             lhs,
             pipe_token,
             rhs,
-        } => binary_op_call(ec, "binary_or", pipe_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("binary_or", pipe_token.span(), span, lhs, rhs)?
+        }
         Expr::Equal {
             lhs,
             double_eq_token,
             rhs,
-        } => binary_op_call(ec, "eq", double_eq_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("eq", double_eq_token.span(), span, lhs, rhs)?
+        }
         Expr::NotEqual {
             lhs,
             bang_eq_token,
             rhs,
-        } => binary_op_call(ec, "neq", bang_eq_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("neq", bang_eq_token.span(), span, lhs, rhs)?
+        }
         Expr::LessThan {
             lhs,
             less_than_token,
             rhs,
-        } => binary_op_call(ec, "lt", less_than_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("lt", less_than_token.span(), span, lhs, rhs)?
+        }
         Expr::GreaterThan {
             lhs,
             greater_than_token,
             rhs,
-        } => binary_op_call(ec, "gt", greater_than_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("gt", greater_than_token.span(), span, lhs, rhs)?
+        }
         Expr::LessThanEq {
             lhs,
             less_than_eq_token,
             rhs,
-        } => binary_op_call(ec, "le", less_than_eq_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("le", less_than_eq_token.span(), span, lhs, rhs)?
+        }
         Expr::GreaterThanEq {
             lhs,
             greater_than_eq_token,
             rhs,
-        } => binary_op_call(ec, "ge", greater_than_eq_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("ge", greater_than_eq_token.span(), span, lhs, rhs)?
+        }
         Expr::LogicalAnd { lhs, rhs, .. } => Expression::LazyOperator {
             op: LazyOp::And,
             lhs: Box::new(expr_to_expression(ec, *lhs)?),
@@ -1663,12 +1754,11 @@ fn unary_op_call(
 }
 
 fn binary_op_call(
-    ec: &mut ErrorContext,
     name: &'static str,
     op_span: Span,
     span: Span,
-    lhs: Expr,
-    rhs: Expr,
+    lhs: Expression,
+    rhs: Expression,
 ) -> Result<Expression, ErrorEmitted> {
     Ok(Expression::MethodApplication {
         method_name: MethodName::FromTrait {
@@ -1682,7 +1772,7 @@ fn binary_op_call(
             },
         },
         contract_call_params: Vec::new(),
-        arguments: vec![expr_to_expression(ec, lhs)?, expr_to_expression(ec, rhs)?],
+        arguments: vec![lhs, rhs],
         type_arguments: Vec::new(),
         span,
     })
