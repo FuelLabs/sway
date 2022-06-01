@@ -11,7 +11,7 @@ pub fn size_of<T>() -> u64 {
     __size_of::<T>()
 }
 
-///
+/// Returns a new random `b256` storage key.
 pub fn get_storage_key() -> b256 {
     __get_storage_key()
 }
