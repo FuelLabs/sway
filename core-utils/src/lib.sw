@@ -1,3 +1,3 @@
 library utils;
 
-dep composition;
+dep compose;

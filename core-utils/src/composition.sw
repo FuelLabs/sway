@@ -1,5 +1,5 @@
 //! Utility functions needed internally by both the std and core libs.
-library composition;
+library compose;
 
 /// Build a single b256 value from 4 64 bit words.
 pub fn compose(word_1: u64, word_2: u64, word_3: u64, word_4: u64) -> b256 {
