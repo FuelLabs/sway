@@ -54,5 +54,10 @@ fn main() -> bool {
     assert(one != three);
     assert(one != four);
 
+    assert(one.into() == (hi_bits, modified));
+    assert(two.into() == (hi_bits, modified));
+    assert(three.into() == (modified, hi_bits));
+    assert(four.into() == (lo_bits, modified));
+
     true
 }
