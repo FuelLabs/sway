@@ -6,8 +6,8 @@ use derivative::Derivative;
 
 #[derive(Clone, Debug, Eq, Derivative)]
 #[derivative(PartialEq)]
-pub(crate) struct TypedCodeBlock {
-    pub(crate) contents: Vec<TypedAstNode>,
+pub struct TypedCodeBlock {
+    pub contents: Vec<TypedAstNode>,
     #[derivative(PartialEq = "ignore")]
     pub(crate) whole_block_span: Span,
 }
@@ -38,8 +38,6 @@ impl TypedCodeBlock {
             return_type_annotation: type_annotation,
             help_text,
             self_type,
-            build_config,
-            dead_code_graph,
             opts,
             ..
         } = arguments;
@@ -56,8 +54,6 @@ impl TypedCodeBlock {
                     return_type_annotation: type_annotation,
                     help_text,
                     self_type,
-                    build_config,
-                    dead_code_graph,
                     mode: Mode::NonAbi,
                     opts,
                 })

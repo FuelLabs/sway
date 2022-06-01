@@ -36,8 +36,6 @@ impl TypedMatchExpression {
             namespace,
             return_type_annotation,
             self_type,
-            build_config,
-            dead_code_graph,
             opts,
             mode,
             ..
@@ -53,8 +51,6 @@ impl TypedMatchExpression {
                     return_type_annotation,
                     help_text: "all branches of a match statement must return the same type",
                     self_type,
-                    build_config,
-                    dead_code_graph,
                     mode,
                     opts,
                 }),

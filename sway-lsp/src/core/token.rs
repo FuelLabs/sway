@@ -3,7 +3,7 @@ use crate::{
         get_const_details, get_enum_details, get_function_details, get_struct_details,
         get_struct_field_details, get_trait_details, TokenType, VariableDetails,
     },
-    utils::common::extract_var_body,
+    utils::common::{extract_var_body, get_range_from_span},
 };
 use sway_core::{
     constants::TUPLE_NAME_PREFIX, parse_tree::MethodName, type_engine::TypeInfo, AstNode,
@@ -11,7 +11,7 @@ use sway_core::{
     VariableDeclaration, WhileLoop,
 };
 use sway_types::{ident::Ident, span::Span};
-use tower_lsp::lsp_types::{Position, Range};
+use tower_lsp::lsp_types::Range;
 
 #[derive(Debug, Clone)]
 pub struct Token {
@@ -447,7 +447,7 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
         Expression::BuiltinGetTypeProperty { .. } => {
             //TODO handle built in get type property?
         }
-        Expression::BuiltinGenerateUid { .. } => {
+        Expression::BuiltinGetStorageKey { .. } => {
             //TODO handle built in generate uid?
         }
     }
@@ -470,20 +470,4 @@ fn desugared_op(method_name: &MethodName) -> bool {
         }
     }
     false
-}
-
-fn get_range_from_span(span: &Span) -> Range {
-    let start = span.start_pos().line_col();
-    let end = span.end_pos().line_col();
-
-    let start_line = start.0 as u32 - 1;
-    let start_character = start.1 as u32 - 1;
-
-    let end_line = end.0 as u32 - 1;
-    let end_character = end.1 as u32 - 1;
-
-    Range {
-        start: Position::new(start_line, start_character),
-        end: Position::new(end_line, end_character),
-    }
 }

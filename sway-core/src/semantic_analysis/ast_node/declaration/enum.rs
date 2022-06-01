@@ -16,9 +16,9 @@ use super::{monomorphize_inner, CreateTypeId, MonomorphizeHelper};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedEnumDeclaration {
-    pub(crate) name: Ident,
+    pub name: Ident,
     pub(crate) type_parameters: Vec<TypeParameter>,
-    pub(crate) variants: Vec<TypedEnumVariant>,
+    pub variants: Vec<TypedEnumVariant>,
     pub(crate) span: Span,
     pub(crate) visibility: Visibility,
 }
@@ -183,8 +183,8 @@ impl TypedEnumDeclaration {
 
 #[derive(Debug, Clone, Eq)]
 pub struct TypedEnumVariant {
-    pub(crate) name: Ident,
-    pub(crate) r#type: TypeId,
+    pub name: Ident,
+    pub r#type: TypeId,
     pub(crate) tag: usize,
     pub(crate) span: Span,
 }

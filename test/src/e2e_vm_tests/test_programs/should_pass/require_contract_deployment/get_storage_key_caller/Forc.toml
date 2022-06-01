@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "get_storage_key_caller"
+
+[dependencies]
+get_storage_key_abi = { path = "../../test_abis/get_storage_key_abi" }
+std = { path = "../../../../../../../sway-lib-std" }

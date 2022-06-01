@@ -33,8 +33,19 @@ let v = storage.var1;
 Notes:
 
 * The only types currently supported by the syntax above are integers, Booleans, and structs.
-* The `storage` syntax cannot be used for mappings. Mappings need to be handled manually for now as shown in the [Subcurrency](../examples/subcurrency.md) example.
 * Storage, in general, is still work-in-progress and so, its use model may change in the future.
+
+## Storage Maps
+
+Generic storage maps are available in the standard library as `StorageMap<K, V>` which have to be defined inside a `storage` block and allow you to call `insert()` and `get()` to insert values at specific keys and get those values respectively. For example:
+
+```sway
+{{#include ../../../examples/storage_map/src/main.sw}}
+```
+
+Because storage maps have to be defined inside a `storage` block, the `storage` keyword is required to access the map itself and then access the appropriate method.
+
+> **Note**: Calling `get(k)` for some key `k` that does not exist in the map (i.e. `insert()` hasn't been called with key `k` yet) returns zero. This is because the FuelVM initializes all storage slots to zero.
 
 ## Manual Storage Management
 

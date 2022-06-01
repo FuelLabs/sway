@@ -20,7 +20,7 @@ use crate::{
     parse_tree::Literal,
     semantic_analysis::{
         TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration,
-        TypedParseTree,
+        TypedProgram, TypedProgramKind,
     },
     types::ResolvedType,
     BuildConfig, Ident, TypeInfo,
@@ -615,18 +615,18 @@ impl AsmNamespace {
 }
 
 pub(crate) fn compile_ast_to_asm(
-    ast: TypedParseTree,
+    program: TypedProgram,
     build_config: &BuildConfig,
 ) -> CompileResult<FinalizedAsm> {
     let mut register_sequencer = RegisterSequencer::new();
     let mut warnings = vec![];
     let mut errors = vec![];
-    let (asm, _asm_namespace) = match ast {
-        TypedParseTree::Script {
+    let TypedProgram { kind, root } = program;
+    let ast_namespace = root.namespace;
+    let (asm, _asm_namespace) = match kind {
+        TypedProgramKind::Script {
             main_function,
-            namespace: ast_namespace,
             declarations: _,
-            ..
         } => {
             let mut namespace: AsmNamespace = Default::default();
             let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
@@ -697,11 +697,9 @@ pub(crate) fn compile_ast_to_asm(
                 namespace,
             )
         }
-        TypedParseTree::Predicate {
+        TypedProgramKind::Predicate {
             main_function,
-            namespace: ast_namespace,
             declarations: _,
-            ..
         } => {
             let mut namespace: AsmNamespace = Default::default();
             let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
@@ -758,11 +756,9 @@ pub(crate) fn compile_ast_to_asm(
                 namespace,
             )
         }
-        TypedParseTree::Contract {
+        TypedProgramKind::Contract {
             abi_entries,
-            namespace: ast_namespace,
             declarations: _,
-            ..
         } => {
             let mut namespace: AsmNamespace = Default::default();
             let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
@@ -818,7 +814,7 @@ pub(crate) fn compile_ast_to_asm(
                 namespace,
             )
         }
-        TypedParseTree::Library { .. } => (SwayAsmSet::Library, Default::default()),
+        TypedProgramKind::Library { .. } => (SwayAsmSet::Library, Default::default()),
     };
 
     if build_config.print_intermediate_asm {
