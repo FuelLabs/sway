@@ -389,6 +389,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ProgramState::Return(7),
         ),
         (
+            "should_pass/language/tuple_single_element",
+            ProgramState::Return(1),
+        ),
+        (
             "should_pass/language/reassignment_operators",
             ProgramState::Return(1),
         ),

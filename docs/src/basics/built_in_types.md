@@ -62,7 +62,7 @@ _Compound types_ are types that group multiple values into one type. In Sway, we
 
 ## Tuple Types
 
-A tuple is a general-purpose static-length aggregation of types. In more plain terms, a tuple is a single type that consists of an aggregate of zero or more types. The internal types that make up a tuple, and the tuple's cardinality, define the tuple's type. Let's take a look at some examples.
+A tuple is a general-purpose static-length aggregation of types. In more plain terms, a tuple is a single type that consists of an aggregate of zero or more types. The internal types that make up a tuple, and the tuple's arity, define the tuple's type. Let's take a look at some examples.
 
 ```sway
 let x: (u64, u64) = (0, 0);
@@ -81,6 +81,15 @@ In this example, we have created a new tuple type, `(u64, bool)`, which is a com
 struct Foo {}
 let x: (u64, Foo, bool) = (42, Foo {}, true);
 let (number, foo, boolean) = x;
+```
+
+To create one-arity tuples, we will need to add a trailing comma:
+
+```sway
+let x: u64 = (42);     // x is of type u64
+let y: (u64) = (42);   // y is of type u64
+let z: (u64,) = (42,); // z is of type (u64), i.e. a one-arity tuple
+let w: (u64) = (42,);  // type error
 ```
 
 ## Arrays
