@@ -12,9 +12,9 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     asm_generation::{
-        build_contract_abi_switch, build_preamble, compiler_constants, finalized_asm::FinalizedAsm,
-        register_sequencer::RegisterSequencer, AbstractInstructionSet, DataId, DataSection,
-        SwayAsmSet,
+        build_contract_abi_switch, build_preamble, checks::check_invalid_opcodes,
+        compiler_constants, finalized_asm::FinalizedAsm, register_sequencer::RegisterSequencer,
+        AbstractInstructionSet, DataId, DataSection, SwayAsmSet,
     },
     asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate24, VirtualOp},
     error::*,
@@ -73,7 +73,7 @@ pub fn compile_ir_to_asm(ir: &Context, build_config: &BuildConfig) -> CompileRes
     }
 
     check!(
-        crate::checks::check_invalid_opcodes(&finalized_asm),
+        check_invalid_opcodes(&finalized_asm),
         return err(warnings, errors),
         warnings,
         errors
@@ -2208,9 +2208,7 @@ fn ir_constant_to_ast_literal(constant: &Constant) -> Literal {
         ConstantValue::String(bs) => {
             // ConstantValue::String bytes are guaranteed to be valid UTF8.
             let s = std::str::from_utf8(bs).unwrap();
-            Literal::String(
-                crate::span::Span::new(std::sync::Arc::from(s), 0, s.len(), None).unwrap(),
-            )
+            Literal::String(Span::new(std::sync::Arc::from(s), 0, s.len(), None).unwrap())
         }
         ConstantValue::Array(_) | ConstantValue::Struct(_) => {
             unreachable!("Cannot convert aggregates to a literal.")
@@ -2346,7 +2344,6 @@ mod tests {
             &ir,
             &BuildConfig {
                 canonical_root_module: std::sync::Arc::new("".into()),
-                use_orig_asm: false,
                 print_intermediate_asm: false,
                 print_finalized_asm: false,
                 print_ir: false,

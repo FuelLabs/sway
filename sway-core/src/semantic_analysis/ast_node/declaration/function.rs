@@ -238,7 +238,7 @@ impl TypedFunctionDeclaration {
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
         let (mut body, _implicit_block_return) = check!(
             TypedCodeBlock::type_check(TypeCheckArguments {
-                checkee: body.clone(),
+                checkee: body,
                 namespace: &mut namespace,
                 return_type_annotation: return_type,
                 help_text:
@@ -248,10 +248,7 @@ impl TypedFunctionDeclaration {
                 opts,
             }),
             (
-                TypedCodeBlock {
-                    contents: vec![],
-                    whole_block_span: body.whole_block_span,
-                },
+                TypedCodeBlock { contents: vec![] },
                 insert_type(TypeInfo::ErrorRecovery)
             ),
             warnings,
@@ -432,10 +429,7 @@ fn test_function_selector_behavior() {
     let decl = TypedFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_no_span("foo"),
-        body: TypedCodeBlock {
-            contents: vec![],
-            whole_block_span: Span::dummy(),
-        },
+        body: TypedCodeBlock { contents: vec![] },
         parameters: vec![],
         span: Span::dummy(),
         return_type: 0.into(),
@@ -455,10 +449,7 @@ fn test_function_selector_behavior() {
     let decl = TypedFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_with_override("bar", Span::dummy()),
-        body: TypedCodeBlock {
-            contents: vec![],
-            whole_block_span: Span::dummy(),
-        },
+        body: TypedCodeBlock { contents: vec![] },
         parameters: vec![
             TypedFunctionParameter {
                 name: Ident::new_no_span("foo"),

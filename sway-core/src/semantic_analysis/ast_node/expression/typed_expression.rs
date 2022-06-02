@@ -711,10 +711,7 @@ impl TypedExpression {
                 opts,
             }),
             (
-                TypedCodeBlock {
-                    contents: vec![],
-                    whole_block_span: span.clone()
-                },
+                TypedCodeBlock { contents: vec![] },
                 crate::type_engine::insert_type(TypeInfo::Tuple(Vec::new()))
             ),
             warnings,
@@ -733,7 +730,6 @@ impl TypedExpression {
         let exp = TypedExpression {
             expression: TypedExpressionVariant::CodeBlock(TypedCodeBlock {
                 contents: typed_block.contents,
-                whole_block_span: span.clone(),
             }),
             return_type: block_return_type,
             is_constant: IsConstant::No, /* TODO if all elements of block are constant
