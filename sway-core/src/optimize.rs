@@ -2028,7 +2028,7 @@ impl FnCompiler {
                 }
                 struct_val
             }
-            Type::Bool | Type::Uint(_) | Type::B256 | Type::Union(_) => {
+            Type::Bool | Type::Uint(_) | Type::B256 | Type::Union(_) | Type::String(_) => {
                 // Calculate the storage location hash for the given field
                 let mut storage_slot_to_hash = format!(
                     "{}{}",
@@ -2108,7 +2108,7 @@ impl FnCompiler {
                             }
                         }
                     }
-                    Type::B256 | Type::Union(_) | Type::String(_) => {
+                    Type::B256 => {
                         // B256 requires 4 words. Use state_load_quad_word/state_store_quad_word
                         // First, create a name for the value to load from or store to
                         let mut value_name = format!("{}{}", "val_for_", ix.to_usize());
@@ -2117,13 +2117,66 @@ impl FnCompiler {
                         }
                         let alias_value_name =
                             self.lexical_map.insert(value_name.as_str().to_owned());
-                   
-                        let array_elems = ir_type_size_in_bytes(context, r#type)/32 + 1;
+
+                        // Local pointer to hold the B256
+                        let value_ptr = self
+                            .function
+                            .new_local_ptr(context, alias_value_name, *r#type, true, None)
+                            .map_err(|ir_error| {
+                                CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                            })?;
+
+                        // Convert the local pointer created to a value using get_ptr
+                        let value_ptr_val = self.current_block.ins(context).get_ptr(
+                            value_ptr,
+                            *r#type,
+                            0,
+                            span_md_idx,
+                        );
+
+                        match access_type {
+                            StateAccessType::Read => {
+                                self.current_block.ins(context).state_load_quad_word(
+                                    value_ptr_val,
+                                    key_ptr_val,
+                                    span_md_idx,
+                                );
+                                value_ptr_val
+                            }
+                            StateAccessType::Write => {
+                                // Store the value to the local pointer created for rhs
+                                self.current_block.ins(context).store(
+                                    value_ptr_val,
+                                    rhs.expect("expecting a rhs for write"),
+                                    span_md_idx,
+                                );
+
+                                // Finally, just call state_load_quad_word/state_store_quad_word
+                                self.current_block.ins(context).state_store_quad_word(
+                                    value_ptr_val,
+                                    key_ptr_val,
+                                    span_md_idx,
+                                );
+                                rhs.expect("expecting a rhs for write")
+                            }
+                        }
+                    }
+                    Type::Union(_) | Type::String(_) => {
+                        // B256 requires 4 words. Use state_load_quad_word/state_store_quad_word
+                        // First, create a name for the value to load from or store to
+                        let mut value_name = format!("{}{}", "val_for_", ix.to_usize());
+                        for ix in &indices {
+                            value_name = format!("{}_{}", value_name, ix);
+                        }
+                        let alias_value_name =
+                            self.lexical_map.insert(value_name.as_str().to_owned());
+
+                        let array_elems = ir_type_size_in_bytes(context, r#type) / 32 + 1;
                         let aggregate = Aggregate::new_array(context, Type::B256, array_elems);
                         let array_type = Type::Array(aggregate);
 
                         let mut size_left = ir_type_size_in_bytes(context, &array_type);
- 
+
                         // Local pointer to hold the B256
                         let value_ptr = self
                             .function
