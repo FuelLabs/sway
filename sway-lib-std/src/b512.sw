@@ -11,10 +11,7 @@ pub struct B512 {
 // TODO: use generic, centrally defined trait when possible
 pub trait From {
     fn from(h: b256, l: b256) -> Self;
-} {
-    fn into(self) -> (b256, b256) {
-        ((self.bytes)[0], (self.bytes)[1])
-    }
+    fn into(self) -> (b256, b256);
 }
 
 impl core::ops::Eq for B512 {
@@ -30,6 +27,10 @@ impl From for B512 {
             bytes: [h,
             l],
         }
+    }
+
+    fn into(self) -> (b256, b256) {
+        ((self.bytes)[0], (self.bytes)[1])
     }
 }
 
