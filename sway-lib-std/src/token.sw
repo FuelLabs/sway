@@ -21,7 +21,6 @@ pub fn mint_to(amount: u64, recipient: Identity) {
     }
 }
 
-
 /// Mint `amount` coins of the current contract's `asset_id` and send them (!!! UNCONDITIONALLY !!!) to the contract at `destination`.
 /// This will allow the transfer of coins even if there is no way to retrieve them !!!
 /// Use of this function can lead to irretrievable loss of coins if not used with caution.
