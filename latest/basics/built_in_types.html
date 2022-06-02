@@ -178,7 +178,7 @@
 <h2 id="compound-types"><a class="header" href="#compound-types">Compound Types</a></h2>
 <p><em>Compound types</em> are types that group multiple values into one type. In Sway, we have arrays and tuples.</p>
 <h2 id="tuple-types"><a class="header" href="#tuple-types">Tuple Types</a></h2>
-<p>A tuple is a general-purpose static-length aggregation of types. In more plain terms, a tuple is a single type that consists of an aggregate of zero or more types. The internal types that make up a tuple, and the tuple's cardinality, define the tuple's type. Let's take a look at some examples.</p>
+<p>A tuple is a general-purpose static-length aggregation of types. In more plain terms, a tuple is a single type that consists of an aggregate of zero or more types. The internal types that make up a tuple, and the tuple's arity, define the tuple's type. Let's take a look at some examples.</p>
 <pre><code class="language-sway">let x: (u64, u64) = (0, 0);
 </code></pre>
 <p>This is a tuple, denoted by parenthesized, comma-separated values. Note that the type annotation, <code>(u64, u64)</code>, is similar in syntax to the expression which instantiates that type, <code>(0, 0)</code>.</p>
@@ -189,6 +189,12 @@ assert(x.1);
 <pre><code class="language-sway">struct Foo {}
 let x: (u64, Foo, bool) = (42, Foo {}, true);
 let (number, foo, boolean) = x;
+</code></pre>
+<p>To create one-arity tuples, we will need to add a trailing comma:</p>
+<pre><code class="language-sway">let x: u64 = (42);     // x is of type u64
+let y: (u64) = (42);   // y is of type u64
+let z: (u64,) = (42,); // z is of type (u64), i.e. a one-arity tuple
+let w: (u64) = (42,);  // type error
 </code></pre>
 <h2 id="arrays"><a class="header" href="#arrays">Arrays</a></h2>
 <p>An array is similar to a tuple, but an array's values must all be of the same type. An array is written as a comma-separated list inside square brackets:</p>
