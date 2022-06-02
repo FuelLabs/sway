@@ -122,8 +122,8 @@ fn main() -> bool {
     caller.set_e(E::A(42));
     let e = caller.get_e();
     match e {
-        E::A(val) => assert(val == 42),
-        _ => {}
+        E::A(val) => assert(val == 42), _ => {
+        }
     }
 
     caller.set_e(E::B(t));
@@ -138,9 +138,10 @@ fn main() -> bool {
             assert(val.int16 == t.int16);
             assert(val.int32 == t.int32);
         }
-        _ => {}
+        _ => {
+        }
     };
-    
+
     caller.set_string("fuelfuelfuelfuelfuelfuelfuelfuelfuelfuel");
 
     // Can't compare strings right now so compare hashes instead

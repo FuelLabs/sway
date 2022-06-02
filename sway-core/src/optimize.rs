@@ -42,19 +42,6 @@ pub(crate) fn compile_program(program: TypedProgram) -> Result<Context, CompileE
 
 // -------------------------------------------------------------------------------------------------
 
-fn add_to_b256(x: fuel_types::Bytes32, y: u64) -> fuel_types::Bytes32 {
-    let x = bigint::uint::U256::from(*x);
-    let y = bigint::uint::U256::from(y);
-    let res: [u8; 32] = (x + y).into();
-    fuel_types::Bytes32::from(res)
-}
-
-impl From<fuel_types::Bytes32> for Literal {
-    fn from(o: fuel_types::Bytes32) -> Self {
-        Literal::B256(*o)
-    }
-}
-
 fn compile_script(
     context: &mut Context,
     main_function: TypedFunctionDeclaration,
@@ -2205,6 +2192,13 @@ impl FnCompiler {
                                 rhs.expect("expecting a rhs for write"),
                                 span_md_idx,
                             );
+                        }
+
+                        fn add_to_b256(x: fuel_types::Bytes32, y: u64) -> fuel_types::Bytes32 {
+                            let x = bigint::uint::U256::from(*x);
+                            let y = bigint::uint::U256::from(y);
+                            let res: [u8; 32] = (x + y).into();
+                            fuel_types::Bytes32::from(res)
                         }
 
                         let mut iter = 0;
