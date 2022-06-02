@@ -4,8 +4,9 @@ contract;
 use std::{
     address::Address,
     assert::assert,
-    chain::auth::{AuthError, Sender, msg_sender},
+    chain::auth::{AuthError, msg_sender},
     hash::sha256,
+    identity::Identity,
     logging::log,
     result::*,
     revert::revert,
@@ -69,9 +70,9 @@ impl Token for Contract {
     fn mint(receiver: Address, amount: u64) {
         // Note: The return type of `msg_sender()` can be inferred by the
         // compiler. It is shown here for explicitness.
-        let sender: Result<Sender, AuthError> = msg_sender();
+        let sender: Result<Identity, AuthError> = msg_sender();
         let sender: Address = match sender.unwrap() {
-            Sender::Address(addr) => {
+            Identity::Address(addr) => {
                 assert(addr == ~Address::from(MINTER));
                 addr
             },
@@ -87,9 +88,9 @@ impl Token for Contract {
     fn send(receiver: Address, amount: u64) {
         // Note: The return type of `msg_sender()` can be inferred by the
         // compiler. It is shown here for explicitness.
-        let sender: Result<Sender, AuthError> = msg_sender();
+        let sender: Result<Identity, AuthError> = msg_sender();
         let sender: Address = match sender.unwrap() {
-            Sender::Address(addr) => {
+            Identity::Address(addr) => {
                 assert(addr == ~Address::from(MINTER));
                 addr
             },
