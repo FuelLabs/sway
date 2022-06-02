@@ -311,9 +311,9 @@ impl Manifest {
             build_profiles.insert(
                 RELEASE.to_string(),
                 BuildConfig {
-                    print_ir: true,
-                    print_finalized_asm: true,
-                    print_intermediate_asm: true,
+                    print_ir: false,
+                    print_finalized_asm: false,
+                    print_intermediate_asm: false,
                     silent: true,
                 },
             );

@@ -53,8 +53,8 @@ pub struct Command {
     /// If it is not specified we are going to be using debug
     #[clap(long)]
     pub build_profile: Option<String>,
-    /// Use release build plan, it is implicitly added to the manifest file
-    /// If another build plan is specified produce a warning and use that one.
+    /// Use release build plan. If a custom release plan is not specified, it is implicitly added to the manifest file
+    /// If --build-profile is also provided, forc omits --release flag and uses provided build-profile.
     #[clap(long)]
     pub release: bool,
 }

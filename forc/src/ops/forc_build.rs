@@ -127,13 +127,10 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         fs::write(outfile, &source_map_json)?;
     }
 
-    // TODO: We may support custom build profiles in the future.
-    let profile = "debug";
-
     // Create the output directory for build artifacts.
     let output_dir = output_directory
         .map(PathBuf::from)
-        .unwrap_or_else(|| default_output_directory(manifest.dir()).join(profile));
+        .unwrap_or_else(|| default_output_directory(manifest.dir()).join(selected_build_profile));
     if !output_dir.exists() {
         fs::create_dir_all(&output_dir)?;
     }
