@@ -9,9 +9,6 @@ pub struct Command {
     /// Path to the project, if not specified, current working directory will be used.
     #[clap(short, long)]
     pub path: Option<String>,
-    /// Whether to compile using the original (pre- IR) pipeline.
-    #[clap(long, hide = true)]
-    pub use_orig_asm: bool,
     /// Whether to compile to bytecode (false) or to print out the generated ASM (true).
     #[clap(long)]
     pub print_finalized_asm: bool,

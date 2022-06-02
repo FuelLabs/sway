@@ -13,6 +13,7 @@ dep hash;
 dep storage;
 dep b512;
 dep address;
+dep identity;
 dep tx;
 dep chain;
 dep math;
