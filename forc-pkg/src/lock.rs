@@ -7,7 +7,6 @@ use std::{
     collections::{BTreeSet, HashMap},
     fs,
     path::Path,
-    str::FromStr,
 };
 
 /// The graph of pinned packages represented as a toml-serialization-friendly structure.
@@ -51,36 +50,6 @@ pub struct PkgLock {
 /// different versions of the same package.
 pub type PkgDepLine = String;
 
-/// Convert the given package source to a string for use in the package lock.
-///
-/// Returns `None` for sources that refer to a direct `Path`.
-pub fn source_to_string(source: &pkg::SourcePinned) -> String {
-    match source {
-        pkg::SourcePinned::Root => "root".to_string(),
-        pkg::SourcePinned::Path(src) => src.to_string(),
-        pkg::SourcePinned::Git(src) => src.to_string(),
-        pkg::SourcePinned::Registry(_reg) => unimplemented!("pkg registries not yet implemented"),
-    }
-}
-
-/// Convert the given package source string read from a package lock to a `pkg::SourcePinned`.
-pub fn source_from_str(s: &str) -> Result<pkg::SourcePinned> {
-    let source = if s == "root" {
-        pkg::SourcePinned::Root
-    } else if let Ok(src) = pkg::SourcePathPinned::from_str(s) {
-        pkg::SourcePinned::Path(src)
-    } else if let Ok(src) = pkg::SourceGitPinned::from_str(s) {
-        pkg::SourcePinned::Git(src)
-    } else {
-        // TODO: Try parse registry source.
-        return Err(anyhow!(
-            "Unable to parse valid pinned source from given string {}",
-            s
-        ));
-    };
-    Ok(source)
-}
-
 impl PkgLock {
     /// Construct a package lock given a package's entry in the package graph.
     pub fn from_node(graph: &pkg::Graph, node: pkg::NodeIx) -> Self {
@@ -90,7 +59,7 @@ impl PkgLock {
             pkg::SourcePinned::Registry(reg) => Some(reg.source.version.clone()),
             _ => None,
         };
-        let source = source_to_string(&pinned.source);
+        let source = pinned.source.to_string();
         let mut dependencies: Vec<String> = graph
             .edges_directed(node, Direction::Outgoing)
             .map(|edge| {
@@ -102,7 +71,7 @@ impl PkgLock {
                 } else {
                     None
                 };
-                let source_string = source_to_string(&dep_pkg.source);
+                let source_string = dep_pkg.source.to_string();
                 pkg_dep_line(dep_name, &dep_pkg.name, &source_string)
             })
             .collect();
@@ -149,8 +118,9 @@ impl Lock {
         for pkg in &self.package {
             let key = pkg.unique_string();
             let name = pkg.name.clone();
-            let source = source_from_str(&pkg.source)
-                .map_err(|e| anyhow!("invalid 'source' entry for package {} lock: {}", name, e))?;
+            let source: pkg::SourcePinned = pkg.source.parse().map_err(|e| {
+                anyhow!("invalid 'source' entry for package {} lock: {:?}", name, e)
+            })?;
             let pkg = pkg::Pinned { name, source };
             let node = graph.add_node(pkg);
             pkg_to_node.insert(key, node);

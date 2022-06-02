@@ -16,6 +16,7 @@ use petgraph::{
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map, BTreeSet, HashMap, HashSet},
+    fmt,
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
     str::FromStr,
@@ -165,6 +166,10 @@ pub struct BuildConfig {
     pub silent: bool,
 }
 
+/// Error returned upon failed parsing of `PinnedId::from_str`.
+#[derive(Clone, Debug)]
+pub struct PinnedIdParseError;
+
 /// Error returned upon failed parsing of `SourcePathPinned::from_str`.
 #[derive(Clone, Debug)]
 pub struct SourcePathPinnedParseError;
@@ -177,6 +182,10 @@ pub enum SourceGitPinnedParseError {
     Reference,
     CommitHash,
 }
+
+/// Error returned upon failed parsing of `SourcePinned::from_str`.
+#[derive(Clone, Debug)]
+pub struct SourcePinnedParseError;
 
 /// The name specified on the left hand side of the `=` in a depenedency declaration under
 /// `[dependencies]` within a forc manifest.
@@ -515,35 +524,62 @@ impl SourceGitPinned {
     const PREFIX: &'static str = "git";
 }
 
-impl ToString for SourcePathPinned {
-    fn to_string(&self) -> String {
-        // path+relative-to-<id>
-        format!("{}+relative-to-{}", Self::PREFIX, self.relative_to.0)
+impl fmt::Display for PinnedId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Format the inner `u64` as hex.
+        write!(f, "{:016X}", self.0)
     }
 }
 
-impl ToString for SourceGitPinned {
-    fn to_string(&self) -> String {
+impl fmt::Display for SourcePathPinned {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // path+relative-to-<id>
+        write!(f, "{}+relative-to-{}", Self::PREFIX, self.relative_to)
+    }
+}
+
+impl fmt::Display for SourceGitPinned {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // git+<url/to/repo>?<ref_kind>=<ref_string>#<commit>
-        let reference = self.source.reference.to_string();
-        format!(
+        write!(
+            f,
             "{}+{}?{}#{}",
             Self::PREFIX,
             self.source.repo,
-            reference,
+            self.source.reference,
             self.commit_hash
         )
     }
 }
 
-impl ToString for GitReference {
-    fn to_string(&self) -> String {
+impl fmt::Display for GitReference {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            GitReference::Branch(ref s) => format!("branch={}", s),
-            GitReference::Tag(ref s) => format!("tag={}", s),
-            GitReference::Rev(ref _s) => "rev".to_string(),
-            GitReference::DefaultBranch => "default-branch".to_string(),
+            GitReference::Branch(ref s) => write!(f, "branch={}", s),
+            GitReference::Tag(ref s) => write!(f, "tag={}", s),
+            GitReference::Rev(ref _s) => write!(f, "rev"),
+            GitReference::DefaultBranch => write!(f, "default-branch"),
         }
+    }
+}
+
+impl fmt::Display for SourcePinned {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            SourcePinned::Root => write!(f, "root"),
+            SourcePinned::Path(src) => src.fmt(f),
+            SourcePinned::Git(src) => src.fmt(f),
+            SourcePinned::Registry(_reg) => unimplemented!("pkg registries not yet implemented"),
+        }
+    }
+}
+
+impl FromStr for PinnedId {
+    type Err = PinnedIdParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(
+            u64::from_str_radix(s, 16).map_err(|_| PinnedIdParseError)?,
+        ))
     }
 }
 
@@ -566,8 +602,7 @@ impl FromStr for SourcePathPinned {
             .nth(1)
             .ok_or(SourcePathPinnedParseError)?
             .parse()
-            .map_err(|_| SourcePathPinnedParseError)
-            .map(PinnedId)?;
+            .map_err(|_| SourcePathPinnedParseError)?;
 
         Ok(Self { relative_to })
     }
@@ -624,6 +659,23 @@ impl FromStr for SourceGitPinned {
             source,
             commit_hash,
         })
+    }
+}
+
+impl FromStr for SourcePinned {
+    type Err = SourcePinnedParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let source = if s == "root" {
+            SourcePinned::Root
+        } else if let Ok(src) = SourcePathPinned::from_str(s) {
+            SourcePinned::Path(src)
+        } else if let Ok(src) = SourceGitPinned::from_str(s) {
+            SourcePinned::Git(src)
+        } else {
+            // TODO: Try parse registry source.
+            return Err(SourcePinnedParseError);
+        };
+        Ok(source)
     }
 }
 
