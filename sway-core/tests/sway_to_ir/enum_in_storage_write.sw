@@ -14,9 +14,7 @@ pub enum E {
 }
 
 abi StorageAccess {
-    // Setters
     fn set_e(s: S, u: u64);
-    fn get_e() -> (E, E);
 }
 
 storage {
@@ -28,9 +26,5 @@ impl StorageAccess for Contract {
     fn set_e(s: S, u: u64) {
         storage.e1 = E::A(s);
         storage.e2 = E::B(u);
-    }
-
-    fn get_e() -> (E, E) {
-        (storage.e1, storage.e2)
     }
 }
