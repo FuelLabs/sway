@@ -1,18 +1,9 @@
 use crate::{
-    error::*,
-    namespace::Items,
-    parse_tree::*,
-    semantic_analysis::{
-        declaration::EnforceTypeArguments, insert_type_parameters, CopyTypes, TypeMapping,
-    },
-    type_engine::*,
-    CompileError, CompileResult, Ident, Namespace,
+    error::*, namespace::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*,
 };
 use fuels_types::Property;
 use std::hash::{Hash, Hasher};
-use sway_types::Span;
-
-use super::{monomorphize_inner, CreateTypeId, MonomorphizeHelper};
+use sway_types::{Ident, Span};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedEnumDeclaration {

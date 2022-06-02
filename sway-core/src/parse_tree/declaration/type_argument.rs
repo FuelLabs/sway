@@ -1,7 +1,4 @@
-use crate::{
-    type_engine::{insert_type, look_up_type_id, JsonAbiString, ToJsonAbi, TypeId},
-    TypeInfo,
-};
+use crate::{type_engine::*, types::*};
 use fuels_types::Property;
 use std::hash::{Hash, Hasher};
 use sway_types::Span;

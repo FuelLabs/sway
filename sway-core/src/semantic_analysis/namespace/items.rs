@@ -1,12 +1,6 @@
 use crate::{
-    error::*,
-    semantic_analysis::{
-        ast_node::{TypedStorageDeclaration, TypedStructField},
-        declaration::TypedStorageField,
-        CopyTypes, TypeCheckedStorageAccess, TypeMapping,
-    },
-    type_engine::*,
-    CallPath, CompileResult, Ident, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
+    error::*, semantic_analysis::*, type_engine::*, CallPath, CompileResult, Ident, TypeInfo,
+    TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use super::trait_map::TraitMap;

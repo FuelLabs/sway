@@ -13,9 +13,7 @@ pub use r#struct::*;
 pub use storage::*;
 pub use variable::*;
 
-use super::{
-    copy_types::TypeMapping, impl_trait::Mode, CopyTypes, TypedCodeBlock, TypedExpression,
-};
+use super::{impl_trait::Mode, CopyTypes, TypedCodeBlock, TypedExpression};
 use crate::{
     error::*, parse_tree::*, semantic_analysis::TypeCheckedStorageReassignment, type_engine::*,
     Ident,

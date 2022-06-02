@@ -1,27 +1,12 @@
-use crate::{
-    error::*,
-    namespace::Items,
-    parse_tree::*,
-    semantic_analysis::{
-        ast_node::{
-            copy_types::insert_type_parameters, IsConstant, Mode, TypedCodeBlock, TypedDeclaration,
-            TypedExpression, TypedExpressionVariant, TypedReturnStatement,
-            TypedVariableDeclaration, VariableMutability,
-        },
-        CopyTypes, TypeCheckArguments, TypeMapping, TypedAstNode, TypedAstNodeContent,
-    },
-    style::*,
-    type_engine::*,
-    Ident, TypeParameter,
-};
-use fuels_types::{Function, Property};
-use sha2::{Digest, Sha256};
-use sway_types::Span;
-
 mod function_parameter;
 pub use function_parameter::*;
 
-use super::{EnforceTypeArguments, MonomorphizeHelper};
+use crate::{
+    error::*, namespace::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*, types::*,
+};
+use fuels_types::{Function, Property};
+use sha2::{Digest, Sha256};
+use sway_types::{Ident, Span};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedFunctionDeclaration {

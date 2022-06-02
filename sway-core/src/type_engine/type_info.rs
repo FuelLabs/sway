@@ -1,12 +1,6 @@
 use super::*;
 
-use crate::{
-    semantic_analysis::{
-        ast_node::{TypedEnumVariant, TypedExpression, TypedStructField},
-        TypeMapping,
-    },
-    CallPath, Ident, TypeArgument, TypeParameter,
-};
+use crate::{semantic_analysis::*, types::*, CallPath, Ident, TypeArgument, TypeParameter};
 
 use sway_types::span::Span;
 
