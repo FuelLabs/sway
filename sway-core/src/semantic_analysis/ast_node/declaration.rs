@@ -13,13 +13,9 @@ pub use r#struct::*;
 pub use storage::*;
 pub use variable::*;
 
-use super::{impl_trait::Mode, CopyTypes, TypedCodeBlock, TypedExpression};
-use crate::{
-    error::*, parse_tree::*, semantic_analysis::TypeCheckedStorageReassignment, type_engine::*,
-    Ident,
-};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
 use derivative::Derivative;
-use sway_types::Span;
+use sway_types::{Ident, Span};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TypedDeclaration {
@@ -318,7 +314,8 @@ impl TypedDeclaration {
                     builder.push_str(name.as_str());
                     builder.push_str(": ");
                     builder.push_str(
-                        &crate::type_engine::look_up_type_id(*type_ascription).friendly_type_str(),
+                        &crate::type_engine::look_up_type_id(*type_ascription)
+                            .friendly_type_string(),
                     );
                     builder.push_str(" = ");
                     builder.push_str(&body.pretty_print());

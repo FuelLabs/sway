@@ -1,10 +1,9 @@
-use super::*;
+use crate::{parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
 
-use crate::{parse_tree::AsmOp, semantic_analysis::ast_node::*, Ident};
-use std::collections::HashMap;
-use sway_types::state::StateIndex;
+use sway_types::{state::StateIndex, Ident, Span};
 
 use derivative::Derivative;
+use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
 pub struct ContractCallMetadata {
@@ -550,7 +549,7 @@ impl TypedExpressionVariant {
             } => {
                 format!(
                     "\"{}.{}\" struct field access",
-                    look_up_type_id(*resolved_type_of_parent).friendly_type_str(),
+                    look_up_type_id(*resolved_type_of_parent).friendly_type_string(),
                     field_to_access.name
                 )
             }
@@ -561,7 +560,7 @@ impl TypedExpressionVariant {
             } => {
                 format!(
                     "\"{}.{}\" tuple index",
-                    look_up_type_id(*resolved_type_of_parent).friendly_type_str(),
+                    look_up_type_id(*resolved_type_of_parent).friendly_type_string(),
                     elem_to_access_num
                 )
             }
@@ -587,7 +586,7 @@ impl TypedExpressionVariant {
             TypedExpressionVariant::TypeProperty {
                 property, type_id, ..
             } => {
-                let type_str = look_up_type_id(*type_id).friendly_type_str();
+                let type_str = look_up_type_id(*type_id).friendly_type_string();
                 match property {
                     BuiltinProperty::SizeOfType => format!("size_of({type_str:?})"),
                     BuiltinProperty::IsRefType => format!("is_ref_type({type_str:?})"),
@@ -601,13 +600,13 @@ impl TypedExpressionVariant {
             TypedExpressionVariant::EnumTag { exp } => {
                 format!(
                     "({} as tag)",
-                    look_up_type_id(exp.return_type).friendly_type_str()
+                    look_up_type_id(exp.return_type).friendly_type_string()
                 )
             }
             TypedExpressionVariant::UnsafeDowncast { exp, variant } => {
                 format!(
                     "({} as {})",
-                    look_up_type_id(exp.return_type).friendly_type_str(),
+                    look_up_type_id(exp.return_type).friendly_type_string(),
                     variant.name
                 )
             }

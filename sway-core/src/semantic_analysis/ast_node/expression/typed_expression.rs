@@ -12,9 +12,7 @@ pub(crate) use self::{
     method_application::*, struct_field_access::*, tuple_index_access::*, unsafe_downcast::*,
 };
 
-use super::match_expression::{check_match_expression_usefulness, TypedMatchExpression};
-
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
 
 use sway_types::{Ident, Span};
 
@@ -1863,7 +1861,7 @@ impl TypedExpression {
         format!(
             "{} ({})",
             self.expression.pretty_print(),
-            look_up_type_id(self.return_type).friendly_type_str()
+            look_up_type_id(self.return_type).friendly_type_string()
         )
     }
 }
@@ -1871,7 +1869,6 @@ impl TypedExpression {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::*;
 
     fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<TypedExpression> {
         let mut namespace = Namespace::init_root(namespace::Module::default());
@@ -1919,8 +1916,8 @@ mod tests {
                              expected,
                              received,
                              ..
-                         }) if expected.friendly_type_str() == "bool"
-                                && received.friendly_type_str() == "u64"));
+                         }) if expected.friendly_type_string() == "bool"
+                                && received.friendly_type_string() == "u64"));
     }
 
     #[test]
@@ -1947,15 +1944,15 @@ mod tests {
                              expected,
                              received,
                              ..
-                         }) if expected.friendly_type_str() == "u64"
-                                && received.friendly_type_str() == "bool"));
+                         }) if expected.friendly_type_string() == "u64"
+                                && received.friendly_type_string() == "bool"));
         assert!(matches!(&comp_res.errors[1],
                          CompileError::TypeError(TypeError::MismatchedType {
                              expected,
                              received,
                              ..
-                         }) if expected.friendly_type_str() == "[bool; 2]"
-                                && received.friendly_type_str() == "[u64; 2]"));
+                         }) if expected.friendly_type_string() == "[bool; 2]"
+                                && received.friendly_type_string() == "[u64; 2]"));
     }
 
     #[test]
@@ -1986,8 +1983,8 @@ mod tests {
                              expected,
                              received,
                              ..
-                         }) if expected.friendly_type_str() == "[bool; 2]"
-                                && received.friendly_type_str() == "[bool; 3]"));
+                         }) if expected.friendly_type_string() == "[bool; 2]"
+                                && received.friendly_type_string() == "[bool; 3]"));
     }
 
     #[test]

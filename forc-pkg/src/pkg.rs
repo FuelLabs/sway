@@ -17,7 +17,7 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
-    semantic_analysis::namespace, source_map::SourceMap, BytecodeCompilationResult,
+    semantic_analysis::namespace, source_map::SourceMap, types::*, BytecodeCompilationResult,
     CompileAstResult, CompileError, TreeType, TypedProgramKind,
 };
 use sway_utils::constants;

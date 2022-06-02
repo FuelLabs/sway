@@ -317,7 +317,7 @@ impl Root {
                 {
                     errors.push(CompileError::MethodNotFound {
                         method_name: method_name.clone(),
-                        type_name: r#type.friendly_type_str(),
+                        type_name: r#type.friendly_type_string(),
                     });
                 }
                 err(warnings, errors)

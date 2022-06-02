@@ -36,19 +36,25 @@ impl Default for TypeArgument {
     }
 }
 
-impl TypeArgument {
-    pub(crate) fn friendly_type_str(&self) -> String {
-        look_up_type_id(self.type_id).friendly_type_str()
+impl FriendlyTypeString for TypeArgument {
+    fn friendly_type_string(&self) -> String {
+        look_up_type_id(self.type_id).friendly_type_string()
     }
+}
 
-    pub(crate) fn json_abi_str(&self) -> String {
-        look_up_type_id(self.type_id).json_abi_str()
+impl JsonAbiString for TypeArgument {
+    fn json_abi_string(&self) -> String {
+        look_up_type_id(self.type_id).json_abi_string()
     }
+}
 
-    pub fn generate_json_abi(&self) -> Property {
+impl ToJsonAbi for TypeArgument {
+    type Output = Property;
+
+    fn generate_json_abi(&self) -> Self::Output {
         Property {
             name: "__tuple_element".to_string(),
-            type_field: self.type_id.json_abi_str(),
+            type_field: self.type_id.json_abi_string(),
             components: self.type_id.generate_json_abi(),
         }
     }

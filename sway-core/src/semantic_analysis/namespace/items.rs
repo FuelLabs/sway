@@ -1,9 +1,8 @@
 use crate::{
-    error::*, semantic_analysis::*, type_engine::*, CallPath, CompileResult, Ident, TypeInfo,
-    TypedDeclaration, TypedFunctionDeclaration,
+    error::*, namespace::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*,
 };
 
-use super::trait_map::TraitMap;
+use super::TraitMap;
 
 use sway_types::span::Span;
 
@@ -201,7 +200,7 @@ impl Items {
                 vec![CompileError::NotAStruct {
                     name: debug_string.into(),
                     span: debug_span.clone(),
-                    actually: a.friendly_type_str(),
+                    actually: a.friendly_type_string(),
                 }],
             ),
         }

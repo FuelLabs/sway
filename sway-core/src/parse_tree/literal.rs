@@ -1,4 +1,4 @@
-use crate::{error::*, type_engine::*};
+use crate::{error::*, type_engine::*, types::*};
 
 use sway_types::span;
 
@@ -159,15 +159,15 @@ impl Literal {
     ) -> CompileError {
         match e.kind() {
             IntErrorKind::PosOverflow => CompileError::IntegerTooLarge {
-                ty: ty.friendly_type_str(),
+                ty: ty.friendly_type_string(),
                 span,
             },
             IntErrorKind::NegOverflow => CompileError::IntegerTooSmall {
-                ty: ty.friendly_type_str(),
+                ty: ty.friendly_type_string(),
                 span,
             },
             IntErrorKind::InvalidDigit => CompileError::IntegerContainsInvalidDigit {
-                ty: ty.friendly_type_str(),
+                ty: ty.friendly_type_string(),
                 span,
             },
             IntErrorKind::Zero | IntErrorKind::Empty | _ => {

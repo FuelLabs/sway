@@ -5,6 +5,7 @@ use crate::{
     convert_parse_tree::ConvertParseTreeError,
     style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case},
     type_engine::*,
+    types::*,
     VariableDeclaration,
 };
 use sway_types::{ident::Ident, span::Span};
@@ -370,7 +371,7 @@ impl fmt::Display for Warning {
                 f,
                 "This returns a value of type {}, which is not assigned to anything and is \
                  ignored.",
-                r#type.friendly_type_str()
+                r#type.friendly_type_string()
             ),
             SimilarMethodFound { lib, module, name } => write!(
                 f,
@@ -976,7 +977,7 @@ pub enum TypeError {
         "Mismatched types.\n\
          expected: {expected}\n\
          found:    {received}.\n\
-         {help}", expected=look_up_type_id(*expected).friendly_type_str(), received=look_up_type_id(*received).friendly_type_str(), help=if !help_text.is_empty() { format!("help: {}", help_text) } else { String::new() }
+         {help}", expected=look_up_type_id(*expected).friendly_type_string(), received=look_up_type_id(*received).friendly_type_string(), help=if !help_text.is_empty() { format!("help: {}", help_text) } else { String::new() }
     )]
     MismatchedType {
         expected: TypeId,

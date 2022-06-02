@@ -1,9 +1,6 @@
-use ast_node::declaration::EnforceTypeArguments;
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
 
-use crate::error::*;
-use crate::semantic_analysis::ast_node::declaration::CreateTypeId;
-use crate::semantic_analysis::{ast_node::*, TCOpts, TypeCheckArguments};
-use crate::type_engine::{look_up_type_id, TypeId};
+use sway_types::Ident;
 
 /// Given an enum declaration and the instantiation expression/type arguments, construct a valid
 /// [TypedExpression].
@@ -114,7 +111,7 @@ pub(crate) fn instantiate_enum(
         (_too_many_expressions, ty) => {
             errors.push(CompileError::MoreThanOneEnumInstantiator {
                 span: enum_field_name.span().clone(),
-                ty: ty.friendly_type_str(),
+                ty: ty.friendly_type_string(),
             });
             err(warnings, errors)
         }

@@ -1,13 +1,5 @@
-use crate::{
-    error::{err, ok, CompileError, CompileResult},
-    parse_tree::{AstNode, DepName, ParseModule, ParseSubmodule},
-    semantic_analysis::{
-        ast_node::Mode,
-        namespace::{self, Namespace},
-        node_dependencies, TypeCheckArguments, TypedAstNode, TypedAstNodeContent, TypedDeclaration,
-    },
-    type_engine::{insert_type, TypeInfo},
-};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
+
 use sway_types::Ident;
 
 #[derive(Clone, Debug)]
@@ -169,7 +161,7 @@ fn check_supertraits(
                         // user code with a single error.
                         errors.push(CompileError::SupertraitImplMissing {
                             supertrait_name: supertrait.name.clone(),
-                            type_name: type_implementing_for.friendly_type_str(),
+                            type_name: type_implementing_for.friendly_type_string(),
                             span: span.clone(),
                         });
                         errors.push(CompileError::SupertraitImplRequired {

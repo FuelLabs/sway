@@ -192,6 +192,18 @@ impl CopyTypes for TypedStructField {
     }
 }
 
+impl ToJsonAbi for TypedStructField {
+    type Output = Property;
+
+    fn generate_json_abi(&self) -> Self::Output {
+        Property {
+            name: self.name.to_string(),
+            type_field: self.r#type.json_abi_string(),
+            components: self.r#type.generate_json_abi(),
+        }
+    }
+}
+
 impl TypedStructField {
     pub(crate) fn type_check(
         field: StructField,
@@ -221,13 +233,5 @@ impl TypedStructField {
             span: field.span,
         };
         ok(field, warnings, errors)
-    }
-
-    pub fn generate_json_abi(&self) -> Property {
-        Property {
-            name: self.name.to_string(),
-            type_field: self.r#type.json_abi_str(),
-            components: self.r#type.generate_json_abi(),
-        }
     }
 }

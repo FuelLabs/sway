@@ -18,13 +18,13 @@ impl std::ops::Deref for TypeId {
 
 impl Display for TypeId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&look_up_type_id(*self).friendly_type_str())
+        f.write_str(&look_up_type_id(*self).friendly_type_string())
     }
 }
 
 impl Debug for TypeId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&look_up_type_id(*self).friendly_type_str())
+        f.write_str(&look_up_type_id(*self).friendly_type_string())
     }
 }
 
@@ -47,23 +47,25 @@ impl TypeId {
 }
 
 impl JsonAbiString for TypeId {
-    fn json_abi_str(&self) -> String {
-        look_up_type_id(*self).json_abi_str()
+    fn json_abi_string(&self) -> String {
+        look_up_type_id(*self).json_abi_string()
     }
 }
 
 impl FriendlyTypeString for TypeId {
-    fn friendly_type_str(&self) -> String {
-        look_up_type_id(*self).friendly_type_str()
+    fn friendly_type_string(&self) -> String {
+        look_up_type_id(*self).friendly_type_string()
     }
 }
 
 impl ToJsonAbi for TypeId {
-    fn generate_json_abi(&self) -> Option<Vec<Property>> {
+    type Output = Option<Vec<Property>>;
+
+    fn generate_json_abi(&self) -> Self::Output {
         match look_up_type_id(*self) {
             TypeInfo::Array(type_id, _) => Some(vec![Property {
                 name: "__array_element".to_string(),
-                type_field: type_id.json_abi_str(),
+                type_field: type_id.json_abi_string(),
                 components: type_id.generate_json_abi(),
             }]),
             TypeInfo::Enum { variant_types, .. } => Some(

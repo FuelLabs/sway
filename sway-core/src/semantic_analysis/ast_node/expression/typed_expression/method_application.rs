@@ -181,8 +181,8 @@ pub(crate) fn type_check_method_application(
         if !new_errors.is_empty() {
             errors.push(CompileError::ArgumentParameterTypeMismatch {
                 span: arg.span.clone(),
-                provided: arg.return_type.friendly_type_str(),
-                should_be: param.r#type.friendly_type_str(),
+                provided: arg.return_type.friendly_type_string(),
+                should_be: param.r#type.friendly_type_string(),
             });
         }
         // The annotation may result in a cast, which is handled in the type engine.

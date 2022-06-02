@@ -1,3 +1,3 @@
 pub(crate) trait FriendlyTypeString {
-    fn friendly_type_str(&self) -> String;
+    fn friendly_type_string(&self) -> String;
 }

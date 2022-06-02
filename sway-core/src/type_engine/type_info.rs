@@ -273,8 +273,8 @@ impl Default for TypeInfo {
     }
 }
 
-impl TypeInfo {
-    pub(crate) fn friendly_type_str(&self) -> String {
+impl FriendlyTypeString for TypeInfo {
+    fn friendly_type_string(&self) -> String {
         use TypeInfo::*;
         match self {
             Unknown => "unknown".into(),
@@ -289,11 +289,11 @@ impl TypeInfo {
             .into(),
             Boolean => "bool".into(),
             Custom { name, .. } => format!("unresolved {}", name.as_str()),
-            Ref(id, _sp) => format!("T{} ({})", id, (*id).friendly_type_str()),
+            Ref(id, _sp) => format!("T{} ({})", id, (*id).friendly_type_string()),
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
-                    .map(|field| field.friendly_type_str())
+                    .map(|field| field.friendly_type_string())
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
@@ -322,12 +322,14 @@ impl TypeInfo {
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {}", abi_name)
             }
-            Array(elem_ty, count) => format!("[{}; {}]", elem_ty.friendly_type_str(), count),
+            Array(elem_ty, count) => format!("[{}; {}]", elem_ty.friendly_type_string(), count),
             Storage { .. } => "contract storage".into(),
         }
     }
+}
 
-    pub(crate) fn json_abi_str(&self) -> String {
+impl JsonAbiString for TypeInfo {
+    fn json_abi_string(&self) -> String {
         use TypeInfo::*;
         match self {
             Unknown => "unknown".into(),
@@ -342,11 +344,11 @@ impl TypeInfo {
             .into(),
             Boolean => "bool".into(),
             Custom { name, .. } => format!("unresolved {}", name.as_str()),
-            Ref(id, _sp) => format!("T{} ({})", id, (*id).json_abi_str()),
+            Ref(id, _sp) => format!("T{} ({})", id, (*id).json_abi_string()),
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
-                    .map(|field| field.json_abi_str())
+                    .map(|field| field.json_abi_string())
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
@@ -365,11 +367,13 @@ impl TypeInfo {
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {}", abi_name)
             }
-            Array(elem_ty, count) => format!("[{}; {}]", elem_ty.json_abi_str(), count),
+            Array(elem_ty, count) => format!("[{}; {}]", elem_ty.json_abi_string(), count),
             Storage { .. } => "contract storage".into(),
         }
     }
+}
 
+impl TypeInfo {
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name(&self, error_msg_span: &Span) -> CompileResult<String> {
         use TypeInfo::*;
@@ -866,7 +870,7 @@ impl TypeInfo {
             }
             (type_info, _) => {
                 errors.push(CompileError::FieldAccessOnNonStruct {
-                    actually: type_info.friendly_type_str(),
+                    actually: type_info.friendly_type_string(),
                     span: span.clone(),
                 });
                 err(warnings, errors)
@@ -893,7 +897,7 @@ impl TypeInfo {
                 vec![CompileError::NotATuple {
                     name: debug_string.into(),
                     span: debug_span.clone(),
-                    actually: a.friendly_type_str(),
+                    actually: a.friendly_type_string(),
                 }],
             ),
         }
@@ -922,7 +926,7 @@ impl TypeInfo {
                 vec![CompileError::NotAnEnum {
                     name: debug_string.into(),
                     span: debug_span.clone(),
-                    actually: a.friendly_type_str(),
+                    actually: a.friendly_type_string(),
                 }],
             ),
         }
@@ -931,7 +935,7 @@ impl TypeInfo {
 
 fn print_inner_types(name: String, inner_types: impl Iterator<Item = TypeId>) -> String {
     let inner_types = inner_types
-        .map(|x| x.friendly_type_str())
+        .map(|x| x.friendly_type_string())
         .collect::<Vec<_>>();
     format!(
         "{}{}",

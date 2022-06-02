@@ -1,18 +1,9 @@
 //! This is the flow graph, a graph which contains edges that represent possible steps of program
 //! execution.
 
-use super::*;
 use crate::{
-    error::*,
-    parse_tree::CallPath,
-    semantic_analysis::{
-        ast_node::{
-            TypedCodeBlock, TypedDeclaration, TypedExpression, TypedFunctionDeclaration,
-            TypedReassignment, TypedWhileLoop,
-        },
-        TypedAstNode, TypedAstNodeContent,
-    },
-    type_engine::{resolve_type, TypeInfo},
+    control_flow_analysis::*, error::*, parse_tree::*, semantic_analysis::*, type_engine::*,
+    types::*,
 };
 use petgraph::prelude::NodeIndex;
 use sway_types::{ident::Ident, span::Span};
@@ -108,7 +99,7 @@ impl ControlFlowGraph {
                         // different. To save some code duplication,
                         span,
                         function_name: function_name.clone(),
-                        ty: return_ty.friendly_type_str(),
+                        ty: return_ty.friendly_type_string(),
                     });
                 }
                 next_rovers.append(&mut neighbors);

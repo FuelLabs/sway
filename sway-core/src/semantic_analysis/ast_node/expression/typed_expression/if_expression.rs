@@ -1,11 +1,6 @@
 use sway_types::Span;
 
-use crate::{
-    error::ok,
-    semantic_analysis::{IsConstant, TypedExpressionVariant},
-    type_engine::{insert_type, look_up_type_id, unify_with_self, TypeId},
-    CompileError, CompileResult, TypeInfo,
-};
+use crate::{error::*, semantic_analysis::*, type_engine::*, types::*};
 
 use super::TypedExpression;
 
@@ -75,7 +70,7 @@ pub(crate) fn instantiate_if_expression(
             if !look_up_type_id(r#else_ret_ty).is_unit() && r#else.is_none() {
                 errors.push(CompileError::NoElseBranch {
                     span: span.clone(),
-                    r#type: look_up_type_id(type_annotation).friendly_type_str(),
+                    r#type: look_up_type_id(type_annotation).friendly_type_string(),
                 });
             }
         } else {

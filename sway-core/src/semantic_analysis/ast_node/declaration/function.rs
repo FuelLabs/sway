@@ -95,6 +95,31 @@ impl MonomorphizeHelper for TypedFunctionDeclaration {
     }
 }
 
+impl ToJsonAbi for TypedFunctionDeclaration {
+    type Output = Function;
+
+    fn generate_json_abi(&self) -> Self::Output {
+        Function {
+            name: self.name.as_str().to_string(),
+            type_field: "function".to_string(),
+            inputs: self
+                .parameters
+                .iter()
+                .map(|x| Property {
+                    name: x.name.as_str().to_string(),
+                    type_field: x.r#type.json_abi_string(),
+                    components: x.r#type.generate_json_abi(),
+                })
+                .collect(),
+            outputs: vec![Property {
+                name: "".to_string(),
+                type_field: self.return_type.json_abi_string(),
+                components: self.return_type.generate_json_abi(),
+            }],
+        }
+    }
+}
+
 impl TypedFunctionDeclaration {
     pub fn type_check(
         arguments: TypeCheckArguments<'_, FunctionDeclaration>,
@@ -368,27 +393,6 @@ impl TypedFunctionDeclaration {
             warnings,
             errors,
         )
-    }
-
-    pub fn generate_json_abi(&self) -> Function {
-        Function {
-            name: self.name.as_str().to_string(),
-            type_field: "function".to_string(),
-            inputs: self
-                .parameters
-                .iter()
-                .map(|x| Property {
-                    name: x.name.as_str().to_string(),
-                    type_field: x.r#type.json_abi_str(),
-                    components: x.r#type.generate_json_abi(),
-                })
-                .collect(),
-            outputs: vec![Property {
-                name: "".to_string(),
-                type_field: self.return_type.json_abi_str(),
-                components: self.return_type.generate_json_abi(),
-            }],
-        }
     }
 }
 
