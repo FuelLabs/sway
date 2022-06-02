@@ -60,19 +60,13 @@ pub fn init(command: InitCommand) -> Result<()> {
         ))
     }
 
-    let project_name = {
-        if let Some(name) = command.name {
-            name
-        } else {
-            let dir = project_dir
-                .file_stem()
-                .context("Failed to infer project name from directory name.");
-
-            match dir {
-                Ok(d) => d.to_string_lossy().to_string(),
-                Err(e) => anyhow::bail!("Failed to infer get current directory name: '{}'", e),
-            }
-        }
+    let project_name = match command.name {
+        Some(name) => name,
+        None => project_dir
+            .file_stem()
+            .context("Failed to infer project name from directory name.")?
+            .to_string_lossy()
+            .into_owned(),
     };
 
     validate_name(&project_name, "project name")?;
