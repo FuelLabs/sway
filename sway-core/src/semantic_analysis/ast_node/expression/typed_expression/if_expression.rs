@@ -70,7 +70,7 @@ pub(crate) fn instantiate_if_expression(
             if !look_up_type_id(r#else_ret_ty).is_unit() && r#else.is_none() {
                 errors.push(CompileError::NoElseBranch {
                     span: span.clone(),
-                    r#type: look_up_type_id(type_annotation).friendly_type_string(),
+                    r#type: look_up_type_id(type_annotation).friendly_type_str(),
                 });
             }
         } else {

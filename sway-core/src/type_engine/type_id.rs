@@ -18,13 +18,13 @@ impl std::ops::Deref for TypeId {
 
 impl Display for TypeId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&look_up_type_id(*self).friendly_type_string())
+        f.write_str(&look_up_type_id(*self).friendly_type_str())
     }
 }
 
 impl Debug for TypeId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&look_up_type_id(*self).friendly_type_string())
+        f.write_str(&look_up_type_id(*self).friendly_type_str())
     }
 }
 
@@ -47,14 +47,14 @@ impl TypeId {
 }
 
 impl JsonAbiString for TypeId {
-    fn json_abi_string(&self) -> String {
-        look_up_type_id(*self).json_abi_string()
+    fn json_abi_str(&self) -> String {
+        look_up_type_id(*self).json_abi_str()
     }
 }
 
 impl FriendlyTypeString for TypeId {
-    fn friendly_type_string(&self) -> String {
-        look_up_type_id(*self).friendly_type_string()
+    fn friendly_type_str(&self) -> String {
+        look_up_type_id(*self).friendly_type_str()
     }
 }
 
@@ -65,7 +65,7 @@ impl ToJsonAbi for TypeId {
         match look_up_type_id(*self) {
             TypeInfo::Array(type_id, _) => Some(vec![Property {
                 name: "__array_element".to_string(),
-                type_field: type_id.json_abi_string(),
+                type_field: type_id.json_abi_str(),
                 components: type_id.generate_json_abi(),
             }]),
             TypeInfo::Enum { variant_types, .. } => Some(

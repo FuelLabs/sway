@@ -549,7 +549,7 @@ impl TypedExpressionVariant {
             } => {
                 format!(
                     "\"{}.{}\" struct field access",
-                    look_up_type_id(*resolved_type_of_parent).friendly_type_string(),
+                    look_up_type_id(*resolved_type_of_parent).friendly_type_str(),
                     field_to_access.name
                 )
             }
@@ -560,7 +560,7 @@ impl TypedExpressionVariant {
             } => {
                 format!(
                     "\"{}.{}\" tuple index",
-                    look_up_type_id(*resolved_type_of_parent).friendly_type_string(),
+                    look_up_type_id(*resolved_type_of_parent).friendly_type_str(),
                     elem_to_access_num
                 )
             }
@@ -586,7 +586,7 @@ impl TypedExpressionVariant {
             TypedExpressionVariant::TypeProperty {
                 property, type_id, ..
             } => {
-                let type_str = look_up_type_id(*type_id).friendly_type_string();
+                let type_str = look_up_type_id(*type_id).friendly_type_str();
                 match property {
                     BuiltinProperty::SizeOfType => format!("size_of({type_str:?})"),
                     BuiltinProperty::IsRefType => format!("is_ref_type({type_str:?})"),
@@ -600,13 +600,13 @@ impl TypedExpressionVariant {
             TypedExpressionVariant::EnumTag { exp } => {
                 format!(
                     "({} as tag)",
-                    look_up_type_id(exp.return_type).friendly_type_string()
+                    look_up_type_id(exp.return_type).friendly_type_str()
                 )
             }
             TypedExpressionVariant::UnsafeDowncast { exp, variant } => {
                 format!(
                     "({} as {})",
-                    look_up_type_id(exp.return_type).friendly_type_string(),
+                    look_up_type_id(exp.return_type).friendly_type_str(),
                     variant.name
                 )
             }

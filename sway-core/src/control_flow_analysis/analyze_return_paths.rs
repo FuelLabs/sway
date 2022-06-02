@@ -99,7 +99,7 @@ impl ControlFlowGraph {
                         // different. To save some code duplication,
                         span,
                         function_name: function_name.clone(),
-                        ty: return_ty.friendly_type_string(),
+                        ty: return_ty.friendly_type_str(),
                     });
                 }
                 next_rovers.append(&mut neighbors);

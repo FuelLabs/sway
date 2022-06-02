@@ -314,8 +314,7 @@ impl TypedDeclaration {
                     builder.push_str(name.as_str());
                     builder.push_str(": ");
                     builder.push_str(
-                        &crate::type_engine::look_up_type_id(*type_ascription)
-                            .friendly_type_string(),
+                        &crate::type_engine::look_up_type_id(*type_ascription).friendly_type_str(),
                     );
                     builder.push_str(" = ");
                     builder.push_str(&body.pretty_print());

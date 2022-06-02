@@ -371,7 +371,7 @@ impl fmt::Display for Warning {
                 f,
                 "This returns a value of type {}, which is not assigned to anything and is \
                  ignored.",
-                r#type.friendly_type_string()
+                r#type.friendly_type_str()
             ),
             SimilarMethodFound { lib, module, name } => write!(
                 f,
@@ -977,7 +977,7 @@ pub enum TypeError {
         "Mismatched types.\n\
          expected: {expected}\n\
          found:    {received}.\n\
-         {help}", expected=look_up_type_id(*expected).friendly_type_string(), received=look_up_type_id(*received).friendly_type_string(), help=if !help_text.is_empty() { format!("help: {}", help_text) } else { String::new() }
+         {help}", expected=look_up_type_id(*expected).friendly_type_str(), received=look_up_type_id(*received).friendly_type_str(), help=if !help_text.is_empty() { format!("help: {}", help_text) } else { String::new() }
     )]
     MismatchedType {
         expected: TypeId,

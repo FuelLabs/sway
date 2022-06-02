@@ -274,7 +274,7 @@ impl Default for TypeInfo {
 }
 
 impl FriendlyTypeString for TypeInfo {
-    fn friendly_type_string(&self) -> String {
+    fn friendly_type_str(&self) -> String {
         use TypeInfo::*;
         match self {
             Unknown => "unknown".into(),
@@ -289,11 +289,11 @@ impl FriendlyTypeString for TypeInfo {
             .into(),
             Boolean => "bool".into(),
             Custom { name, .. } => format!("unresolved {}", name.as_str()),
-            Ref(id, _sp) => format!("T{} ({})", id, (*id).friendly_type_string()),
+            Ref(id, _sp) => format!("T{} ({})", id, (*id).friendly_type_str()),
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
-                    .map(|field| field.friendly_type_string())
+                    .map(|field| field.friendly_type_str())
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
@@ -322,14 +322,14 @@ impl FriendlyTypeString for TypeInfo {
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {}", abi_name)
             }
-            Array(elem_ty, count) => format!("[{}; {}]", elem_ty.friendly_type_string(), count),
+            Array(elem_ty, count) => format!("[{}; {}]", elem_ty.friendly_type_str(), count),
             Storage { .. } => "contract storage".into(),
         }
     }
 }
 
 impl JsonAbiString for TypeInfo {
-    fn json_abi_string(&self) -> String {
+    fn json_abi_str(&self) -> String {
         use TypeInfo::*;
         match self {
             Unknown => "unknown".into(),
@@ -344,11 +344,11 @@ impl JsonAbiString for TypeInfo {
             .into(),
             Boolean => "bool".into(),
             Custom { name, .. } => format!("unresolved {}", name.as_str()),
-            Ref(id, _sp) => format!("T{} ({})", id, (*id).json_abi_string()),
+            Ref(id, _sp) => format!("T{} ({})", id, (*id).json_abi_str()),
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
-                    .map(|field| field.json_abi_string())
+                    .map(|field| field.json_abi_str())
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
@@ -367,7 +367,7 @@ impl JsonAbiString for TypeInfo {
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {}", abi_name)
             }
-            Array(elem_ty, count) => format!("[{}; {}]", elem_ty.json_abi_string(), count),
+            Array(elem_ty, count) => format!("[{}; {}]", elem_ty.json_abi_str(), count),
             Storage { .. } => "contract storage".into(),
         }
     }
@@ -870,7 +870,7 @@ impl TypeInfo {
             }
             (type_info, _) => {
                 errors.push(CompileError::FieldAccessOnNonStruct {
-                    actually: type_info.friendly_type_string(),
+                    actually: type_info.friendly_type_str(),
                     span: span.clone(),
                 });
                 err(warnings, errors)
@@ -897,7 +897,7 @@ impl TypeInfo {
                 vec![CompileError::NotATuple {
                     name: debug_string.into(),
                     span: debug_span.clone(),
-                    actually: a.friendly_type_string(),
+                    actually: a.friendly_type_str(),
                 }],
             ),
         }
@@ -926,7 +926,7 @@ impl TypeInfo {
                 vec![CompileError::NotAnEnum {
                     name: debug_string.into(),
                     span: debug_span.clone(),
-                    actually: a.friendly_type_string(),
+                    actually: a.friendly_type_str(),
                 }],
             ),
         }
@@ -935,7 +935,7 @@ impl TypeInfo {
 
 fn print_inner_types(name: String, inner_types: impl Iterator<Item = TypeId>) -> String {
     let inner_types = inner_types
-        .map(|x| x.friendly_type_string())
+        .map(|x| x.friendly_type_str())
         .collect::<Vec<_>>();
     format!(
         "{}{}",

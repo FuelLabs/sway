@@ -107,13 +107,13 @@ impl ToJsonAbi for TypedFunctionDeclaration {
                 .iter()
                 .map(|x| Property {
                     name: x.name.as_str().to_string(),
-                    type_field: x.r#type.json_abi_string(),
+                    type_field: x.r#type.json_abi_str(),
                     components: x.r#type.generate_json_abi(),
                 })
                 .collect(),
             outputs: vec![Property {
                 name: "".to_string(),
-                type_field: self.return_type.json_abi_string(),
+                type_field: self.return_type.json_abi_str(),
                 components: self.return_type.generate_json_abi(),
             }],
         }

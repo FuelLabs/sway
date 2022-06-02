@@ -111,7 +111,7 @@ pub(crate) fn instantiate_enum(
         (_too_many_expressions, ty) => {
             errors.push(CompileError::MoreThanOneEnumInstantiator {
                 span: enum_field_name.span().clone(),
-                ty: ty.friendly_type_string(),
+                ty: ty.friendly_type_str(),
             });
             err(warnings, errors)
         }

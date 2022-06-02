@@ -1,3 +1,3 @@
 pub(crate) trait JsonAbiString {
-    fn json_abi_string(&self) -> String;
+    fn json_abi_str(&self) -> String;
 }

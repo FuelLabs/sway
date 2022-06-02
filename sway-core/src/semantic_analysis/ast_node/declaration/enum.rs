@@ -205,7 +205,7 @@ impl ToJsonAbi for TypedEnumVariant {
     fn generate_json_abi(&self) -> Self::Output {
         Property {
             name: self.name.to_string(),
-            type_field: self.r#type.json_abi_string(),
+            type_field: self.r#type.json_abi_str(),
             components: self.r#type.generate_json_abi(),
         }
     }

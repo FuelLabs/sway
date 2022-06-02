@@ -200,7 +200,7 @@ impl Items {
                 vec![CompileError::NotAStruct {
                     name: debug_string.into(),
                     span: debug_span.clone(),
-                    actually: a.friendly_type_string(),
+                    actually: a.friendly_type_str(),
                 }],
             ),
         }

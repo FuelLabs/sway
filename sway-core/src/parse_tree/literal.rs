@@ -159,15 +159,15 @@ impl Literal {
     ) -> CompileError {
         match e.kind() {
             IntErrorKind::PosOverflow => CompileError::IntegerTooLarge {
-                ty: ty.friendly_type_string(),
+                ty: ty.friendly_type_str(),
                 span,
             },
             IntErrorKind::NegOverflow => CompileError::IntegerTooSmall {
-                ty: ty.friendly_type_string(),
+                ty: ty.friendly_type_str(),
                 span,
             },
             IntErrorKind::InvalidDigit => CompileError::IntegerContainsInvalidDigit {
-                ty: ty.friendly_type_string(),
+                ty: ty.friendly_type_str(),
                 span,
             },
             IntErrorKind::Zero | IntErrorKind::Empty | _ => {

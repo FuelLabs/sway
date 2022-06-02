@@ -29,13 +29,13 @@ impl FunctionDeclaration {
                 .iter()
                 .map(|x| Property {
                     name: x.name.as_str().to_string(),
-                    type_field: look_up_type_id(x.type_id).friendly_type_string(),
+                    type_field: look_up_type_id(x.type_id).friendly_type_str(),
                     components: None,
                 })
                 .collect(),
             outputs: vec![Property {
                 name: "".to_string(),
-                type_field: self.return_type.friendly_type_string(),
+                type_field: self.return_type.friendly_type_str(),
                 components: None,
             }],
         }

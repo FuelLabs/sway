@@ -1861,7 +1861,7 @@ impl TypedExpression {
         format!(
             "{} ({})",
             self.expression.pretty_print(),
-            look_up_type_id(self.return_type).friendly_type_string()
+            look_up_type_id(self.return_type).friendly_type_str()
         )
     }
 }
@@ -1916,8 +1916,8 @@ mod tests {
                              expected,
                              received,
                              ..
-                         }) if expected.friendly_type_string() == "bool"
-                                && received.friendly_type_string() == "u64"));
+                         }) if expected.friendly_type_str() == "bool"
+                                && received.friendly_type_str() == "u64"));
     }
 
     #[test]
@@ -1944,15 +1944,15 @@ mod tests {
                              expected,
                              received,
                              ..
-                         }) if expected.friendly_type_string() == "u64"
-                                && received.friendly_type_string() == "bool"));
+                         }) if expected.friendly_type_str() == "u64"
+                                && received.friendly_type_str() == "bool"));
         assert!(matches!(&comp_res.errors[1],
                          CompileError::TypeError(TypeError::MismatchedType {
                              expected,
                              received,
                              ..
-                         }) if expected.friendly_type_string() == "[bool; 2]"
-                                && received.friendly_type_string() == "[u64; 2]"));
+                         }) if expected.friendly_type_str() == "[bool; 2]"
+                                && received.friendly_type_str() == "[u64; 2]"));
     }
 
     #[test]
@@ -1983,8 +1983,8 @@ mod tests {
                              expected,
                              received,
                              ..
-                         }) if expected.friendly_type_string() == "[bool; 2]"
-                                && received.friendly_type_string() == "[bool; 3]"));
+                         }) if expected.friendly_type_str() == "[bool; 2]"
+                                && received.friendly_type_str() == "[bool; 3]"));
     }
 
     #[test]
