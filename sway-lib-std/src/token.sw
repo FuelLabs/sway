@@ -11,16 +11,8 @@ use ::identity::Identity;
 /// Mint `amount` coins of the current contract's `asset_id` and send them to `destination` by calling either force_transfer() or transfer_to_output(), depending on the type of `Identity`.
 pub fn mint_to(amount: u64, recipient: Identity) {
     mint(amount);
-    match recipient {
-        Identity::Address(addr) => {
-            transfer_to_output(amount, contract_id(), addr);
-        },
-        Identity::ContractId(id) => {
-            force_transfer(amount, contract_id(), id);
-        },
-    }
+    transfer_to(amount, recipient);
 }
-
 
 /// Mint `amount` coins of the current contract's `asset_id` and send them (!!! UNCONDITIONALLY !!!) to the contract at `destination`.
 /// This will allow the transfer of coins even if there is no way to retrieve them !!!
@@ -47,6 +39,18 @@ pub fn mint(amount: u64) {
 pub fn burn(amount: u64) {
     asm(r1: amount) {
         burn r1;
+    }
+}
+
+/// Transfer `amount` coins of the current contract's `asset_id` and send them to `destination` by calling either force_transfer() or transfer_to_output(), depending on the type of `Identity`.
+pub fn transfer_to(amount: u64, recipient: Identity) {
+    match recipient {
+        Identity::Address(addr) => {
+            transfer_to_output(amount, contract_id(), addr);
+        },
+        Identity::ContractId(id) => {
+            force_transfer(amount, contract_id(), id);
+        },
     }
 }
 
