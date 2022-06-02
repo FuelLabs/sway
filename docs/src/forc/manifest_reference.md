@@ -15,7 +15,7 @@ The `Forc.toml` (the _manifest_ file) is a compulsory file for each package and 
 * `[network]` — Defines a network for forc to interact with.
   * `url` — URL of the network.
 
-* [`[build-profiles]`](#the-build-profiles-section) - Defines the build profiles.
+* [`[build-profiles]`](#the-build-profiles--section) - Defines the build profiles.
 
 ## The `[project]` section
 
