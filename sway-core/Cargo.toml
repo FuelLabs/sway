@@ -16,6 +16,7 @@ either = "1.6"
 fuel-asm = "0.5"
 fuel-crypto = "0.5"
 fuel-vm = "0.11"
+fuel-types = "0.5"
 fuels-types = "0.12"
 hex = { version = "0.4", optional = true }
 im = "15.0"
@@ -32,5 +33,6 @@ sway-ir = { version = "0.14.4", path = "../sway-ir" }
 sway-parse = { version = "0.14.4", path = "../sway-parse" }
 sway-types = { version = "0.14.4", path = "../sway-types" }
 sway-utils = { version = "0.14.4", path = "../sway-utils" }
+bigint = "4.3.3"
 thiserror = "1.0"
 tracing = "0.1"
