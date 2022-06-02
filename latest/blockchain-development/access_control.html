@@ -146,7 +146,8 @@
 use std::{
     address::Address,
     assert::assert,
-    chain::auth::{AuthError, Sender, msg_sender},
+    chain::auth::{AuthError, msg_sender},
+    identity::Identity,
     result::*,
     revert::revert,
 };
@@ -159,8 +160,8 @@ const OWNER: b256 = 0x9ae5b658754e096e4d681c548daf46354495a437cc61492599e33fc64d
 
 impl MyOwnedContract for Contract {
     fn receive(field_1: u64) -&gt; bool {
-        let sender: Result&lt;Sender, AuthError&gt; = msg_sender();
-        if let Sender::Address(addr) = sender.unwrap() {
+        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
+        if let Identity::Address(addr) = sender.unwrap() {
             assert(addr.into() == OWNER);
         } else {
             revert(0);

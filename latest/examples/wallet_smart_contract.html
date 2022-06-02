@@ -143,10 +143,11 @@
 use std::{
     address::Address,
     assert::assert,
-    chain::auth::{AuthError, Sender, msg_sender},
+    chain::auth::{AuthError, msg_sender},
     constants::NATIVE_ASSET_ID,
     context::{call_frames::msg_asset_id, msg_amount},
     contract_id::ContractId,
+    identity::Identity,
     result::*,
     revert::revert,
     token::transfer_to_output,
@@ -176,9 +177,9 @@ impl Wallet for Contract {
     fn send_funds(amount_to_send: u64, recipient_address: Address) {
         // Note: The return type of `msg_sender()` can be inferred by the
         // compiler. It is shown here for explicitness.
-        let sender: Result&lt;Sender, AuthError&gt; = msg_sender();
+        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
         match sender.unwrap() {
-            Sender::Address(addr) =&gt; {
+            Identity::Address(addr) =&gt; {
                 assert(addr == ~Address::from(OWNER_ADDRESS));
             },
             _ =&gt; {
