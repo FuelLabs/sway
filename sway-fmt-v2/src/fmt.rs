@@ -17,6 +17,9 @@ pub trait Format {
 }
 
 impl Formatter {
+    pub fn from_opts(config: Config) -> Self {
+        Self { config }
+    }
     pub fn format(
         &self,
         src: Arc<str>,
