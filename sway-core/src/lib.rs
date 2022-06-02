@@ -15,12 +15,8 @@ pub mod source_map;
 mod style;
 pub mod type_engine;
 
-use crate::{
-    asm_generation::{checks, compile_ast_to_asm},
-    error::*,
-    source_map::SourceMap,
-};
-pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, SwayAsmSet};
+use crate::{error::*, source_map::SourceMap};
+use asm_generation::FinalizedAsm;
 pub use build_config::BuildConfig;
 use control_flow_analysis::ControlFlowGraph;
 use std::collections::HashMap;
@@ -292,11 +288,7 @@ pub fn ast_to_asm(ast_res: CompileAstResult, build_config: &BuildConfig) -> Comp
             match tree_type {
                 TreeType::Contract | TreeType::Script | TreeType::Predicate => {
                     let asm = check!(
-                        if build_config.use_orig_asm {
-                            compile_ast_to_asm(*typed_program, build_config)
-                        } else {
-                            compile_ast_to_ir_to_asm(*typed_program, build_config)
-                        },
+                        compile_ast_to_ir_to_asm(*typed_program, build_config),
                         return CompilationResult::Failure { errors, warnings },
                         warnings,
                         errors

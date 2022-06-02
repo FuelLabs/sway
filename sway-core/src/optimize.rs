@@ -2599,7 +2599,6 @@ mod tests {
 
         let build_config = crate::build_config::BuildConfig {
             canonical_root_module,
-            use_orig_asm: false,
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,

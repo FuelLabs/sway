@@ -2,14 +2,9 @@ use super::*;
 use crate::semantic_analysis::{ast_node::Mode, TypeCheckArguments};
 use crate::CodeBlock;
 
-use derivative::Derivative;
-
-#[derive(Clone, Debug, Eq, Derivative)]
-#[derivative(PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TypedCodeBlock {
     pub contents: Vec<TypedAstNode>,
-    #[derivative(PartialEq = "ignore")]
-    pub(crate) whole_block_span: Span,
 }
 
 impl CopyTypes for TypedCodeBlock {
@@ -20,7 +15,6 @@ impl CopyTypes for TypedCodeBlock {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 impl TypedCodeBlock {
     pub(crate) fn deterministically_aborts(&self) -> bool {
         self.contents.iter().any(|x| x.deterministically_aborts())
@@ -101,7 +95,6 @@ impl TypedCodeBlock {
             (
                 TypedCodeBlock {
                     contents: evaluated_contents,
-                    whole_block_span: other.whole_block_span,
                 },
                 return_type.unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new()))),
             ),
