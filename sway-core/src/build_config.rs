@@ -9,7 +9,6 @@ pub struct BuildConfig {
     // The canonical file path to the root module.
     // E.g. `/home/user/project/src/main.sw`.
     pub(crate) canonical_root_module: Arc<PathBuf>,
-    pub(crate) use_orig_asm: bool,
     pub(crate) print_intermediate_asm: bool,
     pub(crate) print_finalized_asm: bool,
     pub(crate) print_ir: bool,
@@ -48,18 +47,10 @@ impl BuildConfig {
         };
         Self {
             canonical_root_module: Arc::new(canonical_root_module),
-            use_orig_asm: false,
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,
             generated_names: Arc::new(Mutex::new(vec![])),
-        }
-    }
-
-    pub fn use_orig_asm(self, a: bool) -> Self {
-        Self {
-            use_orig_asm: a,
-            ..self
         }
     }
 
