@@ -1,0 +1,11 @@
+[[package]]
+name = 'better_type_error_message'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'std'
+dependencies = ['core']
