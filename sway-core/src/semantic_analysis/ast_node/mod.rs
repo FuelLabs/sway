@@ -444,6 +444,12 @@ impl TypedAstNode {
 
                             // create the namespace for the impl
                             let mut impl_namespace = namespace.clone();
+                            for type_parameter in type_parameters.iter() {
+                                impl_namespace.insert_symbol(
+                                    type_parameter.name_ident.clone(),
+                                    type_parameter.into(),
+                                );
+                            }
 
                             // Resolve the Self type as it's most likely still 'Custom' and use the
                             // resolved type for self instead.

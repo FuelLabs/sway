@@ -115,7 +115,7 @@ impl TypedFunctionDeclaration {
             mut parameters,
             span,
             return_type,
-            type_parameters,
+            mut type_parameters,
             return_type_span,
             visibility,
             purity,
@@ -131,30 +131,14 @@ impl TypedFunctionDeclaration {
         let type_mapping = insert_type_parameters(&type_parameters);
 
         // update the types in the type parameters
-        let type_parameters = type_parameters
-            .into_iter()
-            .map(|mut type_parameter| {
-                type_parameter.type_id = match look_up_type_id(type_parameter.type_id)
-                    .matches_type_parameter(&type_mapping)
-                {
-                    Some(matching_id) => {
-                        insert_type(TypeInfo::Ref(matching_id, type_parameter.span()))
-                    }
-                    None => check!(
-                        namespace.resolve_type_with_self(
-                            look_up_type_id(type_parameter.type_id),
-                            self_type,
-                            &type_parameter.span(),
-                            EnforceTypeArguments::Yes
-                        ),
-                        insert_type(TypeInfo::ErrorRecovery),
-                        warnings,
-                        errors,
-                    ),
-                };
-                type_parameter
-            })
-            .collect::<Vec<_>>();
+        for type_parameter in type_parameters.iter_mut() {
+            check!(
+                type_parameter.update_types(&type_mapping, &mut namespace, self_type),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+        }
 
         // check to see if the type parameters shadow one another
         for type_parameter in type_parameters.iter() {
