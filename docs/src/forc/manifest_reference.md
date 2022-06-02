@@ -68,7 +68,7 @@ The following fields needs to be provided for a build-profile:
 * `print-ir` - Whether to compile to bytecode (false) or to print out the generated IR (true).
 * `silent-mode` - Silent mode. Don't output any warnings or errors to the command line.
 
-There are two default `[build-profile]` available with every manifest file. These are `debug` and `release` profiles. If you want to override the behaviour for these profiles, you can provide them explicitly in the manifest file like the following example:
+There are two default `[build-profile]` available with every manifest file. These are `debug` and `release` profiles. If you want to override these profiles, you can provide them explicitly in the manifest file like the following example:
 
 ```toml
 [project]
@@ -79,9 +79,9 @@ license = "Apache-2.0"
 name = "wallet_contract"
 
 [build-profiles.debug]
-print-finalized-asm = true
-print-intermediate-asm = true
-print-ir = true
+print-finalized-asm = false
+print-intermediate-asm = false
+print-ir = false
 silent = false
 
 [build-profiles.release]
@@ -91,6 +91,11 @@ print-ir = false
 silent = true
 ```
 
-Since `debug` and `release` implicitly included in every manifest file, you can use them by just passing `--release` or `--debug`. For using a user defined build profile there is `--build-profile <profile name>` option available to the relevant commands. (For an example see [forc-build](../forc/commands/forc_build.md))
+Since `release` and `debug` implicitly included in every manifest file, you can use them by just passing `--release` or by not passing anything (debug is default). For using a user defined build profile there is `--build-profile <profile name>` option available to the relevant commands. (For an example see [forc-build](../forc/commands/forc_build.md))
 
-Note that providing the corresponding cli options (like `--print-finalized-asm`) will override the selected build profile. For example if you pass both `--debug` and `--print-finalized-asm`, debug build profile is omitted.
+Note that providing the corresponding cli options (like `--print-finalized-asm`) will override the selected build profile. For example if you pass both `--release` and `--print-finalized-asm`, release build profile is omitted and resulting build profile would have a structure like the following:
+
+* print-finalized-asm - true
+* print-intermediate-asm - false
+* print-ir - false
+* silent - false
