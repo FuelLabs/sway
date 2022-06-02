@@ -80,7 +80,7 @@ fn format_pkg_at_dir(app: App, dir: &Path, config: Config) -> Result<()> {
                     ) {
                         Ok(formatted_content) => {
                             if app.check {
-                                if *file_content != *formatted_content {
+                                if *file_content != formatted_content {
                                     contains_edits = true;
                                     info!("\n{:?}\n", file);
                                     display_file_diff(&file_content, &formatted_content)?;
