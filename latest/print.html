@@ -560,7 +560,7 @@ use std::{
     logging::log,
     result::*,
     revert::revert,
-    storage::{get, store}
+    storage::StorageMap,
 };
 
 ////////////////////////////////////////
@@ -606,9 +606,10 @@ const MINTER: b256 = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7e
 ////////////////////////////////////////
 
 // Contract storage persists across transactions.
-// Note: Contract storage mappings are not implemented yet, so the domain
-//  separator needs to be provided manually.
-const STORAGE_BALANCES: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+storage {
+    balances: StorageMap&lt;Address,
+    u64&gt;, 
+}
 
 ////////////////////////////////////////
 // ABI definitions
@@ -631,9 +632,7 @@ impl Token for Contract {
         };
 
         // Increase the balance of receiver
-        let storage_slot = sha256((STORAGE_BALANCES, receiver));
-        let receiver_amount = get::&lt;u64&gt;(storage_slot);
-        store(storage_slot, receiver_amount + amount);
+        storage.balances.insert(receiver, storage.balances.get(receiver) + amount)
     }
 
     fn send(receiver: Address, amount: u64) {
@@ -651,15 +650,12 @@ impl Token for Contract {
         };
 
         // Reduce the balance of sender
-        let sender_storage_slot = sha256((STORAGE_BALANCES, sender));
-        let sender_amount = get::&lt;u64&gt;(sender_storage_slot);
+        let sender_amount = storage.balances.get(sender);
         assert(sender_amount &gt; amount);
-        store(sender_storage_slot, sender_amount - amount);
+        storage.balances.insert(sender, sender_amount - amount);
 
         // Increase the balance of receiver
-        let receiver_storage_slot = sha256((STORAGE_BALANCES, receiver));
-        let receiver_amount = get::&lt;u64&gt;(receiver_storage_slot);
-        store(receiver_storage_slot, receiver_amount + amount);
+        storage.balances.insert(receiver, storage.balances.get(receiver) + amount);
 
         log(Sent {
             from: sender, to: receiver, amount: amount
@@ -1693,9 +1689,7 @@ impl StorageMapExample for Contract {
 <p><strong>Note</strong>: Calling <code>get(k)</code> for some key <code>k</code> that does not exist in the map (i.e. <code>insert()</code> hasn't been called with key <code>k</code> yet) returns zero. This is because the FuelVM initializes all storage slots to zero.</p>
 </blockquote>
 <h2 id="manual-storage-management"><a class="header" href="#manual-storage-management">Manual Storage Management</a></h2>
-<p>Outside of the newer experimental <code>storage</code> syntax which is being stabalized, you can leverage FuelVM storage operations using the <code>store</code> and <code>get</code> methods provided in the standard library (<code>std</code>). Which currently works with primitive types.</p>
-<p>With this approach you will have to manually assign the internal key used for storage.</p>
-<p>An example is as follows:</p>
+<p>It is possible to leverage FuelVM storage operations using the <code>std::storage::store</code> and <code>std::storage::get</code> functions provided in the standard library. With this approach you will have to manually assign the internal key used for storage. An example is as follows:</p>
 <pre><code class="language-sway">contract;
 
 use std::storage::{get, store};
@@ -1718,9 +1712,7 @@ impl StorageExample for Contract {
     }
 }
 </code></pre>
-<blockquote>
-<p><strong>Note</strong>: if you are looking to store non-primitive types (e.g. b256), please refer to <a href="https://github.com/FuelLabs/sway/issues/1229">this issue</a>.</p>
-</blockquote>
+<p>This is currently useful for variables of type <code>str[]</code>, <code>enum</code>, and arrays because those cannot be used in a <code>storage</code> block yet. They can, however, be used as types for keys and values in <code>StorageMap&lt;K, V&gt;</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="purity"><a class="header" href="#purity">Purity</a></h1>
 <p><strong><em>The attributes <code>#[storage(read)]</code> and <code>#[storage(read, write]</code> introduced below are still in active development. There is no need to apply them at the moment.</em></strong></p>
 <p>A function is <em>pure</em> if it does not access any <a href="blockchain-development/./storage.html">persistent storage</a>. Conversely, the function is <em>impure</em> if it does access any storage. Naturally, as storage is only available in smart contracts, impure functions cannot be used in predicates, scripts, or libraries. A pure function cannot call an impure function.</p>
@@ -2388,7 +2380,7 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 <h2 id="general"><a class="header" href="#general">General</a></h2>
 <ul>
 <li>
-<p>Storage variables of types <code>str[]</code>, <code>b256</code>, <code>enum</code>, and arrays are not yet supported. After <a href="https://github.com/FuelLabs/sway/issues/1229">this issue</a> is closed, it will be possible to read and write these types using <a href="reference/../blockchain-development/storage.html#manual-storage-management">manual storage management</a>.</p>
+<p>Storage variables of types <code>str[]</code>, <code>enum</code>, and arrays are not yet supported in a <code>storage</code> block. See the <a href="reference/../blockchain-development/storage.html#manual-storage-management">Manual Storage Management</a> section for details on how to use <code>store</code> and <code>get</code> from the standard library to handle those types. Note, however, that <code>StorageMap&lt;K, V&gt;</code> <em>does</em> support arbitrary types for <code>K</code> and <code>V</code> without any limitations.</p>
 </li>
 <li>
 <p>The optimizing pass of the compiler is not yet implemented, therefore bytecode will be more expensive and larger than it would be in production. Note that eventually the optimizer will support zero-cost abstractions, avoiding the need for developers to go down to inline assembly to produce optimal code.</p>

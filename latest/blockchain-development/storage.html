@@ -210,9 +210,7 @@ impl StorageMapExample for Contract {
 <p><strong>Note</strong>: Calling <code>get(k)</code> for some key <code>k</code> that does not exist in the map (i.e. <code>insert()</code> hasn't been called with key <code>k</code> yet) returns zero. This is because the FuelVM initializes all storage slots to zero.</p>
 </blockquote>
 <h2 id="manual-storage-management"><a class="header" href="#manual-storage-management">Manual Storage Management</a></h2>
-<p>Outside of the newer experimental <code>storage</code> syntax which is being stabalized, you can leverage FuelVM storage operations using the <code>store</code> and <code>get</code> methods provided in the standard library (<code>std</code>). Which currently works with primitive types.</p>
-<p>With this approach you will have to manually assign the internal key used for storage.</p>
-<p>An example is as follows:</p>
+<p>It is possible to leverage FuelVM storage operations using the <code>std::storage::store</code> and <code>std::storage::get</code> functions provided in the standard library. With this approach you will have to manually assign the internal key used for storage. An example is as follows:</p>
 <pre><code class="language-sway">contract;
 
 use std::storage::{get, store};
@@ -235,9 +233,7 @@ impl StorageExample for Contract {
     }
 }
 </code></pre>
-<blockquote>
-<p><strong>Note</strong>: if you are looking to store non-primitive types (e.g. b256), please refer to <a href="https://github.com/FuelLabs/sway/issues/1229">this issue</a>.</p>
-</blockquote>
+<p>This is currently useful for variables of type <code>str[]</code>, <code>enum</code>, and arrays because those cannot be used in a <code>storage</code> block yet. They can, however, be used as types for keys and values in <code>StorageMap&lt;K, V&gt;</code>.</p>
 
                     </main>
 
