@@ -30,7 +30,7 @@ pub struct Manifest {
     pub project: Project,
     pub network: Option<Network>,
     pub dependencies: Option<BTreeMap<String, Dependency>>,
-    pub build_profiles: Option<BTreeMap<String, BuildConfig>>,
+    pub build_profile: Option<BTreeMap<String, BuildConfig>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -242,7 +242,7 @@ impl Manifest {
 
     /// Produce an iterator yielding all listed build profiles.
     pub fn build_profiles(&self) -> impl Iterator<Item = (&String, &BuildConfig)> {
-        self.build_profiles
+        self.build_profile
             .as_ref()
             .into_iter()
             .flat_map(|deps| deps.iter())
@@ -287,14 +287,14 @@ impl Manifest {
         deps.insert(STD.to_string(), std_dep);
     }
 
-    /// Check for the `debug` and `release` packages under `[build-profiles]`. If they are missing add them.
+    /// Check for the `debug` and `release` packages under `[build-profile]`. If they are missing add them.
     /// If they are provided, use the provided `debug` or `release` so that they override the default `debug`
     /// and `release`.
     fn implicitly_include_default_build_profiles_if_missing(&mut self) {
         const DEBUG: &str = "debug";
         const RELEASE: &str = "release";
 
-        let build_profiles = self.build_profiles.get_or_insert_with(Default::default);
+        let build_profiles = self.build_profile.get_or_insert_with(Default::default);
 
         if build_profiles.get(DEBUG).is_none() {
             build_profiles.insert(

@@ -61,7 +61,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
 
     // Check if any cli parameter is passed by the user if not fetch the build profile from manifest.
     if !print_ir && !print_finalized_asm && !silent_mode {
-        config = manifest.build_profiles.as_ref()
+        config = manifest.build_profile.as_ref()
         .and_then(|profiles| profiles.get(&selected_build_profile))
         .unwrap_or_else(||{
             warn!("provided profile option {} is not present in the manifest file. Using default config.", selected_build_profile);
