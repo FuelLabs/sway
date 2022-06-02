@@ -1,9 +1,9 @@
 script;
-use storage_access_abi::{S, StorageAccess, T};
-use std::assert::assert;
+use storage_access_abi::*;
+use std::{assert::assert, hash::sha256};
 
 fn main() -> bool {
-    let contract_id = 0xbef38abd5d5a2025d357fe69904af063f69256167e38e44d15fb18ecb4f73a6d;
+    let contract_id = 0xe9f125e3327a56e071b6063f16b0d290b6ce05ff6744dea9aeced5a035a5f121;
     let caller = abi(StorageAccess, contract_id);
 
     // Test 1
@@ -117,6 +117,34 @@ fn main() -> bool {
     assert(t.x == 11);
     assert(t.y == 12);
     assert(t.z == 0x0000000000000000000000000000000000000000000000000000000000000006);
+
+    // Test 13
+    caller.set_e(E::A(42));
+    let e = caller.get_e();
+    match e {
+        E::A(val) => assert(val == 42),
+        _ => {}
+    }
+
+    caller.set_e(E::B(t));
+    let e = caller.get_e();
+    match e {
+        E::B(val) => {
+            assert(val.x == t.x);
+            assert(val.y == t.y);
+            assert(val.z == t.z);
+            assert(val.boolean == t.boolean);
+            assert(val.int8 == t.int8);
+            assert(val.int16 == t.int16);
+            assert(val.int32 == t.int32);
+        }
+        _ => {}
+    };
+    
+    caller.set_string("fuelfuelfuelfuelfuelfuelfuelfuelfuelfuel");
+
+    // Can't compare strings right now so compare hashes instead
+    assert(sha256(caller.get_string()) == sha256("fuelfuelfuelfuelfuelfuelfuelfuelfuelfuel"));
 
     true
 }

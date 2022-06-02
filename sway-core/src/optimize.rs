@@ -2064,7 +2064,7 @@ impl FnCompiler {
 
                 // Convert the key pointer to a value using get_ptr
                 let key_ptr_ty = *key_ptr.get_type(context);
-                let key_ptr_val =
+                let mut key_ptr_val =
                     self.current_block
                         .ins(context)
                         .get_ptr(key_ptr, key_ptr_ty, 0, span_md_idx);
@@ -2171,21 +2171,26 @@ impl FnCompiler {
                         let alias_value_name =
                             self.lexical_map.insert(value_name.as_str().to_owned());
 
-                        let array_elems = ir_type_size_in_bytes(context, r#type) / 32 + 1;
-                        let aggregate = Aggregate::new_array(context, Type::B256, array_elems);
-                        let array_type = Type::Array(aggregate);
+                        // Create an array of `b256` that will hold the value to store into storage
+                        // or the value loaded from storage. The array has to fit the whole type.
+                        let b256_array_type = Type::Array(Aggregate::new_array(
+                            context,
+                            Type::B256,
+                            ir_type_size_in_bytes(context, r#type) / 32 + 1,
+                        ));
 
-                        let mut size_left = ir_type_size_in_bytes(context, &array_type);
+                        let mut size_left = ir_type_size_in_bytes(context, &b256_array_type);
 
-                        // Local pointer to hold the B256
+                        // Local pointer to hold the array of b256s
                         let value_ptr = self
                             .function
-                            .new_local_ptr(context, alias_value_name, array_type, true, None)
+                            .new_local_ptr(context, alias_value_name, b256_array_type, true, None)
                             .map_err(|ir_error| {
                                 CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                             })?;
 
-                        // Convert the local pointer created to a value using get_ptr
+                        // Convert the local pointer created to a value of the original type using
+                        // get_ptr.
                         let value_ptr_val = self.current_block.ins(context).get_ptr(
                             value_ptr,
                             *r#type,
@@ -2193,8 +2198,8 @@ impl FnCompiler {
                             span_md_idx,
                         );
 
-                        // Store the value to the local pointer created for rhs
                         if rhs.is_some() {
+                            // Store the value to the local pointer created for rhs
                             self.current_block.ins(context).store(
                                 value_ptr_val,
                                 rhs.expect("expecting a rhs for write"),
@@ -2204,30 +2209,7 @@ impl FnCompiler {
 
                         let mut iter = 0;
                         loop {
-                            // Const value for the key from the hash
-                            let const_key = convert_literal_to_value(
-                                context,
-                                &Literal::B256(*add_to_b256(hashed_storage_slot, iter)),
-                                span_md_idx,
-                            );
-
-                            // Convert the key pointer to a value using get_ptr
-                            let key_ptr_ty = *key_ptr.get_type(context);
-                            let key_ptr_val = self.current_block.ins(context).get_ptr(
-                                key_ptr,
-                                key_ptr_ty,
-                                0,
-                                span_md_idx,
-                            );
-
-                            // Store the const hash value to the key pointer value
-                            self.current_block.ins(context).store(
-                                key_ptr_val,
-                                const_key,
-                                span_md_idx,
-                            );
-
-                            // Convert the local pointer created to a B256 value using get_ptr
+                            // Get the b256 from the array at index iter
                             let value_ptr_val_b256 = self.current_block.ins(context).get_ptr(
                                 value_ptr,
                                 Type::B256,
@@ -2254,7 +2236,31 @@ impl FnCompiler {
                             }
                             iter += 1;
                             size_left -= 32;
-                            if size_left == 0 {
+
+                            if size_left > 0 {
+                                // Prepare key for the next iteration
+                                // Const value for the key from the initial hash + iter
+                                let const_key = convert_literal_to_value(
+                                    context,
+                                    &Literal::B256(*add_to_b256(hashed_storage_slot, iter)),
+                                    span_md_idx,
+                                );
+
+                                // Convert the key pointer to a value using get_ptr
+                                key_ptr_val = self.current_block.ins(context).get_ptr(
+                                    key_ptr,
+                                    key_ptr_ty,
+                                    0,
+                                    span_md_idx,
+                                );
+
+                                // Store the const hash value to the key pointer value
+                                self.current_block.ins(context).store(
+                                    key_ptr_val,
+                                    const_key,
+                                    span_md_idx,
+                                );
+                            } else {
                                 break;
                             }
                         }

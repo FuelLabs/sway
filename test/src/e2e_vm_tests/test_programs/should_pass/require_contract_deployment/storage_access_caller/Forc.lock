@@ -1,11 +1,4 @@
 [[package]]
-name = 'call_basic_storage'
-dependencies = [
-    'std',
-    'storage_access_abi',
-]
-
-[[package]]
 name = 'core'
 dependencies = []
 
@@ -15,4 +8,11 @@ dependencies = ['core']
 
 [[package]]
 name = 'storage_access_abi'
-dependencies = []
+dependencies = ['core']
+
+[[package]]
+name = 'storage_access_caller'
+dependencies = [
+    'std',
+    'storage_access_abi',
+]

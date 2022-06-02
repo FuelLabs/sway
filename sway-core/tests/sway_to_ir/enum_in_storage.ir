@@ -1,0 +1,124 @@
+contract {
+    fn set_e<c1c7877c>(s !1: { u64, u64, u64, u64, u64 }, u !2: u64) -> () {
+        local mut ptr b256 key_for_0_0
+        local mut ptr b256 key_for_0_1
+        local mut ptr b256 key_for_1_0
+        local mut ptr b256 key_for_1_1
+        local mut ptr [b256; 2] val_for_0_1
+        local mut ptr [b256; 2] val_for_1_1
+
+        entry:
+        v0 = const { u64, ( { u64, u64, u64, u64, u64 } | u64 ) } { u64 undef, ( { u64, u64, u64, u64, u64 } | u64 ) undef }, !3
+        v1 = const u64 0, !3
+        v2 = insert_value v0, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, v1, 0, !3
+        v3 = insert_value v2, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, s, 1, !3
+        v4 = extract_value v3, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, 0, !4
+        v5 = get_ptr mut ptr b256 key_for_0_0, ptr b256, 0, !4
+        v6 = const b256 0xd625ff6d8e88efd7bb3476e748e5d5935618d78bfc7eedf584fe909ce0809fc3, !4
+        store v6, ptr v5, !4
+        v7 = bitcast v4 to u64, !4
+        state_store_word v7, key ptr v5, !4
+        v8 = extract_value v3, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, 1, !4
+        v9 = get_ptr mut ptr b256 key_for_0_1, ptr b256, 0, !4
+        v10 = const b256 0xc4f29cca5a7266ecbc35c82c55dd2b0059a3db4c83a3410653ec33aded8e9840, !4
+        store v10, ptr v9, !4
+        v11 = get_ptr mut ptr [b256; 2] val_for_0_1, ptr ( { u64, u64, u64, u64, u64 } | u64 ), 0, !4
+        store v8, ptr v11, !4
+        v12 = get_ptr mut ptr [b256; 2] val_for_0_1, ptr b256, 0, !4
+        state_store_quad_word ptr v12, key ptr v9, !4
+        v13 = get_ptr mut ptr b256 key_for_0_1, ptr b256, 0, !4
+        v14 = const b256 0xc4f29cca5a7266ecbc35c82c55dd2b0059a3db4c83a3410653ec33aded8e9841, !4
+        store v14, ptr v13, !4
+        v15 = get_ptr mut ptr [b256; 2] val_for_0_1, ptr b256, 1, !4
+        state_store_quad_word ptr v15, key ptr v13, !4
+        v16 = const { u64, ( { u64, u64, u64, u64, u64 } | u64 ) } { u64 undef, ( { u64, u64, u64, u64, u64 } | u64 ) undef }, !5
+        v17 = const u64 1, !5
+        v18 = insert_value v16, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, v17, 0, !5
+        v19 = insert_value v18, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, u, 1, !5
+        v20 = extract_value v19, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, 0, !6
+        v21 = get_ptr mut ptr b256 key_for_1_0, ptr b256, 0, !6
+        v22 = const b256 0x2817e0819d6fcad797114fbcf350fa281aca33a39b0abf977797bddd69b8e7af, !6
+        store v22, ptr v21, !6
+        v23 = bitcast v20 to u64, !6
+        state_store_word v23, key ptr v21, !6
+        v24 = extract_value v19, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, 1, !6
+        v25 = get_ptr mut ptr b256 key_for_1_1, ptr b256, 0, !6
+        v26 = const b256 0x12ea9b9b05214a0d64996d259c59202b80a21415bb68b83121353e2a5925ec47, !6
+        store v26, ptr v25, !6
+        v27 = get_ptr mut ptr [b256; 2] val_for_1_1, ptr ( { u64, u64, u64, u64, u64 } | u64 ), 0, !6
+        store v24, ptr v27, !6
+        v28 = get_ptr mut ptr [b256; 2] val_for_1_1, ptr b256, 0, !6
+        state_store_quad_word ptr v28, key ptr v25, !6
+        v29 = get_ptr mut ptr b256 key_for_1_1, ptr b256, 0, !6
+        v30 = const b256 0x12ea9b9b05214a0d64996d259c59202b80a21415bb68b83121353e2a5925ec48, !6
+        store v30, ptr v29, !6
+        v31 = get_ptr mut ptr [b256; 2] val_for_1_1, ptr b256, 1, !6
+        state_store_quad_word ptr v31, key ptr v29, !6
+        v32 = const unit ()
+        ret () v32
+    }
+
+    fn get_e<01665bf4>() -> { { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) } } {
+        local mut ptr b256 key_for_0_0
+        local mut ptr b256 key_for_0_1
+        local mut ptr b256 key_for_1_0
+        local mut ptr b256 key_for_1_1
+        local mut ptr [b256; 2] val_for_0_1
+        local mut ptr [b256; 2] val_for_1_1
+
+        entry:
+        v0 = get_ptr mut ptr b256 key_for_0_0, ptr b256, 0, !7
+        v1 = const b256 0xd625ff6d8e88efd7bb3476e748e5d5935618d78bfc7eedf584fe909ce0809fc3, !7
+        store v1, ptr v0, !7
+        v2 = state_load_word key ptr v0, !7
+        v3 = bitcast v2 to u64, !7
+        v4 = const { u64, ( { u64, u64, u64, u64, u64 } | u64 ) } { u64 undef, ( { u64, u64, u64, u64, u64 } | u64 ) undef }, !7
+        v5 = insert_value v4, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, v3, 0, !7
+        v6 = get_ptr mut ptr b256 key_for_0_1, ptr b256, 0, !7
+        v7 = const b256 0xc4f29cca5a7266ecbc35c82c55dd2b0059a3db4c83a3410653ec33aded8e9840, !7
+        store v7, ptr v6, !7
+        v8 = get_ptr mut ptr [b256; 2] val_for_0_1, ptr ( { u64, u64, u64, u64, u64 } | u64 ), 0, !7
+        v9 = get_ptr mut ptr [b256; 2] val_for_0_1, ptr b256, 0, !7
+        state_load_quad_word ptr v9, key ptr v6, !7
+        v10 = get_ptr mut ptr b256 key_for_0_1, ptr b256, 0, !7
+        v11 = const b256 0xc4f29cca5a7266ecbc35c82c55dd2b0059a3db4c83a3410653ec33aded8e9841, !7
+        store v11, ptr v10, !7
+        v12 = get_ptr mut ptr [b256; 2] val_for_0_1, ptr b256, 1, !7
+        state_load_quad_word ptr v12, key ptr v10, !7
+        v13 = insert_value v5, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, v8, 1, !7
+        v14 = get_ptr mut ptr b256 key_for_1_0, ptr b256, 0, !8
+        v15 = const b256 0x2817e0819d6fcad797114fbcf350fa281aca33a39b0abf977797bddd69b8e7af, !8
+        store v15, ptr v14, !8
+        v16 = state_load_word key ptr v14, !8
+        v17 = bitcast v16 to u64, !8
+        v18 = const { u64, ( { u64, u64, u64, u64, u64 } | u64 ) } { u64 undef, ( { u64, u64, u64, u64, u64 } | u64 ) undef }, !8
+        v19 = insert_value v18, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, v17, 0, !8
+        v20 = get_ptr mut ptr b256 key_for_1_1, ptr b256, 0, !8
+        v21 = const b256 0x12ea9b9b05214a0d64996d259c59202b80a21415bb68b83121353e2a5925ec47, !8
+        store v21, ptr v20, !8
+        v22 = get_ptr mut ptr [b256; 2] val_for_1_1, ptr ( { u64, u64, u64, u64, u64 } | u64 ), 0, !8
+        v23 = get_ptr mut ptr [b256; 2] val_for_1_1, ptr b256, 0, !8
+        state_load_quad_word ptr v23, key ptr v20, !8
+        v24 = get_ptr mut ptr b256 key_for_1_1, ptr b256, 0, !8
+        v25 = const b256 0x12ea9b9b05214a0d64996d259c59202b80a21415bb68b83121353e2a5925ec48, !8
+        store v25, ptr v24, !8
+        v26 = get_ptr mut ptr [b256; 2] val_for_1_1, ptr b256, 1, !8
+        state_load_quad_word ptr v26, key ptr v24, !8
+        v27 = insert_value v19, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, v22, 1, !8
+        v28 = const { { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) } } { { u64, ( { u64, u64, u64, u64, u64 } | u64 ) } { u64 undef, ( { u64, u64, u64, u64, u64 } | u64 ) undef }, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) } { u64 undef, ( { u64, u64, u64, u64, u64 } | u64 ) undef } }, !9
+        v29 = insert_value v28, { { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) } }, v13, 0, !9
+        v30 = insert_value v29, { { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) } }, v27, 1, !9
+        ret { { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) } } v30
+    }
+}
+
+!0 = filepath "/path/to/enum_in_storage.sw"
+!1 = span !0 297 298
+!2 = span !0 303 304
+!3 = span !0 85 121
+!4 = span !0 321 341
+!5 = span !0 85 121
+!6 = span !0 351 371
+!7 = span !0 424 426
+!8 = span !0 436 438
+!9 = span !0 415 439
