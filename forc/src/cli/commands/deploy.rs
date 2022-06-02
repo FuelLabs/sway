@@ -48,9 +48,8 @@ pub struct Command {
     /// If url is specified overrides network url in manifest file (if there is one).
     #[clap(long, short)]
     pub url: Option<String>,
-    // Name of the build profile to use
-    ///
-    /// If it is not specified we are going to be using debug
+    /// Name of the build profile to use.
+    /// If it is not specified, forc will use debug build profile.
     #[clap(long)]
     pub build_profile: Option<String>,
     /// Use release build plan. If a custom release plan is not specified, it is implicitly added to the manifest file
