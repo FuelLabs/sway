@@ -52,11 +52,8 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
 
     let manifest = ManifestFile::from_dir(&this_dir, SWAY_GIT_TAG)?;
 
-    manifest.build_profiles().for_each(|a| {
-        println!("{:?}", a);
-    });
-
-    let config = pkg::BuildConfig {
+    // If any cli parameter is passed by the user it overrides the selected build profile.
+    let mut config = &pkg::BuildConfig {
         use_orig_asm,
         print_ir,
         print_finalized_asm,
@@ -64,12 +61,15 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         silent: silent_mode,
     };
 
-    let build_config = manifest.build_profiles.as_ref()
-                       .and_then(|profiles| profiles.get(&selected_build_profile))
-                       .unwrap_or_else(||{
-                           warn!("provided profile option {} is not present in the manifest file. Using default config.", selected_build_profile);
-                           &config
-                       });
+    // Check if any cli parameter is passed by the user if not fetch the build profile from manifest.
+    if !use_orig_asm && !print_ir && !print_finalized_asm && !silent_mode {
+        config = manifest.build_profiles.as_ref()
+        .and_then(|profiles| profiles.get(&selected_build_profile))
+        .unwrap_or_else(||{
+            warn!("provided profile option {} is not present in the manifest file. Using default config.", selected_build_profile);
+            config
+        });
+    }
 
     let lock_path = lock_path(manifest.dir());
 
@@ -114,7 +114,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     })?;
 
     // Build it!
-    let (compiled, source_map) = pkg::build(&plan, build_config, SWAY_GIT_TAG)?;
+    let (compiled, source_map) = pkg::build(&plan, config, SWAY_GIT_TAG)?;
 
     if let Some(outfile) = binary_outfile {
         fs::write(&outfile, &compiled.bytecode)?;

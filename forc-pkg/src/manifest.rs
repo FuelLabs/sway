@@ -240,6 +240,7 @@ impl Manifest {
             .flat_map(|deps| deps.iter())
     }
 
+    /// Produce an iterator yielding all listed build profiles.
     pub fn build_profiles(&self) -> impl Iterator<Item = (&String, &BuildConfig)> {
         self.build_profiles
             .as_ref()
@@ -286,6 +287,9 @@ impl Manifest {
         deps.insert(STD.to_string(), std_dep);
     }
 
+    /// Check for the `debug` and `release` packages under `[build-profiles]`. If they are missing add them.
+    /// If they are provided, use the provided `debug` or `release` so that they override the default `debug`
+    /// and `release`.
     fn implicitly_include_default_build_profiles_if_missing(&mut self) {
         const DEBUG: &str = "debug";
         const RELEASE: &str = "release";
