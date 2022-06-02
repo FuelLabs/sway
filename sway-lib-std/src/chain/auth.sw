@@ -1,5 +1,5 @@
-library auth;
 //! Functionality for determining who is calling a contract.
+library auth;
 
 use ::address::Address;
 use ::assert::assert;
@@ -37,10 +37,7 @@ pub fn caller_contract_id() -> ContractId {
 /// Returns a `Result::Ok(Identity)`, or `Result::Err(AuthError)` if an identity cannot be determined.
 pub fn msg_sender() -> Result<Identity, AuthError> {
     if caller_is_external() {
-        let owner_res = get_coins_owner();
-        match owner_res {
-            Result::Ok(owner) => Result::Ok(owner), owner_res => owner_res, 
-        }
+        get_coins_owner()
     } else {
         // Get caller's `ContractId`.
         Result::Ok(Identity::ContractId(caller_contract_id()))
