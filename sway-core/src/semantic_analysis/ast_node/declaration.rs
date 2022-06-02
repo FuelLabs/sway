@@ -461,10 +461,7 @@ impl TypedTraitFn {
         TypedFunctionDeclaration {
             purity: self.purity,
             name: self.name.clone(),
-            body: TypedCodeBlock {
-                contents: vec![],
-                whole_block_span: self.name.span().clone(),
-            },
+            body: TypedCodeBlock { contents: vec![] },
             parameters: self.parameters.clone(),
             span: self.name.span().clone(),
             return_type: self.return_type,

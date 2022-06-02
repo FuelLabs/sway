@@ -15,7 +15,7 @@ pub(crate) fn deploy_contract(file_name: &str) -> ContractId {
     tracing::info!(" Deploying {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
-    let (verbose, use_orig_asm) = get_test_config_from_env();
+    let verbose = get_test_config_from_env();
 
     tokio::runtime::Runtime::new()
         .unwrap()
@@ -24,7 +24,6 @@ pub(crate) fn deploy_contract(file_name: &str) -> ContractId {
                 "{}/src/e2e_vm_tests/test_programs/{}",
                 manifest_dir, file_name
             )),
-            use_orig_asm,
             silent_mode: !verbose,
             ..Default::default()
         }))
@@ -45,7 +44,7 @@ pub(crate) fn runs_on_node(
         contracts.push(contract);
     }
 
-    let (verbose, use_orig_asm) = get_test_config_from_env();
+    let verbose = get_test_config_from_env();
 
     let command = RunCommand {
         path: Some(format!(
@@ -53,7 +52,6 @@ pub(crate) fn runs_on_node(
             manifest_dir, file_name
         )),
         node_url: "http://127.0.0.1:4000".into(),
-        use_orig_asm,
         silent_mode: !verbose,
         contract: Some(contracts),
         ..Default::default()
@@ -112,13 +110,12 @@ pub(crate) fn does_not_compile(file_name: &str) {
 pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>> {
     tracing::info!(" Compiling {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let (verbose, use_orig_asm) = get_test_config_from_env();
+    let verbose = get_test_config_from_env();
     forc_build::build(BuildCommand {
         path: Some(format!(
             "{}/src/e2e_vm_tests/test_programs/{}",
             manifest_dir, file_name
         )),
-        use_orig_asm,
         silent_mode: !verbose,
         ..Default::default()
     })
@@ -169,11 +166,7 @@ fn compile_to_json_abi(file_name: &str) -> Result<Value> {
     })
 }
 
-fn get_test_config_from_env() -> (bool, bool) {
+fn get_test_config_from_env() -> bool {
     let var_exists = |key| std::env::var(key).map(|_| true).unwrap_or(false);
-
-    (
-        var_exists("SWAY_TEST_VERBOSE"),
-        var_exists("SWAY_TEST_USE_ORIG_ASM"),
-    )
+    var_exists("SWAY_TEST_VERBOSE")
 }

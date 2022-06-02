@@ -25,18 +25,6 @@ macro_rules! check {
     }};
 }
 
-macro_rules! check_std_result {
-    ($result_expr: expr, $warnings: ident, $errors: ident $(,)?) => {{
-        match $result_expr {
-            Ok(res) => res,
-            Err(e) => {
-                $errors.push(e.into());
-                return err($warnings, $errors);
-            }
-        }
-    }};
-}
-
 macro_rules! assert_or_warn {
     ($bool_expr: expr, $warnings: ident, $span: expr, $warning: expr $(,)?) => {{
         if !$bool_expr {
