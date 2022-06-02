@@ -2149,7 +2149,9 @@ impl FnCompiler {
                         }
                     }
                     Type::Union(_) | Type::String(_) => {
-                        // B256 requires 4 words. Use state_load_quad_word/state_store_quad_word
+                        // Use state_load_quad_word/state_store_quad_word as many times as needed
+                        // using sequential keys
+
                         // First, create a name for the value to load from or store to
                         let mut value_name = format!("{}{}", "val_for_", ix.to_usize());
                         for ix in &indices {
