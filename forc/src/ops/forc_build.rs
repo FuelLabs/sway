@@ -38,6 +38,8 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
 
     let manifest = ManifestFile::from_dir(&this_dir, SWAY_GIT_TAG)?;
     let lock_path = lock_path(manifest.dir());
+    let patches = manifest.patches();
+    patches.for_each(|patch| println!("{:?}", patch));
 
     let plan_result = pkg::BuildPlan::from_lock_file(&lock_path, SWAY_GIT_TAG);
 

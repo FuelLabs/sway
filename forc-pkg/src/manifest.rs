@@ -27,6 +27,7 @@ pub struct Manifest {
     pub project: Project,
     pub network: Option<Network>,
     pub dependencies: Option<BTreeMap<String, Dependency>>,
+    pub patch: Option<BTreeMap<String, Patch>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -46,6 +47,18 @@ pub struct Project {
 pub struct Network {
     #[serde(default = "default_url")]
     pub url: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
+pub enum Patch {
+    /// In the simple format, only a version is specified, eg.
+    /// `package = "<version>"`
+    Simple(String),
+    /// The simple format is equivalent to a detailed dependency
+    /// specifying only a version, eg.
+    /// `package = { version = "<version>" }`
+    Detailed(DependencyDetails),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -241,6 +254,14 @@ impl Manifest {
             Dependency::Detailed(ref det) => Some((name, det)),
             Dependency::Simple(_) => None,
         })
+    }
+
+    /// Produce an iterator yielding all listed patches.
+    pub fn patches(&self) -> impl Iterator<Item = (&String, &Patch)> {
+        self.patch
+            .as_ref()
+            .into_iter()
+            .flat_map(|patches| patches.iter())
     }
 
     /// Check for the `core` and `std` packages under `[dependencies]`. If both are missing, add
