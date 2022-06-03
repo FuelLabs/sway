@@ -3,13 +3,13 @@
 // regex: LABEL=[[:alpha:]0-9]+:
 
 script {
-    fn anon_0() -> b256 {
+    fn return_storage_key_wrapper() -> b256 {
         entry:
-        v0 = call anon_1(), !2, !3
+        v0 = call return_storage_key(), !2, !3
         ret b256 v0
     }
 
-    fn anon_1() -> b256 {
+    fn return_storage_key() -> b256 {
         entry:
         v0 = get_storage_key, !2
         ret b256 v0
@@ -18,7 +18,7 @@ script {
 // check: fn main
     fn main() -> b256 {
         entry:
-        v0 = call anon_0(), !1, !3
+        v0 = call return_storage_key_wrapper(), !1, !3
 // check: $(arg0=$VAR) = get_storage_key, !1, $(md0=$MD)
 
 // check: $(arg1=$VAR) = phi($LABEL $arg0)
