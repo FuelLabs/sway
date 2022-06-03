@@ -517,11 +517,11 @@ impl PinnedId {
 }
 
 impl SourcePathPinned {
-    const PREFIX: &'static str = "path";
+    pub const PREFIX: &'static str = "path";
 }
 
 impl SourceGitPinned {
-    const PREFIX: &'static str = "git";
+    pub const PREFIX: &'static str = "git";
 }
 
 impl fmt::Display for PinnedId {
