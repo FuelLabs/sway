@@ -467,6 +467,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/test_contracts/get_storage_key_contract",
             ProgramState::Revert(0),
         ),
+        (
+            "should_pass/test_contracts/multiple_impl",
+            ProgramState::Revert(0),
+        ),
     ];
 
     number_of_tests_run += positive_project_names_with_abi

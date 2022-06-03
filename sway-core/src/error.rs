@@ -482,9 +482,7 @@ pub enum CompileError {
     #[error("Script declaration contains no main function. Scripts require a main function.")]
     NoScriptMainFunction(Span),
     #[error("Function \"{name}\" was already defined in scope.")]
-    MultipleDefinitionsOfFunction {
-        name : Ident,
-    },
+    MultipleDefinitionsOfFunction { name: Ident },
     #[error(
         "Attempted to reassign to a symbol that is not a variable. Symbol {name} is not a mutable \
          variable, it is a {kind}."
