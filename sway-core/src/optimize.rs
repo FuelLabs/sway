@@ -2015,7 +2015,7 @@ impl FnCompiler {
                 }
                 struct_val
             }
-            Type::Bool | Type::Uint(_) | Type::B256 => {
+            Type::Bool | Type::Uint(_) | Type::B256 | Type::Union(_) | Type::String(_) => {
                 // Calculate the storage location hash for the given field
                 let mut storage_slot_to_hash = format!(
                     "{}{}",
@@ -2051,7 +2051,7 @@ impl FnCompiler {
 
                 // Convert the key pointer to a value using get_ptr
                 let key_ptr_ty = *key_ptr.get_type(context);
-                let key_ptr_val =
+                let mut key_ptr_val =
                     self.current_block
                         .ins(context)
                         .get_ptr(key_ptr, key_ptr_ty, 0, span_md_idx);
@@ -2146,6 +2146,123 @@ impl FnCompiler {
                                 );
                                 rhs.expect("expecting a rhs for write")
                             }
+                        }
+                    }
+                    Type::Union(_) | Type::String(_) => {
+                        // Use state_load_quad_word/state_store_quad_word as many times as needed
+                        // using sequential keys
+
+                        // First, create a name for the value to load from or store to
+                        let value_name = format!(
+                            "val_for_{}{}",
+                            ix.to_usize(),
+                            indices
+                                .iter()
+                                .map(|idx| format!("_{idx}"))
+                                .collect::<Vec<_>>()
+                                .join("")
+                        );
+                        let alias_value_name = self.lexical_map.insert(value_name);
+
+                        // Create an array of `b256` that will hold the value to store into storage
+                        // or the value loaded from storage. The array has to fit the whole type.
+                        let number_of_elements = (ir_type_size_in_bytes(context, r#type) + 31) / 32;
+                        let b256_array_type = Type::Array(Aggregate::new_array(
+                            context,
+                            Type::B256,
+                            number_of_elements,
+                        ));
+
+                        // Local pointer to hold the array of b256s
+                        let value_ptr = self
+                            .function
+                            .new_local_ptr(context, alias_value_name, b256_array_type, true, None)
+                            .map_err(|ir_error| {
+                                CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                            })?;
+
+                        // Convert the local pointer created to a value of the original type using
+                        // get_ptr.
+                        let value_ptr_val = self.current_block.ins(context).get_ptr(
+                            value_ptr,
+                            *r#type,
+                            0,
+                            span_md_idx,
+                        );
+
+                        if rhs.is_some() {
+                            // Store the value to the local pointer created for rhs
+                            self.current_block.ins(context).store(
+                                value_ptr_val,
+                                rhs.expect("expecting a rhs for write"),
+                                span_md_idx,
+                            );
+                        }
+
+                        fn add_to_b256(x: fuel_types::Bytes32, y: u64) -> fuel_types::Bytes32 {
+                            let x = bigint::uint::U256::from(*x);
+                            let y = bigint::uint::U256::from(y);
+                            let res: [u8; 32] = (x + y).into();
+                            fuel_types::Bytes32::from(res)
+                        }
+
+                        for array_index in 0..number_of_elements {
+                            if array_index > 0 {
+                                // Prepare key for the next iteration but not for array index 0
+                                // because the first key was generated earlier.
+                                // Const value for the key from the initial hash + array_index
+                                let const_key = convert_literal_to_value(
+                                    context,
+                                    &Literal::B256(*add_to_b256(hashed_storage_slot, array_index)),
+                                    span_md_idx,
+                                );
+
+                                // Convert the key pointer to a value using get_ptr
+                                key_ptr_val = self.current_block.ins(context).get_ptr(
+                                    key_ptr,
+                                    key_ptr_ty,
+                                    0,
+                                    span_md_idx,
+                                );
+
+                                // Store the const hash value to the key pointer value
+                                self.current_block.ins(context).store(
+                                    key_ptr_val,
+                                    const_key,
+                                    span_md_idx,
+                                );
+                            }
+
+                            // Get the b256 from the array at index iter
+                            let value_ptr_val_b256 = self.current_block.ins(context).get_ptr(
+                                value_ptr,
+                                Type::B256,
+                                array_index,
+                                span_md_idx,
+                            );
+
+                            match access_type {
+                                StateAccessType::Read => {
+                                    self.current_block.ins(context).state_load_quad_word(
+                                        value_ptr_val_b256,
+                                        key_ptr_val,
+                                        span_md_idx,
+                                    );
+                                }
+                                StateAccessType::Write => {
+                                    // Finally, just call state_load_quad_word/state_store_quad_word
+                                    self.current_block.ins(context).state_store_quad_word(
+                                        value_ptr_val_b256,
+                                        key_ptr_val,
+                                        span_md_idx,
+                                    );
+                                }
+                            }
+                        }
+
+                        match access_type {
+                            StateAccessType::Read => value_ptr_val,
+                            StateAccessType::Write => rhs.expect("expecting a rhs for write"),
                         }
                     }
                     _ => unreachable!(),

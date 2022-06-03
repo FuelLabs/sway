@@ -17,6 +17,11 @@ pub struct T {
     int32: u32,
 }
 
+pub enum E {
+    A: u64,
+    B: T,
+}
+
 abi StorageAccess {
     // Setters
     fn set_x(x: u64);
@@ -37,6 +42,8 @@ abi StorageAccess {
     fn set_s_dot_t_dot_int8(int8: u8);
     fn set_s_dot_t_dot_int16(int16: u16);
     fn set_s_dot_t_dot_int32(int32: u32);
+    fn set_e(e: E);
+    fn set_string(s: str[40]);
 
     // Getters
     fn get_x() -> u64;
@@ -57,4 +64,6 @@ abi StorageAccess {
     fn get_s_dot_t_dot_int8() -> u8;
     fn get_s_dot_t_dot_int16() -> u16;
     fn get_s_dot_t_dot_int32() -> u32;
+    fn get_e() -> E;
+    fn get_string() -> str[40];
 }
