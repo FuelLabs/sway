@@ -2166,13 +2166,12 @@ impl FnCompiler {
 
                         // Create an array of `b256` that will hold the value to store into storage
                         // or the value loaded from storage. The array has to fit the whole type.
+                        let number_of_elements = (ir_type_size_in_bytes(context, r#type) + 31) / 32;
                         let b256_array_type = Type::Array(Aggregate::new_array(
                             context,
                             Type::B256,
-                            (ir_type_size_in_bytes(context, r#type) + 31) / 32,
+                            number_of_elements,
                         ));
-
-                        let mut size_left = ir_type_size_in_bytes(context, &b256_array_type);
 
                         // Local pointer to hold the array of b256s
                         let value_ptr = self
@@ -2207,13 +2206,38 @@ impl FnCompiler {
                             fuel_types::Bytes32::from(res)
                         }
 
-                        let mut iter = 0;
-                        loop {
+                        for array_index in 0..number_of_elements {
+                            if array_index > 0 {
+                                // Prepare key for the next iteration but not for array index 0
+                                // because the first key was generated earlier.
+                                // Const value for the key from the initial hash + array_index
+                                let const_key = convert_literal_to_value(
+                                    context,
+                                    &Literal::B256(*add_to_b256(hashed_storage_slot, array_index)),
+                                    span_md_idx,
+                                );
+
+                                // Convert the key pointer to a value using get_ptr
+                                key_ptr_val = self.current_block.ins(context).get_ptr(
+                                    key_ptr,
+                                    key_ptr_ty,
+                                    0,
+                                    span_md_idx,
+                                );
+
+                                // Store the const hash value to the key pointer value
+                                self.current_block.ins(context).store(
+                                    key_ptr_val,
+                                    const_key,
+                                    span_md_idx,
+                                );
+                            }
+
                             // Get the b256 from the array at index iter
                             let value_ptr_val_b256 = self.current_block.ins(context).get_ptr(
                                 value_ptr,
                                 Type::B256,
-                                iter,
+                                array_index,
                                 span_md_idx,
                             );
 
@@ -2233,35 +2257,6 @@ impl FnCompiler {
                                         span_md_idx,
                                     );
                                 }
-                            }
-                            iter += 1;
-                            size_left -= 32;
-
-                            if size_left > 0 {
-                                // Prepare key for the next iteration
-                                // Const value for the key from the initial hash + iter
-                                let const_key = convert_literal_to_value(
-                                    context,
-                                    &Literal::B256(*add_to_b256(hashed_storage_slot, iter)),
-                                    span_md_idx,
-                                );
-
-                                // Convert the key pointer to a value using get_ptr
-                                key_ptr_val = self.current_block.ins(context).get_ptr(
-                                    key_ptr,
-                                    key_ptr_ty,
-                                    0,
-                                    span_md_idx,
-                                );
-
-                                // Store the const hash value to the key pointer value
-                                self.current_block.ins(context).store(
-                                    key_ptr_val,
-                                    const_key,
-                                    span_md_idx,
-                                );
-                            } else {
-                                break;
                             }
                         }
 
