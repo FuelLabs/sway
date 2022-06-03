@@ -1,46 +1,51 @@
-use std::{
-    path::PathBuf,
-    sync::{Arc, Mutex},
-};
+use std::{path::PathBuf, sync::Arc};
 
 /// Configuration for the overall build and compilation process.
 #[derive(Clone)]
 pub struct BuildConfig {
-    pub(crate) file_name: Arc<PathBuf>,
-    pub(crate) dir_of_code: Arc<PathBuf>,
-    pub(crate) manifest_path: Arc<PathBuf>,
-    pub(crate) use_orig_asm: bool,
+    // The canonical file path to the root module.
+    // E.g. `/home/user/project/src/main.sw`.
+    pub(crate) canonical_root_module: Arc<PathBuf>,
     pub(crate) print_intermediate_asm: bool,
     pub(crate) print_finalized_asm: bool,
     pub(crate) print_ir: bool,
-    pub(crate) generated_names: Arc<Mutex<Vec<&'static str>>>,
 }
 
 impl BuildConfig {
-    // note this is intentionally not the trait Default
-    // since we need at least a manifest path to work with
+    /// Construct a `BuildConfig` from a relative path to the root module and the canonical path to
+    /// the manifest directory.
+    ///
+    /// The `root_module` path must be either canonical, or relative to the directory containing
+    /// the manifest. E.g. `project/src/main.sw` or `project/src/lib.sw`.
+    ///
+    /// The `canonical_manifest_dir` must be the canonical (aka absolute) path to the directory
+    /// containing the `Forc.toml` file for the project. E.g. `/home/user/project`.
     pub fn root_from_file_name_and_manifest_path(
-        file_name: PathBuf,
-        canonicalized_manifest_path: PathBuf,
+        root_module: PathBuf,
+        canonical_manifest_dir: PathBuf,
     ) -> Self {
-        let mut path = canonicalized_manifest_path.clone();
-        path.push("src");
+        assert!(
+            canonical_manifest_dir.has_root(),
+            "manifest dir must be a canonical path",
+        );
+        let canonical_root_module = match root_module.has_root() {
+            true => root_module,
+            false => {
+                assert!(
+                    root_module.starts_with(canonical_manifest_dir.file_stem().unwrap()),
+                    "file_name must be either absolute or relative to manifest directory",
+                );
+                canonical_manifest_dir
+                    .parent()
+                    .expect("unable to retrieve manifest directory parent")
+                    .join(&root_module)
+            }
+        };
         Self {
-            file_name: Arc::new(file_name),
-            dir_of_code: Arc::new(path),
-            manifest_path: Arc::new(canonicalized_manifest_path),
-            use_orig_asm: false,
+            canonical_root_module: Arc::new(canonical_root_module),
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,
-            generated_names: Arc::new(Mutex::new(vec![])),
-        }
-    }
-
-    pub fn use_orig_asm(self, a: bool) -> Self {
-        Self {
-            use_orig_asm: a,
-            ..self
         }
     }
 
@@ -65,7 +70,7 @@ impl BuildConfig {
         }
     }
 
-    pub fn path(&self) -> Arc<PathBuf> {
-        self.file_name.clone()
+    pub fn canonical_root_module(&self) -> Arc<PathBuf> {
+        self.canonical_root_module.clone()
     }
 }

@@ -37,21 +37,19 @@ fn main() {
 
 The `logging` library provides a generic `log` function that can be imported using `use std::logging::log` and used to log variables of any type. Each call to `log` appends a `receipt` to the list of receipts. There are two types of receipts that a `log` can generate: `Log` and `LogData`.
 
-**_Note that the receipts shown below are being re-worked to become more readable in [#1717](https://github.com/FuelLabs/sway/pull/1717)._**
-
 ### `Log` Receipt
 
 The `Log` receipt is generated for _non-reference_ types, namely `bool`, `u8`, `u16`, `u32`, and `u64`. For example, logging an integer variable `x` that holds the value `42` using `log(x)` may generate the following receipt:
 
 ```console
-Log {
-    id: 0x0000000000000000000000000000000000000000000000000000000000000000,
-    ra: 42,
-    rb: 0,
-    rc: 0,
-    rd: 0,
-    pc: 10404,
-    is: 10352,
+"Log": {
+  "id": "0000000000000000000000000000000000000000000000000000000000000000",
+  "is": 10352,
+  "pc": 10404,
+  "ra": 42,
+  "rb": 0,
+  "rc": 0,
+  "rd": 0
 }
 ```
 
@@ -62,50 +60,17 @@ Note that `ra` will include the value being logged. The additional registers `rb
 `LogData` is generated for _reference_ types which include all types except for the _non_reference_ types mentioned above. For example, logging a `b256` variable `b` that holds the value `0x1111111111111111111111111111111111111111111111111111111111111111` using `log(b)` may generate the following receipt:
 
 ```console
-LogData {
-    id: 0x0000000000000000000000000000000000000000000000000000000000000000,
-    ra: 0,
-    rb: 0,
-    ptr: 10468,
-    len: 32,
-    digest: 0x02d449a31fbb267c8f352e9968a79e3e5fc95c1bbeaa502fd6454ebde5a4bedc,
-    data: [
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-        17,
-    ],
-    pc: 10444,
-    is: 10352,
+"LogData": {
+  "data": "1111111111111111111111111111111111111111111111111111111111111111",
+  "digest": "02d449a31fbb267c8f352e9968a79e3e5fc95c1bbeaa502fd6454ebde5a4bedc",
+  "id": "0000000000000000000000000000000000000000000000000000000000000000",
+  "is": 10352,
+  "len": 32,
+  "pc": 10444,
+  "ptr": 10468,
+  "ra": 0,
+  "rb": 0
 }
 ```
 
-Note that `data` in the receipt above is a essentially a list of bytes where each entry is the decimal representation of a given byte in the data being logged (e.g. `17 = 0x11`). 
+Note that `data` in the receipt above will include the value being logged as a hexadecimal.

@@ -1,12 +1,35 @@
 # Installation
 
-Note that if you want to run (e.g. for testing) Sway smart contracts, a Fuel Core full node is required. Otherwise, the Sway toolchain is sufficient to compile Sway smart contracts.
+Note that if you want to run Sway smart contracts (e.g. for testing), a Fuel Core full node is required. Otherwise, the Sway toolchain is sufficient to compile Sway smart contracts.
 
 ## Installing from Pre-compiled Binaries
 
-Pre-compiled release binaries for Linux and macOS are available for the Sway toolchain. They can be found attached to the release notes of the respective release. The latest `forc` release can be found here: <https://github.com/FuelLabs/sway/releases/latest>.
+Pre-compiled release binaries for Linux and macOS are available for the Sway toolchain. Native Windows is currently unsupported ([tracking issue for Windows support](https://github.com/FuelLabs/sway/issues/1526)). Windows Subsystem for Linux should work but is not officially supported.
 
-> **Note** [`fuelup`](https://github.com/FuelLabs/fuelup) is a work-in-progress equivalent of `rustup` for the Sway toolchain. Once ready, it will be able to easily download and manage Sway toolchain versions.
+[`fuelup`](https://github.com/FuelLabs/fuelup) is the equivalent of Rust's `rustup` for the Sway toolchain. It enables easily downloading binary releases of the Sway toolchain.
+
+Start by installing `fuelup` with:
+
+```sh
+curl --proto '=https' --tlsv1.2 -sSf \
+    https://fuellabs.github.io/fuelup/fuelup-init.sh | sh -s install
+```
+
+You may need to add `~/.fuelup/bin` to your PATH. For Bash:
+
+```sh
+export PATH="${HOME}/.fuelup/bin/:${PATH}"
+```
+
+Then run
+
+```sh
+fuelup install
+```
+
+to install the latest Sway toolchain.
+
+> **Note**: A `curl: (22) The requested URL returned error: 404` error when running any of the steps above is most likely an indication that a new release was published but binaries were not yet uploaded by CI. See: <https://github.com/FuelLabs/fuelup/issues/44>. Simply re-try the commands after binaries are uploaded.
 
 ## Installing from Source
 
@@ -50,7 +73,7 @@ cargo install forc fuel-core
 
 The Fuel ecosystem has a few plugins which can be easily installed via Cargo.
 
-> **Note** `forc` detects anything in your `$PATH` prefixed with `forc-` as a plugin. Use `forc plugins` to see what you currently have installed.
+> **Note**: `forc` detects anything in your `$PATH` prefixed with `forc-` as a plugin. Use `forc plugins` to see what you currently have installed.
 
 ```sh
 # Sway Formatter

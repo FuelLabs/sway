@@ -1,7 +1,8 @@
 mod harness;
+use forc_util::init_tracing_subscriber;
 use fuel_vm::prelude::*;
-
 pub fn run(filter_regex: Option<regex::Regex>) {
+    init_tracing_subscriber();
     let filter = |name| {
         filter_regex
             .as_ref()
@@ -129,6 +130,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ProgramState::Return(1),
         ), // true
         ("should_pass/stdlib/evm_ecr", ProgramState::Return(1)), // true
+        (
+            "should_pass/stdlib/exponentiation_test",
+            ProgramState::Return(1),
+        ), // true
         ("should_pass/stdlib/ge_test", ProgramState::Return(1)), // true
         ("should_pass/stdlib/intrinsics", ProgramState::Return(1)), // true
         ("should_pass/stdlib/option", ProgramState::Return(1)),  // true
@@ -376,15 +381,19 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ProgramState::Return(5),
         ),
         (
-            "should_pass/language/generate_uid",
-            ProgramState::ReturnData(Bytes32::from([
-                0x17, 0x6e, 0x57, 0xc7, 0x2a, 0x93, 0x91, 0x74, 0x4a, 0x01, 0x44, 0x98, 0xb6, 0xda,
-                0xee, 0x2f, 0xb5, 0x30, 0x0a, 0x6f, 0x57, 0xd3, 0xf9, 0x24, 0x06, 0x39, 0xcf, 0x3b,
-                0xfb, 0xc7, 0x88, 0x4e,
-            ])),
+            "should_pass/language/match_expressions_inside_generic_functions",
+            ProgramState::Return(1),
         ),
         (
-            "should_pass/language/match_expressions_inside_generic_functions",
+            "should_pass/language/generic_inside_generic",
+            ProgramState::Return(7),
+        ),
+        (
+            "should_pass/language/tuple_single_element",
+            ProgramState::Return(1),
+        ),
+        (
+            "should_pass/language/reassignment_operators",
             ProgramState::Return(1),
         ),
     ];
@@ -452,6 +461,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ),
         (
             "should_pass/test_contracts/abi_with_tuples_contract",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/get_storage_key_contract",
             ProgramState::Revert(0),
         ),
     ];
@@ -532,6 +545,11 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/trait_impl_purity_mismatch",
         "should_fail/trait_pure_calls_impure",
         "should_fail/match_expressions_empty_arms",
+        "should_fail/type_mismatch_error_message",
+        "should_fail/non_literal_const_decl",
+        "should_fail/recursive_enum",
+        "should_fail/recursive_struct",
+        "should_fail/recursive_type_chain",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
@@ -595,8 +613,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ),
         (
             (
-                "should_pass/test_contracts/nested_struct_args_contract",
-                "should_pass/require_contract_deployment/nested_struct_args_caller",
+                "should_pass/test_contracts/get_storage_key_contract",
+                "should_pass/require_contract_deployment/get_storage_key_caller",
             ),
             1,
         ),

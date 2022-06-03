@@ -348,6 +348,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bed554bd50246729a1ec158d08aa3235d1b69d94ad120ebe187e28894787e736"
 
 [[package]]
+name = "bigint"
+version = "4.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0e8c8a600052b52482eff2cf4d810e462fdff1f656ac1ecb6232132a1ed7def"
+dependencies = [
+ "byteorder",
+ "crunchy",
+]
+
+[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -716,6 +726,12 @@ dependencies = [
  "cfg-if 1.0.0",
  "lazy_static",
 ]
+
+[[package]]
+name = "crunchy"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2f4a431c5c9f662e1200b7c7f02c34e91361150e382089a8f2dec3ba680cbda"
 
 [[package]]
 name = "crypto-common"
@@ -1091,7 +1107,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.14.2"
+version = "0.14.5"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -1124,7 +1140,7 @@ dependencies = [
 
 [[package]]
 name = "forc-explore"
-version = "0.14.2"
+version = "0.14.5"
 dependencies = [
  "anyhow",
  "clap 3.1.8",
@@ -1139,7 +1155,7 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.14.2"
+version = "0.14.5"
 dependencies = [
  "anyhow",
  "clap 3.1.8",
@@ -1153,15 +1169,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "forc-fmt-v2"
+version = "0.14.4"
+dependencies = [
+ "anyhow",
+ "clap 3.1.8",
+ "forc-util",
+ "prettydiff",
+ "sway-core",
+ "sway-fmt-v2",
+ "sway-utils",
+ "taplo",
+ "tracing",
+]
+
+[[package]]
 name = "forc-gm"
-version = "0.14.2"
+version = "0.14.5"
 dependencies = [
  "clap 3.1.8",
 ]
 
 [[package]]
 name = "forc-lsp"
-version = "0.14.2"
+version = "0.14.5"
 dependencies = [
  "anyhow",
  "clap 3.1.8",
@@ -1171,7 +1202,7 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.14.2"
+version = "0.14.5"
 dependencies = [
  "anyhow",
  "forc-util",
@@ -1191,7 +1222,7 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.14.2"
+version = "0.14.5"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -2215,15 +2246,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "nanoid"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ffa00dec017b5b1a8b7cf5e2c008bfda1aa7e0697ac1508b491fdf2622fb4d8"
-dependencies = [
- "rand 0.8.5",
-]
-
-[[package]]
 name = "nom"
 version = "5.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2318,6 +2340,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 
 [[package]]
+name = "openssl-src"
+version = "111.20.0+1.1.1o"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92892c4f87d56e376e469ace79f1128fdaded07646ddf73aa0be4706ff712dec"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "openssl-sys"
 version = "0.9.72"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2326,6 +2357,7 @@ dependencies = [
  "autocfg 1.1.0",
  "cc",
  "libc",
+ "openssl-src",
  "pkg-config",
  "vcpkg",
 ]
@@ -3583,21 +3615,22 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.14.2"
+version = "0.14.5"
 dependencies = [
+ "bigint",
  "clap 3.1.8",
  "derivative",
  "dirs 3.0.2",
  "either",
  "fuel-asm",
  "fuel-crypto",
+ "fuel-types",
  "fuel-vm",
  "fuels-types",
  "hex",
  "im",
  "itertools",
  "lazy_static",
- "nanoid",
  "petgraph",
  "prettydiff",
  "regex",
@@ -3614,7 +3647,7 @@ dependencies = [
 
 [[package]]
 name = "sway-fmt"
-version = "0.14.2"
+version = "0.14.5"
 dependencies = [
  "ropey",
  "sway-core",
@@ -3623,7 +3656,7 @@ dependencies = [
 
 [[package]]
 name = "sway-fmt-v2"
-version = "0.0.0"
+version = "0.14.4"
 dependencies = [
  "anyhow",
  "forc-util",
@@ -3638,7 +3671,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.14.2"
+version = "0.14.5"
 dependencies = [
  "filecheck",
  "generational-arena",
@@ -3649,7 +3682,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.14.2"
+version = "0.14.5"
 dependencies = [
  "async-trait",
  "dashmap 4.0.2",
@@ -3664,11 +3697,12 @@ dependencies = [
  "tokio",
  "tower",
  "tower-lsp",
+ "tracing",
 ]
 
 [[package]]
 name = "sway-parse"
-version = "0.14.2"
+version = "0.14.5"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -3680,7 +3714,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.14.2"
+version = "0.14.5"
 dependencies = [
  "fuel-asm",
  "fuel-crypto",
@@ -3691,7 +3725,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.14.2"
+version = "0.14.5"
 
 [[package]]
 name = "syn"
@@ -3783,6 +3817,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "forc",
+ "forc-util",
  "fuel-asm",
  "fuel-tx",
  "fuel-vm",

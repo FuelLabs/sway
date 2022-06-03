@@ -6,6 +6,7 @@ use crate::source_map::SourceMap;
 use sway_types::span::Span;
 
 use either::Either;
+use std::fmt;
 use std::io::Read;
 
 /// Represents an ASM set which has had register allocation, jump elimination, and optimization
@@ -27,6 +28,7 @@ pub enum FinalizedAsm {
     // Libraries do not generate any asm.
     Library,
 }
+
 impl FinalizedAsm {
     pub(crate) fn to_bytecode_mut(&mut self, source_map: &mut SourceMap) -> CompileResult<Vec<u8>> {
         use FinalizedAsm::*;
@@ -45,6 +47,27 @@ impl FinalizedAsm {
                 program_section,
                 ref mut data_section,
             } => to_bytecode_mut(program_section, data_section, source_map),
+        }
+    }
+}
+
+impl fmt::Display for FinalizedAsm {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FinalizedAsm::ScriptMain {
+                program_section,
+                data_section,
+            } => write!(f, "{}\n{}", program_section, data_section),
+            FinalizedAsm::PredicateMain {
+                program_section,
+                data_section,
+            } => write!(f, "{}\n{}", program_section, data_section),
+            FinalizedAsm::ContractAbi {
+                program_section,
+                data_section,
+            } => write!(f, "{}\n{}", program_section, data_section),
+            // Libraries do not directly generate any asm.
+            FinalizedAsm::Library => write!(f, ""),
         }
     }
 }

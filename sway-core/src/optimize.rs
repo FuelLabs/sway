@@ -16,33 +16,25 @@ use sway_ir::*;
 
 // -------------------------------------------------------------------------------------------------
 
-pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, CompileError> {
+pub(crate) fn compile_program(program: TypedProgram) -> Result<Context, CompileError> {
+    let TypedProgram { kind, root } = program;
     let mut ctx = Context::default();
-    match ast {
-        TypedParseTree::Script {
-            namespace,
+    match kind {
+        TypedProgramKind::Script {
             main_function,
             declarations,
-            all_nodes: _,
         }
-        | TypedParseTree::Predicate {
-            namespace,
+        | TypedProgramKind::Predicate {
             main_function,
             declarations,
-            all_nodes: _,
             // predicates and scripts have the same codegen, their only difference is static
             // type-check time checks.
-        } => compile_script(&mut ctx, main_function, &namespace, declarations),
-        TypedParseTree::Contract {
+        } => compile_script(&mut ctx, main_function, &root.namespace, declarations),
+        TypedProgramKind::Contract {
             abi_entries,
-            namespace,
             declarations,
-            all_nodes: _,
-        } => compile_contract(&mut ctx, abi_entries, &namespace, declarations),
-        TypedParseTree::Library {
-            namespace: _,
-            all_nodes: _,
-        } => unimplemented!("compile library to ir"),
+        } => compile_contract(&mut ctx, abi_entries, &root.namespace, declarations),
+        TypedProgramKind::Library { .. } => unimplemented!("compile library to ir"),
     }?;
     ctx.verify()
         .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))
@@ -132,14 +124,21 @@ fn compile_constant_expression(
     context: &mut Context,
     const_expr: &TypedExpression,
 ) -> Result<Value, CompileError> {
-    if let TypedExpressionVariant::Literal(literal) = &const_expr.expression {
-        let span_md_idx = MetadataIndex::from_span(context, &const_expr.span);
-        Ok(convert_literal_to_value(context, literal, span_md_idx))
-    } else {
-        Err(CompileError::Internal(
-            "Unsupported constant expression type.",
-            const_expr.span.clone(),
-        ))
+    match &const_expr.expression {
+        TypedExpressionVariant::Literal(literal) => {
+            let span_md_idx = MetadataIndex::from_span(context, &const_expr.span);
+            Ok(convert_literal_to_value(context, literal, span_md_idx))
+        }
+        // Special case functions because the span in `const_expr` is to the inlined function
+        // definition, rather than the actual call site.
+        TypedExpressionVariant::FunctionApplication { call_path, .. } => {
+            Err(CompileError::NonLiteralConstantDeclValue {
+                span: call_path.span(),
+            })
+        }
+        _otherwise => Err(CompileError::NonLiteralConstantDeclValue {
+            span: const_expr.span.clone(),
+        }),
     }
 }
 
@@ -602,6 +601,7 @@ impl FnCompiler {
                 contract_call_params,
                 arguments,
                 function_body,
+                self_state_idx,
                 selector,
             } => {
                 if let Some(metadata) = selector {
@@ -620,6 +620,7 @@ impl FnCompiler {
                         name.suffix.as_str(),
                         arguments,
                         Some(function_body),
+                        self_state_idx,
                         span_md_idx,
                     )
                 }
@@ -738,20 +739,23 @@ impl FnCompiler {
                 self.compile_unsafe_downcast(context, exp, variant)
             }
             TypedExpressionVariant::EnumTag { exp } => self.compile_enum_tag(context, exp),
-            TypedExpressionVariant::GenerateUid { span } => {
+            TypedExpressionVariant::GetStorageKey { span } => {
                 let span_md_idx = MetadataIndex::from_span(context, &span);
-                self.compile_generate_uid(context, span_md_idx)
+                self.compile_get_storage_key(context, span_md_idx)
             }
         }
     }
 
     // ---------------------------------------------------------------------------------------------
-    fn compile_generate_uid(
+    fn compile_get_storage_key(
         &mut self,
         context: &mut Context,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
-        Ok(self.current_block.ins(context).generate_uid(span_md_idx))
+        Ok(self
+            .current_block
+            .ins(context)
+            .get_storage_key(span_md_idx, None))
     }
 
     fn compile_return_statement(
@@ -1043,6 +1047,7 @@ impl FnCompiler {
         _ast_name: &str,
         ast_args: Vec<(Ident, TypedExpression)>,
         callee_body: Option<TypedCodeBlock>,
+        self_state_idx: Option<StateIndex>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         // XXX OK, now, the old compiler inlines everything very lazily.  Function calls include
@@ -1105,10 +1110,18 @@ impl FnCompiler {
                 .into_iter()
                 .map(|(_, expr)| self.compile_expression(context, expr))
                 .collect::<Result<Vec<Value>, CompileError>>()?;
-            Ok(self
-                .current_block
-                .ins(context)
-                .call(callee.unwrap(), &args, span_md_idx))
+            let state_idx_md_idx = match self_state_idx {
+                Some(self_state_idx) => {
+                    MetadataIndex::from_state_idx(context, self_state_idx.to_usize())
+                }
+                None => None,
+            };
+            Ok(self.current_block.ins(context).call(
+                callee.unwrap(),
+                &args,
+                span_md_idx,
+                state_idx_md_idx,
+            ))
         }
     }
 
@@ -2002,7 +2015,7 @@ impl FnCompiler {
                 }
                 struct_val
             }
-            Type::Bool | Type::Uint(_) | Type::B256 => {
+            Type::Bool | Type::Uint(_) | Type::B256 | Type::Union(_) | Type::String(_) => {
                 // Calculate the storage location hash for the given field
                 let mut storage_slot_to_hash = format!(
                     "{}{}",
@@ -2038,7 +2051,7 @@ impl FnCompiler {
 
                 // Convert the key pointer to a value using get_ptr
                 let key_ptr_ty = *key_ptr.get_type(context);
-                let key_ptr_val =
+                let mut key_ptr_val =
                     self.current_block
                         .ins(context)
                         .get_ptr(key_ptr, key_ptr_ty, 0, span_md_idx);
@@ -2133,6 +2146,123 @@ impl FnCompiler {
                                 );
                                 rhs.expect("expecting a rhs for write")
                             }
+                        }
+                    }
+                    Type::Union(_) | Type::String(_) => {
+                        // Use state_load_quad_word/state_store_quad_word as many times as needed
+                        // using sequential keys
+
+                        // First, create a name for the value to load from or store to
+                        let value_name = format!(
+                            "val_for_{}{}",
+                            ix.to_usize(),
+                            indices
+                                .iter()
+                                .map(|idx| format!("_{idx}"))
+                                .collect::<Vec<_>>()
+                                .join("")
+                        );
+                        let alias_value_name = self.lexical_map.insert(value_name);
+
+                        // Create an array of `b256` that will hold the value to store into storage
+                        // or the value loaded from storage. The array has to fit the whole type.
+                        let number_of_elements = (ir_type_size_in_bytes(context, r#type) + 31) / 32;
+                        let b256_array_type = Type::Array(Aggregate::new_array(
+                            context,
+                            Type::B256,
+                            number_of_elements,
+                        ));
+
+                        // Local pointer to hold the array of b256s
+                        let value_ptr = self
+                            .function
+                            .new_local_ptr(context, alias_value_name, b256_array_type, true, None)
+                            .map_err(|ir_error| {
+                                CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                            })?;
+
+                        // Convert the local pointer created to a value of the original type using
+                        // get_ptr.
+                        let value_ptr_val = self.current_block.ins(context).get_ptr(
+                            value_ptr,
+                            *r#type,
+                            0,
+                            span_md_idx,
+                        );
+
+                        if rhs.is_some() {
+                            // Store the value to the local pointer created for rhs
+                            self.current_block.ins(context).store(
+                                value_ptr_val,
+                                rhs.expect("expecting a rhs for write"),
+                                span_md_idx,
+                            );
+                        }
+
+                        fn add_to_b256(x: fuel_types::Bytes32, y: u64) -> fuel_types::Bytes32 {
+                            let x = bigint::uint::U256::from(*x);
+                            let y = bigint::uint::U256::from(y);
+                            let res: [u8; 32] = (x + y).into();
+                            fuel_types::Bytes32::from(res)
+                        }
+
+                        for array_index in 0..number_of_elements {
+                            if array_index > 0 {
+                                // Prepare key for the next iteration but not for array index 0
+                                // because the first key was generated earlier.
+                                // Const value for the key from the initial hash + array_index
+                                let const_key = convert_literal_to_value(
+                                    context,
+                                    &Literal::B256(*add_to_b256(hashed_storage_slot, array_index)),
+                                    span_md_idx,
+                                );
+
+                                // Convert the key pointer to a value using get_ptr
+                                key_ptr_val = self.current_block.ins(context).get_ptr(
+                                    key_ptr,
+                                    key_ptr_ty,
+                                    0,
+                                    span_md_idx,
+                                );
+
+                                // Store the const hash value to the key pointer value
+                                self.current_block.ins(context).store(
+                                    key_ptr_val,
+                                    const_key,
+                                    span_md_idx,
+                                );
+                            }
+
+                            // Get the b256 from the array at index iter
+                            let value_ptr_val_b256 = self.current_block.ins(context).get_ptr(
+                                value_ptr,
+                                Type::B256,
+                                array_index,
+                                span_md_idx,
+                            );
+
+                            match access_type {
+                                StateAccessType::Read => {
+                                    self.current_block.ins(context).state_load_quad_word(
+                                        value_ptr_val_b256,
+                                        key_ptr_val,
+                                        span_md_idx,
+                                    );
+                                }
+                                StateAccessType::Write => {
+                                    // Finally, just call state_load_quad_word/state_store_quad_word
+                                    self.current_block.ins(context).state_store_quad_word(
+                                        value_ptr_val_b256,
+                                        key_ptr_val,
+                                        span_md_idx,
+                                    );
+                                }
+                            }
+                        }
+
+                        match access_type {
+                            StateAccessType::Read => value_ptr_val,
+                            StateAccessType::Write => rhs.expect("expecting a rhs for write"),
                         }
                     }
                     _ => unreachable!(),
@@ -2470,16 +2600,8 @@ fn convert_resolved_type(
 
 #[cfg(test)]
 mod tests {
-
+    use crate::semantic_analysis::{namespace, TypedProgram};
     use std::path::PathBuf;
-
-    use crate::{
-        control_flow_analysis::{ControlFlowGraph, Graph},
-        semantic_analysis::{
-            namespace::{self, Namespace},
-            TypedParseTree,
-        },
-    };
 
     // -------------------------------------------------------------------------------------------------
 
@@ -2517,8 +2639,8 @@ mod tests {
         let expected_bytes = std::fs::read(&ir_path).unwrap();
         let expected = String::from_utf8_lossy(&expected_bytes);
 
-        let typed_ast = parse_to_typed_ast(sw_path.clone(), &input);
-        let ir = super::compile_ast(typed_ast).unwrap();
+        let typed_program = parse_to_typed_program(sw_path.clone(), &input);
+        let ir = super::compile_program(typed_program).unwrap();
         let output = sway_ir::printer::to_string(&ir);
 
         // Use a tricky regex to replace the local path in the metadata with something generic.  It
@@ -2575,55 +2697,42 @@ mod tests {
         let parsed_ctx = match sway_ir::parser::parse(&input) {
             Ok(p) => p,
             Err(e) => {
-                tracing::error!("{}: {}", path.display(), e);
+                println!("{}: {}", path.display(), e);
                 panic!();
             }
         };
         let printed = sway_ir::printer::to_string(&parsed_ctx);
         if printed != input {
-            tracing::error!("{}", prettydiff::diff_lines(&input, &printed));
+            println!("{}", prettydiff::diff_lines(&input, &printed));
             panic!("{} failed.", path.display());
         }
     }
 
     // -------------------------------------------------------------------------------------------------
 
-    fn parse_to_typed_ast(path: PathBuf, input: &str) -> TypedParseTree {
-        let dir_of_code = std::sync::Arc::new(path.parent().unwrap().into());
-        let file_name = std::sync::Arc::new(path);
+    fn parse_to_typed_program(path: PathBuf, input: &str) -> TypedProgram {
+        let root_module = std::sync::Arc::new(path);
+        let canonical_root_module = std::sync::Arc::new(root_module.canonicalize().unwrap());
 
         let build_config = crate::build_config::BuildConfig {
-            file_name,
-            dir_of_code,
-            manifest_path: std::sync::Arc::new(".".into()),
-            use_orig_asm: false,
+            canonical_root_module,
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,
-            generated_names: Default::default(),
         };
         let mut warnings = vec![];
         let mut errors = vec![];
+        let src = std::sync::Arc::from(input);
+        let parsed_program =
+            crate::parse(src, Some(&build_config)).unwrap(&mut warnings, &mut errors);
 
-        let parse_tree =
-            sway_parse::parse_file(std::sync::Arc::from(input), Some(build_config.path())).unwrap();
-        let parse_tree = crate::convert_parse_tree::convert_parse_tree(parse_tree)
+        let initial_namespace = namespace::Module::default();
+        let typed_program = TypedProgram::type_check(parsed_program, initial_namespace)
             .unwrap(&mut warnings, &mut errors);
 
-        let mut dead_code_graph = ControlFlowGraph {
-            graph: Graph::new(),
-            entry_points: vec![],
-            namespace: Default::default(),
-        };
-        let mut namespace = Namespace::init_root(namespace::Module::default());
-        TypedParseTree::type_check(
-            parse_tree.tree,
-            &mut namespace,
-            &parse_tree.tree_type,
-            &build_config,
-            &mut dead_code_graph,
-        )
-        .unwrap(&mut warnings, &mut errors)
+        crate::perform_control_flow_analysis(&typed_program).unwrap(&mut warnings, &mut errors);
+
+        typed_program
     }
 }
 

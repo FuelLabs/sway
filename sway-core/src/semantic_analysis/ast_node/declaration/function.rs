@@ -1,33 +1,18 @@
-use crate::{
-    error::*,
-    namespace::Items,
-    parse_tree::*,
-    semantic_analysis::{
-        ast_node::{
-            copy_types::insert_type_parameters, IsConstant, Mode, TypedCodeBlock, TypedDeclaration,
-            TypedExpression, TypedExpressionVariant, TypedReturnStatement,
-            TypedVariableDeclaration, VariableMutability,
-        },
-        CopyTypes, TypeCheckArguments, TypeMapping, TypedAstNode, TypedAstNodeContent,
-    },
-    style::*,
-    type_engine::*,
-    Ident, TypeParameter,
-};
-use fuels_types::{Function, Property};
-use sha2::{Digest, Sha256};
-use sway_types::Span;
-
 mod function_parameter;
 pub use function_parameter::*;
 
-use super::{EnforceTypeArguments, MonomorphizeHelper};
+use crate::{
+    error::*, namespace::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*, types::*,
+};
+use fuels_types::{Function, Property};
+use sha2::{Digest, Sha256};
+use sway_types::{Ident, Span};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedFunctionDeclaration {
-    pub(crate) name: Ident,
-    pub(crate) body: TypedCodeBlock,
-    pub(crate) parameters: Vec<TypedFunctionParameter>,
+    pub name: Ident,
+    pub body: TypedCodeBlock,
+    pub parameters: Vec<TypedFunctionParameter>,
     pub(crate) span: Span,
     pub(crate) return_type: TypeId,
     pub(crate) type_parameters: Vec<TypeParameter>,
@@ -110,6 +95,31 @@ impl MonomorphizeHelper for TypedFunctionDeclaration {
     }
 }
 
+impl ToJsonAbi for TypedFunctionDeclaration {
+    type Output = Function;
+
+    fn generate_json_abi(&self) -> Self::Output {
+        Function {
+            name: self.name.as_str().to_string(),
+            type_field: "function".to_string(),
+            inputs: self
+                .parameters
+                .iter()
+                .map(|x| Property {
+                    name: x.name.as_str().to_string(),
+                    type_field: x.r#type.json_abi_str(),
+                    components: x.r#type.generate_json_abi(),
+                })
+                .collect(),
+            outputs: vec![Property {
+                name: "".to_string(),
+                type_field: self.return_type.json_abi_str(),
+                components: self.return_type.generate_json_abi(),
+            }],
+        }
+    }
+}
+
 impl TypedFunctionDeclaration {
     pub fn type_check(
         arguments: TypeCheckArguments<'_, FunctionDeclaration>,
@@ -120,8 +130,6 @@ impl TypedFunctionDeclaration {
             checkee: fn_decl,
             namespace,
             self_type,
-            build_config,
-            dead_code_graph,
             mode,
             mut opts,
             ..
@@ -132,7 +140,7 @@ impl TypedFunctionDeclaration {
             mut parameters,
             span,
             return_type,
-            type_parameters,
+            mut type_parameters,
             return_type_span,
             visibility,
             purity,
@@ -144,6 +152,19 @@ impl TypedFunctionDeclaration {
         // insert parameters and generic type declarations into namespace
         let mut namespace = namespace.clone();
 
+        // insert type parameters as Unknown types
+        let type_mapping = insert_type_parameters(&type_parameters);
+
+        // update the types in the type parameters
+        for type_parameter in type_parameters.iter_mut() {
+            check!(
+                type_parameter.update_types(&type_mapping, &mut namespace, self_type),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+        }
+
         // check to see if the type parameters shadow one another
         for type_parameter in type_parameters.iter() {
             check!(
@@ -153,9 +174,6 @@ impl TypedFunctionDeclaration {
                 errors
             );
         }
-
-        // insert type parameters as Unknown types
-        let type_mapping = insert_type_parameters(&type_parameters);
 
         parameters.iter_mut().for_each(|parameter| {
             parameter.type_id =
@@ -214,22 +232,17 @@ impl TypedFunctionDeclaration {
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
         let (mut body, _implicit_block_return) = check!(
             TypedCodeBlock::type_check(TypeCheckArguments {
-                checkee: body.clone(),
+                checkee: body,
                 namespace: &mut namespace,
                 return_type_annotation: return_type,
                 help_text:
                     "Function body's return type does not match up with its return type annotation.",
                 self_type,
-                build_config,
-                dead_code_graph,
                 mode: Mode::NonAbi,
                 opts,
             }),
             (
-                TypedCodeBlock {
-                    contents: vec![],
-                    whole_block_span: body.whole_block_span,
-                },
+                TypedCodeBlock { contents: vec![] },
                 insert_type(TypeInfo::ErrorRecovery)
             ),
             warnings,
@@ -381,27 +394,6 @@ impl TypedFunctionDeclaration {
             errors,
         )
     }
-
-    pub fn generate_json_abi(&self) -> Function {
-        Function {
-            name: self.name.as_str().to_string(),
-            type_field: "function".to_string(),
-            inputs: self
-                .parameters
-                .iter()
-                .map(|x| Property {
-                    name: x.name.as_str().to_string(),
-                    type_field: x.r#type.json_abi_str(),
-                    components: x.r#type.generate_json_abi(),
-                })
-                .collect(),
-            outputs: vec![Property {
-                name: "".to_string(),
-                type_field: self.return_type.json_abi_str(),
-                components: self.return_type.generate_json_abi(),
-            }],
-        }
-    }
 }
 
 #[test]
@@ -410,10 +402,7 @@ fn test_function_selector_behavior() {
     let decl = TypedFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_no_span("foo"),
-        body: TypedCodeBlock {
-            contents: vec![],
-            whole_block_span: Span::dummy(),
-        },
+        body: TypedCodeBlock { contents: vec![] },
         parameters: vec![],
         span: Span::dummy(),
         return_type: 0.into(),
@@ -433,10 +422,7 @@ fn test_function_selector_behavior() {
     let decl = TypedFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_with_override("bar", Span::dummy()),
-        body: TypedCodeBlock {
-            contents: vec![],
-            whole_block_span: Span::dummy(),
-        },
+        body: TypedCodeBlock { contents: vec![] },
         parameters: vec![
             TypedFunctionParameter {
                 name: Ident::new_no_span("foo"),

@@ -7,6 +7,7 @@ members = [
     "forc-pkg",
     "forc-plugins/forc-explore",
     "forc-plugins/forc-fmt",
+    "forc-plugins/forc-fmt-v2",
     "forc-plugins/forc-lsp",
     "forc-util",
     "scripts/examples-checker",

@@ -1,9 +1,6 @@
 use super::*;
 
-use crate::{
-    semantic_analysis::ast_node::{TypedEnumVariant, TypedExpression, TypedStructField},
-    CallPath, Ident, TypeArgument, TypeParameter,
-};
+use crate::{semantic_analysis::*, types::*, CallPath, Ident, TypeArgument, TypeParameter};
 
 use sway_types::span::Span;
 
@@ -217,26 +214,30 @@ impl PartialEq for TypeInfo {
                 Self::Enum {
                     name: l_name,
                     variant_types: l_variant_types,
-                    ..
+                    type_parameters: l_type_parameters,
                 },
                 Self::Enum {
                     name: r_name,
                     variant_types: r_variant_types,
-                    ..
+                    type_parameters: r_type_parameters,
                 },
-            ) => l_name == r_name && l_variant_types == r_variant_types,
+            ) => {
+                l_name == r_name
+                    && l_variant_types == r_variant_types
+                    && l_type_parameters == r_type_parameters
+            }
             (
                 Self::Struct {
                     name: l_name,
                     fields: l_fields,
-                    ..
+                    type_parameters: l_type_parameters,
                 },
                 Self::Struct {
                     name: r_name,
                     fields: r_fields,
-                    ..
+                    type_parameters: r_type_parameters,
                 },
-            ) => l_name == r_name && l_fields == r_fields,
+            ) => l_name == r_name && l_fields == r_fields && l_type_parameters == r_type_parameters,
             (Self::Ref(l, _sp1), Self::Ref(r, _sp2)) => look_up_type_id(*l) == look_up_type_id(*r),
             (Self::Tuple(l), Self::Tuple(r)) => l
                 .iter()
@@ -272,8 +273,8 @@ impl Default for TypeInfo {
     }
 }
 
-impl TypeInfo {
-    pub(crate) fn friendly_type_str(&self) -> String {
+impl FriendlyTypeString for TypeInfo {
+    fn friendly_type_str(&self) -> String {
         use TypeInfo::*;
         match self {
             Unknown => "unknown".into(),
@@ -304,15 +305,19 @@ impl TypeInfo {
             ErrorRecovery => "unknown due to error".into(),
             Enum {
                 name,
-                variant_types,
+                type_parameters,
                 ..
             } => print_inner_types(
-                format!("enum {}", name),
-                variant_types.iter().map(|x| x.r#type),
+                name.as_str().to_string(),
+                type_parameters.iter().map(|x| x.type_id),
             ),
-            Struct { name, fields, .. } => print_inner_types(
-                format!("struct {}", name),
-                fields.iter().map(|field| field.r#type),
+            Struct {
+                name,
+                type_parameters,
+                ..
+            } => print_inner_types(
+                name.as_str().to_string(),
+                type_parameters.iter().map(|x| x.type_id),
             ),
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {}", abi_name)
@@ -321,8 +326,10 @@ impl TypeInfo {
             Storage { .. } => "contract storage".into(),
         }
     }
+}
 
-    pub(crate) fn json_abi_str(&self) -> String {
+impl JsonAbiString for TypeInfo {
+    fn json_abi_str(&self) -> String {
         use TypeInfo::*;
         match self {
             Unknown => "unknown".into(),
@@ -364,7 +371,9 @@ impl TypeInfo {
             Storage { .. } => "contract storage".into(),
         }
     }
+}
 
+impl TypeInfo {
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name(&self, error_msg_span: &Span) -> CompileResult<String> {
         use TypeInfo::*;
@@ -468,96 +477,6 @@ impl TypeInfo {
         ok(name, vec![], vec![])
     }
 
-    pub(crate) fn size_in_bytes(&self, err_span: &Span) -> Result<u64, CompileError> {
-        Ok(self.size_in_words(err_span)? * 8)
-    }
-
-    /// Calculates the stack size of this type in words,
-    /// to be used when allocating stack memory for it.
-    pub(crate) fn size_in_words(&self, err_span: &Span) -> Result<u64, CompileError> {
-        match self {
-            // Each char is a byte, so the size is the num of characters / 8
-            // rounded up to the nearest word
-            TypeInfo::Str(len) => Ok((len + 7) / 8),
-            // Since things are unpacked, all unsigned integers are 64 bits.....for now
-            TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => Ok(1),
-            TypeInfo::Boolean => Ok(1),
-            TypeInfo::Tuple(fields) => Ok(fields
-                .iter()
-                .map(|field_type| {
-                    resolve_type(field_type.type_id, err_span)
-                        .expect("should be unreachable?")
-                        .size_in_words(err_span)
-                })
-                .collect::<Result<Vec<u64>, _>>()?
-                .iter()
-                .sum()),
-            TypeInfo::Byte => Ok(1),
-            TypeInfo::B256 => Ok(4),
-            TypeInfo::Enum { variant_types, .. } => {
-                // the size of an enum is one word (for the tag) plus the maximum size
-                // of any individual variant
-                Ok(1 + variant_types
-                    .iter()
-                    .map(|x| -> Result<_, _> { look_up_type_id(x.r#type).size_in_words(err_span) })
-                    .collect::<Result<Vec<u64>, _>>()?
-                    .into_iter()
-                    .max()
-                    .unwrap_or(0))
-            }
-            TypeInfo::Struct { fields, .. } => Ok(fields
-                .iter()
-                .map(|field| -> Result<_, _> {
-                    resolve_type(field.r#type, err_span)
-                        .expect("should be unreachable?")
-                        .size_in_words(err_span)
-                })
-                .collect::<Result<Vec<u64>, _>>()?
-                .iter()
-                .sum()),
-            // `ContractCaller` types are unsized and used only in the type system for
-            // calling methods
-            TypeInfo::ContractCaller { .. } => Ok(0),
-            TypeInfo::Contract => unreachable!("contract types are never instantiated"),
-            TypeInfo::ErrorRecovery => unreachable!(),
-            TypeInfo::Unknown
-            | TypeInfo::Custom { .. }
-            | TypeInfo::SelfType
-            | TypeInfo::UnknownGeneric { .. } => Err(CompileError::UnableToInferGeneric {
-                ty: self.friendly_type_str(),
-                span: err_span.clone(),
-            }),
-            TypeInfo::Ref(id, _sp) => look_up_type_id(*id).size_in_words(err_span),
-            TypeInfo::Array(elem_ty, count) => {
-                Ok(look_up_type_id(*elem_ty).size_in_words(err_span)? * *count as u64)
-            }
-            TypeInfo::Storage { .. } => Ok(0),
-        }
-    }
-
-    pub(crate) fn is_copy_type(&self, err_span: &Span) -> Result<bool, CompileError> {
-        match self {
-            // Copy types.
-            TypeInfo::UnsignedInteger(_)
-            | TypeInfo::Numeric
-            | TypeInfo::Boolean
-            | TypeInfo::Byte => Ok(true),
-            TypeInfo::Tuple(_) if self.is_unit() => Ok(true),
-
-            // Unknown types.
-            TypeInfo::Unknown
-            | TypeInfo::Custom { .. }
-            | TypeInfo::SelfType
-            | TypeInfo::UnknownGeneric { .. } => Err(CompileError::UnableToInferGeneric {
-                ty: self.friendly_type_str(),
-                span: err_span.clone(),
-            }),
-
-            // Otherwise default to non-copy.
-            _otherwise => Ok(false),
-        }
-    }
-
     pub fn is_uninhabited(&self) -> bool {
         match self {
             TypeInfo::Enum { variant_types, .. } => variant_types
@@ -627,30 +546,21 @@ impl TypeInfo {
         }
     }
 
-    pub(crate) fn matches_type_parameter(
-        &self,
-        mapping: &[(TypeParameter, TypeId)],
-    ) -> Option<TypeId> {
+    pub(crate) fn matches_type_parameter(&self, mapping: &TypeMapping) -> Option<TypeId> {
         use TypeInfo::*;
         match self {
             TypeInfo::Custom { .. } => {
                 for (param, ty_id) in mapping.iter() {
-                    let param_type_info = look_up_type_id(param.type_id);
-                    if param_type_info == *self {
+                    if look_up_type_id(param.type_id) == *self {
                         return Some(*ty_id);
                     }
                 }
                 None
             }
-            TypeInfo::UnknownGeneric { name, .. } => {
+            TypeInfo::UnknownGeneric { .. } => {
                 for (param, ty_id) in mapping.iter() {
-                    if let TypeInfo::Custom {
-                        name: other_name, ..
-                    } = look_up_type_id(param.type_id)
-                    {
-                        if name.clone() == other_name {
-                            return Some(*ty_id);
-                        }
+                    if look_up_type_id(param.type_id) == *self {
+                        return Some(*ty_id);
                     }
                 }
                 None
@@ -1024,12 +934,16 @@ impl TypeInfo {
 }
 
 fn print_inner_types(name: String, inner_types: impl Iterator<Item = TypeId>) -> String {
+    let inner_types = inner_types
+        .map(|x| x.friendly_type_str())
+        .collect::<Vec<_>>();
     format!(
-        "{}<{}>",
+        "{}{}",
         name,
-        inner_types
-            .map(|x| x.friendly_type_str())
-            .collect::<Vec<_>>()
-            .join(", ")
+        if inner_types.is_empty() {
+            "".into()
+        } else {
+            format!("<{}>", inner_types.join(", "))
+        }
     )
 }

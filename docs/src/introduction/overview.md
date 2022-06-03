@@ -65,7 +65,7 @@ In the first line, we declare the name of this ABI: `Wallet`. To import this ABI
 
 In the second line we declare an ABI method called `receive_funds` which, when called, should receive funds into this wallet. This method takes no parameters and does not return anything.
 
-_Note that we are simply defining an interface here, so there is no function body or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to [trait declarations](../advanced/traits.md)._
+> **Note**: We are simply defining an interface here, so there is no function body or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to [trait declarations](../advanced/traits.md).
 
 In the third line we declare another ABI method, this time called `send_funds`. It takes two parameters: the amount to send, and the address to send the funds to.
 
@@ -160,7 +160,7 @@ Note the contract ID—you will need it in the next step.
 
 ## Write a Sway Script to Call a Sway Contract
 
-_Note that if you are using the SDK you do not need to write a script to call the Sway contract, this is all handled automagically by the SDK._
+> **Note**: If you are using the SDK you do not need to write a script to call the Sway contract, this is all handled automagically by the SDK.
 
 Now that we have deployed our wallet contract, we need to actually _call_ our contract. We can do this by calling the contract from a script.
 
@@ -220,12 +220,49 @@ Note that we are passing in the `wallet_contract` contract ID as a command-line 
 If the script is successfully run, it will output something that looks like:
 
 ```console
-$ forc run --contract <contract-id>
-  Compiled library "lib-std".
+$ forc run --pretty-print --contract <contract-id> 
+  Compiled library "core".
+  Compiled library "std".
   Compiled library "wallet_lib".
   Compiled script "wallet_script".
   Bytecode size is 272 bytes.
-[Call { id: 0xf4b63e0e09cb72762cec18a6123a9fb5bd501b87141fac5835d80f5162505c38, to: 0xf4b63e0e09cb72762cec18a6123a9fb5bd501b87141fac5835d80f5162505c38, amount: 0, color: 0x0000000000000000000000000000000000000000000000000000000000000000, gas: 10000, a: 1506869579, b: 968, pc: 1656, is: 1656 }, Return { id: 0xf4b63e0e09cb72762cec18a6123a9fb5bd501b87141fac5835d80f5162505c38, val: 0, pc: 1764, is: 1656 }, Return { id: 0x0000000000000000000000000000000000000000000000000000000000000000, val: 0, pc: 584, is: 472 }, ScriptResult { result: InstructionResult { reason: RESERV00, instruction: Instruction { op: 0, ra: 0, rb: 0, rc: 0, rd: 0, imm06: 0, imm12: 0, imm18: 0, imm24: 0 } }, gas_used: 998 }]
+[
+  {
+    "Call": {
+      "amount": 0,
+      "asset_id": "0000000000000000000000000000000000000000000000000000000000000000",
+      "gas": 99999240,
+      "id": "ea1f774aae16b8719ce463d4e8097ef72766686ede65e35947084aa0055e59d7",
+      "is": 11536,
+      "param1": 3467577331,
+      "param2": 10848,
+      "pc": 11536,
+      "to": "ea1f774aae16b8719ce463d4e8097ef72766686ede65e35947084aa0055e59d7"
+    }
+  },
+  {
+    "Return": {
+      "id": "ea1f774aae16b8719ce463d4e8097ef72766686ede65e35947084aa0055e59d7",
+      "is": 11536,
+      "pc": 11608,
+      "val": 0
+    }
+  },
+  {
+    "Return": {
+      "id": "0000000000000000000000000000000000000000000000000000000000000000",
+      "is": 10352,
+      "pc": 10476,
+      "val": 0
+    }
+  },
+  {
+    "ScriptResult": {
+      "gas_used": 971,
+      "result": "Success"
+    }
+  }
+]
 ```
 
 It returns a `Call` receipt and a `ScriptResult` receipt.

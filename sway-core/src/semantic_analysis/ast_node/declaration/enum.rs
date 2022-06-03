@@ -1,24 +1,15 @@
 use crate::{
-    error::*,
-    namespace::Items,
-    parse_tree::*,
-    semantic_analysis::{
-        declaration::EnforceTypeArguments, insert_type_parameters, CopyTypes, TypeMapping,
-    },
-    type_engine::*,
-    CompileError, CompileResult, Ident, Namespace,
+    error::*, namespace::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*,
 };
 use fuels_types::Property;
 use std::hash::{Hash, Hasher};
-use sway_types::Span;
-
-use super::{monomorphize_inner, CreateTypeId, MonomorphizeHelper};
+use sway_types::{Ident, Span};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedEnumDeclaration {
-    pub(crate) name: Ident,
+    pub name: Ident,
     pub(crate) type_parameters: Vec<TypeParameter>,
-    pub(crate) variants: Vec<TypedEnumVariant>,
+    pub variants: Vec<TypedEnumVariant>,
     pub(crate) span: Span,
     pub(crate) visibility: Visibility,
 }
@@ -38,6 +29,9 @@ impl PartialEq for TypedEnumDeclaration {
 impl CopyTypes for TypedEnumDeclaration {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.variants
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
+        self.type_parameters
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
     }
@@ -82,12 +76,33 @@ impl TypedEnumDeclaration {
         let mut errors = vec![];
         let mut warnings = vec![];
 
+        let EnumDeclaration {
+            name,
+            mut type_parameters,
+            variants,
+            span,
+            visibility,
+        } = decl;
+
         // create a namespace for the decl, used to create a scope for generics
         let mut namespace = namespace.clone();
 
+        // insert type parameters as Unknown types
+        let type_mapping = insert_type_parameters(&type_parameters);
+
+        // update the types in the type parameters
+        for type_parameter in type_parameters.iter_mut() {
+            check!(
+                type_parameter.update_types(&type_mapping, &mut namespace, self_type),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+        }
+
         // insert the generics into the decl namespace and
         // check to see if the type parameters shadow one another
-        for type_parameter in decl.type_parameters.iter() {
+        for type_parameter in type_parameters.iter() {
             check!(
                 namespace.insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
                 continue,
@@ -96,9 +111,9 @@ impl TypedEnumDeclaration {
             );
         }
 
+        // type check the variants
         let mut variants_buf = vec![];
-        let type_mapping = insert_type_parameters(&decl.type_parameters);
-        for variant in decl.variants {
+        for variant in variants {
             variants_buf.push(check!(
                 TypedEnumVariant::type_check(
                     variant.clone(),
@@ -113,12 +128,13 @@ impl TypedEnumDeclaration {
             ));
         }
 
+        // create the enum decl
         let decl = TypedEnumDeclaration {
-            name: decl.name.clone(),
-            type_parameters: decl.type_parameters.clone(),
+            name,
+            type_parameters,
             variants: variants_buf,
-            span: decl.span.clone(),
-            visibility: decl.visibility,
+            span,
+            visibility,
         };
         ok(decl, warnings, errors)
     }
@@ -149,8 +165,8 @@ impl TypedEnumDeclaration {
 
 #[derive(Debug, Clone, Eq)]
 pub struct TypedEnumVariant {
-    pub(crate) name: Ident,
-    pub(crate) r#type: TypeId,
+    pub name: Ident,
+    pub r#type: TypeId,
     pub(crate) tag: usize,
     pub(crate) span: Span,
 }
@@ -183,6 +199,18 @@ impl CopyTypes for TypedEnumVariant {
     }
 }
 
+impl ToJsonAbi for TypedEnumVariant {
+    type Output = Property;
+
+    fn generate_json_abi(&self) -> Self::Output {
+        Property {
+            name: self.name.to_string(),
+            type_field: self.r#type.json_abi_str(),
+            components: self.r#type.generate_json_abi(),
+        }
+    }
+}
+
 impl TypedEnumVariant {
     pub(crate) fn type_check(
         variant: EnumVariant,
@@ -201,7 +229,7 @@ impl TypedEnumVariant {
                         variant.r#type.clone(),
                         self_type,
                         &span,
-                        EnforceTypeArguments::No
+                        EnforceTypeArguments::Yes
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
@@ -219,13 +247,5 @@ impl TypedEnumVariant {
             vec![],
             errors,
         )
-    }
-
-    pub fn generate_json_abi(&self) -> Property {
-        Property {
-            name: self.name.to_string(),
-            type_field: self.r#type.json_abi_str(),
-            components: self.r#type.generate_json_abi(),
-        }
     }
 }

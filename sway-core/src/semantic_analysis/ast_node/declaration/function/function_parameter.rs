@@ -1,15 +1,11 @@
-use crate::{
-    semantic_analysis::{CopyTypes, TypeMapping},
-    type_engine::*,
-    Ident,
-};
+use crate::{type_engine::*, Ident};
 
 use sway_types::span::Span;
 
 #[derive(Debug, Clone, Eq)]
 pub struct TypedFunctionParameter {
-    pub(crate) name: Ident,
-    pub(crate) r#type: TypeId,
+    pub name: Ident,
+    pub r#type: TypeId,
     pub(crate) type_span: Span,
 }
 

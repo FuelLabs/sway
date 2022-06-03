@@ -1,0 +1,7 @@
+[[package]]
+name = 'get_storage_key_abi'
+dependencies = []
+
+[[package]]
+name = 'get_storage_key_contract'
+dependencies = ['get_storage_key_abi']

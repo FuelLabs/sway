@@ -10,7 +10,7 @@ use crate::{
             TypedStructDeclaration, TypedStructExpressionField, TypedTraitDeclaration,
             TypedVariableDeclaration, TypedWhileLoop, VariableMutability,
         },
-        TypeCheckedStorageReassignment, TypedAstNode, TypedAstNodeContent, TypedParseTree,
+        TypeCheckedStorageReassignment, TypedAstNode, TypedAstNodeContent,
     },
     type_engine::{resolve_type, TypeInfo},
     CompileError, CompileWarning, Ident, TreeType, Warning,
@@ -106,8 +106,8 @@ impl ControlFlowGraph {
             .collect()
     }
 
-    pub(crate) fn append_to_dead_code_graph(
-        ast: &TypedParseTree,
+    pub(crate) fn append_module_to_dead_code_graph(
+        module_nodes: &[TypedAstNode],
         tree_type: &TreeType,
         graph: &mut ControlFlowGraph,
         // the `Result` return is just to handle `Unimplemented` errors
@@ -115,7 +115,7 @@ impl ControlFlowGraph {
         // do a depth first traversal and cover individual inner ast nodes
         let mut leaves = vec![];
         let exit_node = Some(graph.add_node(("Program exit".to_string()).into()));
-        for ast_entrypoint in ast.all_nodes().iter() {
+        for ast_entrypoint in module_nodes {
             let (l_leaves, _new_exit_node) =
                 connect_node(ast_entrypoint, graph, &leaves, exit_node, tree_type)?;
 
@@ -781,7 +781,7 @@ fn connect_expression(
             let then_expr = connect_expression(
                 &(*then).expression,
                 graph,
-                &condition_expr,
+                leaves,
                 exit_node,
                 "then branch",
                 tree_type,
@@ -792,7 +792,7 @@ fn connect_expression(
                 connect_expression(
                     &(*else_expr).expression,
                     graph,
-                    &condition_expr,
+                    leaves,
                     exit_node,
                     "else branch",
                     tree_type,
@@ -802,7 +802,7 @@ fn connect_expression(
                 vec![]
             };
 
-            Ok([then_expr, else_expr].concat())
+            Ok([condition_expr, then_expr, else_expr].concat())
         }
         CodeBlock(a @ TypedCodeBlock { .. }) => {
             connect_code_block(a, graph, leaves, exit_node, tree_type)
@@ -1008,7 +1008,7 @@ fn connect_expression(
             )?;
             Ok(expr)
         }
-        GenerateUid { .. } => {
+        GetStorageKey { .. } => {
             let node = graph.add_node("Generate B256 Seed".into());
             for leaf in leaves {
                 graph.add_edge(*leaf, node, "".into());
