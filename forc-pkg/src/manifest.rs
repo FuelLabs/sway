@@ -314,7 +314,7 @@ impl Manifest {
                     print_ir: false,
                     print_finalized_asm: false,
                     print_intermediate_asm: false,
-                    silent: true,
+                    silent: false,
                 },
             );
         }
