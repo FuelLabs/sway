@@ -187,6 +187,7 @@ fn type_check_trait_implementation(
     opts: TCOpts,
 ) -> CompileResult<Vec<TypedFunctionDeclaration>> {
     let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
+    let mut processed_fns = std::collections::HashSet::<Ident>::new();
     let mut errors = vec![];
     let mut warnings = vec![];
     let self_type_id = type_implementing_for;
@@ -219,6 +220,14 @@ fn type_check_trait_implementation(
             errors
         );
         let fn_decl = fn_decl.replace_self_types(self_type_id);
+
+        // Ensure that there aren't multiple definitions of this function impl'd.
+        if !processed_fns.insert(fn_decl.name.clone()) {
+            errors.push(CompileError::MultipleDefinitionsOfFunction {
+                name: fn_decl.name.clone(),
+            });
+            return err(warnings, errors);
+        }
         // remove this function from the "checklist"
         let trait_fn = match function_checklist.remove(&fn_decl.name) {
             Some(trait_fn) => trait_fn,

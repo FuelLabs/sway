@@ -543,6 +543,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/match_expressions_empty_arms",
         "should_fail/type_mismatch_error_message",
         "should_fail/non_literal_const_decl",
+        "should_fail/multiple_impl_abi",
+        "should_fail/multiple_impl_fns",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {

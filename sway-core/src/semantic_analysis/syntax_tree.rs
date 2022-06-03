@@ -217,6 +217,7 @@ impl TypedParseTree {
         let mut mains = Vec::new();
         let mut declarations = Vec::new();
         let mut abi_entries = Vec::new();
+        let mut fn_declarations = std::collections::HashSet::new();
         for node in typed_tree_nodes {
             match node.content {
                 TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(func))
@@ -232,7 +233,17 @@ impl TypedParseTree {
                     ..
                 }) => abi_entries.append(&mut methods.clone()),
                 // XXX we're excluding the above ABI methods, is that OK?
-                TypedAstNodeContent::Declaration(decl) => declarations.push(decl),
+                TypedAstNodeContent::Declaration(decl) => {
+                    // Variable and constant declarations don't need a duplicate check.
+                    // Type declarations are checked elsewhere. That leaves functions.
+                    if let TypedDeclaration::FunctionDeclaration(func) = &decl {
+                        let name = func.name.clone();
+                        if !fn_declarations.insert(name.clone()) {
+                            errors.push(CompileError::MultipleDefinitionsOfFunction { name });
+                        }
+                    }
+                    declarations.push(decl)
+                }
                 _ => (),
             };
         }
@@ -252,9 +263,9 @@ impl TypedParseTree {
                     return err(warnings, errors);
                 }
                 if mains.len() > 1 {
-                    errors.push(CompileError::MultiplePredicateMainFunctions(
-                        mains.last().unwrap().span.clone(),
-                    ));
+                    errors.push(CompileError::MultipleDefinitionsOfFunction {
+                        name: mains.last().unwrap().name.clone(),
+                    });
                 }
                 let main_func = &mains[0];
                 match look_up_type_id(main_func.return_type) {
@@ -277,9 +288,9 @@ impl TypedParseTree {
                     return err(warnings, errors);
                 }
                 if mains.len() > 1 {
-                    errors.push(CompileError::MultipleScriptMainFunctions(
-                        mains.last().unwrap().span.clone(),
-                    ));
+                    errors.push(CompileError::MultipleDefinitionsOfFunction {
+                        name: mains.last().unwrap().name.clone(),
+                    });
                 }
                 TypedParseTree::Script {
                     main_function: mains[0].clone(),

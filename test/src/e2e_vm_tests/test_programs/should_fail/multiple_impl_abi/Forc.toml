@@ -1,0 +1,7 @@
+[project]
+name = "multiple_impl_abi"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+
+[dependencies]
