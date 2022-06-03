@@ -2602,7 +2602,6 @@ mod tests {
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,
-            generated_names: Default::default(),
         };
         let mut warnings = vec![];
         let mut errors = vec![];

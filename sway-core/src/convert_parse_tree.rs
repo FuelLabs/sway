@@ -4,7 +4,6 @@ use {
             STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
         },
         error::{err, ok, CompileError, CompileResult, CompileWarning},
-        ident,
         type_engine::{insert_type, AbiName, IntegerBits},
         AbiDeclaration, AsmExpression, AsmOp, AsmRegister, AsmRegisterDeclaration, AstNode,
         AstNodeContent, BuiltinProperty, CallPath, CodeBlock, ConstantDeclaration, Declaration,
@@ -1206,7 +1205,21 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
         } => {
             let value = expr_to_expression(ec, *value)?;
             let var_decl_span = value.span();
-            let var_decl_name = ident::random_name(var_decl_span.clone(), None);
+
+            // Generate a deterministic name for the variable returned by the match expression.
+            // Because the parser is single threaded, the name generated below will be stable.
+            static COUNTER: AtomicUsize = AtomicUsize::new(0);
+            let match_return_var_name = format!(
+                "{}{}",
+                crate::constants::MATCH_RETURN_VAR_NAME_PREFIX,
+                COUNTER.load(Ordering::SeqCst)
+            );
+            COUNTER.fetch_add(1, Ordering::SeqCst);
+            let var_decl_name = Ident::new_with_override(
+                Box::leak(match_return_var_name.into_boxed_str()),
+                var_decl_span.clone(),
+            );
+
             let var_decl_exp = Expression::VariableExpression {
                 name: var_decl_name.clone(),
                 span: var_decl_span,

@@ -21,7 +21,6 @@ hex = { version = "0.4", optional = true }
 im = "15.0"
 itertools = "0.10"
 lazy_static = "1.4"
-nanoid = "0.4"
 petgraph = "0.6"
 prettydiff = "0.5"
 regex = "1"
