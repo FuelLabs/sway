@@ -54,5 +54,19 @@ fn main() -> bool {
     assert(one != three);
     assert(one != four);
 
+    let one_tuple = one.into();
+    let two_tuple = two.into();
+    let three_tuple = three.into();
+    let four_tuple = four.into();
+
+    assert(one_tuple.0 == hi_bits);
+    assert(one_tuple.1 == modified);
+    assert(two_tuple.0 == hi_bits);
+    assert(two_tuple.1 == modified);
+    assert(three_tuple.0 == modified);
+    assert(three_tuple.1 == hi_bits);
+    assert(four_tuple.0 == lo_bits);
+    assert(four_tuple.1 == modified);
+
     true
 }
