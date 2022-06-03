@@ -21,10 +21,10 @@ pub struct Command {
     #[clap(long)]
     pub predicate: bool,
     /// Use verbose output.
-    #[clap(short = 'v', long = "verbose")]
+    #[clap(short = 'v', long)]
     pub verbose: bool,
     /// Set the package name. Defaults to the directory name
-    #[clap(long = "name")]
+    #[clap(long)]
     pub name: Option<String>,
 }
 
