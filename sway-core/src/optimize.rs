@@ -2153,12 +2153,16 @@ impl FnCompiler {
                         // using sequential keys
 
                         // First, create a name for the value to load from or store to
-                        let mut value_name = format!("{}{}", "val_for_", ix.to_usize());
-                        for ix in &indices {
-                            value_name = format!("{}_{}", value_name, ix);
-                        }
-                        let alias_value_name =
-                            self.lexical_map.insert(value_name.as_str().to_owned());
+                        let value_name = format!(
+                            "val_for_{}{}",
+                            ix.to_usize(),
+                            indices
+                                .iter()
+                                .map(|idx| format!("_{idx}"))
+                                .collect::<Vec<_>>()
+                                .join("")
+                        );
+                        let alias_value_name = self.lexical_map.insert(value_name);
 
                         // Create an array of `b256` that will hold the value to store into storage
                         // or the value loaded from storage. The array has to fit the whole type.
