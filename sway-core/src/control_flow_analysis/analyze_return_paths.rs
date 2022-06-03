@@ -1,24 +1,15 @@
 //! This is the flow graph, a graph which contains edges that represent possible steps of program
 //! execution.
 
-use super::*;
 use crate::{
-    error::*,
-    parse_tree::CallPath,
-    semantic_analysis::{
-        ast_node::{
-            TypedCodeBlock, TypedDeclaration, TypedExpression, TypedFunctionDeclaration,
-            TypedReassignment, TypedWhileLoop,
-        },
-        TypedAstNode, TypedAstNodeContent, TypedParseTree,
-    },
-    type_engine::{resolve_type, TypeInfo},
+    control_flow_analysis::*, error::*, parse_tree::*, semantic_analysis::*, type_engine::*,
+    types::*,
 };
 use petgraph::prelude::NodeIndex;
 use sway_types::{ident::Ident, span::Span};
 
 impl ControlFlowGraph {
-    pub(crate) fn construct_return_path_graph(ast: &TypedParseTree) -> Self {
+    pub(crate) fn construct_return_path_graph(module_nodes: &[TypedAstNode]) -> Self {
         let mut graph = ControlFlowGraph {
             graph: Graph::new(),
             entry_points: vec![],
@@ -26,7 +17,7 @@ impl ControlFlowGraph {
         };
         // do a depth first traversal and cover individual inner ast nodes
         let mut leaves = vec![];
-        for ast_entrypoint in ast.all_nodes().iter() {
+        for ast_entrypoint in module_nodes {
             let l_leaves = connect_node(ast_entrypoint, &mut graph, &leaves);
             if let NodeConnection::NextStep(nodes) = l_leaves {
                 leaves = nodes;

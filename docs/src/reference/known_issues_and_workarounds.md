@@ -16,7 +16,7 @@
 
 ## General
 
-* Storage variables of types `str[]`, `b256`, `enum`, and arrays are not yet supported. After [this issue](https://github.com/FuelLabs/sway/issues/1229) is closed, it will be possible to read and write these types using [manual storage management](../blockchain-development/storage.md#manual-storage-management). Moreover, storage mappings have to be managed manually for now as shown in the [Subcurrency](../examples/subcurrency.md) example.
+* Storage variables of types `str[]`, `enum`, and arrays are not yet supported in a `storage` block. See the [Manual Storage Management](../blockchain-development/storage.md#manual-storage-management) section for details on how to use `store` and `get` from the standard library to handle those types. Note, however, that `StorageMap<K, V>` _does_ support arbitrary types for `K` and `V` without any limitations.
 
 * The optimizing pass of the compiler is not yet implemented, therefore bytecode will be more expensive and larger than it would be in production. Note that eventually the optimizer will support zero-cost abstractions, avoiding the need for developers to go down to inline assembly to produce optimal code.
 

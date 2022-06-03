@@ -1,13 +1,7 @@
 use super::{declaration::TypedTraitFn, ERROR_RECOVERY_DECLARATION};
 
 use crate::{
-    build_config::BuildConfig,
-    control_flow_analysis::ControlFlowGraph,
-    error::*,
-    parse_tree::{FunctionDeclaration, ImplTrait, Purity},
-    semantic_analysis::*,
-    type_engine::*,
-    CallPath, Ident,
+    error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*, CallPath, Ident,
 };
 
 use sway_types::span::Span;
@@ -15,8 +9,6 @@ use sway_types::span::Span;
 pub(crate) fn implementation_of_trait(
     impl_trait: ImplTrait,
     namespace: &mut Namespace,
-    build_config: &BuildConfig,
-    dead_code_graph: &mut ControlFlowGraph,
     opts: TCOpts,
 ) -> CompileResult<TypedDeclaration> {
     let mut errors = vec![];
@@ -60,8 +52,6 @@ pub(crate) fn implementation_of_trait(
                     &trait_name,
                     namespace,
                     type_implementing_for_id,
-                    build_config,
-                    dead_code_graph,
                     &block_span,
                     type_implementing_for_id,
                     &type_implementing_for_span,
@@ -117,8 +107,6 @@ pub(crate) fn implementation_of_trait(
                     &trait_name,
                     namespace,
                     type_implementing_for_id,
-                    build_config,
-                    dead_code_graph,
                     &block_span,
                     type_implementing_for_id,
                     &type_implementing_for_span,
@@ -178,8 +166,6 @@ fn type_check_trait_implementation(
     trait_name: &CallPath,
     namespace: &mut Namespace,
     _self_type: TypeId,
-    build_config: &BuildConfig,
-    dead_code_graph: &mut ControlFlowGraph,
     block_span: &Span,
     type_implementing_for: TypeId,
     type_implementing_for_span: &Span,
@@ -210,8 +196,6 @@ fn type_check_trait_implementation(
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: Default::default(),
                 self_type: type_implementing_for,
-                build_config,
-                dead_code_graph,
                 mode,
                 opts,
             }),
@@ -370,8 +354,6 @@ fn type_check_trait_implementation(
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text: Default::default(),
                 self_type: type_implementing_for,
-                build_config,
-                dead_code_graph,
                 mode,
                 opts,
             }),

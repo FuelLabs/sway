@@ -1,4 +1,4 @@
-use crate::{type_engine::IntegerBits, types::ResolvedType, CompileError, TypeInfo};
+use crate::{error::*, type_engine::*, types::*};
 
 use sway_types::span;
 
@@ -103,6 +103,7 @@ impl Literal {
             B256(_) => ResolvedType::B256,
         }
     }
+
     /// Converts a literal to a big-endian representation. This is padded to words.
     pub(crate) fn to_bytes(&self) -> Vec<u8> {
         use Literal::*;

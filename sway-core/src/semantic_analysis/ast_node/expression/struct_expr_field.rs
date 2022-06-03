@@ -1,10 +1,10 @@
-use crate::semantic_analysis::{CopyTypes, TypeMapping, TypedExpression};
 use crate::Ident;
+use crate::{semantic_analysis::*, type_engine::*};
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct TypedStructExpressionField {
-    pub(crate) name: Ident,
-    pub(crate) value: TypedExpression,
+pub struct TypedStructExpressionField {
+    pub name: Ident,
+    pub value: TypedExpression,
 }
 
 impl CopyTypes for TypedStructExpressionField {

@@ -17,12 +17,15 @@ pub trait Format {
 }
 
 impl Formatter {
+    pub fn from_opts(config: Config) -> Self {
+        Self { config }
+    }
     pub fn format(
         &self,
         src: Arc<str>,
         build_config: Option<&BuildConfig>,
     ) -> Result<FormattedCode, FormatterError> {
-        let path = build_config.map(|build_config| build_config.path());
+        let path = build_config.map(|build_config| build_config.canonical_root_module());
         let items = sway_parse::parse_file(src, path)?.items;
         Ok(items
             .into_iter()

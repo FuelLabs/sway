@@ -1,8 +1,4 @@
-use crate::{
-    parse_tree::{declaration::TypeParameter, Visibility},
-    type_engine::{look_up_type_id, TypeId, TypeInfo},
-    CodeBlock,
-};
+use crate::{parse_tree::*, type_engine::*, types::*};
 
 use fuels_types::{Function, Property};
 use sway_types::{ident::Ident, span::Span};

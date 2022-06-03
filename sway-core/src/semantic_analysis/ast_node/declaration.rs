@@ -13,15 +13,9 @@ pub use r#struct::*;
 pub use storage::*;
 pub use variable::*;
 
-use super::{
-    copy_types::TypeMapping, impl_trait::Mode, CopyTypes, TypedCodeBlock, TypedExpression,
-};
-use crate::{
-    error::*, parse_tree::*, semantic_analysis::TypeCheckedStorageReassignment, type_engine::*,
-    Ident,
-};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
 use derivative::Derivative;
-use sway_types::Span;
+use sway_types::{Ident, Span};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TypedDeclaration {
@@ -222,7 +216,7 @@ impl TypedDeclaration {
     }
 
     /// friendly name string used for error reporting.
-    pub(crate) fn friendly_name(&self) -> &'static str {
+    pub fn friendly_name(&self) -> &'static str {
         use TypedDeclaration::*;
         match self {
             VariableDeclaration(_) => "variable",
@@ -374,9 +368,9 @@ impl TypedDeclaration {
 #[derivative(PartialEq, Eq)]
 pub struct TypedAbiDeclaration {
     /// The name of the abi trait (also known as a "contract trait")
-    pub(crate) name: Ident,
+    pub name: Ident,
     /// The methods a contract is required to implement in order opt in to this interface
-    pub(crate) interface_surface: Vec<TypedTraitFn>,
+    pub interface_surface: Vec<TypedTraitFn>,
     /// The methods provided to a contract "for free" upon opting in to this interface
     // NOTE: It may be important in the future to include this component
     #[derivative(PartialEq = "ignore")]
@@ -399,8 +393,8 @@ impl TypedAbiDeclaration {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypedConstantDeclaration {
-    pub(crate) name: Ident,
-    pub(crate) value: TypedExpression,
+    pub name: Ident,
+    pub value: TypedExpression,
     pub(crate) visibility: Visibility,
 }
 
@@ -413,8 +407,8 @@ impl CopyTypes for TypedConstantDeclaration {
 #[derive(Clone, Debug, Derivative)]
 #[derivative(PartialEq, Eq)]
 pub struct TypedTraitDeclaration {
-    pub(crate) name: Ident,
-    pub(crate) interface_surface: Vec<TypedTraitFn>,
+    pub name: Ident,
+    pub interface_surface: Vec<TypedTraitFn>,
     // NOTE: deriving partialeq and hash on this element may be important in the
     // future, but I am not sure. For now, adding this would 2x the amount of
     // work, so I am just going to exclude it
@@ -437,10 +431,10 @@ impl CopyTypes for TypedTraitDeclaration {
 #[derive(Clone, Debug, Derivative)]
 #[derivative(PartialEq, Eq)]
 pub struct TypedTraitFn {
-    pub(crate) name: Ident,
+    pub name: Ident,
     pub(crate) purity: Purity,
     pub(crate) parameters: Vec<TypedFunctionParameter>,
-    pub(crate) return_type: TypeId,
+    pub return_type: TypeId,
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
     pub(crate) return_type_span: Span,
@@ -461,10 +455,7 @@ impl TypedTraitFn {
         TypedFunctionDeclaration {
             purity: self.purity,
             name: self.name.clone(),
-            body: TypedCodeBlock {
-                contents: vec![],
-                whole_block_span: self.name.span().clone(),
-            },
+            body: TypedCodeBlock { contents: vec![] },
             parameters: self.parameters.clone(),
             span: self.name.span().clone(),
             return_type: self.return_type,
@@ -481,8 +472,8 @@ impl TypedTraitFn {
 /// in asm generation.
 #[derive(Clone, Debug, Eq)]
 pub struct ReassignmentLhs {
-    pub(crate) name: Ident,
-    pub(crate) r#type: TypeId,
+    pub name: Ident,
+    pub r#type: TypeId,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -504,8 +495,8 @@ impl ReassignmentLhs {
 pub struct TypedReassignment {
     // either a direct variable, so length of 1, or
     // at series of struct fields/array indices (array syntax)
-    pub(crate) lhs: Vec<ReassignmentLhs>,
-    pub(crate) rhs: TypedExpression,
+    pub lhs: Vec<ReassignmentLhs>,
+    pub rhs: TypedExpression,
 }
 
 impl CopyTypes for TypedReassignment {

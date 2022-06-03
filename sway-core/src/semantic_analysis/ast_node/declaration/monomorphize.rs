@@ -1,14 +1,8 @@
 use sway_types::{Ident, Span};
 
 use crate::{
-    error::{err, ok},
-    semantic_analysis::{
-        insert_type_parameters,
-        namespace::{Items, Path, Root},
-        CopyTypes, TypeMapping,
-    },
-    type_engine::{insert_type, look_up_type_id, unify, unify_with_self, TypeId},
-    CompileError, CompileResult, TypeArgument, TypeInfo, TypeParameter,
+    error::*, namespace::*, type_engine::*, CompileError, CompileResult, TypeArgument, TypeInfo,
+    TypeParameter,
 };
 
 use super::CreateTypeId;

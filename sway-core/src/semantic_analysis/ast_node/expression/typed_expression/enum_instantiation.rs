@@ -1,11 +1,6 @@
-use ast_node::declaration::EnforceTypeArguments;
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
 
-use crate::build_config::BuildConfig;
-use crate::control_flow_analysis::ControlFlowGraph;
-use crate::error::*;
-use crate::semantic_analysis::ast_node::declaration::CreateTypeId;
-use crate::semantic_analysis::{ast_node::*, TCOpts, TypeCheckArguments};
-use crate::type_engine::{look_up_type_id, TypeId};
+use sway_types::Ident;
 
 /// Given an enum declaration and the instantiation expression/type arguments, construct a valid
 /// [TypedExpression].
@@ -17,8 +12,6 @@ pub(crate) fn instantiate_enum(
     type_arguments: Vec<TypeArgument>,
     namespace: &mut Namespace,
     self_type: TypeId,
-    build_config: &BuildConfig,
-    dead_code_graph: &mut ControlFlowGraph,
     opts: TCOpts,
 ) -> CompileResult<TypedExpression> {
     let mut warnings = vec![];
@@ -75,8 +68,6 @@ pub(crate) fn instantiate_enum(
                     return_type_annotation: enum_variant.r#type,
                     help_text: "Enum instantiator must match its declared variant type.",
                     self_type,
-                    build_config,
-                    dead_code_graph,
                     mode: Mode::NonAbi,
                     opts,
                 }),
