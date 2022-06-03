@@ -1,9 +1,11 @@
-use super::*;
+use sway_types::Ident;
+use sway_types::{state::StateIndex, Span};
+
 use crate::constants;
-use crate::parse_tree::{MethodName, StructExpressionField};
-use crate::semantic_analysis::namespace::Namespace;
-use crate::semantic_analysis::TCOpts;
 use crate::Expression::StorageAccess;
+
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
+
 use std::collections::{HashMap, VecDeque};
 
 #[allow(clippy::too_many_arguments)]

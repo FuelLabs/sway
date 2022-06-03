@@ -1,7 +1,5 @@
 use crate::{
-    asm_generation::{
-        compiler_constants, register_allocator, DataSection, InstructionSet, RegisterSequencer,
-    },
+    asm_generation::{register_allocator, DataSection, InstructionSet, RegisterSequencer},
     asm_lang::{
         allocated_ops::AllocatedOp, Label, Op, OrganizationalOp, RealizedOp, VirtualImmediate12,
         VirtualImmediate18, VirtualImmediate24, VirtualOp,
@@ -223,10 +221,7 @@ impl RealizedAbstractInstructionSet {
 
         // Step 4: Simplify - i.e. color the interference graph and return a stack that contains
         // each colorable node and its neighbors.
-        let mut stack = register_allocator::color_interference_graph(
-            &mut interference_graph,
-            compiler_constants::NUM_ALLOCATABLE_REGISTERS,
-        );
+        let mut stack = register_allocator::color_interference_graph(&mut interference_graph);
 
         // Step 5: Use the stack to assign a register for each virtual register.
         let pool = register_allocator::assign_registers(&mut stack);

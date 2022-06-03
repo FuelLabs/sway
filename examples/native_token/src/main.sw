@@ -26,7 +26,7 @@ impl NativeAssetToken for Contract {
 
     /// Transfer coins to a target contract.
     fn force_transfer_coins(coins: u64, asset_id: ContractId, target: ContractId) {
-        force_transfer(coins, asset_id, target);
+        force_transfer_to_contract(coins, asset_id, target);
     }
 
     /// Transfer coins to a transaction output to be spent later.

@@ -1,0 +1,46 @@
+contract {
+    fn set_s<e63a9733>(s !1: string<40>) -> () {
+        local mut ptr b256 key_for_0
+        local mut ptr [b256; 2] val_for_0
+
+        entry:
+        v0 = get_ptr mut ptr b256 key_for_0, ptr b256, 0, !2
+        v1 = const b256 0xf383b0ce51358be57daa3b725fe44acdb2d880604e367199080b4379c41bb6ed, !2
+        store v1, ptr v0, !2
+        v2 = get_ptr mut ptr [b256; 2] val_for_0, ptr string<40>, 0, !2
+        store s, ptr v2, !2
+        v3 = get_ptr mut ptr [b256; 2] val_for_0, ptr b256, 0, !2
+        state_store_quad_word ptr v3, key ptr v0, !2
+        v4 = get_ptr mut ptr b256 key_for_0, ptr b256, 0, !2
+        v5 = const b256 0xf383b0ce51358be57daa3b725fe44acdb2d880604e367199080b4379c41bb6ee, !2
+        store v5, ptr v4, !2
+        v6 = get_ptr mut ptr [b256; 2] val_for_0, ptr b256, 1, !2
+        state_store_quad_word ptr v6, key ptr v4, !2
+        v7 = const unit ()
+        ret () v7
+    }
+
+    fn get_s<b8c27db9>() -> string<40> {
+        local mut ptr b256 key_for_0
+        local mut ptr [b256; 2] val_for_0
+
+        entry:
+        v0 = get_ptr mut ptr b256 key_for_0, ptr b256, 0, !3
+        v1 = const b256 0xf383b0ce51358be57daa3b725fe44acdb2d880604e367199080b4379c41bb6ed, !3
+        store v1, ptr v0, !3
+        v2 = get_ptr mut ptr [b256; 2] val_for_0, ptr string<40>, 0, !3
+        v3 = get_ptr mut ptr [b256; 2] val_for_0, ptr b256, 0, !3
+        state_load_quad_word ptr v3, key ptr v0, !3
+        v4 = get_ptr mut ptr b256 key_for_0, ptr b256, 0, !3
+        v5 = const b256 0xf383b0ce51358be57daa3b725fe44acdb2d880604e367199080b4379c41bb6ee, !3
+        store v5, ptr v4, !3
+        v6 = get_ptr mut ptr [b256; 2] val_for_0, ptr b256, 1, !3
+        state_load_quad_word ptr v6, key ptr v4, !3
+        ret string<40> v2
+    }
+}
+
+!0 = filepath "/path/to/strings_in_storage.sw"
+!1 = span !0 178 179
+!2 = span !0 200 213
+!3 = span !0 266 267

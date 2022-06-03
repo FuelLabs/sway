@@ -1,15 +1,8 @@
 use crate::{
-    error::*,
-    semantic_analysis::{
-        ast_node::{TypedStorageDeclaration, TypedStructField},
-        declaration::TypedStorageField,
-        CopyTypes, TypeCheckedStorageAccess, TypeMapping,
-    },
-    type_engine::*,
-    CallPath, CompileResult, Ident, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
+    error::*, namespace::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*,
 };
 
-use super::trait_map::TraitMap;
+use super::TraitMap;
 
 use sway_types::span::Span;
 
