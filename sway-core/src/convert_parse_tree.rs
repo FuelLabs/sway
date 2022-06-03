@@ -493,12 +493,14 @@ fn item_struct_to_struct_declaration(
         .into_iter()
         .map(|type_field| type_field_to_struct_field(ec, type_field))
         .collect::<Result<Vec<_>, _>>()?;
+
     if fields.iter().any(
         |field| matches!(&field.r#type, TypeInfo::Custom { name, ..} if name == &item_struct.name),
     ) {
         errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
 
+    // Make sure each field is declared once
     let mut map = BTreeMap::new();
     fields.iter().rev().for_each(|f| {
         map.entry(&f.name).or_insert(vec![]).push(f.clone());
@@ -544,12 +546,14 @@ fn item_enum_to_enum_declaration(
         .enumerate()
         .map(|(tag, type_field)| type_field_to_enum_variant(ec, type_field, tag))
         .collect::<Result<Vec<_>, _>>()?;
+
     if variants.iter().any(|variant| {
        matches!(&variant.r#type, TypeInfo::Custom { name, ..} if name == &item_enum.name)
     }) {
-        return Err(ec.error(ConvertParseTreeError::RecursiveType { span }));
+        errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
 
+    // Make sure each variant is declared once
     let mut map = BTreeMap::new();
     variants.iter().rev().for_each(|f| {
         map.entry(&f.name).or_insert(vec![]).push(f.clone());
@@ -801,6 +805,7 @@ fn item_storage_to_storage_declaration(
         .map(|storage_field| storage_field_to_storage_field(ec, storage_field))
         .collect::<Result<_, _>>()?;
 
+    // Make sure each field is declared once
     let mut map = BTreeMap::new();
     fields.iter().rev().for_each(|f| {
         map.entry(&f.name).or_insert(vec![]).push(f.clone());
