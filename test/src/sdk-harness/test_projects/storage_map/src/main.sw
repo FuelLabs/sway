@@ -39,6 +39,7 @@ storage {
     u64>, 
 }
 
+
 abi StorageMapTest {
     fn insert_into_u64_to_bool_map(key: u64, value: bool);
     fn get_from_u64_to_bool_map(key: u64) -> bool;
@@ -102,13 +103,21 @@ abi StorageMapTest {
     3]) -> u64;
 }
 
+fn insert_into_u64_to_bool_map_inner(key: u64, value: bool) {
+    storage.map1.insert(key, value);
+}
+
+fn get_from_u64_to_bool_map_inner(key: u64) -> bool {
+    storage.map1.get(key)
+}
+
 impl StorageMapTest for Contract {
     fn insert_into_u64_to_bool_map(key: u64, value: bool) {
-        storage.map1.insert(key, value);
+        insert_into_u64_to_bool_map_inner(key, value)
     }
 
     fn get_from_u64_to_bool_map(key: u64) -> bool {
-        storage.map1.get(key)
+        get_from_u64_to_bool_map_inner(key)
     }
 
     fn insert_into_u64_to_u8_map(key: u64, value: u8) {
