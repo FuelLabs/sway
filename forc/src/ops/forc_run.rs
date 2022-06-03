@@ -51,15 +51,16 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         TxParameters::new(command.byte_price, command.gas_limit, command.gas_price),
     );
 
+    let node_url = match &manifest.network {
+        Some(network) => &network.url,
+        _ => &command.node_url,
+    };
+
     if command.dry_run {
         info!("{:?}", tx);
         Ok(vec![])
     } else {
-        let node_url = match &manifest.network {
-            Some(network) => &network.url,
-            _ => &command.node_url,
-        };
-        try_send_tx(node_url, &tx, command.pretty_print).await
+        try_send_tx(node_url, &tx, command.pretty_print, command.simulate_tx).await
     }
 }
 
@@ -67,11 +68,12 @@ async fn try_send_tx(
     node_url: &str,
     tx: &Transaction,
     pretty_print: bool,
+    simulate_tx: bool,
 ) -> Result<Vec<fuel_tx::Receipt>> {
     let client = FuelClient::new(node_url)?;
 
     match client.health().await {
-        Ok(_) => send_tx(&client, tx, pretty_print).await,
+        Ok(_) => send_tx(&client, tx, pretty_print, simulate_tx).await,
         Err(_) => Err(fuel_core_not_running(node_url)),
     }
 }
@@ -80,13 +82,24 @@ async fn send_tx(
     client: &FuelClient,
     tx: &Transaction,
     pretty_print: bool,
+    simulate_tx: bool,
 ) -> Result<Vec<fuel_tx::Receipt>> {
     let id = format!("{:#x}", tx.id());
-    match client
-        .submit(tx)
-        .and_then(|_| client.receipts(id.as_str()))
-        .await
-    {
+    let outputs = {
+        if !simulate_tx {
+            client
+                .submit(tx)
+                .and_then(|_| client.receipts(id.as_str()))
+                .await
+        } else {
+            client
+                .dry_run(tx)
+                .and_then(|_| client.receipts(id.as_str()))
+                .await
+        }
+    };
+
+    match outputs {
         Ok(logs) => {
             print_receipt_output(&logs, pretty_print)?;
             Ok(logs)

@@ -90,6 +90,12 @@ pub struct Command {
     /// needs to be updated, Forc will exit with an error
     #[clap(long)]
     pub locked: bool,
+
+    /// Execute the transaction and return the final mutated transaction along with receipts
+    /// (which includes whether the transaction reverted or not). The transaction is not inserted
+    /// in the node's view of the blockchain, (i.e. it does not affect the chain state).
+    #[clap(long = "simulate-tx")]
+    pub simulate_tx: bool,
 }
 
 pub(crate) async fn exec(command: Command) -> Result<()> {
