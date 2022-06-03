@@ -2169,7 +2169,7 @@ impl FnCompiler {
                         let b256_array_type = Type::Array(Aggregate::new_array(
                             context,
                             Type::B256,
-                            ir_type_size_in_bytes(context, r#type) / 32 + 1,
+                            (ir_type_size_in_bytes(context, r#type) + 31) / 32,
                         ));
 
                         let mut size_left = ir_type_size_in_bytes(context, &b256_array_type);
