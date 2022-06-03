@@ -1,4 +1,16 @@
-use self::declaration::EnforceTypeArguments;
+mod code_block;
+pub mod declaration;
+pub mod expression;
+pub mod impl_trait;
+mod return_statement;
+pub mod while_loop;
+
+pub(crate) use code_block::*;
+pub use declaration::*;
+pub(crate) use expression::*;
+pub(crate) use impl_trait::*;
+pub(crate) use return_statement::*;
+pub(crate) use while_loop::*;
 
 use super::ERROR_RECOVERY_DECLARATION;
 
@@ -10,43 +22,6 @@ use crate::{
 use sway_types::{span::Span, state::StateIndex};
 
 use derivative::Derivative;
-
-pub use crate::semantic_analysis::ast_node::declaration::TypedStorageField;
-
-pub use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
-
-pub mod declaration;
-pub use declaration::TypedTraitFn;
-
-pub use declaration::{
-    TypedAbiDeclaration, TypedConstantDeclaration, TypedDeclaration, TypedEnumDeclaration,
-    TypedEnumVariant, TypedFunctionDeclaration, TypedFunctionParameter, TypedStructDeclaration,
-    TypedStructField,
-};
-
-pub(crate) use declaration::{
-    check_if_name_is_invalid, TypedReassignment, TypedStorageDeclaration, TypedTraitDeclaration,
-    TypedVariableDeclaration, VariableMutability,
-};
-
-pub mod impl_trait;
-use impl_trait::implementation_of_trait;
-pub(crate) use impl_trait::Mode;
-
-mod code_block;
-pub(crate) use code_block::TypedCodeBlock;
-
-pub mod expression;
-pub(crate) use expression::*;
-
-mod return_statement;
-pub(crate) use return_statement::TypedReturnStatement;
-
-pub mod while_loop;
-pub(crate) use while_loop::TypedWhileLoop;
-
-mod copy_types;
-pub(crate) use copy_types::*;
 
 /// whether or not something is constantly evaluatable (if the result is known at compile
 /// time)
@@ -461,6 +436,7 @@ impl TypedAstNode {
                                 }
                             }
 
+                            // create the namespace for the impl
                             let mut impl_namespace = namespace.clone();
                             for type_parameter in type_parameters.iter() {
                                 impl_namespace.insert_symbol(

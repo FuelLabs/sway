@@ -5,6 +5,7 @@ use crate::{
     convert_parse_tree::ConvertParseTreeError,
     style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case},
     type_engine::*,
+    types::*,
     VariableDeclaration,
 };
 use sway_types::{ident::Ident, span::Span};

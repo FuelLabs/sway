@@ -1,11 +1,6 @@
 use sway_types::Span;
 
-use crate::{
-    error::ok,
-    semantic_analysis::{IsConstant, TypedExpressionVariant},
-    type_engine::{insert_type, look_up_type_id, unify_with_self, TypeId},
-    CompileError, CompileResult, TypeInfo,
-};
+use crate::{error::*, semantic_analysis::*, type_engine::*, types::*};
 
 use super::TypedExpression;
 
