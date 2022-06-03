@@ -1,90 +1,26 @@
-use crate::error::*;
-use std::fmt::{Debug, Display};
-
+mod copy_types;
 mod engine;
 mod integer_bits;
+mod resolved_type;
+mod type_id;
 mod type_info;
+mod type_mapping;
 mod unresolved_type_check;
+mod update_types;
+
+pub(crate) use copy_types::*;
 pub use engine::*;
-use fuels_types::Property;
 pub use integer_bits::*;
+pub(crate) use resolved_type::*;
+pub use type_id::*;
 pub use type_info::*;
-pub(crate) use unresolved_type_check::UnresolvedTypeCheck;
+pub(crate) use type_mapping::*;
+pub(crate) use unresolved_type_check::*;
+pub(crate) use update_types::*;
 
-/// A identifier to uniquely refer to our type terms
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
-pub struct TypeId(usize);
-
-impl std::ops::Deref for TypeId {
-    type Target = usize;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl Display for TypeId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&look_up_type_id(*self).friendly_type_str())
-    }
-}
-
-impl Debug for TypeId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&look_up_type_id(*self).friendly_type_str())
-    }
-}
-
-impl From<usize> for TypeId {
-    fn from(o: usize) -> Self {
-        TypeId(o)
-    }
-}
-pub(crate) trait JsonAbiString {
-    fn json_abi_str(&self) -> String;
-}
-
-impl JsonAbiString for TypeId {
-    fn json_abi_str(&self) -> String {
-        look_up_type_id(*self).json_abi_str()
-    }
-}
-
-pub(crate) trait FriendlyTypeString {
-    fn friendly_type_str(&self) -> String;
-}
-
-impl FriendlyTypeString for TypeId {
-    fn friendly_type_str(&self) -> String {
-        look_up_type_id(*self).friendly_type_str()
-    }
-}
-
-pub(crate) trait ToJsonAbi {
-    fn generate_json_abi(&self) -> Option<Vec<Property>>;
-}
-
-impl ToJsonAbi for TypeId {
-    fn generate_json_abi(&self) -> Option<Vec<Property>> {
-        match look_up_type_id(*self) {
-            TypeInfo::Array(type_id, _) => Some(vec![Property {
-                name: "__array_element".to_string(),
-                type_field: type_id.json_abi_str(),
-                components: type_id.generate_json_abi(),
-            }]),
-            TypeInfo::Enum { variant_types, .. } => Some(
-                variant_types
-                    .iter()
-                    .map(|x| x.generate_json_abi())
-                    .collect(),
-            ),
-            TypeInfo::Struct { fields, .. } => {
-                Some(fields.iter().map(|x| x.generate_json_abi()).collect())
-            }
-            TypeInfo::Tuple(fields) => Some(fields.iter().map(|x| x.generate_json_abi()).collect()),
-            _ => None,
-        }
-    }
-}
+use crate::error::*;
+use fuels_types::Property;
+use std::fmt::Debug;
 
 #[test]
 fn generic_enum_resolution() {

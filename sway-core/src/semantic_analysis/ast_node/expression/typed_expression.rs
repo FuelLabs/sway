@@ -7,22 +7,16 @@ mod struct_field_access;
 mod tuple_index_access;
 mod unsafe_downcast;
 
-use std::collections::{HashMap, VecDeque};
-
 pub(crate) use self::{
     enum_instantiation::*, function_application::*, if_expression::*, lazy_operator::*,
     method_application::*, struct_field_access::*, tuple_index_access::*, unsafe_downcast::*,
 };
 
-use super::match_expression::{check_match_expression_usefulness, TypedMatchExpression};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
 
-use crate::{
-    semantic_analysis::ast_node::*,
-    type_engine::TypeId,
-    type_engine::{insert_type, AbiName, IntegerBits},
-};
+use sway_types::{Ident, Span};
 
-use ast_node::declaration::CreateTypeId;
+use std::collections::{HashMap, VecDeque};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedExpression {

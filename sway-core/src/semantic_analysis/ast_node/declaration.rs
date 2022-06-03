@@ -13,15 +13,9 @@ pub use r#struct::*;
 pub use storage::*;
 pub use variable::*;
 
-use super::{
-    copy_types::TypeMapping, impl_trait::Mode, CopyTypes, TypedCodeBlock, TypedExpression,
-};
-use crate::{
-    error::*, parse_tree::*, semantic_analysis::TypeCheckedStorageReassignment, type_engine::*,
-    Ident,
-};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
 use derivative::Derivative;
-use sway_types::Span;
+use sway_types::{Ident, Span};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TypedDeclaration {

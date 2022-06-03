@@ -1,8 +1,8 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
 license = "Apache-2.0"
 name = "b512_test"
-entry = "main.sw"
 
 [dependencies]
 std = { path = "../../../../../../../sway-lib-std" }

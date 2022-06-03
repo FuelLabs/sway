@@ -1,9 +1,6 @@
-use ast_node::declaration::EnforceTypeArguments;
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
 
-use crate::error::*;
-use crate::semantic_analysis::ast_node::declaration::CreateTypeId;
-use crate::semantic_analysis::{ast_node::*, TCOpts, TypeCheckArguments};
-use crate::type_engine::{look_up_type_id, TypeId};
+use sway_types::Ident;
 
 /// Given an enum declaration and the instantiation expression/type arguments, construct a valid
 /// [TypedExpression].

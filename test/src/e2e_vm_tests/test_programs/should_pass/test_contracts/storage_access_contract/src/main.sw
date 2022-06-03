@@ -1,6 +1,6 @@
 contract;
 
-use storage_access_abi::{S, StorageAccess, T};
+use storage_access_abi::{E, S, StorageAccess, T};
 
 storage {
     x: u64,
@@ -10,6 +10,8 @@ storage {
     int8: u8,
     int16: u16,
     int32: u32,
+    e: E,
+    string: str[40],
 }
 
 impl StorageAccess for Contract {
@@ -68,6 +70,12 @@ impl StorageAccess for Contract {
     fn set_s_dot_t_dot_int32(int32: u32) {
         storage.s.t.int32 = int32;
     }
+    fn set_e(e: E) {
+        storage.e = e;
+    }
+    fn set_string(string: str[40]) {
+        storage.string = string;
+    }
 
     // Getters
     fn get_x() -> u64 {
@@ -123,5 +131,11 @@ impl StorageAccess for Contract {
     }
     fn get_s_dot_t_dot_int32() -> u32 {
         storage.s.t.int32
+    }
+    fn get_e() -> E {
+        storage.e
+    }
+    fn get_string() -> str[40] {
+        storage.string
     }
 }

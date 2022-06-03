@@ -1,10 +1,9 @@
-use super::*;
+use crate::{parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
 
-use crate::{parse_tree::AsmOp, semantic_analysis::ast_node::*, Ident};
-use std::collections::HashMap;
-use sway_types::state::StateIndex;
+use sway_types::{state::StateIndex, Ident, Span};
 
 use derivative::Derivative;
+use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
 pub struct ContractCallMetadata {

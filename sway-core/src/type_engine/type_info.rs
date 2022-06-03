@@ -1,12 +1,6 @@
 use super::*;
 
-use crate::{
-    semantic_analysis::{
-        ast_node::{TypedEnumVariant, TypedExpression, TypedStructField},
-        TypeMapping,
-    },
-    CallPath, Ident, TypeArgument, TypeParameter,
-};
+use crate::{semantic_analysis::*, types::*, CallPath, Ident, TypeArgument, TypeParameter};
 
 use sway_types::span::Span;
 
@@ -279,8 +273,8 @@ impl Default for TypeInfo {
     }
 }
 
-impl TypeInfo {
-    pub(crate) fn friendly_type_str(&self) -> String {
+impl FriendlyTypeString for TypeInfo {
+    fn friendly_type_str(&self) -> String {
         use TypeInfo::*;
         match self {
             Unknown => "unknown".into(),
@@ -332,8 +326,10 @@ impl TypeInfo {
             Storage { .. } => "contract storage".into(),
         }
     }
+}
 
-    pub(crate) fn json_abi_str(&self) -> String {
+impl JsonAbiString for TypeInfo {
+    fn json_abi_str(&self) -> String {
         use TypeInfo::*;
         match self {
             Unknown => "unknown".into(),
@@ -375,7 +371,9 @@ impl TypeInfo {
             Storage { .. } => "contract storage".into(),
         }
     }
+}
 
+impl TypeInfo {
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name(&self, error_msg_span: &Span) -> CompileResult<String> {
         use TypeInfo::*;
