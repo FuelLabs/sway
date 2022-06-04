@@ -502,14 +502,14 @@ fn item_struct_to_struct_declaration(
 
     // Make sure each struct field is declared once
     let mut names_of_fields = std::collections::HashSet::new();
-    fields.iter().for_each(|v|
+    fields.iter().for_each(|v| {
         if !names_of_fields.insert(v.name.clone()) {
             errors.push(ConvertParseTreeError::DuplicateStructField {
                 name: v.name.clone(),
                 span: v.name.span().clone(),
             });
         }
-    );
+    });
 
     if let Some(errors) = ec.errors(errors) {
         return Err(errors);
@@ -551,14 +551,14 @@ fn item_enum_to_enum_declaration(
 
     // Make sure each enum variant is declared once
     let mut names_of_variants = std::collections::HashSet::new();
-    variants.iter().for_each(|v|
+    variants.iter().for_each(|v| {
         if !names_of_variants.insert(v.name.clone()) {
             errors.push(ConvertParseTreeError::DuplicateEnumVariant {
                 name: v.name.clone(),
                 span: v.name.span().clone(),
             });
         }
-    );
+    });
 
     if let Some(errors) = ec.errors(errors) {
         return Err(errors);
@@ -799,14 +799,14 @@ fn item_storage_to_storage_declaration(
 
     // Make sure each storage field is declared once
     let mut names_of_fields = std::collections::HashSet::new();
-    fields.iter().for_each(|v|
+    fields.iter().for_each(|v| {
         if !names_of_fields.insert(v.name.clone()) {
             errors.push(ConvertParseTreeError::DuplicateStorageField {
                 name: v.name.clone(),
                 span: v.name.span().clone(),
             });
         }
-    );
+    });
 
     if let Some(errors) = ec.errors(errors) {
         return Err(errors);
