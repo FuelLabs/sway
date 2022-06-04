@@ -258,23 +258,17 @@ impl TypedAstNode {
                                 Some(type_ascription_span) => type_ascription_span,
                                 None => name.span().clone(),
                             };
-                            let type_ascription = match namespace
-                                .resolve_type_with_self(
+                            let type_ascription = check!(
+                                namespace.resolve_type_with_self(
                                     type_ascription,
                                     self_type,
                                     &type_ascription_span,
                                     EnforceTypeArguments::Yes,
-                                )
-                                .value
-                            {
-                                Some(type_ascription) => type_ascription,
-                                None => {
-                                    errors.push(CompileError::UnknownType {
-                                        span: type_ascription_span,
-                                    });
-                                    insert_type(TypeInfo::ErrorRecovery)
-                                }
-                            };
+                                ),
+                                insert_type(TypeInfo::ErrorRecovery),
+                                warnings,
+                                errors
+                            );
                             let result = {
                                 TypedExpression::type_check(TypeCheckArguments {
                                     checkee: body,
