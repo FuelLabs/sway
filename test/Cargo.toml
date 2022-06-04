@@ -7,6 +7,7 @@ publish = false
 
 [dependencies]
 anyhow = "1.0.41"
+assert_matches = "1.5.0"
 forc = { path = "../forc", features = ["test"], default-features = false }
 forc-util = { path = "../forc-util" }
 fuel-asm = "0.5"

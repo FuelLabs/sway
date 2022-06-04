@@ -6,7 +6,7 @@
       {
         "components": null,
         "name": "",
-        "type": "bool"
+        "type": "b256"
       }
     ],
     "type": "function"

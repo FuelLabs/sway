@@ -6,7 +6,7 @@
       {
         "components": null,
         "name": "",
-        "type": "bool"
+        "type": "u32"
       }
     ],
     "type": "function"

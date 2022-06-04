@@ -6,7 +6,7 @@
       {
         "components": null,
         "name": "",
-        "type": "bool"
+        "type": "str[3]"
       }
     ],
     "type": "function"
