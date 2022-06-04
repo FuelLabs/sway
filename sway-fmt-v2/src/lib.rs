@@ -6,7 +6,7 @@
 #![allow(dead_code)]
 pub mod config;
 mod constants;
-pub mod error;
+mod error;
 mod fmt;
 mod items;
 
