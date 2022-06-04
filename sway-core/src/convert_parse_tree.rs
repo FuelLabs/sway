@@ -16,7 +16,7 @@ use {
         WhileLoop,
     },
     std::{
-        collections::{BTreeMap, HashMap},
+        collections::HashMap,
         convert::TryFrom,
         iter,
         mem::MaybeUninit,
@@ -500,20 +500,16 @@ fn item_struct_to_struct_declaration(
         errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
 
-    // Make sure each field is declared once
-    let mut map = BTreeMap::new();
-    fields.iter().rev().for_each(|f| {
-        map.entry(&f.name).or_insert(vec![]).push(f.clone());
-    });
-
-    map.iter()
-        .filter(|(_, occurences)| occurences.len() > 1)
-        .for_each(|(name, _)| {
+    // Make sure each struct field is declared once
+    let mut names_of_fields = std::collections::HashSet::new();
+    fields.iter().for_each(|v|
+        if !names_of_fields.insert(v.name.clone()) {
             errors.push(ConvertParseTreeError::DuplicateStructField {
-                name: (*name).clone(),
-                span: name.span().clone(),
+                name: v.name.clone(),
+                span: v.name.span().clone(),
             });
-        });
+        }
+    );
 
     if let Some(errors) = ec.errors(errors) {
         return Err(errors);
@@ -553,20 +549,16 @@ fn item_enum_to_enum_declaration(
         errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
 
-    // Make sure each variant is declared once
-    let mut map = BTreeMap::new();
-    variants.iter().rev().for_each(|f| {
-        map.entry(&f.name).or_insert(vec![]).push(f.clone());
-    });
-
-    map.iter()
-        .filter(|(_, occurences)| occurences.len() > 1)
-        .for_each(|(name, _)| {
+    // Make sure each enum variant is declared once
+    let mut names_of_variants = std::collections::HashSet::new();
+    variants.iter().for_each(|v|
+        if !names_of_variants.insert(v.name.clone()) {
             errors.push(ConvertParseTreeError::DuplicateEnumVariant {
-                name: (*name).clone(),
-                span: name.span().clone(),
+                name: v.name.clone(),
+                span: v.name.span().clone(),
             });
-        });
+        }
+    );
 
     if let Some(errors) = ec.errors(errors) {
         return Err(errors);
@@ -805,20 +797,16 @@ fn item_storage_to_storage_declaration(
         .map(|storage_field| storage_field_to_storage_field(ec, storage_field))
         .collect::<Result<_, _>>()?;
 
-    // Make sure each field is declared once
-    let mut map = BTreeMap::new();
-    fields.iter().rev().for_each(|f| {
-        map.entry(&f.name).or_insert(vec![]).push(f.clone());
-    });
-
-    map.iter()
-        .filter(|(_, occurences)| occurences.len() > 1)
-        .for_each(|(name, _)| {
+    // Make sure each storage field is declared once
+    let mut names_of_fields = std::collections::HashSet::new();
+    fields.iter().for_each(|v|
+        if !names_of_fields.insert(v.name.clone()) {
             errors.push(ConvertParseTreeError::DuplicateStorageField {
-                name: (*name).clone(),
-                span: name.span().clone(),
+                name: v.name.clone(),
+                span: v.name.span().clone(),
             });
-        });
+        }
+    );
 
     if let Some(errors) = ec.errors(errors) {
         return Err(errors);
