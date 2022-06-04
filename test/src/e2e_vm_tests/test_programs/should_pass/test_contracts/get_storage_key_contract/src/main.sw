@@ -20,6 +20,14 @@ storage {
     f4: Foo,
 }
 
+fn calls_foo() -> (b256, b256, b256, b256) {
+    (storage.f1.foo(), storage.f2.foo(), storage.f3.foo(), storage.f4.foo())
+}
+
+fn calls_calls_foo() -> (b256, b256, b256, b256) {
+    calls_foo()
+}
+
 impl TestContract for Contract {
     fn from_f1() -> b256 {
         storage.f1.foo()
@@ -32,5 +40,8 @@ impl TestContract for Contract {
     }
     fn from_f4() -> b256 {
         storage.f4.foo()
+    }
+    fn from_callers() -> (b256, b256, b256, b256) {
+        calls_calls_foo()
     }
 }
