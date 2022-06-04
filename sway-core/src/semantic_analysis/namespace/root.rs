@@ -120,7 +120,10 @@ impl Root {
                         insert_type(TypeInfo::UnknownGeneric { name })
                     }
                     _ => {
-                        errors.push(CompileError::UnknownType { span: span.clone() });
+                        errors.push(CompileError::UnknownTypeName {
+                            name: name.to_string(),
+                            span: name.span().clone(),
+                        });
                         return err(warnings, errors);
                     }
                 }

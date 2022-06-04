@@ -745,6 +745,8 @@ pub enum CompileError {
     InvalidStrType { raw: String, span: Span },
     #[error("Unknown type name.")]
     UnknownType { span: Span },
+    #[error("Unknown type name \"{name}\".")]
+    UnknownTypeName { name: String, span: Span },
     #[error("Bytecode can only support programs with up to 2^12 words worth of opcodes. Try refactoring into contract calls? This is a temporary error and will be implemented in the future.")]
     TooManyInstructions { span: Span },
     #[error(
@@ -1092,6 +1094,7 @@ impl CompileError {
             UnnecessaryImmediate { span, .. } => span.clone(),
             AmbiguousPath { span, .. } => span.clone(),
             UnknownType { span, .. } => span.clone(),
+            UnknownTypeName { span, .. } => span.clone(),
             InvalidStrType { span, .. } => span.clone(),
             TooManyInstructions { span, .. } => span.clone(),
             FileNotFound { span, .. } => span.clone(),
