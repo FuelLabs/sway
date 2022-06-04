@@ -1,6 +1,3 @@
-use fuel_crypto::Hasher;
-use std::{collections::HashMap, sync::Arc};
-
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     constants,
@@ -9,6 +6,9 @@ use crate::{
     semantic_analysis::{ast_node::*, *},
     type_engine::*,
 };
+use fuel_crypto::Hasher;
+use std::{collections::HashMap, sync::Arc};
+use uint::construct_uint;
 
 use sway_types::{ident::Ident, span::Span, state::StateIndex};
 
@@ -2198,10 +2198,12 @@ impl FnCompiler {
                                 span_md_idx,
                             );
                         }
-
+                        construct_uint! {
+                            pub struct U256(4);
+                        }
                         fn add_to_b256(x: fuel_types::Bytes32, y: u64) -> fuel_types::Bytes32 {
-                            let x = bigint::uint::U256::from(*x);
-                            let y = bigint::uint::U256::from(y);
+                            let x = U256::from(*x);
+                            let y = U256::from(y);
                             let res: [u8; 32] = (x + y).into();
                             fuel_types::Bytes32::from(res)
                         }
