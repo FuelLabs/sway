@@ -2548,6 +2548,9 @@ Any changes to the branch will require a re-review.</li>
 <li><code>url</code> — URL of the network.</li>
 </ul>
 </li>
+<li>
+<p><a href="forc/manifest_reference.html#the-build-profiles--section"><code>[build-profiles]</code></a> - Defines the build profiles.</p>
+</li>
 </ul>
 <h2 id="the-project-section"><a class="header" href="#the-project-section">The <code>[project]</code> section</a></h2>
 <p>An example <code>Forc.toml</code> is shown below. Under <code>[project]</code> the following fields are optional:</p>
@@ -2582,6 +2585,43 @@ name = &quot;wallet_contract&quot;
 <p>For the following fields, a default value is provided so omitting them is allowed:</p>
 <ul>
 <li><code>URL</code> - (default: <em><a href="http://127.0.0.1:4000">http://127.0.0.1:4000</a></em>)</li>
+</ul>
+<h2 id="the-build-profiles--section"><a class="header" href="#the-build-profiles--section">The <code>[build-profiles-*]</code> section</a></h2>
+<p>The <code>[build-profiles]</code> tables provide a way to customize compiler settings such as debug options.</p>
+<p>The following fields needs to be provided for a build-profile:</p>
+<ul>
+<li><code>print-finalized-asm</code> - Whether to compile to bytecode (false) or to print out the generated ASM (true).</li>
+<li><code>print-intermediate-asm</code> - Whether to compile to bytecode (false) or to print out the generated ASM (true).</li>
+<li><code>print-ir</code> - Whether to compile to bytecode (false) or to print out the generated IR (true).</li>
+<li><code>silent-mode</code> - Silent mode. Don't output any warnings or errors to the command line.</li>
+</ul>
+<p>There are two default <code>[build-profile]</code> available with every manifest file. These are <code>debug</code> and <code>release</code> profiles. If you want to override these profiles, you can provide them explicitly in the manifest file like the following example:</p>
+<pre><code class="language-toml">[project]
+authors = [&quot;user&quot;]
+entry = &quot;main.sw&quot;
+organization = &quot;Fuel_Labs&quot;
+license = &quot;Apache-2.0&quot;
+name = &quot;wallet_contract&quot;
+
+[build-profiles.debug]
+print-finalized-asm = false
+print-intermediate-asm = false
+print-ir = false
+silent = false
+
+[build-profiles.release]
+print-finalized-asm = false 
+print-intermediate-asm = false
+print-ir = false
+silent = true
+</code></pre>
+<p>Since <code>release</code> and <code>debug</code> implicitly included in every manifest file, you can use them by just passing <code>--release</code> or by not passing anything (debug is default). For using a user defined build profile there is <code>--build-profile &lt;profile name&gt;</code> option available to the relevant commands. (For an example see <a href="forc/../forc/commands/forc_build.html">forc-build</a>)</p>
+<p>Note that providing the corresponding cli options (like <code>--print-finalized-asm</code>) will override the selected build profile. For example if you pass both <code>--release</code> and <code>--print-finalized-asm</code>, release build profile is omitted and resulting build profile would have a structure like the following:</p>
+<ul>
+<li>print-finalized-asm - true</li>
+<li>print-intermediate-asm - false</li>
+<li>print-ir - false</li>
+<li>silent - false</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="dependencies-1"><a class="header" href="#dependencies-1">Dependencies</a></h1>
 <p>Forc has a dependency management system which can pull packages using git. This allows users to build and share Forc libraries.</p>
@@ -2640,6 +2680,9 @@ contracts and libraries will also produce the public ABI in JSON format <code>&l
 <h2 id="usage-1"><a class="header" href="#usage-1">USAGE:</a></h2>
 <p>forc build [OPTIONS]</p>
 <h2 id="options-1"><a class="header" href="#options-1">OPTIONS:</a></h2>
+<p><code>--build-profile</code> &lt;<em>BUILD_PROFILE</em>&gt;</p>
+<p>Name of the build profile to use. If it is not specified, forc will use debug build
+profile</p>
 <p><code>-g</code>, <code>--debug-outfile</code> &lt;<em>DEBUG_OUTFILE</em>&gt;</p>
 <p>If set, outputs source file mapping in JSON format</p>
 <p><code>-h</code>, <code>--help</code> </p>
@@ -2666,6 +2709,11 @@ it will only try to use previously downloaded dependencies</p>
 <p>Whether to compile to bytecode (false) or to print out the generated ASM (true)</p>
 <p><code>--print-ir</code> </p>
 <p>Whether to compile to bytecode (false) or to print out the generated IR (true)</p>
+<p><code>--release</code> </p>
+<p>Use release build plan. If a custom release plan is not specified, it is implicitly
+added to the manifest file.</p>
+<p>If --build-profile is also provided, forc omits this flag and uses provided
+build-profile.</p>
 <p><code>-s</code>, <code>--silent</code> </p>
 <p>Silent mode. Don't output any warnings or errors to the command line</p>
 <h2 id="example-2"><a class="header" href="#example-2">EXAMPLE:</a></h2>
@@ -2785,6 +2833,9 @@ completions into our profile simply use</p>
 <h2 id="usage-4"><a class="header" href="#usage-4">USAGE:</a></h2>
 <p>forc deploy [OPTIONS]</p>
 <h2 id="options-4"><a class="header" href="#options-4">OPTIONS:</a></h2>
+<p><code>--build-profile</code> &lt;<em>BUILD_PROFILE</em>&gt;</p>
+<p>Name of the build profile to use. If it is not specified, forc will use debug build
+profile</p>
 <p><code>-g</code>, <code>--debug-outfile</code> &lt;<em>DEBUG_OUTFILE</em>&gt;</p>
 <p>If set, outputs source file mapping in JSON format</p>
 <p><code>-h</code>, <code>--help</code> </p>
@@ -2811,6 +2862,11 @@ it will only try to use previously downloaded dependencies</p>
 <p>Whether to compile to bytecode (false) or to print out the generated ASM (true)</p>
 <p><code>--print-ir</code> </p>
 <p>Whether to compile to bytecode (false) or to print out the IR (true)</p>
+<p><code>--release</code> </p>
+<p>Use release build plan. If a custom release plan is not specified, it is implicitly
+added to the manifest file.</p>
+<p>If --build-profile is also provided, forc omits this flag and uses provided
+build-profile.</p>
 <p><code>-s</code>, <code>--silent</code> </p>
 <p>Silent mode. Don't output any warnings or errors to the command line</p>
 <p><code>-u</code>, <code>--url</code> &lt;<em>URL</em>&gt;</p>

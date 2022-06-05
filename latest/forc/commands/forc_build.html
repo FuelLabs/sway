@@ -145,6 +145,9 @@ contracts and libraries will also produce the public ABI in JSON format <code>&l
 <h2 id="usage"><a class="header" href="#usage">USAGE:</a></h2>
 <p>forc build [OPTIONS]</p>
 <h2 id="options"><a class="header" href="#options">OPTIONS:</a></h2>
+<p><code>--build-profile</code> &lt;<em>BUILD_PROFILE</em>&gt;</p>
+<p>Name of the build profile to use. If it is not specified, forc will use debug build
+profile</p>
 <p><code>-g</code>, <code>--debug-outfile</code> &lt;<em>DEBUG_OUTFILE</em>&gt;</p>
 <p>If set, outputs source file mapping in JSON format</p>
 <p><code>-h</code>, <code>--help</code> </p>
@@ -171,6 +174,11 @@ it will only try to use previously downloaded dependencies</p>
 <p>Whether to compile to bytecode (false) or to print out the generated ASM (true)</p>
 <p><code>--print-ir</code> </p>
 <p>Whether to compile to bytecode (false) or to print out the generated IR (true)</p>
+<p><code>--release</code> </p>
+<p>Use release build plan. If a custom release plan is not specified, it is implicitly
+added to the manifest file.</p>
+<p>If --build-profile is also provided, forc omits this flag and uses provided
+build-profile.</p>
 <p><code>-s</code>, <code>--silent</code> </p>
 <p>Silent mode. Don't output any warnings or errors to the command line</p>
 <h2 id="example"><a class="header" href="#example">EXAMPLE:</a></h2>

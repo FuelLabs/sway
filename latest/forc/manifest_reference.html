@@ -164,6 +164,9 @@
 <li><code>url</code> — URL of the network.</li>
 </ul>
 </li>
+<li>
+<p><a href="#the-build-profiles--section"><code>[build-profiles]</code></a> - Defines the build profiles.</p>
+</li>
 </ul>
 <h2 id="the-project-section"><a class="header" href="#the-project-section">The <code>[project]</code> section</a></h2>
 <p>An example <code>Forc.toml</code> is shown below. Under <code>[project]</code> the following fields are optional:</p>
@@ -198,6 +201,43 @@ name = &quot;wallet_contract&quot;
 <p>For the following fields, a default value is provided so omitting them is allowed:</p>
 <ul>
 <li><code>URL</code> - (default: <em><a href="http://127.0.0.1:4000">http://127.0.0.1:4000</a></em>)</li>
+</ul>
+<h2 id="the-build-profiles--section"><a class="header" href="#the-build-profiles--section">The <code>[build-profiles-*]</code> section</a></h2>
+<p>The <code>[build-profiles]</code> tables provide a way to customize compiler settings such as debug options.</p>
+<p>The following fields needs to be provided for a build-profile:</p>
+<ul>
+<li><code>print-finalized-asm</code> - Whether to compile to bytecode (false) or to print out the generated ASM (true).</li>
+<li><code>print-intermediate-asm</code> - Whether to compile to bytecode (false) or to print out the generated ASM (true).</li>
+<li><code>print-ir</code> - Whether to compile to bytecode (false) or to print out the generated IR (true).</li>
+<li><code>silent-mode</code> - Silent mode. Don't output any warnings or errors to the command line.</li>
+</ul>
+<p>There are two default <code>[build-profile]</code> available with every manifest file. These are <code>debug</code> and <code>release</code> profiles. If you want to override these profiles, you can provide them explicitly in the manifest file like the following example:</p>
+<pre><code class="language-toml">[project]
+authors = [&quot;user&quot;]
+entry = &quot;main.sw&quot;
+organization = &quot;Fuel_Labs&quot;
+license = &quot;Apache-2.0&quot;
+name = &quot;wallet_contract&quot;
+
+[build-profiles.debug]
+print-finalized-asm = false
+print-intermediate-asm = false
+print-ir = false
+silent = false
+
+[build-profiles.release]
+print-finalized-asm = false 
+print-intermediate-asm = false
+print-ir = false
+silent = true
+</code></pre>
+<p>Since <code>release</code> and <code>debug</code> implicitly included in every manifest file, you can use them by just passing <code>--release</code> or by not passing anything (debug is default). For using a user defined build profile there is <code>--build-profile &lt;profile name&gt;</code> option available to the relevant commands. (For an example see <a href="../forc/commands/forc_build.html">forc-build</a>)</p>
+<p>Note that providing the corresponding cli options (like <code>--print-finalized-asm</code>) will override the selected build profile. For example if you pass both <code>--release</code> and <code>--print-finalized-asm</code>, release build profile is omitted and resulting build profile would have a structure like the following:</p>
+<ul>
+<li>print-finalized-asm - true</li>
+<li>print-intermediate-asm - false</li>
+<li>print-ir - false</li>
+<li>silent - false</li>
 </ul>
 
                     </main>
