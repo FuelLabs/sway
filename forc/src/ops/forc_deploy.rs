@@ -20,7 +20,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         std::env::current_dir()?
     };
     let manifest = ManifestFile::from_dir(&curr_dir, SWAY_GIT_TAG)?;
-    manifest.check_program_type(TreeType::Contract)?;
+    manifest.check_program_type(vec![TreeType::Contract])?;
 
     let DeployCommand {
         path,

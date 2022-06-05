@@ -19,7 +19,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
     let manifest = ManifestFile::from_dir(&path_dir, SWAY_GIT_TAG)?;
-    manifest.check_program_type(TreeType::Script)?;
+    manifest.check_program_type(vec![TreeType::Script])?;
 
     let input_data = &command.data.unwrap_or_else(|| "".into());
     let data = format_hex_data(input_data);
