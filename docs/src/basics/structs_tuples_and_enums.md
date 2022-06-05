@@ -1,4 +1,4 @@
-# Structs, Tuples & Enums
+# Structs, Tuples, and Enums
 
 ## Structs
 
