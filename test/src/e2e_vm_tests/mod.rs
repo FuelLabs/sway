@@ -1,4 +1,5 @@
 mod harness;
+use assert_matches::assert_matches;
 use forc_util::init_tracing_subscriber;
 use fuel_vm::prelude::*;
 pub fn run(filter_regex: Option<regex::Regex>) {
@@ -10,10 +11,31 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             .unwrap_or(true)
     };
 
-    // Non-contract programs that should successfully compile and terminate
-    // with some known state. Note that if you are adding a contract, it may pass by mistake.
-    // Please add contracts to `positive_project_names_with_abi`.
-    let positive_project_names_no_abi = vec![
+    // Predicate programs that should successfully compile and terminate
+    // with some known state. Note that if you are adding a non-predicate, it may pass by mistake.
+    // Please add non-predicates to `positive_project_names_with_abi`.
+    let positive_project_names_no_abi = vec![(
+        "should_pass/language/basic_predicate",
+        ProgramState::Return(1),
+    )];
+
+    let mut number_of_tests_run =
+        positive_project_names_no_abi
+            .iter()
+            .fold(0, |acc, (name, res)| {
+                if filter(name) {
+                    assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), *res);
+                    acc + 1
+                } else {
+                    acc
+                }
+            });
+
+    // Programs that should successfully compile, include abi and terminate
+    // with some known state. Note that if a predicate is included
+    // it will be rejected during assertion. Please move it to
+    // `positive_project_names_no_abi` above.
+    let positive_project_names_with_abi = vec![
         (
             "should_pass/forc/dependency_package_field",
             ProgramState::Return(0),
@@ -396,25 +418,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/reassignment_operators",
             ProgramState::Return(1),
         ),
-    ];
-
-    let mut number_of_tests_run =
-        positive_project_names_no_abi
-            .iter()
-            .fold(0, |acc, (name, res)| {
-                if filter(name) {
-                    assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), *res);
-                    acc + 1
-                } else {
-                    acc
-                }
-            });
-
-    // Programs that should successfully compile, include abi and terminate
-    // with some known state. Note that if a non-contract is included
-    // it will be rejected during assertion. Please move it to
-    // `positive_project_names_no_abi` above.
-    let positive_project_names_with_abi = vec![
         (
             "should_pass/language/valid_impurity",
             ProgramState::Revert(0), // false
@@ -474,9 +477,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         .fold(0, |acc, (name, res)| {
             if filter(name) {
                 assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), *res);
-                // cannot use partial eq on type `anyhow::Error` so I've used `matches!` here instead.
-                // https://users.rust-lang.org/t/issues-in-asserting-result/61198/3 for reference.
-                assert!(crate::e2e_vm_tests::harness::test_json_abi(name).is_ok());
+                assert_matches!(crate::e2e_vm_tests::harness::test_json_abi(name), Ok(_));
                 acc + 1
             } else {
                 acc
@@ -550,6 +551,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/recursive_enum",
         "should_fail/recursive_struct",
         "should_fail/recursive_type_chain",
+        "should_fail/better_type_error_message",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {

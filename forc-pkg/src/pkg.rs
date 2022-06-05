@@ -142,6 +142,8 @@ pub struct BuildPlan {
 }
 
 /// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "kebab-case")]
 pub struct BuildConfig {
     pub print_ir: bool,
     pub print_finalized_asm: bool,
@@ -1277,6 +1279,9 @@ fn generate_json_abi(kind: &TypedProgramKind) -> JsonABI {
         TypedProgramKind::Contract { abi_entries, .. } => {
             abi_entries.iter().map(|x| x.generate_json_abi()).collect()
         }
+        TypedProgramKind::Script { main_function, .. } => {
+            vec![main_function.generate_json_abi()]
+        }
         _ => vec![],
     }
 }
@@ -1363,12 +1368,12 @@ pub fn parsing_failed(project_name: &str, errors: Vec<CompileError>) -> anyhow::
 /// Format an error message if an incorrect program type is present.
 pub fn wrong_program_type(
     project_name: &str,
-    expected_type: TreeType,
+    expected_types: Vec<TreeType>,
     parse_type: TreeType,
 ) -> anyhow::Error {
     let message = format!(
         "{} is not a '{:?}' it is a '{:?}'",
-        project_name, expected_type, parse_type
+        project_name, expected_types, parse_type
     );
     Error::msg(message)
 }

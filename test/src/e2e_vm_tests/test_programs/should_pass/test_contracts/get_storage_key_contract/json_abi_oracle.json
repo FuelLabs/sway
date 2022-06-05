@@ -46,5 +46,38 @@
       }
     ],
     "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "from_callers",
+    "outputs": [
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "__tuple_element",
+            "type": "b256"
+          },
+          {
+            "components": null,
+            "name": "__tuple_element",
+            "type": "b256"
+          },
+          {
+            "components": null,
+            "name": "__tuple_element",
+            "type": "b256"
+          },
+          {
+            "components": null,
+            "name": "__tuple_element",
+            "type": "b256"
+          }
+        ],
+        "name": "",
+        "type": "(b256, b256, b256, b256)"
+      }
+    ],
+    "type": "function"
   }
 ]

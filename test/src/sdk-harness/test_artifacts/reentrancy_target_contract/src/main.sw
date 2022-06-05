@@ -23,7 +23,7 @@ impl Target for Contract {
         if is_reentrant() {
             true
         } else {
-            let result: Result<Sender, AuthError> = msg_sender();
+            let result: Result<Identity, AuthError> = msg_sender();
             let id = get_msg_sender_id_or_panic(result);
             let id = id.value;
             let caller = abi(Attacker, id);
@@ -38,7 +38,7 @@ impl Target for Contract {
         // panic if reentrancy detected
         reentrancy_guard();
 
-        let result: Result<Sender, AuthError> = msg_sender();
+        let result: Result<Identity, AuthError> = msg_sender();
         let id = get_msg_sender_id_or_panic(result);
         let id = id.value;
         let caller = abi(Attacker, id);
@@ -51,7 +51,7 @@ impl Target for Contract {
         // panic if reentrancy detected
         reentrancy_guard();
 
-        let result: Result<Sender, AuthError> = msg_sender();
+        let result: Result<Identity, AuthError> = msg_sender();
         let id = get_msg_sender_id_or_panic(result);
         let id = id.value;
         let caller = abi(Attacker, id);
