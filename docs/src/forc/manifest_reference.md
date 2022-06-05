@@ -17,6 +17,8 @@ The `Forc.toml` (the _manifest_ file) is a compulsory file for each package and 
 
 * [`[build-profiles]`](#the-build-profiles--section) - Defines the build profiles.
 
+* [`[patch]`](#the-patch-section) - Defines the patches.
+
 ## The `[project]` section
 
 An example `Forc.toml` is shown below. Under `[project]` the following fields are optional:
@@ -99,3 +101,22 @@ Note that providing the corresponding cli options (like `--print-finalized-asm`)
 * print-intermediate-asm - false
 * print-ir - false
 * silent - false
+
+## The `[patch]` section
+
+The [patch] section of `Forc.toml` can be used to override dependencies with other copies. The provided below patches <https://github.com/fuellabs/sway> source with master branch of the same repo.
+
+```toml
+[project]
+authors = ["user"]
+entry = "main.sw"
+organization = "Fuel_Labs"
+license = "Apache-2.0"
+name = "wallet_contract"
+
+[patch.'https://github.com/fuellabs/sway']
+git = "https://github.com/fuellabs/sway"
+branch = "master"
+```
+
+Each key after the `[patch]` is a URL of the source that is being patched.
