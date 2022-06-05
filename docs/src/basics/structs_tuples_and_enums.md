@@ -1,4 +1,4 @@
-# Structs and Tuples
+# Structs, Tuples & Enums
 
 ## Structs
 
@@ -59,6 +59,7 @@ let y: bool = my_tuple.1;
 Tuples can also contain tuples within themselves, and be used in destructing syntax to declare multiple values at once.
 
 Common usecases for tuples are returning multiple values from a function, packing parameters into a function, or storing a series of related values.
+
 ## Enums
 
 _Enumerations_, or _enums_, are also known as _sum types_. An enum is a type that could be one of several variants. To declare an enum, you enumerate all potential variants. Let's look at _enum declaration syntax_:
@@ -73,7 +74,23 @@ enum Color {
 }
 ```
 
-Here, we have defined five potential colors. Each enum variant is just the color name. As there is no extra data associated with each variant, we say that each variant is of type `()`, or unit. It is also possible to have an enum variant contain extra data. Take a look at this more substantial example, which combines struct declarations with enum variants:
+Here, we have defined five potential colors. Each enum variant is just the color name. As there is no extra data associated with each variant, we say that each variant is of type `()`, or unit.
+
+To instantiate a variable with the value of an enum the syntax is
+
+> **Note**
+> enum instantiation does not require the `~` tilde syntax
+
+```sway
+fn main() {
+    let blue = Color::Blue;
+    let silver = Color::Silver;
+}
+```
+
+### Enums of Structs
+
+It is also possible to have an enum variant contain extra data. Take a look at this more substantial example, which combines struct declarations with enum variants:
 
 ```sway
 use std::collections::Vec;
@@ -103,34 +120,56 @@ enum InventoryEvent {
 }
 ```
 
-```sway
-enum Color {
-    Blue: (),
-    Green: (),
-    Red: (),
-    Silver: (),
-    Grey: (),
-}
+If we wanted to instantiate an enum with some interior data, it looks like this:
 
+```sway
 fn main() {
-    let color = Color::Blue;
+  let event = InventoryEvent::ItemLoss(Claim {
+      insurance_company: ~Insurer::default(),
+      item_number: 42,
+      item_cost: 1_000,
+  });
 }
 ```
 
-Here, we have instantiated a variable named `color` with _enum instantiation syntax_. Note that enum instantiation does not require the `~` tilde syntax. If we wanted to instantiate an enum with some interior data, it looks like this:
+### Enums of Enums
+
+It is possible to define enums of enums for example
 
 ```sway
-struct Claim {
-    insurance_company: Insurer,
-    item_number: u64,
-    item_cost: u64,
+enum Error {
+    StateError: StateError,
+    UserError: UserError,
 }
 
-let event = InventoryEvent::ItemLoss(Claim {
-    insurance_company: ~Insurer::default(),
-    item_number: 42,
-    item_cost: 1_000,
-});
+enum StateError {
+    Void: (),
+    Pending: (),
+    Completed: (),
+}
+
+enum UserError {
+    InsufficientPermissions: (),
+    Unauthorized: (),
+}
+```
+
+To use them the syntax is
+
+```sway
+fn main() {
+    let error1 = Error::StateError(StateError::Void);
+    let error2 = Error::UserError(UserError::Unauthorized);
+}
+```
+
+The syntax above is not the most ergonomic but it is possible. It is advisable to not use the `enum Error` structure which nests `enums` and instead use the `enums` directly
+
+```sway
+fn main() {
+    let error1 = StateError::Void;
+    let error2 = UserError::Unauthorized;
+}
 ```
 
 ### Enum Memory Layout
