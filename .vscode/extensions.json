@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    // Rust language support
+    "rust-lang.rust-analyzer",
+    // Rust debugging
+    "vadimcn.vscode-lldb"
+  ]
+}

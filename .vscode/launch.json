@@ -1,0 +1,28 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    // Debugs the `test` project using the `vadimcn.vscode-lldb` extension.
+    // You can run `lldb.getCargoLaunchConfigs` from the command palette to
+    // generate configurations for other projects in the workspace.
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug Tests",
+      "cargo": {
+        "args": ["build", "--bin=test", "--package=test"],
+        "filter": {
+          "name": "test",
+          "kind": "bin"
+        }
+      },
+      "args": [
+        // You can add a filter here to debug a specific test
+        // "should_pass/stdlib/my_test"
+      ],
+      "env": {
+        "SWAY_TEST_VERBOSE": "1"
+      },
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
