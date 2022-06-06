@@ -77,7 +77,7 @@ It is possible to define enums of enums
 
 #### Preferred usage
 
-The preferred way to use enums is to use the individual (not nested) enums directly because they are easily to follow and the lines are short
+The preferred way to use enums is to use the individual (not nested) enums directly because they are easy to follow and the lines are short:
 
 ```sway
 {{#include ../../../examples/enums/src/enums_preferred.sw}}
