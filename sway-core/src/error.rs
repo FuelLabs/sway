@@ -965,6 +965,8 @@ pub enum CompileError {
         such as numbers, bools, strings or b256s."
     )]
     NonLiteralConstantDeclValue { span: Span },
+    #[error("Declaring storage in a {program_kind} is not allowed.")]
+    StorageDeclarationInNonContract { program_kind: String, span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1161,6 +1163,7 @@ impl CompileError {
             EnumNotFound { span, .. } => span.clone(),
             TupleIndexOutOfBounds { span, .. } => span.clone(),
             NonLiteralConstantDeclValue { span } => span.clone(),
+            StorageDeclarationInNonContract { span, .. } => span.clone(),
         }
     }
 
