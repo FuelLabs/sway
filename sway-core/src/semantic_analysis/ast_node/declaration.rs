@@ -16,7 +16,7 @@ pub use variable::*;
 use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
 use derivative::Derivative;
 use std::borrow::Cow;
-use sway_types::{Ident, Span};
+use sway_types::{Ident, Span, Spanned};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TypedDeclaration {
@@ -67,6 +67,36 @@ impl CopyTypes for TypedDeclaration {
             StorageDeclaration(..) => (),
             StorageReassignment(..) => (),
             GenericTypeForFunctionScope { .. } | ErrorRecovery => (),
+        }
+    }
+}
+
+impl Spanned for TypedDeclaration {
+    fn span(&self) -> Span {
+        use TypedDeclaration::*;
+        match self {
+            VariableDeclaration(TypedVariableDeclaration { name, .. }) => name.span().clone(),
+            ConstantDeclaration(TypedConstantDeclaration { name, .. }) => name.span().clone(),
+            FunctionDeclaration(TypedFunctionDeclaration { span, .. }) => span.clone(),
+            TraitDeclaration(TypedTraitDeclaration { name, .. }) => name.span().clone(),
+            StructDeclaration(TypedStructDeclaration { name, .. }) => name.span().clone(),
+            EnumDeclaration(TypedEnumDeclaration { span, .. }) => span.clone(),
+            Reassignment(TypedReassignment {
+                lhs_base_name,
+                lhs_indices,
+                ..
+            }) => lhs_indices
+                .iter()
+                .fold(lhs_base_name.span().clone(), |acc, this| {
+                    Span::join(acc, this.span())
+                }),
+            AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
+            ImplTrait { span, .. } => span.clone(),
+            StorageDeclaration(decl) => decl.span(),
+            StorageReassignment(decl) => decl.span(),
+            ErrorRecovery | GenericTypeForFunctionScope { .. } => {
+                unreachable!("No span exists for these ast node types")
+            }
         }
     }
 }
@@ -272,34 +302,6 @@ impl TypedDeclaration {
         ok(type_id, vec![], vec![])
     }
 
-    pub(crate) fn span(&self) -> Span {
-        use TypedDeclaration::*;
-        match self {
-            VariableDeclaration(TypedVariableDeclaration { name, .. }) => name.span().clone(),
-            ConstantDeclaration(TypedConstantDeclaration { name, .. }) => name.span().clone(),
-            FunctionDeclaration(TypedFunctionDeclaration { span, .. }) => span.clone(),
-            TraitDeclaration(TypedTraitDeclaration { name, .. }) => name.span().clone(),
-            StructDeclaration(TypedStructDeclaration { name, .. }) => name.span().clone(),
-            EnumDeclaration(TypedEnumDeclaration { span, .. }) => span.clone(),
-            Reassignment(TypedReassignment {
-                lhs_base_name,
-                lhs_indices,
-                ..
-            }) => lhs_indices
-                .iter()
-                .fold(lhs_base_name.span().clone(), |acc, this| {
-                    Span::join(acc, this.span())
-                }),
-            AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
-            ImplTrait { span, .. } => span.clone(),
-            StorageDeclaration(decl) => decl.span(),
-            StorageReassignment(decl) => decl.span(),
-            ErrorRecovery | GenericTypeForFunctionScope { .. } => {
-                unreachable!("No span exists for these ast node types")
-            }
-        }
-    }
-
     pub(crate) fn pretty_print(&self) -> String {
         format!(
             "{} declaration ({})",
@@ -497,28 +499,30 @@ pub enum ProjectionKind {
     TupleField { index: usize, index_span: Span },
 }
 
+impl Spanned for ProjectionKind {
+    fn span(&self) -> Span {
+        match self {
+            ProjectionKind::StructField { name } => name.span().clone(),
+            ProjectionKind::TupleField { index_span, .. } => index_span.clone(),
+        }
+    }
+}
+
+impl ProjectionKind {
+    pub(crate) fn pretty_print(&self) -> Cow<str> {
+        match self {
+            ProjectionKind::StructField { name } => Cow::Borrowed(name.as_str()),
+            ProjectionKind::TupleField { index, .. } => Cow::Owned(index.to_string()),
+        }
+    }
+}
+
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEq for ReassignmentLhs {
     fn eq(&self, other: &Self) -> bool {
         self.kind == other.kind && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
-    }
-}
-
-impl ProjectionKind {
-    pub(crate) fn span(&self) -> Span {
-        match self {
-            ProjectionKind::StructField { name } => name.span().clone(),
-            ProjectionKind::TupleField { index_span, .. } => index_span.clone(),
-        }
-    }
-
-    pub(crate) fn pretty_print(&self) -> Cow<str> {
-        match self {
-            ProjectionKind::StructField { name } => Cow::Borrowed(name.as_str()),
-            ProjectionKind::TupleField { index, .. } => Cow::Owned(index.to_string()),
-        }
     }
 }
 
@@ -536,6 +540,6 @@ impl CopyTypes for TypedReassignment {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.rhs.copy_types(type_mapping);
         self.lhs_type
-            .update_type(type_mapping, self.lhs_base_name.span());
+            .update_type(type_mapping, &self.lhs_base_name.span());
     }
 }

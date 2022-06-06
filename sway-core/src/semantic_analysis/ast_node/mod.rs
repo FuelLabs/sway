@@ -19,7 +19,7 @@ use crate::{
     AstNodeContent, Ident, ReturnStatement,
 };
 
-use sway_types::{span::Span, state::StateIndex};
+use sway_types::{span::Span, state::StateIndex, Spanned};
 
 use derivative::Derivative;
 
@@ -1052,7 +1052,7 @@ fn type_check_trait_methods(
                     namespace.resolve_type_with_self(
                         look_up_type_id(*r#type),
                         insert_type(TypeInfo::SelfType),
-                        name.span(),
+                        &name.span(),
                         EnforceTypeArguments::Yes
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
@@ -1292,14 +1292,17 @@ pub struct TypeCheckedStorageReassignment {
     pub rhs: TypedExpression,
 }
 
-impl TypeCheckedStorageReassignment {
-    pub fn span(&self) -> Span {
+impl Spanned for TypeCheckedStorageReassignment {
+    fn span(&self) -> Span {
         self.fields
             .iter()
             .fold(self.fields[0].span.clone(), |acc, field| {
                 Span::join(acc, field.span.clone())
             })
     }
+}
+
+impl TypeCheckedStorageReassignment {
     pub fn names(&self) -> Vec<Ident> {
         self.fields
             .iter()

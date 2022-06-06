@@ -4,7 +4,7 @@ use crate::core::{
     typed_token_type::{TokenMap, TokenType},
 };
 use crate::utils::common::get_range_from_span;
-use sway_types::Ident;
+use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
 
 // Flags for debugging various parts of the server

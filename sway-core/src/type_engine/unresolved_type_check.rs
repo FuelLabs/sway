@@ -3,6 +3,8 @@
 //! as the IR assumes all types are well-formed and will throw an ICE (internal compiler error) if
 //! that is not the case.
 
+use sway_types::Spanned;
+
 use crate::{semantic_analysis::*, type_engine::*};
 
 /// If any types contained by this node are unresolved or have yet to be inferred, throw an

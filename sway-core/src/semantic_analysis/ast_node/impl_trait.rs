@@ -4,7 +4,7 @@ use crate::{
     error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*, CallPath, Ident,
 };
 
-use sway_types::span::Span;
+use sway_types::{span::Span, Spanned};
 
 pub(crate) fn implementation_of_trait(
     impl_trait: ImplTrait,

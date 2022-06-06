@@ -1,6 +1,6 @@
 use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
 
-use sway_types::Ident;
+use sway_types::{Ident, Spanned};
 
 #[derive(Clone, Debug)]
 pub struct TypedModule {

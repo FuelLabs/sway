@@ -14,7 +14,7 @@ pub(crate) use self::{
 
 use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
 
-use sway_types::{Ident, Span};
+use sway_types::{Ident, Span, Spanned};
 
 use std::collections::{HashMap, VecDeque};
 

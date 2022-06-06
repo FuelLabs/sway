@@ -1,6 +1,6 @@
 use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
 
-use sway_types::Ident;
+use sway_types::{Ident, Spanned};
 
 /// Given an enum declaration and the instantiation expression/type arguments, construct a valid
 /// [TypedExpression].
@@ -24,7 +24,7 @@ pub(crate) fn instantiate_enum(
             type_arguments,
             EnforceTypeArguments::No,
             Some(self_type),
-            Some(enum_field_name.span())
+            Some(&enum_field_name.span())
         ),
         return err(warnings, errors),
         warnings,

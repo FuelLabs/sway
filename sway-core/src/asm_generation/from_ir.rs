@@ -23,7 +23,7 @@ use crate::{
 };
 
 use sway_ir::*;
-use sway_types::span::Span;
+use sway_types::{span::Span, Spanned};
 
 use either::Either;
 

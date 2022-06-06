@@ -1,3 +1,5 @@
+use sway_types::Spanned;
+
 use crate::{error::*, Ident};
 
 /// Find the first index in the string which separates a lowercase character from an uppercase

@@ -181,11 +181,13 @@ pub enum LexErrorKind {
     InvalidEscapeCode { position: usize },
 }
 
-impl LexError {
-    pub fn span(&self) -> Span {
+impl Spanned for LexError {
+    fn span(&self) -> Span {
         self.span.clone()
     }
+}
 
+impl LexError {
     pub fn span_ref(&self) -> &Span {
         &self.span
     }

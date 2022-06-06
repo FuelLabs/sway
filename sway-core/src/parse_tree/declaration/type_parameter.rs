@@ -1,6 +1,6 @@
 use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
 
-use sway_types::{ident::Ident, span::Span};
+use sway_types::{ident::Ident, span::Span, Spanned};
 
 use std::{
     convert::From,
@@ -85,8 +85,8 @@ impl UpdateTypes for TypeParameter {
     }
 }
 
-impl TypeParameter {
-    pub fn span(&self) -> Span {
+impl Spanned for TypeParameter {
+    fn span(&self) -> Span {
         self.name_ident.span().clone()
     }
 }

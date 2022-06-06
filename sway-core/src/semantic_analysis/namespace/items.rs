@@ -4,7 +4,7 @@ use crate::{
 
 use super::TraitMap;
 
-use sway_types::span::Span;
+use sway_types::{span::Span, Spanned};
 
 use std::sync::Arc;
 

@@ -8,7 +8,7 @@ use crate::{
 
 use super::{items::Items, root::Root, ModuleName, Path};
 
-use sway_types::span::Span;
+use sway_types::{span::Span, Spanned};
 
 /// A single `Module` within a Sway project.
 ///

@@ -15,7 +15,7 @@ use crate::{
     type_engine::{resolve_type, TypeInfo},
     CompileError, CompileWarning, Ident, TreeType, Warning,
 };
-use sway_types::span::Span;
+use sway_types::{span::Span, Spanned};
 
 use crate::semantic_analysis::TypedStorageDeclaration;
 

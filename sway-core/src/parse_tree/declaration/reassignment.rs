@@ -1,6 +1,6 @@
 use crate::parse_tree::Expression;
 
-use sway_types::{span::Span, Ident};
+use sway_types::{span::Span, Ident, Spanned};
 
 /// Represents the left hand side of a reassignment, which could either be a regular variable
 /// expression, denoted by [ReassignmentTarget::VariableExpression], or, a storage field, denoted

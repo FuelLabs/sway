@@ -9,6 +9,7 @@ use crate::{
     WhileLoop,
 };
 
+use sway_types::Spanned;
 use sway_types::{ident::Ident, span::Span};
 
 // -------------------------------------------------------------------------------------------------

@@ -58,8 +58,8 @@ impl Spanned for WhereClause {
     }
 }
 
-impl WhereBound {
-    pub fn span(&self) -> Span {
+impl Spanned for WhereBound {
+    fn span(&self) -> Span {
         Span::join(self.ty_name.span().clone(), self.bounds.span())
     }
 }

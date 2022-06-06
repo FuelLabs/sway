@@ -13,6 +13,7 @@ annotate-snippets = { version = "0.9", features = ["color"] }
 anyhow = "1"
 dirs = "3.0.2"
 sway-core = { version = "0.15.1", path = "../sway-core" }
+sway-types = { version = "0.15.1", path = "../sway-types" }
 sway-utils = { version = "0.15.1", path = "../sway-utils" }
 termcolor = "1.1"
 tracing = "0.1"

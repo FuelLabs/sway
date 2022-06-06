@@ -1,5 +1,5 @@
-use sway_types::Ident;
 use sway_types::{state::StateIndex, Span};
+use sway_types::{Ident, Spanned};
 
 use crate::constants;
 use crate::Expression::StorageAccess;

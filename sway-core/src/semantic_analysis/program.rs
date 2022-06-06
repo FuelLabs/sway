@@ -11,7 +11,7 @@ use crate::{
     },
     type_engine::*,
 };
-use sway_types::{span::Span, Ident};
+use sway_types::{span::Span, Ident, Spanned};
 
 #[derive(Clone, Debug)]
 pub struct TypedProgram {

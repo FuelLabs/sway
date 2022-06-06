@@ -10,7 +10,7 @@ use fuel_crypto::Hasher;
 use std::{collections::HashMap, sync::Arc};
 use uint::construct_uint;
 
-use sway_types::{ident::Ident, span::Span, state::StateIndex};
+use sway_types::{ident::Ident, span::Span, state::StateIndex, Spanned};
 
 use sway_ir::*;
 

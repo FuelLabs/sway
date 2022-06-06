@@ -9,7 +9,7 @@ use sway_core::semantic_analysis::ast_node::{
     {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
 };
 use sway_core::type_engine::TypeId;
-use sway_types::{ident::Ident, span::Span};
+use sway_types::{ident::Ident, span::Span, Spanned};
 
 pub fn traverse_node(node: &TypedAstNode, tokens: &mut TokenMap) {
     match &node.content {

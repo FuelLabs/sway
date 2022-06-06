@@ -5,7 +5,7 @@ use crate::{
 
 use super::{module::Module, namespace::Namespace, Path};
 
-use sway_types::span::Span;
+use sway_types::{span::Span, Spanned};
 
 use std::collections::VecDeque;
 
@@ -286,7 +286,7 @@ impl Root {
             self.resolve_type_with_self(
                 look_up_type_id(r#type),
                 self_type,
-                method_name.span(),
+                &method_name.span(),
                 EnforceTypeArguments::No,
                 method_prefix
             ),
