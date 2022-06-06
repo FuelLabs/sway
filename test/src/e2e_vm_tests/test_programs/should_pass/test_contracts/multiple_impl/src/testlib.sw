@@ -1,5 +1,5 @@
 library testlib;
 
 fn foo() {
-   std::logging::log(1);
+    std::logging::log(1);
 }

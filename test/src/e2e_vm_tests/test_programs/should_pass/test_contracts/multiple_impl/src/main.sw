@@ -9,20 +9,18 @@ abi TestContr {
 }
 
 fn foo() {
-   testlib::foo();
+    testlib::foo();
 }
 
 fn bar() {
-
 }
 
 impl TestContr for Contract {
     fn foo() {
-       foo();
-       bar();
+        foo();
+        bar();
     }
 }
 
 fn main() {
-
 }
