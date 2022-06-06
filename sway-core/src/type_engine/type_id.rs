@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Display};
+use std::fmt;
 use sway_types::Span;
 
 use crate::types::*;
@@ -16,15 +16,15 @@ impl std::ops::Deref for TypeId {
     }
 }
 
-impl Display for TypeId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&look_up_type_id(*self).friendly_type_str())
+impl fmt::Display for TypeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&look_up_type_id(*self).to_string())
     }
 }
 
-impl Debug for TypeId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&look_up_type_id(*self).friendly_type_str())
+impl fmt::Debug for TypeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&look_up_type_id(*self).to_string())
     }
 }
 
@@ -49,12 +49,6 @@ impl TypeId {
 impl JsonAbiString for TypeId {
     fn json_abi_str(&self) -> String {
         look_up_type_id(*self).json_abi_str()
-    }
-}
-
-impl FriendlyTypeString for TypeId {
-    fn friendly_type_str(&self) -> String {
-        look_up_type_id(*self).friendly_type_str()
     }
 }
 
