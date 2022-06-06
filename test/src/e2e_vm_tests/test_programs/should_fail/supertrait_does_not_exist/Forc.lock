@@ -1,3 +1,4 @@
 [[package]]
 name = 'supertrait_does_not_exist'
+source = 'root'
 dependencies = []

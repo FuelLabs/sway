@@ -1,3 +1,4 @@
 [[package]]
 name = 'dependencies_parsing_error'
+source = 'root'
 dependencies = []

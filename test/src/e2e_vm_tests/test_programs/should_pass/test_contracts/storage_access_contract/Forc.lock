@@ -1,17 +1,21 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-EE5FEA38729D9DF2'
 dependencies = []
 
 [[package]]
 name = 'std'
+source = 'path+from-root-EE5FEA38729D9DF2'
 dependencies = ['core']
 
 [[package]]
 name = 'storage_access_abi'
-dependencies = []
+source = 'path+from-root-EE5FEA38729D9DF2'
+dependencies = ['core']
 
 [[package]]
 name = 'storage_access_contract'
+source = 'root'
 dependencies = [
     'std',
     'storage_access_abi',

@@ -1,11 +1,14 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-CD761B243EFCCAC4'
 dependencies = []
 
 [[package]]
 name = 'nested_structs'
+source = 'root'
 dependencies = ['std']
 
 [[package]]
 name = 'std'
+source = 'path+from-root-CD761B243EFCCAC4'
 dependencies = ['core']
