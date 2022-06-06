@@ -8,12 +8,15 @@ Install `mdbook` and then open a new terminal session in order to run the subseq
 cargo install mdbook
 ```
 
-To set up and build the book locally, you must also have `mdbook-forc-documenter` preprocessor installed, the pre-existing forc plugins in the book as well as any new plugins you want to add to the book. If changes have to be made to the Forc commands or plugins chapters, please read the next section first.
-
-From the project root, run:
+To set up and build the book locally, you must also have `mdbook-forc-documenter` preprocessor installed. From the project root, install `mdbook-forc-documenter`:
 
 ```sh
 cargo install --path ./scripts/mdbook-forc-documenter
+```
+
+You should also install forc plugins that are already documented within the book. You can skip plugins that are going to be removed and install plugins that are going to be added to the book:
+
+```sh
 cargo install --path ./forc-plugins/forc-fmt
 cargo install --path ./forc-plugins/forc-lsp
 cargo install --path ./forc-plugins/forc-explore
