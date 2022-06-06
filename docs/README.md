@@ -14,7 +14,7 @@ To set up and build the book locally, you must also have `mdbook-forc-documenter
 cargo install --path ./scripts/mdbook-forc-documenter
 ```
 
-You should also install forc plugins that are already documented within the book. You can skip plugins that are going to be removed and install plugins that are going to be added to the book:
+You must also install forc plugins that are already documented within the book. You can skip plugins that are going to be removed and install plugins that are going to be added to the book:
 
 ```sh
 cargo install --path ./forc-plugins/forc-fmt
