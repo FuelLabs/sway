@@ -1,91 +1,62 @@
-# Structs, Tuples & Enums
+# Structs, Tuples, and Enums
 
 ## Structs
 
 Structs in Sway are a named grouping of types. You may also be familiar with structs via another name: _product types_. Sway does not make any significantly unique usages of structs; they are similar to most other languages which have structs. If you're coming from an object-oriented background, a struct is like the data attributes of an object.
 
-To declare a struct type, use _struct declaration syntax_:
+Firstly, we declare a struct named `Foo` with two fields. The first field is named `bar` and it accepts values of type `u64`, the second field is named `baz` and it accepts `bool` values. 
 
 ```sway
-struct Foo {
-    bar: u64,
-    baz: bool,
-}
+{{#include ../../../examples/structs/src/data_structures.sw}}
 ```
 
-This is saying that we have some structure named `Foo`. `Foo` has two fields: `bar`, a `u64`; and `baz`, a `bool`. To instantiate the structure `Foo`, we can use _struct instantiation syntax_, which is very similar to the declaration syntax except with expressions in place of types.
+In order to instantiate the struct we use _struct instantiation syntax_, which is very similar to the declaration syntax except with expressions in place of types.
+
+There are three ways to instantiate the struct.
+
+- Hardcoding values for the fields
+- Passing in variables with names different than the struct fields
+- Using a shorthand notation via variables that are the same as the field names
 
 ```sway
-let foo = Foo {
-    bar: 42,
-    baz: false,
-};
+{{#include ../../../examples/structs/src/main.sw}}
 ```
 
-To access a field of a struct, use _struct field access syntax_:
-
-```sway
-// Instantiate `foo`.
-let foo = Foo {
-    bar: 42,
-    baz: true,
-};
-
-// Access field `baz` of `foo`.
-assert(foo.baz);
-```
+> **Note**
+> You can mix and match all 3 ways to instantiate the struct at the same time.
+> Moreover, the order of the fields does not matter when instantiating however we encourage declaring the fields in alphabetical order and instantiating them in the same alphabetical order
 
 ### Struct Memory Layout
 
-_This information is not vital if you are new to the language, or programming in general._
+> **Note** 
+> This information is not vital if you are new to the language, or programming in general
 
 Structs have zero memory overhead. What that means is that in memory, each struct field is laid out sequentially. No metadata regarding the struct's name or other properties is preserved at runtime. In other words, structs are compile-time constructs. This is the same in Rust, but different in other languages with runtimes like Java.
 
 ## Tuples
 
-Tuples are a [basic static-length type](./built_in_types.md#tuple-types) which contain multiple different types within themselves. The type of a tuple is defined by the types of the values within it, and a tuple can contain basic types as well as structs and enums. An example of a tuple declaration is provided below.
+Tuples are a [basic static-length type](./built_in_types.md#tuple-types) which contain multiple different types within themselves. The type of a tuple is defined by the types of the values within it, and a tuple can contain basic types as well as structs and enums.
+
+You can access values directly by using the `.` syntax. Moreover, multiple variables can be extracted from a tuple using the destructuring syntax.
+
+> **Note**
+> You cannot mutate a tuple
 
 ```sway
-let my_tuple: (u64, bool, u64) = (100, false, 10000);
+{{#include ../../../examples/tuples/src/main.sw}}
 ```
-
-The values within this tuple can then be accessed with a `.` syntax in order of the type, starting at an index of 0 like shown in the example provided below.
-
-```sway
-let x: u64 = my_tuple.0;
-let y: bool = my_tuple.1;
-```
-
-Tuples can also contain tuples within themselves, and be used in destructing syntax to declare multiple values at once.
-
-Common usecases for tuples are returning multiple values from a function, packing parameters into a function, or storing a series of related values.
 
 ## Enums
 
-_Enumerations_, or _enums_, are also known as _sum types_. An enum is a type that could be one of several variants. To declare an enum, you enumerate all potential variants. Let's look at _enum declaration syntax_:
-
-```sway
-enum Color {
-    Blue: (),
-    Green: (),
-    Red: (),
-    Silver: (),
-    Grey: (),
-}
-```
+_Enumerations_, or _enums_, are also known as _sum types_. An enum is a type that could be one of several variants. To declare an enum, you enumerate all potential variants.
 
 Here, we have defined five potential colors. Each enum variant is just the color name. As there is no extra data associated with each variant, we say that each variant is of type `()`, or unit.
-
-To instantiate a variable with the value of an enum the syntax is
 
 > **Note**
 > enum instantiation does not require the `~` tilde syntax
 
 ```sway
-fn main() {
-    let blue = Color::Blue;
-    let silver = Color::Silver;
-}
+{{#include ../../../examples/enums/src/basic_enum.sw}}
 ```
 
 ### Enums of Structs
@@ -93,84 +64,38 @@ fn main() {
 It is also possible to have an enum variant contain extra data. Take a look at this more substantial example, which combines struct declarations with enum variants:
 
 ```sway
-use std::collections::Vec;
-use inventory_system::InventoryItem;
-use inventory_system::Insurer;
-
-struct Claim {
-    insurance_company: Insurer,
-    item_number: u64,
-    item_cost: u64,
-}
-
-struct Receipt {
-    customer: CustomerId,
-    items_purchased: Vec<InventoryItem>,
-}
-
-struct Refund {
-    customer: CustomerId,
-    items_returned: Vec<InventoryItem>,
-}
-
-enum InventoryEvent {
-    CustomerPurchase : Receipt,
-    ItemLoss         : Claim,
-    CustomerReturn   : Refund,
-}
-```
-
-If we wanted to instantiate an enum with some interior data, it looks like this:
-
-```sway
-fn main() {
-  let event = InventoryEvent::ItemLoss(Claim {
-      insurance_company: ~Insurer::default(),
-      item_number: 42,
-      item_cost: 1_000,
-  });
-}
+{{#include ../../../examples/enums/src/enum_of_structs.sw}}
 ```
 
 ### Enums of Enums
 
-It is possible to define enums of enums for example
+It is possible to define enums of enums
 
 ```sway
-enum Error {
-    StateError: StateError,
-    UserError: UserError,
-}
-
-enum StateError {
-    Void: (),
-    Pending: (),
-    Completed: (),
-}
-
-enum UserError {
-    InsufficientPermissions: (),
-    Unauthorized: (),
-}
+{{#include ../../../examples/enums/src/enum_of_enums.sw}}
 ```
 
-To use them the syntax is
+#### Preferred usage
+
+The preferred way to use enums is to use the individual (not nested) enums directly because they are easily to follow and the lines are short
 
 ```sway
-fn main() {
-    let error1 = Error::StateError(StateError::Void);
-    let error2 = Error::UserError(UserError::Unauthorized);
-}
+{{#include ../../../examples/enums/src/enums_preferred.sw}}
 ```
 
-The syntax above is not the most ergonomic but it is possible. It is advisable to not use the `enum Error` structure which nests `enums` and instead use the `enums` directly
+#### Inadvisable
+
+If you wish to use the nested form of enums via the `Error` then you can instantiate them into variables using the following syntax
 
 ```sway
-fn main() {
-    let error1 = StateError::Void;
-    let error2 = UserError::Unauthorized;
-}
+{{#include ../../../examples/enums/src/enums_avoid.sw}}
 ```
+
+Key points to note:
+
+- You must import all of the enums for use instead of just the `Error`
+- The lines may get unnecessarily long (depending on the names)
+- The syntax is not the most ergonomic
 
 ### Enum Memory Layout
 
