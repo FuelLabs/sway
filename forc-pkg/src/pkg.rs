@@ -181,8 +181,8 @@ pub enum SourceGitPinnedParseError {
 pub type DependencyName = String;
 
 pub struct PkgDiff {
-    pub added: Vec<Pkg>,
-    pub removed: Vec<Pkg>,
+    pub added: Vec<(String, Pkg)>,
+    pub removed: Vec<(String, Pkg)>,
 }
 
 impl BuildPlan {
@@ -305,12 +305,12 @@ impl BuildPlan {
             added = manifest_dep_pkgs
                 .difference(&plan_dep_pkgs)
                 .into_iter()
-                .map(|pkg| pkg.1.clone())
+                .map(|pkg| (pkg.0.clone(), pkg.1.clone()))
                 .collect();
             removed = plan_dep_pkgs
                 .difference(&manifest_dep_pkgs)
                 .into_iter()
-                .map(|pkg| pkg.1.clone())
+                .map(|pkg| (pkg.0.clone(), pkg.1.clone()))
                 .collect();
         }
 
@@ -349,14 +349,14 @@ impl BuildPlan {
 }
 /// Remove the given set of packages from `graph` along with any dependencies that are no
 /// longer required as a result.
-fn remove_deps(graph: &mut Graph, path_map: &PathMap, proj_node: NodeIx, to_remove: &[Pkg]) {
+fn remove_deps(graph: &mut Graph, path_map: &PathMap, proj_node: NodeIx, to_remove: &Vec<(String, Pkg)>) {
     use petgraph::visit::Bfs;
     // Find the edges between the root and the removed packages.
     let edges_to_remove: Vec<_> = graph
         .edges_directed(proj_node, Direction::Outgoing)
         .filter_map(|e| {
             let dep_pkg = graph[e.target()].unpinned(path_map);
-            if to_remove.contains(&dep_pkg) {
+            if to_remove.into_iter().find(|item| item.1 == dep_pkg).is_some() {
                 Some(e.id())
             } else {
                 None
@@ -388,7 +388,7 @@ fn add_deps(
     graph: &mut Graph,
     path_map: &mut PathMap,
     compilation_order: &[NodeIx],
-    to_add: &[Pkg],
+    to_add: &Vec<(String,Pkg)>,
     sway_git_tag: &str,
     offline_mode: bool,
     visited_map: &mut HashMap<Pinned, NodeIx>,
@@ -400,7 +400,7 @@ fn add_deps(
     let fetch_id = fetch_id(&path_map[&graph[*proj_node].id()], fetch_ts);
     let proj_node_after_delete = compilation_order.last().unwrap();
     for added_package in to_add {
-        let pinned_pkg = pin_pkg(fetch_id, added_package, path_map, sway_git_tag)?;
+        let pinned_pkg = pin_pkg(fetch_id, &added_package.1, path_map, sway_git_tag)?;
         let manifest = Manifest::from_dir(&path_map[&pinned_pkg.id()], sway_git_tag)?;
         let added_package_node = graph.add_node(pinned_pkg.clone());
         fetch_children(
@@ -416,7 +416,7 @@ fn add_deps(
         graph.add_edge(
             *proj_node_after_delete,
             added_package_node,
-            added_package.name.to_string(),
+            added_package.0.clone(),
         );
     }
     Ok(())
