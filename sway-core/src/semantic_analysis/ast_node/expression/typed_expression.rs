@@ -46,6 +46,139 @@ impl CopyTypes for TypedExpression {
     }
 }
 
+impl UnresolvedTypeCheck for TypedExpression {
+    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+        use TypedExpressionVariant::*;
+        match &self.expression {
+            TypeProperty { type_id, .. } => type_id.check_for_unresolved_types(),
+            FunctionApplication {
+                arguments,
+                function_body,
+                ..
+            } => {
+                let mut args = arguments
+                    .iter()
+                    .map(|x| &x.1)
+                    .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                    .collect::<Vec<_>>();
+                args.append(
+                    &mut function_body
+                        .contents
+                        .iter()
+                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .collect(),
+                );
+                args
+            }
+            // expressions don't ever have return types themselves, they're stored in
+            // `TypedExpression::return_type`. Variable expressions are just names of variables.
+            VariableExpression { .. } => vec![],
+            Tuple { fields } => fields
+                .iter()
+                .flat_map(|x| x.check_for_unresolved_types())
+                .collect(),
+            AsmExpression { registers, .. } => registers
+                .iter()
+                .filter_map(|x| x.initializer.as_ref())
+                .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                .collect::<Vec<_>>(),
+            StructExpression { fields, .. } => fields
+                .iter()
+                .flat_map(|x| x.value.check_for_unresolved_types())
+                .collect(),
+            LazyOperator { lhs, rhs, .. } => lhs
+                .check_for_unresolved_types()
+                .into_iter()
+                .chain(rhs.check_for_unresolved_types().into_iter())
+                .collect(),
+            Array { contents } => contents
+                .iter()
+                .flat_map(|x| x.check_for_unresolved_types())
+                .collect(),
+            ArrayIndex { prefix, .. } => prefix.check_for_unresolved_types(),
+            CodeBlock(block) => block
+                .contents
+                .iter()
+                .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                .collect(),
+            IfExp {
+                condition,
+                then,
+                r#else,
+            } => {
+                let mut buf = condition
+                    .check_for_unresolved_types()
+                    .into_iter()
+                    .chain(then.check_for_unresolved_types().into_iter())
+                    .collect::<Vec<_>>();
+                if let Some(r#else) = r#else {
+                    buf.append(&mut r#else.check_for_unresolved_types());
+                }
+                buf
+            }
+            StructFieldAccess {
+                prefix,
+                resolved_type_of_parent,
+                ..
+            } => prefix
+                .check_for_unresolved_types()
+                .into_iter()
+                .chain(
+                    resolved_type_of_parent
+                        .check_for_unresolved_types()
+                        .into_iter(),
+                )
+                .collect(),
+            TupleElemAccess {
+                prefix,
+                resolved_type_of_parent,
+                ..
+            } => prefix
+                .check_for_unresolved_types()
+                .into_iter()
+                .chain(
+                    resolved_type_of_parent
+                        .check_for_unresolved_types()
+                        .into_iter(),
+                )
+                .collect(),
+            EnumInstantiation {
+                enum_decl,
+                contents,
+                ..
+            } => {
+                let mut buf = if let Some(contents) = contents {
+                    contents.check_for_unresolved_types().into_iter().collect()
+                } else {
+                    vec![]
+                };
+                buf.append(
+                    &mut enum_decl
+                        .variants
+                        .iter()
+                        .flat_map(|x| x.r#type.check_for_unresolved_types())
+                        .collect(),
+                );
+                buf
+            }
+            SizeOfValue { expr } => expr.check_for_unresolved_types(),
+            AbiCast { address, .. } => address.check_for_unresolved_types(),
+            // storage access can never be generic
+            StorageAccess { .. }
+            | Literal(_)
+            | AbiName(_)
+            | FunctionParameter
+            | GetStorageKey { .. } => vec![],
+            EnumTag { exp } => exp.check_for_unresolved_types(),
+            UnsafeDowncast { exp, variant } => exp
+                .check_for_unresolved_types()
+                .into_iter()
+                .chain(variant.r#type.check_for_unresolved_types().into_iter())
+                .collect(),
+        }
+    }
+}
+
 pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
     TypedExpression {
         expression: TypedExpressionVariant::Tuple { fields: vec![] },
