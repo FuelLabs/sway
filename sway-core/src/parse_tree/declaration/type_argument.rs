@@ -1,7 +1,4 @@
-use crate::{
-    type_engine::{insert_type, look_up_type_id, JsonAbiString, ToJsonAbi, TypeId},
-    TypeInfo,
-};
+use crate::{type_engine::*, types::*};
 use fuels_types::Property;
 use std::hash::{Hash, Hasher};
 use sway_types::Span;
@@ -39,16 +36,22 @@ impl Default for TypeArgument {
     }
 }
 
-impl TypeArgument {
-    pub(crate) fn friendly_type_str(&self) -> String {
+impl FriendlyTypeString for TypeArgument {
+    fn friendly_type_str(&self) -> String {
         look_up_type_id(self.type_id).friendly_type_str()
     }
+}
 
-    pub(crate) fn json_abi_str(&self) -> String {
+impl JsonAbiString for TypeArgument {
+    fn json_abi_str(&self) -> String {
         look_up_type_id(self.type_id).json_abi_str()
     }
+}
 
-    pub fn generate_json_abi(&self) -> Property {
+impl ToJsonAbi for TypeArgument {
+    type Output = Property;
+
+    fn generate_json_abi(&self) -> Self::Output {
         Property {
             name: "__tuple_element".to_string(),
             type_field: self.type_id.json_abi_str(),

@@ -13,15 +13,10 @@ pub use r#struct::*;
 pub use storage::*;
 pub use variable::*;
 
-use super::{
-    copy_types::TypeMapping, impl_trait::Mode, CopyTypes, TypedCodeBlock, TypedExpression,
-};
-use crate::{
-    error::*, parse_tree::*, semantic_analysis::TypeCheckedStorageReassignment, type_engine::*,
-    Ident,
-};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
 use derivative::Derivative;
-use sway_types::Span;
+use std::borrow::Cow;
+use sway_types::{Ident, Span};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TypedDeclaration {
@@ -286,9 +281,15 @@ impl TypedDeclaration {
             TraitDeclaration(TypedTraitDeclaration { name, .. }) => name.span().clone(),
             StructDeclaration(TypedStructDeclaration { name, .. }) => name.span().clone(),
             EnumDeclaration(TypedEnumDeclaration { span, .. }) => span.clone(),
-            Reassignment(TypedReassignment { lhs, .. }) => lhs
+            Reassignment(TypedReassignment {
+                lhs_base_name,
+                lhs_indices,
+                ..
+            }) => lhs_indices
                 .iter()
-                .fold(lhs[0].span(), |acc, this| Span::join(acc, this.span())),
+                .fold(lhs_base_name.span().clone(), |acc, this| {
+                    Span::join(acc, this.span())
+                }),
             AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
             ImplTrait { span, .. } => span.clone(),
             StorageDeclaration(decl) => decl.span(),
@@ -337,11 +338,19 @@ impl TypedDeclaration {
                     name.as_str().into(),
                 TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. }) =>
                     name.as_str().into(),
-                TypedDeclaration::Reassignment(TypedReassignment { lhs, .. }) => lhs
-                    .iter()
-                    .map(|x| x.name.as_str())
-                    .collect::<Vec<_>>()
-                    .join("."),
+                TypedDeclaration::Reassignment(TypedReassignment {
+                    lhs_base_name,
+                    lhs_indices,
+                    ..
+                }) => {
+                    std::iter::once(Cow::Borrowed(lhs_base_name.as_str()))
+                        .chain(
+                            lhs_indices
+                                .iter()
+                                .flat_map(|x| [Cow::Borrowed("."), x.pretty_print()]),
+                        )
+                        .collect::<String>()
+                }
                 _ => String::new(),
             }
         )
@@ -478,8 +487,14 @@ impl TypedTraitFn {
 /// in asm generation.
 #[derive(Clone, Debug, Eq)]
 pub struct ReassignmentLhs {
-    pub name: Ident,
+    pub kind: ProjectionKind,
     pub r#type: TypeId,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ProjectionKind {
+    StructField { name: Ident },
+    TupleField { index: usize, index_span: Span },
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -487,13 +502,23 @@ pub struct ReassignmentLhs {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEq for ReassignmentLhs {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
+        self.kind == other.kind && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
     }
 }
 
-impl ReassignmentLhs {
+impl ProjectionKind {
     pub(crate) fn span(&self) -> Span {
-        self.name.span().clone()
+        match self {
+            ProjectionKind::StructField { name } => name.span().clone(),
+            ProjectionKind::TupleField { index_span, .. } => index_span.clone(),
+        }
+    }
+
+    pub(crate) fn pretty_print(&self) -> Cow<str> {
+        match self {
+            ProjectionKind::StructField { name } => Cow::Borrowed(name.as_str()),
+            ProjectionKind::TupleField { index, .. } => Cow::Owned(index.to_string()),
+        }
     }
 }
 
@@ -501,21 +526,16 @@ impl ReassignmentLhs {
 pub struct TypedReassignment {
     // either a direct variable, so length of 1, or
     // at series of struct fields/array indices (array syntax)
-    pub lhs: Vec<ReassignmentLhs>,
+    pub lhs_base_name: Ident,
+    pub lhs_type: TypeId,
+    pub lhs_indices: Vec<ProjectionKind>,
     pub rhs: TypedExpression,
 }
 
 impl CopyTypes for TypedReassignment {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.rhs.copy_types(type_mapping);
-        self.lhs.iter_mut().for_each(
-            |ReassignmentLhs {
-                 ref mut r#type,
-                 name,
-                 ..
-             }| {
-                r#type.update_type(type_mapping, name.span());
-            },
-        );
+        self.lhs_type
+            .update_type(type_mapping, self.lhs_base_name.span());
     }
 }

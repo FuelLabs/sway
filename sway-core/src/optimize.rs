@@ -1436,7 +1436,7 @@ impl FnCompiler {
     ) -> Result<Value, CompileError> {
         let name = self
             .lexical_map
-            .get(ast_reassignment.lhs[0].name.as_str())
+            .get(ast_reassignment.lhs_base_name.as_str())
             .expect("All local symbols must be in the lexical symbol map.");
 
         // First look for a local ptr with the required name
@@ -1455,7 +1455,7 @@ impl FnCompiler {
                     .ok_or_else(|| {
                         CompileError::InternalOwned(
                             format!("variable not found: {name}"),
-                            ast_reassignment.lhs[0].name.span().clone(),
+                            ast_reassignment.lhs_base_name.span().clone(),
                         )
                     })?
                     .1
@@ -1464,8 +1464,7 @@ impl FnCompiler {
 
         let reassign_val = self.compile_expression(context, ast_reassignment.rhs)?;
 
-        assert!(!ast_reassignment.lhs.is_empty());
-        if ast_reassignment.lhs.len() == 1 {
+        if ast_reassignment.lhs_indices.is_empty() {
             // A non-aggregate; use a `store`.
             self.current_block
                 .ins(context)
@@ -1474,17 +1473,20 @@ impl FnCompiler {
             // An aggregate.  Iterate over the field names from the left hand side and collect
             // field indices.  The struct type from the previous iteration is used to determine the
             // field type for the current iteration.
-            let field_idcs = get_indices_for_struct_access(&ast_reassignment.lhs)?;
+            let field_idcs = get_indices_for_struct_access(
+                ast_reassignment.lhs_type,
+                &ast_reassignment.lhs_indices,
+            )?;
 
             let ty = match val.get_type(context).unwrap() {
                 Type::Struct(aggregate) => aggregate,
                 _otherwise => {
                     let spans = ast_reassignment
-                        .lhs
+                        .lhs_indices
                         .iter()
-                        .map(|lhs| lhs.name.span().clone())
-                        .reduce(Span::join)
-                        .expect("Joined spans of LHS of reassignment.");
+                        .fold(ast_reassignment.lhs_base_name.span().clone(), |acc, lhs| {
+                            Span::join(acc, lhs.span())
+                        });
                     return Err(CompileError::Internal(
                         "Reassignment with multiple accessors to non-aggregate.",
                         spans,
@@ -1527,7 +1529,8 @@ impl FnCompiler {
 
         // Get the list of indices used to access the storage field. This will be empty
         // if the storage field type is not a struct.
-        let field_idcs = get_indices_for_struct_access(fields)?;
+        let base_type = fields[0].r#type;
+        let field_idcs = get_indices_for_struct_access(base_type, &fields[1..])?;
 
         // Do the actual work. This is a recursive function because we want to drill down
         // to store each primitive type in the storage field in its own storage slot.
@@ -1712,12 +1715,15 @@ impl FnCompiler {
             )),
         }?;
 
-        let field_idx = match get_struct_name_and_field_index(struct_type_id, &ast_field.name) {
+        let field_kind = ProjectionKind::StructField {
+            name: ast_field.name.clone(),
+        };
+        let field_idx = match get_struct_name_field_index_and_type(struct_type_id, field_kind) {
             None => Err(CompileError::Internal(
                 "Unknown struct in field expression.",
                 ast_field.span,
             )),
-            Some((struct_name, field_idx)) => match field_idx {
+            Some((struct_name, field_idx_and_type_opt)) => match field_idx_and_type_opt {
                 None => Err(CompileError::InternalOwned(
                     format!(
                         "Unknown field name '{}' for struct '{struct_name}' in field expression.",
@@ -1725,7 +1731,7 @@ impl FnCompiler {
                     ),
                     ast_field.span,
                 )),
-                Some(field_idx) => Ok(field_idx),
+                Some((field_idx, _field_type)) => Ok(field_idx),
             },
         }?;
 
@@ -1871,7 +1877,9 @@ impl FnCompiler {
 
         // Get the list of indices used to access the storage field. This will be empty
         // if the storage field type is not a struct.
-        let field_idcs = get_indices_for_struct_access(fields)?;
+        // FIXME: shouldn't have to extract the first field like this.
+        let base_type = fields[0].r#type;
+        let field_idcs = get_indices_for_struct_access(base_type, &fields[1..])?;
 
         // Do the actual work. This is a recursive function because we want to drill down
         // to load each primitive type in the storage field in its own storage slot.
@@ -2015,7 +2023,7 @@ impl FnCompiler {
                 }
                 struct_val
             }
-            Type::Bool | Type::Uint(_) | Type::B256 => {
+            Type::Bool | Type::Uint(_) | Type::B256 | Type::Union(_) | Type::String(_) => {
                 // Calculate the storage location hash for the given field
                 let mut storage_slot_to_hash = format!(
                     "{}{}",
@@ -2051,7 +2059,7 @@ impl FnCompiler {
 
                 // Convert the key pointer to a value using get_ptr
                 let key_ptr_ty = *key_ptr.get_type(context);
-                let key_ptr_val =
+                let mut key_ptr_val =
                     self.current_block
                         .ins(context)
                         .get_ptr(key_ptr, key_ptr_ty, 0, span_md_idx);
@@ -2148,6 +2156,123 @@ impl FnCompiler {
                             }
                         }
                     }
+                    Type::Union(_) | Type::String(_) => {
+                        // Use state_load_quad_word/state_store_quad_word as many times as needed
+                        // using sequential keys
+
+                        // First, create a name for the value to load from or store to
+                        let value_name = format!(
+                            "val_for_{}{}",
+                            ix.to_usize(),
+                            indices
+                                .iter()
+                                .map(|idx| format!("_{idx}"))
+                                .collect::<Vec<_>>()
+                                .join("")
+                        );
+                        let alias_value_name = self.lexical_map.insert(value_name);
+
+                        // Create an array of `b256` that will hold the value to store into storage
+                        // or the value loaded from storage. The array has to fit the whole type.
+                        let number_of_elements = (ir_type_size_in_bytes(context, r#type) + 31) / 32;
+                        let b256_array_type = Type::Array(Aggregate::new_array(
+                            context,
+                            Type::B256,
+                            number_of_elements,
+                        ));
+
+                        // Local pointer to hold the array of b256s
+                        let value_ptr = self
+                            .function
+                            .new_local_ptr(context, alias_value_name, b256_array_type, true, None)
+                            .map_err(|ir_error| {
+                                CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                            })?;
+
+                        // Convert the local pointer created to a value of the original type using
+                        // get_ptr.
+                        let value_ptr_val = self.current_block.ins(context).get_ptr(
+                            value_ptr,
+                            *r#type,
+                            0,
+                            span_md_idx,
+                        );
+
+                        if rhs.is_some() {
+                            // Store the value to the local pointer created for rhs
+                            self.current_block.ins(context).store(
+                                value_ptr_val,
+                                rhs.expect("expecting a rhs for write"),
+                                span_md_idx,
+                            );
+                        }
+
+                        fn add_to_b256(x: fuel_types::Bytes32, y: u64) -> fuel_types::Bytes32 {
+                            let x = bigint::uint::U256::from(*x);
+                            let y = bigint::uint::U256::from(y);
+                            let res: [u8; 32] = (x + y).into();
+                            fuel_types::Bytes32::from(res)
+                        }
+
+                        for array_index in 0..number_of_elements {
+                            if array_index > 0 {
+                                // Prepare key for the next iteration but not for array index 0
+                                // because the first key was generated earlier.
+                                // Const value for the key from the initial hash + array_index
+                                let const_key = convert_literal_to_value(
+                                    context,
+                                    &Literal::B256(*add_to_b256(hashed_storage_slot, array_index)),
+                                    span_md_idx,
+                                );
+
+                                // Convert the key pointer to a value using get_ptr
+                                key_ptr_val = self.current_block.ins(context).get_ptr(
+                                    key_ptr,
+                                    key_ptr_ty,
+                                    0,
+                                    span_md_idx,
+                                );
+
+                                // Store the const hash value to the key pointer value
+                                self.current_block.ins(context).store(
+                                    key_ptr_val,
+                                    const_key,
+                                    span_md_idx,
+                                );
+                            }
+
+                            // Get the b256 from the array at index iter
+                            let value_ptr_val_b256 = self.current_block.ins(context).get_ptr(
+                                value_ptr,
+                                Type::B256,
+                                array_index,
+                                span_md_idx,
+                            );
+
+                            match access_type {
+                                StateAccessType::Read => {
+                                    self.current_block.ins(context).state_load_quad_word(
+                                        value_ptr_val_b256,
+                                        key_ptr_val,
+                                        span_md_idx,
+                                    );
+                                }
+                                StateAccessType::Write => {
+                                    // Finally, just call state_load_quad_word/state_store_quad_word
+                                    self.current_block.ins(context).state_store_quad_word(
+                                        value_ptr_val_b256,
+                                        key_ptr_val,
+                                        span_md_idx,
+                                    );
+                                }
+                            }
+                        }
+
+                        match access_type {
+                            StateAccessType::Read => value_ptr_val,
+                            StateAccessType::Write => rhs.expect("expecting a rhs for write"),
+                        }
+                    }
                     _ => unreachable!(),
                 }
             }
@@ -2232,23 +2357,25 @@ impl LexicalMap {
 // -------------------------------------------------------------------------------------------------
 // Get the name of a struct and the index to a particular named field from a TypeId.
 
-fn get_struct_name_and_field_index(
+fn get_struct_name_field_index_and_type(
     field_type: TypeId,
-    field_name: &Ident,
-) -> Option<(String, Option<u64>)> {
-    resolve_type(field_type, field_name.span())
-        .ok()
-        .and_then(|ty_info| match ty_info {
-            TypeInfo::Struct { name, fields, .. } => Some((
-                name.as_str().to_owned(),
-                fields
-                    .iter()
-                    .enumerate()
-                    .find(|(_, field)| &field.name == field_name)
-                    .map(|(idx, _)| idx as u64),
-            )),
-            _otherwise => None,
-        })
+    field_kind: ProjectionKind,
+) -> Option<(String, Option<(u64, TypeId)>)> {
+    let ty_info = resolve_type(field_type, &field_kind.span()).ok()?;
+    match (ty_info, field_kind) {
+        (
+            TypeInfo::Struct { name, fields, .. },
+            ProjectionKind::StructField { name: field_name },
+        ) => Some((
+            name.as_str().to_owned(),
+            fields
+                .iter()
+                .enumerate()
+                .find(|(_, field)| field.name == field_name)
+                .map(|(idx, field)| (idx as u64, field.r#type)),
+        )),
+        _otherwise => None,
+    }
 }
 
 // To gather the indices into nested structs for the struct oriented IR instructions we need to
@@ -2257,58 +2384,101 @@ fn get_struct_name_and_field_index(
 // trait.  And we can even wrap the implementation in a macro.
 
 trait TypedNamedField {
-    fn get_type(&self) -> TypeId;
-    fn get_name(&self) -> &Ident;
+    fn get_field_kind(&self) -> ProjectionKind;
 }
 
 macro_rules! impl_typed_named_field_for {
     ($field_type_name: ident) => {
         impl TypedNamedField for $field_type_name {
-            fn get_type(&self) -> TypeId {
-                self.r#type
-            }
-            fn get_name(&self) -> &Ident {
-                &self.name
+            fn get_field_kind(&self) -> ProjectionKind {
+                ProjectionKind::StructField {
+                    name: self.name.clone(),
+                }
             }
         }
     };
 }
 
-impl_typed_named_field_for!(ReassignmentLhs);
+impl TypedNamedField for ProjectionKind {
+    fn get_field_kind(&self) -> ProjectionKind {
+        self.clone()
+    }
+}
+
 impl_typed_named_field_for!(TypeCheckedStorageAccessDescriptor);
 impl_typed_named_field_for!(TypeCheckedStorageReassignDescriptor);
 
 fn get_indices_for_struct_access<F: TypedNamedField>(
+    base_type: TypeId,
     fields: &[F],
 ) -> Result<Vec<u64>, CompileError> {
-    fields[1..]
+    fields
         .iter()
-        .fold(Ok((Vec::new(), fields[0].get_type())), |acc, field| {
-            // Make sure we have an aggregate to index into.
-            acc.and_then(|(mut fld_idcs, prev_type_id)| {
+        .try_fold(
+            (Vec::new(), base_type),
+            |(mut fld_idcs, prev_type_id), field| {
+                let field_kind = field.get_field_kind();
+                let ty_info = match resolve_type(prev_type_id, &field_kind.span()) {
+                    Ok(ty_info) => ty_info,
+                    Err(error) => {
+                        return Err(CompileError::InternalOwned(
+                            format!("type error resolving type for reassignment: {}", error),
+                            field_kind.span(),
+                        ));
+                    }
+                };
+                // Make sure we have an aggregate to index into.
                 // Get the field index and also its type for the next iteration.
-                match get_struct_name_and_field_index(prev_type_id, field.get_name()) {
-                    None => Err(CompileError::Internal(
-                        "Unknown struct in in reassignment.",
-                        Span::dummy(),
+                match (ty_info, &field_kind) {
+                    (
+                        TypeInfo::Struct { name, fields, .. },
+                        ProjectionKind::StructField { name: field_name },
+                    ) => {
+                        let field_idx_and_type_opt = fields
+                            .iter()
+                            .enumerate()
+                            .find(|(_, field)| field.name == *field_name);
+                        let (field_idx, field_type) = match field_idx_and_type_opt {
+                            Some((idx, field)) => (idx as u64, field.r#type),
+                            None => {
+                                return Err(CompileError::InternalOwned(
+                                    format!(
+                                        "Unknown field '{}' for struct {} in reassignment.",
+                                        field_kind.pretty_print(),
+                                        name,
+                                    ),
+                                    field_kind.span(),
+                                ));
+                            }
+                        };
+                        // Save the field index.
+                        fld_idcs.push(field_idx);
+                        Ok((fld_idcs, field_type))
+                    }
+                    (TypeInfo::Tuple(fields), ProjectionKind::TupleField { index, .. }) => {
+                        let field_type = match fields.get(*index) {
+                            Some(field_type_argument) => field_type_argument.type_id,
+                            None => {
+                                return Err(CompileError::InternalOwned(
+                                    format!(
+                                        "index {} is out of bounds for tuple of length {}",
+                                        index,
+                                        fields.len(),
+                                    ),
+                                    field_kind.span(),
+                                ));
+                            }
+                        };
+                        fld_idcs.push(*index as u64);
+                        Ok((fld_idcs, field_type))
+                    }
+                    _ => Err(CompileError::Internal(
+                        "Unknown aggregate in reassignment.",
+                        field_kind.span(),
                     )),
-                    Some((struct_name, field_idx)) => match field_idx {
-                        None => Err(CompileError::InternalOwned(
-                            format!(
-                                "Unknown field name '{}' for struct {struct_name} in reassignment.",
-                                field.get_name(),
-                            ),
-                            field.get_name().span().clone(),
-                        )),
-                        Some(field_idx) => {
-                            // Save the field index.
-                            fld_idcs.push(field_idx);
-                            Ok((fld_idcs, field.get_type()))
-                        }
-                    },
                 }
-            })
-        })
+            },
+        )
         .map(|(fld_idcs, _)| fld_idcs)
 }
 
@@ -2602,7 +2772,6 @@ mod tests {
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,
-            generated_names: Default::default(),
         };
         let mut warnings = vec![];
         let mut errors = vec![];

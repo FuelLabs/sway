@@ -1,0 +1,25 @@
+[
+  {
+    "inputs": [],
+    "name": "main",
+    "outputs": [
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "field_1",
+            "type": "u64"
+          },
+          {
+            "components": null,
+            "name": "field_2",
+            "type": "b256"
+          }
+        ],
+        "name": "",
+        "type": "struct BiggerThanAWord"
+      }
+    ],
+    "type": "function"
+  }
+]

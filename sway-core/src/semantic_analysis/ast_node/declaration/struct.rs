@@ -1,16 +1,9 @@
 use crate::{
-    error::*,
-    namespace::Items,
-    parse_tree::*,
-    semantic_analysis::{ast_node::copy_types::TypeMapping, insert_type_parameters, CopyTypes},
-    type_engine::*,
-    CompileError, CompileResult, Ident, Namespace,
+    error::*, namespace::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*,
 };
 use fuels_types::Property;
 use std::hash::{Hash, Hasher};
-use sway_types::Span;
-
-use super::{monomorphize_inner, CreateTypeId, EnforceTypeArguments, MonomorphizeHelper};
+use sway_types::{Ident, Span};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedStructDeclaration {
@@ -83,42 +76,33 @@ impl TypedStructDeclaration {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        let StructDeclaration {
+            name,
+            fields,
+            mut type_parameters,
+            visibility,
+            span,
+        } = decl;
+
         // create a namespace for the decl, used to create a scope for generics
         let mut namespace = namespace.clone();
 
         // insert type parameters as Unknown types
-        let type_mapping = insert_type_parameters(&decl.type_parameters);
+        let type_mapping = insert_type_parameters(&type_parameters);
 
         // update the types in the type parameters
-        let new_type_parameters = decl
-            .type_parameters
-            .into_iter()
-            .map(|mut type_parameter| {
-                type_parameter.type_id = match look_up_type_id(type_parameter.type_id)
-                    .matches_type_parameter(&type_mapping)
-                {
-                    Some(matching_id) => {
-                        insert_type(TypeInfo::Ref(matching_id, type_parameter.span()))
-                    }
-                    None => check!(
-                        namespace.resolve_type_with_self(
-                            look_up_type_id(type_parameter.type_id),
-                            self_type,
-                            &type_parameter.span(),
-                            EnforceTypeArguments::Yes
-                        ),
-                        insert_type(TypeInfo::ErrorRecovery),
-                        warnings,
-                        errors,
-                    ),
-                };
-                type_parameter
-            })
-            .collect::<Vec<_>>();
+        for type_parameter in type_parameters.iter_mut() {
+            check!(
+                type_parameter.update_types(&type_mapping, &mut namespace, self_type),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+        }
 
         // insert the generics into the decl namespace and
         // check to see if the type parameters shadow one another
-        for type_parameter in new_type_parameters.iter() {
+        for type_parameter in type_parameters.iter() {
             check!(
                 namespace.insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
                 continue,
@@ -129,7 +113,7 @@ impl TypedStructDeclaration {
 
         // type check the fields
         let mut new_fields = vec![];
-        for field in decl.fields.into_iter() {
+        for field in fields.into_iter() {
             new_fields.push(check!(
                 TypedStructField::type_check(field, &mut namespace, self_type, &type_mapping),
                 return err(warnings, errors),
@@ -140,11 +124,11 @@ impl TypedStructDeclaration {
 
         // create the struct decl
         let decl = TypedStructDeclaration {
-            name: decl.name.clone(),
-            type_parameters: new_type_parameters,
+            name,
+            type_parameters,
             fields: new_fields,
-            visibility: decl.visibility,
-            span: decl.span,
+            visibility,
+            span,
         };
 
         ok(decl, warnings, errors)
@@ -208,6 +192,18 @@ impl CopyTypes for TypedStructField {
     }
 }
 
+impl ToJsonAbi for TypedStructField {
+    type Output = Property;
+
+    fn generate_json_abi(&self) -> Self::Output {
+        Property {
+            name: self.name.to_string(),
+            type_field: self.r#type.json_abi_str(),
+            components: self.r#type.generate_json_abi(),
+        }
+    }
+}
+
 impl TypedStructField {
     pub(crate) fn type_check(
         field: StructField,
@@ -237,13 +233,5 @@ impl TypedStructField {
             span: field.span,
         };
         ok(field, warnings, errors)
-    }
-
-    pub fn generate_json_abi(&self) -> Property {
-        Property {
-            name: self.name.to_string(),
-            type_field: self.r#type.json_abi_str(),
-            components: self.r#type.generate_json_abi(),
-        }
     }
 }

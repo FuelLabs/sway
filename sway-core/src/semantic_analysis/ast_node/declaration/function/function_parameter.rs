@@ -1,8 +1,4 @@
-use crate::{
-    semantic_analysis::{CopyTypes, TypeMapping},
-    type_engine::*,
-    Ident,
-};
+use crate::{type_engine::*, Ident};
 
 use sway_types::span::Span;
 

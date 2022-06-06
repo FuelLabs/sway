@@ -4,11 +4,12 @@ use crate::utils::{
     program_type::{ProgramType, ProgramType::*},
 };
 use anyhow::Result;
-use forc_util::{print_light_blue, print_light_green, validate_name};
+use forc_util::{println_green, validate_name};
 use serde::Deserialize;
 use std::fs;
 use std::path::Path;
 use sway_utils::constants;
+use tracing::info;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -69,25 +70,30 @@ struct GithubTree {
 }
 
 fn print_welcome_message() {
-    print_light_green("To compile, use `forc build`, and to run tests use `forc test`\n\n");
+    let read_the_docs = format!(
+        "Read the Docs:\n- {}\n- {}\n- {}",
+        "Sway Book: https://fuellabs.github.io/sway/latest",
+        "Rust SDK Book: https://fuellabs.github.io/fuels-rs/latest",
+        "TypeScript SDK: https://github.com/FuelLabs/fuels-ts"
+    );
 
-    print_light_blue("Read the Docs:\n");
-    print_light_green("- Sway Book: ");
-    print_light_blue("https://fuellabs.github.io/sway/latest\n");
-    print_light_green("- Rust SDK Book: ");
-    print_light_blue("https://fuellabs.github.io/fuels-rs/latest\n");
-    print_light_green("- TypeScript SDK: ");
-    print_light_blue("https://github.com/FuelLabs/fuels-ts\n\n");
+    let join_the_community = format!(
+        "Join the Community:\n- Follow us {}
+- Ask questions in dev-chat on {}",
+        "@SwayLang: https://twitter.com/SwayLang", "Discord: https://discord.com/invite/xfpK4Pe"
+    );
 
-    print_light_blue("Join the Community:\n");
-    print_light_green("- Follow us @SwayLang: ");
-    print_light_blue("https://twitter.com/SwayLang\n");
-    print_light_green("- Ask questions in dev-chat on Discord: ");
-    print_light_blue("https://discord.com/invite/xfpK4Pe\n\n");
+    let report_bugs = format!(
+        "Report Bugs:\n- {}",
+        "Sway Issues: https://github.com/FuelLabs/sway/issues/new"
+    );
 
-    print_light_blue("Report Bugs:\n");
-    print_light_green("- Sway Issues: ");
-    print_light_blue("https://github.com/FuelLabs/sway/issues/new\n");
+    let try_forc = "To compile, use `forc build`, and to run tests use `forc test`";
+
+    info!(
+        "\n{}\n\n----\n\n{}\n\n{}\n\n{}\n\n",
+        try_forc, read_the_docs, join_the_community, report_bugs
+    );
 }
 
 pub fn init(command: InitCommand) -> Result<()> {
@@ -180,8 +186,8 @@ pub(crate) fn init_new_project(project_name: String, program_type: ProgramType) 
         defaults::default_gitignore(),
     )?;
 
-    print_light_green(&format!(
-        "\nSuccessfully created {program_type}: {project_name}\n",
+    println_green(&format!(
+        "Successfully created {program_type}: {project_name}",
     ));
 
     print_welcome_message();

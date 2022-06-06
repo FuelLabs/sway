@@ -44,7 +44,7 @@ impl Attacker for Contract {
     }
 
     fn evil_callback_1() -> bool {
-        let result: Result<Sender, AuthError> = msg_sender();
+        let result: Result<Identity, AuthError> = msg_sender();
         let id = get_msg_sender_id_or_panic(result);
 
         let attacker = abi(Attacker, ~ContractId::into(contract_id()));

@@ -20,7 +20,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         std::env::current_dir()?
     };
     let manifest = ManifestFile::from_dir(&curr_dir, SWAY_GIT_TAG)?;
-    manifest.check_program_type(TreeType::Contract)?;
+    manifest.check_program_type(vec![TreeType::Contract])?;
 
     let DeployCommand {
         path,
@@ -35,6 +35,8 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         minify_json_abi,
         locked,
         url,
+        build_profile,
+        release,
     } = command;
 
     let build_command = BuildCommand {
@@ -49,6 +51,8 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         output_directory,
         minify_json_abi,
         locked,
+        build_profile,
+        release,
     };
 
     let compiled = forc_build::build(build_command)?;

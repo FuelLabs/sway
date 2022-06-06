@@ -1,4 +1,4 @@
-use crate::{parse_tree::Literal, types::ResolvedType};
+use crate::{parse_tree::*, type_engine::*};
 use std::fmt::{self, Write};
 
 type Data = Literal;
