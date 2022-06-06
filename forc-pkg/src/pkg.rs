@@ -349,14 +349,19 @@ impl BuildPlan {
 }
 /// Remove the given set of packages from `graph` along with any dependencies that are no
 /// longer required as a result.
-fn remove_deps(graph: &mut Graph, path_map: &PathMap, proj_node: NodeIx, to_remove: &Vec<(String, Pkg)>) {
+fn remove_deps(
+    graph: &mut Graph,
+    path_map: &PathMap,
+    proj_node: NodeIx,
+    to_remove: &[(String, Pkg)],
+) {
     use petgraph::visit::Bfs;
     // Find the edges between the root and the removed packages.
     let edges_to_remove: Vec<_> = graph
         .edges_directed(proj_node, Direction::Outgoing)
         .filter_map(|e| {
             let dep_pkg = graph[e.target()].unpinned(path_map);
-            if to_remove.into_iter().find(|item| item.1 == dep_pkg).is_some() {
+            if to_remove.iter().any(|item| item.1 == dep_pkg) {
                 Some(e.id())
             } else {
                 None
@@ -388,7 +393,7 @@ fn add_deps(
     graph: &mut Graph,
     path_map: &mut PathMap,
     compilation_order: &[NodeIx],
-    to_add: &Vec<(String,Pkg)>,
+    to_add: &[(String, Pkg)],
     sway_git_tag: &str,
     offline_mode: bool,
     visited_map: &mut HashMap<Pinned, NodeIx>,
