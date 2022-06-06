@@ -1,6 +1,8 @@
+use std::fmt;
+
 use crate::Ident;
 
-use sway_types::span::Span;
+use sway_types::{span::Span, Spanned};
 
 /// in the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -22,7 +24,6 @@ impl std::convert::From<Ident> for CallPath {
     }
 }
 
-use std::fmt;
 impl fmt::Display for CallPath {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut buf = self.prefixes.iter().map(|x| x.as_str()).collect::<Vec<_>>();
@@ -32,6 +33,23 @@ impl fmt::Display for CallPath {
         write!(f, "{}", buf.join("::"))
     }
 }
+
+impl Spanned for CallPath {
+    fn span(&self) -> Span {
+        if self.prefixes.is_empty() {
+            self.suffix.span().clone()
+        } else {
+            let prefixes_span = self
+                .prefixes
+                .iter()
+                .fold(self.prefixes[0].span().clone(), |acc, sp| {
+                    Span::join(acc, sp.span().clone())
+                });
+            Span::join(prefixes_span, self.suffix.span().clone())
+        }
+    }
+}
+
 impl CallPath {
     /// shifts the last prefix into the suffix and removes the old suffix
     /// noop if prefixes are empty
@@ -46,33 +64,8 @@ impl CallPath {
             }
         }
     }
-}
-impl CallPath {
-    pub(crate) fn span(&self) -> Span {
-        if self.prefixes.is_empty() {
-            self.suffix.span().clone()
-        } else {
-            let prefixes_span = self
-                .prefixes
-                .iter()
-                .fold(self.prefixes[0].span().clone(), |acc, sp| {
-                    Span::join(acc, sp.span().clone())
-                });
-            Span::join(prefixes_span, self.suffix.span().clone())
-        }
-    }
 
     pub(crate) fn full_path(&self) -> impl Iterator<Item = &Ident> {
         self.prefixes.iter().chain(Some(&self.suffix))
-    }
-
-    pub(crate) fn friendly_name(&self) -> String {
-        let mut buf = String::new();
-        for prefix in self.prefixes.iter() {
-            buf.push_str(prefix.as_str());
-            buf.push_str("::");
-        }
-        buf.push_str(self.suffix.as_str());
-        buf
     }
 }

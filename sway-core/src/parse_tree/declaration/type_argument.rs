@@ -1,6 +1,9 @@
 use crate::{type_engine::*, types::*};
 use fuels_types::Property;
-use std::hash::{Hash, Hasher};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
 use sway_types::Span;
 
 #[derive(Debug, Clone)]
@@ -36,9 +39,9 @@ impl Default for TypeArgument {
     }
 }
 
-impl FriendlyTypeString for TypeArgument {
-    fn friendly_type_str(&self) -> String {
-        look_up_type_id(self.type_id).friendly_type_str()
+impl fmt::Display for TypeArgument {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&look_up_type_id(self.type_id).to_string())
     }
 }
 

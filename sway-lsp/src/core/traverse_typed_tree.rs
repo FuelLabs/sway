@@ -6,7 +6,7 @@ use sway_core::semantic_analysis::ast_node::{
         typed_expression::TypedExpression, typed_expression_variant::TypedExpressionVariant,
     },
     while_loop::TypedWhileLoop,
-    {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
+    TypedIntrinsicFunctionKind, {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
 };
 use sway_core::type_engine::TypeId;
 use sway_types::{ident::Ident, span::Span};
@@ -306,10 +306,8 @@ fn handle_expression(expression: &TypedExpression, tokens: &mut TokenMap) {
                 );
             }
         }
-        TypedExpressionVariant::TypeProperty { .. } => {}
-        TypedExpressionVariant::GetStorageKey { .. } => {}
-        TypedExpressionVariant::SizeOfValue { expr } => {
-            handle_expression(expr, tokens);
+        TypedExpressionVariant::IntrinsicFunction(kind) => {
+            handle_intrinsic_function(kind, tokens);
         }
         TypedExpressionVariant::AbiName { .. } => {}
         TypedExpressionVariant::EnumTag { exp } => {
@@ -322,6 +320,16 @@ fn handle_expression(expression: &TypedExpression, tokens: &mut TokenMap) {
                 TokenType::TypedExpression(expression.clone()),
             );
         }
+    }
+}
+
+fn handle_intrinsic_function(kind: &TypedIntrinsicFunctionKind, tokens: &mut TokenMap) {
+    match kind {
+        TypedIntrinsicFunctionKind::SizeOfVal { exp } => {
+            handle_expression(exp, tokens);
+        }
+        TypedIntrinsicFunctionKind::GetPropertyOfType { .. } => {}
+        TypedIntrinsicFunctionKind::GetStorageKey => {}
     }
 }
 

@@ -7,6 +7,7 @@ pub mod while_loop;
 
 pub(crate) use code_block::*;
 pub use declaration::*;
+pub use expression::TypedIntrinsicFunctionKind;
 pub(crate) use expression::*;
 pub(crate) use impl_trait::*;
 pub(crate) use return_statement::*;
@@ -15,11 +16,11 @@ pub(crate) use while_loop::*;
 use super::ERROR_RECOVERY_DECLARATION;
 
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*, AstNode,
-    AstNodeContent, Ident, ReturnStatement,
+    error::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*,
+    types::DeterministicallyAborts, AstNode, AstNodeContent, Ident, ReturnStatement,
 };
 
-use sway_types::{span::Span, state::StateIndex};
+use sway_types::{span::Span, state::StateIndex, Spanned};
 
 use derivative::Derivative;
 
@@ -42,6 +43,30 @@ pub enum TypedAstNodeContent {
     SideEffect,
 }
 
+impl UnresolvedTypeCheck for TypedAstNodeContent {
+    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+        use TypedAstNodeContent::*;
+        match self {
+            ReturnStatement(stmt) => stmt.expr.check_for_unresolved_types(),
+            Declaration(decl) => decl.check_for_unresolved_types(),
+            Expression(expr) => expr.check_for_unresolved_types(),
+            ImplicitReturnExpression(expr) => expr.check_for_unresolved_types(),
+            WhileLoop(lo) => {
+                let mut condition = lo.condition.check_for_unresolved_types();
+                let mut body = lo
+                    .body
+                    .contents
+                    .iter()
+                    .flat_map(TypedAstNode::check_for_unresolved_types)
+                    .collect();
+                condition.append(&mut body);
+                condition
+            }
+            SideEffect => vec![],
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, Derivative)]
 #[derivative(PartialEq)]
 pub struct TypedAstNode {
@@ -54,13 +79,11 @@ impl std::fmt::Display for TypedAstNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use TypedAstNodeContent::*;
         let text = match &self.content {
-            ReturnStatement(TypedReturnStatement { ref expr }) => {
-                format!("return {}", expr.pretty_print())
-            }
-            Declaration(ref typed_decl) => typed_decl.pretty_print(),
-            Expression(exp) => exp.pretty_print(),
-            ImplicitReturnExpression(exp) => format!("return {}", exp.pretty_print()),
-            WhileLoop(w_loop) => w_loop.pretty_print(),
+            ReturnStatement(TypedReturnStatement { ref expr }) => format!("return {}", expr),
+            Declaration(ref typed_decl) => typed_decl.to_string(),
+            Expression(exp) => exp.to_string(),
+            ImplicitReturnExpression(exp) => format!("return {}", exp),
+            WhileLoop(w_loop) => w_loop.to_string(),
             SideEffect => "".into(),
         };
         f.write_str(&text)
@@ -86,6 +109,30 @@ impl CopyTypes for TypedAstNode {
                 body.copy_types(type_mapping);
             }
             TypedAstNodeContent::SideEffect => (),
+        }
+    }
+}
+
+impl UnresolvedTypeCheck for TypedAstNode {
+    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+        self.content.check_for_unresolved_types()
+    }
+}
+
+impl DeterministicallyAborts for TypedAstNode {
+    /// if this ast node _deterministically_ panics/aborts, then this is true.
+    /// This is used to assist in type checking branches that abort control flow and therefore
+    /// don't need to return a type.
+    fn deterministically_aborts(&self) -> bool {
+        use TypedAstNodeContent::*;
+        match &self.content {
+            ReturnStatement(_) => true,
+            Declaration(_) => false,
+            Expression(exp) | ImplicitReturnExpression(exp) => exp.deterministically_aborts(),
+            WhileLoop(TypedWhileLoop { condition, body }) => {
+                condition.deterministically_aborts() || body.deterministically_aborts()
+            }
+            SideEffect => false,
         }
     }
 }
@@ -118,22 +165,6 @@ impl TypedAstNode {
                 matches!(tree_type, TreeType::Script | TreeType::Predicate)
             }
             _ => false,
-        }
-    }
-
-    /// if this ast node _deterministically_ panics/aborts, then this is true.
-    /// This is used to assist in type checking branches that abort control flow and therefore
-    /// don't need to return a type.
-    pub(crate) fn deterministically_aborts(&self) -> bool {
-        use TypedAstNodeContent::*;
-        match &self.content {
-            ReturnStatement(_) => true,
-            Declaration(_) => false,
-            Expression(exp) | ImplicitReturnExpression(exp) => exp.deterministically_aborts(),
-            WhileLoop(TypedWhileLoop { condition, body }) => {
-                condition.deterministically_aborts() || body.deterministically_aborts()
-            }
-            SideEffect => false,
         }
     }
 
@@ -1292,14 +1323,17 @@ pub struct TypeCheckedStorageReassignment {
     pub rhs: TypedExpression,
 }
 
-impl TypeCheckedStorageReassignment {
-    pub fn span(&self) -> Span {
+impl Spanned for TypeCheckedStorageReassignment {
+    fn span(&self) -> Span {
         self.fields
             .iter()
             .fold(self.fields[0].span.clone(), |acc, field| {
                 Span::join(acc, field.span.clone())
             })
     }
+}
+
+impl TypeCheckedStorageReassignment {
     pub fn names(&self) -> Vec<Ident> {
         self.fields
             .iter()

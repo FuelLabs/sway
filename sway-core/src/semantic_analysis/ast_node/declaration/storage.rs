@@ -7,6 +7,7 @@ use crate::{
     type_engine::{TypeId, TypeInfo},
     Ident,
 };
+use sway_types::Spanned;
 use sway_types::{state::StateIndex, Span};
 
 use derivative::Derivative;
@@ -20,10 +21,17 @@ pub struct TypedStorageDeclaration {
     span: Span,
 }
 
+impl Spanned for TypedStorageDeclaration {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
+
 impl TypedStorageDeclaration {
     pub fn new(fields: Vec<TypedStorageField>, span: Span) -> Self {
         TypedStorageDeclaration { fields, span }
     }
+
     /// Given a field, find its type information in the declaration and return it. If the field has not
     /// been declared as a part of storage, return an error.
     pub fn apply_storage_load(
@@ -112,10 +120,6 @@ impl TypedStorageDeclaration {
             warnings,
             errors,
         )
-    }
-
-    pub fn span(&self) -> Span {
-        self.span.clone()
     }
 
     pub(crate) fn fields_as_typed_struct_fields(&self) -> Vec<TypedStructField> {

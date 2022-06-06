@@ -1,5 +1,8 @@
+use sway_types::Spanned;
+
 use super::*;
 use crate::semantic_analysis::{ast_node::Mode, TypeCheckArguments};
+use crate::types::DeterministicallyAborts;
 use crate::CodeBlock;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -15,11 +18,13 @@ impl CopyTypes for TypedCodeBlock {
     }
 }
 
-impl TypedCodeBlock {
-    pub(crate) fn deterministically_aborts(&self) -> bool {
+impl DeterministicallyAborts for TypedCodeBlock {
+    fn deterministically_aborts(&self) -> bool {
         self.contents.iter().any(|x| x.deterministically_aborts())
     }
+}
 
+impl TypedCodeBlock {
     pub(crate) fn type_check(
         arguments: TypeCheckArguments<'_, CodeBlock>,
     ) -> CompileResult<(Self, TypeId)> {

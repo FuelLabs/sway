@@ -1,4 +1,4 @@
-use crate::{error::*, namespace::*, type_engine::*};
+use crate::{error::*, semantic_analysis::*, type_engine::*};
 
 pub(crate) trait UpdateTypes {
     fn update_types(

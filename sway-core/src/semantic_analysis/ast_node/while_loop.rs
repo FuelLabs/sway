@@ -6,8 +6,8 @@ pub struct TypedWhileLoop {
     pub body: TypedCodeBlock,
 }
 
-impl TypedWhileLoop {
-    pub(crate) fn pretty_print(&self) -> String {
-        format!("while loop on {}", self.condition.pretty_print())
+impl std::fmt::Display for TypedWhileLoop {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "while loop on {}", self.condition)
     }
 }

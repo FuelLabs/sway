@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Display};
+use std::fmt;
 use sway_types::Span;
 
 use crate::types::*;
@@ -6,7 +6,7 @@ use crate::types::*;
 use super::*;
 
 /// A identifier to uniquely refer to our type terms
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub struct TypeId(usize);
 
 impl std::ops::Deref for TypeId {
@@ -16,15 +16,9 @@ impl std::ops::Deref for TypeId {
     }
 }
 
-impl Display for TypeId {
+impl fmt::Display for TypeId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&look_up_type_id(*self).friendly_type_str())
-    }
-}
-
-impl Debug for TypeId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&look_up_type_id(*self).friendly_type_str())
+        f.write_str(&look_up_type_id(*self).to_string())
     }
 }
 
@@ -34,27 +28,9 @@ impl From<usize> for TypeId {
     }
 }
 
-impl TypeId {
-    pub(crate) fn update_type(&mut self, type_mapping: &TypeMapping, span: &Span) {
-        *self = match look_up_type_id(*self).matches_type_parameter(type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, span.clone())),
-            None => {
-                let ty = TypeInfo::Ref(insert_type(look_up_type_id_raw(*self)), span.clone());
-                insert_type(ty)
-            }
-        };
-    }
-}
-
 impl JsonAbiString for TypeId {
     fn json_abi_str(&self) -> String {
         look_up_type_id(*self).json_abi_str()
-    }
-}
-
-impl FriendlyTypeString for TypeId {
-    fn friendly_type_str(&self) -> String {
-        look_up_type_id(*self).friendly_type_str()
     }
 }
 
@@ -80,5 +56,35 @@ impl ToJsonAbi for TypeId {
             TypeInfo::Tuple(fields) => Some(fields.iter().map(|x| x.generate_json_abi()).collect()),
             _ => None,
         }
+    }
+}
+
+impl UnresolvedTypeCheck for TypeId {
+    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+        use TypeInfo::*;
+        let span_override = if let TypeInfo::Ref(_, span) = look_up_type_id_raw(*self) {
+            Some(span)
+        } else {
+            None
+        };
+        match look_up_type_id(*self) {
+            UnknownGeneric { name } => vec![CompileError::UnableToInferGeneric {
+                ty: name.as_str().to_string(),
+                span: span_override.unwrap_or_else(|| name.span().clone()),
+            }],
+            _ => vec![],
+        }
+    }
+}
+
+impl TypeId {
+    pub(crate) fn update_type(&mut self, type_mapping: &TypeMapping, span: &Span) {
+        *self = match look_up_type_id(*self).matches_type_parameter(type_mapping) {
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, span.clone())),
+            None => {
+                let ty = TypeInfo::Ref(insert_type(look_up_type_id_raw(*self)), span.clone());
+                insert_type(ty)
+            }
+        };
     }
 }

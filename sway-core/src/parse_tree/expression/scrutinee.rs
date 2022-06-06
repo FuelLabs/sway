@@ -1,6 +1,6 @@
 use crate::{CallPath, Literal, TypeInfo};
 
-use sway_types::{ident::Ident, span::Span};
+use sway_types::{ident::Ident, span::Span, Spanned};
 
 /// A [Scrutinee] is on the left-hand-side of a pattern, and dictates whether or
 /// not a pattern will succeed at pattern matching and what, if any, elements will
@@ -35,15 +35,8 @@ pub enum Scrutinee {
     },
 }
 
-#[derive(Debug, Clone)]
-pub struct StructScrutineeField {
-    pub field: Ident,
-    pub scrutinee: Option<Scrutinee>,
-    pub span: Span,
-}
-
-impl Scrutinee {
-    pub fn span(&self) -> Span {
+impl Spanned for Scrutinee {
+    fn span(&self) -> Span {
         match self {
             Scrutinee::CatchAll { span } => span.clone(),
             Scrutinee::Literal { span, .. } => span.clone(),
@@ -53,7 +46,9 @@ impl Scrutinee {
             Scrutinee::Tuple { span, .. } => span.clone(),
         }
     }
+}
 
+impl Scrutinee {
     /// Given some `Scrutinee` `self`, analyze `self` and return all instances
     /// of possible dependencies. A "possible dependency" is a `Scrutinee` that
     /// resolves to one or more `TypeInfo::Custom`.
@@ -147,4 +142,11 @@ impl Scrutinee {
             }
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct StructScrutineeField {
+    pub field: Ident,
+    pub scrutinee: Option<Scrutinee>,
+    pub span: Span,
 }

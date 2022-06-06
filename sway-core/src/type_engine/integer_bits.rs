@@ -1,3 +1,5 @@
+use std::fmt;
+
 #[derive(Eq, PartialEq, Hash, Debug, Clone, Copy)]
 pub enum IntegerBits {
     Eight,
@@ -6,14 +8,15 @@ pub enum IntegerBits {
     SixtyFour,
 }
 
-impl IntegerBits {
-    pub(crate) fn friendly_str(&self) -> &'static str {
+impl fmt::Display for IntegerBits {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
         use IntegerBits::*;
-        match self {
+        let s = match self {
             Eight => "eight",
             Sixteen => "sixteen",
             ThirtyTwo => "thirty two",
             SixtyFour => "sixty four",
-        }
+        };
+        write!(f, "{}", s)
     }
 }

@@ -1,7 +1,8 @@
 use crate::semantic_analysis::TypedExpression;
 use crate::type_engine::*;
-use crate::{semantic_analysis::ast_node::TypedStructField, CallPath, Ident};
+use crate::{parse_tree::*, semantic_analysis::*};
 use derivative::Derivative;
+use sway_types::Ident;
 
 #[derive(Derivative)]
 #[derivative(Debug, Clone, Eq, PartialEq, Hash)]

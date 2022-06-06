@@ -1,7 +1,9 @@
-use crate::asm_generation::{
-    AbstractInstructionSet, DataSection, RegisterAllocatedAsmSet, RegisterSequencer,
-};
 use std::fmt;
+
+use super::{
+    abstract_instruction_set::*, data_section::*, register_allocated_asm_set::*,
+    register_sequencer::*,
+};
 
 /// Represents an ASM set which has had jump labels and jumps optimized
 pub enum JumpOptimizedAsmSet {
