@@ -68,7 +68,7 @@ fn ast_node_type(token: &TokenType) -> String {
         TokenType::TypeCheckedStorageReassignDescriptor(_) => {
             "storage reassignment descriptor".to_string()
         }
-        TokenType::ReassignmentLhs(_) => "reassignment lhs".to_string(),
+        TokenType::TypedReassignment(_) => "reassignment".to_string(),
         _ => "".to_string(),
     }
 }
