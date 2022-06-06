@@ -17,8 +17,8 @@ pub(crate) use while_loop::*;
 use super::ERROR_RECOVERY_DECLARATION;
 
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*, AstNode,
-    AstNodeContent, Ident, ReturnStatement,
+    error::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*,
+    types::DeterministicallyAborts, AstNode, AstNodeContent, Ident, ReturnStatement,
 };
 
 use sway_types::{span::Span, state::StateIndex};
@@ -92,6 +92,21 @@ impl CopyTypes for TypedAstNode {
     }
 }
 
+impl DeterministicallyAborts for TypedAstNode {
+    fn deterministically_aborts(&self) -> bool {
+        use TypedAstNodeContent::*;
+        match &self.content {
+            ReturnStatement(_) => true,
+            Declaration(_) => false,
+            Expression(exp) | ImplicitReturnExpression(exp) => exp.deterministically_aborts(),
+            WhileLoop(TypedWhileLoop { condition, body }) => {
+                condition.deterministically_aborts() || body.deterministically_aborts()
+            }
+            SideEffect => false,
+        }
+    }
+}
+
 impl TypedAstNode {
     /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
     pub(crate) fn is_public(&self) -> bool {
@@ -120,22 +135,6 @@ impl TypedAstNode {
                 matches!(tree_type, TreeType::Script | TreeType::Predicate)
             }
             _ => false,
-        }
-    }
-
-    /// if this ast node _deterministically_ panics/aborts, then this is true.
-    /// This is used to assist in type checking branches that abort control flow and therefore
-    /// don't need to return a type.
-    pub(crate) fn deterministically_aborts(&self) -> bool {
-        use TypedAstNodeContent::*;
-        match &self.content {
-            ReturnStatement(_) => true,
-            Declaration(_) => false,
-            Expression(exp) | ImplicitReturnExpression(exp) => exp.deterministically_aborts(),
-            WhileLoop(TypedWhileLoop { condition, body }) => {
-                condition.deterministically_aborts() || body.deterministically_aborts()
-            }
-            SideEffect => false,
         }
     }
 

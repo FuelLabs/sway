@@ -1,6 +1,6 @@
 use sway_types::Span;
 
-use crate::{error::*, semantic_analysis::*, type_engine::*};
+use crate::{error::*, semantic_analysis::*, type_engine::*, types::DeterministicallyAborts};
 
 use super::TypedExpression;
 
