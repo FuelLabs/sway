@@ -12,7 +12,7 @@ pub(crate) use self::{
     method_application::*, struct_field_access::*, tuple_index_access::*, unsafe_downcast::*,
 };
 
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
 
 use sway_types::{Ident, Span};
 
@@ -54,8 +54,8 @@ impl fmt::Display for TypedExpression {
         write!(
             f,
             "{} ({})",
-            self.expression.to_string(),
-            look_up_type_id(self.return_type).to_string()
+            self.expression,
+            look_up_type_id(self.return_type)
         )
     }
 }

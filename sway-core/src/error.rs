@@ -363,14 +363,14 @@ impl fmt::Display for Warning {
                 cast_to,
             } => write!(f,
                 "This cast, from integer type of width {} to integer type of width {}, will lose precision.",
-                initial_type.to_string(),
-                cast_to.to_string()
+                initial_type,
+                cast_to
             ),
             UnusedReturnValue { r#type } => write!(
                 f,
                 "This returns a value of type {}, which is not assigned to anything and is \
                  ignored.",
-                r#type.to_string()
+                r#type
             ),
             SimilarMethodFound { lib, module, name } => write!(
                 f,

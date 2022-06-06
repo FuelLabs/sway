@@ -293,7 +293,7 @@ impl fmt::Display for TypeInfo {
             .into(),
             Boolean => "bool".into(),
             Custom { name, .. } => format!("unresolved {}", name.as_str()),
-            Ref(id, _sp) => format!("T{} ({})", id, (*id).to_string()),
+            Ref(id, _sp) => format!("T{} ({})", id, (*id)),
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
@@ -326,7 +326,7 @@ impl fmt::Display for TypeInfo {
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {}", abi_name)
             }
-            Array(elem_ty, count) => format!("[{}; {}]", elem_ty.to_string(), count),
+            Array(elem_ty, count) => format!("[{}; {}]", elem_ty, count),
             Storage { .. } => "contract storage".into(),
         };
         write!(f, "{}", s)

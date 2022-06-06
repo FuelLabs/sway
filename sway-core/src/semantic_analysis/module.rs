@@ -1,4 +1,4 @@
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
 
 use sway_types::Ident;
 

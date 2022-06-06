@@ -1,4 +1,4 @@
-use crate::{parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
+use crate::{parse_tree::*, semantic_analysis::*, type_engine::*};
 
 use sway_types::{state::StateIndex, Ident, Span};
 
@@ -476,7 +476,7 @@ impl fmt::Display for TypedExpressionVariant {
             } => {
                 format!(
                     "\"{}.{}\" struct field access",
-                    look_up_type_id(*resolved_type_of_parent).to_string(),
+                    look_up_type_id(*resolved_type_of_parent),
                     field_to_access.name
                 )
             }
@@ -487,7 +487,7 @@ impl fmt::Display for TypedExpressionVariant {
             } => {
                 format!(
                     "\"{}.{}\" tuple index",
-                    look_up_type_id(*resolved_type_of_parent).to_string(),
+                    look_up_type_id(*resolved_type_of_parent),
                     elem_to_access_num
                 )
             }
@@ -525,14 +525,10 @@ impl fmt::Display for TypedExpressionVariant {
             TypedExpressionVariant::GetStorageKey { .. } => "get_storage_key".to_string(),
             TypedExpressionVariant::AbiName(n) => format!("ABI name {}", n),
             TypedExpressionVariant::EnumTag { exp } => {
-                format!("({} as tag)", look_up_type_id(exp.return_type).to_string())
+                format!("({} as tag)", look_up_type_id(exp.return_type))
             }
             TypedExpressionVariant::UnsafeDowncast { exp, variant } => {
-                format!(
-                    "({} as {})",
-                    look_up_type_id(exp.return_type).to_string(),
-                    variant.name
-                )
+                format!("({} as {})", look_up_type_id(exp.return_type), variant.name)
             }
         };
         write!(f, "{}", s)

@@ -1,4 +1,4 @@
-use crate::{error::*, type_engine::*, types::*};
+use crate::{error::*, type_engine::*};
 
 use sway_types::span;
 

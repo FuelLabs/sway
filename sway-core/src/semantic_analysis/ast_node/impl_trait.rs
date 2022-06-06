@@ -1,8 +1,6 @@
 use super::{declaration::TypedTraitFn, ERROR_RECOVERY_DECLARATION};
 
-use crate::{
-    error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*, CallPath, Ident,
-};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, CallPath, Ident};
 
 use sway_types::span::Span;
 

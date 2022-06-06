@@ -57,11 +57,11 @@ impl fmt::Display for TypedAstNode {
         use TypedAstNodeContent::*;
         let text = match &self.content {
             ReturnStatement(TypedReturnStatement { ref expr }) => {
-                format!("return {}", expr.to_string())
+                format!("return {}", expr)
             }
             Declaration(ref typed_decl) => typed_decl.to_string(),
             Expression(exp) => exp.to_string(),
-            ImplicitReturnExpression(exp) => format!("return {}", exp.to_string()),
+            ImplicitReturnExpression(exp) => format!("return {}", exp),
             WhileLoop(w_loop) => w_loop.to_string(),
             SideEffect => "".into(),
         };

@@ -4,7 +4,7 @@ use sway_types::{state::StateIndex, Span};
 use crate::constants;
 use crate::Expression::StorageAccess;
 
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
 
 use std::collections::{HashMap, VecDeque};
 

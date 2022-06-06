@@ -10,6 +10,6 @@ pub struct TypedWhileLoop {
 
 impl fmt::Display for TypedWhileLoop {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "while loop on {}", self.condition.to_string())
+        write!(f, "while loop on {}", self.condition)
     }
 }

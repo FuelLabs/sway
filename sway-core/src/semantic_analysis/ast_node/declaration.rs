@@ -13,7 +13,7 @@ pub use r#struct::*;
 pub use storage::*;
 pub use variable::*;
 
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
 use derivative::Derivative;
 use std::{borrow::Cow, fmt};
 use sway_types::{Ident, Span};
