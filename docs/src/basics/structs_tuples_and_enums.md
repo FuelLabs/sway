@@ -39,9 +39,6 @@ Tuples are a [basic static-length type](./built_in_types.md#tuple-types) which c
 
 You can access values directly by using the `.` syntax. Moreover, multiple variables can be extracted from a tuple using the destructuring syntax.
 
-> **Note**
-> You cannot mutate a tuple
-
 ```sway
 {{#include ../../../examples/tuples/src/main.sw}}
 ```
