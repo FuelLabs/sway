@@ -9,7 +9,6 @@ repository = "https://github.com/FuelLabs/sway"
 description = "Sway core language."
 
 [dependencies]
-bigint = "4.3.3"
 clap = { version = "3.1", features = ["derive"], optional = true }
 derivative = "2.2.0"
 dirs = "3.0"
@@ -35,3 +34,4 @@ sway-types = { version = "0.15.0", path = "../sway-types" }
 sway-utils = { version = "0.15.0", path = "../sway-utils" }
 thiserror = "1.0"
 tracing = "0.1"
+uint = "0.9"
