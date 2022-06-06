@@ -18,7 +18,7 @@ pub struct TypedStorageDeclaration {
     pub fields: Vec<TypedStorageField>,
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
-    span: Span,
+    pub span: Span,
 }
 
 impl Spanned for TypedStorageDeclaration {
