@@ -85,7 +85,7 @@ The preferred way to use enums is to use the individual (not nested) enums direc
 
 #### Inadvisable
 
-If you wish to use the nested form of enums via the `Error` then you can instantiate them into variables using the following syntax
+If you wish to use the nested form of enums via the `Error` enum from the example above, then you can instantiate them into variables using the following syntax:
 
 ```sway
 {{#include ../../../examples/enums/src/enums_avoid.sw}}
