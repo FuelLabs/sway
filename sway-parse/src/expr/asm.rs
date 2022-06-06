@@ -130,7 +130,7 @@ impl Parse for AsmImmediate {
             None => return Err(parser.emit_error(ParseErrorKind::MalformedAsmImmediate)),
         };
         Ok(AsmImmediate {
-            span: ident.span().clone(),
+            span: ident.span(),
             parsed,
         })
     }

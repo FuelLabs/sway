@@ -256,7 +256,7 @@ impl TypedAstNode {
                             check_if_name_is_invalid(&name).ok(&mut warnings, &mut errors);
                             let type_ascription_span = match type_ascription_span {
                                 Some(type_ascription_span) => type_ascription_span,
-                                None => name.span().clone(),
+                                None => name.span(),
                             };
                             let type_ascription = check!(
                                 namespace.resolve_type_with_self(
@@ -281,12 +281,8 @@ impl TypedAstNode {
                                     opts,
                                 })
                             };
-                            let body = check!(
-                                result,
-                                error_recovery_expr(name.span().clone()),
-                                warnings,
-                                errors
-                            );
+                            let body =
+                                check!(result, error_recovery_expr(name.span()), warnings, errors);
                             let typed_var_decl =
                                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                                     name: name.clone(),
@@ -307,12 +303,8 @@ impl TypedAstNode {
                             let result =
                                 type_check_ascribed_expr(namespace, type_ascription.clone(), value);
                             is_screaming_snake_case(&name).ok(&mut warnings, &mut errors);
-                            let value = check!(
-                                result,
-                                error_recovery_expr(name.span().clone()),
-                                warnings,
-                                errors
-                            );
+                            let value =
+                                check!(result, error_recovery_expr(name.span()), warnings, errors);
                             let typed_const_decl =
                                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                                     name: name.clone(),
@@ -349,7 +341,7 @@ impl TypedAstNode {
                             for type_parameter in fn_decl.type_parameters.iter() {
                                 if !type_parameter.trait_constraints.is_empty() {
                                     errors.push(CompileError::WhereClauseNotYetSupported {
-                                        span: type_parameter.name_ident.span().clone(),
+                                        span: type_parameter.name_ident.span(),
                                     });
                                     break;
                                 }
@@ -430,7 +422,7 @@ impl TypedAstNode {
                             for type_parameter in type_parameters.iter() {
                                 if !type_parameter.trait_constraints.is_empty() {
                                     errors.push(CompileError::WhereClauseNotYetSupported {
-                                        span: type_parameter.name_ident.span().clone(),
+                                        span: type_parameter.name_ident.span(),
                                     });
                                     break;
                                 }
@@ -1067,7 +1059,7 @@ fn type_check_trait_methods(
                             expression: TypedExpressionVariant::FunctionParameter,
                             return_type: r#type,
                             is_constant: IsConstant::No,
-                            span: name.span().clone(),
+                            span: name.span(),
                         },
                         // TODO allow mutable function params?
                         is_mutable: VariableMutability::Immutable,
@@ -1094,7 +1086,7 @@ fn type_check_trait_methods(
             if let TypeInfo::Custom { name, .. } = look_up_type_id(*type_id) {
                 let args_span = parameters.iter().fold(
                     parameters[0].name.span().clone(),
-                    |acc, FunctionParameter { name, .. }| Span::join(acc, name.span().clone()),
+                    |acc, FunctionParameter { name, .. }| Span::join(acc, name.span()),
                 );
                 if type_parameters.iter().any(|TypeParameter { type_id, .. }| {
                     if let TypeInfo::Custom {
@@ -1234,7 +1226,7 @@ fn convert_trait_methods_to_dummy_funcs(
                         },
                     )
                     .collect(),
-                span: name.span().clone(),
+                span: name.span(),
                 return_type: check!(
                     trait_namespace.resolve_type_with_self(
                         return_type.clone(),
@@ -1376,7 +1368,7 @@ fn reassign_storage_subfield(
     type_checked_buf.push(TypeCheckedStorageReassignDescriptor {
         name: first_field.clone(),
         r#type: *initial_field_type,
-        span: first_field.span().clone(),
+        span: first_field.span(),
     });
 
     fn update_available_struct_fields(id: TypeId) -> Vec<TypedStructField> {

@@ -25,16 +25,14 @@ impl Reassignment {
         match &self.lhs {
             ReassignmentTarget::VariableExpression(var) => match **var {
                 Expression::SubfieldExpression { ref span, .. } => span.clone(),
-                Expression::VariableExpression { ref name, .. } => name.span().clone(),
+                Expression::VariableExpression { ref name, .. } => name.span(),
                 _ => {
                     unreachable!("any other reassignment lhs is invalid and cannot be constructed.")
                 }
             },
-            ReassignmentTarget::StorageField(ref idents) => {
-                idents.iter().fold(idents[0].span().clone(), |acc, ident| {
-                    Span::join(acc, ident.span().clone())
-                })
-            }
+            ReassignmentTarget::StorageField(ref idents) => idents
+                .iter()
+                .fold(idents[0].span(), |acc, ident| Span::join(acc, ident.span())),
         }
     }
 }

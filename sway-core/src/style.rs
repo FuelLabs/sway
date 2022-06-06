@@ -43,7 +43,7 @@ pub fn is_snake_case(ident: &Ident) -> CompileResult<()> {
         return ok(
             (),
             vec![CompileWarning {
-                span: span.clone(),
+                span,
                 warning_content: Warning::NonSnakeCaseFunctionName {
                     name: ident.clone(),
                 },
@@ -62,7 +62,7 @@ pub fn is_screaming_snake_case(ident: &Ident) -> CompileResult<()> {
         return ok(
             (),
             vec![CompileWarning {
-                span: span.clone(),
+                span,
                 warning_content: Warning::NonScreamingSnakeCaseConstName {
                     name: ident.clone(),
                 },
@@ -81,7 +81,7 @@ pub fn is_upper_camel_case(ident: &Ident) -> CompileResult<()> {
         return ok(
             (),
             vec![CompileWarning {
-                span: span.clone(),
+                span,
                 warning_content: Warning::NonScreamingSnakeCaseConstName {
                     name: ident.clone(),
                 },

@@ -37,7 +37,7 @@ pub(crate) fn instantiate_function_application(
     if !opts.purity.can_call(function_decl.purity) {
         errors.push(CompileError::StorageAccessMismatch {
             attrs: promote_purity(opts.purity, function_decl.purity).to_attribute_syntax(),
-            span: function_decl.name.span().clone(),
+            span: function_decl.name.span(),
         });
     }
 

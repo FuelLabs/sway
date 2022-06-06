@@ -110,7 +110,7 @@ impl Spanned for TokenTree {
     fn span(&self) -> Span {
         match self {
             TokenTree::Punct(punct) => punct.span(),
-            TokenTree::Ident(ident) => ident.span().clone(),
+            TokenTree::Ident(ident) => ident.span(),
             TokenTree::Group(group) => group.span(),
             TokenTree::Literal(literal) => literal.span(),
         }

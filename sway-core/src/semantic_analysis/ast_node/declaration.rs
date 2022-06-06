@@ -75,21 +75,19 @@ impl Spanned for TypedDeclaration {
     fn span(&self) -> Span {
         use TypedDeclaration::*;
         match self {
-            VariableDeclaration(TypedVariableDeclaration { name, .. }) => name.span().clone(),
-            ConstantDeclaration(TypedConstantDeclaration { name, .. }) => name.span().clone(),
+            VariableDeclaration(TypedVariableDeclaration { name, .. }) => name.span(),
+            ConstantDeclaration(TypedConstantDeclaration { name, .. }) => name.span(),
             FunctionDeclaration(TypedFunctionDeclaration { span, .. }) => span.clone(),
-            TraitDeclaration(TypedTraitDeclaration { name, .. }) => name.span().clone(),
-            StructDeclaration(TypedStructDeclaration { name, .. }) => name.span().clone(),
+            TraitDeclaration(TypedTraitDeclaration { name, .. }) => name.span(),
+            StructDeclaration(TypedStructDeclaration { name, .. }) => name.span(),
             EnumDeclaration(TypedEnumDeclaration { span, .. }) => span.clone(),
             Reassignment(TypedReassignment {
                 lhs_base_name,
                 lhs_indices,
                 ..
-            }) => lhs_indices
-                .iter()
-                .fold(lhs_base_name.span().clone(), |acc, this| {
-                    Span::join(acc, this.span())
-                }),
+            }) => lhs_indices.iter().fold(lhs_base_name.span(), |acc, this| {
+                Span::join(acc, this.span())
+            }),
             AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
             ImplTrait { span, .. } => span.clone(),
             StorageDeclaration(decl) => decl.span(),
@@ -474,7 +472,7 @@ impl TypedTraitFn {
             name: self.name.clone(),
             body: TypedCodeBlock { contents: vec![] },
             parameters: self.parameters.clone(),
-            span: self.name.span().clone(),
+            span: self.name.span(),
             return_type: self.return_type,
             return_type_span: self.return_type_span.clone(),
             visibility: Visibility::Public,
@@ -502,7 +500,7 @@ pub enum ProjectionKind {
 impl Spanned for ProjectionKind {
     fn span(&self) -> Span {
         match self {
-            ProjectionKind::StructField { name } => name.span().clone(),
+            ProjectionKind::StructField { name } => name.span(),
             ProjectionKind::TupleField { index_span, .. } => index_span.clone(),
         }
     }

@@ -122,7 +122,7 @@ impl Root {
                     _ => {
                         errors.push(CompileError::UnknownTypeName {
                             name: name.to_string(),
-                            span: name.span().clone(),
+                            span: name.span(),
                         });
                         return err(warnings, errors);
                     }

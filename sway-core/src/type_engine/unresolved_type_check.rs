@@ -24,7 +24,7 @@ impl UnresolvedTypeCheck for TypeId {
         match look_up_type_id(*self) {
             UnknownGeneric { name } => vec![CompileError::UnableToInferGeneric {
                 ty: name.as_str().to_string(),
-                span: span_override.unwrap_or_else(|| name.span().clone()),
+                span: span_override.unwrap_or_else(|| name.span()),
             }],
             _ => vec![],
         }

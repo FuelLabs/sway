@@ -29,7 +29,7 @@ pub fn traverse_node(node: &TypedAstNode, tokens: &mut TokenMap) {
 // We need to do this work around as the custom PartialEq for Ident impl
 // only checks for the string, not the span.
 fn to_ident_key(ident: &Ident) -> (Ident, Span) {
-    (ident.clone(), ident.span().clone())
+    (ident.clone(), ident.span())
 }
 
 fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut TokenMap) {

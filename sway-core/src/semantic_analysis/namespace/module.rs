@@ -269,9 +269,9 @@ impl From<Root> for Module {
 
 fn module_not_found(path: &[Ident]) -> CompileError {
     CompileError::ModuleNotFound {
-        span: path.iter().fold(path[0].span().clone(), |acc, this_one| {
+        span: path.iter().fold(path[0].span(), |acc, this_one| {
             if acc.path() == this_one.span().path() {
-                Span::join(acc, this_one.span().clone())
+                Span::join(acc, this_one.span())
             } else {
                 acc
             }

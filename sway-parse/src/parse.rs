@@ -93,7 +93,7 @@ impl Parse for Ident {
                 if ident_str.starts_with("__") && Intrinsic::try_from_str(ident_str).is_none() {
                     return Err(parser.emit_error_with_span(
                         ParseErrorKind::InvalidDoubleUnderscore,
-                        ident.span().clone(),
+                        ident.span(),
                     ));
                 }
 

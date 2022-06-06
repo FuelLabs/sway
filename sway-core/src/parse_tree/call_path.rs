@@ -36,15 +36,15 @@ impl fmt::Display for CallPath {
 impl Spanned for CallPath {
     fn span(&self) -> Span {
         if self.prefixes.is_empty() {
-            self.suffix.span().clone()
+            self.suffix.span()
         } else {
             let prefixes_span = self
                 .prefixes
                 .iter()
-                .fold(self.prefixes[0].span().clone(), |acc, sp| {
-                    Span::join(acc, sp.span().clone())
+                .fold(self.prefixes[0].span(), |acc, sp| {
+                    Span::join(acc, sp.span())
                 });
-            Span::join(prefixes_span, self.suffix.span().clone())
+            Span::join(prefixes_span, self.suffix.span())
         }
     }
 }

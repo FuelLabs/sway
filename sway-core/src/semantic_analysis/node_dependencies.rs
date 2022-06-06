@@ -163,7 +163,7 @@ fn build_recursion_error(fn_sym: Ident, span: Span, chain: &[Ident]) -> CompileE
 }
 
 fn build_recursive_type_error(name: Ident, chain: &[Ident]) -> CompileError {
-    let span = name.span().clone();
+    let span = name.span();
     match chain.len() {
         // An empty chain indicates immediate recursion.
         0 => CompileError::RecursiveType { name, span },
