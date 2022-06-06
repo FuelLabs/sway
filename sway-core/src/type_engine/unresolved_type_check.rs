@@ -57,7 +57,6 @@ impl UnresolvedTypeCheck for TypedExpression {
     fn check_for_unresolved_types(&self) -> Vec<CompileError> {
         use TypedExpressionVariant::*;
         match &self.expression {
-            TypeProperty { type_id, .. } => type_id.check_for_unresolved_types(),
             FunctionApplication {
                 arguments,
                 function_body,
@@ -168,14 +167,16 @@ impl UnresolvedTypeCheck for TypedExpression {
                 );
                 buf
             }
-            SizeOfValue { expr } => expr.check_for_unresolved_types(),
+            IntrinsicFunction(kind) => match kind {
+                TypedIntrinsicFunctionKind::SizeOfVal { exp } => exp.check_for_unresolved_types(),
+                TypedIntrinsicFunctionKind::GetPropertyOfType { type_id, .. } => {
+                    type_id.check_for_unresolved_types()
+                }
+                TypedIntrinsicFunctionKind::GetStorageKey => vec![],
+            },
             AbiCast { address, .. } => address.check_for_unresolved_types(),
             // storage access can never be generic
-            StorageAccess { .. }
-            | Literal(_)
-            | AbiName(_)
-            | FunctionParameter
-            | GetStorageKey { .. } => vec![],
+            StorageAccess { .. } | Literal(_) | AbiName(_) | FunctionParameter => vec![],
             EnumTag { exp } => exp.check_for_unresolved_types(),
             UnsafeDowncast { exp, variant } => exp
                 .check_for_unresolved_types()

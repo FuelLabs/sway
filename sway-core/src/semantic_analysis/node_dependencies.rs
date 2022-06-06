@@ -473,9 +473,10 @@ impl Dependencies {
             }
             Expression::TupleIndex { prefix, .. } => self.gather_from_expr(prefix),
             Expression::StorageAccess { .. } => self,
-            Expression::SizeOfVal { exp, .. } => self.gather_from_expr(exp),
-            Expression::BuiltinGetTypeProperty { .. } => self,
-            Expression::BuiltinGetStorageKey { .. } => self,
+            Expression::IntrinsicFunction { kind, .. } => match kind {
+                IntrinsicFunctionKind::SizeOfVal { exp } => self.gather_from_expr(exp),
+                _ => self,
+            },
         }
     }
 

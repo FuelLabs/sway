@@ -1,15 +1,16 @@
 use crate::{
     parse_tree::{CallPath, Literal},
-    type_engine::TypeInfo,
     CodeBlock, TypeArgument,
 };
 use sway_types::{ident::Ident, Span};
 
 mod asm;
+mod intrinsic_function;
 mod match_branch;
 mod method_name;
 mod scrutinee;
 pub(crate) use asm::*;
+pub use intrinsic_function::*;
 pub(crate) use match_branch::MatchBranch;
 pub use method_name::MethodName;
 pub use scrutinee::*;
@@ -136,25 +137,10 @@ pub enum Expression {
         field_names: Vec<Ident>,
         span: Span,
     },
-    SizeOfVal {
-        exp: Box<Expression>,
+    IntrinsicFunction {
+        kind: IntrinsicFunctionKind,
         span: Span,
     },
-    BuiltinGetTypeProperty {
-        builtin: BuiltinProperty,
-        type_name: TypeInfo,
-        type_span: Span,
-        span: Span,
-    },
-    BuiltinGetStorageKey {
-        span: Span,
-    },
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum BuiltinProperty {
-    SizeOfType,
-    IsRefType,
 }
 
 #[derive(Debug, Clone)]
@@ -223,9 +209,7 @@ impl Expression {
             AbiCast { span, .. } => span,
             ArrayIndex { span, .. } => span,
             StorageAccess { span, .. } => span,
-            SizeOfVal { span, .. } => span,
-            BuiltinGetTypeProperty { span, .. } => span,
-            BuiltinGetStorageKey { span, .. } => span,
+            IntrinsicFunction { span, .. } => span,
         })
         .clone()
     }

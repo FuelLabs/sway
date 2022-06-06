@@ -70,15 +70,13 @@ impl DeterministicallyAborts for TypedExpression {
                 .map(|x| x.deterministically_aborts())
                 .unwrap_or(false),
             AbiCast { address, .. } => address.deterministically_aborts(),
-            SizeOfValue { expr } => expr.deterministically_aborts(),
             StructFieldAccess { .. }
             | Literal(_)
             | StorageAccess { .. }
-            | TypeProperty { .. }
-            | GetStorageKey { .. }
             | VariableExpression { .. }
             | FunctionParameter
             | TupleElemAccess { .. } => false,
+            IntrinsicFunction(kind) => kind.deterministically_aborts(),
             ArrayIndex { prefix, index } => {
                 prefix.deterministically_aborts() || index.deterministically_aborts()
             }
@@ -217,16 +215,14 @@ impl TypedExpression {
             | TypedExpressionVariant::TupleElemAccess { .. }
             | TypedExpressionVariant::EnumInstantiation { .. }
             | TypedExpressionVariant::AbiCast { .. }
-            | TypedExpressionVariant::SizeOfValue { .. }
-            | TypedExpressionVariant::TypeProperty { .. }
+            | TypedExpressionVariant::IntrinsicFunction { .. }
             | TypedExpressionVariant::StructExpression { .. }
             | TypedExpressionVariant::VariableExpression { .. }
             | TypedExpressionVariant::AbiName(_)
             | TypedExpressionVariant::StorageAccess { .. }
             | TypedExpressionVariant::FunctionApplication { .. }
             | TypedExpressionVariant::EnumTag { .. }
-            | TypedExpressionVariant::UnsafeDowncast { .. }
-            | TypedExpressionVariant::GetStorageKey { .. } => vec![],
+            | TypedExpressionVariant::UnsafeDowncast { .. } => vec![],
         }
     }
 
@@ -426,46 +422,9 @@ impl TypedExpression {
                 },
                 &expr_span,
             ),
-            Expression::SizeOfVal { exp, span } => Self::type_check_size_of_val(
-                TypeCheckArguments {
-                    checkee: *exp,
-                    namespace,
-                    self_type,
-                    mode: Mode::NonAbi,
-                    opts,
-                    return_type_annotation: insert_type(TypeInfo::Unknown),
-                    help_text: Default::default(),
-                },
-                span,
-            ),
-            Expression::BuiltinGetTypeProperty {
-                builtin,
-                type_name,
-                type_span,
-                span,
-            } => Self::type_check_get_type_property(
-                builtin,
-                TypeCheckArguments {
-                    checkee: (type_name, type_span),
-                    namespace,
-                    self_type,
-                    opts,
-                    return_type_annotation: insert_type(TypeInfo::Unknown),
-                    mode: Default::default(),
-                    help_text: Default::default(),
-                },
-                span,
-            ),
-            Expression::BuiltinGetStorageKey { span } => ok(
-                TypedExpression {
-                    expression: TypedExpressionVariant::GetStorageKey { span: span.clone() },
-                    return_type: insert_type(TypeInfo::B256),
-                    is_constant: IsConstant::No,
-                    span,
-                },
-                vec![],
-                vec![],
-            ),
+            Expression::IntrinsicFunction { kind, span } => {
+                Self::type_check_intrinsic_function(kind, self_type, namespace, opts, span)
+            }
         };
         let mut typed_expression = match res.value {
             Some(r) => r,
@@ -1705,70 +1664,85 @@ impl TypedExpression {
         }
     }
 
-    fn type_check_size_of_val(
-        arguments: TypeCheckArguments<'_, Expression>,
+    fn type_check_intrinsic_function(
+        kind: IntrinsicFunctionKind,
+        self_type: TypeId,
+        namespace: &mut Namespace,
+        opts: TCOpts,
         span: Span,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let exp = check!(
-            TypedExpression::type_check(arguments),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        let exp = TypedExpression {
-            expression: TypedExpressionVariant::SizeOfValue {
-                expr: Box::new(exp),
-            },
-            return_type: crate::type_engine::insert_type(TypeInfo::UnsignedInteger(
-                IntegerBits::SixtyFour,
-            )),
-            is_constant: IsConstant::No,
-            span,
-        };
-        ok(exp, warnings, errors)
-    }
-
-    fn type_check_get_type_property(
-        builtin: BuiltinProperty,
-        arguments: TypeCheckArguments<'_, (TypeInfo, Span)>,
-        span: Span,
-    ) -> CompileResult<TypedExpression> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let TypeCheckArguments {
-            checkee: (type_name, type_span),
-            self_type,
-            namespace,
-            ..
-        } = arguments;
-        let type_id = check!(
-            namespace.resolve_type_with_self(
-                type_name,
-                self_type,
-                &type_span,
-                EnforceTypeArguments::Yes
-            ),
-            insert_type(TypeInfo::ErrorRecovery),
-            warnings,
-            errors,
-        );
-        let return_type = match builtin {
-            BuiltinProperty::SizeOfType => {
-                insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour))
+        let exp = match kind {
+            IntrinsicFunctionKind::SizeOfVal { exp } => {
+                let exp = check!(
+                    TypedExpression::type_check(TypeCheckArguments {
+                        checkee: *exp,
+                        namespace,
+                        self_type,
+                        mode: Mode::NonAbi,
+                        opts,
+                        return_type_annotation: insert_type(TypeInfo::Unknown),
+                        help_text: Default::default(),
+                    }),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                TypedExpression {
+                    expression: TypedExpressionVariant::IntrinsicFunction(
+                        TypedIntrinsicFunctionKind::SizeOfVal { exp: Box::new(exp) },
+                    ),
+                    return_type: crate::type_engine::insert_type(TypeInfo::UnsignedInteger(
+                        IntegerBits::SixtyFour,
+                    )),
+                    is_constant: IsConstant::No,
+                    span,
+                }
             }
-            BuiltinProperty::IsRefType => insert_type(TypeInfo::Boolean),
-        };
-        let exp = TypedExpression {
-            expression: TypedExpressionVariant::TypeProperty {
-                property: builtin,
-                type_id,
-                span: span.clone(),
+            IntrinsicFunctionKind::GetPropertyOfType {
+                kind,
+                type_name,
+                type_span,
+            } => {
+                let type_id = check!(
+                    namespace.resolve_type_with_self(
+                        type_name,
+                        self_type,
+                        &type_span,
+                        EnforceTypeArguments::Yes
+                    ),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors,
+                );
+                let return_type = match kind {
+                    GetPropertyOfTypeKind::SizeOfType => {
+                        insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour))
+                    }
+                    GetPropertyOfTypeKind::IsRefType => insert_type(TypeInfo::Boolean),
+                };
+                TypedExpression {
+                    expression: TypedExpressionVariant::IntrinsicFunction(
+                        TypedIntrinsicFunctionKind::GetPropertyOfType {
+                            kind,
+                            type_id,
+                            type_span,
+                        },
+                    ),
+                    return_type,
+                    is_constant: IsConstant::No,
+                    span,
+                }
+            }
+            IntrinsicFunctionKind::GetStorageKey => TypedExpression {
+                expression: TypedExpressionVariant::IntrinsicFunction(
+                    TypedIntrinsicFunctionKind::GetStorageKey,
+                ),
+                return_type: insert_type(TypeInfo::B256),
+                is_constant: IsConstant::No,
+                span,
             },
-            return_type,
-            is_constant: IsConstant::No,
-            span,
         };
         ok(exp, warnings, errors)
     }
