@@ -57,6 +57,12 @@ jobs:
         command: clippy
         args: --verbose --all-targets
 
+    - name: Install fuel-core for tests
+      uses: baptiste0928/cargo-install@v1
+      with:
+        crate: fuel-core
+        version: "0.8"
+
     - name: Run tests
       uses: actions-rs/cargo@v1
       with:
@@ -92,7 +98,7 @@ jobs:
       run: |
         cargo install toml-cli
         ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} Cargo.toml
-        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} cli/Cargo.toml
+        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} client/Cargo.toml
     - name: Publish crate
       uses: katyo/publish-crates@v1
       with:
