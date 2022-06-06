@@ -405,7 +405,7 @@ fn add_deps(
     let fetch_id = fetch_id(&path_map[&graph[*proj_node].id()], fetch_ts);
     let proj_node_after_delete = compilation_order.last().unwrap();
     for (added_dep_name, added_dep_pkg) in to_add {
-        let pinned_pkg = pin_pkg(fetch_id, &added_dep_pkg, path_map, sway_git_tag)?;
+        let pinned_pkg = pin_pkg(fetch_id, added_dep_pkg, path_map, sway_git_tag)?;
         let manifest = Manifest::from_dir(&path_map[&pinned_pkg.id()], sway_git_tag)?;
         let added_package_node = graph.add_node(pinned_pkg.clone());
         fetch_children(
