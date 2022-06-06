@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 use sway_core::semantic_analysis::ast_node::{
-    expression::typed_expression::TypedExpression, ReassignmentLhs,
-    TypeCheckedStorageReassignDescriptor, TypedDeclaration, TypedEnumVariant,
-    TypedFunctionDeclaration, TypedFunctionParameter, TypedStorageField, TypedStructField,
-    TypedTraitFn,
+    expression::typed_expression::TypedExpression, TypeCheckedStorageReassignDescriptor,
+    TypedDeclaration, TypedEnumVariant, TypedFunctionDeclaration, TypedFunctionParameter,
+    TypedReassignment, TypedStorageField, TypedStructField, TypedTraitFn,
 };
 use sway_types::{Ident, Span};
 
@@ -21,5 +20,5 @@ pub enum TokenType {
     TypedTraitFn(TypedTraitFn),
     TypedStorageField(TypedStorageField),
     TypeCheckedStorageReassignDescriptor(TypeCheckedStorageReassignDescriptor),
-    ReassignmentLhs(ReassignmentLhs),
+    TypedReassignment(TypedReassignment),
 }
