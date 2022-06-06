@@ -101,12 +101,10 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut TokenMap) {
         }
         TypedDeclaration::Reassignment(reassignment) => {
             handle_expression(&reassignment.rhs, tokens);
-            for lhs in &reassignment.lhs {
-                tokens.insert(
-                    to_ident_key(&lhs.name),
-                    TokenType::ReassignmentLhs(lhs.clone()),
-                );
-            }
+            tokens.insert(
+                to_ident_key(&reassignment.lhs_base_name),
+                TokenType::TypedReassignment(reassignment.clone()),
+            );
         }
         TypedDeclaration::ImplTrait {
             trait_name,
@@ -348,7 +346,7 @@ pub fn get_type_id(token: &TokenType) -> Option<TypeId> {
         TokenType::TypedTraitFn(trait_fn) => Some(trait_fn.return_type),
         TokenType::TypedStorageField(storage_field) => Some(storage_field.r#type),
         TokenType::TypeCheckedStorageReassignDescriptor(storage_desc) => Some(storage_desc.r#type),
-        TokenType::ReassignmentLhs(lhs) => Some(lhs.r#type),
+        TokenType::TypedReassignment(reassignment) => Some(reassignment.lhs_type),
         _ => None,
     }
 }
