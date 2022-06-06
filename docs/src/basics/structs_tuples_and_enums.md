@@ -69,7 +69,7 @@ It is also possible to have an enum variant contain extra data. Take a look at t
 
 ### Enums of Enums
 
-It is possible to define enums of enums
+It is possible to define enums of enums:
 
 ```sway
 {{#include ../../../examples/enums/src/enum_of_enums.sw}}
