@@ -353,7 +353,7 @@ fn remove_deps(
     graph: &mut Graph,
     path_map: &PathMap,
     proj_node: NodeIx,
-    to_remove: &[(String, Pkg)],
+    to_remove: &[(DependencyName, Pkg)],
 ) {
     use petgraph::visit::Bfs;
     // Find the edges between the root and the removed packages.
@@ -393,7 +393,7 @@ fn add_deps(
     graph: &mut Graph,
     path_map: &mut PathMap,
     compilation_order: &[NodeIx],
-    to_add: &[(String, Pkg)],
+    to_add: &[(DependencyName, Pkg)],
     sway_git_tag: &str,
     offline_mode: bool,
     visited_map: &mut HashMap<Pinned, NodeIx>,
@@ -404,8 +404,8 @@ fn add_deps(
     let fetch_ts = std::time::Instant::now();
     let fetch_id = fetch_id(&path_map[&graph[*proj_node].id()], fetch_ts);
     let proj_node_after_delete = compilation_order.last().unwrap();
-    for added_package in to_add {
-        let pinned_pkg = pin_pkg(fetch_id, &added_package.1, path_map, sway_git_tag)?;
+    for (added_dep_name, added_dep_pkg) in to_add {
+        let pinned_pkg = pin_pkg(fetch_id, &added_dep_pkg, path_map, sway_git_tag)?;
         let manifest = Manifest::from_dir(&path_map[&pinned_pkg.id()], sway_git_tag)?;
         let added_package_node = graph.add_node(pinned_pkg.clone());
         fetch_children(
@@ -421,7 +421,7 @@ fn add_deps(
         graph.add_edge(
             *proj_node_after_delete,
             added_package_node,
-            added_package.0.clone(),
+            added_dep_name.to_string(),
         );
     }
     Ok(())
