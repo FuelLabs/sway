@@ -104,7 +104,7 @@ Note that providing the corresponding cli options (like `--print-finalized-asm`)
 
 ## The `[patch]` section
 
-The [patch] section of `Forc.toml` can be used to override dependencies with other copies. The provided below patches <https://github.com/fuellabs/sway> source with master branch of the same repo.
+The [patch] section of `Forc.toml` can be used to override dependencies with other copies. The example provided below patches <https://github.com/fuellabs/sway> source with master branch of the same repo.
 
 ```toml
 [project]

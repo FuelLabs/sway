@@ -30,7 +30,7 @@ pub struct Manifest {
     pub project: Project,
     pub network: Option<Network>,
     pub dependencies: Option<BTreeMap<String, Dependency>>,
-    pub patch: Option<BTreeMap<String, Patch>>,
+    pub patch: Option<BTreeMap<String, BTreeMap<String, Dependency>>>,
     pub build_profile: Option<BTreeMap<String, BuildConfig>>,
 }
 
@@ -270,7 +270,7 @@ impl Manifest {
     }
 
     /// Produce an iterator yielding all listed patches.
-    pub fn patches(&self) -> impl Iterator<Item = (&String, &Patch)> {
+    pub fn patches(&self) -> impl Iterator<Item = (&String, &BTreeMap<String, Dependency>)> {
         self.patch
             .as_ref()
             .into_iter()

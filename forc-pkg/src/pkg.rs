@@ -1,6 +1,6 @@
 use crate::{
     lock::Lock,
-    manifest::{Dependency, DependencyDetails, Manifest, ManifestFile},
+    manifest::{Dependency, Manifest, ManifestFile},
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
@@ -212,6 +212,7 @@ impl BuildPlan {
             .last()
             .ok_or_else(|| anyhow!("Invalid Graph"))?;
         let PkgDiff { added, removed } = pkg_diff;
+        println!("{:?}", removed);
         remove_deps(&mut graph, &path_map, proj_node, &removed);
 
         let mut visited_map: HashMap<Pinned, NodeIx> = self
@@ -294,7 +295,7 @@ impl BuildPlan {
                 }
 
                 let name = dep.package().unwrap_or(dep_name).to_string();
-                let source = dep_to_source(proj_path, dep, manifest)?;
+                let source = dep_to_source(proj_path, dep)?;
                 let dep_pkg = Pkg { name, source };
                 Ok((dep_name, dep_pkg))
             })
@@ -742,6 +743,35 @@ pub(crate) fn fetch_deps(
     Ok((graph, path_map))
 }
 
+fn apply_patch(
+    name: &String,
+    source: &Source,
+    manifest: &Manifest,
+    parent_path: &Path,
+) -> Result<Source> {
+    let mut patches = manifest.patches();
+    match source {
+        //Check if the patch is for a git dependency.
+        Source::Git(git) => {
+            //Check if we got a patch for the git dependency.
+            if let Some(source_patches) = patches.find(|patch| *patch.0 == git.repo.to_string()) {
+                if let Some(patch) = source_patches.1.get(name) {
+                    Ok(dep_to_source(parent_path, patch)?)
+                } else {
+                    bail!(
+                        "Cannot find the patch for the {} for package {}",
+                        git.repo.to_string(),
+                        name
+                    )
+                }
+            } else {
+                Ok(source.clone())
+            }
+        }
+        _ => Ok(source.clone()),
+    }
+}
+
 /// Produce a unique ID for a particular fetch pass.
 ///
 /// This is used in the temporary git directory and allows for avoiding contention over the git repo directory.
@@ -768,7 +798,8 @@ fn fetch_children(
     let parent_path = path_map[&parent.id()].clone();
     for (dep_name, dep) in manifest.deps() {
         let name = dep.package().unwrap_or(dep_name).to_string();
-        let source = dep_to_source(&parent_path, dep, manifest)?;
+        let source = dep_to_source(&parent_path, dep)?;
+        let source = apply_patch(&name, &source, manifest, &parent_path)?;
         if offline_mode && !matches!(source, Source::Path(_)) {
             bail!("Unable to fetch pkg {:?} in offline mode", source);
         }
@@ -1016,23 +1047,9 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
     Ok(path)
 }
 
-fn detail_to_reference(det: &DependencyDetails) -> Result<GitReference> {
-    match (&det.branch, &det.tag, &det.rev) {
-        (Some(branch), None, None) => Ok(GitReference::Branch(branch.clone())),
-        (None, Some(tag), None) => Ok(GitReference::Tag(tag.clone())),
-        (None, None, Some(rev)) => Ok(GitReference::Rev(rev.clone())),
-        (None, None, None) => Ok(GitReference::DefaultBranch),
-        _ => bail!(
-            "git dependencies support at most one reference: \
-                either `branch`, `tag` or `rev`"
-        ),
-    }
-}
-
 /// Given the path to a package and a `Dependency` parsed from one of its forc dependencies,
 /// produce the `Source` for that dependendency.
-fn dep_to_source(pkg_path: &Path, dep: &Dependency, manifest: &Manifest) -> Result<Source> {
-    let mut patches = manifest.patches();
+fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
     let source = match dep {
         Dependency::Simple(ref ver_str) => {
             bail!(
@@ -1048,32 +1065,20 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency, manifest: &Manifest) -> Resu
                 Source::Path(path.canonicalize()?)
             }
             (_, _, Some(repo)) => {
-                let reference = detail_to_reference(det)?;
-                let patch_for_dep = patches.find(|patch| patch.0 == repo);
-                match patch_for_dep {
-                    None => {
-                        //We don't have any patch for this dependency
-                        let repo = Url::parse(repo)?;
-                        let source = SourceGit { repo, reference };
-                        Source::Git(source)
-                    }
-                    Some(patch) => {
-                        let patch_details = match patch.1 {
-                            crate::manifest::Patch::Detailed(detail) => detail,
-                            crate::manifest::Patch::Simple(_) => {
-                                bail!("This type of patching is not supported!")
-                            }
-                        };
-                        //We have a patch for this dependency
-                        let patch_reference = detail_to_reference(patch_details)?;
-                        let repo = Url::parse(repo)?;
-                        let source = SourceGit {
-                            repo,
-                            reference: patch_reference,
-                        };
-                        Source::Git(source)
-                    }
-                }
+                let reference = match (&det.branch, &det.tag, &det.rev) {
+                    (Some(branch), None, None) => GitReference::Branch(branch.clone()),
+                    (None, Some(tag), None) => GitReference::Tag(tag.clone()),
+                    (None, None, Some(rev)) => GitReference::Rev(rev.clone()),
+                    (None, None, None) => GitReference::DefaultBranch,
+                    _ => bail!(
+                        "git dependencies support at most one reference: \
+                            either `branch`, `tag` or `rev`"
+                    ),
+                };
+                //We don't have any patch for this dependency
+                let repo = Url::parse(repo)?;
+                let source = SourceGit { repo, reference };
+                Source::Git(source)
             }
             _ => {
                 bail!("unsupported set of fields for dependency: {:?}", dep);
