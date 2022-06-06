@@ -19,7 +19,6 @@ cargo install --path ./forc-plugins/forc-lsp
 cargo install --path ./forc-plugins/forc-explore
 ```
 
-
 To build book:
 
 ```sh
