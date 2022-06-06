@@ -93,7 +93,7 @@ If you wish to use the nested form of enums via the `Error` enum from the exampl
 
 Key points to note:
 
-- You must import all of the enums for use instead of just the `Error`
+- You must import all of the enums you need instead of just the `Error` enum
 - The lines may get unnecessarily long (depending on the names)
 - The syntax is not the most ergonomic
 
