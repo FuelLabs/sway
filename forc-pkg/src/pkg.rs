@@ -224,6 +224,7 @@ impl BuildPlan {
             compilation_order,
         })
     }
+
     /// Create a new build plan from an existing one. Needs the difference with the existing plan with the lock.
     pub fn apply_pkg_diff(
         &self,
@@ -263,6 +264,7 @@ impl BuildPlan {
             compilation_order,
         })
     }
+
     /// Attempt to load the build plan from the `Lock`.
     pub fn from_lock(proj_path: &Path, lock: &Lock, sway_git_tag: &str) -> Result<Self> {
         let graph = lock.to_graph()?;
@@ -374,6 +376,7 @@ impl BuildPlan {
         &self.compilation_order
     }
 }
+
 /// Remove the given set of packages from `graph` along with any dependencies that are no
 /// longer required as a result.
 fn remove_deps(graph: &mut Graph, path_map: &PathMap, proj_node: NodeIx, to_remove: &[Pkg]) {
@@ -395,6 +398,7 @@ fn remove_deps(graph: &mut Graph, path_map: &PathMap, proj_node: NodeIx, to_remo
         }
     }
 }
+
 /// Add the given set of packages to `graph`. If a dependency of an newly added package is already
 /// pinned use that. Otherwise fetch and pin it.
 fn add_deps(
@@ -406,14 +410,15 @@ fn add_deps(
     offline_mode: bool,
     visited_map: &mut HashMap<Pinned, NodeIx>,
 ) -> Result<()> {
-    let proj_node = compilation_order
+    let proj_node = *compilation_order
         .last()
         .ok_or_else(|| anyhow!("Invalid Graph"))?;
+    let proj_id = graph[proj_node].id();
+    let proj_path = &path_map[&proj_id];
     let fetch_ts = std::time::Instant::now();
-    let fetch_id = fetch_id(&path_map[&graph[*proj_node].id()], fetch_ts);
-    let proj_node_after_delete = compilation_order.last().unwrap();
+    let fetch_id = fetch_id(proj_path, fetch_ts);
     for added_package in to_add {
-        let pinned_pkg = pin_pkg(fetch_id, added_package, path_map, sway_git_tag)?;
+        let pinned_pkg = pin_pkg(fetch_id, proj_id, added_package, path_map, sway_git_tag)?;
         let manifest = Manifest::from_dir(&path_map[&pinned_pkg.id()], sway_git_tag)?;
         let added_package_node = graph.add_node(pinned_pkg.clone());
         fetch_children(
@@ -427,13 +432,14 @@ fn add_deps(
             visited_map,
         )?;
         graph.add_edge(
-            *proj_node_after_delete,
+            proj_node,
             added_package_node,
             added_package.name.to_string(),
         );
     }
     Ok(())
 }
+
 impl GitReference {
     /// Resolves the parsed forc git reference to the associated git ID.
     pub fn resolve(&self, repo: &git2::Repository) -> Result<git2::Oid> {
