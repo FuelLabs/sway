@@ -1,13 +1,16 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-6EFBB843E0F64456'
 dependencies = []
 
 [[package]]
 name = 'reentrancy_attacker_abi'
+source = 'path+from-root-6EFBB843E0F64456'
 dependencies = ['std']
 
 [[package]]
 name = 'reentrancy_attacker_contract'
+source = 'root'
 dependencies = [
     'reentrancy_attacker_abi',
     'reentrancy_target_abi',
@@ -16,8 +19,10 @@ dependencies = [
 
 [[package]]
 name = 'reentrancy_target_abi'
+source = 'path+from-root-6EFBB843E0F64456'
 dependencies = ['std']
 
 [[package]]
 name = 'std'
+source = 'path+from-root-6EFBB843E0F64456'
 dependencies = ['core']
