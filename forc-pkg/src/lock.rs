@@ -163,6 +163,13 @@ impl Lock {
             }
         }
 
+        // Validate the `path_root` of each of the path nodes.
+        for n in graph.node_indices() {
+            if let pkg::SourcePinned::Path(ref src) = graph[n].source {
+                pkg::validate_path_root(&graph, n, src.path_root)?;
+            }
+        }
+
         Ok(graph)
     }
 

@@ -123,8 +123,17 @@ pub struct SourceGitPinned {
 /// A pinned instance of a path source.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub struct SourcePathPinned {
-    /// The ID of the package that this package's path is relative to.
-    pub relative_to: PinnedId,
+    /// The ID of the package that is the root of the subgraph of path dependencies that this
+    /// package is a part of.
+    ///
+    /// In other words, when traversing the parents of this package, this is the ID of the first
+    /// non-path ancestor package.
+    ///
+    /// As a result, this will always be either a git package or the root package.
+    ///
+    /// This allows for disambiguating path dependencies of the same name that have different path
+    /// roots.
+    pub path_root: PinnedId,
 }
 
 /// A pinned instance of the registry source.
@@ -417,6 +426,7 @@ fn add_deps(
     let proj_path = &path_map[&proj_id];
     let fetch_ts = std::time::Instant::now();
     let fetch_id = fetch_id(proj_path, fetch_ts);
+    let path_root = proj_id;
     for added_package in to_add {
         let pinned_pkg = pin_pkg(fetch_id, proj_id, added_package, path_map, sway_git_tag)?;
         let manifest = Manifest::from_dir(&path_map[&pinned_pkg.id()], sway_git_tag)?;
@@ -426,6 +436,7 @@ fn add_deps(
             offline_mode,
             added_package_node,
             &manifest,
+            path_root,
             sway_git_tag,
             graph,
             path_map,
@@ -539,8 +550,8 @@ impl fmt::Display for PinnedId {
 
 impl fmt::Display for SourcePathPinned {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // path+relative-to-<id>
-        write!(f, "{}+relative-to-{}", Self::PREFIX, self.relative_to)
+        // path+from-root-<id>
+        write!(f, "{}+from-root-{}", Self::PREFIX, self.path_root)
     }
 }
 
@@ -592,7 +603,7 @@ impl FromStr for PinnedId {
 impl FromStr for SourcePathPinned {
     type Err = SourcePathPinnedParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // path+relative-to-<id>
+        // path+from-root-<id>
         let s = s.trim();
 
         // Check for prefix at the start.
@@ -602,15 +613,15 @@ impl FromStr for SourcePathPinned {
         }
         let s = &s[prefix_plus.len()..];
 
-        // Parse the `relative-to-*` section.
-        let relative_to = s
-            .split("relative-to-")
+        // Parse the `from-root-*` section.
+        let path_root = s
+            .split("from-root-")
             .nth(1)
             .ok_or(SourcePathPinnedParseError)?
             .parse()
             .map_err(|_| SourcePathPinnedParseError)?;
 
-        Ok(Self { relative_to })
+        Ok(Self { path_root })
     }
 }
 
@@ -761,20 +772,17 @@ pub fn graph_to_path_map(
                 })?
             }
             SourcePinned::Path(path) => {
-                // Retrieve the parent node to validate the ID.
+                // This is already checked during `Graph::from_lock`, but we check again here just
+                // in case this is being called with a `Graph` constructed via some other means.
+                validate_path_root(graph, dep_node, path.path_root)?;
+
+                // Retrieve the parent node to construct the relative path.
                 let (parent_node, dep_name) = graph
                     .edges_directed(dep_node, Direction::Incoming)
                     .next()
                     .map(|edge| (edge.source(), edge.weight().clone()))
                     .ok_or_else(|| anyhow!("more than one root package detected in graph"))?;
                 let parent = &graph[parent_node];
-                if parent.id() != path.relative_to {
-                    bail!(
-                        "`path` dependency `{}` has unexpected parent `{}`",
-                        dep.name,
-                        parent.name
-                    );
-                }
 
                 // Construct the path relative to the parent's path.
                 let parent_path = &path_map[&parent.id()];
@@ -815,6 +823,42 @@ pub fn graph_to_path_map(
     Ok(path_map)
 }
 
+/// Given a `graph`, the node index of a path dependency within that `graph`, and the supposed
+/// `path_root` of the path dependency, ensure that the `path_root` is valid.
+///
+/// See the `path_root` field of the [SourcePathPinned] type for further details.
+pub(crate) fn validate_path_root(
+    graph: &Graph,
+    path_dep: NodeIx,
+    path_root: PinnedId,
+) -> Result<()> {
+    let mut node = path_dep;
+    let invalid_path_root = || {
+        anyhow!(
+            "invalid `path_root` for path dependency package {:?}",
+            &graph[path_dep].name
+        )
+    };
+    loop {
+        let parent = graph
+            .edges_directed(node, Direction::Incoming)
+            .next()
+            .map(|edge| edge.source())
+            .ok_or_else(invalid_path_root)?;
+        let parent_pkg = &graph[parent];
+        match &parent_pkg.source {
+            SourcePinned::Path(src) if src.path_root != path_root => bail!(invalid_path_root()),
+            SourcePinned::Git(_) | SourcePinned::Registry(_) | SourcePinned::Root => {
+                if parent_pkg.id() != path_root {
+                    bail!(invalid_path_root());
+                }
+                return Ok(());
+            }
+            _ => node = parent,
+        }
+    }
+}
+
 /// Fetch all depedencies and produce the dependency graph along with a map from each node's unique
 /// ID to its local fetched path.
 ///
@@ -846,11 +890,13 @@ pub(crate) fn fetch_deps(
     let fetch_ts = std::time::Instant::now();
     let fetch_id = fetch_id(&path_map[&pkg_id], fetch_ts);
     let manifest = Manifest::from_dir(&path_map[&pkg_id], sway_git_tag)?;
+    let path_root = pkg_id;
     fetch_children(
         fetch_id,
         offline_mode,
         root,
         &manifest,
+        path_root,
         sway_git_tag,
         &mut graph,
         &mut path_map,
@@ -877,6 +923,7 @@ fn fetch_children(
     offline_mode: bool,
     node: NodeIx,
     manifest: &Manifest,
+    path_root: PinnedId,
     sway_git_tag: &str,
     graph: &mut Graph,
     path_map: &mut PathMap,
@@ -892,8 +939,12 @@ fn fetch_children(
             bail!("Unable to fetch pkg {:?} in offline mode", source);
         }
         let pkg = Pkg { name, source };
-        let pinned = pin_pkg(fetch_id, parent_id, &pkg, path_map, sway_git_tag)?;
+        let pinned = pin_pkg(fetch_id, path_root, &pkg, path_map, sway_git_tag)?;
         let pkg_id = pinned.id();
+        let path_root = match pkg.source {
+            Source::Root | Source::Git(_) | Source::Registry(_) => pkg_id,
+            Source::Path(_) => path_root,
+        };
         let manifest = Manifest::from_dir(&path_map[&pkg_id], sway_git_tag)?;
         if pinned.name != manifest.project.name {
             bail!(
@@ -912,6 +963,7 @@ fn fetch_children(
                 offline_mode,
                 node,
                 &manifest,
+                path_root,
                 sway_git_tag,
                 graph,
                 path_map,
@@ -1044,9 +1096,12 @@ pub fn pin_git(fetch_id: u64, name: &str, source: SourceGit) -> Result<SourceGit
 /// Given a package source, attempt to determine the pinned version or commit.
 ///
 /// Also updates the `path_map` with a path to the local copy of the source.
+///
+/// The `path_root` is required for `Path` dependencies and must specify the package that is the
+/// root of the current subgraph of path dependencies.
 fn pin_pkg(
     fetch_id: u64,
-    parent_id: PinnedId,
+    path_root: PinnedId,
     pkg: &Pkg,
     path_map: &mut PathMap,
     sway_git_tag: &str,
@@ -1055,8 +1110,7 @@ fn pin_pkg(
     let pinned = match &pkg.source {
         Source::Root => unreachable!("Root package is \"pinned\" prior to fetching"),
         Source::Path(path) => {
-            let relative_to = parent_id;
-            let path_pinned = SourcePathPinned { relative_to };
+            let path_pinned = SourcePathPinned { path_root };
             let source = SourcePinned::Path(path_pinned);
             let pinned = Pinned { name, source };
             let id = pinned.id();
