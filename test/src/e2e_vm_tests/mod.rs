@@ -565,7 +565,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/storage_in_script",
         "should_fail/multiple_impl_abi",
         "should_fail/multiple_impl_fns",
-        "should_fail/impl_with_bad_generic",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
