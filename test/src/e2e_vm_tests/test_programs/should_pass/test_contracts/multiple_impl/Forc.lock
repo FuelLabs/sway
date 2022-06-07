@@ -4,13 +4,7 @@ dependencies = []
 
 [[package]]
 name = 'multiple_impl'
-dependencies = []
-
-[[package]]
-name = 'multiple_impl'
-dependencies = [
-    'std',
-]
+dependencies = ['std']
 
 [[package]]
 name = 'std'

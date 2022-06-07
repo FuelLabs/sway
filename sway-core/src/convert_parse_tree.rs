@@ -670,7 +670,7 @@ fn item_impl_to_declaration(
                 trait_name: path_type_to_call_path(ec, path_type)?,
                 type_implementing_for,
                 type_implementing_for_span,
-                type_arguments: type_parameters,
+                type_parameters,
                 functions,
                 block_span,
             };

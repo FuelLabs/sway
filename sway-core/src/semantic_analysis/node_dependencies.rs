@@ -335,13 +335,13 @@ impl Dependencies {
             Declaration::ImplTrait(ImplTrait {
                 trait_name,
                 type_implementing_for,
-                type_arguments,
+                type_parameters,
                 functions,
                 ..
             }) => self
                 .gather_from_call_path(trait_name, false, false)
                 .gather_from_typeinfo(type_implementing_for)
-                .gather_from_type_parameters(type_arguments)
+                .gather_from_type_parameters(type_parameters)
                 .gather_from_iter(functions.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(fn_decl)
                 }),

@@ -376,7 +376,7 @@ impl TypedAstNode {
                                 }
                             }
 
-                            let decl = check!(
+                            let function_decl = check!(
                                 TypedFunctionDeclaration::type_check(TypeCheckArguments {
                                     checkee: fn_decl.clone(),
                                     namespace,
@@ -391,28 +391,23 @@ impl TypedAstNode {
                                 errors
                             );
                             namespace.insert_symbol(
-                                decl.name.clone(),
-                                TypedDeclaration::FunctionDeclaration(decl.clone()),
+                                function_decl.name.clone(),
+                                TypedDeclaration::FunctionDeclaration(function_decl.clone()),
                             );
-                            TypedDeclaration::FunctionDeclaration(decl)
+                            TypedDeclaration::FunctionDeclaration(function_decl)
                         }
                         Declaration::TraitDeclaration(trait_decl) => {
-                            is_upper_camel_case(&trait_decl.name).ok(&mut warnings, &mut errors);
-                            check!(
-                                type_check_trait_decl(TypeCheckArguments {
-                                    checkee: trait_decl,
-                                    namespace,
-                                    self_type,
-                                    // this is unused by `type_check_trait`
-                                    return_type_annotation: insert_type(TypeInfo::Unknown),
-                                    help_text: Default::default(),
-                                    mode: Mode::NonAbi,
-                                    opts,
-                                }),
+                            let trait_decl = check!(
+                                TypedTraitDeclaration::type_check(trait_decl, namespace),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
-                            )
+                            );
+                            namespace.insert_symbol(
+                                trait_decl.name.clone(),
+                                TypedDeclaration::TraitDeclaration(trait_decl.clone()),
+                            );
+                            TypedDeclaration::TraitDeclaration(trait_decl)
                         }
                         Declaration::Reassignment(Reassignment { lhs, rhs, span }) => {
                             check!(
@@ -435,11 +430,16 @@ impl TypedAstNode {
                             )
                         }
                         Declaration::ImplTrait(impl_trait) => {
-                            let impl_trait = check!(
+                            let (impl_trait, type_implementing_for) = check!(
                                 TypedImplTrait::type_check_impl_trait(impl_trait, namespace, opts),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
+                            );
+                            namespace.insert_trait_implementation(
+                                impl_trait.trait_name.clone(),
+                                type_implementing_for,
+                                impl_trait.methods.clone(),
                             );
                             TypedDeclaration::ImplTrait(impl_trait)
                         }
@@ -494,23 +494,32 @@ impl TypedAstNode {
                             // themselves, and we don't want to do more work in the compiler,
                             // so we don't support the case of calling a contract's own interface
                             // from itself. This is by design.
-                            let interface_surface = check!(
-                                type_check_interface_surface(interface_surface, namespace),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            );
+                            let self_type_for_interface = insert_type(TypeInfo::SelfType);
+                            let mut new_interface_surface = vec![];
+                            for trait_fn in interface_surface.into_iter() {
+                                new_interface_surface.push(check!(
+                                    TypedTraitFn::type_check(
+                                        trait_fn,
+                                        namespace,
+                                        self_type_for_interface
+                                    ),
+                                    continue,
+                                    warnings,
+                                    errors
+                                ));
+                            }
+
                             // type check these for errors but don't actually use them yet -- the real
                             // ones will be type checked with proper symbols when the ABI is implemented
                             let _methods = check!(
-                                type_check_trait_methods(methods.clone(), namespace, self_type,),
+                                type_check_trait_methods(methods.clone(), namespace, self_type),
                                 vec![],
                                 warnings,
                                 errors
                             );
 
                             let decl = TypedDeclaration::AbiDeclaration(TypedAbiDeclaration {
-                                interface_surface,
+                                interface_surface: new_interface_surface,
                                 methods,
                                 name: name.clone(),
                                 span,
@@ -849,135 +858,6 @@ fn handle_supertraits(
     }
 
     ok((), warnings, errors)
-}
-
-fn type_check_trait_decl(
-    arguments: TypeCheckArguments<'_, TraitDeclaration>,
-) -> CompileResult<TypedDeclaration> {
-    let TypeCheckArguments {
-        checkee: trait_decl,
-        namespace,
-        return_type_annotation: _return_type_annotation,
-        help_text: _help_text,
-        ..
-    } = arguments;
-
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
-
-    // type check the interface surface
-    let interface_surface = check!(
-        type_check_interface_surface(trait_decl.interface_surface.to_vec(), namespace),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    // A temporary namespace for checking within the trait's scope.
-    let mut trait_namespace = namespace.clone();
-
-    // Recursively handle supertraits: make their interfaces and methods available to this trait
-    check!(
-        handle_supertraits(&trait_decl.supertraits, &mut trait_namespace),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    // insert placeholder functions representing the interface surface
-    // to allow methods to use those functions
-    trait_namespace.insert_trait_implementation(
-        CallPath {
-            prefixes: vec![],
-            suffix: trait_decl.name.clone(),
-            is_absolute: false,
-        },
-        TypeInfo::SelfType,
-        interface_surface
-            .iter()
-            .map(|x| x.to_dummy_func(Mode::NonAbi))
-            .collect(),
-    );
-    // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
-    let _methods = check!(
-        type_check_trait_methods(
-            trait_decl.methods.clone(),
-            &mut trait_namespace,
-            insert_type(TypeInfo::SelfType),
-        ),
-        vec![],
-        warnings,
-        errors
-    );
-    let typed_trait_decl = TypedDeclaration::TraitDeclaration(TypedTraitDeclaration {
-        name: trait_decl.name.clone(),
-        interface_surface,
-        methods: trait_decl.methods.to_vec(),
-        supertraits: trait_decl.supertraits.to_vec(),
-        visibility: trait_decl.visibility,
-    });
-    namespace.insert_symbol(trait_decl.name, typed_trait_decl.clone());
-    ok(typed_trait_decl, warnings, errors)
-}
-
-fn type_check_interface_surface(
-    interface_surface: Vec<TraitFn>,
-    namespace: &mut Namespace,
-) -> CompileResult<Vec<TypedTraitFn>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-    let interface_surface = interface_surface
-        .into_iter()
-        .map(
-            |TraitFn {
-                 name,
-                 purity,
-                 parameters,
-                 return_type,
-                 return_type_span,
-             }| TypedTraitFn {
-                name,
-                purity,
-                return_type_span: return_type_span.clone(),
-                parameters: parameters
-                    .into_iter()
-                    .map(
-                        |FunctionParameter {
-                             name,
-                             type_id,
-                             type_span,
-                         }| TypedFunctionParameter {
-                            name,
-                            r#type: check!(
-                                namespace.resolve_type_with_self(
-                                    look_up_type_id(type_id),
-                                    insert_type(TypeInfo::SelfType),
-                                    &type_span,
-                                    EnforceTypeArguments::Yes
-                                ),
-                                insert_type(TypeInfo::ErrorRecovery),
-                                warnings,
-                                errors,
-                            ),
-                            type_span,
-                        },
-                    )
-                    .collect(),
-                return_type: check!(
-                    namespace.resolve_type_with_self(
-                        return_type,
-                        insert_type(TypeInfo::SelfType),
-                        &return_type_span,
-                        EnforceTypeArguments::Yes
-                    ),
-                    insert_type(TypeInfo::ErrorRecovery),
-                    warnings,
-                    errors,
-                ),
-            },
-        )
-        .collect::<Vec<_>>();
-    ok(interface_surface, warnings, errors)
 }
 
 fn type_check_trait_methods(

@@ -12,7 +12,6 @@ pub type TokenMap = HashMap<(Ident, Span), TokenType>;
 pub enum TokenType {
     TypedDeclaration(TypedDeclaration),
     TypedExpression(TypedExpression),
-
     TypedFunctionDeclaration(TypedFunctionDeclaration),
     TypedFunctionParameter(TypedFunctionParameter),
     TypedStructField(TypedStructField),

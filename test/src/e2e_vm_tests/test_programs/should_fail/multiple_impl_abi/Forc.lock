@@ -1,11 +1,3 @@
 [[package]]
-name = 'core'
-dependencies = []
-
-[[package]]
 name = 'multiple_impl_abi'
-dependencies = ['std']
-
-[[package]]
-name = 'std'
-dependencies = ['core']
+dependencies = []
