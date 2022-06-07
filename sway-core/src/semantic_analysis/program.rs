@@ -1,4 +1,7 @@
-use super::{TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration};
+use super::{
+    TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration,
+    TypedStorageDeclaration,
+};
 use crate::{
     error::*,
     parse_tree::{ParseProgram, Purity, TreeType},
@@ -62,6 +65,24 @@ impl TypedProgram {
     ) -> CompileResult<TypedProgramKind> {
         // Extract program-kind-specific properties from the root nodes.
         let mut errors = vec![];
+        let mut warnings = vec![];
+
+        // Validate all submodules
+        for (_, submodule) in &root.submodules {
+            check!(
+                Self::validate_root(
+                    &submodule.module,
+                    TreeType::Library {
+                        name: submodule.library_name.clone(),
+                    },
+                    submodule.library_name.span().clone(),
+                ),
+                continue,
+                warnings,
+                errors
+            );
+        }
+
         let mut mains = Vec::new();
         let mut declarations = Vec::new();
         let mut abi_entries = Vec::new();
@@ -96,9 +117,26 @@ impl TypedProgram {
             };
         }
 
-        // impure functions are disallowed in non-contracts
+        // Some checks that are specific to non-contracts
         if kind != TreeType::Contract {
+            // impure functions are disallowed in non-contracts
             errors.extend(disallow_impure_functions(&declarations, &mains));
+
+            // `storage` declarations are not allowed in non-contracts
+            let storage_decl = declarations
+                .iter()
+                .find(|decl| matches!(decl, TypedDeclaration::StorageDeclaration(_)));
+
+            if let Some(TypedDeclaration::StorageDeclaration(TypedStorageDeclaration {
+                span,
+                ..
+            })) = storage_decl
+            {
+                errors.push(CompileError::StorageDeclarationInNonContract {
+                    program_kind: format!("{kind}"),
+                    span: span.clone(),
+                });
+            }
         }
 
         // Perform other validation based on the tree type.

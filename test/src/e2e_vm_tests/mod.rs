@@ -560,6 +560,9 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/recursive_struct",
         "should_fail/recursive_type_chain",
         "should_fail/better_type_error_message",
+        "should_fail/storage_in_library",
+        "should_fail/storage_in_predicate",
+        "should_fail/storage_in_script",
         "should_fail/multiple_impl_abi",
         "should_fail/multiple_impl_fns",
     ];
