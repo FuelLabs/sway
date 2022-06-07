@@ -41,6 +41,12 @@ impl PartialOrd for Ident {
 
 impl Eq for Ident {}
 
+impl fmt::Display for Ident {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(formatter, "{}", self.as_str())
+    }
+}
+
 impl Ident {
     pub fn as_str(&self) -> &str {
         match self.name_override_opt {
@@ -73,11 +79,5 @@ impl Ident {
             name_override_opt: Some(name),
             span: Span::dummy(),
         }
-    }
-}
-
-impl fmt::Display for Ident {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "{}", self.as_str())
     }
 }

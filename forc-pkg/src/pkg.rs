@@ -142,6 +142,8 @@ pub struct BuildPlan {
 }
 
 /// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "kebab-case")]
 pub struct BuildConfig {
     pub print_ir: bool,
     pub print_finalized_asm: bool,

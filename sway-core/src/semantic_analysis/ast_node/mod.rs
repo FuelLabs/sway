@@ -5,6 +5,8 @@ pub mod impl_trait;
 mod return_statement;
 pub mod while_loop;
 
+use std::fmt;
+
 pub(crate) use code_block::*;
 pub use declaration::*;
 pub(crate) use expression::*;
@@ -15,8 +17,8 @@ pub(crate) use while_loop::*;
 use super::ERROR_RECOVERY_DECLARATION;
 
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*, AstNode,
-    AstNodeContent, Ident, ReturnStatement,
+    error::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*,
+    types::DeterministicallyAborts, AstNode, AstNodeContent, Ident, ReturnStatement,
 };
 
 use sway_types::{span::Span, state::StateIndex};
@@ -42,6 +44,30 @@ pub enum TypedAstNodeContent {
     SideEffect,
 }
 
+impl UnresolvedTypeCheck for TypedAstNodeContent {
+    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+        use TypedAstNodeContent::*;
+        match self {
+            ReturnStatement(stmt) => stmt.expr.check_for_unresolved_types(),
+            Declaration(decl) => decl.check_for_unresolved_types(),
+            Expression(expr) => expr.check_for_unresolved_types(),
+            ImplicitReturnExpression(expr) => expr.check_for_unresolved_types(),
+            WhileLoop(lo) => {
+                let mut condition = lo.condition.check_for_unresolved_types();
+                let mut body = lo
+                    .body
+                    .contents
+                    .iter()
+                    .flat_map(TypedAstNode::check_for_unresolved_types)
+                    .collect();
+                condition.append(&mut body);
+                condition
+            }
+            SideEffect => vec![],
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, Derivative)]
 #[derivative(PartialEq)]
 pub struct TypedAstNode {
@@ -50,17 +76,17 @@ pub struct TypedAstNode {
     pub(crate) span: Span,
 }
 
-impl std::fmt::Display for TypedAstNode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for TypedAstNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use TypedAstNodeContent::*;
         let text = match &self.content {
             ReturnStatement(TypedReturnStatement { ref expr }) => {
-                format!("return {}", expr.pretty_print())
+                format!("return {}", expr)
             }
-            Declaration(ref typed_decl) => typed_decl.pretty_print(),
-            Expression(exp) => exp.pretty_print(),
-            ImplicitReturnExpression(exp) => format!("return {}", exp.pretty_print()),
-            WhileLoop(w_loop) => w_loop.pretty_print(),
+            Declaration(ref typed_decl) => typed_decl.to_string(),
+            Expression(exp) => exp.to_string(),
+            ImplicitReturnExpression(exp) => format!("return {}", exp),
+            WhileLoop(w_loop) => w_loop.to_string(),
             SideEffect => "".into(),
         };
         f.write_str(&text)
@@ -86,6 +112,27 @@ impl CopyTypes for TypedAstNode {
                 body.copy_types(type_mapping);
             }
             TypedAstNodeContent::SideEffect => (),
+        }
+    }
+}
+
+impl UnresolvedTypeCheck for TypedAstNode {
+    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+        self.content.check_for_unresolved_types()
+    }
+}
+
+impl DeterministicallyAborts for TypedAstNode {
+    fn deterministically_aborts(&self) -> bool {
+        use TypedAstNodeContent::*;
+        match &self.content {
+            ReturnStatement(_) => true,
+            Declaration(_) => false,
+            Expression(exp) | ImplicitReturnExpression(exp) => exp.deterministically_aborts(),
+            WhileLoop(TypedWhileLoop { condition, body }) => {
+                condition.deterministically_aborts() || body.deterministically_aborts()
+            }
+            SideEffect => false,
         }
     }
 }
@@ -118,22 +165,6 @@ impl TypedAstNode {
                 matches!(tree_type, TreeType::Script | TreeType::Predicate)
             }
             _ => false,
-        }
-    }
-
-    /// if this ast node _deterministically_ panics/aborts, then this is true.
-    /// This is used to assist in type checking branches that abort control flow and therefore
-    /// don't need to return a type.
-    pub(crate) fn deterministically_aborts(&self) -> bool {
-        use TypedAstNodeContent::*;
-        match &self.content {
-            ReturnStatement(_) => true,
-            Declaration(_) => false,
-            Expression(exp) | ImplicitReturnExpression(exp) => exp.deterministically_aborts(),
-            WhileLoop(TypedWhileLoop { condition, body }) => {
-                condition.deterministically_aborts() || body.deterministically_aborts()
-            }
-            SideEffect => false,
         }
     }
 
@@ -730,179 +761,88 @@ fn reassignment(
     // ensure that the lhs is a variable expression or struct field access
     match lhs {
         ReassignmentTarget::VariableExpression(var) => {
-            match *var {
-                Expression::VariableExpression { name, span } => {
-                    // check that the reassigned name exists
-                    let unknown_decl = check!(
-                        namespace.resolve_symbol(&name).cloned(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    let variable_decl = check!(
-                        unknown_decl.expect_variable().cloned(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    if !variable_decl.is_mutable.is_mutable() {
-                        errors.push(CompileError::AssignmentToNonMutable { name });
-                    }
-                    // the RHS is a ref type to the LHS
-                    let rhs_type_id = insert_type(TypeInfo::Ref(
-                        variable_decl.body.return_type,
-                        variable_decl.body.span.clone(),
-                    ));
-                    // type check the reassignment
-                    let rhs = check!(
-                        TypedExpression::type_check(TypeCheckArguments {
-                            checkee: rhs,
-                            namespace,
-                            return_type_annotation: rhs_type_id,
-                            help_text:
-                                "You can only reassign a value of the same type to a variable.",
-                            self_type,
-                            mode: Mode::NonAbi,
-                            opts
-                        }),
-                        error_recovery_expr(span),
-                        warnings,
-                        errors
-                    );
-
-                    ok(
-                        TypedDeclaration::Reassignment(TypedReassignment {
-                            lhs: vec![ReassignmentLhs {
-                                name: variable_decl.name,
-                                r#type: rhs_type_id,
-                            }],
-                            rhs,
-                        }),
-                        warnings,
-                        errors,
-                    )
-                }
-                Expression::SubfieldExpression {
-                    prefix,
-                    field_to_access,
-                    span,
-                } => {
-                    let mut expr = *prefix;
-                    let mut names_vec = vec![];
-                    let final_return_type = loop {
-                        let type_checked = check!(
-                            TypedExpression::type_check(TypeCheckArguments {
-                                checkee: expr.clone(),
-                                namespace,
-                                return_type_annotation: insert_type(TypeInfo::Unknown),
-                                help_text: Default::default(),
-                                self_type,
-                                mode: Mode::NonAbi,
-                                opts
-                            }),
-                            error_recovery_expr(expr.span()),
+            let mut expr = var;
+            let mut names_vec = Vec::new();
+            let (base_name, final_return_type) = loop {
+                match *expr {
+                    Expression::VariableExpression { name, .. } => {
+                        // check that the reassigned name exists
+                        let unknown_decl = check!(
+                            namespace.resolve_symbol(&name).cloned(),
+                            return err(warnings, errors),
                             warnings,
                             errors
                         );
-
-                        match expr {
-                            Expression::VariableExpression { name, .. } => {
-                                match namespace.clone().resolve_symbol(&name).value {
-                                    Some(TypedDeclaration::VariableDeclaration(
-                                        TypedVariableDeclaration { is_mutable, .. },
-                                    )) => {
-                                        if !is_mutable.is_mutable() {
-                                            errors.push(CompileError::AssignmentToNonMutable {
-                                                name: name.clone(),
-                                            });
-                                        }
-                                    }
-                                    Some(other) => {
-                                        errors.push(CompileError::ReassignmentToNonVariable {
-                                            name: name.clone(),
-                                            kind: other.friendly_name(),
-                                            span,
-                                        });
-                                        return err(warnings, errors);
-                                    }
-                                    None => {
-                                        errors
-                                            .push(CompileError::UnknownVariable { var_name: name });
-                                        return err(warnings, errors);
-                                    }
-                                }
-                                names_vec.push(ReassignmentLhs {
-                                    name,
-                                    r#type: type_checked.return_type,
-                                });
-                                break type_checked.return_type;
-                            }
-                            Expression::SubfieldExpression {
-                                field_to_access,
-                                prefix,
-                                ..
-                            } => {
-                                names_vec.push(ReassignmentLhs {
-                                    name: field_to_access,
-                                    r#type: type_checked.return_type,
-                                });
-                                expr = *prefix;
-                            }
-                            _ => {
-                                errors.push(CompileError::InvalidExpressionOnLhs { span });
-                                return err(warnings, errors);
-                            }
+                        let variable_decl = check!(
+                            unknown_decl.expect_variable().cloned(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        if !variable_decl.is_mutable.is_mutable() {
+                            errors.push(CompileError::AssignmentToNonMutable { name });
+                            return err(warnings, errors);
                         }
-                    };
-
-                    let mut names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
-                    names_vec.push(ReassignmentLhs {
-                        name: field_to_access,
-                        r#type: final_return_type,
-                    });
-
-                    let (ty_of_field, _ty_of_parent) = check!(
-                        namespace.find_subfield_type(
-                            names_vec
-                                .iter()
-                                .map(|ReassignmentLhs { name, .. }| name.clone())
-                                .collect::<Vec<_>>()
-                                .as_slice()
-                        ),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    // type check the reassignment
-                    let rhs = check!(
-                        TypedExpression::type_check(TypeCheckArguments {
-                            checkee: rhs,
-                            namespace,
-                            return_type_annotation: ty_of_field,
-                            help_text: Default::default(),
-                            self_type,
-                            mode: Mode::NonAbi,
-                            opts,
-                        }),
-                        error_recovery_expr(span),
-                        warnings,
-                        errors
-                    );
-
-                    ok(
-                        TypedDeclaration::Reassignment(TypedReassignment {
-                            lhs: names_vec,
-                            rhs,
-                        }),
-                        warnings,
-                        errors,
-                    )
+                        break (name, variable_decl.body.return_type);
+                    }
+                    Expression::SubfieldExpression {
+                        prefix,
+                        field_to_access,
+                        ..
+                    } => {
+                        names_vec.push(ProjectionKind::StructField {
+                            name: field_to_access,
+                        });
+                        expr = prefix;
+                    }
+                    Expression::TupleIndex {
+                        prefix,
+                        index,
+                        index_span,
+                        ..
+                    } => {
+                        names_vec.push(ProjectionKind::TupleField { index, index_span });
+                        expr = prefix;
+                    }
+                    _ => {
+                        errors.push(CompileError::InvalidExpressionOnLhs { span });
+                        return err(warnings, errors);
+                    }
                 }
-                _ => {
-                    errors.push(CompileError::InvalidExpressionOnLhs { span });
-                    err(warnings, errors)
-                }
-            }
+            };
+            let names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
+            let (ty_of_field, _ty_of_parent) = check!(
+                namespace.find_subfield_type(&base_name, &names_vec),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            // type check the reassignment
+            let rhs = check!(
+                TypedExpression::type_check(TypeCheckArguments {
+                    checkee: rhs,
+                    namespace,
+                    return_type_annotation: ty_of_field,
+                    help_text: Default::default(),
+                    self_type,
+                    mode: Mode::NonAbi,
+                    opts,
+                }),
+                error_recovery_expr(span),
+                warnings,
+                errors
+            );
+
+            ok(
+                TypedDeclaration::Reassignment(TypedReassignment {
+                    lhs_base_name: base_name,
+                    lhs_type: final_return_type,
+                    lhs_indices: names_vec,
+                    rhs,
+                }),
+                warnings,
+                errors,
+            )
         }
         ReassignmentTarget::StorageField(fields) => reassign_storage_subfield(TypeCheckArguments {
             checkee: (fields, span, rhs),

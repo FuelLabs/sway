@@ -70,6 +70,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ProgramState::Return(0),
         ),
         (
+            "should_pass/language/tuple_field_reassignment",
+            ProgramState::Return(320),
+        ),
+        (
             "should_pass/language/enum_in_fn_decl",
             ProgramState::Return(255),
         ),
@@ -552,6 +556,9 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/recursive_struct",
         "should_fail/recursive_type_chain",
         "should_fail/better_type_error_message",
+        "should_fail/storage_in_library",
+        "should_fail/storage_in_predicate",
+        "should_fail/storage_in_script",
         "should_fail/repeated_enum_variant",
         "should_fail/repeated_storage_field",
         "should_fail/repeated_struct_field",

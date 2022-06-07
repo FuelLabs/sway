@@ -12,11 +12,16 @@ pub(crate) use self::{
     method_application::*, struct_field_access::*, tuple_index_access::*, unsafe_downcast::*,
 };
 
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
+use crate::{
+    error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::DeterministicallyAborts,
+};
 
 use sway_types::{Ident, Span};
 
-use std::collections::{HashMap, VecDeque};
+use std::{
+    collections::{HashMap, VecDeque},
+    fmt,
+};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedExpression {
@@ -46,69 +51,152 @@ impl CopyTypes for TypedExpression {
     }
 }
 
-pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
-    TypedExpression {
-        expression: TypedExpressionVariant::Tuple { fields: vec![] },
-        return_type: crate::type_engine::insert_type(TypeInfo::ErrorRecovery),
-        is_constant: IsConstant::No,
-        span,
+impl fmt::Display for TypedExpression {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} ({})",
+            self.expression,
+            look_up_type_id(self.return_type)
+        )
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-impl TypedExpression {
-    pub(crate) fn core_ops_eq(
-        arguments: Vec<TypedExpression>,
-        span: Span,
-        namespace: &mut Namespace,
-        self_type: TypeId,
-    ) -> CompileResult<TypedExpression> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let call_path = CallPath {
-            prefixes: vec![
-                Ident::new_with_override("core", span.clone()),
-                Ident::new_with_override("ops", span.clone()),
-            ],
-            suffix: Op {
-                op_variant: OpVariant::Equals,
-                span: span.clone(),
+impl UnresolvedTypeCheck for TypedExpression {
+    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+        use TypedExpressionVariant::*;
+        match &self.expression {
+            TypeProperty { type_id, .. } => type_id.check_for_unresolved_types(),
+            FunctionApplication {
+                arguments,
+                function_body,
+                ..
+            } => {
+                let mut args = arguments
+                    .iter()
+                    .map(|x| &x.1)
+                    .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                    .collect::<Vec<_>>();
+                args.append(
+                    &mut function_body
+                        .contents
+                        .iter()
+                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .collect(),
+                );
+                args
             }
-            .to_var_name(),
-            is_absolute: true,
-        };
-        let method_name = MethodName::FromTrait {
-            call_path: call_path.clone(),
-        };
-        let arguments = VecDeque::from(arguments);
-        let method = check!(
-            resolve_method_name(
-                &method_name,
-                arguments.clone(),
-                vec![],
-                span.clone(),
-                namespace,
-                self_type,
-            ),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        instantiate_function_application_simple(
-            call_path,
-            HashMap::new(),
-            arguments,
-            method,
-            None,
-            IsConstant::No,
-            None,
-            span,
-        )
+            // expressions don't ever have return types themselves, they're stored in
+            // `TypedExpression::return_type`. Variable expressions are just names of variables.
+            VariableExpression { .. } => vec![],
+            Tuple { fields } => fields
+                .iter()
+                .flat_map(|x| x.check_for_unresolved_types())
+                .collect(),
+            AsmExpression { registers, .. } => registers
+                .iter()
+                .filter_map(|x| x.initializer.as_ref())
+                .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                .collect::<Vec<_>>(),
+            StructExpression { fields, .. } => fields
+                .iter()
+                .flat_map(|x| x.value.check_for_unresolved_types())
+                .collect(),
+            LazyOperator { lhs, rhs, .. } => lhs
+                .check_for_unresolved_types()
+                .into_iter()
+                .chain(rhs.check_for_unresolved_types().into_iter())
+                .collect(),
+            Array { contents } => contents
+                .iter()
+                .flat_map(|x| x.check_for_unresolved_types())
+                .collect(),
+            ArrayIndex { prefix, .. } => prefix.check_for_unresolved_types(),
+            CodeBlock(block) => block
+                .contents
+                .iter()
+                .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                .collect(),
+            IfExp {
+                condition,
+                then,
+                r#else,
+            } => {
+                let mut buf = condition
+                    .check_for_unresolved_types()
+                    .into_iter()
+                    .chain(then.check_for_unresolved_types().into_iter())
+                    .collect::<Vec<_>>();
+                if let Some(r#else) = r#else {
+                    buf.append(&mut r#else.check_for_unresolved_types());
+                }
+                buf
+            }
+            StructFieldAccess {
+                prefix,
+                resolved_type_of_parent,
+                ..
+            } => prefix
+                .check_for_unresolved_types()
+                .into_iter()
+                .chain(
+                    resolved_type_of_parent
+                        .check_for_unresolved_types()
+                        .into_iter(),
+                )
+                .collect(),
+            TupleElemAccess {
+                prefix,
+                resolved_type_of_parent,
+                ..
+            } => prefix
+                .check_for_unresolved_types()
+                .into_iter()
+                .chain(
+                    resolved_type_of_parent
+                        .check_for_unresolved_types()
+                        .into_iter(),
+                )
+                .collect(),
+            EnumInstantiation {
+                enum_decl,
+                contents,
+                ..
+            } => {
+                let mut buf = if let Some(contents) = contents {
+                    contents.check_for_unresolved_types().into_iter().collect()
+                } else {
+                    vec![]
+                };
+                buf.append(
+                    &mut enum_decl
+                        .variants
+                        .iter()
+                        .flat_map(|x| x.r#type.check_for_unresolved_types())
+                        .collect(),
+                );
+                buf
+            }
+            SizeOfValue { expr } => expr.check_for_unresolved_types(),
+            AbiCast { address, .. } => address.check_for_unresolved_types(),
+            // storage access can never be generic
+            StorageAccess { .. }
+            | Literal(_)
+            | AbiName(_)
+            | FunctionParameter
+            | GetStorageKey { .. } => vec![],
+            EnumTag { exp } => exp.check_for_unresolved_types(),
+            UnsafeDowncast { exp, variant } => exp
+                .check_for_unresolved_types()
+                .into_iter()
+                .chain(variant.r#type.check_for_unresolved_types().into_iter())
+                .collect(),
+        }
     }
+}
 
-    /// If this expression deterministically_aborts 100% of the time, this function returns
-    /// `true`. Used in dead-code and control-flow analysis.
-    pub(crate) fn deterministically_aborts(&self) -> bool {
+impl DeterministicallyAborts for TypedExpression {
+    fn deterministically_aborts(&self) -> bool {
         use TypedExpressionVariant::*;
         match &self.expression {
             FunctionApplication {
@@ -178,6 +266,68 @@ impl TypedExpression {
             UnsafeDowncast { exp, .. } => exp.deterministically_aborts(),
         }
     }
+}
+
+pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
+    TypedExpression {
+        expression: TypedExpressionVariant::Tuple { fields: vec![] },
+        return_type: crate::type_engine::insert_type(TypeInfo::ErrorRecovery),
+        is_constant: IsConstant::No,
+        span,
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+impl TypedExpression {
+    pub(crate) fn core_ops_eq(
+        arguments: Vec<TypedExpression>,
+        span: Span,
+        namespace: &mut Namespace,
+        self_type: TypeId,
+    ) -> CompileResult<TypedExpression> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let call_path = CallPath {
+            prefixes: vec![
+                Ident::new_with_override("core", span.clone()),
+                Ident::new_with_override("ops", span.clone()),
+            ],
+            suffix: Op {
+                op_variant: OpVariant::Equals,
+                span: span.clone(),
+            }
+            .to_var_name(),
+            is_absolute: true,
+        };
+        let method_name = MethodName::FromTrait {
+            call_path: call_path.clone(),
+        };
+        let arguments = VecDeque::from(arguments);
+        let method = check!(
+            resolve_method_name(
+                &method_name,
+                arguments.clone(),
+                vec![],
+                span.clone(),
+                namespace,
+                self_type,
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        instantiate_function_application_simple(
+            call_path,
+            HashMap::new(),
+            arguments,
+            method,
+            None,
+            IsConstant::No,
+            None,
+            span,
+        )
+    }
+
     /// recurse into `self` and get any return statements -- used to validate that all returns
     /// do indeed return the correct type
     /// This does _not_ extract implicit return statements as those are not control flow! This is
@@ -1374,7 +1524,7 @@ impl TypedExpression {
                 a => {
                     // TODO: Should this be `NotAnEnumOrFunction`?
                     errors.push(CompileError::NotAnEnum {
-                        name: call_path.friendly_name(),
+                        name: call_path.to_string(),
                         span,
                         actually: a.friendly_name().to_string(),
                     });
@@ -1856,14 +2006,6 @@ impl TypedExpression {
             }
         }
     }
-
-    pub(crate) fn pretty_print(&self) -> String {
-        format!(
-            "{} ({})",
-            self.expression.pretty_print(),
-            look_up_type_id(self.return_type).friendly_type_str()
-        )
-    }
 }
 
 #[cfg(test)]
@@ -1916,8 +2058,8 @@ mod tests {
                              expected,
                              received,
                              ..
-                         }) if expected.friendly_type_str() == "bool"
-                                && received.friendly_type_str() == "u64"));
+                         }) if expected.to_string() == "bool"
+                                && received.to_string() == "u64"));
     }
 
     #[test]
@@ -1944,15 +2086,15 @@ mod tests {
                              expected,
                              received,
                              ..
-                         }) if expected.friendly_type_str() == "u64"
-                                && received.friendly_type_str() == "bool"));
+                         }) if expected.to_string() == "u64"
+                                && received.to_string() == "bool"));
         assert!(matches!(&comp_res.errors[1],
                          CompileError::TypeError(TypeError::MismatchedType {
                              expected,
                              received,
                              ..
-                         }) if expected.friendly_type_str() == "[bool; 2]"
-                                && received.friendly_type_str() == "[u64; 2]"));
+                         }) if expected.to_string() == "[bool; 2]"
+                                && received.to_string() == "[u64; 2]"));
     }
 
     #[test]
@@ -1983,8 +2125,8 @@ mod tests {
                              expected,
                              received,
                              ..
-                         }) if expected.friendly_type_str() == "[bool; 2]"
-                                && received.friendly_type_str() == "[bool; 3]"));
+                         }) if expected.to_string() == "[bool; 2]"
+                                && received.to_string() == "[bool; 3]"));
     }
 
     #[test]
