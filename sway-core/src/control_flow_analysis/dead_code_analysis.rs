@@ -11,6 +11,7 @@ use crate::{
             TypedVariableDeclaration, TypedWhileLoop, VariableMutability,
         },
         TypeCheckedStorageReassignment, TypedAstNode, TypedAstNodeContent,
+        TypedIntrinsicFunctionKind,
     },
     type_engine::{resolve_type, TypeInfo},
     CompileError, CompileWarning, Ident, TreeType, Warning,
@@ -989,31 +990,9 @@ fn connect_expression(
             }
             Ok(vec![this_ix])
         }
-        TypeProperty { .. } => {
-            let node = graph.add_node("Type Property".into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, node, "".into());
-            }
-            Ok(vec![node])
-        }
-        SizeOfValue { expr } => {
-            let expr = connect_expression(
-                &(*expr).expression,
-                graph,
-                leaves,
-                exit_node,
-                "size_of",
-                tree_type,
-                expr.span.clone(),
-            )?;
-            Ok(expr)
-        }
-        GetStorageKey { .. } => {
-            let node = graph.add_node("Generate B256 Seed".into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, node, "".into());
-            }
-            Ok(vec![node])
+        IntrinsicFunction(kind) => {
+            let prefix_idx = connect_intrinsic_function(kind, graph, leaves, exit_node, tree_type)?;
+            Ok(prefix_idx)
         }
         AbiName(abi_name) => {
             if let crate::type_engine::AbiName::Known(abi_name) = abi_name {
@@ -1047,6 +1026,48 @@ fn connect_expression(
             exp.span.clone(),
         ),
     }
+}
+
+fn connect_intrinsic_function(
+    kind: &TypedIntrinsicFunctionKind,
+    graph: &mut ControlFlowGraph,
+    leaves: &[NodeIndex],
+    exit_node: Option<NodeIndex>,
+    tree_type: &TreeType,
+) -> Result<Vec<NodeIndex>, CompileError> {
+    let result = match kind {
+        TypedIntrinsicFunctionKind::SizeOfVal { exp } => connect_expression(
+            &(*exp).expression,
+            graph,
+            leaves,
+            exit_node,
+            "size_of",
+            tree_type,
+            exp.span.clone(),
+        )?,
+        TypedIntrinsicFunctionKind::SizeOfType { .. } => {
+            let node = graph.add_node("size of type".into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, node, "".into());
+            }
+            vec![node]
+        }
+        TypedIntrinsicFunctionKind::IsRefType { .. } => {
+            let node = graph.add_node("is ref type".into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, node, "".into());
+            }
+            vec![node]
+        }
+        TypedIntrinsicFunctionKind::GetStorageKey => {
+            let node = graph.add_node("Get storage key".into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, node, "".into());
+            }
+            vec![node]
+        }
+    };
+    Ok(result)
 }
 
 fn connect_code_block(
