@@ -1,8 +1,6 @@
 use super::{declaration::TypedTraitFn, ERROR_RECOVERY_DECLARATION};
 
-use crate::{
-    error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*, CallPath, Ident,
-};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, CallPath, Ident};
 
 use sway_types::span::Span;
 
@@ -95,7 +93,7 @@ pub(crate) fn implementation_of_trait(
             if type_implementing_for != TypeInfo::Contract {
                 errors.push(CompileError::ImplAbiForNonContract {
                     span: type_implementing_for_span.clone(),
-                    ty: type_implementing_for.friendly_type_str(),
+                    ty: type_implementing_for.to_string(),
                 });
             }
 
@@ -265,8 +263,8 @@ fn type_check_trait_implementation(
             if !new_errors.is_empty() {
                 errors.push(CompileError::MismatchedTypeInTrait {
                     span: fn_decl_param.type_span.clone(),
-                    given: fn_decl_param_type.friendly_type_str(),
-                    expected: trait_param_type.friendly_type_str(),
+                    given: fn_decl_param_type.to_string(),
+                    expected: trait_param_type.to_string(),
                 });
                 break;
             }
@@ -301,8 +299,8 @@ fn type_check_trait_implementation(
         if !new_errors.is_empty() {
             errors.push(CompileError::MismatchedTypeInTrait {
                 span: fn_decl.return_type_span.clone(),
-                expected: return_type.friendly_type_str(),
-                given: fn_decl.return_type.friendly_type_str(),
+                expected: return_type.to_string(),
+                given: fn_decl.return_type.to_string(),
             });
 
             continue;

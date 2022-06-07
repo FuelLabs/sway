@@ -5,6 +5,8 @@ pub mod impl_trait;
 mod return_statement;
 pub mod while_loop;
 
+use std::fmt;
+
 pub(crate) use code_block::*;
 pub use declaration::*;
 pub(crate) use expression::*;
@@ -42,6 +44,30 @@ pub enum TypedAstNodeContent {
     SideEffect,
 }
 
+impl UnresolvedTypeCheck for TypedAstNodeContent {
+    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+        use TypedAstNodeContent::*;
+        match self {
+            ReturnStatement(stmt) => stmt.expr.check_for_unresolved_types(),
+            Declaration(decl) => decl.check_for_unresolved_types(),
+            Expression(expr) => expr.check_for_unresolved_types(),
+            ImplicitReturnExpression(expr) => expr.check_for_unresolved_types(),
+            WhileLoop(lo) => {
+                let mut condition = lo.condition.check_for_unresolved_types();
+                let mut body = lo
+                    .body
+                    .contents
+                    .iter()
+                    .flat_map(TypedAstNode::check_for_unresolved_types)
+                    .collect();
+                condition.append(&mut body);
+                condition
+            }
+            SideEffect => vec![],
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, Derivative)]
 #[derivative(PartialEq)]
 pub struct TypedAstNode {
@@ -50,17 +76,17 @@ pub struct TypedAstNode {
     pub(crate) span: Span,
 }
 
-impl std::fmt::Display for TypedAstNode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for TypedAstNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use TypedAstNodeContent::*;
         let text = match &self.content {
             ReturnStatement(TypedReturnStatement { ref expr }) => {
-                format!("return {}", expr.pretty_print())
+                format!("return {}", expr)
             }
-            Declaration(ref typed_decl) => typed_decl.pretty_print(),
-            Expression(exp) => exp.pretty_print(),
-            ImplicitReturnExpression(exp) => format!("return {}", exp.pretty_print()),
-            WhileLoop(w_loop) => w_loop.pretty_print(),
+            Declaration(ref typed_decl) => typed_decl.to_string(),
+            Expression(exp) => exp.to_string(),
+            ImplicitReturnExpression(exp) => format!("return {}", exp),
+            WhileLoop(w_loop) => w_loop.to_string(),
             SideEffect => "".into(),
         };
         f.write_str(&text)
@@ -87,6 +113,12 @@ impl CopyTypes for TypedAstNode {
             }
             TypedAstNodeContent::SideEffect => (),
         }
+    }
+}
+
+impl UnresolvedTypeCheck for TypedAstNode {
+    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+        self.content.check_for_unresolved_types()
     }
 }
 

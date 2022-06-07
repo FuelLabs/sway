@@ -13,9 +13,9 @@ pub use r#struct::*;
 pub use storage::*;
 pub use variable::*;
 
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
 use derivative::Derivative;
-use std::borrow::Cow;
+use std::{borrow::Cow, fmt};
 use sway_types::{Ident, Span};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -67,6 +67,114 @@ impl CopyTypes for TypedDeclaration {
             StorageDeclaration(..) => (),
             StorageReassignment(..) => (),
             GenericTypeForFunctionScope { .. } | ErrorRecovery => (),
+        }
+    }
+}
+
+impl fmt::Display for TypedDeclaration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} declaration ({})",
+            self.friendly_name(),
+            match self {
+                TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                    is_mutable,
+                    name,
+                    type_ascription,
+                    body,
+                    ..
+                }) => {
+                    let mut builder = String::new();
+                    match is_mutable {
+                        VariableMutability::Mutable => builder.push_str("mut"),
+                        VariableMutability::Immutable => {}
+                        VariableMutability::ExportedConst => builder.push_str("pub const"),
+                    }
+                    builder.push_str(name.as_str());
+                    builder.push_str(": ");
+                    builder.push_str(
+                        &crate::type_engine::look_up_type_id(*type_ascription).to_string(),
+                    );
+                    builder.push_str(" = ");
+                    builder.push_str(&body.to_string());
+                    builder
+                }
+                TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
+                    name, ..
+                }) => {
+                    name.as_str().into()
+                }
+                TypedDeclaration::TraitDeclaration(TypedTraitDeclaration { name, .. }) =>
+                    name.as_str().into(),
+                TypedDeclaration::StructDeclaration(TypedStructDeclaration { name, .. }) =>
+                    name.as_str().into(),
+                TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. }) =>
+                    name.as_str().into(),
+                TypedDeclaration::Reassignment(TypedReassignment {
+                    lhs_base_name,
+                    lhs_indices,
+                    ..
+                }) => {
+                    std::iter::once(Cow::Borrowed(lhs_base_name.as_str()))
+                        .chain(
+                            lhs_indices
+                                .iter()
+                                .flat_map(|x| [Cow::Borrowed("."), x.pretty_print()]),
+                        )
+                        .collect::<String>()
+                }
+                _ => String::new(),
+            }
+        )
+    }
+}
+
+impl UnresolvedTypeCheck for TypedDeclaration {
+    // this is only run on entry nodes, which must have all well-formed types
+    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+        use TypedDeclaration::*;
+        match self {
+            VariableDeclaration(decl) => {
+                let mut body = decl.body.check_for_unresolved_types();
+                body.append(&mut decl.type_ascription.check_for_unresolved_types());
+                body
+            }
+            FunctionDeclaration(decl) => {
+                let mut body: Vec<CompileError> = decl
+                    .body
+                    .contents
+                    .iter()
+                    .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                    .collect();
+                body.append(&mut decl.return_type.check_for_unresolved_types());
+                body.append(
+                    &mut decl
+                        .type_parameters
+                        .iter()
+                        .map(|x| &x.type_id)
+                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .collect(),
+                );
+                body
+            }
+            ConstantDeclaration(TypedConstantDeclaration { value, .. }) => {
+                value.check_for_unresolved_types()
+            }
+            StorageReassignment(TypeCheckedStorageReassignment { fields, rhs, .. }) => fields
+                .iter()
+                .flat_map(|x| x.r#type.check_for_unresolved_types())
+                .chain(rhs.check_for_unresolved_types().into_iter())
+                .collect(),
+            Reassignment(TypedReassignment { rhs, .. }) => rhs.check_for_unresolved_types(),
+            ErrorRecovery
+            | StorageDeclaration(_)
+            | TraitDeclaration(_)
+            | StructDeclaration(_)
+            | EnumDeclaration(_)
+            | ImplTrait { .. }
+            | AbiDeclaration(_)
+            | GenericTypeForFunctionScope { .. } => vec![],
         }
     }
 }
@@ -263,7 +371,7 @@ impl TypedDeclaration {
                     vec![],
                     vec![CompileError::NotAType {
                         span: decl.span(),
-                        name: decl.pretty_print(),
+                        name: decl.to_string(),
                         actually_is: decl.friendly_name(),
                     }],
                 )
@@ -298,62 +406,6 @@ impl TypedDeclaration {
                 unreachable!("No span exists for these ast node types")
             }
         }
-    }
-
-    pub(crate) fn pretty_print(&self) -> String {
-        format!(
-            "{} declaration ({})",
-            self.friendly_name(),
-            match self {
-                TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                    is_mutable,
-                    name,
-                    type_ascription,
-                    body,
-                    ..
-                }) => {
-                    let mut builder = String::new();
-                    match is_mutable {
-                        VariableMutability::Mutable => builder.push_str("mut"),
-                        VariableMutability::Immutable => {}
-                        VariableMutability::ExportedConst => builder.push_str("pub const"),
-                    }
-                    builder.push_str(name.as_str());
-                    builder.push_str(": ");
-                    builder.push_str(
-                        &crate::type_engine::look_up_type_id(*type_ascription).friendly_type_str(),
-                    );
-                    builder.push_str(" = ");
-                    builder.push_str(&body.pretty_print());
-                    builder
-                }
-                TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
-                    name, ..
-                }) => {
-                    name.as_str().into()
-                }
-                TypedDeclaration::TraitDeclaration(TypedTraitDeclaration { name, .. }) =>
-                    name.as_str().into(),
-                TypedDeclaration::StructDeclaration(TypedStructDeclaration { name, .. }) =>
-                    name.as_str().into(),
-                TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. }) =>
-                    name.as_str().into(),
-                TypedDeclaration::Reassignment(TypedReassignment {
-                    lhs_base_name,
-                    lhs_indices,
-                    ..
-                }) => {
-                    std::iter::once(Cow::Borrowed(lhs_base_name.as_str()))
-                        .chain(
-                            lhs_indices
-                                .iter()
-                                .flat_map(|x| [Cow::Borrowed("."), x.pretty_print()]),
-                        )
-                        .collect::<String>()
-                }
-                _ => String::new(),
-            }
-        )
     }
 
     pub(crate) fn visibility(&self) -> Visibility {
@@ -491,12 +543,6 @@ pub struct ReassignmentLhs {
     pub r#type: TypeId,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ProjectionKind {
-    StructField { name: Ident },
-    TupleField { index: usize, index_span: Span },
-}
-
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
@@ -504,6 +550,12 @@ impl PartialEq for ReassignmentLhs {
     fn eq(&self, other: &Self) -> bool {
         self.kind == other.kind && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ProjectionKind {
+    StructField { name: Ident },
+    TupleField { index: usize, index_span: Span },
 }
 
 impl ProjectionKind {
