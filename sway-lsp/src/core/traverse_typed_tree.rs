@@ -7,7 +7,7 @@ use sway_core::semantic_analysis::ast_node::{
         TypedIntrinsicFunctionKind,
     },
     while_loop::TypedWhileLoop,
-    {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
+    TypedImplTrait, {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
 };
 use sway_core::type_engine::TypeId;
 use sway_types::{ident::Ident, span::Span, Spanned};
@@ -107,11 +107,11 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut TokenMap) {
                 TokenType::TypedReassignment(reassignment.clone()),
             );
         }
-        TypedDeclaration::ImplTrait {
+        TypedDeclaration::ImplTrait(TypedImplTrait {
             trait_name,
             methods,
             ..
-        } => {
+        }) => {
             for ident in &trait_name.prefixes {
                 tokens.insert(
                     to_ident_key(ident),
