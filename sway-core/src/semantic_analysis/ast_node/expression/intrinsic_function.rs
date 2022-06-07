@@ -2,11 +2,7 @@ use std::fmt;
 
 use sway_types::Span;
 
-use crate::{
-    type_engine::*,
-    types::{DeterministicallyAborts, FriendlyTypeString},
-    CompileError, GetPropertyOfTypeKind,
-};
+use crate::{type_engine::*, types::DeterministicallyAborts, CompileError, GetPropertyOfTypeKind};
 
 use super::TypedExpression;
 
@@ -70,9 +66,9 @@ impl fmt::Display for TypedIntrinsicFunctionKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use TypedIntrinsicFunctionKind::*;
         let s = match self {
-            SizeOfVal { exp } => format!("size_of_val({})", exp.pretty_print()),
+            SizeOfVal { exp } => format!("size_of_val({})", exp),
             GetPropertyOfType { kind, type_id, .. } => {
-                let type_str = look_up_type_id(*type_id).friendly_type_str();
+                let type_str = look_up_type_id(*type_id).to_string();
                 match kind {
                     GetPropertyOfTypeKind::SizeOfType => format!("size_of({type_str})"),
                     GetPropertyOfTypeKind::IsRefType => format!("is_ref_type({type_str})"),

@@ -1,6 +1,4 @@
-use crate::{
-    error::*, namespace::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*,
-};
+use crate::{error::*, namespace::*, parse_tree::*, semantic_analysis::*, type_engine::*};
 
 use super::TraitMap;
 
@@ -297,7 +295,7 @@ impl Items {
                     errors.push(CompileError::NotAStruct {
                         name: full_name_for_error,
                         span: full_span_for_error,
-                        actually: actually.friendly_type_str(),
+                        actually: actually.to_string(),
                     });
                     return err(warnings, errors);
                 }
@@ -305,7 +303,7 @@ impl Items {
                     errors.push(CompileError::NotATuple {
                         name: full_name_for_error,
                         span: full_span_for_error,
-                        actually: actually.friendly_type_str(),
+                        actually: actually.to_string(),
                     });
                     return err(warnings, errors);
                 }
