@@ -474,6 +474,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/test_contracts/get_storage_key_contract",
             ProgramState::Revert(0),
         ),
+        (
+            "should_pass/test_contracts/multiple_impl",
+            ProgramState::Revert(0),
+        ),
     ];
 
     number_of_tests_run += positive_project_names_with_abi
@@ -559,6 +563,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/storage_in_library",
         "should_fail/storage_in_predicate",
         "should_fail/storage_in_script",
+        "should_fail/multiple_impl_abi",
+        "should_fail/multiple_impl_fns",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {

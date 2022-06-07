@@ -1,4 +1,4 @@
-use sway_types::{Ident, Span};
+use sway_types::{Ident, Span, Spanned};
 
 use crate::semantic_analysis::declaration::{CreateTypeId, EnforceTypeArguments};
 use crate::semantic_analysis::namespace::Namespace;
@@ -135,7 +135,7 @@ impl TypedScrutinee {
                     None => {
                         errors.push(CompileError::EnumNotFound {
                             name: call_path.suffix.clone(),
-                            span: call_path.suffix.span().clone(),
+                            span: call_path.suffix.span(),
                         });
                         return err(warnings, errors);
                     }

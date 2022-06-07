@@ -1224,6 +1224,7 @@ dependencies = [
  "anyhow",
  "dirs 3.0.2",
  "sway-core",
+ "sway-types",
  "sway-utils",
  "termcolor",
  "tracing",

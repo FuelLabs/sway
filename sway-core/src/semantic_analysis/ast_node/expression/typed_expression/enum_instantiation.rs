@@ -1,6 +1,6 @@
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
 
-use sway_types::Ident;
+use sway_types::{Ident, Spanned};
 
 /// Given an enum declaration and the instantiation expression/type arguments, construct a valid
 /// [TypedExpression].
@@ -24,7 +24,7 @@ pub(crate) fn instantiate_enum(
             type_arguments,
             EnforceTypeArguments::No,
             Some(self_type),
-            Some(enum_field_name.span())
+            Some(&enum_field_name.span())
         ),
         return err(warnings, errors),
         warnings,
@@ -52,10 +52,10 @@ pub(crate) fn instantiate_enum(
                     contents: None,
                     enum_decl,
                     variant_name: enum_variant.name,
-                    instantiation_span: enum_field_name.span().clone(),
+                    instantiation_span: enum_field_name.span(),
                 },
                 is_constant: IsConstant::No,
-                span: enum_field_name.span().clone(),
+                span: enum_field_name.span(),
             },
             warnings,
             errors,
@@ -87,10 +87,10 @@ pub(crate) fn instantiate_enum(
                         contents: Some(Box::new(typed_expr)),
                         enum_decl,
                         variant_name: enum_variant.name,
-                        instantiation_span: enum_field_name.span().clone(),
+                        instantiation_span: enum_field_name.span(),
                     },
                     is_constant: IsConstant::No,
-                    span: enum_field_name.span().clone(),
+                    span: enum_field_name.span(),
                 },
                 warnings,
                 errors,
@@ -98,20 +98,20 @@ pub(crate) fn instantiate_enum(
         }
         ([], _) => {
             errors.push(CompileError::MissingEnumInstantiator {
-                span: enum_field_name.span().clone(),
+                span: enum_field_name.span(),
             });
             err(warnings, errors)
         }
         (_too_many_expressions, ty) if ty.is_unit() => {
             errors.push(CompileError::UnnecessaryEnumInstantiator {
-                span: enum_field_name.span().clone(),
+                span: enum_field_name.span(),
             });
             err(warnings, errors)
         }
         (_too_many_expressions, ty) => {
             errors.push(CompileError::MoreThanOneEnumInstantiator {
-                span: enum_field_name.span().clone(),
-                ty: ty.friendly_type_str(),
+                span: enum_field_name.span(),
+                ty: ty.to_string(),
             });
             err(warnings, errors)
         }

@@ -1,10 +1,8 @@
 use super::{declaration::TypedTraitFn, ERROR_RECOVERY_DECLARATION};
 
-use crate::{
-    error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*, CallPath, Ident,
-};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, CallPath, Ident};
 
-use sway_types::span::Span;
+use sway_types::{span::Span, Spanned};
 
 pub(crate) fn implementation_of_trait(
     impl_trait: ImplTrait,
@@ -33,7 +31,7 @@ pub(crate) fn implementation_of_trait(
     for type_argument in type_arguments.iter() {
         if !type_argument.trait_constraints.is_empty() {
             errors.push(CompileError::WhereClauseNotYetSupported {
-                span: type_argument.name_ident.span().clone(),
+                span: type_argument.name_ident.span(),
             });
             break;
         }
@@ -95,7 +93,7 @@ pub(crate) fn implementation_of_trait(
             if type_implementing_for != TypeInfo::Contract {
                 errors.push(CompileError::ImplAbiForNonContract {
                     span: type_implementing_for_span.clone(),
-                    ty: type_implementing_for.friendly_type_str(),
+                    ty: type_implementing_for.to_string(),
                 });
             }
 
@@ -173,6 +171,7 @@ fn type_check_trait_implementation(
     opts: TCOpts,
 ) -> CompileResult<Vec<TypedFunctionDeclaration>> {
     let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
+    let mut processed_fns = std::collections::HashSet::<Ident>::new();
     let mut errors = vec![];
     let mut warnings = vec![];
     let self_type_id = type_implementing_for;
@@ -203,6 +202,14 @@ fn type_check_trait_implementation(
             errors
         );
         let fn_decl = fn_decl.replace_self_types(self_type_id);
+
+        // Ensure that there aren't multiple definitions of this function impl'd.
+        if !processed_fns.insert(fn_decl.name.clone()) {
+            errors.push(CompileError::MultipleDefinitionsOfFunction {
+                name: fn_decl.name.clone(),
+            });
+            return err(warnings, errors);
+        }
         // remove this function from the "checklist"
         let trait_fn = match function_checklist.remove(&fn_decl.name) {
             Some(trait_fn) => trait_fn,
@@ -210,7 +217,7 @@ fn type_check_trait_implementation(
                 errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
                     name: fn_decl.name.clone(),
                     trait_name: trait_name.suffix.clone(),
-                    span: fn_decl.name.span().clone(),
+                    span: fn_decl.name.span(),
                 });
                 return err(warnings, errors);
             }
@@ -256,8 +263,8 @@ fn type_check_trait_implementation(
             if !new_errors.is_empty() {
                 errors.push(CompileError::MismatchedTypeInTrait {
                     span: fn_decl_param.type_span.clone(),
-                    given: fn_decl_param_type.friendly_type_str(),
-                    expected: trait_param_type.friendly_type_str(),
+                    given: fn_decl_param_type.to_string(),
+                    expected: trait_param_type.to_string(),
                 });
                 break;
             }
@@ -292,8 +299,8 @@ fn type_check_trait_implementation(
         if !new_errors.is_empty() {
             errors.push(CompileError::MismatchedTypeInTrait {
                 span: fn_decl.return_type_span.clone(),
-                expected: return_type.friendly_type_str(),
-                given: fn_decl.return_type.friendly_type_str(),
+                expected: return_type.to_string(),
+                given: fn_decl.return_type.to_string(),
             });
 
             continue;

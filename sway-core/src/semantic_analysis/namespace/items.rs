@@ -1,10 +1,8 @@
-use crate::{
-    error::*, namespace::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*,
-};
+use crate::{error::*, namespace::*, parse_tree::*, semantic_analysis::*, type_engine::*};
 
 use super::TraitMap;
 
-use sway_types::span::Span;
+use sway_types::{span::Span, Spanned};
 
 use std::sync::Arc;
 
@@ -48,7 +46,7 @@ impl Items {
             None => err(
                 vec![],
                 vec![CompileError::NoDeclaredStorage {
-                    span: fields[0].span().clone(),
+                    span: fields[0].span(),
                 }],
             ),
         }
@@ -89,7 +87,7 @@ impl Items {
                 }
                 _ => {
                     warnings.push(CompileWarning {
-                        span: name.span().clone(),
+                        span: name.span(),
                         warning_content: Warning::ShadowsOtherSymbol { name: name.clone() },
                     });
                 }
@@ -214,10 +212,10 @@ impl Items {
             warnings,
             errors
         );
-        let mut symbol_span = base_name.span().clone();
+        let mut symbol_span = base_name.span();
         let mut parent_rover = symbol;
         let mut full_name_for_error = base_name.to_string();
-        let mut full_span_for_error = base_name.span().clone();
+        let mut full_span_for_error = base_name.span();
         for projection in projections {
             let resolved_type = match resolve_type(symbol, &symbol_span) {
                 Ok(resolved_type) => resolved_type,
@@ -297,7 +295,7 @@ impl Items {
                     errors.push(CompileError::NotAStruct {
                         name: full_name_for_error,
                         span: full_span_for_error,
-                        actually: actually.friendly_type_str(),
+                        actually: actually.to_string(),
                     });
                     return err(warnings, errors);
                 }
@@ -305,7 +303,7 @@ impl Items {
                     errors.push(CompileError::NotATuple {
                         name: full_name_for_error,
                         span: full_span_for_error,
-                        actually: actually.friendly_type_str(),
+                        actually: actually.to_string(),
                     });
                     return err(warnings, errors);
                 }

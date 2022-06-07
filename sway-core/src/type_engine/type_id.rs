@@ -1,5 +1,5 @@
-use std::fmt::{Debug, Display};
-use sway_types::Span;
+use std::fmt;
+use sway_types::{Span, Spanned};
 
 use crate::types::*;
 
@@ -16,15 +16,15 @@ impl std::ops::Deref for TypeId {
     }
 }
 
-impl Display for TypeId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&look_up_type_id(*self).friendly_type_str())
+impl fmt::Display for TypeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&look_up_type_id(*self).to_string())
     }
 }
 
-impl Debug for TypeId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&look_up_type_id(*self).friendly_type_str())
+impl fmt::Debug for TypeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&look_up_type_id(*self).to_string())
     }
 }
 
@@ -45,7 +45,7 @@ impl UnresolvedTypeCheck for TypeId {
         match look_up_type_id(*self) {
             UnknownGeneric { name } => vec![CompileError::UnableToInferGeneric {
                 ty: name.as_str().to_string(),
-                span: span_override.unwrap_or_else(|| name.span().clone()),
+                span: span_override.unwrap_or_else(|| name.span()),
             }],
             _ => vec![],
         }
@@ -67,12 +67,6 @@ impl TypeId {
 impl JsonAbiString for TypeId {
     fn json_abi_str(&self) -> String {
         look_up_type_id(*self).json_abi_str()
-    }
-}
-
-impl FriendlyTypeString for TypeId {
-    fn friendly_type_str(&self) -> String {
-        look_up_type_id(*self).friendly_type_str()
     }
 }
 

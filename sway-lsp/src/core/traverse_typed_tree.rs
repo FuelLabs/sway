@@ -4,12 +4,13 @@ use crate::core::typed_token_type::{TokenMap, TokenType};
 use sway_core::semantic_analysis::ast_node::{
     expression::{
         typed_expression::TypedExpression, typed_expression_variant::TypedExpressionVariant,
+        TypedIntrinsicFunctionKind,
     },
     while_loop::TypedWhileLoop,
     {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
 };
 use sway_core::type_engine::TypeId;
-use sway_types::{ident::Ident, span::Span};
+use sway_types::{ident::Ident, span::Span, Spanned};
 
 pub fn traverse_node(node: &TypedAstNode, tokens: &mut TokenMap) {
     match &node.content {
@@ -29,7 +30,7 @@ pub fn traverse_node(node: &TypedAstNode, tokens: &mut TokenMap) {
 // We need to do this work around as the custom PartialEq for Ident impl
 // only checks for the string, not the span.
 fn to_ident_key(ident: &Ident) -> (Ident, Span) {
-    (ident.clone(), ident.span().clone())
+    (ident.clone(), ident.span())
 }
 
 fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut TokenMap) {
@@ -306,10 +307,8 @@ fn handle_expression(expression: &TypedExpression, tokens: &mut TokenMap) {
                 );
             }
         }
-        TypedExpressionVariant::TypeProperty { .. } => {}
-        TypedExpressionVariant::GetStorageKey { .. } => {}
-        TypedExpressionVariant::SizeOfValue { expr } => {
-            handle_expression(expr, tokens);
+        TypedExpressionVariant::IntrinsicFunction(kind) => {
+            handle_intrinsic_function(kind, tokens);
         }
         TypedExpressionVariant::AbiName { .. } => {}
         TypedExpressionVariant::EnumTag { exp } => {
@@ -322,6 +321,17 @@ fn handle_expression(expression: &TypedExpression, tokens: &mut TokenMap) {
                 TokenType::TypedExpression(expression.clone()),
             );
         }
+    }
+}
+
+fn handle_intrinsic_function(kind: &TypedIntrinsicFunctionKind, tokens: &mut TokenMap) {
+    match kind {
+        TypedIntrinsicFunctionKind::SizeOfVal { exp } => {
+            handle_expression(exp, tokens);
+        }
+        TypedIntrinsicFunctionKind::SizeOfType { .. } => {}
+        TypedIntrinsicFunctionKind::IsRefType { .. } => {}
+        TypedIntrinsicFunctionKind::GetStorageKey => {}
     }
 }
 

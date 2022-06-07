@@ -12,11 +12,16 @@ pub(crate) use self::{
     method_application::*, struct_field_access::*, tuple_index_access::*, unsafe_downcast::*,
 };
 
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
+use crate::{
+    error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::DeterministicallyAborts,
+};
 
-use sway_types::{Ident, Span};
+use sway_types::{Ident, Span, Spanned};
 
-use std::collections::{HashMap, VecDeque};
+use std::{
+    collections::{HashMap, VecDeque},
+    fmt,
+};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedExpression {
@@ -46,11 +51,21 @@ impl CopyTypes for TypedExpression {
     }
 }
 
+impl fmt::Display for TypedExpression {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} ({})",
+            self.expression,
+            look_up_type_id(self.return_type)
+        )
+    }
+}
+
 impl UnresolvedTypeCheck for TypedExpression {
     fn check_for_unresolved_types(&self) -> Vec<CompileError> {
         use TypedExpressionVariant::*;
         match &self.expression {
-            TypeProperty { type_id, .. } => type_id.check_for_unresolved_types(),
             FunctionApplication {
                 arguments,
                 function_body,
@@ -161,14 +176,10 @@ impl UnresolvedTypeCheck for TypedExpression {
                 );
                 buf
             }
-            SizeOfValue { expr } => expr.check_for_unresolved_types(),
             AbiCast { address, .. } => address.check_for_unresolved_types(),
             // storage access can never be generic
-            StorageAccess { .. }
-            | Literal(_)
-            | AbiName(_)
-            | FunctionParameter
-            | GetStorageKey { .. } => vec![],
+            StorageAccess { .. } | Literal(_) | AbiName(_) | FunctionParameter => vec![],
+            IntrinsicFunction(kind) => kind.check_for_unresolved_types(),
             EnumTag { exp } => exp.check_for_unresolved_types(),
             UnsafeDowncast { exp, variant } => exp
                 .check_for_unresolved_types()
@@ -203,15 +214,13 @@ impl DeterministicallyAborts for TypedExpression {
                 .map(|x| x.deterministically_aborts())
                 .unwrap_or(false),
             AbiCast { address, .. } => address.deterministically_aborts(),
-            SizeOfValue { expr } => expr.deterministically_aborts(),
             StructFieldAccess { .. }
             | Literal(_)
             | StorageAccess { .. }
-            | TypeProperty { .. }
-            | GetStorageKey { .. }
             | VariableExpression { .. }
             | FunctionParameter
             | TupleElemAccess { .. } => false,
+            IntrinsicFunction(kind) => kind.deterministically_aborts(),
             ArrayIndex { prefix, index } => {
                 prefix.deterministically_aborts() || index.deterministically_aborts()
             }
@@ -350,16 +359,14 @@ impl TypedExpression {
             | TypedExpressionVariant::TupleElemAccess { .. }
             | TypedExpressionVariant::EnumInstantiation { .. }
             | TypedExpressionVariant::AbiCast { .. }
-            | TypedExpressionVariant::SizeOfValue { .. }
-            | TypedExpressionVariant::TypeProperty { .. }
+            | TypedExpressionVariant::IntrinsicFunction { .. }
             | TypedExpressionVariant::StructExpression { .. }
             | TypedExpressionVariant::VariableExpression { .. }
             | TypedExpressionVariant::AbiName(_)
             | TypedExpressionVariant::StorageAccess { .. }
             | TypedExpressionVariant::FunctionApplication { .. }
             | TypedExpressionVariant::EnumTag { .. }
-            | TypedExpressionVariant::UnsafeDowncast { .. }
-            | TypedExpressionVariant::GetStorageKey { .. } => vec![],
+            | TypedExpressionVariant::UnsafeDowncast { .. } => vec![],
         }
     }
 
@@ -559,46 +566,9 @@ impl TypedExpression {
                 },
                 &expr_span,
             ),
-            Expression::SizeOfVal { exp, span } => Self::type_check_size_of_val(
-                TypeCheckArguments {
-                    checkee: *exp,
-                    namespace,
-                    self_type,
-                    mode: Mode::NonAbi,
-                    opts,
-                    return_type_annotation: insert_type(TypeInfo::Unknown),
-                    help_text: Default::default(),
-                },
-                span,
-            ),
-            Expression::BuiltinGetTypeProperty {
-                builtin,
-                type_name,
-                type_span,
-                span,
-            } => Self::type_check_get_type_property(
-                builtin,
-                TypeCheckArguments {
-                    checkee: (type_name, type_span),
-                    namespace,
-                    self_type,
-                    opts,
-                    return_type_annotation: insert_type(TypeInfo::Unknown),
-                    mode: Default::default(),
-                    help_text: Default::default(),
-                },
-                span,
-            ),
-            Expression::BuiltinGetStorageKey { span } => ok(
-                TypedExpression {
-                    expression: TypedExpressionVariant::GetStorageKey { span: span.clone() },
-                    return_type: insert_type(TypeInfo::B256),
-                    is_constant: IsConstant::No,
-                    span,
-                },
-                vec![],
-                vec![],
-            ),
+            Expression::IntrinsicFunction { kind, span } => {
+                Self::type_check_intrinsic_function(kind, self_type, namespace, opts, span)
+            }
         };
         let mut typed_expression = match res.value {
             Some(r) => r,
@@ -719,13 +689,13 @@ impl TypedExpression {
                     name: name.clone(),
                     what_it_is: a.friendly_name(),
                 });
-                error_recovery_expr(name.span().clone())
+                error_recovery_expr(name.span())
             }
             None => {
                 errors.push(CompileError::UnknownVariable {
                     var_name: name.clone(),
                 });
-                error_recovery_expr(name.span().clone())
+                error_recovery_expr(name.span())
             }
         };
         ok(exp, vec![], errors)
@@ -1508,7 +1478,7 @@ impl TypedExpression {
                 a => {
                     // TODO: Should this be `NotAnEnumOrFunction`?
                     errors.push(CompileError::NotAnEnum {
-                        name: call_path.friendly_name(),
+                        name: call_path.to_string(),
                         span,
                         actually: a.friendly_name().to_string(),
                     });
@@ -1838,67 +1808,23 @@ impl TypedExpression {
         }
     }
 
-    fn type_check_size_of_val(
-        arguments: TypeCheckArguments<'_, Expression>,
+    fn type_check_intrinsic_function(
+        kind: IntrinsicFunctionKind,
+        self_type: TypeId,
+        namespace: &mut Namespace,
+        opts: TCOpts,
         span: Span,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let exp = check!(
-            TypedExpression::type_check(arguments),
+        let (intrinsic_function, return_type) = check!(
+            TypedIntrinsicFunctionKind::type_check(kind, self_type, namespace, opts),
             return err(warnings, errors),
             warnings,
             errors
         );
         let exp = TypedExpression {
-            expression: TypedExpressionVariant::SizeOfValue {
-                expr: Box::new(exp),
-            },
-            return_type: crate::type_engine::insert_type(TypeInfo::UnsignedInteger(
-                IntegerBits::SixtyFour,
-            )),
-            is_constant: IsConstant::No,
-            span,
-        };
-        ok(exp, warnings, errors)
-    }
-
-    fn type_check_get_type_property(
-        builtin: BuiltinProperty,
-        arguments: TypeCheckArguments<'_, (TypeInfo, Span)>,
-        span: Span,
-    ) -> CompileResult<TypedExpression> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let TypeCheckArguments {
-            checkee: (type_name, type_span),
-            self_type,
-            namespace,
-            ..
-        } = arguments;
-        let type_id = check!(
-            namespace.resolve_type_with_self(
-                type_name,
-                self_type,
-                &type_span,
-                EnforceTypeArguments::Yes
-            ),
-            insert_type(TypeInfo::ErrorRecovery),
-            warnings,
-            errors,
-        );
-        let return_type = match builtin {
-            BuiltinProperty::SizeOfType => {
-                insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour))
-            }
-            BuiltinProperty::IsRefType => insert_type(TypeInfo::Boolean),
-        };
-        let exp = TypedExpression {
-            expression: TypedExpressionVariant::TypeProperty {
-                property: builtin,
-                type_id,
-                span: span.clone(),
-            },
+            expression: TypedExpressionVariant::IntrinsicFunction(intrinsic_function),
             return_type,
             is_constant: IsConstant::No,
             span,
@@ -1990,14 +1916,6 @@ impl TypedExpression {
             }
         }
     }
-
-    pub(crate) fn pretty_print(&self) -> String {
-        format!(
-            "{} ({})",
-            self.expression.pretty_print(),
-            look_up_type_id(self.return_type).friendly_type_str()
-        )
-    }
 }
 
 #[cfg(test)]
@@ -2050,8 +1968,8 @@ mod tests {
                              expected,
                              received,
                              ..
-                         }) if expected.friendly_type_str() == "bool"
-                                && received.friendly_type_str() == "u64"));
+                         }) if expected.to_string() == "bool"
+                                && received.to_string() == "u64"));
     }
 
     #[test]
@@ -2078,15 +1996,15 @@ mod tests {
                              expected,
                              received,
                              ..
-                         }) if expected.friendly_type_str() == "u64"
-                                && received.friendly_type_str() == "bool"));
+                         }) if expected.to_string() == "u64"
+                                && received.to_string() == "bool"));
         assert!(matches!(&comp_res.errors[1],
                          CompileError::TypeError(TypeError::MismatchedType {
                              expected,
                              received,
                              ..
-                         }) if expected.friendly_type_str() == "[bool; 2]"
-                                && received.friendly_type_str() == "[u64; 2]"));
+                         }) if expected.to_string() == "[bool; 2]"
+                                && received.to_string() == "[u64; 2]"));
     }
 
     #[test]
@@ -2117,8 +2035,8 @@ mod tests {
                              expected,
                              received,
                              ..
-                         }) if expected.friendly_type_str() == "[bool; 2]"
-                                && received.friendly_type_str() == "[bool; 3]"));
+                         }) if expected.to_string() == "[bool; 2]"
+                                && received.to_string() == "[bool; 3]"));
     }
 
     #[test]
@@ -2140,19 +2058,13 @@ fn disallow_opcode(op: &Ident) -> CompileResult<()> {
 
     match op.as_str().to_lowercase().as_str() {
         "ji" => {
-            errors.push(CompileError::DisallowedJi {
-                span: op.span().clone(),
-            });
+            errors.push(CompileError::DisallowedJi { span: op.span() });
         }
         "jnei" => {
-            errors.push(CompileError::DisallowedJnei {
-                span: op.span().clone(),
-            });
+            errors.push(CompileError::DisallowedJnei { span: op.span() });
         }
         "jnzi" => {
-            errors.push(CompileError::DisallowedJnzi {
-                span: op.span().clone(),
-            });
+            errors.push(CompileError::DisallowedJnzi { span: op.span() });
         }
         _ => (),
     };
