@@ -1053,7 +1053,7 @@ fn connect_intrinsic_function(
             vec![node]
         }
         TypedIntrinsicFunctionKind::GetStorageKey => {
-            let node = graph.add_node("Generate B256 Seed".into());
+            let node = graph.add_node("Get storage key".into());
             for leaf in leaves {
                 graph.add_edge(*leaf, node, "".into());
             }
