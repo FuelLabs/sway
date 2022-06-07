@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::Ident;
 
-use sway_types::span::Span;
+use sway_types::{span::Span, Spanned};
 
 /// in the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -36,6 +36,22 @@ impl fmt::Display for CallPath {
     }
 }
 
+impl Spanned for CallPath {
+    fn span(&self) -> Span {
+        if self.prefixes.is_empty() {
+            self.suffix.span()
+        } else {
+            let prefixes_span = self
+                .prefixes
+                .iter()
+                .fold(self.prefixes[0].span(), |acc, sp| {
+                    Span::join(acc, sp.span())
+                });
+            Span::join(prefixes_span, self.suffix.span())
+        }
+    }
+}
+
 impl CallPath {
     /// shifts the last prefix into the suffix and removes the old suffix
     /// noop if prefixes are empty
@@ -48,20 +64,6 @@ impl CallPath {
                 suffix: self.prefixes.last().unwrap().clone(),
                 is_absolute: self.is_absolute,
             }
-        }
-    }
-
-    pub(crate) fn span(&self) -> Span {
-        if self.prefixes.is_empty() {
-            self.suffix.span().clone()
-        } else {
-            let prefixes_span = self
-                .prefixes
-                .iter()
-                .fold(self.prefixes[0].span().clone(), |acc, sp| {
-                    Span::join(acc, sp.span().clone())
-                });
-            Span::join(prefixes_span, self.suffix.span().clone())
         }
     }
 

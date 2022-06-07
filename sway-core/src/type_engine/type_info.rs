@@ -2,7 +2,7 @@ use super::*;
 
 use crate::{semantic_analysis::*, types::*, CallPath, Ident, TypeArgument, TypeParameter};
 
-use sway_types::span::Span;
+use sway_types::{span::Span, Spanned};
 
 use derivative::Derivative;
 use std::{

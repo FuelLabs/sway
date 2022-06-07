@@ -106,7 +106,7 @@ pub struct TypeField {
 
 impl Spanned for TypeField {
     fn span(&self) -> Span {
-        Span::join(self.name.span().clone(), self.ty.span())
+        Span::join(self.name.span(), self.ty.span())
     }
 }
 

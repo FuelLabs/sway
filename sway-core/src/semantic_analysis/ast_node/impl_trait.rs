@@ -2,7 +2,7 @@ use super::{declaration::TypedTraitFn, ERROR_RECOVERY_DECLARATION};
 
 use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, CallPath, Ident};
 
-use sway_types::span::Span;
+use sway_types::{span::Span, Spanned};
 
 pub(crate) fn implementation_of_trait(
     impl_trait: ImplTrait,
@@ -31,7 +31,7 @@ pub(crate) fn implementation_of_trait(
     for type_argument in type_arguments.iter() {
         if !type_argument.trait_constraints.is_empty() {
             errors.push(CompileError::WhereClauseNotYetSupported {
-                span: type_argument.name_ident.span().clone(),
+                span: type_argument.name_ident.span(),
             });
             break;
         }
@@ -208,7 +208,7 @@ fn type_check_trait_implementation(
                 errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
                     name: fn_decl.name.clone(),
                     trait_name: trait_name.suffix.clone(),
-                    span: fn_decl.name.span().clone(),
+                    span: fn_decl.name.span(),
                 });
                 return err(warnings, errors);
             }
