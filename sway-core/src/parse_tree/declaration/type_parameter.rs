@@ -58,7 +58,7 @@ impl CopyTypes for TypeParameter {
 }
 
 impl UpdateTypes for TypeParameter {
-    fn update_types(
+    fn update_types_with_self(
         &mut self,
         type_mapping: &TypeMapping,
         namespace: &mut Namespace,
@@ -75,6 +75,25 @@ impl UpdateTypes for TypeParameter {
                     &self.span(),
                     EnforceTypeArguments::Yes
                 ),
+                insert_type(TypeInfo::ErrorRecovery),
+                warnings,
+                errors,
+            ),
+        };
+        ok((), warnings, errors)
+    }
+
+    fn update_types_without_self(
+        &mut self,
+        type_mapping: &TypeMapping,
+        namespace: &mut Namespace,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        self.type_id = match look_up_type_id(self.type_id).matches_type_parameter(type_mapping) {
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, self.span())),
+            None => check!(
+                namespace.resolve_type_without_self(look_up_type_id(self.type_id)),
                 insert_type(TypeInfo::ErrorRecovery),
                 warnings,
                 errors,

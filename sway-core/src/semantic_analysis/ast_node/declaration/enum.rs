@@ -97,7 +97,7 @@ impl TypedEnumDeclaration {
         // shadow one another
         for type_parameter in type_parameters.iter_mut() {
             check!(
-                type_parameter.update_types(&type_mapping, &mut namespace, self_type),
+                type_parameter.update_types_with_self(&type_mapping, &mut namespace, self_type),
                 return err(warnings, errors),
                 warnings,
                 errors

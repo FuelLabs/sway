@@ -4,9 +4,9 @@ use crate::{
     error::{err, ok},
     semantic_analysis::{Mode, TCOpts, TypeCheckArguments},
     type_engine::{
-        insert_type, look_up_type_id, resolve_type, unify_with_self, CopyTypes, TypeId, TypeMapping,
+        insert_type, look_up_type_id, resolve_type, unify_with_self, CopyTypes, TypeId, TypeMapping, insert_type_parameters, UpdateTypes,
     },
-    CallPath, CompileError, CompileResult, FunctionDeclaration, FunctionParameter, ImplSelf,
+    CallPath, CompileError, CompileResult, FunctionDeclaration, ImplSelf,
     ImplTrait, Namespace, Purity, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
 };
 
@@ -15,9 +15,9 @@ use super::TypedTraitFn;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypedImplTrait {
     pub trait_name: CallPath,
-    pub(crate) span: Span,
+    pub(crate) implementing_for_type_id: TypeId,
     pub methods: Vec<TypedFunctionDeclaration>,
-    pub(crate) type_implementing_for: TypeInfo,
+    pub(crate) span: Span,
 }
 
 impl CopyTypes for TypedImplTrait {
@@ -36,6 +36,7 @@ impl TypedImplTrait {
     ) -> CompileResult<TypedImplTrait> {
         let mut errors = vec![];
         let mut warnings = vec![];
+
         let ImplTrait {
             trait_name,
             type_arguments,
@@ -44,14 +45,13 @@ impl TypedImplTrait {
             type_implementing_for_span,
             block_span,
         } = impl_trait;
-        let type_implementing_for = check!(
+
+        let implementing_for_type_id = check!(
             namespace.resolve_type_without_self(type_implementing_for),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let type_implementing_for = look_up_type_id(type_implementing_for);
-        let type_implementing_for_id = insert_type(type_implementing_for.clone());
         for type_argument in type_arguments.iter() {
             if !type_argument.trait_constraints.is_empty() {
                 errors.push(CompileError::WhereClauseNotYetSupported {
@@ -73,9 +73,9 @@ impl TypedImplTrait {
                         &tr.methods,
                         &trait_name,
                         namespace,
-                        type_implementing_for_id,
+                        implementing_for_type_id,
                         &block_span,
-                        type_implementing_for_id,
+                        implementing_for_type_id,
                         &type_implementing_for_span,
                         Mode::NonAbi,
                         opts,
@@ -89,7 +89,7 @@ impl TypedImplTrait {
 
                 namespace.insert_trait_implementation(
                     trait_name.clone(),
-                    match resolve_type(type_implementing_for_id, &type_implementing_for_span) {
+                    match resolve_type(implementing_for_type_id, &type_implementing_for_span) {
                         Ok(o) => o,
                         Err(e) => {
                             errors.push(e.into());
@@ -98,11 +98,12 @@ impl TypedImplTrait {
                     },
                     functions_buf.clone(),
                 );
+
                 TypedImplTrait {
                     trait_name,
                     span: block_span,
                     methods: functions_buf,
-                    type_implementing_for,
+                    implementing_for_type_id,
                 }
             }
             Some(TypedDeclaration::AbiDeclaration(abi)) => {
@@ -110,10 +111,10 @@ impl TypedImplTrait {
                 // there are no type arguments here because we don't support generic types
                 // in contract ABIs yet (or ever?) due to the complexity of communicating
                 // the ABI layout in the descriptor file.
-                if type_implementing_for != TypeInfo::Contract {
+                if look_up_type_id(implementing_for_type_id) != TypeInfo::Contract {
                     errors.push(CompileError::ImplAbiForNonContract {
                         span: type_implementing_for_span.clone(),
-                        ty: type_implementing_for.to_string(),
+                        ty: implementing_for_type_id.to_string(),
                     });
                 }
 
@@ -124,9 +125,9 @@ impl TypedImplTrait {
                         &abi.methods,
                         &trait_name,
                         namespace,
-                        type_implementing_for_id,
+                        implementing_for_type_id,
                         &block_span,
-                        type_implementing_for_id,
+                        implementing_for_type_id,
                         &type_implementing_for_span,
                         Mode::ImplAbiFn,
                         opts,
@@ -140,14 +141,14 @@ impl TypedImplTrait {
 
                 namespace.insert_trait_implementation(
                     trait_name.clone(),
-                    look_up_type_id(type_implementing_for_id),
+                    look_up_type_id(implementing_for_type_id),
                     functions_buf.clone(),
                 );
                 TypedImplTrait {
                     trait_name,
                     span: block_span,
                     methods: functions_buf,
-                    type_implementing_for,
+                    implementing_for_type_id,
                 }
             }
             Some(_) | None => {
@@ -171,7 +172,7 @@ impl TypedImplTrait {
 
         let ImplSelf {
             type_implementing_for,
-            type_parameters,
+            mut type_parameters,
             functions,
             block_span,
             ..
@@ -179,55 +180,60 @@ impl TypedImplTrait {
 
         // create the namespace for the impl
         let mut namespace = namespace.clone();
-        for type_parameter in type_parameters.iter() {
-            namespace.insert_symbol(type_parameter.name_ident.clone(), type_parameter.into());
+
+        // insert type parameters as Unknown types
+        let type_mapping = insert_type_parameters(&type_parameters);
+
+        // update the types in the type parameters, insert the type parameters
+        // into the decl namespace, and check to see if the type parameters
+        // shadow one another
+        for type_parameter in type_parameters.iter_mut() {
+            check!(
+                type_parameter.update_types_without_self(&type_mapping, &mut namespace),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            let type_parameter_decl = TypedDeclaration::GenericTypeForFunctionScope {
+                name: type_parameter.name_ident.clone(),
+                type_id: type_parameter.type_id,
+            };
+            check!(
+                namespace.insert_symbol(type_parameter.name_ident.clone(), type_parameter_decl),
+                continue,
+                warnings,
+                errors
+            );
         }
 
-        // Resolve the Self type as it's most likely still 'Custom' and use the
-        // resolved type for self instead.
+        // type check the type we are implementing for
         let implementing_for_type_id = check!(
             namespace.resolve_type_without_self(type_implementing_for),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let type_implementing_for = look_up_type_id(implementing_for_type_id);
-        let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
-        for mut fn_decl in functions.into_iter() {
-            // ensure this fn decl's parameters and signature lines up with the
-            // one in the trait
 
-            // replace SelfType with type of implementor
-            // i.e. fn add(self, other: u64) -> Self becomes fn
-            // add(self: u64, other: u64) -> u64
-            fn_decl.parameters.iter_mut().for_each(
-                |FunctionParameter {
-                     ref mut type_id, ..
-                 }| {
-                    if look_up_type_id(*type_id) == TypeInfo::SelfType {
-                        *type_id = implementing_for_type_id;
-                    }
-                },
-            );
-            if fn_decl.return_type == TypeInfo::SelfType {
-                fn_decl.return_type = type_implementing_for.clone();
-            }
-            let args = TypeCheckArguments {
-                checkee: fn_decl,
-                namespace: &mut namespace,
-                return_type_annotation: insert_type(TypeInfo::Unknown),
-                help_text: "",
-                self_type: implementing_for_type_id,
-                mode: Mode::NonAbi,
-                opts,
-            };
+        // type check the functions
+        let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
+        for fn_decl in functions.into_iter() {
             functions_buf.push(check!(
-                TypedFunctionDeclaration::type_check(args),
+                TypedFunctionDeclaration::type_check(TypeCheckArguments {
+                    checkee: fn_decl,
+                    namespace: &mut namespace,
+                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                    help_text: "",
+                    self_type: implementing_for_type_id,
+                    mode: Mode::NonAbi,
+                    opts,
+                }),
                 continue,
                 warnings,
                 errors
             ));
         }
+
+        // create the trait name
         let trait_name = CallPath {
             prefixes: vec![],
             suffix: Ident::new_with_override("r#Self", block_span.clone()),
@@ -238,7 +244,7 @@ impl TypedImplTrait {
             trait_name,
             span: block_span,
             methods: functions_buf,
-            type_implementing_for,
+            implementing_for_type_id,
         };
         ok(impl_trait, warnings, errors)
     }

@@ -460,7 +460,7 @@ impl TypedAstNode {
                             );
                             namespace.insert_trait_implementation(
                                 impl_trait.trait_name.clone(),
-                                impl_trait.type_implementing_for.clone(),
+                                look_up_type_id(impl_trait.implementing_for_type_id),
                                 impl_trait.methods.clone(),
                             );
                             TypedDeclaration::ImplTrait(impl_trait)
