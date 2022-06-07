@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::Ident;
 
 use sway_types::span::Span;
@@ -22,16 +24,18 @@ impl std::convert::From<Ident> for CallPath {
     }
 }
 
-use std::fmt;
 impl fmt::Display for CallPath {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut buf = self.prefixes.iter().map(|x| x.as_str()).collect::<Vec<_>>();
-        let suffix = self.suffix.as_str();
-        buf.push(suffix);
-
-        write!(f, "{}", buf.join("::"))
+        let mut buf = String::new();
+        for prefix in self.prefixes.iter() {
+            buf.push_str(prefix.as_str());
+            buf.push_str("::");
+        }
+        buf.push_str(self.suffix.as_str());
+        write!(f, "{}", buf)
     }
 }
+
 impl CallPath {
     /// shifts the last prefix into the suffix and removes the old suffix
     /// noop if prefixes are empty
@@ -46,8 +50,7 @@ impl CallPath {
             }
         }
     }
-}
-impl CallPath {
+
     pub(crate) fn span(&self) -> Span {
         if self.prefixes.is_empty() {
             self.suffix.span().clone()
@@ -64,15 +67,5 @@ impl CallPath {
 
     pub(crate) fn full_path(&self) -> impl Iterator<Item = &Ident> {
         self.prefixes.iter().chain(Some(&self.suffix))
-    }
-
-    pub(crate) fn friendly_name(&self) -> String {
-        let mut buf = String::new();
-        for prefix in self.prefixes.iter() {
-            buf.push_str(prefix.as_str());
-            buf.push_str("::");
-        }
-        buf.push_str(self.suffix.as_str());
-        buf
     }
 }

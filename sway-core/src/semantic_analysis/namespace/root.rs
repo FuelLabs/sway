@@ -1,6 +1,6 @@
 use crate::{
-    error::*, semantic_analysis::*, type_engine::*, types::*, CallPath, CompileResult, Ident,
-    TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
+    error::*, semantic_analysis::*, type_engine::*, CallPath, CompileResult, Ident, TypeInfo,
+    TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use super::{module::Module, namespace::Namespace, Path};
@@ -320,7 +320,7 @@ impl Root {
                 {
                     errors.push(CompileError::MethodNotFound {
                         method_name: method_name.clone(),
-                        type_name: r#type.friendly_type_str(),
+                        type_name: r#type.to_string(),
                     });
                 }
                 err(warnings, errors)

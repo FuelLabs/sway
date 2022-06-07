@@ -1,4 +1,4 @@
-use crate::{parse_tree::*, type_engine::*, types::*};
+use crate::{parse_tree::*, type_engine::*};
 
 use fuels_types::{Function, Property};
 use sway_types::{ident::Ident, span::Span};
@@ -29,13 +29,13 @@ impl FunctionDeclaration {
                 .iter()
                 .map(|x| Property {
                     name: x.name.as_str().to_string(),
-                    type_field: look_up_type_id(x.type_id).friendly_type_str(),
+                    type_field: look_up_type_id(x.type_id).to_string(),
                     components: None,
                 })
                 .collect(),
             outputs: vec![Property {
                 name: "".to_string(),
-                type_field: self.return_type.friendly_type_str(),
+                type_field: self.return_type.to_string(),
                 components: None,
             }],
         }

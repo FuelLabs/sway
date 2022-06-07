@@ -702,8 +702,8 @@ fn decl_name(decl: &Declaration) -> Option<DependentSymbol> {
     }
 }
 
-/// This is intentionally different from [[TypeInfo::friendly_type_str]] because it
-/// is used for keys and values in the tree.
+/// This is intentionally different from `Display` for [TypeInfo]
+/// because it is used for keys and values in the tree.
 fn type_info_name(type_info: &TypeInfo) -> String {
     match type_info {
         TypeInfo::Str(_) => "str",
