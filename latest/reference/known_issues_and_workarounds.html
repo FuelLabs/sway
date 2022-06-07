@@ -162,7 +162,7 @@
 <h2 id="general"><a class="header" href="#general">General</a></h2>
 <ul>
 <li>
-<p>Storage variables of types <code>str[]</code>, <code>enum</code>, and arrays are not yet supported in a <code>storage</code> block. See the <a href="../blockchain-development/storage.html#manual-storage-management">Manual Storage Management</a> section for details on how to use <code>store</code> and <code>get</code> from the standard library to handle those types. Note, however, that <code>StorageMap&lt;K, V&gt;</code> <em>does</em> support arbitrary types for <code>K</code> and <code>V</code> without any limitations.</p>
+<p>Arrays in a <code>storage</code> block are not yet supported. See the <a href="../blockchain-development/storage.html#manual-storage-management">Manual Storage Management</a> section for details on how to use <code>store</code> and <code>get</code> from the standard library to manage storage slots directly. Note, however, that <code>StorageMap&lt;K, V&gt;</code> <em>does</em> support arbitrary types for <code>K</code> and <code>V</code> without any limitations.</p>
 </li>
 <li>
 <p>The optimizing pass of the compiler is not yet implemented, therefore bytecode will be more expensive and larger than it would be in production. Note that eventually the optimizer will support zero-cost abstractions, avoiding the need for developers to go down to inline assembly to produce optimal code.</p>
