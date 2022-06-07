@@ -5,6 +5,8 @@ pub mod impl_trait;
 mod return_statement;
 pub mod while_loop;
 
+use std::fmt;
+
 pub(crate) use code_block::*;
 pub use declaration::*;
 pub(crate) use expression::*;
@@ -74,17 +76,17 @@ pub struct TypedAstNode {
     pub(crate) span: Span,
 }
 
-impl std::fmt::Display for TypedAstNode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for TypedAstNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use TypedAstNodeContent::*;
         let text = match &self.content {
             ReturnStatement(TypedReturnStatement { ref expr }) => {
-                format!("return {}", expr.pretty_print())
+                format!("return {}", expr)
             }
-            Declaration(ref typed_decl) => typed_decl.pretty_print(),
-            Expression(exp) => exp.pretty_print(),
-            ImplicitReturnExpression(exp) => format!("return {}", exp.pretty_print()),
-            WhileLoop(w_loop) => w_loop.pretty_print(),
+            Declaration(ref typed_decl) => typed_decl.to_string(),
+            Expression(exp) => exp.to_string(),
+            ImplicitReturnExpression(exp) => format!("return {}", exp),
+            WhileLoop(w_loop) => w_loop.to_string(),
             SideEffect => "".into(),
         };
         f.write_str(&text)

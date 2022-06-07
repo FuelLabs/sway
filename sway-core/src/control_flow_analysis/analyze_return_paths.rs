@@ -3,7 +3,6 @@
 
 use crate::{
     control_flow_analysis::*, error::*, parse_tree::*, semantic_analysis::*, type_engine::*,
-    types::*,
 };
 use petgraph::prelude::NodeIndex;
 use sway_types::{ident::Ident, span::Span};
@@ -99,7 +98,7 @@ impl ControlFlowGraph {
                         // different. To save some code duplication,
                         span,
                         function_name: function_name.clone(),
-                        ty: return_ty.friendly_type_str(),
+                        ty: return_ty.to_string(),
                     });
                 }
                 next_rovers.append(&mut neighbors);

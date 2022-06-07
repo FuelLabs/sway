@@ -4,7 +4,7 @@ use sway_types::{Ident, Spanned};
 use crate::constants;
 use crate::Expression::StorageAccess;
 
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
 
 use std::collections::{HashMap, VecDeque};
 
@@ -181,8 +181,8 @@ pub(crate) fn type_check_method_application(
         if !new_errors.is_empty() {
             errors.push(CompileError::ArgumentParameterTypeMismatch {
                 span: arg.span.clone(),
-                provided: arg.return_type.friendly_type_str(),
-                should_be: param.r#type.friendly_type_str(),
+                provided: arg.return_type.to_string(),
+                should_be: param.r#type.to_string(),
             });
         }
         // The annotation may result in a cast, which is handled in the type engine.

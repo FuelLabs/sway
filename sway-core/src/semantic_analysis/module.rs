@@ -1,4 +1,4 @@
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
 
 use sway_types::{Ident, Spanned};
 
@@ -161,7 +161,7 @@ fn check_supertraits(
                         // user code with a single error.
                         errors.push(CompileError::SupertraitImplMissing {
                             supertrait_name: supertrait.name.clone(),
-                            type_name: type_implementing_for.friendly_type_str(),
+                            type_name: type_implementing_for.to_string(),
                             span: span.clone(),
                         });
                         errors.push(CompileError::SupertraitImplRequired {
