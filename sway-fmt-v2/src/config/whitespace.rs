@@ -68,7 +68,7 @@ pub enum NewlineStyle {
     Native,
 }
 
-// The definitive system type for `[NewlineStyle]`.
+/// The definitive system type for `[NewlineStyle]`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum NewlineSystemType {
     Windows,
