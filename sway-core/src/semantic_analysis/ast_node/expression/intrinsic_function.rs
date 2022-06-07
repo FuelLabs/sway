@@ -5,7 +5,7 @@ use sway_types::Span;
 use crate::{
     type_engine::*,
     types::{DeterministicallyAborts, FriendlyTypeString},
-    GetPropertyOfTypeKind,
+    CompileError, GetPropertyOfTypeKind,
 };
 
 use super::TypedExpression;
@@ -86,10 +86,21 @@ impl fmt::Display for TypedIntrinsicFunctionKind {
 
 impl DeterministicallyAborts for TypedIntrinsicFunctionKind {
     fn deterministically_aborts(&self) -> bool {
+        use TypedIntrinsicFunctionKind::*;
         match self {
-            TypedIntrinsicFunctionKind::SizeOfVal { exp } => exp.deterministically_aborts(),
-            TypedIntrinsicFunctionKind::GetPropertyOfType { .. }
-            | TypedIntrinsicFunctionKind::GetStorageKey => false,
+            SizeOfVal { exp } => exp.deterministically_aborts(),
+            GetPropertyOfType { .. } | GetStorageKey => false,
+        }
+    }
+}
+
+impl UnresolvedTypeCheck for TypedIntrinsicFunctionKind {
+    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+        use TypedIntrinsicFunctionKind::*;
+        match self {
+            SizeOfVal { exp } => exp.check_for_unresolved_types(),
+            GetPropertyOfType { type_id, .. } => type_id.check_for_unresolved_types(),
+            GetStorageKey => vec![],
         }
     }
 }
