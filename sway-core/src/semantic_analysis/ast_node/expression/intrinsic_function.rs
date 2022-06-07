@@ -170,7 +170,7 @@ impl TypedIntrinsicFunctionKind {
                 );
                 let intrinsic_function =
                     TypedIntrinsicFunctionKind::IsRefType { type_id, type_span };
-                (intrinsic_function, insert_type(TypeInfo::B256))
+                (intrinsic_function, insert_type(TypeInfo::Boolean))
             }
             IntrinsicFunctionKind::GetStorageKey => (
                 TypedIntrinsicFunctionKind::GetStorageKey,
