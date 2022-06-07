@@ -9,6 +9,7 @@ use crate::{
     WhileLoop,
 };
 
+use sway_types::Spanned;
 use sway_types::{ident::Ident, span::Span};
 
 // -------------------------------------------------------------------------------------------------
@@ -162,7 +163,7 @@ fn build_recursion_error(fn_sym: Ident, span: Span, chain: &[Ident]) -> CompileE
 }
 
 fn build_recursive_type_error(name: Ident, chain: &[Ident]) -> CompileError {
-    let span = name.span().clone();
+    let span = name.span();
     match chain.len() {
         // An empty chain indicates immediate recursion.
         0 => CompileError::RecursiveType { name, span },
@@ -702,8 +703,8 @@ fn decl_name(decl: &Declaration) -> Option<DependentSymbol> {
     }
 }
 
-/// This is intentionally different from [[TypeInfo::friendly_type_str]] because it
-/// is used for keys and values in the tree.
+/// This is intentionally different from `Display` for [TypeInfo]
+/// because it is used for keys and values in the tree.
 fn type_info_name(type_info: &TypeInfo) -> String {
     match type_info {
         TypeInfo::Str(_) => "str",

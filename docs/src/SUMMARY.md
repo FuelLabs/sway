@@ -23,7 +23,7 @@
   - [Built-in Types](./basics/built_in_types.md)
   - [Blockchain Types](./basics/blockchain_types.md)
   - [Functions](./basics/functions.md)
-  - [Structs and Tuples](./basics/structs_and_tuples.md)
+  - [Structs, Tuples, and Enums](./basics/structs_tuples_and_enums.md)
   - [Methods and Associated Functions](./basics/methods_and_associated_functions.md)
   - [Comments and Logging](./basics/comments_and_logging.md)
   - [Control Flow](./basics/control_flow.md)

@@ -5,6 +5,8 @@ pub mod impl_trait;
 mod return_statement;
 pub mod while_loop;
 
+use std::fmt;
+
 pub(crate) use code_block::*;
 pub use declaration::*;
 pub(crate) use expression::*;
@@ -15,11 +17,11 @@ pub(crate) use while_loop::*;
 use super::ERROR_RECOVERY_DECLARATION;
 
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*, AstNode,
-    AstNodeContent, Ident, ReturnStatement,
+    error::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*,
+    types::DeterministicallyAborts, AstNode, AstNodeContent, Ident, ReturnStatement,
 };
 
-use sway_types::{span::Span, state::StateIndex};
+use sway_types::{span::Span, state::StateIndex, Spanned};
 
 use derivative::Derivative;
 
@@ -42,6 +44,30 @@ pub enum TypedAstNodeContent {
     SideEffect,
 }
 
+impl UnresolvedTypeCheck for TypedAstNodeContent {
+    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+        use TypedAstNodeContent::*;
+        match self {
+            ReturnStatement(stmt) => stmt.expr.check_for_unresolved_types(),
+            Declaration(decl) => decl.check_for_unresolved_types(),
+            Expression(expr) => expr.check_for_unresolved_types(),
+            ImplicitReturnExpression(expr) => expr.check_for_unresolved_types(),
+            WhileLoop(lo) => {
+                let mut condition = lo.condition.check_for_unresolved_types();
+                let mut body = lo
+                    .body
+                    .contents
+                    .iter()
+                    .flat_map(TypedAstNode::check_for_unresolved_types)
+                    .collect();
+                condition.append(&mut body);
+                condition
+            }
+            SideEffect => vec![],
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, Derivative)]
 #[derivative(PartialEq)]
 pub struct TypedAstNode {
@@ -50,17 +76,17 @@ pub struct TypedAstNode {
     pub(crate) span: Span,
 }
 
-impl std::fmt::Display for TypedAstNode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for TypedAstNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use TypedAstNodeContent::*;
         let text = match &self.content {
             ReturnStatement(TypedReturnStatement { ref expr }) => {
-                format!("return {}", expr.pretty_print())
+                format!("return {}", expr)
             }
-            Declaration(ref typed_decl) => typed_decl.pretty_print(),
-            Expression(exp) => exp.pretty_print(),
-            ImplicitReturnExpression(exp) => format!("return {}", exp.pretty_print()),
-            WhileLoop(w_loop) => w_loop.pretty_print(),
+            Declaration(ref typed_decl) => typed_decl.to_string(),
+            Expression(exp) => exp.to_string(),
+            ImplicitReturnExpression(exp) => format!("return {}", exp),
+            WhileLoop(w_loop) => w_loop.to_string(),
             SideEffect => "".into(),
         };
         f.write_str(&text)
@@ -86,6 +112,27 @@ impl CopyTypes for TypedAstNode {
                 body.copy_types(type_mapping);
             }
             TypedAstNodeContent::SideEffect => (),
+        }
+    }
+}
+
+impl UnresolvedTypeCheck for TypedAstNode {
+    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+        self.content.check_for_unresolved_types()
+    }
+}
+
+impl DeterministicallyAborts for TypedAstNode {
+    fn deterministically_aborts(&self) -> bool {
+        use TypedAstNodeContent::*;
+        match &self.content {
+            ReturnStatement(_) => true,
+            Declaration(_) => false,
+            Expression(exp) | ImplicitReturnExpression(exp) => exp.deterministically_aborts(),
+            WhileLoop(TypedWhileLoop { condition, body }) => {
+                condition.deterministically_aborts() || body.deterministically_aborts()
+            }
+            SideEffect => false,
         }
     }
 }
@@ -118,22 +165,6 @@ impl TypedAstNode {
                 matches!(tree_type, TreeType::Script | TreeType::Predicate)
             }
             _ => false,
-        }
-    }
-
-    /// if this ast node _deterministically_ panics/aborts, then this is true.
-    /// This is used to assist in type checking branches that abort control flow and therefore
-    /// don't need to return a type.
-    pub(crate) fn deterministically_aborts(&self) -> bool {
-        use TypedAstNodeContent::*;
-        match &self.content {
-            ReturnStatement(_) => true,
-            Declaration(_) => false,
-            Expression(exp) | ImplicitReturnExpression(exp) => exp.deterministically_aborts(),
-            WhileLoop(TypedWhileLoop { condition, body }) => {
-                condition.deterministically_aborts() || body.deterministically_aborts()
-            }
-            SideEffect => false,
         }
     }
 
@@ -256,7 +287,7 @@ impl TypedAstNode {
                             check_if_name_is_invalid(&name).ok(&mut warnings, &mut errors);
                             let type_ascription_span = match type_ascription_span {
                                 Some(type_ascription_span) => type_ascription_span,
-                                None => name.span().clone(),
+                                None => name.span(),
                             };
                             let type_ascription = check!(
                                 namespace.resolve_type_with_self(
@@ -281,12 +312,8 @@ impl TypedAstNode {
                                     opts,
                                 })
                             };
-                            let body = check!(
-                                result,
-                                error_recovery_expr(name.span().clone()),
-                                warnings,
-                                errors
-                            );
+                            let body =
+                                check!(result, error_recovery_expr(name.span()), warnings, errors);
                             let typed_var_decl =
                                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                                     name: name.clone(),
@@ -307,12 +334,8 @@ impl TypedAstNode {
                             let result =
                                 type_check_ascribed_expr(namespace, type_ascription.clone(), value);
                             is_screaming_snake_case(&name).ok(&mut warnings, &mut errors);
-                            let value = check!(
-                                result,
-                                error_recovery_expr(name.span().clone()),
-                                warnings,
-                                errors
-                            );
+                            let value =
+                                check!(result, error_recovery_expr(name.span()), warnings, errors);
                             let typed_const_decl =
                                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                                     name: name.clone(),
@@ -349,7 +372,7 @@ impl TypedAstNode {
                             for type_parameter in fn_decl.type_parameters.iter() {
                                 if !type_parameter.trait_constraints.is_empty() {
                                     errors.push(CompileError::WhereClauseNotYetSupported {
-                                        span: type_parameter.name_ident.span().clone(),
+                                        span: type_parameter.name_ident.span(),
                                     });
                                     break;
                                 }
@@ -430,7 +453,7 @@ impl TypedAstNode {
                             for type_parameter in type_parameters.iter() {
                                 if !type_parameter.trait_constraints.is_empty() {
                                     errors.push(CompileError::WhereClauseNotYetSupported {
-                                        span: type_parameter.name_ident.span().clone(),
+                                        span: type_parameter.name_ident.span(),
                                     });
                                     break;
                                 }
@@ -1052,7 +1075,7 @@ fn type_check_trait_methods(
                     namespace.resolve_type_with_self(
                         look_up_type_id(*r#type),
                         insert_type(TypeInfo::SelfType),
-                        name.span(),
+                        &name.span(),
                         EnforceTypeArguments::Yes
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
@@ -1067,7 +1090,7 @@ fn type_check_trait_methods(
                             expression: TypedExpressionVariant::FunctionParameter,
                             return_type: r#type,
                             is_constant: IsConstant::No,
-                            span: name.span().clone(),
+                            span: name.span(),
                         },
                         // TODO allow mutable function params?
                         is_mutable: VariableMutability::Immutable,
@@ -1094,7 +1117,7 @@ fn type_check_trait_methods(
             if let TypeInfo::Custom { name, .. } = look_up_type_id(*type_id) {
                 let args_span = parameters.iter().fold(
                     parameters[0].name.span().clone(),
-                    |acc, FunctionParameter { name, .. }| Span::join(acc, name.span().clone()),
+                    |acc, FunctionParameter { name, .. }| Span::join(acc, name.span()),
                 );
                 if type_parameters.iter().any(|TypeParameter { type_id, .. }| {
                     if let TypeInfo::Custom {
@@ -1234,7 +1257,7 @@ fn convert_trait_methods_to_dummy_funcs(
                         },
                     )
                     .collect(),
-                span: name.span().clone(),
+                span: name.span(),
                 return_type: check!(
                     trait_namespace.resolve_type_with_self(
                         return_type.clone(),
@@ -1292,14 +1315,17 @@ pub struct TypeCheckedStorageReassignment {
     pub rhs: TypedExpression,
 }
 
-impl TypeCheckedStorageReassignment {
-    pub fn span(&self) -> Span {
+impl Spanned for TypeCheckedStorageReassignment {
+    fn span(&self) -> Span {
         self.fields
             .iter()
             .fold(self.fields[0].span.clone(), |acc, field| {
                 Span::join(acc, field.span.clone())
             })
     }
+}
+
+impl TypeCheckedStorageReassignment {
     pub fn names(&self) -> Vec<Ident> {
         self.fields
             .iter()
@@ -1373,7 +1399,7 @@ fn reassign_storage_subfield(
     type_checked_buf.push(TypeCheckedStorageReassignDescriptor {
         name: first_field.clone(),
         r#type: *initial_field_type,
-        span: first_field.span().clone(),
+        span: first_field.span(),
     });
 
     fn update_available_struct_fields(id: TypeId) -> Vec<TypedStructField> {

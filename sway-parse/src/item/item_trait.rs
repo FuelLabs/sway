@@ -68,8 +68,8 @@ impl Parse for Traits {
     }
 }
 
-impl Traits {
-    pub fn span(&self) -> Span {
+impl Spanned for Traits {
+    fn span(&self) -> Span {
         match self.suffixes.last() {
             Some((_add_token, path_type)) => Span::join(self.prefix.span(), path_type.span()),
             None => self.prefix.span(),

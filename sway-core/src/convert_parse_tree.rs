@@ -183,8 +183,8 @@ pub enum ConvertParseTreeError {
     RecursiveType { span: Span },
 }
 
-impl ConvertParseTreeError {
-    pub fn span(&self) -> Span {
+impl Spanned for ConvertParseTreeError {
+    fn span(&self) -> Span {
         match self {
             ConvertParseTreeError::PubUseNotSupported { span } => span.clone(),
             ConvertParseTreeError::ReturnOutsideOfBlock { span } => span.clone(),
@@ -587,7 +587,7 @@ fn get_attributed_purity(
                     _otherwise => {
                         return Err(ec.error(ConvertParseTreeError::InvalidAttributeArgument {
                             attribute: "storage".to_owned(),
-                            span: arg.span().clone(),
+                            span: arg.span(),
                         }));
                     }
                 }
@@ -1354,7 +1354,7 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             };
             match method_type_opt {
                 Some(type_name) => {
-                    let type_name_span = type_name.span().clone();
+                    let type_name_span = type_name.span();
                     let type_name = match type_name_to_type_info_opt(&type_name) {
                         Some(type_info) => type_info,
                         None => TypeInfo::Custom {
@@ -2418,7 +2418,7 @@ fn asm_block_to_asm_expression(
             let asm_register = AsmRegister {
                 name: asm_final_expr.register.as_str().to_owned(),
             };
-            let returns = Some((asm_register, asm_final_expr.register.span().clone()));
+            let returns = Some((asm_register, asm_final_expr.register.span()));
             let return_type = match asm_final_expr.ty_opt {
                 Some((_colon_token, ty)) => ty_to_type_info(ec, ty)?,
                 None => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),

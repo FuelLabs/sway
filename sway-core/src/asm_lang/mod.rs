@@ -15,7 +15,7 @@ pub(crate) use virtual_register::*;
 
 use crate::{asm_generation::DataId, error::*, parse_tree::AsmRegister, Ident};
 
-use sway_types::span::Span;
+use sway_types::{span::Span, Spanned};
 
 use either::Either;
 use std::{
@@ -1007,7 +1007,7 @@ impl Op {
                 _ => {
                     errors.push(CompileError::UnrecognizedOp {
                         op_name: name.clone(),
-                        span: name.span().clone(),
+                        span: name.span(),
                     });
                     return err(warnings, errors);
                 }
@@ -1047,9 +1047,7 @@ fn single_reg(
     match immediate {
         None => (),
         Some(i) => {
-            errors.push(CompileError::UnnecessaryImmediate {
-                span: i.span().clone(),
-            });
+            errors.push(CompileError::UnnecessaryImmediate { span: i.span() });
         }
     };
 
@@ -1084,9 +1082,7 @@ fn two_regs(
     };
     match immediate {
         None => (),
-        Some(i) => errors.push(CompileError::UnnecessaryImmediate {
-            span: i.span().clone(),
-        }),
+        Some(i) => errors.push(CompileError::UnnecessaryImmediate { span: i.span() }),
     };
 
     ok((reg.clone(), reg2.clone()), warnings, errors)
@@ -1126,9 +1122,7 @@ fn four_regs(
     match immediate {
         None => (),
         Some(i) => {
-            errors.push(CompileError::MissingImmediate {
-                span: i.span().clone(),
-            });
+            errors.push(CompileError::MissingImmediate { span: i.span() });
         }
     };
 
@@ -1197,9 +1191,7 @@ fn three_regs(
     match immediate {
         None => (),
         Some(i) => {
-            errors.push(CompileError::UnnecessaryImmediate {
-                span: i.span().clone(),
-            });
+            errors.push(CompileError::UnnecessaryImmediate { span: i.span() });
         }
     };
 
@@ -1227,11 +1219,9 @@ fn single_imm_24(
             return err(warnings, errors);
         }
         Some(i) => match i.as_str()[1..].parse() {
-            Ok(o) => (o, i.span().clone()),
+            Ok(o) => (o, i.span()),
             Err(_) => {
-                errors.push(CompileError::InvalidImmediateValue {
-                    span: i.span().clone(),
-                });
+                errors.push(CompileError::InvalidImmediateValue { span: i.span() });
                 return err(warnings, errors);
             }
         },
@@ -1280,11 +1270,9 @@ fn single_reg_imm_18(
             return err(warnings, errors);
         }
         Some(i) => match i.as_str()[1..].parse() {
-            Ok(o) => (o, i.span().clone()),
+            Ok(o) => (o, i.span()),
             Err(_) => {
-                errors.push(CompileError::InvalidImmediateValue {
-                    span: i.span().clone(),
-                });
+                errors.push(CompileError::InvalidImmediateValue { span: i.span() });
                 return err(warnings, errors);
             }
         },
@@ -1333,11 +1321,9 @@ fn two_regs_imm_12(
             return err(warnings, errors);
         }
         Some(i) => match i.as_str()[1..].parse() {
-            Ok(o) => (o, i.span().clone()),
+            Ok(o) => (o, i.span()),
             Err(_) => {
-                errors.push(CompileError::InvalidImmediateValue {
-                    span: i.span().clone(),
-                });
+                errors.push(CompileError::InvalidImmediateValue { span: i.span() });
                 return err(warnings, errors);
             }
         },

@@ -48,11 +48,11 @@ impl Spanned for PathExprSegment {
     fn span(&self) -> Span {
         let start = match &self.fully_qualified {
             Some(tilde_token) => tilde_token.span(),
-            None => self.name.span().clone(),
+            None => self.name.span(),
         };
         let end = match &self.generics_opt {
             Some((_double_colon_token, generic_args)) => generic_args.span(),
-            None => self.name.span().clone(),
+            None => self.name.span(),
         };
         Span::join(start, end)
     }
@@ -147,11 +147,11 @@ impl Spanned for PathTypeSegment {
     fn span(&self) -> Span {
         let start = match &self.fully_qualified {
             Some(tilde_token) => tilde_token.span(),
-            None => self.name.span().clone(),
+            None => self.name.span(),
         };
         let end = match &self.generics_opt {
             Some((_double_colon_token, generic_args)) => generic_args.span(),
-            None => self.name.span().clone(),
+            None => self.name.span(),
         };
         Span::join(start, end)
     }

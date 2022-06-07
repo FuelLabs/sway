@@ -556,6 +556,9 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/recursive_struct",
         "should_fail/recursive_type_chain",
         "should_fail/better_type_error_message",
+        "should_fail/storage_in_library",
+        "should_fail/storage_in_predicate",
+        "should_fail/storage_in_script",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
