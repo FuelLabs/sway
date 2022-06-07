@@ -44,6 +44,30 @@ pub enum TypedAstNodeContent {
     SideEffect,
 }
 
+impl UnresolvedTypeCheck for TypedAstNodeContent {
+    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+        use TypedAstNodeContent::*;
+        match self {
+            ReturnStatement(stmt) => stmt.expr.check_for_unresolved_types(),
+            Declaration(decl) => decl.check_for_unresolved_types(),
+            Expression(expr) => expr.check_for_unresolved_types(),
+            ImplicitReturnExpression(expr) => expr.check_for_unresolved_types(),
+            WhileLoop(lo) => {
+                let mut condition = lo.condition.check_for_unresolved_types();
+                let mut body = lo
+                    .body
+                    .contents
+                    .iter()
+                    .flat_map(TypedAstNode::check_for_unresolved_types)
+                    .collect();
+                condition.append(&mut body);
+                condition
+            }
+            SideEffect => vec![],
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, Derivative)]
 #[derivative(PartialEq)]
 pub struct TypedAstNode {
@@ -89,6 +113,12 @@ impl CopyTypes for TypedAstNode {
             }
             TypedAstNodeContent::SideEffect => (),
         }
+    }
+}
+
+impl UnresolvedTypeCheck for TypedAstNode {
+    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+        self.content.check_for_unresolved_types()
     }
 }
 
