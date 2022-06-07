@@ -506,7 +506,7 @@ fn item_struct_to_struct_declaration(
         if !names_of_fields.insert(v.name.clone()) {
             errors.push(ConvertParseTreeError::DuplicateStructField {
                 name: v.name.clone(),
-                span: v.name.span().clone(),
+                span: v.name.span(),
             });
         }
     });
@@ -555,7 +555,7 @@ fn item_enum_to_enum_declaration(
         if !names_of_variants.insert(v.name.clone()) {
             errors.push(ConvertParseTreeError::DuplicateEnumVariant {
                 name: v.name.clone(),
-                span: v.name.span().clone(),
+                span: v.name.span(),
             });
         }
     });
@@ -803,7 +803,7 @@ fn item_storage_to_storage_declaration(
         if !names_of_fields.insert(v.name.clone()) {
             errors.push(ConvertParseTreeError::DuplicateStorageField {
                 name: v.name.clone(),
-                span: v.name.span().clone(),
+                span: v.name.span(),
             });
         }
     });
