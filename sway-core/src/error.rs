@@ -475,11 +475,6 @@ pub enum CompileError {
     )]
     MultiplePredicates(Span),
     #[error(
-        "Predicate definition contains multiple main functions. Multiple functions in the same \
-         scope cannot have the same name."
-    )]
-    MultiplePredicateMainFunctions(Span),
-    #[error(
         "Predicate declaration contains no main function. Predicates require a main function."
     )]
     NoPredicateMainFunction(Span),
@@ -487,11 +482,8 @@ pub enum CompileError {
     PredicateMainDoesNotReturnBool(Span),
     #[error("Script declaration contains no main function. Scripts require a main function.")]
     NoScriptMainFunction(Span),
-    #[error(
-        "Script definition contains multiple main functions. Multiple functions in the same scope \
-         cannot have the same name."
-    )]
-    MultipleScriptMainFunctions(Span),
+    #[error("Function \"{name}\" was already defined in scope.")]
+    MultipleDefinitionsOfFunction { name: Ident },
     #[error(
         "Attempted to reassign to a symbol that is not a variable. Symbol {name} is not a mutable \
          variable, it is a {kind}."
@@ -996,11 +988,10 @@ impl Spanned for CompileError {
             MultiplePredicates(span) => span.clone(),
             MultipleScripts(span) => span.clone(),
             MultipleContracts(span) => span.clone(),
-            MultiplePredicateMainFunctions(span) => span.clone(),
             NoPredicateMainFunction(span) => span.clone(),
             PredicateMainDoesNotReturnBool(span) => span.clone(),
             NoScriptMainFunction(span) => span.clone(),
-            MultipleScriptMainFunctions(span) => span.clone(),
+            MultipleDefinitionsOfFunction { name } => name.span().clone(),
             ReassignmentToNonVariable { span, .. } => span.clone(),
             AssignmentToNonMutable { name } => name.span(),
             TypeParameterNotInTypeScope { span, .. } => span.clone(),
