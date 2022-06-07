@@ -1069,7 +1069,7 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
                             either `branch`, `tag` or `rev`"
                     ),
                 };
-                //We don't have any patch for this dependency
+                // We don't have any patch for this dependency
                 let repo = Url::parse(repo)?;
                 let source = SourceGit { repo, reference };
                 Source::Git(source)
