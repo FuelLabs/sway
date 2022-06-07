@@ -1,7 +1,7 @@
 //! Standard system and editor whitespace configuration options. Advanced whitespace options will be deferred to their corresponding sub-classes.
 use serde::{Deserialize, Serialize};
 
-use crate::constants::{DEFAULT_MAX_LINE_WIDTH, DEFAULT_TAB_SPACES};
+use crate::constants::{CARRIAGE_RETURN, DEFAULT_MAX_LINE_WIDTH, DEFAULT_TAB_SPACES, LINE_FEED};
 
 use super::user_opts::WhitespaceOptions;
 
@@ -45,6 +45,16 @@ impl Whitespace {
     }
 }
 
+/// Handling of line indentation for expressions or items.
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+pub enum IndentStyle {
+    /// First line on the same line as the opening brace, all lines aligned with
+    /// the first line.
+    Visual,
+    /// First line is on a new line and all lines align with **block** indent.
+    Block,
+}
+
 /// Handling of which OS new-line style should be applied.
 #[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub enum NewlineStyle {
@@ -58,12 +68,43 @@ pub enum NewlineStyle {
     Native,
 }
 
-/// Handling of line indentation for expressions or items.
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
-pub enum IndentStyle {
-    /// First line on the same line as the opening brace, all lines aligned with
-    /// the first line.
-    Visual,
-    /// First line is on a new line and all lines align with **block** indent.
-    Block,
+// The definitive system type for `[NewlineStyle]`.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum NewlineSystemType {
+    Windows,
+    Unix,
+}
+
+impl NewlineSystemType {
+    pub fn get_newline_style(newline_style: NewlineStyle, raw_input_text: &str) -> Self {
+        match newline_style {
+            NewlineStyle::Auto => Self::auto_detect_newline_style(raw_input_text),
+            NewlineStyle::Native => Self::native_newline_style(),
+            NewlineStyle::Windows => Self::Windows,
+            NewlineStyle::Unix => Self::Unix,
+        }
+    }
+
+    pub fn auto_detect_newline_style(raw_input_text: &str) -> Self {
+        let first_line_feed_pos = raw_input_text.chars().position(|ch| ch == LINE_FEED);
+        match first_line_feed_pos {
+            Some(first_line_feed_pos) => {
+                let char_before_line_feed_pos = first_line_feed_pos.saturating_sub(1);
+                let char_before_line_feed = raw_input_text.chars().nth(char_before_line_feed_pos);
+                match char_before_line_feed {
+                    Some(CARRIAGE_RETURN) => Self::Windows,
+                    _ => Self::Unix,
+                }
+            }
+            None => Self::native_newline_style(),
+        }
+    }
+
+    fn native_newline_style() -> Self {
+        if cfg!(windows) {
+            Self::Windows
+        } else {
+            Self::Unix
+        }
+    }
 }
