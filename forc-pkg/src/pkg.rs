@@ -216,7 +216,6 @@ impl BuildPlan {
             .last()
             .ok_or_else(|| anyhow!("Invalid Graph"))?;
         let PkgDiff { added, removed } = pkg_diff;
-        println!("{:?}", removed);
         remove_deps(&mut graph, &path_map, proj_node, &removed);
 
         let mut visited_map: HashMap<Pinned, NodeIx> = graph
@@ -299,7 +298,8 @@ impl BuildPlan {
                 }
 
                 let name = dep.package().unwrap_or(dep_name).to_string();
-                let source = dep_to_source(proj_path, dep)?;
+                let source =
+                    apply_patch(&name, &dep_to_source(proj_path, dep)?, manifest, proj_path)?;
                 let dep_pkg = Pkg { name, source };
                 Ok((dep_name, dep_pkg))
             })
@@ -788,8 +788,12 @@ fn fetch_children(
     let parent_path = path_map[&parent.id()].clone();
     for (dep_name, dep) in manifest.deps() {
         let name = dep.package().unwrap_or(dep_name).to_string();
-        let source = dep_to_source(&parent_path, dep)?;
-        let source = apply_patch(&name, &source, manifest, &parent_path)?;
+        let source = apply_patch(
+            &name,
+            &dep_to_source(&parent_path, dep)?,
+            manifest,
+            &parent_path,
+        )?;
         if offline_mode && !matches!(source, Source::Path(_)) {
             bail!("Unable to fetch pkg {:?} in offline mode", source);
         }
