@@ -203,11 +203,11 @@ fn connect_declaration(
             }
             vec![entry_node]
         }
-        ImplTrait {
+        ImplTrait(TypedImplTrait {
             trait_name,
             methods,
             ..
-        } => {
+        }) => {
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
