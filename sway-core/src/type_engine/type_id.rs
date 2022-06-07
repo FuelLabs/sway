@@ -1,5 +1,5 @@
 use std::fmt::{Debug, Display};
-use sway_types::Span;
+use sway_types::{Span, Spanned};
 
 use crate::types::*;
 
@@ -31,6 +31,24 @@ impl Debug for TypeId {
 impl From<usize> for TypeId {
     fn from(o: usize) -> Self {
         TypeId(o)
+    }
+}
+
+impl UnresolvedTypeCheck for TypeId {
+    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+        use TypeInfo::*;
+        let span_override = if let TypeInfo::Ref(_, span) = look_up_type_id_raw(*self) {
+            Some(span)
+        } else {
+            None
+        };
+        match look_up_type_id(*self) {
+            UnknownGeneric { name } => vec![CompileError::UnableToInferGeneric {
+                ty: name.as_str().to_string(),
+                span: span_override.unwrap_or_else(|| name.span()),
+            }],
+            _ => vec![],
+        }
     }
 }
 

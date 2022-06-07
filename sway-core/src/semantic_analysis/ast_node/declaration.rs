@@ -99,6 +99,55 @@ impl Spanned for TypedDeclaration {
     }
 }
 
+impl UnresolvedTypeCheck for TypedDeclaration {
+    // this is only run on entry nodes, which must have all well-formed types
+    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+        use TypedDeclaration::*;
+        match self {
+            VariableDeclaration(decl) => {
+                let mut body = decl.body.check_for_unresolved_types();
+                body.append(&mut decl.type_ascription.check_for_unresolved_types());
+                body
+            }
+            FunctionDeclaration(decl) => {
+                let mut body: Vec<CompileError> = decl
+                    .body
+                    .contents
+                    .iter()
+                    .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                    .collect();
+                body.append(&mut decl.return_type.check_for_unresolved_types());
+                body.append(
+                    &mut decl
+                        .type_parameters
+                        .iter()
+                        .map(|x| &x.type_id)
+                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .collect(),
+                );
+                body
+            }
+            ConstantDeclaration(TypedConstantDeclaration { value, .. }) => {
+                value.check_for_unresolved_types()
+            }
+            StorageReassignment(TypeCheckedStorageReassignment { fields, rhs, .. }) => fields
+                .iter()
+                .flat_map(|x| x.r#type.check_for_unresolved_types())
+                .chain(rhs.check_for_unresolved_types().into_iter())
+                .collect(),
+            Reassignment(TypedReassignment { rhs, .. }) => rhs.check_for_unresolved_types(),
+            ErrorRecovery
+            | StorageDeclaration(_)
+            | TraitDeclaration(_)
+            | StructDeclaration(_)
+            | EnumDeclaration(_)
+            | ImplTrait { .. }
+            | AbiDeclaration(_)
+            | GenericTypeForFunctionScope { .. } => vec![],
+        }
+    }
+}
+
 impl TypedDeclaration {
     /// Attempt to retrieve the declaration as an enum declaration.
     ///

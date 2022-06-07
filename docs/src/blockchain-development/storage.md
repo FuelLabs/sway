@@ -49,10 +49,10 @@ Because storage maps have to be defined inside a `storage` block, the `storage` 
 
 ## Manual Storage Management
 
-It is possible to leverage FuelVM storage operations using the `std::storage::store` and `std::storage::get` functions provided in the standard library. With this approach you will have to manually assign the internal key used for storage. An example is as follows:
+It is possible to leverage FuelVM storage operations directly using the `std::storage::store` and `std::storage::get` functions provided in the standard library. With this approach you will have to manually assign the internal key used for storage. An example is as follows:
 
 ```sway
 {{#include ../../../examples/storage_example/src/main.sw}}
 ```
 
-This is currently useful for variables of type `str[]`, `enum`, and arrays because those cannot be used in a `storage` block yet. They can, however, be used as types for keys and values in `StorageMap<K, V>`.
+> **Note**: Though these functions can be used for any data type, they should mostly be used for arrays because arrays are not yet supported in `storage` blocks. Note, however, that _all_ data types can be used as types for keys and/or values in `StorageMap<K, V>` without any restrictions.
