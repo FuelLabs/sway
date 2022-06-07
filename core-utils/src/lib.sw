@@ -1,3 +1,3 @@
-library utils;
+library core_utils;
 
 dep compose;

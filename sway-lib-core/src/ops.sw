@@ -1,6 +1,6 @@
 library ops;
 
-use utils::compose::*;
+use core_utils::compose::*;
 
 pub trait Add {
     fn add(self, other: Self) -> Self;
