@@ -991,7 +991,7 @@ impl Spanned for CompileError {
             NoPredicateMainFunction(span) => span.clone(),
             PredicateMainDoesNotReturnBool(span) => span.clone(),
             NoScriptMainFunction(span) => span.clone(),
-            MultipleDefinitionsOfFunction { name } => name.span().clone(),
+            MultipleDefinitionsOfFunction { name } => name.span(),
             ReassignmentToNonVariable { span, .. } => span.clone(),
             AssignmentToNonMutable { name } => name.span(),
             TypeParameterNotInTypeScope { span, .. } => span.clone(),
