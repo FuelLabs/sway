@@ -23,7 +23,7 @@ use crate::{
 };
 
 use sway_ir::*;
-use sway_types::span::Span;
+use sway_types::{span::Span, Spanned};
 
 use either::Either;
 
@@ -636,7 +636,7 @@ impl<'ir> AsmBuilder<'ir> {
                 .map(|reg_name| -> Result<_, CompileError> {
                     realize_register(reg_name.as_str()).ok_or_else(|| {
                         CompileError::UnknownRegister {
-                            span: reg_name.span().clone(),
+                            span: reg_name.span(),
                             initialized_registers: inline_reg_map
                                 .iter()
                                 .map(|(name, _)| *name)
@@ -710,7 +710,7 @@ impl<'ir> AsmBuilder<'ir> {
                             .map(|(name, _)| name.to_string())
                             .collect::<Vec<_>>()
                             .join("\n"),
-                        span: ret_reg_name.span().clone(),
+                        span: ret_reg_name.span(),
                     });
                     return err(warnings, errors);
                 }

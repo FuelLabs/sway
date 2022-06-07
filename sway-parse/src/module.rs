@@ -46,7 +46,7 @@ impl Spanned for ModuleKind {
             Self::Library {
                 library_token,
                 name,
-            } => Span::join(library_token.span(), name.span().clone()),
+            } => Span::join(library_token.span(), name.span()),
         }
     }
 }

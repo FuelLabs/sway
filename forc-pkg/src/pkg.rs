@@ -8,7 +8,11 @@ use forc_util::{
     print_on_success, print_on_success_library, println_yellow_err,
 };
 use fuels_types::JsonABI;
-use petgraph::{self, visit::EdgeRef, Directed, Direction};
+use petgraph::{
+    self,
+    visit::{EdgeRef, IntoNodeReferences},
+    Directed, Direction,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map, BTreeSet, HashMap, HashSet},
@@ -214,10 +218,10 @@ impl BuildPlan {
         let PkgDiff { added, removed } = pkg_diff;
         remove_deps(&mut graph, &path_map, proj_node, &removed);
 
-        let mut visited_map: HashMap<Pinned, NodeIx> = self
-            .compilation_order
-            .iter()
-            .map(|&n| (graph[n].clone(), n))
+        let mut visited_map: HashMap<Pinned, NodeIx> = graph
+            .node_references()
+            .into_iter()
+            .map(|(node_index, pinned)| (pinned.clone(), node_index))
             .collect();
 
         add_deps(
@@ -351,25 +355,8 @@ impl BuildPlan {
 /// longer required as a result.
 fn remove_deps(graph: &mut Graph, path_map: &PathMap, proj_node: NodeIx, to_remove: &[Pkg]) {
     use petgraph::visit::Bfs;
-    // Find the edges between the root and the removed packages.
-    let edges_to_remove: Vec<_> = graph
-        .edges_directed(proj_node, Direction::Outgoing)
-        .filter_map(|e| {
-            let dep_pkg = graph[e.target()].unpinned(path_map);
-            if to_remove.contains(&dep_pkg) {
-                Some(e.id())
-            } else {
-                None
-            }
-        })
-        .collect();
 
-    // Remove the edges.
-    for e in edges_to_remove {
-        graph.remove_edge(e);
-    }
-
-    // Do a BFS from the root and remove all nodes that are no longer connected to the root.
+    // Do a BFS from the root and remove all nodes that does not have any incoming edge or one of the removed dependencies.
     let mut bfs = Bfs::new(&*graph, proj_node);
     bfs.next(&*graph); // Skip the root node (aka project node).
     while let Some(node) = bfs.next(&*graph) {
@@ -377,6 +364,9 @@ fn remove_deps(graph: &mut Graph, path_map: &PathMap, proj_node: NodeIx, to_remo
             .edges_directed(node, Direction::Incoming)
             .next()
             .is_none()
+            || to_remove
+                .iter()
+                .any(|removed_dep| *removed_dep == graph[node].unpinned(path_map))
         {
             graph.remove_node(node);
         }

@@ -3,7 +3,7 @@ use crate::{
     type_engine::TypeInfo,
     CodeBlock, TypeArgument,
 };
-use sway_types::{ident::Ident, Span};
+use sway_types::{ident::Ident, Span, Spanned};
 
 mod asm;
 mod match_branch;
@@ -170,8 +170,8 @@ pub struct StructExpressionField {
     pub(crate) span: Span,
 }
 
-impl Expression {
-    pub(crate) fn span(&self) -> Span {
+impl Spanned for Expression {
+    fn span(&self) -> Span {
         use Expression::*;
         (match self {
             Literal { span, .. } => span,

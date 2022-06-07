@@ -64,8 +64,8 @@ impl Spanned for Attribute {
     fn span(&self) -> Span {
         self.args
             .as_ref()
-            .map(|args| Span::join(self.name.span().clone(), args.span()))
-            .unwrap_or_else(|| self.name.span().clone())
+            .map(|args| Span::join(self.name.span(), args.span()))
+            .unwrap_or_else(|| self.name.span())
     }
 }
 

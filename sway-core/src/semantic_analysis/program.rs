@@ -11,7 +11,7 @@ use crate::{
     },
     type_engine::*,
 };
-use sway_types::{span::Span, Ident};
+use sway_types::{span::Span, Ident, Spanned};
 
 #[derive(Clone, Debug)]
 pub struct TypedProgram {
@@ -246,9 +246,7 @@ fn disallow_impure_functions(
     fn_decls
         .filter_map(|TypedFunctionDeclaration { purity, name, .. }| {
             if *purity != Purity::Pure {
-                Some(CompileError::ImpureInNonContract {
-                    span: name.span().clone(),
-                })
+                Some(CompileError::ImpureInNonContract { span: name.span() })
             } else {
                 None
             }
