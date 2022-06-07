@@ -7,7 +7,7 @@ use crate::{
     type_engine::*,
     VariableDeclaration,
 };
-use sway_types::{ident::Ident, span::Span};
+use sway_types::{ident::Ident, span::Span, Spanned};
 
 use std::{fmt, path::PathBuf, sync::Arc};
 use thiserror::Error;
@@ -195,28 +195,15 @@ pub struct CompileWarning {
     pub warning_content: Warning,
 }
 
-#[derive(Clone, Copy)]
-pub struct LineCol {
-    pub line: usize,
-    pub col: usize,
-}
-
-impl From<(usize, usize)> for LineCol {
-    fn from(o: (usize, usize)) -> Self {
-        LineCol {
-            line: o.0,
-            col: o.1,
-        }
+impl Spanned for CompileWarning {
+    fn span(&self) -> Span {
+        self.span.clone()
     }
 }
 
 impl CompileWarning {
     pub fn to_friendly_warning_string(&self) -> String {
         self.warning_content.to_string()
-    }
-
-    pub fn span(&self) -> Span {
-        self.span.clone()
     }
 
     pub fn path(&self) -> Option<Arc<PathBuf>> {
@@ -229,6 +216,21 @@ impl CompileWarning {
             self.span.start_pos().line_col().into(),
             self.span.end_pos().line_col().into(),
         )
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct LineCol {
+    pub line: usize,
+    pub col: usize,
+}
+
+impl From<(usize, usize)> for LineCol {
+    fn from(o: (usize, usize)) -> Self {
+        LineCol {
+            line: o.0,
+            col: o.1,
+        }
     }
 }
 
@@ -974,58 +976,14 @@ impl std::convert::From<TypeError> for CompileError {
     }
 }
 
-#[derive(Error, Debug, Clone, PartialEq, Hash)]
-pub enum TypeError {
-    #[error(
-        "Mismatched types.\n\
-         expected: {expected}\n\
-         found:    {received}.\n\
-         {help}", expected=look_up_type_id(*expected).to_string(), received=look_up_type_id(*received).to_string(), help=if !help_text.is_empty() { format!("help: {}", help_text) } else { String::new() }
-    )]
-    MismatchedType {
-        expected: TypeId,
-        received: TypeId,
-        help_text: String,
-        span: Span,
-    },
-    #[error("This type is not known. Try annotating it with a type annotation.")]
-    UnknownType { span: Span },
-    #[error(
-        "The pattern for this match expression arm has a mismatched type.\n\
-         expected: {expected}\n\
-         found:    {received}.\n\
-         "
-    )]
-    MatchArmScrutineeWrongType {
-        expected: TypeId,
-        received: TypeId,
-        span: Span,
-    },
-}
-
-impl TypeError {
-    pub(crate) fn span(&self) -> Span {
-        use TypeError::*;
-        match self {
-            MismatchedType { span, .. } => span.clone(),
-            UnknownType { span } => span.clone(),
-            MatchArmScrutineeWrongType { span, .. } => span.clone(),
-        }
-    }
-}
-
-impl CompileError {
-    pub fn path(&self) -> Option<Arc<PathBuf>> {
-        self.span().path().cloned()
-    }
-
-    pub fn span(&self) -> Span {
+impl Spanned for CompileError {
+    fn span(&self) -> Span {
         use CompileError::*;
         match self {
-            UnknownVariable { var_name } => var_name.span().clone(),
+            UnknownVariable { var_name } => var_name.span(),
             UnknownVariablePath { span, .. } => span.clone(),
             UnknownFunction { span, .. } => span.clone(),
-            NotAVariable { name, .. } => name.span().clone(),
+            NotAVariable { name, .. } => name.span(),
             NotAFunction { name, .. } => name.span(),
             Unimplemented(_, span) => span.clone(),
             TypeError(err) => err.span(),
@@ -1044,7 +1002,7 @@ impl CompileError {
             NoScriptMainFunction(span) => span.clone(),
             MultipleScriptMainFunctions(span) => span.clone(),
             ReassignmentToNonVariable { span, .. } => span.clone(),
-            AssignmentToNonMutable { name } => name.span().clone(),
+            AssignmentToNonMutable { name } => name.span(),
             TypeParameterNotInTypeScope { span, .. } => span.clone(),
             MultipleImmediates(span) => span.clone(),
             MismatchedTypeInTrait { span, .. } => span.clone(),
@@ -1061,14 +1019,14 @@ impl CompileError {
             MethodOnNonValue { span, .. } => span.clone(),
             StructMissingField { span, .. } => span.clone(),
             StructDoesNotHaveField { span, .. } => span.clone(),
-            MethodNotFound { method_name, .. } => method_name.span().clone(),
+            MethodNotFound { method_name, .. } => method_name.span(),
             ModuleNotFound { span, .. } => span.clone(),
             NotATuple { span, .. } => span.clone(),
             NotAStruct { span, .. } => span.clone(),
             FieldAccessOnNonStruct { span, .. } => span.clone(),
-            FieldNotFound { field_name, .. } => field_name.span().clone(),
-            SymbolNotFound { name, .. } => name.span().clone(),
-            ImportPrivateSymbol { name } => name.span().clone(),
+            FieldNotFound { field_name, .. } => field_name.span(),
+            SymbolNotFound { name, .. } => name.span(),
+            ImportPrivateSymbol { name } => name.span(),
             NoElseBranch { span, .. } => span.clone(),
             UnqualifiedSelfType { span, .. } => span.clone(),
             NotAType { span, .. } => span.clone(),
@@ -1123,9 +1081,9 @@ impl CompileError {
             BurnFromExternalContext { span, .. } => span.clone(),
             ContractStorageFromExternalContext { span, .. } => span.clone(),
             ArrayOutOfBounds { span, .. } => span.clone(),
-            ShadowsOtherSymbol { name } => name.span().clone(),
-            GenericShadowsGeneric { name } => name.span().clone(),
-            StarImportShadowsOtherSymbol { name } => name.span().clone(),
+            ShadowsOtherSymbol { name } => name.span(),
+            GenericShadowsGeneric { name } => name.span(),
+            StarImportShadowsOtherSymbol { name } => name.span(),
             MatchWrongType { span, .. } => span.clone(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
             NotAnEnum { span, .. } => span.clone(),
@@ -1149,10 +1107,10 @@ impl CompileError {
             ContractCallParamRepeated { span, .. } => span.clone(),
             UnrecognizedContractParam { span, .. } => span.clone(),
             CallParamForNonContractCallMethod { span, .. } => span.clone(),
-            StorageFieldDoesNotExist { name } => name.span().clone(),
+            StorageFieldDoesNotExist { name } => name.span(),
             NoDeclaredStorage { span, .. } => span.clone(),
             MultipleStorageDeclarations { span, .. } => span.clone(),
-            InvalidVariableName { name } => name.span().clone(),
+            InvalidVariableName { name } => name.span(),
             UnexpectedDeclaration { span, .. } => span.clone(),
             ContractAddressMustBeKnown { span, .. } => span.clone(),
             ConvertParseTree { error } => error.span(),
@@ -1165,6 +1123,12 @@ impl CompileError {
             StorageDeclarationInNonContract { span, .. } => span.clone(),
         }
     }
+}
+
+impl CompileError {
+    pub fn path(&self) -> Option<Arc<PathBuf>> {
+        self.span().path().cloned()
+    }
 
     /// Returns the line and column start and end
     pub fn line_col(&self) -> (LineCol, LineCol) {
@@ -1172,5 +1136,45 @@ impl CompileError {
             self.span().start_pos().line_col().into(),
             self.span().end_pos().line_col().into(),
         )
+    }
+}
+
+#[derive(Error, Debug, Clone, PartialEq, Hash)]
+pub enum TypeError {
+    #[error(
+        "Mismatched types.\n\
+         expected: {expected}\n\
+         found:    {received}.\n\
+         {help}", expected=look_up_type_id(*expected).to_string(), received=look_up_type_id(*received).to_string(), help=if !help_text.is_empty() { format!("help: {}", help_text) } else { String::new() }
+    )]
+    MismatchedType {
+        expected: TypeId,
+        received: TypeId,
+        help_text: String,
+        span: Span,
+    },
+    #[error("This type is not known. Try annotating it with a type annotation.")]
+    UnknownType { span: Span },
+    #[error(
+        "The pattern for this match expression arm has a mismatched type.\n\
+         expected: {expected}\n\
+         found:    {received}.\n\
+         "
+    )]
+    MatchArmScrutineeWrongType {
+        expected: TypeId,
+        received: TypeId,
+        span: Span,
+    },
+}
+
+impl Spanned for TypeError {
+    fn span(&self) -> Span {
+        use TypeError::*;
+        match self {
+            MismatchedType { span, .. } => span.clone(),
+            UnknownType { span } => span.clone(),
+            MatchArmScrutineeWrongType { span, .. } => span.clone(),
+        }
     }
 }

@@ -10,7 +10,7 @@ use sway_core::{
     AstNodeContent, Declaration, Expression, FunctionDeclaration, FunctionParameter,
     IntrinsicFunctionKind, VariableDeclaration, WhileLoop,
 };
-use sway_types::{ident::Ident, span::Span};
+use sway_types::{ident::Ident, span::Span, Spanned};
 use tower_lsp::lsp_types::Range;
 
 #[derive(Debug, Clone)]
@@ -67,7 +67,7 @@ impl Token {
         let var_body = extract_var_body(var_dec);
 
         Token::new(
-            ident.span(),
+            &ident.span(),
             name.into(),
             TokenType::VariableDeclaration(VariableDetails {
                 is_mutable: var_dec.is_mutable,
@@ -77,7 +77,7 @@ impl Token {
     }
 
     pub fn from_ident(ident: &Ident, token_type: TokenType) -> Self {
-        Token::new(ident.span(), ident.as_str().into(), token_type)
+        Token::new(&ident.span(), ident.as_str().into(), token_type)
     }
 
     pub fn from_span(span: Span, token_type: TokenType) -> Self {
@@ -119,7 +119,7 @@ fn handle_function_parameter(parameter: &FunctionParameter, tokens: &mut Vec<Tok
     let name = ident.as_str();
 
     tokens.push(Token::new(
-        ident.span(),
+        &ident.span(),
         name.into(),
         TokenType::FunctionParameter,
     ));

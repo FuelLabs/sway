@@ -110,7 +110,7 @@ impl Spanned for TokenTree {
     fn span(&self) -> Span {
         match self {
             TokenTree::Punct(punct) => punct.span(),
-            TokenTree::Ident(ident) => ident.span().clone(),
+            TokenTree::Ident(ident) => ident.span(),
             TokenTree::Group(group) => group.span(),
             TokenTree::Literal(literal) => literal.span(),
         }
@@ -181,11 +181,13 @@ pub enum LexErrorKind {
     InvalidEscapeCode { position: usize },
 }
 
-impl LexError {
-    pub fn span(&self) -> Span {
+impl Spanned for LexError {
+    fn span(&self) -> Span {
         self.span.clone()
     }
+}
 
+impl LexError {
     pub fn span_ref(&self) -> &Span {
         &self.span
     }

@@ -11,7 +11,7 @@ use fuel_crypto::Hasher;
 use std::{collections::HashMap, sync::Arc};
 use uint::construct_uint;
 
-use sway_types::{ident::Ident, span::Span, state::StateIndex};
+use sway_types::{ident::Ident, span::Span, state::StateIndex, Spanned};
 
 use sway_ir::*;
 
@@ -269,7 +269,7 @@ fn compile_function(
             .iter()
             .map(|param| {
                 convert_resolved_typeid(context, &param.r#type, &param.type_span)
-                    .map(|ty| (param.name.as_str().into(), ty, param.name.span().clone()))
+                    .map(|ty| (param.name.as_str().into(), ty, param.name.span()))
             })
             .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
@@ -401,7 +401,7 @@ fn compile_abi_method(
                         "Cannot generate selector for ABI method: {}",
                         ast_fn_decl.name.as_str()
                     ),
-                    ast_fn_decl.name.span().clone(),
+                    ast_fn_decl.name.span(),
                 ))
             };
         }
@@ -412,7 +412,7 @@ fn compile_abi_method(
         .iter()
         .map(|param| {
             convert_resolved_typeid(context, &param.r#type, &param.type_span)
-                .map(|ty| (param.name.as_str().into(), ty, param.name.span().clone()))
+                .map(|ty| (param.name.as_str().into(), ty, param.name.span()))
         })
         .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
@@ -1430,7 +1430,7 @@ impl FnCompiler {
         } else {
             Err(CompileError::Internal(
                 "Unsupported constant declaration type, expecting a literal.",
-                name.span().clone(),
+                name.span(),
             ))
         }
     }
@@ -1464,7 +1464,7 @@ impl FnCompiler {
                     .ok_or_else(|| {
                         CompileError::InternalOwned(
                             format!("variable not found: {name}"),
-                            ast_reassignment.lhs_base_name.span().clone(),
+                            ast_reassignment.lhs_base_name.span(),
                         )
                     })?
                     .1
@@ -1493,7 +1493,7 @@ impl FnCompiler {
                     let spans = ast_reassignment
                         .lhs_indices
                         .iter()
-                        .fold(ast_reassignment.lhs_base_name.span().clone(), |acc, lhs| {
+                        .fold(ast_reassignment.lhs_base_name.span(), |acc, lhs| {
                             Span::join(acc, lhs.span())
                         });
                     return Err(CompileError::Internal(

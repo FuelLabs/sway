@@ -6,7 +6,7 @@ use crate::{
 };
 use fuels_types::{Function, Property};
 use sha2::{Digest, Sha256};
-use sway_types::{Ident, Span};
+use sway_types::{Ident, Span, Spanned};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedFunctionDeclaration {
@@ -69,6 +69,12 @@ impl CopyTypes for TypedFunctionDeclaration {
     }
 }
 
+impl Spanned for TypedFunctionDeclaration {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
+
 impl MonomorphizeHelper for TypedFunctionDeclaration {
     type Output = TypedFunctionDeclaration;
 
@@ -78,10 +84,6 @@ impl MonomorphizeHelper for TypedFunctionDeclaration {
 
     fn name(&self) -> &Ident {
         &self.name
-    }
-
-    fn span(&self) -> &Span {
-        &self.span
     }
 
     fn monomorphize_inner(
@@ -304,11 +306,11 @@ impl TypedFunctionDeclaration {
     pub(crate) fn parameters_span(&self) -> Span {
         if !self.parameters.is_empty() {
             self.parameters.iter().fold(
-                self.parameters[0].name.span().clone(),
+                self.parameters[0].name.span(),
                 |acc, TypedFunctionParameter { type_span, .. }| Span::join(acc, type_span.clone()),
             )
         } else {
-            self.name.span().clone()
+            self.name.span()
         }
     }
 

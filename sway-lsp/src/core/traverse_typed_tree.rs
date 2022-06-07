@@ -10,7 +10,7 @@ use sway_core::semantic_analysis::ast_node::{
     {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
 };
 use sway_core::type_engine::TypeId;
-use sway_types::{ident::Ident, span::Span};
+use sway_types::{ident::Ident, span::Span, Spanned};
 
 pub fn traverse_node(node: &TypedAstNode, tokens: &mut TokenMap) {
     match &node.content {
@@ -30,7 +30,7 @@ pub fn traverse_node(node: &TypedAstNode, tokens: &mut TokenMap) {
 // We need to do this work around as the custom PartialEq for Ident impl
 // only checks for the string, not the span.
 fn to_ident_key(ident: &Ident) -> (Ident, Span) {
-    (ident.clone(), ident.span().clone())
+    (ident.clone(), ident.span())
 }
 
 fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut TokenMap) {

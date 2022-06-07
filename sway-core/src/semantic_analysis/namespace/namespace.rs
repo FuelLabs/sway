@@ -10,7 +10,7 @@ use crate::{
 
 use super::{module::Module, root::Root, submodule_namespace::SubmoduleNamespace, Path, PathBuf};
 
-use sway_types::span::Span;
+use sway_types::{span::Span, Spanned};
 
 use std::collections::VecDeque;
 
@@ -133,7 +133,7 @@ impl Namespace {
         call_site_span: Option<&Span>,
     ) -> CompileResult<T>
     where
-        T: MonomorphizeHelper<Output = T>,
+        T: MonomorphizeHelper<Output = T> + Spanned,
     {
         decl.monomorphize(
             type_arguments,

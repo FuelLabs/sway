@@ -1,4 +1,4 @@
-use crate::span::Span;
+use crate::{span::Span, Spanned};
 
 use std::{
     cmp::{Ord, Ordering},
@@ -41,6 +41,12 @@ impl PartialOrd for Ident {
 
 impl Eq for Ident {}
 
+impl Spanned for Ident {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
+
 impl fmt::Display for Ident {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "{}", self.as_str())
@@ -53,10 +59,6 @@ impl Ident {
             Some(name_override) => name_override,
             None => self.span.as_str(),
         }
-    }
-
-    pub fn span(&self) -> &Span {
-        &self.span
     }
 
     pub fn new(span: Span) -> Ident {

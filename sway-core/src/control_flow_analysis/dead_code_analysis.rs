@@ -16,7 +16,7 @@ use crate::{
     type_engine::{resolve_type, TypeInfo},
     CompileError, CompileWarning, Ident, TreeType, Warning,
 };
-use sway_types::span::Span;
+use sway_types::{span::Span, Spanned};
 
 use crate::semantic_analysis::TypedStorageDeclaration;
 
@@ -46,7 +46,7 @@ impl ControlFlowGraph {
                     variant_name,
                     is_public,
                 } if !is_public => Some(CompileWarning {
-                    span: variant_name.span().clone(),
+                    span: variant_name.span(),
                     warning_content: Warning::DeadEnumVariant {
                         variant_name: variant_name.clone(),
                     },
@@ -65,7 +65,7 @@ impl ControlFlowGraph {
                     variant_name,
                     is_public,
                 } if !is_public => Some(CompileWarning {
-                    span: variant_name.span().clone(),
+                    span: variant_name.span(),
                     warning_content: Warning::DeadEnumVariant {
                         variant_name: variant_name.clone(),
                     },
@@ -80,7 +80,7 @@ impl ControlFlowGraph {
                     warning_content: Warning::StructFieldNeverRead,
                 }),
                 ControlFlowGraphNode::StorageField { field_name, .. } => Some(CompileWarning {
-                    span: field_name.span().clone(),
+                    span: field_name.span(),
                     warning_content: Warning::DeadStorageDeclaration,
                 }),
                 ControlFlowGraphNode::OrganizationalDominator(..) => None,
@@ -1177,7 +1177,7 @@ fn construct_dead_code_warning_from_node(node: &TypedAstNode) -> Option<CompileW
                 )),
             ..
         } => CompileWarning {
-            span: name.span().clone(),
+            span: name.span(),
             warning_content: Warning::DeadTrait,
         },
         TypedAstNode {

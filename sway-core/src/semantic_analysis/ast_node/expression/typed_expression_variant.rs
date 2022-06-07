@@ -1,6 +1,6 @@
 use crate::{parse_tree::*, semantic_analysis::*, type_engine::*};
 
-use sway_types::{state::StateIndex, Ident, Span};
+use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
 use derivative::Derivative;
 use std::{collections::HashMap, fmt};
@@ -504,17 +504,19 @@ pub struct TypeCheckedStorageAccess {
     pub(crate) ix: StateIndex,
 }
 
-impl TypeCheckedStorageAccess {
-    pub fn storage_field_name(&self) -> Ident {
-        self.fields[0].name.clone()
-    }
-
-    pub fn span(&self) -> Span {
+impl Spanned for TypeCheckedStorageAccess {
+    fn span(&self) -> Span {
         self.fields
             .iter()
             .fold(self.fields[0].span.clone(), |acc, field| {
                 Span::join(acc, field.span.clone())
             })
+    }
+}
+
+impl TypeCheckedStorageAccess {
+    pub fn storage_field_name(&self) -> Ident {
+        self.fields[0].name.clone()
     }
 }
 
