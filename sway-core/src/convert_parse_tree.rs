@@ -1,5 +1,3 @@
-use crate::{GetPropertyOfTypeKind, IntrinsicFunctionKind};
-
 use {
     crate::{
         constants::{
@@ -10,11 +8,12 @@ use {
         AbiDeclaration, AsmExpression, AsmOp, AsmRegister, AsmRegisterDeclaration, AstNode,
         AstNodeContent, CallPath, CodeBlock, ConstantDeclaration, Declaration, EnumDeclaration,
         EnumVariant, Expression, FunctionDeclaration, FunctionParameter, ImplSelf, ImplTrait,
-        ImportType, IncludeStatement, LazyOp, Literal, MatchBranch, MethodName, ParseTree, Purity,
-        Reassignment, ReassignmentTarget, ReturnStatement, Scrutinee, StorageDeclaration,
-        StorageField, StructDeclaration, StructExpressionField, StructField, StructScrutineeField,
-        Supertrait, TraitConstraint, TraitDeclaration, TraitFn, TreeType, TypeArgument, TypeInfo,
-        TypeParameter, UseStatement, VariableDeclaration, Visibility, WhileLoop,
+        ImportType, IncludeStatement, IntrinsicFunctionKind, LazyOp, Literal, MatchBranch,
+        MethodName, ParseTree, Purity, Reassignment, ReassignmentTarget, ReturnStatement,
+        Scrutinee, StorageDeclaration, StorageField, StructDeclaration, StructExpressionField,
+        StructField, StructScrutineeField, Supertrait, TraitConstraint, TraitDeclaration, TraitFn,
+        TreeType, TypeArgument, TypeInfo, TypeParameter, UseStatement, VariableDeclaration,
+        Visibility, WhileLoop,
     },
     std::{
         collections::HashMap,
@@ -1405,8 +1404,7 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         let type_span = ty.span();
                         let type_name = ty_to_type_info(ec, ty)?;
                         Expression::IntrinsicFunction {
-                            kind: IntrinsicFunctionKind::GetPropertyOfType {
-                                kind: GetPropertyOfTypeKind::SizeOfType,
+                            kind: IntrinsicFunctionKind::SizeOfType {
                                 type_name,
                                 type_span,
                             },
@@ -1453,8 +1451,7 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         let type_span = ty.span();
                         let type_name = ty_to_type_info(ec, ty)?;
                         Expression::IntrinsicFunction {
-                            kind: IntrinsicFunctionKind::GetPropertyOfType {
-                                kind: GetPropertyOfTypeKind::IsRefType,
+                            kind: IntrinsicFunctionKind::IsRefType {
                                 type_name,
                                 type_span,
                             },

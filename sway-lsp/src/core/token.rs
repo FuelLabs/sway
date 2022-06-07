@@ -452,7 +452,8 @@ fn handle_intrinsic_function(kind: IntrinsicFunctionKind, tokens: &mut Vec<Token
         IntrinsicFunctionKind::SizeOfVal { exp } => {
             handle_expression(*exp, tokens);
         }
-        IntrinsicFunctionKind::GetPropertyOfType { .. } => {}
+        IntrinsicFunctionKind::SizeOfType { .. } => {}
+        IntrinsicFunctionKind::IsRefType { .. } => {}
         IntrinsicFunctionKind::GetStorageKey => {}
     }
 }

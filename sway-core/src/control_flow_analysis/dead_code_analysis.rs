@@ -1045,8 +1045,15 @@ fn connect_intrinsic_function(
             tree_type,
             exp.span.clone(),
         )?,
-        TypedIntrinsicFunctionKind::GetPropertyOfType { .. } => {
-            let node = graph.add_node("Type Property".into());
+        TypedIntrinsicFunctionKind::SizeOfType { .. } => {
+            let node = graph.add_node("size of type".into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, node, "".into());
+            }
+            vec![node]
+        }
+        TypedIntrinsicFunctionKind::IsRefType { .. } => {
+            let node = graph.add_node("is ref type".into());
             for leaf in leaves {
                 graph.add_edge(*leaf, node, "".into());
             }

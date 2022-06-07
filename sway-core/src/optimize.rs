@@ -5,7 +5,6 @@ use crate::{
     parse_tree::{AsmOp, AsmRegister, LazyOp, Literal, Visibility},
     semantic_analysis::{ast_node::*, *},
     type_engine::*,
-    GetPropertyOfTypeKind,
 };
 use fuel_crypto::Hasher;
 use std::{collections::HashMap, sync::Arc};
@@ -737,23 +736,18 @@ impl FnCompiler {
                     None,
                 ))
             }
-            TypedIntrinsicFunctionKind::GetPropertyOfType {
-                kind,
-                type_id,
-                type_span,
-            } => {
+            TypedIntrinsicFunctionKind::SizeOfType { type_id, type_span } => {
                 let ir_type = convert_resolved_typeid(context, &type_id, &type_span)?;
-                match kind {
-                    GetPropertyOfTypeKind::SizeOfType => Ok(Constant::get_uint(
-                        context,
-                        64,
-                        ir_type_size_in_bytes(context, &ir_type),
-                        None,
-                    )),
-                    GetPropertyOfTypeKind::IsRefType => {
-                        Ok(Constant::get_bool(context, !ir_type.is_copy_type(), None))
-                    }
-                }
+                Ok(Constant::get_uint(
+                    context,
+                    64,
+                    ir_type_size_in_bytes(context, &ir_type),
+                    None,
+                ))
+            }
+            TypedIntrinsicFunctionKind::IsRefType { type_id, type_span } => {
+                let ir_type = convert_resolved_typeid(context, &type_id, &type_span)?;
+                Ok(Constant::get_bool(context, !ir_type.is_copy_type(), None))
             }
             TypedIntrinsicFunctionKind::GetStorageKey => {
                 let span_md_idx = MetadataIndex::from_span(context, &span);

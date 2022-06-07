@@ -6,16 +6,13 @@ pub enum IntrinsicFunctionKind {
     SizeOfVal {
         exp: Box<Expression>,
     },
-    GetPropertyOfType {
-        kind: GetPropertyOfTypeKind,
+    SizeOfType {
+        type_name: TypeInfo,
+        type_span: Span,
+    },
+    IsRefType {
         type_name: TypeInfo,
         type_span: Span,
     },
     GetStorageKey,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum GetPropertyOfTypeKind {
-    SizeOfType,
-    IsRefType,
 }

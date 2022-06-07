@@ -329,7 +329,8 @@ fn handle_intrinsic_function(kind: &TypedIntrinsicFunctionKind, tokens: &mut Tok
         TypedIntrinsicFunctionKind::SizeOfVal { exp } => {
             handle_expression(exp, tokens);
         }
-        TypedIntrinsicFunctionKind::GetPropertyOfType { .. } => {}
+        TypedIntrinsicFunctionKind::SizeOfType { .. } => {}
+        TypedIntrinsicFunctionKind::IsRefType { .. } => {}
         TypedIntrinsicFunctionKind::GetStorageKey => {}
     }
 }
