@@ -8,7 +8,7 @@ use crate::{
 
 use super::{items::Items, root::Root, ModuleName, Path};
 
-use sway_types::span::Span;
+use sway_types::{span::Span, Spanned};
 
 /// A single `Module` within a Sway project.
 ///
@@ -269,9 +269,9 @@ impl From<Root> for Module {
 
 fn module_not_found(path: &[Ident]) -> CompileError {
     CompileError::ModuleNotFound {
-        span: path.iter().fold(path[0].span().clone(), |acc, this_one| {
+        span: path.iter().fold(path[0].span(), |acc, this_one| {
             if acc.path() == this_one.span().path() {
-                Span::join(acc, this_one.span().clone())
+                Span::join(acc, this_one.span())
             } else {
                 acc
             }

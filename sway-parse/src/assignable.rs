@@ -23,10 +23,10 @@ pub enum Assignable {
 impl Spanned for Assignable {
     fn span(&self) -> Span {
         match self {
-            Assignable::Var(name) => name.span().clone(),
+            Assignable::Var(name) => name.span(),
             Assignable::Index { target, arg } => Span::join(target.span(), arg.span()),
             Assignable::FieldProjection { target, name, .. } => {
-                Span::join(target.span(), name.span().clone())
+                Span::join(target.span(), name.span())
             }
             Assignable::TupleFieldProjection {
                 target, field_span, ..

@@ -16,7 +16,7 @@ use crate::{
     error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::DeterministicallyAborts,
 };
 
-use sway_types::{Ident, Span};
+use sway_types::{Ident, Span, Spanned};
 
 use std::{
     collections::{HashMap, VecDeque},
@@ -735,13 +735,13 @@ impl TypedExpression {
                     name: name.clone(),
                     what_it_is: a.friendly_name(),
                 });
-                error_recovery_expr(name.span().clone())
+                error_recovery_expr(name.span())
             }
             None => {
                 errors.push(CompileError::UnknownVariable {
                     var_name: name.clone(),
                 });
-                error_recovery_expr(name.span().clone())
+                error_recovery_expr(name.span())
             }
         };
         ok(exp, vec![], errors)
@@ -2148,19 +2148,13 @@ fn disallow_opcode(op: &Ident) -> CompileResult<()> {
 
     match op.as_str().to_lowercase().as_str() {
         "ji" => {
-            errors.push(CompileError::DisallowedJi {
-                span: op.span().clone(),
-            });
+            errors.push(CompileError::DisallowedJi { span: op.span() });
         }
         "jnei" => {
-            errors.push(CompileError::DisallowedJnei {
-                span: op.span().clone(),
-            });
+            errors.push(CompileError::DisallowedJnei { span: op.span() });
         }
         "jnzi" => {
-            errors.push(CompileError::DisallowedJnzi {
-                span: op.span().clone(),
-            });
+            errors.push(CompileError::DisallowedJnzi { span: op.span() });
         }
         _ => (),
     };

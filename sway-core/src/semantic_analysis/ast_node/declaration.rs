@@ -16,7 +16,7 @@ pub use variable::*;
 use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
 use derivative::Derivative;
 use std::{borrow::Cow, fmt};
-use sway_types::{Ident, Span};
+use sway_types::{Ident, Span, Spanned};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TypedDeclaration {
@@ -67,6 +67,34 @@ impl CopyTypes for TypedDeclaration {
             StorageDeclaration(..) => (),
             StorageReassignment(..) => (),
             GenericTypeForFunctionScope { .. } | ErrorRecovery => (),
+        }
+    }
+}
+
+impl Spanned for TypedDeclaration {
+    fn span(&self) -> Span {
+        use TypedDeclaration::*;
+        match self {
+            VariableDeclaration(TypedVariableDeclaration { name, .. }) => name.span(),
+            ConstantDeclaration(TypedConstantDeclaration { name, .. }) => name.span(),
+            FunctionDeclaration(TypedFunctionDeclaration { span, .. }) => span.clone(),
+            TraitDeclaration(TypedTraitDeclaration { name, .. }) => name.span(),
+            StructDeclaration(TypedStructDeclaration { name, .. }) => name.span(),
+            EnumDeclaration(TypedEnumDeclaration { span, .. }) => span.clone(),
+            Reassignment(TypedReassignment {
+                lhs_base_name,
+                lhs_indices,
+                ..
+            }) => lhs_indices.iter().fold(lhs_base_name.span(), |acc, this| {
+                Span::join(acc, this.span())
+            }),
+            AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
+            ImplTrait { span, .. } => span.clone(),
+            StorageDeclaration(decl) => decl.span(),
+            StorageReassignment(decl) => decl.span(),
+            ErrorRecovery | GenericTypeForFunctionScope { .. } => {
+                unreachable!("No span exists for these ast node types")
+            }
         }
     }
 }
@@ -380,34 +408,6 @@ impl TypedDeclaration {
         ok(type_id, vec![], vec![])
     }
 
-    pub(crate) fn span(&self) -> Span {
-        use TypedDeclaration::*;
-        match self {
-            VariableDeclaration(TypedVariableDeclaration { name, .. }) => name.span().clone(),
-            ConstantDeclaration(TypedConstantDeclaration { name, .. }) => name.span().clone(),
-            FunctionDeclaration(TypedFunctionDeclaration { span, .. }) => span.clone(),
-            TraitDeclaration(TypedTraitDeclaration { name, .. }) => name.span().clone(),
-            StructDeclaration(TypedStructDeclaration { name, .. }) => name.span().clone(),
-            EnumDeclaration(TypedEnumDeclaration { span, .. }) => span.clone(),
-            Reassignment(TypedReassignment {
-                lhs_base_name,
-                lhs_indices,
-                ..
-            }) => lhs_indices
-                .iter()
-                .fold(lhs_base_name.span().clone(), |acc, this| {
-                    Span::join(acc, this.span())
-                }),
-            AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
-            ImplTrait { span, .. } => span.clone(),
-            StorageDeclaration(decl) => decl.span(),
-            StorageReassignment(decl) => decl.span(),
-            ErrorRecovery | GenericTypeForFunctionScope { .. } => {
-                unreachable!("No span exists for these ast node types")
-            }
-        }
-    }
-
     pub(crate) fn visibility(&self) -> Visibility {
         use TypedDeclaration::*;
         match self {
@@ -524,7 +524,7 @@ impl TypedTraitFn {
             name: self.name.clone(),
             body: TypedCodeBlock { contents: vec![] },
             parameters: self.parameters.clone(),
-            span: self.name.span().clone(),
+            span: self.name.span(),
             return_type: self.return_type,
             return_type_span: self.return_type_span.clone(),
             visibility: Visibility::Public,
@@ -558,14 +558,16 @@ pub enum ProjectionKind {
     TupleField { index: usize, index_span: Span },
 }
 
-impl ProjectionKind {
-    pub(crate) fn span(&self) -> Span {
+impl Spanned for ProjectionKind {
+    fn span(&self) -> Span {
         match self {
-            ProjectionKind::StructField { name } => name.span().clone(),
+            ProjectionKind::StructField { name } => name.span(),
             ProjectionKind::TupleField { index_span, .. } => index_span.clone(),
         }
     }
+}
 
+impl ProjectionKind {
     pub(crate) fn pretty_print(&self) -> Cow<str> {
         match self {
             ProjectionKind::StructField { name } => Cow::Borrowed(name.as_str()),
@@ -588,6 +590,6 @@ impl CopyTypes for TypedReassignment {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.rhs.copy_types(type_mapping);
         self.lhs_type
-            .update_type(type_mapping, self.lhs_base_name.span());
+            .update_type(type_mapping, &self.lhs_base_name.span());
     }
 }

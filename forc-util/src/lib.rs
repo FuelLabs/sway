@@ -11,6 +11,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::str;
 use sway_core::{error::LineCol, CompileError, CompileWarning, TreeType};
+use sway_types::Spanned;
 use sway_utils::constants;
 use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use tracing_subscriber::filter::EnvFilter;

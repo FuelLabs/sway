@@ -1,4 +1,4 @@
-use sway_types::Span;
+use sway_types::{Span, Spanned};
 
 use crate::{
     error::{err, ok},
