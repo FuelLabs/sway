@@ -116,8 +116,8 @@ impl Root {
                         );
                         new_decl.create_type_id()
                     }
-                    Some(TypedDeclaration::GenericTypeForFunctionScope { name, .. }) => {
-                        insert_type(TypeInfo::UnknownGeneric { name })
+                    Some(TypedDeclaration::GenericTypeForFunctionScope { name, type_id }) => {
+                        insert_type(TypeInfo::Ref(*type_id, name.span()))
                     }
                     _ => {
                         errors.push(CompileError::UnknownTypeName {
