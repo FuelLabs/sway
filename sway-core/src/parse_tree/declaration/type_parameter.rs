@@ -40,6 +40,7 @@ impl From<&TypeParameter> for TypedDeclaration {
     fn from(n: &TypeParameter) -> Self {
         TypedDeclaration::GenericTypeForFunctionScope {
             name: n.name_ident.clone(),
+            type_id: n.type_id,
         }
     }
 }

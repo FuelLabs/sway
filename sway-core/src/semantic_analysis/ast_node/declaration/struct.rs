@@ -92,7 +92,9 @@ impl TypedStructDeclaration {
         // insert type parameters as Unknown types
         let type_mapping = insert_type_parameters(&type_parameters);
 
-        // update the types in the type parameters
+        // update the types in the type parameters, insert the type parameters
+        // into the decl namespace, and check to see if the type parameters
+        // shadow one another
         for type_parameter in type_parameters.iter_mut() {
             check!(
                 type_parameter.update_types(&type_mapping, &mut namespace, self_type),
@@ -100,13 +102,12 @@ impl TypedStructDeclaration {
                 warnings,
                 errors
             );
-        }
-
-        // insert the generics into the decl namespace and
-        // check to see if the type parameters shadow one another
-        for type_parameter in type_parameters.iter() {
+            let type_parameter_decl = TypedDeclaration::GenericTypeForFunctionScope {
+                name: type_parameter.name_ident.clone(),
+                type_id: type_parameter.type_id,
+            };
             check!(
-                namespace.insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
+                namespace.insert_symbol(type_parameter.name_ident.clone(), type_parameter_decl),
                 continue,
                 warnings,
                 errors

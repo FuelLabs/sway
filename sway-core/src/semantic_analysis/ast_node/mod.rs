@@ -478,36 +478,17 @@ impl TypedAstNode {
                             );
                             let type_implementing_for = look_up_type_id(implementing_for_type_id);
                             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
-                            for mut fn_decl in functions.into_iter() {
-                                // ensure this fn decl's parameters and signature lines up with the
-                                // one in the trait
-
-                                // replace SelfType with type of implementor
-                                // i.e. fn add(self, other: u64) -> Self becomes fn
-                                // add(self: u64, other: u64) -> u64
-                                fn_decl.parameters.iter_mut().for_each(
-                                    |FunctionParameter {
-                                         ref mut type_id, ..
-                                     }| {
-                                        if look_up_type_id(*type_id) == TypeInfo::SelfType {
-                                            *type_id = implementing_for_type_id;
-                                        }
-                                    },
-                                );
-                                if fn_decl.return_type == TypeInfo::SelfType {
-                                    fn_decl.return_type = type_implementing_for.clone();
-                                }
-                                let args = TypeCheckArguments {
-                                    checkee: fn_decl,
-                                    namespace: &mut impl_namespace,
-                                    return_type_annotation: insert_type(TypeInfo::Unknown),
-                                    help_text: "",
-                                    self_type: implementing_for_type_id,
-                                    mode: Mode::NonAbi,
-                                    opts,
-                                };
+                            for fn_decl in functions.into_iter() {
                                 functions_buf.push(check!(
-                                    TypedFunctionDeclaration::type_check(args),
+                                    TypedFunctionDeclaration::type_check(TypeCheckArguments {
+                                        checkee: fn_decl,
+                                        namespace: &mut impl_namespace,
+                                        return_type_annotation: insert_type(TypeInfo::Unknown),
+                                        help_text: "",
+                                        self_type: implementing_for_type_id,
+                                        mode: Mode::NonAbi,
+                                        opts,
+                                    }),
                                     continue,
                                     warnings,
                                     errors

@@ -38,6 +38,7 @@ pub enum TypedDeclaration {
     // the body of that function.
     GenericTypeForFunctionScope {
         name: Ident,
+        type_id: TypeId,
     },
     ErrorRecovery,
     StorageDeclaration(TypedStorageDeclaration),
@@ -391,8 +392,8 @@ impl TypedDeclaration {
             TypedDeclaration::StorageDeclaration(decl) => insert_type(TypeInfo::Storage {
                 fields: decl.fields_as_typed_struct_fields(),
             }),
-            TypedDeclaration::GenericTypeForFunctionScope { name } => {
-                insert_type(TypeInfo::UnknownGeneric { name: name.clone() })
+            TypedDeclaration::GenericTypeForFunctionScope { name, type_id } => {
+                insert_type(TypeInfo::Ref(*type_id, name.span()))
             }
             decl => {
                 return err(
