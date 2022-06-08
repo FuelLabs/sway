@@ -1131,7 +1131,7 @@ pub fn compile(
     let silent_mode = build_config.silent;
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
-    let ast_res = sway_core::compile_to_ast(source, namespace, &sway_build_config);
+    let ast_res = sway_core::compile_to_ast(source, namespace, Some(&sway_build_config));
     match &ast_res {
         CompileAstResult::Failure { warnings, errors } => {
             print_on_failure(silent_mode, warnings, errors);
