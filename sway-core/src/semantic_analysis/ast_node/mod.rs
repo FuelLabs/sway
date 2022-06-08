@@ -9,6 +9,7 @@ use std::fmt;
 
 pub(crate) use code_block::*;
 pub use declaration::*;
+pub use const_fold::*;
 pub(crate) use expression::*;
 pub(crate) use impl_trait::*;
 pub(crate) use return_statement::*;

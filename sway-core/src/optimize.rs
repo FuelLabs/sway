@@ -108,7 +108,7 @@ fn compile_constants(
         };
 
         if let Some((name, value)) = decl_name_value {
-            let const_val = compile_constant_expression(context, value)?;
+            let const_val = compile_constant_expression(context, module, value)?;
             module.add_global_constant(context, name.as_str().to_owned(), const_val);
         }
     }
@@ -122,21 +122,47 @@ fn compile_constants(
 
 fn compile_constant_expression(
     context: &mut Context,
+    module: Module,
     const_expr: &TypedExpression,
 ) -> Result<Value, CompileError> {
+    let span_id_idx = MetadataIndex::from_span(context, &const_expr.span);
     match &const_expr.expression {
         TypedExpressionVariant::Literal(literal) => {
-            let span_md_idx = MetadataIndex::from_span(context, &const_expr.span);
-            Ok(convert_literal_to_value(context, literal, span_md_idx))
+            Ok(convert_literal_to_value(context, literal, span_id_idx))
         }
         // Special case functions because the span in `const_expr` is to the inlined function
         // definition, rather than the actual call site.
-        TypedExpressionVariant::FunctionApplication { call_path, .. } => {
-            Err(CompileError::NonLiteralConstantDeclValue {
+        TypedExpressionVariant::FunctionApplication {
+            call_path,
+            arguments,
+            function_body,
+            ..
+        } => {
+            let err = Err(CompileError::NonConstantDeclValue {
                 span: call_path.span(),
-            })
+            });
+            let const_args = arguments
+                .iter()
+                .filter_map(|(name, expr)| {
+                    if let TypedExpressionVariant::Literal(l) = &expr.expression {
+                        return Some(convert_literal_to_constant(l));
+                    }
+                    use sway_ir::value::ValueDatum::Constant;
+                    module
+                        .get_global_constant(context, name.as_str())
+                        .and_then(|v| match &context.values[(v.0)].value {
+                            Constant(cv) => Some(cv.clone()),
+                            _ => None,
+                        })
+                })
+                .collect::<Vec<sway_ir::Constant>>();
+            if const_args.len() < arguments.len() {
+                return err;
+            }
+            const_fold_typed_application(context, arguments, function_body, &const_args)
+                .map_or(err, |c| Ok(Constant::get_struct(context, c, span_id_idx)))
         }
-        _otherwise => Err(CompileError::NonLiteralConstantDeclValue {
+        _otherwise => Err(CompileError::NonConstantDeclValue {
             span: const_expr.span.clone(),
         }),
     }
@@ -162,7 +188,7 @@ fn compile_declarations(
         match declaration {
             TypedDeclaration::ConstantDeclaration(decl) => {
                 // These are in the global scope for the module, so they can be added there.
-                let const_val = compile_constant_expression(context, &decl.value)?;
+                let const_val = compile_constant_expression(context, module, &decl.value)?;
                 module.add_global_constant(context, decl.name.as_str().to_owned(), const_val);
             }
 
@@ -205,7 +231,7 @@ fn compile_declarations(
 
 // -------------------------------------------------------------------------------------------------
 
-fn get_aggregate_for_types(
+pub fn get_aggregate_for_types(
     context: &mut Context,
     type_ids: &[TypeId],
 ) -> Result<Aggregate, CompileError> {
@@ -2558,7 +2584,7 @@ fn convert_literal_to_value(
     }
 }
 
-fn convert_literal_to_constant(ast_literal: &Literal) -> Constant {
+pub fn convert_literal_to_constant(ast_literal: &Literal) -> Constant {
     match ast_literal {
         // All integers are `u64`.  See comment above.
         Literal::U8(n) | Literal::Byte(n) => Constant::new_uint(64, *n as u64),

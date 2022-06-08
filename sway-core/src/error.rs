@@ -954,10 +954,9 @@ pub enum CompileError {
     #[error("\"where\" clauses are not yet supported")]
     WhereClauseNotYetSupported { span: Span },
     #[error(
-        "Initializing a constant value via `const` is currently limited to primitive values \
-        such as numbers, bools, strings or b256s."
+        "Could not evaluate const initializer to a const value."
     )]
-    NonLiteralConstantDeclValue { span: Span },
+    NonConstantDeclValue { span: Span },
     #[error("Declaring storage in a {program_kind} is not allowed.")]
     StorageDeclarationInNonContract { program_kind: String, span: Span },
 }
@@ -1110,7 +1109,7 @@ impl Spanned for CompileError {
             Parse { error } => error.span.clone(),
             EnumNotFound { span, .. } => span.clone(),
             TupleIndexOutOfBounds { span, .. } => span.clone(),
-            NonLiteralConstantDeclValue { span } => span.clone(),
+            NonConstantDeclValue { span } => span.clone(),
             StorageDeclarationInNonContract { span, .. } => span.clone(),
         }
     }
