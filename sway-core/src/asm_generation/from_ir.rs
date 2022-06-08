@@ -2079,7 +2079,9 @@ impl<'ir> AsmBuilder<'ir> {
         offs_in_words: u64,
         span: Option<Span>,
     ) -> u64 {
+        dbg!(&value_type);
         let value_size = ir_type_size_in_bytes(self.context, value_type);
+        dbg!(&value_size);
         let value_size_in_words = size_bytes_in_words!(value_size);
 
         if matches!(constant.value, ConstantValue::Undef) {
@@ -2456,13 +2458,16 @@ mod tests {
         let expected = String::from_utf8_lossy(&expected_bytes);
 
         let ir = parse(&input).expect("parsed ir");
+
+        dbg!(sway_ir::printer::to_string(&ir));
+
         let asm_result = compile_ir_to_asm(
             &ir,
             &BuildConfig {
                 canonical_root_module: std::sync::Arc::new("".into()),
                 print_intermediate_asm: false,
                 print_finalized_asm: false,
-                print_ir: false,
+                print_ir: true,
             },
         );
 
