@@ -2,7 +2,7 @@ library b256_ops;
 
 use ::flags::{disable_panic_on_overflow, enable_panic_on_overflow};
 use ::core::ops::Add;
-use cor_utils::compose::*;
+use core_utils::compose::*;
 use ::logging::log;
 
 impl Add for b256 {

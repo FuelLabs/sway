@@ -5,4 +5,4 @@ license = "Apache-2.0"
 name = "core"
 
 [dependencies]
-core_utils = { path = "../core-utils"}
+core_utils = { path = "../sway-lib-core-utils"}
