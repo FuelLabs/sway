@@ -1,7 +1,9 @@
 [[package]]
 name = 'asm_without_return'
+source = 'root'
 dependencies = ['core']
 
 [[package]]
 name = 'core'
+source = 'path+from-root-8F74D3135E693ACB'
 dependencies = []

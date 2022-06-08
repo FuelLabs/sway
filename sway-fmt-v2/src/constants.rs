@@ -47,3 +47,9 @@ pub const DEFAULT_ENUM_VARIANT_ALIGN_THRESHOLD: usize = 0;
 
 /// Default max length of comments.
 pub const DEFAULT_MAX_COMMENT_WIDTH: usize = 80;
+
+/////NEWLINE_STYLE/////
+pub const LINE_FEED: char = '\n';
+pub const CARRIAGE_RETURN: char = '\r';
+pub const WINDOWS_NEWLINE: &str = "\r\n";
+pub const UNIX_NEWLINE: &str = "\n";

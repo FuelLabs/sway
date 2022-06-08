@@ -1186,7 +1186,7 @@ impl TypedExpression {
         }
         let exp = TypedExpression {
             expression: TypedExpressionVariant::StructExpression {
-                struct_name: struct_decl.name.clone(),
+                struct_name: call_path.suffix,
                 fields: typed_fields_buf,
             },
             return_type: struct_decl.create_type_id(),

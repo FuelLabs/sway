@@ -18,7 +18,7 @@ pub struct TypedFunctionDeclaration {
     pub(crate) type_parameters: Vec<TypeParameter>,
     /// Used for error messages -- the span pointing to the return type
     /// annotation of the function
-    pub(crate) return_type_span: Span,
+    pub return_type_span: Span,
     pub(crate) visibility: Visibility,
     /// whether this function exists in another contract and requires a call to it or not
     pub(crate) is_contract_call: bool,

@@ -1,11 +1,14 @@
 [[package]]
 name = 'auth'
+source = 'root'
 dependencies = ['std']
 
 [[package]]
 name = 'core'
+source = 'path+from-root-2DA4FC95F5834167'
 dependencies = []
 
 [[package]]
 name = 'std'
+source = 'path+from-root-2DA4FC95F5834167'
 dependencies = ['core']
