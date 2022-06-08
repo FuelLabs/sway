@@ -97,17 +97,7 @@ pub enum TypedExpressionVariant {
     },
     #[allow(dead_code)]
     StorageAccess(TypeCheckedStorageAccess),
-    TypeProperty {
-        property: BuiltinProperty,
-        type_id: TypeId,
-        span: Span,
-    },
-    GetStorageKey {
-        span: Span,
-    },
-    SizeOfValue {
-        expr: Box<TypedExpression>,
-    },
+    IntrinsicFunction(TypedIntrinsicFunctionKind),
     /// a zero-sized type-system-only compile-time thing that is used for constructing ABI casts.
     AbiName(AbiName),
     /// grabs the enum tag from the particular enum and variant of the `exp`
@@ -303,21 +293,7 @@ impl PartialEq for TypedExpressionVariant {
                     ..
                 },
             ) => l_abi_name == r_abi_name && (**l_address) == (**r_address),
-            (
-                Self::TypeProperty {
-                    property: l_prop,
-                    type_id: l_type_id,
-                    ..
-                },
-                Self::TypeProperty {
-                    property: r_prop,
-                    type_id: r_type_id,
-                    ..
-                },
-            ) => l_prop == r_prop && look_up_type_id(*l_type_id) == look_up_type_id(*r_type_id),
-            (Self::SizeOfValue { expr: l_expr }, Self::SizeOfValue { expr: r_expr }) => {
-                l_expr == r_expr
-            }
+            (Self::IntrinsicFunction(l_kind), Self::IntrinsicFunction(r_kind)) => l_kind == r_kind,
             (
                 Self::UnsafeDowncast {
                     exp: l_exp,
@@ -419,10 +395,9 @@ impl CopyTypes for TypedExpressionVariant {
             AbiCast { address, .. } => address.copy_types(type_mapping),
             // storage is never generic and cannot be monomorphized
             StorageAccess { .. } => (),
-            TypeProperty { type_id, span, .. } => {
-                type_id.update_type(type_mapping, span);
+            IntrinsicFunction(kind) => {
+                kind.copy_types(type_mapping);
             }
-            SizeOfValue { expr } => expr.copy_types(type_mapping),
             EnumTag { exp } => {
                 exp.copy_types(type_mapping);
             }
@@ -430,7 +405,6 @@ impl CopyTypes for TypedExpressionVariant {
                 exp.copy_types(type_mapping);
                 variant.copy_types(type_mapping);
             }
-            GetStorageKey { .. } => (),
             AbiName(_) => (),
         }
     }
@@ -510,19 +484,7 @@ impl fmt::Display for TypedExpressionVariant {
             TypedExpressionVariant::StorageAccess(access) => {
                 format!("storage field {} access", access.storage_field_name())
             }
-            TypedExpressionVariant::TypeProperty {
-                property, type_id, ..
-            } => {
-                let type_str = look_up_type_id(*type_id).to_string();
-                match property {
-                    BuiltinProperty::SizeOfType => format!("size_of({type_str:?})"),
-                    BuiltinProperty::IsRefType => format!("is_ref_type({type_str:?})"),
-                }
-            }
-            TypedExpressionVariant::SizeOfValue { expr } => {
-                format!("size_of_val({:?})", expr.to_string())
-            }
-            TypedExpressionVariant::GetStorageKey { .. } => "get_storage_key".to_string(),
+            TypedExpressionVariant::IntrinsicFunction(kind) => kind.to_string(),
             TypedExpressionVariant::AbiName(n) => format!("ABI name {}", n),
             TypedExpressionVariant::EnumTag { exp } => {
                 format!("({} as tag)", look_up_type_id(exp.return_type))

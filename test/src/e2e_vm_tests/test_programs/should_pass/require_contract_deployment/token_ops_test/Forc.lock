@@ -1,17 +1,21 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-7D510AAC4A67C807'
 dependencies = []
 
 [[package]]
 name = 'std'
+source = 'path+from-root-7D510AAC4A67C807'
 dependencies = ['core']
 
 [[package]]
 name = 'test_fuel_coin_abi'
+source = 'path+from-root-7D510AAC4A67C807'
 dependencies = ['std']
 
 [[package]]
 name = 'token_ops_test'
+source = 'root'
 dependencies = [
     'std',
     'test_fuel_coin_abi',

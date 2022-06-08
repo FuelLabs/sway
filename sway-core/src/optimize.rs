@@ -2,7 +2,7 @@ use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     constants,
     error::CompileError,
-    parse_tree::{AsmOp, AsmRegister, BuiltinProperty, LazyOp, Literal, Visibility},
+    parse_tree::{AsmOp, AsmRegister, LazyOp, Literal, Visibility},
     semantic_analysis::{ast_node::*, *},
     type_engine::*,
 };
@@ -173,11 +173,7 @@ fn compile_declarations(
                 //
                 //compile_function(context, module, decl).map(|_| ())?
             }
-            TypedDeclaration::ImplTrait {
-                methods: _,
-                type_implementing_for: _,
-                ..
-            } => {
+            TypedDeclaration::ImplTrait(_) => {
                 // And for the same reason we don't need to compile impls at all.
                 //
                 // compile_impl(
@@ -527,7 +523,7 @@ impl FnCompiler {
                                 &tr.rhs,
                                 span_md_idx,
                             ),
-                        TypedDeclaration::ImplTrait { span, .. } => {
+                        TypedDeclaration::ImplTrait(TypedImplTrait { span, .. }) => {
                             // XXX What if we ignore the trait implementation???  Potentially since
                             // we currently inline everything and below we 'recreate' the functions
                             // lazily as they are called, nothing needs to be done here.  BUT!
@@ -703,34 +699,8 @@ impl FnCompiler {
                 let span_md_idx = MetadataIndex::from_span(context, &access.span());
                 self.compile_storage_access(context, &access.fields, &access.ix, span_md_idx)
             }
-            TypedExpressionVariant::TypeProperty {
-                property,
-                type_id,
-                span,
-            } => {
-                let ir_type = convert_resolved_typeid(context, &type_id, &span)?;
-                match property {
-                    BuiltinProperty::SizeOfType => Ok(Constant::get_uint(
-                        context,
-                        64,
-                        ir_type_size_in_bytes(context, &ir_type),
-                        None,
-                    )),
-                    BuiltinProperty::IsRefType => {
-                        Ok(Constant::get_bool(context, !ir_type.is_copy_type(), None))
-                    }
-                }
-            }
-            TypedExpressionVariant::SizeOfValue { expr } => {
-                // Compile the expression in case of side-effects but ignore its value.
-                let ir_type = convert_resolved_typeid(context, &expr.return_type, &expr.span)?;
-                self.compile_expression(context, *expr)?;
-                Ok(Constant::get_uint(
-                    context,
-                    64,
-                    ir_type_size_in_bytes(context, &ir_type),
-                    None,
-                ))
+            TypedExpressionVariant::IntrinsicFunction(kind) => {
+                self.compile_intrinsic_function(context, kind, ast_expr.span)
             }
             TypedExpressionVariant::AbiName(_) => {
                 Ok(Value::new_constant(context, Constant::new_unit(), None))
@@ -739,24 +709,53 @@ impl FnCompiler {
                 self.compile_unsafe_downcast(context, exp, variant)
             }
             TypedExpressionVariant::EnumTag { exp } => self.compile_enum_tag(context, exp),
-            TypedExpressionVariant::GetStorageKey { span } => {
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------
+
+    fn compile_intrinsic_function(
+        &mut self,
+        context: &mut Context,
+        kind: TypedIntrinsicFunctionKind,
+        span: Span,
+    ) -> Result<Value, CompileError> {
+        match kind {
+            TypedIntrinsicFunctionKind::SizeOfVal { exp } => {
+                // Compile the expression in case of side-effects but ignore its value.
+                let ir_type = convert_resolved_typeid(context, &exp.return_type, &exp.span)?;
+                self.compile_expression(context, *exp)?;
+                Ok(Constant::get_uint(
+                    context,
+                    64,
+                    ir_type_size_in_bytes(context, &ir_type),
+                    None,
+                ))
+            }
+            TypedIntrinsicFunctionKind::SizeOfType { type_id, type_span } => {
+                let ir_type = convert_resolved_typeid(context, &type_id, &type_span)?;
+                Ok(Constant::get_uint(
+                    context,
+                    64,
+                    ir_type_size_in_bytes(context, &ir_type),
+                    None,
+                ))
+            }
+            TypedIntrinsicFunctionKind::IsRefType { type_id, type_span } => {
+                let ir_type = convert_resolved_typeid(context, &type_id, &type_span)?;
+                Ok(Constant::get_bool(context, !ir_type.is_copy_type(), None))
+            }
+            TypedIntrinsicFunctionKind::GetStorageKey => {
                 let span_md_idx = MetadataIndex::from_span(context, &span);
-                self.compile_get_storage_key(context, span_md_idx)
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .get_storage_key(span_md_idx, None))
             }
         }
     }
 
     // ---------------------------------------------------------------------------------------------
-    fn compile_get_storage_key(
-        &mut self,
-        context: &mut Context,
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Result<Value, CompileError> {
-        Ok(self
-            .current_block
-            .ins(context)
-            .get_storage_key(span_md_idx, None))
-    }
 
     fn compile_return_statement(
         &mut self,

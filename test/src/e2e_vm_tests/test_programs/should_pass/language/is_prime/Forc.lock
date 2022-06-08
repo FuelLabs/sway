@@ -1,11 +1,14 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-84D18B0DDD7EC1D4'
 dependencies = []
 
 [[package]]
 name = 'is_prime'
+source = 'root'
 dependencies = ['std']
 
 [[package]]
 name = 'std'
+source = 'path+from-root-84D18B0DDD7EC1D4'
 dependencies = ['core']

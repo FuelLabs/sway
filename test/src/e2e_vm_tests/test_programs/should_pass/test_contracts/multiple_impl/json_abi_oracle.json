@@ -1,0 +1,14 @@
+[
+  {
+    "inputs": [],
+    "name": "foo",
+    "outputs": [
+      {
+        "components": [],
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  }
+]

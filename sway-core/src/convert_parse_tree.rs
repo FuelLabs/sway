@@ -6,14 +6,14 @@ use {
         error::{err, ok, CompileError, CompileResult, CompileWarning},
         type_engine::{insert_type, AbiName, IntegerBits},
         AbiDeclaration, AsmExpression, AsmOp, AsmRegister, AsmRegisterDeclaration, AstNode,
-        AstNodeContent, BuiltinProperty, CallPath, CodeBlock, ConstantDeclaration, Declaration,
-        EnumDeclaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter, ImplSelf,
-        ImplTrait, ImportType, IncludeStatement, LazyOp, Literal, MatchBranch, MethodName,
-        ParseTree, Purity, Reassignment, ReassignmentTarget, ReturnStatement, Scrutinee,
-        StorageDeclaration, StorageField, StructDeclaration, StructExpressionField, StructField,
-        StructScrutineeField, Supertrait, TraitConstraint, TraitDeclaration, TraitFn, TreeType,
-        TypeArgument, TypeInfo, TypeParameter, UseStatement, VariableDeclaration, Visibility,
-        WhileLoop,
+        AstNodeContent, CallPath, CodeBlock, ConstantDeclaration, Declaration, EnumDeclaration,
+        EnumVariant, Expression, FunctionDeclaration, FunctionParameter, ImplSelf, ImplTrait,
+        ImportType, IncludeStatement, IntrinsicFunctionKind, LazyOp, Literal, MatchBranch,
+        MethodName, ParseTree, Purity, Reassignment, ReassignmentTarget, ReturnStatement,
+        Scrutinee, StorageDeclaration, StorageField, StructDeclaration, StructExpressionField,
+        StructField, StructScrutineeField, Supertrait, TraitConstraint, TraitDeclaration, TraitFn,
+        TreeType, TypeArgument, TypeInfo, TypeParameter, UseStatement, VariableDeclaration,
+        Visibility, WhileLoop,
     },
     std::{
         collections::HashMap,
@@ -1461,10 +1461,11 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         };
                         let type_span = ty.span();
                         let type_name = ty_to_type_info(ec, ty)?;
-                        Expression::BuiltinGetTypeProperty {
-                            builtin: BuiltinProperty::SizeOfType,
-                            type_name,
-                            type_span,
+                        Expression::IntrinsicFunction {
+                            kind: IntrinsicFunctionKind::SizeOfType {
+                                type_name,
+                                type_span,
+                            },
                             span,
                         }
                     } else if call_path.prefixes.is_empty()
@@ -1480,7 +1481,10 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                             let error = ConvertParseTreeError::GenericsNotSupportedHere { span };
                             return Err(ec.error(error));
                         }
-                        Expression::BuiltinGetStorageKey { span }
+                        Expression::IntrinsicFunction {
+                            kind: IntrinsicFunctionKind::GetStorageKey,
+                            span,
+                        }
                     } else if call_path.prefixes.is_empty()
                         && !call_path.is_absolute
                         && Intrinsic::try_from_str(call_path.suffix.as_str())
@@ -1504,10 +1508,11 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         };
                         let type_span = ty.span();
                         let type_name = ty_to_type_info(ec, ty)?;
-                        Expression::BuiltinGetTypeProperty {
-                            builtin: BuiltinProperty::IsRefType,
-                            type_name,
-                            type_span,
+                        Expression::IntrinsicFunction {
+                            kind: IntrinsicFunctionKind::IsRefType {
+                                type_name,
+                                type_span,
+                            },
                             span,
                         }
                     } else if call_path.prefixes.is_empty()
@@ -1522,7 +1527,10 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                                 return Err(ec.error(error));
                             }
                         };
-                        Expression::SizeOfVal { exp, span }
+                        Expression::IntrinsicFunction {
+                            kind: IntrinsicFunctionKind::SizeOfVal { exp },
+                            span,
+                        }
                     } else {
                         let type_arguments = match generics_opt {
                             Some((_double_colon_token, generic_args)) => {

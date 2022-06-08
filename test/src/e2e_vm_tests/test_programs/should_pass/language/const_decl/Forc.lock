@@ -1,7 +1,9 @@
 [[package]]
 name = 'const_decl'
+source = 'root'
 dependencies = ['core']
 
 [[package]]
 name = 'core'
+source = 'path+from-root-FBEF090568E90A96'
 dependencies = []
