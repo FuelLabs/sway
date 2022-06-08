@@ -2,9 +2,13 @@ use crate::fmt::{Format, FormattedCode, Formatter};
 use sway_parse::ItemEnum;
 use sway_types::Spanned;
 
+// current_ident_level will be replaced by incoming block ident logic.
+// usage of \n will be replaced by more structed way of handling new lines.
 impl Format for ItemEnum {
     fn format(&self, formatter: &Formatter) -> FormattedCode {
         let mut current_ident_level = 0;
+        // TODO: creating this formatted_code with String::new() will likely cause lots of
+        // reallocations maybe we can explore how we can do this, starting with with_capacity may help.
         let mut formatted_code = String::new();
         let enum_variant_align_threshold = formatter.config.structures.enum_variant_align_threshold;
 
@@ -26,6 +30,7 @@ impl Format for ItemEnum {
             false,
         );
 
+        // Is this the relevant config option to look? What does item stand for exactly?
         let bracket_on_new_line = formatter.config.items.item_brace_style;
         match bracket_on_new_line {
             crate::config::items::ItemBraceStyle::AlwaysNextLine => {
@@ -89,7 +94,8 @@ impl Format for ItemEnum {
             }
         });
 
-        // In second iteration we are going to be comparing
+        // In second iteration we are going to be comparing current variants length and maximum accepted variant length
+        // for calculating the allignment required.
         for (index, type_field) in type_fields.iter().enumerate() {
             let type_field = &type_field.0;
             add_formatted_part(
@@ -101,7 +107,8 @@ impl Format for ItemEnum {
             );
             formatted_code.push(':');
 
-            // Currently does not apply custom formatting for ty, wonder if the 'ty' is a struct it will get handled by the item_struct.rs.
+            // Currently does not apply custom formatting for ty,
+            // I am wondering if the 'ty' is a struct it will get handled by the item_struct.rs. -Kaya
             let current_variant_length = variant_length[index];
 
             if current_variant_length < max_valid_variant_length {
@@ -132,8 +139,8 @@ impl Format for ItemEnum {
                     true,
                 );
             }
-            // Check if this is the last enum variant, if so not add the comma.
-            if index != variant_length.len()-1 {
+            // Check if this is the last enum variant, if so do not add the comma.
+            if index != variant_length.len() - 1 {
                 // Here we assume that next enum variant is going to be in the new line but
                 // from the config we may understand next enum variant should be in the same line instead.
                 formatted_code.push(',');
@@ -162,5 +169,3 @@ fn add_formatted_part(
         formatted_code.push(' ');
     }
 }
-
-//TODO(kaya) : Add tests.
