@@ -4,7 +4,7 @@ use crate::core::{
     typed_token_type::{TokenMap, TokenType},
 };
 use crate::utils::common::get_range_from_span;
-use sway_types::Ident;
+use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
 
 // Flags for debugging various parts of the server
@@ -59,7 +59,7 @@ pub fn debug_print_ident_and_token(ident: &Ident, token: &TokenType) {
 fn ast_node_type(token: &TokenType) -> String {
     match &token {
         TokenType::TypedDeclaration(dec) => dec.friendly_name().to_string(),
-        TokenType::TypedExpression(exp) => exp.expression.pretty_print(),
+        TokenType::TypedExpression(exp) => exp.expression.to_string(),
         TokenType::TypedFunctionParameter(_) => "function parameter".to_string(),
         TokenType::TypedStructField(_) => "struct field".to_string(),
         TokenType::TypedEnumVariant(_) => "enum variant".to_string(),

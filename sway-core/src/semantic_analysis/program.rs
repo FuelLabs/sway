@@ -1,4 +1,7 @@
-use super::{TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration};
+use super::{
+    TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration, TypedImplTrait,
+    TypedStorageDeclaration,
+};
 use crate::{
     error::*,
     parse_tree::{ParseProgram, Purity, TreeType},
@@ -8,7 +11,7 @@ use crate::{
     },
     type_engine::*,
 };
-use sway_types::{span::Span, Ident};
+use sway_types::{span::Span, Ident, Spanned};
 
 #[derive(Clone, Debug)]
 pub struct TypedProgram {
@@ -62,9 +65,28 @@ impl TypedProgram {
     ) -> CompileResult<TypedProgramKind> {
         // Extract program-kind-specific properties from the root nodes.
         let mut errors = vec![];
+        let mut warnings = vec![];
+
+        // Validate all submodules
+        for (_, submodule) in &root.submodules {
+            check!(
+                Self::validate_root(
+                    &submodule.module,
+                    TreeType::Library {
+                        name: submodule.library_name.clone(),
+                    },
+                    submodule.library_name.span().clone(),
+                ),
+                continue,
+                warnings,
+                errors
+            );
+        }
+
         let mut mains = Vec::new();
         let mut declarations = Vec::new();
         let mut abi_entries = Vec::new();
+        let mut fn_declarations = std::collections::HashSet::new();
         for node in &root.all_nodes {
             match &node.content {
                 TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(func))
@@ -74,20 +96,47 @@ impl TypedProgram {
                 }
                 // ABI entries are all functions declared in impl_traits on the contract type
                 // itself.
-                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait {
+                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(TypedImplTrait {
                     methods,
                     type_implementing_for: TypeInfo::Contract,
                     ..
-                }) => abi_entries.extend(methods.clone()),
+                })) => abi_entries.extend(methods.clone()),
                 // XXX we're excluding the above ABI methods, is that OK?
-                TypedAstNodeContent::Declaration(decl) => declarations.push(decl.clone()),
+                TypedAstNodeContent::Declaration(decl) => {
+                    // Variable and constant declarations don't need a duplicate check.
+                    // Type declarations are checked elsewhere. That leaves functions.
+                    if let TypedDeclaration::FunctionDeclaration(func) = &decl {
+                        let name = func.name.clone();
+                        if !fn_declarations.insert(name.clone()) {
+                            errors.push(CompileError::MultipleDefinitionsOfFunction { name });
+                        }
+                    }
+                    declarations.push(decl.clone())
+                }
                 _ => (),
             };
         }
 
-        // impure functions are disallowed in non-contracts
+        // Some checks that are specific to non-contracts
         if kind != TreeType::Contract {
+            // impure functions are disallowed in non-contracts
             errors.extend(disallow_impure_functions(&declarations, &mains));
+
+            // `storage` declarations are not allowed in non-contracts
+            let storage_decl = declarations
+                .iter()
+                .find(|decl| matches!(decl, TypedDeclaration::StorageDeclaration(_)));
+
+            if let Some(TypedDeclaration::StorageDeclaration(TypedStorageDeclaration {
+                span,
+                ..
+            })) = storage_decl
+            {
+                errors.push(CompileError::StorageDeclarationInNonContract {
+                    program_kind: format!("{kind}"),
+                    span: span.clone(),
+                });
+            }
         }
 
         // Perform other validation based on the tree type.
@@ -104,9 +153,9 @@ impl TypedProgram {
                     return err(vec![], errors);
                 }
                 if mains.len() > 1 {
-                    errors.push(CompileError::MultiplePredicateMainFunctions(
-                        mains.last().unwrap().span.clone(),
-                    ));
+                    errors.push(CompileError::MultipleDefinitionsOfFunction {
+                        name: mains.last().unwrap().name.clone(),
+                    });
                 }
                 let main_func = mains.remove(0);
                 match look_up_type_id(main_func.return_type) {
@@ -127,9 +176,9 @@ impl TypedProgram {
                     return err(vec![], errors);
                 }
                 if mains.len() > 1 {
-                    errors.push(CompileError::MultipleScriptMainFunctions(
-                        mains.last().unwrap().span.clone(),
-                    ));
+                    errors.push(CompileError::MultipleDefinitionsOfFunction {
+                        name: mains.last().unwrap().name.clone(),
+                    });
                 }
                 TypedProgramKind::Script {
                     main_function: mains.remove(0),
@@ -208,9 +257,7 @@ fn disallow_impure_functions(
     fn_decls
         .filter_map(|TypedFunctionDeclaration { purity, name, .. }| {
             if *purity != Purity::Pure {
-                Some(CompileError::ImpureInNonContract {
-                    span: name.span().clone(),
-                })
+                Some(CompileError::ImpureInNonContract { span: name.span() })
             } else {
                 None
             }

@@ -5,10 +5,10 @@ pub(crate) fn default_manifest(project_name: &str, entry_type: &str) -> String {
 
     format!(
         r#"[project]
-name = "{project_name}"
 authors = ["{author}"]
 entry = "{entry_type}"
 license = "Apache-2.0"
+name = "{project_name}"
 
 [dependencies]
 "#

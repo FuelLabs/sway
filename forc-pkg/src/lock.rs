@@ -4,10 +4,10 @@ use forc_util::{println_green, println_red};
 use petgraph::{visit::EdgeRef, Direction};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{BTreeSet, HashMap},
+    borrow::Cow,
+    collections::{BTreeSet, HashMap, HashSet},
     fs,
     path::Path,
-    str::FromStr,
 };
 
 /// The graph of pinned packages represented as a toml-serialization-friendly structure.
@@ -32,7 +32,8 @@ pub struct PkgLock {
     // project's `Manifest` yet. If we decide to enforce versions, we'll want to remove the
     // `Option`.
     version: Option<semver::Version>,
-    source: Option<String>,
+    // Short-hand string describing where this package is sourced from.
+    source: String,
     dependencies: Vec<PkgDepLine>,
 }
 
@@ -50,39 +51,16 @@ pub struct PkgLock {
 /// different versions of the same package.
 pub type PkgDepLine = String;
 
-/// Convert the given package source to a string for use in the package lock.
-///
-/// Returns `None` for sources that refer to a direct `Path`.
-pub fn source_to_string(source: &pkg::SourcePinned) -> Option<String> {
-    match source {
-        pkg::SourcePinned::Path => None,
-        pkg::SourcePinned::Git(git) => Some(git.to_string()),
-        pkg::SourcePinned::Registry(_reg) => unimplemented!("pkg registries not yet implemented"),
-    }
-}
-
-/// Convert the given package source string read from a package lock to a `pkg::SourcePinned`.
-pub fn source_from_str(s: &str) -> Result<pkg::SourcePinned> {
-    if let Ok(src) = pkg::SourceGitPinned::from_str(s) {
-        return Ok(pkg::SourcePinned::Git(src));
-    }
-    // TODO: Try parse registry source.
-    Err(anyhow!(
-        "Unable to parse valid pinned source from given string {}",
-        s
-    ))
-}
-
 impl PkgLock {
     /// Construct a package lock given a package's entry in the package graph.
-    pub fn from_node(graph: &pkg::Graph, node: pkg::NodeIx) -> Self {
+    pub fn from_node(graph: &pkg::Graph, node: pkg::NodeIx, disambiguate: &HashSet<&str>) -> Self {
         let pinned = &graph[node];
         let name = pinned.name.clone();
         let version = match &pinned.source {
             pkg::SourcePinned::Registry(reg) => Some(reg.source.version.clone()),
             _ => None,
         };
-        let source = source_to_string(&pinned.source);
+        let source = pinned.source.to_string();
         let mut dependencies: Vec<String> = graph
             .edges_directed(node, Direction::Outgoing)
             .map(|edge| {
@@ -94,8 +72,8 @@ impl PkgLock {
                 } else {
                     None
                 };
-                let source_string = source_to_string(&dep_pkg.source);
-                pkg_dep_line(dep_name, &dep_pkg.name, source_string.as_deref())
+                let disambiguate = disambiguate.contains(&dep_pkg.name[..]);
+                pkg_dep_line(dep_name, &dep_pkg.name, &dep_pkg.source, disambiguate)
             })
             .collect();
         dependencies.sort();
@@ -107,9 +85,20 @@ impl PkgLock {
         }
     }
 
-    /// The string representation used for specifying this package as a dependency.
+    /// A string that uniquely identifies a package and its source.
+    ///
+    /// Formatted as `<name> <source>`.
     pub fn unique_string(&self) -> String {
-        pkg_unique_string(&self.name, self.source.as_deref())
+        pkg_unique_string(&self.name, &self.source)
+    }
+
+    /// The string representation used for specifying this package as a dependency.
+    ///
+    /// If this package's name is not enough to disambiguate it from other packages within the
+    /// graph, this returns `<name> <source>`. If it is, it simply returns the name.
+    pub fn name_disambiguated(&self, disambiguate: &HashSet<&str>) -> Cow<str> {
+        let disambiguate = disambiguate.contains(&self.name[..]);
+        pkg_name_disambiguated(&self.name, &self.source, disambiguate)
     }
 }
 
@@ -124,9 +113,12 @@ impl Lock {
     /// Given a graph of pinned packages, create a `Lock` representing the `Forc.lock` file
     /// structure.
     pub fn from_graph(graph: &pkg::Graph) -> Self {
+        let names = graph.node_indices().map(|n| &graph[n].name[..]);
+        let disambiguate: HashSet<_> = names_requiring_disambiguation(names).collect();
+        // Collect the packages.
         let package: BTreeSet<_> = graph
             .node_indices()
-            .map(|node| PkgLock::from_node(graph, node))
+            .map(|node| PkgLock::from_node(graph, node, &disambiguate))
             .collect();
         Self { package }
     }
@@ -135,19 +127,21 @@ impl Lock {
     pub fn to_graph(&self) -> Result<pkg::Graph> {
         let mut graph = pkg::Graph::new();
 
-        // On the first pass, add all nodes to the graph.
-        // Keep track of name+source to node-index mappings for the edge collection pass.
+        // Track the names which need to be disambiguated in the dependency list.
+        let names = self.package.iter().map(|pkg| &pkg.name[..]);
+        let disambiguate: HashSet<_> = names_requiring_disambiguation(names).collect();
+
+        // Add all nodes to the graph.
+        // Keep track of "<name> <source>" to node-index mappings for the edge collection pass.
         let mut pkg_to_node: HashMap<String, pkg::NodeIx> = HashMap::new();
         for pkg in &self.package {
-            let key = pkg.unique_string();
+            // Note: `key` may be either `<name> <source>` or just `<name>` if disambiguation not
+            // required.
+            let key = pkg.name_disambiguated(&disambiguate).into_owned();
             let name = pkg.name.clone();
-            let pkg_source_string = pkg.source.clone();
-            let source = match &pkg_source_string {
-                None => pkg::SourcePinned::Path,
-                Some(s) => source_from_str(s).map_err(|e| {
-                    anyhow!("invalid 'source' entry for package {} lock: {}", name, e)
-                })?,
-            };
+            let source: pkg::SourcePinned = pkg.source.parse().map_err(|e| {
+                anyhow!("invalid 'source' entry for package {} lock: {:?}", name, e)
+            })?;
             let pkg = pkg::Pinned { name, source };
             let node = graph.add_node(pkg);
             pkg_to_node.insert(key, node);
@@ -155,8 +149,8 @@ impl Lock {
 
         // On the second pass, add all edges.
         for pkg in &self.package {
-            let key = pkg.unique_string();
-            let node = pkg_to_node[&key];
+            let key = pkg.name_disambiguated(&disambiguate);
+            let node = pkg_to_node[&key[..]];
             for dep_line in &pkg.dependencies {
                 let (dep_name, dep_key) = parse_pkg_dep_line(dep_line)
                     .map_err(|e| anyhow!("failed to parse dependency \"{}\": {}", dep_line, e))?;
@@ -166,6 +160,13 @@ impl Lock {
                     .ok_or_else(|| anyhow!("found dep {} without node entry in graph", dep_key))?;
                 let dep_name = dep_name.unwrap_or(&graph[dep_node].name).to_string();
                 graph.add_edge(node, dep_node, dep_name);
+            }
+        }
+
+        // Validate the `path_root` of each of the path nodes.
+        for n in graph.node_indices() {
+            if let pkg::SourcePinned::Path(ref src) = graph[n].source {
+                pkg::validate_path_root(&graph, n, src.path_root)?;
             }
         }
 
@@ -182,17 +183,38 @@ impl Lock {
     }
 }
 
-fn pkg_unique_string(name: &str, source: Option<&str>) -> String {
-    match source {
-        None => name.to_string(),
-        Some(s) => format!("{} {}", name, s),
+/// Collect the set of package names that require disambiguation.
+fn names_requiring_disambiguation<'a, I>(names: I) -> impl Iterator<Item = &'a str>
+where
+    I: IntoIterator<Item = &'a str>,
+{
+    let mut visited = BTreeSet::default();
+    names.into_iter().filter(move |&name| !visited.insert(name))
+}
+
+fn pkg_name_disambiguated<'a>(name: &'a str, source: &'a str, disambiguate: bool) -> Cow<'a, str> {
+    match disambiguate {
+        true => Cow::Owned(pkg_unique_string(name, source)),
+        false => Cow::Borrowed(name),
     }
 }
 
-fn pkg_dep_line(dep_name: Option<&str>, name: &str, source: Option<&str>) -> PkgDepLine {
-    let pkg_string = pkg_unique_string(name, source);
+fn pkg_unique_string(name: &str, source: &str) -> String {
+    format!("{} {}", name, source)
+}
+
+fn pkg_dep_line(
+    dep_name: Option<&str>,
+    name: &str,
+    source: &pkg::SourcePinned,
+    disambiguate: bool,
+) -> PkgDepLine {
+    // Only include the full unique string in the case that this dep requires disambiguation.
+    let source_string = source.to_string();
+    let pkg_string = pkg_name_disambiguated(name, &source_string, disambiguate);
+    // Prefix the dependency name if it differs from the package name.
     match dep_name {
-        None => pkg_string,
+        None => pkg_string.into_owned(),
         Some(dep_name) => format!("({}) {}", dep_name, pkg_string),
     }
 }
@@ -200,6 +222,8 @@ fn pkg_dep_line(dep_name: Option<&str>, name: &str, source: Option<&str>) -> Pkg
 // Parse the given `PkgDepLine` into its dependency name and unique string segments.
 //
 // I.e. given "(<dep_name>) <name> <source>", returns ("<dep_name>", "<name> <source>").
+//
+// Note that <source> may not appear in the case it is not required for disambiguation.
 fn parse_pkg_dep_line(pkg_dep_line: &str) -> anyhow::Result<(Option<&str>, &str)> {
     let s = pkg_dep_line.trim();
 
@@ -232,7 +256,8 @@ where
 {
     for pkg in removed {
         if pkg.name != proj_name {
-            let _ = println_red(&format!("  Removing {}", pkg.unique_string()));
+            let name = name_or_git_unique_string(pkg);
+            let _ = println_red(&format!("  Removing {}", name));
         }
     }
 }
@@ -243,7 +268,16 @@ where
 {
     for pkg in removed {
         if pkg.name != proj_name {
-            let _ = println_green(&format!("    Adding {}", pkg.unique_string()));
+            let name = name_or_git_unique_string(pkg);
+            let _ = println_green(&format!("    Adding {}", name));
         }
+    }
+}
+
+// Only includes source after the name for git sources for friendlier printing.
+fn name_or_git_unique_string(pkg: &PkgLock) -> Cow<str> {
+    match pkg.source.starts_with(pkg::SourceGitPinned::PREFIX) {
+        true => Cow::Owned(pkg.unique_string()),
+        false => Cow::Borrowed(&pkg.name),
     }
 }

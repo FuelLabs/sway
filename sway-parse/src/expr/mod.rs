@@ -205,9 +205,7 @@ impl Spanned for Expr {
             Expr::FuncApp { func, args } => Span::join(func.span(), args.span()),
             Expr::Index { target, arg } => Span::join(target.span(), arg.span()),
             Expr::MethodCall { target, args, .. } => Span::join(target.span(), args.span()),
-            Expr::FieldProjection { target, name, .. } => {
-                Span::join(target.span(), name.span().clone())
-            }
+            Expr::FieldProjection { target, name, .. } => Span::join(target.span(), name.span()),
             Expr::TupleFieldProjection {
                 target, field_span, ..
             } => Span::join(target.span(), field_span.clone()),
@@ -1060,14 +1058,14 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
     if parser.peek::<TrueToken>().is_some() {
         let ident = parser.parse::<Ident>()?;
         return Ok(Expr::Literal(Literal::Bool(LitBool {
-            span: ident.span().clone(),
+            span: ident.span(),
             kind: LitBoolType::True,
         })));
     }
     if parser.peek::<FalseToken>().is_some() {
         let ident = parser.parse::<Ident>()?;
         return Ok(Expr::Literal(Literal::Bool(LitBool {
-            span: ident.span().clone(),
+            span: ident.span(),
             kind: LitBoolType::False,
         })));
     }
@@ -1146,8 +1144,8 @@ pub struct ExprStructField {
 impl Spanned for ExprStructField {
     fn span(&self) -> Span {
         match &self.expr_opt {
-            None => self.field_name.span().clone(),
-            Some((_colon_token, expr)) => Span::join(self.field_name.span().clone(), expr.span()),
+            None => self.field_name.span(),
+            Some((_colon_token, expr)) => Span::join(self.field_name.span(), expr.span()),
         }
     }
 }

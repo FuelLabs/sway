@@ -1,0 +1,4 @@
+[[package]]
+name = 'storage_in_script'
+source = 'root'
+dependencies = []

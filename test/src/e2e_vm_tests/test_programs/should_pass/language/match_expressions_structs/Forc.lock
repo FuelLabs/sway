@@ -1,7 +1,9 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-E081FBDDEF62D471'
 dependencies = []
 
 [[package]]
 name = 'match_expressions_structs'
+source = 'root'
 dependencies = ['core']

@@ -4,12 +4,13 @@ use crate::core::typed_token_type::{TokenMap, TokenType};
 use sway_core::semantic_analysis::ast_node::{
     expression::{
         typed_expression::TypedExpression, typed_expression_variant::TypedExpressionVariant,
+        TypedIntrinsicFunctionKind,
     },
     while_loop::TypedWhileLoop,
-    {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
+    TypedImplTrait, {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
 };
 use sway_core::type_engine::TypeId;
-use sway_types::{ident::Ident, span::Span};
+use sway_types::{ident::Ident, span::Span, Spanned};
 
 pub fn traverse_node(node: &TypedAstNode, tokens: &mut TokenMap) {
     match &node.content {
@@ -29,7 +30,7 @@ pub fn traverse_node(node: &TypedAstNode, tokens: &mut TokenMap) {
 // We need to do this work around as the custom PartialEq for Ident impl
 // only checks for the string, not the span.
 fn to_ident_key(ident: &Ident) -> (Ident, Span) {
-    (ident.clone(), ident.span().clone())
+    (ident.clone(), ident.span())
 }
 
 fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut TokenMap) {
@@ -106,20 +107,22 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut TokenMap) {
                 TokenType::TypedReassignment(reassignment.clone()),
             );
         }
-        TypedDeclaration::ImplTrait {
+        TypedDeclaration::ImplTrait(TypedImplTrait {
             trait_name,
             methods,
             ..
-        } => {
+        }) => {
             for ident in &trait_name.prefixes {
                 tokens.insert(
                     to_ident_key(ident),
                     TokenType::TypedDeclaration(declaration.clone()),
                 );
             }
-            // This is reporting the train name as r#Self and not the actual name
-            // Also the span is referencing the declerations span.
-            //tokens.insert(to_ident_key(&trait_name.suffix), TokenType::TypedDeclaration(declaration.clone()));
+
+            tokens.insert(
+                to_ident_key(&trait_name.suffix),
+                TokenType::TypedDeclaration(declaration.clone()),
+            );
 
             for method in methods {
                 tokens.insert(
@@ -135,6 +138,12 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut TokenMap) {
                         TokenType::TypedFunctionParameter(paramater.clone()),
                     );
                 }
+
+                let return_type_ident = Ident::new(method.return_type_span.clone());
+                tokens.insert(
+                    to_ident_key(&return_type_ident),
+                    TokenType::TypedFunctionDeclaration(method.clone()),
+                );
             }
         }
         TypedDeclaration::AbiDeclaration(abi_decl) => {
@@ -306,10 +315,8 @@ fn handle_expression(expression: &TypedExpression, tokens: &mut TokenMap) {
                 );
             }
         }
-        TypedExpressionVariant::TypeProperty { .. } => {}
-        TypedExpressionVariant::GetStorageKey { .. } => {}
-        TypedExpressionVariant::SizeOfValue { expr } => {
-            handle_expression(expr, tokens);
+        TypedExpressionVariant::IntrinsicFunction(kind) => {
+            handle_intrinsic_function(kind, tokens);
         }
         TypedExpressionVariant::AbiName { .. } => {}
         TypedExpressionVariant::EnumTag { exp } => {
@@ -322,6 +329,17 @@ fn handle_expression(expression: &TypedExpression, tokens: &mut TokenMap) {
                 TokenType::TypedExpression(expression.clone()),
             );
         }
+    }
+}
+
+fn handle_intrinsic_function(kind: &TypedIntrinsicFunctionKind, tokens: &mut TokenMap) {
+    match kind {
+        TypedIntrinsicFunctionKind::SizeOfVal { exp } => {
+            handle_expression(exp, tokens);
+        }
+        TypedIntrinsicFunctionKind::SizeOfType { .. } => {}
+        TypedIntrinsicFunctionKind::IsRefType { .. } => {}
+        TypedIntrinsicFunctionKind::GetStorageKey => {}
     }
 }
 

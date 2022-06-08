@@ -3,7 +3,7 @@ use crate::{
 };
 use fuels_types::Property;
 use std::hash::{Hash, Hasher};
-use sway_types::{Ident, Span};
+use sway_types::{Ident, Span, Spanned};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedStructDeclaration {
@@ -47,6 +47,12 @@ impl CreateTypeId for TypedStructDeclaration {
     }
 }
 
+impl Spanned for TypedStructDeclaration {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
+
 impl MonomorphizeHelper for TypedStructDeclaration {
     type Output = TypedStructDeclaration;
 
@@ -56,10 +62,6 @@ impl MonomorphizeHelper for TypedStructDeclaration {
 
     fn name(&self) -> &Ident {
         &self.name
-    }
-
-    fn span(&self) -> &Span {
-        &self.span
     }
 
     fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output {

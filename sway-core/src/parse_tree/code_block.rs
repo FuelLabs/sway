@@ -1,6 +1,6 @@
 use crate::AstNode;
 
-use sway_types::span::Span;
+use sway_types::{span::Span, Spanned};
 
 #[derive(Debug, Clone)]
 pub struct CodeBlock {
@@ -8,8 +8,8 @@ pub struct CodeBlock {
     pub(crate) whole_block_span: Span,
 }
 
-impl CodeBlock {
-    pub fn span(&self) -> &Span {
-        &self.whole_block_span
+impl Spanned for CodeBlock {
+    fn span(&self) -> Span {
+        self.whole_block_span.clone()
     }
 }
