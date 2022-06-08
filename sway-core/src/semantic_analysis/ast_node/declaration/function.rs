@@ -1,27 +1,12 @@
-use crate::{
-    error::*,
-    namespace::Items,
-    parse_tree::*,
-    semantic_analysis::{
-        ast_node::{
-            copy_types::insert_type_parameters, IsConstant, Mode, TypedCodeBlock, TypedDeclaration,
-            TypedExpression, TypedExpressionVariant, TypedReturnStatement,
-            TypedVariableDeclaration, VariableMutability,
-        },
-        CopyTypes, TypeCheckArguments, TypeMapping, TypedAstNode, TypedAstNodeContent,
-    },
-    style::*,
-    type_engine::*,
-    Ident, TypeParameter,
-};
-use fuels_types::{Function, Property};
-use sha2::{Digest, Sha256};
-use sway_types::Span;
-
 mod function_parameter;
 pub use function_parameter::*;
 
-use super::{EnforceTypeArguments, MonomorphizeHelper};
+use crate::{
+    error::*, namespace::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*, types::*,
+};
+use fuels_types::{Function, Property};
+use sha2::{Digest, Sha256};
+use sway_types::{Ident, Span, Spanned};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedFunctionDeclaration {
@@ -33,7 +18,7 @@ pub struct TypedFunctionDeclaration {
     pub(crate) type_parameters: Vec<TypeParameter>,
     /// Used for error messages -- the span pointing to the return type
     /// annotation of the function
-    pub(crate) return_type_span: Span,
+    pub return_type_span: Span,
     pub(crate) visibility: Visibility,
     /// whether this function exists in another contract and requires a call to it or not
     pub(crate) is_contract_call: bool,
@@ -84,6 +69,12 @@ impl CopyTypes for TypedFunctionDeclaration {
     }
 }
 
+impl Spanned for TypedFunctionDeclaration {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
+
 impl MonomorphizeHelper for TypedFunctionDeclaration {
     type Output = TypedFunctionDeclaration;
 
@@ -95,10 +86,6 @@ impl MonomorphizeHelper for TypedFunctionDeclaration {
         &self.name
     }
 
-    fn span(&self) -> &Span {
-        &self.span
-    }
-
     fn monomorphize_inner(
         self,
         type_mapping: &TypeMapping,
@@ -107,6 +94,31 @@ impl MonomorphizeHelper for TypedFunctionDeclaration {
         let mut new_decl = self;
         new_decl.copy_types(type_mapping);
         new_decl
+    }
+}
+
+impl ToJsonAbi for TypedFunctionDeclaration {
+    type Output = Function;
+
+    fn generate_json_abi(&self) -> Self::Output {
+        Function {
+            name: self.name.as_str().to_string(),
+            type_field: "function".to_string(),
+            inputs: self
+                .parameters
+                .iter()
+                .map(|x| Property {
+                    name: x.name.as_str().to_string(),
+                    type_field: x.r#type.json_abi_str(),
+                    components: x.r#type.generate_json_abi(),
+                })
+                .collect(),
+            outputs: vec![Property {
+                name: "".to_string(),
+                type_field: self.return_type.json_abi_str(),
+                components: self.return_type.generate_json_abi(),
+            }],
+        }
     }
 }
 
@@ -130,7 +142,7 @@ impl TypedFunctionDeclaration {
             mut parameters,
             span,
             return_type,
-            type_parameters,
+            mut type_parameters,
             return_type_span,
             visibility,
             purity,
@@ -146,30 +158,14 @@ impl TypedFunctionDeclaration {
         let type_mapping = insert_type_parameters(&type_parameters);
 
         // update the types in the type parameters
-        let type_parameters = type_parameters
-            .into_iter()
-            .map(|mut type_parameter| {
-                type_parameter.type_id = match look_up_type_id(type_parameter.type_id)
-                    .matches_type_parameter(&type_mapping)
-                {
-                    Some(matching_id) => {
-                        insert_type(TypeInfo::Ref(matching_id, type_parameter.span()))
-                    }
-                    None => check!(
-                        namespace.resolve_type_with_self(
-                            look_up_type_id(type_parameter.type_id),
-                            self_type,
-                            &type_parameter.span(),
-                            EnforceTypeArguments::Yes
-                        ),
-                        insert_type(TypeInfo::ErrorRecovery),
-                        warnings,
-                        errors,
-                    ),
-                };
-                type_parameter
-            })
-            .collect::<Vec<_>>();
+        for type_parameter in type_parameters.iter_mut() {
+            check!(
+                type_parameter.update_types(&type_mapping, &mut namespace, self_type),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+        }
 
         // check to see if the type parameters shadow one another
         for type_parameter in type_parameters.iter() {
@@ -310,11 +306,11 @@ impl TypedFunctionDeclaration {
     pub(crate) fn parameters_span(&self) -> Span {
         if !self.parameters.is_empty() {
             self.parameters.iter().fold(
-                self.parameters[0].name.span().clone(),
+                self.parameters[0].name.span(),
                 |acc, TypedFunctionParameter { type_span, .. }| Span::join(acc, type_span.clone()),
             )
         } else {
-            self.name.span().clone()
+            self.name.span()
         }
     }
 
@@ -399,27 +395,6 @@ impl TypedFunctionDeclaration {
             warnings,
             errors,
         )
-    }
-
-    pub fn generate_json_abi(&self) -> Function {
-        Function {
-            name: self.name.as_str().to_string(),
-            type_field: "function".to_string(),
-            inputs: self
-                .parameters
-                .iter()
-                .map(|x| Property {
-                    name: x.name.as_str().to_string(),
-                    type_field: x.r#type.json_abi_str(),
-                    components: x.r#type.generate_json_abi(),
-                })
-                .collect(),
-            outputs: vec![Property {
-                name: "".to_string(),
-                type_field: self.return_type.json_abi_str(),
-                components: self.return_type.generate_json_abi(),
-            }],
-        }
     }
 }
 

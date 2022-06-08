@@ -1,10 +1,6 @@
-use crate::{
-    semantic_analysis::{CopyTypes, TypeMapping},
-    type_engine::*,
-    CallPath, TypedDeclaration,
-};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
 
-use sway_types::{ident::Ident, span::Span};
+use sway_types::{ident::Ident, span::Span, Spanned};
 
 use std::{
     convert::From,
@@ -51,9 +47,7 @@ impl From<&TypeParameter> for TypedDeclaration {
 impl CopyTypes for TypeParameter {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.type_id = match look_up_type_id(self.type_id).matches_type_parameter(type_mapping) {
-            Some(matching_id) => {
-                insert_type(TypeInfo::Ref(matching_id, self.name_ident.span().clone()))
-            }
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, self.name_ident.span())),
             None => {
                 let ty = TypeInfo::Ref(insert_type(look_up_type_id_raw(self.type_id)), self.span());
                 insert_type(ty)
@@ -62,9 +56,36 @@ impl CopyTypes for TypeParameter {
     }
 }
 
-impl TypeParameter {
-    pub fn span(&self) -> Span {
-        self.name_ident.span().clone()
+impl UpdateTypes for TypeParameter {
+    fn update_types(
+        &mut self,
+        type_mapping: &TypeMapping,
+        namespace: &mut Namespace,
+        self_type: TypeId,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        self.type_id = match look_up_type_id(self.type_id).matches_type_parameter(type_mapping) {
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, self.span())),
+            None => check!(
+                namespace.resolve_type_with_self(
+                    look_up_type_id(self.type_id),
+                    self_type,
+                    &self.span(),
+                    EnforceTypeArguments::Yes
+                ),
+                insert_type(TypeInfo::ErrorRecovery),
+                warnings,
+                errors,
+            ),
+        };
+        ok((), warnings, errors)
+    }
+}
+
+impl Spanned for TypeParameter {
+    fn span(&self) -> Span {
+        self.name_ident.span()
     }
 }
 

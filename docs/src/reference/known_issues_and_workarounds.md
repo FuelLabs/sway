@@ -16,7 +16,7 @@
 
 ## General
 
-* Storage variables of types `str[]`, `enum`, and arrays are not yet supported in a `storage` block. See the [Manual Storage Management](../blockchain-development/storage.md#manual-storage-management) section for details on how to use `store` and `get` from the standard library to handle those types. Note, however, that `StorageMap<K, V>` _does_ support arbitrary types for `K` and `V` without any limitations.
+* Arrays in a `storage` block are not yet supported. See the [Manual Storage Management](../blockchain-development/storage.md#manual-storage-management) section for details on how to use `store` and `get` from the standard library to manage storage slots directly. Note, however, that `StorageMap<K, V>` _does_ support arbitrary types for `K` and `V` without any limitations.
 
 * The optimizing pass of the compiler is not yet implemented, therefore bytecode will be more expensive and larger than it would be in production. Note that eventually the optimizer will support zero-cost abstractions, avoiding the need for developers to go down to inline assembly to produce optimal code.
 

@@ -1,5 +1,6 @@
 [[package]]
 name = 'basic_storage'
+source = 'root'
 dependencies = [
     'basic_storage_abi',
     'std',
@@ -7,12 +8,15 @@ dependencies = [
 
 [[package]]
 name = 'basic_storage_abi'
-dependencies = []
+source = 'path+from-root-E723F3A4C3992EF1'
+dependencies = ['core']
 
 [[package]]
 name = 'core'
+source = 'path+from-root-E723F3A4C3992EF1'
 dependencies = []
 
 [[package]]
 name = 'std'
+source = 'path+from-root-E723F3A4C3992EF1'
 dependencies = ['core']

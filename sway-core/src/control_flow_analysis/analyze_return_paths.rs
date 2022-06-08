@@ -1,18 +1,8 @@
 //! This is the flow graph, a graph which contains edges that represent possible steps of program
 //! execution.
 
-use super::*;
 use crate::{
-    error::*,
-    parse_tree::CallPath,
-    semantic_analysis::{
-        ast_node::{
-            TypedCodeBlock, TypedDeclaration, TypedExpression, TypedFunctionDeclaration,
-            TypedReassignment, TypedWhileLoop,
-        },
-        TypedAstNode, TypedAstNodeContent,
-    },
-    type_engine::{resolve_type, TypeInfo},
+    control_flow_analysis::*, error::*, parse_tree::*, semantic_analysis::*, type_engine::*,
 };
 use petgraph::prelude::NodeIndex;
 use sway_types::{ident::Ident, span::Span};
@@ -108,7 +98,7 @@ impl ControlFlowGraph {
                         // different. To save some code duplication,
                         span,
                         function_name: function_name.clone(),
-                        ty: return_ty.friendly_type_str(),
+                        ty: return_ty.to_string(),
                     });
                 }
                 next_rovers.append(&mut neighbors);
@@ -213,11 +203,11 @@ fn connect_declaration(
             }
             vec![entry_node]
         }
-        ImplTrait {
+        ImplTrait(TypedImplTrait {
             trait_name,
             methods,
             ..
-        } => {
+        }) => {
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());

@@ -1,9 +1,11 @@
-use super::*;
+use sway_types::{state::StateIndex, Span};
+use sway_types::{Ident, Spanned};
+
 use crate::constants;
-use crate::parse_tree::{MethodName, StructExpressionField};
-use crate::semantic_analysis::namespace::Namespace;
-use crate::semantic_analysis::TCOpts;
 use crate::Expression::StorageAccess;
+
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
+
 use std::collections::{HashMap, VecDeque};
 
 #[allow(clippy::too_many_arguments)]
@@ -62,14 +64,14 @@ pub(crate) fn type_check_method_application(
     if !opts.purity.can_call(method.purity) {
         errors.push(CompileError::StorageAccessMismatch {
             attrs: promote_purity(opts.purity, method.purity).to_attribute_syntax(),
-            span: method_name.easy_name().span().clone(),
+            span: method_name.easy_name().span(),
         });
     }
 
     if !method.is_contract_call {
         if !contract_call_params.is_empty() {
             errors.push(CompileError::CallParamForNonContractCallMethod {
-                span: contract_call_params[0].name.span().clone(),
+                span: contract_call_params[0].name.span(),
             });
         }
     } else {
@@ -179,8 +181,8 @@ pub(crate) fn type_check_method_application(
         if !new_errors.is_empty() {
             errors.push(CompileError::ArgumentParameterTypeMismatch {
                 span: arg.span.clone(),
-                provided: arg.return_type.friendly_type_str(),
-                should_be: param.r#type.friendly_type_str(),
+                provided: arg.return_type.to_string(),
+                should_be: param.r#type.to_string(),
             });
         }
         // The annotation may result in a cast, which is handled in the type engine.
@@ -205,7 +207,7 @@ pub(crate) fn type_check_method_application(
                     addr
                 } else {
                     errors.push(CompileError::ContractAddressMustBeKnown {
-                        span: method_name.span().clone(),
+                        span: method_name.span(),
                     });
                     return err(warnings, errors);
                 };

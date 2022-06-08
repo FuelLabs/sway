@@ -1,52 +1,27 @@
-use self::declaration::EnforceTypeArguments;
+mod code_block;
+pub mod declaration;
+pub mod expression;
+pub mod mode;
+mod return_statement;
+pub mod while_loop;
 
-use super::ERROR_RECOVERY_DECLARATION;
+use std::fmt;
+
+pub(crate) use code_block::*;
+pub use declaration::*;
+pub(crate) use expression::*;
+pub(crate) use mode::*;
+pub(crate) use return_statement::*;
+pub(crate) use while_loop::*;
 
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*, AstNode,
-    AstNodeContent, Ident, ReturnStatement,
+    error::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*,
+    types::DeterministicallyAborts, AstNode, AstNodeContent, Ident, ReturnStatement,
 };
 
-use sway_types::{span::Span, state::StateIndex};
+use sway_types::{span::Span, state::StateIndex, Spanned};
 
 use derivative::Derivative;
-
-pub use crate::semantic_analysis::ast_node::declaration::TypedStorageField;
-
-pub use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
-
-pub mod declaration;
-pub use declaration::TypedTraitFn;
-
-pub use declaration::{
-    TypedAbiDeclaration, TypedConstantDeclaration, TypedDeclaration, TypedEnumDeclaration,
-    TypedEnumVariant, TypedFunctionDeclaration, TypedFunctionParameter, TypedStructDeclaration,
-    TypedStructField,
-};
-
-pub(crate) use declaration::{
-    check_if_name_is_invalid, TypedReassignment, TypedStorageDeclaration, TypedTraitDeclaration,
-    TypedVariableDeclaration, VariableMutability,
-};
-
-pub mod impl_trait;
-use impl_trait::implementation_of_trait;
-pub(crate) use impl_trait::Mode;
-
-mod code_block;
-pub(crate) use code_block::TypedCodeBlock;
-
-pub mod expression;
-pub(crate) use expression::*;
-
-mod return_statement;
-pub(crate) use return_statement::TypedReturnStatement;
-
-pub mod while_loop;
-pub(crate) use while_loop::TypedWhileLoop;
-
-mod copy_types;
-pub(crate) use copy_types::*;
 
 /// whether or not something is constantly evaluatable (if the result is known at compile
 /// time)
@@ -67,6 +42,30 @@ pub enum TypedAstNodeContent {
     SideEffect,
 }
 
+impl UnresolvedTypeCheck for TypedAstNodeContent {
+    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+        use TypedAstNodeContent::*;
+        match self {
+            ReturnStatement(stmt) => stmt.expr.check_for_unresolved_types(),
+            Declaration(decl) => decl.check_for_unresolved_types(),
+            Expression(expr) => expr.check_for_unresolved_types(),
+            ImplicitReturnExpression(expr) => expr.check_for_unresolved_types(),
+            WhileLoop(lo) => {
+                let mut condition = lo.condition.check_for_unresolved_types();
+                let mut body = lo
+                    .body
+                    .contents
+                    .iter()
+                    .flat_map(TypedAstNode::check_for_unresolved_types)
+                    .collect();
+                condition.append(&mut body);
+                condition
+            }
+            SideEffect => vec![],
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, Derivative)]
 #[derivative(PartialEq)]
 pub struct TypedAstNode {
@@ -75,17 +74,17 @@ pub struct TypedAstNode {
     pub(crate) span: Span,
 }
 
-impl std::fmt::Display for TypedAstNode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for TypedAstNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use TypedAstNodeContent::*;
         let text = match &self.content {
             ReturnStatement(TypedReturnStatement { ref expr }) => {
-                format!("return {}", expr.pretty_print())
+                format!("return {}", expr)
             }
-            Declaration(ref typed_decl) => typed_decl.pretty_print(),
-            Expression(exp) => exp.pretty_print(),
-            ImplicitReturnExpression(exp) => format!("return {}", exp.pretty_print()),
-            WhileLoop(w_loop) => w_loop.pretty_print(),
+            Declaration(ref typed_decl) => typed_decl.to_string(),
+            Expression(exp) => exp.to_string(),
+            ImplicitReturnExpression(exp) => format!("return {}", exp),
+            WhileLoop(w_loop) => w_loop.to_string(),
             SideEffect => "".into(),
         };
         f.write_str(&text)
@@ -111,6 +110,27 @@ impl CopyTypes for TypedAstNode {
                 body.copy_types(type_mapping);
             }
             TypedAstNodeContent::SideEffect => (),
+        }
+    }
+}
+
+impl UnresolvedTypeCheck for TypedAstNode {
+    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+        self.content.check_for_unresolved_types()
+    }
+}
+
+impl DeterministicallyAborts for TypedAstNode {
+    fn deterministically_aborts(&self) -> bool {
+        use TypedAstNodeContent::*;
+        match &self.content {
+            ReturnStatement(_) => true,
+            Declaration(_) => false,
+            Expression(exp) | ImplicitReturnExpression(exp) => exp.deterministically_aborts(),
+            WhileLoop(TypedWhileLoop { condition, body }) => {
+                condition.deterministically_aborts() || body.deterministically_aborts()
+            }
+            SideEffect => false,
         }
     }
 }
@@ -143,22 +163,6 @@ impl TypedAstNode {
                 matches!(tree_type, TreeType::Script | TreeType::Predicate)
             }
             _ => false,
-        }
-    }
-
-    /// if this ast node _deterministically_ panics/aborts, then this is true.
-    /// This is used to assist in type checking branches that abort control flow and therefore
-    /// don't need to return a type.
-    pub(crate) fn deterministically_aborts(&self) -> bool {
-        use TypedAstNodeContent::*;
-        match &self.content {
-            ReturnStatement(_) => true,
-            Declaration(_) => false,
-            Expression(exp) | ImplicitReturnExpression(exp) => exp.deterministically_aborts(),
-            WhileLoop(TypedWhileLoop { condition, body }) => {
-                condition.deterministically_aborts() || body.deterministically_aborts()
-            }
-            SideEffect => false,
         }
     }
 
@@ -281,25 +285,19 @@ impl TypedAstNode {
                             check_if_name_is_invalid(&name).ok(&mut warnings, &mut errors);
                             let type_ascription_span = match type_ascription_span {
                                 Some(type_ascription_span) => type_ascription_span,
-                                None => name.span().clone(),
+                                None => name.span(),
                             };
-                            let type_ascription = match namespace
-                                .resolve_type_with_self(
+                            let type_ascription = check!(
+                                namespace.resolve_type_with_self(
                                     type_ascription,
                                     self_type,
                                     &type_ascription_span,
                                     EnforceTypeArguments::Yes,
-                                )
-                                .value
-                            {
-                                Some(type_ascription) => type_ascription,
-                                None => {
-                                    errors.push(CompileError::UnknownType {
-                                        span: type_ascription_span,
-                                    });
-                                    insert_type(TypeInfo::ErrorRecovery)
-                                }
-                            };
+                                ),
+                                insert_type(TypeInfo::ErrorRecovery),
+                                warnings,
+                                errors
+                            );
                             let result = {
                                 TypedExpression::type_check(TypeCheckArguments {
                                     checkee: body,
@@ -312,12 +310,8 @@ impl TypedAstNode {
                                     opts,
                                 })
                             };
-                            let body = check!(
-                                result,
-                                error_recovery_expr(name.span().clone()),
-                                warnings,
-                                errors
-                            );
+                            let body =
+                                check!(result, error_recovery_expr(name.span()), warnings, errors);
                             let typed_var_decl =
                                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                                     name: name.clone(),
@@ -338,12 +332,8 @@ impl TypedAstNode {
                             let result =
                                 type_check_ascribed_expr(namespace, type_ascription.clone(), value);
                             is_screaming_snake_case(&name).ok(&mut warnings, &mut errors);
-                            let value = check!(
-                                result,
-                                error_recovery_expr(name.span().clone()),
-                                warnings,
-                                errors
-                            );
+                            let value =
+                                check!(result, error_recovery_expr(name.span()), warnings, errors);
                             let typed_const_decl =
                                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                                     name: name.clone(),
@@ -380,7 +370,7 @@ impl TypedAstNode {
                             for type_parameter in fn_decl.type_parameters.iter() {
                                 if !type_parameter.trait_constraints.is_empty() {
                                     errors.push(CompileError::WhereClauseNotYetSupported {
-                                        span: type_parameter.name_ident.span().clone(),
+                                        span: type_parameter.name_ident.span(),
                                     });
                                     break;
                                 }
@@ -444,98 +434,36 @@ impl TypedAstNode {
                                 errors
                             )
                         }
-                        Declaration::ImplTrait(impl_trait) => check!(
-                            implementation_of_trait(impl_trait, namespace, opts),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        ),
-
-                        Declaration::ImplSelf(ImplSelf {
-                            functions,
-                            type_implementing_for,
-                            block_span,
-                            type_parameters,
-                            ..
-                        }) => {
-                            for type_parameter in type_parameters.iter() {
-                                if !type_parameter.trait_constraints.is_empty() {
-                                    errors.push(CompileError::WhereClauseNotYetSupported {
-                                        span: type_parameter.name_ident.span().clone(),
-                                    });
-                                    break;
-                                }
-                            }
-
-                            let mut impl_namespace = namespace.clone();
-                            for type_parameter in type_parameters.iter() {
-                                impl_namespace.insert_symbol(
-                                    type_parameter.name_ident.clone(),
-                                    type_parameter.into(),
-                                );
-                            }
-
-                            // Resolve the Self type as it's most likely still 'Custom' and use the
-                            // resolved type for self instead.
-                            let implementing_for_type_id = check!(
-                                impl_namespace.resolve_type_without_self(type_implementing_for),
+                        Declaration::ImplTrait(impl_trait) => {
+                            let impl_trait = check!(
+                                TypedImplTrait::type_check_impl_trait(impl_trait, namespace, opts),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
                             );
-                            let type_implementing_for = look_up_type_id(implementing_for_type_id);
-                            let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
-                            for mut fn_decl in functions.into_iter() {
-                                // ensure this fn decl's parameters and signature lines up with the
-                                // one in the trait
-
-                                // replace SelfType with type of implementor
-                                // i.e. fn add(self, other: u64) -> Self becomes fn
-                                // add(self: u64, other: u64) -> u64
-                                fn_decl.parameters.iter_mut().for_each(
-                                    |FunctionParameter {
-                                         ref mut type_id, ..
-                                     }| {
-                                        if look_up_type_id(*type_id) == TypeInfo::SelfType {
-                                            *type_id = implementing_for_type_id;
-                                        }
-                                    },
-                                );
-                                if fn_decl.return_type == TypeInfo::SelfType {
-                                    fn_decl.return_type = type_implementing_for.clone();
+                            TypedDeclaration::ImplTrait(impl_trait)
+                        }
+                        Declaration::ImplSelf(impl_self) => {
+                            for type_parameter in impl_self.type_parameters.iter() {
+                                if !type_parameter.trait_constraints.is_empty() {
+                                    errors.push(CompileError::WhereClauseNotYetSupported {
+                                        span: type_parameter.name_ident.span(),
+                                    });
+                                    break;
                                 }
-                                let args = TypeCheckArguments {
-                                    checkee: fn_decl,
-                                    namespace: &mut impl_namespace,
-                                    return_type_annotation: insert_type(TypeInfo::Unknown),
-                                    help_text: "",
-                                    self_type: implementing_for_type_id,
-                                    mode: Mode::NonAbi,
-                                    opts,
-                                };
-                                functions_buf.push(check!(
-                                    TypedFunctionDeclaration::type_check(args),
-                                    continue,
-                                    warnings,
-                                    errors
-                                ));
                             }
-                            let trait_name = CallPath {
-                                prefixes: vec![],
-                                suffix: Ident::new_with_override("r#Self", block_span.clone()),
-                                is_absolute: false,
-                            };
-                            namespace.insert_trait_implementation(
-                                trait_name.clone(),
-                                type_implementing_for.clone(),
-                                functions_buf.clone(),
+                            let impl_trait = check!(
+                                TypedImplTrait::type_check_impl_self(impl_self, namespace, opts),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
                             );
-                            TypedDeclaration::ImplTrait {
-                                trait_name,
-                                span: block_span,
-                                methods: functions_buf,
-                                type_implementing_for,
-                            }
+                            namespace.insert_trait_implementation(
+                                impl_trait.trait_name.clone(),
+                                impl_trait.type_implementing_for.clone(),
+                                impl_trait.methods.clone(),
+                            );
+                            TypedDeclaration::ImplTrait(impl_trait)
                         }
                         Declaration::StructDeclaration(decl) => {
                             let decl = check!(
@@ -760,179 +688,88 @@ fn reassignment(
     // ensure that the lhs is a variable expression or struct field access
     match lhs {
         ReassignmentTarget::VariableExpression(var) => {
-            match *var {
-                Expression::VariableExpression { name, span } => {
-                    // check that the reassigned name exists
-                    let unknown_decl = check!(
-                        namespace.resolve_symbol(&name).cloned(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    let variable_decl = check!(
-                        unknown_decl.expect_variable().cloned(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    if !variable_decl.is_mutable.is_mutable() {
-                        errors.push(CompileError::AssignmentToNonMutable { name });
-                    }
-                    // the RHS is a ref type to the LHS
-                    let rhs_type_id = insert_type(TypeInfo::Ref(
-                        variable_decl.body.return_type,
-                        variable_decl.body.span.clone(),
-                    ));
-                    // type check the reassignment
-                    let rhs = check!(
-                        TypedExpression::type_check(TypeCheckArguments {
-                            checkee: rhs,
-                            namespace,
-                            return_type_annotation: rhs_type_id,
-                            help_text:
-                                "You can only reassign a value of the same type to a variable.",
-                            self_type,
-                            mode: Mode::NonAbi,
-                            opts
-                        }),
-                        error_recovery_expr(span),
-                        warnings,
-                        errors
-                    );
-
-                    ok(
-                        TypedDeclaration::Reassignment(TypedReassignment {
-                            lhs: vec![ReassignmentLhs {
-                                name: variable_decl.name,
-                                r#type: rhs_type_id,
-                            }],
-                            rhs,
-                        }),
-                        warnings,
-                        errors,
-                    )
-                }
-                Expression::SubfieldExpression {
-                    prefix,
-                    field_to_access,
-                    span,
-                } => {
-                    let mut expr = *prefix;
-                    let mut names_vec = vec![];
-                    let final_return_type = loop {
-                        let type_checked = check!(
-                            TypedExpression::type_check(TypeCheckArguments {
-                                checkee: expr.clone(),
-                                namespace,
-                                return_type_annotation: insert_type(TypeInfo::Unknown),
-                                help_text: Default::default(),
-                                self_type,
-                                mode: Mode::NonAbi,
-                                opts
-                            }),
-                            error_recovery_expr(expr.span()),
+            let mut expr = var;
+            let mut names_vec = Vec::new();
+            let (base_name, final_return_type) = loop {
+                match *expr {
+                    Expression::VariableExpression { name, .. } => {
+                        // check that the reassigned name exists
+                        let unknown_decl = check!(
+                            namespace.resolve_symbol(&name).cloned(),
+                            return err(warnings, errors),
                             warnings,
                             errors
                         );
-
-                        match expr {
-                            Expression::VariableExpression { name, .. } => {
-                                match namespace.clone().resolve_symbol(&name).value {
-                                    Some(TypedDeclaration::VariableDeclaration(
-                                        TypedVariableDeclaration { is_mutable, .. },
-                                    )) => {
-                                        if !is_mutable.is_mutable() {
-                                            errors.push(CompileError::AssignmentToNonMutable {
-                                                name: name.clone(),
-                                            });
-                                        }
-                                    }
-                                    Some(other) => {
-                                        errors.push(CompileError::ReassignmentToNonVariable {
-                                            name: name.clone(),
-                                            kind: other.friendly_name(),
-                                            span,
-                                        });
-                                        return err(warnings, errors);
-                                    }
-                                    None => {
-                                        errors
-                                            .push(CompileError::UnknownVariable { var_name: name });
-                                        return err(warnings, errors);
-                                    }
-                                }
-                                names_vec.push(ReassignmentLhs {
-                                    name,
-                                    r#type: type_checked.return_type,
-                                });
-                                break type_checked.return_type;
-                            }
-                            Expression::SubfieldExpression {
-                                field_to_access,
-                                prefix,
-                                ..
-                            } => {
-                                names_vec.push(ReassignmentLhs {
-                                    name: field_to_access,
-                                    r#type: type_checked.return_type,
-                                });
-                                expr = *prefix;
-                            }
-                            _ => {
-                                errors.push(CompileError::InvalidExpressionOnLhs { span });
-                                return err(warnings, errors);
-                            }
+                        let variable_decl = check!(
+                            unknown_decl.expect_variable().cloned(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        if !variable_decl.is_mutable.is_mutable() {
+                            errors.push(CompileError::AssignmentToNonMutable { name });
+                            return err(warnings, errors);
                         }
-                    };
-
-                    let mut names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
-                    names_vec.push(ReassignmentLhs {
-                        name: field_to_access,
-                        r#type: final_return_type,
-                    });
-
-                    let (ty_of_field, _ty_of_parent) = check!(
-                        namespace.find_subfield_type(
-                            names_vec
-                                .iter()
-                                .map(|ReassignmentLhs { name, .. }| name.clone())
-                                .collect::<Vec<_>>()
-                                .as_slice()
-                        ),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    // type check the reassignment
-                    let rhs = check!(
-                        TypedExpression::type_check(TypeCheckArguments {
-                            checkee: rhs,
-                            namespace,
-                            return_type_annotation: ty_of_field,
-                            help_text: Default::default(),
-                            self_type,
-                            mode: Mode::NonAbi,
-                            opts,
-                        }),
-                        error_recovery_expr(span),
-                        warnings,
-                        errors
-                    );
-
-                    ok(
-                        TypedDeclaration::Reassignment(TypedReassignment {
-                            lhs: names_vec,
-                            rhs,
-                        }),
-                        warnings,
-                        errors,
-                    )
+                        break (name, variable_decl.body.return_type);
+                    }
+                    Expression::SubfieldExpression {
+                        prefix,
+                        field_to_access,
+                        ..
+                    } => {
+                        names_vec.push(ProjectionKind::StructField {
+                            name: field_to_access,
+                        });
+                        expr = prefix;
+                    }
+                    Expression::TupleIndex {
+                        prefix,
+                        index,
+                        index_span,
+                        ..
+                    } => {
+                        names_vec.push(ProjectionKind::TupleField { index, index_span });
+                        expr = prefix;
+                    }
+                    _ => {
+                        errors.push(CompileError::InvalidExpressionOnLhs { span });
+                        return err(warnings, errors);
+                    }
                 }
-                _ => {
-                    errors.push(CompileError::InvalidExpressionOnLhs { span });
-                    err(warnings, errors)
-                }
-            }
+            };
+            let names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
+            let (ty_of_field, _ty_of_parent) = check!(
+                namespace.find_subfield_type(&base_name, &names_vec),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            // type check the reassignment
+            let rhs = check!(
+                TypedExpression::type_check(TypeCheckArguments {
+                    checkee: rhs,
+                    namespace,
+                    return_type_annotation: ty_of_field,
+                    help_text: Default::default(),
+                    self_type,
+                    mode: Mode::NonAbi,
+                    opts,
+                }),
+                error_recovery_expr(span),
+                warnings,
+                errors
+            );
+
+            ok(
+                TypedDeclaration::Reassignment(TypedReassignment {
+                    lhs_base_name: base_name,
+                    lhs_type: final_return_type,
+                    lhs_indices: names_vec,
+                    rhs,
+                }),
+                warnings,
+                errors,
+            )
         }
         ReassignmentTarget::StorageField(fields) => reassign_storage_subfield(TypeCheckArguments {
             checkee: (fields, span, rhs),
@@ -1173,7 +1010,7 @@ fn type_check_trait_methods(
                     namespace.resolve_type_with_self(
                         look_up_type_id(*r#type),
                         insert_type(TypeInfo::SelfType),
-                        name.span(),
+                        &name.span(),
                         EnforceTypeArguments::Yes
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
@@ -1188,7 +1025,7 @@ fn type_check_trait_methods(
                             expression: TypedExpressionVariant::FunctionParameter,
                             return_type: r#type,
                             is_constant: IsConstant::No,
-                            span: name.span().clone(),
+                            span: name.span(),
                         },
                         // TODO allow mutable function params?
                         is_mutable: VariableMutability::Immutable,
@@ -1215,7 +1052,7 @@ fn type_check_trait_methods(
             if let TypeInfo::Custom { name, .. } = look_up_type_id(*type_id) {
                 let args_span = parameters.iter().fold(
                     parameters[0].name.span().clone(),
-                    |acc, FunctionParameter { name, .. }| Span::join(acc, name.span().clone()),
+                    |acc, FunctionParameter { name, .. }| Span::join(acc, name.span()),
                 );
                 if type_parameters.iter().any(|TypeParameter { type_id, .. }| {
                     if let TypeInfo::Custom {
@@ -1355,7 +1192,7 @@ fn convert_trait_methods_to_dummy_funcs(
                         },
                     )
                     .collect(),
-                span: name.span().clone(),
+                span: name.span(),
                 return_type: check!(
                     trait_namespace.resolve_type_with_self(
                         return_type.clone(),
@@ -1413,14 +1250,17 @@ pub struct TypeCheckedStorageReassignment {
     pub rhs: TypedExpression,
 }
 
-impl TypeCheckedStorageReassignment {
-    pub fn span(&self) -> Span {
+impl Spanned for TypeCheckedStorageReassignment {
+    fn span(&self) -> Span {
         self.fields
             .iter()
             .fold(self.fields[0].span.clone(), |acc, field| {
                 Span::join(acc, field.span.clone())
             })
     }
+}
+
+impl TypeCheckedStorageReassignment {
     pub fn names(&self) -> Vec<Ident> {
         self.fields
             .iter()
@@ -1494,7 +1334,7 @@ fn reassign_storage_subfield(
     type_checked_buf.push(TypeCheckedStorageReassignDescriptor {
         name: first_field.clone(),
         r#type: *initial_field_type,
-        span: first_field.span().clone(),
+        span: first_field.span(),
     });
 
     fn update_available_struct_fields(id: TypeId) -> Vec<TypedStructField> {

@@ -1,5 +1,6 @@
 [[package]]
 name = 'context'
+source = 'root'
 dependencies = [
     'context_testing_abi',
     'std',
@@ -7,12 +8,15 @@ dependencies = [
 
 [[package]]
 name = 'context_testing_abi'
+source = 'path+from-root-F879D47D7CAE7172'
 dependencies = ['std']
 
 [[package]]
 name = 'core'
+source = 'path+from-root-F879D47D7CAE7172'
 dependencies = []
 
 [[package]]
 name = 'std'
+source = 'path+from-root-F879D47D7CAE7172'
 dependencies = ['core']

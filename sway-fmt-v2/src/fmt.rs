@@ -1,9 +1,11 @@
-use std::sync::Arc;
+use std::{path::Path, sync::Arc};
 use sway_core::BuildConfig;
 use sway_parse::ItemKind;
 
-use crate::config::manifest::Config;
-pub use crate::error::FormatterError;
+pub use crate::{
+    config::manifest::Config,
+    error::{ConfigError, FormatterError},
+};
 
 #[derive(Debug)]
 pub struct Formatter {
@@ -17,6 +19,14 @@ pub trait Format {
 }
 
 impl Formatter {
+    pub fn from_dir(dir: &Path) -> Result<Self, ConfigError> {
+        let config = match Config::from_dir(dir) {
+            Ok(config) => config,
+            Err(ConfigError::NotFound) => Config::default(),
+            Err(e) => return Err(e),
+        };
+        Ok(Self { config })
+    }
     pub fn format(
         &self,
         src: Arc<str>,

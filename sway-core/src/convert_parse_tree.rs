@@ -1,22 +1,19 @@
-use sway_parse::expr::{ReassignmentOp, ReassignmentOpVariant};
-
 use {
     crate::{
         constants::{
             STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
         },
         error::{err, ok, CompileError, CompileResult, CompileWarning},
-        ident,
         type_engine::{insert_type, AbiName, IntegerBits},
         AbiDeclaration, AsmExpression, AsmOp, AsmRegister, AsmRegisterDeclaration, AstNode,
-        AstNodeContent, BuiltinProperty, CallPath, CodeBlock, ConstantDeclaration, Declaration,
-        EnumDeclaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter, ImplSelf,
-        ImplTrait, ImportType, IncludeStatement, LazyOp, Literal, MatchBranch, MethodName,
-        ParseTree, Purity, Reassignment, ReassignmentTarget, ReturnStatement, Scrutinee,
-        StorageDeclaration, StorageField, StructDeclaration, StructExpressionField, StructField,
-        StructScrutineeField, Supertrait, TraitConstraint, TraitDeclaration, TraitFn, TreeType,
-        TypeArgument, TypeInfo, TypeParameter, UseStatement, VariableDeclaration, Visibility,
-        WhileLoop,
+        AstNodeContent, CallPath, CodeBlock, ConstantDeclaration, Declaration, EnumDeclaration,
+        EnumVariant, Expression, FunctionDeclaration, FunctionParameter, ImplSelf, ImplTrait,
+        ImportType, IncludeStatement, IntrinsicFunctionKind, LazyOp, Literal, MatchBranch,
+        MethodName, ParseTree, Purity, Reassignment, ReassignmentTarget, ReturnStatement,
+        Scrutinee, StorageDeclaration, StorageField, StructDeclaration, StructExpressionField,
+        StructField, StructScrutineeField, Supertrait, TraitConstraint, TraitDeclaration, TraitFn,
+        TreeType, TypeArgument, TypeInfo, TypeParameter, UseStatement, VariableDeclaration,
+        Visibility, WhileLoop,
     },
     std::{
         collections::HashMap,
@@ -27,6 +24,8 @@ use {
         sync::atomic::{AtomicUsize, Ordering},
     },
     sway_parse::{
+        expr::{ReassignmentOp, ReassignmentOpVariant},
+        ty::TyTupleDescriptor,
         AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents,
         Dependency, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField,
         ExprTupleDescriptor, FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition,
@@ -184,8 +183,8 @@ pub enum ConvertParseTreeError {
     RecursiveType { span: Span },
 }
 
-impl ConvertParseTreeError {
-    pub fn span(&self) -> Span {
+impl Spanned for ConvertParseTreeError {
+    fn span(&self) -> Span {
         match self {
             ConvertParseTreeError::PubUseNotSupported { span } => span.clone(),
             ConvertParseTreeError::ReturnOutsideOfBlock { span } => span.clone(),
@@ -588,7 +587,7 @@ fn get_attributed_purity(
                     _otherwise => {
                         return Err(ec.error(ConvertParseTreeError::InvalidAttributeArgument {
                             attribute: "storage".to_owned(),
-                            span: arg.span().clone(),
+                            span: arg.span(),
                         }));
                     }
                 }
@@ -933,12 +932,12 @@ fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
 fn ty_to_type_info(ec: &mut ErrorContext, ty: Ty) -> Result<TypeInfo, ErrorEmitted> {
     let type_info = match ty {
         Ty::Path(path_type) => path_type_to_type_info(ec, path_type)?,
-        Ty::Tuple(tys) => TypeInfo::Tuple(
-            tys.into_inner()
-                .into_iter()
-                .map(|ty| ty_to_type_argument(ec, ty))
-                .collect::<Result<_, _>>()?,
-        ),
+        Ty::Tuple(parenthesized_ty_tuple_descriptor) => {
+            TypeInfo::Tuple(ty_tuple_descriptor_to_type_arguments(
+                ec,
+                parenthesized_ty_tuple_descriptor.into_inner(),
+            )?)
+        }
         Ty::Array(bracketed_ty_array_descriptor) => {
             let ty_array_descriptor = bracketed_ty_array_descriptor.into_inner();
             TypeInfo::Array(
@@ -1206,7 +1205,21 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
         } => {
             let value = expr_to_expression(ec, *value)?;
             let var_decl_span = value.span();
-            let var_decl_name = ident::random_name(var_decl_span.clone(), None);
+
+            // Generate a deterministic name for the variable returned by the match expression.
+            // Because the parser is single threaded, the name generated below will be stable.
+            static COUNTER: AtomicUsize = AtomicUsize::new(0);
+            let match_return_var_name = format!(
+                "{}{}",
+                crate::constants::MATCH_RETURN_VAR_NAME_PREFIX,
+                COUNTER.load(Ordering::SeqCst)
+            );
+            COUNTER.fetch_add(1, Ordering::SeqCst);
+            let var_decl_name = Ident::new_with_override(
+                Box::leak(match_return_var_name.into_boxed_str()),
+                var_decl_span.clone(),
+            );
+
             let var_decl_exp = Expression::VariableExpression {
                 name: var_decl_name.clone(),
                 span: var_decl_span,
@@ -1341,7 +1354,7 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             };
             match method_type_opt {
                 Some(type_name) => {
-                    let type_name_span = type_name.span().clone();
+                    let type_name_span = type_name.span();
                     let type_name = match type_name_to_type_info_opt(&type_name) {
                         Some(type_info) => type_info,
                         None => TypeInfo::Custom {
@@ -1390,10 +1403,11 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         };
                         let type_span = ty.span();
                         let type_name = ty_to_type_info(ec, ty)?;
-                        Expression::BuiltinGetTypeProperty {
-                            builtin: BuiltinProperty::SizeOfType,
-                            type_name,
-                            type_span,
+                        Expression::IntrinsicFunction {
+                            kind: IntrinsicFunctionKind::SizeOfType {
+                                type_name,
+                                type_span,
+                            },
                             span,
                         }
                     } else if call_path.prefixes.is_empty()
@@ -1409,7 +1423,10 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                             let error = ConvertParseTreeError::GenericsNotSupportedHere { span };
                             return Err(ec.error(error));
                         }
-                        Expression::BuiltinGetStorageKey { span }
+                        Expression::IntrinsicFunction {
+                            kind: IntrinsicFunctionKind::GetStorageKey,
+                            span,
+                        }
                     } else if call_path.prefixes.is_empty()
                         && !call_path.is_absolute
                         && Intrinsic::try_from_str(call_path.suffix.as_str())
@@ -1433,10 +1450,11 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         };
                         let type_span = ty.span();
                         let type_name = ty_to_type_info(ec, ty)?;
-                        Expression::BuiltinGetTypeProperty {
-                            builtin: BuiltinProperty::IsRefType,
-                            type_name,
-                            type_span,
+                        Expression::IntrinsicFunction {
+                            kind: IntrinsicFunctionKind::IsRefType {
+                                type_name,
+                                type_span,
+                            },
                             span,
                         }
                     } else if call_path.prefixes.is_empty()
@@ -1451,7 +1469,10 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                                 return Err(ec.error(error));
                             }
                         };
-                        Expression::SizeOfVal { exp, span }
+                        Expression::IntrinsicFunction {
+                            kind: IntrinsicFunctionKind::SizeOfVal { exp },
+                            span,
+                        }
                     } else {
                         let type_arguments = match generics_opt {
                             Some((_double_colon_token, generic_args)) => {
@@ -2405,7 +2426,7 @@ fn asm_block_to_asm_expression(
             let asm_register = AsmRegister {
                 name: asm_final_expr.register.as_str().to_owned(),
             };
-            let returns = Some((asm_register, asm_final_expr.register.span().clone()));
+            let returns = Some((asm_register, asm_final_expr.register.span()));
             let return_type = match asm_final_expr.ty_opt {
                 Some((_colon_token, ty)) => ty_to_type_info(ec, ty)?,
                 None => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
@@ -2560,7 +2581,7 @@ fn statement_let_to_ast_nodes(
                     span: span.clone(),
                 };
                 let tuple_tys_opt = match ty_opt {
-                    Some(Ty::Tuple(tys)) => Some(tys.into_inner().into_iter().collect::<Vec<_>>()),
+                    Some(Ty::Tuple(tys)) => Some(tys.into_inner().to_tys()),
                     _ => None,
                 };
                 for (index, pattern) in pat_tuple.into_inner().into_iter().enumerate() {
@@ -2854,6 +2875,23 @@ fn generic_args_to_type_arguments(
             Ok(TypeArgument { type_id, span })
         })
         .collect()
+}
+
+fn ty_tuple_descriptor_to_type_arguments(
+    ec: &mut ErrorContext,
+    ty_tuple_descriptor: TyTupleDescriptor,
+) -> Result<Vec<TypeArgument>, ErrorEmitted> {
+    let type_arguments = match ty_tuple_descriptor {
+        TyTupleDescriptor::Nil => vec![],
+        TyTupleDescriptor::Cons { head, tail, .. } => {
+            let mut type_arguments = vec![ty_to_type_argument(ec, *head)?];
+            for ty in tail.into_iter() {
+                type_arguments.push(ty_to_type_argument(ec, ty)?);
+            }
+            type_arguments
+        }
+    };
+    Ok(type_arguments)
 }
 
 fn path_type_to_type_info(

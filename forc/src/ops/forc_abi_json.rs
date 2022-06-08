@@ -17,7 +17,7 @@ pub fn build(command: JsonAbiCommand) -> Result<Value> {
         std::env::current_dir()?
     };
     let manifest = ManifestFile::from_dir(&curr_dir, SWAY_GIT_TAG)?;
-    manifest.check_program_type(TreeType::Contract)?;
+    manifest.check_program_type(vec![TreeType::Contract, TreeType::Script])?;
 
     let build_command = BuildCommand {
         path: command.path,

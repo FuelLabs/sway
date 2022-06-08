@@ -358,13 +358,18 @@ pub(crate) fn coalesce_registers(
 ///    future.
 /// ===============================================================================================
 ///
+/// As we don't implement spilling just yet, I've modified the algorithm above to assume k=infinity
+/// and moving the colorability checking until the register assignment phase. The reason for this
+/// is that the algorithm above can be too conservative and may bail our early even though a valid
+/// assignment is actually available. We can revisit this decision when decide to implement
+/// spilling.
+///
 pub(crate) fn color_interference_graph(
     interference_graph: &mut InterferenceGraph,
-    k: u8,
 ) -> Vec<(VirtualRegister, BTreeSet<VirtualRegister>)> {
     let mut stack: Vec<(VirtualRegister, BTreeSet<VirtualRegister>)> = vec![];
 
-    while let Some(node) = pick_node(interference_graph, k) {
+    while let Some(node) = interference_graph.node_indices().next() {
         let neighbors = interference_graph
             .neighbors(node)
             .map(|n| interference_graph[n].clone())
@@ -375,16 +380,6 @@ pub(crate) fn color_interference_graph(
                 .expect("Node must exist"),
             neighbors,
         ));
-    }
-
-    // If any nodes are left in the graph, then the must still have a degree larger than k. In this
-    // case, the graph is not colorable.
-    if interference_graph.node_count() > 0 {
-        unimplemented!(
-            "The allocator cannot resolve a register mapping for this program. 
-                This is a temporary artifact of the extremely early stage version of this language. 
-                Try to lower the number of variables you use."
-        );
     }
 
     stack
@@ -411,21 +406,16 @@ pub(crate) fn assign_registers(
 
             if let Some(RegisterAllocationStatus { reg: _, used_by }) = available {
                 used_by.insert(reg.clone());
+            } else {
+                // Error out for now if no available register is found
+                unimplemented!(
+                    "The allocator cannot resolve a register mapping for this program. 
+                        This is a temporary artifact of the extremely early stage version of this language. 
+                        Try to lower the number of variables you use."
+                );
             }
         }
     }
 
     pool
-}
-
-/// Picks a node from the graph that has degree less than k
-pub(crate) fn pick_node(interference_graph: &InterferenceGraph, k: u8) -> Option<NodeIndex> {
-    for n in interference_graph.node_indices() {
-        if let VirtualRegister::Virtual(_) = interference_graph[n] {
-            if interference_graph.neighbors(n).count() < k as usize {
-                return Some(n);
-            }
-        }
-    }
-    None
 }

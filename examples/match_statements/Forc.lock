@@ -1,11 +1,14 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-AA21FAE5126585F4'
 dependencies = []
 
 [[package]]
 name = 'match_statements'
+source = 'root'
 dependencies = ['std']
 
 [[package]]
 name = 'std'
+source = 'path+from-root-AA21FAE5126585F4'
 dependencies = ['core']

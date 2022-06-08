@@ -1,14 +1,6 @@
-use crate::{
-    error::{err, ok, CompileError, CompileResult},
-    parse_tree::{AstNode, DepName, ParseModule, ParseSubmodule},
-    semantic_analysis::{
-        ast_node::Mode,
-        namespace::{self, Namespace},
-        node_dependencies, TypeCheckArguments, TypedAstNode, TypedAstNodeContent, TypedDeclaration,
-    },
-    type_engine::{insert_type, TypeInfo},
-};
-use sway_types::Ident;
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
+
+use sway_types::{Ident, Spanned};
 
 #[derive(Clone, Debug)]
 pub struct TypedModule {
@@ -124,12 +116,12 @@ fn check_supertraits(
 ) -> Vec<CompileError> {
     let mut errors = vec![];
     for node in typed_tree_nodes {
-        if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait {
+        if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(TypedImplTrait {
             trait_name,
             span,
             type_implementing_for,
             ..
-        }) = &node.content
+        })) = &node.content
         {
             if let CompileResult {
                 value: Some(TypedDeclaration::TraitDeclaration(tr)),
@@ -138,11 +130,13 @@ fn check_supertraits(
             {
                 for supertrait in &tr.supertraits {
                     if !typed_tree_nodes.iter().any(|search_node| {
-                        if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait {
-                            trait_name: search_node_trait_name,
-                            type_implementing_for: search_node_type_implementing_for,
-                            ..
-                        }) = &search_node.content
+                        if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(
+                            TypedImplTrait {
+                                trait_name: search_node_trait_name,
+                                type_implementing_for: search_node_type_implementing_for,
+                                ..
+                            },
+                        )) = &search_node.content
                         {
                             if let (
                                 CompileResult {
@@ -169,7 +163,7 @@ fn check_supertraits(
                         // user code with a single error.
                         errors.push(CompileError::SupertraitImplMissing {
                             supertrait_name: supertrait.name.clone(),
-                            type_name: type_implementing_for.friendly_type_str(),
+                            type_name: type_implementing_for.to_string(),
                             span: span.clone(),
                         });
                         errors.push(CompileError::SupertraitImplRequired {

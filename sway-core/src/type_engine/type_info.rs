@@ -1,17 +1,14 @@
 use super::*;
 
-use crate::{
-    semantic_analysis::{
-        ast_node::{TypedEnumVariant, TypedExpression, TypedStructField},
-        TypeMapping,
-    },
-    CallPath, Ident, TypeArgument, TypeParameter,
-};
+use crate::{semantic_analysis::*, types::*, CallPath, Ident, TypeArgument, TypeParameter};
 
-use sway_types::span::Span;
+use sway_types::{span::Span, Spanned};
 
 use derivative::Derivative;
-use std::hash::{Hash, Hasher};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
 
 #[derive(Debug, Clone, Hash, PartialEq)]
 pub enum AbiName {
@@ -19,7 +16,7 @@ pub enum AbiName {
     Known(CallPath),
 }
 
-impl std::fmt::Display for AbiName {
+impl fmt::Display for AbiName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(
             &(match self {
@@ -29,6 +26,7 @@ impl std::fmt::Display for AbiName {
         )
     }
 }
+
 /// Type information without an associated value, used for type inferencing and definition.
 // TODO use idents instead of Strings when we have arena spans
 #[derive(Derivative)]
@@ -279,10 +277,10 @@ impl Default for TypeInfo {
     }
 }
 
-impl TypeInfo {
-    pub(crate) fn friendly_type_str(&self) -> String {
+impl fmt::Display for TypeInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use TypeInfo::*;
-        match self {
+        let s = match self {
             Unknown => "unknown".into(),
             UnknownGeneric { name, .. } => name.to_string(),
             Str(x) => format!("str[{}]", x),
@@ -295,11 +293,11 @@ impl TypeInfo {
             .into(),
             Boolean => "bool".into(),
             Custom { name, .. } => format!("unresolved {}", name.as_str()),
-            Ref(id, _sp) => format!("T{} ({})", id, (*id).friendly_type_str()),
+            Ref(id, _sp) => format!("T{} ({})", id, (*id)),
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
-                    .map(|field| field.friendly_type_str())
+                    .map(|field| field.to_string())
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
@@ -328,12 +326,15 @@ impl TypeInfo {
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {}", abi_name)
             }
-            Array(elem_ty, count) => format!("[{}; {}]", elem_ty.friendly_type_str(), count),
+            Array(elem_ty, count) => format!("[{}; {}]", elem_ty, count),
             Storage { .. } => "contract storage".into(),
-        }
+        };
+        write!(f, "{}", s)
     }
+}
 
-    pub(crate) fn json_abi_str(&self) -> String {
+impl JsonAbiString for TypeInfo {
+    fn json_abi_str(&self) -> String {
         use TypeInfo::*;
         match self {
             Unknown => "unknown".into(),
@@ -375,7 +376,9 @@ impl TypeInfo {
             Storage { .. } => "contract storage".into(),
         }
     }
+}
 
+impl TypeInfo {
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name(&self, error_msg_span: &Span) -> CompileResult<String> {
         use TypeInfo::*;
@@ -872,7 +875,7 @@ impl TypeInfo {
             }
             (type_info, _) => {
                 errors.push(CompileError::FieldAccessOnNonStruct {
-                    actually: type_info.friendly_type_str(),
+                    actually: type_info.to_string(),
                     span: span.clone(),
                 });
                 err(warnings, errors)
@@ -899,7 +902,7 @@ impl TypeInfo {
                 vec![CompileError::NotATuple {
                     name: debug_string.into(),
                     span: debug_span.clone(),
-                    actually: a.friendly_type_str(),
+                    actually: a.to_string(),
                 }],
             ),
         }
@@ -928,7 +931,7 @@ impl TypeInfo {
                 vec![CompileError::NotAnEnum {
                     name: debug_string.into(),
                     span: debug_span.clone(),
-                    actually: a.friendly_type_str(),
+                    actually: a.to_string(),
                 }],
             ),
         }
@@ -936,9 +939,7 @@ impl TypeInfo {
 }
 
 fn print_inner_types(name: String, inner_types: impl Iterator<Item = TypeId>) -> String {
-    let inner_types = inner_types
-        .map(|x| x.friendly_type_str())
-        .collect::<Vec<_>>();
+    let inner_types = inner_types.map(|x| x.to_string()).collect::<Vec<_>>();
     format!(
         "{}{}",
         name,

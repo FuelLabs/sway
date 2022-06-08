@@ -1,4 +1,4 @@
-use sway_types::Span;
+use sway_types::{Span, Spanned};
 
 use crate::{
     error::{err, ok},
@@ -8,6 +8,7 @@ use crate::{
         TypedExpressionVariant, TypedVariableDeclaration, VariableMutability,
     },
     type_engine::{insert_type, unify_with_self},
+    types::DeterministicallyAborts,
     CompileResult, MatchBranch, TypeInfo, TypedDeclaration,
 };
 
