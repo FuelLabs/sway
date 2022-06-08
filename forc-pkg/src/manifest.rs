@@ -14,6 +14,8 @@ use std::{
 use sway_core::{parse, TreeType};
 use sway_utils::constants;
 
+type PatchMap = BTreeMap<String, Dependency>;
+
 /// A [Manifest] that was deserialized from a file at a particular path.
 #[derive(Debug)]
 pub struct ManifestFile {
@@ -30,7 +32,7 @@ pub struct Manifest {
     pub project: Project,
     pub network: Option<Network>,
     pub dependencies: Option<BTreeMap<String, Dependency>>,
-    pub patch: Option<BTreeMap<String, BTreeMap<String, Dependency>>>,
+    pub patch: Option<BTreeMap<String, PatchMap>>,
     pub build_profile: Option<BTreeMap<String, BuildConfig>>,
 }
 
@@ -51,18 +53,6 @@ pub struct Project {
 pub struct Network {
     #[serde(default = "default_url")]
     pub url: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(untagged)]
-pub enum Patch {
-    /// In the simple format, only a version is specified, eg.
-    /// `package = "<version>"`
-    Simple(String),
-    /// The simple format is equivalent to a detailed dependency
-    /// specifying only a version, eg.
-    /// `package = { version = "<version>" }`
-    Detailed(DependencyDetails),
 }
 
 #[derive(Serialize, Deserialize, Debug)]

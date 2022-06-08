@@ -1056,7 +1056,9 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
         Dependency::Detailed(ref det) => match (&det.path, &det.version, &det.git) {
             (Some(relative_path), _, _) => {
                 let path = pkg_path.join(relative_path);
-                Source::Path(path.canonicalize()?)
+                Source::Path(path.canonicalize().map_err(|err| {
+                    anyhow!("Cant apply patch from {}, cause: {}", relative_path, &err)
+                })?)
             }
             (_, _, Some(repo)) => {
                 let reference = match (&det.branch, &det.tag, &det.rev) {
