@@ -10,7 +10,9 @@ use crate::{
         TypedModule,
     },
     type_engine::*,
+    types::ToJsonAbi,
 };
+use fuels_types::JsonABI;
 use sway_types::{span::Span, Ident, Spanned};
 
 #[derive(Clone, Debug)]
@@ -36,6 +38,35 @@ pub enum TypedProgramKind {
         main_function: TypedFunctionDeclaration,
         declarations: Vec<TypedDeclaration>,
     },
+}
+
+impl ToJsonAbi for TypedProgramKind {
+    type Output = JsonABI;
+
+    // TODO: Update this to match behaviour described in the `compile` doc comment above.
+    fn generate_json_abi(&self) -> Self::Output {
+        match self {
+            TypedProgramKind::Contract { abi_entries, .. } => {
+                abi_entries.iter().map(|x| x.generate_json_abi()).collect()
+            }
+            TypedProgramKind::Script { main_function, .. } => {
+                vec![main_function.generate_json_abi()]
+            }
+            _ => vec![],
+        }
+    }
+}
+
+impl TypedProgramKind {
+    /// The parse tree type associated with this program kind.
+    pub fn tree_type(&self) -> TreeType {
+        match self {
+            TypedProgramKind::Contract { .. } => TreeType::Contract,
+            TypedProgramKind::Library { name } => TreeType::Library { name: name.clone() },
+            TypedProgramKind::Predicate { .. } => TreeType::Predicate,
+            TypedProgramKind::Script { .. } => TreeType::Script,
+        }
+    }
 }
 
 impl TypedProgram {
@@ -98,8 +129,11 @@ impl TypedProgram {
                 // itself.
                 TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(TypedImplTrait {
                     methods,
+                    implementing_for_type_id,
                     ..
-                })) => abi_entries.extend(methods.clone()),
+                })) if look_up_type_id(*implementing_for_type_id) == TypeInfo::Contract => {
+                    abi_entries.extend(methods.clone())
+                }
                 // XXX we're excluding the above ABI methods, is that OK?
                 TypedAstNodeContent::Declaration(decl) => {
                     // Variable and constant declarations don't need a duplicate check.
@@ -226,18 +260,6 @@ impl TypedProgram {
             ok((), vec![], errors)
         } else {
             err(vec![], errors)
-        }
-    }
-}
-
-impl TypedProgramKind {
-    /// The parse tree type associated with this program kind.
-    pub fn tree_type(&self) -> TreeType {
-        match self {
-            TypedProgramKind::Contract { .. } => TreeType::Contract,
-            TypedProgramKind::Library { name } => TreeType::Library { name: name.clone() },
-            TypedProgramKind::Predicate { .. } => TreeType::Predicate,
-            TypedProgramKind::Script { .. } => TreeType::Script,
         }
     }
 }
