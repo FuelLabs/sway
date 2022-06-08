@@ -1268,7 +1268,7 @@ impl<'ir> AsmBuilder<'ir> {
         // insert is smaller than the size of the union (i.e. we're inserting a small variant).
         if matches!(field_type, Type::Union(_)) {
             let field_size_in_words = size_bytes_in_words!(field_size_in_bytes);
-            assert!(dbg!(field_size_in_words) >= dbg!(value_size_in_words));
+            assert!(field_size_in_words >= value_size_in_words);
             insert_offs += field_size_in_words - value_size_in_words;
         }
 
@@ -2395,7 +2395,7 @@ pub fn aggregate_idcs_to_field_layout(
 
             Type::Union(aggregate) => {
                 let idx = *idx as usize;
-                let field_type = context.aggregates[aggregate.0].field_types()[dbg!(idx)];
+                let field_type = context.aggregates[aggregate.0].field_types()[idx];
                 let union_size_in_bytes = ir_type_size_in_bytes(context, &ty);
                 let field_size_in_bytes = ir_type_size_in_bytes(context, &field_type);
 
