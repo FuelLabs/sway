@@ -181,8 +181,8 @@ pub enum SourceGitPinnedParseError {
 pub type DependencyName = String;
 
 pub struct PkgDiff {
-    pub added: Vec<(String, Pkg)>,
-    pub removed: Vec<(String, Pkg)>,
+    pub added: Vec<(DependencyName, Pkg)>,
+    pub removed: Vec<(DependencyName, Pkg)>,
 }
 
 impl BuildPlan {
