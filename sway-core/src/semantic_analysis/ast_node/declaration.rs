@@ -1,12 +1,15 @@
 mod create_type_id;
 mod r#enum;
 mod function;
+mod impl_trait;
 mod monomorphize;
 mod storage;
 mod r#struct;
 mod variable;
+
 pub(crate) use create_type_id::*;
 pub use function::*;
+pub use impl_trait::*;
 pub(crate) use monomorphize::*;
 pub use r#enum::*;
 pub use r#struct::*;
@@ -27,18 +30,11 @@ pub enum TypedDeclaration {
     StructDeclaration(TypedStructDeclaration),
     EnumDeclaration(TypedEnumDeclaration),
     Reassignment(TypedReassignment),
-    ImplTrait {
-        trait_name: CallPath,
-        span: Span,
-        methods: Vec<TypedFunctionDeclaration>,
-        type_implementing_for: TypeInfo,
-    },
+    ImplTrait(TypedImplTrait),
     AbiDeclaration(TypedAbiDeclaration),
     // If type parameters are defined for a function, they are put in the namespace just for
     // the body of that function.
-    GenericTypeForFunctionScope {
-        name: Ident,
-    },
+    GenericTypeForFunctionScope { name: Ident },
     ErrorRecovery,
     StorageDeclaration(TypedStorageDeclaration),
     StorageReassignment(TypeCheckedStorageReassignment),
@@ -57,11 +53,7 @@ impl CopyTypes for TypedDeclaration {
             StructDeclaration(ref mut struct_decl) => struct_decl.copy_types(type_mapping),
             EnumDeclaration(ref mut enum_decl) => enum_decl.copy_types(type_mapping),
             Reassignment(ref mut reassignment) => reassignment.copy_types(type_mapping),
-            ImplTrait {
-                ref mut methods, ..
-            } => {
-                methods.iter_mut().for_each(|x| x.copy_types(type_mapping));
-            }
+            ImplTrait(impl_trait) => impl_trait.copy_types(type_mapping),
             // generics in an ABI is unsupported by design
             AbiDeclaration(..) => (),
             StorageDeclaration(..) => (),
@@ -89,7 +81,7 @@ impl Spanned for TypedDeclaration {
                 Span::join(acc, this.span())
             }),
             AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
-            ImplTrait { span, .. } => span.clone(),
+            ImplTrait(TypedImplTrait { span, .. }) => span.clone(),
             StorageDeclaration(decl) => decl.span(),
             StorageReassignment(decl) => decl.span(),
             ErrorRecovery | GenericTypeForFunctionScope { .. } => {
