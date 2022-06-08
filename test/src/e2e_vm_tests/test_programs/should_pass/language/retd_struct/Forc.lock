@@ -1,7 +1,9 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-615AD0AE63423614'
 dependencies = []
 
 [[package]]
 name = 'retd_struct'
+source = 'root'
 dependencies = ['core']

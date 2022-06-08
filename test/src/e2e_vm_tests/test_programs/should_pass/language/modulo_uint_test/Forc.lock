@@ -1,11 +1,14 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-281118E0AC5E0D35'
 dependencies = []
 
 [[package]]
 name = 'modulo_uint_test'
+source = 'root'
 dependencies = ['std']
 
 [[package]]
 name = 'std'
+source = 'path+from-root-281118E0AC5E0D35'
 dependencies = ['core']

@@ -1,11 +1,14 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-237819BD98C87E84'
 dependencies = []
 
 [[package]]
 name = 'std'
+source = 'path+from-root-237819BD98C87E84'
 dependencies = ['core']
 
 [[package]]
 name = 'subcurrency'
+source = 'root'
 dependencies = ['std']

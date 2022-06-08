@@ -1,3 +1,4 @@
 [[package]]
 name = 'bad_generic_annotation'
+source = 'root'
 dependencies = []
