@@ -173,11 +173,7 @@ fn compile_declarations(
                 //
                 //compile_function(context, module, decl).map(|_| ())?
             }
-            TypedDeclaration::ImplTrait {
-                methods: _,
-                type_implementing_for: _,
-                ..
-            } => {
+            TypedDeclaration::ImplTrait(_) => {
                 // And for the same reason we don't need to compile impls at all.
                 //
                 // compile_impl(
@@ -527,7 +523,7 @@ impl FnCompiler {
                                 &tr.rhs,
                                 span_md_idx,
                             ),
-                        TypedDeclaration::ImplTrait { span, .. } => {
+                        TypedDeclaration::ImplTrait(TypedImplTrait { span, .. }) => {
                             // XXX What if we ignore the trait implementation???  Potentially since
                             // we currently inline everything and below we 'recreate' the functions
                             // lazily as they are called, nothing needs to be done here.  BUT!
