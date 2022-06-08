@@ -1,5 +1,6 @@
 [[package]]
 name = 'call_frames'
+source = 'root'
 dependencies = [
     'call_frames_test_abi',
     'std',
@@ -7,12 +8,15 @@ dependencies = [
 
 [[package]]
 name = 'call_frames_test_abi'
+source = 'path+from-root-E8321A5D38B55E37'
 dependencies = ['std']
 
 [[package]]
 name = 'core'
+source = 'path+from-root-E8321A5D38B55E37'
 dependencies = []
 
 [[package]]
 name = 'std'
+source = 'path+from-root-E8321A5D38B55E37'
 dependencies = ['core']

@@ -1,7 +1,9 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-275E66803932EADF'
 dependencies = []
 
 [[package]]
 name = 'generic_structs'
+source = 'root'
 dependencies = ['core']

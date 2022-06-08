@@ -1,11 +1,14 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-9B9AE112CEA21882'
 dependencies = []
 
 [[package]]
 name = 'generic-type-inference'
+source = 'root'
 dependencies = ['std']
 
 [[package]]
 name = 'std'
+source = 'path+from-root-9B9AE112CEA21882'
 dependencies = ['core']

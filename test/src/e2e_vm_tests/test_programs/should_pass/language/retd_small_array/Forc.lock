@@ -1,7 +1,9 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-D892E29A6FC98019'
 dependencies = []
 
 [[package]]
 name = 'retd_small_array'
+source = 'root'
 dependencies = ['core']

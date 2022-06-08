@@ -1,7 +1,9 @@
 [[package]]
-name = 'core'
-dependencies = []
+name = 'builtin_type_method_call'
+source = 'root'
+dependencies = ['core']
 
 [[package]]
-name = 'builtin_type_method_call'
-dependencies = ['core']
+name = 'core'
+source = 'path+from-root-B0B251C3B3A5AB8E'
+dependencies = []

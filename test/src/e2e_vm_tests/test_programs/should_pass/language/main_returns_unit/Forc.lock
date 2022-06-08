@@ -1,7 +1,9 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-FA2A8FF2F74B6948'
 dependencies = []
 
 [[package]]
 name = 'main_returns_unit'
+source = 'root'
 dependencies = ['core']

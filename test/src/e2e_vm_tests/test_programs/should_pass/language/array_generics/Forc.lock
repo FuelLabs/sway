@@ -1,7 +1,9 @@
 [[package]]
 name = 'array_generics'
+source = 'root'
 dependencies = ['core']
 
 [[package]]
 name = 'core'
+source = 'path+from-root-9063F6813E94C772'
 dependencies = []

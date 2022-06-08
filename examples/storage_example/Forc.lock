@@ -1,11 +1,14 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-009C3999B9A47E51'
 dependencies = []
 
 [[package]]
-name = 'storage_example'
-dependencies = ['std']
+name = 'std'
+source = 'path+from-root-009C3999B9A47E51'
+dependencies = ['core']
 
 [[package]]
-name = 'std'
-dependencies = ['core']
+name = 'storage_example'
+source = 'root'
+dependencies = ['std']
