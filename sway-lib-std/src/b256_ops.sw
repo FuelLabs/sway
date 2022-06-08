@@ -1,3 +1,4 @@
+//! This Library extends the `b256` type by implementing the `Add` trait. While `b256`s are not generally the best type to use if you need to perform math operations (`u64` is much better suited and supported), in certain cases the ability to add `b256`s can be useful.
 library b256_ops;
 
 use ::flags::{disable_panic_on_overflow, enable_panic_on_overflow};
