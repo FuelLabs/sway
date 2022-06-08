@@ -217,8 +217,8 @@ pub struct SourcePinnedParseError;
 pub type DependencyName = String;
 
 pub struct PkgDiff {
-    pub added: Vec<Pkg>,
-    pub removed: Vec<Pkg>,
+    pub added: Vec<(DependencyName, Pkg)>,
+    pub removed: Vec<(DependencyName, Pkg)>,
 }
 
 impl BuildPlan {
@@ -343,12 +343,12 @@ impl BuildPlan {
             added = manifest_dep_pkgs
                 .difference(&plan_dep_pkgs)
                 .into_iter()
-                .map(|pkg| pkg.1.clone())
+                .map(|pkg| (pkg.0.clone(), pkg.1.clone()))
                 .collect();
             removed = plan_dep_pkgs
                 .difference(&manifest_dep_pkgs)
                 .into_iter()
-                .map(|pkg| pkg.1.clone())
+                .map(|pkg| (pkg.0.clone(), pkg.1.clone()))
                 .collect();
         }
 
@@ -388,7 +388,12 @@ impl BuildPlan {
 
 /// Remove the given set of packages from `graph` along with any dependencies that are no
 /// longer required as a result.
-fn remove_deps(graph: &mut Graph, path_map: &PathMap, proj_node: NodeIx, to_remove: &[Pkg]) {
+fn remove_deps(
+    graph: &mut Graph,
+    path_map: &PathMap,
+    proj_node: NodeIx,
+    to_remove: &[(DependencyName, Pkg)],
+) {
     use petgraph::visit::Bfs;
 
     // Do a BFS from the root and remove all nodes that does not have any incoming edge or one of the removed dependencies.
@@ -401,7 +406,7 @@ fn remove_deps(graph: &mut Graph, path_map: &PathMap, proj_node: NodeIx, to_remo
             .is_none()
             || to_remove
                 .iter()
-                .any(|removed_dep| *removed_dep == graph[node].unpinned(path_map))
+                .any(|removed_dep| removed_dep.1 == graph[node].unpinned(path_map))
         {
             graph.remove_node(node);
         }
@@ -414,7 +419,7 @@ fn add_deps(
     graph: &mut Graph,
     path_map: &mut PathMap,
     compilation_order: &[NodeIx],
-    to_add: &[Pkg],
+    to_add: &[(DependencyName, Pkg)],
     sway_git_tag: &str,
     offline_mode: bool,
     visited_map: &mut HashMap<Pinned, NodeIx>,
@@ -427,7 +432,7 @@ fn add_deps(
     let fetch_ts = std::time::Instant::now();
     let fetch_id = fetch_id(proj_path, fetch_ts);
     let path_root = proj_id;
-    for added_package in to_add {
+    for (added_dep_name, added_package) in to_add {
         let pinned_pkg = pin_pkg(fetch_id, proj_id, added_package, path_map, sway_git_tag)?;
         let manifest = Manifest::from_dir(&path_map[&pinned_pkg.id()], sway_git_tag)?;
         let added_package_node = graph.add_node(pinned_pkg.clone());
@@ -442,11 +447,7 @@ fn add_deps(
             path_map,
             visited_map,
         )?;
-        graph.add_edge(
-            proj_node,
-            added_package_node,
-            added_package.name.to_string(),
-        );
+        graph.add_edge(proj_node, added_package_node, added_dep_name.to_string());
     }
     Ok(())
 }
