@@ -183,6 +183,15 @@ impl TypedImplTrait {
             namespace.insert_symbol(type_parameter.name_ident.clone(), type_parameter.into());
         }
 
+        let trait_name = CallPath {
+            prefixes: vec![],
+            suffix: match &type_implementing_for {
+                TypeInfo::Custom { name, .. } => name.clone(),
+                _ => Ident::new_with_override("r#Self", block_span.clone()),
+            },
+            is_absolute: false,
+        };
+
         // Resolve the Self type as it's most likely still 'Custom' and use the
         // resolved type for self instead.
         let implementing_for_type_id = check!(
@@ -228,11 +237,6 @@ impl TypedImplTrait {
                 errors
             ));
         }
-        let trait_name = CallPath {
-            prefixes: vec![],
-            suffix: Ident::new_with_override("r#Self", block_span.clone()),
-            is_absolute: false,
-        };
 
         let impl_trait = TypedImplTrait {
             trait_name,
