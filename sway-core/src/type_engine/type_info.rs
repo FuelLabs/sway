@@ -6,6 +6,7 @@ use sway_types::{span::Span, Spanned};
 
 use derivative::Derivative;
 use std::{
+    collections::HashSet,
     fmt,
     hash::{Hash, Hasher},
 };
@@ -735,7 +736,11 @@ impl TypeInfo {
         let mut errors = vec![];
         let mut all_nested_types = vec![self.clone()];
         match self {
-            TypeInfo::Enum { variant_types, .. } => {
+            TypeInfo::Enum {
+                variant_types,
+                type_parameters,
+                ..
+            } => {
                 for variant_type in variant_types.iter() {
                     let mut nested_types = check!(
                         look_up_type_id(variant_type.r#type).extract_nested_types(span),
@@ -745,11 +750,33 @@ impl TypeInfo {
                     );
                     all_nested_types.append(&mut nested_types);
                 }
+                for type_parameter in type_parameters.iter() {
+                    let mut nested_types = check!(
+                        look_up_type_id(type_parameter.type_id).extract_nested_types(span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    all_nested_types.append(&mut nested_types);
+                }
             }
-            TypeInfo::Struct { fields, .. } => {
+            TypeInfo::Struct {
+                fields,
+                type_parameters,
+                ..
+            } => {
                 for field in fields.iter() {
                     let mut nested_types = check!(
                         look_up_type_id(field.r#type).extract_nested_types(span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    all_nested_types.append(&mut nested_types);
+                }
+                for type_parameter in type_parameters.iter() {
+                    let mut nested_types = check!(
+                        look_up_type_id(type_parameter.type_id).extract_nested_types(span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -817,6 +844,22 @@ impl TypeInfo {
             }
         }
         ok(all_nested_types, warnings, errors)
+    }
+
+    pub(crate) fn extract_nested_generics(&self, span: &Span) -> CompileResult<HashSet<TypeInfo>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let nested_types = check!(
+            self.clone().extract_nested_types(span),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let generics = HashSet::from_iter(nested_types.into_iter().filter_map(|x| match x {
+            TypeInfo::UnknownGeneric { .. } => Some(x),
+            _ => None,
+        }));
+        ok(generics, warnings, errors)
     }
 
     /// Given a `TypeInfo` `self` and a list of `Ident`'s `subfields`,

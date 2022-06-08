@@ -367,15 +367,6 @@ impl TypedAstNode {
                             decl
                         }
                         Declaration::FunctionDeclaration(fn_decl) => {
-                            for type_parameter in fn_decl.type_parameters.iter() {
-                                if !type_parameter.trait_constraints.is_empty() {
-                                    errors.push(CompileError::WhereClauseNotYetSupported {
-                                        span: type_parameter.name_ident.span(),
-                                    });
-                                    break;
-                                }
-                            }
-
                             let function_decl = check!(
                                 TypedFunctionDeclaration::type_check(TypeCheckArguments {
                                     checkee: fn_decl.clone(),
@@ -444,14 +435,6 @@ impl TypedAstNode {
                             TypedDeclaration::ImplTrait(impl_trait)
                         }
                         Declaration::ImplSelf(impl_self) => {
-                            for type_parameter in impl_self.type_parameters.iter() {
-                                if !type_parameter.trait_constraints.is_empty() {
-                                    errors.push(CompileError::WhereClauseNotYetSupported {
-                                        span: type_parameter.name_ident.span(),
-                                    });
-                                    break;
-                                }
-                            }
                             let impl_trait = check!(
                                 TypedImplTrait::type_check_impl_self(impl_self, namespace, opts),
                                 return err(warnings, errors),

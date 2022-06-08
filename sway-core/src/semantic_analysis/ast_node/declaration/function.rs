@@ -154,6 +154,16 @@ impl TypedFunctionDeclaration {
         is_snake_case(&name).ok(&mut warnings, &mut errors);
         opts.purity = purity;
 
+        // where clauses are not currently supported
+        for type_parameter in type_parameters.iter() {
+            if !type_parameter.trait_constraints.is_empty() {
+                errors.push(CompileError::WhereClauseNotYetSupported {
+                    span: type_parameter.name_ident.span(),
+                });
+                return err(warnings, errors);
+            }
+        }
+
         // insert parameters and generic type declarations into namespace
         let mut namespace = namespace.clone();
 

@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use sway_types::{Ident, Span, Spanned};
 
@@ -55,11 +55,8 @@ impl TypedImplTrait {
                 errors.push(CompileError::WhereClauseNotYetSupported {
                     span: type_argument.name_ident.span(),
                 });
-                break;
+                return err(warnings, errors);
             }
-        }
-        if !errors.is_empty() {
-            return err(warnings, errors);
         }
 
         // create the namespace for the impl
@@ -206,8 +203,18 @@ impl TypedImplTrait {
             mut type_parameters,
             functions,
             block_span,
-            ..
+            type_implementing_for_span,
         } = impl_self;
+
+        // where clauses are not currently supported
+        for type_parameter in type_parameters.iter() {
+            if !type_parameter.trait_constraints.is_empty() {
+                errors.push(CompileError::WhereClauseNotYetSupported {
+                    span: type_parameter.name_ident.span(),
+                });
+                return err(warnings, errors);
+            }
+        }
 
         // create the namespace for the impl
         let mut namespace = namespace.clone();
@@ -244,6 +251,33 @@ impl TypedImplTrait {
             warnings,
             errors
         );
+
+        // check to see that all of the generics that are defined for
+        // the impl block are actually used in the signature of the block
+        let mut defined_generics: HashMap<TypeInfo, Span> = HashMap::from_iter(
+            type_parameters
+                .clone()
+                .iter()
+                .map(|x| (look_up_type_id(x.type_id), x.span())),
+        );
+        let generics_in_use = check!(
+            look_up_type_id(implementing_for_type_id)
+                .extract_nested_generics(&type_implementing_for_span),
+            HashSet::new(),
+            warnings,
+            errors
+        );
+        // TODO: add a lookup in the trait constraints here and add it to
+        // generics_in_use
+        for generic in generics_in_use.into_iter() {
+            defined_generics.remove(&generic);
+        }
+        for (k, v) in defined_generics.into_iter() {
+            errors.push(CompileError::UnconstrainedGenericParameter {
+                ty: format!("{}", k),
+                span: v,
+            });
+        }
 
         // type check the functions
         let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
