@@ -1,7 +1,7 @@
 mod code_block;
 pub mod declaration;
 pub mod expression;
-pub mod impl_trait;
+pub mod mode;
 mod return_statement;
 pub mod while_loop;
 
@@ -10,11 +10,9 @@ use std::fmt;
 pub(crate) use code_block::*;
 pub use declaration::*;
 pub(crate) use expression::*;
-pub(crate) use impl_trait::*;
+pub(crate) use mode::*;
 pub(crate) use return_statement::*;
 pub(crate) use while_loop::*;
-
-use super::ERROR_RECOVERY_DECLARATION;
 
 use crate::{
     error::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*,
@@ -436,21 +434,17 @@ impl TypedAstNode {
                                 errors
                             )
                         }
-                        Declaration::ImplTrait(impl_trait) => check!(
-                            implementation_of_trait(impl_trait, namespace, opts),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        ),
-
-                        Declaration::ImplSelf(ImplSelf {
-                            functions,
-                            type_implementing_for,
-                            block_span,
-                            type_parameters,
-                            ..
-                        }) => {
-                            for type_parameter in type_parameters.iter() {
+                        Declaration::ImplTrait(impl_trait) => {
+                            let impl_trait = check!(
+                                TypedImplTrait::type_check_impl_trait(impl_trait, namespace, opts),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            TypedDeclaration::ImplTrait(impl_trait)
+                        }
+                        Declaration::ImplSelf(impl_self) => {
+                            for type_parameter in impl_self.type_parameters.iter() {
                                 if !type_parameter.trait_constraints.is_empty() {
                                     errors.push(CompileError::WhereClauseNotYetSupported {
                                         span: type_parameter.name_ident.span(),
@@ -458,77 +452,18 @@ impl TypedAstNode {
                                     break;
                                 }
                             }
-
-                            // create the namespace for the impl
-                            let mut impl_namespace = namespace.clone();
-                            for type_parameter in type_parameters.iter() {
-                                impl_namespace.insert_symbol(
-                                    type_parameter.name_ident.clone(),
-                                    type_parameter.into(),
-                                );
-                            }
-
-                            // Resolve the Self type as it's most likely still 'Custom' and use the
-                            // resolved type for self instead.
-                            let implementing_for_type_id = check!(
-                                impl_namespace.resolve_type_without_self(type_implementing_for),
+                            let impl_trait = check!(
+                                TypedImplTrait::type_check_impl_self(impl_self, namespace, opts),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
                             );
-                            let type_implementing_for = look_up_type_id(implementing_for_type_id);
-                            let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
-                            for mut fn_decl in functions.into_iter() {
-                                // ensure this fn decl's parameters and signature lines up with the
-                                // one in the trait
-
-                                // replace SelfType with type of implementor
-                                // i.e. fn add(self, other: u64) -> Self becomes fn
-                                // add(self: u64, other: u64) -> u64
-                                fn_decl.parameters.iter_mut().for_each(
-                                    |FunctionParameter {
-                                         ref mut type_id, ..
-                                     }| {
-                                        if look_up_type_id(*type_id) == TypeInfo::SelfType {
-                                            *type_id = implementing_for_type_id;
-                                        }
-                                    },
-                                );
-                                if fn_decl.return_type == TypeInfo::SelfType {
-                                    fn_decl.return_type = type_implementing_for.clone();
-                                }
-                                let args = TypeCheckArguments {
-                                    checkee: fn_decl,
-                                    namespace: &mut impl_namespace,
-                                    return_type_annotation: insert_type(TypeInfo::Unknown),
-                                    help_text: "",
-                                    self_type: implementing_for_type_id,
-                                    mode: Mode::NonAbi,
-                                    opts,
-                                };
-                                functions_buf.push(check!(
-                                    TypedFunctionDeclaration::type_check(args),
-                                    continue,
-                                    warnings,
-                                    errors
-                                ));
-                            }
-                            let trait_name = CallPath {
-                                prefixes: vec![],
-                                suffix: Ident::new_with_override("r#Self", block_span.clone()),
-                                is_absolute: false,
-                            };
                             namespace.insert_trait_implementation(
-                                trait_name.clone(),
-                                type_implementing_for.clone(),
-                                functions_buf.clone(),
+                                impl_trait.trait_name.clone(),
+                                impl_trait.type_implementing_for.clone(),
+                                impl_trait.methods.clone(),
                             );
-                            TypedDeclaration::ImplTrait {
-                                trait_name,
-                                span: block_span,
-                                methods: functions_buf,
-                                type_implementing_for,
-                            }
+                            TypedDeclaration::ImplTrait(impl_trait)
                         }
                         Declaration::StructDeclaration(decl) => {
                             let decl = check!(

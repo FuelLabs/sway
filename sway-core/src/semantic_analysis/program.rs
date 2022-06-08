@@ -1,5 +1,5 @@
 use super::{
-    TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration,
+    TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration, TypedImplTrait,
     TypedStorageDeclaration,
 };
 use crate::{
@@ -96,11 +96,11 @@ impl TypedProgram {
                 }
                 // ABI entries are all functions declared in impl_traits on the contract type
                 // itself.
-                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait {
+                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(TypedImplTrait {
                     methods,
                     type_implementing_for: TypeInfo::Contract,
                     ..
-                }) => abi_entries.extend(methods.clone()),
+                })) => abi_entries.extend(methods.clone()),
                 // XXX we're excluding the above ABI methods, is that OK?
                 TypedAstNodeContent::Declaration(decl) => {
                     // Variable and constant declarations don't need a duplicate check.

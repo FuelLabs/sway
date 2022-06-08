@@ -208,7 +208,7 @@ pub enum BytecodeCompilationResult {
 pub fn compile_to_ast(
     input: Arc<str>,
     initial_namespace: namespace::Module,
-    build_config: &BuildConfig,
+    build_config: Option<&BuildConfig>,
 ) -> CompileAstResult {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
@@ -217,7 +217,7 @@ pub fn compile_to_ast(
         value: parse_program_opt,
         warnings: new_warnings,
         errors: new_errors,
-    } = parse(input, Some(build_config));
+    } = parse(input, build_config);
     warnings.extend(new_warnings);
     errors.extend(new_errors);
     let parse_program = match parse_program_opt {
@@ -268,7 +268,7 @@ pub fn compile_to_asm(
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
 ) -> CompilationResult {
-    let ast_res = compile_to_ast(input, initial_namespace, &build_config);
+    let ast_res = compile_to_ast(input, initial_namespace, Some(&build_config));
     ast_to_asm(ast_res, &build_config)
 }
 
