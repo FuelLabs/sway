@@ -118,9 +118,11 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut TokenMap) {
                     TokenType::TypedDeclaration(declaration.clone()),
                 );
             }
-            // This is reporting the train name as r#Self and not the actual name
-            // Also the span is referencing the declerations span.
-            //tokens.insert(to_ident_key(&trait_name.suffix), TokenType::TypedDeclaration(declaration.clone()));
+
+            tokens.insert(
+                to_ident_key(&trait_name.suffix),
+                TokenType::TypedDeclaration(declaration.clone()),
+            );
 
             for method in methods {
                 tokens.insert(
@@ -136,6 +138,12 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut TokenMap) {
                         TokenType::TypedFunctionParameter(paramater.clone()),
                     );
                 }
+
+                let return_type_ident = Ident::new(method.return_type_span.clone());
+                tokens.insert(
+                    to_ident_key(&return_type_ident),
+                    TokenType::TypedFunctionDeclaration(method.clone()),
+                );
             }
         }
         TypedDeclaration::AbiDeclaration(abi_decl) => {
