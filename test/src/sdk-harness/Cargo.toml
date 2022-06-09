@@ -6,6 +6,7 @@ name = "tests"
 version = "0.0.0"
 
 [dependencies]
+assert_matches = "1.5.0"
 fuel-core = { version = "0.8", default-features = false }
 fuel-gql-client = { version = "0.8", default-features = false }
 fuel-types = "0.5"
