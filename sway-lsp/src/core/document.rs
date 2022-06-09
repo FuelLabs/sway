@@ -12,7 +12,7 @@ use std::sync::Arc;
 use sway_core::{
     parse,
     semantic_analysis::{ast_node::TypedAstNode, namespace},
-    BuildConfig, CompileAstResult, TreeType,
+    CompileAstResult, TreeType,
 };
 use tower_lsp::lsp_types::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
 
@@ -162,10 +162,7 @@ impl TextDocument {
     fn parse_typed_tokens_from_text(&self) -> Option<Vec<TypedAstNode>> {
         let text = Arc::from(self.get_text());
         let namespace = namespace::Module::default();
-        let file_name = std::path::PathBuf::from(self.get_uri());
-        let build_config =
-            BuildConfig::root_from_file_name_and_manifest_path(file_name, Default::default());
-        let ast_res = sway_core::compile_to_ast(text, namespace, &build_config);
+        let ast_res = sway_core::compile_to_ast(text, namespace, None);
         match ast_res {
             CompileAstResult::Failure { .. } => None,
             CompileAstResult::Success { typed_program, .. } => Some(typed_program.root.all_nodes),

@@ -10,7 +10,7 @@ use crate::{
             TypedStructDeclaration, TypedStructExpressionField, TypedTraitDeclaration,
             TypedVariableDeclaration, TypedWhileLoop, VariableMutability,
         },
-        TypeCheckedStorageReassignment, TypedAstNode, TypedAstNodeContent,
+        TypeCheckedStorageReassignment, TypedAstNode, TypedAstNodeContent, TypedImplTrait,
         TypedIntrinsicFunctionKind,
     },
     type_engine::{resolve_type, TypeInfo},
@@ -402,11 +402,11 @@ fn connect_declaration(
             tree_type,
             rhs.clone().span,
         ),
-        ImplTrait {
+        ImplTrait(TypedImplTrait {
             trait_name,
             methods,
             ..
-        } => {
+        }) => {
             connect_impl_trait(trait_name, graph, methods, entry_node, tree_type)?;
             Ok(leaves.to_vec())
         }
@@ -1188,7 +1188,11 @@ fn construct_dead_code_warning_from_node(node: &TypedAstNode) -> Option<CompileW
             warning_content: Warning::DeadTrait,
         },
         TypedAstNode {
-            content: TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait { methods, .. }),
+            content:
+                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(TypedImplTrait {
+                    methods,
+                    ..
+                })),
             ..
         } if methods.is_empty() => return None,
         TypedAstNode {

@@ -1,17 +1,21 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-C35C1CB8B551E0E6'
 dependencies = []
 
 [[package]]
 name = 'std'
+source = 'path+from-root-C35C1CB8B551E0E6'
 dependencies = ['core']
 
 [[package]]
 name = 'test_fuel_coin_abi'
+source = 'path+from-root-C35C1CB8B551E0E6'
 dependencies = ['std']
 
 [[package]]
 name = 'test_fuel_coin_contract'
+source = 'root'
 dependencies = [
     'std',
     'test_fuel_coin_abi',

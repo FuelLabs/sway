@@ -9,6 +9,7 @@ mod constants;
 mod error;
 mod fmt;
 mod items;
+mod newline_style;
 
 pub use crate::fmt::Formatter;
 pub use error::FormatterError;

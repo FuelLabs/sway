@@ -11,5 +11,3 @@ pub use module::{TypedModule, TypedSubmodule};
 pub use namespace::Namespace;
 pub use program::{TypedProgram, TypedProgramKind};
 pub use type_check_arguments::*;
-
-const ERROR_RECOVERY_DECLARATION: TypedDeclaration = TypedDeclaration::ErrorRecovery;

@@ -1,7 +1,9 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-53919E193550072B'
 dependencies = []
 
 [[package]]
 name = 'struct_field_reassignment'
+source = 'root'
 dependencies = ['core']

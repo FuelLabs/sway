@@ -116,12 +116,12 @@ fn check_supertraits(
 ) -> Vec<CompileError> {
     let mut errors = vec![];
     for node in typed_tree_nodes {
-        if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait {
+        if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(TypedImplTrait {
             trait_name,
             span,
             type_implementing_for,
             ..
-        }) = &node.content
+        })) = &node.content
         {
             if let CompileResult {
                 value: Some(TypedDeclaration::TraitDeclaration(tr)),
@@ -130,11 +130,13 @@ fn check_supertraits(
             {
                 for supertrait in &tr.supertraits {
                     if !typed_tree_nodes.iter().any(|search_node| {
-                        if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait {
-                            trait_name: search_node_trait_name,
-                            type_implementing_for: search_node_type_implementing_for,
-                            ..
-                        }) = &search_node.content
+                        if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(
+                            TypedImplTrait {
+                                trait_name: search_node_trait_name,
+                                type_implementing_for: search_node_type_implementing_for,
+                                ..
+                            },
+                        )) = &search_node.content
                         {
                             if let (
                                 CompileResult {
