@@ -954,7 +954,7 @@ pub enum CompileError {
     #[error("\"where\" clauses are not yet supported")]
     WhereClauseNotYetSupported { span: Span },
     #[error(
-        "Could not evaluate const initializer to a const value."
+        "Could not evaluate initializer to a const value."
     )]
     NonConstantDeclValue { span: Span },
     #[error("Declaring storage in a {program_kind} is not allowed.")]
