@@ -426,6 +426,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/valid_impurity",
             ProgramState::Revert(0), // false
         ),
+        ("should_pass/language/const_inits", ProgramState::Return(1)),
         (
             "should_pass/test_contracts/auth_testing_contract",
             ProgramState::Revert(0),
