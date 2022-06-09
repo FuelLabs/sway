@@ -28,6 +28,7 @@ fuel-asm = "0.5"
 fuel-gql-client = { version = "0.8", default-features = false }
 fuel-tx = "0.12"
 fuel-vm = "0.11"
+fuel-crypto = "0.5"
 futures = "0.3"
 hex = "0.4.3"
 serde = { version = "1.0", features = ["derive"] }
