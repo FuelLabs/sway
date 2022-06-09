@@ -11,12 +11,12 @@ use crate::{
 };
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Indent {
+pub struct Indent {
     /// Width of the block indent, in characters. Must be a multiple of
     /// Config::tab_spaces.
-    pub(crate) block_indent: usize,
+    pub block_indent: usize,
     /// Alignment in characters.
-    pub(crate) alignment: usize,
+    pub alignment: usize,
 }
 
 impl Indent {
@@ -143,13 +143,13 @@ impl Sub<usize> for Indent {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Shape {
-    pub(crate) width: usize,
+pub struct Shape {
+    pub width: usize,
     // The current indentation of code.
-    pub(crate) indent: Indent,
+    pub indent: Indent,
     // Indentation + any already emitted text on the first line of the current
     // statement.
-    pub(crate) offset: usize,
+    pub offset: usize,
 }
 
 impl Shape {

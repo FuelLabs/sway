@@ -1,12 +1,15 @@
-use crate::fmt::{Format, FormattedCode, Formatter};
+use crate::{
+    fmt::{Format, FormattedCode, Formatter},
+    utils::indent_style::Shape,
+};
 use sway_parse::ItemEnum;
 use sway_types::Spanned;
 
 // current_ident_level will be replaced by incoming block ident logic.
 // usage of \n will be replaced by more structed way of handling new lines.
 impl Format for ItemEnum {
-    fn format(&self, formatter: &Formatter) -> FormattedCode {
-        let mut current_ident_level = 0;
+    fn format(&self, formatter: &Formatter, shape: &mut Shape) -> FormattedCode {
+        let mut shape = *shape;
         // TODO: creating this formatted_code with String::new() will likely cause lots of
         // reallocations maybe we can explore how we can do this, starting with with_capacity may help.
         let mut formatted_code = String::new();
@@ -14,20 +17,20 @@ impl Format for ItemEnum {
 
         if let Some(visibility_token) = &self.visibility {
             add_formatted_part(
+                formatter,
                 &mut formatted_code,
                 visibility_token.span().as_str(),
-                current_ident_level,
                 true,
-                true,
+                &shape,
             );
         }
 
         add_formatted_part(
+            formatter,
             &mut formatted_code,
             self.enum_token.span().as_str(),
-            current_ident_level,
             true,
-            false,
+            &shape,
         );
 
         // Is this the relevant config option to look? What does item stand for exactly?
@@ -36,42 +39,30 @@ impl Format for ItemEnum {
             crate::config::items::ItemBraceStyle::AlwaysNextLine => {
                 // Add name of the enum.
                 add_formatted_part(
+                    formatter,
                     &mut formatted_code,
                     self.name.as_str(),
-                    current_ident_level,
                     false,
-                    false,
+                    &shape,
                 );
 
                 // Add openning bracet to the next line.
-                add_formatted_part(
-                    &mut formatted_code,
-                    "\n{\n",
-                    current_ident_level,
-                    false,
-                    true,
-                );
-                current_ident_level += 4;
+                add_formatted_part(formatter, &mut formatted_code, "\n{\n", false, &shape);
+                shape = shape.block_indent(1);
             }
             _ => {
                 // Add name of the enum followed by a trailing space.
                 add_formatted_part(
+                    formatter,
                     &mut formatted_code,
                     self.name.as_str(),
-                    current_ident_level,
                     true,
-                    false,
+                    &shape,
                 );
 
                 // Add opening bracet to the same line
-                add_formatted_part(
-                    &mut formatted_code,
-                    "{\n",
-                    current_ident_level,
-                    false,
-                    false,
-                );
-                current_ident_level += 4;
+                add_formatted_part(formatter, &mut formatted_code, "{\n", false, &shape);
+                shape = shape.block_indent(1);
             }
         }
 
@@ -99,11 +90,11 @@ impl Format for ItemEnum {
         for (index, type_field) in type_fields.iter().enumerate() {
             let type_field = &type_field.0;
             add_formatted_part(
+                formatter,
                 &mut formatted_code,
                 type_field.name.as_str(),
-                current_ident_level,
                 false,
-                true,
+                &shape,
             );
             formatted_code.push(':');
 
@@ -118,33 +109,28 @@ impl Format for ItemEnum {
 
                 // max_valid_variant_length: the length of the variant that we are taking as a reference to allign
                 // current_variant_length: the length of the current variant that we are trying to format
-                // + 1 is coming from the fact that: After name of the reference variant + ':'
-                // a space is added so we should allign with taking that into account.
-                let required_allignment = (max_valid_variant_length - current_variant_length + 1)
-                    .try_into()
-                    .unwrap();
+                let required_allignment = max_valid_variant_length - current_variant_length;
+                // TODO: Improve handling this
+                formatted_code.push_str(&(0..required_allignment).map(|_| ' ').collect::<String>());
                 add_formatted_part(
+                    formatter,
                     &mut formatted_code,
                     type_field.ty.span().as_str(),
-                    required_allignment,
                     false,
-                    true,
+                    &shape,
                 );
             } else {
                 add_formatted_part(
+                    formatter,
                     &mut formatted_code,
                     type_field.ty.span().as_str(),
-                    1,
                     false,
-                    true,
+                    &shape,
                 );
             }
-            // Check if this is the last enum variant, if so do not add the comma.
-            if index != variant_length.len() - 1 {
-                // Here we assume that next enum variant is going to be in the new line but
-                // from the config we may understand next enum variant should be in the same line instead.
-                formatted_code.push(',');
-            }
+            formatted_code.push(',');
+            // Here we assume that next enum variant is going to be in the new line but
+            // from the config we may understand next enum variant should be in the same line instead.
             formatted_code.push('\n');
         }
         formatted_code.push('}');
@@ -153,17 +139,14 @@ impl Format for ItemEnum {
 }
 
 fn add_formatted_part(
+    formatter: &Formatter,
     formatted_code: &mut String,
     formatted_part_to_add: &str,
-    ident_level: u32,
     add_trailing_space: bool,
-    with_ident: bool,
+    shape: &Shape,
 ) {
-    if with_ident {
-        // Currently assumes formatter just use whitespaces, i.e no tabs!
-        let starting_ident = (0..ident_level).map(|_| ' ').collect::<String>();
-        formatted_code.push_str(&starting_ident);
-    }
+    let whitespace = &shape.indent.to_string(formatter);
+    formatted_code.push_str(whitespace);
     formatted_code.push_str(formatted_part_to_add);
     if add_trailing_space {
         formatted_code.push(' ');
