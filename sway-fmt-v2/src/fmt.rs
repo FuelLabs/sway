@@ -7,7 +7,7 @@ pub use crate::{
     error::{ConfigError, FormatterError},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Formatter {
     pub config: Config,
 }
