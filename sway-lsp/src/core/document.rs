@@ -82,7 +82,7 @@ impl TextDocument {
         None
     }
 
-    pub fn _get_token_map(&self) -> &TokenMap {
+    pub fn get_token_map(&self) -> &TokenMap {
         &self.token_map
     }
 
@@ -98,7 +98,8 @@ impl TextDocument {
         self.clear_tokens();
         self.clear_hash_maps();
 
-        //self.test_typed_parse();
+        self.test_typed_parse();
+        eprintln!("tokens = {:#?}", self.get_token_map());
 
         match self.parse_tokens_from_text() {
             Ok((tokens, diagnostics)) => {
