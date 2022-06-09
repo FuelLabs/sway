@@ -739,13 +739,16 @@ fn apply_patch(
     manifest: &Manifest,
     parent_path: &Path,
 ) -> Result<Source> {
-    let mut patches = manifest.patches();
     match source {
         // Check if the patch is for a git dependency.
         Source::Git(git) => {
             // Check if we got a patch for the git dependency.
-            if let Some(source_patches) = patches.find(|patch| *patch.0 == git.repo.to_string()) {
-                if let Some(patch) = source_patches.1.get(name) {
+            if let Some(source_patches) = manifest
+                .patch
+                .as_ref()
+                .and_then(|patches| patches.get(git.repo.as_str()))
+            {
+                if let Some(patch) = source_patches.get(name) {
                     Ok(dep_to_source(parent_path, patch)?)
                 } else {
                     bail!(
