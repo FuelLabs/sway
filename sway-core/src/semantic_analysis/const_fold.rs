@@ -118,9 +118,52 @@ pub fn const_fold_typed_expr(
             let aggregate = crate::optimize::get_aggregate_for_types(context, &field_typs).unwrap();
             Some(Constant::new_struct(&aggregate, field_vals))
         }
-        TypedExpressionVariant::Tuple { .. }
-        | TypedExpressionVariant::Array { .. }
-        | TypedExpressionVariant::ArrayIndex { .. }
+        // This is *very* similar to StructExpression. TODO: Combine them somehow.
+        TypedExpressionVariant::Tuple { fields } => {
+            let (field_typs, field_vals): (Vec<_>, Vec<_>) = fields
+                .iter()
+                .filter_map(|value| {
+                    const_fold_typed_expr(context, module, known_consts, &value)
+                        .and_then(|cv| Some((value.return_type, cv)))
+                })
+                .unzip();
+            if field_vals.len() < fields.len() {
+                // We couldn't evaluate all fields to a constant.
+                return None;
+            }
+            let aggregate = crate::optimize::create_tuple_aggregate(context, field_typs).unwrap();
+            Some(Constant::new_struct(&aggregate, field_vals))
+        }
+        TypedExpressionVariant::Array { contents } => {
+            let (element_typs, element_vals): (Vec<_>, Vec<_>) = contents
+                .iter()
+                .filter_map(|value| {
+                    const_fold_typed_expr(context, module, known_consts, &value)
+                        .and_then(|cv| Some((value.return_type, cv)))
+                })
+                .unzip();
+            if element_vals.len() < contents.len() || element_typs.len() < 1 {
+                // We couldn't evaluate all fields to a constant or cannot determine element type.
+                return None;
+            }
+            let mut element_iter = element_typs.iter();
+            let element_type_id = *element_iter.next().unwrap();
+            if !element_iter.all(|tid| {
+                crate::type_engine::look_up_type_id(*tid)
+                    == crate::type_engine::look_up_type_id(element_type_id)
+            }) {
+                // This shouldn't happen if the type checker did its job.
+                return None;
+            }
+            let aggregate = crate::optimize::create_array_aggregate(
+                context,
+                element_type_id,
+                element_typs.len().try_into().unwrap(),
+            )
+            .unwrap();
+            Some(Constant::new_array(&aggregate, element_vals))
+        }
+        TypedExpressionVariant::ArrayIndex { .. }
         | TypedExpressionVariant::CodeBlock(_)
         | TypedExpressionVariant::FunctionParameter
         | TypedExpressionVariant::IfExp { .. }

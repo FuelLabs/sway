@@ -1,10 +1,10 @@
 //! Type checking for Sway.
 pub mod ast_node;
+mod const_fold;
 mod module;
 pub mod namespace;
 mod node_dependencies;
 mod program;
-mod const_fold;
 pub(crate) mod type_check_arguments;
 pub(crate) use ast_node::*;
 pub use ast_node::{TypedConstantDeclaration, TypedDeclaration, TypedFunctionDeclaration};

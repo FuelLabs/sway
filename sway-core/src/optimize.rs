@@ -240,7 +240,7 @@ fn create_enum_aggregate(
 
 // -------------------------------------------------------------------------------------------------
 
-fn create_tuple_aggregate(
+pub fn create_tuple_aggregate(
     context: &mut Context,
     fields: Vec<TypeId>,
 ) -> Result<Aggregate, CompileError> {
@@ -250,6 +250,17 @@ fn create_tuple_aggregate(
         .collect::<Result<Vec<_>, CompileError>>()?;
 
     Ok(Aggregate::new_struct(context, field_types))
+}
+
+// -------------------------------------------------------------------------------------------------
+
+pub fn create_array_aggregate(
+    context: &mut Context,
+    element_type_id: TypeId,
+    count: u64,
+) -> Result<Aggregate, CompileError> {
+    let element_type = convert_resolved_typeid_no_span(context, &element_type_id)?;
+    Ok(Aggregate::new_array(context, element_type, count))
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -1609,7 +1620,8 @@ impl FnCompiler {
                         array_expr_span)
                 })
             }
-            ValueDatum::Argument(Type::Array(aggregate)) => Ok(*aggregate),
+            ValueDatum::Argument(Type::Array(aggregate))
+            | ValueDatum::Constant(Constant { ty : Type::Array(aggregate), ..}) => Ok (*aggregate),
             otherwise => Err(CompileError::InternalOwned(
                 format!("Unsupported array value for index expression: {otherwise:?}"),
                 array_expr_span,

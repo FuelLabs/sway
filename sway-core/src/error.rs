@@ -953,9 +953,7 @@ pub enum CompileError {
     Parse { error: sway_parse::ParseError },
     #[error("\"where\" clauses are not yet supported")]
     WhereClauseNotYetSupported { span: Span },
-    #[error(
-        "Could not evaluate initializer to a const value."
-    )]
+    #[error("Could not evaluate initializer to a const value.")]
     NonConstantDeclValue { span: Span },
     #[error("Declaring storage in a {program_kind} is not allowed.")]
     StorageDeclarationInNonContract { program_kind: String, span: Span },
