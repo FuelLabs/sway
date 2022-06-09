@@ -148,7 +148,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     fs::write(&bin_path, &compiled.bytecode)?;
 
     // hash the bytecode and store it in a file in the output directory
-    let bytecode_hash = format!("0x{}",fuel_crypto::Hasher::hash(&compiled.bytecode));
+    let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&compiled.bytecode));
     let hash_file_name = format!("{}-bin-hash", &manifest.project.name);
     let hash_path = output_dir.join(hash_file_name);
     fs::write(hash_path, &bytecode_hash)?;
