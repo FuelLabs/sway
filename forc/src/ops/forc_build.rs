@@ -148,7 +148,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     fs::write(&bin_path, &compiled.bytecode)?;
 
     info!("  Bytecode size is {} bytes.", compiled.bytecode.len());
-    
+
     if !compiled.json_abi.is_empty() {
         let json_abi_stem = format!("{}-abi", manifest.project.name);
         let json_abi_path = output_dir.join(&json_abi_stem).with_extension("json");
@@ -159,7 +159,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
             serde_json::to_writer_pretty(&file, &compiled.json_abi)
         };
         res?;
-    }else{
+    } else {
         // compiled.json_abi is empty if the program type is a script or predicate
         // hash the bytecode for scripts/predicates and store it in a file in the output directory
         let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&compiled.bytecode));
