@@ -1,11 +1,14 @@
 [[package]]
 name = 'block_height'
+source = 'root'
 dependencies = ['std']
 
 [[package]]
 name = 'core'
+source = 'path+from-root-F04660A5553D7A09'
 dependencies = []
 
 [[package]]
 name = 'std'
+source = 'path+from-root-F04660A5553D7A09'
 dependencies = ['core']

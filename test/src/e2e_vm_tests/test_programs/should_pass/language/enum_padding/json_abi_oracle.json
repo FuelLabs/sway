@@ -1,0 +1,58 @@
+[
+  {
+    "inputs": [],
+    "name": "main",
+    "outputs": [
+      {
+        "components": [
+          {
+            "components": [
+              {
+                "components": null,
+                "name": "__tuple_element",
+                "type": "b256"
+              },
+              {
+                "components": null,
+                "name": "__tuple_element",
+                "type": "b256"
+              }
+            ],
+            "name": "first",
+            "type": "(b256, b256)"
+          },
+          {
+            "components": [
+              {
+                "components": null,
+                "name": "first",
+                "type": "u32"
+              },
+              {
+                "components": [
+                  {
+                    "components": null,
+                    "name": "first",
+                    "type": "b256"
+                  },
+                  {
+                    "components": null,
+                    "name": "second",
+                    "type": "u32"
+                  }
+                ],
+                "name": "second",
+                "type": "enum LowerLevelEnum"
+              }
+            ],
+            "name": "second",
+            "type": "struct ThenAStruct"
+          }
+        ],
+        "name": "",
+        "type": "enum TopLevelEnum"
+      }
+    ],
+    "type": "function"
+  }
+]

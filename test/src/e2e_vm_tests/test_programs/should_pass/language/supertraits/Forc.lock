@@ -1,11 +1,14 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-6F8C00D302E9D79E'
 dependencies = []
 
 [[package]]
 name = 'std'
+source = 'path+from-root-6F8C00D302E9D79E'
 dependencies = ['core']
 
 [[package]]
 name = 'supertraits'
+source = 'root'
 dependencies = ['std']
