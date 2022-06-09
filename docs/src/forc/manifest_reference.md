@@ -113,20 +113,35 @@ entry = "main.sw"
 organization = "Fuel_Labs"
 license = "Apache-2.0"
 name = "wallet_contract"
-implicit-std = false
 
 [dependencies]
-std = { git = "https://github.com/fuellabs/sway", branch = "master" }
 
 [patch.'https://github.com/fuellabs/sway']
 std = { git = "https://github.com/fuellabs/sway", branch = "test" }
 ```
 
-In the example above, `std` is added as a git dependency and then patched with the same repo's `test` branch. You can also patch git dependencies with dependencies defined with a path.
+In the example above, `std` is patched with the `test` branch from `std` repo. You can also patch git dependencies with dependencies defined with a path.
 
 ```toml
 [patch.'https://github.com/fuellabs/sway']
 std = { path = "/path/to/local_std_version" }
+```
+
+Just like `std` or `core` you can also patch dependencies you declared with a git repo.
+
+```toml
+[project]
+authors = ["user"]
+entry = "main.sw"
+organization = "Fuel_Labs"
+license = "Apache-2.0"
+name = "wallet_contract"
+
+[dependencies]
+foo = { git = "https://github.com/foo/foo", branch = "master" }
+
+[patch.'https://github.com/foo']
+foo = { git = "https://github.com/foo/foo", branch = "test" }
 ```
 
 Note that each key after the `[patch]` is a URL of the source that is being patched.
