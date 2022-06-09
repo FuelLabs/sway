@@ -734,23 +734,23 @@ pub(crate) fn fetch_deps(
 }
 
 fn apply_patch(
-    name: &String,
+    name: &str,
     source: &Source,
     manifest: &Manifest,
     parent_path: &Path,
 ) -> Result<Source> {
     let mut patches = manifest.patches();
     match source {
-        //Check if the patch is for a git dependency.
+        // Check if the patch is for a git dependency.
         Source::Git(git) => {
-            //Check if we got a patch for the git dependency.
+            // Check if we got a patch for the git dependency.
             if let Some(source_patches) = patches.find(|patch| *patch.0 == git.repo.to_string()) {
                 if let Some(patch) = source_patches.1.get(name) {
                     Ok(dep_to_source(parent_path, patch)?)
                 } else {
                     bail!(
                         "Cannot find the patch for the {} for package {}",
-                        git.repo.to_string(),
+                        git.repo,
                         name
                     )
                 }

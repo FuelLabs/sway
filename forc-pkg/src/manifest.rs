@@ -260,7 +260,7 @@ impl Manifest {
     }
 
     /// Produce an iterator yielding all listed patches.
-    pub fn patches(&self) -> impl Iterator<Item = (&String, &BTreeMap<String, Dependency>)> {
+    pub fn patches(&self) -> impl Iterator<Item = (&String, &PatchMap)> {
         self.patch
             .as_ref()
             .into_iter()
