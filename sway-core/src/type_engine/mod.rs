@@ -6,7 +6,6 @@ mod type_id;
 mod type_info;
 mod type_mapping;
 mod unresolved_type_check;
-mod update_types;
 
 pub(crate) use copy_types::*;
 pub use engine::*;
@@ -16,7 +15,6 @@ pub use type_id::*;
 pub use type_info::*;
 pub(crate) use type_mapping::*;
 pub(crate) use unresolved_type_check::*;
-pub(crate) use update_types::*;
 
 use crate::error::*;
 use fuels_types::Property;

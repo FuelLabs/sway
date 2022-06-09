@@ -1,3 +1,4 @@
+mod abi;
 mod create_type_id;
 mod r#enum;
 mod function;
@@ -8,6 +9,7 @@ mod r#struct;
 mod r#trait;
 mod variable;
 
+pub use abi::*;
 pub(crate) use create_type_id::*;
 pub use function::*;
 pub use impl_trait::*;
@@ -19,7 +21,6 @@ pub use storage::*;
 pub use variable::*;
 
 use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
-use derivative::Derivative;
 use std::{borrow::Cow, fmt};
 use sway_types::{Ident, Span, Spanned};
 
@@ -421,34 +422,6 @@ impl TypedDeclaration {
             | TraitDeclaration(TypedTraitDeclaration { visibility, .. })
             | StructDeclaration(TypedStructDeclaration { visibility, .. }) => *visibility,
         }
-    }
-}
-
-/// A `TypedAbiDeclaration` contains the type-checked version of the parse tree's `AbiDeclaration`.
-#[derive(Clone, Debug, Derivative)]
-#[derivative(PartialEq, Eq)]
-pub struct TypedAbiDeclaration {
-    /// The name of the abi trait (also known as a "contract trait")
-    pub name: Ident,
-    /// The methods a contract is required to implement in order opt in to this interface
-    pub interface_surface: Vec<TypedTraitFn>,
-    /// The methods provided to a contract "for free" upon opting in to this interface
-    // NOTE: It may be important in the future to include this component
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Eq(bound = ""))]
-    pub(crate) methods: Vec<FunctionDeclaration>,
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Eq(bound = ""))]
-    pub(crate) span: Span,
-}
-
-impl TypedAbiDeclaration {
-    pub(crate) fn as_type(&self) -> TypeId {
-        let ty = TypeInfo::ContractCaller {
-            abi_name: AbiName::Known(self.name.clone().into()),
-            address: None,
-        };
-        insert_type(ty)
     }
 }
 

@@ -89,25 +89,12 @@ impl TypedEnumDeclaration {
         // create a namespace for the decl, used to create a scope for generics
         let mut namespace = namespace.clone();
 
-        // insert type parameters as Unknown types
-        let type_mapping = insert_type_parameters(&type_parameters);
-
         // update the types in the type parameters, insert the type parameters
         // into the decl namespace, and check to see if the type parameters
         // shadow one another
         for type_parameter in type_parameters.iter_mut() {
             check!(
-                type_parameter.update_types_with_self(&type_mapping, &mut namespace, self_type),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            let type_parameter_decl = TypedDeclaration::GenericTypeForFunctionScope {
-                name: type_parameter.name_ident.clone(),
-                type_id: type_parameter.type_id,
-            };
-            check!(
-                namespace.insert_symbol(type_parameter.name_ident.clone(), type_parameter_decl),
+                TypeParameter::type_check(type_parameter, &mut namespace),
                 continue,
                 warnings,
                 errors
@@ -118,13 +105,7 @@ impl TypedEnumDeclaration {
         let mut variants_buf = vec![];
         for variant in variants {
             variants_buf.push(check!(
-                TypedEnumVariant::type_check(
-                    variant.clone(),
-                    &mut namespace,
-                    self_type,
-                    variant.span,
-                    &type_mapping
-                ),
+                TypedEnumVariant::type_check(variant.clone(), &mut namespace, self_type,),
                 continue,
                 warnings,
                 errors
@@ -219,27 +200,20 @@ impl TypedEnumVariant {
         variant: EnumVariant,
         namespace: &mut Namespace,
         self_type: TypeId,
-        span: Span,
-        type_mapping: &TypeMapping,
     ) -> CompileResult<TypedEnumVariant> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let enum_variant_type = match variant.r#type.matches_type_parameter(type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, span)),
-            None => {
-                check!(
-                    namespace.resolve_type_with_self(
-                        variant.r#type.clone(),
-                        self_type,
-                        &span,
-                        EnforceTypeArguments::Yes
-                    ),
-                    insert_type(TypeInfo::ErrorRecovery),
-                    warnings,
-                    errors,
-                )
-            }
-        };
+        let enum_variant_type = check!(
+            namespace.resolve_type_with_self(
+                variant.r#type.clone(),
+                self_type,
+                &variant.span,
+                EnforceTypeArguments::Yes
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors,
+        );
         ok(
             TypedEnumVariant {
                 name: variant.name.clone(),

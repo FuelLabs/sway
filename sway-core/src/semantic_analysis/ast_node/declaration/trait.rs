@@ -3,14 +3,11 @@ use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     error::{err, ok},
-    semantic_analysis::{
-        ast_node::{handle_supertraits, type_check_trait_methods},
-        Mode, TypedCodeBlock,
-    },
+    semantic_analysis::{Mode, TCOpts, TypeCheckArguments, TypedCodeBlock},
     style::is_upper_camel_case,
     type_engine::{insert_type, CopyTypes, TypeId, TypeMapping},
-    CallPath, CompileResult, FunctionDeclaration, Namespace, Purity, Supertrait, TraitDeclaration,
-    TraitFn, TypeInfo, TypedFunctionDeclaration, Visibility,
+    CallPath, CompileError, CompileResult, FunctionDeclaration, Namespace, Purity, Supertrait,
+    TraitDeclaration, TraitFn, TypeInfo, TypedDeclaration, TypedFunctionDeclaration, Visibility,
 };
 
 use super::{EnforceTypeArguments, TypedFunctionParameter};
@@ -88,16 +85,26 @@ impl TypedTraitDeclaration {
         );
 
         // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
-        let _methods = check!(
-            type_check_trait_methods(
-                trait_decl.methods.clone(),
-                &mut namespace,
-                insert_type(TypeInfo::SelfType),
-            ),
-            vec![],
-            warnings,
-            errors
-        );
+        let self_type_for_methods = insert_type(TypeInfo::SelfType);
+        for method in trait_decl.methods.iter() {
+            let opts = TCOpts {
+                purity: method.purity,
+            };
+            check!(
+                TypedFunctionDeclaration::type_check(TypeCheckArguments {
+                    checkee: method.clone(),
+                    namespace: &mut namespace,
+                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                    help_text: Default::default(),
+                    self_type: self_type_for_methods,
+                    mode: Mode::NonAbi,
+                    opts
+                }),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+        }
 
         let typed_trait_decl = TypedTraitDeclaration {
             name: trait_decl.name.clone(),
@@ -189,4 +196,123 @@ impl TypedTraitFn {
             is_contract_call: mode == Mode::ImplAbiFn,
         }
     }
+}
+
+/// Recursively handle supertraits by adding all their interfaces and methods to some namespace
+/// which is meant to be the namespace of the subtrait in question
+fn handle_supertraits(
+    supertraits: &[Supertrait],
+    trait_namespace: &mut Namespace,
+) -> CompileResult<()> {
+    let mut warnings = Vec::new();
+    let mut errors = Vec::new();
+
+    for supertrait in supertraits.iter() {
+        match trait_namespace
+            .resolve_call_path(&supertrait.name)
+            .ok(&mut warnings, &mut errors)
+            .cloned()
+        {
+            Some(TypedDeclaration::TraitDeclaration(TypedTraitDeclaration {
+                ref interface_surface,
+                ref methods,
+                ref supertraits,
+                ..
+            })) => {
+                // insert dummy versions of the interfaces for all of the supertraits
+                trait_namespace.insert_trait_implementation(
+                    supertrait.name.clone(),
+                    TypeInfo::SelfType,
+                    interface_surface
+                        .iter()
+                        .map(|x| x.to_dummy_func(Mode::NonAbi))
+                        .collect(),
+                );
+
+                // insert dummy versions of the methods of all of the supertraits
+                let dummy_funcs = check!(
+                    convert_trait_methods_to_dummy_funcs(methods, trait_namespace),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                trait_namespace.insert_trait_implementation(
+                    supertrait.name.clone(),
+                    TypeInfo::SelfType,
+                    dummy_funcs,
+                );
+
+                // Recurse to insert dummy versions of interfaces and methods of the *super*
+                // supertraits
+                check!(
+                    handle_supertraits(supertraits, trait_namespace),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+            }
+            Some(TypedDeclaration::AbiDeclaration(_)) => {
+                errors.push(CompileError::AbiAsSupertrait {
+                    span: supertrait.name.span().clone(),
+                })
+            }
+            _ => errors.push(CompileError::TraitNotFound {
+                name: supertrait.name.clone(),
+            }),
+        }
+    }
+
+    ok((), warnings, errors)
+}
+
+/// Convert a vector of FunctionDeclarations into a vector of TypedFunctionDeclarations where only
+/// the parameters and the return types are type checked.
+fn convert_trait_methods_to_dummy_funcs(
+    methods: &[FunctionDeclaration],
+    namespace: &mut Namespace,
+) -> CompileResult<Vec<TypedFunctionDeclaration>> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let self_type = insert_type(TypeInfo::SelfType);
+    let mut dummy_funcs = vec![];
+    for method in methods.iter() {
+        let mut parameters = vec![];
+        for parameter in method.parameters.iter() {
+            parameters.push(check!(
+                TypedFunctionParameter::type_check(
+                    parameter.clone(),
+                    namespace,
+                    self_type,
+                    EnforceTypeArguments::Yes
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+        let return_type = check!(
+            namespace.resolve_type_with_self(
+                method.return_type.clone(),
+                self_type,
+                &method.return_type_span,
+                EnforceTypeArguments::Yes
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors,
+        );
+        dummy_funcs.push(TypedFunctionDeclaration {
+            purity: Default::default(),
+            name: method.name.clone(),
+            body: TypedCodeBlock { contents: vec![] },
+            parameters,
+            span: method.name.span(),
+            return_type,
+            return_type_span: method.return_type_span.clone(),
+            visibility: Visibility::Public,
+            type_parameters: vec![],
+            is_contract_call: false,
+        });
+    }
+    ok(dummy_funcs, warnings, errors)
 }

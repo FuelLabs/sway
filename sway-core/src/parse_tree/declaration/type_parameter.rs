@@ -57,55 +57,34 @@ impl CopyTypes for TypeParameter {
     }
 }
 
-impl UpdateTypes for TypeParameter {
-    fn update_types_with_self(
-        &mut self,
-        type_mapping: &TypeMapping,
-        namespace: &mut Namespace,
-        self_type: TypeId,
-    ) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        self.type_id = match look_up_type_id(self.type_id).matches_type_parameter(type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, self.span())),
-            None => check!(
-                namespace.resolve_type_with_self(
-                    look_up_type_id(self.type_id),
-                    self_type,
-                    &self.span(),
-                    EnforceTypeArguments::Yes
-                ),
-                insert_type(TypeInfo::ErrorRecovery),
-                warnings,
-                errors,
-            ),
-        };
-        ok((), warnings, errors)
-    }
-
-    fn update_types_without_self(
-        &mut self,
-        type_mapping: &TypeMapping,
-        namespace: &mut Namespace,
-    ) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        self.type_id = match look_up_type_id(self.type_id).matches_type_parameter(type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, self.span())),
-            None => check!(
-                namespace.resolve_type_without_self(look_up_type_id(self.type_id)),
-                insert_type(TypeInfo::ErrorRecovery),
-                warnings,
-                errors,
-            ),
-        };
-        ok((), warnings, errors)
-    }
-}
-
 impl Spanned for TypeParameter {
     fn span(&self) -> Span {
         self.name_ident.span()
+    }
+}
+
+impl TypeParameter {
+    pub(crate) fn type_check(
+        type_parameter: &mut TypeParameter,
+        namespace: &mut Namespace,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        // TODO: add check here to see if the type parameter has a valid name
+        type_parameter.type_id = insert_type(TypeInfo::UnknownGeneric {
+            name: type_parameter.name_ident.clone(),
+        });
+        let type_parameter_decl = TypedDeclaration::GenericTypeForFunctionScope {
+            name: type_parameter.name_ident.clone(),
+            type_id: type_parameter.type_id,
+        };
+        check!(
+            namespace.insert_symbol(type_parameter.name_ident.clone(), type_parameter_decl),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        ok((), warnings, errors)
     }
 }
 

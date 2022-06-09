@@ -89,25 +89,12 @@ impl TypedStructDeclaration {
         // create a namespace for the decl, used to create a scope for generics
         let mut namespace = namespace.clone();
 
-        // insert type parameters as Unknown types
-        let type_mapping = insert_type_parameters(&type_parameters);
-
         // update the types in the type parameters, insert the type parameters
         // into the decl namespace, and check to see if the type parameters
         // shadow one another
         for type_parameter in type_parameters.iter_mut() {
             check!(
-                type_parameter.update_types_with_self(&type_mapping, &mut namespace, self_type),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            let type_parameter_decl = TypedDeclaration::GenericTypeForFunctionScope {
-                name: type_parameter.name_ident.clone(),
-                type_id: type_parameter.type_id,
-            };
-            check!(
-                namespace.insert_symbol(type_parameter.name_ident.clone(), type_parameter_decl),
+                TypeParameter::type_check(type_parameter, &mut namespace),
                 continue,
                 warnings,
                 errors
@@ -118,7 +105,7 @@ impl TypedStructDeclaration {
         let mut new_fields = vec![];
         for field in fields.into_iter() {
             new_fields.push(check!(
-                TypedStructField::type_check(field, &mut namespace, self_type, &type_mapping),
+                TypedStructField::type_check(field, &mut namespace, self_type),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -212,24 +199,20 @@ impl TypedStructField {
         field: StructField,
         namespace: &mut Namespace,
         self_type: TypeId,
-        type_mapping: &TypeMapping,
     ) -> CompileResult<TypedStructField> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let r#type = match field.r#type.matches_type_parameter(type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, field.type_span)),
-            None => check!(
-                namespace.resolve_type_with_self(
-                    field.r#type,
-                    self_type,
-                    &field.type_span,
-                    EnforceTypeArguments::Yes
-                ),
-                insert_type(TypeInfo::ErrorRecovery),
-                warnings,
-                errors,
+        let r#type = check!(
+            namespace.resolve_type_with_self(
+                field.r#type,
+                self_type,
+                &field.type_span,
+                EnforceTypeArguments::Yes
             ),
-        };
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors,
+        );
         let field = TypedStructField {
             name: field.name,
             r#type,
