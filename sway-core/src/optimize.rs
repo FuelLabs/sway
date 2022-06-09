@@ -126,46 +126,21 @@ fn compile_constant_expression(
     const_expr: &TypedExpression,
 ) -> Result<Value, CompileError> {
     let span_id_idx = MetadataIndex::from_span(context, &const_expr.span);
-    match &const_expr.expression {
-        TypedExpressionVariant::Literal(literal) => {
-            Ok(convert_literal_to_value(context, literal, span_id_idx))
-        }
+    let err = match &const_expr.expression {
         // Special case functions because the span in `const_expr` is to the inlined function
         // definition, rather than the actual call site.
-        TypedExpressionVariant::FunctionApplication {
-            call_path,
-            arguments,
-            function_body,
-            ..
-        } => {
-            let err = Err(CompileError::NonConstantDeclValue {
+        TypedExpressionVariant::FunctionApplication { call_path, .. } => {
+            Err(CompileError::NonConstantDeclValue {
                 span: call_path.span(),
-            });
-            let const_args = arguments
-                .iter()
-                .filter_map(|(name, expr)| {
-                    if let TypedExpressionVariant::Literal(l) = &expr.expression {
-                        return Some(convert_literal_to_constant(l));
-                    }
-                    use sway_ir::value::ValueDatum::Constant;
-                    module
-                        .get_global_constant(context, name.as_str())
-                        .and_then(|v| match &context.values[(v.0)].value {
-                            Constant(cv) => Some(cv.clone()),
-                            _ => None,
-                        })
-                })
-                .collect::<Vec<sway_ir::Constant>>();
-            if const_args.len() < arguments.len() {
-                return err;
-            }
-            const_fold_typed_application(context, arguments, function_body, &const_args)
-                .map_or(err, |c| Ok(Constant::get_struct(context, c, span_id_idx)))
+            })
         }
         _otherwise => Err(CompileError::NonConstantDeclValue {
             span: const_expr.span.clone(),
         }),
-    }
+    };
+    let mut known_consts = MappedStack::<Ident, Constant>::new();
+    const_fold_typed_expr(context, module, &mut known_consts, const_expr)
+        .map_or(err, |c| Ok(Value::new_constant(context, c, span_id_idx)))
 }
 
 // -------------------------------------------------------------------------------------------------
