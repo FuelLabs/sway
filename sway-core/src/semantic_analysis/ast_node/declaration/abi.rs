@@ -4,7 +4,7 @@ use sway_types::{Ident, Span};
 use crate::{
     error::{err, ok},
     semantic_analysis::{Mode, TCOpts, TypeCheckArguments},
-    type_engine::{insert_type, AbiName, TypeId},
+    type_engine::{insert_type, AbiName, CreateTypeId, TypeId},
     AbiDeclaration, CompileResult, FunctionDeclaration, Namespace, TypeInfo,
     TypedFunctionDeclaration,
 };
@@ -27,6 +27,16 @@ pub struct TypedAbiDeclaration {
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
     pub(crate) span: Span,
+}
+
+impl CreateTypeId for TypedAbiDeclaration {
+    fn create_type_id(&self) -> TypeId {
+        let ty = TypeInfo::ContractCaller {
+            abi_name: AbiName::Known(self.name.clone().into()),
+            address: None,
+        };
+        insert_type(ty)
+    }
 }
 
 impl TypedAbiDeclaration {
@@ -88,13 +98,5 @@ impl TypedAbiDeclaration {
             span,
         };
         ok(decl, warnings, errors)
-    }
-
-    pub(crate) fn as_type(&self) -> TypeId {
-        let ty = TypeInfo::ContractCaller {
-            abi_name: AbiName::Known(self.name.clone().into()),
-            address: None,
-        };
-        insert_type(ty)
     }
 }

@@ -1,5 +1,4 @@
 mod abi;
-mod create_type_id;
 mod r#enum;
 mod function;
 mod impl_trait;
@@ -10,7 +9,6 @@ mod r#trait;
 mod variable;
 
 pub use abi::*;
-pub(crate) use create_type_id::*;
 pub use function::*;
 pub use impl_trait::*;
 pub(crate) use monomorphize::*;
