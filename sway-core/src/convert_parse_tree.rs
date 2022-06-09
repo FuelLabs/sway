@@ -181,6 +181,12 @@ pub enum ConvertParseTreeError {
     GetStorageKeyTooManyArgs { span: Span },
     #[error("recursive types are not supported")]
     RecursiveType { span: Span },
+    #[error("enum variant \"{name}\" already declared")]
+    DuplicateEnumVariant { name: Ident, span: Span },
+    #[error("storage field \"{name}\" already declared")]
+    DuplicateStorageField { name: Ident, span: Span },
+    #[error("struct field \"{name}\" already declared")]
+    DuplicateStructField { name: Ident, span: Span },
 }
 
 impl Spanned for ConvertParseTreeError {
@@ -232,6 +238,9 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::ConstrainedNonExistentType { span, .. } => span.clone(),
             ConvertParseTreeError::GetStorageKeyTooManyArgs { span, .. } => span.clone(),
             ConvertParseTreeError::RecursiveType { span } => span.clone(),
+            ConvertParseTreeError::DuplicateEnumVariant { span, .. } => span.clone(),
+            ConvertParseTreeError::DuplicateStorageField { span, .. } => span.clone(),
+            ConvertParseTreeError::DuplicateStructField { span, .. } => span.clone(),
         }
     }
 }
@@ -476,6 +485,7 @@ fn item_struct_to_struct_declaration(
     ec: &mut ErrorContext,
     item_struct: ItemStruct,
 ) -> Result<StructDeclaration, ErrorEmitted> {
+    let mut errors = Vec::new();
     let span = item_struct.span();
     let fields = item_struct
         .fields
@@ -483,11 +493,28 @@ fn item_struct_to_struct_declaration(
         .into_iter()
         .map(|type_field| type_field_to_struct_field(ec, type_field))
         .collect::<Result<Vec<_>, _>>()?;
+
     if fields.iter().any(
         |field| matches!(&field.r#type, TypeInfo::Custom { name, ..} if name == &item_struct.name),
     ) {
-        return Err(ec.error(ConvertParseTreeError::RecursiveType { span }));
+        errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
+
+    // Make sure each struct field is declared once
+    let mut names_of_fields = std::collections::HashSet::new();
+    fields.iter().for_each(|v| {
+        if !names_of_fields.insert(v.name.clone()) {
+            errors.push(ConvertParseTreeError::DuplicateStructField {
+                name: v.name.clone(),
+                span: v.name.span(),
+            });
+        }
+    });
+
+    if let Some(errors) = ec.errors(errors) {
+        return Err(errors);
+    }
+
     let struct_declaration = StructDeclaration {
         name: item_struct.name,
         fields,
@@ -506,6 +533,7 @@ fn item_enum_to_enum_declaration(
     ec: &mut ErrorContext,
     item_enum: ItemEnum,
 ) -> Result<EnumDeclaration, ErrorEmitted> {
+    let mut errors = Vec::new();
     let span = item_enum.span();
     let variants = item_enum
         .fields
@@ -514,11 +542,28 @@ fn item_enum_to_enum_declaration(
         .enumerate()
         .map(|(tag, type_field)| type_field_to_enum_variant(ec, type_field, tag))
         .collect::<Result<Vec<_>, _>>()?;
+
     if variants.iter().any(|variant| {
        matches!(&variant.r#type, TypeInfo::Custom { name, ..} if name == &item_enum.name)
     }) {
-        return Err(ec.error(ConvertParseTreeError::RecursiveType { span }));
+        errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
+
+    // Make sure each enum variant is declared once
+    let mut names_of_variants = std::collections::HashSet::new();
+    variants.iter().for_each(|v| {
+        if !names_of_variants.insert(v.name.clone()) {
+            errors.push(ConvertParseTreeError::DuplicateEnumVariant {
+                name: v.name.clone(),
+                span: v.name.span(),
+            });
+        }
+    });
+
+    if let Some(errors) = ec.errors(errors) {
+        return Err(errors);
+    }
+
     let enum_declaration = EnumDeclaration {
         name: item_enum.name,
         type_parameters: generic_params_opt_to_type_parameters(
@@ -743,18 +788,31 @@ fn item_storage_to_storage_declaration(
     ec: &mut ErrorContext,
     item_storage: ItemStorage,
 ) -> Result<StorageDeclaration, ErrorEmitted> {
+    let mut errors = Vec::new();
     let span = item_storage.span();
-    let storage_declaration = StorageDeclaration {
-        span,
-        fields: {
-            item_storage
-                .fields
-                .into_inner()
-                .into_iter()
-                .map(|storage_field| storage_field_to_storage_field(ec, storage_field))
-                .collect::<Result<_, _>>()?
-        },
-    };
+    let fields: Vec<StorageField> = item_storage
+        .fields
+        .into_inner()
+        .into_iter()
+        .map(|storage_field| storage_field_to_storage_field(ec, storage_field))
+        .collect::<Result<_, _>>()?;
+
+    // Make sure each storage field is declared once
+    let mut names_of_fields = std::collections::HashSet::new();
+    fields.iter().for_each(|v| {
+        if !names_of_fields.insert(v.name.clone()) {
+            errors.push(ConvertParseTreeError::DuplicateStorageField {
+                name: v.name.clone(),
+                span: v.name.span(),
+            });
+        }
+    });
+
+    if let Some(errors) = ec.errors(errors) {
+        return Err(errors);
+    }
+
+    let storage_declaration = StorageDeclaration { span, fields };
     Ok(storage_declaration)
 }
 

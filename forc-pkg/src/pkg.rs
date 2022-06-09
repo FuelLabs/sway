@@ -723,9 +723,31 @@ impl Default for GitReference {
 /// dependencies are always compiled before their dependents.
 pub fn compilation_order(graph: &Graph) -> Result<Vec<NodeIx>> {
     let rev_pkg_graph = petgraph::visit::Reversed(&graph);
-    petgraph::algo::toposort(rev_pkg_graph, None)
-        // TODO: Show full list of packages that cycle.
-        .map_err(|e| anyhow!("dependency cycle detected: {:?}", e))
+    petgraph::algo::toposort(rev_pkg_graph, None).map_err(|_| {
+        // Find strongly connected components
+        // If the vector has an element with length more than 1, it contains a cyclic path.
+        let scc = petgraph::algo::kosaraju_scc(&graph);
+        let mut path = String::new();
+        scc.iter()
+            .filter(|path| path.len() > 1)
+            .for_each(|cyclic_path| {
+                // We are sure that there is an element in cyclic_path vec.
+                let starting_node = &graph[*cyclic_path.last().unwrap()];
+
+                // Adding first node of the path
+                path.push_str(&starting_node.name.to_string());
+                path.push_str(" -> ");
+
+                for (node_index, node) in cyclic_path.iter().enumerate() {
+                    path.push_str(&graph[*node].name.to_string());
+                    if node_index != cyclic_path.len() - 1 {
+                        path.push_str(" -> ");
+                    }
+                }
+                path.push('\n');
+            });
+        anyhow!("dependency cycle detected: {}", path)
+    })
 }
 
 /// Given graph of pinned dependencies and the directory for the root node, produce a path map
