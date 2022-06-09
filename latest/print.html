@@ -1058,23 +1058,44 @@ let z: (u64,) = (42,); // z is of type (u64), i.e. a one-arity tuple
 let w: (u64) = (42,);  // type error
 </code></pre>
 <h2 id="arrays"><a class="header" href="#arrays">Arrays</a></h2>
-<p>An array is similar to a tuple, but an array's values must all be of the same type. An array is written as a comma-separated list inside square brackets:</p>
+<p>An array is similar to a tuple, but an array's values must all be of the same type. Arrays can hold arbitrary types include non-primitive types.</p>
+<p>An array is written as a comma-separated list inside square brackets:</p>
 <pre><code class="language-sway">let x = [1, 2, 3, 4, 5];
 </code></pre>
 <p>Arrays are allocated on the stack since their size is known. An array's size is <em>always</em> static, i.e. it cannot change. An array of five elements cannot become an array of six elements.</p>
-<p>Arrays can be iterated over, unlike tuples. A common use case for arrays is checking set membership. If you are given a name, and you'd like to figure out if that name is included in your list of classmates, you can use an array:</p>
-<pre><code class="language-sway">let name = /* some user input */;
-let classmates = [&quot;Bob&quot;, &quot;Jan&quot;, &quot;Ron&quot;];
-assert(classmates.contains(name));
+<p>Arrays can be iterated over, unlike tuples. An array's type is written as the type the array contains followed by the number of elements, semicolon-separated and within square brackets, e.g. <code>[u64; 5]</code>. To access an element in an array, use the <em>array indexing syntax</em>, i.e. square brackets.</p>
+<p>script;</p>
+<p>use std::assert::assert;</p>
+<p>struct Foo {
+f1: u32,
+f2: b256,
+}</p>
+<p>fn main() {
+// Array of integers with type ascription
+let array_of_integers: [u8;
+5] = [1, 2, 3, 4, 5];</p>
+<pre><code>// Array of strings
+let array_of_strings = [ &quot;Bob&quot;, &quot;Jan&quot;, &quot;Ron&quot;];
+
+// Array of structs
+let array_of_structs: [Foo;
+2] = [Foo {
+    f1: 11, f2: 0x1111111111111111111111111111111111111111111111111111111111111111, 
+},
+Foo {
+    f1: 22, f2: 0x2222222222222222222222222222222222222222222222222222222222222222, 
+}
+];
+
+// Accessing an element of an array
+let array_of_bools: [bool;
+2] = [true, false];
+assert(array_of_bools[0]);
 </code></pre>
-<p>An array's type is written as the type the array contains followed by the number of elements, semicolon-separated and within square brackets.</p>
-<pre><code class="language-sway">let x: [u64; 5] = [0, 1, 2, 3, 4];
-</code></pre>
-<p>To access an element in an array, use <em>array indexing syntax</em>:</p>
-<pre><code class="language-sway">let x: [bool; 2] = [true, false];
-assert(x[0]);
-</code></pre>
-<p>Note that arrays are zero-indexed, just like tuples.</p>
+<p>}</p>
+<blockquote>
+<p><strong>Note</strong>: Arrays are currently immutable which means that changing elements of an array once initialized is not yet possible.</p>
+</blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="blockchain-types"><a class="header" href="#blockchain-types">Blockchain Types</a></h1>
 <p>Sway is fundamentally a blockchain language, and it offers a selection of types tailored for the blockchain use case.</p>
 <p>These are provided via the standard library (<a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std"><code>lib-std</code></a>) which both add a degree of type-safety, as well as make the intention of the developer more clear.</p>
@@ -2497,13 +2518,22 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 <p><a href="https://github.com/FuelLabs/sway/issues/870">#870</a>: All <code>impl</code> blocks need to be defined before any of the functions they define can be called.</p>
 </li>
 </ul>
+<h2 id="missing-features"><a class="header" href="#missing-features">Missing Features</a></h2>
+<ul>
+<li>
+<p><a href="https://github.com/FuelLabs/sway/issues/1182">#1182</a> Arrays in a <code>storage</code> block are not yet supported. See the <a href="reference/../blockchain-development/storage.html#manual-storage-management">Manual Storage Management</a> section for details on how to use <code>store</code> and <code>get</code> from the standard library to manage storage slots directly. Note, however, that <code>StorageMap&lt;K, V&gt;</code> <em>does</em> support arbitrary types for <code>K</code> and <code>V</code> without any limitations.</p>
+</li>
+<li>
+<p><a href="https://github.com/FuelLabs/sway/issues/428">#428</a>: Arrays are currently immutable which means that changing elements of an array once initialized is not yet possible.</p>
+</li>
+<li>
+<p><a href="https://github.com/FuelLabs/sway/issues/1077">#1077</a>: Dynamic vectors, i.e. <code>Vec&lt;T&gt;</code>, have not yet been implemented.</p>
+</li>
+</ul>
 <h2 id="general"><a class="header" href="#general">General</a></h2>
 <ul>
 <li>
-<p>Arrays in a <code>storage</code> block are not yet supported. See the <a href="reference/../blockchain-development/storage.html#manual-storage-management">Manual Storage Management</a> section for details on how to use <code>store</code> and <code>get</code> from the standard library to manage storage slots directly. Note, however, that <code>StorageMap&lt;K, V&gt;</code> <em>does</em> support arbitrary types for <code>K</code> and <code>V</code> without any limitations.</p>
-</li>
-<li>
-<p>The optimizing pass of the compiler is not yet implemented, therefore bytecode will be more expensive and larger than it would be in production. Note that eventually the optimizer will support zero-cost abstractions, avoiding the need for developers to go down to inline assembly to produce optimal code.</p>
+<p>No compiler optimization passes have been implemented yet, therefore bytecode will be more expensive and larger than it would be in production. Note that eventually the optimizer will support zero-cost abstractions, avoiding the need for developers to go down to inline assembly to produce optimal code.</p>
 </li>
 <li>
 <p>Currently, we need to parse the Sway code before formatting it. Hence, <strong>the formatter cannot work on Sway code that does not parse correctly</strong>. This requirement may be changed in the future.</p>

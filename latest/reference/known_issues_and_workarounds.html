@@ -159,13 +159,22 @@
 <p><a href="https://github.com/FuelLabs/sway/issues/870">#870</a>: All <code>impl</code> blocks need to be defined before any of the functions they define can be called.</p>
 </li>
 </ul>
+<h2 id="missing-features"><a class="header" href="#missing-features">Missing Features</a></h2>
+<ul>
+<li>
+<p><a href="https://github.com/FuelLabs/sway/issues/1182">#1182</a> Arrays in a <code>storage</code> block are not yet supported. See the <a href="../blockchain-development/storage.html#manual-storage-management">Manual Storage Management</a> section for details on how to use <code>store</code> and <code>get</code> from the standard library to manage storage slots directly. Note, however, that <code>StorageMap&lt;K, V&gt;</code> <em>does</em> support arbitrary types for <code>K</code> and <code>V</code> without any limitations.</p>
+</li>
+<li>
+<p><a href="https://github.com/FuelLabs/sway/issues/428">#428</a>: Arrays are currently immutable which means that changing elements of an array once initialized is not yet possible.</p>
+</li>
+<li>
+<p><a href="https://github.com/FuelLabs/sway/issues/1077">#1077</a>: Dynamic vectors, i.e. <code>Vec&lt;T&gt;</code>, have not yet been implemented.</p>
+</li>
+</ul>
 <h2 id="general"><a class="header" href="#general">General</a></h2>
 <ul>
 <li>
-<p>Arrays in a <code>storage</code> block are not yet supported. See the <a href="../blockchain-development/storage.html#manual-storage-management">Manual Storage Management</a> section for details on how to use <code>store</code> and <code>get</code> from the standard library to manage storage slots directly. Note, however, that <code>StorageMap&lt;K, V&gt;</code> <em>does</em> support arbitrary types for <code>K</code> and <code>V</code> without any limitations.</p>
-</li>
-<li>
-<p>The optimizing pass of the compiler is not yet implemented, therefore bytecode will be more expensive and larger than it would be in production. Note that eventually the optimizer will support zero-cost abstractions, avoiding the need for developers to go down to inline assembly to produce optimal code.</p>
+<p>No compiler optimization passes have been implemented yet, therefore bytecode will be more expensive and larger than it would be in production. Note that eventually the optimizer will support zero-cost abstractions, avoiding the need for developers to go down to inline assembly to produce optimal code.</p>
 </li>
 <li>
 <p>Currently, we need to parse the Sway code before formatting it. Hence, <strong>the formatter cannot work on Sway code that does not parse correctly</strong>. This requirement may be changed in the future.</p>
