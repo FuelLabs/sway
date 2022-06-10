@@ -1,0 +1,14 @@
+[[package]]
+name = 'associated_method'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-C2AC3A9F27F37A10'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'path+from-root-C2AC3A9F27F37A10'
+dependencies = ['core']

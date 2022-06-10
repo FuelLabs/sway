@@ -28,18 +28,15 @@ pub(crate) fn order_ast_nodes_by_dependency(nodes: Vec<AstNode>) -> CompileResul
         errors.sort_by_key(|err| err.span().start());
         err(Vec::new(), errors)
     } else {
-        // Reorder the parsed AstNodes based on dependency.  Includes first, then uses, then
+        // Reorder the parsed AstNodes based on dependency.  Includes deps first, then uses, then
         // reordered declarations, then anything else.  To keep the list stable and simple we can
         // use a basic insertion sort.
-        ok(
-            nodes
-                .into_iter()
-                .fold(Vec::<AstNode>::new(), |ordered, node| {
-                    insert_into_ordered_nodes(&decl_dependencies, ordered, node)
-                }),
-            Vec::new(),
-            Vec::new(),
-        )
+        let ordered_nodes = nodes
+            .into_iter()
+            .fold(Vec::<AstNode>::new(), |ordered, node| {
+                insert_into_ordered_nodes(&decl_dependencies, ordered, node)
+            });
+        ok(ordered_nodes, Vec::new(), Vec::new())
     }
 }
 
@@ -227,15 +224,14 @@ fn depends_on(
         // Include statements first.
         (AstNodeContent::IncludeStatement(_), AstNodeContent::IncludeStatement(_)) => false,
         (_, AstNodeContent::IncludeStatement(_)) => true,
+        (AstNodeContent::IncludeStatement(_), _) => false,
 
         // Use statements next.
-        (AstNodeContent::IncludeStatement(_), AstNodeContent::UseStatement(_)) => false,
         (AstNodeContent::UseStatement(_), AstNodeContent::UseStatement(_)) => false,
         (_, AstNodeContent::UseStatement(_)) => true,
+        (AstNodeContent::UseStatement(_), _) => false,
 
         // Then declarations, ordered using the dependecies list.
-        (AstNodeContent::IncludeStatement(_), AstNodeContent::Declaration(_)) => false,
-        (AstNodeContent::UseStatement(_), AstNodeContent::Declaration(_)) => false,
         (AstNodeContent::Declaration(dependant), AstNodeContent::Declaration(dependee)) => {
             match (decl_name(dependant), decl_name(dependee)) {
                 (Some(dependant_name), Some(dependee_name)) => decl_dependencies
@@ -369,7 +365,7 @@ impl Dependencies {
                     deps.gather_from_fn_decl(fn_decl)
                 }),
             Declaration::StorageDeclaration(StorageDeclaration { fields, .. }) => self
-                .gather_from_iter(fields.iter(), |deps, StorageField { r#type, .. }| {
+                .gather_from_iter(fields.iter(), |deps, StorageField { ref r#type, .. }| {
                     deps.gather_from_typeinfo(r#type)
                 }),
         }
@@ -577,14 +573,28 @@ impl Dependencies {
                 deps.gather_from_typeinfo(&look_up_type_id(elem.type_id))
             }),
             TypeInfo::Array(type_id, _) => self.gather_from_typeinfo(&look_up_type_id(*type_id)),
-            TypeInfo::Struct { fields, .. } => self
-                .gather_from_iter(fields.iter(), |deps, field| {
+            TypeInfo::Struct {
+                name,
+                type_parameters,
+                fields,
+            } => {
+                self.deps.insert(DependentSymbol::Symbol(name.clone()));
+                self.gather_from_iter(fields.iter(), |deps, field| {
                     deps.gather_from_typeinfo(&look_up_type_id(field.r#type))
-                }),
-            TypeInfo::Enum { variant_types, .. } => self
-                .gather_from_iter(variant_types.iter(), |deps, variant| {
+                })
+                .gather_from_type_parameters(type_parameters)
+            }
+            TypeInfo::Enum {
+                name,
+                type_parameters,
+                variant_types,
+            } => {
+                self.deps.insert(DependentSymbol::Symbol(name.clone()));
+                self.gather_from_iter(variant_types.iter(), |deps, variant| {
                     deps.gather_from_typeinfo(&look_up_type_id(variant.r#type))
-                }),
+                })
+                .gather_from_type_parameters(type_parameters)
+            }
             _ => self,
         }
     }

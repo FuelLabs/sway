@@ -46,7 +46,10 @@ impl UnresolvedTypeCheck for TypedAstNodeContent {
     fn check_for_unresolved_types(&self) -> Vec<CompileError> {
         use TypedAstNodeContent::*;
         match self {
-            ReturnStatement(stmt) => stmt.expr.check_for_unresolved_types(),
+            ReturnStatement(stmt) => {
+                println!("{}", stmt);
+                stmt.expr.check_for_unresolved_types()
+            },
             Declaration(decl) => decl.check_for_unresolved_types(),
             Expression(expr) => expr.check_for_unresolved_types(),
             ImplicitReturnExpression(expr) => expr.check_for_unresolved_types(),
@@ -171,6 +174,7 @@ impl TypedAstNode {
     /// This does _not_ extract implicit return statements as those are not control flow! This is
     /// _only_ for explicit returns.
     pub(crate) fn gather_return_statements(&self) -> Vec<&TypedReturnStatement> {
+        println!("foobar: {}", self);
         match &self.content {
             TypedAstNodeContent::ReturnStatement(ref stmt) => vec![stmt],
             TypedAstNodeContent::ImplicitReturnExpression(ref exp) => {
@@ -458,6 +462,22 @@ impl TypedAstNode {
                                 warnings,
                                 errors
                             );
+                            if let TypeInfo::Enum { ref name, .. } =
+                                look_up_type_id(impl_trait.implementing_for_type_id)
+                            {
+                                if name.as_str() == "Result" {
+                                    println!(
+                                        "\n\n>>>>>> inserting {} into the namespace for {}",
+                                        look_up_type_id(impl_trait.implementing_for_type_id),
+                                        namespace
+                                            .mod_path()
+                                            .iter()
+                                            .map(|x| x.to_string())
+                                            .collect::<Vec<_>>()
+                                            .join("::")
+                                    );
+                                }
+                            }
                             namespace.insert_trait_implementation(
                                 impl_trait.trait_name.clone(),
                                 look_up_type_id(impl_trait.implementing_for_type_id),

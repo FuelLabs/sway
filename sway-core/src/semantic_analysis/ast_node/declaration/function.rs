@@ -58,11 +58,9 @@ impl CopyTypes for TypedFunctionDeclaration {
         self.type_parameters
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
-
         self.parameters
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
-
         self.return_type
             .update_type(type_mapping, &self.return_type_span);
         self.body.copy_types(type_mapping);

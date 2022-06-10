@@ -167,6 +167,7 @@ impl UnresolvedTypeCheck for TypedExpression {
                 } else {
                     vec![]
                 };
+                println!("{}", enum_decl);
                 buf.append(
                     &mut enum_decl
                         .variants
@@ -326,6 +327,7 @@ impl TypedExpression {
     /// This does _not_ extract implicit return statements as those are not control flow! This is
     /// _only_ for explicit returns.
     pub(crate) fn gather_return_statements(&self) -> Vec<&TypedReturnStatement> {
+        println!("barfoo: {}", self);
         match &self.expression {
             TypedExpressionVariant::IfExp {
                 condition,

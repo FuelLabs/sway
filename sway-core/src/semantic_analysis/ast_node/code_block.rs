@@ -31,7 +31,7 @@ impl TypedCodeBlock {
         let TypeCheckArguments {
             checkee: other,
             namespace,
-            return_type_annotation: type_annotation,
+            return_type_annotation,
             help_text,
             self_type,
             opts,
@@ -47,7 +47,7 @@ impl TypedCodeBlock {
                 TypedAstNode::type_check(TypeCheckArguments {
                     checkee: node.clone(),
                     namespace: &mut code_block_namespace,
-                    return_type_annotation: type_annotation,
+                    return_type_annotation,
                     help_text,
                     self_type,
                     mode: Mode::NonAbi,
@@ -83,7 +83,7 @@ impl TypedCodeBlock {
         if let Some(return_type) = return_type {
             let (mut new_warnings, new_errors) = unify_with_self(
                 return_type,
-                type_annotation,
+                return_type_annotation,
                 self_type,
                 &implicit_return_span.unwrap_or_else(|| other.whole_block_span.clone()),
                 help_text,

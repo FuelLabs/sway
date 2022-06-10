@@ -64,7 +64,7 @@ where
 
     fn monomorphize(
         self,
-        type_arguments: Vec<TypeArgument>,
+        mut type_arguments: Vec<TypeArgument>,
         enforce_type_arguments: EnforceTypeArguments,
         self_type: Option<TypeId>,
         call_site_span: Option<&Span>,
@@ -107,7 +107,6 @@ where
                 err(warnings, errors)
             }
             (false, false) => {
-                let mut type_arguments = type_arguments;
                 for type_argument in type_arguments.iter_mut() {
                     let type_id = match self_type {
                         Some(self_type) => namespace.resolve_type_with_self(
@@ -142,7 +141,32 @@ where
                     });
                     return err(warnings, errors);
                 }
+                if self.name().as_str() == "Result" {
+                    println!(
+                        "\n\n-----------\n\ntype_parameters:\n[{}]\n\ntype_arguments:\n[{}]",
+                        self.type_parameters()
+                            .iter()
+                            .map(|x| look_up_type_id(x.type_id).to_string())
+                            .collect::<Vec<_>>()
+                            .join(","),
+                        type_arguments
+                            .iter()
+                            .map(|x| look_up_type_id(x.type_id).to_string())
+                            .collect::<Vec<_>>()
+                            .join(","),
+                    );
+                }
                 let type_mapping = insert_type_parameters(self.type_parameters());
+                if self.name().as_str() == "Result" {
+                    println!(
+                        "\n\ntype_mapping:\n[{}]",
+                        type_mapping
+                            .iter()
+                            .map(|(x, y)| format!("({}, {})", x.type_id, y))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    );
+                }
                 for ((_, interim_type), type_argument) in
                     type_mapping.iter().zip(type_arguments.iter())
                 {
@@ -170,6 +194,16 @@ where
                         }
                     }
                 }
+                if self.name().as_str() == "Result" {
+                    println!(
+                        "\n\ntype_mapping:\n[{}]",
+                        type_mapping
+                            .iter()
+                            .map(|(x, y)| format!("({}, {})", x.type_id, y))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    );
+                }
                 let module = check!(
                     namespace.check_submodule_mut(module_path),
                     return err(warnings, errors),
@@ -195,13 +229,8 @@ pub(crate) fn monomorphize_inner<T>(decl: T, type_mapping: &TypeMapping, namespa
 where
     T: CopyTypes + CreateTypeId,
 {
-    let old_type_id = decl.create_type_id();
     let mut new_decl = decl;
     new_decl.copy_types(type_mapping);
-    namespace.copy_methods_to_type(
-        look_up_type_id(old_type_id),
-        look_up_type_id(new_decl.create_type_id()),
-        type_mapping,
-    );
+    namespace.copy_methods_to_type(look_up_type_id(new_decl.create_type_id()), type_mapping);
     new_decl
 }

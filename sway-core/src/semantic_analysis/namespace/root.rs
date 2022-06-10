@@ -1,6 +1,6 @@
 use crate::{
     error::*, semantic_analysis::*, type_engine::*, CallPath, CompileResult, Ident, TypeInfo,
-    TypedDeclaration, TypedFunctionDeclaration,
+    TypedDeclaration, TypedFunctionDeclaration, TypeArgument,
 };
 
 use super::{module::Module, namespace::Namespace, Path};
@@ -118,6 +118,49 @@ impl Root {
                     }
                     Some(TypedDeclaration::GenericTypeForFunctionScope { name, type_id }) => {
                         insert_type(TypeInfo::Ref(type_id, name.span()))
+                    }
+                    _ => {
+                        errors.push(CompileError::UnknownTypeName {
+                            name: name.to_string(),
+                            span: name.span(),
+                        });
+                        return err(warnings, errors);
+                    }
+                }
+            }
+            TypeInfo::Enum {
+                ref name,
+                type_parameters,
+                ..
+            } => {
+                match self
+                    .resolve_symbol(mod_path, name)
+                    .ok(&mut warnings, &mut errors)
+                    .cloned()
+                {
+                    Some(TypedDeclaration::EnumDeclaration(decl)) => {
+                        let type_arguments = type_parameters
+                            .into_iter()
+                            .map(|type_parameter| {
+                                TypeArgument {
+                                    type_id: type_parameter.type_id,
+                                    span: type_parameter.name_ident.span()
+                                }
+                            }).collect::<Vec<_>>();
+                        let new_decl = check!(
+                            decl.monomorphize(
+                                type_arguments,
+                                enforce_type_arguments,
+                                Some(self_type),
+                                Some(span),
+                                self,
+                                mod_path // NOTE: Once `TypeInfo::Enum` takes a `CallPath`, this will need to change
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        new_decl.create_type_id()
                     }
                     _ => {
                         errors.push(CompileError::UnknownTypeName {

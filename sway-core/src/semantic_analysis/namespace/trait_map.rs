@@ -1,6 +1,6 @@
-use crate::{error::*, CallPath, CompileResult, TypeInfo, TypedFunctionDeclaration};
+use crate::{CallPath, TypeInfo, TypedFunctionDeclaration};
 
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
 type TraitName = CallPath;
 
@@ -34,15 +34,33 @@ pub(crate) struct TraitMap {
     trait_map: TraitMapInner,
 }
 
+impl fmt::Display for TraitMap {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut builder = String::new();
+        builder.push('{');
+        for ((trait_name, type_info), trait_methods) in self.trait_map.iter() {
+            builder.push_str(&format!("\n{} for {} : ", trait_name, type_info));
+            builder.push_str(&format!(
+                "[{}]",
+                trait_methods
+                    .iter()
+                    .map(|(name, _)| name.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+        }
+        builder.push_str("\n}");
+        write!(f, "{}", builder)
+    }
+}
+
 impl TraitMap {
     pub(crate) fn insert(
         &mut self,
         trait_name: CallPath,
         type_implementing_for: TypeInfo,
         methods: Vec<TypedFunctionDeclaration>,
-    ) -> CompileResult<()> {
-        let warnings = vec![];
-        let errors = vec![];
+    ) {
         let mut methods_map = im::HashMap::new();
         for method in methods.into_iter() {
             let method_name = method.name.as_str().to_string();
@@ -50,25 +68,16 @@ impl TraitMap {
         }
         self.trait_map
             .push_back(((trait_name, type_implementing_for), methods_map));
-        ok((), warnings, errors)
     }
 
-    pub(crate) fn extend(&mut self, other: TraitMap) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn extend(&mut self, other: TraitMap) {
         for ((trait_name, type_implementing_for), methods) in other.trait_map.into_iter() {
-            check!(
-                self.insert(
-                    trait_name,
-                    type_implementing_for,
-                    methods.values().cloned().collect()
-                ),
-                (),
-                warnings,
-                errors
+            self.insert(
+                trait_name,
+                type_implementing_for,
+                methods.values().cloned().collect(),
             );
         }
-        ok((), warnings, errors)
     }
 
     pub(crate) fn get_call_path_and_type_info(
@@ -93,10 +102,30 @@ impl TraitMap {
         if r#type == TypeInfo::ErrorRecovery {
             return methods;
         }
+        // if let TypeInfo::Enum { ref name, .. } = r#type {
+        //     if name.as_str() == "Result" {
+        //         println!(
+        //             "\n\nlooking for:\n{}\n\nin:\nget_methods_for_type\n\nfound:",
+        //             r#type
+        //         );
+        //     }
+        // }
         for ((_, type_info), l_methods) in self.trait_map.iter() {
             if *type_info == r#type {
+                // if let TypeInfo::Enum { ref name, .. } = r#type {
+                //     if name.as_str() == "Result" {
+                //         println!("\n{}\n^ hit", type_info);
+                //     }
+                // }
                 methods.append(&mut l_methods.values().cloned().collect());
             }
+            // } else {
+            //     if let TypeInfo::Enum { ref name, .. } = r#type {
+            //         if name.as_str() == "Result" {
+            //             println!("\n{}\n^ miss", type_info);
+            //         }
+            //     }
+            // }
         }
         methods
     }
@@ -110,13 +139,33 @@ impl TraitMap {
         if r#type == TypeInfo::ErrorRecovery {
             return methods;
         }
+        // if let TypeInfo::Enum { ref name, .. } = r#type {
+        //     if name.as_str() == "Result" {
+        //         println!(
+        //             "\n\nlooking for:\n{}\n\nin:\nget_methods_for_type_by_trait\n\nfound:",
+        //             r#type
+        //         );
+        //     }
+        // }
         for ((trait_name, type_info), trait_methods) in self.trait_map.iter() {
-            if *type_info == r#type {
+            if r#type.is_subset_of(type_info) {
+                // if let TypeInfo::Enum { ref name, .. } = r#type {
+                //     if name.as_str() == "Result" {
+                //         println!("\n{}\n^ hit", type_info);
+                //     }
+                // }
                 methods.insert(
                     (*trait_name).clone(),
                     trait_methods.values().cloned().collect(),
                 );
             }
+            // } else {
+            //     if let TypeInfo::Enum { ref name, .. } = r#type {
+            //         if name.as_str() == "Result" {
+            //             println!("\n{}\n^ miss", type_info);
+            //         }
+            //     }
+            // }
         }
         methods
     }

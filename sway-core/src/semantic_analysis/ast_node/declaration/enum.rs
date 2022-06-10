@@ -2,7 +2,7 @@ use crate::{
     error::*, namespace::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*,
 };
 use fuels_types::Property;
-use std::hash::{Hash, Hasher};
+use std::{hash::{Hash, Hasher}, fmt};
 use sway_types::{Ident, Span, Spanned};
 
 #[derive(Clone, Debug, Eq)]
@@ -66,6 +66,20 @@ impl MonomorphizeHelper for TypedEnumDeclaration {
 
     fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output {
         monomorphize_inner(self, type_mapping, namespace)
+    }
+}
+
+impl fmt::Display for TypedEnumDeclaration {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut builder = String::new();
+        builder.push_str(&self.name.to_string());
+        if !self.type_parameters.is_empty() {
+            builder.push_str(
+                &format!("<{}>", self.type_parameters.iter().map(|x| look_up_type_id(x.type_id).to_string()).collect::<Vec<_>>().join(", "))
+            );
+        }
+        builder.push_str(&format!(" {{ {} }}", self.variants.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(", ")));
+        write!(f, "{}", builder)
     }
 }
 
@@ -192,6 +206,12 @@ impl ToJsonAbi for TypedEnumVariant {
             type_field: self.r#type.json_abi_str(),
             components: self.r#type.generate_json_abi(),
         }
+    }
+}
+
+impl fmt::Display for TypedEnumVariant {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {}", self.name, look_up_type_id(self.r#type))
     }
 }
 

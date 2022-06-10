@@ -486,6 +486,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
                 0x0c, 0x74, 0x82, 0xb6,
             ])),
         ),
+        (
+            "should_pass/language/associated_method",
+            ProgramState::Return(42),
+        ),
     ];
 
     number_of_tests_run += positive_project_names_with_abi

@@ -33,6 +33,18 @@ pub(crate) fn instantiate_function_application(
         errors
     );
 
+    check!(
+        namespace.resolve_type_with_self(
+            look_up_type_id(function_decl.return_type),
+            self_type,
+            &function_decl.return_type_span,
+            EnforceTypeArguments::Yes
+        ),
+        insert_type(TypeInfo::ErrorRecovery),
+        warnings,
+        errors
+    );
+
     // 'purity' is that of the callee, 'opts.purity' of the caller.
     if !opts.purity.can_call(function_decl.purity) {
         errors.push(CompileError::StorageAccessMismatch {

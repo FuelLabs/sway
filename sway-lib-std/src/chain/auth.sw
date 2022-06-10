@@ -6,7 +6,7 @@ use ::assert::assert;
 use ::b512::B512;
 use ::contract_id::ContractId;
 use ::option::*;
-use ::result::Result;
+use ::result::*;
 use ::tx::*;
 use ::identity::Identity;
 

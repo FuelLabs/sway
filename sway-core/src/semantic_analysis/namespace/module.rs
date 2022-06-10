@@ -96,6 +96,19 @@ impl Module {
     ///
     /// Paths are assumed to be relative to `self`.
     pub(crate) fn star_import(&mut self, src: &Path, dst: &Path) -> CompileResult<()> {
+        let src_str = src
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<_>>()
+            .join("::");
+        println!(
+            "\n\n!!!!!! star importing {} to {}",
+            src_str,
+            dst.iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join("::")
+        );
         let mut warnings = vec![];
         let mut errors = vec![];
         let src_ns = check!(
@@ -116,14 +129,14 @@ impl Module {
                 }
             })
             .collect::<Vec<_>>();
-
+        if src_str.contains("result") {
+            println!("\n\n$$$$$$$\n\n{}", implemented_traits);
+        }
         let dst_ns = &mut self[dst];
-        check!(
-            dst_ns.implemented_traits.extend(implemented_traits),
-            (),
-            warnings,
-            errors
-        );
+        dst_ns.implemented_traits.extend(implemented_traits);
+        if src_str.contains("result") {
+            println!("\n\n#######\n\n{}", dst_ns.implemented_traits);
+        }
         for symbol in symbols {
             if dst_ns.use_synonyms.contains_key(&symbol) {
                 errors.push(CompileError::StarImportShadowsOtherSymbol {

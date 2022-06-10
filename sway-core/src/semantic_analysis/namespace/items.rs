@@ -112,9 +112,7 @@ impl Items {
         trait_name: CallPath,
         type_implementing_for: TypeInfo,
         functions_buf: Vec<TypedFunctionDeclaration>,
-    ) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    ) {
         let new_prefixes = if trait_name.prefixes.is_empty() {
             self.use_synonyms
                 .get(&trait_name.suffix)
@@ -128,14 +126,8 @@ impl Items {
             prefixes: new_prefixes,
             is_absolute: trait_name.is_absolute,
         };
-        check!(
-            self.implemented_traits
-                .insert(trait_name, type_implementing_for, functions_buf),
-            (),
-            warnings,
-            errors
-        );
-        ok((), warnings, errors)
+        self.implemented_traits
+            .insert(trait_name, type_implementing_for, functions_buf);
     }
 
     pub(crate) fn get_methods_for_type(&self, r#type: TypeId) -> Vec<TypedFunctionDeclaration> {
@@ -147,17 +139,12 @@ impl Items {
     // available to TypeInfo new_type. This is useful in situations where old_type is being
     // monomorphized to new_type and and we want `get_methods_for_type()` to return the same set of
     // methods for new_type as it does for old_type.
-    pub(crate) fn copy_methods_to_type(
-        &mut self,
-        old_type: TypeInfo,
-        new_type: TypeInfo,
-        type_mapping: &TypeMapping,
-    ) {
+    pub(crate) fn copy_methods_to_type(&mut self, new_type: TypeInfo, type_mapping: &TypeMapping) {
         // This map grabs all (trait name, vec of methods) from self.implemented_traits
         // corresponding to `old_type`.
         let methods = self
             .implemented_traits
-            .get_methods_for_type_by_trait(old_type);
+            .get_methods_for_type_by_trait(new_type.clone());
 
         // Insert into `self.implemented_traits` the contents of the map above but with `new_type`
         // as the `TypeInfo` key.

@@ -312,6 +312,7 @@ impl PartialEq for TypedExpressionVariant {
 
 impl CopyTypes for TypedExpressionVariant {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        //println!("enter {}", self);
         use TypedExpressionVariant::*;
         match self {
             Literal(..) => (),
@@ -387,7 +388,9 @@ impl CopyTypes for TypedExpressionVariant {
                 contents,
                 ..
             } => {
+                println!("before: {}", enum_decl);
                 enum_decl.copy_types(type_mapping);
+                println!("after: {}", enum_decl);
                 if let Some(ref mut contents) = contents {
                     contents.copy_types(type_mapping)
                 };

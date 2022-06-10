@@ -2,6 +2,7 @@ use super::*;
 use crate::concurrent_slab::ConcurrentSlab;
 use crate::type_engine::AbiName;
 use lazy_static::lazy_static;
+use sway_types::Spanned;
 use sway_types::span::Span;
 
 lazy_static! {
@@ -66,9 +67,9 @@ impl Engine {
             //(received_info, expected_info) if received_info == expected_info => (vec![], vec![]),
 
             // Follow any references
-            (Ref(received, _sp1), Ref(expected, _sp2)) if received == expected => (vec![], vec![]),
-            (Ref(received, _sp), _) => self.unify(received, expected, span, help_text),
-            (_, Ref(expected, _sp)) => self.unify(received, expected, span, help_text),
+            (Ref(received, _), Ref(expected, _)) if received == expected => (vec![], vec![]),
+            (Ref(received, _), _) => self.unify(received, expected, span, help_text),
+            (_, Ref(expected, _)) => self.unify(received, expected, span, help_text),
 
             // When we don't know anything about either term, assume that
             // they match and make the one we know nothing about reference the
@@ -184,6 +185,12 @@ impl Engine {
                         warnings.extend(new_warnings);
                         errors.extend(new_errors);
                     });
+                    a_parameters.iter().zip(b_parameters.iter()).for_each(|(a, b)| {
+                        let (new_warnings, new_errors) =
+                            self.unify(a.type_id, b.type_id, &a.name_ident.span(), help_text.clone());
+                        warnings.extend(new_warnings);
+                        errors.extend(new_errors);
+                    });
                 } else {
                     errors.push(TypeError::MismatchedType {
                         expected,
@@ -215,6 +222,12 @@ impl Engine {
                     a_variants.iter().zip(b_variants.iter()).for_each(|(a, b)| {
                         let (new_warnings, new_errors) =
                             self.unify(a.r#type, b.r#type, &a.span, help_text.clone());
+                        warnings.extend(new_warnings);
+                        errors.extend(new_errors);
+                    });
+                    a_parameters.iter().zip(b_parameters.iter()).for_each(|(a, b)| {
+                        let (new_warnings, new_errors) =
+                            self.unify(a.type_id, b.type_id, &a.name_ident.span(), help_text.clone());
                         warnings.extend(new_warnings);
                         errors.extend(new_errors);
                     });
