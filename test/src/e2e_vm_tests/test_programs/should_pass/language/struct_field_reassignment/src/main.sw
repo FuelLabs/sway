@@ -17,5 +17,5 @@ enum NumberOrString {
 
 struct Data {
     value: NumberOrString,
-    address: byte,
+    address: u8,
 }

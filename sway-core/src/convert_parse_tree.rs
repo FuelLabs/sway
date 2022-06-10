@@ -133,9 +133,9 @@ pub enum ConvertParseTreeError {
     QualifiedPathRootsNotImplemented { span: Span },
     #[error("char literals are not implemented")]
     CharLiteralsNotImplemented { span: Span },
-    #[error("hex literals must have either 2 or 64 digits")]
+    #[error("hex literals must have 1..16 or 64 digits")]
     HexLiteralLength { span: Span },
-    #[error("binary literals must have either 8 or 258 digits")]
+    #[error("binary literals must have either 1..64 or 256 digits")]
     BinaryLiteralLength { span: Span },
     #[error("u8 literal out of range")]
     U8LiteralOutOfRange { span: Span },
@@ -2268,7 +2268,7 @@ fn literal_to_literal(
                     if let Some(hex_digits) = orig_str.strip_prefix("0x") {
                         let num_digits = hex_digits.chars().filter(|c| *c != '_').count();
                         match num_digits {
-                            2 => Literal::Byte(u8::try_from(parsed).unwrap()),
+                            1..=16 => Literal::U64(u64::try_from(parsed).unwrap()),
                             64 => {
                                 let bytes = parsed.to_bytes_be();
                                 let mut full_bytes = [0u8; 32];
@@ -2283,7 +2283,7 @@ fn literal_to_literal(
                     } else if let Some(bin_digits) = orig_str.strip_prefix("0b") {
                         let num_digits = bin_digits.chars().filter(|c| *c != '_').count();
                         match num_digits {
-                            8 => Literal::Byte(u8::try_from(parsed).unwrap()),
+                            1..=64 => Literal::U64(u64::try_from(parsed).unwrap()),
                             256 => {
                                 let bytes = parsed.to_bytes_be();
                                 let mut full_bytes = [0u8; 32];
