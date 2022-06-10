@@ -49,12 +49,12 @@ fn run() -> Result<()> {
         Some(path) => PathBuf::from(path),
         None => std::env::current_dir()?,
     };
-    let config = Formatter::from_dir(&dir)?;
-    format_pkg_at_dir(app, &dir, config)
+    let mut config = Formatter::from_dir(&dir)?;
+    format_pkg_at_dir(app, &dir, &mut config)
 }
 
 /// Format the package at the given directory.
-fn format_pkg_at_dir(app: App, dir: &Path, config: Formatter) -> Result<()> {
+fn format_pkg_at_dir(app: App, dir: &Path, config: &mut Formatter) -> Result<()> {
     match find_manifest_dir(dir) {
         Some(path) => {
             let manifest_path = path.clone();
@@ -69,7 +69,7 @@ fn format_pkg_at_dir(app: App, dir: &Path, config: Formatter) -> Result<()> {
                         file.clone(),
                         manifest_path.clone(),
                     );
-                    match Formatter::format(&config, file_content.clone(), Some(&build_config)) {
+                    match Formatter::format(config, file_content.clone(), Some(&build_config)) {
                         Ok(formatted_content) => {
                             if app.check {
                                 if *file_content != formatted_content {

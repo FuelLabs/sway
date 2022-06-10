@@ -1,3 +1,4 @@
+use crate::utils::indent_style::Shape;
 use std::{path::Path, sync::Arc};
 use sway_core::BuildConfig;
 use sway_parse::ItemKind;
@@ -10,13 +11,14 @@ use crate::{config::whitespace::NewlineStyle, utils::newline_style::apply_newlin
 
 #[derive(Debug, Default)]
 pub struct Formatter {
+    pub shape: Shape,
     pub config: Config,
 }
 
 pub type FormattedCode = String;
 
 pub trait Format {
-    fn format(&self, formatter: &Formatter) -> FormattedCode;
+    fn format(&self, formatter: &mut Formatter) -> FormattedCode;
 }
 
 impl Formatter {
@@ -26,10 +28,11 @@ impl Formatter {
             Err(ConfigError::NotFound) => Config::default(),
             Err(e) => return Err(e),
         };
-        Ok(Self { config })
+        let shape = Shape::default();
+        Ok(Self { config, shape })
     }
     pub fn format(
-        &self,
+        &mut self,
         src: Arc<str>,
         build_config: Option<&BuildConfig>,
     ) -> Result<FormattedCode, FormatterError> {
