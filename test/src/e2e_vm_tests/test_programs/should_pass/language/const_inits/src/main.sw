@@ -22,6 +22,17 @@ fn arr_wrapper(a: u64, b: u64, c: u64) -> [u64;
 }
 const ARR2 = arr_wrapper(1, 2, 3);
 
+enum En1 {
+    Int: u64,
+    Arr: [u64;
+    3],
+    NoVal: (),
+}
+
+const EN1a = En1::Int(101);
+const EN1b = En1::Arr(ARR2);
+const EN1c = En1::NoVal;
+
 fn main() -> u64 {
     // initialization through function applications.
     let eth_id0 = ~ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000);
@@ -35,5 +46,20 @@ fn main() -> u64 {
     let a1 = [1, 2, 3];
     assert(a1[0] == ARR1[0] && a1[1] == ARR1[1] && a1[2] == ARR1[2]);
     assert(a1[0] == ARR2[0] && a1[1] == ARR2[1] && a1[2] == ARR2[2]);
+
+    // enum
+    match EN1a {
+        En1::Int(i) => assert(i == 101), En1::Arr(_) => assert(false), En1::NoVal => assert(false), 
+    }
+    match EN1b {
+        En1::Int(i) => assert(false), En1::Arr(arr) => {
+            assert(arr[0] == ARR1[0] && arr[1] == ARR1[1] && arr[2] == ARR1[2]);
+        }
+        En1::NoVal => assert(false), 
+    }
+    match EN1c {
+        En1::Int(i) => assert(false), En1::Arr(_) => assert(false), En1::NoVal => assert(true), 
+    }
+
     1
 }

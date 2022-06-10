@@ -118,7 +118,6 @@ pub fn const_fold_typed_expr(
             let aggregate = crate::optimize::get_aggregate_for_types(context, &field_typs).unwrap();
             Some(Constant::new_struct(&aggregate, field_vals))
         }
-        // This is *very* similar to StructExpression. TODO: Combine them somehow.
         TypedExpressionVariant::Tuple { fields } => {
             let (field_typs, field_vals): (Vec<_>, Vec<_>) = fields
                 .iter()
@@ -163,6 +162,26 @@ pub fn const_fold_typed_expr(
             .unwrap();
             Some(Constant::new_array(&aggregate, element_vals))
         }
+        TypedExpressionVariant::EnumInstantiation {
+            enum_decl,
+            tag,
+            contents,
+            ..
+        } => {
+            let aggregate =
+                crate::optimize::create_enum_aggregate(context, enum_decl.variants.clone())
+                    .unwrap();
+            let tag_value = Constant::new_uint(64, *tag as u64);
+            let mut fields: Vec<Constant> = vec![tag_value];
+            contents.iter().for_each(|subexpr| {
+                const_fold_typed_expr(context, module, known_consts, &*subexpr)
+                    .into_iter()
+                    .for_each(|enum_val| {
+                        fields.push(enum_val);
+                    })
+            });
+            Some(Constant::new_struct(&aggregate, fields))
+        }
         TypedExpressionVariant::ArrayIndex { .. }
         | TypedExpressionVariant::CodeBlock(_)
         | TypedExpressionVariant::FunctionParameter
@@ -170,7 +189,6 @@ pub fn const_fold_typed_expr(
         | TypedExpressionVariant::AsmExpression { .. }
         | TypedExpressionVariant::StructFieldAccess { .. }
         | TypedExpressionVariant::TupleElemAccess { .. }
-        | TypedExpressionVariant::EnumInstantiation { .. }
         | TypedExpressionVariant::LazyOperator { .. }
         | TypedExpressionVariant::AbiCast { .. }
         | TypedExpressionVariant::StorageAccess(_)

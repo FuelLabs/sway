@@ -219,7 +219,7 @@ pub fn get_aggregate_for_types(
 
 // -------------------------------------------------------------------------------------------------
 
-fn create_enum_aggregate(
+pub fn create_enum_aggregate(
     context: &mut Context,
     variants: Vec<TypedEnumVariant>,
 ) -> Result<Aggregate, CompileError> {
