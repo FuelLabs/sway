@@ -520,7 +520,11 @@ impl TypedAstNode {
                         }
                         Declaration::StorageDeclaration(StorageDeclaration { span, fields }) => {
                             let mut fields_buf = Vec::with_capacity(fields.len());
-                            for StorageField { name, r#type } in fields {
+                            for StorageField {
+                                name,
+                                type_info: r#type,
+                            } in fields
+                            {
                                 let r#type = check!(
                                     namespace.resolve_type_without_self(r#type),
                                     return err(warnings, errors),
@@ -948,7 +952,7 @@ fn type_check_interface_surface(
                              type_span,
                          }| TypedFunctionParameter {
                             name,
-                            r#type: check!(
+                            type_id: check!(
                                 namespace.resolve_type_with_self(
                                     look_up_type_id(type_id),
                                     insert_type(TypeInfo::SelfType),
@@ -1084,7 +1088,7 @@ fn type_check_trait_methods(
                  }| {
                     TypedFunctionParameter {
                         name,
-                        r#type: check!(
+                        type_id: check!(
                             namespace.resolve_type_with_self(
                                 look_up_type_id(type_id),
                                 crate::type_engine::insert_type(TypeInfo::SelfType),
@@ -1162,7 +1166,7 @@ fn convert_trait_methods_to_dummy_funcs(
                  name,
                  parameters,
                  return_type,
-                 return_type_span,
+                 ref return_type_span,
                  ..
              }| TypedFunctionDeclaration {
                 purity: Default::default(),
@@ -1174,10 +1178,10 @@ fn convert_trait_methods_to_dummy_funcs(
                         |FunctionParameter {
                              name,
                              type_id,
-                             type_span,
+                             ref type_span,
                          }| TypedFunctionParameter {
                             name: name.clone(),
-                            r#type: check!(
+                            type_id: check!(
                                 trait_namespace.resolve_type_with_self(
                                     look_up_type_id(*type_id),
                                     insert_type(TypeInfo::SelfType),
@@ -1274,7 +1278,7 @@ impl TypeCheckedStorageReassignment {
 #[derive(Clone, Debug, Eq)]
 pub struct TypeCheckedStorageReassignDescriptor {
     pub name: Ident,
-    pub r#type: TypeId,
+    pub type_id: TypeId,
     pub(crate) span: Span,
 }
 
@@ -1283,7 +1287,7 @@ pub struct TypeCheckedStorageReassignDescriptor {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEq for TypeCheckedStorageReassignDescriptor {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
+        self.name == other.name && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
     }
 }
 
@@ -1322,7 +1326,12 @@ fn reassign_storage_subfield(
         .enumerate()
         .find(|(_, TypedStorageField { name, .. })| name == &first_field)
     {
-        Some((ix, TypedStorageField { r#type, .. })) => (StateIndex::new(ix), r#type),
+        Some((
+            ix,
+            TypedStorageField {
+                type_id: r#type, ..
+            },
+        )) => (StateIndex::new(ix), r#type),
         None => {
             errors.push(CompileError::StorageFieldDoesNotExist {
                 name: first_field.clone(),
@@ -1333,7 +1342,7 @@ fn reassign_storage_subfield(
 
     type_checked_buf.push(TypeCheckedStorageReassignDescriptor {
         name: first_field.clone(),
-        r#type: *initial_field_type,
+        type_id: *initial_field_type,
         span: first_field.span(),
     });
 
@@ -1357,13 +1366,13 @@ fn reassign_storage_subfield(
             .find(|x| x.name.as_str() == field.as_str())
         {
             Some(struct_field) => {
-                curr_type = struct_field.r#type;
+                curr_type = struct_field.type_id;
                 type_checked_buf.push(TypeCheckedStorageReassignDescriptor {
                     name: field.clone(),
-                    r#type: struct_field.r#type,
+                    type_id: struct_field.type_id,
                     span: field.span().clone(),
                 });
-                available_struct_fields = update_available_struct_fields(struct_field.r#type);
+                available_struct_fields = update_available_struct_fields(struct_field.type_id);
             }
             None => {
                 let available_fields = available_struct_fields
