@@ -8,7 +8,7 @@ fn main() -> bool {
     let gas: u64 = 1000;
     let amount: u64 = 11;
     let other_contract_id = ~ContractId::from(0x189a69c7ffc261ec84769563bdde047e592a33456acc079f189332c2837cba6b);
-    let BASE_ASSET_ID = ~ContractId::from(BASE_ASSET_ID);
+    let base_asset_id = ~ContractId::from(BASE_ASSET_ID);
 
     let test_contract = abi(ContextTesting, other_contract_id.into());
 
