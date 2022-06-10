@@ -478,6 +478,14 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/test_contracts/multiple_impl",
             ProgramState::Revert(0),
         ),
+        (
+            "should_pass/language/enum_padding",
+            ProgramState::ReturnData(Bytes32::from([
+                0xce, 0x55, 0xff, 0x05, 0x11, 0x3a, 0x24, 0x2e, 0xc7, 0x9a, 0x23, 0x75, 0x0c, 0x7e,
+                0x2b, 0xab, 0xaf, 0x98, 0xa8, 0xdc, 0x41, 0x66, 0x90, 0xc8, 0x57, 0xdd, 0x31, 0x72,
+                0x0c, 0x74, 0x82, 0xb6,
+            ])),
+        ),
     ];
 
     number_of_tests_run += positive_project_names_with_abi
@@ -565,6 +573,9 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/storage_in_script",
         "should_fail/multiple_impl_abi",
         "should_fail/multiple_impl_fns",
+        "should_fail/repeated_enum_variant",
+        "should_fail/repeated_storage_field",
+        "should_fail/repeated_struct_field",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
