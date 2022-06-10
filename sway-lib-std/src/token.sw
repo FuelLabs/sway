@@ -9,23 +9,23 @@ use ::context::call_frames::contract_id;
 use ::identity::Identity;
 
 /// Mint `amount` coins of the current contract's `asset_id` and transfer them to `destination` by calling either force_transfer_to_contract() or transfer_to_output(), depending on the type of `Identity`.
-pub fn mint_to(amount: u64, recipient: Identity) {
+pub fn mint_to(amount: u64, to: Identity) {
     mint(amount);
-    transfer(amount, contract_id(), recipient);
+    transfer(amount, contract_id(), to);
 }
 
 /// Mint `amount` coins of the current contract's `asset_id` and send them (!!! UNCONDITIONALLY !!!) to the contract at `destination`.
 /// This will allow the transfer of coins even if there is no way to retrieve them !!!
 /// Use of this function can lead to irretrievable loss of coins if not used with caution.
-pub fn mint_to_contract(amount: u64, destination: ContractId) {
+pub fn mint_to_contract(amount: u64, to: ContractId) {
     mint(amount);
-    force_transfer_to_contract(amount, contract_id(), destination);
+    force_transfer_to_contract(amount, contract_id(), to);
 }
 
 /// Mint `amount` coins of the current contract's `asset_id` and send them to the Address `recipient`.
-pub fn mint_to_address(amount: u64, recipient: Address) {
+pub fn mint_to_address(amount: u64, to: Address) {
     mint(amount);
-    transfer_to_output(amount, contract_id(), recipient);
+    transfer_to_output(amount, contract_id(), to);
 }
 
 /// Mint `amount` coins of the current contract's `asset_id`.
@@ -43,8 +43,8 @@ pub fn burn(amount: u64) {
 }
 
 /// Transfer `amount` coins of the current contract's `asset_id` and send them to `destination` by calling either force_transfer_to_contract() or transfer_to_output(), depending on the type of `Identity`.
-pub fn transfer(amount: u64, asset_id: ContractId, recipient: Identity) {
-    match recipient {
+pub fn transfer(amount: u64, asset_id: ContractId, to: Identity) {
+    match to {
         Identity::Address(addr) => {
             transfer_to_output(amount, asset_id, addr);
         },
@@ -57,14 +57,14 @@ pub fn transfer(amount: u64, asset_id: ContractId, recipient: Identity) {
 /// !!! UNCONDITIONAL transfer of `amount` coins of type `asset_id` to contract at `destination`.
 /// This will allow the transfer of coins even if there is no way to retrieve them !!!
 /// Use of this function can lead to irretrievable loss of coins if not used with caution.
-pub fn force_transfer_to_contract(amount: u64, asset_id: ContractId, destination: ContractId) {
-    asm(r1: amount, r2: asset_id.value, r3: destination.value) {
+pub fn force_transfer_to_contract(amount: u64, asset_id: ContractId, to: ContractId) {
+    asm(r1: amount, r2: asset_id.value, r3: to.value) {
         tr r3 r1 r2;
     }
 }
 
 /// Transfer `amount` coins of tof type `asset_id` and send them to the address `recipient`.
-pub fn transfer_to_output(amount: u64, asset_id: ContractId, recipient: Address) {
+pub fn transfer_to_output(amount: u64, asset_id: ContractId, to: Address) {
     const OUTPUT_VARIABLE_TYPE: u8 = 4;
 
     // maintain a manual index as we only have `while` loops in sway atm:
@@ -90,7 +90,7 @@ pub fn transfer_to_output(amount: u64, asset_id: ContractId, recipient: Address)
     if !output_found {
         revert(0);
     } else {
-        asm(r1: recipient.value, r2: output_index, r3: amount, r4: asset_id.value) {
+        asm(r1: to.value, r2: output_index, r3: amount, r4: asset_id.value) {
             tro r1 r2 r3 r4;
         };
     }
