@@ -1316,6 +1316,17 @@ pub fn dependency_namespace(
     namespace
 }
 
+/// Compiles the package to an AST. 
+pub fn compile_ast(
+    manifest: &ManifestFile,
+    build_config: &BuildConfig,
+    namespace: namespace::Module,
+) -> Result<CompileAstResult> {
+    let source = manifest.entry_string()?;
+    let sway_build_config = sway_build_config(manifest.dir(), &manifest.entry_path(), build_config)?;
+    Ok(sway_core::compile_to_ast(source, namespace, Some(&sway_build_config)))    
+}
+
 /// Compiles the given package.
 ///
 /// ## Program Types
@@ -1342,12 +1353,11 @@ pub fn compile(
     source_map: &mut SourceMap,
 ) -> Result<(Compiled, Option<namespace::Root>)> {
     let entry_path = manifest.entry_path();
-    let source = manifest.entry_string()?;
     let sway_build_config = sway_build_config(manifest.dir(), &entry_path, build_config)?;
     let silent_mode = build_config.silent;
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
-    let ast_res = sway_core::compile_to_ast(source, namespace, Some(&sway_build_config));
+    let ast_res = compile_ast(manifest, build_config, namespace)?;
     match &ast_res {
         CompileAstResult::Failure { warnings, errors } => {
             print_on_failure(silent_mode, warnings, errors);
@@ -1442,6 +1452,26 @@ pub fn build(
         tree_type,
     };
     Ok((compiled, source_map))
+}
+
+pub fn check(
+    plan: &BuildPlan,
+    conf: &BuildConfig,
+    sway_git_tag: &str,
+) -> anyhow::Result<Vec<CompileAstResult>> {
+    let namespace_map = Default::default();
+    let mut ast_results = Vec::new();
+    for &node in &plan.compilation_order {
+        let dep_namespace =
+            dependency_namespace(&namespace_map, &plan.graph, &plan.compilation_order, node);
+        let pkg = &plan.graph[node];
+        let path = &plan.path_map[&pkg.id()];
+        let manifest = ManifestFile::from_dir(path, sway_git_tag)?;
+        let ast_res = compile_ast(&manifest, conf, dep_namespace)?;
+        ast_results.push(ast_res);
+    }
+
+    Ok(ast_results)
 }
 
 /// Attempt to find a `Forc.toml` with the given project name within the given directory.

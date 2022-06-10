@@ -158,17 +158,39 @@ impl TextDocument {
     }
 }
 
+// there is a constant in the root of the forc crate for SWAY_GIT_TAG
+// use forc package - use manifest 
+// manifest from dir
+// look at forc_ops::forc_build() and how it generates its build_config -- use this as a template
+// forc_util has some methods for finding paths
+
+// let manifest = ManifestFile::from_dir(&this_dir, SWAY_GIT_TAG)?; || can hopefully just pass the path the main.sw 
+// entry_path() might be what I want
+
+// namespace 
+// this happens in 
+// make a check() function instead of build() in forc_package, will be nearly identical apart from it returns the ast
+// Also, instead of compile() and a compile_ast() function, I can just return the ast
+
+// could also USE compile_ast() inside of compile() instead of let ast_res = sway_core::compile_to_ast(source, namespace, Some(&sway_build_config));
+
 // private methods
 impl TextDocument {
+    
+
     fn parse_typed_tokens_from_text(&self) -> Option<Vec<TypedAstNode>> {
-        let mut path = std::path::PathBuf::from("../../examples/fizzbuzz");
-        let sway_program = include_str!("../../examples/fizzbuzz/src/main.sw");
+        let manifest_dir = std::path::PathBuf::from("../../../examples/fizzbuzz").canonicalize().unwrap();
+        eprintln!("manifest_dir = {:#?}", &manifest_dir);
+        //let text = Arc::from(include_str!("../../../examples/fizzbuzz/src/main.sw"));
+
+        
+        let res = forc::ops::forc_build::check().unwrap();
 
         let text = Arc::from(self.get_text());
         let namespace = namespace::Module::default();
         let file_name = std::path::PathBuf::from(self.get_uri());
         let build_config =
-            BuildConfig::root_from_file_name_and_manifest_path(file_name, Default::default());
+            BuildConfig::root_from_file_name_and_manifest_path(file_name, manifest_dir);
 
         let ast_res = sway_core::compile_to_ast(text, namespace, Some(&build_config));
         //let ast_res = sway_core::compile_to_ast(text, namespace, None);

@@ -202,3 +202,22 @@ fn create_new_lock(
     fs::write(&lock_path, &string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
     Ok(())
 }
+
+pub fn check() -> Result<Vec<sway_core::CompileAstResult>> {    
+    let this_dir = std::env::current_dir()?;
+    let manifest = ManifestFile::from_dir(&this_dir, SWAY_GIT_TAG)?;
+
+    let config = &pkg::BuildConfig {
+        print_ir: false,
+        print_finalized_asm: false,
+        print_intermediate_asm: false,
+        silent: true,
+    };
+
+    let lock_path = lock_path(manifest.dir());
+
+    let build_plan = pkg::BuildPlan::from_lock_file(&lock_path, SWAY_GIT_TAG)?;
+
+    // Build it!
+    pkg::check(&build_plan, config, SWAY_GIT_TAG)
+}

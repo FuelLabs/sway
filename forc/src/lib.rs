@@ -1,5 +1,5 @@
 pub mod cli;
-mod ops;
+pub mod ops;
 mod utils;
 
 #[cfg(feature = "test")]
