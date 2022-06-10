@@ -58,11 +58,9 @@ impl CopyTypes for TypedFunctionDeclaration {
         self.type_parameters
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
-
         self.parameters
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
-
         self.return_type
             .update_type(type_mapping, &self.return_type_span);
         self.body.copy_types(type_mapping);
@@ -139,10 +137,10 @@ impl TypedFunctionDeclaration {
         let FunctionDeclaration {
             name,
             body,
-            mut parameters,
+            parameters,
             span,
             return_type,
-            mut type_parameters,
+            type_parameters,
             return_type_span,
             visibility,
             purity,
@@ -151,88 +149,51 @@ impl TypedFunctionDeclaration {
         is_snake_case(&name).ok(&mut warnings, &mut errors);
         opts.purity = purity;
 
-        // insert parameters and generic type declarations into namespace
+        // create a namespace for the function
         let mut namespace = namespace.clone();
 
-        // insert type parameters as Unknown types
-        let type_mapping = insert_type_parameters(&type_parameters);
-
-        // update the types in the type parameters
-        for type_parameter in type_parameters.iter_mut() {
-            check!(
-                type_parameter.update_types(&type_mapping, &mut namespace, self_type),
+        // type check the type parameters
+        // insert them into the namespace
+        let mut new_type_parameters = vec![];
+        for type_parameter in type_parameters.into_iter() {
+            new_type_parameters.push(check!(
+                TypeParameter::type_check(type_parameter, &mut namespace),
                 return err(warnings, errors),
                 warnings,
                 errors
-            );
+            ));
         }
 
-        // check to see if the type parameters shadow one another
-        for type_parameter in type_parameters.iter() {
-            check!(
-                namespace.insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
+        // type check the function parameters
+        // insert them into the namespace
+        let mut new_parameters = vec![];
+        for parameter in parameters.into_iter() {
+            new_parameters.push(check!(
+                TypedFunctionParameter::type_check(parameter, &mut namespace, self_type),
                 continue,
                 warnings,
                 errors
-            );
+            ));
         }
 
-        parameters.iter_mut().for_each(|parameter| {
-            parameter.type_id =
-                match look_up_type_id(parameter.type_id).matches_type_parameter(&type_mapping) {
-                    Some(matching_id) => {
-                        insert_type(TypeInfo::Ref(matching_id, parameter.type_span.clone()))
-                    }
-                    None => check!(
-                        namespace.resolve_type_with_self(
-                            look_up_type_id(parameter.type_id),
-                            self_type,
-                            &parameter.type_span,
-                            EnforceTypeArguments::Yes
-                        ),
-                        insert_type(TypeInfo::ErrorRecovery),
-                        warnings,
-                        errors,
-                    ),
-                };
-        });
-
-        for FunctionParameter { name, type_id, .. } in parameters.clone() {
-            namespace.insert_symbol(
-                name.clone(),
-                TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                    name: name.clone(),
-                    body: TypedExpression {
-                        expression: TypedExpressionVariant::FunctionParameter,
-                        return_type: type_id,
-                        is_constant: IsConstant::No,
-                        span: name.span().clone(),
-                    },
-                    is_mutable: VariableMutability::Immutable,
-                    const_decl_origin: false,
-                    type_ascription: type_id,
-                }),
-            );
-        }
-
-        let return_type = match return_type.matches_type_parameter(&type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, return_type_span.clone())),
-            None => check!(
-                namespace.resolve_type_with_self(
-                    return_type,
-                    self_type,
-                    &return_type_span,
-                    EnforceTypeArguments::Yes
-                ),
-                insert_type(TypeInfo::ErrorRecovery),
-                warnings,
-                errors,
+        // type check the return type
+        let return_type = check!(
+            namespace.resolve_type_with_self(
+                return_type,
+                self_type,
+                &return_type_span,
+                EnforceTypeArguments::Yes
             ),
-        };
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors,
+        );
 
+        // type check the function body
+        //
         // If there are no implicit block returns, then we do not want to type check them, so we
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
-        let (mut body, _implicit_block_return) = check!(
+        let (body, _implicit_block_return) = check!(
             TypedCodeBlock::type_check(TypeCheckArguments {
                 checkee: body,
                 namespace: &mut namespace,
@@ -250,29 +211,16 @@ impl TypedFunctionDeclaration {
             warnings,
             errors
         );
-        body.copy_types(&type_mapping);
 
-        let parameters = parameters
-            .into_iter()
-            .map(
-                |FunctionParameter {
-                     name,
-                     type_id: r#type,
-                     type_span,
-                 }| TypedFunctionParameter {
-                    name,
-                    r#type,
-                    type_span,
-                },
-            )
-            .collect::<Vec<_>>();
-        // handle the return statement(s)
+        // gather the return statements
         let return_statements: Vec<&TypedExpression> = body
             .contents
             .iter()
             .flat_map(|node| -> Vec<&TypedReturnStatement> { node.gather_return_statements() })
             .map(|TypedReturnStatement { expr, .. }| expr)
             .collect();
+
+        // unify the types of the return statements with the function return type
         for stmt in return_statements {
             let (mut new_warnings, new_errors) = unify_with_self(
                 stmt.return_type,
@@ -288,10 +236,10 @@ impl TypedFunctionDeclaration {
         let function_decl = TypedFunctionDeclaration {
             name,
             body,
-            parameters,
+            parameters: new_parameters,
             span,
             return_type,
-            type_parameters,
+            type_parameters: new_type_parameters,
             return_type_span,
             visibility,
             // if this is for a contract, then it is a contract call
