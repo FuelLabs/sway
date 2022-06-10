@@ -208,7 +208,7 @@ impl ToJsonAbi for TypedStructField {
 
 impl ReplaceSelfType for TypedStructField {
     fn replace_self_type(&mut self, self_type: TypeId) {
-        self.r#type.replace_self_type(self_type);
+        self.type_id.replace_self_type(self_type);
     }
 }
 
