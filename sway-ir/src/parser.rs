@@ -190,8 +190,8 @@ mod ir_builder {
                 }
 
             rule op_const() -> IrAstOperation
-                = "const" _ ast_ty() cv:constant() {
-                    IrAstOperation::Const(cv)
+                = "const" _ val_ty:ast_ty() cv:constant() {
+                    IrAstOperation::Const(val_ty, cv)
                 }
 
             rule op_contract_call() -> IrAstOperation
@@ -494,7 +494,7 @@ mod ir_builder {
     use crate::{
         asm::{AsmArg, AsmInstruction},
         block::Block,
-        constant::Constant,
+        constant::{Constant, ConstantValue},
         context::Context,
         error::IrError,
         function::Function,
@@ -551,7 +551,7 @@ mod ir_builder {
         Call(String, Vec<String>),
         Cbr(String, String, String),
         Cmp(String, String, String),
-        Const(IrAstConst),
+        Const(IrAstTy, IrAstConst),
         ContractCall(IrAstTy, String, String, String, String, String),
         ExtractElement(String, IrAstTy, String),
         ExtractValue(String, IrAstTy, Vec<u64>),
@@ -604,36 +604,44 @@ mod ir_builder {
     }
 
     impl IrAstConstValue {
-        fn as_constant(&self, context: &mut Context) -> Constant {
+        fn as_constant_value(&self, context: &mut Context) -> ConstantValue {
             match self {
-                IrAstConstValue::Undef(ty) => {
-                    let ty = ty.to_ir_type(context);
-                    Constant::new_undef(context, ty)
-                }
-                IrAstConstValue::Unit => Constant::new_unit(),
-                IrAstConstValue::Bool(b) => Constant::new_bool(*b),
-                IrAstConstValue::B256(bs) => Constant::new_b256(*bs),
-                IrAstConstValue::Number(n) => Constant::new_uint(64, *n),
-                IrAstConstValue::String(bs) => Constant::new_string(bs.clone()),
+                IrAstConstValue::Undef(_) => ConstantValue::Undef,
+                IrAstConstValue::Unit => ConstantValue::Unit,
+                IrAstConstValue::Bool(b) => ConstantValue::Bool(*b),
+                IrAstConstValue::B256(bs) => ConstantValue::B256(*bs),
+                IrAstConstValue::Number(n) => ConstantValue::Uint(*n),
+                IrAstConstValue::String(bs) => ConstantValue::String(bs.clone()),
                 IrAstConstValue::Array(el_ty, els) => {
-                    let els: Vec<_> = els.iter().map(|cv| cv.value.as_constant(context)).collect();
-                    let el_ty = el_ty.to_ir_type(context);
-                    let array = Aggregate::new_array(context, el_ty, els.len() as u64);
-                    Constant::new_array(&array, els)
+                    let els: Vec<_> = els
+                        .iter()
+                        .map(|cv| cv.value.as_constant(context, el_ty.clone()))
+                        .collect();
+                    ConstantValue::Array(els)
                 }
                 IrAstConstValue::Struct(flds) => {
-                    // To Make a Constant I need to create an aggregate, which requires a context.
-                    let (types, fields): (Vec<_>, Vec<_>) = flds
+                    let fields: Vec<_> = flds
                         .iter()
-                        .map(|(ty, cv)| (ty.to_ir_type(context), cv.value.as_constant(context)))
-                        .unzip();
-                    let aggregate = Aggregate::new_struct(context, types);
-                    Constant::new_struct(&aggregate, fields)
+                        .map(|(ty, cv)| cv.value.as_constant(context, ty.clone()))
+                        .collect::<Vec<_>>();
+                    ConstantValue::Struct(fields)
                 }
             }
         }
 
-        fn as_value(&self, context: &mut Context, span_md_idx: Option<MetadataIndex>) -> Value {
+        fn as_constant(&self, context: &mut Context, val_ty: IrAstTy) -> Constant {
+            Constant {
+                ty: val_ty.to_ir_type(context),
+                value: self.as_constant_value(context),
+            }
+        }
+
+        fn as_value(
+            &self,
+            context: &mut Context,
+            val_ty: IrAstTy,
+            span_md_idx: Option<MetadataIndex>,
+        ) -> Value {
             match self {
                 IrAstConstValue::Undef(_) => unreachable!("Can't convert 'undef' to a value."),
                 IrAstConstValue::Unit => Constant::get_unit(context, span_md_idx),
@@ -642,11 +650,11 @@ mod ir_builder {
                 IrAstConstValue::Number(n) => Constant::get_uint(context, 64, *n, span_md_idx),
                 IrAstConstValue::String(s) => Constant::get_string(context, s.clone(), span_md_idx),
                 IrAstConstValue::Array(..) => {
-                    let array_const = self.as_constant(context);
+                    let array_const = self.as_constant(context, val_ty);
                     Constant::get_array(context, array_const, span_md_idx)
                 }
                 IrAstConstValue::Struct(_) => {
-                    let struct_const = self.as_constant(context);
+                    let struct_const = self.as_constant(context, val_ty);
                     Constant::get_struct(context, struct_const, span_md_idx)
                 }
             }
@@ -771,8 +779,8 @@ mod ir_builder {
         let mut ptr_map = HashMap::<String, Pointer>::new();
         for (ty, name, is_mutable, initializer) in fn_decl.locals {
             let initializer = initializer.map(|const_init| {
-                if let IrAstOperation::Const(val) = const_init {
-                    val.value.as_constant(context)
+                if let IrAstOperation::Const(val_ty, val) = const_init {
+                    val.value.as_constant(context, val_ty)
                 } else {
                     unreachable!("BUG! Initializer must be a const value.");
                 }
@@ -844,6 +852,7 @@ mod ir_builder {
                                 IrAstAsmArgInit::Var(var) => val_map.get(&var).cloned().unwrap(),
                                 IrAstAsmArgInit::Imm(cv) => cv.value.as_value(
                                     context,
+                                    IrAstTy::U64,
                                     md_map.get(cv.meta_idx.as_ref().unwrap()).copied(),
                                 ),
                             }),
@@ -919,7 +928,7 @@ mod ir_builder {
                     *val_map.get(&rhs).unwrap(),
                     opt_ins_md_idx,
                 ),
-                IrAstOperation::Const(val) => val.value.as_value(context, opt_ins_md_idx),
+                IrAstOperation::Const(ty, val) => val.value.as_value(context, ty, opt_ins_md_idx),
                 IrAstOperation::ContractCall(return_type, name, params, coins, asset_id, gas) => {
                     let ir_ty = return_type.to_ir_type(context);
                     block.ins(context).contract_call(
