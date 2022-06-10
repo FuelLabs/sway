@@ -11,7 +11,7 @@ use ::identity::Identity;
 /// Mint `amount` coins of the current contract's `asset_id` and transfer them to `destination` by calling either force_transfer_to_contract() or transfer_to_output(), depending on the type of `Identity`.
 pub fn mint_to(amount: u64, recipient: Identity) {
     mint(amount);
-    transfer(amount, recipient);
+    transfer(amount, contract_id(), recipient);
 }
 
 /// Mint `amount` coins of the current contract's `asset_id` and send them (!!! UNCONDITIONALLY !!!) to the contract at `destination`.
@@ -43,13 +43,13 @@ pub fn burn(amount: u64) {
 }
 
 /// Transfer `amount` coins of the current contract's `asset_id` and send them to `destination` by calling either force_transfer_to_contract() or transfer_to_output(), depending on the type of `Identity`.
-pub fn transfer(amount: u64, recipient: Identity) {
+pub fn transfer(amount: u64, asset_id: ContractId, recipient: Identity) {
     match recipient {
         Identity::Address(addr) => {
-            transfer_to_output(amount, contract_id(), addr);
+            transfer_to_output(amount, asset_id, addr);
         },
         Identity::ContractId(id) => {
-            force_transfer_to_contract(amount, contract_id(), id);
+            force_transfer_to_contract(amount, asset_id, id);
         },
     }
 }
