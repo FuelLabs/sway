@@ -174,17 +174,29 @@ impl TextDocument {
 
 // could also USE compile_ast() inside of compile() instead of let ast_res = sway_core::compile_to_ast(source, namespace, Some(&sway_build_config));
 
+// create a forc_check module similar to forc_build
 // private methods
 impl TextDocument {
     
 
     fn parse_typed_tokens_from_text(&self) -> Option<Vec<TypedAstNode>> {
-        let manifest_dir = std::path::PathBuf::from("../../../examples/fizzbuzz").canonicalize().unwrap();
-        eprintln!("manifest_dir = {:#?}", &manifest_dir);
+        
+        //let manifest_dir = std::path::PathBuf::from("/Users/joshuabatty/Documents/rust/fuel/sway/examples/fizzbuzz");
+        let manifest_dir = std::path::PathBuf::from("/Users/joshuabatty/Documents/rust/fuel_test_projects/lsp-test-projects/Particle/lsp_sway_project");
         //let text = Arc::from(include_str!("../../../examples/fizzbuzz/src/main.sw"));
 
+        //let manifest_dir = std::env::current_dir()?;
+        let res = forc::ops::forc_build::check(&manifest_dir).unwrap();
         
-        let res = forc::ops::forc_build::check().unwrap();
+        for ast_res in res {
+            match ast_res {
+                CompileAstResult::Failure { .. } => (),
+                CompileAstResult::Success { typed_program, .. } => {
+                    let n = typed_program.root.all_nodes;
+                    eprintln!("res = {:#?}", n);
+                },
+            }
+        }
 
         let text = Arc::from(self.get_text());
         let namespace = namespace::Module::default();
