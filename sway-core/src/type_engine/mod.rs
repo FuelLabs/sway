@@ -1,4 +1,5 @@
 mod copy_types;
+mod create_type_id;
 mod engine;
 mod integer_bits;
 mod resolved_type;
@@ -9,6 +10,7 @@ mod unresolved_type_check;
 mod update_types;
 
 pub(crate) use copy_types::*;
+pub(crate) use create_type_id::*;
 pub use engine::*;
 pub use integer_bits::*;
 pub(crate) use resolved_type::*;
