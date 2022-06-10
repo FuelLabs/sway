@@ -1,5 +1,14 @@
 use crate::{
-    error::*, namespace::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*,
+    error::*,
+    namespace::*,
+    parse_tree::*,
+    semantic_analysis::*,
+    type_engine::{
+        insert_type, insert_type_parameters, look_up_type_id, CopyTypes, ReplaceSelfType, TypeId,
+        TypeMapping, UpdateTypes,
+    },
+    types::{JsonAbiString, ToJsonAbi},
+    TypeInfo,
 };
 use fuels_types::Property;
 use std::hash::{Hash, Hasher};
@@ -210,6 +219,12 @@ impl ToJsonAbi for TypedEnumVariant {
             type_field: self.r#type.json_abi_str(),
             components: self.r#type.generate_json_abi(),
         }
+    }
+}
+
+impl ReplaceSelfType for TypedEnumVariant {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.r#type.replace_self_type(self_type);
     }
 }
 

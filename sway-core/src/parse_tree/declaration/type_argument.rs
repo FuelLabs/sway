@@ -62,3 +62,9 @@ impl ToJsonAbi for TypeArgument {
         }
     }
 }
+
+impl ReplaceSelfType for TypeArgument {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.type_id.replace_self_type(self_type);
+    }
+}
