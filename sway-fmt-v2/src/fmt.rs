@@ -6,6 +6,7 @@ pub use crate::{
     config::manifest::Config,
     error::{ConfigError, FormatterError},
 };
+use crate::{config::whitespace::NewlineStyle, utils::newline_style::apply_newline_style};
 
 #[derive(Debug, Default)]
 pub struct Formatter {
@@ -34,7 +35,7 @@ impl Formatter {
     ) -> Result<FormattedCode, FormatterError> {
         let path = build_config.map(|build_config| build_config.canonical_root_module());
         let items = sway_parse::parse_file(src, path)?.items;
-        Ok(items
+        let formatted_raw_newline = items
             .into_iter()
             .map(|item| -> Result<String, FormatterError> {
                 use ItemKind::*;
@@ -51,6 +52,13 @@ impl Formatter {
                 })
             })
             .collect::<Result<Vec<String>, _>>()?
-            .join("\n"))
+            .join("\n");
+        let mut formatted_code = String::from(&formatted_raw_newline);
+        apply_newline_style(
+            NewlineStyle::Auto,
+            &mut formatted_code,
+            &formatted_raw_newline,
+        );
+        Ok(formatted_code)
     }
 }
