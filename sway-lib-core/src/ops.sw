@@ -208,16 +208,6 @@ pub trait Eq {
     }
 }
 
-trait OrdEq: Ord + Eq {
-} {
-    fn ge(self, other: Self) -> bool {
-        self.gt(other) || self.eq(other)
-    }
-    fn le(self, other: Self) -> bool {
-        self.lt(other) || self.eq(other)
-    }
-}
-
 impl Eq for bool {
     fn eq(self, other: Self) -> bool {
         asm(r1: self, r2: other, r3) {
@@ -471,6 +461,16 @@ impl BitwiseXor for b256 {
         let word_4 = value_word_4.binary_xor(other_word_4);
         let rebuilt = compose(word_1, word_2, word_3, word_4);
         rebuilt
+    }
+}
+
+trait OrdEq: Ord + Eq {
+} {
+    fn ge(self, other: Self) -> bool {
+        self.gt(other) || self.eq(other)
+    }
+    fn le(self, other: Self) -> bool {
+        self.lt(other) || self.eq(other)
     }
 }
 

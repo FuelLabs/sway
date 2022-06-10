@@ -262,31 +262,6 @@ impl TypedFunctionDeclaration {
         }
     }
 
-    pub(crate) fn replace_self_types(self, self_type: TypeId) -> Self {
-        TypedFunctionDeclaration {
-            parameters: self
-                .parameters
-                .iter()
-                .map(|x| {
-                    let mut x = x.clone();
-                    x.r#type = match look_up_type_id(x.r#type) {
-                        TypeInfo::SelfType => self_type,
-                        _otherwise => x.r#type,
-                    };
-                    x
-                })
-                .collect(),
-            span: self.span.clone(),
-            return_type: match look_up_type_id(self.return_type) {
-                TypeInfo::SelfType => self_type,
-                _otherwise => self.return_type,
-            },
-            type_parameters: self.type_parameters.clone(),
-            return_type_span: self.return_type_span.clone(),
-            ..self
-        }
-    }
-
     pub fn to_fn_selector_value_untruncated(&self) -> CompileResult<Vec<u8>> {
         let mut errors = vec![];
         let mut warnings = vec![];
