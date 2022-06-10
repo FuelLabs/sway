@@ -52,18 +52,6 @@ impl UnresolvedTypeCheck for TypeId {
     }
 }
 
-impl TypeId {
-    pub(crate) fn update_type(&mut self, type_mapping: &TypeMapping, span: &Span) {
-        *self = match look_up_type_id(*self).matches_type_parameter(type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, span.clone())),
-            None => {
-                let ty = TypeInfo::Ref(insert_type(look_up_type_id_raw(*self)), span.clone());
-                insert_type(ty)
-            }
-        };
-    }
-}
-
 impl JsonAbiString for TypeId {
     fn json_abi_str(&self) -> String {
         look_up_type_id(*self).json_abi_str()
@@ -92,5 +80,85 @@ impl ToJsonAbi for TypeId {
             TypeInfo::Tuple(fields) => Some(fields.iter().map(|x| x.generate_json_abi()).collect()),
             _ => None,
         }
+    }
+}
+
+impl ReplaceSelfType for TypeId {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        match look_up_type_id(*self) {
+            TypeInfo::SelfType => {
+                *self = self_type;
+            }
+            TypeInfo::Enum {
+                mut type_parameters,
+                mut variant_types,
+                ..
+            } => {
+                for type_parameter in type_parameters.iter_mut() {
+                    type_parameter.replace_self_type(self_type);
+                }
+                for variant_type in variant_types.iter_mut() {
+                    variant_type.replace_self_type(self_type);
+                }
+            }
+            TypeInfo::Struct {
+                mut type_parameters,
+                mut fields,
+                ..
+            } => {
+                for type_parameter in type_parameters.iter_mut() {
+                    type_parameter.replace_self_type(self_type);
+                }
+                for field in fields.iter_mut() {
+                    field.replace_self_type(self_type);
+                }
+            }
+            TypeInfo::Ref(mut type_id, _) => {
+                type_id.replace_self_type(self_type);
+            }
+            TypeInfo::Tuple(mut type_arguments) => {
+                for type_argument in type_arguments.iter_mut() {
+                    type_argument.replace_self_type(self_type);
+                }
+            }
+            TypeInfo::Custom {
+                mut type_arguments, ..
+            } => {
+                for type_argument in type_arguments.iter_mut() {
+                    type_argument.replace_self_type(self_type);
+                }
+            }
+            TypeInfo::Array(mut type_id, _) => {
+                type_id.replace_self_type(self_type);
+            }
+            TypeInfo::Storage { mut fields } => {
+                for field in fields.iter_mut() {
+                    field.replace_self_type(self_type);
+                }
+            }
+            TypeInfo::Unknown
+            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::Str(_)
+            | TypeInfo::UnsignedInteger(_)
+            | TypeInfo::Boolean
+            | TypeInfo::ContractCaller { .. }
+            | TypeInfo::Byte
+            | TypeInfo::B256
+            | TypeInfo::Numeric
+            | TypeInfo::Contract
+            | TypeInfo::ErrorRecovery => {}
+        }
+    }
+}
+
+impl TypeId {
+    pub(crate) fn update_type(&mut self, type_mapping: &TypeMapping, span: &Span) {
+        *self = match look_up_type_id(*self).matches_type_parameter(type_mapping) {
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, span.clone())),
+            None => {
+                let ty = TypeInfo::Ref(insert_type(look_up_type_id_raw(*self)), span.clone());
+                insert_type(ty)
+            }
+        };
     }
 }
