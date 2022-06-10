@@ -1,6 +1,7 @@
 mod copy_types;
 mod engine;
 mod integer_bits;
+mod replace_self_type;
 mod resolved_type;
 mod type_id;
 mod type_info;
@@ -11,6 +12,7 @@ mod update_types;
 pub(crate) use copy_types::*;
 pub use engine::*;
 pub use integer_bits::*;
+pub(crate) use replace_self_type::*;
 pub(crate) use resolved_type::*;
 pub use type_id::*;
 pub use type_info::*;
