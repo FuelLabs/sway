@@ -172,7 +172,7 @@ abi Wallet {
 <p>Implementing an ABI for a contract is accomplished with <code>impl &lt;ABI name&gt; for Contract</code> syntax. The <code>for Contract</code> syntax can only be used to implement an ABI for a contract; implementing methods for a struct should use <code>impl Foo</code> syntax.</p>
 <pre><code class="language-sway">impl Wallet for Contract {
     fn receive_funds() {
-        if asset_id == NATIVE_ASSET_ID {
+        if asset_id == BASE_ASSET_ID {
             let balance = storage.balance.write();
             deref balance = balance + coins_to_forward;
         };
@@ -193,7 +193,7 @@ abi Wallet {
 <p>Now that we have defined our interface and implemented it for our contract, we need to know how to actually <em>call</em> our contract. Let's take a look at a contract call:</p>
 <pre><code class="language-sway">script;
 
-use std::consts::NATIVE_ASSET_ID;
+use std::consts::BASE_ASSET_ID;
 
 use wallet_abi::Wallet;
 use wallet_abi::SendFundsRequest;
@@ -203,7 +203,7 @@ fn main() {
     let caller = abi(Wallet, contract_address);
     let amount_to_send = 200;
     let recipient_address: 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
-    caller.send_funds{gas: 10000, coins: 0, asset_id: NATIVE_ASSET_ID}(amount_to_send, recipient_address);
+    caller.send_funds{gas: 10000, coins: 0, asset_id: BASE_ASSET_ID}(amount_to_send, recipient_address);
 }
 </code></pre>
 <p>The main new concept is the <em>abi cast</em>: <code>abi(AbiName, contract_address)</code>. This returns a <code>ContractCaller</code> type which can be used to call contracts. The methods of the ABI become the methods available on this contract caller: <code>send_funds</code> and <code>receive_funds</code>. We then directly call the contract ABI method as if it was just a regular method. You also have the option of specifying the following special parameters inside curly braces right before the main list of parameters:</p>
