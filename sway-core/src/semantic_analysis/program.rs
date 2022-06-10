@@ -10,32 +10,15 @@ use crate::{
         TypedModule,
     },
     type_engine::*,
+    types::ToJsonAbi,
 };
+use fuels_types::JsonABI;
 use sway_types::{span::Span, Ident, Spanned};
 
 #[derive(Clone, Debug)]
 pub struct TypedProgram {
     pub kind: TypedProgramKind,
     pub root: TypedModule,
-}
-
-#[derive(Clone, Debug)]
-pub enum TypedProgramKind {
-    Contract {
-        abi_entries: Vec<TypedFunctionDeclaration>,
-        declarations: Vec<TypedDeclaration>,
-    },
-    Library {
-        name: Ident,
-    },
-    Predicate {
-        main_function: TypedFunctionDeclaration,
-        declarations: Vec<TypedDeclaration>,
-    },
-    Script {
-        main_function: TypedFunctionDeclaration,
-        declarations: Vec<TypedDeclaration>,
-    },
 }
 
 impl TypedProgram {
@@ -227,6 +210,42 @@ impl TypedProgram {
             ok((), vec![], errors)
         } else {
             err(vec![], errors)
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum TypedProgramKind {
+    Contract {
+        abi_entries: Vec<TypedFunctionDeclaration>,
+        declarations: Vec<TypedDeclaration>,
+    },
+    Library {
+        name: Ident,
+    },
+    Predicate {
+        main_function: TypedFunctionDeclaration,
+        declarations: Vec<TypedDeclaration>,
+    },
+    Script {
+        main_function: TypedFunctionDeclaration,
+        declarations: Vec<TypedDeclaration>,
+    },
+}
+
+impl ToJsonAbi for TypedProgramKind {
+    type Output = JsonABI;
+
+    // TODO: Update this to match behaviour described in the `compile` doc comment above.
+    fn generate_json_abi(&self) -> Self::Output {
+        match self {
+            TypedProgramKind::Contract { abi_entries, .. } => {
+                abi_entries.iter().map(|x| x.generate_json_abi()).collect()
+            }
+            TypedProgramKind::Script { main_function, .. } => {
+                vec![main_function.generate_json_abi()]
+            }
+            _ => vec![],
         }
     }
 }
