@@ -347,22 +347,14 @@ impl Engine {
 
     pub fn unify_with_self(
         &self,
-        received: TypeId,
-        expected: TypeId,
+        mut received: TypeId,
+        mut expected: TypeId,
         self_type: TypeId,
         span: &Span,
         help_text: impl Into<String>,
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-        let received = if self.look_up_type_id(received) == TypeInfo::SelfType {
-            self_type
-        } else {
-            received
-        };
-        let expected = if self.look_up_type_id(expected) == TypeInfo::SelfType {
-            self_type
-        } else {
-            expected
-        };
+        received.replace_self_type(self_type);
+        expected.replace_self_type(self_type);
         self.unify(received, expected, span, help_text)
     }
 
