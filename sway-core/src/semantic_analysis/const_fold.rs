@@ -210,12 +210,22 @@ pub fn const_fold_typed_expr(
             }
             _ => None,
         },
+        TypedExpressionVariant::TupleElemAccess {
+            prefix,
+            elem_to_access_num,
+            ..
+        } => match const_fold_typed_expr(context, module, known_consts, &*prefix) {
+            Some(Constant {
+                value: ConstantValue::Struct(fields),
+                ..
+            }) => fields.get(*elem_to_access_num).map(|value| value.clone()),
+            _ => None,
+        },
         TypedExpressionVariant::ArrayIndex { .. }
         | TypedExpressionVariant::CodeBlock(_)
         | TypedExpressionVariant::FunctionParameter
         | TypedExpressionVariant::IfExp { .. }
         | TypedExpressionVariant::AsmExpression { .. }
-        | TypedExpressionVariant::TupleElemAccess { .. }
         | TypedExpressionVariant::LazyOperator { .. }
         | TypedExpressionVariant::AbiCast { .. }
         | TypedExpressionVariant::StorageAccess(_)

@@ -34,6 +34,7 @@ const EN1b = En1::Arr(ARR2);
 const EN1c = En1::NoVal;
 
 const ETH_ID0_VALUE = ETH_ID0.value;
+const TUP1_idx2 = TUP1.2;
 
 fn main() -> u64 {
     // initialization through function applications.
@@ -65,6 +66,7 @@ fn main() -> u64 {
 
     // Struct and enum field access.
     assert(ETH_ID0.value == ETH_ID0_VALUE);
+    assert(TUP1_idx2 == TUP1.2);
 
     1
 }
