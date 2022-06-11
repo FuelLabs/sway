@@ -224,13 +224,16 @@ fn create_enum_aggregate(
         .into_iter()
         .map(|tev| convert_resolved_typeid_no_span(context, &tev.r#type))
         .collect::<Result<Vec<_>, CompileError>>()?;
-    let enum_aggregate = Aggregate::new_struct(context, field_types);
 
-    // Create the tagged union struct next.
-    Ok(Aggregate::new_struct(
-        context,
-        vec![Type::Uint(64), Type::Union(enum_aggregate)],
-    ))
+    // Enums where all the variants are unit types don't really need the union. Only a tag is
+    // needed. For consistency, and to keep enums as reference types, we keep the tag in an
+    // Aggregate.
+    Ok(if field_types.iter().all(|f| matches!(f, Type::Unit)) {
+        Aggregate::new_struct(context, vec![Type::Uint(64)])
+    } else {
+        let enum_aggregate = Aggregate::new_struct(context, field_types);
+        Aggregate::new_struct(context, vec![Type::Uint(64), Type::Union(enum_aggregate)])
+    })
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -1771,20 +1774,32 @@ impl FnCompiler {
             span_md_idx,
         );
 
-        Ok(match contents {
-            None => agg_value,
-            Some(te) => {
-                // Insert the value too.
-                let contents_value = self.compile_expression(context, *te)?;
-                self.current_block.ins(context).insert_value(
-                    agg_value,
-                    aggregate,
-                    contents_value,
-                    vec![1],
-                    span_md_idx,
-                )
+        // If the struct representing the enum has only one field, then that field is basically the
+        // tag and all the variants must have unit types, hence the absence of the union.
+        // Therefore, there is no need for another `insert_value` instruction here.
+        match &context.aggregates[aggregate.0] {
+            AggregateContent::FieldTypes(field_tys) => {
+                Ok(if field_tys.len() == 1 {
+                    agg_value
+                } else {
+                    match contents {
+                        None => agg_value,
+                        Some(te) => {
+                            // Insert the value too.
+                            let contents_value = self.compile_expression(context, *te)?;
+                            self.current_block.ins(context).insert_value(
+                                agg_value,
+                                aggregate,
+                                contents_value,
+                                vec![1],
+                                span_md_idx,
+                            )
+                        }
+                    }
+                })
             }
-        })
+            _ => unreachable!("Wrong content for struct."),
+        }
     }
 
     // ---------------------------------------------------------------------------------------------

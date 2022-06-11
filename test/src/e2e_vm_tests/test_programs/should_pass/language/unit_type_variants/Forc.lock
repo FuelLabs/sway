@@ -1,4 +1,4 @@
 [[package]]
-name = 'repeated_enum_variant'
+name = 'unit_type_variants'
 source = 'root'
 dependencies = []
