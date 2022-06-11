@@ -4,8 +4,8 @@ use crate::{
     parse_tree::*,
     semantic_analysis::*,
     type_engine::{
-        insert_type, insert_type_parameters, look_up_type_id, CopyTypes, ReplaceSelfType, TypeId,
-        TypeMapping, UpdateTypes,
+        insert_type, insert_type_parameters, look_up_type_id, CopyTypes, CreateTypeId,
+        ReplaceSelfType, TypeId, TypeMapping, UpdateTypes,
     },
     types::{JsonAbiString, ToJsonAbi},
     TypeInfo,
