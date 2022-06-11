@@ -1721,7 +1721,11 @@ impl FnCompiler {
                     )
                 })
             }
-            ValueDatum::Argument(Type::Struct(aggregate)) => Ok(*aggregate),
+            ValueDatum::Argument(Type::Struct(aggregate))
+            | ValueDatum::Constant(Constant {
+                ty: Type::Struct(aggregate),
+                ..
+            }) => Ok(*aggregate),
             otherwise => Err(CompileError::InternalOwned(
                 format!("Unsupported struct value for field expression: {otherwise:?}",),
                 ast_struct_expr_span,
@@ -2417,7 +2421,7 @@ impl LexicalMap {
 // -------------------------------------------------------------------------------------------------
 // Get the name of a struct and the index to a particular named field from a TypeId.
 
-fn get_struct_name_field_index_and_type(
+pub fn get_struct_name_field_index_and_type(
     field_type: TypeId,
     field_kind: ProjectionKind,
 ) -> Option<(String, Option<(u64, TypeId)>)> {

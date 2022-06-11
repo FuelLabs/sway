@@ -33,6 +33,8 @@ const EN1a = En1::Int(101);
 const EN1b = En1::Arr(ARR2);
 const EN1c = En1::NoVal;
 
+const ETH_ID0_VALUE = ETH_ID0.value;
+
 fn main() -> u64 {
     // initialization through function applications.
     let eth_id0 = ~ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000);
@@ -60,6 +62,9 @@ fn main() -> u64 {
     match EN1c {
         En1::Int(i) => assert(false), En1::Arr(_) => assert(false), En1::NoVal => assert(true), 
     }
+
+    // Struct and enum field access.
+    assert(ETH_ID0.value == ETH_ID0_VALUE);
 
     1
 }

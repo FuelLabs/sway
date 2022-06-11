@@ -3,8 +3,13 @@ use super::{
     TypedStructExpressionField,
 };
 
+use crate::semantic_analysis::declaration::ProjectionKind;
 use std::collections::HashMap;
-use sway_ir::{constant::Constant, context::Context, module::Module};
+use sway_ir::{
+    constant::{Constant, ConstantValue},
+    context::Context,
+    module::Module,
+};
 use sway_types::ident::Ident;
 
 // A HashMap that can hold multiple values and
@@ -182,12 +187,34 @@ pub fn const_fold_typed_expr(
             });
             Some(Constant::new_struct(&aggregate, fields))
         }
+        TypedExpressionVariant::StructFieldAccess {
+            prefix,
+            field_to_access,
+            resolved_type_of_parent,
+        } => match const_fold_typed_expr(context, module, known_consts, &*prefix) {
+            Some(Constant {
+                value: ConstantValue::Struct(fields),
+                ..
+            }) => {
+                let field_kind = ProjectionKind::StructField {
+                    name: field_to_access.name.clone(),
+                };
+                crate::optimize::get_struct_name_field_index_and_type(
+                    *resolved_type_of_parent,
+                    field_kind,
+                )
+                .and_then(|(_struct_name, field_idx_and_type_opt)| {
+                    field_idx_and_type_opt.and_then(|(field_idx, _field_type)| Some(field_idx))
+                })
+                .and_then(|field_idx| fields.get(field_idx as usize).map(|value| value.clone()))
+            }
+            _ => None,
+        },
         TypedExpressionVariant::ArrayIndex { .. }
         | TypedExpressionVariant::CodeBlock(_)
         | TypedExpressionVariant::FunctionParameter
         | TypedExpressionVariant::IfExp { .. }
         | TypedExpressionVariant::AsmExpression { .. }
-        | TypedExpressionVariant::StructFieldAccess { .. }
         | TypedExpressionVariant::TupleElemAccess { .. }
         | TypedExpressionVariant::LazyOperator { .. }
         | TypedExpressionVariant::AbiCast { .. }
