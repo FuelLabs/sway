@@ -1,33 +1,37 @@
 contract {
-    fn foo1<2994c98e>() -> b256 {
+    fn foo1<2994c98e>() -> b256, !1 {
         entry:
-        v0 = call anon_0(), !1, !2
+        v0 = call anon_0(), !2, !3
         ret b256 v0
     }
 
-    fn anon_0() -> b256 {
+    fn anon_0() -> b256, !4 {
         entry:
-        v0 = get_storage_key, !3
+        v0 = get_storage_key, !5
         ret b256 v0
     }
 
-    fn foo2<f57bdec8>() -> b256 {
+    fn foo2<f57bdec8>() -> b256, !6 {
         entry:
-        v0 = call anon_1(), !4, !5
+        v0 = call anon_1(), !7, !8
         ret b256 v0
     }
 
-    fn anon_1() -> b256 {
+    fn anon_1() -> b256, !9 {
         entry:
-        v0 = get_storage_key, !6
+        v0 = get_storage_key, !10
         ret b256 v0
     }
 }
 
 !0 = filepath "/path/to/get_storage_key.sw"
-!1 = span !0 287 303
-!2 = state_index 0
-!3 = span !0 72 91
-!4 = span !0 342 358
-!5 = state_index 1
-!6 = span !0 72 91
+!1 = span !0 259 309
+!2 = span !0 287 303
+!3 = state_index 0
+!4 = span !0 48 51
+!5 = span !0 72 91
+!6 = span !0 314 364
+!7 = span !0 342 358
+!8 = state_index 1
+!9 = span !0 48 51
+!10 = span !0 72 91

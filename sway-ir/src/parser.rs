@@ -31,8 +31,8 @@ mod ir_builder {
                 = _ s:script() eoi() {
                     s
                 }
-                / _ s:contract() eoi() {
-                    s
+                / _ c:contract() eoi() {
+                    c
                 }
 
             rule script() -> IrAstModule
@@ -55,7 +55,8 @@ mod ir_builder {
 
             rule fn_decl() -> IrAstFnDecl
                 = "fn" _ name:id() _ selector:selector_id()? _ "(" _
-                      args:(fn_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty() "{" _
+                      args:(fn_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty()
+                          span_md_idx:comma_metadata_idx()? storage_md_idx:comma_metadata_idx()? "{" _
                       locals:fn_local()*
                       blocks:block_decl()*
                   "}" _ {
@@ -63,6 +64,8 @@ mod ir_builder {
                         name,
                         args,
                         ret_type,
+                        span_md_idx,
+                        storage_md_idx,
                         locals,
                         blocks,
                         selector
@@ -99,13 +102,13 @@ mod ir_builder {
 
             rule instr_decl() -> IrAstInstruction
                 = value_name:value_assign()? op:operation()
-                        meta_idx:comma_metadata_idx()?
+                    span_md_idx:comma_metadata_idx()?
                     state_idx_md_idx:comma_metadata_idx()?
-                        {
+                {
                     IrAstInstruction {
                         value_name,
                         op,
-                        meta_idx,
+                        span_md_idx,
                         state_idx_md_idx,
                     }
                 }
@@ -448,6 +451,21 @@ mod ir_builder {
                 / "state_index" _ idx:decimal() {
                     IrMetadatum::StateIndex { idx: idx as usize}
                 }
+                / "storage" _ sk:metadata_storage_kind() {
+                    IrMetadatum::Storage(sk)
+                }
+
+            rule metadata_storage_kind() -> IrMetadatumStorageKind
+                // 'readwrite' must go first to disambiguate between 'read' and 'readwrite'.
+                = "readwrite" _ {
+                    IrMetadatumStorageKind::ReadWrites
+                }
+                / "read" _ {
+                    IrMetadatumStorageKind::Reads
+                }
+                / "write" _ {
+                    IrMetadatumStorageKind::Writes
+                }
 
             rule id_char0()
                 = quiet!{ ['A'..='Z' | 'a'..='z' | '_'] }
@@ -500,7 +518,7 @@ mod ir_builder {
         function::Function,
         instruction::{Instruction, Predicate, Register},
         irtype::{Aggregate, Type},
-        metadata::{MetadataIndex, Metadatum},
+        metadata::{MetadataIndex, Metadatum, StorageOperation},
         module::{Kind, Module},
         pointer::Pointer,
         value::Value,
@@ -518,6 +536,8 @@ mod ir_builder {
         name: String,
         args: Vec<(IrAstTy, String, Option<MdIdxRef>)>,
         ret_type: IrAstTy,
+        span_md_idx: Option<MdIdxRef>,
+        storage_md_idx: Option<MdIdxRef>,
         locals: Vec<(IrAstTy, String, bool, Option<IrAstOperation>)>,
         blocks: Vec<IrAstBlock>,
         selector: Option<[u8; 4]>,
@@ -533,7 +553,7 @@ mod ir_builder {
     struct IrAstInstruction {
         value_name: Option<String>,
         op: IrAstOperation,
-        meta_idx: Option<MdIdxRef>,
+        span_md_idx: Option<MdIdxRef>,
         state_idx_md_idx: Option<MdIdxRef>,
     }
 
@@ -715,6 +735,14 @@ mod ir_builder {
         StateIndex {
             idx: usize,
         },
+        Storage(IrMetadatumStorageKind),
+    }
+
+    #[derive(Debug)]
+    enum IrMetadatumStorageKind {
+        Reads,
+        Writes,
+        ReadWrites,
     }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -748,16 +776,13 @@ mod ir_builder {
             Option<MetadataIndex>,
         )>,
     ) -> Result<(), IrError> {
+        let convert_md_idx = |opt_md_idx: &Option<MdIdxRef>| {
+            opt_md_idx.map(|mdi| md_map.get(&mdi).copied().unwrap())
+        };
         let args: Vec<(String, Type, Option<MetadataIndex>)> = fn_decl
             .args
             .iter()
-            .map(|(ty, name, md_idx)| {
-                (
-                    name.into(),
-                    ty.to_ir_type(context),
-                    md_idx.map(|mdi| md_map.get(&mdi).copied().unwrap()),
-                )
-            })
+            .map(|(ty, name, md_idx)| (name.into(), ty.to_ir_type(context), convert_md_idx(md_idx)))
             .collect();
         let ret_type = fn_decl.ret_type.to_ir_type(context);
         let func = Function::new(
@@ -768,6 +793,8 @@ mod ir_builder {
             ret_type,
             fn_decl.selector,
             false,
+            convert_md_idx(&fn_decl.span_md_idx),
+            convert_md_idx(&fn_decl.storage_md_idx),
         );
 
         // Gather all the (new) arg values by name into a map.
@@ -837,7 +864,10 @@ mod ir_builder {
     ) {
         let block = named_blocks.get(&ir_block.label).unwrap();
         for ins in ir_block.instructions {
-            let opt_ins_md_idx = ins.meta_idx.map(|mdi| md_map.get(&mdi).unwrap()).copied();
+            let opt_ins_span_md_idx = ins
+                .span_md_idx
+                .map(|mdi| md_map.get(&mdi).unwrap())
+                .copied();
             let opt_ins_state_idx_md_idx = ins
                 .state_idx_md_idx
                 .map(|mdi| md_map.get(&mdi).unwrap())
@@ -884,13 +914,17 @@ mod ir_builder {
                 }
                 IrAstOperation::BitCast(val, ty) => {
                     let to_ty = ty.to_ir_type(context);
-                    block
-                        .ins(context)
-                        .bitcast(*val_map.get(&val).unwrap(), to_ty, opt_ins_md_idx)
+                    block.ins(context).bitcast(
+                        *val_map.get(&val).unwrap(),
+                        to_ty,
+                        opt_ins_span_md_idx,
+                    )
                 }
                 IrAstOperation::Br(to_block_name) => {
                     let to_block = named_blocks.get(&to_block_name).unwrap();
-                    block.ins(context).branch(*to_block, None, opt_ins_md_idx)
+                    block
+                        .ins(context)
+                        .branch(*to_block, None, opt_ins_span_md_idx)
                 }
                 IrAstOperation::Call(callee, args) => {
                     // We can't resolve calls to other functions until we've done a first pass and
@@ -905,7 +939,7 @@ mod ir_builder {
                             .map(|arg_name| val_map.get(arg_name).unwrap())
                             .cloned()
                             .collect::<Vec<Value>>(),
-                        opt_ins_md_idx,
+                        opt_ins_span_md_idx,
                         opt_ins_state_idx_md_idx,
                     ));
                     nop
@@ -916,7 +950,7 @@ mod ir_builder {
                         *named_blocks.get(&true_block_name).unwrap(),
                         *named_blocks.get(&false_block_name).unwrap(),
                         None,
-                        opt_ins_md_idx,
+                        opt_ins_span_md_idx,
                     )
                 }
                 IrAstOperation::Cmp(pred_str, lhs, rhs) => block.ins(context).cmp(
@@ -926,9 +960,11 @@ mod ir_builder {
                     },
                     *val_map.get(&lhs).unwrap(),
                     *val_map.get(&rhs).unwrap(),
-                    opt_ins_md_idx,
+                    opt_ins_span_md_idx,
                 ),
-                IrAstOperation::Const(ty, val) => val.value.as_value(context, ty, opt_ins_md_idx),
+                IrAstOperation::Const(ty, val) => {
+                    val.value.as_value(context, ty, opt_ins_span_md_idx)
+                }
                 IrAstOperation::ContractCall(return_type, name, params, coins, asset_id, gas) => {
                     let ir_ty = return_type.to_ir_type(context);
                     block.ins(context).contract_call(
@@ -938,7 +974,7 @@ mod ir_builder {
                         *val_map.get(&coins).unwrap(),
                         *val_map.get(&asset_id).unwrap(),
                         *val_map.get(&gas).unwrap(),
-                        opt_ins_md_idx,
+                        opt_ins_span_md_idx,
                     )
                 }
                 IrAstOperation::ExtractElement(aval, ty, idx) => {
@@ -947,7 +983,7 @@ mod ir_builder {
                         *val_map.get(&aval).unwrap(),
                         ir_ty,
                         *val_map.get(&idx).unwrap(),
-                        opt_ins_md_idx,
+                        opt_ins_span_md_idx,
                     )
                 }
                 IrAstOperation::ExtractValue(val, ty, idcs) => {
@@ -956,19 +992,19 @@ mod ir_builder {
                         *val_map.get(&val).unwrap(),
                         ir_ty,
                         idcs,
-                        opt_ins_md_idx,
+                        opt_ins_span_md_idx,
                     )
                 }
                 IrAstOperation::GetStorageKey() => block
                     .ins(context)
-                    .get_storage_key(opt_ins_md_idx, opt_ins_state_idx_md_idx),
+                    .get_storage_key(opt_ins_span_md_idx, opt_ins_state_idx_md_idx),
                 IrAstOperation::GetPtr(base_ptr, ptr_ty, offset) => {
                     let ptr_ir_ty = ptr_ty.to_ir_type(context);
                     block.ins(context).get_ptr(
                         *ptr_map.get(&base_ptr).unwrap(),
                         ptr_ir_ty,
                         offset,
-                        opt_ins_md_idx,
+                        opt_ins_span_md_idx,
                     )
                 }
                 IrAstOperation::InsertElement(aval, ty, val, idx) => {
@@ -978,7 +1014,7 @@ mod ir_builder {
                         ir_ty,
                         *val_map.get(&val).unwrap(),
                         *val_map.get(&idx).unwrap(),
-                        opt_ins_md_idx,
+                        opt_ins_span_md_idx,
                     )
                 }
                 IrAstOperation::InsertValue(aval, ty, ival, idcs) => {
@@ -988,12 +1024,12 @@ mod ir_builder {
                         ir_ty,
                         *val_map.get(&ival).unwrap(),
                         idcs,
-                        opt_ins_md_idx,
+                        opt_ins_span_md_idx,
                     )
                 }
                 IrAstOperation::Load(src_name) => block
                     .ins(context)
-                    .load(*val_map.get(&src_name).unwrap(), opt_ins_md_idx),
+                    .load(*val_map.get(&src_name).unwrap(), opt_ins_span_md_idx),
                 IrAstOperation::Nop => block.ins(context).nop(),
                 IrAstOperation::Phi(pairs) => {
                     for (block_name, val_name) in pairs {
@@ -1023,40 +1059,42 @@ mod ir_builder {
                         "flag" => Register::Flag,
                         _ => unreachable!("Guaranteed by grammar."),
                     },
-                    opt_ins_md_idx,
+                    opt_ins_span_md_idx,
                 ),
                 IrAstOperation::Ret(ty, ret_val_name) => {
                     let ty = ty.to_ir_type(context);
-                    block
-                        .ins(context)
-                        .ret(*val_map.get(&ret_val_name).unwrap(), ty, opt_ins_md_idx)
+                    block.ins(context).ret(
+                        *val_map.get(&ret_val_name).unwrap(),
+                        ty,
+                        opt_ins_span_md_idx,
+                    )
                 }
                 IrAstOperation::StateLoadQuadWord(dst, key) => {
                     block.ins(context).state_load_quad_word(
                         *val_map.get(&dst).unwrap(),
                         *val_map.get(&key).unwrap(),
-                        opt_ins_md_idx,
+                        opt_ins_span_md_idx,
                     )
                 }
                 IrAstOperation::StateLoadWord(key) => block
                     .ins(context)
-                    .state_load_word(*val_map.get(&key).unwrap(), opt_ins_md_idx),
+                    .state_load_word(*val_map.get(&key).unwrap(), opt_ins_span_md_idx),
                 IrAstOperation::StateStoreQuadWord(src, key) => {
                     block.ins(context).state_store_quad_word(
                         *val_map.get(&src).unwrap(),
                         *val_map.get(&key).unwrap(),
-                        opt_ins_md_idx,
+                        opt_ins_span_md_idx,
                     )
                 }
                 IrAstOperation::StateStoreWord(src, key) => block.ins(context).state_store_word(
                     *val_map.get(&src).unwrap(),
                     *val_map.get(&key).unwrap(),
-                    opt_ins_md_idx,
+                    opt_ins_span_md_idx,
                 ),
                 IrAstOperation::Store(stored_val_name, dst_val_name) => block.ins(context).store(
                     *val_map.get(&dst_val_name).unwrap(),
                     *val_map.get(&stored_val_name).unwrap(),
-                    opt_ins_md_idx,
+                    opt_ins_span_md_idx,
                 ),
             };
             ins.value_name.map(|vn| val_map.insert(vn, ins_val));
@@ -1106,7 +1144,19 @@ mod ir_builder {
                         MetadataIndex(context.metadata.insert(Metadatum::StateIndex(*idx))),
                     );
                 }
-                _ => {}
+                IrMetadatum::Storage(kind) => {
+                    let attrib = match kind {
+                        IrMetadatumStorageKind::Reads => StorageOperation::Reads,
+                        IrMetadatumStorageKind::Writes => StorageOperation::Writes,
+                        IrMetadatumStorageKind::ReadWrites => StorageOperation::ReadsWrites,
+                    };
+                    md_map.insert(
+                        *idx_ref,
+                        MetadataIndex(context.metadata.insert(Metadatum::StorageAttribute(attrib))),
+                    );
+                }
+
+                IrMetadatum::FilePath { .. } => (),
             }
         }
         md_map
@@ -1128,7 +1178,8 @@ mod ir_builder {
         // calls.  We couldn't do it above until we'd gone and created all the functions first.
         //
         // Now we can loop and find the callee function for each call and replace the NOPs.
-        for (block, nop, callee, args, opt_ins_md_idx, opt_ins_state_idx_md_idx) in unresolved_calls
+        for (block, nop, callee, args, opt_ins_span_md_idx, opt_ins_state_idx_md_idx) in
+            unresolved_calls
         {
             let function = context
                 .functions
@@ -1144,7 +1195,7 @@ mod ir_builder {
             let call_val = Value::new_instruction(
                 context,
                 Instruction::Call(function, args),
-                opt_ins_md_idx,
+                opt_ins_span_md_idx,
                 opt_ins_state_idx_md_idx,
             );
             block.replace_instruction(context, nop, call_val)?;

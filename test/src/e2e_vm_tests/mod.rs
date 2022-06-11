@@ -584,6 +584,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/repeated_enum_variant",
         "should_fail/repeated_storage_field",
         "should_fail/repeated_struct_field",
+        "should_fail/storage_conflict",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {

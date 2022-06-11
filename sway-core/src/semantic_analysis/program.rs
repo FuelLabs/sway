@@ -103,7 +103,9 @@ impl TypedProgram {
         // Some checks that are specific to non-contracts
         if kind != TreeType::Contract {
             // impure functions are disallowed in non-contracts
-            errors.extend(disallow_impure_functions(&declarations, &mains));
+            if !matches!(kind, TreeType::Library { .. }) {
+                errors.extend(disallow_impure_functions(&declarations, &mains));
+            }
 
             // `storage` declarations are not allowed in non-contracts
             let storage_decl = declarations
