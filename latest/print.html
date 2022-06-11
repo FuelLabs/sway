@@ -526,8 +526,8 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 <pre><code class="language-sway">contract;
 
 abi TestContract {
-    fn initialize_counter(value: u64) -&gt; u64;
-    fn increment_counter(amount: u64) -&gt; u64;
+    #[storage(write)]fn initialize_counter(value: u64) -&gt; u64;
+    #[storage(read, write)]fn increment_counter(amount: u64) -&gt; u64;
 }
 
 storage {
@@ -535,12 +535,12 @@ storage {
 }
 
 impl TestContract for Contract {
-    fn initialize_counter(value: u64) -&gt; u64 {
+    #[storage(write)]fn initialize_counter(value: u64) -&gt; u64 {
         storage.counter = value;
         value
     }
 
-    fn increment_counter(amount: u64) -&gt; u64 {
+    #[storage(read, write)]fn increment_counter(amount: u64) -&gt; u64 {
         let incremented = storage.counter + amount;
         storage.counter = incremented;
         incremented
@@ -588,11 +588,11 @@ struct Sent {
 abi Token {
     // Mint new tokens and send to an address.
     // Can only be called by the contract creator.
-    fn mint(receiver: Address, amount: u64);
+    #[storage(read, write)]fn mint(receiver: Address, amount: u64);
 
     // Sends an amount of an existing token.
     // Can be called from any address.
-    fn send(receiver: Address, amount: u64);
+    #[storage(read, write)]fn send(receiver: Address, amount: u64);
 }
 
 ////////////////////////////////////////
@@ -618,7 +618,7 @@ storage {
 
 /// Contract implements the `Token` ABI.
 impl Token for Contract {
-    fn mint(receiver: Address, amount: u64) {
+    #[storage(read, write)]fn mint(receiver: Address, amount: u64) {
         // Note: The return type of `msg_sender()` can be inferred by the
         // compiler. It is shown here for explicitness.
         let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
@@ -636,7 +636,7 @@ impl Token for Contract {
         storage.balances.insert(receiver, storage.balances.get(receiver) + amount)
     }
 
-    fn send(receiver: Address, amount: u64) {
+    #[storage(read, write)]fn send(receiver: Address, amount: u64) {
         // Note: The return type of `msg_sender()` can be inferred by the
         // compiler. It is shown here for explicitness.
         let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
@@ -717,21 +717,21 @@ storage {
 }
 
 abi Wallet {
-    fn receive_funds();
-    fn send_funds(amount_to_send: u64, recipient_address: Address);
+    #[storage(read, write)]fn receive_funds();
+    #[storage(read, write)]fn send_funds(amount_to_send: u64, recipient_address: Address);
 }
 
 impl Wallet for Contract {
-    fn receive_funds() {
+    #[storage(read, write)]fn receive_funds() {
         if msg_asset_id() == ~ContractId::from(BASE_ASSET_ID) {
-            // If we received `BASE_ASSET_ID` then keep track of the balance.
+            // If we received `NATIVE_ASSET_ID` then keep track of the balance.
             // Otherwise, we're receiving other native assets and don't care
             // about our balance of tokens.
             storage.balance = storage.balance + msg_amount();
         }
     }
 
-    fn send_funds(amount_to_send: u64, recipient_address: Address) {
+    #[storage(read, write)]fn send_funds(amount_to_send: u64, recipient_address: Address) {
         // Note: The return type of `msg_sender()` can be inferred by the
         // compiler. It is shown here for explicitness.
         let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
@@ -1799,29 +1799,29 @@ storage {
 }
 
 abi StorageMapExample {
-    fn insert_into_map1(key: u64, value: u64);
+    #[storage(write)]fn insert_into_map1(key: u64, value: u64);
 
-    fn get_from_map1(key: u64, value: u64);
+    #[storage(write)]fn get_from_map1(key: u64, value: u64);
 
-    fn insert_into_map2(key: (b256, bool), value: Data);
+    #[storage(read)]fn insert_into_map2(key: (b256, bool), value: Data);
 
-    fn get_from_map2(key: (b256, bool), value: Data);
+    #[storage(read)]fn get_from_map2(key: (b256, bool), value: Data);
 }
 
 impl StorageMapExample for Contract {
-    fn insert_into_map1(key: u64, value: u64) {
+    #[storage(write)]fn insert_into_map1(key: u64, value: u64) {
         storage.map1.insert(key, value);
     }
 
-    fn get_from_map1(key: u64, value: u64) {
+    #[storage(write)]fn get_from_map1(key: u64, value: u64) {
         storage.map1.insert(key, value);
     }
 
-    fn insert_into_map2(key: (b256, bool), value: Data) {
+    #[storage(read)]fn insert_into_map2(key: (b256, bool), value: Data) {
         storage.map2.get(key);
     }
 
-    fn get_from_map2(key: (b256, bool), value: Data) {
+    #[storage(read)]fn get_from_map2(key: (b256, bool), value: Data) {
         storage.map2.get(key);
     }
 }
@@ -1837,18 +1837,18 @@ impl StorageMapExample for Contract {
 use std::storage::{get, store};
 
 abi StorageExample {
-    fn store_something(amount: u64);
-    fn get_something() -&gt; u64;
+    #[storage(write)]fn store_something(amount: u64);
+    #[storage(read)]fn get_something() -&gt; u64;
 }
 
 const STORAGE_KEY: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
 impl StorageExample for Contract {
-    fn store_something(amount: u64) {
+    #[storage(write)]fn store_something(amount: u64) {
         store(STORAGE_KEY, amount);
     }
 
-    fn get_something() -&gt; u64 {
+    #[storage(read)]fn get_something() -&gt; u64 {
         let value = get::&lt;u64&gt;(STORAGE_KEY);
         value
     }
@@ -2403,8 +2403,8 @@ $ tree .
 <pre><code class="language-sway">contract;
 
 abi TestContract {
-    fn initialize_counter(value: u64) -&gt; u64;
-    fn increment_counter(amount: u64) -&gt; u64;
+    #[storage(write)]fn initialize_counter(value: u64) -&gt; u64;
+    #[storage(read, write)]fn increment_counter(amount: u64) -&gt; u64;
 }
 
 storage {
@@ -2412,12 +2412,12 @@ storage {
 }
 
 impl TestContract for Contract {
-    fn initialize_counter(value: u64) -&gt; u64 {
+    #[storage(write)]fn initialize_counter(value: u64) -&gt; u64 {
         storage.counter = value;
         value
     }
 
-    fn increment_counter(amount: u64) -&gt; u64 {
+    #[storage(read, write)]fn increment_counter(amount: u64) -&gt; u64 {
         let incremented = storage.counter + amount;
         storage.counter = incremented;
         incremented

@@ -178,29 +178,29 @@ storage {
 }
 
 abi StorageMapExample {
-    fn insert_into_map1(key: u64, value: u64);
+    #[storage(write)]fn insert_into_map1(key: u64, value: u64);
 
-    fn get_from_map1(key: u64, value: u64);
+    #[storage(write)]fn get_from_map1(key: u64, value: u64);
 
-    fn insert_into_map2(key: (b256, bool), value: Data);
+    #[storage(read)]fn insert_into_map2(key: (b256, bool), value: Data);
 
-    fn get_from_map2(key: (b256, bool), value: Data);
+    #[storage(read)]fn get_from_map2(key: (b256, bool), value: Data);
 }
 
 impl StorageMapExample for Contract {
-    fn insert_into_map1(key: u64, value: u64) {
+    #[storage(write)]fn insert_into_map1(key: u64, value: u64) {
         storage.map1.insert(key, value);
     }
 
-    fn get_from_map1(key: u64, value: u64) {
+    #[storage(write)]fn get_from_map1(key: u64, value: u64) {
         storage.map1.insert(key, value);
     }
 
-    fn insert_into_map2(key: (b256, bool), value: Data) {
+    #[storage(read)]fn insert_into_map2(key: (b256, bool), value: Data) {
         storage.map2.get(key);
     }
 
-    fn get_from_map2(key: (b256, bool), value: Data) {
+    #[storage(read)]fn get_from_map2(key: (b256, bool), value: Data) {
         storage.map2.get(key);
     }
 }
@@ -216,18 +216,18 @@ impl StorageMapExample for Contract {
 use std::storage::{get, store};
 
 abi StorageExample {
-    fn store_something(amount: u64);
-    fn get_something() -&gt; u64;
+    #[storage(write)]fn store_something(amount: u64);
+    #[storage(read)]fn get_something() -&gt; u64;
 }
 
 const STORAGE_KEY: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
 impl StorageExample for Contract {
-    fn store_something(amount: u64) {
+    #[storage(write)]fn store_something(amount: u64) {
         store(STORAGE_KEY, amount);
     }
 
-    fn get_something() -&gt; u64 {
+    #[storage(read)]fn get_something() -&gt; u64 {
         let value = get::&lt;u64&gt;(STORAGE_KEY);
         value
     }
