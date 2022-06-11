@@ -1,0 +1,8 @@
+[project]
+authors = ["Kaya Gökalp"]
+entry = "lib.sw"
+license = "Apache-2.0"
+name = "dependency_a"
+
+[dependencies]
+dependency_b = { path = "../dependency_b" }
