@@ -380,7 +380,9 @@ impl TypedFunctionDeclaration {
             .iter()
             .map(
                 |TypedFunctionParameter {
-                     r#type, type_span, ..
+                     r#type,
+                     ref type_span,
+                     ..
                  }| {
                     resolve_type(*r#type, type_span)
                         .expect("unreachable I think?")
