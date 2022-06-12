@@ -87,12 +87,12 @@ pub fn const_fold_typed_expr(
                 return None;
             }
             let res = function_body.contents.last().and_then(|first_expr| {
-                const_fold_typed_ast_node(context, module, known_consts, &first_expr)
+                const_fold_typed_ast_node(context, module, known_consts, first_expr)
             });
             for (name, _) in arguments {
                 known_consts.pop(name);
             }
-            return res;
+            res
         }
         TypedExpressionVariant::VariableExpression { name } => match known_consts.get(name) {
             // 1. Check if name is in known_consts.
@@ -112,8 +112,8 @@ pub fn const_fold_typed_expr(
             let (field_typs, field_vals): (Vec<_>, Vec<_>) = fields
                 .iter()
                 .filter_map(|TypedStructExpressionField { name: _, value }| {
-                    const_fold_typed_expr(context, module, known_consts, &value)
-                        .and_then(|cv| Some((value.return_type, cv)))
+                    const_fold_typed_expr(context, module, known_consts, value)
+                        .map(|cv| (value.return_type, cv))
                 })
                 .unzip();
             if field_vals.len() < fields.len() {
@@ -143,10 +143,10 @@ pub fn const_fold_typed_expr(
                 .iter()
                 .filter_map(|value| {
                     const_fold_typed_expr(context, module, known_consts, &value)
-                        .and_then(|cv| Some((value.return_type, cv)))
+                        .map(|cv| (value.return_type, cv))
                 })
                 .unzip();
-            if element_vals.len() < contents.len() || element_typs.len() < 1 {
+            if element_vals.len() < contents.len() || element_typs.is_empty() {
                 // We couldn't evaluate all fields to a constant or cannot determine element type.
                 return None;
             }
@@ -204,9 +204,9 @@ pub fn const_fold_typed_expr(
                     field_kind,
                 )
                 .and_then(|(_struct_name, field_idx_and_type_opt)| {
-                    field_idx_and_type_opt.and_then(|(field_idx, _field_type)| Some(field_idx))
+                    field_idx_and_type_opt.map(|(field_idx, _field_type)| field_idx)
                 })
-                .and_then(|field_idx| fields.get(field_idx as usize).map(|value| value.clone()))
+                .and_then(|field_idx| fields.get(field_idx as usize).cloned())
             }
             _ => None,
         },
@@ -218,7 +218,7 @@ pub fn const_fold_typed_expr(
             Some(Constant {
                 value: ConstantValue::Struct(fields),
                 ..
-            }) => fields.get(*elem_to_access_num).map(|value| value.clone()),
+            }) => fields.get(*elem_to_access_num).cloned(),
             _ => None,
         },
         TypedExpressionVariant::ArrayIndex { .. }
@@ -251,7 +251,7 @@ fn const_fold_typed_ast_node(
             None
         }
         TypedAstNodeContent::Expression(e) | TypedAstNodeContent::ImplicitReturnExpression(e) => {
-            const_fold_typed_expr(context, module, known_consts, &e)
+            const_fold_typed_expr(context, module, known_consts, e)
         }
         TypedAstNodeContent::WhileLoop(_) | TypedAstNodeContent::SideEffect => None,
     }
