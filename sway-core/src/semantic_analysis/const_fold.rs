@@ -222,6 +222,7 @@ pub fn const_fold_typed_expr(
             _ => None,
         },
         TypedExpressionVariant::ArrayIndex { .. }
+        | TypedExpressionVariant::IntrinsicFunction(_)
         | TypedExpressionVariant::CodeBlock(_)
         | TypedExpressionVariant::FunctionParameter
         | TypedExpressionVariant::IfExp { .. }
@@ -229,9 +230,6 @@ pub fn const_fold_typed_expr(
         | TypedExpressionVariant::LazyOperator { .. }
         | TypedExpressionVariant::AbiCast { .. }
         | TypedExpressionVariant::StorageAccess(_)
-        | TypedExpressionVariant::TypeProperty { .. }
-        | TypedExpressionVariant::GetStorageKey { .. }
-        | TypedExpressionVariant::SizeOfValue { .. }
         | TypedExpressionVariant::AbiName(_)
         | TypedExpressionVariant::EnumTag { .. }
         | TypedExpressionVariant::UnsafeDowncast { .. } => None,
