@@ -340,6 +340,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/contract_caller_as_type",
             ProgramState::Return(42),
         ),
+        (
+            "should_pass/language/non_literal_const_decl",
+            ProgramState::Return(42),
+        ),
         /*
          * This test is disabled because in order to work correctly it requires that we implement
          * `&mut self` methods.
@@ -572,7 +576,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/trait_pure_calls_impure",
         "should_fail/match_expressions_empty_arms",
         "should_fail/type_mismatch_error_message",
-        "should_fail/non_literal_const_decl",
         "should_fail/recursive_enum",
         "should_fail/recursive_struct",
         "should_fail/recursive_type_chain",
