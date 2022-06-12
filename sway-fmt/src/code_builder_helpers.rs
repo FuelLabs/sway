@@ -104,6 +104,20 @@ pub fn handle_assignment_case(code_line: &mut CodeLine, iter: &mut Peekable<Enum
     }
 }
 
+pub fn handle_plus_case(code_line: &mut CodeLine, iter: &mut Peekable<Enumerate<Chars>>) {
+    if let Some((_, next_char)) = iter.peek() {
+        let next_char = *next_char;
+        if next_char == '=' {
+            code_line.append_with_whitespace("+= ");
+            iter.next();
+        } else {
+            code_line.append_with_whitespace("+ ");
+        }
+    } else {
+        code_line.append_with_whitespace("+ ");
+    }
+}
+
 pub fn handle_colon_case(code_line: &mut CodeLine, iter: &mut Peekable<Enumerate<Chars>>) {
     if let Some((_, next_char)) = iter.peek() {
         let next_char = *next_char;
