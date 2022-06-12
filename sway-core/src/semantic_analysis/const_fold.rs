@@ -51,6 +51,12 @@ impl<K: std::cmp::Eq + std::hash::Hash, V> MappedStack<K, V> {
     }
 }
 
+impl<K: std::cmp::Eq + std::hash::Hash, V> Default for MappedStack<K, V> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Given an environment mapping names to constants,
 /// attempt to evaluate a typed expression to a constant.
 pub fn const_fold_typed_expr(
@@ -127,8 +133,8 @@ pub fn const_fold_typed_expr(
             let (field_typs, field_vals): (Vec<_>, Vec<_>) = fields
                 .iter()
                 .filter_map(|value| {
-                    const_fold_typed_expr(context, module, known_consts, &value)
-                        .and_then(|cv| Some((value.return_type, cv)))
+                    const_fold_typed_expr(context, module, known_consts, value)
+                        .map(|cv| (value.return_type, cv))
                 })
                 .unzip();
             if field_vals.len() < fields.len() {
@@ -142,7 +148,7 @@ pub fn const_fold_typed_expr(
             let (element_typs, element_vals): (Vec<_>, Vec<_>) = contents
                 .iter()
                 .filter_map(|value| {
-                    const_fold_typed_expr(context, module, known_consts, &value)
+                    const_fold_typed_expr(context, module, known_consts, value)
                         .map(|cv| (value.return_type, cv))
                 })
                 .unzip();
