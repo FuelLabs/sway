@@ -1369,7 +1369,7 @@ pub fn compile(
                     let compiled = Compiled {
                         json_abi,
                         bytecode,
-                        tree_type: tree_type,
+                        tree_type,
                     };
                     Ok((compiled, Some(lib_namespace.into())))
                 }
@@ -1385,7 +1385,7 @@ pub fn compile(
                             let compiled = Compiled {
                                 json_abi,
                                 bytecode,
-                                tree_type: tree_type,
+                                tree_type,
                             };
                             Ok((compiled, None))
                         }
