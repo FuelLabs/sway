@@ -1,7 +1,14 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-C086F5BB5B0BA300'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-C086F5BB5B0BA300'
 dependencies = []
 
 [[package]]
 name = 'issue_1512_repro'
+source = 'root'
 dependencies = ['core']

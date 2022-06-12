@@ -1,9 +1,11 @@
 [[package]]
 name = 'abi_with_tuples'
+source = 'path+from-root-A94357F7D125B65F'
 dependencies = ['core']
 
 [[package]]
 name = 'call_abi_with_tuples'
+source = 'root'
 dependencies = [
     'abi_with_tuples',
     'std',
@@ -11,8 +13,18 @@ dependencies = [
 
 [[package]]
 name = 'core'
+source = 'path+from-root-A94357F7D125B65F'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-A94357F7D125B65F'
 dependencies = []
 
 [[package]]
 name = 'std'
-dependencies = ['core']
+source = 'path+from-root-A94357F7D125B65F'
+dependencies = [
+    'core',
+    'core_utils',
+]

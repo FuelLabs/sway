@@ -1,7 +1,14 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-BA5855EE7F3492BE'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-BA5855EE7F3492BE'
 dependencies = []
 
 [[package]]
 name = 'if_implicit_unit'
+source = 'root'
 dependencies = ['core']

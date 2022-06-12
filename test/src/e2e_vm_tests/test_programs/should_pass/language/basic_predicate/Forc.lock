@@ -1,7 +1,14 @@
 [[package]]
 name = 'basic_predicate'
+source = 'root'
 dependencies = ['core']
 
 [[package]]
 name = 'core'
+source = 'path+from-root-FF1DD40DF1571ED3'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-FF1DD40DF1571ED3'
 dependencies = []

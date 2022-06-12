@@ -1,7 +1,14 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-4F875AA377BDB49F'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-4F875AA377BDB49F'
 dependencies = []
 
 [[package]]
 name = 'enum_destructuring'
+source = 'root'
 dependencies = ['core']

@@ -1,7 +1,14 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-369A2B47EEBEB803'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-369A2B47EEBEB803'
 dependencies = []
 
 [[package]]
 name = 'retd_b256'
+source = 'root'
 dependencies = ['core']

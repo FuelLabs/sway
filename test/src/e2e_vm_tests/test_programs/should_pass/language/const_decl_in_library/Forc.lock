@@ -1,7 +1,14 @@
 [[package]]
 name = 'const_decl_in_library'
+source = 'root'
 dependencies = ['core']
 
 [[package]]
 name = 'core'
+source = 'path+from-root-1F4E24303F7BFF73'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-1F4E24303F7BFF73'
 dependencies = []

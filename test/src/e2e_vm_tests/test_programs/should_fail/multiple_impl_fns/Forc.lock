@@ -1,11 +1,4 @@
 [[package]]
-name = 'core'
-dependencies = []
-
-[[package]]
 name = 'multiple_impl_fns'
-dependencies = ['std']
-
-[[package]]
-name = 'std'
-dependencies = ['core']
+source = 'root'
+dependencies = []

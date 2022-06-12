@@ -1,7 +1,14 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-EE30911CC58544F9'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-EE30911CC58544F9'
 dependencies = []
 
 [[package]]
 name = 'funcs_with_generic_types'
+source = 'root'
 dependencies = ['core']

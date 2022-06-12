@@ -1,7 +1,14 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-086E35205BD410DF'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-086E35205BD410DF'
 dependencies = []
 
 [[package]]
 name = 'zero_field_types'
+source = 'root'
 dependencies = ['core']
