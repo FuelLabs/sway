@@ -161,15 +161,13 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
 
     info!("  Bytecode size is {} bytes.", compiled.bytecode.len());
 
-    if let Some(ref tree_type) = compiled.tree_type {
-        if let TreeType::Script | TreeType::Predicate = tree_type {
-            // hash the bytecode for scripts/predicates and store it in a file in the output directory
-            let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&compiled.bytecode));
-            let hash_file_name = format!("{}-bin-hash", &manifest.project.name);
-            let hash_path = output_dir.join(hash_file_name);
-            fs::write(hash_path, &bytecode_hash)?;
-            info!("  Bytecode hash is: {}", bytecode_hash);
-        }
+    if let TreeType::Script | TreeType::Predicate = compiled.tree_type {
+        // hash the bytecode for scripts/predicates and store it in a file in the output directory
+        let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&compiled.bytecode));
+        let hash_file_name = format!("{}-bin-hash", &manifest.project.name);
+        let hash_path = output_dir.join(hash_file_name);
+        fs::write(hash_path, &bytecode_hash)?;
+        info!("  Bytecode hash is: {}", bytecode_hash);
     }
 
     Ok(compiled)

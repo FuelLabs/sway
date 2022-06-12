@@ -46,7 +46,7 @@ pub struct PinnedId(u64);
 pub struct Compiled {
     pub json_abi: JsonABI,
     pub bytecode: Vec<u8>,
-    pub tree_type: Option<TreeType>,
+    pub tree_type: TreeType,
 }
 
 /// A package uniquely identified by name along with its source.
@@ -1369,7 +1369,7 @@ pub fn compile(
                     let compiled = Compiled {
                         json_abi,
                         bytecode,
-                        tree_type: Some(tree_type),
+                        tree_type: tree_type,
                     };
                     Ok((compiled, Some(lib_namespace.into())))
                 }
@@ -1385,7 +1385,7 @@ pub fn compile(
                             let compiled = Compiled {
                                 json_abi,
                                 bytecode,
-                                tree_type: Some(tree_type),
+                                tree_type: tree_type,
                             };
                             Ok((compiled, None))
                         }
@@ -1431,9 +1431,11 @@ pub fn build(
         }
         json_abi.extend(compiled.json_abi);
         bytecode = compiled.bytecode;
-        tree_type = compiled.tree_type;
+        tree_type = Some(compiled.tree_type);
         source_map.insert_dependency(path.clone());
     }
+    let tree_type =
+        tree_type.ok_or_else(|| anyhow!("build plan must contain at least one package"))?;
     let compiled = Compiled {
         bytecode,
         json_abi,
