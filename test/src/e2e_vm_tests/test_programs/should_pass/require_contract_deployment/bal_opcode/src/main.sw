@@ -1,6 +1,6 @@
 script;
 
-use std::{assert::assert, constants::NATIVE_ASSET_ID, contract_id::ContractId};
+use std::{assert::assert, constants::BASE_ASSET_ID, contract_id::ContractId};
 use balance_test_abi::BalanceTest;
 
 fn main() -> bool {
@@ -13,7 +13,7 @@ fn main() -> bool {
     }
     ();
 
-    let balance = asm(token_bal, token: NATIVE_ASSET_ID, id: balance_test_contract_id) {
+    let balance = asm(token_bal, token: BASE_ASSET_ID, id: balance_test_contract_id) {
         bal token_bal token id;
         token_bal: u64
     };
