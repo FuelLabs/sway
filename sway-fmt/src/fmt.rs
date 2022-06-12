@@ -750,6 +750,8 @@ fn main() {
     a -= 1;
     a /= 1;
     a *= 1;
+    a <<= 1;
+    a >>= 1;
 }
 "#;
         let sway_code = r#"script;
@@ -759,6 +761,8 @@ fn main() {
     a -= 1;
     a /= 1;
     a *= 1;
+    a <<= 1;
+    a >>= 1;
 }
 "#;
         let result = get_formatted_data(sway_code.into(), OPTIONS, None);
