@@ -405,13 +405,13 @@ fn type_check_trait_implementation(
             suffix: trait_name.suffix.clone(),
             is_absolute: false,
         },
-        match resolve_type(self_type, self_type_span) {
+        insert_type(match resolve_type(self_type, self_type_span) {
             Ok(o) => o,
             Err(e) => {
                 errors.push(e.into());
                 return err(warnings, errors);
             }
-        },
+        }),
         functions_buf.clone(),
     );
 
