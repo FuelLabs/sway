@@ -1,18 +1,20 @@
-mod create_type_id;
+mod abi;
 mod r#enum;
 mod function;
 mod impl_trait;
 mod monomorphize;
 mod storage;
 mod r#struct;
+mod r#trait;
 mod variable;
 
-pub(crate) use create_type_id::*;
+pub use abi::*;
 pub use function::*;
 pub use impl_trait::*;
 pub(crate) use monomorphize::*;
 pub use r#enum::*;
 pub use r#struct::*;
+pub use r#trait::*;
 pub use storage::*;
 pub use variable::*;
 
@@ -422,34 +424,6 @@ impl TypedDeclaration {
     }
 }
 
-/// A `TypedAbiDeclaration` contains the type-checked version of the parse tree's `AbiDeclaration`.
-#[derive(Clone, Debug, Derivative)]
-#[derivative(PartialEq, Eq)]
-pub struct TypedAbiDeclaration {
-    /// The name of the abi trait (also known as a "contract trait")
-    pub name: Ident,
-    /// The methods a contract is required to implement in order opt in to this interface
-    pub interface_surface: Vec<TypedTraitFn>,
-    /// The methods provided to a contract "for free" upon opting in to this interface
-    // NOTE: It may be important in the future to include this component
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Eq(bound = ""))]
-    pub(crate) methods: Vec<FunctionDeclaration>,
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Eq(bound = ""))]
-    pub(crate) span: Span,
-}
-
-impl TypedAbiDeclaration {
-    pub(crate) fn as_type(&self) -> TypeId {
-        let ty = TypeInfo::ContractCaller {
-            abi_name: AbiName::Known(self.name.clone().into()),
-            address: None,
-        };
-        insert_type(ty)
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypedConstantDeclaration {
     pub name: Ident,
@@ -460,30 +434,6 @@ pub struct TypedConstantDeclaration {
 impl CopyTypes for TypedConstantDeclaration {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.value.copy_types(type_mapping);
-    }
-}
-
-#[derive(Clone, Debug, Derivative)]
-#[derivative(PartialEq, Eq)]
-pub struct TypedTraitDeclaration {
-    pub name: Ident,
-    pub interface_surface: Vec<TypedTraitFn>,
-    // NOTE: deriving partialeq and hash on this element may be important in the
-    // future, but I am not sure. For now, adding this would 2x the amount of
-    // work, so I am just going to exclude it
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Eq(bound = ""))]
-    pub(crate) methods: Vec<FunctionDeclaration>,
-    pub(crate) supertraits: Vec<Supertrait>,
-    pub(crate) visibility: Visibility,
-}
-
-impl CopyTypes for TypedTraitDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.interface_surface
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
-        // we don't have to type check the methods because it hasn't been type checked yet
     }
 }
 
