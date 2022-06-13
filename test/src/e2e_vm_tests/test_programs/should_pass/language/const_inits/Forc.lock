@@ -1,0 +1,17 @@
+[[package]]
+name = 'core'
+dependencies = []
+
+[[package]]
+name = 'const_inits'
+dependencies = []
+
+[[package]]
+name = 'const_inits'
+dependencies = [
+    'std',
+]
+
+[[package]]
+name = 'std'
+dependencies = ['core']

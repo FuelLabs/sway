@@ -109,7 +109,7 @@ fn compile_constants(
         };
 
         if let Some((name, value)) = decl_name_value {
-            let const_val = compile_constant_expression(context, value)?;
+            let const_val = compile_constant_expression(context, module, value)?;
             module.add_global_constant(context, name.as_str().to_owned(), const_val);
         }
     }
@@ -123,24 +123,25 @@ fn compile_constants(
 
 fn compile_constant_expression(
     context: &mut Context,
+    module: Module,
     const_expr: &TypedExpression,
 ) -> Result<Value, CompileError> {
-    match &const_expr.expression {
-        TypedExpressionVariant::Literal(literal) => {
-            let span_md_idx = MetadataIndex::from_span(context, &const_expr.span);
-            Ok(convert_literal_to_value(context, literal, span_md_idx))
-        }
+    let span_id_idx = MetadataIndex::from_span(context, &const_expr.span);
+    let err = match &const_expr.expression {
         // Special case functions because the span in `const_expr` is to the inlined function
         // definition, rather than the actual call site.
         TypedExpressionVariant::FunctionApplication { call_path, .. } => {
-            Err(CompileError::NonLiteralConstantDeclValue {
+            Err(CompileError::NonConstantDeclValue {
                 span: call_path.span(),
             })
         }
-        _otherwise => Err(CompileError::NonLiteralConstantDeclValue {
+        _otherwise => Err(CompileError::NonConstantDeclValue {
             span: const_expr.span.clone(),
         }),
-    }
+    };
+    let mut known_consts = MappedStack::<Ident, Constant>::new();
+    const_eval_typed_expr(context, module, &mut known_consts, const_expr)
+        .map_or(err, |c| Ok(Value::new_constant(context, c, span_id_idx)))
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -163,7 +164,7 @@ fn compile_declarations(
         match declaration {
             TypedDeclaration::ConstantDeclaration(decl) => {
                 // These are in the global scope for the module, so they can be added there.
-                let const_val = compile_constant_expression(context, &decl.value)?;
+                let const_val = compile_constant_expression(context, module, &decl.value)?;
                 module.add_global_constant(context, decl.name.as_str().to_owned(), const_val);
             }
 
@@ -202,7 +203,7 @@ fn compile_declarations(
 
 // -------------------------------------------------------------------------------------------------
 
-fn get_aggregate_for_types(
+pub fn get_aggregate_for_types(
     context: &mut Context,
     type_ids: &[TypeId],
 ) -> Result<Aggregate, CompileError> {
@@ -215,7 +216,7 @@ fn get_aggregate_for_types(
 
 // -------------------------------------------------------------------------------------------------
 
-fn create_enum_aggregate(
+pub fn create_enum_aggregate(
     context: &mut Context,
     variants: Vec<TypedEnumVariant>,
 ) -> Result<Aggregate, CompileError> {
@@ -239,7 +240,7 @@ fn create_enum_aggregate(
 
 // -------------------------------------------------------------------------------------------------
 
-fn create_tuple_aggregate(
+pub fn create_tuple_aggregate(
     context: &mut Context,
     fields: Vec<TypeId>,
 ) -> Result<Aggregate, CompileError> {
@@ -249,6 +250,17 @@ fn create_tuple_aggregate(
         .collect::<Result<Vec<_>, CompileError>>()?;
 
     Ok(Aggregate::new_struct(context, field_types))
+}
+
+// -------------------------------------------------------------------------------------------------
+
+pub fn create_array_aggregate(
+    context: &mut Context,
+    element_type_id: TypeId,
+    count: u64,
+) -> Result<Aggregate, CompileError> {
+    let element_type = convert_resolved_typeid_no_span(context, &element_type_id)?;
+    Ok(Aggregate::new_array(context, element_type, count))
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -1632,7 +1644,8 @@ impl FnCompiler {
                         array_expr_span)
                 })
             }
-            ValueDatum::Argument(Type::Array(aggregate)) => Ok(*aggregate),
+            ValueDatum::Argument(Type::Array(aggregate))
+            | ValueDatum::Constant(Constant { ty : Type::Array(aggregate), ..}) => Ok (*aggregate),
             otherwise => Err(CompileError::InternalOwned(
                 format!("Unsupported array value for index expression: {otherwise:?}"),
                 array_expr_span,
@@ -1732,7 +1745,11 @@ impl FnCompiler {
                     )
                 })
             }
-            ValueDatum::Argument(Type::Struct(aggregate)) => Ok(*aggregate),
+            ValueDatum::Argument(Type::Struct(aggregate))
+            | ValueDatum::Constant(Constant {
+                ty: Type::Struct(aggregate),
+                ..
+            }) => Ok(*aggregate),
             otherwise => Err(CompileError::InternalOwned(
                 format!("Unsupported struct value for field expression: {otherwise:?}",),
                 ast_struct_expr_span,
@@ -2440,7 +2457,7 @@ impl LexicalMap {
 // -------------------------------------------------------------------------------------------------
 // Get the name of a struct and the index to a particular named field from a TypeId.
 
-fn get_struct_name_field_index_and_type(
+pub fn get_struct_name_field_index_and_type(
     field_type: TypeId,
     field_kind: ProjectionKind,
 ) -> Option<(String, Option<(u64, TypeId)>)> {
@@ -2594,7 +2611,7 @@ fn convert_literal_to_value(
     }
 }
 
-fn convert_literal_to_constant(ast_literal: &Literal) -> Constant {
+pub fn convert_literal_to_constant(ast_literal: &Literal) -> Constant {
     match ast_literal {
         // All integers are `u64`.  See comment above.
         Literal::U8(n) | Literal::Byte(n) => Constant::new_uint(64, *n as u64),

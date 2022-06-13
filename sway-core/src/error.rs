@@ -973,11 +973,8 @@ pub enum CompileError {
     Parse { error: sway_parse::ParseError },
     #[error("\"where\" clauses are not yet supported")]
     WhereClauseNotYetSupported { span: Span },
-    #[error(
-        "Initializing a constant value via `const` is currently limited to primitive values \
-        such as numbers, bools, strings or b256s."
-    )]
-    NonLiteralConstantDeclValue { span: Span },
+    #[error("Could not evaluate initializer to a const declaration.")]
+    NonConstantDeclValue { span: Span },
     #[error("Declaring storage in a {program_kind} is not allowed.")]
     StorageDeclarationInNonContract { program_kind: String, span: Span },
 }
@@ -1131,7 +1128,7 @@ impl Spanned for CompileError {
             Parse { error } => error.span.clone(),
             EnumNotFound { span, .. } => span.clone(),
             TupleIndexOutOfBounds { span, .. } => span.clone(),
-            NonLiteralConstantDeclValue { span } => span.clone(),
+            NonConstantDeclValue { span } => span.clone(),
             StorageDeclarationInNonContract { span, .. } => span.clone(),
         }
     }
