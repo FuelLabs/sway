@@ -952,10 +952,12 @@ fn fn_args_to_function_parameters(
             .collect::<Result<_, _>>()?,
         FnArgs::NonStatic {
             self_token,
+            mutable_self,
             args_opt,
         } => {
             let mut function_parameters = vec![FunctionParameter {
                 name: Ident::new(self_token.span()),
+                is_mutable: matches!(mutable_self, Some(_mut_token)),
                 type_id: insert_type(TypeInfo::SelfType),
                 type_span: self_token.span(),
             }];
@@ -1925,6 +1927,7 @@ fn fn_arg_to_function_parameter(
     };
     let function_parameter = FunctionParameter {
         name,
+        is_mutable: false,
         type_id: insert_type(ty_to_type_info(ec, fn_arg.ty)?),
         type_span,
     };

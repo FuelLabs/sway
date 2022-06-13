@@ -197,7 +197,13 @@ impl TypedFunctionDeclaration {
                 };
         });
 
-        for FunctionParameter { name, type_id, .. } in parameters.clone() {
+        for FunctionParameter {
+            name,
+            is_mutable,
+            type_id,
+            ..
+        } in parameters.clone()
+        {
             namespace.insert_symbol(
                 name.clone(),
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -208,7 +214,11 @@ impl TypedFunctionDeclaration {
                         is_constant: IsConstant::No,
                         span: name.span().clone(),
                     },
-                    is_mutable: VariableMutability::Immutable,
+                    is_mutable: if is_mutable {
+                        VariableMutability::Mutable
+                    } else {
+                        VariableMutability::Immutable
+                    },
                     const_decl_origin: false,
                     type_ascription: type_id,
                 }),
@@ -257,10 +267,12 @@ impl TypedFunctionDeclaration {
             .map(
                 |FunctionParameter {
                      name,
+                     is_mutable,
                      type_id: r#type,
                      type_span,
                  }| TypedFunctionParameter {
                     name,
+                    is_mutable,
                     r#type,
                     type_span,
                 },
@@ -428,11 +440,13 @@ fn test_function_selector_behavior() {
         parameters: vec![
             TypedFunctionParameter {
                 name: Ident::new_no_span("foo"),
+                is_mutable: false,
                 r#type: crate::type_engine::insert_type(TypeInfo::Str(5)),
                 type_span: Span::dummy(),
             },
             TypedFunctionParameter {
                 name: Ident::new_no_span("baz"),
+                is_mutable: false,
                 r#type: insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
                 type_span: Span::dummy(),
             },

@@ -1,12 +1,14 @@
-use sway_types::{state::StateIndex, Span};
-use sway_types::{Ident, Spanned};
-
 use crate::constants;
 use crate::Expression::StorageAccess;
-
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
-
+use crate::{
+    error::*,
+    parse_tree::*,
+    semantic_analysis::{TypedExpressionVariant::VariableExpression, *},
+    type_engine::*,
+};
 use std::collections::{HashMap, VecDeque};
+use sway_types::{state::StateIndex, Span};
+use sway_types::{Ident, Spanned};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn type_check_method_application(
@@ -186,6 +188,39 @@ pub(crate) fn type_check_method_application(
             });
         }
         // The annotation may result in a cast, which is handled in the type engine.
+    }
+
+    // Validate mutability of self. Check that the variable that the method is called on is mutable
+    // _if_ the method requires mutable self.
+    if let (
+        Some(TypedExpression {
+            expression: VariableExpression { name, .. },
+            ..
+        }),
+        Some(TypedFunctionParameter { is_mutable, .. }),
+    ) = (args_buf.get(0), method.parameters.get(0))
+    {
+        let unknown_decl = check!(
+            namespace.resolve_symbol(name).cloned(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let variable_decl = check!(
+            unknown_decl.expect_variable().cloned(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        if !variable_decl.is_mutable.is_mutable() && *is_mutable {
+            errors.push(CompileError::MethodRequiresMutableSelf {
+                method_name: method_name.easy_name(),
+                variable_name: name.clone(),
+                span,
+            });
+            return err(warnings, errors);
+        }
     }
 
     match method_name {

@@ -340,16 +340,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/contract_caller_as_type",
             ProgramState::Return(42),
         ),
-        /*
-         * This test is disabled because in order to work correctly it requires that we implement
-         * `&mut self` methods.
-         *
-         * See: #1188
         (
             "should_pass/language/self_impl_reassignment",
             ProgramState::Return(1),
         ),
-        */
         (
             "should_pass/language/import_trailing_comma",
             ProgramState::Return(0),
@@ -576,6 +570,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/repeated_enum_variant",
         "should_fail/repeated_storage_field",
         "should_fail/repeated_struct_field",
+        "should_fail/method_requires_mut_var",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {

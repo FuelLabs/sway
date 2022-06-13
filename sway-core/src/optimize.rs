@@ -1074,6 +1074,7 @@ impl FnCompiler {
                 .iter()
                 .map(|(name, expr)| TypedFunctionParameter {
                     name: name.clone(),
+                    is_mutable: false,
                     r#type: expr.return_type,
                     type_span: crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 })

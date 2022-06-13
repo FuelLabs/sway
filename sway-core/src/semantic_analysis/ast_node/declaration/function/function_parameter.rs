@@ -5,6 +5,7 @@ use sway_types::span::Span;
 #[derive(Debug, Clone, Eq)]
 pub struct TypedFunctionParameter {
     pub name: Ident,
+    pub is_mutable: bool,
     pub r#type: TypeId,
     pub(crate) type_span: Span,
 }
@@ -14,7 +15,9 @@ pub struct TypedFunctionParameter {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEq for TypedFunctionParameter {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
+        self.name == other.name
+            && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
+            && self.is_mutable == other.is_mutable
     }
 }
 

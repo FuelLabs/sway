@@ -944,10 +944,12 @@ fn type_check_interface_surface(
                     .map(
                         |FunctionParameter {
                              name,
+                             is_mutable,
                              type_id,
                              type_span,
                          }| TypedFunctionParameter {
                             name,
+                            is_mutable,
                             r#type: check!(
                                 namespace.resolve_type_with_self(
                                     look_up_type_id(type_id),
@@ -1080,10 +1082,12 @@ fn type_check_trait_methods(
                 |FunctionParameter {
                      name,
                      type_id,
+                     is_mutable,
                      type_span,
                  }| {
                     TypedFunctionParameter {
                         name,
+                        is_mutable,
                         r#type: check!(
                             namespace.resolve_type_with_self(
                                 look_up_type_id(type_id),
@@ -1173,10 +1177,12 @@ fn convert_trait_methods_to_dummy_funcs(
                     .map(
                         |FunctionParameter {
                              name,
+                             is_mutable,
                              type_id,
                              type_span,
                          }| TypedFunctionParameter {
                             name: name.clone(),
+                            is_mutable: *is_mutable,
                             r#type: check!(
                                 trait_namespace.resolve_type_with_self(
                                     look_up_type_id(*type_id),
