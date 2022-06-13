@@ -6,9 +6,8 @@ use crate::{
     type_engine::{
         insert_type, look_up_type_id, resolve_type, unify_with_self, CopyTypes, TypeId, TypeMapping,
     },
-    CallPath, CompileError, CompileResult, FunctionDeclaration, FunctionParameter, ImplSelf,
-    ImplTrait, Namespace, Purity, TypeInfo, TypeParameter, TypedDeclaration,
-    TypedFunctionDeclaration,
+    CallPath, CompileError, CompileResult, FunctionDeclaration, ImplSelf, ImplTrait, Namespace,
+    Purity, TypeInfo, TypeParameter, TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use super::TypedTraitFn;
