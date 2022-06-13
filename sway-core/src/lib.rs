@@ -213,6 +213,7 @@ pub fn compile_to_ast(
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
 
+    let parse_start = std::time::Instant::now();
     let CompileResult {
         value: parse_program_opt,
         warnings: new_warnings,
@@ -228,7 +229,9 @@ pub fn compile_to_ast(
             return CompileAstResult::Failure { errors, warnings };
         }
     };
+    println!("Parsing: {:?}", parse_start.elapsed());
 
+    let type_check_start = std::time::Instant::now();
     let CompileResult {
         value: typed_program_result,
         warnings: new_warnings,
@@ -244,6 +247,7 @@ pub fn compile_to_ast(
             return CompileAstResult::Failure { errors, warnings };
         }
     };
+    println!("Type Check: {:?}", type_check_start.elapsed());
 
     let mut cfa_res = perform_control_flow_analysis(&typed_program);
 
@@ -328,13 +332,16 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // errors and then hold as a runtime invariant that none of the types will be unresolved in the
     // IR phase.
 
+    let finalize_types_start = std::time::Instant::now();
     check!(
         program.finalize_types(),
         return err(warnings, errors),
         warnings,
         errors
     );
+    println!("Finalize Types: {:?}", finalize_types_start.elapsed());
 
+    let compile_ir_start = std::time::Instant::now();
     let tree_type = program.kind.tree_type();
     let mut ir = match optimize::compile_program(program) {
         Ok(ir) => ir,
@@ -343,6 +350,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
             return err(warnings, errors);
         }
     };
+    println!("Compile IR: {:?}", compile_ir_start.elapsed());
 
     // Find all the entry points.  This is main for scripts and predicates, or ABI methods for
     // contracts, identified by them having a selector.
@@ -362,6 +370,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         .collect();
 
     // Do a purity check on the _unoptimised_ IR.
+    let purity_check_start = std::time::Instant::now();
     let mut purity_checker = optimize::PurityChecker::default();
     for entry_point in &entry_point_functions {
         purity_checker.check_function(&ir, entry_point);
@@ -372,7 +381,9 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         warnings,
         errors
     );
+    println!("Purity Check: {:?}", purity_check_start.elapsed());
 
+    let inline_function_calls_start = std::time::Instant::now();
     // Inline function calls from the entry points.
     check!(
         inline_function_calls(&mut ir, &entry_point_functions),
@@ -380,7 +391,9 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         warnings,
         errors
     );
+    println!("Inline Fn Calls: {:?}", inline_function_calls_start.elapsed());
 
+    let combine_constants_start = std::time::Instant::now();
     // The only other optimisation we have at the moment is constant combining.  In lieu of a
     // forthcoming pass manager we can just call it here now.
     check!(
@@ -389,12 +402,17 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         warnings,
         errors
     );
+    println!("Combine Constants: {:?}", combine_constants_start.elapsed());
 
     if build_config.print_ir {
         tracing::info!("{}", ir);
     }
 
-    crate::asm_generation::from_ir::compile_ir_to_asm(&ir, build_config)
+    let compile_asm_start = std::time::Instant::now();
+    let res = crate::asm_generation::from_ir::compile_ir_to_asm(&ir, build_config);
+    println!("Compile ASM: {:?}", compile_asm_start.elapsed());
+
+    res
 }
 
 fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
@@ -477,8 +495,12 @@ pub fn asm_to_bytecode(
 /// Given a [TypedProgram], which is type-checked Sway source, construct a graph to analyze
 /// control flow and determine if it is valid.
 fn perform_control_flow_analysis(program: &TypedProgram) -> CompileResult<()> {
+    let dca_start = std::time::Instant::now();
     let dca_res = dead_code_analysis(program);
+    println!("Dead Code Analysis: {:?}", dca_start.elapsed());
+    let rpa_start = std::time::Instant::now();
     let rpa_errors = return_path_analysis(program);
+    println!("Return Path Analysis: {:?}", rpa_start.elapsed());
     let rpa_res = if rpa_errors.is_empty() {
         ok((), vec![], vec![])
     } else {
