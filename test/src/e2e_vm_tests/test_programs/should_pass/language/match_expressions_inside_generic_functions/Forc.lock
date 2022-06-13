@@ -1,6 +1,11 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-C52D55288A4557F3'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-C52D55288A4557F3'
 dependencies = []
 
 [[package]]
@@ -11,4 +16,7 @@ dependencies = ['std']
 [[package]]
 name = 'std'
 source = 'path+from-root-C52D55288A4557F3'
-dependencies = ['core']
+dependencies = [
+    'core',
+    'core_utils',
+]

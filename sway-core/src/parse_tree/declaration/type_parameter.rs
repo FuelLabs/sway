@@ -89,6 +89,12 @@ impl Spanned for TypeParameter {
     }
 }
 
+impl ReplaceSelfType for TypeParameter {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.type_id.replace_self_type(self_type);
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub(crate) struct TraitConstraint {
     pub(crate) call_path: CallPath,

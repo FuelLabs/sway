@@ -166,8 +166,10 @@ fn function_to_doc<'a>(
                 .collect(),
         ))
         .append(Doc::text(format!(
-            " -> {} {{",
-            function.return_type.as_string(context)
+            " -> {}{}{} {{",
+            function.return_type.as_string(context),
+            md_namer.meta_as_string(context, &function.span_md_idx, true),
+            md_namer.meta_as_string(context, &function.storage_md_idx, true),
         ))),
     )
     .append(Doc::indent(
@@ -696,6 +698,9 @@ fn metadata_to_doc(context: &Context, md_namer: &MetadataNamer) -> Doc {
                     .get(loc_idx)
                     .map(|loc_ref_idx| format!("!{ref_idx} = span !{loc_ref_idx} {start} {end}")),
                 Metadatum::StateIndex(idx) => Some(format!("!{ref_idx} = state_index {idx:?}")),
+                Metadatum::StorageAttribute(storage_op) => {
+                    Some(format!("!{ref_idx} = storage {storage_op}"))
+                }
             }
             .map(&Doc::text_line)
         })

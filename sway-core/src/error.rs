@@ -290,6 +290,9 @@ pub enum Warning {
         reg_name: Ident,
     },
     DeadStorageDeclaration,
+    DeadStorageDeclarationForFunction {
+        unneeded_attrib: String,
+    },
     MatchExpressionUnreachableArm,
 }
 
@@ -404,7 +407,14 @@ impl fmt::Display for Warning {
                 "This register declaration shadows the reserved register, \"{}\".",
                 reg_name
             ),
-            DeadStorageDeclaration => write!(f, "This storage declaration is never accessed and can be removed."
+            DeadStorageDeclaration => write!(
+                f,
+                "This storage declaration is never accessed and can be removed."
+            ),
+            DeadStorageDeclarationForFunction { unneeded_attrib } => write!(
+                f,
+                "The '{unneeded_attrib}' storage declaration for this function is never accessed \
+                and can be removed."
             ),
             MatchExpressionUnreachableArm => write!(f, "This match arm is unreachable."),
         }
@@ -900,6 +910,16 @@ pub enum CompileError {
     },
     #[error("Impure function inside of non-contract. Contract storage is only accessible from contracts.")]
     ImpureInNonContract { span: Span },
+    #[error(
+        "This function performs a storage {storage_op} but does not have the required \
+        attribute(s).  Try adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\" to the function \
+        declaration."
+    )]
+    ImpureInPureContext {
+        storage_op: &'static str,
+        attrs: String,
+        span: Span,
+    },
     #[error("Literal value is too large for type {ty}.")]
     IntegerTooLarge { span: Span, ty: String },
     #[error("Literal value underflows type {ty}.")]
@@ -962,11 +982,8 @@ pub enum CompileError {
     Parse { error: sway_parse::ParseError },
     #[error("\"where\" clauses are not yet supported")]
     WhereClauseNotYetSupported { span: Span },
-    #[error(
-        "Initializing a constant value via `const` is currently limited to primitive values \
-        such as numbers, bools, strings or b256s."
-    )]
-    NonLiteralConstantDeclValue { span: Span },
+    #[error("Could not evaluate initializer to a const declaration.")]
+    NonConstantDeclValue { span: Span },
     #[error("Declaring storage in a {program_kind} is not allowed.")]
     StorageDeclarationInNonContract { program_kind: String, span: Span },
 }
@@ -1097,6 +1114,7 @@ impl Spanned for CompileError {
             DeclIsNotAVariable { span, .. } => span.clone(),
             DeclIsNotAnAbi { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
+            ImpureInPureContext { span, .. } => span.clone(),
             IntegerTooLarge { span, .. } => span.clone(),
             IntegerTooSmall { span, .. } => span.clone(),
             IntegerContainsInvalidDigit { span, .. } => span.clone(),
@@ -1120,7 +1138,7 @@ impl Spanned for CompileError {
             Parse { error } => error.span.clone(),
             EnumNotFound { span, .. } => span.clone(),
             TupleIndexOutOfBounds { span, .. } => span.clone(),
-            NonLiteralConstantDeclValue { span } => span.clone(),
+            NonConstantDeclValue { span } => span.clone(),
             StorageDeclarationInNonContract { span, .. } => span.clone(),
         }
     }
