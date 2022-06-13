@@ -25,6 +25,7 @@ pub(crate) fn deploy_contract(file_name: &str) -> ContractId {
                 manifest_dir, file_name
             )),
             silent_mode: !verbose,
+            locked: true,
             ..Default::default()
         }))
         .unwrap()
@@ -54,6 +55,7 @@ pub(crate) fn runs_on_node(
         node_url: "http://127.0.0.1:4000".into(),
         silent_mode: !verbose,
         contract: Some(contracts),
+        locked: true,
         ..Default::default()
     };
     tokio::runtime::Runtime::new()
@@ -116,6 +118,7 @@ pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>> {
             "{}/src/e2e_vm_tests/test_programs/{}",
             manifest_dir, file_name
         )),
+        locked: true,
         silent_mode: !verbose,
         ..Default::default()
     })

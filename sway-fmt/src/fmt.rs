@@ -740,4 +740,34 @@ fn main() {
         let (_, formatted_code) = result.unwrap();
         assert_eq!(correct_sway_code, formatted_code);
     }
+
+    #[test]
+    fn test_op_equal() {
+        let correct_sway_code = r#"script;
+fn main() {
+    let mut a = 1;
+    a += 1;
+    a -= 1;
+    a /= 1;
+    a *= 1;
+    a <<= 1;
+    a >>= 1;
+}
+"#;
+        let sway_code = r#"script;
+fn main() {
+    let mut a = 1;
+    a += 1;
+    a -= 1;
+    a /= 1;
+    a *= 1;
+    a <<= 1;
+    a >>= 1;
+}
+"#;
+        let result = get_formatted_data(sway_code.into(), OPTIONS, None);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
+    }
 }

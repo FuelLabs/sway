@@ -104,6 +104,21 @@ pub fn handle_assignment_case(code_line: &mut CodeLine, iter: &mut Peekable<Enum
     }
 }
 
+pub fn handle_plus_case(code_line: &mut CodeLine, iter: &mut Peekable<Enumerate<Chars>>) {
+    if let Some((_, next_char)) = iter.peek() {
+        let next_char = *next_char;
+        if next_char == '=' {
+            // it's a += operator
+            code_line.append_with_whitespace("+= ");
+            iter.next();
+        } else {
+            code_line.append_with_whitespace("+ ");
+        }
+    } else {
+        code_line.append_with_whitespace("+ ");
+    }
+}
+
 pub fn handle_colon_case(code_line: &mut CodeLine, iter: &mut Peekable<Enumerate<Chars>>) {
     if let Some((_, next_char)) = iter.peek() {
         let next_char = *next_char;
@@ -125,12 +140,31 @@ pub fn handle_dash_case(code_line: &mut CodeLine, iter: &mut Peekable<Enumerate<
             // it's a return arrow
             code_line.append_with_whitespace("-> ");
             iter.next();
+        } else if *next_char == '=' {
+            // it's a -= operator
+            code_line.append_with_whitespace("-= ");
+            iter.next();
         } else {
             // it's just a single '-'
             code_line.append_with_whitespace("- ");
         }
     } else {
         code_line.append_with_whitespace("- ");
+    }
+}
+
+pub fn handle_multiply_case(code_line: &mut CodeLine, iter: &mut Peekable<Enumerate<Chars>>) {
+    if let Some((_, next_char)) = iter.peek() {
+        let next_char = *next_char;
+        if next_char == '=' {
+            // it's a *= operator
+            code_line.append_with_whitespace("*= ");
+            iter.next();
+        } else {
+            code_line.append_with_whitespace("* ");
+        }
+    } else {
+        code_line.append_with_whitespace("* ");
     }
 }
 
@@ -146,6 +180,22 @@ pub fn handle_pipe_case(code_line: &mut CodeLine, iter: &mut Peekable<Enumerate<
         }
     } else {
         code_line.append_with_whitespace("| ");
+    }
+}
+
+pub fn handle_forward_slash_case(code_line: &mut CodeLine, iter: &mut Peekable<Enumerate<Chars>>) {
+    // Handles non-comment related /.
+    if let Some((_, next_char)) = iter.peek() {
+        let next_char = *next_char;
+        if next_char == '=' {
+            // it's a /= operator
+            code_line.append_with_whitespace("/= ");
+            iter.next();
+        } else {
+            code_line.append_with_whitespace("/ ");
+        }
+    } else {
+        code_line.append_with_whitespace("/ ");
     }
 }
 

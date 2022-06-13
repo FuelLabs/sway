@@ -1,10 +1,11 @@
 script {
-    fn main() -> u64 {
+    fn main() -> u64, !1 {
         entry:
-        v0 = const u64 42, !1
+        v0 = const u64 42, !2
         ret u64 v0
     }
 }
 
 !0 = filepath "/path/to/impl_ret_int.sw"
-!1 = span !0 32 34
+!1 = span !0 9 36
+!2 = span !0 32 34

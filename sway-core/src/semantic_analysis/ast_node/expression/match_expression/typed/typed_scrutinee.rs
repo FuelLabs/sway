@@ -1,8 +1,9 @@
 use sway_types::{Ident, Span, Spanned};
 
-use crate::semantic_analysis::declaration::{CreateTypeId, EnforceTypeArguments};
+use crate::semantic_analysis::declaration::EnforceTypeArguments;
 use crate::semantic_analysis::namespace::Namespace;
 use crate::semantic_analysis::TypedEnumVariant;
+use crate::type_engine::CreateTypeId;
 use crate::CompileError;
 use crate::{
     error::{err, ok},
