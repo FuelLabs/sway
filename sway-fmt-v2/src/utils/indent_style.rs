@@ -10,7 +10,7 @@ use crate::{
     fmt::Formatter,
 };
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub struct Indent {
     /// Width of the block indent, in characters. Must be a multiple of
     /// Config::tab_spaces.
@@ -20,14 +20,14 @@ pub struct Indent {
 }
 
 impl Indent {
-    pub(crate) fn new(block_indent: usize, alignment: usize) -> Self {
+    pub fn new(block_indent: usize, alignment: usize) -> Self {
         Self {
             block_indent,
             alignment,
         }
     }
 
-    pub(crate) fn from_width(formatter: &Formatter, width: usize) -> Self {
+    pub fn from_width(formatter: &Formatter, width: usize) -> Self {
         let tab_spaces = formatter.config.whitespace.tab_spaces;
         if formatter.config.whitespace.hard_tabs {
             let tab_num = width / tab_spaces;
@@ -38,23 +38,23 @@ impl Indent {
         }
     }
 
-    pub(crate) fn empty() -> Self {
+    pub fn empty() -> Self {
         Self::new(0, 0)
     }
 
-    pub(crate) fn block_only(&self) -> Self {
+    pub fn block_only(&self) -> Self {
         Self {
             block_indent: self.block_indent,
             alignment: 0,
         }
     }
 
-    pub(crate) fn block_indent(mut self, formatter: &Formatter) -> Self {
+    pub fn block_indent(mut self, formatter: &Formatter) -> Self {
         self.block_indent += formatter.config.whitespace.tab_spaces;
         self
     }
 
-    pub(crate) fn block_unindent(mut self, formatter: &Formatter) -> Self {
+    pub fn block_unindent(mut self, formatter: &Formatter) -> Self {
         let tab_spaces = formatter.config.whitespace.tab_spaces;
         if self.block_indent < tab_spaces {
             Indent::new(self.block_indent, 0)
@@ -64,15 +64,15 @@ impl Indent {
         }
     }
 
-    pub(crate) fn width(&self) -> usize {
+    pub fn width(&self) -> usize {
         self.block_indent + self.alignment
     }
 
-    pub(crate) fn to_string(self, formatter: &Formatter) -> Cow<'static, str> {
+    pub fn to_string(self, formatter: &Formatter) -> Cow<'static, str> {
         self.to_string_inner(formatter, 1)
     }
 
-    pub(crate) fn to_string_with_newline(self, formatter: &Formatter) -> Cow<'static, str> {
+    pub fn to_string_with_newline(self, formatter: &Formatter) -> Cow<'static, str> {
         self.to_string_inner(formatter, 0)
     }
 
@@ -142,7 +142,7 @@ impl Sub<usize> for Indent {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub struct Shape {
     pub width: usize,
     // The current indentation of code.
@@ -169,7 +169,7 @@ impl Shape {
     // |<------------>|  max width
     // |<---->|          indent
     //        |<--->|    width
-    pub(crate) fn legacy(width: usize, indent: Indent) -> Self {
+    pub fn legacy(width: usize, indent: Indent) -> Self {
         Self {
             width,
             indent,
@@ -177,7 +177,7 @@ impl Shape {
         }
     }
 
-    pub(crate) fn indented(indent: Indent, formatter: &Formatter) -> Self {
+    pub fn indented(indent: Indent, formatter: &Formatter) -> Self {
         Self {
             width: formatter
                 .config
@@ -189,7 +189,7 @@ impl Shape {
         }
     }
 
-    pub(crate) fn with_max_width(&self, formatter: &Formatter) -> Self {
+    pub fn with_max_width(&self, formatter: &Formatter) -> Self {
         Self {
             width: formatter
                 .config
@@ -200,7 +200,7 @@ impl Shape {
         }
     }
 
-    pub(crate) fn visual_indent(&self, extra_width: usize) -> Self {
+    pub fn visual_indent(&self, extra_width: usize) -> Self {
         let alignment = self.offset + extra_width;
         Self {
             width: self.width,
@@ -209,7 +209,7 @@ impl Shape {
         }
     }
 
-    pub(crate) fn block_indent(&self, extra_width: usize) -> Self {
+    pub fn block_indent(&self, extra_width: usize) -> Self {
         if self.indent.alignment == 0 {
             Self {
                 width: self.width,
@@ -225,36 +225,36 @@ impl Shape {
         }
     }
 
-    pub(crate) fn block_left(&self, width: usize) -> Option<Self> {
+    pub fn block_left(&self, width: usize) -> Option<Self> {
         self.block_indent(width).sub_width(width)
     }
 
-    pub(crate) fn add_offset(&self, extra_width: usize) -> Self {
+    pub fn add_offset(&self, extra_width: usize) -> Self {
         Self {
             offset: self.offset + extra_width,
             ..*self
         }
     }
 
-    pub(crate) fn block(&self) -> Self {
+    pub fn block(&self) -> Self {
         Self {
             indent: self.indent.block_only(),
             ..*self
         }
     }
 
-    pub(crate) fn saturating_sub_width(&self, width: usize) -> Self {
+    pub fn saturating_sub_width(&self, width: usize) -> Self {
         self.sub_width(width).unwrap_or(Self { width: 0, ..*self })
     }
 
-    pub(crate) fn sub_width(&self, width: usize) -> Option<Self> {
+    pub fn sub_width(&self, width: usize) -> Option<Self> {
         Some(Self {
             width: self.width.checked_sub(width)?,
             ..*self
         })
     }
 
-    pub(crate) fn shrink_left(&self, width: usize) -> Option<Self> {
+    pub fn shrink_left(&self, width: usize) -> Option<Self> {
         Some(Self {
             width: self.width.checked_sub(width)?,
             indent: self.indent + width,
@@ -262,15 +262,15 @@ impl Shape {
         })
     }
 
-    pub(crate) fn offset_left(&self, width: usize) -> Option<Self> {
+    pub fn offset_left(&self, width: usize) -> Option<Self> {
         self.add_offset(width).sub_width(width)
     }
 
-    pub(crate) fn used_width(&self) -> usize {
+    pub fn used_width(&self) -> usize {
         self.indent.block_indent + self.offset
     }
 
-    pub(crate) fn rhs_overhead(&self, formatter: &Formatter) -> usize {
+    pub fn rhs_overhead(&self, formatter: &Formatter) -> usize {
         formatter
             .config
             .whitespace
@@ -278,7 +278,7 @@ impl Shape {
             .saturating_sub(self.used_width() + self.width)
     }
 
-    pub(crate) fn comment(&self, formatter: &Formatter) -> Self {
+    pub fn comment(&self, formatter: &Formatter) -> Self {
         let width = min(
             self.width,
             formatter
@@ -290,14 +290,14 @@ impl Shape {
         Self { width, ..*self }
     }
 
-    pub(crate) fn to_string_with_newline(self, formatter: &Formatter) -> Cow<'static, str> {
+    pub fn to_string_with_newline(self, formatter: &Formatter) -> Cow<'static, str> {
         let mut offset_indent = self.indent;
         offset_indent.alignment = self.offset;
         offset_indent.to_string_inner(formatter, 0)
     }
 
     /// Creates a `Shape` with a virtually infinite width.
-    pub(crate) fn infinite_width(&self) -> Self {
+    pub fn infinite_width(&self) -> Self {
         Self {
             width: INFINITE_SHAPE_WIDTH,
             ..*self

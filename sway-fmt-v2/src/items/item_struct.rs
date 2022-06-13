@@ -1,11 +1,8 @@
-use crate::{
-    fmt::{Format, FormattedCode, Formatter},
-    utils::indent_style::Shape,
-};
+use crate::fmt::{Format, FormattedCode, Formatter};
 use sway_parse::ItemStruct;
 
 impl Format for ItemStruct {
-    fn format(&self, _formatter: &Formatter, _shape: &mut Shape) -> FormattedCode {
+    fn format(&self, _formatter: &mut Formatter) -> FormattedCode {
         todo!()
     }
 }
