@@ -189,7 +189,8 @@ where
                 if new_decl.name().as_str() == "DoubleIdentity" {
                     println!(
                         "\n\ndecl.type_parameters():\n[{}]",
-                        new_decl.type_parameters()
+                        new_decl
+                            .type_parameters()
                             .iter()
                             .map(|x| x.to_string())
                             .collect::<Vec<_>>()
@@ -216,9 +217,6 @@ where
 {
     let mut new_decl = decl;
     new_decl.copy_types(type_mapping);
-    namespace.copy_methods_to_type(
-        look_up_type_id(new_decl.create_type_id()),
-        type_mapping,
-    );
+    namespace.copy_methods_to_type(look_up_type_id(new_decl.create_type_id()), type_mapping);
     new_decl
 }

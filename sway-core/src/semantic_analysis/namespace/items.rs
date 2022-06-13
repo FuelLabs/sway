@@ -134,14 +134,10 @@ impl Items {
         self.implemented_traits
             .get_methods_for_type(look_up_type_id(r#type))
     }
-    
+
     /// Given a [TypeInfo] `new_type`, find all the types for which `new_type` is a subset and grab
     /// all the methods for those types, then implement them for `new_type`
-    pub(crate) fn copy_methods_to_type(
-        &mut self,
-        new_type: TypeInfo,
-        type_mapping: &TypeMapping,
-    ) {
+    pub(crate) fn copy_methods_to_type(&mut self, new_type: TypeInfo, type_mapping: &TypeMapping) {
         // This map grabs all (trait name, vec of methods) from self.implemented_traits
         // for which `new_type` is a subset of the existing types
         let methods = self

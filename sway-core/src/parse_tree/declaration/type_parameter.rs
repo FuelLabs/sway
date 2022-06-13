@@ -2,7 +2,10 @@ use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
 
 use sway_types::{ident::Ident, span::Span, Spanned};
 
-use std::{hash::{Hash, Hasher}, fmt};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
 
 #[derive(Debug, Clone, Eq)]
 pub struct TypeParameter {

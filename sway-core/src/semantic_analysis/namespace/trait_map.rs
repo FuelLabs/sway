@@ -107,7 +107,8 @@ impl TraitMap {
         }
         for ((_, type_info), trait_methods) in self.trait_map.iter() {
             if *type_info == r#type {
-                let mut trait_methods: Vec<TypedFunctionDeclaration> = trait_methods.values().cloned().collect();
+                let mut trait_methods: Vec<TypedFunctionDeclaration> =
+                    trait_methods.values().cloned().collect();
                 if let TypeInfo::Struct { ref name, .. } = type_info {
                     if name.as_str() == "DoubleIdentity" {
                         println!("{}\n^ hit", type_info);
@@ -148,7 +149,8 @@ impl TraitMap {
         }
         for ((trait_name, type_info), trait_methods) in self.trait_map.iter() {
             if r#type.is_subset_of(type_info) {
-                let mut trait_methods: Vec<TypedFunctionDeclaration> = trait_methods.values().cloned().collect();
+                let mut trait_methods: Vec<TypedFunctionDeclaration> =
+                    trait_methods.values().cloned().collect();
                 if let TypeInfo::Struct { ref name, .. } = type_info {
                     if name.as_str() == "DoubleIdentity" {
                         println!("{}\n^ hit", type_info);
@@ -160,12 +162,9 @@ impl TraitMap {
                 match methods.get_mut(trait_name) {
                     Some(v) => {
                         v.append(&mut trait_methods);
-                    },
+                    }
                     _ => {
-                        methods.insert(
-                            (*trait_name).clone(),
-                            trait_methods,
-                        );
+                        methods.insert((*trait_name).clone(), trait_methods);
                     }
                 }
             // }
