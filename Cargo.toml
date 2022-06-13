@@ -10,12 +10,12 @@ fuel-types = { version = "0.3", features = ["serde-types"] }
 fuel-vm = { version = "0.11", features = ["serde"] }
 serde_json = "1.0"
 shellfish = { version = "0.6.0", features = ["rustyline", "async", "tokio"] }
-surf = "2.0.0"
+surf = "2.3"
 thiserror = "1.0"
-tokio = { version = "1.8", features = ["net", "io-util", "macros", "rt-multi-thread"] }
+tokio = { version = "1.19", features = ["net", "io-util", "macros", "rt-multi-thread"] }
 
 [dev-dependencies]
 anyhow = "1.0" # Used by the examples only
 escargot = "0.5.7"
 portpicker = "0.1.1"
-rexpect = "0.3"
+rexpect = "0.4"
