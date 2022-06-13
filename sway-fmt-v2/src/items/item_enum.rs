@@ -1,6 +1,6 @@
 use crate::{
     fmt::{Format, FormattedCode, Formatter},
-    utils::{helpers::handle_bracket_close, helpers::handle_bracket_open, helpers::handle_ty},
+    utils::{punctuation::handle_close_bracket, punctuation::handle_open_bracket},
 };
 use sway_parse::ItemEnum;
 use sway_types::Spanned;
@@ -23,7 +23,7 @@ impl Format for ItemEnum {
 
         // Add name of the enum.
         formatted_code.push_str(self.name.as_str());
-        handle_bracket_open(&mut formatted_code, formatter);
+        handle_open_bracket(&mut formatted_code, formatter);
 
         let type_fields = &self.fields.clone().into_inner().value_separator_pairs;
 
@@ -49,7 +49,7 @@ impl Format for ItemEnum {
         for (index, type_field) in type_fields.iter().enumerate() {
             let type_field = &type_field.0;
             // Push the current indentation level
-            formatted_code.push_str(&formatter.shape.indent.to_string(&formatter));
+            formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
             formatted_code.push_str(type_field.name.as_str());
             formatted_code.push_str(" : ");
 
@@ -64,14 +64,15 @@ impl Format for ItemEnum {
                 // TODO: Improve handling this
                 formatted_code.push_str(&(0..required_allignment).map(|_| ' ').collect::<String>());
             }
-            handle_ty(&type_field.ty, &mut formatted_code);
+            // TODO: We are currently converting ty to string directly but we will probably need to format ty before adding.
+            formatted_code.push_str(type_field.ty.span().as_str());
             formatted_code.push(',');
 
             // TODO: Here we assume that next enum variant is going to be in the new line but
             // from the config we may understand next enum variant should be in the same line instead.
             formatted_code.push('\n');
         }
-        handle_bracket_close(&mut formatted_code, formatter);
+        handle_close_bracket(&mut formatted_code, formatter);
         formatted_code
     }
 }
