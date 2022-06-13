@@ -24,6 +24,5 @@ dep reentrancy;
 dep vm/mod;
 dep flags;
 dep u128;
-dep b256_ops;
 
 use core::*;
