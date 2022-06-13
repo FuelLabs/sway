@@ -201,7 +201,7 @@ fn main() {
 }
 </code></pre>
 <h2 id="handling-re-entrancy"><a class="header" href="#handling-re-entrancy">Handling Re-entrancy</a></h2>
-<p>A common attack vector for smart contracts is <a href="https://docs.soliditylang.org/en/v0.8.4/security-considerations.html#re-entrancy">re-entrancy</a>. Similar to the Ethereum Virtual Machine, the FuelVM allows for re-entrancy.</p>
+<p>A common attack vector for smart contracts is <a href="https://docs.soliditylang.org/en/v0.8.4/security-considerations.html#re-entrancy">re-entrancy</a>. Similar to the EVM, the FuelVM allows for re-entrancy.</p>
 <p>A <em>stateless</em> re-entrancy guard is included in the Sway standard library. The guard will panic (revert) at run time if re-entrancy is detected.</p>
 <pre><code class="language-sway">contract;
 
@@ -218,8 +218,8 @@ impl ContractB for Contract {
     }
 }
 </code></pre>
-<h2 id="differences-from-ethereum"><a class="header" href="#differences-from-ethereum">Differences from Ethereum</a></h2>
-<p>While the Fuel contract calling paradigm is similar to Ethereum's (using an ABI, forwarding gas and data), it differs in <em>two</em> key ways:</p>
+<h2 id="differences-from-the-evm"><a class="header" href="#differences-from-the-evm">Differences from the EVM</a></h2>
+<p>While the Fuel contract calling paradigm is similar to the EVM's (using an ABI, forwarding gas and data), it differs in <em>two</em> key ways:</p>
 <ol>
 <li>
 <p><a href="./native_assets.html"><strong>Native assets</strong></a>: FuelVM calls can forward any native asset not just base asset.</p>
