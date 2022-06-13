@@ -59,7 +59,7 @@ impl<K: std::cmp::Eq + std::hash::Hash, V> Default for MappedStack<K, V> {
 
 /// Given an environment mapping names to constants,
 /// attempt to evaluate a typed expression to a constant.
-pub fn const_fold_typed_expr(
+pub fn const_eval_typed_expr(
     context: &mut Context,
     module: Module,
     known_consts: &mut MappedStack<Ident, Constant>,
@@ -75,7 +75,7 @@ pub fn const_fold_typed_expr(
             let actuals_const = arguments
                 .iter()
                 .filter_map(|(name, sub_expr)| {
-                    const_fold_typed_expr(context, module, known_consts, sub_expr)
+                    const_eval_typed_expr(context, module, known_consts, sub_expr)
                         .map(|sub_const| (name, sub_const))
                 })
                 .collect::<Vec<_>>();
@@ -93,7 +93,7 @@ pub fn const_fold_typed_expr(
                 return None;
             }
             let res = function_body.contents.last().and_then(|first_expr| {
-                const_fold_typed_ast_node(context, module, known_consts, first_expr)
+                const_eval_typed_ast_node(context, module, known_consts, first_expr)
             });
             for (name, _) in arguments {
                 known_consts.pop(name);
@@ -118,7 +118,7 @@ pub fn const_fold_typed_expr(
             let (field_typs, field_vals): (Vec<_>, Vec<_>) = fields
                 .iter()
                 .filter_map(|TypedStructExpressionField { name: _, value }| {
-                    const_fold_typed_expr(context, module, known_consts, value)
+                    const_eval_typed_expr(context, module, known_consts, value)
                         .map(|cv| (value.return_type, cv))
                 })
                 .unzip();
@@ -133,7 +133,7 @@ pub fn const_fold_typed_expr(
             let (field_typs, field_vals): (Vec<_>, Vec<_>) = fields
                 .iter()
                 .filter_map(|value| {
-                    const_fold_typed_expr(context, module, known_consts, value)
+                    const_eval_typed_expr(context, module, known_consts, value)
                         .map(|cv| (value.return_type, cv))
                 })
                 .unzip();
@@ -148,7 +148,7 @@ pub fn const_fold_typed_expr(
             let (element_typs, element_vals): (Vec<_>, Vec<_>) = contents
                 .iter()
                 .filter_map(|value| {
-                    const_fold_typed_expr(context, module, known_consts, value)
+                    const_eval_typed_expr(context, module, known_consts, value)
                         .map(|cv| (value.return_type, cv))
                 })
                 .unzip();
@@ -185,7 +185,7 @@ pub fn const_fold_typed_expr(
             let tag_value = Constant::new_uint(64, *tag as u64);
             let mut fields: Vec<Constant> = vec![tag_value];
             contents.iter().for_each(|subexpr| {
-                const_fold_typed_expr(context, module, known_consts, &*subexpr)
+                const_eval_typed_expr(context, module, known_consts, &*subexpr)
                     .into_iter()
                     .for_each(|enum_val| {
                         fields.push(enum_val);
@@ -197,7 +197,7 @@ pub fn const_fold_typed_expr(
             prefix,
             field_to_access,
             resolved_type_of_parent,
-        } => match const_fold_typed_expr(context, module, known_consts, &*prefix) {
+        } => match const_eval_typed_expr(context, module, known_consts, &*prefix) {
             Some(Constant {
                 value: ConstantValue::Struct(fields),
                 ..
@@ -220,7 +220,7 @@ pub fn const_fold_typed_expr(
             prefix,
             elem_to_access_num,
             ..
-        } => match const_fold_typed_expr(context, module, known_consts, &*prefix) {
+        } => match const_eval_typed_expr(context, module, known_consts, &*prefix) {
             Some(Constant {
                 value: ConstantValue::Struct(fields),
                 ..
@@ -242,7 +242,7 @@ pub fn const_fold_typed_expr(
     }
 }
 
-fn const_fold_typed_ast_node(
+fn const_eval_typed_ast_node(
     context: &mut Context,
     module: Module,
     known_consts: &mut MappedStack<Ident, Constant>,
@@ -250,14 +250,14 @@ fn const_fold_typed_ast_node(
 ) -> Option<Constant> {
     match &expr.content {
         TypedAstNodeContent::ReturnStatement(trs) => {
-            const_fold_typed_expr(context, module, known_consts, &trs.expr)
+            const_eval_typed_expr(context, module, known_consts, &trs.expr)
         }
         TypedAstNodeContent::Declaration(_) => {
             // TODO: add the binding to known_consts (if it's a const) and proceed.
             None
         }
         TypedAstNodeContent::Expression(e) | TypedAstNodeContent::ImplicitReturnExpression(e) => {
-            const_fold_typed_expr(context, module, known_consts, e)
+            const_eval_typed_expr(context, module, known_consts, e)
         }
         TypedAstNodeContent::WhileLoop(_) | TypedAstNodeContent::SideEffect => None,
     }

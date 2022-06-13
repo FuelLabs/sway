@@ -1,6 +1,6 @@
 //! Type checking for Sway.
 pub mod ast_node;
-mod const_fold;
+mod const_eval;
 mod module;
 pub mod namespace;
 mod node_dependencies;

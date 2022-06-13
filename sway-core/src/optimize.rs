@@ -140,7 +140,7 @@ fn compile_constant_expression(
         }),
     };
     let mut known_consts = MappedStack::<Ident, Constant>::new();
-    const_fold_typed_expr(context, module, &mut known_consts, const_expr)
+    const_eval_typed_expr(context, module, &mut known_consts, const_expr)
         .map_or(err, |c| Ok(Value::new_constant(context, c, span_id_idx)))
 }
 
