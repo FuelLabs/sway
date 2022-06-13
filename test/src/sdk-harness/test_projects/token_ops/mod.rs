@@ -241,6 +241,11 @@ async fn call_mint_to_with_contract_id() {
     assert_eq!(result.value, amount)
 }
 
+#[tokio::test]
+async fn can_perform_generic_transfer() {
+
+}
+
 async fn get_fuelcoin_instance(wallet: Wallet) -> (TestFuelCoinContract, ContractId) {
     let fuelcoin_id = Contract::deploy(
         "test_projects/token_ops/out/debug/token_ops.bin",
