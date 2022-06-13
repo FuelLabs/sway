@@ -1,12 +1,20 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-6EDE444F0E13D974'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-6EDE444F0E13D974'
 dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-6EDE444F0E13D974'
-dependencies = ['core']
+dependencies = [
+    'core',
+    'core_utils',
+]
 
 [[package]]
 name = 'unused_generic'

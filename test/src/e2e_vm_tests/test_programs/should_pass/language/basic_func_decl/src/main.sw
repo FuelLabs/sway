@@ -41,6 +41,6 @@ struct MyStructWithEnum {
     b: MyEnum,
 }
 
-fn eight_args(a: MyStruct, b: MyEnum, c: MyStructWithEnum, d: str[5], e: bool, f: u64, g: byte, h: b256) {
+fn eight_args(a: MyStruct, b: MyEnum, c: MyStructWithEnum, d: str[5], e: bool, f: u64, g: u8, h: b256) {
     return;
 }

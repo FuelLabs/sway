@@ -27,7 +27,7 @@ enum SaleError {
 fn main() -> u64 {
     let x = sell_product(Product {
         details: ItemDetails {
-            name: "shoe", price: 100, 
+            name: "shoe", price: 100,
         },
         inventory_number: 0, number_sold: 10, number_available: 5
     });
