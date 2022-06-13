@@ -1,4 +1,7 @@
-use crate::{cli::BuildCommand, utils::SWAY_GIT_TAG};
+use crate::{
+    cli::BuildCommand,
+    utils::{SWAY_BIN_HASH_SUFFIX, SWAY_GIT_TAG},
+};
 use anyhow::{anyhow, bail, Result};
 use forc_pkg::{self as pkg, lock, Lock, ManifestFile};
 use forc_util::{default_output_directory, lock_path};
@@ -164,7 +167,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     if let TreeType::Script | TreeType::Predicate = compiled.tree_type {
         // hash the bytecode for scripts/predicates and store it in a file in the output directory
         let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&compiled.bytecode));
-        let hash_file_name = format!("{}-bin-hash", &manifest.project.name);
+        let hash_file_name = format!("{}{}", &manifest.project.name, SWAY_BIN_HASH_SUFFIX);
         let hash_path = output_dir.join(hash_file_name);
         fs::write(hash_path, &bytecode_hash)?;
         info!("  Bytecode hash is: {}", bytecode_hash);
