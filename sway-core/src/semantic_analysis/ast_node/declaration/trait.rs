@@ -201,7 +201,7 @@ fn convert_trait_methods_to_dummy_funcs(
                              type_span,
                          }| TypedFunctionParameter {
                             name: name.clone(),
-                            r#type: check!(
+                            type_id: check!(
                                 trait_namespace.resolve_type_with_self(
                                     look_up_type_id(*type_id),
                                     insert_type(TypeInfo::SelfType),
