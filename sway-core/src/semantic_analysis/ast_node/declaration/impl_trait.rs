@@ -7,7 +7,8 @@ use crate::{
         insert_type, look_up_type_id, resolve_type, unify_with_self, CopyTypes, TypeId, TypeMapping,
     },
     CallPath, CompileError, CompileResult, FunctionDeclaration, FunctionParameter, ImplSelf,
-    ImplTrait, Namespace, Purity, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
+    ImplTrait, Namespace, Purity, TypeInfo, TypeParameter, TypedDeclaration,
+    TypedFunctionDeclaration,
 };
 
 use super::TypedTraitFn;
@@ -179,8 +180,17 @@ impl TypedImplTrait {
 
         // create the namespace for the impl
         let mut namespace = namespace.clone();
-        for type_parameter in type_parameters.iter() {
-            namespace.insert_symbol(type_parameter.name_ident.clone(), type_parameter.into());
+
+        // type check the type parameters
+        // insert them into the namespace
+        let mut new_type_parameters = vec![];
+        for type_parameter in type_parameters.into_iter() {
+            new_type_parameters.push(check!(
+                TypeParameter::type_check(type_parameter, &mut namespace),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
         }
 
         let trait_name = CallPath {

@@ -158,7 +158,7 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut TokenMap) {
                 );
             }
         }
-        TypedDeclaration::GenericTypeForFunctionScope { name } => {
+        TypedDeclaration::GenericTypeForFunctionScope { name, .. } => {
             tokens.insert(
                 to_ident_key(name),
                 TokenType::TypedDeclaration(declaration.clone()),
