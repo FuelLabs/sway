@@ -1,12 +1,20 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-7A6EE51863736987'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-7A6EE51863736987'
 dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-7A6EE51863736987'
-dependencies = ['core']
+dependencies = [
+    'core',
+    'core_utils',
+]
 
 [[package]]
 name = 'u128_div_test_pass'

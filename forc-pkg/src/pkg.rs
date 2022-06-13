@@ -23,7 +23,7 @@ use std::{
 };
 use sway_core::{
     semantic_analysis::namespace, source_map::SourceMap, types::*, BytecodeCompilationResult,
-    CompileAstResult, CompileError, TreeType, TypedProgramKind,
+    CompileAstResult, CompileError, TreeType,
 };
 use sway_utils::constants;
 use tracing::info;
@@ -723,9 +723,31 @@ impl Default for GitReference {
 /// dependencies are always compiled before their dependents.
 pub fn compilation_order(graph: &Graph) -> Result<Vec<NodeIx>> {
     let rev_pkg_graph = petgraph::visit::Reversed(&graph);
-    petgraph::algo::toposort(rev_pkg_graph, None)
-        // TODO: Show full list of packages that cycle.
-        .map_err(|e| anyhow!("dependency cycle detected: {:?}", e))
+    petgraph::algo::toposort(rev_pkg_graph, None).map_err(|_| {
+        // Find strongly connected components
+        // If the vector has an element with length more than 1, it contains a cyclic path.
+        let scc = petgraph::algo::kosaraju_scc(&graph);
+        let mut path = String::new();
+        scc.iter()
+            .filter(|path| path.len() > 1)
+            .for_each(|cyclic_path| {
+                // We are sure that there is an element in cyclic_path vec.
+                let starting_node = &graph[*cyclic_path.last().unwrap()];
+
+                // Adding first node of the path
+                path.push_str(&starting_node.name.to_string());
+                path.push_str(" -> ");
+
+                for (node_index, node) in cyclic_path.iter().enumerate() {
+                    path.push_str(&graph[*node].name.to_string());
+                    if node_index != cyclic_path.len() - 1 {
+                        path.push_str(" -> ");
+                    }
+                }
+                path.push('\n');
+            });
+        anyhow!("dependency cycle detected: {}", path)
+    })
 }
 
 /// Given graph of pinned dependencies and the directory for the root node, produce a path map
@@ -1334,7 +1356,7 @@ pub fn compile(
             typed_program,
             warnings,
         } => {
-            let json_abi = generate_json_abi(&typed_program.kind);
+            let json_abi = typed_program.kind.generate_json_abi();
             let tree_type = typed_program.kind.tree_type();
             match tree_type {
                 // If we're compiling a library, we don't need to compile any further.
@@ -1427,19 +1449,6 @@ pub fn find_within(dir: &Path, pkg_name: &str, sway_git_tag: &str) -> Option<Pat
 /// The same as [find_within], but returns the package's project directory.
 pub fn find_dir_within(dir: &Path, pkg_name: &str, sway_git_tag: &str) -> Option<PathBuf> {
     find_within(dir, pkg_name, sway_git_tag).and_then(|path| path.parent().map(Path::to_path_buf))
-}
-
-// TODO: Update this to match behaviour described in the `compile` doc comment above.
-fn generate_json_abi(kind: &TypedProgramKind) -> JsonABI {
-    match kind {
-        TypedProgramKind::Contract { abi_entries, .. } => {
-            abi_entries.iter().map(|x| x.generate_json_abi()).collect()
-        }
-        TypedProgramKind::Script { main_function, .. } => {
-            vec![main_function.generate_json_abi()]
-        }
-        _ => vec![],
-    }
 }
 
 #[test]

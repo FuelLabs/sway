@@ -344,30 +344,47 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         }
     };
 
-    // Inline function calls since we don't support them yet.  For scripts and predicates we inline
-    // into main(), and for contracts we inline into ABI impls, which are found due to them having
-    // a selector.
-    let mut functions_to_inline_to = Vec::new();
-    for (idx, fc) in &ir.functions {
-        if (matches!(tree_type, TreeType::Script | TreeType::Predicate)
-            && fc.name == crate::constants::DEFAULT_ENTRY_POINT_FN_NAME)
-            || (tree_type == TreeType::Contract && fc.selector.is_some())
-        {
-            functions_to_inline_to.push(::sway_ir::function::Function(idx));
-        }
+    // Find all the entry points.  This is main for scripts and predicates, or ABI methods for
+    // contracts, identified by them having a selector.
+    let entry_point_functions: Vec<::sway_ir::Function> = ir
+        .functions
+        .iter()
+        .filter_map(|(idx, fc)| {
+            if (matches!(tree_type, TreeType::Script | TreeType::Predicate)
+                && fc.name == crate::constants::DEFAULT_ENTRY_POINT_FN_NAME)
+                || (tree_type == TreeType::Contract && fc.selector.is_some())
+            {
+                Some(::sway_ir::function::Function(idx))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Do a purity check on the _unoptimised_ IR.
+    let mut purity_checker = optimize::PurityChecker::default();
+    for entry_point in &entry_point_functions {
+        purity_checker.check_function(&ir, entry_point);
     }
     check!(
-        inline_function_calls(&mut ir, &functions_to_inline_to),
+        purity_checker.results(),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    // Inline function calls from the entry points.
+    check!(
+        inline_function_calls(&mut ir, &entry_point_functions),
         return err(warnings, errors),
         warnings,
         errors
     );
 
     // The only other optimisation we have at the moment is constant combining.  In lieu of a
-    // forthcoming pass manager we can just call it here now.  We can re-use the inline functions
-    // list.
+    // forthcoming pass manager we can just call it here now.
     check!(
-        combine_constants(&mut ir, &functions_to_inline_to),
+        combine_constants(&mut ir, &entry_point_functions),
         return err(warnings, errors),
         warnings,
         errors
