@@ -1,17 +1,22 @@
 [[package]]
+name = 'const_inits'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
 name = 'core'
-dependencies = []
+source = 'path+from-root-76FD265A93458D61'
+dependencies = ['core_utils']
 
 [[package]]
-name = 'const_inits'
+name = 'core_utils'
+source = 'path+from-root-76FD265A93458D61'
 dependencies = []
-
-[[package]]
-name = 'const_inits'
-dependencies = [
-    'std',
-]
 
 [[package]]
 name = 'std'
-dependencies = ['core']
+source = 'path+from-root-76FD265A93458D61'
+dependencies = [
+    'core',
+    'core_utils',
+]
