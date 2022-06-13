@@ -293,7 +293,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --locked --release --bin test
+          args: --locked --release --bin test -- --locked
 
   # TODO: Remove this upon merging std tests with the rest of the E2E tests.
   cargo-test-lib-std:
