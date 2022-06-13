@@ -248,11 +248,7 @@ async fn can_perform_generic_transfer_to_address() {
     let asset_id_array: [u8; 32] = fuelcoin_id.into();
     let address = wallet.address();
 
-    fuelcoin_instance
-        .mint_coins(amount)
-        .call()
-        .await
-        .unwrap();
+    fuelcoin_instance.mint_coins(amount).call().await.unwrap();
 
     fuelcoin_instance
         .generic_transfer(amount, fuelcoin_id, Identity::Address(address))
@@ -271,10 +267,43 @@ async fn can_perform_generic_transfer_to_address() {
     );
 }
 
-// #[tokio::test]
-// async fn can_perform_generic_transfer_to_contract() {
+#[tokio::test]
+async fn can_perform_generic_transfer_to_contract() {
+    let num_wallets = 1;
+    let coins_per_wallet = 1;
+    let amount_per_coin = 1_000_000;
 
-// }
+    let config = WalletsConfig::new(
+        Some(num_wallets),
+        Some(coins_per_wallet),
+        Some(amount_per_coin),
+    );
+    let wallets = launch_provider_and_get_wallets(config).await;
+
+    let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallets[0].clone()).await;
+    let balance_id = get_balance_contract_id(wallets[0].clone()).await;
+
+    let amount = 44u64;
+    let to = balance_id.clone();
+
+    fuelcoin_instance.mint_coins(amount).call().await.unwrap();
+
+    fuelcoin_instance
+        .generic_transfer(amount, fuelcoin_id, Identity::ContractId(to))
+        .set_contracts(&[balance_id])
+        .call()
+        .await
+        .unwrap();
+
+    let result = fuelcoin_instance
+        .get_balance(fuelcoin_id, to)
+        .set_contracts(&[balance_id])
+        .call()
+        .await
+        .unwrap();
+
+    assert_eq!(result.value, amount)
+}
 
 async fn get_fuelcoin_instance(wallet: Wallet) -> (TestFuelCoinContract, ContractId) {
     let fuelcoin_id = Contract::deploy(
