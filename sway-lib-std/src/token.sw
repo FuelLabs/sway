@@ -51,8 +51,8 @@ pub fn burn(amount: u64) {
 }
 
 /// Transfer `amount` coins of the current contract's `asset_id` and send them
-/// to `to` by calling either force_transfer_to_contract() or transfer_to_output
-/// (), depending on the type of `Identity`.
+/// to `to` by calling either force_transfer_to_contract() or transfer_to_output(),
+/// depending on the type of `Identity`.
 ///
 /// CAUTION !!!
 ///
