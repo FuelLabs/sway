@@ -177,7 +177,7 @@ impl TypedEnumDeclaration {
 #[derive(Debug, Clone, Eq)]
 pub struct TypedEnumVariant {
     pub name: Ident,
-    pub r#type: TypeId,
+    pub type_id: TypeId,
     pub(crate) tag: usize,
     pub(crate) span: Span,
 }
@@ -188,7 +188,7 @@ pub struct TypedEnumVariant {
 impl Hash for TypedEnumVariant {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.name.hash(state);
-        look_up_type_id(self.r#type).hash(state);
+        look_up_type_id(self.type_id).hash(state);
         self.tag.hash(state);
     }
 }
@@ -199,14 +199,14 @@ impl Hash for TypedEnumVariant {
 impl PartialEq for TypedEnumVariant {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
-            && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
+            && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
             && self.tag == other.tag
     }
 }
 
 impl CopyTypes for TypedEnumVariant {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.r#type.update_type(type_mapping, &self.span);
+        self.type_id.update_type(type_mapping, &self.span);
     }
 }
 
@@ -216,15 +216,15 @@ impl ToJsonAbi for TypedEnumVariant {
     fn generate_json_abi(&self) -> Self::Output {
         Property {
             name: self.name.to_string(),
-            type_field: self.r#type.json_abi_str(),
-            components: self.r#type.generate_json_abi(),
+            type_field: self.type_id.json_abi_str(),
+            components: self.type_id.generate_json_abi(),
         }
     }
 }
 
 impl ReplaceSelfType for TypedEnumVariant {
     fn replace_self_type(&mut self, self_type: TypeId) {
-        self.r#type.replace_self_type(self_type);
+        self.type_id.replace_self_type(self_type);
     }
 }
 
@@ -238,12 +238,12 @@ impl TypedEnumVariant {
     ) -> CompileResult<TypedEnumVariant> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let enum_variant_type = match variant.r#type.matches_type_parameter(type_mapping) {
+        let enum_variant_type = match variant.type_info.matches_type_parameter(type_mapping) {
             Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, span)),
             None => {
                 check!(
                     namespace.resolve_type_with_self(
-                        variant.r#type.clone(),
+                        variant.type_info.clone(),
                         self_type,
                         &span,
                         EnforceTypeArguments::Yes
@@ -257,7 +257,7 @@ impl TypedEnumVariant {
         ok(
             TypedEnumVariant {
                 name: variant.name.clone(),
-                r#type: enum_variant_type,
+                type_id: enum_variant_type,
                 tag: variant.tag,
                 span: variant.span,
             },

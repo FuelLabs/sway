@@ -165,7 +165,7 @@ impl TypedStructDeclaration {
 #[derive(Debug, Clone, Eq)]
 pub struct TypedStructField {
     pub name: Ident,
-    pub r#type: TypeId,
+    pub type_id: TypeId,
     pub(crate) span: Span,
 }
 
@@ -175,7 +175,7 @@ pub struct TypedStructField {
 impl Hash for TypedStructField {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.name.hash(state);
-        look_up_type_id(self.r#type).hash(state);
+        look_up_type_id(self.type_id).hash(state);
     }
 }
 
@@ -184,13 +184,13 @@ impl Hash for TypedStructField {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEq for TypedStructField {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
+        self.name == other.name && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
     }
 }
 
 impl CopyTypes for TypedStructField {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.r#type.update_type(type_mapping, &self.span);
+        self.type_id.update_type(type_mapping, &self.span);
     }
 }
 
@@ -200,15 +200,15 @@ impl ToJsonAbi for TypedStructField {
     fn generate_json_abi(&self) -> Self::Output {
         Property {
             name: self.name.to_string(),
-            type_field: self.r#type.json_abi_str(),
-            components: self.r#type.generate_json_abi(),
+            type_field: self.type_id.json_abi_str(),
+            components: self.type_id.generate_json_abi(),
         }
     }
 }
 
 impl ReplaceSelfType for TypedStructField {
     fn replace_self_type(&mut self, self_type: TypeId) {
-        self.r#type.replace_self_type(self_type);
+        self.type_id.replace_self_type(self_type);
     }
 }
 
@@ -221,11 +221,11 @@ impl TypedStructField {
     ) -> CompileResult<TypedStructField> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let r#type = match field.r#type.matches_type_parameter(type_mapping) {
+        let r#type = match field.type_info.matches_type_parameter(type_mapping) {
             Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, field.type_span)),
             None => check!(
                 namespace.resolve_type_with_self(
-                    field.r#type,
+                    field.type_info,
                     self_type,
                     &field.type_span,
                     EnforceTypeArguments::Yes
@@ -237,7 +237,7 @@ impl TypedStructField {
         };
         let field = TypedStructField {
             name: field.name,
-            r#type,
+            type_id: r#type,
             span: field.span,
         };
         ok(field, warnings, errors)

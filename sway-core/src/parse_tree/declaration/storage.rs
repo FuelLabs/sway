@@ -17,5 +17,5 @@ pub struct StorageDeclaration {
 #[derive(Debug, Clone)]
 pub struct StorageField {
     pub name: Ident,
-    pub r#type: TypeInfo,
+    pub type_info: TypeInfo,
 }
