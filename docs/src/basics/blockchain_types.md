@@ -6,7 +6,7 @@ These are provided via the standard library ([`lib-std`](https://github.com/Fuel
 
 ## `Address` Type
 
-The `Address` type is a type-safe wrapper around the primitive `b256` type. Unlike Ethereum, an address **never** refers to a deployed smart contract (see the `ContractId` type below). An `Address` can be either the hash of a public key (effectively an [externally owned account](https://ethereum.org/en/whitepaper/#ethereum-accounts) if you're coming from Ethereum) or the hash of a [predicate](../sway-program-types/predicates.md). Addresses own UTXOs.
+The `Address` type is a type-safe wrapper around the primitive `b256` type. Unlike the EVM, an address **never** refers to a deployed smart contract (see the `ContractId` type below). An `Address` can be either the hash of a public key (effectively an [externally owned account](https://ethereum.org/en/whitepaper/#ethereum-accounts) if you're coming from the EVM) or the hash of a [predicate](../sway-program-types/predicates.md). Addresses own UTXOs.
 
 An `Address` is implemented as follows.
 
@@ -26,7 +26,7 @@ let forty_two: b256 = my_address.into();
 
 ## `ContractId` Type
 
-The `ContractId` type is a type-safe wrapper around the primitive `b256` type. A contract's ID is a unique, deterministic identifier analogous to a contract's address on Ethereum. Contracts cannot own UTXOs but can own assets.
+The `ContractId` type is a type-safe wrapper around the primitive `b256` type. A contract's ID is a unique, deterministic identifier analogous to a contract's address in the EVM. Contracts cannot own UTXOs but can own assets.
 
 A `ContractId` is implemented as follows.
 
