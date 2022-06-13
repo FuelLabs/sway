@@ -1,5 +1,5 @@
-library token;
 //! Functionality for performing common operations on tokens.
+library token;
 
 use ::address::Address;
 use ::contract_id::ContractId;
@@ -8,13 +8,13 @@ use ::tx::*;
 use ::context::call_frames::contract_id;
 use ::identity::Identity;
 
-/// Mint `amount` coins of the current contract's `asset_id` and transfer them to `destination` by calling either force_transfer_to_contract() or transfer_to_output(), depending on the type of `Identity`.
+/// Mint `amount` coins of the current contract's `asset_id` and transfer them to `to` by calling either force_transfer_to_contract() or transfer_to_output(), depending on the type of `Identity`.
 pub fn mint_to(amount: u64, to: Identity) {
     mint(amount);
     transfer(amount, contract_id(), to);
 }
 
-/// Mint `amount` coins of the current contract's `asset_id` and send them (!!! UNCONDITIONALLY !!!) to the contract at `destination`.
+/// Mint `amount` coins of the current contract's `asset_id` and send them (!!! UNCONDITIONALLY !!!) to the contract at `to`.
 /// This will allow the transfer of coins even if there is no way to retrieve them !!!
 /// Use of this function can lead to irretrievable loss of coins if not used with caution.
 pub fn mint_to_contract(amount: u64, to: ContractId) {
@@ -22,7 +22,7 @@ pub fn mint_to_contract(amount: u64, to: ContractId) {
     force_transfer_to_contract(amount, contract_id(), to);
 }
 
-/// Mint `amount` coins of the current contract's `asset_id` and send them to the Address `recipient`.
+/// Mint `amount` coins of the current contract's `asset_id` and send them to the Address `to`.
 pub fn mint_to_address(amount: u64, to: Address) {
     mint(amount);
     transfer_to_output(amount, contract_id(), to);
@@ -42,7 +42,7 @@ pub fn burn(amount: u64) {
     }
 }
 
-/// Transfer `amount` coins of the current contract's `asset_id` and send them to `destination` by calling either force_transfer_to_contract() or transfer_to_output(), depending on the type of `Identity`.
+/// Transfer `amount` coins of the current contract's `asset_id` and send them to `to` by calling either force_transfer_to_contract() or transfer_to_output(), depending on the type of `Identity`.
 pub fn transfer(amount: u64, asset_id: ContractId, to: Identity) {
     match to {
         Identity::Address(addr) => {
@@ -54,7 +54,7 @@ pub fn transfer(amount: u64, asset_id: ContractId, to: Identity) {
     }
 }
 
-/// !!! UNCONDITIONAL transfer of `amount` coins of type `asset_id` to contract at `destination`.
+/// !!! UNCONDITIONAL transfer of `amount` coins of type `asset_id` to contract at `to`.
 /// This will allow the transfer of coins even if there is no way to retrieve them !!!
 /// Use of this function can lead to irretrievable loss of coins if not used with caution.
 pub fn force_transfer_to_contract(amount: u64, asset_id: ContractId, to: ContractId) {
@@ -63,7 +63,7 @@ pub fn force_transfer_to_contract(amount: u64, asset_id: ContractId, to: Contrac
     }
 }
 
-/// Transfer `amount` coins of tof type `asset_id` and send them to the address `recipient`.
+/// Transfer `amount` coins of tof type `asset_id` and send them to the address `to`.
 pub fn transfer_to_output(amount: u64, asset_id: ContractId, to: Address) {
     const OUTPUT_VARIABLE_TYPE: u8 = 4;
 
