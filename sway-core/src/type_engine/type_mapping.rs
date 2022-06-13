@@ -25,8 +25,8 @@ pub(crate) fn create_type_mapping(superset_type: TypeId, subset_type: TypeId) ->
         }
         (TypeInfo::Ref(superset_type, _), _) => create_type_mapping(superset_type, subset_type),
         (_, TypeInfo::Ref(subset_type, _)) => create_type_mapping(superset_type, subset_type),
-        (TypeInfo::UnknownGeneric { name }, _) => {
-            insert_type_parameters_with_type_arguments(vec![superset_type], vec![subset_type])
+        (TypeInfo::UnknownGeneric { .. }, _) => {
+            vec![(superset_type, subset_type)]
         }
         (
             TypeInfo::Custom {
@@ -34,13 +34,14 @@ pub(crate) fn create_type_mapping(superset_type: TypeId, subset_type: TypeId) ->
                 ..
             },
             TypeInfo::Custom { type_arguments, .. },
-        ) => insert_type_parameters_with_type_arguments(
-            type_parameters
+        ) => {
+            let type_parameters = type_parameters
                 .iter()
                 .map(|x| x.type_id)
-                .collect::<Vec<_>>(),
-            type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>(),
-        ),
+                .collect::<Vec<_>>();
+            let type_arguments = type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>();
+            insert_type_parameters_with_type_arguments(type_parameters, type_arguments)
+        }
         (
             TypeInfo::Enum {
                 type_parameters, ..
@@ -49,13 +50,14 @@ pub(crate) fn create_type_mapping(superset_type: TypeId, subset_type: TypeId) ->
                 type_parameters: type_arguments,
                 ..
             },
-        ) => insert_type_parameters_with_type_arguments(
-            type_parameters
+        ) => {
+            let type_parameters = type_parameters
                 .iter()
                 .map(|x| x.type_id)
-                .collect::<Vec<_>>(),
-            type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>(),
-        ),
+                .collect::<Vec<_>>();
+            let type_arguments = type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>();
+            insert_type_parameters_with_type_arguments(type_parameters, type_arguments)
+        }
         (
             TypeInfo::Struct {
                 type_parameters, ..
@@ -64,13 +66,14 @@ pub(crate) fn create_type_mapping(superset_type: TypeId, subset_type: TypeId) ->
                 type_parameters: type_arguments,
                 ..
             },
-        ) => insert_type_parameters_with_type_arguments(
-            type_parameters
+        ) => {
+            let type_parameters = type_parameters
                 .iter()
                 .map(|x| x.type_id)
-                .collect::<Vec<_>>(),
-            type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>(),
-        ),
+                .collect::<Vec<_>>();
+            let type_arguments = type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>();
+            insert_type_parameters_with_type_arguments(type_parameters, type_arguments)
+        }
         (TypeInfo::Tuple(type_parameters), TypeInfo::Tuple(type_arguments)) => {
             insert_type_parameters_with_type_arguments(
                 type_parameters
@@ -80,8 +83,8 @@ pub(crate) fn create_type_mapping(superset_type: TypeId, subset_type: TypeId) ->
                 type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>(),
             )
         }
-        (TypeInfo::Array(superset_type, l1), TypeInfo::Array(subset_type, r1)) => {
-            insert_type_parameters_with_type_arguments(vec![superset_type], vec![subset_type])
+        (TypeInfo::Array(superset_type, _), TypeInfo::Array(subset_type, _)) => {
+            vec![(superset_type, subset_type)]
         }
         (
             TypeInfo::Storage {
@@ -90,13 +93,14 @@ pub(crate) fn create_type_mapping(superset_type: TypeId, subset_type: TypeId) ->
             TypeInfo::Storage {
                 fields: type_arguments,
             },
-        ) => insert_type_parameters_with_type_arguments(
-            type_parameters
+        ) => {
+            let type_parameters = type_parameters
                 .iter()
                 .map(|x| x.type_id)
-                .collect::<Vec<_>>(),
-            type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>(),
-        ),
+                .collect::<Vec<_>>();
+            let type_arguments = type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>();
+            insert_type_parameters_with_type_arguments(type_parameters, type_arguments)
+        }
         (TypeInfo::Unknown, TypeInfo::Unknown)
         | (TypeInfo::Boolean, TypeInfo::Boolean)
         | (TypeInfo::SelfType, TypeInfo::SelfType)

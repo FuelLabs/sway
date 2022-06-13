@@ -31,14 +31,27 @@ fn main() {
         first: 0u8,
         second: 1u8
     };
-    let b = a.get_first();
-    let c = a.get_second();
-    // let d = a.add();
-    let d = a.get_42();
-
-    let e = DoubleIdentity {
+    let b = DoubleIdentity {
         first: true,
+        second: false,
+    };
+    let c = DoubleIdentity {
+        first: 0u64,
         second: "hi"
     };
-    let f = e.get_second();
+
+    let d = a.get_first();
+    let e = a.get_second();
+    let f = a.get_42();
+
+    let g = b.get_first();
+    let h = b.get_second();
+    // should fail
+    let i = b.get_42();
+
+    // should fail
+    let j = c.get_first();
+    let k = c.get_second();
+    // should fail
+    let l = c.get_42();
 }

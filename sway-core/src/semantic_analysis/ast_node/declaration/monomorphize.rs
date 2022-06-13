@@ -169,16 +169,6 @@ where
                         }
                     }
                 }
-                if self.name().as_str() == "DoubleIdentity" {
-                    println!(
-                        "\n\ntype_mapping:\n[{}]",
-                        type_mapping
-                            .iter()
-                            .map(|(x, y)| format!("({}, {})", x, y))
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    );
-                }
                 let module = check!(
                     namespace.check_submodule_mut(module_path),
                     return err(warnings, errors),
@@ -186,17 +176,6 @@ where
                     errors
                 );
                 let new_decl = self.monomorphize_inner(&type_mapping, module);
-                if new_decl.name().as_str() == "DoubleIdentity" {
-                    println!(
-                        "\n\ndecl.type_parameters():\n[{}]",
-                        new_decl
-                            .type_parameters()
-                            .iter()
-                            .map(|x| x.to_string())
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    );
-                }
                 ok(new_decl, warnings, errors)
             }
         }
