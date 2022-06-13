@@ -3,6 +3,7 @@ use crate::concurrent_slab::ConcurrentSlab;
 use crate::type_engine::AbiName;
 use lazy_static::lazy_static;
 use sway_types::span::Span;
+use sway_types::Spanned;
 
 lazy_static! {
     static ref TYPE_ENGINE: Engine = Engine::default();
@@ -184,6 +185,19 @@ impl Engine {
                         warnings.extend(new_warnings);
                         errors.extend(new_errors);
                     });
+                    a_parameters
+                        .iter()
+                        .zip(b_parameters.iter())
+                        .for_each(|(a, b)| {
+                            let (new_warnings, new_errors) = self.unify(
+                                a.type_id,
+                                b.type_id,
+                                &a.name_ident.span(),
+                                help_text.clone(),
+                            );
+                            warnings.extend(new_warnings);
+                            errors.extend(new_errors);
+                        });
                 } else {
                     errors.push(TypeError::MismatchedType {
                         expected,
@@ -218,6 +232,19 @@ impl Engine {
                         warnings.extend(new_warnings);
                         errors.extend(new_errors);
                     });
+                    a_parameters
+                        .iter()
+                        .zip(b_parameters.iter())
+                        .for_each(|(a, b)| {
+                            let (new_warnings, new_errors) = self.unify(
+                                a.type_id,
+                                b.type_id,
+                                &a.name_ident.span(),
+                                help_text.clone(),
+                            );
+                            warnings.extend(new_warnings);
+                            errors.extend(new_errors);
+                        });
                 } else {
                     errors.push(TypeError::MismatchedType {
                         expected,

@@ -1,23 +1,25 @@
 script {
-    fn main() -> u64 {
+    fn main() -> u64, !1 {
         entry:
-        v0 = call anon_0(), !1
-        v1 = asm(r1) -> u64 r1, !2 {
-            bhei   r1, !3
+        v0 = call anon_0(), !2
+        v1 = asm(r1) -> u64 r1, !3 {
+            bhei   r1, !4
         }
         ret u64 v1
     }
 
-    fn anon_0() -> u64 {
+    fn anon_0() -> u64, !5 {
         entry:
-        v0 = asm() -> u64 ggas, !4 {
+        v0 = asm() -> u64 ggas, !6 {
         }
         ret u64 v0
     }
 }
 
 !0 = filepath "/path/to/asm_block.sw"
-!1 = span !0 9 167
-!2 = span !0 214 262
-!3 = span !0 232 239
-!4 = span !0 139 165
+!1 = span !0 169 264
+!2 = span !0 9 167
+!3 = span !0 214 262
+!4 = span !0 232 239
+!5 = span !0 12 26
+!6 = span !0 139 165

@@ -23,7 +23,7 @@ use std::{
 };
 use sway_core::{
     semantic_analysis::namespace, source_map::SourceMap, types::*, BytecodeCompilationResult,
-    CompileAstResult, CompileError, TreeType, TypedProgramKind,
+    CompileAstResult, CompileError, TreeType,
 };
 use sway_utils::constants;
 use tracing::info;
@@ -1356,7 +1356,7 @@ pub fn compile(
             typed_program,
             warnings,
         } => {
-            let json_abi = generate_json_abi(&typed_program.kind);
+            let json_abi = typed_program.kind.generate_json_abi();
             let tree_type = typed_program.kind.tree_type();
             match tree_type {
                 // If we're compiling a library, we don't need to compile any further.
@@ -1449,19 +1449,6 @@ pub fn find_within(dir: &Path, pkg_name: &str, sway_git_tag: &str) -> Option<Pat
 /// The same as [find_within], but returns the package's project directory.
 pub fn find_dir_within(dir: &Path, pkg_name: &str, sway_git_tag: &str) -> Option<PathBuf> {
     find_within(dir, pkg_name, sway_git_tag).and_then(|path| path.parent().map(Path::to_path_buf))
-}
-
-// TODO: Update this to match behaviour described in the `compile` doc comment above.
-fn generate_json_abi(kind: &TypedProgramKind) -> JsonABI {
-    match kind {
-        TypedProgramKind::Contract { abi_entries, .. } => {
-            abi_entries.iter().map(|x| x.generate_json_abi()).collect()
-        }
-        TypedProgramKind::Script { main_function, .. } => {
-            vec![main_function.generate_json_abi()]
-        }
-        _ => vec![],
-    }
 }
 
 #[test]

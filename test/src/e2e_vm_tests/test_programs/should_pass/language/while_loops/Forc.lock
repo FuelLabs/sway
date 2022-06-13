@@ -1,12 +1,20 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-6B3FD71CFD9E5DB8'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-6B3FD71CFD9E5DB8'
 dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-6B3FD71CFD9E5DB8'
-dependencies = ['core']
+dependencies = [
+    'core',
+    'core_utils',
+]
 
 [[package]]
 name = 'while_loops'
