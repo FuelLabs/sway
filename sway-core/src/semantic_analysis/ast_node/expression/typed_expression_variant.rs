@@ -526,7 +526,7 @@ impl TypeCheckedStorageAccess {
 #[derive(Clone, Debug)]
 pub struct TypeCheckedStorageAccessDescriptor {
     pub name: Ident,
-    pub(crate) r#type: TypeId,
+    pub(crate) type_id: TypeId,
     pub(crate) span: Span,
 }
 

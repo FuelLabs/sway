@@ -107,8 +107,8 @@ impl ToJsonAbi for TypedFunctionDeclaration {
                 .iter()
                 .map(|x| Property {
                     name: x.name.as_str().to_string(),
-                    type_field: x.r#type.json_abi_str(),
-                    components: x.r#type.generate_json_abi(),
+                    type_field: x.type_id.json_abi_str(),
+                    components: x.type_id.generate_json_abi(),
                 })
                 .collect(),
             outputs: vec![Property {
@@ -303,11 +303,9 @@ impl TypedFunctionDeclaration {
             .iter()
             .map(
                 |TypedFunctionParameter {
-                     r#type,
-                     ref type_span,
-                     ..
+                     type_id, type_span, ..
                  }| {
-                    resolve_type(*r#type, type_span)
+                    resolve_type(*type_id, type_span)
                         .expect("unreachable I think?")
                         .to_selector_name(type_span)
                 },
@@ -353,12 +351,12 @@ fn test_function_selector_behavior() {
         parameters: vec![
             TypedFunctionParameter {
                 name: Ident::new_no_span("foo"),
-                r#type: crate::type_engine::insert_type(TypeInfo::Str(5)),
+                type_id: crate::type_engine::insert_type(TypeInfo::Str(5)),
                 type_span: Span::dummy(),
             },
             TypedFunctionParameter {
                 name: Ident::new_no_span("baz"),
-                r#type: insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
+                type_id: insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
                 type_span: Span::dummy(),
             },
         ],
