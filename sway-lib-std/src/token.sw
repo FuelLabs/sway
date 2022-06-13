@@ -71,7 +71,7 @@ pub fn transfer(amount: u64, asset_id: ContractId, to: Identity) {
 }
 
 /// UNCONDITIONAL transfer of `amount` coins of type `asset_id` to
-/// contract at `to`.
+/// the contract at `to`.
 ///
 /// CAUTION !!!
 ///
