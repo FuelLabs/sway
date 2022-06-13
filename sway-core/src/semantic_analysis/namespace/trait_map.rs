@@ -97,90 +97,89 @@ impl TraitMap {
         if r#type == TypeInfo::ErrorRecovery {
             return methods;
         }
-        if let TypeInfo::Struct { ref name, .. } = r#type {
-            if name.as_str() == "DoubleIdentity" {
-                println!(
-                    "\n\nlooking for:\n{}\n\nin:\nget_methods_for_type\n\nfound:\n[",
-                    r#type
-                );
-            }
-        }
+        // if let TypeInfo::Struct { ref name, .. } = r#type {
+        //     if name.as_str() == "DoubleIdentity" {
+        //         println!(
+        //             "\n\nlooking for:\n{}\n\nin:\nget_methods_for_type\n\nfound:\n[",
+        //             r#type
+        //         );
+        //     }
+        // }
         for ((_, type_info), trait_methods) in self.trait_map.iter() {
-            if *type_info == r#type {
-                let mut trait_methods: Vec<TypedFunctionDeclaration> =
-                    trait_methods.values().cloned().collect();
-                if let TypeInfo::Struct { ref name, .. } = type_info {
-                    if name.as_str() == "DoubleIdentity" {
-                        println!("{}\n^ hit", type_info);
-                        for trait_method in trait_methods.iter() {
-                            println!("\t{}", trait_method.name);
-                        }
-                    }
-                }
+            if r#type.is_subset_of(type_info) {
+                let mut trait_methods = trait_methods.values().cloned().collect();
+                // if let TypeInfo::Struct { ref name, .. } = type_info {
+                //     if name.as_str() == "DoubleIdentity" {
+                //         println!("{}\n^ hit", type_info);
+                //         for trait_method in trait_methods.iter() {
+                //             println!("\t{}", trait_method.name);
+                //         }
+                //     }
+                // }
                 methods.append(&mut trait_methods);
-            // }
-            } else {
-                if let TypeInfo::Struct { ref name, .. } = type_info {
-                    if name.as_str() == "DoubleIdentity" {
-                        println!("{}", type_info);
-                    }
-                }
             }
+            // } else {
+            //     if let TypeInfo::Struct { ref name, .. } = type_info {
+            //         if name.as_str() == "DoubleIdentity" {
+            //             println!("{}", type_info);
+            //         }
+            //     }
+            // }
         }
         methods
     }
 
-    pub(crate) fn get_methods_for_type_by_trait(
-        &self,
-        r#type: TypeInfo,
-    ) -> HashMap<TraitName, Vec<TypedFunctionDeclaration>> {
-        let mut methods: HashMap<TraitName, Vec<TypedFunctionDeclaration>> = HashMap::new();
-        // small performance gain in bad case
-        if r#type == TypeInfo::ErrorRecovery {
-            return methods;
-        }
-        if let TypeInfo::Struct { ref name, .. } = r#type {
-            if name.as_str() == "DoubleIdentity" {
-                println!(
-                    "\n\nlooking for:\n{}\n\nin:\nget_methods_for_type_by_trait\n\nfound:\n[",
-                    r#type
-                );
-            }
-        }
-        for ((trait_name, type_info), trait_methods) in self.trait_map.iter() {
-            if r#type.is_subset_of(type_info) {
-                let mut trait_methods: Vec<TypedFunctionDeclaration> =
-                    trait_methods.values().cloned().collect();
-                if let TypeInfo::Struct { ref name, .. } = type_info {
-                    if name.as_str() == "DoubleIdentity" {
-                        println!("{}\n^ hit", type_info);
-                        for trait_method in trait_methods.iter() {
-                            println!("\t{}", trait_method.name);
-                        }
-                    }
-                }
-                match methods.get_mut(trait_name) {
-                    Some(v) => {
-                        v.append(&mut trait_methods);
-                    }
-                    _ => {
-                        methods.insert((*trait_name).clone(), trait_methods);
-                    }
-                }
-            // }
-            } else {
-                if let TypeInfo::Struct { ref name, .. } = type_info {
-                    if name.as_str() == "DoubleIdentity" {
-                        println!("{}", type_info);
-                    }
-                }
-            }
-        }
-        if let TypeInfo::Struct { ref name, .. } = r#type {
-            if name.as_str() == "DoubleIdentity" {
-                println!("]");
-            }
-        }
-        methods
-    }
+    // pub(crate) fn get_methods_for_type_by_trait(
+    //     &self,
+    //     r#type: TypeInfo,
+    // ) -> HashMap<TraitName, Vec<TypedFunctionDeclaration>> {
+    //     let mut methods: HashMap<TraitName, Vec<TypedFunctionDeclaration>> = HashMap::new();
+    //     // small performance gain in bad case
+    //     if r#type == TypeInfo::ErrorRecovery {
+    //         return methods;
+    //     }
+    //     if let TypeInfo::Struct { ref name, .. } = r#type {
+    //         if name.as_str() == "DoubleIdentity" {
+    //             println!(
+    //                 "\n\nlooking for:\n{}\n\nin:\nget_methods_for_type_by_trait\n\nfound:\n[",
+    //                 r#type
+    //             );
+    //         }
+    //     }
+    //     for ((trait_name, type_info), trait_methods) in self.trait_map.iter() {
+    //         if r#type.is_subset_of(type_info) {
+    //             let mut trait_methods: Vec<TypedFunctionDeclaration> =
+    //                 trait_methods.values().cloned().collect();
+    //             if let TypeInfo::Struct { ref name, .. } = type_info {
+    //                 if name.as_str() == "DoubleIdentity" {
+    //                     println!("{}\n^ hit", type_info);
+    //                     for trait_method in trait_methods.iter() {
+    //                         println!("\t{}", trait_method.name);
+    //                     }
+    //                 }
+    //             }
+    //             match methods.get_mut(trait_name) {
+    //                 Some(v) => {
+    //                     v.append(&mut trait_methods);
+    //                 }
+    //                 _ => {
+    //                     methods.insert((*trait_name).clone(), trait_methods);
+    //                 }
+    //             }
+    //         // }
+    //         } else {
+    //             if let TypeInfo::Struct { ref name, .. } = type_info {
+    //                 if name.as_str() == "DoubleIdentity" {
+    //                     println!("{}", type_info);
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     if let TypeInfo::Struct { ref name, .. } = r#type {
+    //         if name.as_str() == "DoubleIdentity" {
+    //             println!("]");
+    //         }
+    //     }
+    //     methods
+    // }
 }

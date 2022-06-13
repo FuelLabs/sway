@@ -557,7 +557,7 @@ impl TypeInfo {
         match self {
             TypeInfo::Custom { .. } => {
                 for (param, ty_id) in mapping.iter() {
-                    if look_up_type_id(param.type_id) == *self {
+                    if look_up_type_id(*param) == *self {
                         return Some(*ty_id);
                     }
                 }
@@ -565,7 +565,7 @@ impl TypeInfo {
             }
             TypeInfo::UnknownGeneric { .. } => {
                 for (param, ty_id) in mapping.iter() {
-                    if look_up_type_id(param.type_id) == *self {
+                    if look_up_type_id(*param) == *self {
                         return Some(*ty_id);
                     }
                 }

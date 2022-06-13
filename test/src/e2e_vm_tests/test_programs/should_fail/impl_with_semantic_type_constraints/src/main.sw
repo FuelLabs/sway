@@ -18,8 +18,11 @@ impl<T, F> DoubleIdentity<T, F> {
 }
 
 impl DoubleIdentity<u8, u8> {
-    fn add(self) -> u8 {
-        self.first + self.second
+    // fn add(self) -> u8 {
+    //     self.first + self.second
+    // }
+    fn get_42(self) -> u8 {
+        42u8
     }
 }
 
@@ -30,7 +33,8 @@ fn main() {
     };
     let b = a.get_first();
     let c = a.get_second();
-    let d = a.add();
+    // let d = a.add();
+    let d = a.get_42();
 
     let e = DoubleIdentity {
         first: true,

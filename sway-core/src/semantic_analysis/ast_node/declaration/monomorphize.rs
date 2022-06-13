@@ -174,7 +174,7 @@ where
                         "\n\ntype_mapping:\n[{}]",
                         type_mapping
                             .iter()
-                            .map(|(x, y)| format!("({}, {})", x.type_id, y))
+                            .map(|(x, y)| format!("({}, {})", x, y))
                             .collect::<Vec<_>>()
                             .join(", ")
                     );
@@ -211,12 +211,16 @@ pub(crate) trait MonomorphizeHelper {
     fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output;
 }
 
-pub(crate) fn monomorphize_inner<T>(decl: T, type_mapping: &TypeMapping, namespace: &mut Items) -> T
+pub(crate) fn monomorphize_inner<T>(
+    decl: T,
+    type_mapping: &TypeMapping,
+    _namespace: &mut Items,
+) -> T
 where
     T: CopyTypes + CreateTypeId,
 {
     let mut new_decl = decl;
     new_decl.copy_types(type_mapping);
-    namespace.copy_methods_to_type(look_up_type_id(new_decl.create_type_id()), type_mapping);
+    //namespace.copy_methods_to_type(look_up_type_id(new_decl.create_type_id()), type_mapping);
     new_decl
 }
