@@ -224,7 +224,7 @@ pub fn create_enum_aggregate(
     // getting one here anyway.  They don't need to be a tagged union either.
     let field_types: Vec<_> = variants
         .into_iter()
-        .map(|tev| convert_resolved_typeid_no_span(context, &tev.r#type))
+        .map(|tev| convert_resolved_typeid_no_span(context, &tev.type_id))
         .collect::<Result<Vec<_>, CompileError>>()?;
 
     // Enums where all the variants are unit types don't really need the union. Only a tag is
@@ -279,7 +279,7 @@ fn compile_function(
             .parameters
             .iter()
             .map(|param| {
-                convert_resolved_typeid(context, &param.r#type, &param.type_span)
+                convert_resolved_typeid(context, &param.type_id, &param.type_span)
                     .map(|ty| (param.name.as_str().into(), ty, param.name.span()))
             })
             .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
@@ -396,7 +396,7 @@ fn compile_impl(
                 if param.name.as_str() == "self" {
                     convert_resolved_type(context, &self_type)
                 } else {
-                    convert_resolved_typeid(context, &param.r#type, &param.type_span)
+                    convert_resolved_typeid(context, &param.type_id, &param.type_span)
                 }
                 .map(|ty| (param.name.as_str().into(), ty, param.name.span().clone()))
             })
@@ -440,7 +440,7 @@ fn compile_abi_method(
         .parameters
         .iter()
         .map(|param| {
-            convert_resolved_typeid(context, &param.r#type, &param.type_span)
+            convert_resolved_typeid(context, &param.type_id, &param.type_span)
                 .map(|ty| (param.name.as_str().into(), ty, param.name.span()))
         })
         .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
@@ -1113,7 +1113,7 @@ impl FnCompiler {
                 .iter()
                 .map(|(name, expr)| TypedFunctionParameter {
                     name: name.clone(),
-                    r#type: expr.return_type,
+                    type_id: expr.return_type,
                     type_span: crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 })
                 .collect();
@@ -1560,12 +1560,12 @@ impl FnCompiler {
         // Get the type of the access which can be a subfield
         let access_type = convert_resolved_typeid_no_span(
             context,
-            &fields.last().expect("guaranteed by grammar").r#type,
+            &fields.last().expect("guaranteed by grammar").type_id,
         )?;
 
         // Get the list of indices used to access the storage field. This will be empty
         // if the storage field type is not a struct.
-        let base_type = fields[0].r#type;
+        let base_type = fields[0].type_id;
         let field_idcs = get_indices_for_struct_access(base_type, &fields[1..])?;
 
         // Do the actual work. This is a recursive function because we want to drill down
@@ -1925,13 +1925,13 @@ impl FnCompiler {
         // Get the type of the access which can be a subfield
         let access_type = convert_resolved_typeid_no_span(
             context,
-            &fields.last().expect("guaranteed by grammar").r#type,
+            &fields.last().expect("guaranteed by grammar").type_id,
         )?;
 
         // Get the list of indices used to access the storage field. This will be empty
         // if the storage field type is not a struct.
         // FIXME: shouldn't have to extract the first field like this.
-        let base_type = fields[0].r#type;
+        let base_type = fields[0].type_id;
         let field_idcs = get_indices_for_struct_access(base_type, &fields[1..])?;
 
         // Do the actual work. This is a recursive function because we want to drill down
@@ -2472,7 +2472,7 @@ pub fn get_struct_name_field_index_and_type(
                 .iter()
                 .enumerate()
                 .find(|(_, field)| field.name == field_name)
-                .map(|(idx, field)| (idx as u64, field.r#type)),
+                .map(|(idx, field)| (idx as u64, field.type_id)),
         )),
         _otherwise => None,
     }
@@ -2539,7 +2539,7 @@ fn get_indices_for_struct_access<F: TypedNamedField>(
                             .enumerate()
                             .find(|(_, field)| field.name == *field_name);
                         let (field_idx, field_type) = match field_idx_and_type_opt {
-                            Some((idx, field)) => (idx as u64, field.r#type),
+                            Some((idx, field)) => (idx as u64, field.type_id),
                             None => {
                                 return Err(CompileError::InternalOwned(
                                     format!(
@@ -2676,7 +2676,7 @@ fn convert_resolved_type(
             context,
             fields
                 .iter()
-                .map(|field| field.r#type)
+                .map(|field| field.type_id)
                 .collect::<Vec<_>>()
                 .as_slice(),
         )

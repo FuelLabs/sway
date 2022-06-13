@@ -322,8 +322,8 @@ fn type_check_trait_implementation(
         {
             // TODO use trait constraints as part of the type here to
             // implement trait constraint solver */
-            let fn_decl_param_type = fn_decl_param.r#type;
-            let fn_signature_param_type = fn_signature_param.r#type;
+            let fn_decl_param_type = fn_decl_param.type_id;
+            let fn_signature_param_type = fn_signature_param.type_id;
             let (mut new_warnings, new_errors) = unify_with_self(
                 fn_decl_param_type,
                 fn_signature_param_type,
