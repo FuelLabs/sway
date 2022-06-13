@@ -47,6 +47,9 @@ fn test_cli() {
     cmd.exp_regex(r">> ").unwrap();
     cmd.send_line("continue").unwrap();
     cmd.exp_regex(r"breakpoint: None").unwrap();
+    cmd.send_line("reset").unwrap();
+    cmd.send_line("start_tx examples/example_tx.json").unwrap();
+    cmd.exp_regex(r"breakpoint: None").unwrap();
     cmd.send_line(r"exit").unwrap();
 
     fuel_core.kill().expect("Couldn't kill fuel-core");

@@ -42,6 +42,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ["n", "tx", "new_tx", "start_tx"]
     );
     command!(
+        cmd_reset,
+        "-- reset, removing breakpoints and other state",
+        ["reset"]
+    );
+    command!(
         cmd_continue,
         "-- run until next breakpoint or termination",
         ["c", "continue"]
@@ -96,6 +101,17 @@ async fn cmd_start_tx(state: &mut State, mut args: Vec<String>) -> Result<(), Bo
     let tx: Transaction = serde_json::from_slice(&tx_json).unwrap();
     let status = state.client.start_tx(&state.session_id, &tx).await?;
     println!("{:?}", status); // TODO: pretty-print
+
+    Ok(())
+}
+
+async fn cmd_reset(state: &mut State, mut args: Vec<String>) -> Result<(), Box<dyn Error>> {
+    args.remove(0);
+    if !args.is_empty() {
+        return Err(Box::new(ArgError::TooMany));
+    }
+
+    let _ = state.client.reset(&state.session_id).await?;
 
     Ok(())
 }
