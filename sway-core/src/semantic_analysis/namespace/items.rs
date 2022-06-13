@@ -142,22 +142,19 @@ impl Items {
         self.implemented_traits
             .get_methods_for_type(look_up_type_id(r#type))
     }
-
-    // Given a TypeInfo old_type with a set of methods available to it, make those same methods
-    // available to TypeInfo new_type. This is useful in situations where old_type is being
-    // monomorphized to new_type and and we want `get_methods_for_type()` to return the same set of
-    // methods for new_type as it does for old_type.
+    
+    /// Given a [TypeInfo] `new_type`, find all the types for which `new_type` is a subset and grab
+    /// all the methods for those types, then implement them for `new_type`
     pub(crate) fn copy_methods_to_type(
         &mut self,
-        old_type: TypeInfo,
         new_type: TypeInfo,
         type_mapping: &TypeMapping,
     ) {
         // This map grabs all (trait name, vec of methods) from self.implemented_traits
-        // corresponding to `old_type`.
+        // for which `new_type` is a subset of the existing types
         let methods = self
             .implemented_traits
-            .get_methods_for_type_by_trait(old_type);
+            .get_methods_for_type_by_trait(new_type.clone());
 
         // Insert into `self.implemented_traits` the contents of the map above but with `new_type`
         // as the `TypeInfo` key.

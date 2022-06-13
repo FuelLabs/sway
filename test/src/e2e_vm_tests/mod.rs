@@ -577,6 +577,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/repeated_storage_field",
         "should_fail/repeated_struct_field",
         "should_fail/impl_with_bad_generic",
+        "should_fail/impl_with_semantic_type_constraints",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {

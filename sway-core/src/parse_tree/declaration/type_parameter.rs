@@ -2,7 +2,7 @@ use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
 
 use sway_types::{ident::Ident, span::Span, Spanned};
 
-use std::hash::{Hash, Hasher};
+use std::{hash::{Hash, Hasher}, fmt};
 
 #[derive(Debug, Clone, Eq)]
 pub struct TypeParameter {
@@ -81,6 +81,12 @@ impl Spanned for TypeParameter {
 impl ReplaceSelfType for TypeParameter {
     fn replace_self_type(&mut self, self_type: TypeId) {
         self.type_id.replace_self_type(self_type);
+    }
+}
+
+impl fmt::Display for TypeParameter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.name_ident, self.type_id)
     }
 }
 
