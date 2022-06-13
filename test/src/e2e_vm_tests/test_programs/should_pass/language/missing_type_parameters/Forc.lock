@@ -1,14 +1,3 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-2661557639CEB78D'
-dependencies = ['core_utils']
-
-[[package]]
-name = 'core_utils'
-source = 'path+from-root-2661557639CEB78D'
-dependencies = []
-
-[[package]]
 name = 'missing_type_parameters'
-source = 'root'
-dependencies = ['core']
+dependencies = []
