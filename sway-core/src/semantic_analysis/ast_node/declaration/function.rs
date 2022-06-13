@@ -380,11 +380,9 @@ impl TypedFunctionDeclaration {
             .iter()
             .map(
                 |TypedFunctionParameter {
-                     type_id: r#type,
-                     type_span,
-                     ..
+                     type_id, type_span, ..
                  }| {
-                    resolve_type(*r#type, type_span)
+                    resolve_type(*type_id, type_span)
                         .expect("unreachable I think?")
                         .to_selector_name(type_span)
                 },

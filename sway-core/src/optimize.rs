@@ -1,8 +1,8 @@
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     constants,
-    error::CompileError,
-    parse_tree::{AsmOp, AsmRegister, LazyOp, Literal, Visibility},
+    error::*,
+    parse_tree::{promote_purity, AsmOp, AsmRegister, LazyOp, Literal, Purity, Visibility},
     semantic_analysis::{ast_node::*, *},
     type_engine::*,
 };
@@ -18,6 +18,7 @@ use sway_ir::*;
 
 pub(crate) fn compile_program(program: TypedProgram) -> Result<Context, CompileError> {
     let TypedProgram { kind, root } = program;
+
     let mut ctx = Context::default();
     match kind {
         TypedProgramKind::Script {
@@ -108,7 +109,7 @@ fn compile_constants(
         };
 
         if let Some((name, value)) = decl_name_value {
-            let const_val = compile_constant_expression(context, value)?;
+            let const_val = compile_constant_expression(context, module, value)?;
             module.add_global_constant(context, name.as_str().to_owned(), const_val);
         }
     }
@@ -122,24 +123,25 @@ fn compile_constants(
 
 fn compile_constant_expression(
     context: &mut Context,
+    module: Module,
     const_expr: &TypedExpression,
 ) -> Result<Value, CompileError> {
-    match &const_expr.expression {
-        TypedExpressionVariant::Literal(literal) => {
-            let span_md_idx = MetadataIndex::from_span(context, &const_expr.span);
-            Ok(convert_literal_to_value(context, literal, span_md_idx))
-        }
+    let span_id_idx = MetadataIndex::from_span(context, &const_expr.span);
+    let err = match &const_expr.expression {
         // Special case functions because the span in `const_expr` is to the inlined function
         // definition, rather than the actual call site.
         TypedExpressionVariant::FunctionApplication { call_path, .. } => {
-            Err(CompileError::NonLiteralConstantDeclValue {
+            Err(CompileError::NonConstantDeclValue {
                 span: call_path.span(),
             })
         }
-        _otherwise => Err(CompileError::NonLiteralConstantDeclValue {
+        _otherwise => Err(CompileError::NonConstantDeclValue {
             span: const_expr.span.clone(),
         }),
-    }
+    };
+    let mut known_consts = MappedStack::<Ident, Constant>::new();
+    const_eval_typed_expr(context, module, &mut known_consts, const_expr)
+        .map_or(err, |c| Ok(Value::new_constant(context, c, span_id_idx)))
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -162,7 +164,7 @@ fn compile_declarations(
         match declaration {
             TypedDeclaration::ConstantDeclaration(decl) => {
                 // These are in the global scope for the module, so they can be added there.
-                let const_val = compile_constant_expression(context, &decl.value)?;
+                let const_val = compile_constant_expression(context, module, &decl.value)?;
                 module.add_global_constant(context, decl.name.as_str().to_owned(), const_val);
             }
 
@@ -201,7 +203,7 @@ fn compile_declarations(
 
 // -------------------------------------------------------------------------------------------------
 
-fn get_aggregate_for_types(
+pub fn get_aggregate_for_types(
     context: &mut Context,
     type_ids: &[TypeId],
 ) -> Result<Aggregate, CompileError> {
@@ -214,7 +216,7 @@ fn get_aggregate_for_types(
 
 // -------------------------------------------------------------------------------------------------
 
-fn create_enum_aggregate(
+pub fn create_enum_aggregate(
     context: &mut Context,
     variants: Vec<TypedEnumVariant>,
 ) -> Result<Aggregate, CompileError> {
@@ -224,18 +226,21 @@ fn create_enum_aggregate(
         .into_iter()
         .map(|tev| convert_resolved_typeid_no_span(context, &tev.type_id))
         .collect::<Result<Vec<_>, CompileError>>()?;
-    let enum_aggregate = Aggregate::new_struct(context, field_types);
 
-    // Create the tagged union struct next.
-    Ok(Aggregate::new_struct(
-        context,
-        vec![Type::Uint(64), Type::Union(enum_aggregate)],
-    ))
+    // Enums where all the variants are unit types don't really need the union. Only a tag is
+    // needed. For consistency, and to keep enums as reference types, we keep the tag in an
+    // Aggregate.
+    Ok(if field_types.iter().all(|f| matches!(f, Type::Unit)) {
+        Aggregate::new_struct(context, vec![Type::Uint(64)])
+    } else {
+        let enum_aggregate = Aggregate::new_struct(context, field_types);
+        Aggregate::new_struct(context, vec![Type::Uint(64), Type::Union(enum_aggregate)])
+    })
 }
 
 // -------------------------------------------------------------------------------------------------
 
-fn create_tuple_aggregate(
+pub fn create_tuple_aggregate(
     context: &mut Context,
     fields: Vec<TypeId>,
 ) -> Result<Aggregate, CompileError> {
@@ -245,6 +250,17 @@ fn create_tuple_aggregate(
         .collect::<Result<Vec<_>, CompileError>>()?;
 
     Ok(Aggregate::new_struct(context, field_types))
+}
+
+// -------------------------------------------------------------------------------------------------
+
+pub fn create_array_aggregate(
+    context: &mut Context,
+    element_type_id: TypeId,
+    count: u64,
+) -> Result<Aggregate, CompileError> {
+    let element_type = convert_resolved_typeid_no_span(context, &element_type_id)?;
+    Ok(Aggregate::new_array(context, element_type, count))
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -287,6 +303,8 @@ fn compile_fn_with_args(
         return_type,
         return_type_span,
         visibility,
+        purity,
+        span,
         ..
     } = ast_fn_decl;
 
@@ -295,6 +313,20 @@ fn compile_fn_with_args(
         .map(|(name, ty, span)| (name, ty, MetadataIndex::from_span(context, &span)))
         .collect();
     let ret_type = convert_resolved_typeid(context, &return_type, &return_type_span)?;
+    let span_md_idx = MetadataIndex::from_span(context, &span);
+    let storage_md_idx = if purity == Purity::Pure {
+        None
+    } else {
+        Some(MetadataIndex::get_storage_index(
+            context,
+            match purity {
+                Purity::Pure => unreachable!("Already checked for Pure above."),
+                Purity::Reads => StorageOperation::Reads,
+                Purity::Writes => StorageOperation::Writes,
+                Purity::ReadsWrites => StorageOperation::ReadsWrites,
+            },
+        ))
+    };
     let func = Function::new(
         context,
         module,
@@ -303,6 +335,8 @@ fn compile_fn_with_args(
         ret_type,
         selector,
         visibility == Visibility::Public,
+        span_md_idx,
+        storage_md_idx,
     );
 
     // We clone the struct symbols here, as they contain the globals; any new local declarations
@@ -597,6 +631,8 @@ impl FnCompiler {
                 contract_call_params,
                 arguments,
                 function_body,
+                function_body_name_span,
+                function_body_purity,
                 self_state_idx,
                 selector,
             } => {
@@ -613,9 +649,10 @@ impl FnCompiler {
                 } else {
                     self.compile_fn_call(
                         context,
-                        name.suffix.as_str(),
                         arguments,
-                        Some(function_body),
+                        function_body,
+                        function_body_name_span,
+                        function_body_purity,
                         self_state_idx,
                         span_md_idx,
                     )
@@ -1040,12 +1077,14 @@ impl FnCompiler {
 
     // ---------------------------------------------------------------------------------------------
 
+    #[allow(clippy::too_many_arguments)]
     fn compile_fn_call(
         &mut self,
         context: &mut Context,
-        _ast_name: &str,
         ast_args: Vec<(Ident, TypedExpression)>,
-        callee_body: Option<TypedCodeBlock>,
+        callee_body: TypedCodeBlock,
+        callee_span: Span,
+        callee_purity: Purity,
         self_state_idx: Option<StateIndex>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
@@ -1079,8 +1118,6 @@ impl FnCompiler {
                 })
                 .collect();
 
-            let callee_body = callee_body.unwrap();
-
             // We're going to have to reverse engineer the return type.
             let return_type = Self::get_codeblock_return_type(&callee_body).unwrap_or_else(||
                     // This code block is missing a return or implicit return.  The only time I've
@@ -1093,13 +1130,13 @@ impl FnCompiler {
                 name: callee_ident,
                 body: callee_body,
                 parameters,
-                span: crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
+                span: callee_span,
                 return_type,
                 type_parameters: Vec::new(),
                 return_type_span: crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 visibility: Visibility::Private,
                 is_contract_call: false,
-                purity: Default::default(),
+                purity: callee_purity,
             };
 
             let callee = compile_function(context, self.module, callee_fn_decl)?;
@@ -1607,7 +1644,8 @@ impl FnCompiler {
                         array_expr_span)
                 })
             }
-            ValueDatum::Argument(Type::Array(aggregate)) => Ok(*aggregate),
+            ValueDatum::Argument(Type::Array(aggregate))
+            | ValueDatum::Constant(Constant { ty : Type::Array(aggregate), ..}) => Ok (*aggregate),
             otherwise => Err(CompileError::InternalOwned(
                 format!("Unsupported array value for index expression: {otherwise:?}"),
                 array_expr_span,
@@ -1707,7 +1745,11 @@ impl FnCompiler {
                     )
                 })
             }
-            ValueDatum::Argument(Type::Struct(aggregate)) => Ok(*aggregate),
+            ValueDatum::Argument(Type::Struct(aggregate))
+            | ValueDatum::Constant(Constant {
+                ty: Type::Struct(aggregate),
+                ..
+            }) => Ok(*aggregate),
             otherwise => Err(CompileError::InternalOwned(
                 format!("Unsupported struct value for field expression: {otherwise:?}",),
                 ast_struct_expr_span,
@@ -1771,20 +1813,32 @@ impl FnCompiler {
             span_md_idx,
         );
 
-        Ok(match contents {
-            None => agg_value,
-            Some(te) => {
-                // Insert the value too.
-                let contents_value = self.compile_expression(context, *te)?;
-                self.current_block.ins(context).insert_value(
-                    agg_value,
-                    aggregate,
-                    contents_value,
-                    vec![1],
-                    span_md_idx,
-                )
+        // If the struct representing the enum has only one field, then that field is basically the
+        // tag and all the variants must have unit types, hence the absence of the union.
+        // Therefore, there is no need for another `insert_value` instruction here.
+        match &context.aggregates[aggregate.0] {
+            AggregateContent::FieldTypes(field_tys) => {
+                Ok(if field_tys.len() == 1 {
+                    agg_value
+                } else {
+                    match contents {
+                        None => agg_value,
+                        Some(te) => {
+                            // Insert the value too.
+                            let contents_value = self.compile_expression(context, *te)?;
+                            self.current_block.ins(context).insert_value(
+                                agg_value,
+                                aggregate,
+                                contents_value,
+                                vec![1],
+                                span_md_idx,
+                            )
+                        }
+                    }
+                })
             }
-        })
+            _ => unreachable!("Wrong content for struct."),
+        }
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -2403,7 +2457,7 @@ impl LexicalMap {
 // -------------------------------------------------------------------------------------------------
 // Get the name of a struct and the index to a particular named field from a TypeId.
 
-fn get_struct_name_field_index_and_type(
+pub fn get_struct_name_field_index_and_type(
     field_type: TypeId,
     field_kind: ProjectionKind,
 ) -> Option<(String, Option<(u64, TypeId)>)> {
@@ -2557,7 +2611,7 @@ fn convert_literal_to_value(
     }
 }
 
-fn convert_literal_to_constant(ast_literal: &Literal) -> Constant {
+pub fn convert_literal_to_constant(ast_literal: &Literal) -> Constant {
     match ast_literal {
         // All integers are `u64`.  See comment above.
         Literal::U8(n) | Literal::Byte(n) => Constant::new_uint(64, *n as u64),
@@ -2600,6 +2654,16 @@ fn convert_resolved_type(
     ast_type: &TypeInfo,
     span: &Span,
 ) -> Result<Type, CompileError> {
+    // A handy macro for rejecting unsupported types.
+    macro_rules! reject_type {
+        ($name_str:literal) => {{
+            return Err(CompileError::Internal(
+                concat!($name_str, " type cannot be resolved in IR."),
+                span.clone(),
+            ));
+        }};
+    }
+
     Ok(match ast_type {
         // All integers are `u64`, see comment in convert_literal_to_value() above.
         TypeInfo::UnsignedInteger(_) => Type::Uint(64),
@@ -2638,60 +2702,15 @@ fn convert_resolved_type(
 
         // Unsupported types which shouldn't exist in the AST after type checking and
         // monomorphisation.
-        TypeInfo::Custom { .. } => {
-            return Err(CompileError::Internal(
-                "Custom type cannot be resolved in IR.",
-                span.clone(),
-            ))
-        }
-        TypeInfo::SelfType { .. } => {
-            return Err(CompileError::Internal(
-                "Self type cannot be resolved in IR.",
-                span.clone(),
-            ))
-        }
-        TypeInfo::Contract => {
-            return Err(CompileError::Internal(
-                "Contract type cannot be resolved in IR.",
-                span.clone(),
-            ))
-        }
-        TypeInfo::ContractCaller { .. } => {
-            return Err(CompileError::Internal(
-                "ContractCaller type cannot be reoslved in IR.",
-                span.clone(),
-            ))
-        }
-        TypeInfo::Unknown => {
-            return Err(CompileError::Internal(
-                "Unknown type cannot be resolved in IR.",
-                span.clone(),
-            ))
-        }
-        TypeInfo::UnknownGeneric { .. } => {
-            return Err(CompileError::Internal(
-                "Generic type cannot be resolved in IR.",
-                span.clone(),
-            ))
-        }
-        TypeInfo::Ref(..) => {
-            return Err(CompileError::Internal(
-                "Ref type cannot be resolved in IR.",
-                span.clone(),
-            ))
-        }
-        TypeInfo::ErrorRecovery => {
-            return Err(CompileError::Internal(
-                "Error recovery type cannot be resolved in IR.",
-                span.clone(),
-            ))
-        }
-        TypeInfo::Storage { .. } => {
-            return Err(CompileError::Internal(
-                "Storage type cannot be resolved in IR.",
-                span.clone(),
-            ))
-        }
+        TypeInfo::Custom { .. } => reject_type!("Custom"),
+        TypeInfo::SelfType { .. } => reject_type!("Self"),
+        TypeInfo::Contract => reject_type!("Contract"),
+        TypeInfo::ContractCaller { .. } => reject_type!("ContractCaller"),
+        TypeInfo::Unknown => reject_type!("Unknown"),
+        TypeInfo::UnknownGeneric { .. } => reject_type!("Generic"),
+        TypeInfo::Ref(..) => reject_type!("Ref"),
+        TypeInfo::ErrorRecovery => reject_type!("Error recovery"),
+        TypeInfo::Storage { .. } => reject_type!("Storage"),
     })
 }
 
@@ -2712,12 +2731,142 @@ fn add_to_b256(x: fuel_types::Bytes32, y: u64) -> fuel_types::Bytes32 {
 
 // -------------------------------------------------------------------------------------------------
 
+#[derive(Default)]
+pub(crate) struct PurityChecker {
+    memos: HashMap<Function, (bool, bool)>,
+
+    // Final results.
+    pub warnings: Vec<CompileWarning>,
+    pub errors: Vec<CompileError>,
+}
+
+impl PurityChecker {
+    /// Designed to be called for each entry point, _prior_ to inlining or other optimizations.
+    /// The checker will check this function and any that it calls.
+    ///
+    /// Returns bools for whether it (reads, writes).
+    pub(crate) fn check_function(
+        &mut self,
+        context: &Context,
+        function: &Function,
+    ) -> (bool, bool) {
+        // Iterate for each instruction in the function and gather whether we have read and/or
+        // write storage operations:
+        // - via the storage IR instructions,
+        // - via ASM blocks with storage VM instructions or
+        // - via calls into functions with the above.
+        let (reads, writes) = function.instruction_iter(context).fold(
+            (false, false),
+            |(reads, writes), (_block, ins_value)| match &context.values[ins_value.0].value {
+                ValueDatum::Instruction(Instruction::StateLoadQuadWord { .. })
+                | ValueDatum::Instruction(Instruction::StateLoadWord(_)) => (true, writes),
+
+                ValueDatum::Instruction(Instruction::StateStoreQuadWord { .. })
+                | ValueDatum::Instruction(Instruction::StateStoreWord { .. }) => (reads, true),
+
+                // Iterate for and check each instruction in the ASM block.
+                ValueDatum::Instruction(Instruction::AsmBlock(asm_block, _args)) => {
+                    context.asm_blocks[asm_block.0].body.iter().fold(
+                        (reads, writes),
+                        |(reads, writes), asm_op| match asm_op.name.as_str() {
+                            "srw" | "srwq" => (true, writes),
+                            "sww" | "swwq" => (reads, true),
+                            _ => (reads, writes),
+                        },
+                    )
+                }
+
+                // Recurse to find the called function purity.  Use memoisation to avoid redoing
+                // work.
+                ValueDatum::Instruction(Instruction::Call(callee, _args)) => {
+                    let (called_fn_reads, called_fn_writes) =
+                        self.memos.get(callee).copied().unwrap_or_else(|| {
+                            let r_w = self.check_function(context, callee);
+                            self.memos.insert(*callee, r_w);
+                            r_w
+                        });
+                    (reads || called_fn_reads, writes || called_fn_writes)
+                }
+
+                _otherwise => (reads, writes),
+            },
+        );
+
+        let function = &context.functions[function.0];
+        let attributed_purity =
+            function
+                .storage_md_idx
+                .and_then(|idx| match &context.metadata[idx.0] {
+                    Metadatum::StorageAttribute(storage_op) => Some(storage_op),
+                    _otherwise => None,
+                });
+        let span = function
+            .span_md_idx
+            .and_then(|idx| idx.to_span(context).ok())
+            .unwrap_or_else(Span::dummy);
+
+        // Simple macros for each of the error types, which also grab `span`.
+        macro_rules! mk_err {
+            ($op_str:literal, $existing_attrib:ident, $needed_attrib:ident) => {{
+                self.errors.push(CompileError::ImpureInPureContext {
+                    storage_op: $op_str,
+                    attrs: promote_purity(Purity::$existing_attrib, Purity::$needed_attrib)
+                        .to_attribute_syntax(),
+                    span,
+                });
+            }};
+        }
+        macro_rules! mk_warn {
+            ($unneeded_attrib:ident) => {{
+                self.warnings.push(CompileWarning {
+                    warning_content: Warning::DeadStorageDeclarationForFunction {
+                        unneeded_attrib: Purity::$unneeded_attrib.to_attribute_syntax(),
+                    },
+                    span,
+                });
+            }};
+        }
+
+        match (attributed_purity, reads, writes) {
+            // Has no attributes but needs some.
+            (None, true, false) => mk_err!("read", Pure, Reads),
+            (None, false, true) => mk_err!("write", Pure, Writes),
+            (None, true, true) => mk_err!("read & write", Pure, ReadsWrites),
+
+            // Or the attribute must match the behaviour.
+            (Some(StorageOperation::Reads), _, true) => mk_err!("write", Reads, Writes),
+            (Some(StorageOperation::Writes), true, _) => mk_err!("read", Writes, Reads),
+
+            // Or we have unneeded attributes.
+            (Some(StorageOperation::ReadsWrites), false, true) => mk_warn!(Reads),
+            (Some(StorageOperation::ReadsWrites), true, false) => mk_warn!(Writes),
+            (Some(StorageOperation::Reads), false, false) => mk_warn!(Reads),
+            (Some(StorageOperation::Writes), false, false) => mk_warn!(Writes),
+
+            // (Pure, false, false) is OK, as is (ReadsWrites, true, true).
+            _otherwise => (),
+        };
+
+        (reads, writes)
+    }
+
+    pub(crate) fn results(self) -> CompileResult<()> {
+        if self.errors.is_empty() {
+            ok((), self.warnings, self.errors)
+        } else {
+            err(self.warnings, self.errors)
+        }
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+
 #[cfg(test)]
 mod tests {
     use crate::semantic_analysis::{namespace, TypedProgram};
     use std::path::PathBuf;
 
-    // -------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------
 
     #[test]
     fn sway_to_ir_tests() {
@@ -2770,7 +2919,7 @@ mod tests {
         }
     }
 
-    // -------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------
 
     #[test]
     fn ir_printer_parser_tests() {
@@ -2822,7 +2971,7 @@ mod tests {
         }
     }
 
-    // -------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------
 
     fn parse_to_typed_program(path: PathBuf, input: &str) -> TypedProgram {
         let root_module = std::sync::Arc::new(path);

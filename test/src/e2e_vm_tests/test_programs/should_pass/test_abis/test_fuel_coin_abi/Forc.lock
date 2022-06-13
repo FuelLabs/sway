@@ -1,11 +1,22 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-A7EBB443FC21DBA0'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-A7EBB443FC21DBA0'
 dependencies = []
 
 [[package]]
 name = 'std'
-dependencies = ['core']
+source = 'path+from-root-A7EBB443FC21DBA0'
+dependencies = [
+    'core',
+    'core_utils',
+]
 
 [[package]]
 name = 'test_fuel_coin_abi'
+source = 'root'
 dependencies = ['std']
