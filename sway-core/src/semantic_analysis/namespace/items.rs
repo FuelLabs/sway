@@ -110,7 +110,7 @@ impl Items {
     pub(crate) fn insert_trait_implementation(
         &mut self,
         trait_name: CallPath,
-        type_implementing_for: TypeInfo,
+        implementing_for_type_id: TypeId,
         functions_buf: Vec<TypedFunctionDeclaration>,
     ) {
         let new_prefixes = if trait_name.prefixes.is_empty() {
@@ -127,12 +127,15 @@ impl Items {
             is_absolute: trait_name.is_absolute,
         };
         self.implemented_traits
-            .insert(trait_name, type_implementing_for, functions_buf);
+            .insert(trait_name, implementing_for_type_id, functions_buf);
     }
 
-    pub(crate) fn get_methods_for_type(&self, r#type: TypeId) -> Vec<TypedFunctionDeclaration> {
+    pub(crate) fn get_methods_for_type(
+        &self,
+        implementing_for_type_id: TypeId,
+    ) -> Vec<TypedFunctionDeclaration> {
         self.implemented_traits
-            .get_methods_for_type(look_up_type_id(r#type))
+            .get_methods_for_type(implementing_for_type_id)
     }
 
     // /// Given a [TypeInfo] `new_type`, find all the types for which `new_type` is a subset and grab

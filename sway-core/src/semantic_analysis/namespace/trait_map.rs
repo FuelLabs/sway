@@ -1,6 +1,7 @@
-use crate::{CallPath, TypeInfo, TypedFunctionDeclaration};
-
-use std::collections::HashMap;
+use crate::{
+    type_engine::{look_up_type_id, TypeId},
+    CallPath, TypeInfo, TypedFunctionDeclaration,
+};
 
 type TraitName = CallPath;
 
@@ -26,7 +27,7 @@ type TraitName = CallPath;
 // However, we need this structure to be able to maintain the
 // difference between 3 and 4, as in practice, 1 and 2 might not yet
 // be resolved.
-type TraitMapInner = im::Vector<((TraitName, TypeInfo), TraitMethods)>;
+type TraitMapInner = im::Vector<((TraitName, TypeId), TraitMethods)>;
 type TraitMethods = im::HashMap<String, TypedFunctionDeclaration>;
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -38,31 +39,31 @@ impl TraitMap {
     pub(crate) fn insert(
         &mut self,
         trait_name: CallPath,
-        type_implementing_for: TypeInfo,
+        incoming_type_id: TypeId,
         methods: Vec<TypedFunctionDeclaration>,
     ) {
         let mut methods_map = im::HashMap::new();
-        if let TypeInfo::Struct { ref name, .. } = type_implementing_for {
-            if name.as_str() == "DoubleIdentity" {
-                println!(">>\n\tinserting for {}", type_implementing_for);
-            }
-        }
+        // if let TypeInfo::Struct { ref name, .. } = type_implementing_for {
+        //     if name.as_str() == "DoubleIdentity" {
+        //         println!(">>\n\tinserting for {}", type_implementing_for);
+        //     }
+        // }
         for method in methods.into_iter() {
             let method_name = method.name.as_str().to_string();
-            if let TypeInfo::Struct { ref name, .. } = type_implementing_for {
-                if name.as_str() == "DoubleIdentity" {
-                    println!("\t{}", method_name);
-                }
-            }
+            // if let TypeInfo::Struct { ref name, .. } = type_implementing_for {
+            //     if name.as_str() == "DoubleIdentity" {
+            //         println!("\t{}", method_name);
+            //     }
+            // }
             methods_map.insert(method_name, method);
         }
-        if let TypeInfo::Struct { ref name, .. } = type_implementing_for {
-            if name.as_str() == "DoubleIdentity" {
-                println!(">>");
-            }
-        }
+        // if let TypeInfo::Struct { ref name, .. } = type_implementing_for {
+        //     if name.as_str() == "DoubleIdentity" {
+        //         println!(">>");
+        //     }
+        // }
         self.trait_map
-            .push_back(((trait_name, type_implementing_for), methods_map));
+            .push_back(((trait_name, incoming_type_id), methods_map));
     }
 
     pub(crate) fn extend(&mut self, other: TraitMap) {
@@ -77,13 +78,13 @@ impl TraitMap {
 
     pub(crate) fn get_call_path_and_type_info(
         &self,
-        r#type: TypeInfo,
-    ) -> Vec<((CallPath, TypeInfo), Vec<TypedFunctionDeclaration>)> {
+        incoming_type_id: TypeId,
+    ) -> Vec<((CallPath, TypeId), Vec<TypedFunctionDeclaration>)> {
         let mut ret = vec![];
-        for ((call_path, type_info), methods) in self.trait_map.iter() {
-            if type_info.clone() == r#type {
+        for ((call_path, map_type_id), methods) in self.trait_map.iter() {
+            if look_up_type_id(*map_type_id) == look_up_type_id(incoming_type_id) {
                 ret.push((
-                    (call_path.clone(), type_info.clone()),
+                    (call_path.clone(), *map_type_id),
                     methods.values().cloned().collect(),
                 ));
             }
@@ -91,10 +92,13 @@ impl TraitMap {
         ret
     }
 
-    pub(crate) fn get_methods_for_type(&self, r#type: TypeInfo) -> Vec<TypedFunctionDeclaration> {
+    pub(crate) fn get_methods_for_type(
+        &self,
+        incoming_type_id: TypeId,
+    ) -> Vec<TypedFunctionDeclaration> {
         let mut methods = vec![];
         // small performance gain in bad case
-        if r#type == TypeInfo::ErrorRecovery {
+        if look_up_type_id(incoming_type_id) == TypeInfo::ErrorRecovery {
             return methods;
         }
         // if let TypeInfo::Struct { ref name, .. } = r#type {
@@ -106,7 +110,7 @@ impl TraitMap {
         //     }
         // }
         for ((_, type_info), trait_methods) in self.trait_map.iter() {
-            if r#type.is_subset_of(type_info) {
+            if look_up_type_id(incoming_type_id).is_subset_of(&look_up_type_id(*type_info)) {
                 let mut trait_methods = trait_methods.values().cloned().collect();
                 // if let TypeInfo::Struct { ref name, .. } = type_info {
                 //     if name.as_str() == "DoubleIdentity" {
