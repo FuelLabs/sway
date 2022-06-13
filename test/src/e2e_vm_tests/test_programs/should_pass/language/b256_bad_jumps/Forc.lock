@@ -1,7 +1,14 @@
 [[package]]
 name = 'b256_bad_jumps'
+source = 'root'
 dependencies = ['core']
 
 [[package]]
 name = 'core'
+source = 'path+from-root-652305F040D8F1D1'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-652305F040D8F1D1'
 dependencies = []

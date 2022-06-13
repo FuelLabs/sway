@@ -11,6 +11,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::str;
 use sway_core::{error::LineCol, CompileError, CompileWarning, TreeType};
+use sway_types::Spanned;
 use sway_utils::constants;
 use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use tracing_subscriber::filter::EnvFilter;
@@ -205,16 +206,6 @@ pub fn println_red(txt: &str) {
 
 pub fn println_green(txt: &str) {
     println_std_out(txt, TermColor::Green);
-}
-
-pub fn print_light_blue(txt: &str) {
-    let stdout = StandardStream::stdout(ColorChoice::Always);
-    print_with_color(txt, TermColor::Rgb(40, 200, 255), stdout);
-}
-
-pub fn print_light_green(txt: &str) {
-    let stdout = StandardStream::stdout(ColorChoice::Always);
-    print_with_color(txt, TermColor::Rgb(90, 255, 40), stdout);
 }
 
 pub fn print_blue_err(txt: &str) {

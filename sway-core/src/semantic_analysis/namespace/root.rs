@@ -1,16 +1,11 @@
 use crate::{
-    error::*,
-    semantic_analysis::{
-        ast_node::TypedExpression,
-        declaration::{CreateTypeId, EnforceTypeArguments, Monomorphize},
-    },
-    type_engine::*,
-    CallPath, CompileResult, Ident, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
+    error::*, semantic_analysis::*, type_engine::*, CallPath, CompileResult, Ident, TypeInfo,
+    TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use super::{module::Module, namespace::Namespace, Path};
 
-use sway_types::span::Span;
+use sway_types::{span::Span, Spanned};
 
 use std::collections::VecDeque;
 
@@ -125,7 +120,10 @@ impl Root {
                         insert_type(TypeInfo::UnknownGeneric { name })
                     }
                     _ => {
-                        errors.push(CompileError::UnknownType { span: span.clone() });
+                        errors.push(CompileError::UnknownTypeName {
+                            name: name.to_string(),
+                            span: name.span(),
+                        });
                         return err(warnings, errors);
                     }
                 }
@@ -288,7 +286,7 @@ impl Root {
             self.resolve_type_with_self(
                 look_up_type_id(r#type),
                 self_type,
-                method_name.span(),
+                &method_name.span(),
                 EnforceTypeArguments::No,
                 method_prefix
             ),
@@ -322,7 +320,7 @@ impl Root {
                 {
                     errors.push(CompileError::MethodNotFound {
                         method_name: method_name.clone(),
-                        type_name: r#type.friendly_type_str(),
+                        type_name: r#type.to_string(),
                     });
                 }
                 err(warnings, errors)

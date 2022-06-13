@@ -1,7 +1,14 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-D97961F846794409'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-D97961F846794409'
 dependencies = []
 
 [[package]]
 name = 'simple'
+source = 'root'
 dependencies = ['core']

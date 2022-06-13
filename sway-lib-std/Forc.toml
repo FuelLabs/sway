@@ -6,3 +6,4 @@ name = "std"
 
 [dependencies]
 core = { path = "../sway-lib-core" }
+core_utils = { path = "../sway-lib-core-utils"}

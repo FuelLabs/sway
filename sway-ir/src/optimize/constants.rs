@@ -93,6 +93,7 @@ fn combine_const_aggregate_field(
         ValueContent {
             value: ValueDatum::Constant(c),
             span_md_idx,
+            state_idx_md_idx: None,
         } => (c.clone(), *span_md_idx),
         _otherwise => {
             unreachable!("BUG! Invalid aggregate parameter to combine_const_insert_value()")

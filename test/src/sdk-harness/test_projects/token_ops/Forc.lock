@@ -1,11 +1,22 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-979F3DC775724FBC'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-979F3DC775724FBC'
 dependencies = []
 
 [[package]]
 name = 'std'
-dependencies = ['core']
+source = 'path+from-root-979F3DC775724FBC'
+dependencies = [
+    'core',
+    'core_utils',
+]
 
 [[package]]
 name = 'token_ops'
+source = 'root'
 dependencies = ['std']

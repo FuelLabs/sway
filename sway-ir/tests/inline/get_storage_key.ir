@@ -1,0 +1,37 @@
+// regex: VAR=v\d+
+// regex: MD=!\d+
+// regex: LABEL=[[:alpha:]0-9]+:
+
+script {
+    fn return_storage_key_wrapper() -> b256 {
+        entry:
+        v0 = call return_storage_key(), !2, !3
+        ret b256 v0
+    }
+
+    fn return_storage_key() -> b256 {
+        entry:
+        v0 = get_storage_key, !2
+        ret b256 v0
+    }
+
+// check: fn main
+    fn main() -> b256 {
+        entry:
+        v0 = call return_storage_key_wrapper(), !1, !3
+// check: $(arg0=$VAR) = get_storage_key, !1, $(md0=$MD)
+
+// check: $(arg1=$VAR) = phi($LABEL $arg0)
+// check: $(arg2=$VAR) = phi($LABEL $arg1)
+// check: ret b256 $arg2
+        ret b256 v0
+    }
+}
+
+// check: $(md0) = state_index 42
+
+!0 = filepath "proj/src/main.sw"
+!1 = span !0 381 425
+!2 = span !0 404 423
+!3 = state_index 42
+

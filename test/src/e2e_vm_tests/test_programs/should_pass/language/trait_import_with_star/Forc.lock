@@ -1,7 +1,14 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-B3139936C693DF4E'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-B3139936C693DF4E'
 dependencies = []
 
 [[package]]
 name = 'trait_impl_import'
+source = 'root'
 dependencies = ['core']

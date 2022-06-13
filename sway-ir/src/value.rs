@@ -23,6 +23,7 @@ pub struct Value(pub generational_arena::Index);
 pub struct ValueContent {
     pub value: ValueDatum,
     pub span_md_idx: Option<MetadataIndex>,
+    pub state_idx_md_idx: Option<MetadataIndex>,
 }
 
 #[doc(hidden)]
@@ -43,6 +44,7 @@ impl Value {
         let content = ValueContent {
             value: ValueDatum::Argument(ty),
             span_md_idx,
+            state_idx_md_idx: None,
         };
         Value(context.values.insert(content))
     }
@@ -56,6 +58,7 @@ impl Value {
         let content = ValueContent {
             value: ValueDatum::Constant(constant),
             span_md_idx,
+            state_idx_md_idx: None,
         };
         Value(context.values.insert(content))
     }
@@ -65,10 +68,12 @@ impl Value {
         context: &mut Context,
         instruction: Instruction,
         opt_span_md_idx: Option<MetadataIndex>,
+        opt_state_idx_md_idx: Option<MetadataIndex>,
     ) -> Value {
         let content = ValueContent {
             value: ValueDatum::Instruction(instruction),
             span_md_idx: opt_span_md_idx,
+            state_idx_md_idx: opt_state_idx_md_idx,
         };
         Value(context.values.insert(content))
     }
@@ -82,6 +87,15 @@ impl Value {
             .map(|idx| idx.to_span(context))
             .transpose()
             .expect("A valid span.")
+    }
+
+    /// Return the content of the state index metadata
+    pub fn get_storage_key(&self, context: &Context) -> Option<usize> {
+        context.values[self.0]
+            .state_idx_md_idx
+            .map(|idx| idx.to_state_idx(context))
+            .transpose()
+            .expect("A valid state index.")
     }
 
     /// Return whether this is a constant value.

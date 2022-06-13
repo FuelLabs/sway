@@ -4,17 +4,16 @@ use {
             STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
         },
         error::{err, ok, CompileError, CompileResult, CompileWarning},
-        ident,
         type_engine::{insert_type, AbiName, IntegerBits},
         AbiDeclaration, AsmExpression, AsmOp, AsmRegister, AsmRegisterDeclaration, AstNode,
-        AstNodeContent, BuiltinProperty, CallPath, CodeBlock, ConstantDeclaration, Declaration,
-        EnumDeclaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter, ImplSelf,
-        ImplTrait, ImportType, IncludeStatement, LazyOp, Literal, MatchBranch, MethodName,
-        ParseTree, Purity, Reassignment, ReassignmentTarget, ReturnStatement, Scrutinee,
-        StorageDeclaration, StorageField, StructDeclaration, StructExpressionField, StructField,
-        StructScrutineeField, Supertrait, SwayParseTree, TraitConstraint, TraitDeclaration,
-        TraitFn, TreeType, TypeArgument, TypeInfo, TypeParameter, UseStatement,
-        VariableDeclaration, Visibility, WhileLoop,
+        AstNodeContent, CallPath, CodeBlock, ConstantDeclaration, Declaration, EnumDeclaration,
+        EnumVariant, Expression, FunctionDeclaration, FunctionParameter, ImplSelf, ImplTrait,
+        ImportType, IncludeStatement, IntrinsicFunctionKind, LazyOp, Literal, MatchBranch,
+        MethodName, ParseTree, Purity, Reassignment, ReassignmentTarget, ReturnStatement,
+        Scrutinee, StorageDeclaration, StorageField, StructDeclaration, StructExpressionField,
+        StructField, StructScrutineeField, Supertrait, TraitConstraint, TraitDeclaration, TraitFn,
+        TreeType, TypeArgument, TypeInfo, TypeParameter, UseStatement, VariableDeclaration,
+        Visibility, WhileLoop,
     },
     std::{
         collections::HashMap,
@@ -25,14 +24,16 @@ use {
         sync::atomic::{AtomicUsize, Ordering},
     },
     sway_parse::{
+        expr::{ReassignmentOp, ReassignmentOpVariant},
+        ty::TyTupleDescriptor,
         AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents,
         Dependency, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField,
         ExprTupleDescriptor, FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition,
         IfExpr, Instruction, Intrinsic, Item, ItemAbi, ItemConst, ItemEnum, ItemFn, ItemImpl,
         ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse, LitInt, LitIntType, MatchBranchKind,
-        PathExpr, PathExprSegment, PathType, PathTypeSegment, Pattern, PatternStructField, Program,
-        ProgramKind, PubToken, QualifiedPathRoot, Statement, StatementLet, Traits, Ty, TypeField,
-        UseTree, WhereClause,
+        Module, ModuleKind, PathExpr, PathExprSegment, PathType, PathTypeSegment, Pattern,
+        PatternStructField, PubToken, QualifiedPathRoot, Statement, StatementLet, Traits, Ty,
+        TypeField, UseTree, WhereClause,
     },
     sway_types::{Ident, Span, Spanned},
     thiserror::Error,
@@ -132,9 +133,9 @@ pub enum ConvertParseTreeError {
     QualifiedPathRootsNotImplemented { span: Span },
     #[error("char literals are not implemented")]
     CharLiteralsNotImplemented { span: Span },
-    #[error("hex literals must have either 2 or 64 digits")]
+    #[error("hex literals must have 1..16 or 64 digits")]
     HexLiteralLength { span: Span },
-    #[error("binary literals must have either 8 or 258 digits")]
+    #[error("binary literals must have either 1..64 or 256 digits")]
     BinaryLiteralLength { span: Span },
     #[error("u8 literal out of range")]
     U8LiteralOutOfRange { span: Span },
@@ -176,12 +177,20 @@ pub enum ConvertParseTreeError {
     InvalidAttributeArgument { attribute: String, span: Span },
     #[error("cannot find type \"{ty_name}\" in this scope")]
     ConstrainedNonExistentType { ty_name: Ident, span: Span },
-    #[error("__generate_uid does not take arguments")]
-    GenerateUidTooManyArgs { span: Span },
+    #[error("__get_storage_key does not take arguments")]
+    GetStorageKeyTooManyArgs { span: Span },
+    #[error("recursive types are not supported")]
+    RecursiveType { span: Span },
+    #[error("enum variant \"{name}\" already declared")]
+    DuplicateEnumVariant { name: Ident, span: Span },
+    #[error("storage field \"{name}\" already declared")]
+    DuplicateStorageField { name: Ident, span: Span },
+    #[error("struct field \"{name}\" already declared")]
+    DuplicateStructField { name: Ident, span: Span },
 }
 
-impl ConvertParseTreeError {
-    pub fn span(&self) -> Span {
+impl Spanned for ConvertParseTreeError {
+    fn span(&self) -> Span {
         match self {
             ConvertParseTreeError::PubUseNotSupported { span } => span.clone(),
             ConvertParseTreeError::ReturnOutsideOfBlock { span } => span.clone(),
@@ -227,61 +236,59 @@ impl ConvertParseTreeError {
             ConvertParseTreeError::ContractCallerNamedTypeGenericArg { span } => span.clone(),
             ConvertParseTreeError::InvalidAttributeArgument { span, .. } => span.clone(),
             ConvertParseTreeError::ConstrainedNonExistentType { span, .. } => span.clone(),
-            ConvertParseTreeError::GenerateUidTooManyArgs { span, .. } => span.clone(),
+            ConvertParseTreeError::GetStorageKeyTooManyArgs { span, .. } => span.clone(),
+            ConvertParseTreeError::RecursiveType { span } => span.clone(),
+            ConvertParseTreeError::DuplicateEnumVariant { span, .. } => span.clone(),
+            ConvertParseTreeError::DuplicateStorageField { span, .. } => span.clone(),
+            ConvertParseTreeError::DuplicateStructField { span, .. } => span.clone(),
         }
     }
 }
 
-pub fn convert_parse_tree(program: Program) -> CompileResult<SwayParseTree> {
+pub fn convert_parse_tree(module: Module) -> CompileResult<(TreeType, ParseTree)> {
     let mut ec = ErrorContext {
         warnings: Vec::new(),
         errors: Vec::new(),
     };
-    let res = program_to_sway_parse_tree(&mut ec, program);
+    let tree_type = match module.kind {
+        ModuleKind::Script { .. } => TreeType::Script,
+        ModuleKind::Contract { .. } => TreeType::Contract,
+        ModuleKind::Predicate { .. } => TreeType::Predicate,
+        ModuleKind::Library { ref name, .. } => TreeType::Library { name: name.clone() },
+    };
+    let res = module_to_sway_parse_tree(&mut ec, module);
     let ErrorContext { warnings, errors } = ec;
     match res {
-        Ok(sway_parse_tree) => ok(sway_parse_tree, warnings, errors),
+        Ok(parse_tree) => ok((tree_type, parse_tree), warnings, errors),
         Err(_error_emitted) => err(warnings, errors),
     }
 }
 
-pub fn program_to_sway_parse_tree(
+pub fn module_to_sway_parse_tree(
     ec: &mut ErrorContext,
-    program: Program,
-) -> Result<SwayParseTree, ErrorEmitted> {
-    let span = program.span();
-    let tree_type = match program.kind {
-        ProgramKind::Script { .. } => TreeType::Script,
-        ProgramKind::Contract { .. } => TreeType::Contract,
-        ProgramKind::Predicate { .. } => TreeType::Predicate,
-        ProgramKind::Library { name, .. } => TreeType::Library { name },
-    };
+    module: Module,
+) -> Result<ParseTree, ErrorEmitted> {
+    let span = module.span();
     let root_nodes = {
         let mut root_nodes: Vec<AstNode> = {
-            program
+            module
                 .dependencies
-                .into_iter()
+                .iter()
                 .map(|dependency| {
                     let span = dependency.span();
-                    AstNode {
-                        content: AstNodeContent::IncludeStatement(dependency_to_include_statement(
-                            dependency,
-                        )),
-                        span,
-                    }
+                    let incl_stmt = dependency_to_include_statement(dependency);
+                    let content = AstNodeContent::IncludeStatement(incl_stmt);
+                    AstNode { content, span }
                 })
                 .collect()
         };
-        for item in program.items {
+        for item in module.items {
             let ast_nodes = item_to_ast_nodes(ec, item)?;
             root_nodes.extend(ast_nodes);
         }
         root_nodes
     };
-    Ok(SwayParseTree {
-        tree_type,
-        tree: ParseTree { span, root_nodes },
-    })
+    Ok(ParseTree { span, root_nodes })
 }
 
 fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, ErrorEmitted> {
@@ -478,17 +485,39 @@ fn item_struct_to_struct_declaration(
     ec: &mut ErrorContext,
     item_struct: ItemStruct,
 ) -> Result<StructDeclaration, ErrorEmitted> {
+    let mut errors = Vec::new();
     let span = item_struct.span();
+    let fields = item_struct
+        .fields
+        .into_inner()
+        .into_iter()
+        .map(|type_field| type_field_to_struct_field(ec, type_field))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    if fields.iter().any(
+        |field| matches!(&field.r#type, TypeInfo::Custom { name, ..} if name == &item_struct.name),
+    ) {
+        errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
+    }
+
+    // Make sure each struct field is declared once
+    let mut names_of_fields = std::collections::HashSet::new();
+    fields.iter().for_each(|v| {
+        if !names_of_fields.insert(v.name.clone()) {
+            errors.push(ConvertParseTreeError::DuplicateStructField {
+                name: v.name.clone(),
+                span: v.name.span(),
+            });
+        }
+    });
+
+    if let Some(errors) = ec.errors(errors) {
+        return Err(errors);
+    }
+
     let struct_declaration = StructDeclaration {
         name: item_struct.name,
-        fields: {
-            item_struct
-                .fields
-                .into_inner()
-                .into_iter()
-                .map(|type_field| type_field_to_struct_field(ec, type_field))
-                .collect::<Result<_, _>>()?
-        },
+        fields,
         type_parameters: generic_params_opt_to_type_parameters(
             ec,
             item_struct.generics,
@@ -504,7 +533,37 @@ fn item_enum_to_enum_declaration(
     ec: &mut ErrorContext,
     item_enum: ItemEnum,
 ) -> Result<EnumDeclaration, ErrorEmitted> {
+    let mut errors = Vec::new();
     let span = item_enum.span();
+    let variants = item_enum
+        .fields
+        .into_inner()
+        .into_iter()
+        .enumerate()
+        .map(|(tag, type_field)| type_field_to_enum_variant(ec, type_field, tag))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    if variants.iter().any(|variant| {
+       matches!(&variant.r#type, TypeInfo::Custom { name, ..} if name == &item_enum.name)
+    }) {
+        errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
+    }
+
+    // Make sure each enum variant is declared once
+    let mut names_of_variants = std::collections::HashSet::new();
+    variants.iter().for_each(|v| {
+        if !names_of_variants.insert(v.name.clone()) {
+            errors.push(ConvertParseTreeError::DuplicateEnumVariant {
+                name: v.name.clone(),
+                span: v.name.span(),
+            });
+        }
+    });
+
+    if let Some(errors) = ec.errors(errors) {
+        return Err(errors);
+    }
+
     let enum_declaration = EnumDeclaration {
         name: item_enum.name,
         type_parameters: generic_params_opt_to_type_parameters(
@@ -512,15 +571,7 @@ fn item_enum_to_enum_declaration(
             item_enum.generics,
             item_enum.where_clause_opt,
         )?,
-        variants: {
-            item_enum
-                .fields
-                .into_inner()
-                .into_iter()
-                .enumerate()
-                .map(|(tag, type_field)| type_field_to_enum_variant(ec, type_field, tag))
-                .collect::<Result<_, _>>()?
-        },
+        variants,
         span,
         visibility: pub_token_opt_to_visibility(item_enum.visibility),
     };
@@ -581,7 +632,7 @@ fn get_attributed_purity(
                     _otherwise => {
                         return Err(ec.error(ConvertParseTreeError::InvalidAttributeArgument {
                             attribute: "storage".to_owned(),
-                            span: arg.span().clone(),
+                            span: arg.span(),
                         }));
                     }
                 }
@@ -737,18 +788,31 @@ fn item_storage_to_storage_declaration(
     ec: &mut ErrorContext,
     item_storage: ItemStorage,
 ) -> Result<StorageDeclaration, ErrorEmitted> {
+    let mut errors = Vec::new();
     let span = item_storage.span();
-    let storage_declaration = StorageDeclaration {
-        span,
-        fields: {
-            item_storage
-                .fields
-                .into_inner()
-                .into_iter()
-                .map(|storage_field| storage_field_to_storage_field(ec, storage_field))
-                .collect::<Result<_, _>>()?
-        },
-    };
+    let fields: Vec<StorageField> = item_storage
+        .fields
+        .into_inner()
+        .into_iter()
+        .map(|storage_field| storage_field_to_storage_field(ec, storage_field))
+        .collect::<Result<_, _>>()?;
+
+    // Make sure each storage field is declared once
+    let mut names_of_fields = std::collections::HashSet::new();
+    fields.iter().for_each(|v| {
+        if !names_of_fields.insert(v.name.clone()) {
+            errors.push(ConvertParseTreeError::DuplicateStorageField {
+                name: v.name.clone(),
+                span: v.name.span(),
+            });
+        }
+    });
+
+    if let Some(errors) = ec.errors(errors) {
+        return Err(errors);
+    }
+
+    let storage_declaration = StorageDeclaration { span, fields };
     Ok(storage_declaration)
 }
 
@@ -926,12 +990,12 @@ fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
 fn ty_to_type_info(ec: &mut ErrorContext, ty: Ty) -> Result<TypeInfo, ErrorEmitted> {
     let type_info = match ty {
         Ty::Path(path_type) => path_type_to_type_info(ec, path_type)?,
-        Ty::Tuple(tys) => TypeInfo::Tuple(
-            tys.into_inner()
-                .into_iter()
-                .map(|ty| ty_to_type_argument(ec, ty))
-                .collect::<Result<_, _>>()?,
-        ),
+        Ty::Tuple(parenthesized_ty_tuple_descriptor) => {
+            TypeInfo::Tuple(ty_tuple_descriptor_to_type_arguments(
+                ec,
+                parenthesized_ty_tuple_descriptor.into_inner(),
+            )?)
+        }
         Ty::Array(bracketed_ty_array_descriptor) => {
             let ty_array_descriptor = bracketed_ty_array_descriptor.into_inner();
             TypeInfo::Array(
@@ -1062,14 +1126,39 @@ fn expr_to_ast_node(
             span,
         },
         Expr::Reassignment {
-            assignable, expr, ..
-        } => AstNode {
-            content: AstNodeContent::Declaration(Declaration::Reassignment(Reassignment {
-                lhs: assignable_to_reassignment_target(ec, assignable)?,
-                rhs: expr_to_expression(ec, *expr)?,
-                span: span.clone(),
-            })),
-            span,
+            assignable,
+            expr,
+            reassignment_op:
+                ReassignmentOp {
+                    variant: op_variant,
+                    span: op_span,
+                },
+        } => match op_variant {
+            ReassignmentOpVariant::Equals => AstNode {
+                content: AstNodeContent::Declaration(Declaration::Reassignment(Reassignment {
+                    lhs: assignable_to_reassignment_target(ec, assignable)?,
+                    rhs: expr_to_expression(ec, *expr)?,
+                    span: span.clone(),
+                })),
+                span,
+            },
+            op_variant => {
+                let lhs = assignable_to_reassignment_target(ec, assignable.clone())?;
+                let rhs = binary_op_call(
+                    op_variant.core_name(),
+                    op_span,
+                    span.clone(),
+                    assignable_to_expression(ec, assignable)?,
+                    expr_to_expression(ec, *expr)?,
+                )?;
+                let content =
+                    AstNodeContent::Declaration(Declaration::Reassignment(Reassignment {
+                        lhs,
+                        rhs,
+                        span: span.clone(),
+                    }));
+                AstNode { content, span }
+            }
         },
         expr => {
             let expression = expr_to_expression(ec, expr)?;
@@ -1174,7 +1263,21 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
         } => {
             let value = expr_to_expression(ec, *value)?;
             let var_decl_span = value.span();
-            let var_decl_name = ident::random_name(var_decl_span.clone(), None);
+
+            // Generate a deterministic name for the variable returned by the match expression.
+            // Because the parser is single threaded, the name generated below will be stable.
+            static COUNTER: AtomicUsize = AtomicUsize::new(0);
+            let match_return_var_name = format!(
+                "{}{}",
+                crate::constants::MATCH_RETURN_VAR_NAME_PREFIX,
+                COUNTER.load(Ordering::SeqCst)
+            );
+            COUNTER.fetch_add(1, Ordering::SeqCst);
+            let var_decl_name = Ident::new_with_override(
+                Box::leak(match_return_var_name.into_boxed_str()),
+                var_decl_span.clone(),
+            );
+
             let var_decl_exp = Expression::VariableExpression {
                 name: var_decl_name.clone(),
                 span: var_decl_span,
@@ -1309,7 +1412,7 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             };
             match method_type_opt {
                 Some(type_name) => {
-                    let type_name_span = type_name.span().clone();
+                    let type_name_span = type_name.span();
                     let type_name = match type_name_to_type_info_opt(&type_name) {
                         Some(type_info) => type_info,
                         None => TypeInfo::Custom {
@@ -1358,26 +1461,30 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         };
                         let type_span = ty.span();
                         let type_name = ty_to_type_info(ec, ty)?;
-                        Expression::BuiltinGetTypeProperty {
-                            builtin: BuiltinProperty::SizeOfType,
-                            type_name,
-                            type_span,
+                        Expression::IntrinsicFunction {
+                            kind: IntrinsicFunctionKind::SizeOfType {
+                                type_name,
+                                type_span,
+                            },
                             span,
                         }
                     } else if call_path.prefixes.is_empty()
                         && !call_path.is_absolute
                         && Intrinsic::try_from_str(call_path.suffix.as_str())
-                            == Some(Intrinsic::GenerateUid)
+                            == Some(Intrinsic::GetStorageKey)
                     {
                         if !arguments.is_empty() {
-                            let error = ConvertParseTreeError::GenerateUidTooManyArgs { span };
+                            let error = ConvertParseTreeError::GetStorageKeyTooManyArgs { span };
                             return Err(ec.error(error));
                         }
                         if generics_opt.is_some() {
                             let error = ConvertParseTreeError::GenericsNotSupportedHere { span };
                             return Err(ec.error(error));
                         }
-                        Expression::BuiltinGenerateUid { span }
+                        Expression::IntrinsicFunction {
+                            kind: IntrinsicFunctionKind::GetStorageKey,
+                            span,
+                        }
                     } else if call_path.prefixes.is_empty()
                         && !call_path.is_absolute
                         && Intrinsic::try_from_str(call_path.suffix.as_str())
@@ -1401,10 +1508,11 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         };
                         let type_span = ty.span();
                         let type_name = ty_to_type_info(ec, ty)?;
-                        Expression::BuiltinGetTypeProperty {
-                            builtin: BuiltinProperty::IsRefType,
-                            type_name,
-                            type_span,
+                        Expression::IntrinsicFunction {
+                            kind: IntrinsicFunctionKind::IsRefType {
+                                type_name,
+                                type_span,
+                            },
                             span,
                         }
                     } else if call_path.prefixes.is_empty()
@@ -1419,7 +1527,10 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                                 return Err(ec.error(error));
                             }
                         };
-                        Expression::SizeOfVal { exp, span }
+                        Expression::IntrinsicFunction {
+                            kind: IntrinsicFunctionKind::SizeOfVal { exp },
+                            span,
+                        }
                     } else {
                         let type_arguments = match generics_opt {
                             Some((_double_colon_token, generic_args)) => {
@@ -1539,82 +1650,146 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             lhs,
             star_token,
             rhs,
-        } => binary_op_call(ec, "multiply", star_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("multiply", star_token.span(), span, lhs, rhs)?
+        }
         Expr::Div {
             lhs,
             forward_slash_token,
             rhs,
-        } => binary_op_call(ec, "divide", forward_slash_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("divide", forward_slash_token.span(), span, lhs, rhs)?
+        }
         Expr::Modulo {
             lhs,
             percent_token,
             rhs,
-        } => binary_op_call(ec, "modulo", percent_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("modulo", percent_token.span(), span, lhs, rhs)?
+        }
         Expr::Add {
             lhs,
             add_token,
             rhs,
-        } => binary_op_call(ec, "add", add_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("add", add_token.span(), span, lhs, rhs)?
+        }
         Expr::Sub {
             lhs,
             sub_token,
             rhs,
-        } => binary_op_call(ec, "subtract", sub_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("subtract", sub_token.span(), span, lhs, rhs)?
+        }
         Expr::Shl {
             lhs,
             shl_token,
             rhs,
-        } => binary_op_call(ec, "lsh", shl_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("lsh", shl_token.span(), span, lhs, rhs)?
+        }
         Expr::Shr {
             lhs,
             shr_token,
             rhs,
-        } => binary_op_call(ec, "rsh", shr_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("rsh", shr_token.span(), span, lhs, rhs)?
+        }
         Expr::BitAnd {
             lhs,
             ampersand_token,
             rhs,
-        } => binary_op_call(ec, "binary_and", ampersand_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("binary_and", ampersand_token.span(), span, lhs, rhs)?
+        }
         Expr::BitXor {
             lhs,
             caret_token,
             rhs,
-        } => binary_op_call(ec, "binary_xor", caret_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("binary_xor", caret_token.span(), span, lhs, rhs)?
+        }
         Expr::BitOr {
             lhs,
             pipe_token,
             rhs,
-        } => binary_op_call(ec, "binary_or", pipe_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("binary_or", pipe_token.span(), span, lhs, rhs)?
+        }
         Expr::Equal {
             lhs,
             double_eq_token,
             rhs,
-        } => binary_op_call(ec, "eq", double_eq_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("eq", double_eq_token.span(), span, lhs, rhs)?
+        }
         Expr::NotEqual {
             lhs,
             bang_eq_token,
             rhs,
-        } => binary_op_call(ec, "neq", bang_eq_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("neq", bang_eq_token.span(), span, lhs, rhs)?
+        }
         Expr::LessThan {
             lhs,
             less_than_token,
             rhs,
-        } => binary_op_call(ec, "lt", less_than_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("lt", less_than_token.span(), span, lhs, rhs)?
+        }
         Expr::GreaterThan {
             lhs,
             greater_than_token,
             rhs,
-        } => binary_op_call(ec, "gt", greater_than_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("gt", greater_than_token.span(), span, lhs, rhs)?
+        }
         Expr::LessThanEq {
             lhs,
             less_than_eq_token,
             rhs,
-        } => binary_op_call(ec, "le", less_than_eq_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("le", less_than_eq_token.span(), span, lhs, rhs)?
+        }
         Expr::GreaterThanEq {
             lhs,
             greater_than_eq_token,
             rhs,
-        } => binary_op_call(ec, "ge", greater_than_eq_token.span(), span, *lhs, *rhs)?,
+        } => {
+            let lhs = expr_to_expression(ec, *lhs)?;
+            let rhs = expr_to_expression(ec, *rhs)?;
+            binary_op_call("ge", greater_than_eq_token.span(), span, lhs, rhs)?
+        }
         Expr::LogicalAnd { lhs, rhs, .. } => Expression::LazyOperator {
             op: LazyOp::And,
             lhs: Box::new(expr_to_expression(ec, *lhs)?),
@@ -1658,12 +1833,11 @@ fn unary_op_call(
 }
 
 fn binary_op_call(
-    ec: &mut ErrorContext,
     name: &'static str,
     op_span: Span,
     span: Span,
-    lhs: Expr,
-    rhs: Expr,
+    lhs: Expression,
+    rhs: Expression,
 ) -> Result<Expression, ErrorEmitted> {
     Ok(Expression::MethodApplication {
         method_name: MethodName::FromTrait {
@@ -1677,7 +1851,7 @@ fn binary_op_call(
             },
         },
         contract_call_params: Vec::new(),
-        arguments: vec![expr_to_expression(ec, lhs)?, expr_to_expression(ec, rhs)?],
+        arguments: vec![lhs, rhs],
         type_arguments: Vec::new(),
         span,
     })
@@ -2094,7 +2268,7 @@ fn literal_to_literal(
                     if let Some(hex_digits) = orig_str.strip_prefix("0x") {
                         let num_digits = hex_digits.chars().filter(|c| *c != '_').count();
                         match num_digits {
-                            2 => Literal::Byte(u8::try_from(parsed).unwrap()),
+                            1..=16 => Literal::U64(u64::try_from(parsed).unwrap()),
                             64 => {
                                 let bytes = parsed.to_bytes_be();
                                 let mut full_bytes = [0u8; 32];
@@ -2109,7 +2283,7 @@ fn literal_to_literal(
                     } else if let Some(bin_digits) = orig_str.strip_prefix("0b") {
                         let num_digits = bin_digits.chars().filter(|c| *c != '_').count();
                         match num_digits {
-                            8 => Literal::Byte(u8::try_from(parsed).unwrap()),
+                            1..=64 => Literal::U64(u64::try_from(parsed).unwrap()),
                             256 => {
                                 let bytes = parsed.to_bytes_be();
                                 let mut full_bytes = [0u8; 32];
@@ -2310,7 +2484,7 @@ fn asm_block_to_asm_expression(
             let asm_register = AsmRegister {
                 name: asm_final_expr.register.as_str().to_owned(),
             };
-            let returns = Some((asm_register, asm_final_expr.register.span().clone()));
+            let returns = Some((asm_register, asm_final_expr.register.span()));
             let return_type = match asm_final_expr.ty_opt {
                 Some((_colon_token, ty)) => ty_to_type_info(ec, ty)?,
                 None => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
@@ -2465,7 +2639,7 @@ fn statement_let_to_ast_nodes(
                     span: span.clone(),
                 };
                 let tuple_tys_opt = match ty_opt {
-                    Some(Ty::Tuple(tys)) => Some(tys.into_inner().into_iter().collect::<Vec<_>>()),
+                    Some(Ty::Tuple(tys)) => Some(tys.into_inner().to_tys()),
                     _ => None,
                 };
                 for (index, pattern) in pat_tuple.into_inner().into_iter().enumerate() {
@@ -2502,11 +2676,11 @@ fn statement_let_to_ast_nodes(
     )
 }
 
-fn dependency_to_include_statement(dependency: Dependency) -> IncludeStatement {
+fn dependency_to_include_statement(dependency: &Dependency) -> IncludeStatement {
     IncludeStatement {
-        alias: None,
+        _alias: None,
         span: dependency.span(),
-        path_span: dependency.path.span(),
+        _path_span: dependency.path.span(),
     }
 }
 
@@ -2759,6 +2933,23 @@ fn generic_args_to_type_arguments(
             Ok(TypeArgument { type_id, span })
         })
         .collect()
+}
+
+fn ty_tuple_descriptor_to_type_arguments(
+    ec: &mut ErrorContext,
+    ty_tuple_descriptor: TyTupleDescriptor,
+) -> Result<Vec<TypeArgument>, ErrorEmitted> {
+    let type_arguments = match ty_tuple_descriptor {
+        TyTupleDescriptor::Nil => vec![],
+        TyTupleDescriptor::Cons { head, tail, .. } => {
+            let mut type_arguments = vec![ty_to_type_argument(ec, *head)?];
+            for ty in tail.into_iter() {
+                type_arguments.push(ty_to_type_argument(ec, ty)?);
+            }
+            type_arguments
+        }
+    };
+    Ok(type_arguments)
 }
 
 fn path_type_to_type_info(

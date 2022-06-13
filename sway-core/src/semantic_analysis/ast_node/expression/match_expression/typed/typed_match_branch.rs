@@ -1,4 +1,4 @@
-use sway_types::Span;
+use sway_types::{Span, Spanned};
 
 use crate::{
     error::{err, ok},
@@ -8,6 +8,7 @@ use crate::{
         TypedExpressionVariant, TypedVariableDeclaration, VariableMutability,
     },
     type_engine::{insert_type, unify_with_self},
+    types::DeterministicallyAborts,
     CompileResult, MatchBranch, TypeInfo, TypedDeclaration,
 };
 
@@ -33,8 +34,6 @@ impl TypedMatchBranch {
             namespace,
             return_type_annotation,
             self_type,
-            build_config,
-            dead_code_graph,
             opts,
             help_text,
             mode,
@@ -93,8 +92,6 @@ impl TypedMatchBranch {
                 return_type_annotation: insert_type(TypeInfo::Unknown),
                 help_text,
                 self_type,
-                build_config,
-                dead_code_graph,
                 mode,
                 opts,
             }),
@@ -148,7 +145,6 @@ impl TypedMatchBranch {
         let new_result = TypedExpression {
             expression: TypedExpressionVariant::CodeBlock(TypedCodeBlock {
                 contents: code_block_contents,
-                whole_block_span: typed_result_span.clone(),
             }),
             return_type: typed_result.return_type,
             is_constant: IsConstant::No,

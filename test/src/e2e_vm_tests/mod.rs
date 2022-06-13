@@ -1,4 +1,5 @@
 mod harness;
+use assert_matches::assert_matches;
 use forc_util::init_tracing_subscriber;
 use fuel_vm::prelude::*;
 pub fn run(filter_regex: Option<regex::Regex>) {
@@ -10,10 +11,31 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             .unwrap_or(true)
     };
 
-    // Non-contract programs that should successfully compile and terminate
-    // with some known state. Note that if you are adding a contract, it may pass by mistake.
-    // Please add contracts to `positive_project_names_with_abi`.
-    let positive_project_names_no_abi = vec![
+    // Predicate programs that should successfully compile and terminate
+    // with some known state. Note that if you are adding a non-predicate, it may pass by mistake.
+    // Please add non-predicates to `positive_project_names_with_abi`.
+    let positive_project_names_no_abi = vec![(
+        "should_pass/language/basic_predicate",
+        ProgramState::Return(1),
+    )];
+
+    let mut number_of_tests_run =
+        positive_project_names_no_abi
+            .iter()
+            .fold(0, |acc, (name, res)| {
+                if filter(name) {
+                    assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), *res);
+                    acc + 1
+                } else {
+                    acc
+                }
+            });
+
+    // Programs that should successfully compile, include abi and terminate
+    // with some known state. Note that if a predicate is included
+    // it will be rejected during assertion. Please move it to
+    // `positive_project_names_no_abi` above.
+    let positive_project_names_with_abi = vec![
         (
             "should_pass/forc/dependency_package_field",
             ProgramState::Return(0),
@@ -46,6 +68,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         (
             "should_pass/language/struct_field_reassignment",
             ProgramState::Return(0),
+        ),
+        (
+            "should_pass/language/tuple_field_reassignment",
+            ProgramState::Return(320),
         ),
         (
             "should_pass/language/enum_in_fn_decl",
@@ -314,6 +340,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/contract_caller_as_type",
             ProgramState::Return(42),
         ),
+        (
+            "should_pass/language/non_literal_const_decl",
+            ProgramState::Return(42),
+        ),
         /*
          * This test is disabled because in order to work correctly it requires that we implement
          * `&mut self` methods.
@@ -381,14 +411,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             ProgramState::Return(5),
         ),
         (
-            "should_pass/language/generate_uid",
-            ProgramState::ReturnData(Bytes32::from([
-                0x17, 0x6e, 0x57, 0xc7, 0x2a, 0x93, 0x91, 0x74, 0x4a, 0x01, 0x44, 0x98, 0xb6, 0xda,
-                0xee, 0x2f, 0xb5, 0x30, 0x0a, 0x6f, 0x57, 0xd3, 0xf9, 0x24, 0x06, 0x39, 0xcf, 0x3b,
-                0xfb, 0xc7, 0x88, 0x4e,
-            ])),
-        ),
-        (
             "should_pass/language/match_expressions_inside_generic_functions",
             ProgramState::Return(1),
         ),
@@ -400,28 +422,34 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/vec",
             ProgramState::Return(1),
         ),
-    ];
-
-    let mut number_of_tests_run =
-        positive_project_names_no_abi
-            .iter()
-            .fold(0, |acc, (name, res)| {
-                if filter(name) {
-                    assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), *res);
-                    acc + 1
-                } else {
-                    acc
-                }
-            });
-
-    // Programs that should successfully compile, include abi and terminate
-    // with some known state. Note that if a non-contract is included
-    // it will be rejected during assertion. Please move it to
-    // `positive_project_names_no_abi` above.
-    let positive_project_names_with_abi = vec![
+        (
+            "should_pass/language/tuple_single_element",
+            ProgramState::Return(1),
+        ),
+        (
+            "should_pass/language/reassignment_operators",
+            ProgramState::Return(1),
+        ),
         (
             "should_pass/language/valid_impurity",
             ProgramState::Revert(0), // false
+        ),
+        ("should_pass/language/const_inits", ProgramState::Return(1)),
+        (
+            "should_pass/language/enum_padding",
+            ProgramState::ReturnData(Bytes32::from([
+                0xce, 0x55, 0xff, 0x05, 0x11, 0x3a, 0x24, 0x2e, 0xc7, 0x9a, 0x23, 0x75, 0x0c, 0x7e,
+                0x2b, 0xab, 0xaf, 0x98, 0xa8, 0xdc, 0x41, 0x66, 0x90, 0xc8, 0x57, 0xdd, 0x31, 0x72,
+                0x0c, 0x74, 0x82, 0xb6,
+            ])),
+        ),
+        (
+            "should_pass/language/unit_type_variants",
+            ProgramState::ReturnData(Bytes32::from([
+                0xcd, 0x04, 0xa4, 0x75, 0x44, 0x98, 0xe0, 0x6d, 0xb5, 0xa1, 0x3c, 0x5f, 0x37, 0x1f,
+                0x1f, 0x04, 0xff, 0x6d, 0x24, 0x70, 0xf2, 0x4a, 0xa9, 0xbd, 0x88, 0x65, 0x40, 0xe5,
+                0xdc, 0xe7, 0x7f, 0x70,
+            ])), // "ReturnData":{"data":"0000000000000002", .. }
         ),
         (
             "should_pass/test_contracts/auth_testing_contract",
@@ -467,6 +495,14 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/test_contracts/abi_with_tuples_contract",
             ProgramState::Revert(0),
         ),
+        (
+            "should_pass/test_contracts/get_storage_key_contract",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/multiple_impl",
+            ProgramState::Revert(0),
+        ),
     ];
 
     number_of_tests_run += positive_project_names_with_abi
@@ -474,9 +510,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         .fold(0, |acc, (name, res)| {
             if filter(name) {
                 assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), *res);
-                // cannot use partial eq on type `anyhow::Error` so I've used `matches!` here instead.
-                // https://users.rust-lang.org/t/issues-in-asserting-result/61198/3 for reference.
-                assert!(crate::e2e_vm_tests::harness::test_json_abi(name).is_ok());
+                assert_matches!(crate::e2e_vm_tests::harness::test_json_abi(name), Ok(_));
                 acc + 1
             } else {
                 acc
@@ -485,6 +519,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
 
     // source code that should _not_ compile
     let negative_project_names = vec![
+        "should_fail/cyclic_dependency/dependency_a",
         "should_fail/recursive_calls",
         "should_fail/asm_missing_return",
         "should_fail/asm_should_not_have_return",
@@ -546,6 +581,19 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/trait_pure_calls_impure",
         "should_fail/match_expressions_empty_arms",
         "should_fail/type_mismatch_error_message",
+        "should_fail/recursive_enum",
+        "should_fail/recursive_struct",
+        "should_fail/recursive_type_chain",
+        "should_fail/better_type_error_message",
+        "should_fail/storage_in_library",
+        "should_fail/storage_in_predicate",
+        "should_fail/storage_in_script",
+        "should_fail/multiple_impl_abi",
+        "should_fail/multiple_impl_fns",
+        "should_fail/repeated_enum_variant",
+        "should_fail/repeated_storage_field",
+        "should_fail/repeated_struct_field",
+        "should_fail/storage_conflict",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
@@ -609,8 +657,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ),
         (
             (
-                "should_pass/test_contracts/nested_struct_args_contract",
-                "should_pass/require_contract_deployment/nested_struct_args_caller",
+                "should_pass/test_contracts/get_storage_key_contract",
+                "should_pass/require_contract_deployment/get_storage_key_caller",
             ),
             1,
         ),

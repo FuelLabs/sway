@@ -1,14 +1,8 @@
-use sway_types::{Ident, Span};
+use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    error::{err, ok},
-    semantic_analysis::{
-        insert_type_parameters,
-        namespace::{Items, Path, Root},
-        CopyTypes, TypeMapping,
-    },
-    type_engine::{insert_type, look_up_type_id, unify, unify_with_self, TypeId},
-    CompileError, CompileResult, TypeArgument, TypeInfo, TypeParameter,
+    error::*, namespace::*, type_engine::*, CompileError, CompileResult, TypeArgument, TypeInfo,
+    TypeParameter,
 };
 
 use super::CreateTypeId;
@@ -64,7 +58,7 @@ pub(crate) trait Monomorphize {
 
 impl<T> Monomorphize for T
 where
-    T: MonomorphizeHelper<Output = T>,
+    T: MonomorphizeHelper<Output = T> + Spanned,
 {
     type Output = T;
 
@@ -83,9 +77,10 @@ where
             (true, true) => ok(self, warnings, errors),
             (false, true) => {
                 if let EnforceTypeArguments::Yes = enforce_type_arguments {
+                    let name_span = self.name().span();
                     errors.push(CompileError::NeedsTypeArguments {
                         name: self.name().clone(),
-                        span: call_site_span.unwrap_or_else(|| self.name().span()).clone(),
+                        span: call_site_span.unwrap_or(&name_span).clone(),
                     });
                     return err(warnings, errors);
                 }
@@ -104,7 +99,7 @@ where
                     .iter()
                     .map(|x| x.span.clone())
                     .reduce(Span::join)
-                    .unwrap_or_else(|| self.span().clone());
+                    .unwrap_or_else(|| self.span());
                 errors.push(CompileError::DoesNotTakeTypeArguments {
                     name: self.name().clone(),
                     span: type_arguments_span,
@@ -138,7 +133,7 @@ where
                     .iter()
                     .map(|x| x.span.clone())
                     .reduce(Span::join)
-                    .unwrap_or_else(|| self.span().clone());
+                    .unwrap_or_else(|| self.span());
                 if self.type_parameters().len() != type_arguments.len() {
                     errors.push(CompileError::IncorrectNumberOfTypeArguments {
                         given: type_arguments.len(),
@@ -193,7 +188,6 @@ pub(crate) trait MonomorphizeHelper {
 
     fn type_parameters(&self) -> &[TypeParameter];
     fn name(&self) -> &Ident;
-    fn span(&self) -> &Span;
     fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output;
 }
 

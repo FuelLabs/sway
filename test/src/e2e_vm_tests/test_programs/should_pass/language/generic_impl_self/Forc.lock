@@ -1,7 +1,14 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-DA3FEDB2AB26E552'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-DA3FEDB2AB26E552'
 dependencies = []
 
 [[package]]
 name = 'generic_impl_self'
+source = 'root'
 dependencies = ['core']

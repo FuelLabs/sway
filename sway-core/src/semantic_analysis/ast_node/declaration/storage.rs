@@ -7,6 +7,7 @@ use crate::{
     type_engine::{TypeId, TypeInfo},
     Ident,
 };
+use sway_types::Spanned;
 use sway_types::{state::StateIndex, Span};
 
 use derivative::Derivative;
@@ -14,10 +15,16 @@ use derivative::Derivative;
 #[derive(Clone, Debug, Derivative)]
 #[derivative(PartialEq, Eq)]
 pub struct TypedStorageDeclaration {
-    pub(crate) fields: Vec<TypedStorageField>,
+    pub fields: Vec<TypedStorageField>,
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
-    span: Span,
+    pub span: Span,
+}
+
+impl Spanned for TypedStorageDeclaration {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
 }
 
 impl TypedStorageDeclaration {
@@ -55,7 +62,7 @@ impl TypedStorageDeclaration {
         type_checked_buf.push(TypeCheckedStorageAccessDescriptor {
             name: first_field.clone(),
             r#type: *initial_field_type,
-            span: first_field.span().clone(),
+            span: first_field.span(),
         });
 
         fn update_available_struct_fields(id: TypeId) -> Vec<TypedStructField> {
@@ -114,10 +121,6 @@ impl TypedStorageDeclaration {
         )
     }
 
-    pub fn span(&self) -> Span {
-        self.span.clone()
-    }
-
     pub(crate) fn fields_as_typed_struct_fields(&self) -> Vec<TypedStructField> {
         self.fields
             .iter()
@@ -138,8 +141,8 @@ impl TypedStorageDeclaration {
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedStorageField {
-    pub(crate) name: Ident,
-    pub(crate) r#type: TypeId,
+    pub name: Ident,
+    pub r#type: TypeId,
     pub(crate) span: Span,
 }
 

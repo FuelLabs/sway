@@ -18,9 +18,9 @@ pub fn get_formatted_data(
     let parsed_res = sway_core::parse(file.clone(), build_config);
 
     match parsed_res.value {
-        Some(parse_tree) => {
+        Some(parse_program) => {
             // 1 Step: get all individual changes/updates of a Sway file
-            let changes = traverse_for_changes(&parse_tree);
+            let changes = traverse_for_changes(&parse_program.root.tree);
             let mut rope_file = Rope::from_str(&file);
 
             let mut offset: i32 = 0;
@@ -735,6 +735,36 @@ fn main() {
 }
 "#;
 
+        let result = get_formatted_data(sway_code.into(), OPTIONS, None);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
+    }
+
+    #[test]
+    fn test_op_equal() {
+        let correct_sway_code = r#"script;
+fn main() {
+    let mut a = 1;
+    a += 1;
+    a -= 1;
+    a /= 1;
+    a *= 1;
+    a <<= 1;
+    a >>= 1;
+}
+"#;
+        let sway_code = r#"script;
+fn main() {
+    let mut a = 1;
+    a += 1;
+    a -= 1;
+    a /= 1;
+    a *= 1;
+    a <<= 1;
+    a >>= 1;
+}
+"#;
         let result = get_formatted_data(sway_code.into(), OPTIONS, None);
         assert!(result.is_ok());
         let (_, formatted_code) = result.unwrap();

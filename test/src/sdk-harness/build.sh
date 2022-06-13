@@ -28,7 +28,7 @@ test_dirs="${base_dir}/test_artifacts/* ${base_dir}/test_projects/*"
 for test_dir in $test_dirs; do
   if [[ -f "${test_dir}/Forc.toml" ]]; then
     echo "Building test $test_dir..."
-    ${forc} build -o temp -p "${test_dir}" && echo ✔
+    ${forc} build --locked -o temp -p "${test_dir}" && echo ✔
     if ! [[ -f temp ]]; then
       echo  "❌  Failed to build $test_dir"
       exit 1

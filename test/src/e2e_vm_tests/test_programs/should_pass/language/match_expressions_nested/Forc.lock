@@ -1,11 +1,22 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-0FAC91CD97E3941F'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-0FAC91CD97E3941F'
 dependencies = []
 
 [[package]]
 name = 'match_expressions_nested'
+source = 'root'
 dependencies = ['std']
 
 [[package]]
 name = 'std'
-dependencies = ['core']
+source = 'path+from-root-0FAC91CD97E3941F'
+dependencies = [
+    'core',
+    'core_utils',
+]

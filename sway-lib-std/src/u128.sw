@@ -2,7 +2,7 @@ library u128;
 
 use core::num::*;
 use ::assert::assert;
-use ::context::registers::flags;
+use ::flags::*;
 use ::result::Result;
 
 /// The 128-bit unsigned integer type.
@@ -49,35 +49,9 @@ impl core::ops::Ord for U128 {
 // impl core::ops::OrdEq for U128 {
 // }
 
-fn disable_overflow() {
-    // Mask second bit, which is `F_WRAPPING`.
-    // TODO can't use binary literal: https://github.com/FuelLabs/sway/issues/1664
-    // 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000010
-    let mask = 2;
-    // Get the current value of the flags register and mask it, setting the
-    // masked bit. Flags are inverted, so set = off.
-    let flag_val = flags() | mask;
-    asm(flag_val: flag_val) {
-        flag flag_val;
-    }
-}
-
-fn enable_overflow() {
-    // Mask second bit, which is `F_WRAPPING`.
-    // TODO can't use binary literal: https://github.com/FuelLabs/sway/issues/1664
-    // 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111101
-    let mask = 18446744073709551613;
-    // Get the current value of the flags register and mask it, unsetting the
-    // masked bit. Flags are inverted, so unset = on.
-    let flag_val = flags() & mask;
-    asm(flag_val: flag_val) {
-        flag flag_val;
-    }
-}
-
 impl u64 {
     pub fn overflowing_add(self, right: Self) -> U128 {
-        disable_overflow();
+        disable_panic_on_overflow();
         let mut result = U128 {
             upper: 0,
             lower: 0,
@@ -93,12 +67,12 @@ impl u64 {
             // Store the sum into the second word of result.
             sw result_ptr sum i1;
         };
-        enable_overflow();
+        enable_panic_on_overflow();
         result
     }
 
     pub fn overflowing_mul(self, right: Self) -> U128 {
-        disable_overflow();
+        disable_panic_on_overflow();
         let mut result = U128 {
             upper: 0,
             lower: 0,
@@ -114,7 +88,7 @@ impl u64 {
             // Store the product into the second word of result.
             sw result_ptr product i1;
         };
-        enable_overflow();
+        enable_panic_on_overflow();
         result
     }
 }
@@ -179,22 +153,21 @@ impl core::ops::Shiftable for U128 {
     pub fn lsh(self, rhs: u64) -> Self {
         // If shifting by at least the number of bits, then saturate with
         // zeroes.
-        if (rhs >= 128) {
+        if rhs >= 128 {
             return ~Self::new();
         }
 
         // If shifting by at least half the number of bits, then upper word can
         // be discarded.
-        // TODO remove the `else` once #1682 is fixed
-        else if (rhs >= 64) {
-            return ~Self::from(self.lower << (rhs - 64), 0);
+        if rhs >= 64 {
+            return ~Self::from(self.lower <<(rhs - 64), 0);
         }
 
         // If shifting by less than half the number of bits, then need to
         // partially shift both upper and lower.
 
         // Save highest bits of lower half.
-        let highest_lower_bits = self.lower >> (64 - rhs);
+        let highest_lower_bits = self.lower >>(64 - rhs);
 
         let upper = (self.upper << rhs) + highest_lower_bits;
         let lower = self.lower << rhs;
@@ -213,14 +186,14 @@ impl core::ops::Shiftable for U128 {
         // be discarded.
         // TODO remove the `else` once #1682 is fixed
         else if (rhs >= 64) {
-            return ~Self::from(0, self.upper >> (rhs - 64));
+            return ~Self::from(0, self.upper >>(rhs - 64));
         }
 
         // If shifting by less than half the number of bits, then need to
         // partially shift both upper and lower.
 
         // Save lowest bits of upper half.
-        let lowest_upper_bits = self.upper << (64 - rhs);
+        let lowest_upper_bits = self.upper <<(64 - rhs);
 
         let upper = self.upper >> rhs;
         let lower = (self.lower >> rhs) + lowest_upper_bits;

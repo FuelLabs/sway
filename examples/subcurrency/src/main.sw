@@ -4,12 +4,13 @@ contract;
 use std::{
     address::Address,
     assert::assert,
-    chain::auth::{AuthError, Sender, msg_sender},
+    chain::auth::{AuthError, msg_sender},
     hash::sha256,
+    identity::Identity,
     logging::log,
     result::*,
     revert::revert,
-    storage::{get, store}
+    storage::StorageMap,
 };
 
 ////////////////////////////////////////
@@ -36,11 +37,11 @@ struct Sent {
 abi Token {
     // Mint new tokens and send to an address.
     // Can only be called by the contract creator.
-    fn mint(receiver: Address, amount: u64);
+    #[storage(read, write)]fn mint(receiver: Address, amount: u64);
 
     // Sends an amount of an existing token.
     // Can be called from any address.
-    fn send(receiver: Address, amount: u64);
+    #[storage(read, write)]fn send(receiver: Address, amount: u64);
 }
 
 ////////////////////////////////////////
@@ -55,9 +56,10 @@ const MINTER: b256 = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7e
 ////////////////////////////////////////
 
 // Contract storage persists across transactions.
-// Note: Contract storage mappings are not implemented yet, so the domain
-//  separator needs to be provided manually.
-const STORAGE_BALANCES: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+storage {
+    balances: StorageMap<Address,
+    u64>, 
+}
 
 ////////////////////////////////////////
 // ABI definitions
@@ -65,12 +67,12 @@ const STORAGE_BALANCES: b256 = 0x00000000000000000000000000000000000000000000000
 
 /// Contract implements the `Token` ABI.
 impl Token for Contract {
-    fn mint(receiver: Address, amount: u64) {
+    #[storage(read, write)]fn mint(receiver: Address, amount: u64) {
         // Note: The return type of `msg_sender()` can be inferred by the
         // compiler. It is shown here for explicitness.
-        let sender: Result<Sender, AuthError> = msg_sender();
+        let sender: Result<Identity, AuthError> = msg_sender();
         let sender: Address = match sender.unwrap() {
-            Sender::Address(addr) => {
+            Identity::Address(addr) => {
                 assert(addr == ~Address::from(MINTER));
                 addr
             },
@@ -80,17 +82,15 @@ impl Token for Contract {
         };
 
         // Increase the balance of receiver
-        let storage_slot = sha256((STORAGE_BALANCES, receiver));
-        let receiver_amount = get::<u64>(storage_slot);
-        store(storage_slot, receiver_amount + amount);
+        storage.balances.insert(receiver, storage.balances.get(receiver) + amount)
     }
 
-    fn send(receiver: Address, amount: u64) {
+    #[storage(read, write)]fn send(receiver: Address, amount: u64) {
         // Note: The return type of `msg_sender()` can be inferred by the
         // compiler. It is shown here for explicitness.
-        let sender: Result<Sender, AuthError> = msg_sender();
+        let sender: Result<Identity, AuthError> = msg_sender();
         let sender: Address = match sender.unwrap() {
-            Sender::Address(addr) => {
+            Identity::Address(addr) => {
                 assert(addr == ~Address::from(MINTER));
                 addr
             },
@@ -100,15 +100,12 @@ impl Token for Contract {
         };
 
         // Reduce the balance of sender
-        let sender_storage_slot = sha256((STORAGE_BALANCES, sender));
-        let sender_amount = get::<u64>(sender_storage_slot);
+        let sender_amount = storage.balances.get(sender);
         assert(sender_amount > amount);
-        store(sender_storage_slot, sender_amount - amount);
+        storage.balances.insert(sender, sender_amount - amount);
 
         // Increase the balance of receiver
-        let receiver_storage_slot = sha256((STORAGE_BALANCES, receiver));
-        let receiver_amount = get::<u64>(receiver_storage_slot);
-        store(receiver_storage_slot, receiver_amount + amount);
+        storage.balances.insert(receiver, storage.balances.get(receiver) + amount);
 
         log(Sent {
             from: sender, to: receiver, amount: amount

@@ -1,0 +1,22 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-E22D083410030709'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-E22D083410030709'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'path+from-root-E22D083410030709'
+dependencies = [
+    'core',
+    'core_utils',
+]
+
+[[package]]
+name = 'tuple_single_element'
+source = 'root'
+dependencies = ['std']

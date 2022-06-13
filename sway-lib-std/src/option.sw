@@ -31,7 +31,7 @@ impl<T> Option<T> {
     fn is_some(self) -> bool {
         match self {
             Option::Some(_) => true,
-            _ => false,
+            _ => false, 
         }
     }
 
@@ -39,7 +39,7 @@ impl<T> Option<T> {
     fn is_none(self) -> bool {
         match self {
             Option::Some(_) => false,
-            _ => true,
+            _ => true, 
         }
     }
 
@@ -51,7 +51,7 @@ impl<T> Option<T> {
     fn unwrap(self) -> T {
         match self {
             Option::Some(inner_value) => inner_value,
-            _ => revert(0),
+            _ => revert(0), 
         }
     }
 }

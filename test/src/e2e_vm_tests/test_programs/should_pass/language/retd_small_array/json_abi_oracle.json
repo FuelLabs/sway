@@ -1,0 +1,20 @@
+[
+  {
+    "inputs": [],
+    "name": "main",
+    "outputs": [
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "__array_element",
+            "type": "u32"
+          }
+        ],
+        "name": "",
+        "type": "[u32; 1]"
+      }
+    ],
+    "type": "function"
+  }
+]

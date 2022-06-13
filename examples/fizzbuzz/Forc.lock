@@ -1,11 +1,22 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-08CA839BA84C13D2'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-08CA839BA84C13D2'
 dependencies = []
 
 [[package]]
 name = 'fizzbuzz'
+source = 'root'
 dependencies = ['std']
 
 [[package]]
 name = 'std'
-dependencies = ['core']
+source = 'path+from-root-08CA839BA84C13D2'
+dependencies = [
+    'core',
+    'core_utils',
+]

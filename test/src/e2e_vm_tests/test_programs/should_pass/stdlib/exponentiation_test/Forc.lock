@@ -1,11 +1,22 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-31441D12B1FE5745'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-31441D12B1FE5745'
 dependencies = []
 
 [[package]]
 name = 'exponentiation_test'
+source = 'root'
 dependencies = ['std']
 
 [[package]]
 name = 'std'
-dependencies = ['core']
+source = 'path+from-root-31441D12B1FE5745'
+dependencies = [
+    'core',
+    'core_utils',
+]

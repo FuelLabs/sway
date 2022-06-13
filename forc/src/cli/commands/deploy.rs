@@ -9,9 +9,6 @@ pub struct Command {
     /// Path to the project, if not specified, current working directory will be used.
     #[clap(short, long)]
     pub path: Option<String>,
-    /// Whether to compile using the original (pre- IR) pipeline.
-    #[clap(long, hide = true)]
-    pub use_orig_asm: bool,
     /// Whether to compile to bytecode (false) or to print out the generated ASM (true).
     #[clap(long)]
     pub print_finalized_asm: bool,
@@ -51,6 +48,15 @@ pub struct Command {
     /// If url is specified overrides network url in manifest file (if there is one).
     #[clap(long, short)]
     pub url: Option<String>,
+    /// Name of the build profile to use.
+    /// If it is not specified, forc will use debug build profile.
+    #[clap(long)]
+    pub build_profile: Option<String>,
+    /// Use release build plan. If a custom release plan is not specified, it is implicitly added to the manifest file.
+    ///
+    /// If --build-profile is also provided, forc omits this flag and uses provided build-profile.
+    #[clap(long)]
+    pub release: bool,
 }
 
 pub(crate) async fn exec(command: Command) -> Result<()> {

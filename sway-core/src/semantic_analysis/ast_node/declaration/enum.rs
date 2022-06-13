@@ -1,24 +1,24 @@
 use crate::{
     error::*,
-    namespace::Items,
+    namespace::*,
     parse_tree::*,
-    semantic_analysis::{
-        declaration::EnforceTypeArguments, insert_type_parameters, CopyTypes, TypeMapping,
+    semantic_analysis::*,
+    type_engine::{
+        insert_type, insert_type_parameters, look_up_type_id, CopyTypes, CreateTypeId,
+        ReplaceSelfType, TypeId, TypeMapping, UpdateTypes,
     },
-    type_engine::*,
-    CompileError, CompileResult, Ident, Namespace,
+    types::{JsonAbiString, ToJsonAbi},
+    TypeInfo,
 };
 use fuels_types::Property;
 use std::hash::{Hash, Hasher};
-use sway_types::Span;
-
-use super::{monomorphize_inner, CreateTypeId, MonomorphizeHelper};
+use sway_types::{Ident, Span, Spanned};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedEnumDeclaration {
-    pub(crate) name: Ident,
+    pub name: Ident,
     pub(crate) type_parameters: Vec<TypeParameter>,
-    pub(crate) variants: Vec<TypedEnumVariant>,
+    pub variants: Vec<TypedEnumVariant>,
     pub(crate) span: Span,
     pub(crate) visibility: Visibility,
 }
@@ -56,6 +56,12 @@ impl CreateTypeId for TypedEnumDeclaration {
     }
 }
 
+impl Spanned for TypedEnumDeclaration {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
+
 impl MonomorphizeHelper for TypedEnumDeclaration {
     type Output = TypedEnumDeclaration;
 
@@ -65,10 +71,6 @@ impl MonomorphizeHelper for TypedEnumDeclaration {
 
     fn name(&self) -> &Ident {
         &self.name
-    }
-
-    fn span(&self) -> &Span {
-        &self.span
     }
 
     fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output {
@@ -85,42 +87,33 @@ impl TypedEnumDeclaration {
         let mut errors = vec![];
         let mut warnings = vec![];
 
+        let EnumDeclaration {
+            name,
+            mut type_parameters,
+            variants,
+            span,
+            visibility,
+        } = decl;
+
         // create a namespace for the decl, used to create a scope for generics
         let mut namespace = namespace.clone();
 
         // insert type parameters as Unknown types
-        let type_mapping = insert_type_parameters(&decl.type_parameters);
+        let type_mapping = insert_type_parameters(&type_parameters);
 
         // update the types in the type parameters
-        let new_type_parameters = decl
-            .type_parameters
-            .into_iter()
-            .map(|mut type_parameter| {
-                type_parameter.type_id = match look_up_type_id(type_parameter.type_id)
-                    .matches_type_parameter(&type_mapping)
-                {
-                    Some(matching_id) => {
-                        insert_type(TypeInfo::Ref(matching_id, type_parameter.span()))
-                    }
-                    None => check!(
-                        namespace.resolve_type_with_self(
-                            look_up_type_id(type_parameter.type_id),
-                            self_type,
-                            &type_parameter.span(),
-                            EnforceTypeArguments::Yes
-                        ),
-                        insert_type(TypeInfo::ErrorRecovery),
-                        warnings,
-                        errors,
-                    ),
-                };
-                type_parameter
-            })
-            .collect::<Vec<_>>();
+        for type_parameter in type_parameters.iter_mut() {
+            check!(
+                type_parameter.update_types(&type_mapping, &mut namespace, self_type),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+        }
 
         // insert the generics into the decl namespace and
         // check to see if the type parameters shadow one another
-        for type_parameter in new_type_parameters.iter() {
+        for type_parameter in type_parameters.iter() {
             check!(
                 namespace.insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
                 continue,
@@ -131,7 +124,7 @@ impl TypedEnumDeclaration {
 
         // type check the variants
         let mut variants_buf = vec![];
-        for variant in decl.variants {
+        for variant in variants {
             variants_buf.push(check!(
                 TypedEnumVariant::type_check(
                     variant.clone(),
@@ -148,11 +141,11 @@ impl TypedEnumDeclaration {
 
         // create the enum decl
         let decl = TypedEnumDeclaration {
-            name: decl.name.clone(),
-            type_parameters: new_type_parameters,
+            name,
+            type_parameters,
             variants: variants_buf,
-            span: decl.span.clone(),
-            visibility: decl.visibility,
+            span,
+            visibility,
         };
         ok(decl, warnings, errors)
     }
@@ -183,8 +176,8 @@ impl TypedEnumDeclaration {
 
 #[derive(Debug, Clone, Eq)]
 pub struct TypedEnumVariant {
-    pub(crate) name: Ident,
-    pub(crate) r#type: TypeId,
+    pub name: Ident,
+    pub r#type: TypeId,
     pub(crate) tag: usize,
     pub(crate) span: Span,
 }
@@ -214,6 +207,24 @@ impl PartialEq for TypedEnumVariant {
 impl CopyTypes for TypedEnumVariant {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.r#type.update_type(type_mapping, &self.span);
+    }
+}
+
+impl ToJsonAbi for TypedEnumVariant {
+    type Output = Property;
+
+    fn generate_json_abi(&self) -> Self::Output {
+        Property {
+            name: self.name.to_string(),
+            type_field: self.r#type.json_abi_str(),
+            components: self.r#type.generate_json_abi(),
+        }
+    }
+}
+
+impl ReplaceSelfType for TypedEnumVariant {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.r#type.replace_self_type(self_type);
     }
 }
 
@@ -253,13 +264,5 @@ impl TypedEnumVariant {
             vec![],
             errors,
         )
-    }
-
-    pub fn generate_json_abi(&self) -> Property {
-        Property {
-            name: self.name.to_string(),
-            type_field: self.r#type.json_abi_str(),
-            components: self.r#type.generate_json_abi(),
-        }
     }
 }

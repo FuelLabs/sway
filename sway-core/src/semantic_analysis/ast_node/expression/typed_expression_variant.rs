@@ -1,20 +1,19 @@
-use super::*;
+use crate::{parse_tree::*, semantic_analysis::*, type_engine::*};
 
-use crate::{parse_tree::AsmOp, semantic_analysis::ast_node::*, Ident};
-use std::collections::HashMap;
-use sway_types::state::StateIndex;
+use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
 use derivative::Derivative;
+use std::{collections::HashMap, fmt};
 
 #[derive(Clone, Debug)]
-pub(crate) struct ContractCallMetadata {
+pub struct ContractCallMetadata {
     pub(crate) func_selector: [u8; 4],
     pub(crate) contract_address: Box<TypedExpression>,
 }
 
 #[derive(Clone, Debug, Derivative)]
 #[derivative(Eq)]
-pub(crate) enum TypedExpressionVariant {
+pub enum TypedExpressionVariant {
     Literal(Literal),
     FunctionApplication {
         call_path: CallPath,
@@ -22,8 +21,11 @@ pub(crate) enum TypedExpressionVariant {
         contract_call_params: HashMap<String, TypedExpression>,
         arguments: Vec<(Ident, TypedExpression)>,
         function_body: TypedCodeBlock,
+        function_body_name_span: Span,
+        function_body_purity: Purity,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
+        self_state_idx: Option<StateIndex>,
         #[derivative(Eq(bound = ""))]
         selector: Option<ContractCallMetadata>,
     },
@@ -97,17 +99,7 @@ pub(crate) enum TypedExpressionVariant {
     },
     #[allow(dead_code)]
     StorageAccess(TypeCheckedStorageAccess),
-    TypeProperty {
-        property: BuiltinProperty,
-        type_id: TypeId,
-        span: Span,
-    },
-    GenerateUid {
-        span: Span,
-    },
-    SizeOfValue {
-        expr: Box<TypedExpression>,
-    },
+    IntrinsicFunction(TypedIntrinsicFunctionKind),
     /// a zero-sized type-system-only compile-time thing that is used for constructing ABI casts.
     AbiName(AbiName),
     /// grabs the enum tag from the particular enum and variant of the `exp`
@@ -303,21 +295,7 @@ impl PartialEq for TypedExpressionVariant {
                     ..
                 },
             ) => l_abi_name == r_abi_name && (**l_address) == (**r_address),
-            (
-                Self::TypeProperty {
-                    property: l_prop,
-                    type_id: l_type_id,
-                    ..
-                },
-                Self::TypeProperty {
-                    property: r_prop,
-                    type_id: r_type_id,
-                    ..
-                },
-            ) => l_prop == r_prop && look_up_type_id(*l_type_id) == look_up_type_id(*r_type_id),
-            (Self::SizeOfValue { expr: l_expr }, Self::SizeOfValue { expr: r_expr }) => {
-                l_expr == r_expr
-            }
+            (Self::IntrinsicFunction(l_kind), Self::IntrinsicFunction(r_kind)) => l_kind == r_kind,
             (
                 Self::UnsafeDowncast {
                     exp: l_exp,
@@ -419,10 +397,9 @@ impl CopyTypes for TypedExpressionVariant {
             AbiCast { address, .. } => address.copy_types(type_mapping),
             // storage is never generic and cannot be monomorphized
             StorageAccess { .. } => (),
-            TypeProperty { type_id, span, .. } => {
-                type_id.update_type(type_mapping, span);
+            IntrinsicFunction(kind) => {
+                kind.copy_types(type_mapping);
             }
-            SizeOfValue { expr } => expr.copy_types(type_mapping),
             EnumTag { exp } => {
                 exp.copy_types(type_mapping);
             }
@@ -430,89 +407,15 @@ impl CopyTypes for TypedExpressionVariant {
                 exp.copy_types(type_mapping);
                 variant.copy_types(type_mapping);
             }
-            GenerateUid { .. } => (),
             AbiName(_) => (),
         }
     }
 }
 
-/// Describes the full storage access including all the subfields
-#[derive(Clone, Debug)]
-pub struct TypeCheckedStorageAccess {
-    pub(crate) fields: Vec<TypeCheckedStorageAccessDescriptor>,
-    pub(crate) ix: StateIndex,
-}
-
-impl TypeCheckedStorageAccess {
-    pub fn storage_field_name(&self) -> Ident {
-        self.fields[0].name.clone()
-    }
-    pub fn span(&self) -> Span {
-        self.fields
-            .iter()
-            .fold(self.fields[0].span.clone(), |acc, field| {
-                Span::join(acc, field.span.clone())
-            })
-    }
-}
-
-/// Describes a single subfield access in the sequence when accessing a subfield within storage.
-#[derive(Clone, Debug)]
-pub struct TypeCheckedStorageAccessDescriptor {
-    pub(crate) name: Ident,
-    pub(crate) r#type: TypeId,
-    pub(crate) span: Span,
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct TypedAsmRegisterDeclaration {
-    pub(crate) initializer: Option<TypedExpression>,
-    pub(crate) name: Ident,
-}
-
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedAsmRegisterDeclaration {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && if let (Some(l), Some(r)) = (self.initializer.clone(), other.initializer.clone()) {
-                l == r
-            } else {
-                true
-            }
-    }
-}
-
-impl CopyTypes for TypedAsmRegisterDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        if let Some(ref mut initializer) = self.initializer {
-            initializer.copy_types(type_mapping)
-        }
-    }
-}
-
-impl TypedExpressionVariant {
-    pub(crate) fn pretty_print(&self) -> String {
-        match self {
-            TypedExpressionVariant::Literal(lit) => format!(
-                "literal {}",
-                match lit {
-                    Literal::U8(content) => content.to_string(),
-                    Literal::U16(content) => content.to_string(),
-                    Literal::U32(content) => content.to_string(),
-                    Literal::U64(content) => content.to_string(),
-                    Literal::Numeric(content) => content.to_string(),
-                    Literal::String(content) => content.as_str().to_string(),
-                    Literal::Boolean(content) => content.to_string(),
-                    Literal::Byte(content) => content.to_string(),
-                    Literal::B256(content) => content
-                        .iter()
-                        .map(|x| x.to_string())
-                        .collect::<Vec<_>>()
-                        .join(", "),
-                }
-            ),
+impl fmt::Display for TypedExpressionVariant {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            TypedExpressionVariant::Literal(lit) => format!("literal {}", lit),
             TypedExpressionVariant::FunctionApplication {
                 call_path: name, ..
             } => {
@@ -525,7 +428,7 @@ impl TypedExpressionVariant {
             TypedExpressionVariant::Tuple { fields } => {
                 let fields = fields
                     .iter()
-                    .map(|field| field.pretty_print())
+                    .map(|field| field.to_string())
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("tuple({})", fields)
@@ -549,7 +452,7 @@ impl TypedExpressionVariant {
             } => {
                 format!(
                     "\"{}.{}\" struct field access",
-                    look_up_type_id(*resolved_type_of_parent).friendly_type_str(),
+                    look_up_type_id(*resolved_type_of_parent),
                     field_to_access.name
                 )
             }
@@ -560,7 +463,7 @@ impl TypedExpressionVariant {
             } => {
                 format!(
                     "\"{}.{}\" tuple index",
-                    look_up_type_id(*resolved_type_of_parent).friendly_type_str(),
+                    look_up_type_id(*resolved_type_of_parent),
                     elem_to_access_num
                 )
             }
@@ -583,33 +486,74 @@ impl TypedExpressionVariant {
             TypedExpressionVariant::StorageAccess(access) => {
                 format!("storage field {} access", access.storage_field_name())
             }
-            TypedExpressionVariant::TypeProperty {
-                property, type_id, ..
-            } => {
-                let type_str = look_up_type_id(*type_id).friendly_type_str();
-                match property {
-                    BuiltinProperty::SizeOfType => format!("size_of({type_str:?})"),
-                    BuiltinProperty::IsRefType => format!("is_ref_type({type_str:?})"),
-                }
-            }
-            TypedExpressionVariant::SizeOfValue { expr } => {
-                format!("size_of_val({:?})", expr.pretty_print())
-            }
-            TypedExpressionVariant::GenerateUid { .. } => "generate_uid".to_string(),
+            TypedExpressionVariant::IntrinsicFunction(kind) => kind.to_string(),
             TypedExpressionVariant::AbiName(n) => format!("ABI name {}", n),
             TypedExpressionVariant::EnumTag { exp } => {
-                format!(
-                    "({} as tag)",
-                    look_up_type_id(exp.return_type).friendly_type_str()
-                )
+                format!("({} as tag)", look_up_type_id(exp.return_type))
             }
             TypedExpressionVariant::UnsafeDowncast { exp, variant } => {
-                format!(
-                    "({} as {})",
-                    look_up_type_id(exp.return_type).friendly_type_str(),
-                    variant.name
-                )
+                format!("({} as {})", look_up_type_id(exp.return_type), variant.name)
             }
+        };
+        write!(f, "{}", s)
+    }
+}
+
+/// Describes the full storage access including all the subfields
+#[derive(Clone, Debug)]
+pub struct TypeCheckedStorageAccess {
+    pub fields: Vec<TypeCheckedStorageAccessDescriptor>,
+    pub(crate) ix: StateIndex,
+}
+
+impl Spanned for TypeCheckedStorageAccess {
+    fn span(&self) -> Span {
+        self.fields
+            .iter()
+            .fold(self.fields[0].span.clone(), |acc, field| {
+                Span::join(acc, field.span.clone())
+            })
+    }
+}
+
+impl TypeCheckedStorageAccess {
+    pub fn storage_field_name(&self) -> Ident {
+        self.fields[0].name.clone()
+    }
+}
+
+/// Describes a single subfield access in the sequence when accessing a subfield within storage.
+#[derive(Clone, Debug)]
+pub struct TypeCheckedStorageAccessDescriptor {
+    pub name: Ident,
+    pub(crate) r#type: TypeId,
+    pub(crate) span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub struct TypedAsmRegisterDeclaration {
+    pub(crate) initializer: Option<TypedExpression>,
+    pub(crate) name: Ident,
+}
+
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl PartialEq for TypedAsmRegisterDeclaration {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && if let (Some(l), Some(r)) = (self.initializer.clone(), other.initializer.clone()) {
+                l == r
+            } else {
+                true
+            }
+    }
+}
+
+impl CopyTypes for TypedAsmRegisterDeclaration {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        if let Some(ref mut initializer) = self.initializer {
+            initializer.copy_types(type_mapping)
         }
     }
 }

@@ -1,11 +1,22 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-A779871B261C194D'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-A779871B261C194D'
 dependencies = []
 
 [[package]]
 name = 'native_token'
+source = 'root'
 dependencies = ['std']
 
 [[package]]
 name = 'std'
-dependencies = ['core']
+source = 'path+from-root-A779871B261C194D'
+dependencies = [
+    'core',
+    'core_utils',
+]

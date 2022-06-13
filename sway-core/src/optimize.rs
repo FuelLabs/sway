@@ -1,48 +1,41 @@
-use fuel_crypto::Hasher;
-use std::{collections::HashMap, sync::Arc};
-
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     constants,
-    error::CompileError,
-    parse_tree::{AsmOp, AsmRegister, BuiltinProperty, LazyOp, Literal, Visibility},
+    error::*,
+    parse_tree::{promote_purity, AsmOp, AsmRegister, LazyOp, Literal, Purity, Visibility},
     semantic_analysis::{ast_node::*, *},
     type_engine::*,
 };
+use fuel_crypto::Hasher;
+use std::{collections::HashMap, sync::Arc};
+use uint::construct_uint;
 
-use sway_types::{ident::Ident, span::Span, state::StateIndex};
+use sway_types::{ident::Ident, span::Span, state::StateIndex, Spanned};
 
 use sway_ir::*;
 
 // -------------------------------------------------------------------------------------------------
 
-pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, CompileError> {
+pub(crate) fn compile_program(program: TypedProgram) -> Result<Context, CompileError> {
+    let TypedProgram { kind, root } = program;
+
     let mut ctx = Context::default();
-    match ast {
-        TypedParseTree::Script {
-            namespace,
+    match kind {
+        TypedProgramKind::Script {
             main_function,
             declarations,
-            all_nodes: _,
         }
-        | TypedParseTree::Predicate {
-            namespace,
+        | TypedProgramKind::Predicate {
             main_function,
             declarations,
-            all_nodes: _,
             // predicates and scripts have the same codegen, their only difference is static
             // type-check time checks.
-        } => compile_script(&mut ctx, main_function, &namespace, declarations),
-        TypedParseTree::Contract {
+        } => compile_script(&mut ctx, main_function, &root.namespace, declarations),
+        TypedProgramKind::Contract {
             abi_entries,
-            namespace,
             declarations,
-            all_nodes: _,
-        } => compile_contract(&mut ctx, abi_entries, &namespace, declarations),
-        TypedParseTree::Library {
-            namespace: _,
-            all_nodes: _,
-        } => unimplemented!("compile library to ir"),
+        } => compile_contract(&mut ctx, abi_entries, &root.namespace, declarations),
+        TypedProgramKind::Library { .. } => unimplemented!("compile library to ir"),
     }?;
     ctx.verify()
         .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))
@@ -116,7 +109,7 @@ fn compile_constants(
         };
 
         if let Some((name, value)) = decl_name_value {
-            let const_val = compile_constant_expression(context, value)?;
+            let const_val = compile_constant_expression(context, module, value)?;
             module.add_global_constant(context, name.as_str().to_owned(), const_val);
         }
     }
@@ -130,17 +123,25 @@ fn compile_constants(
 
 fn compile_constant_expression(
     context: &mut Context,
+    module: Module,
     const_expr: &TypedExpression,
 ) -> Result<Value, CompileError> {
-    if let TypedExpressionVariant::Literal(literal) = &const_expr.expression {
-        let span_md_idx = MetadataIndex::from_span(context, &const_expr.span);
-        Ok(convert_literal_to_value(context, literal, span_md_idx))
-    } else {
-        Err(CompileError::Internal(
-            "Unsupported constant expression type.",
-            const_expr.span.clone(),
-        ))
-    }
+    let span_id_idx = MetadataIndex::from_span(context, &const_expr.span);
+    let err = match &const_expr.expression {
+        // Special case functions because the span in `const_expr` is to the inlined function
+        // definition, rather than the actual call site.
+        TypedExpressionVariant::FunctionApplication { call_path, .. } => {
+            Err(CompileError::NonConstantDeclValue {
+                span: call_path.span(),
+            })
+        }
+        _otherwise => Err(CompileError::NonConstantDeclValue {
+            span: const_expr.span.clone(),
+        }),
+    };
+    let mut known_consts = MappedStack::<Ident, Constant>::new();
+    const_eval_typed_expr(context, module, &mut known_consts, const_expr)
+        .map_or(err, |c| Ok(Value::new_constant(context, c, span_id_idx)))
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -163,7 +164,7 @@ fn compile_declarations(
         match declaration {
             TypedDeclaration::ConstantDeclaration(decl) => {
                 // These are in the global scope for the module, so they can be added there.
-                let const_val = compile_constant_expression(context, &decl.value)?;
+                let const_val = compile_constant_expression(context, module, &decl.value)?;
                 module.add_global_constant(context, decl.name.as_str().to_owned(), const_val);
             }
 
@@ -174,11 +175,7 @@ fn compile_declarations(
                 //
                 //compile_function(context, module, decl).map(|_| ())?
             }
-            TypedDeclaration::ImplTrait {
-                methods: _,
-                type_implementing_for: _,
-                ..
-            } => {
+            TypedDeclaration::ImplTrait(_) => {
                 // And for the same reason we don't need to compile impls at all.
                 //
                 // compile_impl(
@@ -206,7 +203,7 @@ fn compile_declarations(
 
 // -------------------------------------------------------------------------------------------------
 
-fn get_aggregate_for_types(
+pub fn get_aggregate_for_types(
     context: &mut Context,
     type_ids: &[TypeId],
 ) -> Result<Aggregate, CompileError> {
@@ -219,7 +216,7 @@ fn get_aggregate_for_types(
 
 // -------------------------------------------------------------------------------------------------
 
-fn create_enum_aggregate(
+pub fn create_enum_aggregate(
     context: &mut Context,
     variants: Vec<TypedEnumVariant>,
 ) -> Result<Aggregate, CompileError> {
@@ -229,18 +226,21 @@ fn create_enum_aggregate(
         .into_iter()
         .map(|tev| convert_resolved_typeid_no_span(context, &tev.r#type))
         .collect::<Result<Vec<_>, CompileError>>()?;
-    let enum_aggregate = Aggregate::new_struct(context, field_types);
 
-    // Create the tagged union struct next.
-    Ok(Aggregate::new_struct(
-        context,
-        vec![Type::Uint(64), Type::Union(enum_aggregate)],
-    ))
+    // Enums where all the variants are unit types don't really need the union. Only a tag is
+    // needed. For consistency, and to keep enums as reference types, we keep the tag in an
+    // Aggregate.
+    Ok(if field_types.iter().all(|f| matches!(f, Type::Unit)) {
+        Aggregate::new_struct(context, vec![Type::Uint(64)])
+    } else {
+        let enum_aggregate = Aggregate::new_struct(context, field_types);
+        Aggregate::new_struct(context, vec![Type::Uint(64), Type::Union(enum_aggregate)])
+    })
 }
 
 // -------------------------------------------------------------------------------------------------
 
-fn create_tuple_aggregate(
+pub fn create_tuple_aggregate(
     context: &mut Context,
     fields: Vec<TypeId>,
 ) -> Result<Aggregate, CompileError> {
@@ -250,6 +250,17 @@ fn create_tuple_aggregate(
         .collect::<Result<Vec<_>, CompileError>>()?;
 
     Ok(Aggregate::new_struct(context, field_types))
+}
+
+// -------------------------------------------------------------------------------------------------
+
+pub fn create_array_aggregate(
+    context: &mut Context,
+    element_type_id: TypeId,
+    count: u64,
+) -> Result<Aggregate, CompileError> {
+    let element_type = convert_resolved_typeid_no_span(context, &element_type_id)?;
+    Ok(Aggregate::new_array(context, element_type, count))
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -269,7 +280,7 @@ fn compile_function(
             .iter()
             .map(|param| {
                 convert_resolved_typeid(context, &param.r#type, &param.type_span)
-                    .map(|ty| (param.name.as_str().into(), ty, param.name.span().clone()))
+                    .map(|ty| (param.name.as_str().into(), ty, param.name.span()))
             })
             .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
@@ -292,6 +303,8 @@ fn compile_fn_with_args(
         return_type,
         return_type_span,
         visibility,
+        purity,
+        span,
         ..
     } = ast_fn_decl;
 
@@ -300,6 +313,20 @@ fn compile_fn_with_args(
         .map(|(name, ty, span)| (name, ty, MetadataIndex::from_span(context, &span)))
         .collect();
     let ret_type = convert_resolved_typeid(context, &return_type, &return_type_span)?;
+    let span_md_idx = MetadataIndex::from_span(context, &span);
+    let storage_md_idx = if purity == Purity::Pure {
+        None
+    } else {
+        Some(MetadataIndex::get_storage_index(
+            context,
+            match purity {
+                Purity::Pure => unreachable!("Already checked for Pure above."),
+                Purity::Reads => StorageOperation::Reads,
+                Purity::Writes => StorageOperation::Writes,
+                Purity::ReadsWrites => StorageOperation::ReadsWrites,
+            },
+        ))
+    };
     let func = Function::new(
         context,
         module,
@@ -308,6 +335,8 @@ fn compile_fn_with_args(
         ret_type,
         selector,
         visibility == Visibility::Public,
+        span_md_idx,
+        storage_md_idx,
     );
 
     // We clone the struct symbols here, as they contain the globals; any new local declarations
@@ -401,7 +430,7 @@ fn compile_abi_method(
                         "Cannot generate selector for ABI method: {}",
                         ast_fn_decl.name.as_str()
                     ),
-                    ast_fn_decl.name.span().clone(),
+                    ast_fn_decl.name.span(),
                 ))
             };
         }
@@ -412,7 +441,7 @@ fn compile_abi_method(
         .iter()
         .map(|param| {
             convert_resolved_typeid(context, &param.r#type, &param.type_span)
-                .map(|ty| (param.name.as_str().into(), ty, param.name.span().clone()))
+                .map(|ty| (param.name.as_str().into(), ty, param.name.span()))
         })
         .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
@@ -528,7 +557,7 @@ impl FnCompiler {
                                 &tr.rhs,
                                 span_md_idx,
                             ),
-                        TypedDeclaration::ImplTrait { span, .. } => {
+                        TypedDeclaration::ImplTrait(TypedImplTrait { span, .. }) => {
                             // XXX What if we ignore the trait implementation???  Potentially since
                             // we currently inline everything and below we 'recreate' the functions
                             // lazily as they are called, nothing needs to be done here.  BUT!
@@ -602,6 +631,9 @@ impl FnCompiler {
                 contract_call_params,
                 arguments,
                 function_body,
+                function_body_name_span,
+                function_body_purity,
+                self_state_idx,
                 selector,
             } => {
                 if let Some(metadata) = selector {
@@ -617,9 +649,11 @@ impl FnCompiler {
                 } else {
                     self.compile_fn_call(
                         context,
-                        name.suffix.as_str(),
                         arguments,
-                        Some(function_body),
+                        function_body,
+                        function_body_name_span,
+                        function_body_purity,
+                        self_state_idx,
                         span_md_idx,
                     )
                 }
@@ -702,34 +736,8 @@ impl FnCompiler {
                 let span_md_idx = MetadataIndex::from_span(context, &access.span());
                 self.compile_storage_access(context, &access.fields, &access.ix, span_md_idx)
             }
-            TypedExpressionVariant::TypeProperty {
-                property,
-                type_id,
-                span,
-            } => {
-                let ir_type = convert_resolved_typeid(context, &type_id, &span)?;
-                match property {
-                    BuiltinProperty::SizeOfType => Ok(Constant::get_uint(
-                        context,
-                        64,
-                        ir_type_size_in_bytes(context, &ir_type),
-                        None,
-                    )),
-                    BuiltinProperty::IsRefType => {
-                        Ok(Constant::get_bool(context, !ir_type.is_copy_type(), None))
-                    }
-                }
-            }
-            TypedExpressionVariant::SizeOfValue { expr } => {
-                // Compile the expression in case of side-effects but ignore its value.
-                let ir_type = convert_resolved_typeid(context, &expr.return_type, &expr.span)?;
-                self.compile_expression(context, *expr)?;
-                Ok(Constant::get_uint(
-                    context,
-                    64,
-                    ir_type_size_in_bytes(context, &ir_type),
-                    None,
-                ))
+            TypedExpressionVariant::IntrinsicFunction(kind) => {
+                self.compile_intrinsic_function(context, kind, ast_expr.span)
             }
             TypedExpressionVariant::AbiName(_) => {
                 Ok(Value::new_constant(context, Constant::new_unit(), None))
@@ -738,21 +746,53 @@ impl FnCompiler {
                 self.compile_unsafe_downcast(context, exp, variant)
             }
             TypedExpressionVariant::EnumTag { exp } => self.compile_enum_tag(context, exp),
-            TypedExpressionVariant::GenerateUid { span } => {
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------
+
+    fn compile_intrinsic_function(
+        &mut self,
+        context: &mut Context,
+        kind: TypedIntrinsicFunctionKind,
+        span: Span,
+    ) -> Result<Value, CompileError> {
+        match kind {
+            TypedIntrinsicFunctionKind::SizeOfVal { exp } => {
+                // Compile the expression in case of side-effects but ignore its value.
+                let ir_type = convert_resolved_typeid(context, &exp.return_type, &exp.span)?;
+                self.compile_expression(context, *exp)?;
+                Ok(Constant::get_uint(
+                    context,
+                    64,
+                    ir_type_size_in_bytes(context, &ir_type),
+                    None,
+                ))
+            }
+            TypedIntrinsicFunctionKind::SizeOfType { type_id, type_span } => {
+                let ir_type = convert_resolved_typeid(context, &type_id, &type_span)?;
+                Ok(Constant::get_uint(
+                    context,
+                    64,
+                    ir_type_size_in_bytes(context, &ir_type),
+                    None,
+                ))
+            }
+            TypedIntrinsicFunctionKind::IsRefType { type_id, type_span } => {
+                let ir_type = convert_resolved_typeid(context, &type_id, &type_span)?;
+                Ok(Constant::get_bool(context, !ir_type.is_copy_type(), None))
+            }
+            TypedIntrinsicFunctionKind::GetStorageKey => {
                 let span_md_idx = MetadataIndex::from_span(context, &span);
-                self.compile_generate_uid(context, span_md_idx)
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .get_storage_key(span_md_idx, None))
             }
         }
     }
 
     // ---------------------------------------------------------------------------------------------
-    fn compile_generate_uid(
-        &mut self,
-        context: &mut Context,
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Result<Value, CompileError> {
-        Ok(self.current_block.ins(context).generate_uid(span_md_idx))
-    }
 
     fn compile_return_statement(
         &mut self,
@@ -1037,12 +1077,15 @@ impl FnCompiler {
 
     // ---------------------------------------------------------------------------------------------
 
+    #[allow(clippy::too_many_arguments)]
     fn compile_fn_call(
         &mut self,
         context: &mut Context,
-        _ast_name: &str,
         ast_args: Vec<(Ident, TypedExpression)>,
-        callee_body: Option<TypedCodeBlock>,
+        callee_body: TypedCodeBlock,
+        callee_span: Span,
+        callee_purity: Purity,
+        self_state_idx: Option<StateIndex>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         // XXX OK, now, the old compiler inlines everything very lazily.  Function calls include
@@ -1075,8 +1118,6 @@ impl FnCompiler {
                 })
                 .collect();
 
-            let callee_body = callee_body.unwrap();
-
             // We're going to have to reverse engineer the return type.
             let return_type = Self::get_codeblock_return_type(&callee_body).unwrap_or_else(||
                     // This code block is missing a return or implicit return.  The only time I've
@@ -1089,13 +1130,13 @@ impl FnCompiler {
                 name: callee_ident,
                 body: callee_body,
                 parameters,
-                span: crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
+                span: callee_span,
                 return_type,
                 type_parameters: Vec::new(),
                 return_type_span: crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 visibility: Visibility::Private,
                 is_contract_call: false,
-                purity: Default::default(),
+                purity: callee_purity,
             };
 
             let callee = compile_function(context, self.module, callee_fn_decl)?;
@@ -1105,10 +1146,18 @@ impl FnCompiler {
                 .into_iter()
                 .map(|(_, expr)| self.compile_expression(context, expr))
                 .collect::<Result<Vec<Value>, CompileError>>()?;
-            Ok(self
-                .current_block
-                .ins(context)
-                .call(callee.unwrap(), &args, span_md_idx))
+            let state_idx_md_idx = match self_state_idx {
+                Some(self_state_idx) => {
+                    MetadataIndex::from_state_idx(context, self_state_idx.to_usize())
+                }
+                None => None,
+            };
+            Ok(self.current_block.ins(context).call(
+                callee.unwrap(),
+                &args,
+                span_md_idx,
+                state_idx_md_idx,
+            ))
         }
     }
 
@@ -1408,7 +1457,7 @@ impl FnCompiler {
         } else {
             Err(CompileError::Internal(
                 "Unsupported constant declaration type, expecting a literal.",
-                name.span().clone(),
+                name.span(),
             ))
         }
     }
@@ -1423,7 +1472,7 @@ impl FnCompiler {
     ) -> Result<Value, CompileError> {
         let name = self
             .lexical_map
-            .get(ast_reassignment.lhs[0].name.as_str())
+            .get(ast_reassignment.lhs_base_name.as_str())
             .expect("All local symbols must be in the lexical symbol map.");
 
         // First look for a local ptr with the required name
@@ -1442,7 +1491,7 @@ impl FnCompiler {
                     .ok_or_else(|| {
                         CompileError::InternalOwned(
                             format!("variable not found: {name}"),
-                            ast_reassignment.lhs[0].name.span().clone(),
+                            ast_reassignment.lhs_base_name.span(),
                         )
                     })?
                     .1
@@ -1451,8 +1500,7 @@ impl FnCompiler {
 
         let reassign_val = self.compile_expression(context, ast_reassignment.rhs)?;
 
-        assert!(!ast_reassignment.lhs.is_empty());
-        if ast_reassignment.lhs.len() == 1 {
+        if ast_reassignment.lhs_indices.is_empty() {
             // A non-aggregate; use a `store`.
             self.current_block
                 .ins(context)
@@ -1461,17 +1509,20 @@ impl FnCompiler {
             // An aggregate.  Iterate over the field names from the left hand side and collect
             // field indices.  The struct type from the previous iteration is used to determine the
             // field type for the current iteration.
-            let field_idcs = get_indices_for_struct_access(&ast_reassignment.lhs)?;
+            let field_idcs = get_indices_for_struct_access(
+                ast_reassignment.lhs_type,
+                &ast_reassignment.lhs_indices,
+            )?;
 
             let ty = match val.get_type(context).unwrap() {
                 Type::Struct(aggregate) => aggregate,
                 _otherwise => {
                     let spans = ast_reassignment
-                        .lhs
+                        .lhs_indices
                         .iter()
-                        .map(|lhs| lhs.name.span().clone())
-                        .reduce(Span::join)
-                        .expect("Joined spans of LHS of reassignment.");
+                        .fold(ast_reassignment.lhs_base_name.span(), |acc, lhs| {
+                            Span::join(acc, lhs.span())
+                        });
                     return Err(CompileError::Internal(
                         "Reassignment with multiple accessors to non-aggregate.",
                         spans,
@@ -1514,7 +1565,8 @@ impl FnCompiler {
 
         // Get the list of indices used to access the storage field. This will be empty
         // if the storage field type is not a struct.
-        let field_idcs = get_indices_for_struct_access(fields)?;
+        let base_type = fields[0].r#type;
+        let field_idcs = get_indices_for_struct_access(base_type, &fields[1..])?;
 
         // Do the actual work. This is a recursive function because we want to drill down
         // to store each primitive type in the storage field in its own storage slot.
@@ -1592,7 +1644,8 @@ impl FnCompiler {
                         array_expr_span)
                 })
             }
-            ValueDatum::Argument(Type::Array(aggregate)) => Ok(*aggregate),
+            ValueDatum::Argument(Type::Array(aggregate))
+            | ValueDatum::Constant(Constant { ty : Type::Array(aggregate), ..}) => Ok (*aggregate),
             otherwise => Err(CompileError::InternalOwned(
                 format!("Unsupported array value for index expression: {otherwise:?}"),
                 array_expr_span,
@@ -1692,19 +1745,26 @@ impl FnCompiler {
                     )
                 })
             }
-            ValueDatum::Argument(Type::Struct(aggregate)) => Ok(*aggregate),
+            ValueDatum::Argument(Type::Struct(aggregate))
+            | ValueDatum::Constant(Constant {
+                ty: Type::Struct(aggregate),
+                ..
+            }) => Ok(*aggregate),
             otherwise => Err(CompileError::InternalOwned(
                 format!("Unsupported struct value for field expression: {otherwise:?}",),
                 ast_struct_expr_span,
             )),
         }?;
 
-        let field_idx = match get_struct_name_and_field_index(struct_type_id, &ast_field.name) {
+        let field_kind = ProjectionKind::StructField {
+            name: ast_field.name.clone(),
+        };
+        let field_idx = match get_struct_name_field_index_and_type(struct_type_id, field_kind) {
             None => Err(CompileError::Internal(
                 "Unknown struct in field expression.",
                 ast_field.span,
             )),
-            Some((struct_name, field_idx)) => match field_idx {
+            Some((struct_name, field_idx_and_type_opt)) => match field_idx_and_type_opt {
                 None => Err(CompileError::InternalOwned(
                     format!(
                         "Unknown field name '{}' for struct '{struct_name}' in field expression.",
@@ -1712,7 +1772,7 @@ impl FnCompiler {
                     ),
                     ast_field.span,
                 )),
-                Some(field_idx) => Ok(field_idx),
+                Some((field_idx, _field_type)) => Ok(field_idx),
             },
         }?;
 
@@ -1753,20 +1813,32 @@ impl FnCompiler {
             span_md_idx,
         );
 
-        Ok(match contents {
-            None => agg_value,
-            Some(te) => {
-                // Insert the value too.
-                let contents_value = self.compile_expression(context, *te)?;
-                self.current_block.ins(context).insert_value(
-                    agg_value,
-                    aggregate,
-                    contents_value,
-                    vec![1],
-                    span_md_idx,
-                )
+        // If the struct representing the enum has only one field, then that field is basically the
+        // tag and all the variants must have unit types, hence the absence of the union.
+        // Therefore, there is no need for another `insert_value` instruction here.
+        match &context.aggregates[aggregate.0] {
+            AggregateContent::FieldTypes(field_tys) => {
+                Ok(if field_tys.len() == 1 {
+                    agg_value
+                } else {
+                    match contents {
+                        None => agg_value,
+                        Some(te) => {
+                            // Insert the value too.
+                            let contents_value = self.compile_expression(context, *te)?;
+                            self.current_block.ins(context).insert_value(
+                                agg_value,
+                                aggregate,
+                                contents_value,
+                                vec![1],
+                                span_md_idx,
+                            )
+                        }
+                    }
+                })
             }
-        })
+            _ => unreachable!("Wrong content for struct."),
+        }
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -1858,7 +1930,9 @@ impl FnCompiler {
 
         // Get the list of indices used to access the storage field. This will be empty
         // if the storage field type is not a struct.
-        let field_idcs = get_indices_for_struct_access(fields)?;
+        // FIXME: shouldn't have to extract the first field like this.
+        let base_type = fields[0].r#type;
+        let field_idcs = get_indices_for_struct_access(base_type, &fields[1..])?;
 
         // Do the actual work. This is a recursive function because we want to drill down
         // to load each primitive type in the storage field in its own storage slot.
@@ -1945,7 +2019,7 @@ impl FnCompiler {
         rhs: &Option<Value>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
-        Ok(match r#type {
+        match r#type {
             Type::Struct(aggregate) => {
                 let mut struct_val =
                     Constant::get_undef(context, Type::Struct(*aggregate), span_md_idx);
@@ -2000,9 +2074,9 @@ impl FnCompiler {
                         }
                     }
                 }
-                struct_val
+                Ok(struct_val)
             }
-            Type::Bool | Type::Uint(_) | Type::B256 => {
+            _ => {
                 // Calculate the storage location hash for the given field
                 let mut storage_slot_to_hash = format!(
                     "{}{}",
@@ -2038,7 +2112,7 @@ impl FnCompiler {
 
                 // Convert the key pointer to a value using get_ptr
                 let key_ptr_ty = *key_ptr.get_type(context);
-                let key_ptr_val =
+                let mut key_ptr_val =
                     self.current_block
                         .ins(context)
                         .get_ptr(key_ptr, key_ptr_ty, 0, span_md_idx);
@@ -2049,96 +2123,260 @@ impl FnCompiler {
                     .store(key_ptr_val, const_key, span_md_idx);
 
                 match r#type {
-                    Type::Uint(_) | Type::Bool => {
-                        // These types fit in a word. use state_store_word/state_load_word
-                        match access_type {
-                            StateAccessType::Read => {
-                                // `state_load_word` always returns a `u64`. Cast the result back
-                                // to the right type before returning
-                                let load_val = self
-                                    .current_block
-                                    .ins(context)
-                                    .state_load_word(key_ptr_val, span_md_idx);
-                                self.current_block.ins(context).bitcast(
-                                    load_val,
-                                    *r#type,
-                                    span_md_idx,
-                                )
-                            }
-                            StateAccessType::Write => {
-                                // `state_store_word` requires a `u64`. Cast the value to store to
-                                // `u64` first before actually storing.
-                                let rhs_u64 = self.current_block.ins(context).bitcast(
-                                    rhs.expect("expecting a rhs for write"),
-                                    Type::Uint(64),
-                                    span_md_idx,
-                                );
-                                self.current_block.ins(context).state_store_word(
-                                    rhs_u64,
-                                    key_ptr_val,
-                                    span_md_idx,
-                                );
-                                rhs.expect("expecting a rhs for write")
-                            }
-                        }
-                    }
-                    Type::B256 => {
-                        // B256 requires 4 words. Use state_load_quad_word/state_store_quad_word
-                        // First, create a name for the value to load from or store to
-                        let mut value_name = format!("{}{}", "val_for_", ix.to_usize());
-                        for ix in &indices {
-                            value_name = format!("{}_{}", value_name, ix);
-                        }
-                        let alias_value_name =
-                            self.lexical_map.insert(value_name.as_str().to_owned());
-
-                        // Local pointer to hold the B256
-                        let value_ptr = self
-                            .function
-                            .new_local_ptr(context, alias_value_name, *r#type, true, None)
-                            .map_err(|ir_error| {
-                                CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
-                            })?;
-
-                        // Convert the local pointer created to a value using get_ptr
-                        let value_ptr_val = self.current_block.ins(context).get_ptr(
-                            value_ptr,
-                            *r#type,
-                            0,
-                            span_md_idx,
-                        );
-
-                        match access_type {
-                            StateAccessType::Read => {
-                                self.current_block.ins(context).state_load_quad_word(
-                                    value_ptr_val,
-                                    key_ptr_val,
-                                    span_md_idx,
-                                );
-                                value_ptr_val
-                            }
-                            StateAccessType::Write => {
-                                // Store the value to the local pointer created for rhs
-                                self.current_block.ins(context).store(
-                                    value_ptr_val,
-                                    rhs.expect("expecting a rhs for write"),
-                                    span_md_idx,
-                                );
-
-                                // Finally, just call state_load_quad_word/state_store_quad_word
-                                self.current_block.ins(context).state_store_quad_word(
-                                    value_ptr_val,
-                                    key_ptr_val,
-                                    span_md_idx,
-                                );
-                                rhs.expect("expecting a rhs for write")
-                            }
-                        }
-                    }
-                    _ => unreachable!(),
+                    Type::Array(_) => Err(CompileError::Internal(
+                        "Arrays in storage have not been implemented yet.",
+                        Span::dummy(),
+                    )),
+                    Type::B256 => self.compile_b256_storage(
+                        context,
+                        access_type,
+                        ix,
+                        &indices,
+                        &key_ptr_val,
+                        r#type,
+                        rhs,
+                        span_md_idx,
+                    ),
+                    Type::Bool | Type::Uint(_) => self.compile_uint_or_bool_storage(
+                        context,
+                        access_type,
+                        &key_ptr_val,
+                        r#type,
+                        rhs,
+                        span_md_idx,
+                    ),
+                    Type::String(_) | Type::Union(_) => self.compile_union_or_string_storage(
+                        context,
+                        access_type,
+                        ix,
+                        &indices,
+                        &mut key_ptr_val,
+                        &key_ptr,
+                        &hashed_storage_slot,
+                        r#type,
+                        rhs,
+                        span_md_idx,
+                    ),
+                    Type::Struct(_) => unreachable!("structs are already handled!"),
+                    Type::Unit => Ok(Constant::get_unit(context, span_md_idx)),
                 }
             }
-            _ => unimplemented!("Other types are not yet supported in storage"),
+        }
+    }
+
+    fn compile_uint_or_bool_storage(
+        &mut self,
+        context: &mut Context,
+        access_type: &StateAccessType,
+        key_ptr_val: &Value,
+        r#type: &Type,
+        rhs: &Option<Value>,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<Value, CompileError> {
+        Ok(match access_type {
+            StateAccessType::Read => {
+                // `state_load_word` always returns a `u64`. Cast the result back
+                // to the right type before returning
+                let load_val = self
+                    .current_block
+                    .ins(context)
+                    .state_load_word(*key_ptr_val, span_md_idx);
+                self.current_block
+                    .ins(context)
+                    .bitcast(load_val, *r#type, span_md_idx)
+            }
+            StateAccessType::Write => {
+                // `state_store_word` requires a `u64`. Cast the value to store to
+                // `u64` first before actually storing.
+                let rhs_u64 = self.current_block.ins(context).bitcast(
+                    rhs.expect("expecting a rhs for write"),
+                    Type::Uint(64),
+                    span_md_idx,
+                );
+                self.current_block.ins(context).state_store_word(
+                    rhs_u64,
+                    *key_ptr_val,
+                    span_md_idx,
+                );
+                rhs.expect("expecting a rhs for write")
+            }
+        })
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn compile_b256_storage(
+        &mut self,
+        context: &mut Context,
+        access_type: &StateAccessType,
+        ix: &StateIndex,
+        indices: &Vec<u64>,
+        key_ptr_val: &Value,
+        r#type: &Type,
+        rhs: &Option<Value>,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<Value, CompileError> {
+        // B256 requires 4 words. Use state_load_quad_word/state_store_quad_word
+        // First, create a name for the value to load from or store to
+        let mut value_name = format!("{}{}", "val_for_", ix.to_usize());
+        for ix in indices {
+            value_name = format!("{}_{}", value_name, ix);
+        }
+        let alias_value_name = self.lexical_map.insert(value_name.as_str().to_owned());
+
+        // Local pointer to hold the B256
+        let value_ptr = self
+            .function
+            .new_local_ptr(context, alias_value_name, *r#type, true, None)
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+
+        // Convert the local pointer created to a value using get_ptr
+        let value_ptr_val =
+            self.current_block
+                .ins(context)
+                .get_ptr(value_ptr, *r#type, 0, span_md_idx);
+
+        match access_type {
+            StateAccessType::Read => {
+                self.current_block.ins(context).state_load_quad_word(
+                    value_ptr_val,
+                    *key_ptr_val,
+                    span_md_idx,
+                );
+                Ok(value_ptr_val)
+            }
+            StateAccessType::Write => {
+                // Store the value to the local pointer created for rhs
+                self.current_block.ins(context).store(
+                    value_ptr_val,
+                    rhs.expect("expecting a rhs for write"),
+                    span_md_idx,
+                );
+
+                // Finally, just call state_load_quad_word/state_store_quad_word
+                self.current_block.ins(context).state_store_quad_word(
+                    value_ptr_val,
+                    *key_ptr_val,
+                    span_md_idx,
+                );
+                Ok(rhs.expect("expecting a rhs for write"))
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn compile_union_or_string_storage(
+        &mut self,
+        context: &mut Context,
+        access_type: &StateAccessType,
+        ix: &StateIndex,
+        indices: &[u64],
+        key_ptr_val: &mut Value,
+        key_ptr: &Pointer,
+        hashed_storage_slot: &fuel_types::Bytes32,
+        r#type: &Type,
+        rhs: &Option<Value>,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<Value, CompileError> {
+        // Use state_load_quad_word/state_store_quad_word as many times as needed
+        // using sequential keys
+
+        // First, create a name for the value to load from or store to
+        let value_name = format!(
+            "val_for_{}{}",
+            ix.to_usize(),
+            indices
+                .iter()
+                .map(|idx| format!("_{idx}"))
+                .collect::<Vec<_>>()
+                .join("")
+        );
+        let alias_value_name = self.lexical_map.insert(value_name);
+
+        // Create an array of `b256` that will hold the value to store into storage
+        // or the value loaded from storage. The array has to fit the whole type.
+        let number_of_elements = (ir_type_size_in_bytes(context, r#type) + 31) / 32;
+        let b256_array_type = Type::Array(Aggregate::new_array(
+            context,
+            Type::B256,
+            number_of_elements,
+        ));
+
+        // Local pointer to hold the array of b256s
+        let value_ptr = self
+            .function
+            .new_local_ptr(context, alias_value_name, b256_array_type, true, None)
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+
+        // Convert the local pointer created to a value of the original type using
+        // get_ptr.
+        let value_ptr_val =
+            self.current_block
+                .ins(context)
+                .get_ptr(value_ptr, *r#type, 0, span_md_idx);
+
+        if rhs.is_some() {
+            // Store the value to the local pointer created for rhs
+            self.current_block.ins(context).store(
+                value_ptr_val,
+                rhs.expect("expecting a rhs for write"),
+                span_md_idx,
+            );
+        }
+
+        for array_index in 0..number_of_elements {
+            if array_index > 0 {
+                // Prepare key for the next iteration but not for array index 0
+                // because the first key was generated earlier.
+                // Const value for the key from the initial hash + array_index
+                let const_key = convert_literal_to_value(
+                    context,
+                    &Literal::B256(*add_to_b256(*hashed_storage_slot, array_index)),
+                    span_md_idx,
+                );
+
+                // Convert the key pointer to a value using get_ptr
+                let key_ptr_ty = *key_ptr.get_type(context);
+                *key_ptr_val =
+                    self.current_block
+                        .ins(context)
+                        .get_ptr(*key_ptr, key_ptr_ty, 0, span_md_idx);
+
+                // Store the const hash value to the key pointer value
+                self.current_block
+                    .ins(context)
+                    .store(*key_ptr_val, const_key, span_md_idx);
+            }
+
+            // Get the b256 from the array at index iter
+            let value_ptr_val_b256 = self.current_block.ins(context).get_ptr(
+                value_ptr,
+                Type::B256,
+                array_index,
+                span_md_idx,
+            );
+
+            match access_type {
+                StateAccessType::Read => {
+                    self.current_block.ins(context).state_load_quad_word(
+                        value_ptr_val_b256,
+                        *key_ptr_val,
+                        span_md_idx,
+                    );
+                }
+                StateAccessType::Write => {
+                    // Finally, just call state_load_quad_word/state_store_quad_word
+                    self.current_block.ins(context).state_store_quad_word(
+                        value_ptr_val_b256,
+                        *key_ptr_val,
+                        span_md_idx,
+                    );
+                }
+            }
+        }
+
+        Ok(match access_type {
+            StateAccessType::Read => value_ptr_val,
+            StateAccessType::Write => rhs.expect("expecting a rhs for write"),
         })
     }
 }
@@ -2219,23 +2457,25 @@ impl LexicalMap {
 // -------------------------------------------------------------------------------------------------
 // Get the name of a struct and the index to a particular named field from a TypeId.
 
-fn get_struct_name_and_field_index(
+pub fn get_struct_name_field_index_and_type(
     field_type: TypeId,
-    field_name: &Ident,
-) -> Option<(String, Option<u64>)> {
-    resolve_type(field_type, field_name.span())
-        .ok()
-        .and_then(|ty_info| match ty_info {
-            TypeInfo::Struct { name, fields, .. } => Some((
-                name.as_str().to_owned(),
-                fields
-                    .iter()
-                    .enumerate()
-                    .find(|(_, field)| &field.name == field_name)
-                    .map(|(idx, _)| idx as u64),
-            )),
-            _otherwise => None,
-        })
+    field_kind: ProjectionKind,
+) -> Option<(String, Option<(u64, TypeId)>)> {
+    let ty_info = resolve_type(field_type, &field_kind.span()).ok()?;
+    match (ty_info, field_kind) {
+        (
+            TypeInfo::Struct { name, fields, .. },
+            ProjectionKind::StructField { name: field_name },
+        ) => Some((
+            name.as_str().to_owned(),
+            fields
+                .iter()
+                .enumerate()
+                .find(|(_, field)| field.name == field_name)
+                .map(|(idx, field)| (idx as u64, field.r#type)),
+        )),
+        _otherwise => None,
+    }
 }
 
 // To gather the indices into nested structs for the struct oriented IR instructions we need to
@@ -2244,58 +2484,101 @@ fn get_struct_name_and_field_index(
 // trait.  And we can even wrap the implementation in a macro.
 
 trait TypedNamedField {
-    fn get_type(&self) -> TypeId;
-    fn get_name(&self) -> &Ident;
+    fn get_field_kind(&self) -> ProjectionKind;
 }
 
 macro_rules! impl_typed_named_field_for {
     ($field_type_name: ident) => {
         impl TypedNamedField for $field_type_name {
-            fn get_type(&self) -> TypeId {
-                self.r#type
-            }
-            fn get_name(&self) -> &Ident {
-                &self.name
+            fn get_field_kind(&self) -> ProjectionKind {
+                ProjectionKind::StructField {
+                    name: self.name.clone(),
+                }
             }
         }
     };
 }
 
-impl_typed_named_field_for!(ReassignmentLhs);
+impl TypedNamedField for ProjectionKind {
+    fn get_field_kind(&self) -> ProjectionKind {
+        self.clone()
+    }
+}
+
 impl_typed_named_field_for!(TypeCheckedStorageAccessDescriptor);
 impl_typed_named_field_for!(TypeCheckedStorageReassignDescriptor);
 
 fn get_indices_for_struct_access<F: TypedNamedField>(
+    base_type: TypeId,
     fields: &[F],
 ) -> Result<Vec<u64>, CompileError> {
-    fields[1..]
+    fields
         .iter()
-        .fold(Ok((Vec::new(), fields[0].get_type())), |acc, field| {
-            // Make sure we have an aggregate to index into.
-            acc.and_then(|(mut fld_idcs, prev_type_id)| {
+        .try_fold(
+            (Vec::new(), base_type),
+            |(mut fld_idcs, prev_type_id), field| {
+                let field_kind = field.get_field_kind();
+                let ty_info = match resolve_type(prev_type_id, &field_kind.span()) {
+                    Ok(ty_info) => ty_info,
+                    Err(error) => {
+                        return Err(CompileError::InternalOwned(
+                            format!("type error resolving type for reassignment: {}", error),
+                            field_kind.span(),
+                        ));
+                    }
+                };
+                // Make sure we have an aggregate to index into.
                 // Get the field index and also its type for the next iteration.
-                match get_struct_name_and_field_index(prev_type_id, field.get_name()) {
-                    None => Err(CompileError::Internal(
-                        "Unknown struct in in reassignment.",
-                        Span::dummy(),
+                match (ty_info, &field_kind) {
+                    (
+                        TypeInfo::Struct { name, fields, .. },
+                        ProjectionKind::StructField { name: field_name },
+                    ) => {
+                        let field_idx_and_type_opt = fields
+                            .iter()
+                            .enumerate()
+                            .find(|(_, field)| field.name == *field_name);
+                        let (field_idx, field_type) = match field_idx_and_type_opt {
+                            Some((idx, field)) => (idx as u64, field.r#type),
+                            None => {
+                                return Err(CompileError::InternalOwned(
+                                    format!(
+                                        "Unknown field '{}' for struct {} in reassignment.",
+                                        field_kind.pretty_print(),
+                                        name,
+                                    ),
+                                    field_kind.span(),
+                                ));
+                            }
+                        };
+                        // Save the field index.
+                        fld_idcs.push(field_idx);
+                        Ok((fld_idcs, field_type))
+                    }
+                    (TypeInfo::Tuple(fields), ProjectionKind::TupleField { index, .. }) => {
+                        let field_type = match fields.get(*index) {
+                            Some(field_type_argument) => field_type_argument.type_id,
+                            None => {
+                                return Err(CompileError::InternalOwned(
+                                    format!(
+                                        "index {} is out of bounds for tuple of length {}",
+                                        index,
+                                        fields.len(),
+                                    ),
+                                    field_kind.span(),
+                                ));
+                            }
+                        };
+                        fld_idcs.push(*index as u64);
+                        Ok((fld_idcs, field_type))
+                    }
+                    _ => Err(CompileError::Internal(
+                        "Unknown aggregate in reassignment.",
+                        field_kind.span(),
                     )),
-                    Some((struct_name, field_idx)) => match field_idx {
-                        None => Err(CompileError::InternalOwned(
-                            format!(
-                                "Unknown field name '{}' for struct {struct_name} in reassignment.",
-                                field.get_name(),
-                            ),
-                            field.get_name().span().clone(),
-                        )),
-                        Some(field_idx) => {
-                            // Save the field index.
-                            fld_idcs.push(field_idx);
-                            Ok((fld_idcs, field.get_type()))
-                        }
-                    },
                 }
-            })
-        })
+            },
+        )
         .map(|(fld_idcs, _)| fld_idcs)
 }
 
@@ -2328,7 +2611,7 @@ fn convert_literal_to_value(
     }
 }
 
-fn convert_literal_to_constant(ast_literal: &Literal) -> Constant {
+pub fn convert_literal_to_constant(ast_literal: &Literal) -> Constant {
     match ast_literal {
         // All integers are `u64`.  See comment above.
         Literal::U8(n) | Literal::Byte(n) => Constant::new_uint(64, *n as u64),
@@ -2371,6 +2654,16 @@ fn convert_resolved_type(
     ast_type: &TypeInfo,
     span: &Span,
 ) -> Result<Type, CompileError> {
+    // A handy macro for rejecting unsupported types.
+    macro_rules! reject_type {
+        ($name_str:literal) => {{
+            return Err(CompileError::Internal(
+                concat!($name_str, " type cannot be resolved in IR."),
+                span.clone(),
+            ));
+        }};
+    }
+
     Ok(match ast_type {
         // All integers are `u64`, see comment in convert_literal_to_value() above.
         TypeInfo::UnsignedInteger(_) => Type::Uint(64),
@@ -2409,79 +2702,171 @@ fn convert_resolved_type(
 
         // Unsupported types which shouldn't exist in the AST after type checking and
         // monomorphisation.
-        TypeInfo::Custom { .. } => {
-            return Err(CompileError::Internal(
-                "Custom type cannot be resolved in IR.",
-                span.clone(),
-            ))
-        }
-        TypeInfo::SelfType { .. } => {
-            return Err(CompileError::Internal(
-                "Self type cannot be resolved in IR.",
-                span.clone(),
-            ))
-        }
-        TypeInfo::Contract => {
-            return Err(CompileError::Internal(
-                "Contract type cannot be resolved in IR.",
-                span.clone(),
-            ))
-        }
-        TypeInfo::ContractCaller { .. } => {
-            return Err(CompileError::Internal(
-                "ContractCaller type cannot be reoslved in IR.",
-                span.clone(),
-            ))
-        }
-        TypeInfo::Unknown => {
-            return Err(CompileError::Internal(
-                "Unknown type cannot be resolved in IR.",
-                span.clone(),
-            ))
-        }
-        TypeInfo::UnknownGeneric { .. } => {
-            return Err(CompileError::Internal(
-                "Generic type cannot be resolved in IR.",
-                span.clone(),
-            ))
-        }
-        TypeInfo::Ref(..) => {
-            return Err(CompileError::Internal(
-                "Ref type cannot be resolved in IR.",
-                span.clone(),
-            ))
-        }
-        TypeInfo::ErrorRecovery => {
-            return Err(CompileError::Internal(
-                "Error recovery type cannot be resolved in IR.",
-                span.clone(),
-            ))
-        }
-        TypeInfo::Storage { .. } => {
-            return Err(CompileError::Internal(
-                "Storage type cannot be resolved in IR.",
-                span.clone(),
-            ))
-        }
+        TypeInfo::Custom { .. } => reject_type!("Custom"),
+        TypeInfo::SelfType { .. } => reject_type!("Self"),
+        TypeInfo::Contract => reject_type!("Contract"),
+        TypeInfo::ContractCaller { .. } => reject_type!("ContractCaller"),
+        TypeInfo::Unknown => reject_type!("Unknown"),
+        TypeInfo::UnknownGeneric { .. } => reject_type!("Generic"),
+        TypeInfo::Ref(..) => reject_type!("Ref"),
+        TypeInfo::ErrorRecovery => reject_type!("Error recovery"),
+        TypeInfo::Storage { .. } => reject_type!("Storage"),
     })
+}
+
+#[allow(
+// These two warnings are generated by the `construct_uint!()` macro below.
+    clippy::assign_op_pattern,
+    clippy::ptr_offset_with_cast
+)]
+fn add_to_b256(x: fuel_types::Bytes32, y: u64) -> fuel_types::Bytes32 {
+    construct_uint! {
+        pub struct U256(4);
+    }
+    let x = U256::from(*x);
+    let y = U256::from(y);
+    let res: [u8; 32] = (x + y).into();
+    fuel_types::Bytes32::from(res)
+}
+
+// -------------------------------------------------------------------------------------------------
+
+#[derive(Default)]
+pub(crate) struct PurityChecker {
+    memos: HashMap<Function, (bool, bool)>,
+
+    // Final results.
+    pub warnings: Vec<CompileWarning>,
+    pub errors: Vec<CompileError>,
+}
+
+impl PurityChecker {
+    /// Designed to be called for each entry point, _prior_ to inlining or other optimizations.
+    /// The checker will check this function and any that it calls.
+    ///
+    /// Returns bools for whether it (reads, writes).
+    pub(crate) fn check_function(
+        &mut self,
+        context: &Context,
+        function: &Function,
+    ) -> (bool, bool) {
+        // Iterate for each instruction in the function and gather whether we have read and/or
+        // write storage operations:
+        // - via the storage IR instructions,
+        // - via ASM blocks with storage VM instructions or
+        // - via calls into functions with the above.
+        let (reads, writes) = function.instruction_iter(context).fold(
+            (false, false),
+            |(reads, writes), (_block, ins_value)| match &context.values[ins_value.0].value {
+                ValueDatum::Instruction(Instruction::StateLoadQuadWord { .. })
+                | ValueDatum::Instruction(Instruction::StateLoadWord(_)) => (true, writes),
+
+                ValueDatum::Instruction(Instruction::StateStoreQuadWord { .. })
+                | ValueDatum::Instruction(Instruction::StateStoreWord { .. }) => (reads, true),
+
+                // Iterate for and check each instruction in the ASM block.
+                ValueDatum::Instruction(Instruction::AsmBlock(asm_block, _args)) => {
+                    context.asm_blocks[asm_block.0].body.iter().fold(
+                        (reads, writes),
+                        |(reads, writes), asm_op| match asm_op.name.as_str() {
+                            "srw" | "srwq" => (true, writes),
+                            "sww" | "swwq" => (reads, true),
+                            _ => (reads, writes),
+                        },
+                    )
+                }
+
+                // Recurse to find the called function purity.  Use memoisation to avoid redoing
+                // work.
+                ValueDatum::Instruction(Instruction::Call(callee, _args)) => {
+                    let (called_fn_reads, called_fn_writes) =
+                        self.memos.get(callee).copied().unwrap_or_else(|| {
+                            let r_w = self.check_function(context, callee);
+                            self.memos.insert(*callee, r_w);
+                            r_w
+                        });
+                    (reads || called_fn_reads, writes || called_fn_writes)
+                }
+
+                _otherwise => (reads, writes),
+            },
+        );
+
+        let function = &context.functions[function.0];
+        let attributed_purity =
+            function
+                .storage_md_idx
+                .and_then(|idx| match &context.metadata[idx.0] {
+                    Metadatum::StorageAttribute(storage_op) => Some(storage_op),
+                    _otherwise => None,
+                });
+        let span = function
+            .span_md_idx
+            .and_then(|idx| idx.to_span(context).ok())
+            .unwrap_or_else(Span::dummy);
+
+        // Simple macros for each of the error types, which also grab `span`.
+        macro_rules! mk_err {
+            ($op_str:literal, $existing_attrib:ident, $needed_attrib:ident) => {{
+                self.errors.push(CompileError::ImpureInPureContext {
+                    storage_op: $op_str,
+                    attrs: promote_purity(Purity::$existing_attrib, Purity::$needed_attrib)
+                        .to_attribute_syntax(),
+                    span,
+                });
+            }};
+        }
+        macro_rules! mk_warn {
+            ($unneeded_attrib:ident) => {{
+                self.warnings.push(CompileWarning {
+                    warning_content: Warning::DeadStorageDeclarationForFunction {
+                        unneeded_attrib: Purity::$unneeded_attrib.to_attribute_syntax(),
+                    },
+                    span,
+                });
+            }};
+        }
+
+        match (attributed_purity, reads, writes) {
+            // Has no attributes but needs some.
+            (None, true, false) => mk_err!("read", Pure, Reads),
+            (None, false, true) => mk_err!("write", Pure, Writes),
+            (None, true, true) => mk_err!("read & write", Pure, ReadsWrites),
+
+            // Or the attribute must match the behaviour.
+            (Some(StorageOperation::Reads), _, true) => mk_err!("write", Reads, Writes),
+            (Some(StorageOperation::Writes), true, _) => mk_err!("read", Writes, Reads),
+
+            // Or we have unneeded attributes.
+            (Some(StorageOperation::ReadsWrites), false, true) => mk_warn!(Reads),
+            (Some(StorageOperation::ReadsWrites), true, false) => mk_warn!(Writes),
+            (Some(StorageOperation::Reads), false, false) => mk_warn!(Reads),
+            (Some(StorageOperation::Writes), false, false) => mk_warn!(Writes),
+
+            // (Pure, false, false) is OK, as is (ReadsWrites, true, true).
+            _otherwise => (),
+        };
+
+        (reads, writes)
+    }
+
+    pub(crate) fn results(self) -> CompileResult<()> {
+        if self.errors.is_empty() {
+            ok((), self.warnings, self.errors)
+        } else {
+            err(self.warnings, self.errors)
+        }
+    }
 }
 
 // -------------------------------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
-
+    use crate::semantic_analysis::{namespace, TypedProgram};
     use std::path::PathBuf;
 
-    use crate::{
-        control_flow_analysis::{ControlFlowGraph, Graph},
-        semantic_analysis::{
-            namespace::{self, Namespace},
-            TypedParseTree,
-        },
-    };
-
-    // -------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------
 
     #[test]
     fn sway_to_ir_tests() {
@@ -2517,8 +2902,8 @@ mod tests {
         let expected_bytes = std::fs::read(&ir_path).unwrap();
         let expected = String::from_utf8_lossy(&expected_bytes);
 
-        let typed_ast = parse_to_typed_ast(sw_path.clone(), &input);
-        let ir = super::compile_ast(typed_ast).unwrap();
+        let typed_program = parse_to_typed_program(sw_path.clone(), &input);
+        let ir = super::compile_program(typed_program).unwrap();
         let output = sway_ir::printer::to_string(&ir);
 
         // Use a tricky regex to replace the local path in the metadata with something generic.  It
@@ -2534,7 +2919,7 @@ mod tests {
         }
     }
 
-    // -------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------
 
     #[test]
     fn ir_printer_parser_tests() {
@@ -2575,55 +2960,42 @@ mod tests {
         let parsed_ctx = match sway_ir::parser::parse(&input) {
             Ok(p) => p,
             Err(e) => {
-                tracing::error!("{}: {}", path.display(), e);
+                println!("{}: {}", path.display(), e);
                 panic!();
             }
         };
         let printed = sway_ir::printer::to_string(&parsed_ctx);
         if printed != input {
-            tracing::error!("{}", prettydiff::diff_lines(&input, &printed));
+            println!("{}", prettydiff::diff_lines(&input, &printed));
             panic!("{} failed.", path.display());
         }
     }
 
-    // -------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------
 
-    fn parse_to_typed_ast(path: PathBuf, input: &str) -> TypedParseTree {
-        let dir_of_code = std::sync::Arc::new(path.parent().unwrap().into());
-        let file_name = std::sync::Arc::new(path);
+    fn parse_to_typed_program(path: PathBuf, input: &str) -> TypedProgram {
+        let root_module = std::sync::Arc::new(path);
+        let canonical_root_module = std::sync::Arc::new(root_module.canonicalize().unwrap());
 
         let build_config = crate::build_config::BuildConfig {
-            file_name,
-            dir_of_code,
-            manifest_path: std::sync::Arc::new(".".into()),
-            use_orig_asm: false,
+            canonical_root_module,
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,
-            generated_names: Default::default(),
         };
         let mut warnings = vec![];
         let mut errors = vec![];
+        let src = std::sync::Arc::from(input);
+        let parsed_program =
+            crate::parse(src, Some(&build_config)).unwrap(&mut warnings, &mut errors);
 
-        let parse_tree =
-            sway_parse::parse_file(std::sync::Arc::from(input), Some(build_config.path())).unwrap();
-        let parse_tree = crate::convert_parse_tree::convert_parse_tree(parse_tree)
+        let initial_namespace = namespace::Module::default();
+        let typed_program = TypedProgram::type_check(parsed_program, initial_namespace)
             .unwrap(&mut warnings, &mut errors);
 
-        let mut dead_code_graph = ControlFlowGraph {
-            graph: Graph::new(),
-            entry_points: vec![],
-            namespace: Default::default(),
-        };
-        let mut namespace = Namespace::init_root(namespace::Module::default());
-        TypedParseTree::type_check(
-            parse_tree.tree,
-            &mut namespace,
-            &parse_tree.tree_type,
-            &build_config,
-            &mut dead_code_graph,
-        )
-        .unwrap(&mut warnings, &mut errors)
+        crate::perform_control_flow_analysis(&typed_program).unwrap(&mut warnings, &mut errors);
+
+        typed_program
     }
 }
 
