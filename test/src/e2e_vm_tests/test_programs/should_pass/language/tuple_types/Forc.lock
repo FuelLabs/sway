@@ -1,7 +1,14 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-8222DC735DC134D4'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-8222DC735DC134D4'
 dependencies = []
 
 [[package]]
 name = 'tuple_types'
+source = 'root'
 dependencies = ['core']

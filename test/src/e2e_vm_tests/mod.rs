@@ -340,6 +340,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/contract_caller_as_type",
             ProgramState::Return(42),
         ),
+        (
+            "should_pass/language/non_literal_const_decl",
+            ProgramState::Return(42),
+        ),
         /*
          * This test is disabled because in order to work correctly it requires that we implement
          * `&mut self` methods.
@@ -426,6 +430,23 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             "should_pass/language/valid_impurity",
             ProgramState::Revert(0), // false
         ),
+        ("should_pass/language/const_inits", ProgramState::Return(1)),
+        (
+            "should_pass/language/enum_padding",
+            ProgramState::ReturnData(Bytes32::from([
+                0xce, 0x55, 0xff, 0x05, 0x11, 0x3a, 0x24, 0x2e, 0xc7, 0x9a, 0x23, 0x75, 0x0c, 0x7e,
+                0x2b, 0xab, 0xaf, 0x98, 0xa8, 0xdc, 0x41, 0x66, 0x90, 0xc8, 0x57, 0xdd, 0x31, 0x72,
+                0x0c, 0x74, 0x82, 0xb6,
+            ])),
+        ),
+        (
+            "should_pass/language/unit_type_variants",
+            ProgramState::ReturnData(Bytes32::from([
+                0xcd, 0x04, 0xa4, 0x75, 0x44, 0x98, 0xe0, 0x6d, 0xb5, 0xa1, 0x3c, 0x5f, 0x37, 0x1f,
+                0x1f, 0x04, 0xff, 0x6d, 0x24, 0x70, 0xf2, 0x4a, 0xa9, 0xbd, 0x88, 0x65, 0x40, 0xe5,
+                0xdc, 0xe7, 0x7f, 0x70,
+            ])), // "ReturnData":{"data":"0000000000000002", .. }
+        ),
         (
             "should_pass/test_contracts/auth_testing_contract",
             ProgramState::Revert(0),
@@ -472,6 +493,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ),
         (
             "should_pass/test_contracts/get_storage_key_contract",
+            ProgramState::Revert(0),
+        ),
+        (
+            "should_pass/test_contracts/multiple_impl",
             ProgramState::Revert(0),
         ),
     ];
@@ -551,7 +576,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/trait_pure_calls_impure",
         "should_fail/match_expressions_empty_arms",
         "should_fail/type_mismatch_error_message",
-        "should_fail/non_literal_const_decl",
         "should_fail/recursive_enum",
         "should_fail/recursive_struct",
         "should_fail/recursive_type_chain",
@@ -559,6 +583,12 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "should_fail/storage_in_library",
         "should_fail/storage_in_predicate",
         "should_fail/storage_in_script",
+        "should_fail/multiple_impl_abi",
+        "should_fail/multiple_impl_fns",
+        "should_fail/repeated_enum_variant",
+        "should_fail/repeated_storage_field",
+        "should_fail/repeated_struct_field",
+        "should_fail/storage_conflict",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {

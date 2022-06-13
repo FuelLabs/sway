@@ -1,5 +1,5 @@
 use super::{
-    TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration,
+    TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration, TypedImplTrait,
     TypedStorageDeclaration,
 };
 use crate::{
@@ -10,32 +10,15 @@ use crate::{
         TypedModule,
     },
     type_engine::*,
+    types::ToJsonAbi,
 };
+use fuels_types::JsonABI;
 use sway_types::{span::Span, Ident, Spanned};
 
 #[derive(Clone, Debug)]
 pub struct TypedProgram {
     pub kind: TypedProgramKind,
     pub root: TypedModule,
-}
-
-#[derive(Clone, Debug)]
-pub enum TypedProgramKind {
-    Contract {
-        abi_entries: Vec<TypedFunctionDeclaration>,
-        declarations: Vec<TypedDeclaration>,
-    },
-    Library {
-        name: Ident,
-    },
-    Predicate {
-        main_function: TypedFunctionDeclaration,
-        declarations: Vec<TypedDeclaration>,
-    },
-    Script {
-        main_function: TypedFunctionDeclaration,
-        declarations: Vec<TypedDeclaration>,
-    },
 }
 
 impl TypedProgram {
@@ -86,6 +69,7 @@ impl TypedProgram {
         let mut mains = Vec::new();
         let mut declarations = Vec::new();
         let mut abi_entries = Vec::new();
+        let mut fn_declarations = std::collections::HashSet::new();
         for node in &root.all_nodes {
             match &node.content {
                 TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(func))
@@ -95,13 +79,23 @@ impl TypedProgram {
                 }
                 // ABI entries are all functions declared in impl_traits on the contract type
                 // itself.
-                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait {
+                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(TypedImplTrait {
                     methods,
                     type_implementing_for: TypeInfo::Contract,
                     ..
-                }) => abi_entries.extend(methods.clone()),
+                })) => abi_entries.extend(methods.clone()),
                 // XXX we're excluding the above ABI methods, is that OK?
-                TypedAstNodeContent::Declaration(decl) => declarations.push(decl.clone()),
+                TypedAstNodeContent::Declaration(decl) => {
+                    // Variable and constant declarations don't need a duplicate check.
+                    // Type declarations are checked elsewhere. That leaves functions.
+                    if let TypedDeclaration::FunctionDeclaration(func) = &decl {
+                        let name = func.name.clone();
+                        if !fn_declarations.insert(name.clone()) {
+                            errors.push(CompileError::MultipleDefinitionsOfFunction { name });
+                        }
+                    }
+                    declarations.push(decl.clone())
+                }
                 _ => (),
             };
         }
@@ -109,7 +103,9 @@ impl TypedProgram {
         // Some checks that are specific to non-contracts
         if kind != TreeType::Contract {
             // impure functions are disallowed in non-contracts
-            errors.extend(disallow_impure_functions(&declarations, &mains));
+            if !matches!(kind, TreeType::Library { .. }) {
+                errors.extend(disallow_impure_functions(&declarations, &mains));
+            }
 
             // `storage` declarations are not allowed in non-contracts
             let storage_decl = declarations
@@ -142,9 +138,9 @@ impl TypedProgram {
                     return err(vec![], errors);
                 }
                 if mains.len() > 1 {
-                    errors.push(CompileError::MultiplePredicateMainFunctions(
-                        mains.last().unwrap().span.clone(),
-                    ));
+                    errors.push(CompileError::MultipleDefinitionsOfFunction {
+                        name: mains.last().unwrap().name.clone(),
+                    });
                 }
                 let main_func = mains.remove(0);
                 match look_up_type_id(main_func.return_type) {
@@ -165,9 +161,9 @@ impl TypedProgram {
                     return err(vec![], errors);
                 }
                 if mains.len() > 1 {
-                    errors.push(CompileError::MultipleScriptMainFunctions(
-                        mains.last().unwrap().span.clone(),
-                    ));
+                    errors.push(CompileError::MultipleDefinitionsOfFunction {
+                        name: mains.last().unwrap().name.clone(),
+                    });
                 }
                 TypedProgramKind::Script {
                     main_function: mains.remove(0),
@@ -216,6 +212,42 @@ impl TypedProgram {
             ok((), vec![], errors)
         } else {
             err(vec![], errors)
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum TypedProgramKind {
+    Contract {
+        abi_entries: Vec<TypedFunctionDeclaration>,
+        declarations: Vec<TypedDeclaration>,
+    },
+    Library {
+        name: Ident,
+    },
+    Predicate {
+        main_function: TypedFunctionDeclaration,
+        declarations: Vec<TypedDeclaration>,
+    },
+    Script {
+        main_function: TypedFunctionDeclaration,
+        declarations: Vec<TypedDeclaration>,
+    },
+}
+
+impl ToJsonAbi for TypedProgramKind {
+    type Output = JsonABI;
+
+    // TODO: Update this to match behaviour described in the `compile` doc comment above.
+    fn generate_json_abi(&self) -> Self::Output {
+        match self {
+            TypedProgramKind::Contract { abi_entries, .. } => {
+                abi_entries.iter().map(|x| x.generate_json_abi()).collect()
+            }
+            TypedProgramKind::Script { main_function, .. } => {
+                vec![main_function.generate_json_abi()]
+            }
+            _ => vec![],
         }
     }
 }

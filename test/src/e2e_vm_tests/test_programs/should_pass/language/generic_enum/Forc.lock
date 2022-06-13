@@ -1,7 +1,14 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-A3D1AEE50B42FAC3'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-A3D1AEE50B42FAC3'
 dependencies = []
 
 [[package]]
 name = 'generic_enum'
+source = 'root'
 dependencies = ['core']

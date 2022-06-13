@@ -47,3 +47,19 @@ pub const DEFAULT_ENUM_VARIANT_ALIGN_THRESHOLD: usize = 0;
 
 /// Default max length of comments.
 pub const DEFAULT_MAX_COMMENT_WIDTH: usize = 80;
+
+/////NEWLINE_STYLE/////
+
+pub(crate) const LINE_FEED: char = '\n';
+pub(crate) const CARRIAGE_RETURN: char = '\r';
+pub(crate) const WINDOWS_NEWLINE: &str = "\r\n";
+pub(crate) const UNIX_NEWLINE: &str = "\n";
+
+/////INDENT_STYLE/////
+
+// INDENT_BUFFER.len() = 81
+pub(crate) const INDENT_BUFFER_LEN: usize = 80;
+pub(crate) const INDENT_BUFFER: &str =
+    "\n                                                                                ";
+// 8096 is close enough to infinite according to `rustfmt`.
+pub(crate) const INFINITE_SHAPE_WIDTH: usize = 8096;

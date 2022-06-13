@@ -1,7 +1,14 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-818C6EA3A80B47C0'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-818C6EA3A80B47C0'
 dependencies = []
 
 [[package]]
 name = 'fix_opcode_bug'
+source = 'root'
 dependencies = ['core']

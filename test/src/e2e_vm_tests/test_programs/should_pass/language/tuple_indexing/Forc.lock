@@ -1,7 +1,14 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-77B89972CE8D8BC6'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-77B89972CE8D8BC6'
 dependencies = []
 
 [[package]]
 name = 'tuple_indexing'
+source = 'root'
 dependencies = ['core']

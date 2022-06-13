@@ -1,0 +1,30 @@
+[
+  {
+    "inputs": [],
+    "name": "main",
+    "outputs": [
+      {
+        "components": [
+          {
+            "components": [],
+            "name": "A",
+            "type": "()"
+          },
+          {
+            "components": [],
+            "name": "B",
+            "type": "()"
+          },
+          {
+            "components": [],
+            "name": "C",
+            "type": "()"
+          }
+        ],
+        "name": "",
+        "type": "enum E"
+      }
+    ],
+    "type": "function"
+  }
+]

@@ -1,5 +1,6 @@
 //! Type checking for Sway.
 pub mod ast_node;
+mod const_eval;
 mod module;
 pub mod namespace;
 mod node_dependencies;
@@ -11,5 +12,3 @@ pub use module::{TypedModule, TypedSubmodule};
 pub use namespace::Namespace;
 pub use program::{TypedProgram, TypedProgramKind};
 pub use type_check_arguments::*;
-
-const ERROR_RECOVERY_DECLARATION: TypedDeclaration = TypedDeclaration::ErrorRecovery;
