@@ -118,12 +118,7 @@ impl Module {
             .collect::<Vec<_>>();
 
         let dst_ns = &mut self[dst];
-        check!(
-            dst_ns.implemented_traits.extend(implemented_traits),
-            (),
-            warnings,
-            errors
-        );
+        dst_ns.implemented_traits.extend(implemented_traits);
         for symbol in symbols {
             if dst_ns.use_synonyms.contains_key(&symbol) {
                 errors.push(CompileError::StarImportShadowsOtherSymbol {

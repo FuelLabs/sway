@@ -50,7 +50,12 @@ impl TypedStorageDeclaration {
             .enumerate()
             .find(|(_, TypedStorageField { name, .. })| name == &first_field)
         {
-            Some((ix, TypedStorageField { r#type, .. })) => (StateIndex::new(ix), r#type),
+            Some((
+                ix,
+                TypedStorageField {
+                    type_id: r#type, ..
+                },
+            )) => (StateIndex::new(ix), r#type),
             None => {
                 errors.push(CompileError::StorageFieldDoesNotExist {
                     name: first_field.clone(),
@@ -61,7 +66,7 @@ impl TypedStorageDeclaration {
 
         type_checked_buf.push(TypeCheckedStorageAccessDescriptor {
             name: first_field.clone(),
-            r#type: *initial_field_type,
+            type_id: *initial_field_type,
             span: first_field.span(),
         });
 
@@ -86,10 +91,10 @@ impl TypedStorageDeclaration {
                 Some(struct_field) => {
                     type_checked_buf.push(TypeCheckedStorageAccessDescriptor {
                         name: field.clone(),
-                        r#type: struct_field.r#type,
+                        type_id: struct_field.type_id,
                         span: field.span().clone(),
                     });
-                    available_struct_fields = update_available_struct_fields(struct_field.r#type);
+                    available_struct_fields = update_available_struct_fields(struct_field.type_id);
                 }
                 None => {
                     let available_fields = available_struct_fields
@@ -106,7 +111,7 @@ impl TypedStorageDeclaration {
             }
         }
 
-        let return_type = type_checked_buf[type_checked_buf.len() - 1].r#type;
+        let return_type = type_checked_buf[type_checked_buf.len() - 1].type_id;
 
         ok(
             (
@@ -127,11 +132,11 @@ impl TypedStorageDeclaration {
             .map(
                 |TypedStorageField {
                      ref name,
-                     ref r#type,
+                     type_id: ref r#type,
                      ref span,
                  }| TypedStructField {
                     name: name.clone(),
-                    r#type: *r#type,
+                    type_id: *r#type,
                     span: span.clone(),
                 },
             )
@@ -142,7 +147,7 @@ impl TypedStorageDeclaration {
 #[derive(Clone, Debug, Eq)]
 pub struct TypedStorageField {
     pub name: Ident,
-    pub r#type: TypeId,
+    pub type_id: TypeId,
     pub(crate) span: Span,
 }
 
@@ -151,12 +156,16 @@ pub struct TypedStorageField {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEq for TypedStorageField {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
+        self.name == other.name && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
     }
 }
 
 impl TypedStorageField {
     pub fn new(name: Ident, r#type: TypeId, span: Span) -> Self {
-        TypedStorageField { name, r#type, span }
+        TypedStorageField {
+            name,
+            type_id: r#type,
+            span,
+        }
     }
 }
