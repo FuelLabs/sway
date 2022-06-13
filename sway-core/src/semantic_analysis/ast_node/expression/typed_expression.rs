@@ -677,7 +677,7 @@ impl TypedExpression {
                 span,
             },
             Some(TypedDeclaration::AbiDeclaration(decl)) => TypedExpression {
-                return_type: decl.as_type(),
+                return_type: decl.create_type_id(),
                 is_constant: IsConstant::Yes,
                 expression: TypedExpressionVariant::AbiName(AbiName::Known(
                     decl.name.clone().into(),

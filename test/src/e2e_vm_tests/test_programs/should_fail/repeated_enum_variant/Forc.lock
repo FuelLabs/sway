@@ -1,3 +1,4 @@
 [[package]]
 name = 'repeated_enum_variant'
+source = 'root'
 dependencies = []

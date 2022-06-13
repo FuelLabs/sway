@@ -1,7 +1,14 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-3E34B627581D9DFD'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-3E34B627581D9DFD'
 dependencies = []
 
 [[package]]
 name = 'nested_struct_args_abi'
+source = 'root'
 dependencies = ['core']
