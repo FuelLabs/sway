@@ -138,26 +138,6 @@ impl Items {
             .get_methods_for_type(implementing_for_type_id)
     }
 
-    // /// Given a [TypeInfo] `new_type`, find all the types for which `new_type` is a subset and grab
-    // /// all the methods for those types, then implement them for `new_type`
-    // pub(crate) fn copy_methods_to_type(&mut self, new_type: TypeInfo, type_mapping: &TypeMapping) {
-    //     // This map grabs all (trait name, vec of methods) from self.implemented_traits
-    //     // for which `new_type` is a subset of the existing types
-    //     let methods = self
-    //         .implemented_traits
-    //         .get_methods_for_type_by_trait(new_type.clone());
-
-    //     // Insert into `self.implemented_traits` the contents of the map above but with `new_type`
-    //     // as the `TypeInfo` key.
-    //     for (trait_name, mut trait_methods) in methods.into_iter() {
-    //         trait_methods
-    //             .iter_mut()
-    //             .for_each(|method| method.copy_types(type_mapping));
-    //         self.implemented_traits
-    //             .insert(trait_name, new_type.clone(), trait_methods);
-    //     }
-    // }
-
     pub(crate) fn get_canonical_path(&self, symbol: &Ident) -> &[Ident] {
         self.use_synonyms.get(symbol).map(|v| &v[..]).unwrap_or(&[])
     }
