@@ -37,11 +37,11 @@ struct Sent {
 abi Token {
     // Mint new tokens and send to an address.
     // Can only be called by the contract creator.
-    fn mint(receiver: Address, amount: u64);
+    #[storage(read, write)]fn mint(receiver: Address, amount: u64);
 
     // Sends an amount of an existing token.
     // Can be called from any address.
-    fn send(receiver: Address, amount: u64);
+    #[storage(read, write)]fn send(receiver: Address, amount: u64);
 }
 
 ////////////////////////////////////////
@@ -67,7 +67,7 @@ storage {
 
 /// Contract implements the `Token` ABI.
 impl Token for Contract {
-    fn mint(receiver: Address, amount: u64) {
+    #[storage(read, write)]fn mint(receiver: Address, amount: u64) {
         // Note: The return type of `msg_sender()` can be inferred by the
         // compiler. It is shown here for explicitness.
         let sender: Result<Identity, AuthError> = msg_sender();
@@ -85,7 +85,7 @@ impl Token for Contract {
         storage.balances.insert(receiver, storage.balances.get(receiver) + amount)
     }
 
-    fn send(receiver: Address, amount: u64) {
+    #[storage(read, write)]fn send(receiver: Address, amount: u64) {
         // Note: The return type of `msg_sender()` can be inferred by the
         // compiler. It is shown here for explicitness.
         let sender: Result<Identity, AuthError> = msg_sender();

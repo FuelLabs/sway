@@ -33,6 +33,8 @@ pub struct FunctionContent {
     pub blocks: Vec<Block>,
     pub is_public: bool,
     pub selector: Option<[u8; 4]>,
+    pub span_md_idx: Option<MetadataIndex>,
+    pub storage_md_idx: Option<MetadataIndex>,
 
     pub local_storage: BTreeMap<String, Pointer>, // BTree rather than Hash for deterministic ordering.
 
@@ -47,6 +49,7 @@ impl Function {
     /// `name`, `args`, `return_type` and `is_public` are the usual suspects.  `selector` is a
     /// special value used for Sway contract calls; much like `name` is unique and not particularly
     /// used elsewhere in the IR.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         context: &mut Context,
         module: Module,
@@ -55,6 +58,8 @@ impl Function {
         return_type: Type,
         selector: Option<[u8; 4]>,
         is_public: bool,
+        span_md_idx: Option<MetadataIndex>,
+        storage_md_idx: Option<MetadataIndex>,
     ) -> Function {
         let arguments = args
             .into_iter()
@@ -67,6 +72,8 @@ impl Function {
             blocks: Vec::new(),
             is_public,
             selector,
+            span_md_idx,
+            storage_md_idx,
             local_storage: BTreeMap::new(),
             next_label_idx: 0,
         };

@@ -1,0 +1,22 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-239143CAFD6AF819'
+dependencies = ['core_utils']
+
+[[package]]
+name = 'core_utils'
+source = 'path+from-root-239143CAFD6AF819'
+dependencies = []
+
+[[package]]
+name = 'script_data'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-239143CAFD6AF819'
+dependencies = [
+    'core',
+    'core_utils',
+]

@@ -8,6 +8,7 @@ mod hashing;
 mod logging;
 mod reentrancy;
 mod registers;
+mod script_data;
 mod storage;
 mod storage_map;
 mod token_ops;

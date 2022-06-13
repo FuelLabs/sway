@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "lib.sw"
+license = "Apache-2.0"
+name = "dependency_a"
+implicit-std = false
+
+[dependencies]
+dependency_b = { path = "../dependency_b" }

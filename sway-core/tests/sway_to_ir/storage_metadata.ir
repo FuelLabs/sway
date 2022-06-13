@@ -1,0 +1,56 @@
+contract {
+    fn initialize<557ac400>(initial_value !1: u64) -> u64, !2, !3 {
+        entry:
+        v0 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000, !4
+        v1 = asm(key: v0, v: initial_value) {
+            sww    key v, !5
+        }
+        ret u64 initial_value
+    }
+
+    fn increment<e543c666>(increment_by !6: u64) -> u64, !7, !8 {
+        local ptr u64 new_val
+
+        entry:
+        v0 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000, !4
+        v1 = asm(key: v0, i: increment_by, res) -> u64 res, !9 {
+            srw    res key, !10
+            add    res res i, !11
+            sww    key res, !12
+        }
+        v2 = get_ptr ptr u64 new_val, ptr u64, 0, !13
+        store v1, ptr v2, !13
+        v3 = get_ptr ptr u64 new_val, ptr u64, 0, !14
+        v4 = load ptr v3, !14
+        ret u64 v4
+    }
+
+    fn get<75b70457>() -> u64, !15, !16 {
+        entry:
+        v0 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000, !4
+        v1 = asm(key: v0, res) -> u64 res, !17 {
+            srw    key res, !18
+        }
+        ret u64 v1
+    }
+}
+
+!0 = filepath "/path/to/storage_metadata.sw"
+!1 = span !0 370 383
+!2 = span !0 356 501
+!3 = storage write
+!4 = span !0 23 89
+!5 = span !0 453 462
+!6 = span !0 548 560
+!7 = span !0 535 766
+!8 = storage readwrite
+!9 = span !0 598 743
+!10 = span !0 648 659
+!11 = span !0 673 686
+!12 = span !0 700 711
+!13 = span !0 584 744
+!14 = span !0 753 760
+!15 = span !0 793 901
+!16 = storage read
+!17 = span !0 819 895
+!18 = span !0 852 863
