@@ -42,8 +42,7 @@ impl<T> RawVec<T> {
         self.cap
     }
 
-    fn grow(self) {
-        let mut self = self;
+    fn grow(mut self) {
         let new_cap = if self.cap == 0 {
             1
         } else {
@@ -57,9 +56,12 @@ impl<T> RawVec<T> {
         let new_ptr = heap_ptr() + 1;
 
         // Copy old contents into newly-allocated memory.
-        asm(new_ptr: new_ptr, old_ptr: self.ptr, size: self.cap * __size_of::<T>()) {
-            mcp new_ptr old_ptr size;
-        };
+        let copy_size = self.cap * __size_of::<T>();
+        if copy_size > 0 {
+            asm(new_ptr: new_ptr, old_ptr: self.ptr, size: copy_size) {
+                mcp new_ptr old_ptr size;
+            };
+        }
 
         self.ptr = new_ptr;
         self.cap = new_cap;
@@ -98,8 +100,7 @@ impl<T> Vec<T> {
     }
 
     /// Appends an element to the back of a collection.
-    pub fn push(self, value: T) {
-        let mut self = self;
+    pub fn push(mut self, value: T) {
         // If there is insufficient capacity, grow the buffer.
         if self.len == self.buf.capacity() {
             self.buf.grow();
@@ -136,8 +137,7 @@ impl<T> Vec<T> {
     ///
     /// Note that this method has no effect on the allocated capacity
     /// of the vector.
-    pub fn clear(self) {
-        let mut self = self;
+    pub fn clear(mut self) {
         self.len = 0;
     }
 
