@@ -9,8 +9,8 @@ use ::context::call_frames::contract_id;
 use ::identity::Identity;
 
 /// Mint `amount` coins of the current contract's `asset_id` and transfer them
-/// to `to` by calling either force_transfer_to_contract() or transfer_to_output
-/// (), depending on the type of `Identity`.
+/// to `to` by calling either force_transfer_to_contract() or
+/// transfer_to_output(), depending on the type of `Identity`.
 pub fn mint_to(amount: u64, to: Identity) {
     mint(amount);
     transfer(amount, contract_id(), to);
