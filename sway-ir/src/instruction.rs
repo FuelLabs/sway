@@ -200,6 +200,11 @@ impl Instruction {
     /// Some [`Instruction`]s may have struct arguments.  Return it if so for this instruction.
     pub fn get_aggregate(&self, context: &Context) -> Option<Aggregate> {
         match self {
+            Instruction::Call(func, _args) => match &context.functions[func.0].return_type {
+                Type::Array(aggregate) => Some(*aggregate),
+                Type::Struct(aggregate) => Some(*aggregate),
+                _otherwise => None,
+            },
             Instruction::GetPointer { ptr_ty, .. } => match ptr_ty {
                 Type::Array(aggregate) => Some(*aggregate),
                 Type::Struct(aggregate) => Some(*aggregate),
