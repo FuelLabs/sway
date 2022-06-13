@@ -231,15 +231,19 @@ impl Items {
                     ProjectionKind::StructField { name: field_name },
                 ) => {
                     let field_type_opt = {
-                        fields
-                            .iter()
-                            .find_map(|TypedStructField { r#type, name, .. }| {
+                        fields.iter().find_map(
+                            |TypedStructField {
+                                 type_id: r#type,
+                                 name,
+                                 ..
+                             }| {
                                 if name == field_name {
                                     Some(r#type)
                                 } else {
                                     None
                                 }
-                            })
+                            },
+                        )
                     };
                     let field_type = match field_type_opt {
                         Some(field_type) => field_type,

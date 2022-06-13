@@ -301,7 +301,7 @@ impl Dependencies {
                 ..
             }) => self
                 .gather_from_iter(fields.iter(), |deps, field| {
-                    deps.gather_from_typeinfo(&field.r#type)
+                    deps.gather_from_typeinfo(&field.type_info)
                 })
                 .gather_from_type_parameters(type_parameters),
             Declaration::EnumDeclaration(EnumDeclaration {
@@ -310,7 +310,7 @@ impl Dependencies {
                 ..
             }) => self
                 .gather_from_iter(variants.iter(), |deps, variant| {
-                    deps.gather_from_typeinfo(&variant.r#type)
+                    deps.gather_from_typeinfo(&variant.type_info)
                 })
                 .gather_from_type_parameters(type_parameters),
             Declaration::Reassignment(decl) => self.gather_from_expr(&decl.rhs),
@@ -369,8 +369,8 @@ impl Dependencies {
                     deps.gather_from_fn_decl(fn_decl)
                 }),
             Declaration::StorageDeclaration(StorageDeclaration { fields, .. }) => self
-                .gather_from_iter(fields.iter(), |deps, StorageField { r#type, .. }| {
-                    deps.gather_from_typeinfo(r#type)
+                .gather_from_iter(fields.iter(), |deps, StorageField { ref type_info, .. }| {
+                    deps.gather_from_typeinfo(type_info)
                 }),
         }
     }
@@ -579,11 +579,11 @@ impl Dependencies {
             TypeInfo::Array(type_id, _) => self.gather_from_typeinfo(&look_up_type_id(*type_id)),
             TypeInfo::Struct { fields, .. } => self
                 .gather_from_iter(fields.iter(), |deps, field| {
-                    deps.gather_from_typeinfo(&look_up_type_id(field.r#type))
+                    deps.gather_from_typeinfo(&look_up_type_id(field.type_id))
                 }),
             TypeInfo::Enum { variant_types, .. } => self
                 .gather_from_iter(variant_types.iter(), |deps, variant| {
-                    deps.gather_from_typeinfo(&look_up_type_id(variant.r#type))
+                    deps.gather_from_typeinfo(&look_up_type_id(variant.type_id))
                 }),
             _ => self,
         }
