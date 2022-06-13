@@ -242,8 +242,36 @@ async fn call_mint_to_with_contract_id() {
 }
 
 #[tokio::test]
-async fn can_perform_generic_transfer() {
+async fn can_perform_generic_transfer_to_address() {
+    let wallet = launch_provider_and_get_single_wallet().await;
+    let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallet.clone()).await;
+    let amount = 33u64;
 
+    let asset_id_array: [u8; 32] = fuelcoin_id.into();
+
+    let address = wallet.address();
+
+    fuelcoin_instance
+        .mint_coins(amount)
+        .call()
+        .await
+        .unwrap();
+
+    fuelcoin_instance
+        .generic_transfer(amount, fuelcoin_id, Identity::Address(address))
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
+
+    assert_eq!(
+        wallet
+            .get_spendable_coins(&AssetId::from(asset_id_array), 1)
+            .await
+            .unwrap()[0]
+            .amount,
+        amount.into()
+    );
 }
 
 async fn get_fuelcoin_instance(wallet: Wallet) -> (TestFuelCoinContract, ContractId) {

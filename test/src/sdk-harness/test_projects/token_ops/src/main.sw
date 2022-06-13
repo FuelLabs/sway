@@ -53,6 +53,6 @@ impl TestFuelCoin for Contract {
     }
 
     fn generic_transfer(amount: u64, asset_id: ContractId, to: Identity) {
-        transfer(amount, asset, to)
+        transfer(amount, asset_id, to)
     }
 }
