@@ -76,7 +76,7 @@ pub fn transfer(amount: u64, asset_id: ContractId, to: Identity) {
 /// CAUTION !!!
 ///
 /// This will transfer coins to a contract even with no way to retrieve them
-/// ( ie: no withdraw() function on receiving contract), possibly leading to
+/// (i.e. no withdrawal functionality on receiving contract), possibly leading to
 /// the PERMANENT LOSS OF COINS if not used with care.
 pub fn force_transfer_to_contract(amount: u64, asset_id: ContractId, to: ContractId) {
     asm(r1: amount, r2: asset_id.value, r3: to.value) {
