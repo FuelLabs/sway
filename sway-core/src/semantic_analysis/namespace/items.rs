@@ -112,9 +112,7 @@ impl Items {
         trait_name: CallPath,
         type_implementing_for: TypeInfo,
         functions_buf: Vec<TypedFunctionDeclaration>,
-    ) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    ) {
         let new_prefixes = if trait_name.prefixes.is_empty() {
             self.use_synonyms
                 .get(&trait_name.suffix)
@@ -128,14 +126,8 @@ impl Items {
             prefixes: new_prefixes,
             is_absolute: trait_name.is_absolute,
         };
-        check!(
-            self.implemented_traits
-                .insert(trait_name, type_implementing_for, functions_buf),
-            (),
-            warnings,
-            errors
-        );
-        ok((), warnings, errors)
+        self.implemented_traits
+            .insert(trait_name, type_implementing_for, functions_buf);
     }
 
     pub(crate) fn get_methods_for_type(&self, r#type: TypeId) -> Vec<TypedFunctionDeclaration> {
@@ -234,15 +226,19 @@ impl Items {
                     ProjectionKind::StructField { name: field_name },
                 ) => {
                     let field_type_opt = {
-                        fields
-                            .iter()
-                            .find_map(|TypedStructField { r#type, name, .. }| {
+                        fields.iter().find_map(
+                            |TypedStructField {
+                                 type_id: r#type,
+                                 name,
+                                 ..
+                             }| {
                                 if name == field_name {
                                     Some(r#type)
                                 } else {
                                     None
                                 }
-                            })
+                            },
+                        )
                     };
                     let field_type = match field_type_opt {
                         Some(field_type) => field_type,

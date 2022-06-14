@@ -1,20 +1,12 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-D84378A37D7A2DA6'
-dependencies = ['core_utils']
-
-[[package]]
-name = 'core_utils'
-source = 'path+from-root-D84378A37D7A2DA6'
 dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-D84378A37D7A2DA6'
-dependencies = [
-    'core',
-    'core_utils',
-]
+dependencies = ['core']
 
 [[package]]
 name = 'tuple_in_struct'

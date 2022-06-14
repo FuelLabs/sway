@@ -181,7 +181,7 @@ impl Engine {
                 {
                     a_fields.iter().zip(b_fields.iter()).for_each(|(a, b)| {
                         let (new_warnings, new_errors) =
-                            self.unify(a.r#type, b.r#type, &a.span, help_text.clone());
+                            self.unify(a.type_id, b.type_id, &a.span, help_text.clone());
                         warnings.extend(new_warnings);
                         errors.extend(new_errors);
                     });
@@ -228,7 +228,7 @@ impl Engine {
                 {
                     a_variants.iter().zip(b_variants.iter()).for_each(|(a, b)| {
                         let (new_warnings, new_errors) =
-                            self.unify(a.r#type, b.r#type, &a.span, help_text.clone());
+                            self.unify(a.type_id, b.type_id, &a.span, help_text.clone());
                         warnings.extend(new_warnings);
                         errors.extend(new_errors);
                     });

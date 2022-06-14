@@ -36,7 +36,7 @@ pub enum TypedDeclaration {
     AbiDeclaration(TypedAbiDeclaration),
     // If type parameters are defined for a function, they are put in the namespace just for
     // the body of that function.
-    GenericTypeForFunctionScope { name: Ident },
+    GenericTypeForFunctionScope { name: Ident, type_id: TypeId },
     ErrorRecovery,
     StorageDeclaration(TypedStorageDeclaration),
     StorageReassignment(TypeCheckedStorageReassignment),
@@ -185,7 +185,7 @@ impl UnresolvedTypeCheck for TypedDeclaration {
             }
             StorageReassignment(TypeCheckedStorageReassignment { fields, rhs, .. }) => fields
                 .iter()
-                .flat_map(|x| x.r#type.check_for_unresolved_types())
+                .flat_map(|x| x.type_id.check_for_unresolved_types())
                 .chain(rhs.check_for_unresolved_types().into_iter())
                 .collect(),
             Reassignment(TypedReassignment { rhs, .. }) => rhs.check_for_unresolved_types(),
@@ -385,8 +385,8 @@ impl TypedDeclaration {
             TypedDeclaration::StorageDeclaration(decl) => insert_type(TypeInfo::Storage {
                 fields: decl.fields_as_typed_struct_fields(),
             }),
-            TypedDeclaration::GenericTypeForFunctionScope { name } => {
-                insert_type(TypeInfo::UnknownGeneric { name: name.clone() })
+            TypedDeclaration::GenericTypeForFunctionScope { name, type_id } => {
+                insert_type(TypeInfo::Ref(*type_id, name.span()))
             }
             decl => {
                 return err(
@@ -482,7 +482,7 @@ impl TypedTraitFn {
 #[derive(Clone, Debug, Eq)]
 pub struct ReassignmentLhs {
     pub kind: ProjectionKind,
-    pub r#type: TypeId,
+    pub type_id: TypeId,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -490,7 +490,7 @@ pub struct ReassignmentLhs {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEq for ReassignmentLhs {
     fn eq(&self, other: &Self) -> bool {
-        self.kind == other.kind && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
+        self.kind == other.kind && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
     }
 }
 

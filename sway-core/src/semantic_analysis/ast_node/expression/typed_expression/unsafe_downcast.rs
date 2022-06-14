@@ -38,7 +38,7 @@ pub(crate) fn instantiate_unsafe_downcast(
             exp: Box::new(exp.clone()),
             variant: variant.clone(),
         },
-        return_type: variant.r#type,
+        return_type: variant.type_id,
         is_constant: IsConstant::No,
         span,
     };

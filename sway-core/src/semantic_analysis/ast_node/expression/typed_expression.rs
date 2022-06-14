@@ -171,7 +171,7 @@ impl UnresolvedTypeCheck for TypedExpression {
                     &mut enum_decl
                         .variants
                         .iter()
-                        .flat_map(|x| x.r#type.check_for_unresolved_types())
+                        .flat_map(|x| x.type_id.check_for_unresolved_types())
                         .collect(),
                 );
                 buf
@@ -184,7 +184,7 @@ impl UnresolvedTypeCheck for TypedExpression {
             UnsafeDowncast { exp, variant } => exp
                 .check_for_unresolved_types()
                 .into_iter()
-                .chain(variant.r#type.check_for_unresolved_types().into_iter())
+                .chain(variant.type_id.check_for_unresolved_types().into_iter())
                 .collect(),
         }
     }
@@ -1155,7 +1155,7 @@ impl TypedExpression {
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: expr_field.value,
                     namespace,
-                    return_type_annotation: def_field.r#type,
+                    return_type_annotation: def_field.type_id,
                     help_text: "Struct field's type must match up with the type specified in its \
                      declaration.",
                     self_type,
