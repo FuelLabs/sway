@@ -1,7 +1,4 @@
-use crate::{
-    fmt::{Format, FormattedCode, Formatter},
-    utils::{punctuation::handle_close_bracket, punctuation::handle_open_bracket},
-};
+use crate::fmt::{Format, FormattedCode, Formatter};
 use sway_parse::ItemEnum;
 use sway_types::Spanned;
 
@@ -23,7 +20,8 @@ impl Format for ItemEnum {
 
         // Add name of the enum.
         formatted_code.push_str(self.name.as_str());
-        handle_open_bracket(&mut formatted_code, formatter);
+        // Uncomment this once #1967 is addressed
+        // handle_open_bracket(&mut formatted_code, formatter);
 
         let type_fields = &self.fields.clone().into_inner().value_separator_pairs;
 
@@ -72,7 +70,8 @@ impl Format for ItemEnum {
             // from the config we may understand next enum variant should be in the same line instead.
             formatted_code.push('\n');
         }
-        handle_close_bracket(&mut formatted_code, formatter);
+        // Uncomment this once #1967 is addressed
+        // handle_close_bracket(&mut formatted_code, formatter);
         formatted_code
     }
 }
