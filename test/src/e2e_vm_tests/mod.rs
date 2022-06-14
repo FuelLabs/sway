@@ -2,7 +2,7 @@ mod harness;
 use assert_matches::assert_matches;
 use forc_util::init_tracing_subscriber;
 use fuel_vm::prelude::*;
-pub fn run(filter_regex: Option<regex::Regex>) {
+pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
     init_tracing_subscriber();
     let filter = |name| {
         filter_regex
@@ -24,7 +24,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             .iter()
             .fold(0, |acc, (name, res)| {
                 if filter(name) {
-                    assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), *res);
+                    assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name, locked), *res);
                     acc + 1
                 } else {
                     acc
@@ -505,7 +505,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         .iter()
         .fold(0, |acc, (name, res)| {
             if filter(name) {
-                assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), *res);
+                assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name, locked), *res);
                 assert_matches!(crate::e2e_vm_tests::harness::test_json_abi(name), Ok(_));
                 acc + 1
             } else {
@@ -595,7 +595,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
-            crate::e2e_vm_tests::harness::does_not_compile(name);
+            crate::e2e_vm_tests::harness::does_not_compile(name, locked);
             acc + 1
         } else {
             acc
@@ -694,12 +694,12 @@ pub fn run(filter_regex: Option<regex::Regex>) {
     number_of_tests_run += projects.len();
     let mut contract_ids = Vec::<fuel_tx::ContractId>::with_capacity(contracts.len());
     for name in contracts {
-        let contract_id = harness::deploy_contract(name);
+        let contract_id = harness::deploy_contract(name, locked);
         contract_ids.push(contract_id);
     }
 
     for (name, val) in projects.iter().zip(vals.iter()) {
-        let result = harness::runs_on_node(name, &contract_ids);
+        let result = harness::runs_on_node(name, locked, &contract_ids);
         assert!(result.iter().all(|r| !matches!(
             r,
             fuel_tx::Receipt::Revert { .. } | fuel_tx::Receipt::Panic { .. }
