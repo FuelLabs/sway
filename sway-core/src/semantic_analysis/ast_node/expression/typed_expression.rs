@@ -594,7 +594,7 @@ impl TypedExpression {
         // The annotation may result in a cast, which is handled in the type engine.
         typed_expression.return_type = check!(
             namespace.resolve_type_with_self(
-                look_up_type_id(typed_expression.return_type),
+                typed_expression.return_type,
                 self_type,
                 &expr_span,
                 EnforceTypeArguments::No
@@ -1019,7 +1019,7 @@ impl TypedExpression {
             .unwrap_or_else(|| asm.whole_block_span.clone());
         let return_type = check!(
             namespace.resolve_type_with_self(
-                asm.return_type.clone(),
+                insert_type(asm.return_type.clone()),
                 self_type,
                 &asm_span,
                 EnforceTypeArguments::No

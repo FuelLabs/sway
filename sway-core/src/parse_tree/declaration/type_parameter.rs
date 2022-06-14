@@ -61,7 +61,7 @@ impl UpdateTypes for TypeParameter {
             Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, self.span())),
             None => check!(
                 namespace.resolve_type_with_self(
-                    look_up_type_id(self.type_id),
+                    self.type_id,
                     self_type,
                     &self.span(),
                     EnforceTypeArguments::Yes

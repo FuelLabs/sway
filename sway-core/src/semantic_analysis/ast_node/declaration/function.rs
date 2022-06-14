@@ -179,7 +179,7 @@ impl TypedFunctionDeclaration {
         // type check the return type
         let return_type = check!(
             namespace.resolve_type_with_self(
-                return_type,
+                insert_type(return_type),
                 self_type,
                 &return_type_span,
                 EnforceTypeArguments::Yes

@@ -110,16 +110,15 @@ where
                 for type_argument in type_arguments.iter_mut() {
                     let type_id = match self_type {
                         Some(self_type) => namespace.resolve_type_with_self(
-                            look_up_type_id(type_argument.type_id),
+                            type_argument.type_id,
                             self_type,
                             &type_argument.span,
                             enforce_type_arguments,
                             module_path,
                         ),
-                        None => namespace.resolve_type_without_self(
-                            look_up_type_id(type_argument.type_id),
-                            module_path,
-                        ),
+                        None => {
+                            namespace.resolve_type_without_self(type_argument.type_id, module_path)
+                        }
                     };
                     type_argument.type_id = check!(
                         type_id,

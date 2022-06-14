@@ -203,7 +203,7 @@ fn convert_trait_methods_to_dummy_funcs(
                             name: name.clone(),
                             type_id: check!(
                                 trait_namespace.resolve_type_with_self(
-                                    look_up_type_id(*type_id),
+                                    *type_id,
                                     insert_type(TypeInfo::SelfType),
                                     type_span,
                                     EnforceTypeArguments::Yes
@@ -219,7 +219,7 @@ fn convert_trait_methods_to_dummy_funcs(
                 span: name.span(),
                 return_type: check!(
                     trait_namespace.resolve_type_with_self(
-                        return_type.clone(),
+                        insert_type(return_type.clone()),
                         insert_type(TypeInfo::SelfType),
                         return_type_span,
                         EnforceTypeArguments::Yes

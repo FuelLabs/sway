@@ -66,7 +66,7 @@ impl TypedImplTrait {
 
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
-            namespace.resolve_type_without_self(type_implementing_for),
+            namespace.resolve_type_without_self(insert_type(type_implementing_for)),
             return err(warnings, errors),
             warnings,
             errors
@@ -215,7 +215,7 @@ impl TypedImplTrait {
 
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
-            namespace.resolve_type_without_self(type_implementing_for),
+            namespace.resolve_type_without_self(insert_type(type_implementing_for)),
             return err(warnings, errors),
             warnings,
             errors
