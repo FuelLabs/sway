@@ -54,8 +54,6 @@ impl Spanned for TypedStructDeclaration {
 }
 
 impl MonomorphizeHelper for TypedStructDeclaration {
-    type Output = TypedStructDeclaration;
-
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
@@ -63,9 +61,122 @@ impl MonomorphizeHelper for TypedStructDeclaration {
     fn name(&self) -> &Ident {
         &self.name
     }
+}
 
-    fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output {
-        monomorphize_inner(self, type_mapping, namespace)
+impl ResolveTypes for TypedStructDeclaration {
+    fn resolve_type_with_self(
+        &mut self,
+        type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        self_type: TypeId,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        // create a new namespace for type resolution
+        let mut namespace = namespace.clone();
+
+        // insert the type parameters into the namespace
+        let module = check!(
+            namespace.check_submodule_mut(module_path),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        for type_parameter in self.type_parameters.iter_mut() {
+            type_parameter.type_id = insert_type(TypeInfo::UnknownGeneric {
+                name: type_parameter.name_ident.clone(),
+            });
+            module.insert_symbol(type_parameter.name_ident.clone(), type_parameter.into());
+        }
+
+        // resolve the types of the fields
+        for field in self.fields.iter_mut() {
+            check!(
+                field.resolve_type_with_self(
+                    vec!(),
+                    enforce_type_arguments,
+                    self_type,
+                    &mut namespace,
+                    module_path
+                ),
+                continue,
+                warnings,
+                errors
+            );
+        }
+
+        // unify the type parameters and the type arguments
+        for (type_parameter, type_argument) in
+            self.type_parameters.iter().zip(type_arguments.iter())
+        {
+            let (mut new_warnings, new_errors) = unify_with_self(
+                type_parameter.type_id,
+                type_argument.type_id,
+                self_type,
+                &type_argument.span,
+                "Type argument is not assignable to generic type parameter.",
+            );
+            warnings.append(&mut new_warnings);
+            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+        }
+
+        ok((), warnings, errors)
+    }
+
+    fn resolve_type_without_self(
+        &mut self,
+        type_arguments: Vec<TypeArgument>,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        // create a new namespace for type resolution
+        let mut namespace = namespace.clone();
+
+        // insert the type parameters into the namespace
+        let module = check!(
+            namespace.check_submodule_mut(module_path),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        for type_parameter in self.type_parameters.iter_mut() {
+            type_parameter.type_id = insert_type(TypeInfo::UnknownGeneric {
+                name: type_parameter.name_ident.clone(),
+            });
+            module.insert_symbol(type_parameter.name_ident.clone(), type_parameter.into());
+        }
+
+        // resolve the types of the fields
+        for field in self.fields.iter_mut() {
+            check!(
+                field.resolve_type_without_self(vec!(), &mut namespace, module_path),
+                continue,
+                warnings,
+                errors
+            );
+        }
+
+        // unify the type parameters and the type arguments
+        for (type_parameter, type_argument) in
+            self.type_parameters.iter().zip(type_arguments.iter())
+        {
+            let (mut new_warnings, new_errors) = unify(
+                type_parameter.type_id,
+                type_argument.type_id,
+                &type_argument.span,
+                "Type argument is not assignable to generic type parameter.",
+            );
+            warnings.append(&mut new_warnings);
+            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+        }
+
+        ok((), warnings, errors)
     }
 }
 
@@ -200,6 +311,50 @@ impl ReplaceSelfType for TypedStructField {
     }
 }
 
+impl ResolveTypes for TypedStructField {
+    fn resolve_type_with_self(
+        &mut self,
+        _type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        self_type: TypeId,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        self.type_id = check!(
+            namespace.resolve_type_with_self(
+                self.type_id,
+                self_type,
+                &self.span,
+                enforce_type_arguments,
+                module_path,
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+        ok((), warnings, errors)
+    }
+
+    fn resolve_type_without_self(
+        &mut self,
+        _type_arguments: Vec<TypeArgument>,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        self.type_id = check!(
+            namespace.resolve_type_without_self(self.type_id, module_path,),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+        ok((), warnings, errors)
+    }
+}
+
 impl TypedStructField {
     pub(crate) fn type_check(
         field: StructField,
@@ -210,7 +365,7 @@ impl TypedStructField {
         let mut errors = vec![];
         let r#type = check!(
             namespace.resolve_type_with_self(
-                field.type_info,
+                insert_type(field.type_info),
                 self_type,
                 &field.type_span,
                 EnforceTypeArguments::Yes

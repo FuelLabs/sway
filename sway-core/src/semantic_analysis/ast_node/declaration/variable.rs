@@ -1,4 +1,13 @@
-use crate::{constants::*, error::*, semantic_analysis::*, type_engine::*, Ident, Visibility};
+use sway_types::Spanned;
+
+use crate::{
+    constants::*,
+    error::*,
+    namespace::{Path, Root},
+    semantic_analysis::*,
+    type_engine::*,
+    Ident, TypeArgument, Visibility,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum VariableMutability {
@@ -73,6 +82,62 @@ impl CopyTypes for TypedVariableDeclaration {
         self.type_ascription
             .update_type(type_mapping, &self.body.span);
         self.body.copy_types(type_mapping)
+    }
+}
+
+impl ResolveTypes for TypedVariableDeclaration {
+    fn resolve_type_with_self(
+        &mut self,
+        _type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        self_type: TypeId,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        self.type_ascription = check!(
+            namespace.resolve_type_with_self(
+                self.type_ascription,
+                self_type,
+                &self.name.span(),
+                enforce_type_arguments,
+                module_path,
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+        self.body
+            .resolve_type_with_self(
+                vec![],
+                enforce_type_arguments,
+                self_type,
+                namespace,
+                module_path,
+            )
+            .ok(&mut warnings, &mut errors);
+        ok((), warnings, errors)
+    }
+
+    fn resolve_type_without_self(
+        &mut self,
+        _type_arguments: Vec<TypeArgument>,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        self.type_ascription = check!(
+            namespace.resolve_type_without_self(self.type_ascription, module_path,),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+        self.body
+            .resolve_type_without_self(vec![], namespace, module_path)
+            .ok(&mut warnings, &mut errors);
+        ok((), warnings, errors)
     }
 }
 

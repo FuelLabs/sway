@@ -74,8 +74,6 @@ impl Spanned for TypedFunctionDeclaration {
 }
 
 impl MonomorphizeHelper for TypedFunctionDeclaration {
-    type Output = TypedFunctionDeclaration;
-
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
@@ -83,15 +81,160 @@ impl MonomorphizeHelper for TypedFunctionDeclaration {
     fn name(&self) -> &Ident {
         &self.name
     }
+}
 
-    fn monomorphize_inner(
-        self,
-        type_mapping: &TypeMapping,
-        _namespace: &mut Items,
-    ) -> Self::Output {
-        let mut new_decl = self;
-        new_decl.copy_types(type_mapping);
-        new_decl
+impl ResolveTypes for TypedFunctionDeclaration {
+    fn resolve_type_with_self(
+        &mut self,
+        type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        self_type: TypeId,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        // create a new namespace for type resolution
+        let mut namespace = namespace.clone();
+
+        // insert the type parameters into the namespace
+        let module = check!(
+            namespace.check_submodule_mut(module_path),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        for type_parameter in self.type_parameters.iter_mut() {
+            type_parameter.type_id = insert_type(TypeInfo::UnknownGeneric {
+                name: type_parameter.name_ident.clone(),
+            });
+            module.insert_symbol(type_parameter.name_ident.clone(), type_parameter.into());
+        }
+
+        // resolve the types of the parameters
+        for parameter in self.parameters.iter_mut() {
+            check!(
+                parameter.resolve_type_with_self(
+                    vec!(),
+                    enforce_type_arguments,
+                    self_type,
+                    &mut namespace,
+                    module_path
+                ),
+                continue,
+                warnings,
+                errors
+            );
+        }
+
+        // resolve the return type
+        self.return_type = check!(
+            namespace.resolve_type_with_self(
+                self.return_type,
+                self_type,
+                &self.return_type_span,
+                enforce_type_arguments,
+                module_path,
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+
+        // resolve the types in the body
+        self.body
+            .resolve_type_with_self(
+                vec![],
+                enforce_type_arguments,
+                self_type,
+                &mut namespace,
+                module_path,
+            )
+            .ok(&mut warnings, &mut errors);
+
+        // unify the type parameters and the type arguments
+        for (type_parameter, type_argument) in
+            self.type_parameters.iter().zip(type_arguments.iter())
+        {
+            let (mut new_warnings, new_errors) = unify_with_self(
+                type_parameter.type_id,
+                type_argument.type_id,
+                self_type,
+                &type_argument.span,
+                "Type argument is not assignable to generic type parameter.",
+            );
+            warnings.append(&mut new_warnings);
+            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+        }
+
+        ok((), warnings, errors)
+    }
+
+    fn resolve_type_without_self(
+        &mut self,
+        type_arguments: Vec<TypeArgument>,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        // create a new namespace for type resolution
+        let mut namespace = namespace.clone();
+
+        // insert the type parameters into the namespace
+        let module = check!(
+            namespace.check_submodule_mut(module_path),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        for type_parameter in self.type_parameters.iter_mut() {
+            type_parameter.type_id = insert_type(TypeInfo::UnknownGeneric {
+                name: type_parameter.name_ident.clone(),
+            });
+            module.insert_symbol(type_parameter.name_ident.clone(), type_parameter.into());
+        }
+
+        // resolve the types of the parameters
+        for parameter in self.parameters.iter_mut() {
+            check!(
+                parameter.resolve_type_without_self(vec!(), &mut namespace, module_path),
+                continue,
+                warnings,
+                errors
+            );
+        }
+
+        // resolve the return type
+        self.return_type = check!(
+            namespace.resolve_type_without_self(self.return_type, module_path,),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+
+        // resolve the types in the body
+        self.body
+            .resolve_type_without_self(vec![], &mut namespace, module_path)
+            .ok(&mut warnings, &mut errors);
+
+        // unify the type parameters and the type arguments
+        for (type_parameter, type_argument) in
+            self.type_parameters.iter().zip(type_arguments.iter())
+        {
+            let (mut new_warnings, new_errors) = unify(
+                type_parameter.type_id,
+                type_argument.type_id,
+                &type_argument.span,
+                "Type argument is not assignable to generic type parameter.",
+            );
+            warnings.append(&mut new_warnings);
+            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+        }
+
+        ok((), warnings, errors)
     }
 }
 
@@ -179,7 +322,7 @@ impl TypedFunctionDeclaration {
         // type check the return type
         let return_type = check!(
             namespace.resolve_type_with_self(
-                return_type,
+                insert_type(return_type),
                 self_type,
                 &return_type_span,
                 EnforceTypeArguments::Yes

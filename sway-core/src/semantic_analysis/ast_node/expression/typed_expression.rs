@@ -13,7 +13,12 @@ pub(crate) use self::{
 };
 
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::DeterministicallyAborts,
+    error::*,
+    namespace::{Path, Root},
+    parse_tree::*,
+    semantic_analysis::*,
+    type_engine::*,
+    types::DeterministicallyAborts,
 };
 
 use sway_types::{Ident, Span, Spanned};
@@ -258,6 +263,62 @@ impl DeterministicallyAborts for TypedExpression {
             EnumTag { exp } => exp.deterministically_aborts(),
             UnsafeDowncast { exp, .. } => exp.deterministically_aborts(),
         }
+    }
+}
+
+impl ResolveTypes for TypedExpression {
+    fn resolve_type_with_self(
+        &mut self,
+        _type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        self_type: TypeId,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        self.return_type = check!(
+            namespace.resolve_type_with_self(
+                self.return_type,
+                self_type,
+                &self.span,
+                enforce_type_arguments,
+                module_path,
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+        self.expression
+            .resolve_type_with_self(
+                vec![],
+                enforce_type_arguments,
+                self_type,
+                namespace,
+                module_path,
+            )
+            .ok(&mut warnings, &mut errors);
+        ok((), warnings, errors)
+    }
+
+    fn resolve_type_without_self(
+        &mut self,
+        _type_arguments: Vec<TypeArgument>,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        self.return_type = check!(
+            namespace.resolve_type_without_self(self.return_type, module_path,),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+        self.expression
+            .resolve_type_without_self(vec![], namespace, module_path)
+            .ok(&mut warnings, &mut errors);
+        ok((), warnings, errors)
     }
 }
 
@@ -594,7 +655,7 @@ impl TypedExpression {
         // The annotation may result in a cast, which is handled in the type engine.
         typed_expression.return_type = check!(
             namespace.resolve_type_with_self(
-                look_up_type_id(typed_expression.return_type),
+                typed_expression.return_type,
                 self_type,
                 &expr_span,
                 EnforceTypeArguments::No
@@ -722,13 +783,13 @@ impl TypedExpression {
             errors
         );
         let function_decl = check!(
-            unknown_decl.expect_function(),
+            unknown_decl.expect_function().cloned(),
             return err(warnings, errors),
             warnings,
             errors
         );
         instantiate_function_application(
-            function_decl.clone(),
+            function_decl,
             name,
             type_arguments,
             arguments,
@@ -1019,7 +1080,7 @@ impl TypedExpression {
             .unwrap_or_else(|| asm.whole_block_span.clone());
         let return_type = check!(
             namespace.resolve_type_with_self(
-                asm.return_type.clone(),
+                insert_type(asm.return_type),
                 self_type,
                 &asm_span,
                 EnforceTypeArguments::No

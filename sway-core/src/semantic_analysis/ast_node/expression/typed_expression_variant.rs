@@ -1,4 +1,11 @@
-use crate::{parse_tree::*, semantic_analysis::*, type_engine::*};
+use crate::{
+    error::ok,
+    namespace::{Path, Root},
+    parse_tree::*,
+    semantic_analysis::*,
+    type_engine::*,
+    CompileResult,
+};
 
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
@@ -435,8 +442,19 @@ impl fmt::Display for TypedExpressionVariant {
             }
             TypedExpressionVariant::Array { .. } => "array".into(),
             TypedExpressionVariant::ArrayIndex { .. } => "[..]".into(),
-            TypedExpressionVariant::StructExpression { struct_name, .. } => {
-                format!("\"{}\" struct init", struct_name.as_str())
+            TypedExpressionVariant::StructExpression {
+                struct_name,
+                fields,
+            } => {
+                format!(
+                    "{} {{ {} }} struct instantiation",
+                    struct_name.as_str(),
+                    fields
+                        .iter()
+                        .map(|x| x.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
             }
             TypedExpressionVariant::CodeBlock(_) => "code block entry".into(),
             TypedExpressionVariant::FunctionParameter => "fn param access".into(),
@@ -474,12 +492,30 @@ impl fmt::Display for TypedExpressionVariant {
                 tag,
                 enum_decl,
                 variant_name,
+                contents,
                 ..
             } => {
                 format!(
-                    "{}::{} enum instantiation (tag: {})",
+                    "{}{}::{}({}) enum instantiation (tag: {})",
                     enum_decl.name.as_str(),
+                    if enum_decl.type_parameters.is_empty() {
+                        "".to_string()
+                    } else {
+                        format!(
+                            "::<{}>",
+                            enum_decl
+                                .type_parameters
+                                .iter()
+                                .map(|x| x.type_id.to_string())
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        )
+                    },
                     variant_name.as_str(),
+                    match contents {
+                        Some(contents) => contents.to_string(),
+                        None => "()".to_string(),
+                    },
                     tag
                 )
             }
@@ -496,6 +532,512 @@ impl fmt::Display for TypedExpressionVariant {
             }
         };
         write!(f, "{}", s)
+    }
+}
+
+impl ResolveTypes for TypedExpressionVariant {
+    fn resolve_type_with_self(
+        &mut self,
+        _type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        self_type: TypeId,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        use TypedExpressionVariant::*;
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            FunctionApplication {
+                ref mut arguments,
+                ref mut function_body,
+                ..
+            } => {
+                for (_, argument) in arguments.iter_mut() {
+                    check!(
+                        argument.resolve_type_with_self(
+                            vec!(),
+                            enforce_type_arguments,
+                            self_type,
+                            namespace,
+                            module_path
+                        ),
+                        continue,
+                        warnings,
+                        errors
+                    );
+                }
+                function_body
+                    .resolve_type_with_self(
+                        vec![],
+                        enforce_type_arguments,
+                        self_type,
+                        namespace,
+                        module_path,
+                    )
+                    .ok(&mut warnings, &mut errors);
+            }
+            Tuple { ref mut fields } => {
+                for field in fields.iter_mut() {
+                    check!(
+                        field.resolve_type_with_self(
+                            vec!(),
+                            enforce_type_arguments,
+                            self_type,
+                            namespace,
+                            module_path
+                        ),
+                        continue,
+                        warnings,
+                        errors
+                    );
+                }
+            }
+            Array { ref mut contents } => {
+                for content in contents.iter_mut() {
+                    check!(
+                        content.resolve_type_with_self(
+                            vec!(),
+                            enforce_type_arguments,
+                            self_type,
+                            namespace,
+                            module_path
+                        ),
+                        continue,
+                        warnings,
+                        errors
+                    );
+                }
+            }
+            CodeBlock(ref mut contents) => {
+                contents
+                    .resolve_type_with_self(
+                        vec![],
+                        enforce_type_arguments,
+                        self_type,
+                        namespace,
+                        module_path,
+                    )
+                    .ok(&mut warnings, &mut errors);
+            }
+            LazyOperator {
+                ref mut lhs,
+                ref mut rhs,
+                ..
+            } => {
+                lhs.resolve_type_with_self(
+                    vec![],
+                    enforce_type_arguments,
+                    self_type,
+                    namespace,
+                    module_path,
+                )
+                .ok(&mut warnings, &mut errors);
+                rhs.resolve_type_with_self(
+                    vec![],
+                    enforce_type_arguments,
+                    self_type,
+                    namespace,
+                    module_path,
+                )
+                .ok(&mut warnings, &mut errors);
+            }
+            StructExpression { ref mut fields, .. } => {
+                for field in fields.iter_mut() {
+                    check!(
+                        field.resolve_type_with_self(
+                            vec!(),
+                            enforce_type_arguments,
+                            self_type,
+                            namespace,
+                            module_path
+                        ),
+                        continue,
+                        warnings,
+                        errors
+                    );
+                }
+            }
+            EnumInstantiation {
+                ref mut enum_decl,
+                ref mut contents,
+                ..
+            } => {
+                enum_decl
+                    .resolve_type_with_self(
+                        vec![],
+                        enforce_type_arguments,
+                        self_type,
+                        namespace,
+                        module_path,
+                    )
+                    .ok(&mut warnings, &mut errors);
+                if let Some(contents) = contents {
+                    contents
+                        .resolve_type_with_self(
+                            vec![],
+                            enforce_type_arguments,
+                            self_type,
+                            namespace,
+                            module_path,
+                        )
+                        .ok(&mut warnings, &mut errors);
+                }
+            }
+            AbiCast {
+                ref mut address, ..
+            } => {
+                address
+                    .resolve_type_with_self(
+                        vec![],
+                        enforce_type_arguments,
+                        self_type,
+                        namespace,
+                        module_path,
+                    )
+                    .ok(&mut warnings, &mut errors);
+            }
+            StructFieldAccess {
+                ref mut prefix,
+                ref mut field_to_access,
+                ref mut resolved_type_of_parent,
+            } => {
+                prefix
+                    .resolve_type_with_self(
+                        vec![],
+                        enforce_type_arguments,
+                        self_type,
+                        namespace,
+                        module_path,
+                    )
+                    .ok(&mut warnings, &mut errors);
+                field_to_access
+                    .resolve_type_with_self(
+                        vec![],
+                        enforce_type_arguments,
+                        self_type,
+                        namespace,
+                        module_path,
+                    )
+                    .ok(&mut warnings, &mut errors);
+                *resolved_type_of_parent = check!(
+                    namespace.resolve_type_with_self(
+                        *resolved_type_of_parent,
+                        self_type,
+                        &(*prefix).span,
+                        enforce_type_arguments,
+                        module_path,
+                    ),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors
+                );
+            }
+            TupleElemAccess {
+                ref mut prefix,
+                ref mut resolved_type_of_parent,
+                ..
+            } => {
+                prefix
+                    .resolve_type_with_self(
+                        vec![],
+                        enforce_type_arguments,
+                        self_type,
+                        namespace,
+                        module_path,
+                    )
+                    .ok(&mut warnings, &mut errors);
+                *resolved_type_of_parent = check!(
+                    namespace.resolve_type_with_self(
+                        *resolved_type_of_parent,
+                        self_type,
+                        &(*prefix).span,
+                        enforce_type_arguments,
+                        module_path,
+                    ),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors
+                );
+            }
+            ArrayIndex {
+                ref mut prefix,
+                ref mut index,
+            } => {
+                prefix
+                    .resolve_type_with_self(
+                        vec![],
+                        enforce_type_arguments,
+                        self_type,
+                        namespace,
+                        module_path,
+                    )
+                    .ok(&mut warnings, &mut errors);
+                index
+                    .resolve_type_with_self(
+                        vec![],
+                        enforce_type_arguments,
+                        self_type,
+                        namespace,
+                        module_path,
+                    )
+                    .ok(&mut warnings, &mut errors);
+            }
+            IfExp {
+                ref mut condition,
+                ref mut then,
+                ref mut r#else,
+                ..
+            } => {
+                condition
+                    .resolve_type_with_self(
+                        vec![],
+                        enforce_type_arguments,
+                        self_type,
+                        namespace,
+                        module_path,
+                    )
+                    .ok(&mut warnings, &mut errors);
+                then.resolve_type_with_self(
+                    vec![],
+                    enforce_type_arguments,
+                    self_type,
+                    namespace,
+                    module_path,
+                )
+                .ok(&mut warnings, &mut errors);
+                if let Some(r#else) = r#else {
+                    r#else
+                        .resolve_type_with_self(
+                            vec![],
+                            enforce_type_arguments,
+                            self_type,
+                            namespace,
+                            module_path,
+                        )
+                        .ok(&mut warnings, &mut errors);
+                }
+            }
+            EnumTag { ref mut exp } => {
+                exp.resolve_type_with_self(
+                    vec![],
+                    enforce_type_arguments,
+                    self_type,
+                    namespace,
+                    module_path,
+                )
+                .ok(&mut warnings, &mut errors);
+            }
+            UnsafeDowncast {
+                ref mut exp,
+                ref mut variant,
+            } => {
+                exp.resolve_type_with_self(
+                    vec![],
+                    enforce_type_arguments,
+                    self_type,
+                    namespace,
+                    module_path,
+                )
+                .ok(&mut warnings, &mut errors);
+                variant
+                    .resolve_type_with_self(
+                        vec![],
+                        enforce_type_arguments,
+                        self_type,
+                        namespace,
+                        module_path,
+                    )
+                    .ok(&mut warnings, &mut errors);
+            }
+            Literal(_)
+            | StorageAccess { .. }
+            | VariableExpression { .. }
+            | FunctionParameter
+            | IntrinsicFunction(_)
+            | AsmExpression { .. }
+            | AbiName(_) => {}
+        }
+        ok((), warnings, errors)
+    }
+
+    fn resolve_type_without_self(
+        &mut self,
+        _type_arguments: Vec<TypeArgument>,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        use TypedExpressionVariant::*;
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            FunctionApplication {
+                ref mut arguments,
+                ref mut function_body,
+                ..
+            } => {
+                for (_, argument) in arguments.iter_mut() {
+                    check!(
+                        argument.resolve_type_without_self(vec!(), namespace, module_path),
+                        continue,
+                        warnings,
+                        errors
+                    );
+                }
+                function_body
+                    .resolve_type_without_self(vec![], namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+            }
+            Tuple { ref mut fields } => {
+                for field in fields.iter_mut() {
+                    check!(
+                        field.resolve_type_without_self(vec!(), namespace, module_path),
+                        continue,
+                        warnings,
+                        errors
+                    );
+                }
+            }
+            Array { ref mut contents } => {
+                for content in contents.iter_mut() {
+                    check!(
+                        content.resolve_type_without_self(vec!(), namespace, module_path),
+                        continue,
+                        warnings,
+                        errors
+                    );
+                }
+            }
+            CodeBlock(ref mut contents) => {
+                contents
+                    .resolve_type_without_self(vec![], namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+            }
+            LazyOperator {
+                ref mut lhs,
+                ref mut rhs,
+                ..
+            } => {
+                lhs.resolve_type_without_self(vec![], namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+                rhs.resolve_type_without_self(vec![], namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+            }
+            StructExpression { ref mut fields, .. } => {
+                for field in fields.iter_mut() {
+                    check!(
+                        field.resolve_type_without_self(vec!(), namespace, module_path),
+                        continue,
+                        warnings,
+                        errors
+                    );
+                }
+            }
+            EnumInstantiation {
+                ref mut enum_decl,
+                ref mut contents,
+                ..
+            } => {
+                enum_decl
+                    .resolve_type_without_self(vec![], namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+                if let Some(contents) = contents {
+                    contents
+                        .resolve_type_without_self(vec![], namespace, module_path)
+                        .ok(&mut warnings, &mut errors);
+                }
+            }
+            AbiCast {
+                ref mut address, ..
+            } => {
+                address
+                    .resolve_type_without_self(vec![], namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+            }
+            StructFieldAccess {
+                ref mut prefix,
+                ref mut field_to_access,
+                ref mut resolved_type_of_parent,
+            } => {
+                prefix
+                    .resolve_type_without_self(vec![], namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+                field_to_access
+                    .resolve_type_without_self(vec![], namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+                *resolved_type_of_parent = check!(
+                    namespace.resolve_type_without_self(*resolved_type_of_parent, module_path,),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors
+                );
+            }
+            TupleElemAccess {
+                ref mut prefix,
+                ref mut resolved_type_of_parent,
+                ..
+            } => {
+                prefix
+                    .resolve_type_without_self(vec![], namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+                *resolved_type_of_parent = check!(
+                    namespace.resolve_type_without_self(*resolved_type_of_parent, module_path,),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors
+                );
+            }
+            ArrayIndex {
+                ref mut prefix,
+                ref mut index,
+            } => {
+                prefix
+                    .resolve_type_without_self(vec![], namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+                index
+                    .resolve_type_without_self(vec![], namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+            }
+            IfExp {
+                ref mut condition,
+                ref mut then,
+                ref mut r#else,
+                ..
+            } => {
+                condition
+                    .resolve_type_without_self(vec![], namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+                then.resolve_type_without_self(vec![], namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+                if let Some(r#else) = r#else {
+                    r#else
+                        .resolve_type_without_self(vec![], namespace, module_path)
+                        .ok(&mut warnings, &mut errors);
+                }
+            }
+            EnumTag { ref mut exp } => {
+                exp.resolve_type_without_self(vec![], namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+            }
+            UnsafeDowncast {
+                ref mut exp,
+                ref mut variant,
+            } => {
+                exp.resolve_type_without_self(vec![], namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+                variant
+                    .resolve_type_without_self(vec![], namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+            }
+            Literal(_)
+            | StorageAccess { .. }
+            | VariableExpression { .. }
+            | FunctionParameter
+            | IntrinsicFunction(_)
+            | AsmExpression { .. }
+            | AbiName(_) => {}
+        }
+        ok((), warnings, errors)
     }
 }
 

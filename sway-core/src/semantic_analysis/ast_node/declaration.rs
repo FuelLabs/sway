@@ -18,7 +18,13 @@ pub use r#trait::*;
 pub use storage::*;
 pub use variable::*;
 
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
+use crate::{
+    error::*,
+    namespace::{Path, Root},
+    parse_tree::*,
+    semantic_analysis::*,
+    type_engine::*,
+};
 use derivative::Derivative;
 use std::{borrow::Cow, fmt};
 use sway_types::{Ident, Span, Spanned};
@@ -198,6 +204,162 @@ impl UnresolvedTypeCheck for TypedDeclaration {
             | AbiDeclaration(_)
             | GenericTypeForFunctionScope { .. } => vec![],
         }
+    }
+}
+
+impl ResolveTypes for TypedDeclaration {
+    fn resolve_type_with_self(
+        &mut self,
+        _type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        self_type: TypeId,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        use TypedDeclaration::*;
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            VariableDeclaration(decl) => {
+                decl.resolve_type_with_self(
+                    vec![],
+                    enforce_type_arguments,
+                    self_type,
+                    namespace,
+                    module_path,
+                )
+                .ok(&mut warnings, &mut errors);
+            }
+            FunctionDeclaration(decl) => {
+                decl.resolve_type_with_self(
+                    vec![],
+                    enforce_type_arguments,
+                    self_type,
+                    namespace,
+                    module_path,
+                )
+                .ok(&mut warnings, &mut errors);
+            }
+            ConstantDeclaration(decl) => {
+                decl.resolve_type_with_self(
+                    vec![],
+                    enforce_type_arguments,
+                    self_type,
+                    namespace,
+                    module_path,
+                )
+                .ok(&mut warnings, &mut errors);
+            }
+            StructDeclaration(decl) => {
+                decl.resolve_type_with_self(
+                    vec![],
+                    enforce_type_arguments,
+                    self_type,
+                    namespace,
+                    module_path,
+                )
+                .ok(&mut warnings, &mut errors);
+            }
+            EnumDeclaration(decl) => {
+                decl.resolve_type_with_self(
+                    vec![],
+                    enforce_type_arguments,
+                    self_type,
+                    namespace,
+                    module_path,
+                )
+                .ok(&mut warnings, &mut errors);
+            }
+            Reassignment(reassignment) => {
+                reassignment
+                    .resolve_type_with_self(
+                        vec![],
+                        enforce_type_arguments,
+                        self_type,
+                        namespace,
+                        module_path,
+                    )
+                    .ok(&mut warnings, &mut errors);
+            }
+            GenericTypeForFunctionScope { name, type_id } => {
+                *type_id = check!(
+                    namespace.resolve_type_with_self(
+                        *type_id,
+                        self_type,
+                        &name.span(),
+                        enforce_type_arguments,
+                        module_path,
+                    ),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors
+                );
+            }
+            ImplTrait(_) | AbiDeclaration(_) | TraitDeclaration(_) => {
+                errors.push(CompileError::Unimplemented(
+                    "this is unimplemented in thsi position",
+                    self.span(),
+                ));
+                return err(warnings, errors);
+            }
+            ErrorRecovery | StorageDeclaration(_) | StorageReassignment(_) => todo!(),
+        }
+        ok((), warnings, errors)
+    }
+
+    fn resolve_type_without_self(
+        &mut self,
+        _type_arguments: Vec<TypeArgument>,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        use TypedDeclaration::*;
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            VariableDeclaration(decl) => {
+                decl.resolve_type_without_self(vec![], namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+            }
+            FunctionDeclaration(decl) => {
+                decl.resolve_type_without_self(vec![], namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+            }
+            ConstantDeclaration(decl) => {
+                decl.resolve_type_without_self(vec![], namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+            }
+            StructDeclaration(decl) => {
+                decl.resolve_type_without_self(vec![], namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+            }
+            EnumDeclaration(decl) => {
+                decl.resolve_type_without_self(vec![], namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+            }
+            Reassignment(reassignment) => {
+                reassignment
+                    .resolve_type_without_self(vec![], namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+            }
+            GenericTypeForFunctionScope { type_id, .. } => {
+                *type_id = check!(
+                    namespace.resolve_type_without_self(*type_id, module_path),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors
+                );
+            }
+            ImplTrait(_) | AbiDeclaration(_) | TraitDeclaration(_) => {
+                errors.push(CompileError::Unimplemented(
+                    "this is unimplemented in thsi position",
+                    self.span(),
+                ));
+                return err(warnings, errors);
+            }
+            ErrorRecovery | StorageDeclaration(_) | StorageReassignment(_) => todo!(),
+        }
+        ok((), warnings, errors)
     }
 }
 
@@ -437,6 +599,35 @@ impl CopyTypes for TypedConstantDeclaration {
     }
 }
 
+impl ResolveTypes for TypedConstantDeclaration {
+    fn resolve_type_with_self(
+        &mut self,
+        _type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        self_type: TypeId,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        self.value.resolve_type_with_self(
+            vec![],
+            enforce_type_arguments,
+            self_type,
+            namespace,
+            module_path,
+        )
+    }
+
+    fn resolve_type_without_self(
+        &mut self,
+        _type_arguments: Vec<TypeArgument>,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        self.value
+            .resolve_type_without_self(vec![], namespace, module_path)
+    }
+}
+
 #[derive(Clone, Debug, Derivative)]
 #[derivative(PartialEq, Eq)]
 pub struct TypedTraitFn {
@@ -533,5 +724,61 @@ impl CopyTypes for TypedReassignment {
         self.rhs.copy_types(type_mapping);
         self.lhs_type
             .update_type(type_mapping, &self.lhs_base_name.span());
+    }
+}
+
+impl ResolveTypes for TypedReassignment {
+    fn resolve_type_with_self(
+        &mut self,
+        _type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        self_type: TypeId,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        self.lhs_type = check!(
+            namespace.resolve_type_with_self(
+                self.lhs_type,
+                self_type,
+                &self.lhs_base_name.span(),
+                enforce_type_arguments,
+                module_path,
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+        self.rhs
+            .resolve_type_with_self(
+                vec![],
+                enforce_type_arguments,
+                self_type,
+                namespace,
+                module_path,
+            )
+            .ok(&mut warnings, &mut errors);
+        ok((), warnings, errors)
+    }
+
+    fn resolve_type_without_self(
+        &mut self,
+        _type_arguments: Vec<TypeArgument>,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        self.lhs_type = check!(
+            namespace.resolve_type_without_self(self.lhs_type, module_path,),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+        self.rhs
+            .resolve_type_without_self(vec![], namespace, module_path)
+            .ok(&mut warnings, &mut errors);
+        ok((), warnings, errors)
     }
 }

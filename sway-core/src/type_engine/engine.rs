@@ -94,6 +94,29 @@ impl Engine {
                 }
             }
 
+            (UnknownGeneric { name: l_name }, UnknownGeneric { name: r_name })
+                if l_name.as_str() == r_name.as_str() =>
+            {
+                (vec![], vec![])
+            }
+            (ref received_info @ UnknownGeneric { .. }, _) => {
+                self.slab.replace(
+                    received,
+                    received_info,
+                    TypeInfo::Ref(expected, span.clone()),
+                );
+                (vec![], vec![])
+            }
+
+            (_, ref expected_info @ UnknownGeneric { .. }) => {
+                self.slab.replace(
+                    expected,
+                    expected_info,
+                    TypeInfo::Ref(received, span.clone()),
+                );
+                (vec![], vec![])
+            }
+
             (Tuple(fields_a), Tuple(fields_b)) if fields_a.len() == fields_b.len() => {
                 let mut warnings = vec![];
                 let mut errors = vec![];
@@ -133,29 +156,6 @@ impl Engine {
                 // u64 (eg)". If we were to do a slab replace here, we'd be saying "this was always a
                 // u64 (eg)".
                 (warnings, vec![])
-            }
-
-            (UnknownGeneric { name: l_name }, UnknownGeneric { name: r_name })
-                if l_name.as_str() == r_name.as_str() =>
-            {
-                (vec![], vec![])
-            }
-            (ref received_info @ UnknownGeneric { .. }, _) => {
-                self.slab.replace(
-                    received,
-                    received_info,
-                    TypeInfo::Ref(expected, span.clone()),
-                );
-                (vec![], vec![])
-            }
-
-            (_, ref expected_info @ UnknownGeneric { .. }) => {
-                self.slab.replace(
-                    expected,
-                    expected_info,
-                    TypeInfo::Ref(received, span.clone()),
-                );
-                (vec![], vec![])
             }
 
             // if the types, once their ids have been looked up, are the same, we are done

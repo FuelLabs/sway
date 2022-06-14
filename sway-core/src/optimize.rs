@@ -2657,6 +2657,7 @@ fn convert_resolved_type(
     // A handy macro for rejecting unsupported types.
     macro_rules! reject_type {
         ($name_str:literal) => {{
+            //panic!();
             return Err(CompileError::Internal(
                 concat!($name_str, " type cannot be resolved in IR."),
                 span.clone(),

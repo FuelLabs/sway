@@ -16,8 +16,14 @@ pub(crate) use return_statement::*;
 pub(crate) use while_loop::*;
 
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*,
-    types::DeterministicallyAborts, AstNode, AstNodeContent, Ident, ReturnStatement,
+    error::*,
+    namespace::{Path, Root},
+    parse_tree::*,
+    semantic_analysis::*,
+    style::*,
+    type_engine::*,
+    types::DeterministicallyAborts,
+    AstNode, AstNodeContent, Ident, ReturnStatement,
 };
 
 use sway_types::{span::Span, state::StateIndex, Spanned};
@@ -64,6 +70,150 @@ impl UnresolvedTypeCheck for TypedAstNodeContent {
             }
             SideEffect => vec![],
         }
+    }
+}
+
+impl ResolveTypes for TypedAstNodeContent {
+    fn resolve_type_with_self(
+        &mut self,
+        _type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        self_type: TypeId,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        use TypedAstNodeContent::*;
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            ReturnStatement(stmt) => {
+                check!(
+                    stmt.resolve_type_with_self(
+                        vec!(),
+                        enforce_type_arguments,
+                        self_type,
+                        namespace,
+                        module_path
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            Declaration(decl) => {
+                check!(
+                    decl.resolve_type_with_self(
+                        vec!(),
+                        enforce_type_arguments,
+                        self_type,
+                        namespace,
+                        module_path
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            Expression(expr) => {
+                check!(
+                    expr.resolve_type_with_self(
+                        vec!(),
+                        enforce_type_arguments,
+                        self_type,
+                        namespace,
+                        module_path
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            ImplicitReturnExpression(expr) => {
+                check!(
+                    expr.resolve_type_with_self(
+                        vec!(),
+                        enforce_type_arguments,
+                        self_type,
+                        namespace,
+                        module_path
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            WhileLoop(lo) => {
+                check!(
+                    lo.resolve_type_with_self(
+                        vec!(),
+                        enforce_type_arguments,
+                        self_type,
+                        namespace,
+                        module_path
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            SideEffect => {}
+        }
+        ok((), warnings, errors)
+    }
+
+    fn resolve_type_without_self(
+        &mut self,
+        _type_arguments: Vec<TypeArgument>,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        use TypedAstNodeContent::*;
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            ReturnStatement(stmt) => {
+                check!(
+                    stmt.resolve_type_without_self(vec!(), namespace, module_path),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            Declaration(decl) => {
+                check!(
+                    decl.resolve_type_without_self(vec!(), namespace, module_path),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            Expression(expr) => {
+                check!(
+                    expr.resolve_type_without_self(vec!(), namespace, module_path),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            ImplicitReturnExpression(expr) => {
+                check!(
+                    expr.resolve_type_without_self(vec!(), namespace, module_path),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            WhileLoop(lo) => {
+                check!(
+                    lo.resolve_type_without_self(vec!(), namespace, module_path),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            SideEffect => {}
+        }
+        ok((), warnings, errors)
     }
 }
 
@@ -133,6 +283,35 @@ impl DeterministicallyAborts for TypedAstNode {
             }
             SideEffect => false,
         }
+    }
+}
+
+impl ResolveTypes for TypedAstNode {
+    fn resolve_type_with_self(
+        &mut self,
+        _type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        self_type: TypeId,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        self.content.resolve_type_with_self(
+            vec![],
+            enforce_type_arguments,
+            self_type,
+            namespace,
+            module_path,
+        )
+    }
+
+    fn resolve_type_without_self(
+        &mut self,
+        _type_arguments: Vec<TypeArgument>,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        self.content
+            .resolve_type_without_self(vec![], namespace, module_path)
     }
 }
 
@@ -230,32 +409,6 @@ impl TypedAstNode {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
-        // A little utility used to check an ascribed type matches its associated expression.
-        let mut type_check_ascribed_expr =
-            |namespace: &mut Namespace, type_ascription: TypeInfo, value| {
-                let type_id = check!(
-                    namespace.resolve_type_with_self(
-                        type_ascription,
-                        self_type,
-                        &node.span,
-                        EnforceTypeArguments::No
-                    ),
-                    insert_type(TypeInfo::ErrorRecovery),
-                    warnings,
-                    errors,
-                );
-                TypedExpression::type_check(TypeCheckArguments {
-                    checkee: value,
-                    namespace,
-                    return_type_annotation: type_id,
-                    help_text: "This declaration's type annotation  does \
-                     not match up with the assigned expression's type.",
-                    self_type,
-                    mode: Mode::NonAbi,
-                    opts,
-                })
-            };
-
         let node = TypedAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
@@ -290,7 +443,7 @@ impl TypedAstNode {
                             };
                             let type_ascription = check!(
                                 namespace.resolve_type_with_self(
-                                    type_ascription,
+                                    insert_type(type_ascription),
                                     self_type,
                                     &type_ascription_span,
                                     EnforceTypeArguments::Yes,
@@ -330,11 +483,33 @@ impl TypedAstNode {
                             value,
                             visibility,
                         }) => {
-                            let result =
-                                type_check_ascribed_expr(namespace, type_ascription.clone(), value);
                             is_screaming_snake_case(&name).ok(&mut warnings, &mut errors);
-                            let value =
-                                check!(result, error_recovery_expr(name.span()), warnings, errors);
+                            let type_ascription = check!(
+                                namespace.resolve_type_with_self(
+                                    insert_type(type_ascription),
+                                    self_type,
+                                    &node.span,
+                                    EnforceTypeArguments::No
+                                ),
+                                insert_type(TypeInfo::ErrorRecovery),
+                                warnings,
+                                errors,
+                            );
+                            let value = check!(
+                                TypedExpression::type_check(TypeCheckArguments {
+                                    checkee: value,
+                                    namespace,
+                                    return_type_annotation: type_ascription,
+                                    help_text: "This declaration's type annotation  does \
+                                        not match up with the assigned expression's type.",
+                                    self_type,
+                                    mode: Mode::NonAbi,
+                                    opts,
+                                }),
+                                error_recovery_expr(name.span()),
+                                warnings,
+                                errors
+                            );
                             let typed_const_decl =
                                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                                     name: name.clone(),
@@ -345,7 +520,7 @@ impl TypedAstNode {
                                         VariableMutability::Immutable
                                     },
                                     const_decl_origin: true,
-                                    type_ascription: insert_type(type_ascription),
+                                    type_ascription,
                                 });
                             namespace.insert_symbol(name, typed_const_decl.clone());
                             typed_const_decl
@@ -485,7 +660,7 @@ impl TypedAstNode {
                             } in fields
                             {
                                 let r#type = check!(
-                                    namespace.resolve_type_without_self(r#type),
+                                    namespace.resolve_type_without_self(insert_type(r#type)),
                                     return err(warnings, errors),
                                     warnings,
                                     errors
@@ -777,7 +952,7 @@ fn type_check_interface_surface(
                             name,
                             type_id: check!(
                                 namespace.resolve_type_with_self(
-                                    look_up_type_id(type_id),
+                                    type_id,
                                     insert_type(TypeInfo::SelfType),
                                     &type_span,
                                     EnforceTypeArguments::Yes
@@ -792,7 +967,7 @@ fn type_check_interface_surface(
                     .collect(),
                 return_type: check!(
                     namespace.resolve_type_with_self(
-                        return_type,
+                        insert_type(return_type),
                         insert_type(TypeInfo::SelfType),
                         &return_type_span,
                         EnforceTypeArguments::Yes
@@ -835,7 +1010,7 @@ fn type_check_trait_methods(
              }| {
                 let r#type = check!(
                     namespace.resolve_type_with_self(
-                        look_up_type_id(*r#type),
+                        *r#type,
                         insert_type(TypeInfo::SelfType),
                         &name.span(),
                         EnforceTypeArguments::Yes
@@ -913,7 +1088,7 @@ fn type_check_trait_methods(
                         name,
                         type_id: check!(
                             namespace.resolve_type_with_self(
-                                look_up_type_id(type_id),
+                                type_id,
                                 crate::type_engine::insert_type(TypeInfo::SelfType),
                                 &type_span,
                                 EnforceTypeArguments::Yes
@@ -931,7 +1106,7 @@ fn type_check_trait_methods(
         // TODO check code block implicit return
         let return_type = check!(
             namespace.resolve_type_with_self(
-                return_type,
+                insert_type(return_type),
                 self_type,
                 &return_type_span,
                 EnforceTypeArguments::Yes

@@ -5,8 +5,6 @@ use crate::{
     TypeParameter,
 };
 
-use super::CreateTypeId;
-
 /// This type is used to denote if, during monomorphization, the compiler
 /// should enforce that type arguments be provided. An example of that
 /// might be this:
@@ -58,12 +56,12 @@ pub(crate) trait Monomorphize {
 
 impl<T> Monomorphize for T
 where
-    T: MonomorphizeHelper<Output = T> + Spanned,
+    T: MonomorphizeHelper + Spanned + ResolveTypes,
 {
     type Output = T;
 
     fn monomorphize(
-        self,
+        mut self,
         mut type_arguments: Vec<TypeArgument>,
         enforce_type_arguments: EnforceTypeArguments,
         self_type: Option<TypeId>,
@@ -73,6 +71,7 @@ where
     ) -> CompileResult<Self::Output> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
         match (self.type_parameters().is_empty(), type_arguments.is_empty()) {
             (true, true) => ok(self, warnings, errors),
             (false, true) => {
@@ -84,15 +83,23 @@ where
                     });
                     return err(warnings, errors);
                 }
-                let type_mapping = insert_type_parameters(self.type_parameters());
-                let module = check!(
-                    namespace.check_submodule_mut(module_path),
+                check!(
+                    match self_type {
+                        Some(self_type) => self.resolve_type_with_self(
+                            type_arguments,
+                            enforce_type_arguments,
+                            self_type,
+                            namespace,
+                            module_path
+                        ),
+                        None =>
+                            self.resolve_type_without_self(type_arguments, namespace, module_path),
+                    },
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                let new_decl = self.monomorphize_inner(&type_mapping, module);
-                ok(new_decl, warnings, errors)
+                ok(self, warnings, errors)
             }
             (true, false) => {
                 let type_arguments_span = type_arguments
@@ -107,27 +114,6 @@ where
                 err(warnings, errors)
             }
             (false, false) => {
-                for type_argument in type_arguments.iter_mut() {
-                    let type_id = match self_type {
-                        Some(self_type) => namespace.resolve_type_with_self(
-                            look_up_type_id(type_argument.type_id),
-                            self_type,
-                            &type_argument.span,
-                            enforce_type_arguments,
-                            module_path,
-                        ),
-                        None => namespace.resolve_type_without_self(
-                            look_up_type_id(type_argument.type_id),
-                            module_path,
-                        ),
-                    };
-                    type_argument.type_id = check!(
-                        type_id,
-                        insert_type(TypeInfo::ErrorRecovery),
-                        warnings,
-                        errors
-                    );
-                }
                 let type_arguments_span = type_arguments
                     .iter()
                     .map(|x| x.span.clone())
@@ -141,65 +127,47 @@ where
                     });
                     return err(warnings, errors);
                 }
-                let type_mapping = insert_type_parameters(self.type_parameters());
-                for ((_, interim_type), type_argument) in
-                    type_mapping.iter().zip(type_arguments.iter())
-                {
-                    match self_type {
-                        Some(self_type) => {
-                            let (mut new_warnings, new_errors) = unify_with_self(
-                                *interim_type,
+                for type_argument in type_arguments.iter_mut() {
+                    type_argument.type_id = check!(
+                        match self_type {
+                            Some(self_type) => namespace.resolve_type_with_self(
                                 type_argument.type_id,
                                 self_type,
                                 &type_argument.span,
-                                "Type argument is not assignable to generic type parameter.",
-                            );
-                            warnings.append(&mut new_warnings);
-                            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-                        }
-                        None => {
-                            let (mut new_warnings, new_errors) = unify(
-                                *interim_type,
-                                type_argument.type_id,
-                                &type_argument.span,
-                                "Type argument is not assignable to generic type parameter.",
-                            );
-                            warnings.append(&mut new_warnings);
-                            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-                        }
-                    }
+                                enforce_type_arguments,
+                                module_path,
+                            ),
+                            None => namespace
+                                .resolve_type_without_self(type_argument.type_id, module_path,),
+                        },
+                        insert_type(TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors
+                    );
                 }
-                let module = check!(
-                    namespace.check_submodule_mut(module_path),
+                check!(
+                    match self_type {
+                        Some(self_type) => self.resolve_type_with_self(
+                            type_arguments,
+                            enforce_type_arguments,
+                            self_type,
+                            namespace,
+                            module_path
+                        ),
+                        None =>
+                            self.resolve_type_without_self(type_arguments, namespace, module_path),
+                    },
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                let new_decl = self.monomorphize_inner(&type_mapping, module);
-                ok(new_decl, warnings, errors)
+                ok(self, warnings, errors)
             }
         }
     }
 }
 
 pub(crate) trait MonomorphizeHelper {
-    type Output;
-
     fn type_parameters(&self) -> &[TypeParameter];
     fn name(&self) -> &Ident;
-    fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output;
-}
-
-pub(crate) fn monomorphize_inner<T>(
-    decl: T,
-    type_mapping: &TypeMapping,
-    _namespace: &mut Items,
-) -> T
-where
-    T: CopyTypes + CreateTypeId,
-{
-    let mut new_decl = decl;
-    new_decl.copy_types(type_mapping);
-    //namespace.copy_methods_to_type(look_up_type_id(new_decl.create_type_id()), type_mapping);
-    new_decl
 }

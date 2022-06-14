@@ -1,11 +1,14 @@
+use std::fmt;
+
 use crate::{
     error::ok,
+    namespace::{Path, Root},
     semantic_analysis::{
         EnforceTypeArguments, IsConstant, TypedExpression, TypedExpressionVariant,
         TypedVariableDeclaration, VariableMutability,
     },
     type_engine::*,
-    CompileResult, FunctionParameter, Ident, Namespace, TypedDeclaration,
+    CompileResult, FunctionParameter, Ident, Namespace, TypeArgument, TypedDeclaration,
 };
 
 use sway_types::{span::Span, Spanned};
@@ -32,6 +35,56 @@ impl CopyTypes for TypedFunctionParameter {
     }
 }
 
+impl ResolveTypes for TypedFunctionParameter {
+    fn resolve_type_with_self(
+        &mut self,
+        _type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        self_type: TypeId,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        self.type_id = check!(
+            namespace.resolve_type_with_self(
+                self.type_id,
+                self_type,
+                &self.type_span,
+                enforce_type_arguments,
+                module_path,
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+        ok((), warnings, errors)
+    }
+
+    fn resolve_type_without_self(
+        &mut self,
+        _type_arguments: Vec<TypeArgument>,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        self.type_id = check!(
+            namespace.resolve_type_without_self(self.type_id, module_path,),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+        ok((), warnings, errors)
+    }
+}
+
+impl fmt::Display for TypedFunctionParameter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {}", self.name, self.type_id)
+    }
+}
+
 impl TypedFunctionParameter {
     pub(crate) fn type_check(
         parameter: FunctionParameter,
@@ -42,7 +95,7 @@ impl TypedFunctionParameter {
         let mut errors = vec![];
         let type_id = check!(
             namespace.resolve_type_with_self(
-                look_up_type_id(parameter.type_id),
+                parameter.type_id,
                 self_type,
                 &parameter.type_span,
                 EnforceTypeArguments::Yes

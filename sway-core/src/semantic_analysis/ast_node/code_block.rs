@@ -1,4 +1,5 @@
 use super::*;
+use crate::namespace::{Path, Root};
 use crate::semantic_analysis::{ast_node::Mode, TypeCheckArguments};
 use crate::CodeBlock;
 
@@ -21,6 +22,54 @@ impl DeterministicallyAborts for TypedCodeBlock {
     }
 }
 
+impl ResolveTypes for TypedCodeBlock {
+    fn resolve_type_with_self(
+        &mut self,
+        _type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        self_type: TypeId,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        for content in self.contents.iter_mut() {
+            check!(
+                content.resolve_type_with_self(
+                    vec!(),
+                    enforce_type_arguments,
+                    self_type,
+                    namespace,
+                    module_path
+                ),
+                continue,
+                warnings,
+                errors
+            );
+        }
+        ok((), warnings, errors)
+    }
+
+    fn resolve_type_without_self(
+        &mut self,
+        _type_arguments: Vec<TypeArgument>,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        for content in self.contents.iter_mut() {
+            check!(
+                content.resolve_type_without_self(vec!(), namespace, module_path),
+                continue,
+                warnings,
+                errors
+            );
+        }
+        ok((), warnings, errors)
+    }
+}
+
 impl TypedCodeBlock {
     pub(crate) fn type_check(
         arguments: TypeCheckArguments<'_, CodeBlock>,
@@ -31,7 +80,7 @@ impl TypedCodeBlock {
         let TypeCheckArguments {
             checkee: other,
             namespace,
-            return_type_annotation: type_annotation,
+            return_type_annotation,
             help_text,
             self_type,
             opts,
@@ -47,7 +96,7 @@ impl TypedCodeBlock {
                 TypedAstNode::type_check(TypeCheckArguments {
                     checkee: node.clone(),
                     namespace: &mut code_block_namespace,
-                    return_type_annotation: type_annotation,
+                    return_type_annotation,
                     help_text,
                     self_type,
                     mode: Mode::NonAbi,
@@ -83,7 +132,7 @@ impl TypedCodeBlock {
         if let Some(return_type) = return_type {
             let (mut new_warnings, new_errors) = unify_with_self(
                 return_type,
-                type_annotation,
+                return_type_annotation,
                 self_type,
                 &implicit_return_span.unwrap_or_else(|| other.whole_block_span.clone()),
                 help_text,

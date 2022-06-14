@@ -61,7 +61,7 @@ impl UpdateTypes for TypeParameter {
             Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, self.span())),
             None => check!(
                 namespace.resolve_type_with_self(
-                    look_up_type_id(self.type_id),
+                    self.type_id,
                     self_type,
                     &self.span(),
                     EnforceTypeArguments::Yes
@@ -93,6 +93,30 @@ impl fmt::Display for TypeParameter {
     }
 }
 
+impl From<&TypeParameter> for TypedDeclaration {
+    fn from(type_parameter: &TypeParameter) -> Self {
+        TypedDeclaration::GenericTypeForFunctionScope {
+            name: type_parameter.name_ident.clone(),
+            type_id: insert_type(TypeInfo::Ref(
+                type_parameter.type_id,
+                type_parameter.name_ident.span(),
+            )),
+        }
+    }
+}
+
+impl From<&mut TypeParameter> for TypedDeclaration {
+    fn from(type_parameter: &mut TypeParameter) -> Self {
+        TypedDeclaration::GenericTypeForFunctionScope {
+            name: type_parameter.name_ident.clone(),
+            type_id: insert_type(TypeInfo::Ref(
+                type_parameter.type_id,
+                type_parameter.name_ident.span(),
+            )),
+        }
+    }
+}
+
 impl TypeParameter {
     pub(crate) fn type_check(
         type_parameter: TypeParameter,
@@ -110,18 +134,14 @@ impl TypeParameter {
         let type_id = insert_type(TypeInfo::UnknownGeneric {
             name: type_parameter.name_ident.clone(),
         });
-        let type_parameter_decl = TypedDeclaration::GenericTypeForFunctionScope {
-            name: type_parameter.name_ident.clone(),
-            type_id,
-        };
-        namespace
-            .insert_symbol(type_parameter.name_ident.clone(), type_parameter_decl)
-            .ok(&mut warnings, &mut errors);
         let type_parameter = TypeParameter {
             name_ident: type_parameter.name_ident,
             type_id,
             trait_constraints: type_parameter.trait_constraints,
         };
+        namespace
+            .insert_symbol(type_parameter.name_ident.clone(), (&type_parameter).into())
+            .ok(&mut warnings, &mut errors);
         ok(type_parameter, warnings, errors)
     }
 }
