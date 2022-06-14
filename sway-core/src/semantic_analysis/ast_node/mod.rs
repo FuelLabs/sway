@@ -8,7 +8,6 @@ pub mod while_loop;
 use std::fmt;
 
 pub(crate) use code_block::*;
-pub use const_eval::*;
 pub use declaration::*;
 pub(crate) use expression::*;
 pub(crate) use mode::*;
