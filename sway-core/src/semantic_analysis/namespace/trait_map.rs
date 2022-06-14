@@ -66,7 +66,7 @@ impl TraitMap {
     ) -> Vec<((CallPath, TypeId), Vec<TypedFunctionDeclaration>)> {
         let mut ret = vec![];
         for ((call_path, map_type_id), methods) in self.trait_map.iter() {
-            if look_up_type_id(*map_type_id) == look_up_type_id(incoming_type_id) {
+            if look_up_type_id(incoming_type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
                 ret.push((
                     (call_path.clone(), *map_type_id),
                     methods.values().cloned().collect(),
