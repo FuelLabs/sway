@@ -9,19 +9,6 @@ pub use crate::{
 };
 use crate::{config::whitespace::NewlineStyle, utils::newline_style::apply_newline_style};
 
-/// Used to just pass around the type of the item kind in the formatter.
-pub enum VirtualItemKind {
-    Use,
-    Struct,
-    Enum,
-    Fn,
-    Trait,
-    Impl,
-    Abi,
-    Const,
-    Storage,
-}
-
 #[derive(Debug, Default)]
 pub struct Formatter {
     pub shape: Shape,
