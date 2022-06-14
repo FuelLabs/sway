@@ -957,7 +957,7 @@ fn fn_args_to_function_parameters(
         } => {
             let mut function_parameters = vec![FunctionParameter {
                 name: Ident::new(self_token.span()),
-                is_mutable: matches!(mutable_self, Some(_mut_token)),
+                is_mutable: mutable_self.is_some(),
                 type_id: insert_type(TypeInfo::SelfType),
                 type_span: self_token.span(),
             }];

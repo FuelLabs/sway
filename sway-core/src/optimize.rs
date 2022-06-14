@@ -1109,6 +1109,11 @@ impl FnCompiler {
                 crate::span::Span::new(Arc::from(callee_name), 0, callee_name_len, None).unwrap(),
             );
 
+            // TODO: `is_mutable` below is set to `false` regardless of the actual mutability of
+            // each arg. This is hacky but not too important at the moment. Mutability is only
+            // relevant (currently) during type checking and so this just works. Long term, we need
+            // to propagate mutability for arguments in IR and make sure that the verifier takes it
+            // into account.
             let parameters = ast_args
                 .iter()
                 .map(|(name, expr)| TypedFunctionParameter {
