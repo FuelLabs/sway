@@ -1,7 +1,7 @@
 use crate::{
     config::items::ItemBraceStyle,
     fmt::{Format, FormattedCode, Formatter},
-    utils::punctuation::CurlyDelimiter,
+    utils::bracket::CurlyDelimiter,
 };
 use sway_parse::ItemEnum;
 
@@ -17,12 +17,12 @@ impl CurlyDelimiter for ItemEnum {
         let mut shape = formatter.shape;
         match brace_on_new_line {
             ItemBraceStyle::AlwaysNextLine => {
-                // Add openning bracet to the next line.
+                // Add openning brace to the next line.
                 push_to.push_str("\n{\n");
                 shape = shape.block_indent(1);
             }
             _ => {
-                // Add opening bracet to the same line
+                // Add opening brace to the same line
                 push_to.push_str(" {\n");
                 shape = shape.block_indent(1);
             }
