@@ -39,8 +39,25 @@ pub fn handle_open_bracket(
 
 /// Handles bracket close scenerio.
 /// Currently it simply pushes a `}` and modifies the shape.
-pub fn handle_close_bracket(push_to: &mut String, formatter: &mut Formatter) {
-    push_to.push('}');
+pub fn handle_close_bracket(
+    push_to: &mut String,
+    formatter: &mut Formatter,
+    item_kind: VirtualItemKind,
+) {
+    match item_kind {
+        VirtualItemKind::Use => todo!(),
+        VirtualItemKind::Struct => todo!(),
+        VirtualItemKind::Enum => {
+            push_to.push('}');
+        }
+        VirtualItemKind::Fn => todo!(),
+        VirtualItemKind::Trait => todo!(),
+        VirtualItemKind::Impl => todo!(),
+        VirtualItemKind::Abi => todo!(),
+        VirtualItemKind::Const => todo!(),
+        VirtualItemKind::Storage => todo!(),
+    };
+
     // If shape is becoming left-most alligned or - indent just have the defualt shape
     formatter.shape = formatter.shape.shrink_left(1).unwrap_or_default();
 }
