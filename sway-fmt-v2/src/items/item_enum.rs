@@ -13,9 +13,9 @@ impl Format for ItemEnum {
 
 impl CurlyDelimiter for ItemEnum {
     fn handle_open_brace(push_to: &mut String, formatter: &mut Formatter) {
-        let brace_on_new_line = formatter.config.items.item_brace_style;
+        let brace_style = formatter.config.items.item_brace_style;
         let mut shape = formatter.shape;
-        match brace_on_new_line {
+        match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
                 push_to.push_str("\n{\n");
