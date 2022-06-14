@@ -41,6 +41,7 @@ const TX_OUTPUTS_COUNT_OFFSET = 10304;
 const TX_WITNESSES_COUNT_OFFSET = 10312;
 const TX_RECEIPTS_ROOT_OFFSET = 10320;
 const TX_SCRIPT_START_OFFSET = 10352;
+const VM_ADDRESS_ZERO = 0;
 
 /// Get the transaction type.
 pub fn tx_type() -> u8 {
@@ -233,5 +234,12 @@ pub fn tx_output_amount(ptr: u32) -> u64 {
         addi r2 r3 i40;
         lw r1 r2 i0;
         r1: u64
+    }
+}
+
+/// Get the id of the current transaction.
+pub fn tx_id() -> b256 {
+    asm() {
+        zero: b256
     }
 }
