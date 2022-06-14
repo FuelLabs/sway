@@ -43,7 +43,7 @@ impl Format for ItemEnum {
         });
 
         // In second iteration we are going to be comparing current variants length and maximum accepted variant length
-        // for calculating the allignment required.
+        // for calculating the alignment required.
         for (index, type_field) in type_fields.iter().enumerate() {
             let type_field = &type_field.0;
             // Push the current indentation level
@@ -55,12 +55,12 @@ impl Format for ItemEnum {
             let current_variant_length = variant_length[index];
 
             if current_variant_length < max_valid_variant_length {
-                // We need to add allignment between : and ty
+                // We need to add alignment between : and ty
                 // max_valid_variant_length: the length of the variant that we are taking as a reference to allign
                 // current_variant_length: the length of the current variant that we are trying to format
-                let required_allignment = max_valid_variant_length - current_variant_length;
+                let required_alignment = max_valid_variant_length - current_variant_length;
                 // TODO: Improve handling this
-                formatted_code.push_str(&(0..required_allignment).map(|_| ' ').collect::<String>());
+                formatted_code.push_str(&(0..required_alignment).map(|_| ' ').collect::<String>());
             }
             // TODO: We are currently converting ty to string directly but we will probably need to format ty before adding.
             formatted_code.push_str(type_field.ty.span().as_str());
