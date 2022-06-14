@@ -94,7 +94,7 @@ fn test_vector_new() {
     match v.get(5) {
         Option::Some(val) => revert(0),
         Option::None => {},
-    }*/
+    }
 }
 
 fn test_vector_with_capacity() {
