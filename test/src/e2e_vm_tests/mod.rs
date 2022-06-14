@@ -220,6 +220,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ),
         ("should_pass/stdlib/b512_test", ProgramState::Return(1)), // true
         ("should_pass/stdlib/block_height", ProgramState::Return(1)), // true
+        ("should_pass/stdlib/vec", ProgramState::Return(1)),
         (
             "should_pass/language/trait_override_bug",
             ProgramState::Return(7),
@@ -417,10 +418,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         (
             "should_pass/language/generic_inside_generic",
             ProgramState::Return(7),
-        ),
-        (
-            "should_pass/language/vec",
-            ProgramState::Return(1),
         ),
         (
             "should_pass/language/tuple_single_element",
