@@ -801,12 +801,12 @@ pub enum CompileError {
     },
     #[error("An ABI can only be implemented for the `Contract` type, so this implementation of an ABI for type \"{ty}\" is invalid.")]
     ImplAbiForNonContract { span: Span, ty: String },
-    #[error("The trait function \"{fn_name}\" in trait \"{trait_name}\" expects {num_args} arguments, but the provided implementation only takes {provided_args} arguments.")]
+    #[error("The function \"{fn_name}\" in trait \"{trait_name}\" is defined with {num_parameters} parameters, but the provided implementation has {provided_parameters} parameters.")]
     IncorrectNumberOfInterfaceSurfaceFunctionParameters {
         fn_name: Ident,
         trait_name: Ident,
-        num_args: usize,
-        provided_args: usize,
+        num_parameters: usize,
+        provided_parameters: usize,
         span: Span,
     },
     #[error("This parameter was declared as type {should_be}, but argument of type {provided} was provided.")]

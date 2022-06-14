@@ -8,7 +8,7 @@ pub struct ImplTrait {
     pub trait_name: CallPath,
     pub(crate) type_implementing_for: TypeInfo,
     pub(crate) type_implementing_for_span: Span,
-    pub(crate) type_arguments: Vec<TypeParameter>,
+    pub(crate) type_parameters: Vec<TypeParameter>,
     pub functions: Vec<FunctionDeclaration>,
     // the span of the whole impl trait and block
     pub(crate) block_span: Span,
