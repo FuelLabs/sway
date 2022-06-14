@@ -163,6 +163,13 @@ pub struct BuildPlan {
     graph: Graph,
     path_map: PathMap,
     compilation_order: Vec<NodeIx>,
+    /// The differences between graph described by lock_file and the graph that actually constructed. 
+    /// 
+    /// If the BuildPlan is constructed from a manifest file, this will be empty.
+    /// 
+    /// If the BuildPlan is constructed from a lock file there might be some differences between the graph described by the lock file and the one that actually created.
+    /// The differences between them are the path dependencies that are removed from the manifest file after the lock file is created.
+    removed_deps: Vec<DependencyName>,
 }
 
 /// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
@@ -218,7 +225,7 @@ pub type DependencyName = String;
 
 pub struct PkgDiff {
     pub added: Vec<(DependencyName, Pkg)>,
-    pub removed: Vec<(DependencyName, Pkg)>,
+    pub removed: Vec<DependencyName>,
 }
 
 impl BuildPlan {
@@ -231,6 +238,7 @@ impl BuildPlan {
             graph,
             path_map,
             compilation_order,
+            removed_deps: vec![],
         })
     }
 
@@ -271,18 +279,23 @@ impl BuildPlan {
             graph,
             path_map,
             compilation_order,
+            removed_deps: vec![],
         })
     }
 
     /// Attempt to load the build plan from the `Lock`.
     pub fn from_lock(proj_path: &Path, lock: &Lock, sway_git_tag: &str) -> Result<Self> {
-        let graph = lock.to_graph()?;
+        let mut graph = lock.to_graph()?;
+        let tmp_compilation_order = compilation_order(&graph)?;
+        let (path_map, removed_deps) =
+            graph_to_path_map(proj_path, &mut graph, &tmp_compilation_order, sway_git_tag)?;
+        // Since path_map removes removed dependencies from the graph compilation order may change
         let compilation_order = compilation_order(&graph)?;
-        let path_map = graph_to_path_map(proj_path, &graph, &compilation_order, sway_git_tag)?;
         Ok(Self {
             graph,
             path_map,
             compilation_order,
+            removed_deps,
         })
     }
 
@@ -296,7 +309,7 @@ impl BuildPlan {
     /// Ensure that the build plan is valid for the given manifest.
     pub fn validate(&self, manifest: &Manifest, sway_git_tag: &str) -> Result<PkgDiff> {
         let mut added = vec![];
-        let mut removed = vec![];
+        let mut removed = self.removed_deps.clone();
         // Retrieve project's graph node.
         let proj_node = *self
             .compilation_order
@@ -345,11 +358,12 @@ impl BuildPlan {
                 .into_iter()
                 .map(|pkg| (pkg.0.clone(), pkg.1.clone()))
                 .collect();
-            removed = plan_dep_pkgs
+            let mut temp_removed = plan_dep_pkgs
                 .difference(&manifest_dep_pkgs)
                 .into_iter()
-                .map(|pkg| (pkg.0.clone(), pkg.1.clone()))
+                .map(|pkg| (pkg.0.clone()))
                 .collect();
+            removed.append(&mut temp_removed);
         }
 
         // Ensure the pkg names of all nodes match their associated manifests.
@@ -366,7 +380,13 @@ impl BuildPlan {
                 );
             }
         }
-        Ok(PkgDiff { added, removed })
+        println!("{:?}", added);
+        println!("{:?}", removed);
+
+        Ok(PkgDiff {
+            added,
+            removed,
+        })
     }
 
     /// View the build plan's compilation graph.
@@ -392,7 +412,7 @@ fn remove_deps(
     graph: &mut Graph,
     path_map: &PathMap,
     proj_node: NodeIx,
-    to_remove: &[(DependencyName, Pkg)],
+    to_remove: &[DependencyName],
 ) {
     use petgraph::visit::Bfs;
 
@@ -406,7 +426,7 @@ fn remove_deps(
             .is_none()
             || to_remove
                 .iter()
-                .any(|removed_dep| removed_dep.1 == graph[node].unpinned(path_map))
+                .any(|removed_dep| *removed_dep == graph[node].unpinned(path_map).name)
         {
             graph.remove_node(node);
         }
@@ -754,11 +774,12 @@ pub fn compilation_order(graph: &Graph) -> Result<Vec<NodeIx>> {
 /// containing the path to the local source for every node in the graph.
 pub fn graph_to_path_map(
     proj_manifest_dir: &Path,
-    graph: &Graph,
+    graph: &mut Graph,
     compilation_order: &[NodeIx],
     sway_git_tag: &str,
-) -> Result<PathMap> {
+) -> Result<(PathMap, Vec<String>)> {
     let mut path_map = PathMap::new();
+    let mut removed_deps = vec![];
 
     // We resolve all paths in reverse compilation order.
     // That is, we follow paths starting from the project root.
@@ -778,6 +799,27 @@ pub fn graph_to_path_map(
     // Resolve all following dependencies, knowing their parents' paths will already be resolved.
     for dep_node in path_resolve_order {
         let dep = &graph[dep_node];
+        // If the dep is a path dependency check if it is removed.
+        if let SourcePinned::Path(_) = &dep.source {
+            // Retrieve the parent node to construct the relative path.
+            let (parent_node, _) = graph
+                .edges_directed(dep_node, Direction::Incoming)
+                .next()
+                .map(|edge| (edge.source(), edge.weight().clone()))
+                .ok_or_else(|| anyhow!("more than one root package detected in graph"))?;
+            let parent = &graph[parent_node];
+
+            // Construct the path relative to the parent's path.
+            let parent_path = &path_map[&parent.id()];
+            let parent_manifest = ManifestFile::from_dir(parent_path, sway_git_tag)?;
+
+            // Check if parent's manifest file includes this dependency. If not this is a removed dependency and we should continue with the following dep and remove the removed dependency from the graph.
+            if parent_manifest.dep(&dep.name).is_none() {
+                removed_deps.push(dep.name.clone());
+                graph.remove_node(dep_node);
+                continue;
+            }
+        }
         let dep_path = match &dep.source {
             SourcePinned::Root => bail!("more than one root package detected in graph"),
             SourcePinned::Git(git) => {
@@ -843,7 +885,7 @@ pub fn graph_to_path_map(
         path_map.insert(dep.id(), dep_path.canonicalize()?);
     }
 
-    Ok(path_map)
+    Ok((path_map, removed_deps))
 }
 
 /// Given a `graph`, the node index of a path dependency within that `graph`, and the supposed
