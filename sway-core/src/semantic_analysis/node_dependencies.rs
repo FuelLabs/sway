@@ -335,7 +335,7 @@ impl Dependencies {
             Declaration::ImplTrait(ImplTrait {
                 trait_name,
                 type_implementing_for,
-                type_arguments,
+                type_parameters: type_arguments,
                 functions,
                 ..
             }) => self
