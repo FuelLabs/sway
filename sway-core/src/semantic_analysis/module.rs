@@ -119,7 +119,7 @@ fn check_supertraits(
         if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(TypedImplTrait {
             trait_name,
             span,
-            type_implementing_for,
+            implementing_for_type_id,
             ..
         })) = &node.content
         {
@@ -133,7 +133,7 @@ fn check_supertraits(
                         if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(
                             TypedImplTrait {
                                 trait_name: search_node_trait_name,
-                                type_implementing_for: search_node_type_implementing_for,
+                                implementing_for_type_id: search_node_type_implementing_for,
                                 ..
                             },
                         )) = &search_node.content
@@ -152,8 +152,8 @@ fn check_supertraits(
                                 namespace.resolve_call_path(&supertrait.name),
                             ) {
                                 return (tr1.name == tr2.name)
-                                    && (type_implementing_for
-                                        == search_node_type_implementing_for);
+                                    && (look_up_type_id(*implementing_for_type_id)
+                                        == look_up_type_id(*search_node_type_implementing_for));
                             }
                         }
                         false
@@ -163,7 +163,7 @@ fn check_supertraits(
                         // user code with a single error.
                         errors.push(CompileError::SupertraitImplMissing {
                             supertrait_name: supertrait.name.clone(),
-                            type_name: type_implementing_for.to_string(),
+                            type_name: implementing_for_type_id.to_string(),
                             span: span.clone(),
                         });
                         errors.push(CompileError::SupertraitImplRequired {
