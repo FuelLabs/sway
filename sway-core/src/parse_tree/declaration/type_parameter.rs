@@ -91,6 +91,12 @@ impl TypeParameter {
     ) -> CompileResult<TypeParameter> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        if !type_parameter.trait_constraints.is_empty() {
+            errors.push(CompileError::WhereClauseNotYetSupported {
+                span: type_parameter.name_ident.span(),
+            });
+            return err(warnings, errors);
+        }
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
         let type_id = insert_type(TypeInfo::UnknownGeneric {
             name: type_parameter.name_ident.clone(),
