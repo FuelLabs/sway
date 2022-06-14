@@ -4,8 +4,7 @@ use crate::{
         declaration::{EnforceTypeArguments, Monomorphize, MonomorphizeHelper},
     },
     type_engine::*,
-    CallPath, CompileResult, Ident, TypeArgument, TypeInfo, TypedDeclaration,
-    TypedFunctionDeclaration,
+    CallPath, CompileResult, Ident, TypeArgument, TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use super::{module::Module, root::Root, submodule_namespace::SubmoduleNamespace, Path, PathBuf};

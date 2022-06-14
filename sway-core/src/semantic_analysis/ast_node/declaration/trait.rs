@@ -8,7 +8,7 @@ use crate::{
         Mode, TypedCodeBlock,
     },
     style::is_upper_camel_case,
-    type_engine::{insert_type, look_up_type_id, CopyTypes, TypeMapping},
+    type_engine::{insert_type, CopyTypes, TypeMapping},
     CallPath, CompileError, CompileResult, FunctionDeclaration, FunctionParameter, Namespace,
     Supertrait, TraitDeclaration, TypeInfo, TypedDeclaration, TypedFunctionDeclaration, Visibility,
 };
