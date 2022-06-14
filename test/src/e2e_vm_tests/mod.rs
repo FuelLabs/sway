@@ -515,6 +515,7 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
 
     // source code that should _not_ compile
     let negative_project_names = vec![
+        "should_fail/cyclic_dependency/dependency_a",
         "should_fail/recursive_calls",
         "should_fail/asm_missing_return",
         "should_fail/asm_should_not_have_return",

@@ -1,14 +1,3 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-FBCDADB5BCBC86AA'
-dependencies = ['core_utils']
-
-[[package]]
-name = 'core_utils'
-source = 'path+from-root-FBCDADB5BCBC86AA'
-dependencies = []
-
-[[package]]
 name = 'storage_access_abi'
-source = 'root'
-dependencies = ['core']
+dependencies = []

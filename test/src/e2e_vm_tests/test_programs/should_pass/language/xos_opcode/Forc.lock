@@ -1,22 +1,13 @@
 [[package]]
 name = 'core'
-source = 'path+from-root-2F99471F8B24A268'
-dependencies = ['core_utils']
-
-[[package]]
-name = 'core_utils'
-source = 'path+from-root-2F99471F8B24A268'
+source = 'git+https://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20ebc9d646acec6b8ee8f408627ce3b573'
 dependencies = []
 
 [[package]]
 name = 'std'
-source = 'path+from-root-2F99471F8B24A268'
-dependencies = [
-    'core',
-    'core_utils',
-]
+source = 'git+https://github.com/FuelLabs/sway-lib-std?reference=master#afb030ee9a5f7125a1b1a477acb5bf74bb99c1fd'
+dependencies = ['core git+https://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20ebc9d646acec6b8ee8f408627ce3b573']
 
 [[package]]
 name = 'xos_opcode'
-source = 'root'
-dependencies = ['std']
+dependencies = ['std git+https://github.com/FuelLabs/sway-lib-std?reference=master#afb030ee9a5f7125a1b1a477acb5bf74bb99c1fd']
