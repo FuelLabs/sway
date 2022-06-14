@@ -81,9 +81,15 @@ impl TypedProgram {
                 // itself.
                 TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(TypedImplTrait {
                     methods,
-                    type_implementing_for: TypeInfo::Contract,
+                    implementing_for_type_id,
                     ..
-                })) => abi_entries.extend(methods.clone()),
+                })) if matches!(
+                    look_up_type_id(*implementing_for_type_id),
+                    TypeInfo::Contract
+                ) =>
+                {
+                    abi_entries.extend(methods.clone())
+                }
                 // XXX we're excluding the above ABI methods, is that OK?
                 TypedAstNodeContent::Declaration(decl) => {
                     // Variable and constant declarations don't need a duplicate check.

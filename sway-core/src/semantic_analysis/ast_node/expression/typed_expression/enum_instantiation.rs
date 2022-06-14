@@ -43,7 +43,7 @@ pub(crate) fn instantiate_enum(
     // If there is an instantiator, it must match up with the type. If there is not an
     // instantiator, then the type of the enum is necessarily the unit type.
 
-    match (&args[..], look_up_type_id(enum_variant.r#type)) {
+    match (&args[..], look_up_type_id(enum_variant.type_id)) {
         ([], ty) if ty.is_unit() => ok(
             TypedExpression {
                 return_type: enum_decl.create_type_id(),
@@ -65,7 +65,7 @@ pub(crate) fn instantiate_enum(
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: single_expr.clone(),
                     namespace,
-                    return_type_annotation: enum_variant.r#type,
+                    return_type_annotation: enum_variant.type_id,
                     help_text: "Enum instantiator must match its declared variant type.",
                     self_type,
                     mode: Mode::NonAbi,

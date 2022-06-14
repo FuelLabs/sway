@@ -1,10 +1,25 @@
 mod e2e_vm_tests;
 
 fn main() {
-    let filter_regex = std::env::args().nth(1).map(|filter_str| {
-        regex::Regex::new(&filter_str)
-            .unwrap_or_else(|_| panic!("Invalid filter regex: '{}'.", filter_str))
-    });
+    let mut locked = false;
+    let mut filter_regex = None;
+    for arg in std::env::args().skip(1) {
+        // Check for the `--locked` flag. Must precede the regex.
+        // Intended for use in `CI` to ensure test lock files are up to date.
+        if arg == "--locked" {
+            locked = true;
+            continue;
+        }
 
-    e2e_vm_tests::run(filter_regex);
+        // Check for a regex, used to filter the set of tests.
+        let regex = regex::Regex::new(&arg).unwrap_or_else(|_| {
+            panic!(
+                "Expected either `--locked` or a filter regex, found: {:?}.",
+                arg
+            )
+        });
+        filter_regex = Some(regex);
+    }
+
+    e2e_vm_tests::run(locked, filter_regex);
 }

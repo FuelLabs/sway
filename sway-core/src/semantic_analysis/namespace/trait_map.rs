@@ -1,4 +1,4 @@
-use crate::{error::*, CallPath, CompileResult, TypeInfo, TypedFunctionDeclaration};
+use crate::{CallPath, TypeInfo, TypedFunctionDeclaration};
 
 use std::collections::HashMap;
 
@@ -40,9 +40,7 @@ impl TraitMap {
         trait_name: CallPath,
         type_implementing_for: TypeInfo,
         methods: Vec<TypedFunctionDeclaration>,
-    ) -> CompileResult<()> {
-        let warnings = vec![];
-        let errors = vec![];
+    ) {
         let mut methods_map = im::HashMap::new();
         for method in methods.into_iter() {
             let method_name = method.name.as_str().to_string();
@@ -50,25 +48,16 @@ impl TraitMap {
         }
         self.trait_map
             .push_back(((trait_name, type_implementing_for), methods_map));
-        ok((), warnings, errors)
     }
 
-    pub(crate) fn extend(&mut self, other: TraitMap) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn extend(&mut self, other: TraitMap) {
         for ((trait_name, type_implementing_for), methods) in other.trait_map.into_iter() {
-            check!(
-                self.insert(
-                    trait_name,
-                    type_implementing_for,
-                    methods.values().cloned().collect()
-                ),
-                (),
-                warnings,
-                errors
+            self.insert(
+                trait_name,
+                type_implementing_for,
+                methods.values().cloned().collect(),
             );
         }
-        ok((), warnings, errors)
     }
 
     pub(crate) fn get_call_path_and_type_info(

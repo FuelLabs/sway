@@ -9,7 +9,7 @@ use fuel_vm::prelude::*;
 use serde_json::Value;
 use std::fs;
 
-pub(crate) fn deploy_contract(file_name: &str) -> ContractId {
+pub(crate) fn deploy_contract(file_name: &str, locked: bool) -> ContractId {
     // build the contract
     // deploy it
     tracing::info!(" Deploying {}", file_name);
@@ -25,6 +25,7 @@ pub(crate) fn deploy_contract(file_name: &str) -> ContractId {
                 manifest_dir, file_name
             )),
             silent_mode: !verbose,
+            locked,
             ..Default::default()
         }))
         .unwrap()
@@ -33,6 +34,7 @@ pub(crate) fn deploy_contract(file_name: &str) -> ContractId {
 /// Run a given project against a node. Assumes the node is running at localhost:4000.
 pub(crate) fn runs_on_node(
     file_name: &str,
+    locked: bool,
     contract_ids: &[fuel_tx::ContractId],
 ) -> Vec<fuel_tx::Receipt> {
     tracing::info!("Running on node: {}", file_name);
@@ -54,6 +56,7 @@ pub(crate) fn runs_on_node(
         node_url: "http://127.0.0.1:4000".into(),
         silent_mode: !verbose,
         contract: Some(contracts),
+        locked,
         ..Default::default()
     };
     tokio::runtime::Runtime::new()
@@ -64,10 +67,10 @@ pub(crate) fn runs_on_node(
 
 /// Very basic check that code does indeed run in the VM.
 /// `true` if it does, `false` if not.
-pub(crate) fn runs_in_vm(file_name: &str) -> ProgramState {
+pub(crate) fn runs_in_vm(file_name: &str, locked: bool) -> ProgramState {
     let storage = MemoryStorage::default();
 
-    let script = compile_to_bytes(file_name).unwrap();
+    let script = compile_to_bytes(file_name, locked).unwrap();
     let gas_price = 10;
     let gas_limit = fuel_tx::default_parameters::MAX_GAS_PER_TX;
     let byte_price = 0;
@@ -97,9 +100,9 @@ pub(crate) fn runs_in_vm(file_name: &str) -> ProgramState {
 
 /// Panics if code _does_ compile, used for test cases where the source
 /// code should have been rejected by the compiler.
-pub(crate) fn does_not_compile(file_name: &str) {
+pub(crate) fn does_not_compile(file_name: &str, locked: bool) {
     assert!(
-        compile_to_bytes(file_name).is_err(),
+        compile_to_bytes(file_name, locked).is_err(),
         "{} should not have compiled.",
         file_name,
     )
@@ -107,7 +110,7 @@ pub(crate) fn does_not_compile(file_name: &str) {
 
 /// Returns `true` if a file compiled without any errors or warnings,
 /// and `false` if it did not.
-pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>> {
+pub(crate) fn compile_to_bytes(file_name: &str, locked: bool) -> Result<Vec<u8>> {
     tracing::info!(" Compiling {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let verbose = get_test_config_from_env();
@@ -116,6 +119,7 @@ pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>> {
             "{}/src/e2e_vm_tests/test_programs/{}",
             manifest_dir, file_name
         )),
+        locked,
         silent_mode: !verbose,
         ..Default::default()
     })
