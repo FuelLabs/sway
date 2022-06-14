@@ -206,6 +206,35 @@ pub fn tx_input_coin_owner(input_ptr: u32) -> Address {
 }
 
 ////////////////////////////////////////
+// Inputs > Predicate
+////////////////////////////////////////
+pub fn tx_predicate_data_start_offset() -> u64 {
+    let is = instrs_start();
+    let predicate_length_ptr = is - 16;
+    let predicate_code_length = asm(r1, r2: predicate_length_ptr) {
+        lw r1 r2 i0;
+        r1: u64
+    };
+
+    let predicate_data_ptr = is + predicate_code_length;
+    predicate_data_ptr
+}
+
+pub fn get_predicate_data<T>() -> T {
+    let ptr = tx_predicate_data_start_offset();
+    if is_reference_type::<T>() {
+        asm(r1: ptr) {
+            r1: T
+        }
+    } else {
+        asm(r1: ptr) {
+            lw r1 r1 i0;
+            r1: T
+        }
+    }
+}
+
+////////////////////////////////////////
 // Outputs
 ////////////////////////////////////////
 
