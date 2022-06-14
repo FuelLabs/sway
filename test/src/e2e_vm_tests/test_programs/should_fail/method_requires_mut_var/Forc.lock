@@ -1,4 +1,4 @@
 [[package]]
-name = 'storage_in_script'
+name = 'method_requires_mut_var'
 source = 'root'
 dependencies = []
