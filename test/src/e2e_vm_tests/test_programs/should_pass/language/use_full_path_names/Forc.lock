@@ -1,11 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-17B0AE322441F666'
-dependencies = ['core_utils']
-
-[[package]]
-name = 'core_utils'
-source = 'path+from-root-17B0AE322441F666'
 dependencies = []
 
 [[package]]
