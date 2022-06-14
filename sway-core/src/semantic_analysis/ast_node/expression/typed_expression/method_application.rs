@@ -174,7 +174,7 @@ pub(crate) fn type_check_method_application(
         // if the return type cannot be cast into the annotation type then it is a type error
         let (mut new_warnings, new_errors) = unify_with_self(
             arg.return_type,
-            param.r#type,
+            param.type_id,
             self_type,
             &arg.span,
             "This argument's type is not castable to the declared parameter type.",
@@ -184,7 +184,7 @@ pub(crate) fn type_check_method_application(
             errors.push(CompileError::ArgumentParameterTypeMismatch {
                 span: arg.span.clone(),
                 provided: arg.return_type.to_string(),
-                should_be: param.r#type.to_string(),
+                should_be: param.type_id.to_string(),
             });
         }
         // The annotation may result in a cast, which is handled in the type engine.
