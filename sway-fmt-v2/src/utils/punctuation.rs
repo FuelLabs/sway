@@ -1,11 +1,11 @@
 use crate::Formatter;
 
 pub trait CurlyDelimiter {
-    /// Handles bracket open scenerio. Checks the config for the placement of the bracket.
+    /// Handles brace open scenerio. Checks the config for the placement of the brace.
     /// Modifies the current shape of the formatter.
-    fn handle_open_bracket(push_to: &mut String, formatter: &mut Formatter);
+    fn handle_open_brace(push_to: &mut String, formatter: &mut Formatter);
 
-    /// Handles bracket close scenerio.
+    /// Handles brace close scenerio.
     /// Currently it simply pushes a `}` and modifies the shape.
-    fn handle_closed_bracket(push_to: &mut String, formatter: &mut Formatter);
+    fn handle_closed_brace(push_to: &mut String, formatter: &mut Formatter);
 }
