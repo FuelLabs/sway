@@ -3,14 +3,20 @@
 //! contained to each item's file.
 use crate::Formatter;
 
-pub trait CurlyDelimiter {
+pub trait CurlyBrace {
     /// Handles brace open scenerio. Checks the config for the placement of the brace.
     /// Modifies the current shape of the formatter.
-    fn handle_open_brace(push_to: &mut String, formatter: &mut Formatter);
+    fn open_curly_brace(line: &mut String, formatter: &mut Formatter);
 
     /// Handles brace close scenerio.
     /// Currently it simply pushes a `}` and modifies the shape.
-    fn handle_closed_brace(push_to: &mut String, formatter: &mut Formatter);
+    fn close_curly_brace(line: &mut String, formatter: &mut Formatter);
+}
+
+pub trait SquareBracket {
+    fn open_square_bracket(line: &mut String, formatter: &mut Formatter);
+
+    fn close_square_bracket(line: &mut String, formatter: &mut Formatter);
 }
 
 pub trait Parenthesis {
