@@ -14,7 +14,7 @@ pub fn addr_of<T>(val: T) -> u64 {
     }
 }
 
-/// Copies bytes from src to dst.
+/// Copies `size` bytes from `src` to `dst`.
 pub fn copy(dst: u64, src: u64, size: u64) {
     asm(dst: dst, src: src, size: size) {
         mcp dst src size;
