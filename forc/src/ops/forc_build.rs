@@ -164,8 +164,8 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
 
     info!("  Bytecode size is {} bytes.", compiled.bytecode.len());
 
-    if let TreeType::Script | TreeType::Predicate = compiled.tree_type {
-        // hash the bytecode for scripts/predicates and store it in a file in the output directory
+    if let TreeType::Script = compiled.tree_type {
+        // hash the bytecode for scripts and store the result in a file in the output directory
         let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&compiled.bytecode));
         let hash_file_name = format!("{}{}", &manifest.project.name, SWAY_BIN_HASH_SUFFIX);
         let hash_path = output_dir.join(hash_file_name);
