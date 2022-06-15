@@ -9,3 +9,9 @@ pub trait CurlyDelimiter {
     /// Currently it simply pushes a `}` and modifies the shape.
     fn handle_closed_brace(push_to: &mut String, formatter: &mut Formatter);
 }
+
+pub trait AngleBracket {
+    fn open_angle_bracket(line: &mut String, formatter: &mut Formatter);
+
+    fn close_angle_bracket(line: &mut String, formatter: &mut Formatter);
+}
