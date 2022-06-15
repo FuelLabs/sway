@@ -1,31 +1,62 @@
-use super::{
-    TypedAstNode, TypedAstNodeContent, TypedExpression, TypedExpressionVariant,
-    TypedStructExpressionField,
+use crate::{
+    error::CompileError,
+    semantic_analysis::{
+        declaration::ProjectionKind, TypedAstNode, TypedAstNodeContent, TypedExpression,
+        TypedExpressionVariant, TypedStructExpressionField,
+    },
 };
 
-use crate::semantic_analysis::declaration::ProjectionKind;
-use std::collections::HashMap;
+use super::types::*;
+
 use sway_ir::{
     constant::{Constant, ConstantValue},
     context::Context,
+    metadata::MetadataIndex,
     module::Module,
+    value::Value,
 };
-use sway_types::ident::Ident;
+
+use sway_types::{ident::Ident, span::Spanned};
+
+use std::collections::HashMap;
+
+pub(super) fn compile_constant_expression(
+    context: &mut Context,
+    module: Module,
+    const_expr: &TypedExpression,
+) -> Result<Value, CompileError> {
+    let span_id_idx = MetadataIndex::from_span(context, &const_expr.span);
+    let err = match &const_expr.expression {
+        // Special case functions because the span in `const_expr` is to the inlined function
+        // definition, rather than the actual call site.
+        TypedExpressionVariant::FunctionApplication { call_path, .. } => {
+            Err(CompileError::NonConstantDeclValue {
+                span: call_path.span(),
+            })
+        }
+        _otherwise => Err(CompileError::NonConstantDeclValue {
+            span: const_expr.span.clone(),
+        }),
+    };
+    let mut known_consts = MappedStack::<Ident, Constant>::new();
+    const_eval_typed_expr(context, module, &mut known_consts, const_expr)
+        .map_or(err, |c| Ok(Value::new_constant(context, c, span_id_idx)))
+}
 
 // A HashMap that can hold multiple values and
 // fetch values in a LIFO manner. Rust's MultiMap
 // handles values in a FIFO manner.
-pub struct MappedStack<K: std::cmp::Eq + std::hash::Hash, V> {
+struct MappedStack<K: std::cmp::Eq + std::hash::Hash, V> {
     container: HashMap<K, Vec<V>>,
 }
 
 impl<K: std::cmp::Eq + std::hash::Hash, V> MappedStack<K, V> {
-    pub fn new() -> MappedStack<K, V> {
+    fn new() -> MappedStack<K, V> {
         MappedStack {
             container: HashMap::<K, Vec<V>>::new(),
         }
     }
-    pub fn push(&mut self, k: K, v: V) {
+    fn push(&mut self, k: K, v: V) {
         match self.container.get_mut(&k) {
             Some(val_vec) => {
                 val_vec.push(v);
@@ -35,10 +66,10 @@ impl<K: std::cmp::Eq + std::hash::Hash, V> MappedStack<K, V> {
             }
         }
     }
-    pub fn get(&self, k: &K) -> Option<&V> {
+    fn get(&self, k: &K) -> Option<&V> {
         self.container.get(k).and_then(|val_vec| val_vec.last())
     }
-    pub fn pop(&mut self, k: &K) {
+    fn pop(&mut self, k: &K) {
         match self.container.get_mut(k) {
             Some(val_vec) => {
                 val_vec.pop();
@@ -59,14 +90,14 @@ impl<K: std::cmp::Eq + std::hash::Hash, V> Default for MappedStack<K, V> {
 
 /// Given an environment mapping names to constants,
 /// attempt to evaluate a typed expression to a constant.
-pub fn const_eval_typed_expr(
+fn const_eval_typed_expr(
     context: &mut Context,
     module: Module,
     known_consts: &mut MappedStack<Ident, Constant>,
     expr: &TypedExpression,
 ) -> Option<Constant> {
     match &expr.expression {
-        TypedExpressionVariant::Literal(l) => Some(crate::optimize::convert_literal_to_constant(l)),
+        TypedExpressionVariant::Literal(l) => Some(super::convert::convert_literal_to_constant(l)),
         TypedExpressionVariant::FunctionApplication {
             arguments,
             function_body,
@@ -126,7 +157,7 @@ pub fn const_eval_typed_expr(
                 // We couldn't evaluate all fields to a constant.
                 return None;
             }
-            let aggregate = crate::optimize::get_aggregate_for_types(context, &field_typs).unwrap();
+            let aggregate = get_aggregate_for_types(context, &field_typs).unwrap();
             Some(Constant::new_struct(&aggregate, field_vals))
         }
         TypedExpressionVariant::Tuple { fields } => {
@@ -141,7 +172,7 @@ pub fn const_eval_typed_expr(
                 // We couldn't evaluate all fields to a constant.
                 return None;
             }
-            let aggregate = crate::optimize::create_tuple_aggregate(context, field_typs).unwrap();
+            let aggregate = create_tuple_aggregate(context, field_typs).unwrap();
             Some(Constant::new_struct(&aggregate, field_vals))
         }
         TypedExpressionVariant::Array { contents } => {
@@ -165,7 +196,7 @@ pub fn const_eval_typed_expr(
                 // This shouldn't happen if the type checker did its job.
                 return None;
             }
-            let aggregate = crate::optimize::create_array_aggregate(
+            let aggregate = create_array_aggregate(
                 context,
                 element_type_id,
                 element_typs.len().try_into().unwrap(),
@@ -179,9 +210,7 @@ pub fn const_eval_typed_expr(
             contents,
             ..
         } => {
-            let aggregate =
-                crate::optimize::create_enum_aggregate(context, enum_decl.variants.clone())
-                    .unwrap();
+            let aggregate = create_enum_aggregate(context, enum_decl.variants.clone()).unwrap();
             let tag_value = Constant::new_uint(64, *tag as u64);
             let mut fields: Vec<Constant> = vec![tag_value];
             contents.iter().for_each(|subexpr| {
@@ -205,14 +234,11 @@ pub fn const_eval_typed_expr(
                 let field_kind = ProjectionKind::StructField {
                     name: field_to_access.name.clone(),
                 };
-                crate::optimize::get_struct_name_field_index_and_type(
-                    *resolved_type_of_parent,
-                    field_kind,
-                )
-                .and_then(|(_struct_name, field_idx_and_type_opt)| {
-                    field_idx_and_type_opt.map(|(field_idx, _field_type)| field_idx)
-                })
-                .and_then(|field_idx| fields.get(field_idx as usize).cloned())
+                get_struct_name_field_index_and_type(*resolved_type_of_parent, field_kind)
+                    .and_then(|(_struct_name, field_idx_and_type_opt)| {
+                        field_idx_and_type_opt.map(|(field_idx, _field_type)| field_idx)
+                    })
+                    .and_then(|field_idx| fields.get(field_idx as usize).cloned())
             }
             _ => None,
         },
