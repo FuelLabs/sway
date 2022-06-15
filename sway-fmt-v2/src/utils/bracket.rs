@@ -21,3 +21,9 @@ pub trait Parenthesis {
     /// Handles the closing parenthesis scenario.
     fn close_parenthesis(line: &mut String, formatter: &mut Formatter);
 }
+
+pub trait AngleBracket {
+    fn open_angle_bracket(line: &mut String, formatter: &mut Formatter);
+
+    fn close_angle_bracket(line: &mut String, formatter: &mut Formatter);
+}
