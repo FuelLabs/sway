@@ -1,3 +1,6 @@
+//! The purpose of this file is to house the traits and associated functions for formatting opening and closing delimiters.
+//! This allows us to avoid matching a second time for the `ItemKind` and keeps the code pertaining to individual formatting
+//! contained to each item's file.
 use crate::Formatter;
 
 pub trait CurlyBrace {
@@ -14,6 +17,15 @@ pub trait SquareBracket {
     fn open_square_bracket(line: &mut String, formatter: &mut Formatter);
 
     fn close_square_bracket(line: &mut String, formatter: &mut Formatter);
+}
+
+pub trait Parenthesis {
+    /// Handles open parenthesis scenarios, checking the config for placement
+    /// and modifying the shape of the formatter where necessary.
+    fn open_parenthesis(line: &mut String, formatter: &mut Formatter);
+
+    /// Handles the closing parenthesis scenario.
+    fn close_parenthesis(line: &mut String, formatter: &mut Formatter);
 }
 
 pub trait AngleBracket {
