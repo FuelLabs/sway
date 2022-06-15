@@ -21,7 +21,7 @@ pub fn copy(dst: u64, src: u64, size: u64) {
     };
 }
 
-/// Determines whether the raw bytes at two points of memory are equal.
+/// Compares `len` raw bytes in memory at addresses `first` and `second`.
 pub fn eq(first: u64, second: u64, len: u64) -> bool {
     asm(first: first, second: second, len: len, result) {
         meq result first second len;
