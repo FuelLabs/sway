@@ -8,7 +8,6 @@ pub mod while_loop;
 use std::fmt;
 
 pub(crate) use code_block::*;
-pub use const_eval::*;
 pub use declaration::*;
 pub(crate) use expression::*;
 pub(crate) use mode::*;
@@ -351,14 +350,14 @@ impl TypedAstNode {
                             typed_const_decl
                         }
                         Declaration::EnumDeclaration(decl) => {
-                            let decl = check!(
+                            let enum_decl = check!(
                                 TypedEnumDeclaration::type_check(decl, namespace, self_type),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
                             );
-                            let name = decl.name.clone();
-                            let decl = TypedDeclaration::EnumDeclaration(decl);
+                            let name = enum_decl.name.clone();
+                            let decl = TypedDeclaration::EnumDeclaration(enum_decl);
                             let _ = check!(
                                 namespace.insert_symbol(name, decl.clone()),
                                 return err(warnings, errors),
@@ -368,15 +367,7 @@ impl TypedAstNode {
                             decl
                         }
                         Declaration::FunctionDeclaration(fn_decl) => {
-                            for type_parameter in fn_decl.type_parameters.iter() {
-                                if !type_parameter.trait_constraints.is_empty() {
-                                    errors.push(CompileError::WhereClauseNotYetSupported {
-                                        span: type_parameter.name_ident.span(),
-                                    });
-                                    break;
-                                }
-                            }
-                            let decl = check!(
+                            let fn_decl = check!(
                                 TypedFunctionDeclaration::type_check(TypeCheckArguments {
                                     checkee: fn_decl.clone(),
                                     namespace,
@@ -390,11 +381,10 @@ impl TypedAstNode {
                                 warnings,
                                 errors
                             );
-                            namespace.insert_symbol(
-                                decl.name.clone(),
-                                TypedDeclaration::FunctionDeclaration(decl.clone()),
-                            );
-                            TypedDeclaration::FunctionDeclaration(decl)
+                            let name = fn_decl.name.clone();
+                            let decl = TypedDeclaration::FunctionDeclaration(fn_decl);
+                            namespace.insert_symbol(name, decl.clone());
+                            decl
                         }
                         Declaration::TraitDeclaration(trait_decl) => {
                             let trait_decl = check!(
@@ -429,23 +419,20 @@ impl TypedAstNode {
                             )
                         }
                         Declaration::ImplTrait(impl_trait) => {
-                            let impl_trait = check!(
+                            let (impl_trait, implementing_for_type_id) = check!(
                                 TypedImplTrait::type_check_impl_trait(impl_trait, namespace, opts),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
                             );
+                            namespace.insert_trait_implementation(
+                                impl_trait.trait_name.clone(),
+                                look_up_type_id(implementing_for_type_id),
+                                impl_trait.methods.clone(),
+                            );
                             TypedDeclaration::ImplTrait(impl_trait)
                         }
                         Declaration::ImplSelf(impl_self) => {
-                            for type_parameter in impl_self.type_parameters.iter() {
-                                if !type_parameter.trait_constraints.is_empty() {
-                                    errors.push(CompileError::WhereClauseNotYetSupported {
-                                        span: type_parameter.name_ident.span(),
-                                    });
-                                    break;
-                                }
-                            }
                             let impl_trait = check!(
                                 TypedImplTrait::type_check_impl_self(impl_self, namespace, opts),
                                 return err(warnings, errors),
@@ -454,7 +441,7 @@ impl TypedAstNode {
                             );
                             namespace.insert_trait_implementation(
                                 impl_trait.trait_name.clone(),
-                                impl_trait.type_implementing_for.clone(),
+                                look_up_type_id(impl_trait.implementing_for_type_id),
                                 impl_trait.methods.clone(),
                             );
                             TypedDeclaration::ImplTrait(impl_trait)

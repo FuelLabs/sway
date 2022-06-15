@@ -715,7 +715,7 @@ fn item_impl_to_declaration(
                 trait_name: path_type_to_call_path(ec, path_type)?,
                 type_implementing_for,
                 type_implementing_for_span,
-                type_arguments: type_parameters,
+                type_parameters,
                 functions,
                 block_span,
             };
@@ -2555,14 +2555,12 @@ fn statement_let_to_ast_nodes(
         span: Span,
     ) -> Result<Vec<AstNode>, ErrorEmitted> {
         let ast_nodes = match pattern {
-            Pattern::Wildcard { .. } => {
-                let ast_node = AstNode {
-                    content: AstNodeContent::Expression(expression),
-                    span,
+            Pattern::Wildcard { .. } | Pattern::Var { .. } => {
+                let (mutable, name) = match pattern {
+                    Pattern::Var { mutable, name } => (mutable, name),
+                    Pattern::Wildcard { .. } => (None, Ident::new_no_span("_")),
+                    _ => unreachable!(),
                 };
-                vec![ast_node]
-            }
-            Pattern::Var { mutable, name } => {
                 let (type_ascription, type_ascription_span) = match ty_opt {
                     Some(ty) => {
                         let type_ascription_span = ty.span();
