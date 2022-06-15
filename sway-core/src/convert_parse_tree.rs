@@ -2556,7 +2556,7 @@ fn statement_let_to_ast_nodes(
                 let (mutable, name) = match pattern {
                     Pattern::Var { mutable, name } => (mutable, name),
                     Pattern::Wildcard { .. } => (None, Ident::new_no_span("_")),
-                    _ => panic!("Internal error"),
+                    _ => unreachable!()
                 };
                 let (type_ascription, type_ascription_span) = match ty_opt {
                     Some(ty) => {
