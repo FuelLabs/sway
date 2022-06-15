@@ -315,24 +315,14 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --debug --path ./forc
-      - name: Install Forc fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --debug --path ./forc-plugins/forc-fmt
-      - name: Build Sway examples
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --locked --bin examples-checker build --all-examples
+          args: --path ./forc
       - name: Build All Tests
         run: cd test/src/sdk-harness && bash build.sh --locked && cd ../../../
       - name: Cargo Test sway-lib-std
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --manifest-path ./test/src/sdk-harness/Cargo.toml -- --test-threads=1 --nocapture
+          args: --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --test-threads=1 --nocapture
 
   cargo-test-workspace:
     needs: cancel-previous-runs
