@@ -52,7 +52,6 @@ impl Format for ItemEnum {
             // Push the current indentation level
             formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
             formatted_code.push_str(type_field.name.as_str());
-            formatted_code.push_str(" : ");
 
             // Currently does not apply custom formatting for ty,
             let current_variant_length = variant_length[index];
@@ -65,6 +64,7 @@ impl Format for ItemEnum {
                 // TODO: Improve handling this
                 formatted_code.push_str(&(0..required_alignment).map(|_| ' ').collect::<String>());
             }
+            formatted_code.push_str(" : ");
             // TODO: We are currently converting ty to string directly but we will probably need to format ty before adding.
             formatted_code.push_str(type_field.ty.span().as_str());
             formatted_code.push(',');
