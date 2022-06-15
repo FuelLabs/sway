@@ -4,31 +4,32 @@ use crate::utils::{
     program_type::{ProgramType, ProgramType::*},
 };
 use anyhow::Result;
-use forc_util::{print_light_blue, print_light_green, validate_name};
+use forc_util::validate_name;
 use std::fs;
 use std::path::Path;
 use sway_utils::constants;
+use tracing::debug;
 
 fn print_welcome_message() {
-    print_light_green("To compile, use `forc build`, and to run tests use `forc test`\n\n");
+    debug!("To compile, use `forc build`, and to run tests use `forc test`\n\n");
 
-    print_light_blue("Read the Docs:\n");
-    print_light_green("- Sway Book: ");
-    print_light_blue("https://fuellabs.github.io/sway/latest\n");
-    print_light_green("- Rust SDK Book: ");
-    print_light_blue("https://fuellabs.github.io/fuels-rs/latest\n");
-    print_light_green("- TypeScript SDK: ");
-    print_light_blue("https://github.com/FuelLabs/fuels-ts\n\n");
+    debug!("Read the Docs:\n");
+    debug!("- Sway Book: ");
+    debug!("https://fuellabs.github.io/sway/latest\n");
+    debug!("- Rust SDK Book: ");
+    debug!("https://fuellabs.github.io/fuels-rs/latest\n");
+    debug!("- TypeScript SDK: ");
+    debug!("https://github.com/FuelLabs/fuels-ts\n\n");
 
-    print_light_blue("Join the Community:\n");
-    print_light_green("- Follow us @SwayLang: ");
-    print_light_blue("https://twitter.com/SwayLang\n");
-    print_light_green("- Ask questions in dev-chat on Discord: ");
-    print_light_blue("https://discord.com/invite/xfpK4Pe\n\n");
+    debug!("Join the Community:\n");
+    debug!("- Follow us @SwayLang: ");
+    debug!("https://twitter.com/SwayLang\n");
+    debug!("- Ask questions in dev-chat on Discord: ");
+    debug!("https://discord.com/invite/xfpK4Pe\n\n");
 
-    print_light_blue("Report Bugs:\n");
-    print_light_green("- Sway Issues: ");
-    print_light_blue("https://github.com/FuelLabs/sway/issues/new\n");
+    debug!("Report Bugs:\n");
+    debug!("- Sway Issues: ");
+    debug!("https://github.com/FuelLabs/sway/issues/new\n");
 }
 
 pub fn init(command: NewCommand) -> Result<()> {
@@ -126,9 +127,7 @@ pub(crate) fn init_new_project(
         defaults::default_gitignore(),
     )?;
 
-    print_light_green(&format!(
-        "\nSuccessfully created {program_type}: {neat_name}\n",
-    ));
+    debug!("\nSuccessfully created {program_type}: {neat_name}\n",);
 
     print_welcome_message();
 

@@ -20,9 +20,6 @@ pub struct Command {
     /// Create a package with a predicate target (src/predicate.rs).
     #[clap(long)]
     pub predicate: bool,
-    /// Use verbose output.
-    #[clap(short = 'v', long = "verbose")]
-    pub verbose: bool,
     /// Set the package name. Defaults to the directory name
     #[clap(long = "name")]
     pub name: Option<String>,
