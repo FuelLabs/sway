@@ -11,7 +11,7 @@ pub fn size_of<T>() -> u64 {
     __size_of::<T>()
 }
 
-/// Returns the size of a value in bytes.
+/// Returns the size of the type of a value in bytes.
 pub fn size_of_val<T>(val: T) -> u64 {
     __size_of_val::<T>(val)
 }
