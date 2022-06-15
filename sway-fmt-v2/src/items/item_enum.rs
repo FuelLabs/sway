@@ -1,7 +1,7 @@
 use crate::{
     config::items::ItemBraceStyle,
     fmt::{Format, FormattedCode, Formatter},
-    utils::bracket::CurlyDelimiter,
+    utils::bracket::CurlyBrace,
 };
 use sway_parse::ItemEnum;
 
@@ -11,8 +11,8 @@ impl Format for ItemEnum {
     }
 }
 
-impl CurlyDelimiter for ItemEnum {
-    fn handle_open_brace(push_to: &mut String, formatter: &mut Formatter) {
+impl CurlyBrace for ItemEnum {
+    fn open_curly_brace(push_to: &mut String, formatter: &mut Formatter) {
         let brace_style = formatter.config.items.item_brace_style;
         let mut shape = formatter.shape;
         match brace_style {
@@ -31,7 +31,7 @@ impl CurlyDelimiter for ItemEnum {
         formatter.shape = shape;
     }
 
-    fn handle_closed_brace(push_to: &mut String, formatter: &mut Formatter) {
+    fn close_curly_brace(push_to: &mut String, formatter: &mut Formatter) {
         push_to.push('}');
         // If shape is becoming left-most alligned or - indent just have the defualt shape
         formatter.shape = formatter.shape.shrink_left(1).unwrap_or_default();
