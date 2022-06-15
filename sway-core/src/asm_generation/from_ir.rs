@@ -815,10 +815,16 @@ impl<'ir> AsmBuilder<'ir> {
 
     fn compile_branch_to_phi_value(&mut self, from_block: &Block, to_block: &Block) {
         if let Some(local_val) = to_block.get_phi_val_coming_from(self.context, from_block) {
-            let local_reg = self.value_to_register(&local_val);
-            let phi_reg = self.value_to_register(&to_block.get_phi(self.context));
-            self.bytecode
-                .push(Op::unowned_register_move(phi_reg, local_reg));
+            // We only need a MOVE here if get_phi_val_coming_from() is actually assigned to a
+            // register
+            if let Some(local_reg) = self.value_to_register_or_none(&local_val) {
+                let phi_reg = self.value_to_register(&to_block.get_phi(self.context));
+                self.bytecode.push(Op::unowned_register_move_comment(
+                    phi_reg,
+                    local_reg,
+                    "branch to phi value",
+                ));
+            }
         }
     }
 
@@ -1994,34 +2000,46 @@ impl<'ir> AsmBuilder<'ir> {
         start_reg
     }
 
-    fn value_to_register(&mut self, value: &Value) -> VirtualRegister {
+    // Get the reg corresponding to `value`
+    // Returns None if the value is not in reg_map or is not a constant
+    fn value_to_register_or_none(&mut self, value: &Value) -> Option<VirtualRegister> {
         let value_type = value.get_type(self.context).unwrap();
         match self.reg_map.get(value) {
-            Some(reg) => reg.clone(),
+            Some(reg) => Some(reg.clone()),
             None => {
                 match &self.context.values[value.0].value {
                     // Handle constants.
                     ValueDatum::Constant(constant) => match &value_type {
                         Type::Unit | Type::Bool | Type::Uint(_) | Type::B256 | Type::String(_) => {
-                            self.initialise_non_aggregate_type(
+                            Some(self.initialise_non_aggregate_type(
                                 constant,
                                 value.get_span(self.context),
-                            )
+                            ))
                         }
-                        Type::Array(_) | Type::Struct(_) | Type::Union(_) => self
-                            .initialise_aggregate_type(
+                        Type::Array(_) | Type::Struct(_) | Type::Union(_) => {
+                            Some(self.initialise_aggregate_type(
                                 constant,
                                 &value_type,
                                 value.get_span(self.context),
-                            ),
+                            ))
+                        }
                     },
-                    _otherwise => {
-                        // Just make a new register for this value.
-                        let reg = self.reg_seqr.next();
-                        self.reg_map.insert(*value, reg.clone());
-                        reg
-                    }
+                    _otherwise => None,
                 }
+            }
+        }
+    }
+
+    // Same as `value_to_register_or_none` but returns a new register if no register is found or if
+    // `value` is not a constant.
+    fn value_to_register(&mut self, value: &Value) -> VirtualRegister {
+        match self.value_to_register_or_none(value) {
+            Some(reg) => reg,
+            None => {
+                // Just make a new register for this value.
+                let reg = self.reg_seqr.next();
+                self.reg_map.insert(*value, reg.clone());
+                reg
             }
         }
     }

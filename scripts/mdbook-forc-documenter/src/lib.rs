@@ -11,6 +11,7 @@ use plugins::plugin_commands;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use toml::Value;
 
 mod commands;
 mod formatter;
@@ -30,7 +31,14 @@ impl Preprocessor for ForcDocumenter {
         "forc-documenter"
     }
 
-    fn run(&self, _ctx: &PreprocessorContext, mut book: Book) -> Result<Book, Error> {
+    fn run(&self, ctx: &PreprocessorContext, mut book: Book) -> Result<Book, Error> {
+        let strict = ctx
+            .config
+            .get_preprocessor(self.name())
+            .and_then(|t| t.get("strict"))
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+
         let possible_commands: Vec<String> = possible_forc_commands();
         let examples: HashMap<String, String> = load_examples()?;
 
@@ -85,9 +93,14 @@ impl Preprocessor for ForcDocumenter {
             error_message.push_str(&dangling_chapters_msg(&removed_commands));
         };
 
-        if !error_message.is_empty() {
+        if strict && !error_message.is_empty() {
             Err(Error::msg(error_message))
         } else {
+            if !error_message.is_empty() {
+                eprintln!("Warning:");
+                eprintln!("{}", error_message);
+                eprintln!("The book built successfully - if the changes above were intended or if you are editing pages unrelated to Forc, you may ignore this message.");
+            }
             Ok(book)
         }
     }
