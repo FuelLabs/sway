@@ -1,4 +1,7 @@
-use crate::{CallPath, TypeInfo, TypedFunctionDeclaration};
+use crate::{
+    type_engine::{look_up_type_id, TypeId},
+    CallPath, TypeInfo, TypedFunctionDeclaration,
+};
 
 use std::collections::HashMap;
 
@@ -26,7 +29,7 @@ type TraitName = CallPath;
 // However, we need this structure to be able to maintain the
 // difference between 3 and 4, as in practice, 1 and 2 might not yet
 // be resolved.
-type TraitMapInner = im::Vector<((TraitName, TypeInfo), TraitMethods)>;
+type TraitMapInner = im::Vector<((TraitName, TypeId), TraitMethods)>;
 type TraitMethods = im::HashMap<String, TypedFunctionDeclaration>;
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -38,7 +41,7 @@ impl TraitMap {
     pub(crate) fn insert(
         &mut self,
         trait_name: CallPath,
-        type_implementing_for: TypeInfo,
+        incoming_type_id: TypeId,
         methods: Vec<TypedFunctionDeclaration>,
     ) {
         let mut methods_map = im::HashMap::new();
@@ -47,7 +50,7 @@ impl TraitMap {
             methods_map.insert(method_name, method);
         }
         self.trait_map
-            .push_back(((trait_name, type_implementing_for), methods_map));
+            .push_back(((trait_name, incoming_type_id), methods_map));
     }
 
     pub(crate) fn extend(&mut self, other: TraitMap) {
@@ -62,13 +65,13 @@ impl TraitMap {
 
     pub(crate) fn get_call_path_and_type_info(
         &self,
-        r#type: TypeInfo,
-    ) -> Vec<((CallPath, TypeInfo), Vec<TypedFunctionDeclaration>)> {
+        incoming_type_id: TypeId,
+    ) -> Vec<((CallPath, TypeId), Vec<TypedFunctionDeclaration>)> {
         let mut ret = vec![];
-        for ((call_path, type_info), methods) in self.trait_map.iter() {
-            if type_info.clone() == r#type {
+        for ((call_path, map_type_id), methods) in self.trait_map.iter() {
+            if look_up_type_id(*map_type_id) == look_up_type_id(incoming_type_id) {
                 ret.push((
-                    (call_path.clone(), type_info.clone()),
+                    (call_path.clone(), *map_type_id),
                     methods.values().cloned().collect(),
                 ));
             }
@@ -76,14 +79,17 @@ impl TraitMap {
         ret
     }
 
-    pub(crate) fn get_methods_for_type(&self, r#type: TypeInfo) -> Vec<TypedFunctionDeclaration> {
+    pub(crate) fn get_methods_for_type(
+        &self,
+        incoming_type_id: TypeId,
+    ) -> Vec<TypedFunctionDeclaration> {
         let mut methods = vec![];
         // small performance gain in bad case
-        if r#type == TypeInfo::ErrorRecovery {
+        if look_up_type_id(incoming_type_id) == TypeInfo::ErrorRecovery {
             return methods;
         }
-        for ((_, type_info), l_methods) in self.trait_map.iter() {
-            if *type_info == r#type {
+        for ((_, map_type_id), l_methods) in self.trait_map.iter() {
+            if look_up_type_id(*map_type_id) == look_up_type_id(incoming_type_id) {
                 methods.append(&mut l_methods.values().cloned().collect());
             }
         }
@@ -92,15 +98,15 @@ impl TraitMap {
 
     pub(crate) fn get_methods_for_type_by_trait(
         &self,
-        r#type: TypeInfo,
+        incoming_type_id: TypeId,
     ) -> HashMap<TraitName, Vec<TypedFunctionDeclaration>> {
         let mut methods: HashMap<TraitName, Vec<TypedFunctionDeclaration>> = HashMap::new();
         // small performance gain in bad case
-        if r#type == TypeInfo::ErrorRecovery {
+        if look_up_type_id(incoming_type_id) == TypeInfo::ErrorRecovery {
             return methods;
         }
-        for ((trait_name, type_info), trait_methods) in self.trait_map.iter() {
-            if *type_info == r#type {
+        for ((trait_name, map_type_id), trait_methods) in self.trait_map.iter() {
+            if look_up_type_id(*map_type_id) == look_up_type_id(incoming_type_id) {
                 methods.insert(
                     (*trait_name).clone(),
                     trait_methods.values().cloned().collect(),
