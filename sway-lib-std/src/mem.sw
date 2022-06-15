@@ -28,3 +28,28 @@ pub fn eq(first: u64, second: u64, len: u64) -> bool {
         result: bool
     }
 }
+
+/// Reads the given type of value from the address.
+pub fn read<T>(ptr: u64) -> T {
+    if is_reference_type::<T>() {
+        asm(ptr: ptr) {
+            ptr: T
+        }
+    } else {
+        asm(ptr: ptr, val) {
+            lw val ptr i0;
+            val: T
+        }
+    }
+}
+
+/// Writes the given value to the address.
+pub fn write<T>(ptr: u64, val: T) {
+    if is_reference_type::<T>() {
+        copy(ptr, addr_of(val), size_of_val(val));
+    } else {
+        asm(ptr: ptr, val: val) {
+            sw ptr val i0;
+        };
+    }
+}
