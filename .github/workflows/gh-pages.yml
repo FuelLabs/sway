@@ -39,7 +39,7 @@ jobs:
         with:
           mdbook-version: '0.4.15'
 
-      - run: mdbook build docs
+      - run: MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs
 
       - name: Deploy latest
         uses: peaceiris/actions-gh-pages@v3
