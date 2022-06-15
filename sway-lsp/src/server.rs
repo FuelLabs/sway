@@ -84,7 +84,8 @@ impl Backend {
         if self.config.parsed_tokens_as_warnings {
             if let Some(document) = self.session.documents.get(uri.path()) {
                 //let diagnostics = debug::generate_warnings_for_parsed_tokens(document.get_tokens());
-                let diagnostics = debug::generate_warnings_for_typed_tokens(&document.get_token_map(), uri.path());
+                let diagnostics =
+                    debug::generate_warnings_for_typed_tokens(document.get_token_map(), uri.path());
                 self.client
                     .publish_diagnostics(uri, diagnostics, None)
                     .await;
@@ -263,7 +264,9 @@ mod tests {
         // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
         messages.next().await.unwrap();
 
-        let manifest_dir = Url::from_file_path("/Users/joshuabatty/Documents/rust/fuel/sway/examples/fizzbuzz").unwrap();
+        let manifest_dir =
+            Url::from_file_path("/Users/joshuabatty/Documents/rust/fuel/sway/examples/fizzbuzz")
+                .unwrap();
         let mut file = File::open(manifest_dir.join("src/main.sw").unwrap().as_str()).unwrap();
         let mut sway_program = String::new();
         file.read_to_string(&mut sway_program).unwrap();
@@ -273,7 +276,7 @@ mod tests {
 
         // ignore the "textDocument/publishDiagnostics" notification
         messages.next().await.unwrap();
-        
+
         // send "shutdown" request
         let _ = shutdown_request(&mut service).await;
 

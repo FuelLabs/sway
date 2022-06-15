@@ -7,16 +7,8 @@ use super::typed_token_type::TokenMap;
 
 use crate::{capabilities, core::token::traverse_node, utils};
 use ropey::Rope;
-use std::{
-    collections::HashMap,
-    path::PathBuf,
-    sync::Arc,
-};
-use sway_core::{
-    parse,
-    semantic_analysis::{ast_node::TypedAstNode, namespace},
-    BuildConfig, CompileAstResult, TreeType,
-};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use sway_core::{parse, semantic_analysis::ast_node::TypedAstNode, CompileAstResult, TreeType};
 use tower_lsp::lsp_types::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
 
 #[derive(Debug)]
@@ -162,16 +154,16 @@ impl TextDocument {
 }
 
 // there is a constant in the root of the forc crate for SWAY_GIT_TAG
-// use forc package - use manifest 
+// use forc package - use manifest
 // manifest from dir
 // look at forc_ops::forc_build() and how it generates its build_config -- use this as a template
 // forc_util has some methods for finding paths
 
-// let manifest = ManifestFile::from_dir(&this_dir, SWAY_GIT_TAG)?; || can hopefully just pass the path the main.sw 
+// let manifest = ManifestFile::from_dir(&this_dir, SWAY_GIT_TAG)?; || can hopefully just pass the path the main.sw
 // entry_path() might be what I want
 
-// namespace 
-// this happens in 
+// namespace
+// this happens in
 // make a check() function instead of build() in forc_package, will be nearly identical apart from it returns the ast
 // Also, instead of compile() and a compile_ast() function, I can just return the ast
 
@@ -180,11 +172,10 @@ impl TextDocument {
 // create a forc_check module similar to forc_build
 // private methods
 impl TextDocument {
-
     fn parse_typed_tokens_from_text(&self) -> Option<Vec<TypedAstNode>> {
         let manifest_dir = PathBuf::from(self.get_uri());
         let res = forc::ops::forc_build::check(&manifest_dir).unwrap();
-        
+
         match res {
             CompileAstResult::Failure { .. } => None,
             CompileAstResult::Success { typed_program, .. } => Some(typed_program.root.all_nodes),

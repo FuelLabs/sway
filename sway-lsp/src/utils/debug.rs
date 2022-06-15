@@ -29,7 +29,10 @@ pub fn generate_warnings_for_parsed_tokens(tokens: &[Token]) -> Vec<Diagnostic> 
     warnings
 }
 
-pub fn generate_warnings_for_typed_tokens(tokens: &TokenMap, current_path: &str) -> Vec<Diagnostic> {
+pub fn generate_warnings_for_typed_tokens(
+    tokens: &TokenMap,
+    current_path: &str,
+) -> Vec<Diagnostic> {
     let warnings = tokens
         .keys()
         .filter(|(_, span)| {

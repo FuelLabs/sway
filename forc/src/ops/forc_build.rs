@@ -203,7 +203,7 @@ fn create_new_lock(
     Ok(())
 }
 
-pub fn check(manifest_dir: &Path) -> Result<sway_core::CompileAstResult> {    
+pub fn check(manifest_dir: &Path) -> Result<sway_core::CompileAstResult> {
     let manifest = ManifestFile::from_dir(manifest_dir, SWAY_GIT_TAG)?;
 
     let config = &pkg::BuildConfig {

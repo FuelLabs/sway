@@ -1316,15 +1316,20 @@ pub fn dependency_namespace(
     namespace
 }
 
-/// Compiles the package to an AST. 
+/// Compiles the package to an AST.
 pub fn compile_ast(
     manifest: &ManifestFile,
     build_config: &BuildConfig,
     namespace: namespace::Module,
 ) -> Result<CompileAstResult> {
     let source = manifest.entry_string()?;
-    let sway_build_config = sway_build_config(manifest.dir(), &manifest.entry_path(), build_config)?;
-    Ok(sway_core::compile_to_ast(source, namespace, Some(&sway_build_config)))    
+    let sway_build_config =
+        sway_build_config(manifest.dir(), &manifest.entry_path(), build_config)?;
+    Ok(sway_core::compile_to_ast(
+        source,
+        namespace,
+        Some(&sway_build_config),
+    ))
 }
 
 /// Compiles the given package.
@@ -1474,18 +1479,17 @@ pub fn check(
             namespace_map.insert(node, namespace.into());
         }
         source_map.insert_dependency(path.clone());
-        
-        
+
         // return just the last one instead of all in a vec
         let ast_res = compile_ast(&manifest, conf, dep_namespace)?;
         if i == plan.compilation_order.len() - 1 {
-            return Ok(ast_res)
+            return Ok(ast_res);
         }
         //ast_results.push(ast_res);
     }
     Err(anyhow!("unable to check sway program from build plan"))
-    
-   // Ok(ast_results)
+
+    // Ok(ast_results)
 }
 
 /// Attempt to find a `Forc.toml` with the given project name within the given directory.
