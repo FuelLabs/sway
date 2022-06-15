@@ -58,7 +58,8 @@ impl Formatter {
             .join("\n");
         let mut formatted_code = String::from(&formatted_raw_newline);
         apply_newline_style(
-            NewlineStyle::Auto,
+            // The user's setting for `NewlineStyle`
+            self.config.whitespace.newline_style,
             &mut formatted_code,
             &formatted_raw_newline,
         );
