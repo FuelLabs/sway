@@ -5,6 +5,7 @@ library tx;
 use ::address::Address;
 use ::contract_id::ContractId;
 use ::intrinsics::is_reference_type;
+use ::context::registers::instrs_start;
 
 ////////////////////////////////////////
 // Transaction fields
