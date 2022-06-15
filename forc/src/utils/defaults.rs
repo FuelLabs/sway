@@ -152,3 +152,5 @@ fn parse_default_tests_manifest() {
         toml::from_str::<forc_pkg::Manifest>(&default_tests_manifest("test_proj")).unwrap()
     )
 }
+
+pub const NODE_URL: &str = "http://127.0.0.1:4000";

@@ -51,7 +51,7 @@ pub(crate) fn runs_on_node(
             "{}/src/e2e_vm_tests/test_programs/{}",
             manifest_dir, file_name
         )),
-        node_url: "http://127.0.0.1:4000".into(),
+        node_url: Some("http://127.0.0.1:4000".into()),
         silent_mode: !verbose,
         contract: Some(contracts),
         ..Default::default()

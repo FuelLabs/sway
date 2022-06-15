@@ -1,5 +1,6 @@
 use crate::cli::{BuildCommand, RunCommand};
 use crate::ops::forc_build;
+use crate::utils::defaults::NODE_URL;
 use crate::utils::parameters::TxParameters;
 use crate::utils::SWAY_GIT_TAG;
 use anyhow::{anyhow, bail, Result};
@@ -51,16 +52,16 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         TxParameters::new(command.byte_price, command.gas_limit, command.gas_price),
     );
 
-    let node_url = match &manifest.network {
-        Some(network) => &network.url,
-        _ => &command.node_url,
-    };
+    let node_url = command.node_url.unwrap_or_else(|| match &manifest.network {
+        Some(network) => network.url.to_owned(),
+        None => NODE_URL.to_owned(),
+    });
 
     if command.dry_run {
         info!("{:?}", tx);
         Ok(vec![])
     } else {
-        try_send_tx(node_url, &tx, command.pretty_print, command.simulate_tx).await
+        try_send_tx(&node_url, &tx, command.pretty_print, command.simulate).await
     }
 }
 
@@ -68,12 +69,12 @@ async fn try_send_tx(
     node_url: &str,
     tx: &Transaction,
     pretty_print: bool,
-    simulate_tx: bool,
+    simulate: bool,
 ) -> Result<Vec<fuel_tx::Receipt>> {
     let client = FuelClient::new(node_url)?;
 
     match client.health().await {
-        Ok(_) => send_tx(&client, tx, pretty_print, simulate_tx).await,
+        Ok(_) => send_tx(&client, tx, pretty_print, simulate).await,
         Err(_) => Err(fuel_core_not_running(node_url)),
     }
 }
@@ -82,11 +83,11 @@ async fn send_tx(
     client: &FuelClient,
     tx: &Transaction,
     pretty_print: bool,
-    simulate_tx: bool,
+    simulate: bool,
 ) -> Result<Vec<fuel_tx::Receipt>> {
     let id = format!("{:#x}", tx.id());
     let outputs = {
-        if !simulate_tx {
+        if !simulate {
             client
                 .submit(tx)
                 .and_then(|_| client.receipts(id.as_str()))
