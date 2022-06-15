@@ -7,8 +7,11 @@ use super::typed_token_type::TokenMap;
 
 use crate::{capabilities, core::token::traverse_node, utils};
 use ropey::Rope;
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{
+    collections::HashMap,
+    path::PathBuf,
+    sync::Arc,
+};
 use sway_core::{
     parse,
     semantic_analysis::{ast_node::TypedAstNode, namespace},
@@ -177,39 +180,28 @@ impl TextDocument {
 // create a forc_check module similar to forc_build
 // private methods
 impl TextDocument {
-    
 
     fn parse_typed_tokens_from_text(&self) -> Option<Vec<TypedAstNode>> {
-        
-        //let manifest_dir = std::path::PathBuf::from("/Users/joshuabatty/Documents/rust/fuel/sway/examples/fizzbuzz");
-        let manifest_dir = std::path::PathBuf::from("/Users/joshuabatty/Documents/rust/fuel_test_projects/lsp-test-projects/Particle/lsp_sway_project");
-        //let text = Arc::from(include_str!("../../../examples/fizzbuzz/src/main.sw"));
-
-        //let manifest_dir = std::env::current_dir()?;
+        let manifest_dir = PathBuf::from(self.get_uri());
         let res = forc::ops::forc_build::check(&manifest_dir).unwrap();
         
-        for ast_res in res {
-            match ast_res {
-                CompileAstResult::Failure { .. } => (),
-                CompileAstResult::Success { typed_program, .. } => {
-                    let n = typed_program.root.all_nodes;
-                    eprintln!("res = {:#?}", n);
-                },
-            }
-        }
-
-        let text = Arc::from(self.get_text());
-        let namespace = namespace::Module::default();
-        let file_name = std::path::PathBuf::from(self.get_uri());
-        let build_config =
-            BuildConfig::root_from_file_name_and_manifest_path(file_name, manifest_dir);
-
-        let ast_res = sway_core::compile_to_ast(text, namespace, Some(&build_config));
-        //let ast_res = sway_core::compile_to_ast(text, namespace, None);
-        match ast_res {
+        match res {
             CompileAstResult::Failure { .. } => None,
             CompileAstResult::Success { typed_program, .. } => Some(typed_program.root.all_nodes),
         }
+
+        // let text = Arc::from(self.get_text());
+        // let namespace = namespace::Module::default();
+        // let file_name = std::path::PathBuf::from(self.get_uri());
+        // let build_config =
+        //     BuildConfig::root_from_file_name_and_manifest_path(file_name, manifest_dir);
+
+        // let ast_res = sway_core::compile_to_ast(text, namespace, Some(&build_config));
+        // //let ast_res = sway_core::compile_to_ast(text, namespace, None);
+        // match ast_res {
+        //     CompileAstResult::Failure { .. } => None,
+        //     CompileAstResult::Success { typed_program, .. } => Some(typed_program.root.all_nodes),
+        // }
     }
 
     fn parse_tokens_from_text(&self) -> Result<(Vec<Token>, Vec<Diagnostic>), Vec<Diagnostic>> {

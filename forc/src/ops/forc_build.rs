@@ -203,9 +203,8 @@ fn create_new_lock(
     Ok(())
 }
 
-pub fn check(manifest_dir: &Path) -> Result<Vec<sway_core::CompileAstResult>> {    
+pub fn check(manifest_dir: &Path) -> Result<sway_core::CompileAstResult> {    
     let manifest = ManifestFile::from_dir(manifest_dir, SWAY_GIT_TAG)?;
-    eprintln!("manifest = {:#?}", &manifest);
 
     let config = &pkg::BuildConfig {
         print_ir: false,
@@ -215,10 +214,8 @@ pub fn check(manifest_dir: &Path) -> Result<Vec<sway_core::CompileAstResult>> {
     };
 
     let lock_path = lock_path(manifest.dir());
-    eprintln!("lock_path = {:#?}", &lock_path);
 
     let build_plan = pkg::BuildPlan::from_lock_file(&lock_path, SWAY_GIT_TAG)?;
-    eprintln!("build_plan!");
 
     // Build it!
     pkg::check(&build_plan, config, SWAY_GIT_TAG)

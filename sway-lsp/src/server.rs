@@ -84,7 +84,7 @@ impl Backend {
         if self.config.parsed_tokens_as_warnings {
             if let Some(document) = self.session.documents.get(uri.path()) {
                 //let diagnostics = debug::generate_warnings_for_parsed_tokens(document.get_tokens());
-                let diagnostics = debug::generate_warnings_for_typed_tokens(&document.get_token_map());
+                let diagnostics = debug::generate_warnings_for_typed_tokens(&document.get_token_map(), uri.path());
                 self.client
                     .publish_diagnostics(uri, diagnostics, None)
                     .await;
@@ -263,11 +263,13 @@ mod tests {
         // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
         messages.next().await.unwrap();
 
-        let sway_program = include_str!("../../examples/fizzbuzz/src/main.sw");
-        let uri = load_test_sway_file(sway_program);
+        let manifest_dir = Url::from_file_path("/Users/joshuabatty/Documents/rust/fuel/sway/examples/fizzbuzz").unwrap();
+        let mut file = File::open(manifest_dir.join("src/main.sw").unwrap().as_str()).unwrap();
+        let mut sway_program = String::new();
+        file.read_to_string(&mut sway_program).unwrap();
 
         // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, sway_program).await;
+        did_open_notification(&mut service, &manifest_dir, sway_program).await;
 
         // ignore the "textDocument/publishDiagnostics" notification
         messages.next().await.unwrap();

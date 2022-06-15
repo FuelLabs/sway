@@ -1458,31 +1458,34 @@ pub fn check(
     plan: &BuildPlan,
     conf: &BuildConfig,
     sway_git_tag: &str,
-) -> anyhow::Result<Vec<CompileAstResult>> {
+) -> anyhow::Result<CompileAstResult> {
     let mut namespace_map = Default::default();
     let mut source_map = SourceMap::new();
-    let mut ast_results = Vec::new();
-    for &node in &plan.compilation_order {
+    //let mut ast_results = Vec::new();
+    for (i, &node) in plan.compilation_order.iter().enumerate() {
         let dep_namespace =
             dependency_namespace(&namespace_map, &plan.graph, &plan.compilation_order, node);
         let pkg = &plan.graph[node];
         let path = &plan.path_map[&pkg.id()];
         let manifest = ManifestFile::from_dir(path, sway_git_tag)?;
         let res = compile(pkg, &manifest, conf, dep_namespace.clone(), &mut source_map)?;
-        let (compiled, maybe_namespace) = res;
+        let (_, maybe_namespace) = res;
         if let Some(namespace) = maybe_namespace {
             namespace_map.insert(node, namespace.into());
         }
         source_map.insert_dependency(path.clone());
         
+        
         // return just the last one instead of all in a vec
         let ast_res = compile_ast(&manifest, conf, dep_namespace)?;
-        ast_results.push(ast_res);
+        if i == plan.compilation_order.len() - 1 {
+            return Ok(ast_res)
+        }
+        //ast_results.push(ast_res);
     }
-
+    Err(anyhow!("unable to check sway program from build plan"))
     
-
-    Ok(ast_results)
+   // Ok(ast_results)
 }
 
 /// Attempt to find a `Forc.toml` with the given project name within the given directory.
