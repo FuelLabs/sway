@@ -25,6 +25,7 @@ forc-pkg = { version = "0.15.2", path = "../forc-pkg" }
 forc-util = { version = "0.15.2", path = "../forc-util" }
 fs_extra = "1.2"
 fuel-asm = "0.5"
+fuel-crypto = "0.5"
 fuel-gql-client = { version = "0.8", default-features = false }
 fuel-tx = "0.12"
 fuel-vm = "0.11"
