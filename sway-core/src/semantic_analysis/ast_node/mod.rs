@@ -8,7 +8,6 @@ pub mod while_loop;
 use std::fmt;
 
 pub(crate) use code_block::*;
-pub use const_eval::*;
 pub use declaration::*;
 pub(crate) use expression::*;
 pub(crate) use mode::*;
@@ -351,14 +350,14 @@ impl TypedAstNode {
                             typed_const_decl
                         }
                         Declaration::EnumDeclaration(decl) => {
-                            let decl = check!(
+                            let enum_decl = check!(
                                 TypedEnumDeclaration::type_check(decl, namespace, self_type),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
                             );
-                            let name = decl.name.clone();
-                            let decl = TypedDeclaration::EnumDeclaration(decl);
+                            let name = enum_decl.name.clone();
+                            let decl = TypedDeclaration::EnumDeclaration(enum_decl);
                             let _ = check!(
                                 namespace.insert_symbol(name, decl.clone()),
                                 return err(warnings, errors),
@@ -368,15 +367,7 @@ impl TypedAstNode {
                             decl
                         }
                         Declaration::FunctionDeclaration(fn_decl) => {
-                            for type_parameter in fn_decl.type_parameters.iter() {
-                                if !type_parameter.trait_constraints.is_empty() {
-                                    errors.push(CompileError::WhereClauseNotYetSupported {
-                                        span: type_parameter.name_ident.span(),
-                                    });
-                                    break;
-                                }
-                            }
-                            let decl = check!(
+                            let fn_decl = check!(
                                 TypedFunctionDeclaration::type_check(TypeCheckArguments {
                                     checkee: fn_decl.clone(),
                                     namespace,
@@ -390,11 +381,10 @@ impl TypedAstNode {
                                 warnings,
                                 errors
                             );
-                            namespace.insert_symbol(
-                                decl.name.clone(),
-                                TypedDeclaration::FunctionDeclaration(decl.clone()),
-                            );
-                            TypedDeclaration::FunctionDeclaration(decl)
+                            let name = fn_decl.name.clone();
+                            let decl = TypedDeclaration::FunctionDeclaration(fn_decl);
+                            namespace.insert_symbol(name, decl.clone());
+                            decl
                         }
                         Declaration::TraitDeclaration(trait_decl) => {
                             let trait_decl = check!(
@@ -429,23 +419,20 @@ impl TypedAstNode {
                             )
                         }
                         Declaration::ImplTrait(impl_trait) => {
-                            let impl_trait = check!(
+                            let (impl_trait, implementing_for_type_id) = check!(
                                 TypedImplTrait::type_check_impl_trait(impl_trait, namespace, opts),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
                             );
+                            namespace.insert_trait_implementation(
+                                impl_trait.trait_name.clone(),
+                                look_up_type_id(implementing_for_type_id),
+                                impl_trait.methods.clone(),
+                            );
                             TypedDeclaration::ImplTrait(impl_trait)
                         }
                         Declaration::ImplSelf(impl_self) => {
-                            for type_parameter in impl_self.type_parameters.iter() {
-                                if !type_parameter.trait_constraints.is_empty() {
-                                    errors.push(CompileError::WhereClauseNotYetSupported {
-                                        span: type_parameter.name_ident.span(),
-                                    });
-                                    break;
-                                }
-                            }
                             let impl_trait = check!(
                                 TypedImplTrait::type_check_impl_self(impl_self, namespace, opts),
                                 return err(warnings, errors),
@@ -454,7 +441,7 @@ impl TypedAstNode {
                             );
                             namespace.insert_trait_implementation(
                                 impl_trait.trait_name.clone(),
-                                impl_trait.type_implementing_for.clone(),
+                                look_up_type_id(impl_trait.implementing_for_type_id),
                                 impl_trait.methods.clone(),
                             );
                             TypedDeclaration::ImplTrait(impl_trait)
@@ -491,7 +478,11 @@ impl TypedAstNode {
                         }
                         Declaration::StorageDeclaration(StorageDeclaration { span, fields }) => {
                             let mut fields_buf = Vec::with_capacity(fields.len());
-                            for StorageField { name, r#type } in fields {
+                            for StorageField {
+                                name,
+                                type_info: r#type,
+                            } in fields
+                            {
                                 let r#type = check!(
                                     namespace.resolve_type_without_self(r#type),
                                     return err(warnings, errors),
@@ -783,7 +774,7 @@ fn type_check_interface_surface(
                              type_span,
                          }| TypedFunctionParameter {
                             name,
-                            r#type: check!(
+                            type_id: check!(
                                 namespace.resolve_type_with_self(
                                     look_up_type_id(type_id),
                                     insert_type(TypeInfo::SelfType),
@@ -919,7 +910,7 @@ fn type_check_trait_methods(
                  }| {
                     TypedFunctionParameter {
                         name,
-                        r#type: check!(
+                        type_id: check!(
                             namespace.resolve_type_with_self(
                                 look_up_type_id(type_id),
                                 crate::type_engine::insert_type(TypeInfo::SelfType),
@@ -1041,7 +1032,7 @@ impl TypeCheckedStorageReassignment {
 #[derive(Clone, Debug, Eq)]
 pub struct TypeCheckedStorageReassignDescriptor {
     pub name: Ident,
-    pub r#type: TypeId,
+    pub type_id: TypeId,
     pub(crate) span: Span,
 }
 
@@ -1050,7 +1041,7 @@ pub struct TypeCheckedStorageReassignDescriptor {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEq for TypeCheckedStorageReassignDescriptor {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
+        self.name == other.name && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
     }
 }
 
@@ -1089,7 +1080,12 @@ fn reassign_storage_subfield(
         .enumerate()
         .find(|(_, TypedStorageField { name, .. })| name == &first_field)
     {
-        Some((ix, TypedStorageField { r#type, .. })) => (StateIndex::new(ix), r#type),
+        Some((
+            ix,
+            TypedStorageField {
+                type_id: r#type, ..
+            },
+        )) => (StateIndex::new(ix), r#type),
         None => {
             errors.push(CompileError::StorageFieldDoesNotExist {
                 name: first_field.clone(),
@@ -1100,7 +1096,7 @@ fn reassign_storage_subfield(
 
     type_checked_buf.push(TypeCheckedStorageReassignDescriptor {
         name: first_field.clone(),
-        r#type: *initial_field_type,
+        type_id: *initial_field_type,
         span: first_field.span(),
     });
 
@@ -1124,13 +1120,13 @@ fn reassign_storage_subfield(
             .find(|x| x.name.as_str() == field.as_str())
         {
             Some(struct_field) => {
-                curr_type = struct_field.r#type;
+                curr_type = struct_field.type_id;
                 type_checked_buf.push(TypeCheckedStorageReassignDescriptor {
                     name: field.clone(),
-                    r#type: struct_field.r#type,
+                    type_id: struct_field.type_id,
                     span: field.span().clone(),
                 });
-                available_struct_fields = update_available_struct_fields(struct_field.r#type);
+                available_struct_fields = update_available_struct_fields(struct_field.type_id);
             }
             None => {
                 let available_fields = available_struct_fields

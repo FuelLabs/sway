@@ -1113,6 +1113,7 @@ dependencies = [
  "forc-util",
  "fs_extra",
  "fuel-asm",
+ "fuel-crypto",
  "fuel-gql-client",
  "fuel-tx",
  "fuel-vm",
@@ -2168,6 +2169,7 @@ dependencies = [
  "semver 1.0.7",
  "serde",
  "serde_json",
+ "toml",
 ]
 
 [[package]]

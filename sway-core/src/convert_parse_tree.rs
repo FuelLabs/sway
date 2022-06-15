@@ -495,7 +495,7 @@ fn item_struct_to_struct_declaration(
         .collect::<Result<Vec<_>, _>>()?;
 
     if fields.iter().any(
-        |field| matches!(&field.r#type, TypeInfo::Custom { name, ..} if name == &item_struct.name),
+        |field| matches!(&field.type_info, TypeInfo::Custom { name, ..} if name == &item_struct.name),
     ) {
         errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
@@ -544,7 +544,7 @@ fn item_enum_to_enum_declaration(
         .collect::<Result<Vec<_>, _>>()?;
 
     if variants.iter().any(|variant| {
-       matches!(&variant.r#type, TypeInfo::Custom { name, ..} if name == &item_enum.name)
+       matches!(&variant.type_info, TypeInfo::Custom { name, ..} if name == &item_enum.name)
     }) {
         errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
@@ -715,7 +715,7 @@ fn item_impl_to_declaration(
                 trait_name: path_type_to_call_path(ec, path_type)?,
                 type_implementing_for,
                 type_implementing_for_span,
-                type_arguments: type_parameters,
+                type_parameters,
                 functions,
                 block_span,
             };
@@ -824,7 +824,7 @@ fn type_field_to_struct_field(
     let type_span = type_field.ty.span();
     let struct_field = StructField {
         name: type_field.name,
-        r#type: ty_to_type_info(ec, type_field.ty)?,
+        type_info: ty_to_type_info(ec, type_field.ty)?,
         span,
         type_span,
     };
@@ -910,7 +910,7 @@ fn type_field_to_enum_variant(
     let span = type_field.span();
     let enum_variant = EnumVariant {
         name: type_field.name,
-        r#type: ty_to_type_info(ec, type_field.ty)?,
+        type_info: ty_to_type_info(ec, type_field.ty)?,
         tag,
         span,
     };
@@ -1863,7 +1863,7 @@ fn storage_field_to_storage_field(
 ) -> Result<StorageField, ErrorEmitted> {
     let storage_field = StorageField {
         name: storage_field.name,
-        r#type: ty_to_type_info(ec, storage_field.ty)?,
+        type_info: ty_to_type_info(ec, storage_field.ty)?,
         //initializer: expr_to_expression(storage_field.expr),
     };
     Ok(storage_field)

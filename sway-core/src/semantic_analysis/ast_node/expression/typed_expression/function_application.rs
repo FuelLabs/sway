@@ -52,7 +52,7 @@ pub(crate) fn instantiate_function_application(
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: arg.clone(),
                     namespace,
-                    return_type_annotation: param.r#type,
+                    return_type_annotation: param.type_id,
                     help_text: "The argument that has been provided to this function's type does \
                         not match the declared type of the parameter in the function \
                         declaration.",

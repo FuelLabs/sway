@@ -158,7 +158,7 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut TokenMap) {
                 );
             }
         }
-        TypedDeclaration::GenericTypeForFunctionScope { name } => {
+        TypedDeclaration::GenericTypeForFunctionScope { name, .. } => {
             tokens.insert(
                 to_ident_key(name),
                 TokenType::TypedDeclaration(declaration.clone()),
@@ -358,12 +358,12 @@ pub fn get_type_id(token: &TokenType) -> Option<TypeId> {
             _ => None,
         },
         TokenType::TypedExpression(exp) => Some(exp.return_type),
-        TokenType::TypedFunctionParameter(func_param) => Some(func_param.r#type),
-        TokenType::TypedStructField(struct_field) => Some(struct_field.r#type),
-        TokenType::TypedEnumVariant(enum_var) => Some(enum_var.r#type),
+        TokenType::TypedFunctionParameter(func_param) => Some(func_param.type_id),
+        TokenType::TypedStructField(struct_field) => Some(struct_field.type_id),
+        TokenType::TypedEnumVariant(enum_var) => Some(enum_var.type_id),
         TokenType::TypedTraitFn(trait_fn) => Some(trait_fn.return_type),
-        TokenType::TypedStorageField(storage_field) => Some(storage_field.r#type),
-        TokenType::TypeCheckedStorageReassignDescriptor(storage_desc) => Some(storage_desc.r#type),
+        TokenType::TypedStorageField(storage_field) => Some(storage_field.type_id),
+        TokenType::TypeCheckedStorageReassignDescriptor(storage_desc) => Some(storage_desc.type_id),
         TokenType::TypedReassignment(reassignment) => Some(reassignment.lhs_type),
         _ => None,
     }
