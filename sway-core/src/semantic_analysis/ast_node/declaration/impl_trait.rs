@@ -1,3 +1,5 @@
+use std::collections::{HashMap, HashSet};
+
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
@@ -65,6 +67,18 @@ impl TypedImplTrait {
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
             namespace.resolve_type_without_self(type_implementing_for),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        // check for unconstrained type parameters
+        check!(
+            check_for_unconstrained_type_parameters(
+                &new_type_parameters,
+                implementing_for_type_id,
+                &type_implementing_for_span
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -168,14 +182,24 @@ impl TypedImplTrait {
 
         let ImplSelf {
             type_implementing_for,
+            type_implementing_for_span,
             type_parameters,
             functions,
             block_span,
-            ..
         } = impl_self;
 
         // create the namespace for the impl
         let mut namespace = namespace.clone();
+
+        // create the trait name
+        let trait_name = CallPath {
+            prefixes: vec![],
+            suffix: match &type_implementing_for {
+                TypeInfo::Custom { name, .. } => name.clone(),
+                _ => Ident::new_with_override("r#Self", type_implementing_for_span.clone()),
+            },
+            is_absolute: false,
+        };
 
         // type check the type parameters
         // insert them into the namespace
@@ -189,19 +213,21 @@ impl TypedImplTrait {
             ));
         }
 
-        // create the trait name
-        let trait_name = CallPath {
-            prefixes: vec![],
-            suffix: match &type_implementing_for {
-                TypeInfo::Custom { name, .. } => name.clone(),
-                _ => Ident::new_with_override("r#Self", block_span.clone()),
-            },
-            is_absolute: false,
-        };
-
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
             namespace.resolve_type_without_self(type_implementing_for),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        // check for unconstrained type parameters
+        check!(
+            check_for_unconstrained_type_parameters(
+                &new_type_parameters,
+                implementing_for_type_id,
+                &type_implementing_for_span
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -449,4 +475,43 @@ fn type_check_trait_implementation(
         });
     }
     ok(functions_buf, warnings, errors)
+}
+
+fn check_for_unconstrained_type_parameters(
+    type_parameters: &[TypeParameter],
+    self_type: TypeId,
+    self_type_span: &Span,
+) -> CompileResult<()> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+
+    // check to see that all of the generics that are defined for
+    // the impl block are actually used in the signature of the block
+    let mut defined_generics: HashMap<TypeInfo, Span> = HashMap::from_iter(
+        type_parameters
+            .iter()
+            .map(|x| (look_up_type_id(x.type_id), x.span())),
+    );
+    let generics_in_use = check!(
+        look_up_type_id(self_type).extract_nested_generics(self_type_span),
+        HashSet::new(),
+        warnings,
+        errors
+    );
+    // TODO: add a lookup in the trait constraints here and add it to
+    // generics_in_use
+    for generic in generics_in_use.into_iter() {
+        defined_generics.remove(&generic);
+    }
+    for (k, v) in defined_generics.into_iter() {
+        errors.push(CompileError::UnconstrainedGenericParameter {
+            ty: format!("{}", k),
+            span: v,
+        });
+    }
+    if errors.is_empty() {
+        ok((), warnings, errors)
+    } else {
+        err(warnings, errors)
+    }
 }
