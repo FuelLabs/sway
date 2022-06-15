@@ -1,4 +1,9 @@
-use crate::utils::{indent_style::Shape, program_type::insert_program_type};
+use crate::{
+    config::whitespace::NewlineStyle,
+    utils::{
+        indent_style::Shape, newline_style::apply_newline_style, program_type::insert_program_type,
+    },
+};
 use std::{path::Path, sync::Arc};
 use sway_core::BuildConfig;
 use sway_parse::ItemKind;
@@ -7,7 +12,6 @@ pub use crate::{
     config::manifest::Config,
     error::{ConfigError, FormatterError},
 };
-use crate::{config::whitespace::NewlineStyle, utils::newline_style::apply_newline_style};
 
 #[derive(Debug, Default)]
 pub struct Formatter {
