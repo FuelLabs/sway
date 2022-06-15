@@ -1,3 +1,6 @@
+//! The purpose of this file is to house the traits and associated functions for formatting opening and closing delimiters.
+//! This allows us to avoid matching a second time for the `ItemKind` and keeps the code pertaining to individual formatting
+//! contained to each item's file.
 use crate::Formatter;
 
 pub trait CurlyDelimiter {
