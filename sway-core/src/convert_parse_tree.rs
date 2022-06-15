@@ -2552,14 +2552,12 @@ fn statement_let_to_ast_nodes(
         span: Span,
     ) -> Result<Vec<AstNode>, ErrorEmitted> {
         let ast_nodes = match pattern {
-            Pattern::Wildcard { .. } => {
-                let ast_node = AstNode {
-                    content: AstNodeContent::Expression(expression),
-                    span,
+            Pattern::Wildcard { .. } | Pattern::Var { .. } => {
+                let (mutable, name) = match pattern {
+                    Pattern::Var { mutable, name } => (mutable, name),
+                    Pattern::Wildcard { .. } => (None, Ident::new_no_span("_")),
+                    _ => unreachable!(),
                 };
-                vec![ast_node]
-            }
-            Pattern::Var { mutable, name } => {
                 let (type_ascription, type_ascription_span) = match ty_opt {
                     Some(ty) => {
                         let type_ascription_span = ty.span();

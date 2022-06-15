@@ -8,7 +8,7 @@ mod concurrent_slab;
 pub mod constants;
 mod control_flow_analysis;
 mod convert_parse_tree;
-mod optimize;
+mod ir_generation;
 pub mod parse_tree;
 pub mod semantic_analysis;
 pub mod source_map;
@@ -336,7 +336,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     );
 
     let tree_type = program.kind.tree_type();
-    let mut ir = match optimize::compile_program(program) {
+    let mut ir = match ir_generation::compile_program(program) {
         Ok(ir) => ir,
         Err(e) => {
             errors.push(e);
@@ -362,7 +362,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         .collect();
 
     // Do a purity check on the _unoptimised_ IR.
-    let mut purity_checker = optimize::PurityChecker::default();
+    let mut purity_checker = ir_generation::PurityChecker::default();
     for entry_point in &entry_point_functions {
         purity_checker.check_function(&ir, entry_point);
     }

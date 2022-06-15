@@ -46,6 +46,7 @@ pub struct PinnedId(u64);
 pub struct Compiled {
     pub json_abi: JsonABI,
     pub bytecode: Vec<u8>,
+    pub tree_type: TreeType,
 }
 
 /// A package uniquely identified by name along with its source.
@@ -1365,7 +1366,11 @@ pub fn compile(
                     print_on_success_library(silent_mode, &pkg.name, warnings);
                     let bytecode = vec![];
                     let lib_namespace = typed_program.root.namespace.clone();
-                    let compiled = Compiled { json_abi, bytecode };
+                    let compiled = Compiled {
+                        json_abi,
+                        bytecode,
+                        tree_type,
+                    };
                     Ok((compiled, Some(lib_namespace.into())))
                 }
 
@@ -1377,7 +1382,11 @@ pub fn compile(
                         BytecodeCompilationResult::Success { bytes, warnings } => {
                             print_on_success(silent_mode, &pkg.name, &warnings, &tree_type);
                             let bytecode = bytes;
-                            let compiled = Compiled { json_abi, bytecode };
+                            let compiled = Compiled {
+                                json_abi,
+                                bytecode,
+                                tree_type,
+                            };
                             Ok((compiled, None))
                         }
                         BytecodeCompilationResult::Library { .. } => {
@@ -1408,6 +1417,7 @@ pub fn build(
     let mut source_map = SourceMap::new();
     let mut json_abi = vec![];
     let mut bytecode = vec![];
+    let mut tree_type = None;
     for &node in &plan.compilation_order {
         let dep_namespace =
             dependency_namespace(&namespace_map, &plan.graph, &plan.compilation_order, node);
@@ -1421,9 +1431,16 @@ pub fn build(
         }
         json_abi.extend(compiled.json_abi);
         bytecode = compiled.bytecode;
+        tree_type = Some(compiled.tree_type);
         source_map.insert_dependency(path.clone());
     }
-    let compiled = Compiled { bytecode, json_abi };
+    let tree_type =
+        tree_type.ok_or_else(|| anyhow!("build plan must contain at least one package"))?;
+    let compiled = Compiled {
+        bytecode,
+        json_abi,
+        tree_type,
+    };
     Ok((compiled, source_map))
 }
 
