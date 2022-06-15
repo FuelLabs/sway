@@ -3,11 +3,11 @@ use std::{path::Path, sync::Arc};
 use sway_core::BuildConfig;
 use sway_parse::ItemKind;
 
+use crate::utils::newline_style::apply_newline_style;
 pub use crate::{
     config::manifest::Config,
     error::{ConfigError, FormatterError},
 };
-use crate::{config::whitespace::NewlineStyle, utils::newline_style::apply_newline_style};
 
 #[derive(Debug, Default)]
 pub struct Formatter {
@@ -58,7 +58,8 @@ impl Formatter {
             .join("\n");
         let mut formatted_code = String::from(&formatted_raw_newline);
         apply_newline_style(
-            NewlineStyle::Auto,
+            // The user's setting for `NewlineStyle`
+            self.config.whitespace.newline_style,
             &mut formatted_code,
             &formatted_raw_newline,
         );
