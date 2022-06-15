@@ -1,4 +1,4 @@
-use crate::utils::indent_style::Shape;
+use crate::utils::{indent_style::Shape, program_type::insert_program_type};
 use std::{path::Path, sync::Arc};
 use sway_core::BuildConfig;
 use sway_parse::ItemKind;
@@ -37,8 +37,20 @@ impl Formatter {
         build_config: Option<&BuildConfig>,
     ) -> Result<FormattedCode, FormatterError> {
         let path = build_config.map(|build_config| build_config.canonical_root_module());
-        let items = sway_parse::parse_file(src, path)?.items;
-        let formatted_raw_newline = items
+        let module = sway_parse::parse_file(src, path)?;
+        // Get parsed items
+        let items = module.items;
+        // Get the program type (script, predicate, contract or library)
+        let program_type = module.kind;
+
+        // Formatted code will be pushed here with raw newline stlye.
+        // Which means newlines are not converted into system-specific versions by apply_newline_style
+        let mut formatted_raw_newline = String::new();
+
+        // Insert program type to the formatted code.
+        insert_program_type(&mut formatted_raw_newline, program_type);
+        // Insert parsed & formatted items into the formatted code.
+        formatted_raw_newline += &items
             .into_iter()
             .map(|item| -> Result<String, FormatterError> {
                 use ItemKind::*;
