@@ -32,6 +32,12 @@ To build book:
 mdbook build
 ```
 
+To build the book on strict mode to detect Forc documentation errors:
+
+```sh
+MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs
+```
+
 To serve locally:
 
 ```sh

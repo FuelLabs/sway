@@ -8,6 +8,12 @@ This preprocessor is automatically run on every build, as long as the `book.toml
 [preprocessor.forc-documenter]
 ```
 
+The preprocessor runs with strict mode **off** by default to enable building the book regardless of errors in the Forc Reference pages. To check if pages should be added or are missing, run with the `strict` [environment variable](https://rust-lang.github.io/mdBook/format/configuration/environment-variables.html):
+
+```sh
+MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs
+```
+
 ## Usage
 
 ### Adding a new forc command
