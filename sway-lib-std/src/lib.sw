@@ -6,6 +6,8 @@ dep logging;
 dep assert;
 dep option;
 dep result;
+dep mem;
+dep alloc;
 dep constants;
 dep contract_id;
 dep context;
