@@ -15,3 +15,9 @@ pub trait SquareBracket {
 
     fn close_square_bracket(line: &mut String, formatter: &mut Formatter);
 }
+
+pub trait AngleBracket {
+    fn open_angle_bracket(line: &mut String, formatter: &mut Formatter);
+
+    fn close_angle_bracket(line: &mut String, formatter: &mut Formatter);
+}
