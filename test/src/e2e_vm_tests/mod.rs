@@ -168,6 +168,8 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
         ("should_pass/stdlib/u128_test", ProgramState::Return(1)), // true
         ("should_pass/stdlib/u128_div_test", ProgramState::Return(1)), // true
         ("should_pass/stdlib/u128_mul_test", ProgramState::Return(1)), // true
+        ("should_pass/stdlib/alloc", ProgramState::Return(1)),   // true
+        ("should_pass/stdlib/mem", ProgramState::Return(1)),     // true
         (
             "should_pass/language/generic_structs",
             ProgramState::Return(1), // true
@@ -584,6 +586,7 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
         "should_fail/repeated_storage_field",
         "should_fail/repeated_struct_field",
         "should_fail/method_requires_mut_var",
+        "should_fail/impl_with_bad_generic",
         "should_fail/storage_conflict",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
