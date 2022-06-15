@@ -56,18 +56,5 @@ fn main() -> bool {
     assert(size_of_val(e) == 32);
     assert(size_of_val(f) == 16);
 
-    assert(addr_of(test_struct) == asm(r1: test_struct) {
-        r1: u64
-    });
-
-    let test_struct_2 = TestStruct {
-        field_1: true,
-        field_2: 12,
-    };
-    assert(!raw_eq(addr_of(test_struct), addr_of(test_struct_2), size_of_val(test_struct)));
-
-    copy(addr_of(test_struct), addr_of(test_struct_2), size_of_val(test_struct));
-    assert(raw_eq(addr_of(test_struct), addr_of(test_struct_2), size_of_val(test_struct)));
-
     true
 }

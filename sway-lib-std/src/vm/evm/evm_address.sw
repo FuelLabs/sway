@@ -2,7 +2,8 @@ library evm_address;
 
 //! A wrapper around the b256 type to help enhance type-safety.
 
-use ::intrinsics::{addr_of, raw_eq, size_of_val};
+use ::intrinsics::size_of_val;
+use ::mem::{addr_of, eq};
 
 /// The Address type, a struct wrappper around the inner `value`.
 pub struct EvmAddress {
@@ -11,7 +12,7 @@ pub struct EvmAddress {
 
 impl core::ops::Eq for EvmAddress {
     fn eq(self, other: Self) -> bool {
-        raw_eq(addr_of(self), addr_of(other), size_of_val(self))
+        eq(addr_of(self), addr_of(other), size_of_val(self))
     }
 }
 

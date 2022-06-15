@@ -1,8 +1,8 @@
-//! Library for allocating memory
+//! Library for allocating memory.
 //! Inspired from: https://doc.rust-lang.org/std/alloc/index.html
 library alloc;
 
-use ::intrinsics::copy;
+use ::mem::copy;
 
 /// Allocates zeroed memory on the heap
 ///
