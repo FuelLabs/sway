@@ -1,0 +1,159 @@
+use crate::{
+    error::CompileError,
+    parse_tree::Literal,
+    type_engine::{resolve_type, TypeId, TypeInfo},
+};
+
+use super::types::{create_enum_aggregate, create_tuple_aggregate};
+
+use sway_ir::{Aggregate, Constant, Context, MetadataIndex, Type, Value};
+use sway_types::span::Span;
+
+use std::sync::Arc;
+
+pub(super) fn convert_literal_to_value(
+    context: &mut Context,
+    ast_literal: &Literal,
+    span_id_idx: Option<MetadataIndex>,
+) -> Value {
+    match ast_literal {
+        // In Sway for now we don't have `as` casting and for integers which may be implicitly cast
+        // between widths we just emit a warning, and essentially ignore it.  We also assume a
+        // 'Numeric' integer of undetermined width is 'u64`.  The IR would like to be type
+        // consistent and doesn't tolerate mising integers of different width, so for now, until we
+        // do introduce explicit `as` casting, all integers are `u64` as far as the IR is
+        // concerned.
+        Literal::U8(n) | Literal::Byte(n) => {
+            Constant::get_uint(context, 64, *n as u64, span_id_idx)
+        }
+        Literal::U16(n) => Constant::get_uint(context, 64, *n as u64, span_id_idx),
+        Literal::U32(n) => Constant::get_uint(context, 64, *n as u64, span_id_idx),
+        Literal::U64(n) => Constant::get_uint(context, 64, *n, span_id_idx),
+        Literal::Numeric(n) => Constant::get_uint(context, 64, *n, span_id_idx),
+        Literal::String(s) => {
+            Constant::get_string(context, s.as_str().as_bytes().to_vec(), span_id_idx)
+        }
+        Literal::Boolean(b) => Constant::get_bool(context, *b, span_id_idx),
+        Literal::B256(bs) => Constant::get_b256(context, *bs, span_id_idx),
+    }
+}
+
+pub(super) fn convert_literal_to_constant(ast_literal: &Literal) -> Constant {
+    match ast_literal {
+        // All integers are `u64`.  See comment above.
+        Literal::U8(n) | Literal::Byte(n) => Constant::new_uint(64, *n as u64),
+        Literal::U16(n) => Constant::new_uint(64, *n as u64),
+        Literal::U32(n) => Constant::new_uint(64, *n as u64),
+        Literal::U64(n) => Constant::new_uint(64, *n),
+        Literal::Numeric(n) => Constant::new_uint(64, *n),
+        Literal::String(s) => Constant::new_string(s.as_str().as_bytes().to_vec()),
+        Literal::Boolean(b) => Constant::new_bool(*b),
+        Literal::B256(bs) => Constant::new_b256(*bs),
+    }
+}
+
+pub(super) fn convert_resolved_typeid(
+    context: &mut Context,
+    ast_type: &TypeId,
+    span: &Span,
+) -> Result<Type, CompileError> {
+    // There's probably a better way to convert TypeError to String, but... we'll use something
+    // other than String eventually?  IrError?
+    convert_resolved_type(
+        context,
+        &resolve_type(*ast_type, span)
+            .map_err(|ty_err| CompileError::InternalOwned(format!("{ty_err:?}"), span.clone()))?,
+        span,
+    )
+}
+
+pub(super) fn convert_resolved_typeid_no_span(
+    context: &mut Context,
+    ast_type: &TypeId,
+) -> Result<Type, CompileError> {
+    let msg = "unknown source location";
+    let span = crate::span::Span::new(Arc::from(msg), 0, msg.len(), None).unwrap();
+    convert_resolved_typeid(context, ast_type, &span)
+}
+
+fn convert_resolved_type(
+    context: &mut Context,
+    ast_type: &TypeInfo,
+    span: &Span,
+) -> Result<Type, CompileError> {
+    // A handy macro for rejecting unsupported types.
+    macro_rules! reject_type {
+        ($name_str:literal) => {{
+            return Err(CompileError::Internal(
+                concat!($name_str, " type cannot be resolved in IR."),
+                span.clone(),
+            ));
+        }};
+    }
+
+    Ok(match ast_type {
+        // All integers are `u64`, see comment in convert_literal_to_value() above.
+        TypeInfo::UnsignedInteger(_) => Type::Uint(64),
+        TypeInfo::Numeric => Type::Uint(64),
+        TypeInfo::Boolean => Type::Bool,
+        TypeInfo::Byte => Type::Uint(64),
+        TypeInfo::B256 => Type::B256,
+        TypeInfo::Str(n) => Type::String(*n),
+        TypeInfo::Struct { fields, .. } => super::types::get_aggregate_for_types(
+            context,
+            fields
+                .iter()
+                .map(|field| field.type_id)
+                .collect::<Vec<_>>()
+                .as_slice(),
+        )
+        .map(&Type::Struct)?,
+        TypeInfo::Enum { variant_types, .. } => {
+            create_enum_aggregate(context, variant_types.clone()).map(&Type::Struct)?
+        }
+        TypeInfo::Array(elem_type_id, count) => {
+            let elem_type = convert_resolved_typeid(context, elem_type_id, span)?;
+            Type::Array(Aggregate::new_array(context, elem_type, *count as u64))
+        }
+        TypeInfo::Tuple(fields) => {
+            if fields.is_empty() {
+                // XXX We've removed Unit from the core compiler, replaced with an empty Tuple.
+                // Perhaps the same should be done for the IR, although it would use an empty
+                // aggregate which might not make as much sense as a dedicated Unit type.
+                Type::Unit
+            } else {
+                let new_fields = fields.iter().map(|x| x.type_id).collect();
+                create_tuple_aggregate(context, new_fields).map(Type::Struct)?
+            }
+        }
+
+        // Unsupported types which shouldn't exist in the AST after type checking and
+        // monomorphisation.
+        TypeInfo::Custom { .. } => reject_type!("Custom"),
+        TypeInfo::SelfType { .. } => reject_type!("Self"),
+        TypeInfo::Contract => reject_type!("Contract"),
+        TypeInfo::ContractCaller { .. } => reject_type!("ContractCaller"),
+        TypeInfo::Unknown => reject_type!("Unknown"),
+        TypeInfo::UnknownGeneric { .. } => reject_type!("Generic"),
+        TypeInfo::Ref(..) => reject_type!("Ref"),
+        TypeInfo::ErrorRecovery => reject_type!("Error recovery"),
+        TypeInfo::Storage { .. } => reject_type!("Storage"),
+    })
+}
+
+use uint::construct_uint;
+
+#[allow(
+// These two warnings are generated by the `construct_uint!()` macro below.
+    clippy::assign_op_pattern,
+    clippy::ptr_offset_with_cast
+)]
+pub(super) fn add_to_b256(x: fuel_types::Bytes32, y: u64) -> fuel_types::Bytes32 {
+    construct_uint! {
+        struct U256(4);
+    }
+    let x = U256::from(*x);
+    let y = U256::from(y);
+    let res: [u8; 32] = (x + y).into();
+    fuel_types::Bytes32::from(res)
+}
