@@ -1,0 +1,1018 @@
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:143:12
+[1;38;5;12m    |[0m
+[1;38;5;12m141 |[0m 
+[1;38;5;12m142 |[0m 
+[1;38;5;12m143 |[0m     v.push(b0);
+[1;38;5;12m    |[0m[1;38;5;9m            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type b256 was provided.[0m
+[1;38;5;12m144 |[0m     v.push(b1);
+[1;38;5;12m145 |[0m     v.push(b2);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:144:12
+[1;38;5;12m    |[0m
+[1;38;5;12m142 |[0m 
+[1;38;5;12m143 |[0m     v.push(b0);
+[1;38;5;12m144 |[0m     v.push(b1);
+[1;38;5;12m    |[0m[1;38;5;9m            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type b256 was provided.[0m
+[1;38;5;12m145 |[0m     v.push(b2);
+[1;38;5;12m146 |[0m     v.push(b3);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:145:12
+[1;38;5;12m    |[0m
+[1;38;5;12m143 |[0m 
+[1;38;5;12m144 |[0m     v.push(b1);
+[1;38;5;12m145 |[0m     v.push(b2);
+[1;38;5;12m    |[0m[1;38;5;9m            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type b256 was provided.[0m
+[1;38;5;12m146 |[0m     v.push(b3);
+[1;38;5;12m147 |[0m     v.push(b4);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:146:12
+[1;38;5;12m    |[0m
+[1;38;5;12m144 |[0m 
+[1;38;5;12m145 |[0m     v.push(b2);
+[1;38;5;12m146 |[0m     v.push(b3);
+[1;38;5;12m    |[0m[1;38;5;9m            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type b256 was provided.[0m
+[1;38;5;12m147 |[0m     v.push(b4);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:147:12
+[1;38;5;12m    |[0m
+[1;38;5;12m145 |[0m 
+[1;38;5;12m146 |[0m     v.push(b3);
+[1;38;5;12m147 |[0m     v.push(b4);
+[1;38;5;12m    |[0m[1;38;5;9m            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type b256 was provided.[0m
+[1;38;5;12m148 |[0m 
+[1;38;5;12m149 |[0m     assert(v.len() == 5);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:154:44
+[1;38;5;12m    |[0m
+[1;38;5;12m152 |[0m 
+[1;38;5;12m153 |[0m     match v.get(0) {
+[1;38;5;12m154 |[0m         Option::Some(val) => assert(val == b0),
+[1;38;5;12m    |[0m[1;38;5;9m                                            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type b256 was provided.[0m
+[1;38;5;12m155 |[0m         Option::None => revert(0),
+[1;38;5;12m156 |[0m     }
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:159:12
+[1;38;5;12m    |[0m
+[1;38;5;12m157 |[0m 
+[1;38;5;12m158 |[0m     // Push after get
+[1;38;5;12m159 |[0m     v.push(b5);
+[1;38;5;12m    |[0m[1;38;5;9m            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type b256 was provided.[0m
+[1;38;5;12m160 |[0m     v.push(b6);
+[1;38;5;12m161 |[0m     v.push(b7);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:160:12
+[1;38;5;12m    |[0m
+[1;38;5;12m158 |[0m 
+[1;38;5;12m159 |[0m     v.push(b5);
+[1;38;5;12m160 |[0m     v.push(b6);
+[1;38;5;12m    |[0m[1;38;5;9m            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type b256 was provided.[0m
+[1;38;5;12m161 |[0m     v.push(b7);
+[1;38;5;12m162 |[0m     v.push(b8);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:161:12
+[1;38;5;12m    |[0m
+[1;38;5;12m159 |[0m 
+[1;38;5;12m160 |[0m     v.push(b6);
+[1;38;5;12m161 |[0m     v.push(b7);
+[1;38;5;12m    |[0m[1;38;5;9m            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type b256 was provided.[0m
+[1;38;5;12m162 |[0m     v.push(b8);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:162:12
+[1;38;5;12m    |[0m
+[1;38;5;12m160 |[0m 
+[1;38;5;12m161 |[0m     v.push(b7);
+[1;38;5;12m162 |[0m     v.push(b8);
+[1;38;5;12m    |[0m[1;38;5;9m            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type b256 was provided.[0m
+[1;38;5;12m163 |[0m 
+[1;38;5;12m164 |[0m     match v.get(4) {
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:165:44
+[1;38;5;12m    |[0m
+[1;38;5;12m163 |[0m 
+[1;38;5;12m164 |[0m     match v.get(4) {
+[1;38;5;12m165 |[0m         Option::Some(val) => assert(val == b4),
+[1;38;5;12m    |[0m[1;38;5;9m                                            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type b256 was provided.[0m
+[1;38;5;12m166 |[0m         Option::None => revert(0),
+[1;38;5;12m167 |[0m     }
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:170:44
+[1;38;5;12m    |[0m
+[1;38;5;12m168 |[0m 
+[1;38;5;12m169 |[0m     match v.get(6) {
+[1;38;5;12m170 |[0m         Option::Some(val) => assert(val == b6),
+[1;38;5;12m    |[0m[1;38;5;9m                                            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type b256 was provided.[0m
+[1;38;5;12m171 |[0m         Option::None => revert(0),
+[1;38;5;12m172 |[0m     }
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:180:44
+[1;38;5;12m    |[0m
+[1;38;5;12m178 |[0m 
+[1;38;5;12m179 |[0m     match v.get(4) {
+[1;38;5;12m180 |[0m         Option::Some(val) => assert(val == b4),
+[1;38;5;12m    |[0m[1;38;5;9m                                            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type b256 was provided.[0m
+[1;38;5;12m181 |[0m         Option::None => revert(0),
+[1;38;5;12m182 |[0m     }
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:185:44
+[1;38;5;12m    |[0m
+[1;38;5;12m183 |[0m 
+[1;38;5;12m184 |[0m     match v.get(6) {
+[1;38;5;12m185 |[0m         Option::Some(val) => assert(val == b6),
+[1;38;5;12m    |[0m[1;38;5;9m                                            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type b256 was provided.[0m
+[1;38;5;12m186 |[0m         Option::None => revert(0),
+[1;38;5;12m187 |[0m     }
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:202:12
+[1;38;5;12m    |[0m
+[1;38;5;12m200 |[0m 
+[1;38;5;12m201 |[0m     // Make sure pushing again after clear() works
+[1;38;5;12m202 |[0m     v.push(b0);
+[1;38;5;12m    |[0m[1;38;5;9m            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type b256 was provided.[0m
+[1;38;5;12m203 |[0m     v.push(b1);
+[1;38;5;12m204 |[0m     v.push(b2);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:203:12
+[1;38;5;12m    |[0m
+[1;38;5;12m201 |[0m 
+[1;38;5;12m202 |[0m     v.push(b0);
+[1;38;5;12m203 |[0m     v.push(b1);
+[1;38;5;12m    |[0m[1;38;5;9m            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type b256 was provided.[0m
+[1;38;5;12m204 |[0m     v.push(b2);
+[1;38;5;12m205 |[0m     v.push(b3);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:204:12
+[1;38;5;12m    |[0m
+[1;38;5;12m202 |[0m 
+[1;38;5;12m203 |[0m     v.push(b1);
+[1;38;5;12m204 |[0m     v.push(b2);
+[1;38;5;12m    |[0m[1;38;5;9m            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type b256 was provided.[0m
+[1;38;5;12m205 |[0m     v.push(b3);
+[1;38;5;12m206 |[0m     v.push(b4);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:205:12
+[1;38;5;12m    |[0m
+[1;38;5;12m203 |[0m 
+[1;38;5;12m204 |[0m     v.push(b2);
+[1;38;5;12m205 |[0m     v.push(b3);
+[1;38;5;12m    |[0m[1;38;5;9m            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type b256 was provided.[0m
+[1;38;5;12m206 |[0m     v.push(b4);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:206:12
+[1;38;5;12m    |[0m
+[1;38;5;12m204 |[0m 
+[1;38;5;12m205 |[0m     v.push(b3);
+[1;38;5;12m206 |[0m     v.push(b4);
+[1;38;5;12m    |[0m[1;38;5;9m            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type b256 was provided.[0m
+[1;38;5;12m207 |[0m 
+[1;38;5;12m208 |[0m     assert(v.len() == 5);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:213:44
+[1;38;5;12m    |[0m
+[1;38;5;12m211 |[0m 
+[1;38;5;12m212 |[0m     match v.get(4) {
+[1;38;5;12m213 |[0m         Option::Some(val) => assert(val == b4),
+[1;38;5;12m    |[0m[1;38;5;9m                                            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type b256 was provided.[0m
+[1;38;5;12m214 |[0m         Option::None => revert(0),
+[1;38;5;12m215 |[0m     }
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:251:12
+[1;38;5;12m    |[0m
+[1;38;5;12m249 |[0m 
+[1;38;5;12m250 |[0m 
+[1;38;5;12m251 |[0m     v.push(S {x: n0, y: b0});
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type S was provided.[0m
+[1;38;5;12m252 |[0m     v.push(S {x: n1, y: b1});
+[1;38;5;12m253 |[0m     v.push(S {x: n2, y: b2});
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:252:12
+[1;38;5;12m    |[0m
+[1;38;5;12m250 |[0m 
+[1;38;5;12m251 |[0m     v.push(S {x: n0, y: b0});
+[1;38;5;12m252 |[0m     v.push(S {x: n1, y: b1});
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type S was provided.[0m
+[1;38;5;12m253 |[0m     v.push(S {x: n2, y: b2});
+[1;38;5;12m254 |[0m     v.push(S {x: n3, y: b3});
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:253:12
+[1;38;5;12m    |[0m
+[1;38;5;12m251 |[0m 
+[1;38;5;12m252 |[0m     v.push(S {x: n1, y: b1});
+[1;38;5;12m253 |[0m     v.push(S {x: n2, y: b2});
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type S was provided.[0m
+[1;38;5;12m254 |[0m     v.push(S {x: n3, y: b3});
+[1;38;5;12m255 |[0m     v.push(S {x: n4, y: b4});
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:254:12
+[1;38;5;12m    |[0m
+[1;38;5;12m252 |[0m 
+[1;38;5;12m253 |[0m     v.push(S {x: n2, y: b2});
+[1;38;5;12m254 |[0m     v.push(S {x: n3, y: b3});
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type S was provided.[0m
+[1;38;5;12m255 |[0m     v.push(S {x: n4, y: b4});
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:255:12
+[1;38;5;12m    |[0m
+[1;38;5;12m253 |[0m 
+[1;38;5;12m254 |[0m     v.push(S {x: n3, y: b3});
+[1;38;5;12m255 |[0m     v.push(S {x: n4, y: b4});
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type S was provided.[0m
+[1;38;5;12m256 |[0m 
+[1;38;5;12m257 |[0m     assert(v.len() == 5);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:263:20
+[1;38;5;12m    |[0m
+[1;38;5;12m261 |[0m 
+[1;38;5;12m262 |[0m         Option::Some(val) => {
+[1;38;5;12m263 |[0m             assert(val.x == n0);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9mThis is a u64, not a struct. Fields can only be accessed on structs.[0m
+[1;38;5;12m264 |[0m             assert(val.y == b0);
+[1;38;5;12m265 |[0m         },
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:264:20
+[1;38;5;12m    |[0m
+[1;38;5;12m262 |[0m 
+[1;38;5;12m263 |[0m             assert(val.x == n0);
+[1;38;5;12m264 |[0m             assert(val.y == b0);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9mThis is a u64, not a struct. Fields can only be accessed on structs.[0m
+[1;38;5;12m265 |[0m         },
+[1;38;5;12m266 |[0m         Option::None => revert(0),
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:270:12
+[1;38;5;12m    |[0m
+[1;38;5;12m268 |[0m 
+[1;38;5;12m269 |[0m     // Push after get
+[1;38;5;12m270 |[0m     v.push(S {x: n5, y: b5});
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type S was provided.[0m
+[1;38;5;12m271 |[0m     v.push(S {x: n6, y: b6});
+[1;38;5;12m272 |[0m     v.push(S {x: n7, y: b7});
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:271:12
+[1;38;5;12m    |[0m
+[1;38;5;12m269 |[0m 
+[1;38;5;12m270 |[0m     v.push(S {x: n5, y: b5});
+[1;38;5;12m271 |[0m     v.push(S {x: n6, y: b6});
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type S was provided.[0m
+[1;38;5;12m272 |[0m     v.push(S {x: n7, y: b7});
+[1;38;5;12m273 |[0m     v.push(S {x: n8, y: b8});
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:272:12
+[1;38;5;12m    |[0m
+[1;38;5;12m270 |[0m 
+[1;38;5;12m271 |[0m     v.push(S {x: n6, y: b6});
+[1;38;5;12m272 |[0m     v.push(S {x: n7, y: b7});
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type S was provided.[0m
+[1;38;5;12m273 |[0m     v.push(S {x: n8, y: b8});
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:273:12
+[1;38;5;12m    |[0m
+[1;38;5;12m271 |[0m 
+[1;38;5;12m272 |[0m     v.push(S {x: n7, y: b7});
+[1;38;5;12m273 |[0m     v.push(S {x: n8, y: b8});
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type S was provided.[0m
+[1;38;5;12m274 |[0m 
+[1;38;5;12m275 |[0m     match v.get(4) {
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:277:20
+[1;38;5;12m    |[0m
+[1;38;5;12m275 |[0m 
+[1;38;5;12m276 |[0m         Option::Some(val) => {
+[1;38;5;12m277 |[0m             assert(val.x == n4);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9mThis is a u64, not a struct. Fields can only be accessed on structs.[0m
+[1;38;5;12m278 |[0m             assert(val.y == b4);
+[1;38;5;12m279 |[0m         },
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:278:20
+[1;38;5;12m    |[0m
+[1;38;5;12m276 |[0m 
+[1;38;5;12m277 |[0m             assert(val.x == n4);
+[1;38;5;12m278 |[0m             assert(val.y == b4);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9mThis is a u64, not a struct. Fields can only be accessed on structs.[0m
+[1;38;5;12m279 |[0m         },
+[1;38;5;12m280 |[0m         Option::None => revert(0),
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:285:20
+[1;38;5;12m    |[0m
+[1;38;5;12m283 |[0m 
+[1;38;5;12m284 |[0m         Option::Some(val) => {
+[1;38;5;12m285 |[0m             assert(val.x == n6);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9mThis is a u64, not a struct. Fields can only be accessed on structs.[0m
+[1;38;5;12m286 |[0m             assert(val.y == b6);
+[1;38;5;12m287 |[0m         },
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:286:20
+[1;38;5;12m    |[0m
+[1;38;5;12m284 |[0m 
+[1;38;5;12m285 |[0m             assert(val.x == n6);
+[1;38;5;12m286 |[0m             assert(val.y == b6);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9mThis is a u64, not a struct. Fields can only be accessed on structs.[0m
+[1;38;5;12m287 |[0m         },
+[1;38;5;12m288 |[0m         Option::None => revert(0),
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:298:20
+[1;38;5;12m    |[0m
+[1;38;5;12m296 |[0m 
+[1;38;5;12m297 |[0m         Option::Some(val) => {
+[1;38;5;12m298 |[0m             assert(val.x == n4);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9mThis is a u64, not a struct. Fields can only be accessed on structs.[0m
+[1;38;5;12m299 |[0m             assert(val.y == b4);
+[1;38;5;12m300 |[0m         },
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:299:20
+[1;38;5;12m    |[0m
+[1;38;5;12m297 |[0m 
+[1;38;5;12m298 |[0m             assert(val.x == n4);
+[1;38;5;12m299 |[0m             assert(val.y == b4);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9mThis is a u64, not a struct. Fields can only be accessed on structs.[0m
+[1;38;5;12m300 |[0m         },
+[1;38;5;12m301 |[0m         Option::None => revert(0),
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:306:20
+[1;38;5;12m    |[0m
+[1;38;5;12m304 |[0m 
+[1;38;5;12m305 |[0m         Option::Some(val) => {
+[1;38;5;12m306 |[0m             assert(val.x == n6);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9mThis is a u64, not a struct. Fields can only be accessed on structs.[0m
+[1;38;5;12m307 |[0m             assert(val.y == b6);
+[1;38;5;12m308 |[0m         },
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:307:20
+[1;38;5;12m    |[0m
+[1;38;5;12m305 |[0m 
+[1;38;5;12m306 |[0m             assert(val.x == n6);
+[1;38;5;12m307 |[0m             assert(val.y == b6);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9mThis is a u64, not a struct. Fields can only be accessed on structs.[0m
+[1;38;5;12m308 |[0m         },
+[1;38;5;12m309 |[0m         Option::None => revert(0),
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:325:12
+[1;38;5;12m    |[0m
+[1;38;5;12m323 |[0m 
+[1;38;5;12m324 |[0m     // Make sure pushing again after clear() works
+[1;38;5;12m325 |[0m     v.push(S {x: n0, y: b0});
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type S was provided.[0m
+[1;38;5;12m326 |[0m     v.push(S {x: n1, y: b1});
+[1;38;5;12m327 |[0m     v.push(S {x: n2, y: b2});
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:326:12
+[1;38;5;12m    |[0m
+[1;38;5;12m324 |[0m 
+[1;38;5;12m325 |[0m     v.push(S {x: n0, y: b0});
+[1;38;5;12m326 |[0m     v.push(S {x: n1, y: b1});
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type S was provided.[0m
+[1;38;5;12m327 |[0m     v.push(S {x: n2, y: b2});
+[1;38;5;12m328 |[0m     v.push(S {x: n3, y: b3});
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:327:12
+[1;38;5;12m    |[0m
+[1;38;5;12m325 |[0m 
+[1;38;5;12m326 |[0m     v.push(S {x: n1, y: b1});
+[1;38;5;12m327 |[0m     v.push(S {x: n2, y: b2});
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type S was provided.[0m
+[1;38;5;12m328 |[0m     v.push(S {x: n3, y: b3});
+[1;38;5;12m329 |[0m     v.push(S {x: n4, y: b4});
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:328:12
+[1;38;5;12m    |[0m
+[1;38;5;12m326 |[0m 
+[1;38;5;12m327 |[0m     v.push(S {x: n2, y: b2});
+[1;38;5;12m328 |[0m     v.push(S {x: n3, y: b3});
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type S was provided.[0m
+[1;38;5;12m329 |[0m     v.push(S {x: n4, y: b4});
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:329:12
+[1;38;5;12m    |[0m
+[1;38;5;12m327 |[0m 
+[1;38;5;12m328 |[0m     v.push(S {x: n3, y: b3});
+[1;38;5;12m329 |[0m     v.push(S {x: n4, y: b4});
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type S was provided.[0m
+[1;38;5;12m330 |[0m 
+[1;38;5;12m331 |[0m     assert(v.len() == 5);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:337:20
+[1;38;5;12m    |[0m
+[1;38;5;12m335 |[0m 
+[1;38;5;12m336 |[0m         Option::Some(val) => {
+[1;38;5;12m337 |[0m             assert(val.x == n4);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9mThis is a u64, not a struct. Fields can only be accessed on structs.[0m
+[1;38;5;12m338 |[0m             assert(val.y == b4);
+[1;38;5;12m339 |[0m         },
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:338:20
+[1;38;5;12m    |[0m
+[1;38;5;12m336 |[0m 
+[1;38;5;12m337 |[0m             assert(val.x == n4);
+[1;38;5;12m338 |[0m             assert(val.y == b4);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9mThis is a u64, not a struct. Fields can only be accessed on structs.[0m
+[1;38;5;12m339 |[0m         },
+[1;38;5;12m340 |[0m         Option::None => revert(0),
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:361:15
+[1;38;5;12m    |[0m
+[1;38;5;12m359 |[0m 
+[1;38;5;12m360 |[0m 
+[1;38;5;12m361 |[0m     v.push(E::Y(b0));
+[1;38;5;12m    |[0m[1;38;5;9m               ^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type E was provided.[0m
+[1;38;5;12m362 |[0m     v.push(E::X);
+[1;38;5;12m363 |[0m     v.push(E::Z((b1, b2)));
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:362:15
+[1;38;5;12m    |[0m
+[1;38;5;12m360 |[0m 
+[1;38;5;12m361 |[0m     v.push(E::Y(b0));
+[1;38;5;12m362 |[0m     v.push(E::X);
+[1;38;5;12m    |[0m[1;38;5;9m               ^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type E was provided.[0m
+[1;38;5;12m363 |[0m     v.push(E::Z((b1, b2)));
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:363:15
+[1;38;5;12m    |[0m
+[1;38;5;12m361 |[0m 
+[1;38;5;12m362 |[0m     v.push(E::X);
+[1;38;5;12m363 |[0m     v.push(E::Z((b1, b2)));
+[1;38;5;12m    |[0m[1;38;5;9m               ^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type E was provided.[0m
+[1;38;5;12m364 |[0m 
+[1;38;5;12m365 |[0m     assert(v.len() == 3);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:372:17
+[1;38;5;12m    |[0m
+[1;38;5;12m370 |[0m 
+[1;38;5;12m371 |[0m             match val {
+[1;38;5;12m372 |[0m                 E::Y(b) => assert(b == b0),
+[1;38;5;12m    |[0m[1;38;5;9m                 ^^^^^^^[0m [1;38;5;9mMismatched types.
+expected: u64
+found:    E.
+[0m
+[1;38;5;12m373 |[0m                 _ => revert(0),
+[1;38;5;12m374 |[0m             }
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:382:17
+[1;38;5;12m    |[0m
+[1;38;5;12m380 |[0m 
+[1;38;5;12m381 |[0m             match val {
+[1;38;5;12m382 |[0m                 E::X => {},
+[1;38;5;12m    |[0m[1;38;5;9m                 ^^^^[0m [1;38;5;9mMismatched types.
+expected: u64
+found:    E.
+[0m
+[1;38;5;12m383 |[0m                 _ => revert(0),
+[1;38;5;12m384 |[0m             }
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:392:17
+[1;38;5;12m    |[0m
+[1;38;5;12m390 |[0m 
+[1;38;5;12m391 |[0m             match val {
+[1;38;5;12m392 |[0m                 E::Z(t) => {
+[1;38;5;12m    |[0m[1;38;5;9m                 ^^^^^^^[0m [1;38;5;9mMismatched types.
+expected: u64
+found:    E.
+[0m
+[1;38;5;12m393 |[0m                     assert(t.0 == b1);
+[1;38;5;12m394 |[0m                     assert(t.1 == b2);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:430:12
+[1;38;5;12m    |[0m
+[1;38;5;12m428 |[0m 
+[1;38;5;12m429 |[0m 
+[1;38;5;12m430 |[0m     v.push((n0, b0));
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type (u16, b256) was provided.[0m
+[1;38;5;12m431 |[0m     v.push((n1, b1));
+[1;38;5;12m432 |[0m     v.push((n2, b2));
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:431:12
+[1;38;5;12m    |[0m
+[1;38;5;12m429 |[0m 
+[1;38;5;12m430 |[0m     v.push((n0, b0));
+[1;38;5;12m431 |[0m     v.push((n1, b1));
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type (u16, b256) was provided.[0m
+[1;38;5;12m432 |[0m     v.push((n2, b2));
+[1;38;5;12m433 |[0m     v.push((n3, b3));
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:432:12
+[1;38;5;12m    |[0m
+[1;38;5;12m430 |[0m 
+[1;38;5;12m431 |[0m     v.push((n1, b1));
+[1;38;5;12m432 |[0m     v.push((n2, b2));
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type (u16, b256) was provided.[0m
+[1;38;5;12m433 |[0m     v.push((n3, b3));
+[1;38;5;12m434 |[0m     v.push((n4, b4));
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:433:12
+[1;38;5;12m    |[0m
+[1;38;5;12m431 |[0m 
+[1;38;5;12m432 |[0m     v.push((n2, b2));
+[1;38;5;12m433 |[0m     v.push((n3, b3));
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type (u16, b256) was provided.[0m
+[1;38;5;12m434 |[0m     v.push((n4, b4));
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:434:12
+[1;38;5;12m    |[0m
+[1;38;5;12m432 |[0m 
+[1;38;5;12m433 |[0m     v.push((n3, b3));
+[1;38;5;12m434 |[0m     v.push((n4, b4));
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type (u16, b256) was provided.[0m
+[1;38;5;12m435 |[0m 
+[1;38;5;12m436 |[0m     assert(v.len() == 5);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:442:20
+[1;38;5;12m    |[0m
+[1;38;5;12m440 |[0m 
+[1;38;5;12m441 |[0m         Option::Some(val) => {
+[1;38;5;12m442 |[0m             assert(val.0 == n0);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9m"val" is a u64, not a tuple. Elements can only be access on tuples.[0m
+[1;38;5;12m443 |[0m             assert(val.1 == b0);
+[1;38;5;12m444 |[0m         },
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:443:20
+[1;38;5;12m    |[0m
+[1;38;5;12m441 |[0m 
+[1;38;5;12m442 |[0m             assert(val.0 == n0);
+[1;38;5;12m443 |[0m             assert(val.1 == b0);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9m"val" is a u64, not a tuple. Elements can only be access on tuples.[0m
+[1;38;5;12m444 |[0m         },
+[1;38;5;12m445 |[0m         Option::None => revert(0),
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:449:12
+[1;38;5;12m    |[0m
+[1;38;5;12m447 |[0m 
+[1;38;5;12m448 |[0m     // Push after get
+[1;38;5;12m449 |[0m     v.push((n5, b5));
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type (u16, b256) was provided.[0m
+[1;38;5;12m450 |[0m     v.push((n6, b6));
+[1;38;5;12m451 |[0m     v.push((n7, b7));
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:450:12
+[1;38;5;12m    |[0m
+[1;38;5;12m448 |[0m 
+[1;38;5;12m449 |[0m     v.push((n5, b5));
+[1;38;5;12m450 |[0m     v.push((n6, b6));
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type (u16, b256) was provided.[0m
+[1;38;5;12m451 |[0m     v.push((n7, b7));
+[1;38;5;12m452 |[0m     v.push((n8, b8));
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:451:12
+[1;38;5;12m    |[0m
+[1;38;5;12m449 |[0m 
+[1;38;5;12m450 |[0m     v.push((n6, b6));
+[1;38;5;12m451 |[0m     v.push((n7, b7));
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type (u16, b256) was provided.[0m
+[1;38;5;12m452 |[0m     v.push((n8, b8));
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:452:12
+[1;38;5;12m    |[0m
+[1;38;5;12m450 |[0m 
+[1;38;5;12m451 |[0m     v.push((n7, b7));
+[1;38;5;12m452 |[0m     v.push((n8, b8));
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type (u16, b256) was provided.[0m
+[1;38;5;12m453 |[0m 
+[1;38;5;12m454 |[0m     match v.get(4) {
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:456:20
+[1;38;5;12m    |[0m
+[1;38;5;12m454 |[0m 
+[1;38;5;12m455 |[0m         Option::Some(val) => {
+[1;38;5;12m456 |[0m             assert(val.0 == n4);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9m"val" is a u64, not a tuple. Elements can only be access on tuples.[0m
+[1;38;5;12m457 |[0m             assert(val.1 == b4);
+[1;38;5;12m458 |[0m         },
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:457:20
+[1;38;5;12m    |[0m
+[1;38;5;12m455 |[0m 
+[1;38;5;12m456 |[0m             assert(val.0 == n4);
+[1;38;5;12m457 |[0m             assert(val.1 == b4);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9m"val" is a u64, not a tuple. Elements can only be access on tuples.[0m
+[1;38;5;12m458 |[0m         },
+[1;38;5;12m459 |[0m         Option::None => revert(0),
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:464:20
+[1;38;5;12m    |[0m
+[1;38;5;12m462 |[0m 
+[1;38;5;12m463 |[0m         Option::Some(val) => {
+[1;38;5;12m464 |[0m             assert(val.0 == n6);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9m"val" is a u64, not a tuple. Elements can only be access on tuples.[0m
+[1;38;5;12m465 |[0m             assert(val.1 == b6);
+[1;38;5;12m466 |[0m         },
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:465:20
+[1;38;5;12m    |[0m
+[1;38;5;12m463 |[0m 
+[1;38;5;12m464 |[0m             assert(val.0 == n6);
+[1;38;5;12m465 |[0m             assert(val.1 == b6);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9m"val" is a u64, not a tuple. Elements can only be access on tuples.[0m
+[1;38;5;12m466 |[0m         },
+[1;38;5;12m467 |[0m         Option::None => revert(0),
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:477:20
+[1;38;5;12m    |[0m
+[1;38;5;12m475 |[0m 
+[1;38;5;12m476 |[0m         Option::Some(val) => {
+[1;38;5;12m477 |[0m             assert(val.0 == n4);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9m"val" is a u64, not a tuple. Elements can only be access on tuples.[0m
+[1;38;5;12m478 |[0m             assert(val.1 == b4);
+[1;38;5;12m479 |[0m         },
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:478:20
+[1;38;5;12m    |[0m
+[1;38;5;12m476 |[0m 
+[1;38;5;12m477 |[0m             assert(val.0 == n4);
+[1;38;5;12m478 |[0m             assert(val.1 == b4);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9m"val" is a u64, not a tuple. Elements can only be access on tuples.[0m
+[1;38;5;12m479 |[0m         },
+[1;38;5;12m480 |[0m         Option::None => revert(0),
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:485:20
+[1;38;5;12m    |[0m
+[1;38;5;12m483 |[0m 
+[1;38;5;12m484 |[0m         Option::Some(val) => {
+[1;38;5;12m485 |[0m             assert(val.0 == n6);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9m"val" is a u64, not a tuple. Elements can only be access on tuples.[0m
+[1;38;5;12m486 |[0m             assert(val.1 == b6);
+[1;38;5;12m487 |[0m         },
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:486:20
+[1;38;5;12m    |[0m
+[1;38;5;12m484 |[0m 
+[1;38;5;12m485 |[0m             assert(val.0 == n6);
+[1;38;5;12m486 |[0m             assert(val.1 == b6);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9m"val" is a u64, not a tuple. Elements can only be access on tuples.[0m
+[1;38;5;12m487 |[0m         },
+[1;38;5;12m488 |[0m         Option::None => revert(0),
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:504:12
+[1;38;5;12m    |[0m
+[1;38;5;12m502 |[0m 
+[1;38;5;12m503 |[0m     // Make sure pushing again after clear() works
+[1;38;5;12m504 |[0m     v.push((n0, b0));
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type (u16, b256) was provided.[0m
+[1;38;5;12m505 |[0m     v.push((n1, b1));
+[1;38;5;12m506 |[0m     v.push((n2, b2));
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:505:12
+[1;38;5;12m    |[0m
+[1;38;5;12m503 |[0m 
+[1;38;5;12m504 |[0m     v.push((n0, b0));
+[1;38;5;12m505 |[0m     v.push((n1, b1));
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type (u16, b256) was provided.[0m
+[1;38;5;12m506 |[0m     v.push((n2, b2));
+[1;38;5;12m507 |[0m     v.push((n3, b3));
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:506:12
+[1;38;5;12m    |[0m
+[1;38;5;12m504 |[0m 
+[1;38;5;12m505 |[0m     v.push((n1, b1));
+[1;38;5;12m506 |[0m     v.push((n2, b2));
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type (u16, b256) was provided.[0m
+[1;38;5;12m507 |[0m     v.push((n3, b3));
+[1;38;5;12m508 |[0m     v.push((n4, b4));
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:507:12
+[1;38;5;12m    |[0m
+[1;38;5;12m505 |[0m 
+[1;38;5;12m506 |[0m     v.push((n2, b2));
+[1;38;5;12m507 |[0m     v.push((n3, b3));
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type (u16, b256) was provided.[0m
+[1;38;5;12m508 |[0m     v.push((n4, b4));
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:508:12
+[1;38;5;12m    |[0m
+[1;38;5;12m506 |[0m 
+[1;38;5;12m507 |[0m     v.push((n3, b3));
+[1;38;5;12m508 |[0m     v.push((n4, b4));
+[1;38;5;12m    |[0m[1;38;5;9m            ^^^^^^^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type (u16, b256) was provided.[0m
+[1;38;5;12m509 |[0m 
+[1;38;5;12m510 |[0m     assert(v.len() == 5);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:516:20
+[1;38;5;12m    |[0m
+[1;38;5;12m514 |[0m 
+[1;38;5;12m515 |[0m         Option::Some(val) => {
+[1;38;5;12m516 |[0m             assert(val.0 == n4);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9m"val" is a u64, not a tuple. Elements can only be access on tuples.[0m
+[1;38;5;12m517 |[0m             assert(val.1 == b4);
+[1;38;5;12m518 |[0m         },
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:517:20
+[1;38;5;12m    |[0m
+[1;38;5;12m515 |[0m 
+[1;38;5;12m516 |[0m             assert(val.0 == n4);
+[1;38;5;12m517 |[0m             assert(val.1 == b4);
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^[0m [1;38;5;9m"val" is a u64, not a tuple. Elements can only be access on tuples.[0m
+[1;38;5;12m518 |[0m         },
+[1;38;5;12m519 |[0m         Option::None => revert(0),
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:540:12
+[1;38;5;12m    |[0m
+[1;38;5;12m538 |[0m 
+[1;38;5;12m539 |[0m 
+[1;38;5;12m540 |[0m     v.push(s0);
+[1;38;5;12m    |[0m[1;38;5;9m            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type str[4] was provided.[0m
+[1;38;5;12m541 |[0m     v.push(s1);
+[1;38;5;12m542 |[0m     v.push(s2);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:541:12
+[1;38;5;12m    |[0m
+[1;38;5;12m539 |[0m 
+[1;38;5;12m540 |[0m     v.push(s0);
+[1;38;5;12m541 |[0m     v.push(s1);
+[1;38;5;12m    |[0m[1;38;5;9m            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type str[4] was provided.[0m
+[1;38;5;12m542 |[0m     v.push(s2);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:542:12
+[1;38;5;12m    |[0m
+[1;38;5;12m540 |[0m 
+[1;38;5;12m541 |[0m     v.push(s1);
+[1;38;5;12m542 |[0m     v.push(s2);
+[1;38;5;12m    |[0m[1;38;5;9m            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type str[4] was provided.[0m
+[1;38;5;12m543 |[0m 
+[1;38;5;12m544 |[0m     assert(v.len() == 3);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:582:12
+[1;38;5;12m    |[0m
+[1;38;5;12m580 |[0m 
+[1;38;5;12m581 |[0m 
+[1;38;5;12m582 |[0m     v.push(a0);
+[1;38;5;12m    |[0m[1;38;5;9m            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type [u64; 3] was provided.[0m
+[1;38;5;12m583 |[0m     v.push(a1);
+[1;38;5;12m584 |[0m     v.push(a2);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:583:12
+[1;38;5;12m    |[0m
+[1;38;5;12m581 |[0m 
+[1;38;5;12m582 |[0m     v.push(a0);
+[1;38;5;12m583 |[0m     v.push(a1);
+[1;38;5;12m    |[0m[1;38;5;9m            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type [u64; 3] was provided.[0m
+[1;38;5;12m584 |[0m     v.push(a2);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:584:12
+[1;38;5;12m    |[0m
+[1;38;5;12m582 |[0m 
+[1;38;5;12m583 |[0m     v.push(a1);
+[1;38;5;12m584 |[0m     v.push(a2);
+[1;38;5;12m    |[0m[1;38;5;9m            ^^[0m [1;38;5;9mThis parameter was declared as type u64, but argument of type [u64; 3] was provided.[0m
+[1;38;5;12m585 |[0m 
+[1;38;5;12m586 |[0m     assert(v.len() == 3);
+[1;38;5;12m    |[0m
+____
+
+[1;38;5;9merror[0m
+   [1;38;5;12m-->[0m /Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec/src/main.sw:593:20
+[1;38;5;12m    |[0m
+[1;38;5;12m591 |[0m 
+[1;38;5;12m592 |[0m         Option::Some(val) => {
+[1;38;5;12m593 |[0m             assert(val[0] == a0[0]); 
+[1;38;5;12m    |[0m[1;38;5;9m                    ^^^^^^[0m [1;38;5;9mNo method named "index" found for type "u64".[0m
+[1;38;5;12m594 |[0m             assert(val[1] == a0[1]); 
+[1;38;5;12m595 |[0m             assert(val[2] == a0[2]); 
+[1;38;5;12m    |[0m
+____
+
+Error: Failed to compile vec

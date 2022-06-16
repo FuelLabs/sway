@@ -1,6 +1,7 @@
 library vec;
 
 use ::alloc::{alloc, realloc};
+use ::intrinsics::size_of;
 use ::context::registers::heap_ptr;
 use ::mem::{copy, read, write};
 use ::option::Option;
@@ -26,7 +27,7 @@ impl<T> RawVec<T> {
     fn with_capacity(capacity: u64) -> Self {
         RawVec {
             // Heap pointer points to _unallocated_ memory.
-            ptr: alloc(capacity * __size_of::<T>()),
+            ptr: alloc(capacity * size_of::<T>()),
             cap: capacity,
         }
     }
@@ -51,7 +52,7 @@ impl<T> RawVec<T> {
             2 * self.cap
         };
 
-        self.ptr = realloc(self.ptr, self.cap * __size_of::<T>(), new_cap * __size_of::<T>());
+        self.ptr = realloc(self.ptr, self.cap * size_of::<T>(), new_cap * size_of::<T>());
         self.cap = new_cap;
     }
 }
@@ -96,7 +97,7 @@ impl<T> Vec<T> {
 
         // Get a pointer to the end of the buffer, where the new element will
         // be inserted.
-        let end = self.buf.ptr() + self.len * __size_of::<T>();
+        let end = self.buf.ptr() + self.len * size_of::<T>();
 
         // Write `value` at pointer `end`
         write(end, value);
@@ -127,7 +128,7 @@ impl<T> Vec<T> {
         };
 
         // Get a pointer to the desired element using `index`
-        let ptr = self.buf.ptr() + index * __size_of::<T>();
+        let ptr = self.buf.ptr() + index * size_of::<T>();
 
         // Read from `ptr`
         Option::Some(read(ptr))

@@ -1,6 +1,6 @@
 script;
 
-use std::{assert::assert, option::Option, revert::revert, vec::Vec, hash::sha256};
+use std::{assert::assert, hash::sha256, option::Option, revert::revert, vec::Vec};
 
 struct S {
     x: u32,
@@ -10,7 +10,8 @@ struct S {
 enum E {
     X: (),
     Y: b256,
-    Z: (b256, b256),
+    Z: (b256,
+    b256), 
 }
 
 fn main() -> bool {
@@ -27,7 +28,7 @@ fn main() -> bool {
 
 fn test_vector_new_u8() {
     let mut v: Vec<u8> = ~Vec::new::<u8>();
-    
+
     let n0 = 0u8;
     let n1 = 1u8;
     let n2 = 2u8;
@@ -53,8 +54,7 @@ fn test_vector_new_u8() {
     assert(v.is_empty() == false);
 
     match v.get(0) {
-        Option::Some(val) => assert(val == n0),
-        Option::None => revert(0),
+        Option::Some(val) => assert(val == n0), Option::None => revert(0), 
     }
 
     // Push after get
@@ -64,13 +64,11 @@ fn test_vector_new_u8() {
     v.push(n8);
 
     match v.get(4) {
-        Option::Some(val) => assert(val == n4),
-        Option::None => revert(0),
+        Option::Some(val) => assert(val == n4), Option::None => revert(0), 
     }
 
     match v.get(n6) {
-        Option::Some(val) => assert(val == n6),
-        Option::None => revert(0),
+        Option::Some(val) => assert(val == n6), Option::None => revert(0), 
     }
 
     assert(v.len() == 9);
@@ -79,13 +77,11 @@ fn test_vector_new_u8() {
 
     // Test after capacity change
     match v.get(4) {
-        Option::Some(val) => assert(val == n4),
-        Option::None => revert(0),
+        Option::Some(val) => assert(val == n4), Option::None => revert(0), 
     }
 
     match v.get(6) {
-        Option::Some(val) => assert(val == n6),
-        Option::None => revert(0),
+        Option::Some(val) => assert(val == n6), Option::None => revert(0), 
     }
 
     v.clear();
@@ -96,8 +92,8 @@ fn test_vector_new_u8() {
     assert(v.is_empty() == true);
 
     match v.get(0) {
-        Option::Some(val) => revert(0),
-        Option::None => {},
+        Option::Some(val) => revert(0), Option::None => {
+        },
     }
 
     // Make sure pushing again after clear() works
@@ -112,14 +108,13 @@ fn test_vector_new_u8() {
     assert(v.is_empty() == false);
 
     match v.get(4) {
-        Option::Some(val) => assert(val == n4),
-        Option::None => revert(0),
+        Option::Some(val) => assert(val == n4), Option::None => revert(0), 
     }
 
     // Out of bounds access
     match v.get(5) {
-        Option::Some(val) => revert(0),
-        Option::None => {},
+        Option::Some(val) => revert(0), Option::None => {
+        },
     }
 }
 
@@ -151,8 +146,7 @@ fn test_vector_new_b256() {
     assert(v.is_empty() == false);
 
     match v.get(0) {
-        Option::Some(val) => assert(val == b0),
-        Option::None => revert(0),
+        Option::Some(val) => assert(val == b0), Option::None => revert(0), 
     }
 
     // Push after get
@@ -162,13 +156,11 @@ fn test_vector_new_b256() {
     v.push(b8);
 
     match v.get(4) {
-        Option::Some(val) => assert(val == b4),
-        Option::None => revert(0),
+        Option::Some(val) => assert(val == b4), Option::None => revert(0), 
     }
 
     match v.get(6) {
-        Option::Some(val) => assert(val == b6),
-        Option::None => revert(0),
+        Option::Some(val) => assert(val == b6), Option::None => revert(0), 
     }
 
     assert(v.len() == 9);
@@ -177,13 +169,11 @@ fn test_vector_new_b256() {
 
     // Test after capacity change
     match v.get(4) {
-        Option::Some(val) => assert(val == b4),
-        Option::None => revert(0),
+        Option::Some(val) => assert(val == b4), Option::None => revert(0), 
     }
 
     match v.get(6) {
-        Option::Some(val) => assert(val == b6),
-        Option::None => revert(0),
+        Option::Some(val) => assert(val == b6), Option::None => revert(0), 
     }
 
     v.clear();
@@ -194,8 +184,8 @@ fn test_vector_new_b256() {
     assert(v.is_empty() == true);
 
     match v.get(0) {
-        Option::Some(val) => revert(0),
-        Option::None => {},
+        Option::Some(val) => revert(0), Option::None => {
+        },
     }
 
     // Make sure pushing again after clear() works
@@ -210,14 +200,13 @@ fn test_vector_new_b256() {
     assert(v.is_empty() == false);
 
     match v.get(4) {
-        Option::Some(val) => assert(val == b4),
-        Option::None => revert(0),
+        Option::Some(val) => assert(val == b4), Option::None => revert(0), 
     }
 
     // Out of bounds access
     match v.get(5) {
-        Option::Some(val) => revert(0),
-        Option::None => {},
+        Option::Some(val) => revert(0), Option::None => {
+        },
     }
 }
 
@@ -248,11 +237,21 @@ fn test_vector_new_struct() {
     assert(v.capacity() == 0);
     assert(v.is_empty() == true);
 
-    v.push(S {x: n0, y: b0});
-    v.push(S {x: n1, y: b1});
-    v.push(S {x: n2, y: b2});
-    v.push(S {x: n3, y: b3});
-    v.push(S {x: n4, y: b4});
+    v.push(S {
+        x: n0, y: b0
+    });
+    v.push(S {
+        x: n1, y: b1
+    });
+    v.push(S {
+        x: n2, y: b2
+    });
+    v.push(S {
+        x: n3, y: b3
+    });
+    v.push(S {
+        x: n4, y: b4
+    });
 
     assert(v.len() == 5);
     assert(v.capacity() == 8);
@@ -263,21 +262,29 @@ fn test_vector_new_struct() {
             assert(val.x == n0);
             assert(val.y == b0);
         },
-        Option::None => revert(0),
+        Option::None => revert(0), 
     }
 
     // Push after get
-    v.push(S {x: n5, y: b5});
-    v.push(S {x: n6, y: b6});
-    v.push(S {x: n7, y: b7});
-    v.push(S {x: n8, y: b8});
+    v.push(S {
+        x: n5, y: b5
+    });
+    v.push(S {
+        x: n6, y: b6
+    });
+    v.push(S {
+        x: n7, y: b7
+    });
+    v.push(S {
+        x: n8, y: b8
+    });
 
     match v.get(4) {
         Option::Some(val) => {
             assert(val.x == n4);
             assert(val.y == b4);
         },
-        Option::None => revert(0),
+        Option::None => revert(0), 
     }
 
     match v.get(6) {
@@ -285,7 +292,7 @@ fn test_vector_new_struct() {
             assert(val.x == n6);
             assert(val.y == b6);
         },
-        Option::None => revert(0),
+        Option::None => revert(0), 
     }
 
     assert(v.len() == 9);
@@ -298,7 +305,7 @@ fn test_vector_new_struct() {
             assert(val.x == n4);
             assert(val.y == b4);
         },
-        Option::None => revert(0),
+        Option::None => revert(0), 
     }
 
     match v.get(6) {
@@ -306,7 +313,7 @@ fn test_vector_new_struct() {
             assert(val.x == n6);
             assert(val.y == b6);
         },
-        Option::None => revert(0),
+        Option::None => revert(0), 
     }
 
     v.clear();
@@ -317,16 +324,26 @@ fn test_vector_new_struct() {
     assert(v.is_empty() == true);
 
     match v.get(0) {
-        Option::Some(val) => revert(0),
-        Option::None => {},
+        Option::Some(val) => revert(0), Option::None => {
+        },
     }
 
     // Make sure pushing again after clear() works
-    v.push(S {x: n0, y: b0});
-    v.push(S {x: n1, y: b1});
-    v.push(S {x: n2, y: b2});
-    v.push(S {x: n3, y: b3});
-    v.push(S {x: n4, y: b4});
+    v.push(S {
+        x: n0, y: b0
+    });
+    v.push(S {
+        x: n1, y: b1
+    });
+    v.push(S {
+        x: n2, y: b2
+    });
+    v.push(S {
+        x: n3, y: b3
+    });
+    v.push(S {
+        x: n4, y: b4
+    });
 
     assert(v.len() == 5);
     assert(v.capacity() == 16);
@@ -337,13 +354,13 @@ fn test_vector_new_struct() {
             assert(val.x == n4);
             assert(val.y == b4);
         },
-        Option::None => revert(0),
+        Option::None => revert(0), 
     }
 
     // Out of bounds access
     match v.get(5) {
-        Option::Some(val) => revert(0),
-        Option::None => {},
+        Option::Some(val) => revert(0), Option::None => {
+        },
     }
 }
 
@@ -369,21 +386,21 @@ fn test_vector_new_enum() {
     match v.get(0) {
         Option::Some(val) => {
             match val {
-                E::Y(b) => assert(b == b0),
-                _ => revert(0),
+                E::Y(b) => assert(b == b0), _ => revert(0), 
             }
         },
-        Option::None => revert(0),
+        Option::None => revert(0), 
     }
 
     match v.get(1) {
         Option::Some(val) => {
             match val {
-                E::X => {},
-                _ => revert(0),
+                E::X => {
+                },
+                _ => revert(0), 
             }
         },
-        Option::None => revert(0),
+        Option::None => revert(0), 
     }
 
     match v.get(2) {
@@ -393,10 +410,10 @@ fn test_vector_new_enum() {
                     assert(t.0 == b1);
                     assert(t.1 == b2);
                 },
-                _ => revert(0),
+                _ => revert(0), 
             }
         },
-        Option::None => revert(0),
+        Option::None => revert(0), 
     }
 }
 
@@ -442,7 +459,7 @@ fn test_vector_new_tuple() {
             assert(val.0 == n0);
             assert(val.1 == b0);
         },
-        Option::None => revert(0),
+        Option::None => revert(0), 
     }
 
     // Push after get
@@ -456,7 +473,7 @@ fn test_vector_new_tuple() {
             assert(val.0 == n4);
             assert(val.1 == b4);
         },
-        Option::None => revert(0),
+        Option::None => revert(0), 
     }
 
     match v.get(6) {
@@ -464,7 +481,7 @@ fn test_vector_new_tuple() {
             assert(val.0 == n6);
             assert(val.1 == b6);
         },
-        Option::None => revert(0),
+        Option::None => revert(0), 
     }
 
     assert(v.len() == 9);
@@ -477,7 +494,7 @@ fn test_vector_new_tuple() {
             assert(val.0 == n4);
             assert(val.1 == b4);
         },
-        Option::None => revert(0),
+        Option::None => revert(0), 
     }
 
     match v.get(6) {
@@ -485,7 +502,7 @@ fn test_vector_new_tuple() {
             assert(val.0 == n6);
             assert(val.1 == b6);
         },
-        Option::None => revert(0),
+        Option::None => revert(0), 
     }
 
     v.clear();
@@ -496,8 +513,8 @@ fn test_vector_new_tuple() {
     assert(v.is_empty() == true);
 
     match v.get(0) {
-        Option::Some(val) => revert(0),
-        Option::None => {},
+        Option::Some(val) => revert(0), Option::None => {
+        },
     }
 
     // Make sure pushing again after clear() works
@@ -516,13 +533,13 @@ fn test_vector_new_tuple() {
             assert(val.0 == n4);
             assert(val.1 == b4);
         },
-        Option::None => revert(0),
+        Option::None => revert(0), 
     }
 
     // Out of bounds access
     match v.get(5) {
-        Option::Some(val) => revert(0),
-        Option::None => {},
+        Option::Some(val) => revert(0), Option::None => {
+        },
     }
 }
 
@@ -548,28 +565,30 @@ fn test_vector_new_string() {
     // Can't compare strings directly. Compare their hashes instead.
     match v.get(0) {
         Option::Some(val) => {
-            assert(sha256(val) == sha256(s0)); 
+            assert(sha256(val) == sha256(s0));
         },
-        Option::None => revert(0),
+        Option::None => revert(0), 
     }
 
     match v.get(1) {
         Option::Some(val) => {
-            assert(sha256(val) == sha256(s1)); 
+            assert(sha256(val) == sha256(s1));
         },
-        Option::None => revert(0),
+        Option::None => revert(0), 
     }
 
     match v.get(2) {
         Option::Some(val) => {
-            assert(sha256(val) == sha256(s2)); 
+            assert(sha256(val) == sha256(s2));
         },
-        Option::None => revert(0),
+        Option::None => revert(0), 
     }
 }
 
 fn test_vector_new_array() {
-    let mut v: Vec<[u64; 3]> = ~Vec::new::<[u64; 3]>();
+    let mut v: Vec<[u64;
+    3]> = ~Vec::new::<[u64;
+    3]>();
 
     let a0 = [0, 1, 2];
     let a1 = [3, 4, 5];
@@ -590,29 +609,29 @@ fn test_vector_new_array() {
     // Can't compare strings directly. Compare their hashes instead.
     match v.get(0) {
         Option::Some(val) => {
-            assert(val[0] == a0[0]); 
-            assert(val[1] == a0[1]); 
-            assert(val[2] == a0[2]); 
+            assert(val[0] == a0[0]);
+            assert(val[1] == a0[1]);
+            assert(val[2] == a0[2]);
         },
-        Option::None => revert(0),
+        Option::None => revert(0), 
     }
 
     match v.get(1) {
         Option::Some(val) => {
-            assert(val[0] == a1[0]); 
-            assert(val[1] == a1[1]); 
-            assert(val[2] == a1[2]); 
+            assert(val[0] == a1[0]);
+            assert(val[1] == a1[1]);
+            assert(val[2] == a1[2]);
         },
-        Option::None => revert(0),
+        Option::None => revert(0), 
     }
 
     match v.get(2) {
         Option::Some(val) => {
-            assert(val[0] == a2[0]); 
-            assert(val[1] == a2[1]); 
-            assert(val[2] == a2[2]); 
+            assert(val[0] == a2[0]);
+            assert(val[1] == a2[1]);
+            assert(val[2] == a2[2]);
         },
-        Option::None => revert(0),
+        Option::None => revert(0), 
     }
 }
 
@@ -644,8 +663,7 @@ fn test_vector_with_capacity_u64() {
     assert(v.is_empty() == false);
 
     match v.get(0) {
-        Option::Some(val) => assert(val == n0),
-        Option::None => revert(0),
+        Option::Some(val) => assert(val == n0), Option::None => revert(0), 
     }
 
     // Push after get
@@ -655,13 +673,11 @@ fn test_vector_with_capacity_u64() {
     v.push(n8);
 
     match v.get(4) {
-        Option::Some(val) => assert(val == n4),
-        Option::None => revert(0),
+        Option::Some(val) => assert(val == n4), Option::None => revert(0), 
     }
 
     match v.get(6) {
-        Option::Some(val) => assert(val == n6),
-        Option::None => revert(0),
+        Option::Some(val) => assert(val == n6), Option::None => revert(0), 
     }
 
     assert(v.len() == 9);
@@ -676,8 +692,8 @@ fn test_vector_with_capacity_u64() {
     assert(v.is_empty() == true);
 
     match v.get(0) {
-        Option::Some(val) => revert(0),
-        Option::None => {},
+        Option::Some(val) => revert(0), Option::None => {
+        },
     }
 
     // Make sure pushing again after clear() works
@@ -692,15 +708,12 @@ fn test_vector_with_capacity_u64() {
     assert(v.is_empty() == false);
 
     match v.get(4) {
-        Option::Some(val) => assert(val == n4),
-        Option::None => revert(0),
+        Option::Some(val) => assert(val == n4), Option::None => revert(0), 
     }
 
     // Out of bounds access
     match v.get(5) {
-        Option::Some(val) => revert(0),
-        Option::None => {},
+        Option::Some(val) => revert(0), Option::None => {
+        },
     }
 }
-
-
