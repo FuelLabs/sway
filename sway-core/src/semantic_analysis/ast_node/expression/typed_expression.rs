@@ -1623,11 +1623,7 @@ impl TypedExpression {
         }
 
         functions_buf.append(&mut type_checked_fn_buf);
-        namespace.insert_trait_implementation(
-            abi_name.clone(),
-            look_up_type_id(return_type),
-            functions_buf,
-        );
+        namespace.insert_trait_implementation(abi_name.clone(), return_type, functions_buf);
         let exp = TypedExpression {
             expression: TypedExpressionVariant::AbiCast {
                 abi_name,
