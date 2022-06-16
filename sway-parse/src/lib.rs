@@ -6,7 +6,7 @@ mod error;
 pub mod expr;
 pub mod generics;
 pub mod intrinsics;
-pub mod item;
+mod item;
 pub mod keywords;
 mod literal;
 pub mod module;
