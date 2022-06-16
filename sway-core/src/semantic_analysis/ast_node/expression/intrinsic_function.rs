@@ -4,10 +4,11 @@ use sway_types::Span;
 
 use crate::{
     error::{err, ok},
+    namespace::{Path, Root},
     semantic_analysis::{EnforceTypeArguments, Mode, TCOpts, TypeCheckArguments},
     type_engine::*,
     types::DeterministicallyAborts,
-    CompileError, CompileResult, IntrinsicFunctionKind, Namespace,
+    CompileError, CompileResult, IntrinsicFunctionKind, Namespace, TypeArgument,
 };
 
 use super::TypedExpression;
@@ -65,6 +66,59 @@ impl CopyTypes for TypedIntrinsicFunctionKind {
             }
             GetStorageKey => {}
         }
+    }
+}
+
+impl ResolveTypes for TypedIntrinsicFunctionKind {
+    fn resolve_types(
+        &mut self,
+        type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        use TypedIntrinsicFunctionKind::*;
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            SizeOfVal { exp } => {
+                exp.resolve_types(
+                    type_arguments,
+                    enforce_type_arguments,
+                    namespace,
+                    module_path,
+                )
+                .ok(&mut warnings, &mut errors);
+            }
+            SizeOfType { type_id, type_span } => {
+                *type_id = check!(
+                    namespace.resolve_type(
+                        *type_id,
+                        type_span,
+                        enforce_type_arguments,
+                        module_path
+                    ),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors
+                );
+            }
+            IsRefType { type_id, type_span } => {
+                *type_id = check!(
+                    namespace.resolve_type(
+                        *type_id,
+                        type_span,
+                        enforce_type_arguments,
+                        module_path
+                    ),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors
+                );
+            }
+            GetStorageKey => {}
+        }
+        ok((), warnings, errors)
     }
 }
 

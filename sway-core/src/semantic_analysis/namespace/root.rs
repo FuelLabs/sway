@@ -151,6 +151,83 @@ impl Root {
                 }
                 insert_type(TypeInfo::Tuple(type_arguments))
             }
+            TypeInfo::Struct {
+                name,
+                mut type_parameters,
+                mut fields,
+            } => {
+                for type_parameter in type_parameters.iter_mut() {
+                    type_parameter.type_id = check!(
+                        self.resolve_type(
+                            type_parameter.type_id,
+                            span,
+                            enforce_type_arguments,
+                            mod_path
+                        ),
+                        insert_type(TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors
+                    );
+                }
+                for field in fields.iter_mut() {
+                    field.type_id = check!(
+                        self.resolve_type(field.type_id, span, enforce_type_arguments, mod_path),
+                        insert_type(TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors
+                    );
+                }
+                insert_type(TypeInfo::Struct {
+                    name,
+                    type_parameters,
+                    fields,
+                })
+            }
+            TypeInfo::Enum {
+                name,
+                mut type_parameters,
+                mut variant_types,
+            } => {
+                for type_parameter in type_parameters.iter_mut() {
+                    type_parameter.type_id = check!(
+                        self.resolve_type(
+                            type_parameter.type_id,
+                            span,
+                            enforce_type_arguments,
+                            mod_path
+                        ),
+                        insert_type(TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors
+                    );
+                }
+                for variant_type in variant_types.iter_mut() {
+                    variant_type.type_id = check!(
+                        self.resolve_type(
+                            variant_type.type_id,
+                            span,
+                            enforce_type_arguments,
+                            mod_path
+                        ),
+                        insert_type(TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors
+                    );
+                }
+                insert_type(TypeInfo::Enum {
+                    name,
+                    type_parameters,
+                    variant_types,
+                })
+            }
+            TypeInfo::UnknownGeneric { name } => {
+                match self.resolve_symbol(mod_path, &name).value.cloned() {
+                    Some(TypedDeclaration::GenericTypeForFunctionScope { type_id, .. }) => {
+                        insert_type(TypeInfo::Ref(type_id, name.span()))
+                    }
+                    _ => type_id,
+                }
+            }
             o => insert_type(o),
         };
         ok(type_id, warnings, errors)

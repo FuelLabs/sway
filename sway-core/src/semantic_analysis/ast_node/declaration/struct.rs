@@ -54,18 +54,12 @@ impl Spanned for TypedStructDeclaration {
 }
 
 impl MonomorphizeHelper for TypedStructDeclaration {
-    type Output = TypedStructDeclaration;
-
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
 
     fn name(&self) -> &Ident {
         &self.name
-    }
-
-    fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output {
-        monomorphize_inner(self, type_mapping, namespace)
     }
 }
 

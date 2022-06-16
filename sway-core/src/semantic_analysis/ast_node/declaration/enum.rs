@@ -63,18 +63,12 @@ impl Spanned for TypedEnumDeclaration {
 }
 
 impl MonomorphizeHelper for TypedEnumDeclaration {
-    type Output = TypedEnumDeclaration;
-
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
 
     fn name(&self) -> &Ident {
         &self.name
-    }
-
-    fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output {
-        monomorphize_inner(self, type_mapping, namespace)
     }
 }
 

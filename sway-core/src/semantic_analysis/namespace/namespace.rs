@@ -129,7 +129,7 @@ impl Namespace {
         call_site_span: Option<&Span>,
     ) -> CompileResult<T>
     where
-        T: MonomorphizeHelper<Output = T> + Spanned,
+        T: MonomorphizeHelper + Spanned + ResolveTypes,
     {
         if let Some(self_type) = self_type {
             for type_argument in type_arguments.iter_mut() {

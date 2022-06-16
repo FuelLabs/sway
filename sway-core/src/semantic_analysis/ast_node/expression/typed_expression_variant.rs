@@ -689,12 +689,21 @@ impl ResolveTypes for TypedExpressionVariant {
                     .resolve_types(vec![], enforce_type_arguments, namespace, module_path)
                     .ok(&mut warnings, &mut errors);
             }
+            IntrinsicFunction(kind) => {
+                kind.resolve_types(vec![], enforce_type_arguments, namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+            }
+            AsmExpression { registers, .. } => {
+                for register in registers.iter_mut() {
+                    register
+                        .resolve_types(vec![], enforce_type_arguments, namespace, module_path)
+                        .ok(&mut warnings, &mut errors);
+                }
+            }
             Literal(_)
             | StorageAccess { .. }
             | VariableExpression { .. }
             | FunctionParameter
-            | IntrinsicFunction(_)
-            | AsmExpression { .. }
             | AbiName(_) => {}
         }
         ok((), warnings, errors)
@@ -757,5 +766,29 @@ impl CopyTypes for TypedAsmRegisterDeclaration {
         if let Some(ref mut initializer) = self.initializer {
             initializer.copy_types(type_mapping)
         }
+    }
+}
+
+impl ResolveTypes for TypedAsmRegisterDeclaration {
+    fn resolve_types(
+        &mut self,
+        type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        namespace: &mut namespace::Root,
+        module_path: &namespace::Path,
+    ) -> crate::CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        if let Some(ref mut initializer) = self.initializer {
+            initializer
+                .resolve_types(
+                    type_arguments,
+                    enforce_type_arguments,
+                    namespace,
+                    module_path,
+                )
+                .ok(&mut warnings, &mut errors);
+        }
+        ok((), warnings, errors)
     }
 }
