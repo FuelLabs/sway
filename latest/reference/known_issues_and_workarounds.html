@@ -144,16 +144,7 @@
 <p><a href="https://github.com/FuelLabs/sway/issues/1663">#1663</a>: Using an explicit <code>return</code> in all branches of an <code>if let</code> expression causes a compile error. The workaround is to use implicit returns instead.</p>
 </li>
 <li>
-<p><a href="https://github.com/FuelLabs/sway/issues/1664">#1664</a>: Binary and hex literals cannot be used for integer types (i.e. <code>u8</code>, <code>u16</code>, <code>u32</code>, <code>u64</code>). Only decimal literals can be used at the moment.</p>
-</li>
-<li>
-<p><a href="https://github.com/FuelLabs/sway/issues/1657">#1657</a>: Accessing data members of a <code>struct</code> directly from a function call does not currently work. The same applies to <code>enum</code> types and arrays. The workaround is to store the result of the function call in a temporary variable and accessing the required elements from that variable instead.</p>
-</li>
-<li>
 <p><a href="https://github.com/FuelLabs/sway/issues/1387">#1387</a>: In order to use <code>unwrap()</code> from the <code>result</code> library, all symbols of <code>result</code> needs to be imported via <code>use::result::*;</code>.</p>
-</li>
-<li>
-<p><a href="https://github.com/FuelLabs/sway/issues/996">#996</a>: Constants defined via the <code>const</code> keyword can only have primitive types. That is, it is not possible to define a <code>ContractId</code> or an <code>Address</code> as <code>const</code> for example.</p>
 </li>
 <li>
 <p><a href="https://github.com/FuelLabs/sway/issues/870">#870</a>: All <code>impl</code> blocks need to be defined before any of the functions they define can be called.</p>
