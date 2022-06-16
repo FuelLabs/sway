@@ -3,7 +3,7 @@ library vec;
 use ::alloc::{alloc, realloc};
 use ::intrinsics::size_of;
 use ::context::registers::heap_ptr;
-use ::mem::{copy, read, write};
+use ::mem::{read, write};
 use ::option::Option;
 
 struct RawVec<T> {
