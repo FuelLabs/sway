@@ -7,8 +7,8 @@ use ::mem::{read, write};
 use ::option::Option;
 
 struct RawVec<T> {
-    cap: u64,
     ptr: u64,
+    cap: u64,
 }
 
 impl<T> RawVec<T> {
@@ -16,8 +16,8 @@ impl<T> RawVec<T> {
     fn new() -> Self {
         RawVec {
             // Heap pointer points to _unallocated_ memory.
-            cap: 0,
             ptr: heap_ptr() + 1,
+            cap: 0,
         }
     }
 
@@ -27,8 +27,8 @@ impl<T> RawVec<T> {
     fn with_capacity(capacity: u64) -> Self {
         RawVec {
             // Heap pointer points to _unallocated_ memory.
-            cap: capacity,
             ptr: alloc(capacity * size_of::<T>()),
+            cap: capacity,
         }
     }
 
