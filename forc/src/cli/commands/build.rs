@@ -6,7 +6,10 @@ use clap::Parser;
 ///
 /// The output produced will depend on the project's program type. Building script, predicate and
 /// contract projects will produce their bytecode in binary format `<project-name>.bin`. Building
-/// contracts and libraries will also produce the public ABI in JSON format
+/// script projects will also produce a file containing the hash of the bytecode binary
+/// `<project-name>-bin-hash` (hashed using `fuel_cypto::Hasher`).
+///
+/// Building contracts and libraries will also produce the public ABI in JSON format
 /// `<project-name>-abi.json`.
 #[derive(Debug, Default, Parser)]
 pub struct Command {

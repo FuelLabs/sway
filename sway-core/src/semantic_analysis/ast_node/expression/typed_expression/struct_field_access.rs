@@ -26,7 +26,7 @@ pub(crate) fn instantiate_struct_field_access(
             prefix: Box::new(parent),
             field_to_access: field.clone(),
         },
-        return_type: field.r#type,
+        return_type: field.type_id,
         is_constant: IsConstant::No,
         span,
     };

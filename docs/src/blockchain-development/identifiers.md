@@ -1,6 +1,6 @@
 # Identifiers
 
-Addresses in Sway are similar to Ethereum addresses. The two major differences are:
+Addresses in Sway are similar to EVM addresses. The two major differences are:
 
 1. Sway addresses are 32 bytes long (instead of 20), and
 1. are computed with the SHA-256 hash of the public key instead of the keccak-256 hash.

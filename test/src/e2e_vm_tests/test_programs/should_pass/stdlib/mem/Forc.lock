@@ -1,0 +1,14 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-6FDA2B8841DC691E'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'path+from-root-6FDA2B8841DC691E'
+dependencies = ['core']
+
+[[package]]
+name = 'std_mem_test'
+source = 'root'
+dependencies = ['std']

@@ -1,14 +1,3 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-E1A3EA1914E4253A'
-dependencies = ['core_utils']
-
-[[package]]
-name = 'core_utils'
-source = 'path+from-root-E1A3EA1914E4253A'
-dependencies = []
-
-[[package]]
 name = 'increment_abi'
-source = 'root'
-dependencies = ['core']
+dependencies = []

@@ -6,6 +6,7 @@ use sway_types::{span::Span, Spanned};
 
 use derivative::Derivative;
 use std::{
+    collections::HashSet,
     fmt,
     hash::{Hash, Hasher},
 };
@@ -424,7 +425,7 @@ impl TypeInfo {
                 let names = fields
                     .iter()
                     .map(|field| {
-                        resolve_type(field.r#type, error_msg_span)
+                        resolve_type(field.type_id, error_msg_span)
                             .expect("unreachable?")
                             .to_selector_name(error_msg_span)
                     })
@@ -443,7 +444,7 @@ impl TypeInfo {
                     let names = variant_types
                         .iter()
                         .map(|ty| {
-                            let ty = match resolve_type(ty.r#type, error_msg_span) {
+                            let ty = match resolve_type(ty.type_id, error_msg_span) {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
@@ -486,10 +487,10 @@ impl TypeInfo {
         match self {
             TypeInfo::Enum { variant_types, .. } => variant_types
                 .iter()
-                .all(|variant_type| look_up_type_id(variant_type.r#type).is_uninhabited()),
+                .all(|variant_type| look_up_type_id(variant_type.type_id).is_uninhabited()),
             TypeInfo::Struct { fields, .. } => fields
                 .iter()
-                .any(|field| look_up_type_id(field.r#type).is_uninhabited()),
+                .any(|field| look_up_type_id(field.type_id).is_uninhabited()),
             TypeInfo::Tuple(fields) => fields
                 .iter()
                 .any(|field_type| look_up_type_id(field_type.type_id).is_uninhabited()),
@@ -502,7 +503,7 @@ impl TypeInfo {
             TypeInfo::Enum { variant_types, .. } => {
                 let mut found_unit_variant = false;
                 for variant_type in variant_types {
-                    let type_info = look_up_type_id(variant_type.r#type);
+                    let type_info = look_up_type_id(variant_type.type_id);
                     if type_info.is_uninhabited() {
                         continue;
                     }
@@ -517,7 +518,7 @@ impl TypeInfo {
             TypeInfo::Struct { fields, .. } => {
                 let mut all_zero_sized = true;
                 for field in fields {
-                    let type_info = look_up_type_id(field.r#type);
+                    let type_info = look_up_type_id(field.type_id);
                     if type_info.is_uninhabited() {
                         return true;
                     }
@@ -578,9 +579,9 @@ impl TypeInfo {
                 let mut new_fields = fields.clone();
                 for new_field in new_fields.iter_mut() {
                     if let Some(matching_id) =
-                        look_up_type_id(new_field.r#type).matches_type_parameter(mapping)
+                        look_up_type_id(new_field.type_id).matches_type_parameter(mapping)
                     {
-                        new_field.r#type =
+                        new_field.type_id =
                             insert_type(TypeInfo::Ref(matching_id, new_field.span.clone()));
                     }
                 }
@@ -607,9 +608,9 @@ impl TypeInfo {
                 let mut new_variants = variant_types.clone();
                 for new_variant in new_variants.iter_mut() {
                     if let Some(matching_id) =
-                        look_up_type_id(new_variant.r#type).matches_type_parameter(mapping)
+                        look_up_type_id(new_variant.type_id).matches_type_parameter(mapping)
                     {
-                        new_variant.r#type =
+                        new_variant.type_id =
                             insert_type(TypeInfo::Ref(matching_id, new_variant.span.clone()));
                     }
                 }
@@ -735,10 +736,23 @@ impl TypeInfo {
         let mut errors = vec![];
         let mut all_nested_types = vec![self.clone()];
         match self {
-            TypeInfo::Enum { variant_types, .. } => {
+            TypeInfo::Enum {
+                variant_types,
+                type_parameters,
+                ..
+            } => {
+                for type_parameter in type_parameters.iter() {
+                    let mut nested_types = check!(
+                        look_up_type_id(type_parameter.type_id).extract_nested_types(span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    all_nested_types.append(&mut nested_types);
+                }
                 for variant_type in variant_types.iter() {
                     let mut nested_types = check!(
-                        look_up_type_id(variant_type.r#type).extract_nested_types(span),
+                        look_up_type_id(variant_type.type_id).extract_nested_types(span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -746,10 +760,23 @@ impl TypeInfo {
                     all_nested_types.append(&mut nested_types);
                 }
             }
-            TypeInfo::Struct { fields, .. } => {
+            TypeInfo::Struct {
+                fields,
+                type_parameters,
+                ..
+            } => {
+                for type_parameter in type_parameters.iter() {
+                    let mut nested_types = check!(
+                        look_up_type_id(type_parameter.type_id).extract_nested_types(span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    all_nested_types.append(&mut nested_types);
+                }
                 for field in fields.iter() {
                     let mut nested_types = check!(
-                        look_up_type_id(field.r#type).extract_nested_types(span),
+                        look_up_type_id(field.type_id).extract_nested_types(span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -789,7 +816,7 @@ impl TypeInfo {
             TypeInfo::Storage { fields } => {
                 for field in fields.iter() {
                     let mut nested_types = check!(
-                        look_up_type_id(field.r#type).extract_nested_types(span),
+                        look_up_type_id(field.type_id).extract_nested_types(span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -817,6 +844,23 @@ impl TypeInfo {
             }
         }
         ok(all_nested_types, warnings, errors)
+    }
+
+    pub(crate) fn extract_nested_generics(&self, span: &Span) -> CompileResult<HashSet<TypeInfo>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let nested_types = check!(
+            self.clone().extract_nested_types(span),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let generics = HashSet::from_iter(
+            nested_types
+                .into_iter()
+                .filter(|x| matches!(x, TypeInfo::UnknownGeneric { .. })),
+        );
+        ok(generics, warnings, errors)
     }
 
     /// Given a `TypeInfo` `self` and a list of `Ident`'s `subfields`,
@@ -861,7 +905,7 @@ impl TypeInfo {
                     field
                 } else {
                     check!(
-                        look_up_type_id(field.r#type).apply_subfields(rest, span),
+                        look_up_type_id(field.type_id).apply_subfields(rest, span),
                         return err(warnings, errors),
                         warnings,
                         errors

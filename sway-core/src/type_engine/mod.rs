@@ -8,7 +8,6 @@ mod type_id;
 mod type_info;
 mod type_mapping;
 mod unresolved_type_check;
-mod update_types;
 
 pub(crate) use copy_types::*;
 pub(crate) use create_type_id::*;
@@ -20,7 +19,6 @@ pub use type_id::*;
 pub use type_info::*;
 pub(crate) use type_mapping::*;
 pub(crate) use unresolved_type_check::*;
-pub(crate) use update_types::*;
 
 use crate::error::*;
 use fuels_types::Property;
@@ -37,7 +35,7 @@ fn generic_enum_resolution() {
     let variant_types = vec![TypedEnumVariant {
         name: Ident::new_with_override("a", sp.clone()),
         tag: 0,
-        r#type: engine.insert_type(TypeInfo::UnknownGeneric {
+        type_id: engine.insert_type(TypeInfo::UnknownGeneric {
             name: Ident::new_with_override("T", sp.clone()),
         }),
         span: sp.clone(),
@@ -52,7 +50,7 @@ fn generic_enum_resolution() {
     let variant_types = vec![TypedEnumVariant {
         name: Ident::new_with_override("a", sp.clone()),
         tag: 0,
-        r#type: engine.insert_type(TypeInfo::Boolean),
+        type_id: engine.insert_type(TypeInfo::Boolean),
         span: sp.clone(),
     }];
 
@@ -74,7 +72,7 @@ fn generic_enum_resolution() {
     {
         assert_eq!(name.as_str(), "Result");
         assert_eq!(
-            engine.look_up_type_id(variant_types[0].r#type),
+            engine.look_up_type_id(variant_types[0].type_id),
             TypeInfo::Boolean
         );
     } else {
