@@ -37,11 +37,9 @@ impl Format for ItemEnum {
         // Find the maximum length in the variant_length vector that is still smaller than enum_variant_align_threshold.
         let mut max_valid_variant_length = 0;
 
-        variant_length.iter().for_each({
-            |length| {
-                if *length > max_valid_variant_length && *length < enum_variant_align_threshold {
-                    max_valid_variant_length = *length;
-                }
+        variant_length.iter().for_each(|length| {
+            if *length > max_valid_variant_length && *length < enum_variant_align_threshold {
+                max_valid_variant_length = *length;
             }
         });
 
