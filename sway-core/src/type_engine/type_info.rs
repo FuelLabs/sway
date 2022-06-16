@@ -863,6 +863,7 @@ impl TypeInfo {
         ok(generics, warnings, errors)
     }
 
+<<<<<<< .merge_file_BLBjcN
     /// Given two `TypeInfo`'s `self` and `other`, check to see if `self` is
     /// unidirectionally a subset of `other`.
     ///
@@ -1026,6 +1027,8 @@ impl TypeInfo {
         }
     }
 
+=======
+>>>>>>> .merge_file_lCAeoL
     /// Given a `TypeInfo` `self` and a list of `Ident`'s `subfields`,
     /// iterate through the elements of `subfields` as `subfield`,
     /// and recursively apply `subfield` to `self`.

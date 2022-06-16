@@ -8,7 +8,6 @@ pub mod while_loop;
 use std::fmt;
 
 pub(crate) use code_block::*;
-pub use const_eval::*;
 pub use declaration::*;
 pub(crate) use expression::*;
 pub(crate) use mode::*;
@@ -767,10 +766,12 @@ fn type_check_interface_surface(
                     .map(
                         |FunctionParameter {
                              name,
+                             is_mutable,
                              type_id,
                              type_span,
                          }| TypedFunctionParameter {
                             name,
+                            is_mutable,
                             type_id: check!(
                                 namespace.resolve_type_with_self(
                                     type_id,
@@ -901,10 +902,12 @@ fn type_check_trait_methods(
                 |FunctionParameter {
                      name,
                      type_id,
+                     is_mutable,
                      type_span,
                  }| {
                     TypedFunctionParameter {
                         name,
+                        is_mutable,
                         type_id: check!(
                             namespace.resolve_type_with_self(
                                 type_id,

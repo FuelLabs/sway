@@ -48,6 +48,7 @@ impl CopyTypes for TypeParameter {
     }
 }
 
+<<<<<<< .merge_file_SQHHUb
 impl UpdateTypes for TypeParameter {
     fn update_types(
         &mut self,
@@ -75,6 +76,8 @@ impl UpdateTypes for TypeParameter {
     }
 }
 
+=======
+>>>>>>> .merge_file_KtB3QC
 impl Spanned for TypeParameter {
     fn span(&self) -> Span {
         self.name_ident.span()

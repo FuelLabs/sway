@@ -197,10 +197,12 @@ fn convert_trait_methods_to_dummy_funcs(
                     .map(
                         |FunctionParameter {
                              name,
+                             is_mutable,
                              type_id,
                              type_span,
                          }| TypedFunctionParameter {
                             name: name.clone(),
+                            is_mutable: *is_mutable,
                             type_id: check!(
                                 trait_namespace.resolve_type_with_self(
                                     *type_id,
