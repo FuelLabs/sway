@@ -840,7 +840,7 @@ pub fn graph_to_path_map(
                 });
                 // If there is a detail we should have the path.
                 // If not either we do not have a patch so we are checking dependencies of parent
-                // If do not find the path there, either patch or dep is provided as a basic dependency which is not supported
+                // If we can't find the path there, either patch or dep is provided as a basic dependency, so we are missing the path info.
                 let rel_dep_path = if let Some(patch_details) = patch_details {
                     patch_details.path.as_ref()
                 } else {
@@ -1305,7 +1305,6 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
                             either `branch`, `tag` or `rev`"
                     ),
                 };
-                // We don't have any patch for this dependency
                 let repo = Url::parse(repo)?;
                 let source = SourceGit { repo, reference };
                 Source::Git(source)
