@@ -678,7 +678,7 @@ impl Pattern {
                     && variant_types
                         .iter()
                         .map(|variant_type| variant_type.name.clone())
-                        .any(|variant_name| variant_name.as_str() == variant_name.as_str())
+                        .any(|name| name.as_str() == variant_name.as_str())
             }
             _ => false, // NOTE: We may need to expand this in the future
         }
