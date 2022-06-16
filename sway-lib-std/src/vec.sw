@@ -2,6 +2,8 @@ library vec;
 
 use ::context::registers::heap_ptr;
 use ::option::Option;
+use ::mem::{copy, read, write};
+use ::alloc::alloc;
 
 struct RawVec<T> {
     ptr: u64,
@@ -22,12 +24,9 @@ impl<T> RawVec<T> {
     /// `[T; capacity]`. This is equivalent to calling `RawVec::new` when
     /// `capacity` is `0`.
     fn with_capacity(capacity: u64) -> Self {
-        asm(size: capacity * __size_of::<T>()) {
-            aloc size;
-        };
         RawVec {
             // Heap pointer points to _unallocated_ memory.
-            ptr: heap_ptr() + 1,
+            ptr: alloc(capacity * __size_of::<T>()),
             cap: capacity,
         }
     }
@@ -50,17 +49,12 @@ impl<T> RawVec<T> {
         };
 
         // Allocate for `new_cap` elements.
-        asm(size: new_cap * __size_of::<T>()) {
-            aloc size;
-        };
-        let new_ptr = heap_ptr() + 1;
+        let new_ptr = alloc(new_cap * __size_of::<T>());
 
         // Copy old contents into newly-allocated memory.
         let copy_size = self.cap * __size_of::<T>();
         if copy_size > 0 {
-            asm(new_ptr: new_ptr, old_ptr: self.ptr, size: copy_size) {
-                mcp new_ptr old_ptr size;
-            };
+            copy(new_ptr, self.ptr, copy_size);
         }
 
         self.ptr = new_ptr;
@@ -109,20 +103,8 @@ impl<T> Vec<T> {
         // be inserted.
         let end = self.buf.ptr() + self.len * __size_of::<T>();
 
-        if !__is_reference_type::<T>() {
-            // If `T` is not a reference type, then it is a one-word primitive.
-            // Simply store it at `end` pointer.
-            asm(end: end, value: value) {
-                sw end value i0;
-            };
-        } else {
-            // If `T` is a reference type, then it points to a memory range.
-            // Copy the `value`'s memory range to the range pointed to by `end`.
-            let size = __size_of::<T>();
-            asm(end: end, ptr: value, size: size) {
-                mcp end ptr size;
-            };
-        };
+        // Store `value` at pointer `end`
+        write(end, value);
 
         // Increment length.
         self.len = self.len + 1;
@@ -158,22 +140,8 @@ impl<T> Vec<T> {
 
         let ptr = self.buf.ptr() + index * __size_of::<T>();
 
-        if !__is_reference_type::<T>() {
-            // If `T` is not a reference type, then it is a one-word primitive.
-            // Simply store it at `end` pointer.
-            let res = asm(res, ptr: ptr) {
-                lw res ptr i0;
-                res: T
-            };
-            Option::Some(res)
-        } else {
-            // If `T` is a reference type, then it points to a memory range.
-            // Copy the `value`'s memory range to the range pointed to by `end`.
-            let res = asm(ptr: ptr) {
-                ptr: T
-            };
-            Option::Some(res)
-        }
+        // Read from `ptr`
+        Option::Some(read(ptr))
     }
 
     /// Returns the number of elements in the vector, also referred to
