@@ -506,6 +506,15 @@ pub enum CompileError {
     #[error("Assignment to immutable variable. Variable {name} is not declared as mutable.")]
     AssignmentToNonMutable { name: Ident },
     #[error(
+        "Cannot call method \"{method_name}\" on variable \"{variable_name}\" because \
+            \"{variable_name}\" is not declared as mutable."
+    )]
+    MethodRequiresMutableSelf {
+        method_name: Ident,
+        variable_name: Ident,
+        span: Span,
+    },
+    #[error(
         "Generic type \"{name}\" is not in scope. Perhaps you meant to specify type parameters in \
          the function signature? For example: \n`fn \
          {fn_name}<{comma_separated_generic_params}>({args}) -> ... `"
@@ -712,6 +721,8 @@ pub enum CompileError {
     UnrecognizedOp { op_name: Ident, span: Span },
     #[error("Cannot infer type for type parameter \"{ty}\". Insufficient type information provided. Try annotating its type.")]
     UnableToInferGeneric { ty: String, span: Span },
+    #[error("The generic type parameter \"{ty}\" is unconstrained.")]
+    UnconstrainedGenericParameter { ty: String, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
     Immediate06TooLarge { val: u64, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 12-bit immediate spot.")]
@@ -1011,6 +1022,7 @@ impl Spanned for CompileError {
             MultipleDefinitionsOfFunction { name } => name.span(),
             ReassignmentToNonVariable { span, .. } => span.clone(),
             AssignmentToNonMutable { name } => name.span(),
+            MethodRequiresMutableSelf { span, .. } => span.clone(),
             TypeParameterNotInTypeScope { span, .. } => span.clone(),
             MultipleImmediates(span) => span.clone(),
             MismatchedTypeInTrait { span, .. } => span.clone(),
@@ -1049,6 +1061,7 @@ impl Spanned for CompileError {
             UnknownEnumVariant { span, .. } => span.clone(),
             UnrecognizedOp { span, .. } => span.clone(),
             UnableToInferGeneric { span, .. } => span.clone(),
+            UnconstrainedGenericParameter { span, .. } => span.clone(),
             Immediate06TooLarge { span, .. } => span.clone(),
             Immediate12TooLarge { span, .. } => span.clone(),
             Immediate18TooLarge { span, .. } => span.clone(),
