@@ -1,10 +1,6 @@
-<<<<<<< Updated upstream
-use crate::utils::indent_style::Shape;
-=======
 use crate::utils::{
     attributes::format_attributes, indent_style::Shape, newline_style::apply_newline_style,
 };
->>>>>>> Stashed changes
 use std::{path::Path, sync::Arc};
 use sway_core::BuildConfig;
 use sway_parse::ItemKind;
