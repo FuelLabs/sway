@@ -138,7 +138,6 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="purity"><a class="header" href="#purity">Purity</a></h1>
-<p><strong><em>The attributes <code>#[storage(read)]</code> and <code>#[storage(read, write]</code> introduced below are still in active development. There is no need to apply them at the moment.</em></strong></p>
 <p>A function is <em>pure</em> if it does not access any <a href="./storage.html">persistent storage</a>. Conversely, the function is <em>impure</em> if it does access any storage. Naturally, as storage is only available in smart contracts, impure functions cannot be used in predicates, scripts, or libraries. A pure function cannot call an impure function.</p>
 <p>In Sway, functions are pure by default but can be opted into impurity via the <code>storage</code> function attribute. The <code>storage</code> attribute may take <code>read</code> and/or <code>write</code> arguments indicating which type of access the function requires.</p>
 <pre><code class="language-sway">#[storage(read)]

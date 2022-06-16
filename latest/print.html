@@ -1858,7 +1858,6 @@ impl StorageExample for Contract {
 <p><strong>Note</strong>: Though these functions can be used for any data type, they should mostly be used for arrays because arrays are not yet supported in <code>storage</code> blocks. Note, however, that <em>all</em> data types can be used as types for keys and/or values in <code>StorageMap&lt;K, V&gt;</code> without any restrictions.</p>
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="purity"><a class="header" href="#purity">Purity</a></h1>
-<p><strong><em>The attributes <code>#[storage(read)]</code> and <code>#[storage(read, write]</code> introduced below are still in active development. There is no need to apply them at the moment.</em></strong></p>
 <p>A function is <em>pure</em> if it does not access any <a href="blockchain-development/./storage.html">persistent storage</a>. Conversely, the function is <em>impure</em> if it does access any storage. Naturally, as storage is only available in smart contracts, impure functions cannot be used in predicates, scripts, or libraries. A pure function cannot call an impure function.</p>
 <p>In Sway, functions are pure by default but can be opted into impurity via the <code>storage</code> function attribute. The <code>storage</code> attribute may take <code>read</code> and/or <code>write</code> arguments indicating which type of access the function requires.</p>
 <pre><code class="language-sway">#[storage(read)]
