@@ -33,14 +33,18 @@ impl Backend {
 
     fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
         let curr_dir = std::env::current_dir().unwrap();
+        eprintln!("curr_dir = {:?}", &curr_dir);
 
         if let Some(path) = find_manifest_dir(&curr_dir) {
+            eprintln!("path = {:?}", &path);
             let files = get_sway_files(path);
-
+            
             for file_path in files {
                 if let Some(path) = file_path.to_str() {
+                    eprintln!("files = {:?}", &path);
                     // store the document
                     let text_document = TextDocument::build_from_path(path)?;
+                    eprintln!("text_document = {:#?}", &text_document);
                     self.session.store_document(text_document)?;
                     // parse the document for tokens
                     let _ = self.session.parse_document(path);
@@ -84,8 +88,7 @@ impl Backend {
         if self.config.parsed_tokens_as_warnings {
             if let Some(document) = self.session.documents.get(uri.path()) {
                 //let diagnostics = debug::generate_warnings_for_parsed_tokens(document.get_tokens());
-                let diagnostics =
-                    debug::generate_warnings_for_typed_tokens(document.get_token_map(), uri.path());
+                let diagnostics = debug::generate_warnings_for_typed_tokens(&document.get_token_map(), uri.path());
                 self.client
                     .publish_diagnostics(uri, diagnostics, None)
                     .await;
@@ -243,7 +246,7 @@ impl LanguageServer for Backend {
 #[cfg(test)]
 mod tests {
     use serde_json::json;
-    use std::{env, fs::File, io::Write};
+    use std::{env, fs::File, io::{Read, Write}, path::PathBuf};
     use tower::{Service, ServiceExt};
 
     use super::*;
@@ -264,19 +267,18 @@ mod tests {
         // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
         messages.next().await.unwrap();
 
-        let manifest_dir =
-            Url::from_file_path("/Users/joshuabatty/Documents/rust/fuel/sway/examples/fizzbuzz")
-                .unwrap();
-        let mut file = File::open(manifest_dir.join("src/main.sw").unwrap().as_str()).unwrap();
+        let manifest_dir = PathBuf::from("/Users/joshuabatty/Documents/rust/fuel/sway/examples/liquidity_pool");
+        let mut file = File::open(manifest_dir.join("src/main.sw")).unwrap();
         let mut sway_program = String::new();
         file.read_to_string(&mut sway_program).unwrap();
 
+        let uri = Url::from_file_path(manifest_dir.join("src/main.sw")).unwrap();
         // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &manifest_dir, sway_program).await;
+        did_open_notification(&mut service, &uri, &sway_program).await;
 
         // ignore the "textDocument/publishDiagnostics" notification
         messages.next().await.unwrap();
-
+        
         // send "shutdown" request
         let _ = shutdown_request(&mut service).await;
 

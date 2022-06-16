@@ -94,7 +94,7 @@ impl TextDocument {
         self.clear_hash_maps();
 
         self.test_typed_parse();
-        eprintln!("tokens = {:#?}", self.get_token_map());
+        //eprintln!("tokens = {:#?}", self.get_token_map());
 
         match self.parse_tokens_from_text() {
             Ok((tokens, diagnostics)) => {
@@ -174,11 +174,32 @@ impl TextDocument {
 impl TextDocument {
     fn parse_typed_tokens_from_text(&self) -> Option<Vec<TypedAstNode>> {
         let manifest_dir = PathBuf::from(self.get_uri());
-        let res = forc::ops::forc_build::check(&manifest_dir).unwrap();
+        let res = forc::ops::forc_check::check(&manifest_dir).unwrap();
+
+        use sway_core::TypedProgramKind;
 
         match res {
             CompileAstResult::Failure { .. } => None,
-            CompileAstResult::Success { typed_program, .. } => Some(typed_program.root.all_nodes),
+            CompileAstResult::Success { typed_program, .. } => {
+                match typed_program.kind {
+                    TypedProgramKind::Predicate{ main_function, ..} | TypedProgramKind::Script{ main_function, ..} => {
+                        eprintln!("PREDICATE OR SCRIPT!");
+                        use sway_types::Spanned;
+                        let pos = main_function.name.span().start_pos().line_col();
+                        let line_num = pos.0 as u32;
+
+                        eprintln!(
+                            "line num = {:?} | name: = {:?} ",
+                            line_num,
+                            main_function.name.as_str(),
+                        );
+                    }
+                    _ => {
+                        eprintln!("No Main fn found in file!");
+                    }
+                }
+                Some(typed_program.root.all_nodes)
+            },
         }
 
         // let text = Arc::from(self.get_text());
