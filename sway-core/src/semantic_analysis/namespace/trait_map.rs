@@ -1,15 +1,7 @@
 use crate::{
-<<<<<<< .merge_file_zs5yzO
     type_engine::{create_type_mapping, look_up_type_id, CopyTypes, TypeId},
     CallPath, TypeInfo, TypedFunctionDeclaration,
 };
-=======
-    type_engine::{look_up_type_id, TypeId},
-    CallPath, TypeInfo, TypedFunctionDeclaration,
-};
-
-use std::collections::HashMap;
->>>>>>> .merge_file_5p9vkK
 
 type TraitName = CallPath;
 
@@ -74,11 +66,7 @@ impl TraitMap {
     ) -> Vec<((CallPath, TypeId), Vec<TypedFunctionDeclaration>)> {
         let mut ret = vec![];
         for ((call_path, map_type_id), methods) in self.trait_map.iter() {
-<<<<<<< .merge_file_zs5yzO
             if look_up_type_id(incoming_type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
-=======
-            if look_up_type_id(*map_type_id) == look_up_type_id(incoming_type_id) {
->>>>>>> .merge_file_5p9vkK
                 ret.push((
                     (call_path.clone(), *map_type_id),
                     methods.values().cloned().collect(),
@@ -89,12 +77,6 @@ impl TraitMap {
     }
 
     pub(crate) fn get_methods_for_type(
-<<<<<<< .merge_file_zs5yzO
-        &self,
-        incoming_type_id: TypeId,
-    ) -> Vec<TypedFunctionDeclaration> {
-        let mut methods = vec![];
-=======
         &self,
         incoming_type_id: TypeId,
     ) -> Vec<TypedFunctionDeclaration> {
@@ -103,25 +85,6 @@ impl TraitMap {
         if look_up_type_id(incoming_type_id) == TypeInfo::ErrorRecovery {
             return methods;
         }
-        for ((_, map_type_id), l_methods) in self.trait_map.iter() {
-            if look_up_type_id(*map_type_id) == look_up_type_id(incoming_type_id) {
-                methods.append(&mut l_methods.values().cloned().collect());
-            }
-        }
-        methods
-    }
-
-    pub(crate) fn get_methods_for_type_by_trait(
-        &self,
-        incoming_type_id: TypeId,
-    ) -> HashMap<TraitName, Vec<TypedFunctionDeclaration>> {
-        let mut methods: HashMap<TraitName, Vec<TypedFunctionDeclaration>> = HashMap::new();
->>>>>>> .merge_file_5p9vkK
-        // small performance gain in bad case
-        if look_up_type_id(incoming_type_id) == TypeInfo::ErrorRecovery {
-            return methods;
-        }
-<<<<<<< .merge_file_zs5yzO
         for ((_, map_type_id), trait_methods) in self.trait_map.iter() {
             if look_up_type_id(incoming_type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
                 let type_mapping = create_type_mapping(*map_type_id, incoming_type_id);
@@ -130,14 +93,6 @@ impl TraitMap {
                     .iter_mut()
                     .for_each(|x| x.copy_types(&type_mapping));
                 methods.append(&mut trait_methods);
-=======
-        for ((trait_name, map_type_id), trait_methods) in self.trait_map.iter() {
-            if look_up_type_id(*map_type_id) == look_up_type_id(incoming_type_id) {
-                methods.insert(
-                    (*trait_name).clone(),
-                    trait_methods.values().cloned().collect(),
-                );
->>>>>>> .merge_file_5p9vkK
             }
         }
         methods

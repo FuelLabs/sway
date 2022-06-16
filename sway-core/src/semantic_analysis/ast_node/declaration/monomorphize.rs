@@ -199,10 +199,5 @@ where
 {
     let mut new_decl = decl;
     new_decl.copy_types(type_mapping);
-<<<<<<< .merge_file_CrqBvb
-    //namespace.copy_methods_to_type(look_up_type_id(new_decl.create_type_id()), type_mapping);
-=======
-    namespace.copy_methods_to_type(old_type_id, new_decl.create_type_id(), type_mapping);
->>>>>>> .merge_file_BvGG2i
     new_decl
 }

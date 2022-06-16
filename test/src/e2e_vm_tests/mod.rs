@@ -585,13 +585,12 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
         "should_fail/repeated_enum_variant",
         "should_fail/repeated_storage_field",
         "should_fail/repeated_struct_field",
-<<<<<<< .merge_file_1u4LQM
         "should_fail/impl_with_bad_generic",
         "should_fail/impl_with_semantic_type_constraints",
-=======
         "should_fail/method_requires_mut_var",
         "should_fail/impl_with_bad_generic",
->>>>>>> .merge_file_8P5kRC
+        "should_fail/method_requires_mut_var",
+        "should_fail/impl_with_bad_generic",
         "should_fail/storage_conflict",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {

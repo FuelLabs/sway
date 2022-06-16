@@ -48,36 +48,6 @@ impl CopyTypes for TypeParameter {
     }
 }
 
-<<<<<<< .merge_file_SQHHUb
-impl UpdateTypes for TypeParameter {
-    fn update_types(
-        &mut self,
-        type_mapping: &TypeMapping,
-        namespace: &mut Namespace,
-        self_type: TypeId,
-    ) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        self.type_id = match look_up_type_id(self.type_id).matches_type_parameter(type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, self.span())),
-            None => check!(
-                namespace.resolve_type_with_self(
-                    self.type_id,
-                    self_type,
-                    &self.span(),
-                    EnforceTypeArguments::Yes
-                ),
-                insert_type(TypeInfo::ErrorRecovery),
-                warnings,
-                errors,
-            ),
-        };
-        ok((), warnings, errors)
-    }
-}
-
-=======
->>>>>>> .merge_file_KtB3QC
 impl Spanned for TypeParameter {
     fn span(&self) -> Span {
         self.name_ident.span()
