@@ -22,10 +22,10 @@ dep math;
 dep block;
 dep token;
 dep ecr;
-dep vec;
 dep reentrancy;
 dep vm/mod;
 dep flags;
 dep u128;
+dep vec;
 
 use core::*;

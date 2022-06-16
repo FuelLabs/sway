@@ -22,7 +22,7 @@ impl<T> RawVec<T> {
     /// `[T; capacity]`. This is equivalent to calling `RawVec::new` when
     /// `capacity` is `0`.
     fn with_capacity(capacity: u64) -> Self {
-        asm(size: capacity * size_of::<T>()) {
+        asm(size: capacity * __size_of::<T>()) {
             aloc size;
         };
         RawVec {
@@ -42,7 +42,7 @@ impl<T> RawVec<T> {
         self.cap
     }
 
-    fn grow(self) {
+    fn grow(mut self) {
         let new_cap = if self.cap == 0 {
             1
         } else {
@@ -50,15 +50,18 @@ impl<T> RawVec<T> {
         };
 
         // Allocate for `new_cap` elements.
-        asm(size: new_cap * size_of::<T>()) {
+        asm(size: new_cap * __size_of::<T>()) {
             aloc size;
         };
         let new_ptr = heap_ptr() + 1;
 
         // Copy old contents into newly-allocated memory.
-        asm(new_ptr: new_ptr, old_ptr: self.ptr, size: self.cap * size_of::<T>()) {
-            mcp new_ptr old_ptr size;
-        };
+        let copy_size = self.cap * __size_of::<T>();
+        if copy_size > 0 {
+            asm(new_ptr: new_ptr, old_ptr: self.ptr, size: copy_size) {
+                mcp new_ptr old_ptr size;
+            };
+        }
 
         self.ptr = new_ptr;
         self.cap = new_cap;
@@ -67,7 +70,7 @@ impl<T> RawVec<T> {
 
 /// A contiguous growable array type, written as `Vec<T>`, short for 'vector'.
 pub struct Vec<T> {
-    buf: RawVec,
+    buf: RawVec<T>,
     len: u64,
 }
 
@@ -97,16 +100,16 @@ impl<T> Vec<T> {
     }
 
     /// Appends an element to the back of a collection.
-    pub fn push(self, value: T) {
+    pub fn push(mut self, value: T) {
         // If there is insufficient capacity, grow the buffer.
         if self.len == self.buf.capacity() {
             self.buf.grow();
         };
         // Get a pointer to the end of the buffer, where the new element will
         // be inserted.
-        let end = self.buf.ptr() + self.len * size_of::<T>();
+        let end = self.buf.ptr() + self.len * __size_of::<T>();
 
-        if !is_reference_type::<T>() {
+        if !__is_reference_type::<T>() {
             // If `T` is not a reference type, then it is a one-word primitive.
             // Simply store it at `end` pointer.
             asm(end: end, value: value) {
@@ -115,7 +118,7 @@ impl<T> Vec<T> {
         } else {
             // If `T` is a reference type, then it points to a memory range.
             // Copy the `value`'s memory range to the range pointed to by `end`.
-            let size = size_of::<T>();
+            let size = __size_of::<T>();
             asm(end: end, ptr: value, size: size) {
                 mcp end ptr size;
             };
@@ -134,7 +137,7 @@ impl<T> Vec<T> {
     ///
     /// Note that this method has no effect on the allocated capacity
     /// of the vector.
-    pub fn clear(self) {
+    pub fn clear(mut self) {
         self.len = 0;
     }
 
@@ -153,9 +156,9 @@ impl<T> Vec<T> {
             return Option::None::<T>();
         };
 
-        let ptr = self.buf.ptr() + index * size_of::<T>();
+        let ptr = self.buf.ptr() + index * __size_of::<T>();
 
-        if !is_reference_type::<T>() {
+        if !__is_reference_type::<T>() {
             // If `T` is not a reference type, then it is a one-word primitive.
             // Simply store it at `end` pointer.
             let res = asm(res, ptr: ptr) {

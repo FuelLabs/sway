@@ -13,4 +13,3 @@ mod storage;
 mod storage_map;
 mod token_ops;
 mod tx_fields;
-mod vec;
