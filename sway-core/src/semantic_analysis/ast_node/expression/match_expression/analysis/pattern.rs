@@ -677,8 +677,8 @@ impl Pattern {
                 l_enum_name.as_str() == r_enum_name.as_str()
                     && variant_types
                         .iter()
-                        .map(|x| x.name.clone())
-                        .any(|x| x.as_str() == variant_name.as_str())
+                        .map(|variant_type| variant_type.name.clone())
+                        .any(|variant_name| variant_name.as_str() == variant_name.as_str())
             }
             _ => false, // NOTE: We may need to expand this in the future
         }
