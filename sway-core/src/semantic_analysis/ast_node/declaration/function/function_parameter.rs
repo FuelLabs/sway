@@ -38,7 +38,7 @@ impl CopyTypes for TypedFunctionParameter {
 impl ResolveTypes for TypedFunctionParameter {
     fn resolve_types(
         &mut self,
-        type_arguments: Vec<crate::TypeArgument>,
+        _type_arguments: Vec<crate::TypeArgument>,
         enforce_type_arguments: EnforceTypeArguments,
         namespace: &mut crate::namespace::Root,
         module_path: &crate::namespace::Path,

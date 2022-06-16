@@ -259,7 +259,7 @@ impl ReplaceSelfType for TypedStructField {
 impl ResolveTypes for TypedStructField {
     fn resolve_types(
         &mut self,
-        type_arguments: Vec<TypeArgument>,
+        _type_arguments: Vec<TypeArgument>,
         enforce_type_arguments: EnforceTypeArguments,
         namespace: &mut Root,
         module_path: &Path,

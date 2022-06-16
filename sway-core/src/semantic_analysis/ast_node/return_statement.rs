@@ -17,7 +17,7 @@ impl CopyTypes for TypedReturnStatement {
 impl ResolveTypes for TypedReturnStatement {
     fn resolve_types(
         &mut self,
-        type_arguments: Vec<crate::TypeArgument>,
+        _type_arguments: Vec<crate::TypeArgument>,
         enforce_type_arguments: super::EnforceTypeArguments,
         namespace: &mut crate::namespace::Root,
         module_path: &crate::namespace::Path,

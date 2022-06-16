@@ -502,7 +502,7 @@ impl fmt::Display for TypedExpressionVariant {
 impl ResolveTypes for TypedExpressionVariant {
     fn resolve_types(
         &mut self,
-        type_arguments: Vec<TypeArgument>,
+        _type_arguments: Vec<TypeArgument>,
         enforce_type_arguments: EnforceTypeArguments,
         namespace: &mut namespace::Root,
         module_path: &namespace::Path,

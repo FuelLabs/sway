@@ -69,7 +69,7 @@ impl UnresolvedTypeCheck for TypedAstNodeContent {
 impl ResolveTypes for TypedAstNodeContent {
     fn resolve_types(
         &mut self,
-        type_arguments: Vec<TypeArgument>,
+        _type_arguments: Vec<TypeArgument>,
         enforce_type_arguments: EnforceTypeArguments,
         namespace: &mut namespace::Root,
         module_path: &namespace::Path,
@@ -196,7 +196,7 @@ impl DeterministicallyAborts for TypedAstNode {
 impl ResolveTypes for TypedAstNode {
     fn resolve_types(
         &mut self,
-        type_arguments: Vec<TypeArgument>,
+        _type_arguments: Vec<TypeArgument>,
         enforce_type_arguments: EnforceTypeArguments,
         namespace: &mut namespace::Root,
         module_path: &namespace::Path,

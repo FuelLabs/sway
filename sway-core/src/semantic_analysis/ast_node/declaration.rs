@@ -204,7 +204,7 @@ impl UnresolvedTypeCheck for TypedDeclaration {
 impl ResolveTypes for TypedDeclaration {
     fn resolve_types(
         &mut self,
-        type_arguments: Vec<TypeArgument>,
+        _type_arguments: Vec<TypeArgument>,
         enforce_type_arguments: EnforceTypeArguments,
         namespace: &mut namespace::Root,
         module_path: &namespace::Path,
@@ -503,7 +503,7 @@ impl CopyTypes for TypedConstantDeclaration {
 impl ResolveTypes for TypedConstantDeclaration {
     fn resolve_types(
         &mut self,
-        type_arguments: Vec<TypeArgument>,
+        _type_arguments: Vec<TypeArgument>,
         enforce_type_arguments: EnforceTypeArguments,
         namespace: &mut namespace::Root,
         module_path: &namespace::Path,
@@ -615,7 +615,7 @@ impl CopyTypes for TypedReassignment {
 impl ResolveTypes for TypedReassignment {
     fn resolve_types(
         &mut self,
-        type_arguments: Vec<TypeArgument>,
+        _type_arguments: Vec<TypeArgument>,
         enforce_type_arguments: EnforceTypeArguments,
         namespace: &mut namespace::Root,
         module_path: &namespace::Path,
