@@ -1,14 +1,10 @@
-use crate::{
-    config::whitespace::NewlineStyle,
-    utils::{
-        indent_style::Shape, newline_style::apply_newline_style, program_type::insert_program_type,
-    },
+use crate::utils::{
+    indent_style::Shape, newline_style::apply_newline_style, program_type::insert_program_type,
 };
 use std::{path::Path, sync::Arc};
 use sway_core::BuildConfig;
 use sway_parse::ItemKind;
 
-use crate::utils::newline_style::apply_newline_style;
 pub use crate::{
     config::manifest::Config,
     error::{ConfigError, FormatterError},
@@ -50,12 +46,12 @@ impl Formatter {
 
         // Formatted code will be pushed here with raw newline stlye.
         // Which means newlines are not converted into system-specific versions by apply_newline_style
-        let mut formatted_raw_newline = String::new();
+        let mut raw_formatted_code = String::new();
 
         // Insert program type to the formatted code.
-        insert_program_type(&mut formatted_raw_newline, program_type);
+        insert_program_type(&mut raw_formatted_code, program_type);
         // Insert parsed & formatted items into the formatted code.
-        formatted_raw_newline += &items
+        raw_formatted_code += &items
             .into_iter()
             .map(|item| -> Result<String, FormatterError> {
                 use ItemKind::*;
@@ -73,13 +69,35 @@ impl Formatter {
             })
             .collect::<Result<Vec<String>, _>>()?
             .join("\n");
-        let mut formatted_code = String::from(&formatted_raw_newline);
+        let mut formatted_code = String::from(&raw_formatted_code);
         apply_newline_style(
             // The user's setting for `NewlineStyle`
             self.config.whitespace.newline_style,
             &mut formatted_code,
-            &formatted_raw_newline,
+            &raw_formatted_code,
         );
         Ok(formatted_code)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::utils::indent_style::Shape;
+    use std::sync::Arc;
+
+    use super::{Config, Formatter};
+
+    fn get_formatter(config: Config, shape: Shape) -> Formatter {
+        Formatter { config, shape }
+    }
+
+    #[test]
+    fn test_program_type_included() {
+        let correct_sway_code = r#"contract;
+        "#;
+        let mut formatter = get_formatter(Config::default(), Shape::default());
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(correct_sway_code), None).unwrap();
+        assert!(correct_sway_code != formatted_sway_code)
     }
 }
