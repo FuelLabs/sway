@@ -123,7 +123,7 @@ impl<T> Vec<T> {
     /// bounds.
     pub fn get(self, index: u64) -> Option<T> {
         // First check that index is within bounds.
-        if index >= self.len {
+        if self.len <= index {
             return Option::None::<T>();
         };
 
