@@ -828,10 +828,25 @@ pub fn graph_to_path_map(
                             bail!("missing path info for dependency: {}", &dep_name);
                         }
                     })?;
-                let rel_dep_path = detailed
-                    .path
-                    .as_ref()
-                    .ok_or_else(|| anyhow!("missing path info for dependency: {}", dep.name))?;
+                // Check if there is a patch for this dep
+                let patch = parent_manifest
+                    .patches()
+                    .find(|patches| patches.1.contains_key(&dep_name))
+                    .and_then(|patches| patches.1.get(&dep_name));
+                // If there is one fetch the details.
+                let patch_details = patch.and_then(|patch| match patch {
+                    Dependency::Simple(_) => None,
+                    Dependency::Detailed(detailed) => Some(detailed),
+                });
+                // If there is a detail we should have the path.
+                // If not either we do not have a patch so we are checking dependencies of parent
+                // If do not find the path there, either patch or dep is provided as a basic dependency which is not supported
+                let rel_dep_path = if let Some(patch_details) = patch_details {
+                    patch_details.path.as_ref()
+                } else {
+                    detailed.path.as_ref()
+                }
+                .ok_or_else(|| anyhow!("missing path info for dep: {}", &dep_name))?;
                 let path = parent_path.join(rel_dep_path);
                 if !path.exists() {
                     bail!("pinned `path` dependency \"{}\" source missing", dep.name);

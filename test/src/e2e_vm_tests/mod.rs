@@ -41,6 +41,10 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
             ProgramState::Return(0),
         ),
         (
+            "should_pass/forc/dependency_patching",
+            ProgramState::Return(0),
+        ),
+        (
             "should_pass/language/asm_expr_basic",
             ProgramState::Return(6),
         ),
