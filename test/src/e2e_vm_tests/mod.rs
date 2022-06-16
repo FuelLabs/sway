@@ -445,6 +445,10 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
             ])), // "ReturnData":{"data":"0000000000000002", .. }
         ),
         (
+            "should_pass/language/match_expressions_with_self",
+            ProgramState::Return(1),
+        ),
+        (
             "should_pass/test_contracts/auth_testing_contract",
             ProgramState::Revert(0),
         ),
