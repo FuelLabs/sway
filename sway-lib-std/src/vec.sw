@@ -1,9 +1,9 @@
 library vec;
 
+use ::alloc::{alloc, realloc};
 use ::context::registers::heap_ptr;
-use ::option::Option;
 use ::mem::{copy, read, write};
-use ::alloc::alloc;
+use ::option::Option;
 
 struct RawVec<T> {
     ptr: u64,
@@ -41,6 +41,9 @@ impl<T> RawVec<T> {
         self.cap
     }
 
+    /// Grow the capacity of the vector by doubling its current capacity. The
+    /// `realloc` function / allocates memory on the heap and copies the data
+    /// from the old allocation to the new allocation
     fn grow(mut self) {
         let new_cap = if self.cap == 0 {
             1
@@ -48,16 +51,7 @@ impl<T> RawVec<T> {
             2 * self.cap
         };
 
-        // Allocate for `new_cap` elements.
-        let new_ptr = alloc(new_cap * __size_of::<T>());
-
-        // Copy old contents into newly-allocated memory.
-        let copy_size = self.cap * __size_of::<T>();
-        if copy_size > 0 {
-            copy(new_ptr, self.ptr, copy_size);
-        }
-
-        self.ptr = new_ptr;
+        self.ptr = realloc(self.ptr, self.cap * __size_of::<T>(), new_cap * __size_of::<T>());
         self.cap = new_cap;
     }
 }
@@ -99,11 +93,12 @@ impl<T> Vec<T> {
         if self.len == self.buf.capacity() {
             self.buf.grow();
         };
+
         // Get a pointer to the end of the buffer, where the new element will
         // be inserted.
         let end = self.buf.ptr() + self.len * __size_of::<T>();
 
-        // Store `value` at pointer `end`
+        // Write `value` at pointer `end`
         write(end, value);
 
         // Increment length.
@@ -123,21 +118,15 @@ impl<T> Vec<T> {
         self.len = 0;
     }
 
-    /// Returns a copy or reference to an element.
-    ///
-    /// - If `T` is a copy type then returns a copy of the element, or `None` if
-    ///   out of bounds.
-    /// - If `T` is a reference type then returns a reference to the element at
-    ///   that position or `None` if out of bounds.
-    ///
-    /// Note that since a reference is returned, mutating the returned value
-    /// without affecting the underlying vector requires a copy.
+    /// Returns a vector element at `index`, or None if `index` is out of
+    /// bounds.
     pub fn get(self, index: u64) -> Option<T> {
         // First check that index is within bounds.
         if index >= self.len {
             return Option::None::<T>();
         };
 
+        // Get a pointer to the desired element using `index`
         let ptr = self.buf.ptr() + index * __size_of::<T>();
 
         // Read from `ptr`
