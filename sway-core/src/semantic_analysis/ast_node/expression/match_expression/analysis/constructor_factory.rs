@@ -640,7 +640,6 @@ impl ConstructorFactory {
             }
         }
         match type_info {
-            // purposefully throw away the errors if we encounter a match
             Some(type_info) => ok(type_info, warnings, errors),
             None => {
                 errors.push(CompileError::Internal(
