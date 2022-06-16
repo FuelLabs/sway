@@ -99,23 +99,24 @@ impl Namespace {
     /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
     pub(crate) fn resolve_type_with_self(
         &mut self,
-        type_id: TypeId,
+        mut type_id: TypeId,
         self_type: TypeId,
         span: &Span,
         enforce_type_args: EnforceTypeArguments,
     ) -> CompileResult<TypeId> {
-        self.root.resolve_type_with_self(
-            type_id,
-            self_type,
-            span,
-            enforce_type_args,
-            &self.mod_path,
-        )
+        type_id.replace_self_type(self_type);
+        self.root
+            .resolve_type(type_id, span, enforce_type_args, &self.mod_path)
     }
 
     /// Short-hand for calling [Root::resolve_type_without_self] on `root` and with the `mod_path`.
-    pub(crate) fn resolve_type_without_self(&mut self, type_id: TypeId) -> CompileResult<TypeId> {
-        self.root.resolve_type_without_self(type_id, &self.mod_path)
+    pub(crate) fn resolve_type_without_self(
+        &mut self,
+        type_id: TypeId,
+        span: &Span,
+    ) -> CompileResult<TypeId> {
+        self.root
+            .resolve_type(type_id, span, EnforceTypeArguments::Yes, &self.mod_path)
     }
 
     /// Short-hand for calling `monomorphize` from the `Monomorphize` trait, on `root` with the `mod_path`.

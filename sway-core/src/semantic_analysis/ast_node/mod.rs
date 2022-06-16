@@ -480,7 +480,10 @@ impl TypedAstNode {
                             let mut fields_buf = Vec::with_capacity(fields.len());
                             for StorageField { name, type_info } in fields {
                                 let r#type = check!(
-                                    namespace.resolve_type_without_self(insert_type(type_info)),
+                                    namespace.resolve_type_without_self(
+                                        insert_type(type_info),
+                                        &name.span()
+                                    ),
                                     return err(warnings, errors),
                                     warnings,
                                     errors

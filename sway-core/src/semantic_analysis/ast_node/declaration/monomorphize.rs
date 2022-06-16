@@ -107,7 +107,12 @@ where
             (false, false) => {
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = check!(
-                        namespace.resolve_type_without_self(type_argument.type_id, module_path),
+                        namespace.resolve_type(
+                            type_argument.type_id,
+                            &type_argument.span,
+                            enforce_type_arguments,
+                            module_path
+                        ),
                         insert_type(TypeInfo::ErrorRecovery),
                         warnings,
                         errors
