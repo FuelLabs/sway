@@ -1472,7 +1472,8 @@ pub fn check(
         let pkg = &plan.graph[node];
         let path = &plan.path_map[&pkg.id()];
         let manifest = ManifestFile::from_dir(path, sway_git_tag)?;
-        let (_, maybe_namespace) = compile(pkg, &manifest, conf, dep_namespace.clone(), &mut source_map)?;
+        let (_, maybe_namespace) =
+            compile(pkg, &manifest, conf, dep_namespace.clone(), &mut source_map)?;
         if let Some(namespace) = maybe_namespace {
             namespace_map.insert(node, namespace.into());
         }

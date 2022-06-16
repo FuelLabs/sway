@@ -33,18 +33,14 @@ impl Backend {
 
     fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
         let curr_dir = std::env::current_dir().unwrap();
-        eprintln!("curr_dir = {:?}", &curr_dir);
 
         if let Some(path) = find_manifest_dir(&curr_dir) {
-            eprintln!("path = {:?}", &path);
             let files = get_sway_files(path);
-            
+
             for file_path in files {
                 if let Some(path) = file_path.to_str() {
-                    eprintln!("files = {:?}", &path);
                     // store the document
                     let text_document = TextDocument::build_from_path(path)?;
-                    eprintln!("text_document = {:#?}", &text_document);
                     self.session.store_document(text_document)?;
                     // parse the document for tokens
                     let _ = self.session.parse_document(path);
@@ -88,7 +84,10 @@ impl Backend {
         if self.config.parsed_tokens_as_warnings {
             if let Some(document) = self.session.documents.get(uri.path()) {
                 //let diagnostics = debug::generate_warnings_for_parsed_tokens(document.get_tokens());
-                let diagnostics = debug::generate_warnings_for_typed_tokens(&document.get_token_map(), uri.path());
+                let diagnostics = debug::generate_warnings_for_typed_tokens(
+                    &document.get_token_map(),
+                    uri.path(),
+                );
                 self.client
                     .publish_diagnostics(uri, diagnostics, None)
                     .await;
@@ -246,10 +245,11 @@ impl LanguageServer for Backend {
 #[cfg(test)]
 mod tests {
     use serde_json::json;
-    use std::{env, fs::File, io::{Read, Write}, path::PathBuf};
+    use std::{env, fs::File, io::Read};
     use tower::{Service, ServiceExt};
 
     use super::*;
+    use crate::utils::test_programs::{TEST_MANIFEST, TEST_MANIFEST_LOCK, TEST_SWAY_PROGRAM};
     use futures::stream::StreamExt;
     use tower_lsp::jsonrpc::{self, Request, Response};
     use tower_lsp::LspService;
@@ -267,7 +267,11 @@ mod tests {
         // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
         messages.next().await.unwrap();
 
-        let manifest_dir = PathBuf::from("/Users/joshuabatty/Documents/rust/fuel/sway/examples/liquidity_pool");
+        let manifest_dir = std::env::current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("examples/liquidity_pool");
         let mut file = File::open(manifest_dir.join("src/main.sw")).unwrap();
         let mut sway_program = String::new();
         file.read_to_string(&mut sway_program).unwrap();
@@ -278,7 +282,7 @@ mod tests {
 
         // ignore the "textDocument/publishDiagnostics" notification
         messages.next().await.unwrap();
-        
+
         // send "shutdown" request
         let _ = shutdown_request(&mut service).await;
 
@@ -286,46 +290,30 @@ mod tests {
         exit_notification(&mut service).await;
     }
 
-    // Simple sway script used for testing LSP capabilites
-    const SWAY_PROGRAM: &str = r#"script;
-
-//use std::*;
-
-/// A simple Particle struct
-struct Particle {
-    position: [u64; 3],
-    velocity: [u64; 3],
-    acceleration: [u64; 3],
-    mass: u64,
-}
-
-impl Particle {
-    /// Creates a new Particle with the given position, velocity, acceleration, and mass
-    fn new(position: [u64; 3], velocity: [u64; 3], acceleration: [u64; 3], mass: u64) -> Particle {
-        Particle {
-            position: position,
-            velocity: velocity,
-            acceleration: acceleration,
-            mass: mass,
-        }
-    }
-}
-
-fn main() {
-    let position = [0, 0, 0];
-    let velocity = [0, 1, 0];
-    let acceleration = [1, 1, 0];
-    let mass = 10;
-    let p = ~Particle::new(position, velocity, acceleration, mass);
-}
-"#;
-
     fn load_test_sway_file(sway_file: &str) -> Url {
-        let file_name = "tmp_sway_test_file.sw";
-        let dir = env::temp_dir().join(file_name);
-        let mut file = File::create(&dir).unwrap();
-        file.write_all(sway_file.as_bytes()).unwrap();
-        Url::from_file_path(dir.as_os_str().to_str().unwrap()).unwrap()
+        let manifest_dir = env::temp_dir();
+
+        // Insert default test manifest file
+        std::fs::write(
+            std::path::Path::new(&manifest_dir).join("Forc.toml"),
+            TEST_MANIFEST,
+        )
+        .unwrap();
+
+        // Insert default manifest lock file
+        std::fs::write(
+            std::path::Path::new(&manifest_dir).join("Forc.lock"),
+            TEST_MANIFEST_LOCK,
+        )
+        .unwrap();
+
+        let file_path = std::path::Path::new(&manifest_dir)
+            .join("src")
+            .join("main.sw");
+        std::fs::create_dir_all(manifest_dir.join("src")).unwrap();
+        std::fs::write(file_path.clone(), sway_file).unwrap();
+
+        Url::from_file_path(file_path.as_os_str().to_str().unwrap()).unwrap()
     }
 
     async fn initialize_request(service: &mut LspService<Backend>) -> Request {
@@ -476,10 +464,10 @@ fn main() {
         // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
         messages.next().await.unwrap();
 
-        let uri = load_test_sway_file(SWAY_PROGRAM);
+        let uri = load_test_sway_file(TEST_SWAY_PROGRAM);
 
         // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, SWAY_PROGRAM).await;
+        did_open_notification(&mut service, &uri, TEST_SWAY_PROGRAM).await;
 
         // ignore the "textDocument/publishDiagnostics" notification
         messages.next().await.unwrap();
@@ -501,10 +489,10 @@ fn main() {
         // send "initialized" notification
         initialized_notification(&mut service).await;
 
-        let uri = load_test_sway_file(SWAY_PROGRAM);
+        let uri = load_test_sway_file(TEST_SWAY_PROGRAM);
 
         // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, SWAY_PROGRAM).await;
+        did_open_notification(&mut service, &uri, TEST_SWAY_PROGRAM).await;
 
         // send "textDocument/didClose" notification for `uri`
         did_close_notification(&mut service).await;

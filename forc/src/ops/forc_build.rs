@@ -202,4 +202,3 @@ fn create_new_lock(
     fs::write(&lock_path, &string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
     Ok(())
 }
-

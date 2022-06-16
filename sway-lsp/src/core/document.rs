@@ -8,7 +8,10 @@ use super::typed_token_type::TokenMap;
 use crate::{capabilities, core::token::traverse_node, utils};
 use ropey::Rope;
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
-use sway_core::{parse, semantic_analysis::ast_node::TypedAstNode, CompileAstResult, TreeType};
+use sway_core::{
+    parse, semantic_analysis::ast_node::TypedAstNode, CompileAstResult, TreeType, TypedProgramKind,
+};
+use sway_types::Spanned;
 use tower_lsp::lsp_types::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
 
 #[derive(Debug)]
@@ -176,30 +179,21 @@ impl TextDocument {
         let manifest_dir = PathBuf::from(self.get_uri());
         let res = forc::ops::forc_check::check(&manifest_dir).unwrap();
 
-        use sway_core::TypedProgramKind;
-
         match res {
             CompileAstResult::Failure { .. } => None,
             CompileAstResult::Success { typed_program, .. } => {
                 match typed_program.kind {
-                    TypedProgramKind::Predicate{ main_function, ..} | TypedProgramKind::Script{ main_function, ..} => {
-                        eprintln!("PREDICATE OR SCRIPT!");
-                        use sway_types::Spanned;
-                        let pos = main_function.name.span().start_pos().line_col();
-                        let line_num = pos.0 as u32;
-
-                        eprintln!(
-                            "line num = {:?} | name: = {:?} ",
-                            line_num,
-                            main_function.name.as_str(),
-                        );
+                    TypedProgramKind::Predicate { main_function, .. }
+                    | TypedProgramKind::Script { main_function, .. } => {
+                        // This will be used when creating a 'run' button in VS Code
+                        let _main_fn_line_num =
+                            main_function.name.span().start_pos().line_col().0 as u32;
+                        eprintln!("main_fn_line_num = {}", _main_fn_line_num);
                     }
-                    _ => {
-                        eprintln!("No Main fn found in file!");
-                    }
+                    _ => (),
                 }
                 Some(typed_program.root.all_nodes)
-            },
+            }
         }
 
         // let text = Arc::from(self.get_text());
