@@ -66,3 +66,27 @@ impl Formatter {
         Ok(formatted_code)
     }
 }
+#[cfg(test)]
+mod tests {
+    use crate::utils::indent_style::Shape;
+    use std::sync::Arc;
+
+    use super::{Config, Formatter};
+
+    fn get_formatter(config: Config, shape: Shape) -> Formatter {
+        Formatter { config, shape }
+    }
+
+    #[test]
+    fn test_const() {
+        let sway_code_to_format = r#"contract;
+pub const TEST:u16=10;"#;
+        // We will not have contract; in the output before #1997 is addressed.
+        let correct_sway_code = r#"pub const TEST: u16 = 10;"#;
+
+        let mut formatter = get_formatter(Config::default(), Shape::default());
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert!(correct_sway_code == formatted_sway_code)
+    }
+}
