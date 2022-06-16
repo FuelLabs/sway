@@ -180,7 +180,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         let root_file_name = format!("{}{}", &manifest.project.name, SWAY_BIN_ROOT_SUFFIX);
         let root_path = output_dir.join(root_file_name);
         fs::write(root_path, &root)?;
-        info!("  Root hash of the Predicate bytecode: {}", root);
+        info!("  Predicate root: {}", root);
     }
 
     Ok(compiled)

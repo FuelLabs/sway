@@ -14,4 +14,4 @@ pub const SWAY_BIN_HASH_SUFFIX: &str = "-bin-hash";
 
 /// The suffix that helps identify the file which contains the root hash of the binary file created
 /// when predicates are built.
-pub const SWAY_BIN_ROOT_SUFFIX: &str = "-bin-root-hash";
+pub const SWAY_BIN_ROOT_SUFFIX: &str = "-bin-root";
