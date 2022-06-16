@@ -92,8 +92,7 @@ fn test_vector_new_u8() {
     assert(v.is_empty() == true);
 
     match v.get(0) {
-        Option::Some(val) => revert(0), Option::None => {
-        },
+        Option::Some(val) => revert(0), Option::None => (), 
     }
 
     // Make sure pushing again after clear() works
@@ -113,8 +112,7 @@ fn test_vector_new_u8() {
 
     // Out of bounds access
     match v.get(5) {
-        Option::Some(val) => revert(0), Option::None => {
-        },
+        Option::Some(val) => revert(0), Option::None => (), 
     }
 }
 
@@ -184,8 +182,7 @@ fn test_vector_new_b256() {
     assert(v.is_empty() == true);
 
     match v.get(0) {
-        Option::Some(val) => revert(0), Option::None => {
-        },
+        Option::Some(val) => revert(0), Option::None => (), 
     }
 
     // Make sure pushing again after clear() works
@@ -205,8 +202,7 @@ fn test_vector_new_b256() {
 
     // Out of bounds access
     match v.get(5) {
-        Option::Some(val) => revert(0), Option::None => {
-        },
+        Option::Some(val) => revert(0), Option::None => (), 
     }
 }
 
@@ -324,8 +320,7 @@ fn test_vector_new_struct() {
     assert(v.is_empty() == true);
 
     match v.get(0) {
-        Option::Some(val) => revert(0), Option::None => {
-        },
+        Option::Some(val) => revert(0), Option::None => (), 
     }
 
     // Make sure pushing again after clear() works
@@ -359,8 +354,7 @@ fn test_vector_new_struct() {
 
     // Out of bounds access
     match v.get(5) {
-        Option::Some(val) => revert(0), Option::None => {
-        },
+        Option::Some(val) => revert(0), Option::None => (), 
     }
 }
 
@@ -513,8 +507,7 @@ fn test_vector_new_tuple() {
     assert(v.is_empty() == true);
 
     match v.get(0) {
-        Option::Some(val) => revert(0), Option::None => {
-        },
+        Option::Some(val) => revert(0), Option::None => (), 
     }
 
     // Make sure pushing again after clear() works
@@ -538,8 +531,7 @@ fn test_vector_new_tuple() {
 
     // Out of bounds access
     match v.get(5) {
-        Option::Some(val) => revert(0), Option::None => {
-        },
+        Option::Some(val) => revert(0), Option::None => (), 
     }
 }
 
@@ -692,8 +684,7 @@ fn test_vector_with_capacity_u64() {
     assert(v.is_empty() == true);
 
     match v.get(0) {
-        Option::Some(val) => revert(0), Option::None => {
-        },
+        Option::Some(val) => revert(0), Option::None => (), 
     }
 
     // Make sure pushing again after clear() works
@@ -713,7 +704,6 @@ fn test_vector_with_capacity_u64() {
 
     // Out of bounds access
     match v.get(5) {
-        Option::Some(val) => revert(0), Option::None => {
-        },
+        Option::Some(val) => revert(0), Option::None => (), 
     }
 }

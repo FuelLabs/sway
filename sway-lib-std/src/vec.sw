@@ -1,14 +1,14 @@
 library vec;
 
 use ::alloc::{alloc, realloc};
-use ::intrinsics::size_of;
 use ::context::registers::heap_ptr;
+use ::intrinsics::size_of;
 use ::mem::{read, write};
 use ::option::Option;
 
 struct RawVec<T> {
-    ptr: u64,
     cap: u64,
+    ptr: u64,
 }
 
 impl<T> RawVec<T> {
@@ -16,8 +16,8 @@ impl<T> RawVec<T> {
     fn new() -> Self {
         RawVec {
             // Heap pointer points to _unallocated_ memory.
-            ptr: heap_ptr() + 1,
             cap: 0,
+            ptr: heap_ptr() + 1,
         }
     }
 
@@ -27,8 +27,8 @@ impl<T> RawVec<T> {
     fn with_capacity(capacity: u64) -> Self {
         RawVec {
             // Heap pointer points to _unallocated_ memory.
-            ptr: alloc(capacity * size_of::<T>()),
             cap: capacity,
+            ptr: alloc(capacity * size_of::<T>()),
         }
     }
 
