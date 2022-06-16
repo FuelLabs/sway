@@ -41,7 +41,7 @@ fn test_vector_new_u8() {
 
     assert(v.len() == 0);
     assert(v.capacity() == 0);
-    assert(v.is_empty() == true);
+    assert(v.is_empty());
 
     v.push(n0);
     v.push(n1);
