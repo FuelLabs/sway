@@ -4,10 +4,10 @@ use sway_types::Span;
 
 use crate::{
     error::{err, ok},
-    semantic_analysis::{EnforceTypeArguments, Mode, TCOpts, TypeCheckArguments},
+    semantic_analysis::{Context, EnforceTypeArguments},
     type_engine::*,
     types::DeterministicallyAborts,
-    CompileError, CompileResult, IntrinsicFunctionKind, Namespace,
+    CompileError, CompileResult, IntrinsicFunctionKind,
 };
 
 use super::TypedExpression;
@@ -105,25 +105,18 @@ impl UnresolvedTypeCheck for TypedIntrinsicFunctionKind {
 
 impl TypedIntrinsicFunctionKind {
     pub(crate) fn type_check(
+        mut ctx: Context,
         kind: IntrinsicFunctionKind,
-        self_type: TypeId,
-        namespace: &mut Namespace,
-        opts: TCOpts,
-    ) -> CompileResult<(TypedIntrinsicFunctionKind, TypeId)> {
+    ) -> CompileResult<(Self, TypeId)> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let (intrinsic_function, return_type) = match kind {
             IntrinsicFunctionKind::SizeOfVal { exp } => {
+                let ctx = ctx
+                    .with_help_text("")
+                    .with_type_annotation(insert_type(TypeInfo::Unknown));
                 let exp = check!(
-                    TypedExpression::type_check(TypeCheckArguments {
-                        checkee: *exp,
-                        namespace,
-                        self_type,
-                        mode: Mode::NonAbi,
-                        opts,
-                        return_type_annotation: insert_type(TypeInfo::Unknown),
-                        help_text: Default::default(),
-                    }),
+                    TypedExpression::type_check(ctx, *exp),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -138,12 +131,7 @@ impl TypedIntrinsicFunctionKind {
                 type_span,
             } => {
                 let type_id = check!(
-                    namespace.resolve_type_with_self(
-                        type_name,
-                        self_type,
-                        &type_span,
-                        EnforceTypeArguments::Yes
-                    ),
+                    ctx.resolve_type_with_self(type_name, &type_span, EnforceTypeArguments::Yes),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
                     errors,
@@ -158,12 +146,7 @@ impl TypedIntrinsicFunctionKind {
                 type_span,
             } => {
                 let type_id = check!(
-                    namespace.resolve_type_with_self(
-                        type_name,
-                        self_type,
-                        &type_span,
-                        EnforceTypeArguments::Yes
-                    ),
+                    ctx.resolve_type_with_self(type_name, &type_span, EnforceTypeArguments::Yes),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
                     errors,

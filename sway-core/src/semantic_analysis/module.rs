@@ -63,15 +63,8 @@ impl TypedModule {
         let typed_nodes = nodes
             .into_iter()
             .map(|node| {
-                TypedAstNode::type_check(TypeCheckArguments {
-                    checkee: node,
-                    namespace,
-                    return_type_annotation: insert_type(TypeInfo::Unknown),
-                    help_text: Default::default(),
-                    self_type: insert_type(TypeInfo::Contract),
-                    mode: Mode::NonAbi,
-                    opts: Default::default(),
-                })
+                let ctx = Context::from_module_namespace(namespace);
+                TypedAstNode::type_check(ctx, node)
             })
             .filter_map(|res| res.ok(&mut warnings, &mut errors))
             .collect();

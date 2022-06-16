@@ -58,10 +58,7 @@ impl ReplaceSelfType for TypeParameter {
 }
 
 impl TypeParameter {
-    pub(crate) fn type_check(
-        type_parameter: TypeParameter,
-        namespace: &mut Namespace,
-    ) -> CompileResult<TypeParameter> {
+    pub(crate) fn type_check(ctx: Context, type_parameter: TypeParameter) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         if !type_parameter.trait_constraints.is_empty() {
@@ -78,7 +75,7 @@ impl TypeParameter {
             name: type_parameter.name_ident.clone(),
             type_id,
         };
-        namespace
+        ctx.namespace
             .insert_symbol(type_parameter.name_ident.clone(), type_parameter_decl)
             .ok(&mut warnings, &mut errors);
         let type_parameter = TypeParameter {
