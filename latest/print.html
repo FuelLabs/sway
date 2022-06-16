@@ -2818,12 +2818,25 @@ custom_lib = { path = &quot;../custom_lib&quot; }
 <p>Where to search for the project root [default: .]</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="forc-build"><a class="header" href="#forc-build">forc-build</a></h1>
 <p>Compile the current or target project.</p>
-<p>The output produced will depend on the project's program type. Building script, predicate and
-contract projects will produce their bytecode in binary format <code>&lt;project-name&gt;.bin</code>. Building script
-projects will also produce a file containing the hash of the bytecode binary
-<code>&lt;project-name&gt;-bin-hash</code> (hashed using <code>fuel_cypto::Hasher</code>).</p>
-<p>Building contracts and libraries will also produce the public ABI in JSON format
+<p>The output produced will depend on the project's program type.</p>
+<ul>
+<li>
+<p><code>script</code>, <code>predicate</code> and <code>contract</code> projects will produce their bytecode in binary format
+<code>&lt;project-name&gt;.bin</code>.</p>
+</li>
+<li>
+<p><code>script</code> projects will also produce a file containing the hash of the bytecode binary
+<code>&lt;project-name&gt;-bin-hash</code> (using <code>fuel_cypto::Hasher</code>).</p>
+</li>
+<li>
+<p><code>predicate</code> projects will also produce a file containing the <strong>root</strong> hash of the bytecode binary
+<code>&lt;project-name&gt;-bin-root</code> (using <code>fuel_tx::Contract::root_from_code</code>).</p>
+</li>
+<li>
+<p><code>contract</code> and <code>library</code> projects will also produce the public ABI in JSON format
 <code>&lt;project-name&gt;-abi.json</code>.</p>
+</li>
+</ul>
 <h2 id="usage-1"><a class="header" href="#usage-1">USAGE:</a></h2>
 <p>forc build [OPTIONS]</p>
 <h2 id="options-1"><a class="header" href="#options-1">OPTIONS:</a></h2>
