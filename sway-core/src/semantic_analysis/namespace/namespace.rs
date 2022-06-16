@@ -122,7 +122,7 @@ impl Namespace {
     pub(crate) fn monomorphize<T>(
         &mut self,
         decl: T,
-        type_arguments: Vec<TypeArgument>,
+        mut type_arguments: Vec<TypeArgument>,
         enforce_type_arguments: EnforceTypeArguments,
         self_type: Option<TypeId>,
         call_site_span: Option<&Span>,
@@ -130,10 +130,14 @@ impl Namespace {
     where
         T: MonomorphizeHelper<Output = T> + Spanned,
     {
+        if let Some(self_type) = self_type {
+            for type_argument in type_arguments.iter_mut() {
+                type_argument.replace_self_type(self_type);
+            }
+        }
         decl.monomorphize(
             type_arguments,
             enforce_type_arguments,
-            self_type,
             call_site_span,
             &mut self.root,
             &self.mod_path,

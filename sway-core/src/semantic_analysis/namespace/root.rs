@@ -89,7 +89,6 @@ impl Root {
                             decl.monomorphize(
                                 type_arguments,
                                 enforce_type_arguments,
-                                Some(self_type),
                                 Some(span),
                                 self,
                                 mod_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
@@ -105,7 +104,6 @@ impl Root {
                             decl.monomorphize(
                                 type_arguments,
                                 enforce_type_arguments,
-                                Some(self_type),
                                 Some(span),
                                 self,
                                 mod_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
@@ -190,7 +188,6 @@ impl Root {
                                 type_arguments,
                                 EnforceTypeArguments::No,
                                 None,
-                                None,
                                 self,
                                 mod_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
                             ),
@@ -205,7 +202,6 @@ impl Root {
                             decl.monomorphize(
                                 type_arguments,
                                 EnforceTypeArguments::No,
-                                None,
                                 None,
                                 self,
                                 mod_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
