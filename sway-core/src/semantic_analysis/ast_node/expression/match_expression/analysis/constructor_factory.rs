@@ -629,16 +629,11 @@ impl ConstructorFactory {
     }
 
     fn resolve_possible_types(&self, pattern: &Pattern, span: &Span) -> CompileResult<&TypeInfo> {
-        let mut warnings = vec![];
+        let warnings = vec![];
         let mut errors = vec![];
         let mut type_info = None;
         for possible_type in self.possible_types.iter() {
-            let matches = check!(
-                pattern.matches_type_info(possible_type, span),
-                continue,
-                warnings,
-                errors
-            );
+            let matches = pattern.matches_type_info(possible_type, span);
             if matches {
                 type_info = Some(possible_type);
                 break;
