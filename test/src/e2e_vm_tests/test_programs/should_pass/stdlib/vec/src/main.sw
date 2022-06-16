@@ -73,7 +73,7 @@ fn test_vector_new_u8() {
 
     assert(v.len() == 9);
     assert(v.capacity() == 16);
-    assert(v.is_empty() == false);
+    assert(!v.is_empty());
 
     // Test after capacity change
     match v.get(4) {
