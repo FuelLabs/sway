@@ -657,13 +657,7 @@ impl Pattern {
         }
     }
 
-    pub(crate) fn matches_type_info(
-        &self,
-        type_info: &TypeInfo,
-        span: &Span,
-    ) -> CompileResult<bool> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn matches_type_info(&self, type_info: &TypeInfo, span: &Span) -> bool {
         match (self, type_info) {
             (pattern, TypeInfo::Ref(type_id, _)) => {
                 pattern.matches_type_info(&look_up_type_id(*type_id), span)
@@ -680,20 +674,13 @@ impl Pattern {
                     ..
                 },
             ) => {
-                let res = l_enum_name.as_str() == r_enum_name.as_str()
+                l_enum_name.as_str() == r_enum_name.as_str()
                     && variant_types
                         .iter()
                         .map(|x| x.name.clone())
-                        .any(|x| x.as_str() == variant_name.as_str());
-                ok(res, warnings, errors)
+                        .any(|x| x.as_str() == variant_name.as_str())
             }
-            _ => {
-                errors.push(CompileError::Unimplemented(
-                    "cannot yet compare this pattern with this type",
-                    span.clone(),
-                ));
-                err(warnings, errors)
-            }
+            _ => false, // NOTE: We may need to expand this in the future
         }
     }
 
