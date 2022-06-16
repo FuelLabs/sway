@@ -4,17 +4,16 @@ use {
             STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
         },
         error::{err, ok, CompileError, CompileResult, CompileWarning},
-        ident,
         type_engine::{insert_type, AbiName, IntegerBits},
         AbiDeclaration, AsmExpression, AsmOp, AsmRegister, AsmRegisterDeclaration, AstNode,
-        AstNodeContent, BuiltinProperty, CallPath, CodeBlock, ConstantDeclaration, Declaration,
-        EnumDeclaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter, ImplSelf,
-        ImplTrait, ImportType, IncludeStatement, LazyOp, Literal, MatchBranch, MethodName,
-        ParseTree, Purity, Reassignment, ReassignmentTarget, ReturnStatement, Scrutinee,
-        StorageDeclaration, StorageField, StructDeclaration, StructExpressionField, StructField,
-        StructScrutineeField, Supertrait, TraitConstraint, TraitDeclaration, TraitFn, TreeType,
-        TypeArgument, TypeInfo, TypeParameter, UseStatement, VariableDeclaration, Visibility,
-        WhileLoop,
+        AstNodeContent, CallPath, CodeBlock, ConstantDeclaration, Declaration, EnumDeclaration,
+        EnumVariant, Expression, FunctionDeclaration, FunctionParameter, ImplSelf, ImplTrait,
+        ImportType, IncludeStatement, IntrinsicFunctionKind, LazyOp, Literal, MatchBranch,
+        MethodName, ParseTree, Purity, Reassignment, ReassignmentTarget, ReturnStatement,
+        Scrutinee, StorageDeclaration, StorageField, StructDeclaration, StructExpressionField,
+        StructField, StructScrutineeField, Supertrait, TraitConstraint, TraitDeclaration, TraitFn,
+        TreeType, TypeArgument, TypeInfo, TypeParameter, UseStatement, VariableDeclaration,
+        Visibility, WhileLoop,
     },
     std::{
         collections::HashMap,
@@ -134,9 +133,9 @@ pub enum ConvertParseTreeError {
     QualifiedPathRootsNotImplemented { span: Span },
     #[error("char literals are not implemented")]
     CharLiteralsNotImplemented { span: Span },
-    #[error("hex literals must have either 2 or 64 digits")]
+    #[error("hex literals must have 1..16 or 64 digits")]
     HexLiteralLength { span: Span },
-    #[error("binary literals must have either 8 or 258 digits")]
+    #[error("binary literals must have either 1..64 or 256 digits")]
     BinaryLiteralLength { span: Span },
     #[error("u8 literal out of range")]
     U8LiteralOutOfRange { span: Span },
@@ -182,10 +181,16 @@ pub enum ConvertParseTreeError {
     GetStorageKeyTooManyArgs { span: Span },
     #[error("recursive types are not supported")]
     RecursiveType { span: Span },
+    #[error("enum variant \"{name}\" already declared")]
+    DuplicateEnumVariant { name: Ident, span: Span },
+    #[error("storage field \"{name}\" already declared")]
+    DuplicateStorageField { name: Ident, span: Span },
+    #[error("struct field \"{name}\" already declared")]
+    DuplicateStructField { name: Ident, span: Span },
 }
 
-impl ConvertParseTreeError {
-    pub fn span(&self) -> Span {
+impl Spanned for ConvertParseTreeError {
+    fn span(&self) -> Span {
         match self {
             ConvertParseTreeError::PubUseNotSupported { span } => span.clone(),
             ConvertParseTreeError::ReturnOutsideOfBlock { span } => span.clone(),
@@ -233,6 +238,9 @@ impl ConvertParseTreeError {
             ConvertParseTreeError::ConstrainedNonExistentType { span, .. } => span.clone(),
             ConvertParseTreeError::GetStorageKeyTooManyArgs { span, .. } => span.clone(),
             ConvertParseTreeError::RecursiveType { span } => span.clone(),
+            ConvertParseTreeError::DuplicateEnumVariant { span, .. } => span.clone(),
+            ConvertParseTreeError::DuplicateStorageField { span, .. } => span.clone(),
+            ConvertParseTreeError::DuplicateStructField { span, .. } => span.clone(),
         }
     }
 }
@@ -477,6 +485,7 @@ fn item_struct_to_struct_declaration(
     ec: &mut ErrorContext,
     item_struct: ItemStruct,
 ) -> Result<StructDeclaration, ErrorEmitted> {
+    let mut errors = Vec::new();
     let span = item_struct.span();
     let fields = item_struct
         .fields
@@ -484,11 +493,28 @@ fn item_struct_to_struct_declaration(
         .into_iter()
         .map(|type_field| type_field_to_struct_field(ec, type_field))
         .collect::<Result<Vec<_>, _>>()?;
+
     if fields.iter().any(
-        |field| matches!(&field.r#type, TypeInfo::Custom { name, ..} if name == &item_struct.name),
+        |field| matches!(&field.type_info, TypeInfo::Custom { name, ..} if name == &item_struct.name),
     ) {
-        return Err(ec.error(ConvertParseTreeError::RecursiveType { span }));
+        errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
+
+    // Make sure each struct field is declared once
+    let mut names_of_fields = std::collections::HashSet::new();
+    fields.iter().for_each(|v| {
+        if !names_of_fields.insert(v.name.clone()) {
+            errors.push(ConvertParseTreeError::DuplicateStructField {
+                name: v.name.clone(),
+                span: v.name.span(),
+            });
+        }
+    });
+
+    if let Some(errors) = ec.errors(errors) {
+        return Err(errors);
+    }
+
     let struct_declaration = StructDeclaration {
         name: item_struct.name,
         fields,
@@ -507,6 +533,7 @@ fn item_enum_to_enum_declaration(
     ec: &mut ErrorContext,
     item_enum: ItemEnum,
 ) -> Result<EnumDeclaration, ErrorEmitted> {
+    let mut errors = Vec::new();
     let span = item_enum.span();
     let variants = item_enum
         .fields
@@ -515,11 +542,28 @@ fn item_enum_to_enum_declaration(
         .enumerate()
         .map(|(tag, type_field)| type_field_to_enum_variant(ec, type_field, tag))
         .collect::<Result<Vec<_>, _>>()?;
+
     if variants.iter().any(|variant| {
-       matches!(&variant.r#type, TypeInfo::Custom { name, ..} if name == &item_enum.name)
+       matches!(&variant.type_info, TypeInfo::Custom { name, ..} if name == &item_enum.name)
     }) {
-        return Err(ec.error(ConvertParseTreeError::RecursiveType { span }));
+        errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
+
+    // Make sure each enum variant is declared once
+    let mut names_of_variants = std::collections::HashSet::new();
+    variants.iter().for_each(|v| {
+        if !names_of_variants.insert(v.name.clone()) {
+            errors.push(ConvertParseTreeError::DuplicateEnumVariant {
+                name: v.name.clone(),
+                span: v.name.span(),
+            });
+        }
+    });
+
+    if let Some(errors) = ec.errors(errors) {
+        return Err(errors);
+    }
+
     let enum_declaration = EnumDeclaration {
         name: item_enum.name,
         type_parameters: generic_params_opt_to_type_parameters(
@@ -588,7 +632,7 @@ fn get_attributed_purity(
                     _otherwise => {
                         return Err(ec.error(ConvertParseTreeError::InvalidAttributeArgument {
                             attribute: "storage".to_owned(),
-                            span: arg.span().clone(),
+                            span: arg.span(),
                         }));
                     }
                 }
@@ -671,7 +715,7 @@ fn item_impl_to_declaration(
                 trait_name: path_type_to_call_path(ec, path_type)?,
                 type_implementing_for,
                 type_implementing_for_span,
-                type_arguments: type_parameters,
+                type_parameters,
                 functions,
                 block_span,
             };
@@ -744,18 +788,31 @@ fn item_storage_to_storage_declaration(
     ec: &mut ErrorContext,
     item_storage: ItemStorage,
 ) -> Result<StorageDeclaration, ErrorEmitted> {
+    let mut errors = Vec::new();
     let span = item_storage.span();
-    let storage_declaration = StorageDeclaration {
-        span,
-        fields: {
-            item_storage
-                .fields
-                .into_inner()
-                .into_iter()
-                .map(|storage_field| storage_field_to_storage_field(ec, storage_field))
-                .collect::<Result<_, _>>()?
-        },
-    };
+    let fields: Vec<StorageField> = item_storage
+        .fields
+        .into_inner()
+        .into_iter()
+        .map(|storage_field| storage_field_to_storage_field(ec, storage_field))
+        .collect::<Result<_, _>>()?;
+
+    // Make sure each storage field is declared once
+    let mut names_of_fields = std::collections::HashSet::new();
+    fields.iter().for_each(|v| {
+        if !names_of_fields.insert(v.name.clone()) {
+            errors.push(ConvertParseTreeError::DuplicateStorageField {
+                name: v.name.clone(),
+                span: v.name.span(),
+            });
+        }
+    });
+
+    if let Some(errors) = ec.errors(errors) {
+        return Err(errors);
+    }
+
+    let storage_declaration = StorageDeclaration { span, fields };
     Ok(storage_declaration)
 }
 
@@ -767,7 +824,7 @@ fn type_field_to_struct_field(
     let type_span = type_field.ty.span();
     let struct_field = StructField {
         name: type_field.name,
-        r#type: ty_to_type_info(ec, type_field.ty)?,
+        type_info: ty_to_type_info(ec, type_field.ty)?,
         span,
         type_span,
     };
@@ -853,7 +910,7 @@ fn type_field_to_enum_variant(
     let span = type_field.span();
     let enum_variant = EnumVariant {
         name: type_field.name,
-        r#type: ty_to_type_info(ec, type_field.ty)?,
+        type_info: ty_to_type_info(ec, type_field.ty)?,
         tag,
         span,
     };
@@ -1206,7 +1263,21 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
         } => {
             let value = expr_to_expression(ec, *value)?;
             let var_decl_span = value.span();
-            let var_decl_name = ident::random_name(var_decl_span.clone(), None);
+
+            // Generate a deterministic name for the variable returned by the match expression.
+            // Because the parser is single threaded, the name generated below will be stable.
+            static COUNTER: AtomicUsize = AtomicUsize::new(0);
+            let match_return_var_name = format!(
+                "{}{}",
+                crate::constants::MATCH_RETURN_VAR_NAME_PREFIX,
+                COUNTER.load(Ordering::SeqCst)
+            );
+            COUNTER.fetch_add(1, Ordering::SeqCst);
+            let var_decl_name = Ident::new_with_override(
+                Box::leak(match_return_var_name.into_boxed_str()),
+                var_decl_span.clone(),
+            );
+
             let var_decl_exp = Expression::VariableExpression {
                 name: var_decl_name.clone(),
                 span: var_decl_span,
@@ -1341,7 +1412,7 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             };
             match method_type_opt {
                 Some(type_name) => {
-                    let type_name_span = type_name.span().clone();
+                    let type_name_span = type_name.span();
                     let type_name = match type_name_to_type_info_opt(&type_name) {
                         Some(type_info) => type_info,
                         None => TypeInfo::Custom {
@@ -1390,10 +1461,11 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         };
                         let type_span = ty.span();
                         let type_name = ty_to_type_info(ec, ty)?;
-                        Expression::BuiltinGetTypeProperty {
-                            builtin: BuiltinProperty::SizeOfType,
-                            type_name,
-                            type_span,
+                        Expression::IntrinsicFunction {
+                            kind: IntrinsicFunctionKind::SizeOfType {
+                                type_name,
+                                type_span,
+                            },
                             span,
                         }
                     } else if call_path.prefixes.is_empty()
@@ -1409,7 +1481,10 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                             let error = ConvertParseTreeError::GenericsNotSupportedHere { span };
                             return Err(ec.error(error));
                         }
-                        Expression::BuiltinGetStorageKey { span }
+                        Expression::IntrinsicFunction {
+                            kind: IntrinsicFunctionKind::GetStorageKey,
+                            span,
+                        }
                     } else if call_path.prefixes.is_empty()
                         && !call_path.is_absolute
                         && Intrinsic::try_from_str(call_path.suffix.as_str())
@@ -1433,10 +1508,11 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         };
                         let type_span = ty.span();
                         let type_name = ty_to_type_info(ec, ty)?;
-                        Expression::BuiltinGetTypeProperty {
-                            builtin: BuiltinProperty::IsRefType,
-                            type_name,
-                            type_span,
+                        Expression::IntrinsicFunction {
+                            kind: IntrinsicFunctionKind::IsRefType {
+                                type_name,
+                                type_span,
+                            },
                             span,
                         }
                     } else if call_path.prefixes.is_empty()
@@ -1451,7 +1527,10 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                                 return Err(ec.error(error));
                             }
                         };
-                        Expression::SizeOfVal { exp, span }
+                        Expression::IntrinsicFunction {
+                            kind: IntrinsicFunctionKind::SizeOfVal { exp },
+                            span,
+                        }
                     } else {
                         let type_arguments = match generics_opt {
                             Some((_double_colon_token, generic_args)) => {
@@ -1784,7 +1863,7 @@ fn storage_field_to_storage_field(
 ) -> Result<StorageField, ErrorEmitted> {
     let storage_field = StorageField {
         name: storage_field.name,
-        r#type: ty_to_type_info(ec, storage_field.ty)?,
+        type_info: ty_to_type_info(ec, storage_field.ty)?,
         //initializer: expr_to_expression(storage_field.expr),
     };
     Ok(storage_field)
@@ -2189,7 +2268,7 @@ fn literal_to_literal(
                     if let Some(hex_digits) = orig_str.strip_prefix("0x") {
                         let num_digits = hex_digits.chars().filter(|c| *c != '_').count();
                         match num_digits {
-                            2 => Literal::Byte(u8::try_from(parsed).unwrap()),
+                            1..=16 => Literal::U64(u64::try_from(parsed).unwrap()),
                             64 => {
                                 let bytes = parsed.to_bytes_be();
                                 let mut full_bytes = [0u8; 32];
@@ -2204,7 +2283,7 @@ fn literal_to_literal(
                     } else if let Some(bin_digits) = orig_str.strip_prefix("0b") {
                         let num_digits = bin_digits.chars().filter(|c| *c != '_').count();
                         match num_digits {
-                            8 => Literal::Byte(u8::try_from(parsed).unwrap()),
+                            1..=64 => Literal::U64(u64::try_from(parsed).unwrap()),
                             256 => {
                                 let bytes = parsed.to_bytes_be();
                                 let mut full_bytes = [0u8; 32];
@@ -2405,7 +2484,7 @@ fn asm_block_to_asm_expression(
             let asm_register = AsmRegister {
                 name: asm_final_expr.register.as_str().to_owned(),
             };
-            let returns = Some((asm_register, asm_final_expr.register.span().clone()));
+            let returns = Some((asm_register, asm_final_expr.register.span()));
             let return_type = match asm_final_expr.ty_opt {
                 Some((_colon_token, ty)) => ty_to_type_info(ec, ty)?,
                 None => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
@@ -2473,14 +2552,12 @@ fn statement_let_to_ast_nodes(
         span: Span,
     ) -> Result<Vec<AstNode>, ErrorEmitted> {
         let ast_nodes = match pattern {
-            Pattern::Wildcard { .. } => {
-                let ast_node = AstNode {
-                    content: AstNodeContent::Expression(expression),
-                    span,
+            Pattern::Wildcard { .. } | Pattern::Var { .. } => {
+                let (mutable, name) = match pattern {
+                    Pattern::Var { mutable, name } => (mutable, name),
+                    Pattern::Wildcard { .. } => (None, Ident::new_no_span("_")),
+                    _ => unreachable!(),
                 };
-                vec![ast_node]
-            }
-            Pattern::Var { mutable, name } => {
                 let (type_ascription, type_ascription_span) = match ty_opt {
                     Some(ty) => {
                         let type_ascription_span = ty.span();

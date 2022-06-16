@@ -2,16 +2,6 @@ library hash;
 
 use ::core::num::*;
 
-// Should this be a trait eventually? Do we want to allow people to customize what `!` does?
-// Scala says yes, Rust says perhaps...
-pub fn not(a: bool) -> bool {
-    // using direct asm for perf
-    asm(r1: a, r2) {
-        eq r2 r1 zero;
-        r2: bool
-    }
-}
-
 /// Returns the SHA-2-256 hash of `param`.
 pub fn sha256<T>(param: T) -> b256 {
     let mut result_buffer: b256 = ~b256::min();

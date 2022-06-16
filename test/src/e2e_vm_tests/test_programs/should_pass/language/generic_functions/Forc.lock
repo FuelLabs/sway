@@ -1,7 +1,9 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-41715E5E6E7DF930'
 dependencies = []
 
 [[package]]
 name = 'generic_functions'
+source = 'root'
 dependencies = ['core']

@@ -5,10 +5,10 @@ pub(crate) fn default_manifest(project_name: &str, entry_type: &str) -> String {
 
     format!(
         r#"[project]
-name = "{project_name}"
 authors = ["{author}"]
 entry = "{entry_type}"
 license = "Apache-2.0"
+name = "{project_name}"
 
 [dependencies]
 "#
@@ -30,8 +30,8 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-fuels = "0.14"
-fuels-abigen-macro = "0.14"
+fuels = "0.15"
+fuels-abigen-macro = "0.15"
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
 
 [[test]]

@@ -177,7 +177,7 @@ Next, open up `src/main.sw`. Copy and paste the following code:
 ```sway
 script;
 
-use std::constants::NATIVE_ASSET_ID;
+use std::constants::BASE_ASSET_ID;
 
 use wallet_lib::Wallet;
 

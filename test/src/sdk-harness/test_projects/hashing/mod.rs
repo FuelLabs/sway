@@ -87,7 +87,7 @@ fn hash_array(arr: [u8; 16], algorithm: Hash) -> [u8; 32] {
     }
 }
 
-fn hash_enum(arr: [u8; 16], algorithm: Hash) -> [u8; 32] {
+fn hash_enum(arr: [u8; 8], algorithm: Hash) -> [u8; 32] {
     /*
         An enum consists of 2 parts in the 16 byte array
         The first 8 bytes are for the values that the enum can have
@@ -114,7 +114,7 @@ fn hash_enum(arr: [u8; 16], algorithm: Hash) -> [u8; 32] {
     }
 }
 
-fn hash_struct(arr: [u8; 88], algorithm: Hash) -> [u8; 32] {
+fn hash_struct(arr: [u8; 80], algorithm: Hash) -> [u8; 32] {
     match algorithm {
         Hash::Sha256 => Sha256::digest(arr).into(),
         Hash::Keccak256 => Keccak256::digest(arr).into(),
@@ -351,14 +351,8 @@ mod sha256 {
     async fn test_enum() {
         let (instance, _id) = get_hashing_instance().await;
 
-        let expected_1 = hash_enum(
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            Hash::Sha256,
-        );
-        let expected_2 = hash_enum(
-            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-            Hash::Sha256,
-        );
+        let expected_1 = hash_enum([0, 0, 0, 0, 0, 0, 0, 0], Hash::Sha256);
+        let expected_2 = hash_enum([0, 0, 0, 0, 0, 0, 0, 1], Hash::Sha256);
 
         let call_1 = instance.sha256_enum(true).call().await.unwrap();
         let call_2 = instance.sha256_enum(true).call().await.unwrap();
@@ -378,18 +372,16 @@ mod sha256 {
         let expected_1 = hash_struct(
             [
                 74, 111, 104, 110, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0,
-                0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             ],
             Hash::Sha256,
         );
         let expected_2 = hash_struct(
             [
                 74, 111, 104, 110, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 0, 0, 0, 1, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0,
-                0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             ],
             Hash::Sha256,
         );
@@ -621,14 +613,8 @@ mod keccak256 {
     async fn test_enum() {
         let (instance, _id) = get_hashing_instance().await;
 
-        let expected_1 = hash_enum(
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            Hash::Keccak256,
-        );
-        let expected_2 = hash_enum(
-            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-            Hash::Keccak256,
-        );
+        let expected_1 = hash_enum([0, 0, 0, 0, 0, 0, 0, 0], Hash::Keccak256);
+        let expected_2 = hash_enum([0, 0, 0, 0, 0, 0, 0, 1], Hash::Keccak256);
 
         let call_1 = instance.keccak256_enum(true).call().await.unwrap();
         let call_2 = instance.keccak256_enum(true).call().await.unwrap();
@@ -648,18 +634,16 @@ mod keccak256 {
         let expected_1 = hash_struct(
             [
                 74, 111, 104, 110, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0,
-                0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             ],
             Hash::Keccak256,
         );
         let expected_2 = hash_struct(
             [
                 74, 111, 104, 110, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 0, 0, 0, 1, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0,
-                0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             ],
             Hash::Keccak256,
         );

@@ -1,18 +1,22 @@
 [[package]]
-name = 'call_basic_storage'
-dependencies = [
-    'std',
-    'storage_access_abi',
-]
-
-[[package]]
 name = 'core'
+source = 'path+from-root-323E392CC41F43FA'
 dependencies = []
 
 [[package]]
 name = 'std'
+source = 'path+from-root-323E392CC41F43FA'
 dependencies = ['core']
 
 [[package]]
 name = 'storage_access_abi'
-dependencies = []
+source = 'path+from-root-323E392CC41F43FA'
+dependencies = ['core']
+
+[[package]]
+name = 'storage_access_caller'
+source = 'root'
+dependencies = [
+    'std',
+    'storage_access_abi',
+]

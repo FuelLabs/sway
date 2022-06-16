@@ -3,6 +3,7 @@ use crate::concurrent_slab::ConcurrentSlab;
 use crate::type_engine::AbiName;
 use lazy_static::lazy_static;
 use sway_types::span::Span;
+use sway_types::Spanned;
 
 lazy_static! {
     static ref TYPE_ENGINE: Engine = Engine::default();
@@ -180,10 +181,23 @@ impl Engine {
                 {
                     a_fields.iter().zip(b_fields.iter()).for_each(|(a, b)| {
                         let (new_warnings, new_errors) =
-                            self.unify(a.r#type, b.r#type, &a.span, help_text.clone());
+                            self.unify(a.type_id, b.type_id, &a.span, help_text.clone());
                         warnings.extend(new_warnings);
                         errors.extend(new_errors);
                     });
+                    a_parameters
+                        .iter()
+                        .zip(b_parameters.iter())
+                        .for_each(|(a, b)| {
+                            let (new_warnings, new_errors) = self.unify(
+                                a.type_id,
+                                b.type_id,
+                                &a.name_ident.span(),
+                                help_text.clone(),
+                            );
+                            warnings.extend(new_warnings);
+                            errors.extend(new_errors);
+                        });
                 } else {
                     errors.push(TypeError::MismatchedType {
                         expected,
@@ -214,10 +228,23 @@ impl Engine {
                 {
                     a_variants.iter().zip(b_variants.iter()).for_each(|(a, b)| {
                         let (new_warnings, new_errors) =
-                            self.unify(a.r#type, b.r#type, &a.span, help_text.clone());
+                            self.unify(a.type_id, b.type_id, &a.span, help_text.clone());
                         warnings.extend(new_warnings);
                         errors.extend(new_errors);
                     });
+                    a_parameters
+                        .iter()
+                        .zip(b_parameters.iter())
+                        .for_each(|(a, b)| {
+                            let (new_warnings, new_errors) = self.unify(
+                                a.type_id,
+                                b.type_id,
+                                &a.name_ident.span(),
+                                help_text.clone(),
+                            );
+                            warnings.extend(new_warnings);
+                            errors.extend(new_errors);
+                        });
                 } else {
                     errors.push(TypeError::MismatchedType {
                         expected,
@@ -320,22 +347,14 @@ impl Engine {
 
     pub fn unify_with_self(
         &self,
-        received: TypeId,
-        expected: TypeId,
+        mut received: TypeId,
+        mut expected: TypeId,
         self_type: TypeId,
         span: &Span,
         help_text: impl Into<String>,
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-        let received = if self.look_up_type_id(received) == TypeInfo::SelfType {
-            self_type
-        } else {
-            received
-        };
-        let expected = if self.look_up_type_id(expected) == TypeInfo::SelfType {
-            self_type
-        } else {
-            expected
-        };
+        received.replace_self_type(self_type);
+        expected.replace_self_type(self_type);
         self.unify(received, expected, span, help_text)
     }
 

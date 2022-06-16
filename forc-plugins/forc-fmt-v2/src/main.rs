@@ -14,7 +14,7 @@ use tracing::{error, info};
 
 use forc_util::{find_manifest_dir, init_tracing_subscriber, println_green, println_red};
 use sway_core::BuildConfig;
-use sway_fmt_v2::{config::manifest::Config, Formatter};
+use sway_fmt_v2::Formatter;
 use sway_utils::{constants, get_sway_files};
 
 #[derive(Debug, Parser)]
@@ -49,21 +49,17 @@ fn run() -> Result<()> {
         Some(path) => PathBuf::from(path),
         None => std::env::current_dir()?,
     };
-    let config = match Config::from_dir(&dir) {
-        Ok(config) => config,
-        Err(_) => Config::default(),
-    };
-    format_pkg_at_dir(app, &dir, config)
+    let mut config = Formatter::from_dir(&dir)?;
+    format_pkg_at_dir(app, &dir, &mut config)
 }
 
 /// Format the package at the given directory.
-fn format_pkg_at_dir(app: App, dir: &Path, config: Config) -> Result<()> {
+fn format_pkg_at_dir(app: App, dir: &Path, config: &mut Formatter) -> Result<()> {
     match find_manifest_dir(dir) {
         Some(path) => {
             let manifest_path = path.clone();
             let manifest_file = manifest_path.join(constants::MANIFEST_FILE_NAME);
             let files = get_sway_files(path);
-            let formatting_options = &Formatter::from_opts(config);
             let mut contains_edits = false;
 
             for file in files {
@@ -73,11 +69,7 @@ fn format_pkg_at_dir(app: App, dir: &Path, config: Config) -> Result<()> {
                         file.clone(),
                         manifest_path.clone(),
                     );
-                    match Formatter::format(
-                        formatting_options,
-                        file_content.clone(),
-                        Some(&build_config),
-                    ) {
+                    match Formatter::format(config, file_content.clone(), Some(&build_config)) {
                         Ok(formatted_content) => {
                             if app.check {
                                 if *file_content != formatted_content {

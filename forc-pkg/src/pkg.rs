@@ -8,17 +8,22 @@ use forc_util::{
     print_on_success, print_on_success_library, println_yellow_err,
 };
 use fuels_types::JsonABI;
-use petgraph::{self, visit::EdgeRef, Directed, Direction};
+use petgraph::{
+    self,
+    visit::{EdgeRef, IntoNodeReferences},
+    Directed, Direction,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map, BTreeSet, HashMap, HashSet},
+    fmt,
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
     str::FromStr,
 };
 use sway_core::{
-    semantic_analysis::namespace, source_map::SourceMap, BytecodeCompilationResult,
-    CompileAstResult, CompileError, TreeType, TypedProgramKind,
+    semantic_analysis::namespace, source_map::SourceMap, types::*, BytecodeCompilationResult,
+    CompileAstResult, CompileError, TreeType,
 };
 use sway_utils::constants;
 use tracing::info;
@@ -34,13 +39,14 @@ pub type PathMap = HashMap<PinnedId, PathBuf>;
 /// A unique ID for a pinned package.
 ///
 /// The internal value is produced by hashing the package's name and `SourcePinned`.
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub struct PinnedId(u64);
 
 /// The result of successfully compiling a package.
 pub struct Compiled {
     pub json_abi: JsonABI,
     pub bytecode: Vec<u8>,
+    pub tree_type: TreeType,
 }
 
 /// A package uniquely identified by name along with its source.
@@ -68,6 +74,8 @@ pub struct Pinned {
 /// at which the current latest version may be located.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub enum Source {
+    /// Used to refer to the root project.
+    Root,
     /// A git repo with a `Forc.toml` manifest at its root.
     Git(SourceGit),
     /// A path to a directory with a `Forc.toml` manifest at its root.
@@ -113,6 +121,22 @@ pub struct SourceGitPinned {
     pub commit_hash: String,
 }
 
+/// A pinned instance of a path source.
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
+pub struct SourcePathPinned {
+    /// The ID of the package that is the root of the subgraph of path dependencies that this
+    /// package is a part of.
+    ///
+    /// In other words, when traversing the parents of this package, this is the ID of the first
+    /// non-path ancestor package.
+    ///
+    /// As a result, this will always be either a git package or the root package.
+    ///
+    /// This allows for disambiguating path dependencies of the same name that have different path
+    /// roots.
+    pub path_root: PinnedId,
+}
+
 /// A pinned instance of the registry source.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub struct SourceRegistryPinned {
@@ -128,8 +152,9 @@ pub struct SourceRegistryPinned {
 /// pinned version or commit is updated upon creation of the lock file and on `forc update`.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub enum SourcePinned {
+    Root,
     Git(SourceGitPinned),
-    Path,
+    Path(SourcePathPinned),
     Registry(SourceRegistryPinned),
 }
 
@@ -142,12 +167,22 @@ pub struct BuildPlan {
 }
 
 /// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "kebab-case")]
 pub struct BuildConfig {
     pub print_ir: bool,
     pub print_finalized_asm: bool,
     pub print_intermediate_asm: bool,
     pub silent: bool,
 }
+
+/// Error returned upon failed parsing of `PinnedId::from_str`.
+#[derive(Clone, Debug)]
+pub struct PinnedIdParseError;
+
+/// Error returned upon failed parsing of `SourcePathPinned::from_str`.
+#[derive(Clone, Debug)]
+pub struct SourcePathPinnedParseError;
 
 /// Error returned upon failed parsing of `SourceGitPinned::from_str`.
 #[derive(Clone, Debug)]
@@ -157,6 +192,10 @@ pub enum SourceGitPinnedParseError {
     Reference,
     CommitHash,
 }
+
+/// Error returned upon failed parsing of `SourcePinned::from_str`.
+#[derive(Clone, Debug)]
+pub struct SourcePinnedParseError;
 
 /// The name specified on the left hand side of the `=` in a depenedency declaration under
 /// `[dependencies]` within a forc manifest.
@@ -179,8 +218,8 @@ pub enum SourceGitPinnedParseError {
 pub type DependencyName = String;
 
 pub struct PkgDiff {
-    pub added: Vec<Pkg>,
-    pub removed: Vec<Pkg>,
+    pub added: Vec<(DependencyName, Pkg)>,
+    pub removed: Vec<(DependencyName, Pkg)>,
 }
 
 impl BuildPlan {
@@ -195,6 +234,7 @@ impl BuildPlan {
             compilation_order,
         })
     }
+
     /// Create a new build plan from an existing one. Needs the difference with the existing plan with the lock.
     pub fn apply_pkg_diff(
         &self,
@@ -212,10 +252,10 @@ impl BuildPlan {
         let PkgDiff { added, removed } = pkg_diff;
         remove_deps(&mut graph, &path_map, proj_node, &removed);
 
-        let mut visited_map: HashMap<Pinned, NodeIx> = self
-            .compilation_order
-            .iter()
-            .map(|&n| (graph[n].clone(), n))
+        let mut visited_map: HashMap<Pinned, NodeIx> = graph
+            .node_references()
+            .into_iter()
+            .map(|(node_index, pinned)| (pinned.clone(), node_index))
             .collect();
 
         add_deps(
@@ -234,6 +274,7 @@ impl BuildPlan {
             compilation_order,
         })
     }
+
     /// Attempt to load the build plan from the `Lock`.
     pub fn from_lock(proj_path: &Path, lock: &Lock, sway_git_tag: &str) -> Result<Self> {
         let graph = lock.to_graph()?;
@@ -303,12 +344,12 @@ impl BuildPlan {
             added = manifest_dep_pkgs
                 .difference(&plan_dep_pkgs)
                 .into_iter()
-                .map(|pkg| pkg.1.clone())
+                .map(|pkg| (pkg.0.clone(), pkg.1.clone()))
                 .collect();
             removed = plan_dep_pkgs
                 .difference(&manifest_dep_pkgs)
                 .into_iter()
-                .map(|pkg| pkg.1.clone())
+                .map(|pkg| (pkg.0.clone(), pkg.1.clone()))
                 .collect();
         }
 
@@ -345,29 +386,18 @@ impl BuildPlan {
         &self.compilation_order
     }
 }
+
 /// Remove the given set of packages from `graph` along with any dependencies that are no
 /// longer required as a result.
-fn remove_deps(graph: &mut Graph, path_map: &PathMap, proj_node: NodeIx, to_remove: &[Pkg]) {
+fn remove_deps(
+    graph: &mut Graph,
+    path_map: &PathMap,
+    proj_node: NodeIx,
+    to_remove: &[(DependencyName, Pkg)],
+) {
     use petgraph::visit::Bfs;
-    // Find the edges between the root and the removed packages.
-    let edges_to_remove: Vec<_> = graph
-        .edges_directed(proj_node, Direction::Outgoing)
-        .filter_map(|e| {
-            let dep_pkg = graph[e.target()].unpinned(path_map);
-            if to_remove.contains(&dep_pkg) {
-                Some(e.id())
-            } else {
-                None
-            }
-        })
-        .collect();
 
-    // Remove the edges.
-    for e in edges_to_remove {
-        graph.remove_edge(e);
-    }
-
-    // Do a BFS from the root and remove all nodes that are no longer connected to the root.
+    // Do a BFS from the root and remove all nodes that does not have any incoming edge or one of the removed dependencies.
     let mut bfs = Bfs::new(&*graph, proj_node);
     bfs.next(&*graph); // Skip the root node (aka project node).
     while let Some(node) = bfs.next(&*graph) {
@@ -375,30 +405,36 @@ fn remove_deps(graph: &mut Graph, path_map: &PathMap, proj_node: NodeIx, to_remo
             .edges_directed(node, Direction::Incoming)
             .next()
             .is_none()
+            || to_remove
+                .iter()
+                .any(|removed_dep| removed_dep.1 == graph[node].unpinned(path_map))
         {
             graph.remove_node(node);
         }
     }
 }
+
 /// Add the given set of packages to `graph`. If a dependency of an newly added package is already
 /// pinned use that. Otherwise fetch and pin it.
 fn add_deps(
     graph: &mut Graph,
     path_map: &mut PathMap,
     compilation_order: &[NodeIx],
-    to_add: &[Pkg],
+    to_add: &[(DependencyName, Pkg)],
     sway_git_tag: &str,
     offline_mode: bool,
     visited_map: &mut HashMap<Pinned, NodeIx>,
 ) -> Result<()> {
-    let proj_node = compilation_order
+    let proj_node = *compilation_order
         .last()
         .ok_or_else(|| anyhow!("Invalid Graph"))?;
+    let proj_id = graph[proj_node].id();
+    let proj_path = &path_map[&proj_id];
     let fetch_ts = std::time::Instant::now();
-    let fetch_id = fetch_id(&path_map[&graph[*proj_node].id()], fetch_ts);
-    let proj_node_after_delete = compilation_order.last().unwrap();
-    for added_package in to_add {
-        let pinned_pkg = pin_pkg(fetch_id, added_package, path_map, sway_git_tag)?;
+    let fetch_id = fetch_id(proj_path, fetch_ts);
+    let path_root = proj_id;
+    for (added_dep_name, added_package) in to_add {
+        let pinned_pkg = pin_pkg(fetch_id, proj_id, added_package, path_map, sway_git_tag)?;
         let manifest = Manifest::from_dir(&path_map[&pinned_pkg.id()], sway_git_tag)?;
         let added_package_node = graph.add_node(pinned_pkg.clone());
         fetch_children(
@@ -406,19 +442,17 @@ fn add_deps(
             offline_mode,
             added_package_node,
             &manifest,
+            path_root,
             sway_git_tag,
             graph,
             path_map,
             visited_map,
         )?;
-        graph.add_edge(
-            *proj_node_after_delete,
-            added_package_node,
-            added_package.name.to_string(),
-        );
+        graph.add_edge(proj_node, added_package_node, added_dep_name.to_string());
     }
     Ok(())
 }
+
 impl GitReference {
     /// Resolves the parsed forc git reference to the associated git ID.
     pub fn resolve(&self, repo: &git2::Repository) -> Result<git2::Oid> {
@@ -481,8 +515,9 @@ impl Pinned {
     pub fn unpinned(&self, path_map: &PathMap) -> Pkg {
         let id = self.id();
         let source = match &self.source {
+            SourcePinned::Root => Source::Root,
             SourcePinned::Git(git) => Source::Git(git.source.clone()),
-            SourcePinned::Path => Source::Path(path_map[&id].clone()),
+            SourcePinned::Path(_) => Source::Path(path_map[&id].clone()),
             SourcePinned::Registry(reg) => Source::Registry(reg.source.clone()),
         };
         let name = self.name.clone();
@@ -500,25 +535,95 @@ impl PinnedId {
     }
 }
 
-impl ToString for SourceGitPinned {
-    fn to_string(&self) -> String {
+impl SourcePathPinned {
+    pub const PREFIX: &'static str = "path";
+}
+
+impl SourceGitPinned {
+    pub const PREFIX: &'static str = "git";
+}
+
+impl fmt::Display for PinnedId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Format the inner `u64` as hex.
+        write!(f, "{:016X}", self.0)
+    }
+}
+
+impl fmt::Display for SourcePathPinned {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // path+from-root-<id>
+        write!(f, "{}+from-root-{}", Self::PREFIX, self.path_root)
+    }
+}
+
+impl fmt::Display for SourceGitPinned {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // git+<url/to/repo>?<ref_kind>=<ref_string>#<commit>
-        let reference = self.source.reference.to_string();
-        format!(
-            "git+{}?{}#{}",
-            self.source.repo, reference, self.commit_hash
+        write!(
+            f,
+            "{}+{}?{}#{}",
+            Self::PREFIX,
+            self.source.repo,
+            self.source.reference,
+            self.commit_hash
         )
     }
 }
 
-impl ToString for GitReference {
-    fn to_string(&self) -> String {
+impl fmt::Display for GitReference {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            GitReference::Branch(ref s) => format!("branch={}", s),
-            GitReference::Tag(ref s) => format!("tag={}", s),
-            GitReference::Rev(ref _s) => "rev".to_string(),
-            GitReference::DefaultBranch => "default-branch".to_string(),
+            GitReference::Branch(ref s) => write!(f, "branch={}", s),
+            GitReference::Tag(ref s) => write!(f, "tag={}", s),
+            GitReference::Rev(ref _s) => write!(f, "rev"),
+            GitReference::DefaultBranch => write!(f, "default-branch"),
         }
+    }
+}
+
+impl fmt::Display for SourcePinned {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            SourcePinned::Root => write!(f, "root"),
+            SourcePinned::Path(src) => src.fmt(f),
+            SourcePinned::Git(src) => src.fmt(f),
+            SourcePinned::Registry(_reg) => unimplemented!("pkg registries not yet implemented"),
+        }
+    }
+}
+
+impl FromStr for PinnedId {
+    type Err = PinnedIdParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(
+            u64::from_str_radix(s, 16).map_err(|_| PinnedIdParseError)?,
+        ))
+    }
+}
+
+impl FromStr for SourcePathPinned {
+    type Err = SourcePathPinnedParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // path+from-root-<id>
+        let s = s.trim();
+
+        // Check for prefix at the start.
+        let prefix_plus = format!("{}+", Self::PREFIX);
+        if s.find(&prefix_plus) != Some(0) {
+            return Err(SourcePathPinnedParseError);
+        }
+        let s = &s[prefix_plus.len()..];
+
+        // Parse the `from-root-*` section.
+        let path_root = s
+            .split("from-root-")
+            .nth(1)
+            .ok_or(SourcePathPinnedParseError)?
+            .parse()
+            .map_err(|_| SourcePathPinnedParseError)?;
+
+        Ok(Self { path_root })
     }
 }
 
@@ -529,11 +634,11 @@ impl FromStr for SourceGitPinned {
         let s = s.trim();
 
         // Check for "git+" at the start.
-        const PREFIX: &str = "git+";
-        if s.find(PREFIX) != Some(0) {
+        let prefix_plus = format!("{}+", Self::PREFIX);
+        if s.find(&prefix_plus) != Some(0) {
             return Err(SourceGitPinnedParseError::Prefix);
         }
-        let s = &s[PREFIX.len()..];
+        let s = &s[prefix_plus.len()..];
 
         // Parse the `repo` URL.
         let repo_str = s.split('?').next().ok_or(SourceGitPinnedParseError::Url)?;
@@ -576,6 +681,23 @@ impl FromStr for SourceGitPinned {
     }
 }
 
+impl FromStr for SourcePinned {
+    type Err = SourcePinnedParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let source = if s == "root" {
+            SourcePinned::Root
+        } else if let Ok(src) = SourcePathPinned::from_str(s) {
+            SourcePinned::Path(src)
+        } else if let Ok(src) = SourceGitPinned::from_str(s) {
+            SourcePinned::Git(src)
+        } else {
+            // TODO: Try parse registry source.
+            return Err(SourcePinnedParseError);
+        };
+        Ok(source)
+    }
+}
+
 fn validate_git_commit_hash(commit_hash: &str) -> Result<()> {
     const LEN: usize = 40;
     if commit_hash.len() != LEN {
@@ -602,9 +724,31 @@ impl Default for GitReference {
 /// dependencies are always compiled before their dependents.
 pub fn compilation_order(graph: &Graph) -> Result<Vec<NodeIx>> {
     let rev_pkg_graph = petgraph::visit::Reversed(&graph);
-    petgraph::algo::toposort(rev_pkg_graph, None)
-        // TODO: Show full list of packages that cycle.
-        .map_err(|e| anyhow!("dependency cycle detected: {:?}", e))
+    petgraph::algo::toposort(rev_pkg_graph, None).map_err(|_| {
+        // Find strongly connected components
+        // If the vector has an element with length more than 1, it contains a cyclic path.
+        let scc = petgraph::algo::kosaraju_scc(&graph);
+        let mut path = String::new();
+        scc.iter()
+            .filter(|path| path.len() > 1)
+            .for_each(|cyclic_path| {
+                // We are sure that there is an element in cyclic_path vec.
+                let starting_node = &graph[*cyclic_path.last().unwrap()];
+
+                // Adding first node of the path
+                path.push_str(&starting_node.name.to_string());
+                path.push_str(" -> ");
+
+                for (node_index, node) in cyclic_path.iter().enumerate() {
+                    path.push_str(&graph[*node].name.to_string());
+                    if node_index != cyclic_path.len() - 1 {
+                        path.push_str(" -> ");
+                    }
+                }
+                path.push('\n');
+            });
+        anyhow!("dependency cycle detected: {}", path)
+    })
 }
 
 /// Given graph of pinned dependencies and the directory for the root node, produce a path map
@@ -636,6 +780,7 @@ pub fn graph_to_path_map(
     for dep_node in path_resolve_order {
         let dep = &graph[dep_node];
         let dep_path = match &dep.source {
+            SourcePinned::Root => bail!("more than one root package detected in graph"),
             SourcePinned::Git(git) => {
                 let repo_path = git_commit_path(&dep.name, &git.source.repo, &git.commit_hash);
                 if !repo_path.exists() {
@@ -650,13 +795,20 @@ pub fn graph_to_path_map(
                     )
                 })?
             }
-            SourcePinned::Path => {
+            SourcePinned::Path(path) => {
+                // This is already checked during `Graph::from_lock`, but we check again here just
+                // in case this is being called with a `Graph` constructed via some other means.
+                validate_path_root(graph, dep_node, path.path_root)?;
+
+                // Retrieve the parent node to construct the relative path.
                 let (parent_node, dep_name) = graph
                     .edges_directed(dep_node, Direction::Incoming)
                     .next()
                     .map(|edge| (edge.source(), edge.weight().clone()))
                     .ok_or_else(|| anyhow!("more than one root package detected in graph"))?;
                 let parent = &graph[parent_node];
+
+                // Construct the path relative to the parent's path.
                 let parent_path = &path_map[&parent.id()];
                 let parent_manifest = ManifestFile::from_dir(parent_path, sway_git_tag)?;
                 let detailed = parent_manifest
@@ -695,6 +847,42 @@ pub fn graph_to_path_map(
     Ok(path_map)
 }
 
+/// Given a `graph`, the node index of a path dependency within that `graph`, and the supposed
+/// `path_root` of the path dependency, ensure that the `path_root` is valid.
+///
+/// See the `path_root` field of the [SourcePathPinned] type for further details.
+pub(crate) fn validate_path_root(
+    graph: &Graph,
+    path_dep: NodeIx,
+    path_root: PinnedId,
+) -> Result<()> {
+    let mut node = path_dep;
+    let invalid_path_root = || {
+        anyhow!(
+            "invalid `path_root` for path dependency package {:?}",
+            &graph[path_dep].name
+        )
+    };
+    loop {
+        let parent = graph
+            .edges_directed(node, Direction::Incoming)
+            .next()
+            .map(|edge| edge.source())
+            .ok_or_else(invalid_path_root)?;
+        let parent_pkg = &graph[parent];
+        match &parent_pkg.source {
+            SourcePinned::Path(src) if src.path_root != path_root => bail!(invalid_path_root()),
+            SourcePinned::Git(_) | SourcePinned::Registry(_) | SourcePinned::Root => {
+                if parent_pkg.id() != path_root {
+                    bail!(invalid_path_root());
+                }
+                return Ok(());
+            }
+            _ => node = parent,
+        }
+    }
+}
+
 /// Fetch all depedencies and produce the dependency graph along with a map from each node's unique
 /// ID to its local fetched path.
 ///
@@ -711,7 +899,7 @@ pub(crate) fn fetch_deps(
     // Add the project to the graph as the root node.
     let name = proj_manifest.project.name.clone();
     let path = proj_manifest_dir.canonicalize()?;
-    let source = SourcePinned::Path;
+    let source = SourcePinned::Root;
     let pkg = Pinned { name, source };
     let pkg_id = pkg.id();
     path_map.insert(pkg_id, path);
@@ -726,11 +914,13 @@ pub(crate) fn fetch_deps(
     let fetch_ts = std::time::Instant::now();
     let fetch_id = fetch_id(&path_map[&pkg_id], fetch_ts);
     let manifest = Manifest::from_dir(&path_map[&pkg_id], sway_git_tag)?;
+    let path_root = pkg_id;
     fetch_children(
         fetch_id,
         offline_mode,
         root,
         &manifest,
+        path_root,
         sway_git_tag,
         &mut graph,
         &mut path_map,
@@ -757,13 +947,15 @@ fn fetch_children(
     offline_mode: bool,
     node: NodeIx,
     manifest: &Manifest,
+    path_root: PinnedId,
     sway_git_tag: &str,
     graph: &mut Graph,
     path_map: &mut PathMap,
     visited: &mut HashMap<Pinned, NodeIx>,
 ) -> Result<()> {
     let parent = &graph[node];
-    let parent_path = path_map[&parent.id()].clone();
+    let parent_id = parent.id();
+    let parent_path = path_map[&parent_id].clone();
     for (dep_name, dep) in manifest.deps() {
         let name = dep.package().unwrap_or(dep_name).to_string();
         let source = dep_to_source(&parent_path, dep)?;
@@ -771,8 +963,12 @@ fn fetch_children(
             bail!("Unable to fetch pkg {:?} in offline mode", source);
         }
         let pkg = Pkg { name, source };
-        let pinned = pin_pkg(fetch_id, &pkg, path_map, sway_git_tag)?;
+        let pinned = pin_pkg(fetch_id, path_root, &pkg, path_map, sway_git_tag)?;
         let pkg_id = pinned.id();
+        let path_root = match pkg.source {
+            Source::Root | Source::Git(_) | Source::Registry(_) => pkg_id,
+            Source::Path(_) => path_root,
+        };
         let manifest = Manifest::from_dir(&path_map[&pkg_id], sway_git_tag)?;
         if pinned.name != manifest.project.name {
             bail!(
@@ -791,6 +987,7 @@ fn fetch_children(
                 offline_mode,
                 node,
                 &manifest,
+                path_root,
                 sway_git_tag,
                 graph,
                 path_map,
@@ -923,11 +1120,22 @@ pub fn pin_git(fetch_id: u64, name: &str, source: SourceGit) -> Result<SourceGit
 /// Given a package source, attempt to determine the pinned version or commit.
 ///
 /// Also updates the `path_map` with a path to the local copy of the source.
-fn pin_pkg(fetch_id: u64, pkg: &Pkg, path_map: &mut PathMap, sway_git_tag: &str) -> Result<Pinned> {
+///
+/// The `path_root` is required for `Path` dependencies and must specify the package that is the
+/// root of the current subgraph of path dependencies.
+fn pin_pkg(
+    fetch_id: u64,
+    path_root: PinnedId,
+    pkg: &Pkg,
+    path_map: &mut PathMap,
+    sway_git_tag: &str,
+) -> Result<Pinned> {
     let name = pkg.name.clone();
     let pinned = match &pkg.source {
+        Source::Root => unreachable!("Root package is \"pinned\" prior to fetching"),
         Source::Path(path) => {
-            let source = SourcePinned::Path;
+            let path_pinned = SourcePathPinned { path_root };
+            let source = SourcePinned::Path(path_pinned);
             let pinned = Pinned { name, source };
             let id = pinned.id();
             path_map.insert(id, path.clone());
@@ -1139,7 +1347,7 @@ pub fn compile(
     let silent_mode = build_config.silent;
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
-    let ast_res = sway_core::compile_to_ast(source, namespace, &sway_build_config);
+    let ast_res = sway_core::compile_to_ast(source, namespace, Some(&sway_build_config));
     match &ast_res {
         CompileAstResult::Failure { warnings, errors } => {
             print_on_failure(silent_mode, warnings, errors);
@@ -1149,7 +1357,7 @@ pub fn compile(
             typed_program,
             warnings,
         } => {
-            let json_abi = generate_json_abi(&typed_program.kind);
+            let json_abi = typed_program.kind.generate_json_abi();
             let tree_type = typed_program.kind.tree_type();
             match tree_type {
                 // If we're compiling a library, we don't need to compile any further.
@@ -1158,7 +1366,11 @@ pub fn compile(
                     print_on_success_library(silent_mode, &pkg.name, warnings);
                     let bytecode = vec![];
                     let lib_namespace = typed_program.root.namespace.clone();
-                    let compiled = Compiled { json_abi, bytecode };
+                    let compiled = Compiled {
+                        json_abi,
+                        bytecode,
+                        tree_type,
+                    };
                     Ok((compiled, Some(lib_namespace.into())))
                 }
 
@@ -1170,7 +1382,11 @@ pub fn compile(
                         BytecodeCompilationResult::Success { bytes, warnings } => {
                             print_on_success(silent_mode, &pkg.name, &warnings, &tree_type);
                             let bytecode = bytes;
-                            let compiled = Compiled { json_abi, bytecode };
+                            let compiled = Compiled {
+                                json_abi,
+                                bytecode,
+                                tree_type,
+                            };
                             Ok((compiled, None))
                         }
                         BytecodeCompilationResult::Library { .. } => {
@@ -1201,6 +1417,7 @@ pub fn build(
     let mut source_map = SourceMap::new();
     let mut json_abi = vec![];
     let mut bytecode = vec![];
+    let mut tree_type = None;
     for &node in &plan.compilation_order {
         let dep_namespace =
             dependency_namespace(&namespace_map, &plan.graph, &plan.compilation_order, node);
@@ -1214,9 +1431,16 @@ pub fn build(
         }
         json_abi.extend(compiled.json_abi);
         bytecode = compiled.bytecode;
+        tree_type = Some(compiled.tree_type);
         source_map.insert_dependency(path.clone());
     }
-    let compiled = Compiled { bytecode, json_abi };
+    let tree_type =
+        tree_type.ok_or_else(|| anyhow!("build plan must contain at least one package"))?;
+    let compiled = Compiled {
+        bytecode,
+        json_abi,
+        tree_type,
+    };
     Ok((compiled, source_map))
 }
 
@@ -1242,16 +1466,6 @@ pub fn find_within(dir: &Path, pkg_name: &str, sway_git_tag: &str) -> Option<Pat
 /// The same as [find_within], but returns the package's project directory.
 pub fn find_dir_within(dir: &Path, pkg_name: &str, sway_git_tag: &str) -> Option<PathBuf> {
     find_within(dir, pkg_name, sway_git_tag).and_then(|path| path.parent().map(Path::to_path_buf))
-}
-
-// TODO: Update this to match behaviour described in the `compile` doc comment above.
-fn generate_json_abi(kind: &TypedProgramKind) -> JsonABI {
-    match kind {
-        TypedProgramKind::Contract { abi_entries, .. } => {
-            abi_entries.iter().map(|x| x.generate_json_abi()).collect()
-        }
-        _ => vec![],
-    }
 }
 
 #[test]
@@ -1336,12 +1550,12 @@ pub fn parsing_failed(project_name: &str, errors: Vec<CompileError>) -> anyhow::
 /// Format an error message if an incorrect program type is present.
 pub fn wrong_program_type(
     project_name: &str,
-    expected_type: TreeType,
+    expected_types: Vec<TreeType>,
     parse_type: TreeType,
 ) -> anyhow::Error {
     let message = format!(
         "{} is not a '{:?}' it is a '{:?}'",
-        project_name, expected_type, parse_type
+        project_name, expected_types, parse_type
     );
     Error::msg(message)
 }

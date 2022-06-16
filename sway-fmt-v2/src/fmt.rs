@@ -1,33 +1,44 @@
-use std::sync::Arc;
+use crate::utils::indent_style::Shape;
+use std::{path::Path, sync::Arc};
 use sway_core::BuildConfig;
 use sway_parse::ItemKind;
 
-use crate::config::manifest::Config;
-pub use crate::error::FormatterError;
+use crate::utils::newline_style::apply_newline_style;
+pub use crate::{
+    config::manifest::Config,
+    error::{ConfigError, FormatterError},
+};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Formatter {
+    pub shape: Shape,
     pub config: Config,
 }
 
 pub type FormattedCode = String;
 
 pub trait Format {
-    fn format(&self, formatter: &Formatter) -> FormattedCode;
+    fn format(&self, formatter: &mut Formatter) -> FormattedCode;
 }
 
 impl Formatter {
-    pub fn from_opts(config: Config) -> Self {
-        Self { config }
+    pub fn from_dir(dir: &Path) -> Result<Self, ConfigError> {
+        let config = match Config::from_dir(dir) {
+            Ok(config) => config,
+            Err(ConfigError::NotFound) => Config::default(),
+            Err(e) => return Err(e),
+        };
+        let shape = Shape::default();
+        Ok(Self { config, shape })
     }
     pub fn format(
-        &self,
+        &mut self,
         src: Arc<str>,
         build_config: Option<&BuildConfig>,
     ) -> Result<FormattedCode, FormatterError> {
         let path = build_config.map(|build_config| build_config.canonical_root_module());
         let items = sway_parse::parse_file(src, path)?.items;
-        Ok(items
+        let formatted_raw_newline = items
             .into_iter()
             .map(|item| -> Result<String, FormatterError> {
                 use ItemKind::*;
@@ -44,6 +55,14 @@ impl Formatter {
                 })
             })
             .collect::<Result<Vec<String>, _>>()?
-            .join("\n"))
+            .join("\n");
+        let mut formatted_code = String::from(&formatted_raw_newline);
+        apply_newline_style(
+            // The user's setting for `NewlineStyle`
+            self.config.whitespace.newline_style,
+            &mut formatted_code,
+            &formatted_raw_newline,
+        );
+        Ok(formatted_code)
     }
 }

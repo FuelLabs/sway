@@ -9,6 +9,7 @@ use crate::{
     WhileLoop,
 };
 
+use sway_types::Spanned;
 use sway_types::{ident::Ident, span::Span};
 
 // -------------------------------------------------------------------------------------------------
@@ -162,7 +163,7 @@ fn build_recursion_error(fn_sym: Ident, span: Span, chain: &[Ident]) -> CompileE
 }
 
 fn build_recursive_type_error(name: Ident, chain: &[Ident]) -> CompileError {
-    let span = name.span().clone();
+    let span = name.span();
     match chain.len() {
         // An empty chain indicates immediate recursion.
         0 => CompileError::RecursiveType { name, span },
@@ -300,7 +301,7 @@ impl Dependencies {
                 ..
             }) => self
                 .gather_from_iter(fields.iter(), |deps, field| {
-                    deps.gather_from_typeinfo(&field.r#type)
+                    deps.gather_from_typeinfo(&field.type_info)
                 })
                 .gather_from_type_parameters(type_parameters),
             Declaration::EnumDeclaration(EnumDeclaration {
@@ -309,7 +310,7 @@ impl Dependencies {
                 ..
             }) => self
                 .gather_from_iter(variants.iter(), |deps, variant| {
-                    deps.gather_from_typeinfo(&variant.r#type)
+                    deps.gather_from_typeinfo(&variant.type_info)
                 })
                 .gather_from_type_parameters(type_parameters),
             Declaration::Reassignment(decl) => self.gather_from_expr(&decl.rhs),
@@ -334,7 +335,7 @@ impl Dependencies {
             Declaration::ImplTrait(ImplTrait {
                 trait_name,
                 type_implementing_for,
-                type_arguments,
+                type_parameters: type_arguments,
                 functions,
                 ..
             }) => self
@@ -368,8 +369,8 @@ impl Dependencies {
                     deps.gather_from_fn_decl(fn_decl)
                 }),
             Declaration::StorageDeclaration(StorageDeclaration { fields, .. }) => self
-                .gather_from_iter(fields.iter(), |deps, StorageField { r#type, .. }| {
-                    deps.gather_from_typeinfo(r#type)
+                .gather_from_iter(fields.iter(), |deps, StorageField { ref type_info, .. }| {
+                    deps.gather_from_typeinfo(type_info)
                 }),
         }
     }
@@ -473,9 +474,10 @@ impl Dependencies {
             }
             Expression::TupleIndex { prefix, .. } => self.gather_from_expr(prefix),
             Expression::StorageAccess { .. } => self,
-            Expression::SizeOfVal { exp, .. } => self.gather_from_expr(exp),
-            Expression::BuiltinGetTypeProperty { .. } => self,
-            Expression::BuiltinGetStorageKey { .. } => self,
+            Expression::IntrinsicFunction { kind, .. } => match kind {
+                IntrinsicFunctionKind::SizeOfVal { exp } => self.gather_from_expr(exp),
+                _ => self,
+            },
         }
     }
 
@@ -577,11 +579,11 @@ impl Dependencies {
             TypeInfo::Array(type_id, _) => self.gather_from_typeinfo(&look_up_type_id(*type_id)),
             TypeInfo::Struct { fields, .. } => self
                 .gather_from_iter(fields.iter(), |deps, field| {
-                    deps.gather_from_typeinfo(&look_up_type_id(field.r#type))
+                    deps.gather_from_typeinfo(&look_up_type_id(field.type_id))
                 }),
             TypeInfo::Enum { variant_types, .. } => self
                 .gather_from_iter(variant_types.iter(), |deps, variant| {
-                    deps.gather_from_typeinfo(&look_up_type_id(variant.r#type))
+                    deps.gather_from_typeinfo(&look_up_type_id(variant.type_id))
                 }),
             _ => self,
         }
@@ -702,8 +704,8 @@ fn decl_name(decl: &Declaration) -> Option<DependentSymbol> {
     }
 }
 
-/// This is intentionally different from [[TypeInfo::friendly_type_str]] because it
-/// is used for keys and values in the tree.
+/// This is intentionally different from `Display` for [TypeInfo]
+/// because it is used for keys and values in the tree.
 fn type_info_name(type_info: &TypeInfo) -> String {
     match type_info {
         TypeInfo::Str(_) => "str",

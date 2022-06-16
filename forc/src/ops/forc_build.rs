@@ -1,4 +1,7 @@
-use crate::{cli::BuildCommand, utils::SWAY_GIT_TAG};
+use crate::{
+    cli::BuildCommand,
+    utils::{SWAY_BIN_HASH_SUFFIX, SWAY_GIT_TAG},
+};
 use anyhow::{anyhow, bail, Result};
 use forc_pkg::{self as pkg, lock, Lock, ManifestFile};
 use forc_util::{default_output_directory, lock_path};
@@ -6,7 +9,8 @@ use std::{
     fs::{self, File},
     path::{Path, PathBuf},
 };
-use tracing::info;
+use sway_core::TreeType;
+use tracing::{info, warn};
 
 pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     let BuildCommand {
@@ -21,14 +25,27 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         output_directory,
         minify_json_abi,
         locked,
+        build_profile,
+        release,
     } = command;
 
-    let config = pkg::BuildConfig {
-        print_ir,
-        print_finalized_asm,
-        print_intermediate_asm,
-        silent: silent_mode,
-    };
+    let key_debug: String = "debug".to_string();
+    let key_release: String = "release".to_string();
+
+    let mut selected_build_profile = key_debug;
+    if build_profile.is_none() && release {
+        selected_build_profile = key_release;
+    } else if build_profile.is_some() && release {
+        // Here build_profile is guaranteed to be a value.
+        warn!(
+            "Both {} and release provided as build profile. Using release!",
+            build_profile.unwrap()
+        );
+        selected_build_profile = key_release;
+    } else if let Some(build_profile) = build_profile {
+        // Here build_profile is guaranteed to be a value.
+        selected_build_profile = build_profile;
+    }
 
     let this_dir = if let Some(ref path) = path {
         PathBuf::from(path)
@@ -37,6 +54,31 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     };
 
     let manifest = ManifestFile::from_dir(&this_dir, SWAY_GIT_TAG)?;
+
+    // If any cli parameter is passed by the user it overrides the selected build profile.
+    let mut config = &pkg::BuildConfig {
+        print_ir,
+        print_finalized_asm,
+        print_intermediate_asm,
+        silent: silent_mode,
+    };
+
+    // Check if any cli parameter is passed by the user if not fetch the build profile from manifest.
+    if !print_ir && !print_intermediate_asm && !print_finalized_asm && !silent_mode {
+        config = manifest
+            .build_profile
+            .as_ref()
+            .and_then(|profiles| profiles.get(&selected_build_profile))
+            .unwrap_or_else(|| {
+                warn!(
+                    "provided profile option {} is not present in the manifest file. \
+                Using default config.",
+                    selected_build_profile
+                );
+                config
+            });
+    }
+
     let lock_path = lock_path(manifest.dir());
 
     let plan_result = pkg::BuildPlan::from_lock_file(&lock_path, SWAY_GIT_TAG);
@@ -84,7 +126,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     }
 
     // Build it!
-    let (compiled, source_map) = pkg::build(&plan, &config, SWAY_GIT_TAG)?;
+    let (compiled, source_map) = pkg::build(&plan, config, SWAY_GIT_TAG)?;
 
     if let Some(outfile) = binary_outfile {
         fs::write(&outfile, &compiled.bytecode)?;
@@ -95,13 +137,10 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         fs::write(outfile, &source_map_json)?;
     }
 
-    // TODO: We may support custom build profiles in the future.
-    let profile = "debug";
-
     // Create the output directory for build artifacts.
     let output_dir = output_directory
         .map(PathBuf::from)
-        .unwrap_or_else(|| default_output_directory(manifest.dir()).join(profile));
+        .unwrap_or_else(|| default_output_directory(manifest.dir()).join(selected_build_profile));
     if !output_dir.exists() {
         fs::create_dir_all(&output_dir)?;
     }
@@ -124,6 +163,15 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     }
 
     info!("  Bytecode size is {} bytes.", compiled.bytecode.len());
+
+    if let TreeType::Script = compiled.tree_type {
+        // hash the bytecode for scripts and store the result in a file in the output directory
+        let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&compiled.bytecode));
+        let hash_file_name = format!("{}{}", &manifest.project.name, SWAY_BIN_HASH_SUFFIX);
+        let hash_path = output_dir.join(hash_file_name);
+        fs::write(hash_path, &bytecode_hash)?;
+        info!("  Bytecode hash is: {}", bytecode_hash);
+    }
 
     Ok(compiled)
 }

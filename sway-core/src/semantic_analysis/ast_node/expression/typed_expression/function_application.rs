@@ -4,7 +4,7 @@ use crate::{
     type_engine::TypeId,
 };
 use std::collections::{hash_map::RandomState, HashMap, VecDeque};
-use sway_types::state::StateIndex;
+use sway_types::{state::StateIndex, Spanned};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
@@ -37,7 +37,7 @@ pub(crate) fn instantiate_function_application(
     if !opts.purity.can_call(function_decl.purity) {
         errors.push(CompileError::StorageAccessMismatch {
             attrs: promote_purity(opts.purity, function_decl.purity).to_attribute_syntax(),
-            span: function_decl.name.span().clone(),
+            span: call_path.span(),
         });
     }
 
@@ -52,7 +52,7 @@ pub(crate) fn instantiate_function_application(
                 TypedExpression::type_check(TypeCheckArguments {
                     checkee: arg.clone(),
                     namespace,
-                    return_type_annotation: param.r#type,
+                    return_type_annotation: param.type_id,
                     help_text: "The argument that has been provided to this function's type does \
                         not match the declared type of the parameter in the function \
                         declaration.",
@@ -138,6 +138,8 @@ fn instantiate_function_application_inner(
                     contract_call_params,
                     arguments,
                     function_body: function_decl.body.clone(),
+                    function_body_name_span: function_decl.name.span(),
+                    function_body_purity: function_decl.purity,
                     self_state_idx,
                     selector,
                 },

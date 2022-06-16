@@ -20,10 +20,8 @@ pub struct DependencyPath {
 impl Spanned for DependencyPath {
     fn span(&self) -> Span {
         match self.suffixes.last() {
-            Some((_forward_slash_token, suffix)) => {
-                Span::join(self.prefix.span().clone(), suffix.span().clone())
-            }
-            None => self.prefix.span().clone(),
+            Some((_forward_slash_token, suffix)) => Span::join(self.prefix.span(), suffix.span()),
+            None => self.prefix.span(),
         }
     }
 }

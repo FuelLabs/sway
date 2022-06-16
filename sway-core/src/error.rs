@@ -7,7 +7,7 @@ use crate::{
     type_engine::*,
     VariableDeclaration,
 };
-use sway_types::{ident::Ident, span::Span};
+use sway_types::{ident::Ident, span::Span, Spanned};
 
 use std::{fmt, path::PathBuf, sync::Arc};
 use thiserror::Error;
@@ -195,28 +195,15 @@ pub struct CompileWarning {
     pub warning_content: Warning,
 }
 
-#[derive(Clone, Copy)]
-pub struct LineCol {
-    pub line: usize,
-    pub col: usize,
-}
-
-impl From<(usize, usize)> for LineCol {
-    fn from(o: (usize, usize)) -> Self {
-        LineCol {
-            line: o.0,
-            col: o.1,
-        }
+impl Spanned for CompileWarning {
+    fn span(&self) -> Span {
+        self.span.clone()
     }
 }
 
 impl CompileWarning {
     pub fn to_friendly_warning_string(&self) -> String {
         self.warning_content.to_string()
-    }
-
-    pub fn span(&self) -> Span {
-        self.span.clone()
     }
 
     pub fn path(&self) -> Option<Arc<PathBuf>> {
@@ -229,6 +216,21 @@ impl CompileWarning {
             self.span.start_pos().line_col().into(),
             self.span.end_pos().line_col().into(),
         )
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct LineCol {
+    pub line: usize,
+    pub col: usize,
+}
+
+impl From<(usize, usize)> for LineCol {
+    fn from(o: (usize, usize)) -> Self {
+        LineCol {
+            line: o.0,
+            col: o.1,
+        }
     }
 }
 
@@ -288,6 +290,9 @@ pub enum Warning {
         reg_name: Ident,
     },
     DeadStorageDeclaration,
+    DeadStorageDeclarationForFunction {
+        unneeded_attrib: String,
+    },
     MatchExpressionUnreachableArm,
 }
 
@@ -363,14 +368,14 @@ impl fmt::Display for Warning {
                 cast_to,
             } => write!(f,
                 "This cast, from integer type of width {} to integer type of width {}, will lose precision.",
-                initial_type.friendly_str(),
-                cast_to.friendly_str()
+                initial_type,
+                cast_to
             ),
             UnusedReturnValue { r#type } => write!(
                 f,
                 "This returns a value of type {}, which is not assigned to anything and is \
                  ignored.",
-                r#type.friendly_type_str()
+                r#type
             ),
             SimilarMethodFound { lib, module, name } => write!(
                 f,
@@ -402,7 +407,14 @@ impl fmt::Display for Warning {
                 "This register declaration shadows the reserved register, \"{}\".",
                 reg_name
             ),
-            DeadStorageDeclaration => write!(f, "This storage declaration is never accessed and can be removed."
+            DeadStorageDeclaration => write!(
+                f,
+                "This storage declaration is never accessed and can be removed."
+            ),
+            DeadStorageDeclarationForFunction { unneeded_attrib } => write!(
+                f,
+                "The '{unneeded_attrib}' storage declaration for this function is never accessed \
+                and can be removed."
             ),
             MatchExpressionUnreachableArm => write!(f, "This match arm is unreachable."),
         }
@@ -473,11 +485,6 @@ pub enum CompileError {
     )]
     MultiplePredicates(Span),
     #[error(
-        "Predicate definition contains multiple main functions. Multiple functions in the same \
-         scope cannot have the same name."
-    )]
-    MultiplePredicateMainFunctions(Span),
-    #[error(
         "Predicate declaration contains no main function. Predicates require a main function."
     )]
     NoPredicateMainFunction(Span),
@@ -485,11 +492,8 @@ pub enum CompileError {
     PredicateMainDoesNotReturnBool(Span),
     #[error("Script declaration contains no main function. Scripts require a main function.")]
     NoScriptMainFunction(Span),
-    #[error(
-        "Script definition contains multiple main functions. Multiple functions in the same scope \
-         cannot have the same name."
-    )]
-    MultipleScriptMainFunctions(Span),
+    #[error("Function \"{name}\" was already defined in scope.")]
+    MultipleDefinitionsOfFunction { name: Ident },
     #[error(
         "Attempted to reassign to a symbol that is not a variable. Symbol {name} is not a mutable \
          variable, it is a {kind}."
@@ -708,6 +712,8 @@ pub enum CompileError {
     UnrecognizedOp { op_name: Ident, span: Span },
     #[error("Cannot infer type for type parameter \"{ty}\". Insufficient type information provided. Try annotating its type.")]
     UnableToInferGeneric { ty: String, span: Span },
+    #[error("The generic type parameter \"{ty}\" is unconstrained.")]
+    UnconstrainedGenericParameter { ty: String, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
     Immediate06TooLarge { val: u64, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 12-bit immediate spot.")]
@@ -744,6 +750,8 @@ pub enum CompileError {
     InvalidStrType { raw: String, span: Span },
     #[error("Unknown type name.")]
     UnknownType { span: Span },
+    #[error("Unknown type name \"{name}\".")]
+    UnknownTypeName { name: String, span: Span },
     #[error("Bytecode can only support programs with up to 2^12 words worth of opcodes. Try refactoring into contract calls? This is a temporary error and will be implemented in the future.")]
     TooManyInstructions { span: Span },
     #[error(
@@ -795,12 +803,12 @@ pub enum CompileError {
     },
     #[error("An ABI can only be implemented for the `Contract` type, so this implementation of an ABI for type \"{ty}\" is invalid.")]
     ImplAbiForNonContract { span: Span, ty: String },
-    #[error("The trait function \"{fn_name}\" in trait \"{trait_name}\" expects {num_args} arguments, but the provided implementation only takes {provided_args} arguments.")]
+    #[error("The function \"{fn_name}\" in trait \"{trait_name}\" is defined with {num_parameters} parameters, but the provided implementation has {provided_parameters} parameters.")]
     IncorrectNumberOfInterfaceSurfaceFunctionParameters {
         fn_name: Ident,
         trait_name: Ident,
-        num_args: usize,
-        provided_args: usize,
+        num_parameters: usize,
+        provided_parameters: usize,
         span: Span,
     },
     #[error("This parameter was declared as type {should_be}, but argument of type {provided} was provided.")]
@@ -895,6 +903,16 @@ pub enum CompileError {
     },
     #[error("Impure function inside of non-contract. Contract storage is only accessible from contracts.")]
     ImpureInNonContract { span: Span },
+    #[error(
+        "This function performs a storage {storage_op} but does not have the required \
+        attribute(s).  Try adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\" to the function \
+        declaration."
+    )]
+    ImpureInPureContext {
+        storage_op: &'static str,
+        attrs: String,
+        span: Span,
+    },
     #[error("Literal value is too large for type {ty}.")]
     IntegerTooLarge { span: Span, ty: String },
     #[error("Literal value underflows type {ty}.")]
@@ -957,11 +975,10 @@ pub enum CompileError {
     Parse { error: sway_parse::ParseError },
     #[error("\"where\" clauses are not yet supported")]
     WhereClauseNotYetSupported { span: Span },
-    #[error(
-        "Initializing a constant value via `const` is currently limited to primitive values \
-        such as numbers, bools, strings or b256s."
-    )]
-    NonLiteralConstantDeclValue { span: Span },
+    #[error("Could not evaluate initializer to a const declaration.")]
+    NonConstantDeclValue { span: Span },
+    #[error("Declaring storage in a {program_kind} is not allowed.")]
+    StorageDeclarationInNonContract { program_kind: String, span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -970,58 +987,14 @@ impl std::convert::From<TypeError> for CompileError {
     }
 }
 
-#[derive(Error, Debug, Clone, PartialEq, Hash)]
-pub enum TypeError {
-    #[error(
-        "Mismatched types.\n\
-         expected: {expected}\n\
-         found:    {received}.\n\
-         {help}", expected=look_up_type_id(*expected).friendly_type_str(), received=look_up_type_id(*received).friendly_type_str(), help=if !help_text.is_empty() { format!("help: {}", help_text) } else { String::new() }
-    )]
-    MismatchedType {
-        expected: TypeId,
-        received: TypeId,
-        help_text: String,
-        span: Span,
-    },
-    #[error("This type is not known. Try annotating it with a type annotation.")]
-    UnknownType { span: Span },
-    #[error(
-        "The pattern for this match expression arm has a mismatched type.\n\
-         expected: {expected}\n\
-         found:    {received}.\n\
-         "
-    )]
-    MatchArmScrutineeWrongType {
-        expected: TypeId,
-        received: TypeId,
-        span: Span,
-    },
-}
-
-impl TypeError {
-    pub(crate) fn span(&self) -> Span {
-        use TypeError::*;
-        match self {
-            MismatchedType { span, .. } => span.clone(),
-            UnknownType { span } => span.clone(),
-            MatchArmScrutineeWrongType { span, .. } => span.clone(),
-        }
-    }
-}
-
-impl CompileError {
-    pub fn path(&self) -> Option<Arc<PathBuf>> {
-        self.span().path().cloned()
-    }
-
-    pub fn span(&self) -> Span {
+impl Spanned for CompileError {
+    fn span(&self) -> Span {
         use CompileError::*;
         match self {
-            UnknownVariable { var_name } => var_name.span().clone(),
+            UnknownVariable { var_name } => var_name.span(),
             UnknownVariablePath { span, .. } => span.clone(),
             UnknownFunction { span, .. } => span.clone(),
-            NotAVariable { name, .. } => name.span().clone(),
+            NotAVariable { name, .. } => name.span(),
             NotAFunction { name, .. } => name.span(),
             Unimplemented(_, span) => span.clone(),
             TypeError(err) => err.span(),
@@ -1034,13 +1007,12 @@ impl CompileError {
             MultiplePredicates(span) => span.clone(),
             MultipleScripts(span) => span.clone(),
             MultipleContracts(span) => span.clone(),
-            MultiplePredicateMainFunctions(span) => span.clone(),
             NoPredicateMainFunction(span) => span.clone(),
             PredicateMainDoesNotReturnBool(span) => span.clone(),
             NoScriptMainFunction(span) => span.clone(),
-            MultipleScriptMainFunctions(span) => span.clone(),
+            MultipleDefinitionsOfFunction { name } => name.span(),
             ReassignmentToNonVariable { span, .. } => span.clone(),
-            AssignmentToNonMutable { name } => name.span().clone(),
+            AssignmentToNonMutable { name } => name.span(),
             TypeParameterNotInTypeScope { span, .. } => span.clone(),
             MultipleImmediates(span) => span.clone(),
             MismatchedTypeInTrait { span, .. } => span.clone(),
@@ -1057,14 +1029,14 @@ impl CompileError {
             MethodOnNonValue { span, .. } => span.clone(),
             StructMissingField { span, .. } => span.clone(),
             StructDoesNotHaveField { span, .. } => span.clone(),
-            MethodNotFound { method_name, .. } => method_name.span().clone(),
+            MethodNotFound { method_name, .. } => method_name.span(),
             ModuleNotFound { span, .. } => span.clone(),
             NotATuple { span, .. } => span.clone(),
             NotAStruct { span, .. } => span.clone(),
             FieldAccessOnNonStruct { span, .. } => span.clone(),
-            FieldNotFound { field_name, .. } => field_name.span().clone(),
-            SymbolNotFound { name, .. } => name.span().clone(),
-            ImportPrivateSymbol { name } => name.span().clone(),
+            FieldNotFound { field_name, .. } => field_name.span(),
+            SymbolNotFound { name, .. } => name.span(),
+            ImportPrivateSymbol { name } => name.span(),
             NoElseBranch { span, .. } => span.clone(),
             UnqualifiedSelfType { span, .. } => span.clone(),
             NotAType { span, .. } => span.clone(),
@@ -1079,6 +1051,7 @@ impl CompileError {
             UnknownEnumVariant { span, .. } => span.clone(),
             UnrecognizedOp { span, .. } => span.clone(),
             UnableToInferGeneric { span, .. } => span.clone(),
+            UnconstrainedGenericParameter { span, .. } => span.clone(),
             Immediate06TooLarge { span, .. } => span.clone(),
             Immediate12TooLarge { span, .. } => span.clone(),
             Immediate18TooLarge { span, .. } => span.clone(),
@@ -1091,6 +1064,7 @@ impl CompileError {
             UnnecessaryImmediate { span, .. } => span.clone(),
             AmbiguousPath { span, .. } => span.clone(),
             UnknownType { span, .. } => span.clone(),
+            UnknownTypeName { span, .. } => span.clone(),
             InvalidStrType { span, .. } => span.clone(),
             TooManyInstructions { span, .. } => span.clone(),
             FileNotFound { span, .. } => span.clone(),
@@ -1118,9 +1092,9 @@ impl CompileError {
             BurnFromExternalContext { span, .. } => span.clone(),
             ContractStorageFromExternalContext { span, .. } => span.clone(),
             ArrayOutOfBounds { span, .. } => span.clone(),
-            ShadowsOtherSymbol { name } => name.span().clone(),
-            GenericShadowsGeneric { name } => name.span().clone(),
-            StarImportShadowsOtherSymbol { name } => name.span().clone(),
+            ShadowsOtherSymbol { name } => name.span(),
+            GenericShadowsGeneric { name } => name.span(),
+            StarImportShadowsOtherSymbol { name } => name.span(),
             MatchWrongType { span, .. } => span.clone(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
             NotAnEnum { span, .. } => span.clone(),
@@ -1133,6 +1107,7 @@ impl CompileError {
             DeclIsNotAVariable { span, .. } => span.clone(),
             DeclIsNotAnAbi { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
+            ImpureInPureContext { span, .. } => span.clone(),
             IntegerTooLarge { span, .. } => span.clone(),
             IntegerTooSmall { span, .. } => span.clone(),
             IntegerContainsInvalidDigit { span, .. } => span.clone(),
@@ -1144,10 +1119,10 @@ impl CompileError {
             ContractCallParamRepeated { span, .. } => span.clone(),
             UnrecognizedContractParam { span, .. } => span.clone(),
             CallParamForNonContractCallMethod { span, .. } => span.clone(),
-            StorageFieldDoesNotExist { name } => name.span().clone(),
+            StorageFieldDoesNotExist { name } => name.span(),
             NoDeclaredStorage { span, .. } => span.clone(),
             MultipleStorageDeclarations { span, .. } => span.clone(),
-            InvalidVariableName { name } => name.span().clone(),
+            InvalidVariableName { name } => name.span(),
             UnexpectedDeclaration { span, .. } => span.clone(),
             ContractAddressMustBeKnown { span, .. } => span.clone(),
             ConvertParseTree { error } => error.span(),
@@ -1156,8 +1131,15 @@ impl CompileError {
             Parse { error } => error.span.clone(),
             EnumNotFound { span, .. } => span.clone(),
             TupleIndexOutOfBounds { span, .. } => span.clone(),
-            NonLiteralConstantDeclValue { span } => span.clone(),
+            NonConstantDeclValue { span } => span.clone(),
+            StorageDeclarationInNonContract { span, .. } => span.clone(),
         }
+    }
+}
+
+impl CompileError {
+    pub fn path(&self) -> Option<Arc<PathBuf>> {
+        self.span().path().cloned()
     }
 
     /// Returns the line and column start and end
@@ -1166,5 +1148,45 @@ impl CompileError {
             self.span().start_pos().line_col().into(),
             self.span().end_pos().line_col().into(),
         )
+    }
+}
+
+#[derive(Error, Debug, Clone, PartialEq, Hash)]
+pub enum TypeError {
+    #[error(
+        "Mismatched types.\n\
+         expected: {expected}\n\
+         found:    {received}.\n\
+         {help}", expected=look_up_type_id(*expected).to_string(), received=look_up_type_id(*received).to_string(), help=if !help_text.is_empty() { format!("help: {}", help_text) } else { String::new() }
+    )]
+    MismatchedType {
+        expected: TypeId,
+        received: TypeId,
+        help_text: String,
+        span: Span,
+    },
+    #[error("This type is not known. Try annotating it with a type annotation.")]
+    UnknownType { span: Span },
+    #[error(
+        "The pattern for this match expression arm has a mismatched type.\n\
+         expected: {expected}\n\
+         found:    {received}.\n\
+         "
+    )]
+    MatchArmScrutineeWrongType {
+        expected: TypeId,
+        received: TypeId,
+        span: Span,
+    },
+}
+
+impl Spanned for TypeError {
+    fn span(&self) -> Span {
+        use TypeError::*;
+        match self {
+            MismatchedType { span, .. } => span.clone(),
+            UnknownType { span } => span.clone(),
+            MatchArmScrutineeWrongType { span, .. } => span.clone(),
+        }
     }
 }
