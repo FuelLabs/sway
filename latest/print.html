@@ -3130,8 +3130,7 @@ forc build -o obj
 <h2 id="args-2"><a class="header" href="#args-2">ARGS:</a></h2>
 <p>&lt;<em>NODE_URL</em>&gt;
 URL of the Fuel Client Node</p>
-<p>[env: FUEL_NODE_URL=]
-[default: http://127.0.0.1:4000]</p>
+<p>[env: FUEL_NODE_URL=]</p>
 <h2 id="options-9"><a class="header" href="#options-9">OPTIONS:</a></h2>
 <p><code>--byte-price</code> &lt;<em>BYTE_PRICE</em>&gt;</p>
 <p>Set the transaction byte price. Defaults to 0</p>
@@ -3175,6 +3174,10 @@ JSON output will be &quot;minified&quot;, i.e. all on one line without whitespac
 <p>Pretty-print the outputs from the node</p>
 <p><code>-s</code>, <code>--silent</code> </p>
 <p>Silent mode. Don't output any warnings or errors to the command line</p>
+<p><code>--simulate</code> </p>
+<p>Execute the transaction and return the final mutated transaction along with receipts
+(which includes whether the transaction reverted or not). The transaction is not
+inserted in the node's view of the blockchain, (i.e. it does not affect the chain state)</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="forc-test"><a class="header" href="#forc-test">forc-test</a></h1>
 <p>Run Rust-based tests on current project. As of now, <code>forc test</code> is a simple wrapper on <code>cargo test</code>;
 <code>forc init</code> also creates a rust package under your project, named <code>tests</code>. You can opt to either run
