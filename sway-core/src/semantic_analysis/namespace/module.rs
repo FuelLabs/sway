@@ -2,7 +2,6 @@ use crate::{
     error::*,
     parse_tree::Visibility,
     semantic_analysis::{ast_node::TypedVariableDeclaration, declaration::VariableMutability},
-    type_engine::*,
     CompileResult, Ident, TypedDeclaration,
 };
 
@@ -181,9 +180,7 @@ impl Module {
                 let a = decl.return_type().value;
                 //  if this is an enum or struct, import its implementations
                 let mut res = match a {
-                    Some(a) => src_ns
-                        .implemented_traits
-                        .get_call_path_and_type_info(look_up_type_id(a)),
+                    Some(a) => src_ns.implemented_traits.get_call_path_and_type_info(a),
                     None => vec![],
                 };
                 impls_to_insert.append(&mut res);

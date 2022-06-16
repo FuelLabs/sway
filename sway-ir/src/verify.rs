@@ -471,7 +471,11 @@ impl<'a> InstructionVerifier<'a> {
     fn verify_load(&self, src_val: &Value) -> Result<(), IrError> {
         let src_ptr = self.get_pointer(src_val);
         if src_ptr.is_none() {
-            Err(IrError::VerifyLoadFromNonPointer)
+            if !self.is_ptr_argument(src_val) {
+                Err(IrError::VerifyLoadFromNonPointer)
+            } else {
+                Ok(())
+            }
         } else if !self.is_local_pointer(src_ptr.as_ref().unwrap()) {
             Err(IrError::VerifyLoadNonExistentPointer)
         } else {
@@ -570,7 +574,13 @@ impl<'a> InstructionVerifier<'a> {
             Err(IrError::VerifyStoreMismatchedTypes)
         } else {
             match self.get_pointer(dst_val) {
-                None => Err(IrError::VerifyStoreToNonPointer), // Should've been caught already.
+                None => {
+                    if !self.is_ptr_argument(dst_val) {
+                        Err(IrError::VerifyStoreToNonPointer) // Should've been caught already.
+                    } else {
+                        Ok(())
+                    }
+                }
                 Some(dst_ptr) => {
                     if !self.is_local_pointer(&dst_ptr) {
                         Err(IrError::VerifyStoreNonExistentPointer)
@@ -589,9 +599,27 @@ impl<'a> InstructionVerifier<'a> {
         }
     }
 
+    // This is a temporary workaround due to the fact that we don't support pointer arguments yet.
+    // We do treat non-copy types as references anyways though so this is fine. Eventually, we
+    // should allow function arguments to also be Pointer.
+    //
+    // Also, because we inline everything at the moment, this doesn't really matter and is added
+    // simply to make the verifier happy.
+    //
+    fn is_ptr_argument(&self, ptr_val: &Value) -> bool {
+        match &self.context.values[ptr_val.0].value {
+            ValueDatum::Argument(arg_ty) => !arg_ty.is_copy_type(),
+            _otherwise => false,
+        }
+    }
+
     fn get_pointer_type(&self, ptr_val: &Value) -> Option<Type> {
         match &self.context.values[ptr_val.0].value {
             ValueDatum::Instruction(Instruction::GetPointer { ptr_ty, .. }) => Some(*ptr_ty),
+            ValueDatum::Argument(arg_ty) => match arg_ty.is_copy_type() {
+                true => None,
+                false => Some(*arg_ty),
+            },
             _otherwise => None,
         }
     }
