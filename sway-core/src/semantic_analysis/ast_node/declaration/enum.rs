@@ -4,7 +4,8 @@ use crate::{
     parse_tree::*,
     semantic_analysis::*,
     type_engine::{
-        insert_type, look_up_type_id, CopyTypes, CreateTypeId, ReplaceSelfType, TypeId, TypeMapping,
+        insert_type, look_up_type_id, unify, CopyTypes, CreateTypeId, ReplaceSelfType,
+        ResolveTypes, TypeId, TypeMapping,
     },
     types::{JsonAbiString, ToJsonAbi},
     TypeInfo,
@@ -74,6 +75,62 @@ impl MonomorphizeHelper for TypedEnumDeclaration {
 
     fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output {
         monomorphize_inner(self, type_mapping, namespace)
+    }
+}
+
+impl ResolveTypes for TypedEnumDeclaration {
+    fn resolve_types(
+        &mut self,
+        type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        // create a new namespace for type resolution
+        let mut namespace = namespace.clone();
+
+        // insert the type parameters into the namespace
+        let module = check!(
+            namespace.check_submodule_mut(module_path),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        for type_parameter in self.type_parameters.iter_mut() {
+            type_parameter.type_id = insert_type(TypeInfo::UnknownGeneric {
+                name: type_parameter.name_ident.clone(),
+            });
+            module.insert_symbol(type_parameter.name_ident.clone(), type_parameter.into());
+        }
+
+        // resolve the types of the variants
+        for variant in self.variants.iter_mut() {
+            check!(
+                variant.resolve_types(vec!(), enforce_type_arguments, &mut namespace, module_path),
+                continue,
+                warnings,
+                errors
+            );
+        }
+
+        // unify the type parameters and the type arguments
+        for (type_parameter, type_argument) in
+            self.type_parameters.iter().zip(type_arguments.iter())
+        {
+            let (mut new_warnings, new_errors) = unify(
+                type_parameter.type_id,
+                type_argument.type_id,
+                &type_argument.span,
+                "Type argument is not assignable to generic type parameter.",
+            );
+            warnings.append(&mut new_warnings);
+            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+        }
+
+        ok((), warnings, errors)
     }
 }
 
@@ -211,6 +268,31 @@ impl ToJsonAbi for TypedEnumVariant {
 impl ReplaceSelfType for TypedEnumVariant {
     fn replace_self_type(&mut self, self_type: TypeId) {
         self.type_id.replace_self_type(self_type);
+    }
+}
+
+impl ResolveTypes for TypedEnumVariant {
+    fn resolve_types(
+        &mut self,
+        type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        self.type_id = check!(
+            namespace.resolve_type(
+                self.type_id,
+                &self.span,
+                enforce_type_arguments,
+                module_path,
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+        ok((), warnings, errors)
     }
 }
 

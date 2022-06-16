@@ -21,6 +21,28 @@ impl DeterministicallyAborts for TypedCodeBlock {
     }
 }
 
+impl ResolveTypes for TypedCodeBlock {
+    fn resolve_types(
+        &mut self,
+        _type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        namespace: &mut namespace::Root,
+        module_path: &namespace::Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        for content in self.contents.iter_mut() {
+            check!(
+                content.resolve_types(vec!(), enforce_type_arguments, namespace, module_path),
+                continue,
+                warnings,
+                errors
+            );
+        }
+        ok((), warnings, errors)
+    }
+}
+
 impl TypedCodeBlock {
     pub(crate) fn type_check(
         arguments: TypeCheckArguments<'_, CodeBlock>,

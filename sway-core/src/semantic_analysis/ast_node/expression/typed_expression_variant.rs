@@ -1,4 +1,4 @@
-use crate::{parse_tree::*, semantic_analysis::*, type_engine::*};
+use crate::{error::ok, parse_tree::*, semantic_analysis::*, type_engine::*};
 
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
@@ -496,6 +496,208 @@ impl fmt::Display for TypedExpressionVariant {
             }
         };
         write!(f, "{}", s)
+    }
+}
+
+impl ResolveTypes for TypedExpressionVariant {
+    fn resolve_types(
+        &mut self,
+        type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        namespace: &mut namespace::Root,
+        module_path: &namespace::Path,
+    ) -> crate::CompileResult<()> {
+        use TypedExpressionVariant::*;
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            FunctionApplication {
+                ref mut arguments,
+                ref mut function_body,
+                ..
+            } => {
+                for (_, argument) in arguments.iter_mut() {
+                    check!(
+                        argument.resolve_types(
+                            vec!(),
+                            enforce_type_arguments,
+                            namespace,
+                            module_path
+                        ),
+                        continue,
+                        warnings,
+                        errors
+                    );
+                }
+                function_body
+                    .resolve_types(vec![], enforce_type_arguments, namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+            }
+            Tuple { ref mut fields } => {
+                for field in fields.iter_mut() {
+                    check!(
+                        field.resolve_types(vec!(), enforce_type_arguments, namespace, module_path),
+                        continue,
+                        warnings,
+                        errors
+                    );
+                }
+            }
+            Array { ref mut contents } => {
+                for content in contents.iter_mut() {
+                    check!(
+                        content.resolve_types(
+                            vec!(),
+                            enforce_type_arguments,
+                            namespace,
+                            module_path
+                        ),
+                        continue,
+                        warnings,
+                        errors
+                    );
+                }
+            }
+            CodeBlock(ref mut contents) => {
+                contents
+                    .resolve_types(vec![], enforce_type_arguments, namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+            }
+            LazyOperator {
+                ref mut lhs,
+                ref mut rhs,
+                ..
+            } => {
+                lhs.resolve_types(vec![], enforce_type_arguments, namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+                rhs.resolve_types(vec![], enforce_type_arguments, namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+            }
+            StructExpression { ref mut fields, .. } => {
+                for field in fields.iter_mut() {
+                    check!(
+                        field.resolve_types(vec!(), enforce_type_arguments, namespace, module_path),
+                        continue,
+                        warnings,
+                        errors
+                    );
+                }
+            }
+            EnumInstantiation {
+                ref mut enum_decl,
+                ref mut contents,
+                ..
+            } => {
+                enum_decl
+                    .resolve_types(vec![], enforce_type_arguments, namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+                if let Some(contents) = contents {
+                    contents
+                        .resolve_types(vec![], enforce_type_arguments, namespace, module_path)
+                        .ok(&mut warnings, &mut errors);
+                }
+            }
+            AbiCast {
+                ref mut address, ..
+            } => {
+                address
+                    .resolve_types(vec![], enforce_type_arguments, namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+            }
+            StructFieldAccess {
+                ref mut prefix,
+                ref mut field_to_access,
+                ref mut resolved_type_of_parent,
+            } => {
+                prefix
+                    .resolve_types(vec![], enforce_type_arguments, namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+                field_to_access
+                    .resolve_types(vec![], enforce_type_arguments, namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+                *resolved_type_of_parent = check!(
+                    namespace.resolve_type(
+                        *resolved_type_of_parent,
+                        &(*prefix).span,
+                        enforce_type_arguments,
+                        module_path,
+                    ),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors
+                );
+            }
+            TupleElemAccess {
+                ref mut prefix,
+                ref mut resolved_type_of_parent,
+                ..
+            } => {
+                prefix
+                    .resolve_types(vec![], enforce_type_arguments, namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+                *resolved_type_of_parent = check!(
+                    namespace.resolve_type(
+                        *resolved_type_of_parent,
+                        &(*prefix).span,
+                        enforce_type_arguments,
+                        module_path,
+                    ),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors
+                );
+            }
+            ArrayIndex {
+                ref mut prefix,
+                ref mut index,
+            } => {
+                prefix
+                    .resolve_types(vec![], enforce_type_arguments, namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+                index
+                    .resolve_types(vec![], enforce_type_arguments, namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+            }
+            IfExp {
+                ref mut condition,
+                ref mut then,
+                ref mut r#else,
+                ..
+            } => {
+                condition
+                    .resolve_types(vec![], enforce_type_arguments, namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+                then.resolve_types(vec![], enforce_type_arguments, namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+                if let Some(r#else) = r#else {
+                    r#else
+                        .resolve_types(vec![], enforce_type_arguments, namespace, module_path)
+                        .ok(&mut warnings, &mut errors);
+                }
+            }
+            EnumTag { ref mut exp } => {
+                exp.resolve_types(vec![], enforce_type_arguments, namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+            }
+            UnsafeDowncast {
+                ref mut exp,
+                ref mut variant,
+            } => {
+                exp.resolve_types(vec![], enforce_type_arguments, namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+                variant
+                    .resolve_types(vec![], enforce_type_arguments, namespace, module_path)
+                    .ok(&mut warnings, &mut errors);
+            }
+            Literal(_)
+            | StorageAccess { .. }
+            | VariableExpression { .. }
+            | FunctionParameter
+            | IntrinsicFunction(_)
+            | AsmExpression { .. }
+            | AbiName(_) => {}
+        }
+        ok((), warnings, errors)
     }
 }
 

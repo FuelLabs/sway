@@ -1,3 +1,5 @@
+use sway_types::Spanned;
+
 use crate::{constants::*, error::*, semantic_analysis::*, type_engine::*, Ident, Visibility};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -73,6 +75,34 @@ impl CopyTypes for TypedVariableDeclaration {
         self.type_ascription
             .update_type(type_mapping, &self.body.span);
         self.body.copy_types(type_mapping)
+    }
+}
+
+impl ResolveTypes for TypedVariableDeclaration {
+    fn resolve_types(
+        &mut self,
+        type_arguments: Vec<crate::TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        namespace: &mut namespace::Root,
+        module_path: &namespace::Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        self.type_ascription = check!(
+            namespace.resolve_type(
+                self.type_ascription,
+                &self.name.span(),
+                enforce_type_arguments,
+                module_path,
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+        self.body
+            .resolve_types(vec![], enforce_type_arguments, namespace, module_path)
+            .ok(&mut warnings, &mut errors);
+        ok((), warnings, errors)
     }
 }
 

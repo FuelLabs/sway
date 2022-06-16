@@ -120,6 +120,85 @@ impl ToJsonAbi for TypedFunctionDeclaration {
     }
 }
 
+impl ResolveTypes for TypedFunctionDeclaration {
+    fn resolve_types(
+        &mut self,
+        type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        // create a new namespace for type resolution
+        let mut namespace = namespace.clone();
+
+        // insert the type parameters into the namespace
+        let module = check!(
+            namespace.check_submodule_mut(module_path),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        for type_parameter in self.type_parameters.iter_mut() {
+            type_parameter.type_id = insert_type(TypeInfo::UnknownGeneric {
+                name: type_parameter.name_ident.clone(),
+            });
+            module.insert_symbol(type_parameter.name_ident.clone(), type_parameter.into());
+        }
+
+        // resolve the types of the parameters
+        for parameter in self.parameters.iter_mut() {
+            check!(
+                parameter.resolve_types(
+                    vec!(),
+                    enforce_type_arguments,
+                    &mut namespace,
+                    module_path
+                ),
+                continue,
+                warnings,
+                errors
+            );
+        }
+
+        // resolve the return type
+        self.return_type = check!(
+            namespace.resolve_type(
+                self.return_type,
+                &self.return_type_span,
+                enforce_type_arguments,
+                module_path,
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+
+        // resolve the types in the body
+        self.body
+            .resolve_types(vec![], enforce_type_arguments, &mut namespace, module_path)
+            .ok(&mut warnings, &mut errors);
+
+        // unify the type parameters and the type arguments
+        for (type_parameter, type_argument) in
+            self.type_parameters.iter().zip(type_arguments.iter())
+        {
+            let (mut new_warnings, new_errors) = unify(
+                type_parameter.type_id,
+                type_argument.type_id,
+                &type_argument.span,
+                "Type argument is not assignable to generic type parameter.",
+            );
+            warnings.append(&mut new_warnings);
+            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+        }
+
+        ok((), warnings, errors)
+    }
+}
+
 impl TypedFunctionDeclaration {
     pub fn type_check(
         arguments: TypeCheckArguments<'_, FunctionDeclaration>,

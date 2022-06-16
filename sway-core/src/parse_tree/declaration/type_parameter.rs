@@ -66,6 +66,30 @@ impl fmt::Display for TypeParameter {
     }
 }
 
+impl From<&TypeParameter> for TypedDeclaration {
+    fn from(type_parameter: &TypeParameter) -> Self {
+        TypedDeclaration::GenericTypeForFunctionScope {
+            name: type_parameter.name_ident.clone(),
+            type_id: insert_type(TypeInfo::Ref(
+                type_parameter.type_id,
+                type_parameter.name_ident.span(),
+            )),
+        }
+    }
+}
+
+impl From<&mut TypeParameter> for TypedDeclaration {
+    fn from(type_parameter: &mut TypeParameter) -> Self {
+        TypedDeclaration::GenericTypeForFunctionScope {
+            name: type_parameter.name_ident.clone(),
+            type_id: insert_type(TypeInfo::Ref(
+                type_parameter.type_id,
+                type_parameter.name_ident.span(),
+            )),
+        }
+    }
+}
+
 impl TypeParameter {
     pub(crate) fn type_check(
         type_parameter: TypeParameter,
@@ -80,21 +104,16 @@ impl TypeParameter {
             return err(warnings, errors);
         }
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
-        let type_id = insert_type(TypeInfo::UnknownGeneric {
-            name: type_parameter.name_ident.clone(),
-        });
-        let type_parameter_decl = TypedDeclaration::GenericTypeForFunctionScope {
-            name: type_parameter.name_ident.clone(),
-            type_id,
-        };
-        namespace
-            .insert_symbol(type_parameter.name_ident.clone(), type_parameter_decl)
-            .ok(&mut warnings, &mut errors);
         let type_parameter = TypeParameter {
-            name_ident: type_parameter.name_ident,
-            type_id,
+            name_ident: type_parameter.name_ident.clone(),
+            type_id: insert_type(TypeInfo::UnknownGeneric {
+                name: type_parameter.name_ident.clone(),
+            }),
             trait_constraints: type_parameter.trait_constraints,
         };
+        namespace
+            .insert_symbol(type_parameter.name_ident.clone(), (&type_parameter).into())
+            .ok(&mut warnings, &mut errors);
         ok(type_parameter, warnings, errors)
     }
 }

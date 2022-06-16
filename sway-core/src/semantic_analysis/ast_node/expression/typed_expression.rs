@@ -261,6 +261,34 @@ impl DeterministicallyAborts for TypedExpression {
     }
 }
 
+impl ResolveTypes for TypedExpression {
+    fn resolve_types(
+        &mut self,
+        type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        namespace: &mut namespace::Root,
+        module_path: &namespace::Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        self.return_type = check!(
+            namespace.resolve_type(
+                self.return_type,
+                &self.span,
+                enforce_type_arguments,
+                module_path,
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+        self.expression
+            .resolve_types(vec![], enforce_type_arguments, namespace, module_path)
+            .ok(&mut warnings, &mut errors);
+        ok((), warnings, errors)
+    }
+}
+
 pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
     TypedExpression {
         expression: TypedExpressionVariant::Tuple { fields: vec![] },

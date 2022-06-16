@@ -12,3 +12,16 @@ impl CopyTypes for TypedStructExpressionField {
         self.value.copy_types(type_mapping);
     }
 }
+
+impl ResolveTypes for TypedStructExpressionField {
+    fn resolve_types(
+        &mut self,
+        type_arguments: Vec<crate::TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        namespace: &mut namespace::Root,
+        module_path: &namespace::Path,
+    ) -> crate::CompileResult<()> {
+        self.value
+            .resolve_types(vec![], enforce_type_arguments, namespace, module_path)
+    }
+}

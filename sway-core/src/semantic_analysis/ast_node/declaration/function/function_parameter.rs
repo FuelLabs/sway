@@ -35,6 +35,31 @@ impl CopyTypes for TypedFunctionParameter {
     }
 }
 
+impl ResolveTypes for TypedFunctionParameter {
+    fn resolve_types(
+        &mut self,
+        type_arguments: Vec<crate::TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        namespace: &mut crate::namespace::Root,
+        module_path: &crate::namespace::Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        self.type_id = check!(
+            namespace.resolve_type(
+                self.type_id,
+                &self.type_span,
+                enforce_type_arguments,
+                module_path,
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+        ok((), warnings, errors)
+    }
+}
+
 impl TypedFunctionParameter {
     pub(crate) fn type_check(
         parameter: FunctionParameter,

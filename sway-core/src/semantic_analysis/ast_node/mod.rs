@@ -66,6 +66,64 @@ impl UnresolvedTypeCheck for TypedAstNodeContent {
     }
 }
 
+impl ResolveTypes for TypedAstNodeContent {
+    fn resolve_types(
+        &mut self,
+        type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        namespace: &mut namespace::Root,
+        module_path: &namespace::Path,
+    ) -> CompileResult<()> {
+        use TypedAstNodeContent::*;
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            ReturnStatement(stmt) => {
+                check!(
+                    stmt.resolve_types(vec!(), enforce_type_arguments, namespace, module_path),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            Declaration(decl) => {
+                check!(
+                    decl.resolve_types(vec!(), enforce_type_arguments, namespace, module_path),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            Expression(expr) => {
+                check!(
+                    expr.resolve_types(vec!(), enforce_type_arguments, namespace, module_path),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            ImplicitReturnExpression(expr) => {
+                check!(
+                    expr.resolve_types(vec!(), enforce_type_arguments, namespace, module_path),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            WhileLoop(lo) => {
+                check!(
+                    lo.resolve_types(vec!(), enforce_type_arguments, namespace, module_path),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            SideEffect => {}
+        }
+        ok((), warnings, errors)
+    }
+}
+
 #[derive(Clone, Debug, Eq, Derivative)]
 #[derivative(PartialEq)]
 pub struct TypedAstNode {
@@ -132,6 +190,19 @@ impl DeterministicallyAborts for TypedAstNode {
             }
             SideEffect => false,
         }
+    }
+}
+
+impl ResolveTypes for TypedAstNode {
+    fn resolve_types(
+        &mut self,
+        type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        namespace: &mut namespace::Root,
+        module_path: &namespace::Path,
+    ) -> CompileResult<()> {
+        self.content
+            .resolve_types(vec![], enforce_type_arguments, namespace, module_path)
     }
 }
 
