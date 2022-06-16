@@ -10,7 +10,8 @@ use crate::code_builder_helpers::{
 use super::{
     code_builder_helpers::{
         clean_all_whitespace, handle_ampersand_case, handle_assignment_case, handle_colon_case,
-        handle_dash_case, handle_logical_not_case, handle_multiline_comment_case, handle_pipe_case,
+        handle_dash_case, handle_forward_slash_case, handle_logical_not_case,
+        handle_multiline_comment_case, handle_multiply_case, handle_pipe_case, handle_plus_case,
         handle_string_case, handle_whitespace_case, is_comment, is_multiline_comment,
     },
     code_line::{CodeLine, CodeType},
@@ -89,8 +90,8 @@ impl CodeBuilder {
                         '|' => handle_pipe_case(&mut code_line, &mut iter),
                         '&' => handle_ampersand_case(&mut code_line, &mut iter),
 
-                        '+' => code_line.append_with_whitespace("+ "),
-                        '*' => code_line.append_with_whitespace("* "),
+                        '+' => handle_plus_case(&mut code_line, &mut iter),
+                        '*' => handle_multiply_case(&mut code_line, &mut iter),
                         '/' => {
                             match iter.peek() {
                                 Some((_, '*')) => {
@@ -105,7 +106,7 @@ impl CodeBuilder {
                                     code_line.append_with_whitespace(comment);
                                     return self.complete_and_add_line(code_line);
                                 }
-                                _ => code_line.append_with_whitespace("/ "),
+                                _ => handle_forward_slash_case(&mut code_line, &mut iter),
                             }
                         }
                         '%' => code_line.append_with_whitespace("% "),
@@ -115,7 +116,11 @@ impl CodeBuilder {
                         // handle beginning of the string
                         '"' => {
                             if !code_line.is_string() {
-                                code_line.append_with_whitespace("\"");
+                                if code_line.get_last_char() == Some('(') {
+                                    code_line.push_char('"');
+                                } else {
+                                    code_line.append_with_whitespace("\"");
+                                }
                                 code_line.become_string();
                             }
                         }

@@ -27,8 +27,8 @@ impl Spanned for Pattern {
         match self {
             Pattern::Wildcard { underscore_token } => underscore_token.span(),
             Pattern::Var { mutable, name } => match mutable {
-                Some(mut_token) => Span::join(mut_token.span(), name.span().clone()),
-                None => name.span().clone(),
+                Some(mut_token) => Span::join(mut_token.span(), name.span()),
+                None => name.span(),
             },
             Pattern::Literal(literal) => literal.span(),
             Pattern::Constant(path_expr) => path_expr.span(),
@@ -45,6 +45,20 @@ impl Parse for Pattern {
             let mutable = Some(mut_token);
             let name = parser.parse()?;
             return Ok(Pattern::Var { mutable, name });
+        }
+        if parser.peek::<TrueToken>().is_some() {
+            let ident = parser.parse::<Ident>()?;
+            return Ok(Pattern::Literal(Literal::Bool(LitBool {
+                span: ident.span(),
+                kind: LitBoolType::True,
+            })));
+        }
+        if parser.peek::<FalseToken>().is_some() {
+            let ident = parser.parse::<Ident>()?;
+            return Ok(Pattern::Literal(Literal::Bool(LitBool {
+                span: ident.span(),
+                kind: LitBoolType::False,
+            })));
         }
         if let Some(literal) = parser.take() {
             return Ok(Pattern::Literal(literal));
@@ -82,10 +96,8 @@ pub struct PatternStructField {
 impl Spanned for PatternStructField {
     fn span(&self) -> Span {
         match &self.pattern_opt {
-            Some((_colon_token, pattern)) => {
-                Span::join(self.field_name.span().clone(), pattern.span())
-            }
-            None => self.field_name.span().clone(),
+            Some((_colon_token, pattern)) => Span::join(self.field_name.span(), pattern.span()),
+            None => self.field_name.span(),
         }
     }
 }

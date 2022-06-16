@@ -1,5 +1,6 @@
 use crate::cli::{BuildCommand, RunCommand};
 use crate::ops::forc_build;
+use crate::utils::defaults::NODE_URL;
 use crate::utils::parameters::TxParameters;
 use crate::utils::SWAY_GIT_TAG;
 use anyhow::{anyhow, bail, Result};
@@ -10,6 +11,7 @@ use futures::TryFutureExt;
 use std::path::PathBuf;
 use std::str::FromStr;
 use sway_core::TreeType;
+use tracing::info;
 
 pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     let path_dir = if let Some(path) = &command.path {
@@ -18,7 +20,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
     let manifest = ManifestFile::from_dir(&path_dir, SWAY_GIT_TAG)?;
-    manifest.check_program_type(TreeType::Script)?;
+    manifest.check_program_type(vec![TreeType::Script])?;
 
     let input_data = &command.data.unwrap_or_else(|| "".into());
     let data = format_hex_data(input_data);
@@ -26,7 +28,6 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
 
     let build_command = BuildCommand {
         path: command.path,
-        use_orig_asm: command.use_orig_asm,
         print_finalized_asm: command.print_finalized_asm,
         print_intermediate_asm: command.print_intermediate_asm,
         print_ir: command.print_ir,
@@ -37,6 +38,8 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         output_directory: command.output_directory,
         minify_json_abi: command.minify_json_abi,
         locked: command.locked,
+        build_profile: None,
+        release: false,
     };
 
     let compiled = forc_build::build(build_command)?;
@@ -51,15 +54,16 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         TxParameters::new(command.byte_price, command.gas_limit, command.gas_price),
     );
 
+    let node_url = command.node_url.unwrap_or_else(|| match &manifest.network {
+        Some(network) => network.url.to_owned(),
+        None => NODE_URL.to_owned(),
+    });
+
     if command.dry_run {
-        println!("{:?}", tx);
+        info!("{:?}", tx);
         Ok(vec![])
     } else {
-        let node_url = match &manifest.network {
-            Some(network) => &network.url,
-            _ => &command.node_url,
-        };
-        try_send_tx(node_url, &tx, command.pretty_print).await
+        try_send_tx(&node_url, &tx, command.pretty_print, command.simulate).await
     }
 }
 
@@ -67,11 +71,12 @@ async fn try_send_tx(
     node_url: &str,
     tx: &Transaction,
     pretty_print: bool,
+    simulate: bool,
 ) -> Result<Vec<fuel_tx::Receipt>> {
     let client = FuelClient::new(node_url)?;
 
     match client.health().await {
-        Ok(_) => send_tx(&client, tx, pretty_print).await,
+        Ok(_) => send_tx(&client, tx, pretty_print, simulate).await,
         Err(_) => Err(fuel_core_not_running(node_url)),
     }
 }
@@ -80,19 +85,26 @@ async fn send_tx(
     client: &FuelClient,
     tx: &Transaction,
     pretty_print: bool,
+    simulate: bool,
 ) -> Result<Vec<fuel_tx::Receipt>> {
     let id = format!("{:#x}", tx.id());
-    match client
-        .submit(tx)
-        .and_then(|_| client.receipts(id.as_str()))
-        .await
-    {
+    let outputs = {
+        if !simulate {
+            client
+                .submit(tx)
+                .and_then(|_| client.receipts(id.as_str()))
+                .await
+        } else {
+            client
+                .dry_run(tx)
+                .and_then(|_| client.receipts(id.as_str()))
+                .await
+        }
+    };
+
+    match outputs {
         Ok(logs) => {
-            if pretty_print {
-                println!("{:#?}", logs);
-            } else {
-                println!("{:?}", logs);
-            }
+            print_receipt_output(&logs, pretty_print)?;
             Ok(logs)
         }
         Err(e) => bail!("{e}"),
@@ -162,4 +174,35 @@ fn get_tx_inputs_and_outputs(
         .map(construct_output_from_contract)
         .collect::<Vec<_>>();
     (inputs, outputs)
+}
+
+fn print_receipt_output(receipts: &Vec<fuel_tx::Receipt>, pretty_print: bool) -> Result<()> {
+    let mut receipt_to_json_array = serde_json::to_value(&receipts)?;
+    for (rec_index, receipt) in receipts.iter().enumerate() {
+        let rec_value = receipt_to_json_array.get_mut(rec_index).ok_or_else(|| {
+            anyhow!(
+                "Serialized receipts does not contain {} th index",
+                rec_index
+            )
+        })?;
+        match receipt {
+            fuel_tx::Receipt::LogData { data, .. } => {
+                if let Some(v) = rec_value.pointer_mut("/LogData/data") {
+                    *v = hex::encode(data).into();
+                }
+            }
+            fuel_tx::Receipt::ReturnData { data, .. } => {
+                if let Some(v) = rec_value.pointer_mut("/ReturnData/data") {
+                    *v = hex::encode(data).into();
+                }
+            }
+            _ => {}
+        }
+    }
+    if pretty_print {
+        info!("{}", serde_json::to_string_pretty(&receipt_to_json_array)?);
+    } else {
+        info!("{}", serde_json::to_string(&receipt_to_json_array)?);
+    }
+    Ok(())
 }

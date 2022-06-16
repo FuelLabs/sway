@@ -1,11 +1,8 @@
-use crate::{type_engine::*, TypedDeclaration};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
 
-use sway_types::{ident::Ident, span::Span};
+use sway_types::{ident::Ident, span::Span, Spanned};
 
-use std::{
-    convert::From,
-    hash::{Hash, Hasher},
-};
+use std::hash::{Hash, Hasher};
 
 #[derive(Debug, Clone, Eq)]
 pub struct TypeParameter {
@@ -36,28 +33,64 @@ impl PartialEq for TypeParameter {
     }
 }
 
-impl From<&TypeParameter> for TypedDeclaration {
-    fn from(n: &TypeParameter) -> Self {
-        TypedDeclaration::GenericTypeForFunctionScope {
-            name: n.name_ident.clone(),
-        }
+impl CopyTypes for TypeParameter {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.type_id = match look_up_type_id(self.type_id).matches_type_parameter(type_mapping) {
+            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, self.name_ident.span())),
+            None => {
+                let ty = TypeInfo::Ref(insert_type(look_up_type_id_raw(self.type_id)), self.span());
+                insert_type(ty)
+            }
+        };
+    }
+}
+
+impl Spanned for TypeParameter {
+    fn span(&self) -> Span {
+        self.name_ident.span()
+    }
+}
+
+impl ReplaceSelfType for TypeParameter {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.type_id.replace_self_type(self_type);
     }
 }
 
 impl TypeParameter {
-    pub fn span(&self) -> Span {
-        self.name_ident.span().clone()
-    }
-
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.type_id = match look_up_type_id(self.type_id).matches_type_parameter(type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
-            None => insert_type(look_up_type_id_raw(self.type_id)),
+    pub(crate) fn type_check(
+        type_parameter: TypeParameter,
+        namespace: &mut Namespace,
+    ) -> CompileResult<TypeParameter> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        if !type_parameter.trait_constraints.is_empty() {
+            errors.push(CompileError::WhereClauseNotYetSupported {
+                span: type_parameter.name_ident.span(),
+            });
+            return err(warnings, errors);
+        }
+        // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
+        let type_id = insert_type(TypeInfo::UnknownGeneric {
+            name: type_parameter.name_ident.clone(),
+        });
+        let type_parameter_decl = TypedDeclaration::GenericTypeForFunctionScope {
+            name: type_parameter.name_ident.clone(),
+            type_id,
         };
+        namespace
+            .insert_symbol(type_parameter.name_ident.clone(), type_parameter_decl)
+            .ok(&mut warnings, &mut errors);
+        let type_parameter = TypeParameter {
+            name_ident: type_parameter.name_ident,
+            type_id,
+            trait_constraints: type_parameter.trait_constraints,
+        };
+        ok(type_parameter, warnings, errors)
     }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub(crate) struct TraitConstraint {
-    pub(crate) name: Ident,
+    pub(crate) call_path: CallPath,
 }

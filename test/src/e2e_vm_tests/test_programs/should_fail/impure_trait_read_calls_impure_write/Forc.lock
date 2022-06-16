@@ -1,0 +1,4 @@
+[[package]]
+name = 'impure_trait_read_calls_impure_write'
+source = 'root'
+dependencies = []

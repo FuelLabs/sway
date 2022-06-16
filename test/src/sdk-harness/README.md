@@ -17,10 +17,10 @@ cd sway/test/src/sdk-harness
 ```
 
 This will build all contracts and scripts under the `sway/test/src/sdk-harness` directory.
-After a sucessfull build of all the projects:
+After a successful build of all the projects:
 
 ```sh
-forc test
+cargo test
 ```
 
 For more on the usage of Forc for testing, see: <https://fuellabs.github.io/sway/latest/forc/commands/forc_test.html>

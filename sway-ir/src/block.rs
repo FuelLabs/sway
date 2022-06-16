@@ -40,7 +40,7 @@ impl Block {
     /// is optional and is used only when printing the IR.
     pub fn new(context: &mut Context, function: Function, label: Option<String>) -> Block {
         let label = function.get_unique_label(context, label);
-        let phi = Value::new_instruction(context, Instruction::Phi(Vec::new()), None);
+        let phi = Value::new_instruction(context, Instruction::Phi(Vec::new()), None, None);
         let content = BlockContent {
             label,
             function,
@@ -259,10 +259,25 @@ impl Block {
 #[doc(hidden)]
 impl BlockContent {
     pub(super) fn num_predecessors(&self, context: &Context) -> usize {
-        match &context.values[self.instructions[0].0].value {
-            ValueDatum::Instruction(Instruction::Phi(list)) => list.len(),
-            _ => unreachable!("First value in block instructions is not a phi."),
-        }
+        self.function
+            .instruction_iter(context)
+            .filter(
+                |(_block, ins_value)| match &context.values[ins_value.0].value {
+                    ValueDatum::Instruction(Instruction::ConditionalBranch {
+                        true_block,
+                        false_block,
+                        ..
+                    }) => {
+                        true_block.get_label(context) == self.label
+                            || false_block.get_label(context) == self.label
+                    }
+                    ValueDatum::Instruction(Instruction::Branch(block)) => {
+                        block.get_label(context) == self.label
+                    }
+                    _otherwise => false,
+                },
+            )
+            .count()
     }
 }
 

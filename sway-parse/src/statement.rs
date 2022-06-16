@@ -4,7 +4,7 @@ use crate::priv_prelude::*;
 #[derive(Clone, Debug)]
 pub enum Statement {
     Let(StatementLet),
-    Item(ItemKind),
+    Item(Item),
     Expr {
         expr: Expr,
         semicolon_token_opt: Option<SemicolonToken>,

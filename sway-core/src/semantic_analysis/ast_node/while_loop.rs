@@ -1,13 +1,15 @@
+use std::fmt;
+
 use super::{TypedCodeBlock, TypedExpression};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct TypedWhileLoop {
-    pub(crate) condition: TypedExpression,
-    pub(crate) body: TypedCodeBlock,
+pub struct TypedWhileLoop {
+    pub condition: TypedExpression,
+    pub body: TypedCodeBlock,
 }
 
-impl TypedWhileLoop {
-    pub(crate) fn pretty_print(&self) -> String {
-        format!("while loop on {}", self.condition.pretty_print())
+impl fmt::Display for TypedWhileLoop {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "while loop on {}", self.condition)
     }
 }

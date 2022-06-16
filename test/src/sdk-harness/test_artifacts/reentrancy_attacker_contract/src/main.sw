@@ -1,27 +1,20 @@
 contract;
 
-use std::{
-    chain::auth::*,
-    constants::ZERO,
-    context::call_frames::contract_id,
-    contract_id::ContractId,
-    result::*,
-    revert::revert,
-};
+use std::{chain::auth::*, context::call_frames::contract_id, contract_id::ContractId, result::*, revert::revert, identity::Identity};
 
 use reentrancy_target_abi::Target;
 use reentrancy_attacker_abi::Attacker;
 
 // Return the sender as a ContractId or panic:
-fn get_msg_sender_id_or_panic(result: Result<Sender, AuthError>) -> ContractId {
-    if let Result::Ok(s) = result {
-        if let Sender::ContractId(v) = s {
-            v
-        } else {
-            revert(0);
-        }
-    } else {
-        revert(0);
+fn get_msg_sender_id_or_panic(result: Result<Identity, AuthError>) -> ContractId {
+    match result {
+        Result::Ok(s) => {
+            match s {
+                Identity::ContractId(v) => v,
+                _ => revert(0),
+            }
+        },
+        _ => {revert(0);},
     }
 }
 
@@ -51,7 +44,7 @@ impl Attacker for Contract {
     }
 
     fn evil_callback_1() -> bool {
-        let result: Result<Sender, AuthError> = msg_sender();
+        let result: Result<Identity, AuthError> = msg_sender();
         let id = get_msg_sender_id_or_panic(result);
 
         let attacker = abi(Attacker, ~ContractId::into(contract_id()));
@@ -59,7 +52,7 @@ impl Attacker for Contract {
     }
 
     fn evil_callback_2() -> bool {
-        let result: Result<Sender, AuthError> = msg_sender();
+        let result: Result<Identity, AuthError> = msg_sender();
         let id = get_msg_sender_id_or_panic(result);
 
         let attacker = abi(Attacker, ~ContractId::into(contract_id()));
@@ -68,7 +61,7 @@ impl Attacker for Contract {
     }
 
     fn evil_callback_3() -> bool {
-        let result: Result<Sender, AuthError> = msg_sender();
+        let result: Result<Identity, AuthError> = msg_sender();
         let id = get_msg_sender_id_or_panic(result);
 
         let attacker = abi(Attacker, ~ContractId::into(contract_id()));

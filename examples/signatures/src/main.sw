@@ -3,8 +3,9 @@ script;
 use std::result::Result;
 use std::b512::B512;
 use std::revert::revert;
-use std::chain::log_b256;
+use std::logging::log;
 use std::ecr::{EcRecoverError, ec_recover, ec_recover_address};
+use std::address::Address;
 
 const MSG_HASH = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
 
@@ -19,8 +20,8 @@ fn main() {
     // A recovered Fuel address.
     let result_address: Result<Address, EcRecoverError> = ec_recover_address(signature, MSG_HASH);
     if let Result::Ok(address) = result_address {
-        log_b256(address.value);
+        log(address.value);
     } else {
         revert(0);
-    };
+    }
 }

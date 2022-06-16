@@ -9,12 +9,12 @@ pub mod intrinsics;
 mod item;
 pub mod keywords;
 mod literal;
+pub mod module;
 pub mod parse;
 pub mod parser;
 pub mod path;
 pub mod pattern;
 mod priv_prelude;
-pub mod program;
 pub mod punctuated;
 pub mod statement;
 mod token;
@@ -23,6 +23,7 @@ pub mod where_clause;
 
 pub use crate::{
     assignable::Assignable,
+    attribute::AttributeDecl,
     brackets::{AngleBrackets, Braces},
     dependency::Dependency,
     error::{ParseError, ParseErrorKind},
@@ -44,15 +45,15 @@ pub use crate::{
         item_struct::ItemStruct,
         item_trait::{ItemTrait, Traits},
         item_use::{ItemUse, UseTree},
-        FnArg, FnArgs, FnSignature, ItemKind, TypeField,
+        FnArg, FnArgs, FnSignature, Item, ItemKind, TypeField,
     },
-    keywords::{DoubleColonToken, ImpureToken, PubToken},
+    keywords::{DoubleColonToken, PubToken},
     literal::{LitInt, LitIntType, Literal},
+    module::{Module, ModuleKind},
     parse::Parse,
     parser::Parser,
     path::{PathExpr, PathExprSegment, PathType, PathTypeSegment, QualifiedPathRoot},
     pattern::{Pattern, PatternStructField},
-    program::{Program, ProgramKind},
     statement::{Statement, StatementLet},
     token::lex,
     token::LexError,
@@ -60,24 +61,27 @@ pub use crate::{
     where_clause::{WhereBound, WhereClause},
 };
 
+use crate::priv_prelude::*;
 use std::{path::PathBuf, sync::Arc};
 
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Hash, Error)]
 pub enum ParseFileError {
+    #[error(transparent)]
     Lex(LexError),
+    #[error("Unable to parse: {}", .0.iter().map(|x| x.kind.to_string()).collect::<Vec<String>>().join("\n"))]
     Parse(Vec<ParseError>),
 }
 
-pub fn parse_file(src: Arc<str>, path: Option<Arc<PathBuf>>) -> Result<Program, ParseFileError> {
+pub fn parse_file(src: Arc<str>, path: Option<Arc<PathBuf>>) -> Result<Module, ParseFileError> {
     let token_stream = match lex(&src, 0, src.len(), path) {
         Ok(token_stream) => token_stream,
         Err(error) => return Err(ParseFileError::Lex(error)),
     };
     let mut errors = Vec::new();
     let parser = Parser::new(&token_stream, &mut errors);
-    let program = match parser.parse_to_end() {
-        Ok((program, _parser_consumed)) => program,
+    let module = match parser.parse_to_end() {
+        Ok((module, _parser_consumed)) => module,
         Err(_error_emitted) => return Err(ParseFileError::Parse(errors)),
     };
-    Ok(program)
+    Ok(module)
 }

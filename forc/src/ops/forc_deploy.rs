@@ -11,6 +11,7 @@ use fuel_vm::prelude::*;
 use std::path::PathBuf;
 use sway_core::TreeType;
 use sway_utils::constants::DEFAULT_NODE_URL;
+use tracing::info;
 
 pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
     let curr_dir = if let Some(ref path) = command.path {
@@ -19,11 +20,10 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         std::env::current_dir()?
     };
     let manifest = ManifestFile::from_dir(&curr_dir, SWAY_GIT_TAG)?;
-    manifest.check_program_type(TreeType::Contract)?;
+    manifest.check_program_type(vec![TreeType::Contract])?;
 
     let DeployCommand {
         path,
-        use_orig_asm,
         print_finalized_asm,
         print_intermediate_asm,
         print_ir,
@@ -34,11 +34,13 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         output_directory,
         minify_json_abi,
         locked,
+        url,
+        build_profile,
+        release,
     } = command;
 
     let build_command = BuildCommand {
         path,
-        use_orig_asm,
         print_finalized_asm,
         print_intermediate_asm,
         print_ir,
@@ -49,6 +51,8 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         output_directory,
         minify_json_abi,
         locked,
+        build_profile,
+        release,
     };
 
     let compiled = forc_build::build(build_command)?;
@@ -63,11 +67,16 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         _ => DEFAULT_NODE_URL,
     };
 
+    let node_url = match url {
+        Some(url_str) => url_str,
+        None => node_url.to_string(),
+    };
+
     let client = FuelClient::new(node_url)?;
 
     match client.submit(&tx).await {
         Ok(logs) => {
-            println!("Logs:\n{:?}", logs);
+            info!("Logs:\n{:?}", logs);
             Ok(contract_id)
         }
         Err(e) => bail!("{e}"),
@@ -80,7 +89,7 @@ fn create_contract_tx(
     outputs: Vec<Output>,
 ) -> (Transaction, fuel_tx::ContractId) {
     let gas_price = 0;
-    let gas_limit = fuel_tx::consts::MAX_GAS_PER_TX;
+    let gas_limit = fuel_tx::default_parameters::MAX_GAS_PER_TX;
     let byte_price = 0;
     let maturity = 0;
     let bytecode_witness_index = 0;
@@ -94,7 +103,7 @@ fn create_contract_tx(
     let root = contract.root();
     let state_root = Contract::default_state_root();
     let id = contract.id(&salt, &root, &state_root);
-    println!("Contract id: 0x{}", hex::encode(id));
+    info!("Contract id: 0x{}", hex::encode(id));
     let outputs = [
         &[Output::ContractCreated {
             contract_id: id,

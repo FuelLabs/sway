@@ -1,9 +1,13 @@
 library std;
 
+dep intrinsics;
 dep revert;
+dep logging;
 dep assert;
 dep option;
 dep result;
+dep mem;
+dep alloc;
 dep constants;
 dep contract_id;
 dep context;
@@ -11,6 +15,7 @@ dep hash;
 dep storage;
 dep b512;
 dep address;
+dep identity;
 dep tx;
 dep chain;
 dep math;
@@ -20,5 +25,7 @@ dep ecr;
 dep vec;
 dep reentrancy;
 dep vm/mod;
+dep flags;
+dep u128;
 
 use core::*;

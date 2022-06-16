@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "call_abi_with_tuples"
+
+[dependencies]
+abi_with_tuples = { path = "../../test_abis/abi_with_tuples" }
+std = { path = "../../../../../../../sway-lib-std" }

@@ -1,0 +1,22 @@
+script {
+    fn main() -> u64, !1 {
+        entry:
+        br while
+
+        while:
+        v0 = const bool false, !2
+        cbr v0, while_body, end_while
+
+        while_body:
+        br while
+
+        end_while:
+        v1 = const u64 42, !3
+        ret u64 v1
+    }
+}
+
+!0 = filepath "/path/to/implicit_return.sw"
+!1 = span !0 9 61
+!2 = span !0 38 43
+!3 = span !0 57 59

@@ -1,14 +1,13 @@
-use super::TypedExpression;
-use crate::{type_engine::TypeId, TypeParameter};
+use super::{CopyTypes, TypeMapping, TypedExpression};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct TypedReturnStatement {
-    pub(crate) expr: TypedExpression,
+pub struct TypedReturnStatement {
+    pub expr: TypedExpression,
 }
 
-impl TypedReturnStatement {
+impl CopyTypes for TypedReturnStatement {
     /// Makes a fresh copy of all types contained in this statement.
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.expr.copy_types(type_mapping);
     }
 }

@@ -10,7 +10,7 @@
     "name": "set_x",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -28,7 +28,7 @@
     "name": "set_y",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -103,7 +103,7 @@
     "name": "set_s",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -121,7 +121,7 @@
     "name": "set_boolean",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -139,7 +139,7 @@
     "name": "set_int8",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -157,7 +157,7 @@
     "name": "set_int16",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -175,7 +175,7 @@
     "name": "set_int32",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -193,7 +193,7 @@
     "name": "set_s_dot_x",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -211,7 +211,7 @@
     "name": "set_s_dot_y",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -229,7 +229,7 @@
     "name": "set_s_dot_z",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -283,7 +283,7 @@
     "name": "set_s_dot_t",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -301,7 +301,7 @@
     "name": "set_s_dot_t_dot_x",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -319,7 +319,7 @@
     "name": "set_s_dot_t_dot_y",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -337,7 +337,7 @@
     "name": "set_s_dot_t_dot_z",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -355,7 +355,7 @@
     "name": "set_s_dot_t_dot_boolean",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -373,7 +373,7 @@
     "name": "set_s_dot_t_dot_int8",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -391,7 +391,7 @@
     "name": "set_s_dot_t_dot_int16",
     "outputs": [
       {
-        "components": null,
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -409,7 +409,90 @@
     "name": "set_s_dot_t_dot_int32",
     "outputs": [
       {
+        "components": [],
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "A",
+            "type": "u64"
+          },
+          {
+            "components": [
+              {
+                "components": null,
+                "name": "x",
+                "type": "u64"
+              },
+              {
+                "components": null,
+                "name": "y",
+                "type": "u64"
+              },
+              {
+                "components": null,
+                "name": "z",
+                "type": "b256"
+              },
+              {
+                "components": null,
+                "name": "boolean",
+                "type": "bool"
+              },
+              {
+                "components": null,
+                "name": "int8",
+                "type": "u8"
+              },
+              {
+                "components": null,
+                "name": "int16",
+                "type": "u16"
+              },
+              {
+                "components": null,
+                "name": "int32",
+                "type": "u32"
+              }
+            ],
+            "name": "B",
+            "type": "struct T"
+          }
+        ],
+        "name": "e",
+        "type": "enum E"
+      }
+    ],
+    "name": "set_e",
+    "outputs": [
+      {
+        "components": [],
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "components": null,
+        "name": "string",
+        "type": "str[40]"
+      }
+    ],
+    "name": "set_string",
+    "outputs": [
+      {
+        "components": [],
         "name": "",
         "type": "()"
       }
@@ -721,6 +804,77 @@
         "components": null,
         "name": "",
         "type": "u32"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_e",
+    "outputs": [
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "A",
+            "type": "u64"
+          },
+          {
+            "components": [
+              {
+                "components": null,
+                "name": "x",
+                "type": "u64"
+              },
+              {
+                "components": null,
+                "name": "y",
+                "type": "u64"
+              },
+              {
+                "components": null,
+                "name": "z",
+                "type": "b256"
+              },
+              {
+                "components": null,
+                "name": "boolean",
+                "type": "bool"
+              },
+              {
+                "components": null,
+                "name": "int8",
+                "type": "u8"
+              },
+              {
+                "components": null,
+                "name": "int16",
+                "type": "u16"
+              },
+              {
+                "components": null,
+                "name": "int32",
+                "type": "u32"
+              }
+            ],
+            "name": "B",
+            "type": "struct T"
+          }
+        ],
+        "name": "",
+        "type": "enum E"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_string",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "str[40]"
       }
     ],
     "type": "function"

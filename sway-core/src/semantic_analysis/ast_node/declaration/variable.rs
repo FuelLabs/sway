@@ -1,7 +1,4 @@
-use crate::{
-    constants::*, error::*, semantic_analysis::TypedExpression, type_engine::TypeId,
-    type_engine::*, Ident, TypeParameter, Visibility,
-};
+use crate::{constants::*, error::*, semantic_analysis::*, type_engine::*, Ident, Visibility};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum VariableMutability {
@@ -51,10 +48,10 @@ impl From<VariableMutability> for bool {
 }
 #[derive(Clone, Debug, Eq)]
 pub struct TypedVariableDeclaration {
-    pub(crate) name: Ident,
-    pub(crate) body: TypedExpression,
+    pub name: Ident,
+    pub body: TypedExpression,
     pub(crate) is_mutable: VariableMutability,
-    pub(crate) type_ascription: TypeId,
+    pub type_ascription: TypeId,
     pub(crate) const_decl_origin: bool,
 }
 
@@ -71,13 +68,10 @@ impl PartialEq for TypedVariableDeclaration {
     }
 }
 
-impl TypedVariableDeclaration {
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.type_ascription =
-            match look_up_type_id(self.type_ascription).matches_type_parameter(type_mapping) {
-                Some(matching_id) => insert_type(TypeInfo::Ref(matching_id)),
-                None => insert_type(look_up_type_id_raw(self.type_ascription)),
-            };
+impl CopyTypes for TypedVariableDeclaration {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.type_ascription
+            .update_type(type_mapping, &self.body.span);
         self.body.copy_types(type_mapping)
     }
 }

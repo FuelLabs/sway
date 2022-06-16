@@ -1,9 +1,6 @@
-use crate::{
-    error::{err, ok},
-    CallPath, CompileError, CompileResult, Literal,
-};
+use crate::{CallPath, Literal, TypeInfo};
 
-use sway_types::{ident::Ident, span::Span};
+use sway_types::{ident::Ident, span::Span, Spanned};
 
 /// A [Scrutinee] is on the left-hand-side of a pattern, and dictates whether or
 /// not a pattern will succeed at pattern matching and what, if any, elements will
@@ -11,7 +8,7 @@ use sway_types::{ident::Ident, span::Span};
 #[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone)]
 pub enum Scrutinee {
-    Unit {
+    CatchAll {
         span: Span,
     },
     Literal {
@@ -29,7 +26,7 @@ pub enum Scrutinee {
     },
     EnumScrutinee {
         call_path: CallPath,
-        variable_to_assign: Ident,
+        value: Box<Scrutinee>,
         span: Span,
     },
     Tuple {
@@ -45,30 +42,111 @@ pub struct StructScrutineeField {
     pub span: Span,
 }
 
-impl Scrutinee {
-    pub fn span(&self) -> Span {
+impl Spanned for Scrutinee {
+    fn span(&self) -> Span {
         match self {
+            Scrutinee::CatchAll { span } => span.clone(),
             Scrutinee::Literal { span, .. } => span.clone(),
-            Scrutinee::Unit { span } => span.clone(),
             Scrutinee::Variable { span, .. } => span.clone(),
             Scrutinee::StructScrutinee { span, .. } => span.clone(),
             Scrutinee::EnumScrutinee { span, .. } => span.clone(),
             Scrutinee::Tuple { span, .. } => span.clone(),
         }
     }
+}
 
-    /// If this is an enum scrutinee, returns the name of the inner value that should be
-    /// assigned to upon successful destructuring.
-    /// Should only be used when destructuring enums via `if let`
-    pub fn enum_variable_to_assign(&self) -> CompileResult<&Ident> {
+impl Scrutinee {
+    /// Given some `Scrutinee` `self`, analyze `self` and return all instances
+    /// of possible dependencies. A "possible dependency" is a `Scrutinee` that
+    /// resolves to one or more `TypeInfo::Custom`.
+    ///
+    /// For example, this `Scrutinee`:
+    ///
+    /// ```ignore
+    /// Scrutinee::EnumScrutinee {
+    ///   call_path: CallPath {
+    ///     prefixes: ["Data"]
+    ///     suffix: "A"
+    ///   },
+    ///   value: Scrutinee::StructScrutinee {
+    ///     struct_name: "Foo",
+    ///     fields: [
+    ///         StructScrutineeField {
+    ///             scrutinee: Scrutinee::StructScrutinee {
+    ///                 struct_name: "Bar",
+    ///                 fields: [
+    ///                     StructScrutineeField {
+    ///                         scrutinee: Scrutinee::Literal { .. },
+    ///                         ..
+    ///                     }
+    ///                 ],
+    ///                 ..
+    ///             },
+    ///             ..
+    ///         }
+    ///     ],
+    ///     ..
+    ///   }
+    ///   ..
+    /// }
+    /// ```
+    ///
+    /// would resolve to this list of approximate `TypeInfo` dependencies:
+    ///
+    /// ```ignore
+    /// [
+    ///     TypeInfo::Custom {
+    ///         name: "Data",
+    ///         ..
+    ///     },
+    ///     TypeInfo::Custom {
+    ///         name: "Foo",
+    ///         ..
+    ///     },
+    ///     TypeInfo::Custom {
+    ///         name: "Bar",
+    ///         ..
+    ///     },
+    /// ]
+    /// ```
+    pub(crate) fn gather_approximate_typeinfo_dependencies(&self) -> Vec<TypeInfo> {
         match self {
+            Scrutinee::StructScrutinee {
+                struct_name,
+                fields,
+                ..
+            } => {
+                let name = vec![TypeInfo::Custom {
+                    name: struct_name.clone(),
+                    type_arguments: vec![],
+                }];
+                let fields = fields
+                    .iter()
+                    .flat_map(|StructScrutineeField { scrutinee, .. }| match scrutinee {
+                        Some(scrutinee) => scrutinee.gather_approximate_typeinfo_dependencies(),
+                        None => vec![],
+                    })
+                    .collect::<Vec<TypeInfo>>();
+                vec![name, fields].concat()
+            }
             Scrutinee::EnumScrutinee {
-                variable_to_assign, ..
-            } => ok(variable_to_assign, vec![], vec![]),
-            _ => err(
-                vec![],
-                vec![CompileError::IfLetNonEnum { span: self.span() }],
-            ),
+                call_path, value, ..
+            } => {
+                let enum_name = call_path.prefixes.last().unwrap_or(&call_path.suffix);
+                let name = vec![TypeInfo::Custom {
+                    name: enum_name.clone(),
+                    type_arguments: vec![],
+                }];
+                let value = value.gather_approximate_typeinfo_dependencies();
+                vec![name, value].concat()
+            }
+            Scrutinee::Tuple { elems, .. } => elems
+                .iter()
+                .flat_map(|scrutinee| scrutinee.gather_approximate_typeinfo_dependencies())
+                .collect::<Vec<TypeInfo>>(),
+            Scrutinee::Literal { .. } | Scrutinee::CatchAll { .. } | Scrutinee::Variable { .. } => {
+                vec![]
+            }
         }
     }
 }

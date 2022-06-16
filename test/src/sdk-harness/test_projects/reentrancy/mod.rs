@@ -1,6 +1,6 @@
-use fuel_tx::{consts::MAX_GAS_PER_TX, ContractId};
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
+use fuels::tx::{default_parameters::MAX_GAS_PER_TX, ContractId};
 use fuels_abigen_macro::abigen;
 
 abigen!(
@@ -15,9 +15,9 @@ abigen!(
 
 #[tokio::test]
 async fn can_detect_reentrancy() {
-    let (provider, wallet) = setup_test_provider_and_wallet().await;
-    let (attacker_instance, _) = get_attacker_instance(provider.clone(), wallet.clone()).await;
-    let (_, target_id) = get_target_instance(provider, wallet).await;
+    let wallet = launch_provider_and_get_single_wallet().await;
+    let (attacker_instance, _) = get_attacker_instance(wallet.clone()).await;
+    let (_, target_id) = get_target_instance(wallet).await;
 
     let result = attacker_instance
         .launch_attack(target_id)
@@ -33,9 +33,9 @@ async fn can_detect_reentrancy() {
 #[tokio::test]
 #[should_panic(expected = "Revert(0)")]
 async fn can_block_reentrancy() {
-    let (provider, wallet) = setup_test_provider_and_wallet().await;
-    let (attacker_instance, _) = get_attacker_instance(provider.clone(), wallet.clone()).await;
-    let (_, target_id) = get_target_instance(provider, wallet).await;
+    let wallet = launch_provider_and_get_single_wallet().await;
+    let (attacker_instance, _) = get_attacker_instance(wallet.clone()).await;
+    let (_, target_id) = get_target_instance(wallet).await;
 
     attacker_instance
         .launch_thwarted_attack_1(target_id)
@@ -48,9 +48,9 @@ async fn can_block_reentrancy() {
 #[tokio::test]
 #[should_panic(expected = "Revert(0)")]
 async fn can_block_cross_function_reentrancy() {
-    let (provider, wallet) = setup_test_provider_and_wallet().await;
-    let (attacker_instance, _) = get_attacker_instance(provider.clone(), wallet.clone()).await;
-    let (_, target_id) = get_target_instance(provider, wallet).await;
+    let wallet = launch_provider_and_get_single_wallet().await;
+    let (attacker_instance, _) = get_attacker_instance(wallet.clone()).await;
+    let (_, target_id) = get_target_instance(wallet).await;
 
     attacker_instance
         .launch_thwarted_attack_2(target_id)
@@ -62,9 +62,9 @@ async fn can_block_cross_function_reentrancy() {
 
 #[tokio::test]
 async fn can_call_guarded_function() {
-    let (provider, wallet) = setup_test_provider_and_wallet().await;
-    let (attacker_instance, _) = get_attacker_instance(provider.clone(), wallet.clone()).await;
-    let (_, target_id) = get_target_instance(provider, wallet).await;
+    let wallet = launch_provider_and_get_single_wallet().await;
+    let (attacker_instance, _) = get_attacker_instance(wallet.clone()).await;
+    let (_, target_id) = get_target_instance(wallet).await;
 
     let result = attacker_instance
         .innocent_call(target_id)
@@ -76,33 +76,30 @@ async fn can_call_guarded_function() {
     assert_eq!(result.value, true)
 }
 
-async fn get_attacker_instance(
-    provider: Provider,
-    wallet: Wallet,
-) -> (AttackerContract, ContractId) {
-    let compiled = Contract::load_sway_contract(
+async fn get_attacker_instance(wallet: Wallet) -> (AttackerContract, ContractId) {
+    let id = Contract::deploy(
         "test_artifacts/reentrancy_attacker_contract/out/debug/reentrancy_attacker_contract.bin",
+        &wallet,
+        TxParameters::default(),
     )
+    .await
     .unwrap();
-    let id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
-        .await
-        .unwrap();
 
-    let instance = AttackerContract::new(id.to_string(), provider, wallet);
+    let instance = AttackerContract::new(id.to_string(), wallet);
 
     (instance, id)
 }
 
-async fn get_target_instance(provider: Provider, wallet: Wallet) -> (TargetContract, ContractId) {
-    let compiled = Contract::load_sway_contract(
+async fn get_target_instance(wallet: Wallet) -> (TargetContract, ContractId) {
+    let id = Contract::deploy(
         "test_artifacts/reentrancy_target_contract/out/debug/reentrancy_target_contract.bin",
+        &wallet,
+        TxParameters::default(),
     )
+    .await
     .unwrap();
-    let id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
-        .await
-        .unwrap();
 
-    let instance = TargetContract::new(id.to_string(), provider, wallet);
+    let instance = TargetContract::new(id.to_string(), wallet);
 
     (instance, id)
 }

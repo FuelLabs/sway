@@ -1,40 +1,53 @@
 # Libraries
 
-Libraries in Sway are files used to define new common behavior. An example of this is the [Sway Core Library](https://github.com/FuelLabs/sway/tree/master/sway-lib-core) which outlines various methods that the `u64` type implements.
+Libraries in Sway are files used to define new common behavior. The most prominent example of this is the [Sway Standard Library](../introduction/standard_library.html).
 
 ## Writing Libraries
 
-Libraries are denoted using the `library` keyword at the beginning of the file, followed by a name so that they can be imported, e.g. `library foo;`.
+Libraries are defined using the `library` keyword at the beginning of a file, followed by a name so that they can be imported.
 
 ```sway
 library my_library;
+
+// library code
 ```
 
-A good reference library to use when learning library design is the [Sway Core Library](https://github.com/FuelLabs/sway/tree/master/sway-lib-core). The `add` function interface is defined via the `Add` trait and then implemented for `u64`. This attaches this `add` function to the type so that, when the trait is imported, `u64`s can utilize the `add` function.
+A good reference library to use when learning library design is the [Sway Standard Library](../introduction/standard_library.html). For example, the standard library offers an [implementation](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw) of `enum Option<T>` which is a generic type that represents either the existence of a value using the variant `Some(..)` or a value's absence using the variant `None`. The [Sway file implementing `Option<T>`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw) has the following structure:
+
+* The `library` keyword followed by the name of the library:
 
 ```sway
-pub trait Add {
-    fn add(self, other: Self) -> Self;
-}
+library option;
+```
 
-impl Add for u64 {
-    fn add(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            add r3 r2 r1;
-            r3: u64
-        }
+* A `use` statement that imports `revert` from another library _inside_ the standard library:
+
+```sway
+use ::revert::revert;
+```
+
+* The `enum` definition which starts with the keyword `pub` to indicate that this `Option<T>` is publically available _outside_ the `option` library:
+
+```sway
+pub enum Option<T> {
+    // variants
+}
+```
+
+* An `impl` block that implements some methods for `Option<T>`:
+
+```sway
+impl<T> Option<T> {
+
+    fn is_some(self) -> bool {
+        // body of is_some
     }
+
+    // other methods
 }
 ```
 
-This snippet defines the trait `Add`, then implements it for the `u64` type by providing a function body. This gives all `u64`s the `add` function, which is inserted at compile time when you use the `+` operator in Sway. Libraries can export more than functions, though. You can also use libraries to just export types like below.
-
-```sway
-pub struct MyStruct {
-    field_one: u64,
-    field_two: bool,
-}
-```
+Now that the library `option` is fully written, and because `Option<T>` is defined with the `pub` keyword, we are now able to import `Option<T>` using `use std::option::Option;` from any Sway project and have access to all of its variants and methods.
 
 Libraries are composed of just a `Forc.toml` file and a `src` directory, unlike contracts which usually contain a `tests` directory and a `Cargo.toml` file as well. An example of a library's `Forc.toml`:
 
@@ -43,12 +56,14 @@ Libraries are composed of just a `Forc.toml` file and a `src` directory, unlike 
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "lib.sw"
 license = "Apache-2.0"
-name = "lib-std"
+name = "my_library"
 
 [dependencies]
 ```
 
-which denotes the authors, an entry file, the name by which it can be imported, and any dependencies. For large libraries, it is recommended to have a `lib.sw` entry point re-export all other sub-libraries. For example, the `lib.sw` of the standard library looks like:
+which denotes the authors, an entry file, the name by which it can be imported, and any dependencies.
+
+For large libraries, it is recommended to have a `lib.sw` entry point re-export all other sub-libraries. For example, the `lib.sw` of the standard library looks like:
 
 ```sway
 library std;
@@ -56,6 +71,7 @@ library std;
 dep block;
 dep storage;
 dep constants;
+// .. Other deps
 ```
 
 with other libraries contained in the `src` folder, like the block library (inside of `block.sw`):
@@ -63,13 +79,7 @@ with other libraries contained in the `src` folder, like the block library (insi
 ```sway
 library block;
 
-/// Get the current block height
-pub fn height() -> u64 {
-    asm(height) {
-        bhei height;
-        height: u64
-    }
-}
+// Implementation of the `block` library 
 ```
 
 The `dep` keyword in the main library includes a dependency on another library, making all of its items (such as functions and structs) accessible from the main library. The `dep` keyword simply makes the library a dependency and fully accessible within the current context.
@@ -78,16 +88,18 @@ The `dep` keyword in the main library includes a dependency on another library, 
 
 Libraries can be imported using the `use` keyword and with a `::` separating the name of the library and the import.
 
-Here is an example of importing storage and its related functions from the standard library.
+Here is an example of importing the `get<T>` and `store<T>` functions from the `storage` library.
 
 ```sway
-use std::storage::*;
+use std::storage::{get, store};
 ```
 
 Wildcard imports using `*` are supported, but it is always recommended to use explicit imports where possible.
 
-You will also need to link the library in the `Forc.toml` of the `forc` repo that you're calling from. You can do this by opening up the `Forc.toml` file and adding the following line to the bottom:
+Libraries _other than the standard library_ have to be added as a dependency in `Forc.toml`. This can be done by adding a path to the library in the `[dependencies]` section. For example:
 
 ```toml
-wallet_lib = { path = "../wallet_lib" }
+wallet_lib = { path = "/path/to/wallet_lib" }
 ```
+
+> **Note**: the standard library is implicitly available to all Forc projects, that is, you are not required to manually specify `std` as an explicit dependency in `Forc.toml`.

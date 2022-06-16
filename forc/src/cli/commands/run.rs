@@ -23,8 +23,8 @@ pub struct Command {
     pub dry_run: bool,
 
     /// URL of the Fuel Client Node
-    #[clap(env = "FUEL_NODE_URL", default_value = "http://127.0.0.1:4000")]
-    pub node_url: String,
+    #[clap(env = "FUEL_NODE_URL")]
+    pub node_url: Option<String>,
 
     /// Kill Fuel Node Client after running the code.
     /// This is only available if the node is started from `forc run`
@@ -90,6 +90,12 @@ pub struct Command {
     /// needs to be updated, Forc will exit with an error
     #[clap(long)]
     pub locked: bool,
+
+    /// Execute the transaction and return the final mutated transaction along with receipts
+    /// (which includes whether the transaction reverted or not). The transaction is not inserted
+    /// in the node's view of the blockchain, (i.e. it does not affect the chain state).
+    #[clap(long)]
+    pub simulate: bool,
 }
 
 pub(crate) async fn exec(command: Command) -> Result<()> {

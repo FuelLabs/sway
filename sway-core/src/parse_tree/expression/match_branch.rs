@@ -1,10 +1,10 @@
 use sway_types::span;
 
-use super::{Expression, MatchCondition};
+use super::{Expression, Scrutinee};
 
 #[derive(Debug, Clone)]
 pub struct MatchBranch {
-    pub(crate) condition: MatchCondition,
-    pub(crate) result: Expression,
+    pub scrutinee: Scrutinee,
+    pub result: Expression,
     pub(crate) span: span::Span,
 }

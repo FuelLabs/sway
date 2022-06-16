@@ -4,18 +4,23 @@ use clap::Parser;
 
 /// Compile the current or target project.
 ///
-/// The output produced will depend on the project's program type. Building script, predicate and
-/// contract projects will produce their bytecode in binary format `<project-name>.bin`. Building
-/// contracts and libraries will also produce the public ABI in JSON format
+/// The output produced will depend on the project's program type.
+///
+/// - `script`, `predicate` and `contract` projects will produce their bytecode in binary format `<project-name>.bin`.
+///
+/// - `script` projects will also produce a file containing the hash of the bytecode binary
+/// `<project-name>-bin-hash` (using `fuel_cypto::Hasher`).
+///
+/// - `predicate` projects will also produce a file containing the **root** hash of the bytecode binary
+/// `<project-name>-bin-root` (using `fuel_tx::Contract::root_from_code`).
+///
+/// - `contract` and `library` projects will also produce the public ABI in JSON format
 /// `<project-name>-abi.json`.
 #[derive(Debug, Default, Parser)]
 pub struct Command {
     /// Path to the project, if not specified, current working directory will be used.
     #[clap(short, long)]
     pub path: Option<String>,
-    /// Whether to compile using the original (pre- IR) pipeline.
-    #[clap(long, hide = true)]
-    pub use_orig_asm: bool,
     /// Whether to compile to bytecode (false) or to print out the generated ASM (true).
     #[clap(long)]
     pub print_finalized_asm: bool,
@@ -51,6 +56,15 @@ pub struct Command {
     /// needs to be updated, Forc will exit with an error
     #[clap(long)]
     pub locked: bool,
+    /// Name of the build profile to use.
+    /// If it is not specified, forc will use debug build profile.
+    #[clap(long)]
+    pub build_profile: Option<String>,
+    /// Use release build plan. If a custom release plan is not specified, it is implicitly added to the manifest file.
+    ///
+    ///  If --build-profile is also provided, forc omits this flag and uses provided build-profile.
+    #[clap(long)]
+    pub release: bool,
 }
 
 pub(crate) fn exec(command: Command) -> Result<()> {

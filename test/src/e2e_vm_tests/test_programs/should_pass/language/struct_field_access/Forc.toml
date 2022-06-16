@@ -1,8 +1,8 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
 license = "Apache-2.0"
 name = "struct_field_access"
-entry = "main.sw"
 
 [dependencies]
 core = { path = "../../../../../../../sway-lib-core" }

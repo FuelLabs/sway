@@ -49,7 +49,7 @@ impl ContractB for Contract {
 }
 ```
 
-> **NOTE** The ABI is for external calls only therefore you cannot define a method in the ABI and call it in the same contract. If you want to define a function for a contract, but keep it private so that only your contract can call it, you can define it outside of the `impl` and call it inside the contract, similar to the `return_45()` function above.
+> **Note**: The ABI is for external calls only therefore you cannot define a method in the ABI and call it in the same contract. If you want to define a function for a contract, but keep it private so that only your contract can call it, you can define it outside of the `impl` and call it inside the contract, similar to the `return_45()` function above.
 
 ## Advanced Calls
 
@@ -76,7 +76,7 @@ fn main() {
 
 ## Handling Re-entrancy
 
-A common attack vector for smart contracts is [re-entrancy](https://docs.soliditylang.org/en/v0.8.4/security-considerations.html#re-entrancy). Similar to the Ethereum Virtual Machine, the FuelVM allows for re-entrancy.
+A common attack vector for smart contracts is [re-entrancy](https://docs.soliditylang.org/en/v0.8.4/security-considerations.html#re-entrancy). Similar to the EVM, the FuelVM allows for re-entrancy.
 
 A _stateless_ re-entrancy guard is included in the Sway standard library. The guard will panic (revert) at run time if re-entrancy is detected.
 
@@ -97,9 +97,9 @@ impl ContractB for Contract {
 }
 ```
 
-## Differences from Ethereum
+## Differences from the EVM
 
-While the Fuel contract calling paradigm is similar to Ethereum's (using an ABI, forwarding gas and data), it differs in _two_ key ways:
+While the Fuel contract calling paradigm is similar to the EVM's (using an ABI, forwarding gas and data), it differs in _two_ key ways:
 
 1. [**Native assets**](./native_assets.md): FuelVM calls can forward any native asset not just base asset.
 

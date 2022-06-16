@@ -1,0 +1,4 @@
+[[package]]
+name = 'trait_impl_purity_mismatch'
+source = 'root'
+dependencies = []

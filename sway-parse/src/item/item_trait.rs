@@ -6,8 +6,8 @@ pub struct ItemTrait {
     pub trait_token: TraitToken,
     pub name: Ident,
     pub super_traits: Option<(ColonToken, Traits)>,
-    pub trait_items: Braces<Vec<(FnSignature, SemicolonToken)>>,
-    pub trait_defs_opt: Option<Braces<Vec<ItemFn>>>,
+    pub trait_items: Braces<Vec<(Annotated<FnSignature>, SemicolonToken)>>,
+    pub trait_defs_opt: Option<Braces<Vec<Annotated<ItemFn>>>>,
 }
 
 impl Spanned for ItemTrait {
@@ -68,8 +68,8 @@ impl Parse for Traits {
     }
 }
 
-impl Traits {
-    pub fn span(&self) -> Span {
+impl Spanned for Traits {
+    fn span(&self) -> Span {
         match self.suffixes.last() {
             Some((_add_token, path_type)) => Span::join(self.prefix.span(), path_type.span()),
             None => self.prefix.span(),

@@ -1,0 +1,14 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-0F8B93B33FD67819'
+dependencies = []
+
+[[package]]
+name = 'evm_ecr'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-0F8B93B33FD67819'
+dependencies = ['core']

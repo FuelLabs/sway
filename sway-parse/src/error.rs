@@ -50,8 +50,8 @@ pub enum ParseErrorKind {
     ExpectedOpenBracket,
     #[error("Expected a literal.")]
     ExpectedLiteral,
-    #[error("Expected a program kind (script, contract, predicate or library).")]
-    ExpectedProgramKind,
+    #[error("Expected a module kind (script, contract, predicate or library).")]
+    ExpectedModuleKind,
     #[error("Expected `{}`.", kinds.iter().map(PunctKind::as_char).collect::<String>())]
     ExpectedPunct { kinds: Vec<PunctKind> },
     #[error("Expected `{}`.", word)]

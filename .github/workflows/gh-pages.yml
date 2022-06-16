@@ -23,6 +23,11 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc
+      - name: Install Forc plugins
+        run: |
+          cargo install --debug --path ./forc-plugins/forc-fmt 
+          cargo install --debug --path ./forc-plugins/forc-lsp 
+          cargo install --debug --path ./forc-plugins/forc-explore
       - name: Install mdbook-forc-documenter
         uses: actions-rs/cargo@v1
         with:
@@ -34,7 +39,7 @@ jobs:
         with:
           mdbook-version: '0.4.15'
 
-      - run: mdbook build docs
+      - run: MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs
 
       - name: Deploy latest
         uses: peaceiris/actions-gh-pages@v3

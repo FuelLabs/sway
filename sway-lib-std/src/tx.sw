@@ -4,6 +4,7 @@ library tx;
 
 use ::address::Address;
 use ::contract_id::ContractId;
+use ::intrinsics::is_reference_type;
 
 ////////////////////////////////////////
 // Transaction fields
@@ -14,18 +15,19 @@ use ::contract_id::ContractId;
 //
 // Note that everything when serialized is padded to word length.
 //
-// type             = TX_START +  0*WORD_SIZE = 10240 +  0*8 = 10240
-// gasPrice         = TX_START +  1*WORD_SIZE = 10240 +  1*8 = 10248
-// gasLimit         = TX_START +  2*WORD_SIZE = 10240 +  2*8 = 10256
-// bytePrice        = TX_START +  3*WORD_SIZE = 10240 +  3*8 = 10264
-// maturity         = TX_START +  4*WORD_SIZE = 10240 +  4*8 = 10272
-// scriptLength     = TX_START +  5*WORD_SIZE = 10240 +  5*8 = 10280
-// scriptDataLength = TX_START +  6*WORD_SIZE = 10240 +  6*8 = 10288
-// inputsCount      = TX_START +  7*WORD_SIZE = 10240 +  7*8 = 10296
-// outputsCount     = TX_START +  8*WORD_SIZE = 10240 +  8*8 = 10304
-// witnessesCount   = TX_START +  9*WORD_SIZE = 10240 +  9*8 = 10312
-// receiptsRoot     = TX_START + 10*WORD_SIZE = 10240 + 10*8 = 10320
-// script start     = TX_START + 11*WORD_SIZE = 10240 + 14*8 = 10352
+// type              = TX_START +  0*WORD_SIZE = 10240 +  0*8 = 10240
+// gasPrice          = TX_START +  1*WORD_SIZE = 10240 +  1*8 = 10248
+// gasLimit          = TX_START +  2*WORD_SIZE = 10240 +  2*8 = 10256
+// bytePrice         = TX_START +  3*WORD_SIZE = 10240 +  3*8 = 10264
+// maturity          = TX_START +  4*WORD_SIZE = 10240 +  4*8 = 10272
+// scriptLength      = TX_START +  5*WORD_SIZE = 10240 +  5*8 = 10280
+// scriptDataLength  = TX_START +  6*WORD_SIZE = 10240 +  6*8 = 10288
+// inputsCount       = TX_START +  7*WORD_SIZE = 10240 +  7*8 = 10296
+// outputsCount      = TX_START +  8*WORD_SIZE = 10240 +  8*8 = 10304
+// witnessesCount    = TX_START +  9*WORD_SIZE = 10240 +  9*8 = 10312
+// receiptsRoot      = TX_START + 10*WORD_SIZE = 10240 + 10*8 = 10320
+// SCRIPT_START      = TX_START + 11*WORD_SIZE = 10240 + 14*8 = 10352
+// SCRIPT_DATA_START = SCRIPT_START + SCRIPT_LENGTH
 
 const TX_TYPE_OFFSET = 10240;
 const TX_GAS_PRICE_OFFSET = 10248;
@@ -122,8 +124,7 @@ pub fn tx_witnesses_count() -> u64 {
 
 /// Get the transaction receipts root.
 pub fn tx_receipts_root() -> b256 {
-    asm(r1, r2: TX_RECEIPTS_ROOT_OFFSET) {
-        lw r1 r2 i0;
+    asm(r1: TX_RECEIPTS_ROOT_OFFSET) {
         r1: b256
     }
 }
@@ -140,24 +141,30 @@ pub fn tx_script_start_offset() -> u32 {
 // Script
 ////////////////////////////////////////
 
+/// Get the transaction script data start offset.
+pub fn tx_script_data_start_offset() -> u32 {
+    asm(r1, r2: TX_SCRIPT_START_OFFSET, r3: TX_SCRIPT_LENGTH_OFFSET) {
+        lw r3 r3 i0;
+        add r1 r2 r3;
+        r1: u32
+    }
+}
+
 /// Get the script data, typed. Unsafe.
-// pub fn get_script_data<T>() -> T {
-//     // TODO some safety checks on the input data? We are going to assume it is the right type for now.
-//     // TODO test this before uncommenting.
-//     asm(script_data_len, to_return, script_data_ptr, script_len, script_len_ptr: 10280, script_data_len_ptr: 10288) {
-//         lw script_len script_len_ptr i0;
-//         lw script_data_len script_data_len_ptr i0;
-//         // get the start of the script data
-//         // script_len + script_start
-//         add script_data_ptr script_len is;
-//         // allocate memory to copy script data into
-//         aloc script_data_len;
-//         move to_return sp;
-//         // copy script data into above buffer
-//         mcp to_return script_data_ptr script_data_len;
-//         to_return: T
-//     }
-// }
+pub fn get_script_data<T>() -> T {
+    // TODO some safety checks on the input data? We are going to assume it is the right type for now.
+    let ptr = tx_script_data_start_offset();
+    if is_reference_type::<T>() {
+        asm(r1: ptr) {
+            r1: T
+        }
+    } else {
+        asm(r1: ptr) {
+            lw r1 r1 i0;
+            r1: T
+        }
+    }
+}
 
 ////////////////////////////////////////
 // Inputs

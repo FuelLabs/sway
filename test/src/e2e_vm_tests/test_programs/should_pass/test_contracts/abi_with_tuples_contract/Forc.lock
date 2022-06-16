@@ -1,0 +1,17 @@
+[[package]]
+name = 'abi_with_tuples'
+source = 'path+from-root-382FED6391B53E08'
+dependencies = ['core']
+
+[[package]]
+name = 'abi_with_tuples_contract'
+source = 'root'
+dependencies = [
+    'abi_with_tuples',
+    'core',
+]
+
+[[package]]
+name = 'core'
+source = 'path+from-root-382FED6391B53E08'
+dependencies = []

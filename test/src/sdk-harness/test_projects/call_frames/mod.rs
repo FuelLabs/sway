@@ -1,7 +1,5 @@
-use fuel_tx::ContractId;
 use fuel_vm::consts::VM_MAX_RAM;
-use fuels::prelude::*;
-use fuels::test_helpers;
+use fuels::{prelude::*, tx::ContractId};
 use fuels_abigen_macro::abigen;
 
 abigen!(
@@ -10,14 +8,15 @@ abigen!(
 );
 
 async fn get_call_frames_instance() -> (CallFramesTestContract, ContractId) {
-    let compiled =
-        Contract::load_sway_contract("test_projects/call_frames/out/debug/call_frames.bin")
-            .unwrap();
-    let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
-    let id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
-        .await
-        .unwrap();
-    let instance = CallFramesTestContract::new(id.to_string(), provider, wallet);
+    let wallet = launch_provider_and_get_single_wallet().await;
+    let id = Contract::deploy(
+        "test_projects/call_frames/out/debug/call_frames.bin",
+        &wallet,
+        TxParameters::default(),
+    )
+    .await
+    .unwrap();
+    let instance = CallFramesTestContract::new(id.to_string(), wallet);
 
     (instance, id)
 }

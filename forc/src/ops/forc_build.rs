@@ -1,17 +1,22 @@
-use crate::{cli::BuildCommand, utils::SWAY_GIT_TAG};
+use crate::{
+    cli::BuildCommand,
+    utils::{SWAY_BIN_HASH_SUFFIX, SWAY_BIN_ROOT_SUFFIX, SWAY_GIT_TAG},
+};
 use anyhow::{anyhow, bail, Result};
 use forc_pkg::{self as pkg, lock, Lock, ManifestFile};
 use forc_util::{default_output_directory, lock_path};
+use fuel_tx::Contract;
 use std::{
     fs::{self, File},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
+use sway_core::TreeType;
+use tracing::{info, warn};
 
 pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     let BuildCommand {
         path,
         binary_outfile,
-        use_orig_asm,
         debug_outfile,
         print_finalized_asm,
         print_intermediate_asm,
@@ -21,15 +26,27 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         output_directory,
         minify_json_abi,
         locked,
+        build_profile,
+        release,
     } = command;
 
-    let config = pkg::BuildConfig {
-        use_orig_asm,
-        print_ir,
-        print_finalized_asm,
-        print_intermediate_asm,
-        silent: silent_mode,
-    };
+    let key_debug: String = "debug".to_string();
+    let key_release: String = "release".to_string();
+
+    let mut selected_build_profile = key_debug;
+    if build_profile.is_none() && release {
+        selected_build_profile = key_release;
+    } else if build_profile.is_some() && release {
+        // Here build_profile is guaranteed to be a value.
+        warn!(
+            "Both {} and release provided as build profile. Using release!",
+            build_profile.unwrap()
+        );
+        selected_build_profile = key_release;
+    } else if let Some(build_profile) = build_profile {
+        // Here build_profile is guaranteed to be a value.
+        selected_build_profile = build_profile;
+    }
 
     let this_dir = if let Some(ref path) = path {
         PathBuf::from(path)
@@ -38,9 +55,33 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     };
 
     let manifest = ManifestFile::from_dir(&this_dir, SWAY_GIT_TAG)?;
+
+    // If any cli parameter is passed by the user it overrides the selected build profile.
+    let mut config = &pkg::BuildConfig {
+        print_ir,
+        print_finalized_asm,
+        print_intermediate_asm,
+        silent: silent_mode,
+    };
+
+    // Check if any cli parameter is passed by the user if not fetch the build profile from manifest.
+    if !print_ir && !print_intermediate_asm && !print_finalized_asm && !silent_mode {
+        config = manifest
+            .build_profile
+            .as_ref()
+            .and_then(|profiles| profiles.get(&selected_build_profile))
+            .unwrap_or_else(|| {
+                warn!(
+                    "provided profile option {} is not present in the manifest file. \
+                Using default config.",
+                    selected_build_profile
+                );
+                config
+            });
+    }
+
     let lock_path = lock_path(manifest.dir());
 
-    // Load the build plan from the lock file.
     let plan_result = pkg::BuildPlan::from_lock_file(&lock_path, SWAY_GIT_TAG);
 
     // Retrieve the old lock file state so we can produce a diff.
@@ -50,38 +91,43 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         .map(|plan| Lock::from_graph(plan.graph()))
         .unwrap_or_default();
 
-    // Validate the loaded build plan for the current manifest.
-    let plan_result =
-        plan_result.and_then(|plan| plan.validate(&manifest, SWAY_GIT_TAG).map(|_| plan));
-
-    // If necessary, construct a new build plan.
-    let plan: pkg::BuildPlan = plan_result.or_else(|e| -> Result<pkg::BuildPlan> {
+    // Check if there are any errors coming from the BuildPlan generation from the lock file
+    // If there are errors we will need to create the BuildPlan from scratch, i.e fetch & pin everything
+    let mut new_lock_cause = None;
+    let mut plan = plan_result.or_else(|e| -> Result<pkg::BuildPlan> {
         if locked {
             bail!(
                 "The lock file {} needs to be updated but --locked was passed to prevent this.",
                 lock_path.to_string_lossy()
             );
         }
-
-        let cause = if e.to_string().contains("No such file or directory") {
-            anyhow!("lock file did not exist")
+        new_lock_cause = if e.to_string().contains("No such file or directory") {
+            Some(anyhow!("lock file did not exist"))
         } else {
-            e
+            Some(e)
         };
-        println!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
         let plan = pkg::BuildPlan::new(&manifest, SWAY_GIT_TAG, offline)?;
-        let lock = Lock::from_graph(plan.graph());
-        let diff = lock.diff(&old_lock);
-        lock::print_diff(&manifest.project.name, &diff);
-        let string = toml::ser::to_string_pretty(&lock)
-            .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
-        fs::write(&lock_path, &string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
-        println!("   Created new lock file at {}", lock_path.display());
         Ok(plan)
     })?;
 
+    // If there are no issues with the BuildPlan generated from the lock file
+    // Check and apply the diff.
+    if new_lock_cause.is_none() {
+        let diff = plan.validate(&manifest, SWAY_GIT_TAG)?;
+        if !diff.added.is_empty() || !diff.removed.is_empty() {
+            new_lock_cause = Some(anyhow!("lock file did not match manifest `diff`"));
+            plan = plan.apply_pkg_diff(diff, SWAY_GIT_TAG, offline)?;
+        }
+    }
+
+    if let Some(cause) = new_lock_cause {
+        info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
+        create_new_lock(&plan, &old_lock, &manifest, &lock_path)?;
+        info!("   Created new lock file at {}", lock_path.display());
+    }
+
     // Build it!
-    let (compiled, source_map) = pkg::build(&plan, &config, SWAY_GIT_TAG)?;
+    let (compiled, source_map) = pkg::build(&plan, config, SWAY_GIT_TAG)?;
 
     if let Some(outfile) = binary_outfile {
         fs::write(&outfile, &compiled.bytecode)?;
@@ -92,13 +138,10 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         fs::write(outfile, &source_map_json)?;
     }
 
-    // TODO: We may support custom build profiles in the future.
-    let profile = "debug";
-
     // Create the output directory for build artifacts.
     let output_dir = output_directory
         .map(PathBuf::from)
-        .unwrap_or_else(|| default_output_directory(manifest.dir()).join(profile));
+        .unwrap_or_else(|| default_output_directory(manifest.dir()).join(selected_build_profile));
     if !output_dir.exists() {
         fs::create_dir_all(&output_dir)?;
     }
@@ -120,7 +163,42 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         res?;
     }
 
-    println!("  Bytecode size is {} bytes.", compiled.bytecode.len());
+    info!("  Bytecode size is {} bytes.", compiled.bytecode.len());
+
+    match compiled.tree_type {
+        TreeType::Script => {
+            // hash the bytecode for scripts and store the result in a file in the output directory
+            let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&compiled.bytecode));
+            let hash_file_name = format!("{}{}", &manifest.project.name, SWAY_BIN_HASH_SUFFIX);
+            let hash_path = output_dir.join(hash_file_name);
+            fs::write(hash_path, &bytecode_hash)?;
+            info!("  Script bytecode hash: {}", bytecode_hash);
+        }
+        TreeType::Predicate => {
+            // get the root hash of the bytecode for predicates and store the result in a file in the output directory
+            let root = format!("0x{}", Contract::root_from_code(&compiled.bytecode));
+            let root_file_name = format!("{}{}", &manifest.project.name, SWAY_BIN_ROOT_SUFFIX);
+            let root_path = output_dir.join(root_file_name);
+            fs::write(root_path, &root)?;
+            info!("  Predicate root: {}", root);
+        }
+        _ => (),
+    }
 
     Ok(compiled)
+}
+
+fn create_new_lock(
+    plan: &pkg::BuildPlan,
+    old_lock: &Lock,
+    manifest: &ManifestFile,
+    lock_path: &Path,
+) -> Result<()> {
+    let lock = Lock::from_graph(plan.graph());
+    let diff = lock.diff(old_lock);
+    lock::print_diff(&manifest.project.name, &diff);
+    let string = toml::ser::to_string_pretty(&lock)
+        .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
+    fs::write(&lock_path, &string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
+    Ok(())
 }

@@ -1,11 +1,14 @@
 [[package]]
 name = 'asm_return_tuple_pointer'
+source = 'root'
 dependencies = ['std']
 
 [[package]]
 name = 'core'
+source = 'path+from-root-25602139F18DA3F2'
 dependencies = []
 
 [[package]]
 name = 'std'
+source = 'path+from-root-25602139F18DA3F2'
 dependencies = ['core']

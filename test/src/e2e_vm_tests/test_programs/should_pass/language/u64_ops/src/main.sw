@@ -2,7 +2,6 @@ script;
 
 use core::ops::*;
 use std::assert::assert;
-use std::chain::log_u64;
 
 fn main() -> bool {
     // 0b0000_1111 = 15
@@ -64,10 +63,7 @@ fn main() -> bool {
     assert(max << 2 == 18446744073709551612);
     assert(A << 1 == C);
     assert(max << 63 == E);
-    // this will break when vm is brought in line with spec re: wrapping
-    // https://github.com/FuelLabs/fuel-vm/issues/104
-    // will be 0 or panic
-    assert(max << 64 == max);
+    assert(max << 64 == 0);
 
     assert(0 >> 0 == 0);
     assert(0 >> 1 == 0);
@@ -82,10 +78,7 @@ fn main() -> bool {
     assert(A >> 42 == 2121824);
     assert(max >> 1 == 9223372036854775807);
     assert(max >> 63 == 1);
-    // this will break when vm is brought in line with spec re: wrapping
-    // https://github.com/FuelLabs/fuel-vm/issues/104
-    // will be 0 or panic
-    assert(max >> 64 == max);
+    assert(max >> 64 == 0);
 
     true
 }

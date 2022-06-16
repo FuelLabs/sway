@@ -5,10 +5,10 @@ pub(crate) fn default_manifest(project_name: &str, entry_type: &str) -> String {
 
     format!(
         r#"[project]
-name = "{project_name}"
 authors = ["{author}"]
 entry = "{entry_type}"
 license = "Apache-2.0"
+name = "{project_name}"
 
 [dependencies]
 "#
@@ -30,10 +30,8 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-fuel-gql-client = {{ version = "0.6", default-features = false }}
-fuel-tx = "0.9"
-fuels = "0.12"
-fuels-abigen-macro = "0.12"
+fuels = "0.15"
+fuels-abigen-macro = "0.15"
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
 
 [[test]]
@@ -94,10 +92,8 @@ fn main() -> bool {
 pub(crate) fn default_test_program(project_name: &str) -> String {
     format!(
         "{}{}{}{}{}",
-        r#"use fuel_tx::ContractId;
+        r#"use fuels::{prelude::*, tx::ContractId};
 use fuels_abigen_macro::abigen;
-use fuels::prelude::*;
-use fuels::test_helpers;
 
 // Load abi from json
 abigen!(MyContract, "out/debug/"#,
@@ -105,19 +101,16 @@ abigen!(MyContract, "out/debug/"#,
         r#"-abi.json");
 
 async fn get_contract_instance() -> (MyContract, ContractId) {
-    // Deploy the compiled contract
-    let compiled = Contract::load_sway_contract("./out/debug/"#,
-        project_name,
-        r#".bin").unwrap();
-
     // Launch a local network and deploy the contract
-    let (provider, wallet) = test_helpers::setup_test_provider_and_wallet().await;
+    let wallet = launch_provider_and_get_single_wallet().await;
 
-    let id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
+    let id = Contract::deploy("./out/debug/"#,
+        project_name,
+        r#".bin", &wallet, TxParameters::default())
         .await
         .unwrap();
 
-    let instance = MyContract::new(id.to_string(), provider, wallet);
+    let instance = MyContract::new(id.to_string(), wallet);
 
     (instance, id)
 }
@@ -127,7 +120,8 @@ async fn can_get_contract_id() {
     let (_instance, _id) = get_contract_instance().await;
 
     // Now you have an instance of your contract you can use to test each function
-}"#
+}
+"#
     )
 }
 
@@ -145,7 +139,7 @@ fn get_author() -> String {
 #[test]
 fn parse_default_manifest() {
     use sway_utils::constants::MAIN_ENTRY;
-    println!(
+    tracing::info!(
         "{:#?}",
         toml::from_str::<forc_pkg::Manifest>(&default_manifest("test_proj", MAIN_ENTRY)).unwrap()
     )
@@ -153,8 +147,10 @@ fn parse_default_manifest() {
 
 #[test]
 fn parse_default_tests_manifest() {
-    println!(
+    tracing::info!(
         "{:#?}",
         toml::from_str::<forc_pkg::Manifest>(&default_tests_manifest("test_proj")).unwrap()
     )
 }
+
+pub const NODE_URL: &str = "http://127.0.0.1:4000";

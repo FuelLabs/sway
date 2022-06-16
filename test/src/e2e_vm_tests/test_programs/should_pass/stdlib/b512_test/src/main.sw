@@ -2,7 +2,7 @@ script;
 
 use std::b512::B512;
 use std::assert::assert;
-use std::constants::ZERO;
+use core::num::*;
 
 // helper to prove contiguity of memory in B512 type's hi & lo fields.
 fn are_fields_contiguous(big_value: B512) -> bool {
@@ -19,13 +19,14 @@ fn are_fields_contiguous(big_value: B512) -> bool {
 }
 
 fn main() -> bool {
+    let zero = ~b256::min();
     let hi_bits: b256 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE;
     let lo_bits: b256 = 0x000000000000000000000000000000000000000000000000000000000000002A;
     let modified: b256 = 0x3333333333333333333333333333333333333333333333333333333333333333;
 
     // it allows creation of new empty type:
     let mut a = ~B512::new();
-    assert(((a.bytes)[0] == ZERO) && ((a.bytes)[1] == ZERO));
+    assert(((a.bytes)[0] == zero) && ((a.bytes)[1] == zero));
 
     // it allows reassignment of fields:
     a.bytes = [hi_bits, lo_bits];
@@ -52,6 +53,20 @@ fn main() -> bool {
     assert(one == two);
     assert(one != three);
     assert(one != four);
+
+    let one_tuple = one.into();
+    let two_tuple = two.into();
+    let three_tuple = three.into();
+    let four_tuple = four.into();
+
+    assert(one_tuple.0 == hi_bits);
+    assert(one_tuple.1 == modified);
+    assert(two_tuple.0 == hi_bits);
+    assert(two_tuple.1 == modified);
+    assert(three_tuple.0 == modified);
+    assert(three_tuple.1 == hi_bits);
+    assert(four_tuple.0 == lo_bits);
+    assert(four_tuple.1 == modified);
 
     true
 }

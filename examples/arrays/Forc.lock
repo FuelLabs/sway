@@ -1,0 +1,14 @@
+[[package]]
+name = 'array'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-087D5D776F294F03'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'path+from-root-087D5D776F294F03'
+dependencies = ['core']

@@ -1,11 +1,14 @@
 [[package]]
 name = 'aliased_imports'
+source = 'root'
 dependencies = ['std']
 
 [[package]]
 name = 'core'
+source = 'path+from-root-2EBF01AEC6158688'
 dependencies = []
 
 [[package]]
 name = 'std'
+source = 'path+from-root-2EBF01AEC6158688'
 dependencies = ['core']

@@ -153,6 +153,7 @@ fn function_to_doc<'a>(
                         ValueContent {
                             value: ValueDatum::Argument(ty),
                             span_md_idx,
+                            ..
                         } => (ty, span_md_idx),
                         _ => unreachable!("Unexpected non argument value for function arguments."),
                     };
@@ -165,8 +166,10 @@ fn function_to_doc<'a>(
                 .collect(),
         ))
         .append(Doc::text(format!(
-            " -> {} {{",
-            function.return_type.as_string(context)
+            " -> {}{}{} {{",
+            function.return_type.as_string(context),
+            md_namer.meta_as_string(context, &function.span_md_idx, true),
+            md_namer.meta_as_string(context, &function.storage_md_idx, true),
         ))),
     )
     .append(Doc::indent(
@@ -233,6 +236,7 @@ fn constant_to_doc(
     if let ValueContent {
         value: ValueDatum::Constant(constant),
         span_md_idx,
+        ..
     } = &context.values[const_val.0]
     {
         Doc::text_line(format!(
@@ -291,6 +295,7 @@ fn instruction_to_doc<'a>(
         ValueContent {
             value: ValueDatum::Instruction(instruction),
             span_md_idx,
+            state_idx_md_idx,
         } => match instruction {
             Instruction::AsmBlock(asm, args) => {
                 asm_block_to_doc(context, md_namer, namer, ins_value, asm, args, span_md_idx)
@@ -332,6 +337,12 @@ fn instruction_to_doc<'a>(
                     .append(match span_md_idx {
                         None => Doc::Empty,
                         Some(_) => Doc::text(md_namer.meta_as_string(context, span_md_idx, true)),
+                    })
+                    .append(match state_idx_md_idx {
+                        None => Doc::Empty,
+                        Some(_) => {
+                            Doc::text(md_namer.meta_as_string(context, state_idx_md_idx, true))
+                        }
                     }),
                 )),
             Instruction::Cmp(pred, lhs_value, rhs_value) => {
@@ -420,6 +431,12 @@ fn instruction_to_doc<'a>(
                     None => Doc::Empty,
                     Some(_) => Doc::text(md_namer.meta_as_string(context, span_md_idx, true)),
                 }),
+            )),
+            Instruction::GetStorageKey => Doc::text_line(format!(
+                "{} = get_storage_key{}{}",
+                namer.name(context, ins_value),
+                md_namer.meta_as_string(context, span_md_idx, true),
+                md_namer.meta_as_string(context, state_idx_md_idx, true),
             )),
             Instruction::GetPointer {
                 base_ptr,
@@ -680,6 +697,10 @@ fn metadata_to_doc(context: &Context, md_namer: &MetadataNamer) -> Doc {
                 } => md_namer
                     .get(loc_idx)
                     .map(|loc_ref_idx| format!("!{ref_idx} = span !{loc_ref_idx} {start} {end}")),
+                Metadatum::StateIndex(idx) => Some(format!("!{ref_idx} = state_index {idx:?}")),
+                Metadatum::StorageAttribute(storage_op) => {
+                    Some(format!("!{ref_idx} = storage {storage_op}"))
+                }
             }
             .map(&Doc::text_line)
         })

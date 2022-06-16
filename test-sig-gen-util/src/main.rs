@@ -11,7 +11,7 @@ use secp256k1::{PublicKey, Secp256k1, SecretKey};
 use sha3::{Digest, Keccak256};
 use std::str::FromStr;
 
-// A keccak-256 method for generating ethereum signatures
+// A keccak-256 method for generating EVM signatures
 fn keccak_hash<B>(data: B) -> Bytes32
 where
     B: AsRef<[u8]>,
@@ -32,22 +32,19 @@ fn main() -> Result<()> {
     let public = Bytes64::try_from(&public[1..]).expect("Failed to parse public key!");
     // 64 byte fuel address is the sha-256 hash of the public key.
     let address = Hasher::hash(&public[..]);
-    let ethereum_pubkeyhash = keccak_hash(&public[..]);
+    let evm_pubkeyhash = keccak_hash(&public[..]);
 
     let message = b"The gift of words is the gift of deception and illusion.";
     let e = Hasher::hash(&message[..]);
     let sig = crypto::secp256k1_sign_compact_recoverable(secret.as_ref(), e.as_ref())
         .expect("Failed to generate signature");
 
-    println!("Secret Key: {:?}", secret);
-    println!("Public Key: {:?}", public);
-    println!("Fuel Address (sha2-256): {:?}", address);
-    println!(
-        "Ethereum pubkey hash (keccak256): {:?}",
-        ethereum_pubkeyhash
-    );
-    println!("Message Hash: {:?}", e);
-    println!("Signature: {:?}", sig);
+    tracing::info!("Secret Key: {:?}", secret);
+    tracing::info!("Public Key: {:?}", public);
+    tracing::info!("Fuel Address (sha2-256): {:?}", address);
+    tracing::info!("EVM pubkey hash (keccak256): {:?}", evm_pubkeyhash);
+    tracing::info!("Message Hash: {:?}", e);
+    tracing::info!("Signature: {:?}", sig);
 
     Ok(())
 }

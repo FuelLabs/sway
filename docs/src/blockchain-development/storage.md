@@ -33,19 +33,26 @@ let v = storage.var1;
 Notes:
 
 * The only types currently supported by the syntax above are integers, Booleans, and structs.
-* The `storage` syntax cannot be used for mappings. Mappings need to be handled manually for now as shown in the [Subcurrency](../examples/subcurrency.md) example.
 * Storage, in general, is still work-in-progress and so, its use model may change in the future.
+
+## Storage Maps
+
+Generic storage maps are available in the standard library as `StorageMap<K, V>` which have to be defined inside a `storage` block and allow you to call `insert()` and `get()` to insert values at specific keys and get those values respectively. For example:
+
+```sway
+{{#include ../../../examples/storage_map/src/main.sw}}
+```
+
+Because storage maps have to be defined inside a `storage` block, the `storage` keyword is required to access the map itself and then access the appropriate method.
+
+> **Note**: Calling `get(k)` for some key `k` that does not exist in the map (i.e. `insert()` hasn't been called with key `k` yet) returns zero. This is because the FuelVM initializes all storage slots to zero.
 
 ## Manual Storage Management
 
-Outside of the newer experimental `storage` syntax which is being stabalized, you can leverage FuelVM storage operations using the `store` and `get` methods provided in the standard library (`std`). Which currently works with primitive types.
-
-With this approach you will have to manually assign the internal key used for storage.
-
-An example is as follows:
+It is possible to leverage FuelVM storage operations directly using the `std::storage::store` and `std::storage::get` functions provided in the standard library. With this approach you will have to manually assign the internal key used for storage. An example is as follows:
 
 ```sway
 {{#include ../../../examples/storage_example/src/main.sw}}
 ```
 
-Note, if you are looking to store non-primitive types (e.g. b256), please refer to [this issue](https://github.com/FuelLabs/sway/issues/1229).
+> **Note**: Though these functions can be used for any data type, they should mostly be used for arrays because arrays are not yet supported in `storage` blocks. Note, however, that _all_ data types can be used as types for keys and/or values in `StorageMap<K, V>` without any restrictions.

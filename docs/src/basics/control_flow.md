@@ -16,13 +16,9 @@ fn main() {
         // do something else
     } else {
         // do something else
-    }; // <------------ note this semicolon
+    }
 }
 ```
-
-In Sway, note that a _statement_ is a _declaration **or** expression with a semicolon after it_. This means that you need to add a semicolon after an `if` to turn it into a statement, if it is being used for control flow.
-
-This need for a semicolon after if expressions to turn them into statements may be removed eventually.
 
 ### Using `if` in a `let` statement
 
@@ -42,6 +38,8 @@ Sway supports advanced pattern matching through exhaustive `match` expressions.
 {{#include ../../../examples/match_statements/src/main.sw}}
 ```
 
+In the example above, braces around the code block following `=>` in each match arm are not required unless the code block contains multiple statements. They are added in this example due to an [issue in the Sway formatter](https://github.com/FuelLabs/sway/issues/604).
+
 ## Loops
 
 ### `while`
@@ -60,7 +58,7 @@ You need the `while` keyword, some condition (`value < 10` in this case) which w
 
 There are no `break` or `continue` keywords yet, but [they're coming](https://github.com/FuelLabs/sway/issues/587).
 
-For now, the way to break out of a `while` loop early is to manually invalidate the condition. In this case, that just means setting `counter` to be >= 10.
+For now, the way to break out of a `while` loop early is to manually invalidate the condition. In this case, that just means setting `counter` to be `>= 10`.
 
 Building on the previous example, here's what that might look like:
 
@@ -75,7 +73,7 @@ while counter < 10 {
         // calling some other function to set the bool value
         break_early = get_bool_value();
         counter = counter + 1;
-    };
+    }
 }
 ```
 

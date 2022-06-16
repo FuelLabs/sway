@@ -6,19 +6,17 @@ name = "tests"
 version = "0.0.0"
 
 [dependencies]
-fuel-core = { version = "0.6", default-features = false }
-fuel-gql-client = { version = "0.6", default-features = false }
-fuel-tx = "0.9"
-fuel-types = "0.4"
-fuel-vm = "0.8"
-fuels = "0.12"
-fuels-abigen-macro = "0.12"
+assert_matches = "1.5.0"
+fuel-core = { version = "0.8", default-features = false }
+fuel-gql-client = { version = "0.8", default-features = false }
+fuel-types = "0.5"
+fuel-vm = "0.11"
+fuels = "0.15"
+fuels-abigen-macro = "0.15"
 hex = "0.4.3"
-rand = "0.8"
+sha2 = "0.10"
+sha3 = "0.10.1"
 tokio = { version = "1.12", features = ["rt", "macros"] }
-
-[dev-dependencies]
-test-helpers = { path = "./test_helpers"}
 
 [[test]]
 harness = true

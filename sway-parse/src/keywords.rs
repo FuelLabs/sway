@@ -49,7 +49,6 @@ define_keyword!(StructToken, "struct");
 define_keyword!(EnumToken, "enum");
 define_keyword!(SelfToken, "self");
 define_keyword!(FnToken, "fn");
-define_keyword!(ImpureToken, "impure");
 define_keyword!(TraitToken, "trait");
 define_keyword!(ImplToken, "impl");
 define_keyword!(ForToken, "for");
@@ -68,6 +67,8 @@ define_keyword!(WhileToken, "while");
 define_keyword!(WhereToken, "where");
 define_keyword!(RefToken, "ref");
 define_keyword!(DerefToken, "deref");
+define_keyword!(TrueToken, "true");
+define_keyword!(FalseToken, "false");
 
 macro_rules! define_token (
     ($ty_name:ident, $description:literal, [$($punct_kinds:ident),*], [$($not_followed_by:ident),*]) => {
@@ -119,14 +120,19 @@ macro_rules! define_token (
 );
 
 define_token!(SemicolonToken, "a semicolon", [Semicolon], []);
-define_token!(ForwardSlashToken, "a forward slash", [ForwardSlash], []);
+define_token!(
+    ForwardSlashToken,
+    "a forward slash",
+    [ForwardSlash],
+    [Equals]
+);
 define_token!(
     DoubleColonToken,
     "a double colon (::)",
     [Colon, Colon],
     [Colon]
 );
-define_token!(StarToken, "an asterisk (*)", [Star], []);
+define_token!(StarToken, "an asterisk (*)", [Star], [Equals]);
 define_token!(CommaToken, "a comma", [Comma], []);
 define_token!(ColonToken, "a colon", [Colon], [Colon]);
 define_token!(
@@ -146,6 +152,12 @@ define_token!(OpenAngleBracketToken, "`<`", [LessThan], []);
 define_token!(CloseAngleBracketToken, "`>`", [GreaterThan], []);
 define_token!(TildeToken, "`~`", [Tilde], []);
 define_token!(EqToken, "`=`", [Equals], [GreaterThan, Equals]);
+define_token!(AddEqToken, "`+=`", [Add, Equals], []);
+define_token!(SubEqToken, "`-=`", [Sub, Equals], []);
+define_token!(StarEqToken, "`*=`", [Star, Equals], []);
+define_token!(DivEqToken, "`/=`", [ForwardSlash, Equals], []);
+define_token!(ShlEqToken, "`<<=`", [LessThan, LessThan, Equals], []);
+define_token!(ShrEqToken, "`>>=`", [GreaterThan, GreaterThan, Equals], []);
 define_token!(
     FatRightArrowToken,
     "`=>`",
@@ -155,8 +167,8 @@ define_token!(
 define_token!(DotToken, "`.`", [Dot], []);
 define_token!(BangToken, "`!`", [Bang], [Equals]);
 define_token!(PercentToken, "`%`", [Percent], []);
-define_token!(AddToken, "`+`", [Add], []);
-define_token!(SubToken, "`-`", [Sub], []);
+define_token!(AddToken, "`+`", [Add], [Equals]);
+define_token!(SubToken, "`-`", [Sub], [Equals]);
 define_token!(
     ShrToken,
     "`>>`",

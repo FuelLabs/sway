@@ -1,0 +1,22 @@
+[[package]]
+name = 'array_of_structs_abi'
+source = 'path+from-root-40616FC980A839AE'
+dependencies = []
+
+[[package]]
+name = 'array_of_structs_caller'
+source = 'root'
+dependencies = [
+    'array_of_structs_abi',
+    'std',
+]
+
+[[package]]
+name = 'core'
+source = 'path+from-root-40616FC980A839AE'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'path+from-root-40616FC980A839AE'
+dependencies = ['core']

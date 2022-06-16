@@ -3,6 +3,7 @@ use crate::concurrent_slab::ConcurrentSlab;
 use crate::type_engine::AbiName;
 use lazy_static::lazy_static;
 use sway_types::span::Span;
+use sway_types::Spanned;
 
 lazy_static! {
     static ref TYPE_ENGINE: Engine = Engine::default();
@@ -24,7 +25,7 @@ impl Engine {
 
     pub fn look_up_type_id(&self, id: TypeId) -> TypeInfo {
         match self.slab.get(id) {
-            TypeInfo::Ref(other) => self.look_up_type_id(other),
+            TypeInfo::Ref(other, _sp) => self.look_up_type_id(other),
             ty => ty,
         }
     }
@@ -66,9 +67,9 @@ impl Engine {
             //(received_info, expected_info) if received_info == expected_info => (vec![], vec![]),
 
             // Follow any references
-            (Ref(received), Ref(expected)) if received == expected => (vec![], vec![]),
-            (Ref(received), _) => self.unify(received, expected, span, help_text),
-            (_, Ref(expected)) => self.unify(received, expected, span, help_text),
+            (Ref(received, _sp1), Ref(expected, _sp2)) if received == expected => (vec![], vec![]),
+            (Ref(received, _sp), _) => self.unify(received, expected, span, help_text),
+            (_, Ref(expected, _sp)) => self.unify(received, expected, span, help_text),
 
             // When we don't know anything about either term, assume that
             // they match and make the one we know nothing about reference the
@@ -77,7 +78,7 @@ impl Engine {
             (Unknown, _) => {
                 match self
                     .slab
-                    .replace(received, &Unknown, TypeInfo::Ref(expected))
+                    .replace(received, &Unknown, TypeInfo::Ref(expected, span.clone()))
                 {
                     None => (vec![], vec![]),
                     Some(_) => self.unify(received, expected, span, help_text),
@@ -86,7 +87,7 @@ impl Engine {
             (_, Unknown) => {
                 match self
                     .slab
-                    .replace(expected, &Unknown, TypeInfo::Ref(received))
+                    .replace(expected, &Unknown, TypeInfo::Ref(received, span.clone()))
                 {
                     None => (vec![], vec![]),
                     Some(_) => self.unify(received, expected, span, help_text),
@@ -140,14 +141,20 @@ impl Engine {
                 (vec![], vec![])
             }
             (ref received_info @ UnknownGeneric { .. }, _) => {
-                self.slab
-                    .replace(received, received_info, TypeInfo::Ref(expected));
+                self.slab.replace(
+                    received,
+                    received_info,
+                    TypeInfo::Ref(expected, span.clone()),
+                );
                 (vec![], vec![])
             }
 
             (_, ref expected_info @ UnknownGeneric { .. }) => {
-                self.slab
-                    .replace(expected, expected_info, TypeInfo::Ref(received));
+                self.slab.replace(
+                    expected,
+                    expected_info,
+                    TypeInfo::Ref(received, span.clone()),
+                );
                 (vec![], vec![])
             }
 
@@ -174,10 +181,23 @@ impl Engine {
                 {
                     a_fields.iter().zip(b_fields.iter()).for_each(|(a, b)| {
                         let (new_warnings, new_errors) =
-                            self.unify(a.r#type, b.r#type, &a.span, help_text.clone());
+                            self.unify(a.type_id, b.type_id, &a.span, help_text.clone());
                         warnings.extend(new_warnings);
                         errors.extend(new_errors);
                     });
+                    a_parameters
+                        .iter()
+                        .zip(b_parameters.iter())
+                        .for_each(|(a, b)| {
+                            let (new_warnings, new_errors) = self.unify(
+                                a.type_id,
+                                b.type_id,
+                                &a.name_ident.span(),
+                                help_text.clone(),
+                            );
+                            warnings.extend(new_warnings);
+                            errors.extend(new_errors);
+                        });
                 } else {
                     errors.push(TypeError::MismatchedType {
                         expected,
@@ -208,10 +228,23 @@ impl Engine {
                 {
                     a_variants.iter().zip(b_variants.iter()).for_each(|(a, b)| {
                         let (new_warnings, new_errors) =
-                            self.unify(a.r#type, b.r#type, &a.span, help_text.clone());
+                            self.unify(a.type_id, b.type_id, &a.span, help_text.clone());
                         warnings.extend(new_warnings);
                         errors.extend(new_errors);
                     });
+                    a_parameters
+                        .iter()
+                        .zip(b_parameters.iter())
+                        .for_each(|(a, b)| {
+                            let (new_warnings, new_errors) = self.unify(
+                                a.type_id,
+                                b.type_id,
+                                &a.name_ident.span(),
+                                help_text.clone(),
+                            );
+                            warnings.extend(new_warnings);
+                            errors.extend(new_errors);
+                        });
                 } else {
                     errors.push(TypeError::MismatchedType {
                         expected,
@@ -314,22 +347,14 @@ impl Engine {
 
     pub fn unify_with_self(
         &self,
-        received: TypeId,
-        expected: TypeId,
+        mut received: TypeId,
+        mut expected: TypeId,
         self_type: TypeId,
         span: &Span,
         help_text: impl Into<String>,
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-        let received = if self.look_up_type_id(received) == TypeInfo::SelfType {
-            self_type
-        } else {
-            received
-        };
-        let expected = if self.look_up_type_id(expected) == TypeInfo::SelfType {
-            self_type
-        } else {
-            expected
-        };
+        received.replace_self_type(self_type);
+        expected.replace_self_type(self_type);
         self.unify(received, expected, span, help_text)
     }
 
@@ -347,7 +372,7 @@ pub fn insert_type(ty: TypeInfo) -> TypeId {
     TYPE_ENGINE.insert_type(ty)
 }
 
-pub(crate) fn look_up_type_id(id: TypeId) -> TypeInfo {
+pub fn look_up_type_id(id: TypeId) -> TypeInfo {
     TYPE_ENGINE.look_up_type_id(id)
 }
 

@@ -2,24 +2,26 @@ use super::*;
 use crate::semantic_analysis::{ast_node::Mode, TypeCheckArguments};
 use crate::CodeBlock;
 
-use derivative::Derivative;
-
-#[derive(Clone, Debug, Eq, Derivative)]
-#[derivative(PartialEq)]
-pub(crate) struct TypedCodeBlock {
-    pub(crate) contents: Vec<TypedAstNode>,
-    #[derivative(PartialEq = "ignore")]
-    pub(crate) whole_block_span: Span,
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TypedCodeBlock {
+    pub contents: Vec<TypedAstNode>,
 }
 
-#[allow(clippy::too_many_arguments)]
-impl TypedCodeBlock {
-    pub(crate) fn deterministically_aborts(&self) -> bool {
+impl CopyTypes for TypedCodeBlock {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.contents
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
+    }
+}
+
+impl DeterministicallyAborts for TypedCodeBlock {
+    fn deterministically_aborts(&self) -> bool {
         self.contents.iter().any(|x| x.deterministically_aborts())
     }
-    pub fn span(&self) -> &Span {
-        &self.whole_block_span
-    }
+}
+
+impl TypedCodeBlock {
     pub(crate) fn type_check(
         arguments: TypeCheckArguments<'_, CodeBlock>,
     ) -> CompileResult<(Self, TypeId)> {
@@ -32,8 +34,6 @@ impl TypedCodeBlock {
             return_type_annotation: type_annotation,
             help_text,
             self_type,
-            build_config,
-            dead_code_graph,
             opts,
             ..
         } = arguments;
@@ -50,8 +50,6 @@ impl TypedCodeBlock {
                     return_type_annotation: type_annotation,
                     help_text,
                     self_type,
-                    build_config,
-                    dead_code_graph,
                     mode: Mode::NonAbi,
                     opts,
                 })
@@ -99,18 +97,11 @@ impl TypedCodeBlock {
             (
                 TypedCodeBlock {
                     contents: evaluated_contents,
-                    whole_block_span: other.whole_block_span,
                 },
                 return_type.unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new()))),
             ),
             warnings,
             errors,
         )
-    }
-
-    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
-        self.contents
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
     }
 }

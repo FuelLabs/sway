@@ -84,6 +84,7 @@ impl Backend {
         if self.config.parsed_tokens_as_warnings {
             if let Some(document) = self.session.documents.get(uri.path()) {
                 let diagnostics = debug::generate_warnings_for_parsed_tokens(document.get_tokens());
+                //let diagnostics = debug::generate_warnings_for_typed_tokens(&document.get_token_map());
                 self.client
                     .publish_diagnostics(uri, diagnostics, None)
                     .await;
@@ -252,7 +253,7 @@ mod tests {
     // Simple sway script used for testing LSP capabilites
     const SWAY_PROGRAM: &str = r#"script;
 
-use std::*;
+//use std::*;
 
 /// A simple Particle struct
 struct Particle {

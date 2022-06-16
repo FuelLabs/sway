@@ -1,0 +1,4 @@
+[[package]]
+name = 'abi_pure_calls_impure'
+source = 'root'
+dependencies = []

@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Pass `--locked` when running this script in CI to ensure both cargo and forc
+# lock files are up to date.
+locked="$1"
+
 # Cross platform version of `realpath` or `readlink`.
 abs_path() {
   (cd "$1"; pwd)
@@ -13,7 +17,7 @@ parent_manifest_dir="${base_dir}"
 while true; do
   parent_manifest_dir=$(abs_path "${parent_manifest_dir}/..")
   if [[ -f "${parent_manifest_dir}/Cargo.toml" ]]; then
-    forc="cargo run --locked --manifest-path ${parent_manifest_dir}/Cargo.toml --package forc --"
+    forc="cargo run $locked --manifest-path ${parent_manifest_dir}/Cargo.toml --package forc --"
     break
   fi
   if [[ "${parent_manifest_dir}" = "/" ]]; then
@@ -28,7 +32,7 @@ test_dirs="${base_dir}/test_artifacts/* ${base_dir}/test_projects/*"
 for test_dir in $test_dirs; do
   if [[ -f "${test_dir}/Forc.toml" ]]; then
     echo "Building test $test_dir..."
-    ${forc} build -o temp -p "${test_dir}" && echo ✔
+    ${forc} build $locked -o temp -p "${test_dir}" && echo ✔
     if ! [[ -f temp ]]; then
       echo  "❌  Failed to build $test_dir"
       exit 1

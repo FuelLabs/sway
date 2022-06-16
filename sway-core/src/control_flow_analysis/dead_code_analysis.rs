@@ -10,12 +10,13 @@ use crate::{
             TypedStructDeclaration, TypedStructExpressionField, TypedTraitDeclaration,
             TypedVariableDeclaration, TypedWhileLoop, VariableMutability,
         },
-        TypeCheckedStorageReassignment, TypedAstNode, TypedAstNodeContent, TypedParseTree,
+        TypeCheckedStorageReassignment, TypedAstNode, TypedAstNodeContent, TypedImplTrait,
+        TypedIntrinsicFunctionKind,
     },
     type_engine::{resolve_type, TypeInfo},
     CompileError, CompileWarning, Ident, TreeType, Warning,
 };
-use sway_types::span::Span;
+use sway_types::{span::Span, Spanned};
 
 use crate::semantic_analysis::TypedStorageDeclaration;
 
@@ -45,7 +46,7 @@ impl ControlFlowGraph {
                     variant_name,
                     is_public,
                 } if !is_public => Some(CompileWarning {
-                    span: variant_name.span().clone(),
+                    span: variant_name.span(),
                     warning_content: Warning::DeadEnumVariant {
                         variant_name: variant_name.clone(),
                     },
@@ -64,7 +65,7 @@ impl ControlFlowGraph {
                     variant_name,
                     is_public,
                 } if !is_public => Some(CompileWarning {
-                    span: variant_name.span().clone(),
+                    span: variant_name.span(),
                     warning_content: Warning::DeadEnumVariant {
                         variant_name: variant_name.clone(),
                     },
@@ -79,7 +80,7 @@ impl ControlFlowGraph {
                     warning_content: Warning::StructFieldNeverRead,
                 }),
                 ControlFlowGraphNode::StorageField { field_name, .. } => Some(CompileWarning {
-                    span: field_name.span().clone(),
+                    span: field_name.span(),
                     warning_content: Warning::DeadStorageDeclaration,
                 }),
                 ControlFlowGraphNode::OrganizationalDominator(..) => None,
@@ -106,8 +107,8 @@ impl ControlFlowGraph {
             .collect()
     }
 
-    pub(crate) fn append_to_dead_code_graph(
-        ast: &TypedParseTree,
+    pub(crate) fn append_module_to_dead_code_graph(
+        module_nodes: &[TypedAstNode],
         tree_type: &TreeType,
         graph: &mut ControlFlowGraph,
         // the `Result` return is just to handle `Unimplemented` errors
@@ -115,7 +116,7 @@ impl ControlFlowGraph {
         // do a depth first traversal and cover individual inner ast nodes
         let mut leaves = vec![];
         let exit_node = Some(graph.add_node(("Program exit".to_string()).into()));
-        for ast_entrypoint in ast.all_nodes().iter() {
+        for ast_entrypoint in module_nodes {
             let (l_leaves, _new_exit_node) =
                 connect_node(ast_entrypoint, graph, &leaves, exit_node, tree_type)?;
 
@@ -401,11 +402,11 @@ fn connect_declaration(
             tree_type,
             rhs.clone().span,
         ),
-        ImplTrait {
+        ImplTrait(TypedImplTrait {
             trait_name,
             methods,
             ..
-        } => {
+        }) => {
             connect_impl_trait(trait_name, graph, methods, entry_node, tree_type)?;
             Ok(leaves.to_vec())
         }
@@ -647,7 +648,9 @@ fn connect_expression(
     use TypedExpressionVariant::*;
     match expr_variant {
         FunctionApplication {
-            name, arguments, ..
+            call_path: name,
+            arguments,
+            ..
         } => {
             let mut is_external = false;
             // find the function in the namespace
@@ -779,7 +782,7 @@ fn connect_expression(
             let then_expr = connect_expression(
                 &(*then).expression,
                 graph,
-                &condition_expr,
+                leaves,
                 exit_node,
                 "then branch",
                 tree_type,
@@ -790,7 +793,7 @@ fn connect_expression(
                 connect_expression(
                     &(*else_expr).expression,
                     graph,
-                    &condition_expr,
+                    leaves,
                     exit_node,
                     "else branch",
                     tree_type,
@@ -800,7 +803,7 @@ fn connect_expression(
                 vec![]
             };
 
-            Ok([then_expr, else_expr].concat())
+            Ok([condition_expr, then_expr, else_expr].concat())
         }
         CodeBlock(a @ TypedCodeBlock { .. }) => {
             connect_code_block(a, graph, leaves, exit_node, tree_type)
@@ -961,35 +964,6 @@ fn connect_expression(
             )?;
             Ok([prefix_idx, index_idx].concat())
         }
-        IfLet {
-            expr, then, r#else, ..
-        } => {
-            let leaves = connect_expression(
-                &expr.expression,
-                graph,
-                leaves,
-                exit_node,
-                "if let expr",
-                tree_type,
-                expr.span.clone(),
-            )?;
-            let then_expr = connect_code_block(then, graph, &leaves, exit_node, tree_type)?;
-
-            let else_expr = if let Some(else_expr) = r#else {
-                connect_expression(
-                    &else_expr.expression,
-                    graph,
-                    &leaves,
-                    exit_node,
-                    "if let: else branch",
-                    tree_type,
-                    (**else_expr).span.clone(),
-                )?
-            } else {
-                vec![]
-            };
-            Ok([then_expr, else_expr].concat())
-        }
         TupleElemAccess { prefix, .. } => {
             let prefix_idx = connect_expression(
                 &prefix.expression,
@@ -1016,24 +990,9 @@ fn connect_expression(
             }
             Ok(vec![this_ix])
         }
-        TypeProperty { .. } => {
-            let node = graph.add_node("Type Property".into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, node, "".into());
-            }
-            Ok(vec![node])
-        }
-        SizeOfValue { expr } => {
-            let expr = connect_expression(
-                &(*expr).expression,
-                graph,
-                leaves,
-                exit_node,
-                "size_of",
-                tree_type,
-                expr.span.clone(),
-            )?;
-            Ok(expr)
+        IntrinsicFunction(kind) => {
+            let prefix_idx = connect_intrinsic_function(kind, graph, leaves, exit_node, tree_type)?;
+            Ok(prefix_idx)
         }
         AbiName(abi_name) => {
             if let crate::type_engine::AbiName::Known(abi_name) = abi_name {
@@ -1048,7 +1007,67 @@ fn connect_expression(
             Ok(leaves.to_vec())
         }
         FunctionParameter => Ok(leaves.to_vec()),
+        EnumTag { exp } => connect_expression(
+            &exp.expression,
+            graph,
+            leaves,
+            exit_node,
+            "enum tag exp",
+            tree_type,
+            exp.span.clone(),
+        ),
+        UnsafeDowncast { exp, .. } => connect_expression(
+            &exp.expression,
+            graph,
+            leaves,
+            exit_node,
+            "unsafe downcast exp",
+            tree_type,
+            exp.span.clone(),
+        ),
     }
+}
+
+fn connect_intrinsic_function(
+    kind: &TypedIntrinsicFunctionKind,
+    graph: &mut ControlFlowGraph,
+    leaves: &[NodeIndex],
+    exit_node: Option<NodeIndex>,
+    tree_type: &TreeType,
+) -> Result<Vec<NodeIndex>, CompileError> {
+    let result = match kind {
+        TypedIntrinsicFunctionKind::SizeOfVal { exp } => connect_expression(
+            &(*exp).expression,
+            graph,
+            leaves,
+            exit_node,
+            "size_of",
+            tree_type,
+            exp.span.clone(),
+        )?,
+        TypedIntrinsicFunctionKind::SizeOfType { .. } => {
+            let node = graph.add_node("size of type".into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, node, "".into());
+            }
+            vec![node]
+        }
+        TypedIntrinsicFunctionKind::IsRefType { .. } => {
+            let node = graph.add_node("is ref type".into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, node, "".into());
+            }
+            vec![node]
+        }
+        TypedIntrinsicFunctionKind::GetStorageKey => {
+            let node = graph.add_node("Get storage key".into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, node, "".into());
+            }
+            vec![node]
+        }
+    };
+    Ok(result)
 }
 
 fn connect_code_block(
@@ -1165,11 +1184,15 @@ fn construct_dead_code_warning_from_node(node: &TypedAstNode) -> Option<CompileW
                 )),
             ..
         } => CompileWarning {
-            span: name.span().clone(),
+            span: name.span(),
             warning_content: Warning::DeadTrait,
         },
         TypedAstNode {
-            content: TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait { methods, .. }),
+            content:
+                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(TypedImplTrait {
+                    methods,
+                    ..
+                })),
             ..
         } if methods.is_empty() => return None,
         TypedAstNode {
