@@ -12,7 +12,7 @@ use clap::Parser;
 /// `<project-name>-bin-hash` (using `fuel_cypto::Hasher`).
 ///
 /// - `predicate` projects will also produce a file containing the **root** hash of the bytecode binary
-/// `<project-name>-bin-root-hash` (using `fuel_tx::Contract::root_from_code`).
+/// `<project-name>-bin-root` (using `fuel_tx::Contract::root_from_code`).
 ///
 /// - `contract` and `library` projects will also produce the public ABI in JSON format
 /// `<project-name>-abi.json`.
