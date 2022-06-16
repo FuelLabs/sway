@@ -1,7 +1,6 @@
 library vec;
 
 use ::alloc::{alloc, realloc};
-use ::context::registers::heap_ptr;
 use ::intrinsics::size_of;
 use ::mem::{read, write};
 use ::option::Option;
@@ -15,8 +14,7 @@ impl<T> RawVec<T> {
     /// Create a new `RawVec` with zero capacity.
     fn new() -> Self {
         RawVec {
-            // Heap pointer points to _unallocated_ memory.
-            ptr: heap_ptr() + 1,
+            ptr: alloc(0),
             cap: 0,
         }
     }
@@ -26,7 +24,6 @@ impl<T> RawVec<T> {
     /// `capacity` is `0`.
     fn with_capacity(capacity: u64) -> Self {
         RawVec {
-            // Heap pointer points to _unallocated_ memory.
             ptr: alloc(capacity * size_of::<T>()),
             cap: capacity,
         }
@@ -47,8 +44,7 @@ impl<T> RawVec<T> {
     /// from the old allocation to the new allocation
     fn grow(mut self) {
         let new_cap = match self.cap {
-            0 => 1,
-            _ => 2 * self.cap,
+            0 => 1, _ => 2 * self.cap, 
         };
 
         self.ptr = realloc(self.ptr, self.cap * size_of::<T>(), new_cap * size_of::<T>());
