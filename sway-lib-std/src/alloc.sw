@@ -37,7 +37,9 @@ pub fn alloc(size: u64) -> u64 {
 pub fn realloc(ptr: u64, size: u64, new_size: u64) -> u64 {
     if new_size > size {
         let new_ptr = alloc(new_size);
-        copy(new_ptr, ptr, size);
+        if size > 0 {
+            copy(new_ptr, ptr, size);
+        }
         new_ptr
     } else {
         ptr
