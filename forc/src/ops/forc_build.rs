@@ -91,6 +91,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     let mut new_lock_cause = None;
     let mut plan = plan_result.or_else(|e| -> Result<pkg::BuildPlan> {
         if locked {
+            println!("{}", e);
             bail!(
                 "The lock file {} needs to be updated but --locked was passed to prevent this.",
                 lock_path.to_string_lossy()

@@ -163,10 +163,10 @@ pub struct BuildPlan {
     graph: Graph,
     path_map: PathMap,
     compilation_order: Vec<NodeIx>,
-    /// The differences between graph described by lock_file and the graph that actually constructed. 
-    /// 
+    /// The differences between graph described by lock_file and the graph that actually constructed.
+    ///
     /// If the BuildPlan is constructed from a manifest file, this will be empty.
-    /// 
+    ///
     /// If the BuildPlan is constructed from a lock file there might be some differences between the graph described by the lock file and the one that actually created.
     /// The differences between them are the path dependencies that are removed from the manifest file after the lock file is created.
     removed_deps: Vec<DependencyName>,
@@ -380,13 +380,7 @@ impl BuildPlan {
                 );
             }
         }
-        println!("{:?}", added);
-        println!("{:?}", removed);
-
-        Ok(PkgDiff {
-            added,
-            removed,
-        })
+        Ok(PkgDiff { added, removed })
     }
 
     /// View the build plan's compilation graph.
@@ -784,7 +778,6 @@ pub fn graph_to_path_map(
     // We resolve all paths in reverse compilation order.
     // That is, we follow paths starting from the project root.
     let mut path_resolve_order = compilation_order.iter().cloned().rev();
-
     // Add the project's package to the map.
     let proj_node = path_resolve_order
         .next()
@@ -807,15 +800,32 @@ pub fn graph_to_path_map(
                 .next()
                 .map(|edge| (edge.source(), edge.weight().clone()))
                 .ok_or_else(|| anyhow!("more than one root package detected in graph"))?;
-            let parent = &graph[parent_node];
+
+            let parent = &graph[parent_node].clone();
 
             // Construct the path relative to the parent's path.
             let parent_path = &path_map[&parent.id()];
             let parent_manifest = ManifestFile::from_dir(parent_path, sway_git_tag)?;
 
-            // Check if parent's manifest file includes this dependency. If not this is a removed dependency and we should continue with the following dep and remove the removed dependency from the graph.
+            // Check if parent's manifest file includes this dependency.
+            // If not this is a removed dependency and we should continue with the following dep and remove the removed dependency from the graph.
             if parent_manifest.dep(&dep.name).is_none() {
                 removed_deps.push(dep.name.clone());
+                // We should be connecting the parent of the removed dependency to each child of removed node.
+                // Consider the following scenerio: a -> b -> c
+                // If you remove b, the edges between b -> c will be unvalidated so while processing c, you cannot find the parent.
+                // Instead you need to fetch all children of b and add an edge between those children and a before removing.
+
+                // Get children of the node to delete
+                let child_nodes: Vec<NodeIx> = graph
+                    .edges_directed(dep_node, Direction::Outgoing)
+                    .map(|edges| (edges.target()))
+                    .collect();
+                // Add an edge between the node that is going to be removed's child nodes and parent of the same node.
+                for child in child_nodes {
+                    graph.add_edge(parent_node, child, parent.name.clone());
+                }
+                // Remove the deleted node
                 graph.remove_node(dep_node);
                 continue;
             }
