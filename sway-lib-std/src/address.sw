@@ -1,6 +1,9 @@
 library address;
 //! A wrapper around the b256 type to help enhance type-safety.
 
+use ::intrinsics::size_of_val;
+use ::mem::{addr_of, eq};
+
 /// The Address type, a struct wrappper around the inner `value`.
 pub struct Address {
     value: b256,
@@ -8,11 +11,7 @@ pub struct Address {
 
 impl core::ops::Eq for Address {
     fn eq(self, other: Self) -> bool {
-        // An `Address` in Sway is 32 bytes
-        asm(r1: self, r2: other, result, bytes_to_compare: 32) {
-            meq result r1 r2 bytes_to_compare;
-            result: bool
-        }
+        eq(addr_of(self), addr_of(other), size_of_val(self))
     }
 }
 
