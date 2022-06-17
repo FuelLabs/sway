@@ -3,7 +3,7 @@ use storage_access_abi::*;
 use std::{assert::assert, hash::sha256};
 
 fn main() -> bool {
-    let contract_id = 0xe9f125e3327a56e071b6063f16b0d290b6ce05ff6744dea9aeced5a035a5f121;
+    let contract_id = 0x41b881e842026ed4f607156ddc0f98866944c4c67478ededb48932c578ddd52c;
     let caller = abi(StorageAccess, contract_id);
 
     // Test 1
@@ -117,6 +117,25 @@ fn main() -> bool {
     assert(t.x == 11);
     assert(t.y == 12);
     assert(t.z == 0x0000000000000000000000000000000000000000000000000000000000000006);
+
+    // Test operations on `s.t.x`
+    caller.add_to_s_dot_t_dot_x(15);
+    assert(caller.get_s_dot_t_dot_x() == 26); // 11 + 15
+
+    caller.subtract_from_s_dot_t_dot_x(6);
+    assert(caller.get_s_dot_t_dot_x() == 20); // 26 - 6
+
+    caller.multiply_by_s_dot_t_dot_x(5);
+    assert(caller.get_s_dot_t_dot_x() == 100); // 20 * 5
+
+    caller.divide_s_dot_t_dot_x(2);
+    assert(caller.get_s_dot_t_dot_x() == 50); // 100 / 2
+
+    caller.shift_left_s_dot_t_dot_x(3);
+    assert(caller.get_s_dot_t_dot_x() == 400); // 50 << 3
+
+    caller.shift_right_s_dot_t_dot_x(2);
+    assert(caller.get_s_dot_t_dot_x() == 100); // 400 >> 2
 
     // Test 13
     caller.set_e(E::A(42));
