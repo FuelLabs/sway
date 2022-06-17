@@ -70,3 +70,69 @@ impl Formatter {
         Ok(formatted_code)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::utils::indent_style::Shape;
+    use std::sync::Arc;
+
+    use super::{Config, Formatter};
+
+    fn get_formatter(config: Config, shape: Shape) -> Formatter {
+        Formatter { config, shape }
+    }
+
+    #[test]
+    fn test_enum_without_variant_alignment() {
+        let sway_code_to_format = r#"contract;
+
+enum Color {
+    Blue: (), Green: (),
+            Red: (),
+    Silver: (),
+                    Grey: (), }
+        "#;
+
+        // Until #1995 is addressed we will not have contract; in the output
+        let correct_sway_code = r#"enum Color {
+ Blue : (),
+ Green : (),
+ Red : (),
+ Silver : (),
+ Grey : (),
+}"#;
+        let mut formatter = get_formatter(Config::default(), Shape::default());
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert!(correct_sway_code == formatted_sway_code)
+    }
+    #[test]
+    fn test_enum_with_variant_alignment() {
+        let sway_code_to_format = r#"contract;
+
+enum Color {
+    Blue: (), Green: (),
+            Red: (),
+    Silver: (),
+                    Grey: (), }
+        "#;
+
+        // Until #1995 is addressed we will not have contract; in the output
+        let correct_sway_code = r#"enum Color {
+ Blue   : (),
+ Green  : (),
+ Red    : (),
+ Silver : (),
+ Grey   : (),
+}"#;
+
+        // Creating a config with enum_variant_align_threshold that exceeds longest variant length
+        let mut config = Config::default();
+        config.structures.enum_variant_align_threshold = 20;
+
+        let mut formatter = get_formatter(config, Shape::default());
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert!(correct_sway_code == formatted_sway_code)
+    }
+}
