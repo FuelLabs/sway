@@ -831,8 +831,7 @@ pub fn graph_to_path_map(
                 // Check if there is a patch for this dep
                 let patch = parent_manifest
                     .patches()
-                    .find(|patches| patches.1.contains_key(&dep_name))
-                    .and_then(|patches| patches.1.get(&dep_name));
+                    .find_map(|patches| patches.1.get(&dep_name));
                 // If there is one fetch the details.
                 let patch_details = patch.and_then(|patch| match patch {
                     Dependency::Simple(_) => None,
