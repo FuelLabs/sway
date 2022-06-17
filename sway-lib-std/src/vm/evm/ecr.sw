@@ -3,9 +3,9 @@ library ecr;
 use ::b512::B512;
 use ::context::registers::error;
 use ::ecr::{EcRecoverError, ec_recover};
-use ::vm::evm::evm_address::EvmAddress;
 use ::hash::keccak256;
 use ::result::*;
+use ::vm::evm::evm_address::EvmAddress;
 
 /// Recover the EVM address derived from the private key used to sign a message.
 /// Returns a `Result` to let the caller choose an error handling strategy.

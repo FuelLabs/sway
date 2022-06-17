@@ -43,13 +43,10 @@ impl<T> RawVec<T> {
     /// `realloc` function / allocates memory on the heap and copies the data
     /// from the old allocation to the new allocation
     fn grow(mut self) {
-        let new_cap = match self.cap {
-            0 => {
-                1
-            },
-            _ => {
-                2 * self.cap
-            },
+        let new_cap = if self.cap == 0 {
+            1
+        } else {
+            2 * self.cap
         };
 
         self.ptr = realloc(self.ptr, self.cap * size_of::<T>(), new_cap * size_of::<T>());

@@ -1,7 +1,6 @@
 library storage;
 
 use ::hash::sha256;
-use ::mem::read;
 use ::context::registers::stack_ptr;
 
 /// Store a stack variable in storage.
@@ -31,7 +30,7 @@ use ::context::registers::stack_ptr;
 
             // Move by 32 bytes
             ptr_to_value = ptr_to_value + 32;
-            size_left = size_left - 32;
+            size_left -= 32;
 
             // Generate a new key for each 32 byte chunk TODO Should eventually
             // replace this with `local_key = local_key + 1
@@ -72,7 +71,7 @@ use ::context::registers::stack_ptr;
             };
 
             // Move by 32 bytes
-            size_left = size_left - 32;
+            size_left -= 32;
 
             // Generate a new key for each 32 byte chunk TODO Should eventually
             // replace this with `local_key = local_key + 1
@@ -86,8 +85,10 @@ use ::context::registers::stack_ptr;
             srwq v k;
         }
 
-        // Return the final result
-        read(result_ptr) 
+        // Return the final result as type T
+        asm(res: result_ptr) {
+            res: T
+        }
     }
 }
 
