@@ -94,8 +94,7 @@ pub fn get<T>(key: b256) -> T {
     }
 }
 
-pub struct StorageMap<K, V> {
-}
+pub struct StorageMap<K, V> { }
 
 impl<K, V> StorageMap<K, V> {
     #[storage(write)]
