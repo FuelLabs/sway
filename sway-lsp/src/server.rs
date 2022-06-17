@@ -85,7 +85,7 @@ impl Backend {
             if let Some(document) = self.session.documents.get(uri.path()) {
                 //let diagnostics = debug::generate_warnings_for_parsed_tokens(document.get_tokens());
                 let diagnostics = debug::generate_warnings_for_typed_tokens(
-                    &document.get_token_map(),
+                    document.get_token_map(),
                     uri.path(),
                 );
                 self.client
@@ -245,7 +245,7 @@ impl LanguageServer for Backend {
 #[cfg(test)]
 mod tests {
     use serde_json::json;
-    use std::{env, fs::File, io::Read};
+    use std::{env, fs, io::Read, path::Path};
     use tower::{Service, ServiceExt};
 
     use super::*;
@@ -272,11 +272,12 @@ mod tests {
             .parent()
             .unwrap()
             .join("examples/liquidity_pool");
-        let mut file = File::open(manifest_dir.join("src/main.sw")).unwrap();
+        let src_path = manifest_dir.join("src/main.sw");
+        let mut file = fs::File::open(&src_path).unwrap();
         let mut sway_program = String::new();
         file.read_to_string(&mut sway_program).unwrap();
 
-        let uri = Url::from_file_path(manifest_dir.join("src/main.sw")).unwrap();
+        let uri = Url::from_file_path(src_path).unwrap();
         // send "textDocument/didOpen" notification for `uri`
         did_open_notification(&mut service, &uri, &sway_program).await;
 
@@ -293,25 +294,19 @@ mod tests {
     fn load_test_sway_file(sway_file: &str) -> Url {
         let manifest_dir = env::temp_dir();
 
-        // Insert default test manifest file
-        std::fs::write(
-            std::path::Path::new(&manifest_dir).join("Forc.toml"),
-            TEST_MANIFEST,
-        )
-        .unwrap();
+        // test manifest file
+        fs::write(Path::new(&manifest_dir).join("Forc.toml"), TEST_MANIFEST).unwrap();
 
-        // Insert default manifest lock file
-        std::fs::write(
-            std::path::Path::new(&manifest_dir).join("Forc.lock"),
+        // test manifest lock file
+        fs::write(
+            Path::new(&manifest_dir).join("Forc.lock"),
             TEST_MANIFEST_LOCK,
         )
         .unwrap();
 
-        let file_path = std::path::Path::new(&manifest_dir)
-            .join("src")
-            .join("main.sw");
-        std::fs::create_dir_all(manifest_dir.join("src")).unwrap();
-        std::fs::write(file_path.clone(), sway_file).unwrap();
+        let file_path = Path::new(&manifest_dir).join("src").join("main.sw");
+        fs::create_dir_all(manifest_dir.join("src")).unwrap();
+        fs::write(file_path.clone(), sway_file).unwrap();
 
         Url::from_file_path(file_path.as_os_str().to_str().unwrap()).unwrap()
     }

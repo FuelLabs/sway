@@ -6,6 +6,7 @@ use super::traverse_typed_tree;
 use super::typed_token_type::TokenMap;
 
 use crate::{capabilities, core::token::traverse_node, utils};
+use forc_pkg::{self as pkg};
 use ropey::Rope;
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use sway_core::{
@@ -156,28 +157,12 @@ impl TextDocument {
     }
 }
 
-// there is a constant in the root of the forc crate for SWAY_GIT_TAG
-// use forc package - use manifest
-// manifest from dir
-// look at forc_ops::forc_build() and how it generates its build_config -- use this as a template
-// forc_util has some methods for finding paths
-
-// let manifest = ManifestFile::from_dir(&this_dir, SWAY_GIT_TAG)?; || can hopefully just pass the path the main.sw
-// entry_path() might be what I want
-
-// namespace
-// this happens in
-// make a check() function instead of build() in forc_package, will be nearly identical apart from it returns the ast
-// Also, instead of compile() and a compile_ast() function, I can just return the ast
-
-// could also USE compile_ast() inside of compile() instead of let ast_res = sway_core::compile_to_ast(source, namespace, Some(&sway_build_config));
-
-// create a forc_check module similar to forc_build
 // private methods
 impl TextDocument {
     fn parse_typed_tokens_from_text(&self) -> Option<Vec<TypedAstNode>> {
         let manifest_dir = PathBuf::from(self.get_uri());
-        let res = forc::ops::forc_check::check(&manifest_dir).unwrap();
+        let silent_mode = true;
+        let res = pkg::check(&manifest_dir, silent_mode, forc::utils::SWAY_GIT_TAG).unwrap();
 
         match res {
             CompileAstResult::Failure { .. } => None,
@@ -188,26 +173,12 @@ impl TextDocument {
                         // This will be used when creating a 'run' button in VS Code
                         let _main_fn_line_num =
                             main_function.name.span().start_pos().line_col().0 as u32;
-                        eprintln!("main_fn_line_num = {}", _main_fn_line_num);
                     }
                     _ => (),
                 }
                 Some(typed_program.root.all_nodes)
             }
         }
-
-        // let text = Arc::from(self.get_text());
-        // let namespace = namespace::Module::default();
-        // let file_name = std::path::PathBuf::from(self.get_uri());
-        // let build_config =
-        //     BuildConfig::root_from_file_name_and_manifest_path(file_name, manifest_dir);
-
-        // let ast_res = sway_core::compile_to_ast(text, namespace, Some(&build_config));
-        // //let ast_res = sway_core::compile_to_ast(text, namespace, None);
-        // match ast_res {
-        //     CompileAstResult::Failure { .. } => None,
-        //     CompileAstResult::Success { typed_program, .. } => Some(typed_program.root.all_nodes),
-        // }
     }
 
     fn parse_tokens_from_text(&self) -> Result<(Vec<Token>, Vec<Diagnostic>), Vec<Diagnostic>> {

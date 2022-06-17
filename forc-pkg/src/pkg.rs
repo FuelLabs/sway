@@ -1460,28 +1460,47 @@ pub fn build(
 }
 
 pub fn check(
-    plan: &BuildPlan,
-    conf: &BuildConfig,
+    manifest_dir: &Path,
+    silent_mode: bool,
     sway_git_tag: &str,
 ) -> anyhow::Result<CompileAstResult> {
+    let manifest = ManifestFile::from_dir(manifest_dir, sway_git_tag)?;
+    let lock_path = forc_util::lock_path(manifest.dir());
+    let build_plan = BuildPlan::from_lock_file(&lock_path, sway_git_tag)?;
+    let config = &BuildConfig {
+        print_ir: false,
+        print_finalized_asm: false,
+        print_intermediate_asm: false,
+        silent: silent_mode,
+    };
+
     let mut namespace_map = Default::default();
     let mut source_map = SourceMap::new();
-    for (i, &node) in plan.compilation_order.iter().enumerate() {
-        let dep_namespace =
-            dependency_namespace(&namespace_map, &plan.graph, &plan.compilation_order, node);
-        let pkg = &plan.graph[node];
-        let path = &plan.path_map[&pkg.id()];
+    for (i, &node) in build_plan.compilation_order.iter().enumerate() {
+        let dep_namespace = dependency_namespace(
+            &namespace_map,
+            &build_plan.graph,
+            &build_plan.compilation_order,
+            node,
+        );
+        let pkg = &build_plan.graph[node];
+        let path = &build_plan.path_map[&pkg.id()];
         let manifest = ManifestFile::from_dir(path, sway_git_tag)?;
-        let (_, maybe_namespace) =
-            compile(pkg, &manifest, conf, dep_namespace.clone(), &mut source_map)?;
+        let (_, maybe_namespace) = compile(
+            pkg,
+            &manifest,
+            config,
+            dep_namespace.clone(),
+            &mut source_map,
+        )?;
         if let Some(namespace) = maybe_namespace {
             namespace_map.insert(node, namespace.into());
         }
         source_map.insert_dependency(path.clone());
 
         // return just the last one instead of all in a vec
-        let ast_res = compile_ast(&manifest, conf, dep_namespace)?;
-        if i == plan.compilation_order.len() - 1 {
+        let ast_res = compile_ast(&manifest, config, dep_namespace)?;
+        if i == build_plan.compilation_order.len() - 1 {
             return Ok(ast_res);
         }
     }

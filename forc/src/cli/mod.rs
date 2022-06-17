@@ -1,10 +1,11 @@
 use self::commands::{
-    addr2line, build, clean, completions, deploy, init, json_abi, parse_bytecode, plugins, run,
-    template, test, update,
+    addr2line, build, check, clean, completions, deploy, init, json_abi, parse_bytecode, plugins,
+    run, template, test, update,
 };
 use addr2line::Command as Addr2LineCommand;
 use anyhow::{anyhow, Result};
 pub use build::Command as BuildCommand;
+pub use check::Command as CheckCommand;
 use clap::Parser;
 pub use clean::Command as CleanCommand;
 pub use completions::Command as CompletionsCommand;
@@ -35,6 +36,7 @@ enum Forc {
     Addr2Line(Addr2LineCommand),
     #[clap(visible_alias = "b")]
     Build(BuildCommand),
+    Check(CheckCommand),
     Clean(CleanCommand),
     Completions(CompletionsCommand),
     Deploy(DeployCommand),
@@ -64,6 +66,7 @@ pub async fn run_cli() -> Result<()> {
     match opt.command {
         Forc::Addr2Line(command) => addr2line::exec(command),
         Forc::Build(command) => build::exec(command),
+        Forc::Check(command) => check::exec(command),
         Forc::Clean(command) => clean::exec(command),
         Forc::Completions(command) => completions::exec(command),
         Forc::Deploy(command) => deploy::exec(command).await,
