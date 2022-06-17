@@ -881,7 +881,7 @@ pub fn graph_to_path_map(
                 && !parent_manifest
                     .deps()
                     .filter_map(|dep| dep.1.package())
-                    .any(|package| package == &dep.name)
+                    .any(|package| package == dep.name)
             {
                 removed_deps.insert(dep_node);
                 continue;
