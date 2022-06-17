@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "find_associated_methods_contract"
+
+[dependencies]
+std = { path = "../../../../../../../sway-lib-std" }
+find_associated_methods_library = { path = "../../test_abis/find_associated_methods_library" }
