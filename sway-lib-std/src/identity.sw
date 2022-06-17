@@ -3,6 +3,8 @@ library identity;
 
 use ::address::Address;
 use ::contract_id::ContractId;
+use ::intrinsics::size_of_val;
+use ::mem::{addr_of, eq};
 
 pub enum Identity {
     Address: Address,
@@ -11,10 +13,8 @@ pub enum Identity {
 
 impl core::ops::Eq for Identity {
     fn eq(self, other: Self) -> bool {
-        match (self, other) {
-            (Identity::Address(address1), Identity::Address(address2)) => address1.value == address2.value,
-            (Identity::ContractId(asset1), Identity::ContractId(asset2)) => asset1.value == asset2.value,
-            _ => false,
+        match(self, other) {
+            (Identity::Address(address1), Identity::Address(address2)) => eq(addr_of(address1), addr_of(address2), size_of_val(self)), (Identity::ContractId(asset1), Identity::ContractId(asset2)) => eq(addr_of(asset1), addr_of(asset2), size_of_val(self)), _ => false, 
         }
     }
 }
