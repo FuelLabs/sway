@@ -11,6 +11,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   REGISTRY: ghcr.io
+  FUEL_CORE_VERSION: v0.9.1
 
 jobs:
   cancel-previous-runs:
@@ -279,7 +280,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.8.0
+        image: ghcr.io/fuellabs/fuel-core:${{ env.FUEL_CORE_VERSION }}
         ports:
           - 4000:4000
     steps:
@@ -301,7 +302,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.8.0
+        image: ghcr.io/fuellabs/fuel-core:${{ env.FUEL_CORE_VERSION }}
         ports:
           - 4000:4000
     steps:
