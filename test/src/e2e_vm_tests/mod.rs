@@ -161,6 +161,7 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
             ProgramState::Return(1),
         ), // true
         ("should_pass/stdlib/ge_test", ProgramState::Return(1)), // true
+        ("should_pass/stdlib/identity_eq", ProgramState::Return(1)), // true
         ("should_pass/stdlib/intrinsics", ProgramState::Return(1)), // true
         ("should_pass/stdlib/option", ProgramState::Return(1)),  // true
         ("should_pass/stdlib/require", ProgramState::Return(1)), // true
