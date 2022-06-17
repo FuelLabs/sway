@@ -1,13 +1,13 @@
 script;
 
-use find_associated_methods_library::MyContract;
+use find_associated_methods_library::*;
 use std::assert::*;
 
-fn main() -> u64 {
-    let the_abi = abi(MyContract, 0x4b0e0324f65fc5440440962c0d13352dff4d5d358890427b5af36ee86ecdc221);
+fn main() -> bool {
+    let the_abi = abi(MyContract, 0x8afb04df8c2b85db4b33550a7b736795a6a687303ca58f48aa98a487bfda91a9);
 
     let res = the_abi.test_function();
     assert(res);
 
-    1
+    true
 }
