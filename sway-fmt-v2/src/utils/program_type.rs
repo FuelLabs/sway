@@ -26,4 +26,5 @@ pub(crate) fn insert_program_type(push_to: &mut String, module_kind: ModuleKind)
     };
     push_to.push(';');
     push_to.push('\n');
+    push_to.push('\n');
 }
