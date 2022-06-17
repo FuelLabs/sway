@@ -2864,11 +2864,36 @@ fn assignable_to_expression(
             index: Box::new(expr_to_expression(ec, *arg.into_inner())?),
             span,
         },
-        Assignable::FieldProjection { target, name, .. } => Expression::SubfieldExpression {
-            prefix: Box::new(assignable_to_expression(ec, *target)?),
-            field_to_access: name,
-            span,
-        },
+        Assignable::FieldProjection { target, name, .. } => {
+            let mut idents = vec![&name];
+            let mut base = &*target;
+            let storage_access_field_names_opt = loop {
+                match base {
+                    Assignable::FieldProjection { target, name, .. } => {
+                        idents.push(name);
+                        base = target;
+                    }
+                    Assignable::Var(name) => {
+                        if name.as_str() == "storage" {
+                            break Some(idents);
+                        }
+                        break None;
+                    }
+                    _ => break None,
+                }
+            };
+            match storage_access_field_names_opt {
+                Some(field_names) => {
+                    let field_names = field_names.into_iter().rev().cloned().collect();
+                    Expression::StorageAccess { field_names, span }
+                }
+                None => Expression::SubfieldExpression {
+                    prefix: Box::new(assignable_to_expression(ec, *target)?),
+                    field_to_access: name,
+                    span,
+                },
+            }
+        }
         Assignable::TupleFieldProjection {
             target,
             field,
