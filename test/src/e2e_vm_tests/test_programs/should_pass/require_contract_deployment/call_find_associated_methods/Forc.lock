@@ -1,0 +1,22 @@
+[[package]]
+name = 'call_abi_with_tuples'
+source = 'root'
+dependencies = [
+    'find_associated_methods_library',
+    'std',
+]
+
+[[package]]
+name = 'core'
+source = 'path+from-root-A94357F7D125B65F'
+dependencies = []
+
+[[package]]
+name = 'find_associated_methods_library'
+source = 'path+from-root-A94357F7D125B65F'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'path+from-root-A94357F7D125B65F'
+dependencies = ['core']
