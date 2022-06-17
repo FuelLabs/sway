@@ -83,11 +83,11 @@ impl Backend {
         // This is useful for debugging the lsp parser.
         if self.config.parsed_tokens_as_warnings {
             if let Some(document) = self.session.documents.get(uri.path()) {
-                //let diagnostics = debug::generate_warnings_for_parsed_tokens(document.get_tokens());
-                let diagnostics = debug::generate_warnings_for_typed_tokens(
-                    document.get_token_map(),
-                    uri.path(),
-                );
+                let diagnostics = debug::generate_warnings_for_parsed_tokens(document.get_tokens());
+                // let diagnostics = debug::generate_warnings_for_typed_tokens(
+                //     document.get_token_map(),
+                //     uri.path(),
+                // );
                 self.client
                     .publish_diagnostics(uri, diagnostics, None)
                     .await;
@@ -245,29 +245,16 @@ impl LanguageServer for Backend {
 #[cfg(test)]
 mod tests {
     use serde_json::json;
-    use std::{env, fs, io::Read, path::Path};
+    use std::{env, fs, io::Read};
     use tower::{Service, ServiceExt};
 
     use super::*;
-    use crate::utils::test_programs::{TEST_MANIFEST, TEST_MANIFEST_LOCK, TEST_SWAY_PROGRAM};
     use futures::stream::StreamExt;
     use tower_lsp::jsonrpc::{self, Request, Response};
     use tower_lsp::LspService;
 
-    #[tokio::test]
-    async fn open_example() {
-        let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
-        let _ = initialize_request(&mut service).await;
-
-        // send "initialized" notification
-        initialized_notification(&mut service).await;
-
-        // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-        messages.next().await.unwrap();
-
-        let manifest_dir = std::env::current_dir()
+    fn load_sway_example() -> (Url, String) {
+        let manifest_dir = env::current_dir()
             .unwrap()
             .parent()
             .unwrap()
@@ -278,37 +265,8 @@ mod tests {
         file.read_to_string(&mut sway_program).unwrap();
 
         let uri = Url::from_file_path(src_path).unwrap();
-        // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, &sway_program).await;
 
-        // ignore the "textDocument/publishDiagnostics" notification
-        messages.next().await.unwrap();
-
-        // send "shutdown" request
-        let _ = shutdown_request(&mut service).await;
-
-        // send "exit" request
-        exit_notification(&mut service).await;
-    }
-
-    fn load_test_sway_file(sway_file: &str) -> Url {
-        let manifest_dir = env::temp_dir();
-
-        // test manifest file
-        fs::write(Path::new(&manifest_dir).join("Forc.toml"), TEST_MANIFEST).unwrap();
-
-        // test manifest lock file
-        fs::write(
-            Path::new(&manifest_dir).join("Forc.lock"),
-            TEST_MANIFEST_LOCK,
-        )
-        .unwrap();
-
-        let file_path = Path::new(&manifest_dir).join("src").join("main.sw");
-        fs::create_dir_all(manifest_dir.join("src")).unwrap();
-        fs::write(file_path.clone(), sway_file).unwrap();
-
-        Url::from_file_path(file_path.as_os_str().to_str().unwrap()).unwrap()
+        (uri, sway_program)
     }
 
     async fn initialize_request(service: &mut LspService<Backend>) -> Request {
@@ -459,10 +417,10 @@ mod tests {
         // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
         messages.next().await.unwrap();
 
-        let uri = load_test_sway_file(TEST_SWAY_PROGRAM);
+        let (uri, sway_program) = load_sway_example();
 
         // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, TEST_SWAY_PROGRAM).await;
+        did_open_notification(&mut service, &uri, &sway_program).await;
 
         // ignore the "textDocument/publishDiagnostics" notification
         messages.next().await.unwrap();
@@ -484,10 +442,10 @@ mod tests {
         // send "initialized" notification
         initialized_notification(&mut service).await;
 
-        let uri = load_test_sway_file(TEST_SWAY_PROGRAM);
+        let (uri, sway_program) = load_sway_example();
 
         // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, TEST_SWAY_PROGRAM).await;
+        did_open_notification(&mut service, &uri, &sway_program).await;
 
         // send "textDocument/didClose" notification for `uri`
         did_close_notification(&mut service).await;
