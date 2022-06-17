@@ -168,6 +168,8 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
         ("should_pass/stdlib/u128_test", ProgramState::Return(1)), // true
         ("should_pass/stdlib/u128_div_test", ProgramState::Return(1)), // true
         ("should_pass/stdlib/u128_mul_test", ProgramState::Return(1)), // true
+        ("should_pass/stdlib/alloc", ProgramState::Return(1)),   // true
+        ("should_pass/stdlib/mem", ProgramState::Return(1)),     // true
         (
             "should_pass/language/generic_structs",
             ProgramState::Return(1), // true
@@ -220,6 +222,7 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
         ),
         ("should_pass/stdlib/b512_test", ProgramState::Return(1)), // true
         ("should_pass/stdlib/block_height", ProgramState::Return(1)), // true
+        ("should_pass/stdlib/vec", ProgramState::Return(1)),       // true
         (
             "should_pass/language/trait_override_bug",
             ProgramState::Return(7),
@@ -344,16 +347,10 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
             "should_pass/language/non_literal_const_decl",
             ProgramState::Return(42),
         ),
-        /*
-         * This test is disabled because in order to work correctly it requires that we implement
-         * `&mut self` methods.
-         *
-         * See: #1188
         (
             "should_pass/language/self_impl_reassignment",
             ProgramState::Return(1),
         ),
-        */
         (
             "should_pass/language/import_trailing_comma",
             ProgramState::Return(0),
@@ -446,6 +443,10 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
                 0x1f, 0x04, 0xff, 0x6d, 0x24, 0x70, 0xf2, 0x4a, 0xa9, 0xbd, 0x88, 0x65, 0x40, 0xe5,
                 0xdc, 0xe7, 0x7f, 0x70,
             ])), // "ReturnData":{"data":"0000000000000002", .. }
+        ),
+        (
+            "should_pass/language/match_expressions_with_self",
+            ProgramState::Return(1),
         ),
         (
             "should_pass/test_contracts/auth_testing_contract",
@@ -589,6 +590,8 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
         "should_fail/repeated_enum_variant",
         "should_fail/repeated_storage_field",
         "should_fail/repeated_struct_field",
+        "should_fail/method_requires_mut_var",
+        "should_fail/impl_with_bad_generic",
         "should_fail/storage_conflict",
     ];
     number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {

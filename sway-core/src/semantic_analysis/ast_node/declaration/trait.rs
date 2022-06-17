@@ -76,7 +76,7 @@ impl TypedTraitDeclaration {
                 suffix: trait_decl.name.clone(),
                 is_absolute: false,
             },
-            TypeInfo::SelfType,
+            insert_type(TypeInfo::SelfType),
             interface_surface
                 .iter()
                 .map(|x| x.to_dummy_func(Mode::NonAbi))
@@ -128,7 +128,7 @@ fn handle_supertraits(
                 // insert dummy versions of the interfaces for all of the supertraits
                 trait_namespace.insert_trait_implementation(
                     supertrait.name.clone(),
-                    TypeInfo::SelfType,
+                    insert_type(TypeInfo::SelfType),
                     interface_surface
                         .iter()
                         .map(|x| x.to_dummy_func(Mode::NonAbi))
@@ -144,7 +144,7 @@ fn handle_supertraits(
                 );
                 trait_namespace.insert_trait_implementation(
                     supertrait.name.clone(),
-                    TypeInfo::SelfType,
+                    insert_type(TypeInfo::SelfType),
                     dummy_funcs,
                 );
 
@@ -197,10 +197,12 @@ fn convert_trait_methods_to_dummy_funcs(
                     .map(
                         |FunctionParameter {
                              name,
+                             is_mutable,
                              type_id,
                              type_span,
                          }| TypedFunctionParameter {
                             name: name.clone(),
+                            is_mutable: *is_mutable,
                             type_id: check!(
                                 trait_namespace.resolve_type_with_self(
                                     look_up_type_id(*type_id),

@@ -1,469 +1,38 @@
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     constants,
-    error::*,
-    parse_tree::{promote_purity, AsmOp, AsmRegister, LazyOp, Literal, Purity, Visibility},
-    semantic_analysis::{ast_node::*, *},
-    type_engine::*,
+    error::CompileError,
+    parse_tree::{AsmOp, AsmRegister, LazyOp, Literal, Purity, Visibility},
+    semantic_analysis::*,
+    type_engine::{insert_type, resolve_type, TypeId, TypeInfo},
 };
+
+use super::{compile::compile_function, convert::*, lexical_map::LexicalMap, types::*};
+
 use fuel_crypto::Hasher;
-use std::{collections::HashMap, sync::Arc};
-use uint::construct_uint;
-
-use sway_types::{ident::Ident, span::Span, state::StateIndex, Spanned};
-
 use sway_ir::*;
+use sway_types::{
+    ident::Ident,
+    span::{Span, Spanned},
+    state::StateIndex,
+};
 
-// -------------------------------------------------------------------------------------------------
+use std::{collections::HashMap, sync::Arc};
 
-pub(crate) fn compile_program(program: TypedProgram) -> Result<Context, CompileError> {
-    let TypedProgram { kind, root } = program;
-
-    let mut ctx = Context::default();
-    match kind {
-        TypedProgramKind::Script {
-            main_function,
-            declarations,
-        }
-        | TypedProgramKind::Predicate {
-            main_function,
-            declarations,
-            // predicates and scripts have the same codegen, their only difference is static
-            // type-check time checks.
-        } => compile_script(&mut ctx, main_function, &root.namespace, declarations),
-        TypedProgramKind::Contract {
-            abi_entries,
-            declarations,
-        } => compile_contract(&mut ctx, abi_entries, &root.namespace, declarations),
-        TypedProgramKind::Library { .. } => unimplemented!("compile library to ir"),
-    }?;
-    ctx.verify()
-        .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))
-}
-
-// -------------------------------------------------------------------------------------------------
-
-fn compile_script(
-    context: &mut Context,
-    main_function: TypedFunctionDeclaration,
-    namespace: &namespace::Module,
-    declarations: Vec<TypedDeclaration>,
-) -> Result<Module, CompileError> {
-    let module = Module::new(context, Kind::Script);
-
-    compile_constants(context, module, namespace, false)?;
-    compile_declarations(context, module, declarations)?;
-    compile_function(context, module, main_function)?;
-
-    Ok(module)
-}
-
-fn compile_contract(
-    context: &mut Context,
-    abi_entries: Vec<TypedFunctionDeclaration>,
-    namespace: &namespace::Module,
-    declarations: Vec<TypedDeclaration>,
-) -> Result<Module, CompileError> {
-    let module = Module::new(context, Kind::Contract);
-
-    compile_constants(context, module, namespace, false)?;
-    compile_declarations(context, module, declarations)?;
-    for decl in abi_entries {
-        compile_abi_method(context, module, decl)?;
-    }
-
-    Ok(module)
-}
-
-// -------------------------------------------------------------------------------------------------
-
-fn compile_constants(
-    context: &mut Context,
+pub(super) struct FnCompiler {
     module: Module,
-    module_ns: &namespace::Module,
-    public_only: bool,
-) -> Result<(), CompileError> {
-    for decl in module_ns.get_all_declared_symbols() {
-        let decl_name_value = match decl {
-            TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
-                name,
-                value,
-                visibility,
-            }) => {
-                // XXX Do we really only add public constants?
-                if !public_only || matches!(visibility, Visibility::Public) {
-                    Some((name, value))
-                } else {
-                    None
-                }
-            }
-
-            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                name,
-                body,
-                const_decl_origin,
-                ..
-            }) if *const_decl_origin => Some((name, body)),
-
-            _otherwise => None,
-        };
-
-        if let Some((name, value)) = decl_name_value {
-            let const_val = compile_constant_expression(context, module, value)?;
-            module.add_global_constant(context, name.as_str().to_owned(), const_val);
-        }
-    }
-
-    for submodule_ns in module_ns.submodules().values() {
-        compile_constants(context, module, submodule_ns, true)?;
-    }
-
-    Ok(())
-}
-
-fn compile_constant_expression(
-    context: &mut Context,
-    module: Module,
-    const_expr: &TypedExpression,
-) -> Result<Value, CompileError> {
-    let span_id_idx = MetadataIndex::from_span(context, &const_expr.span);
-    let err = match &const_expr.expression {
-        // Special case functions because the span in `const_expr` is to the inlined function
-        // definition, rather than the actual call site.
-        TypedExpressionVariant::FunctionApplication { call_path, .. } => {
-            Err(CompileError::NonConstantDeclValue {
-                span: call_path.span(),
-            })
-        }
-        _otherwise => Err(CompileError::NonConstantDeclValue {
-            span: const_expr.span.clone(),
-        }),
-    };
-    let mut known_consts = MappedStack::<Ident, Constant>::new();
-    const_eval_typed_expr(context, module, &mut known_consts, const_expr)
-        .map_or(err, |c| Ok(Value::new_constant(context, c, span_id_idx)))
-}
-
-// -------------------------------------------------------------------------------------------------
-// We don't really need to compile these declarations other than `const`s since:
-// a) function decls are inlined into their call site and can be (re)created there, though ideally
-//    we'd give them their proper name by compiling them here.
-// b) struct decls are also inlined at their instantiation site.
-// c) ditto for enums.
-//
-// And for structs and enums in particular, we must ignore those with embedded generic types as
-// they are monomorphised only at the instantation site.  We must ignore the generic declarations
-// altogether anyway.
-
-fn compile_declarations(
-    context: &mut Context,
-    module: Module,
-    declarations: Vec<TypedDeclaration>,
-) -> Result<(), CompileError> {
-    for declaration in declarations {
-        match declaration {
-            TypedDeclaration::ConstantDeclaration(decl) => {
-                // These are in the global scope for the module, so they can be added there.
-                let const_val = compile_constant_expression(context, module, &decl.value)?;
-                module.add_global_constant(context, decl.name.as_str().to_owned(), const_val);
-            }
-
-            TypedDeclaration::FunctionDeclaration(_decl) => {
-                // We no longer compile functions other than `main()` until we can improve the name
-                // resolution.  Currently there isn't enough information in the AST to fully
-                // distinguish similarly named functions and especially trait methods.
-                //
-                //compile_function(context, module, decl).map(|_| ())?
-            }
-            TypedDeclaration::ImplTrait(_) => {
-                // And for the same reason we don't need to compile impls at all.
-                //
-                // compile_impl(
-                //    context,
-                //    module,
-                //    type_implementing_for,
-                //    methods,
-                //)?,
-            }
-
-            TypedDeclaration::StructDeclaration(_)
-            | TypedDeclaration::EnumDeclaration(_)
-            | TypedDeclaration::TraitDeclaration(_)
-            | TypedDeclaration::VariableDeclaration(_)
-            | TypedDeclaration::Reassignment(_)
-            | TypedDeclaration::StorageReassignment(_)
-            | TypedDeclaration::AbiDeclaration(_)
-            | TypedDeclaration::GenericTypeForFunctionScope { .. }
-            | TypedDeclaration::StorageDeclaration(_)
-            | TypedDeclaration::ErrorRecovery => (),
-        }
-    }
-    Ok(())
-}
-
-// -------------------------------------------------------------------------------------------------
-
-pub fn get_aggregate_for_types(
-    context: &mut Context,
-    type_ids: &[TypeId],
-) -> Result<Aggregate, CompileError> {
-    let types = type_ids
-        .iter()
-        .map(|ty_id| convert_resolved_typeid_no_span(context, ty_id))
-        .collect::<Result<Vec<_>, CompileError>>()?;
-    Ok(Aggregate::new_struct(context, types))
-}
-
-// -------------------------------------------------------------------------------------------------
-
-pub fn create_enum_aggregate(
-    context: &mut Context,
-    variants: Vec<TypedEnumVariant>,
-) -> Result<Aggregate, CompileError> {
-    // Create the enum aggregate first.  NOTE: single variant enums don't need an aggregate but are
-    // getting one here anyway.  They don't need to be a tagged union either.
-    let field_types: Vec<_> = variants
-        .into_iter()
-        .map(|tev| convert_resolved_typeid_no_span(context, &tev.type_id))
-        .collect::<Result<Vec<_>, CompileError>>()?;
-
-    // Enums where all the variants are unit types don't really need the union. Only a tag is
-    // needed. For consistency, and to keep enums as reference types, we keep the tag in an
-    // Aggregate.
-    Ok(if field_types.iter().all(|f| matches!(f, Type::Unit)) {
-        Aggregate::new_struct(context, vec![Type::Uint(64)])
-    } else {
-        let enum_aggregate = Aggregate::new_struct(context, field_types);
-        Aggregate::new_struct(context, vec![Type::Uint(64), Type::Union(enum_aggregate)])
-    })
-}
-
-// -------------------------------------------------------------------------------------------------
-
-pub fn create_tuple_aggregate(
-    context: &mut Context,
-    fields: Vec<TypeId>,
-) -> Result<Aggregate, CompileError> {
-    let field_types = fields
-        .into_iter()
-        .map(|ty_id| convert_resolved_typeid_no_span(context, &ty_id))
-        .collect::<Result<Vec<_>, CompileError>>()?;
-
-    Ok(Aggregate::new_struct(context, field_types))
-}
-
-// -------------------------------------------------------------------------------------------------
-
-pub fn create_array_aggregate(
-    context: &mut Context,
-    element_type_id: TypeId,
-    count: u64,
-) -> Result<Aggregate, CompileError> {
-    let element_type = convert_resolved_typeid_no_span(context, &element_type_id)?;
-    Ok(Aggregate::new_array(context, element_type, count))
-}
-
-// -------------------------------------------------------------------------------------------------
-
-fn compile_function(
-    context: &mut Context,
-    module: Module,
-    ast_fn_decl: TypedFunctionDeclaration,
-) -> Result<Option<Function>, CompileError> {
-    // Currently monomorphisation of generics is inlined into main() and the functions with generic
-    // args are still present in the AST declarations, but they can be ignored.
-    if !ast_fn_decl.type_parameters.is_empty() {
-        Ok(None)
-    } else {
-        let args = ast_fn_decl
-            .parameters
-            .iter()
-            .map(|param| {
-                convert_resolved_typeid(context, &param.type_id, &param.type_span)
-                    .map(|ty| (param.name.as_str().into(), ty, param.name.span()))
-            })
-            .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
-
-        compile_fn_with_args(context, module, ast_fn_decl, args, None).map(&Some)
-    }
-}
-
-// -------------------------------------------------------------------------------------------------
-
-fn compile_fn_with_args(
-    context: &mut Context,
-    module: Module,
-    ast_fn_decl: TypedFunctionDeclaration,
-    args: Vec<(String, Type, Span)>,
-    selector: Option<[u8; 4]>,
-) -> Result<Function, CompileError> {
-    let TypedFunctionDeclaration {
-        name,
-        body,
-        return_type,
-        return_type_span,
-        visibility,
-        purity,
-        span,
-        ..
-    } = ast_fn_decl;
-
-    let args = args
-        .into_iter()
-        .map(|(name, ty, span)| (name, ty, MetadataIndex::from_span(context, &span)))
-        .collect();
-    let ret_type = convert_resolved_typeid(context, &return_type, &return_type_span)?;
-    let span_md_idx = MetadataIndex::from_span(context, &span);
-    let storage_md_idx = if purity == Purity::Pure {
-        None
-    } else {
-        Some(MetadataIndex::get_storage_index(
-            context,
-            match purity {
-                Purity::Pure => unreachable!("Already checked for Pure above."),
-                Purity::Reads => StorageOperation::Reads,
-                Purity::Writes => StorageOperation::Writes,
-                Purity::ReadsWrites => StorageOperation::ReadsWrites,
-            },
-        ))
-    };
-    let func = Function::new(
-        context,
-        module,
-        name.as_str().to_owned(),
-        args,
-        ret_type,
-        selector,
-        visibility == Visibility::Public,
-        span_md_idx,
-        storage_md_idx,
-    );
-
-    // We clone the struct symbols here, as they contain the globals; any new local declarations
-    // may remain within the function scope.
-    let mut compiler = FnCompiler::new(context, module, func);
-
-    let mut ret_val = compiler.compile_code_block(context, body)?;
-
-    // Special case: if the return type is unit but the return value type is not, then we have an
-    // implicit return from the last expression in the code block having a semi-colon.  This isn't
-    // codified in the AST explicitly so we need to make a unit to return here.
-    if ret_type.eq(context, &Type::Unit) && !matches!(ret_val.get_type(context), Some(Type::Unit)) {
-        // NOTE: We're replacing the ret_val and throwing away whatever it used to be, as it is
-        // never actually used anyway.
-        ret_val = Constant::get_unit(context, None);
-    }
-
-    // Another special case: if the last expression in a function is a return then we don't want to
-    // add another implicit return instruction here, as `ret_val` will be unit regardless of the
-    // function return type actually is.  This new RET will be going into an unreachable block
-    // which is valid, but pointless and we should avoid it due to the aforementioned potential
-    // type conflict.
-    //
-    // To tell if this is the case we can check that the current block is empty and has no
-    // predecessors (and isn't the entry block which has none by definition), implying the most
-    // recent instruction was a RET.
-    if compiler.current_block.num_instructions(context) > 0
-        || compiler.current_block == compiler.function.get_entry_block(context)
-        || compiler.current_block.num_predecessors(context) > 0
-    {
-        if ret_type.eq(context, &Type::Unit) {
-            ret_val = Constant::get_unit(context, None);
-        }
-        compiler
-            .current_block
-            .ins(context)
-            .ret(ret_val, ret_type, None);
-    }
-    Ok(func)
-}
-
-// -------------------------------------------------------------------------------------------------
-
-/* Disabled until we can improve symbol resolution.  See comments above in compile_declarations().
-
-fn compile_impl(
-    context: &mut Context,
-    module: Module,
-    self_type: TypeInfo,
-    ast_methods: Vec<TypedFunctionDeclaration>,
-) -> Result<(), CompileError> {
-    for method in ast_methods {
-        let args = method
-            .parameters
-            .iter()
-            .map(|param| {
-                if param.name.as_str() == "self" {
-                    convert_resolved_type(context, &self_type)
-                } else {
-                    convert_resolved_typeid(context, &param.type_id, &param.type_span)
-                }
-                .map(|ty| (param.name.as_str().into(), ty, param.name.span().clone()))
-            })
-            .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
-
-        compile_fn_with_args(context, module, method, args, None)?;
-    }
-    Ok(())
-}
-*/
-
-// -------------------------------------------------------------------------------------------------
-
-fn compile_abi_method(
-    context: &mut Context,
-    module: Module,
-    ast_fn_decl: TypedFunctionDeclaration,
-) -> Result<Function, CompileError> {
-    // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
-    let get_selector_result = ast_fn_decl.to_fn_selector_value();
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
-    let selector = match get_selector_result.ok(&mut warnings, &mut errors) {
-        Some(selector) => selector,
-        None => {
-            return if !errors.is_empty() {
-                Err(errors[0].clone())
-            } else {
-                Err(CompileError::InternalOwned(
-                    format!(
-                        "Cannot generate selector for ABI method: {}",
-                        ast_fn_decl.name.as_str()
-                    ),
-                    ast_fn_decl.name.span(),
-                ))
-            };
-        }
-    };
-
-    let args = ast_fn_decl
-        .parameters
-        .iter()
-        .map(|param| {
-            convert_resolved_typeid(context, &param.type_id, &param.type_span)
-                .map(|ty| (param.name.as_str().into(), ty, param.name.span()))
-        })
-        .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
-
-    compile_fn_with_args(context, module, ast_fn_decl, args, Some(selector))
-}
-
-// -------------------------------------------------------------------------------------------------
-
-struct FnCompiler {
-    module: Module,
-    function: Function,
-    current_block: Block,
+    pub(super) function: Function,
+    pub(super) current_block: Block,
     lexical_map: LexicalMap,
 }
 
-pub enum StateAccessType {
+pub(super) enum StateAccessType {
     Read,
     Write,
 }
 
 impl FnCompiler {
-    fn new(context: &mut Context, module: Module, function: Function) -> Self {
+    pub(super) fn new(context: &mut Context, module: Module, function: Function) -> Self {
         let lexical_map = LexicalMap::from_iter(
             function
                 .args_iter(context)
@@ -477,8 +46,6 @@ impl FnCompiler {
         }
     }
 
-    // ---------------------------------------------------------------------------------------------
-
     fn compile_with_new_scope<F, T>(&mut self, inner: F) -> Result<T, CompileError>
     where
         F: FnOnce(&mut FnCompiler) -> Result<T, CompileError>,
@@ -489,9 +56,7 @@ impl FnCompiler {
         result
     }
 
-    // ---------------------------------------------------------------------------------------------
-
-    fn compile_code_block(
+    pub(super) fn compile_code_block(
         &mut self,
         context: &mut Context,
         ast_block: TypedCodeBlock,
@@ -613,8 +178,6 @@ impl FnCompiler {
         self.lexical_map.leave_scope();
         value
     }
-
-    // ---------------------------------------------------------------------------------------------
 
     fn compile_expression(
         &mut self,
@@ -749,8 +312,6 @@ impl FnCompiler {
         }
     }
 
-    // ---------------------------------------------------------------------------------------------
-
     fn compile_intrinsic_function(
         &mut self,
         context: &mut Context,
@@ -792,8 +353,6 @@ impl FnCompiler {
         }
     }
 
-    // ---------------------------------------------------------------------------------------------
-
     fn compile_return_statement(
         &mut self,
         context: &mut Context,
@@ -817,8 +376,6 @@ impl FnCompiler {
             }
         }
     }
-
-    // ---------------------------------------------------------------------------------------------
 
     fn compile_lazy_op(
         &mut self,
@@ -860,8 +417,6 @@ impl FnCompiler {
         self.current_block = final_block;
         Ok(final_block.get_phi(context))
     }
-
-    // ---------------------------------------------------------------------------------------------
 
     #[allow(clippy::too_many_arguments)]
     fn compile_contract_call(
@@ -1075,8 +630,6 @@ impl FnCompiler {
         ))
     }
 
-    // ---------------------------------------------------------------------------------------------
-
     #[allow(clippy::too_many_arguments)]
     fn compile_fn_call(
         &mut self,
@@ -1109,10 +662,16 @@ impl FnCompiler {
                 crate::span::Span::new(Arc::from(callee_name), 0, callee_name_len, None).unwrap(),
             );
 
+            // TODO: `is_mutable` below is set to `false` regardless of the actual mutability of
+            // each arg. This is hacky but not too important at the moment. Mutability is only
+            // relevant (currently) during type checking and so this just works. Long term, we need
+            // to propagate mutability for arguments in IR and make sure that the verifier takes it
+            // into account.
             let parameters = ast_args
                 .iter()
                 .map(|(name, expr)| TypedFunctionParameter {
                     name: name.clone(),
+                    is_mutable: false,
                     type_id: expr.return_type,
                     type_span: crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 })
@@ -1176,8 +735,6 @@ impl FnCompiler {
         }
     }
 
-    // ---------------------------------------------------------------------------------------------
-
     fn compile_if(
         &mut self,
         context: &mut Context,
@@ -1237,8 +794,6 @@ impl FnCompiler {
         Ok(merge_block.get_phi(context))
     }
 
-    // ---------------------------------------------------------------------------------------------
-
     fn compile_unsafe_downcast(
         &mut self,
         context: &mut Context,
@@ -1266,8 +821,6 @@ impl FnCompiler {
         ))
     }
 
-    // ---------------------------------------------------------------------------------------------
-
     fn compile_enum_tag(
         &mut self,
         context: &mut Context,
@@ -1288,8 +841,6 @@ impl FnCompiler {
             tag_span_md_idx,
         ))
     }
-
-    // ---------------------------------------------------------------------------------------------
 
     fn compile_while_loop(
         &mut self,
@@ -1337,8 +888,6 @@ impl FnCompiler {
         Ok(Constant::get_unit(context, span_md_idx))
     }
 
-    // ---------------------------------------------------------------------------------------------
-
     fn compile_var_expr(
         &mut self,
         context: &mut Context,
@@ -1373,8 +922,6 @@ impl FnCompiler {
             ))
         }
     }
-
-    // ---------------------------------------------------------------------------------------------
 
     fn compile_var_decl(
         &mut self,
@@ -1426,8 +973,6 @@ impl FnCompiler {
         Ok(init_val)
     }
 
-    // ---------------------------------------------------------------------------------------------
-
     fn compile_const_decl(
         &mut self,
         context: &mut Context,
@@ -1461,8 +1006,6 @@ impl FnCompiler {
             ))
         }
     }
-
-    // ---------------------------------------------------------------------------------------------
 
     fn compile_reassignment(
         &mut self,
@@ -1544,8 +1087,6 @@ impl FnCompiler {
         Ok(reassign_val)
     }
 
-    // ---------------------------------------------------------------------------------------------
-
     fn compile_storage_reassignment(
         &mut self,
         context: &mut Context,
@@ -1580,8 +1121,6 @@ impl FnCompiler {
             span_md_idx,
         )
     }
-
-    // ---------------------------------------------------------------------------------------------
 
     fn compile_array_expr(
         &mut self,
@@ -1624,8 +1163,6 @@ impl FnCompiler {
                 }
             })
     }
-
-    // ---------------------------------------------------------------------------------------------
 
     fn compile_array_index(
         &mut self,
@@ -1677,8 +1214,6 @@ impl FnCompiler {
         ))
     }
 
-    // ---------------------------------------------------------------------------------------------
-
     fn compile_struct_expr(
         &mut self,
         context: &mut Context,
@@ -1720,8 +1255,6 @@ impl FnCompiler {
             },
         ))
     }
-
-    // ---------------------------------------------------------------------------------------------
 
     fn compile_struct_field_expr(
         &mut self,
@@ -1784,8 +1317,6 @@ impl FnCompiler {
         ))
     }
 
-    // ---------------------------------------------------------------------------------------------
-
     fn compile_enum_expr(
         &mut self,
         context: &mut Context,
@@ -1841,8 +1372,6 @@ impl FnCompiler {
         }
     }
 
-    // ---------------------------------------------------------------------------------------------
-
     fn compile_tuple_expr(
         &mut self,
         context: &mut Context,
@@ -1886,8 +1415,6 @@ impl FnCompiler {
         }
     }
 
-    // ---------------------------------------------------------------------------------------------
-
     fn compile_tuple_elem_expr(
         &mut self,
         context: &mut Context,
@@ -1912,8 +1439,6 @@ impl FnCompiler {
             ))
         }
     }
-
-    // ---------------------------------------------------------------------------------------------
 
     fn compile_storage_access(
         &mut self,
@@ -1946,8 +1471,6 @@ impl FnCompiler {
             span_md_idx,
         )
     }
-
-    // ---------------------------------------------------------------------------------------------
 
     fn compile_asm_expr(
         &mut self,
@@ -2004,9 +1527,6 @@ impl FnCompiler {
             whole_block_span_md_idx,
         ))
     }
-
-    // -------------------------------------------------------------------------------------------------
-    // Utils
 
     #[allow(clippy::too_many_arguments)]
     fn compile_storage_read_or_write(
@@ -2380,623 +1900,3 @@ impl FnCompiler {
         })
     }
 }
-
-// -------------------------------------------------------------------------------------------------
-// Nested mappings between symbol strings.  Allows shadowing and/or nested scopes for local
-// symbols.
-//
-// NOTE: ALL symbols should be represented in this data structure to be sure that we
-// don't accidentally ignore (i.e., neglect to shadow with) a new binding.
-//
-// A further complication is although we have enter_scope() and leave_scope() to potentially add
-// and remove shadowing symbols, the re-use of symbol names can't be allowed, so all names are
-// reserved even when they're not 'currently' valid.
-
-struct LexicalMap {
-    symbol_map: Vec<HashMap<String, String>>,
-    reserved_sybols: Vec<String>,
-}
-
-impl LexicalMap {
-    fn from_iter<I: IntoIterator<Item = String>>(names: I) -> Self {
-        let (root_symbol_map, reserved_sybols): (HashMap<String, String>, Vec<String>) = names
-            .into_iter()
-            .fold((HashMap::new(), Vec::new()), |(mut m, mut r), name| {
-                m.insert(name.clone(), name.clone());
-                r.push(name);
-                (m, r)
-            });
-
-        LexicalMap {
-            symbol_map: vec![root_symbol_map],
-            reserved_sybols,
-        }
-    }
-
-    fn enter_scope(&mut self) -> &mut Self {
-        self.symbol_map.push(HashMap::new());
-        self
-    }
-
-    fn leave_scope(&mut self) -> &mut Self {
-        assert!(self.symbol_map.len() > 1);
-        self.symbol_map.pop();
-        self
-    }
-
-    fn get(&self, symbol: &str) -> Option<&String> {
-        // Only get 'valid' symbols which are currently in scope.
-        self.symbol_map
-            .iter()
-            .rev()
-            .find_map(|scope| scope.get(symbol))
-    }
-
-    fn insert(&mut self, new_symbol: String) -> String {
-        // Insert this new symbol into this lexical scope.  If it has ever existed then the
-        // original will be shadowed and the shadower is returned.
-        fn get_new_local_symbol(reserved: &[String], candidate: String) -> String {
-            match reserved.iter().find(|&reserved| reserved == &candidate) {
-                None => candidate,
-                Some(_) => {
-                    // Try again with adjusted candidate.
-                    get_new_local_symbol(reserved, format!("{candidate}_"))
-                }
-            }
-        }
-        let local_symbol = get_new_local_symbol(&self.reserved_sybols, new_symbol.clone());
-        self.symbol_map
-            .last_mut()
-            .expect("LexicalMap should always have at least the root scope.")
-            .insert(new_symbol, local_symbol.clone());
-        self.reserved_sybols.push(local_symbol.clone());
-        local_symbol
-    }
-}
-
-// -------------------------------------------------------------------------------------------------
-// Get the name of a struct and the index to a particular named field from a TypeId.
-
-pub fn get_struct_name_field_index_and_type(
-    field_type: TypeId,
-    field_kind: ProjectionKind,
-) -> Option<(String, Option<(u64, TypeId)>)> {
-    let ty_info = resolve_type(field_type, &field_kind.span()).ok()?;
-    match (ty_info, field_kind) {
-        (
-            TypeInfo::Struct { name, fields, .. },
-            ProjectionKind::StructField { name: field_name },
-        ) => Some((
-            name.as_str().to_owned(),
-            fields
-                .iter()
-                .enumerate()
-                .find(|(_, field)| field.name == field_name)
-                .map(|(idx, field)| (idx as u64, field.type_id)),
-        )),
-        _otherwise => None,
-    }
-}
-
-// To gather the indices into nested structs for the struct oriented IR instructions we need to
-// inspect the names and types of a vector of fields in a path.  There are several different
-// representations of this in the AST but we can wrap fetching the struct type and field name in a
-// trait.  And we can even wrap the implementation in a macro.
-
-trait TypedNamedField {
-    fn get_field_kind(&self) -> ProjectionKind;
-}
-
-macro_rules! impl_typed_named_field_for {
-    ($field_type_name: ident) => {
-        impl TypedNamedField for $field_type_name {
-            fn get_field_kind(&self) -> ProjectionKind {
-                ProjectionKind::StructField {
-                    name: self.name.clone(),
-                }
-            }
-        }
-    };
-}
-
-impl TypedNamedField for ProjectionKind {
-    fn get_field_kind(&self) -> ProjectionKind {
-        self.clone()
-    }
-}
-
-impl_typed_named_field_for!(TypeCheckedStorageAccessDescriptor);
-impl_typed_named_field_for!(TypeCheckedStorageReassignDescriptor);
-
-fn get_indices_for_struct_access<F: TypedNamedField>(
-    base_type: TypeId,
-    fields: &[F],
-) -> Result<Vec<u64>, CompileError> {
-    fields
-        .iter()
-        .try_fold(
-            (Vec::new(), base_type),
-            |(mut fld_idcs, prev_type_id), field| {
-                let field_kind = field.get_field_kind();
-                let ty_info = match resolve_type(prev_type_id, &field_kind.span()) {
-                    Ok(ty_info) => ty_info,
-                    Err(error) => {
-                        return Err(CompileError::InternalOwned(
-                            format!("type error resolving type for reassignment: {}", error),
-                            field_kind.span(),
-                        ));
-                    }
-                };
-                // Make sure we have an aggregate to index into.
-                // Get the field index and also its type for the next iteration.
-                match (ty_info, &field_kind) {
-                    (
-                        TypeInfo::Struct { name, fields, .. },
-                        ProjectionKind::StructField { name: field_name },
-                    ) => {
-                        let field_idx_and_type_opt = fields
-                            .iter()
-                            .enumerate()
-                            .find(|(_, field)| field.name == *field_name);
-                        let (field_idx, field_type) = match field_idx_and_type_opt {
-                            Some((idx, field)) => (idx as u64, field.type_id),
-                            None => {
-                                return Err(CompileError::InternalOwned(
-                                    format!(
-                                        "Unknown field '{}' for struct {} in reassignment.",
-                                        field_kind.pretty_print(),
-                                        name,
-                                    ),
-                                    field_kind.span(),
-                                ));
-                            }
-                        };
-                        // Save the field index.
-                        fld_idcs.push(field_idx);
-                        Ok((fld_idcs, field_type))
-                    }
-                    (TypeInfo::Tuple(fields), ProjectionKind::TupleField { index, .. }) => {
-                        let field_type = match fields.get(*index) {
-                            Some(field_type_argument) => field_type_argument.type_id,
-                            None => {
-                                return Err(CompileError::InternalOwned(
-                                    format!(
-                                        "index {} is out of bounds for tuple of length {}",
-                                        index,
-                                        fields.len(),
-                                    ),
-                                    field_kind.span(),
-                                ));
-                            }
-                        };
-                        fld_idcs.push(*index as u64);
-                        Ok((fld_idcs, field_type))
-                    }
-                    _ => Err(CompileError::Internal(
-                        "Unknown aggregate in reassignment.",
-                        field_kind.span(),
-                    )),
-                }
-            },
-        )
-        .map(|(fld_idcs, _)| fld_idcs)
-}
-
-// -------------------------------------------------------------------------------------------------
-
-fn convert_literal_to_value(
-    context: &mut Context,
-    ast_literal: &Literal,
-    span_id_idx: Option<MetadataIndex>,
-) -> Value {
-    match ast_literal {
-        // In Sway for now we don't have `as` casting and for integers which may be implicitly cast
-        // between widths we just emit a warning, and essentially ignore it.  We also assume a
-        // 'Numeric' integer of undetermined width is 'u64`.  The IR would like to be type
-        // consistent and doesn't tolerate mising integers of different width, so for now, until we
-        // do introduce explicit `as` casting, all integers are `u64` as far as the IR is
-        // concerned.
-        Literal::U8(n) | Literal::Byte(n) => {
-            Constant::get_uint(context, 64, *n as u64, span_id_idx)
-        }
-        Literal::U16(n) => Constant::get_uint(context, 64, *n as u64, span_id_idx),
-        Literal::U32(n) => Constant::get_uint(context, 64, *n as u64, span_id_idx),
-        Literal::U64(n) => Constant::get_uint(context, 64, *n, span_id_idx),
-        Literal::Numeric(n) => Constant::get_uint(context, 64, *n, span_id_idx),
-        Literal::String(s) => {
-            Constant::get_string(context, s.as_str().as_bytes().to_vec(), span_id_idx)
-        }
-        Literal::Boolean(b) => Constant::get_bool(context, *b, span_id_idx),
-        Literal::B256(bs) => Constant::get_b256(context, *bs, span_id_idx),
-    }
-}
-
-pub fn convert_literal_to_constant(ast_literal: &Literal) -> Constant {
-    match ast_literal {
-        // All integers are `u64`.  See comment above.
-        Literal::U8(n) | Literal::Byte(n) => Constant::new_uint(64, *n as u64),
-        Literal::U16(n) => Constant::new_uint(64, *n as u64),
-        Literal::U32(n) => Constant::new_uint(64, *n as u64),
-        Literal::U64(n) => Constant::new_uint(64, *n),
-        Literal::Numeric(n) => Constant::new_uint(64, *n),
-        Literal::String(s) => Constant::new_string(s.as_str().as_bytes().to_vec()),
-        Literal::Boolean(b) => Constant::new_bool(*b),
-        Literal::B256(bs) => Constant::new_b256(*bs),
-    }
-}
-
-fn convert_resolved_typeid(
-    context: &mut Context,
-    ast_type: &TypeId,
-    span: &Span,
-) -> Result<Type, CompileError> {
-    // There's probably a better way to convert TypeError to String, but... we'll use something
-    // other than String eventually?  IrError?
-    convert_resolved_type(
-        context,
-        &resolve_type(*ast_type, span)
-            .map_err(|ty_err| CompileError::InternalOwned(format!("{ty_err:?}"), span.clone()))?,
-        span,
-    )
-}
-
-fn convert_resolved_typeid_no_span(
-    context: &mut Context,
-    ast_type: &TypeId,
-) -> Result<Type, CompileError> {
-    let msg = "unknown source location";
-    let span = crate::span::Span::new(Arc::from(msg), 0, msg.len(), None).unwrap();
-    convert_resolved_typeid(context, ast_type, &span)
-}
-
-fn convert_resolved_type(
-    context: &mut Context,
-    ast_type: &TypeInfo,
-    span: &Span,
-) -> Result<Type, CompileError> {
-    // A handy macro for rejecting unsupported types.
-    macro_rules! reject_type {
-        ($name_str:literal) => {{
-            return Err(CompileError::Internal(
-                concat!($name_str, " type cannot be resolved in IR."),
-                span.clone(),
-            ));
-        }};
-    }
-
-    Ok(match ast_type {
-        // All integers are `u64`, see comment in convert_literal_to_value() above.
-        TypeInfo::UnsignedInteger(_) => Type::Uint(64),
-        TypeInfo::Numeric => Type::Uint(64),
-        TypeInfo::Boolean => Type::Bool,
-        TypeInfo::Byte => Type::Uint(64),
-        TypeInfo::B256 => Type::B256,
-        TypeInfo::Str(n) => Type::String(*n),
-        TypeInfo::Struct { fields, .. } => get_aggregate_for_types(
-            context,
-            fields
-                .iter()
-                .map(|field| field.type_id)
-                .collect::<Vec<_>>()
-                .as_slice(),
-        )
-        .map(&Type::Struct)?,
-        TypeInfo::Enum { variant_types, .. } => {
-            create_enum_aggregate(context, variant_types.clone()).map(&Type::Struct)?
-        }
-        TypeInfo::Array(elem_type_id, count) => {
-            let elem_type = convert_resolved_typeid(context, elem_type_id, span)?;
-            Type::Array(Aggregate::new_array(context, elem_type, *count as u64))
-        }
-        TypeInfo::Tuple(fields) => {
-            if fields.is_empty() {
-                // XXX We've removed Unit from the core compiler, replaced with an empty Tuple.
-                // Perhaps the same should be done for the IR, although it would use an empty
-                // aggregate which might not make as much sense as a dedicated Unit type.
-                Type::Unit
-            } else {
-                let new_fields = fields.iter().map(|x| x.type_id).collect();
-                create_tuple_aggregate(context, new_fields).map(Type::Struct)?
-            }
-        }
-
-        // Unsupported types which shouldn't exist in the AST after type checking and
-        // monomorphisation.
-        TypeInfo::Custom { .. } => reject_type!("Custom"),
-        TypeInfo::SelfType { .. } => reject_type!("Self"),
-        TypeInfo::Contract => reject_type!("Contract"),
-        TypeInfo::ContractCaller { .. } => reject_type!("ContractCaller"),
-        TypeInfo::Unknown => reject_type!("Unknown"),
-        TypeInfo::UnknownGeneric { .. } => reject_type!("Generic"),
-        TypeInfo::Ref(..) => reject_type!("Ref"),
-        TypeInfo::ErrorRecovery => reject_type!("Error recovery"),
-        TypeInfo::Storage { .. } => reject_type!("Storage"),
-    })
-}
-
-#[allow(
-// These two warnings are generated by the `construct_uint!()` macro below.
-    clippy::assign_op_pattern,
-    clippy::ptr_offset_with_cast
-)]
-fn add_to_b256(x: fuel_types::Bytes32, y: u64) -> fuel_types::Bytes32 {
-    construct_uint! {
-        pub struct U256(4);
-    }
-    let x = U256::from(*x);
-    let y = U256::from(y);
-    let res: [u8; 32] = (x + y).into();
-    fuel_types::Bytes32::from(res)
-}
-
-// -------------------------------------------------------------------------------------------------
-
-#[derive(Default)]
-pub(crate) struct PurityChecker {
-    memos: HashMap<Function, (bool, bool)>,
-
-    // Final results.
-    pub warnings: Vec<CompileWarning>,
-    pub errors: Vec<CompileError>,
-}
-
-impl PurityChecker {
-    /// Designed to be called for each entry point, _prior_ to inlining or other optimizations.
-    /// The checker will check this function and any that it calls.
-    ///
-    /// Returns bools for whether it (reads, writes).
-    pub(crate) fn check_function(
-        &mut self,
-        context: &Context,
-        function: &Function,
-    ) -> (bool, bool) {
-        // Iterate for each instruction in the function and gather whether we have read and/or
-        // write storage operations:
-        // - via the storage IR instructions,
-        // - via ASM blocks with storage VM instructions or
-        // - via calls into functions with the above.
-        let (reads, writes) = function.instruction_iter(context).fold(
-            (false, false),
-            |(reads, writes), (_block, ins_value)| match &context.values[ins_value.0].value {
-                ValueDatum::Instruction(Instruction::StateLoadQuadWord { .. })
-                | ValueDatum::Instruction(Instruction::StateLoadWord(_)) => (true, writes),
-
-                ValueDatum::Instruction(Instruction::StateStoreQuadWord { .. })
-                | ValueDatum::Instruction(Instruction::StateStoreWord { .. }) => (reads, true),
-
-                // Iterate for and check each instruction in the ASM block.
-                ValueDatum::Instruction(Instruction::AsmBlock(asm_block, _args)) => {
-                    context.asm_blocks[asm_block.0].body.iter().fold(
-                        (reads, writes),
-                        |(reads, writes), asm_op| match asm_op.name.as_str() {
-                            "srw" | "srwq" => (true, writes),
-                            "sww" | "swwq" => (reads, true),
-                            _ => (reads, writes),
-                        },
-                    )
-                }
-
-                // Recurse to find the called function purity.  Use memoisation to avoid redoing
-                // work.
-                ValueDatum::Instruction(Instruction::Call(callee, _args)) => {
-                    let (called_fn_reads, called_fn_writes) =
-                        self.memos.get(callee).copied().unwrap_or_else(|| {
-                            let r_w = self.check_function(context, callee);
-                            self.memos.insert(*callee, r_w);
-                            r_w
-                        });
-                    (reads || called_fn_reads, writes || called_fn_writes)
-                }
-
-                _otherwise => (reads, writes),
-            },
-        );
-
-        let function = &context.functions[function.0];
-        let attributed_purity =
-            function
-                .storage_md_idx
-                .and_then(|idx| match &context.metadata[idx.0] {
-                    Metadatum::StorageAttribute(storage_op) => Some(storage_op),
-                    _otherwise => None,
-                });
-        let span = function
-            .span_md_idx
-            .and_then(|idx| idx.to_span(context).ok())
-            .unwrap_or_else(Span::dummy);
-
-        // Simple macros for each of the error types, which also grab `span`.
-        macro_rules! mk_err {
-            ($op_str:literal, $existing_attrib:ident, $needed_attrib:ident) => {{
-                self.errors.push(CompileError::ImpureInPureContext {
-                    storage_op: $op_str,
-                    attrs: promote_purity(Purity::$existing_attrib, Purity::$needed_attrib)
-                        .to_attribute_syntax(),
-                    span,
-                });
-            }};
-        }
-        macro_rules! mk_warn {
-            ($unneeded_attrib:ident) => {{
-                self.warnings.push(CompileWarning {
-                    warning_content: Warning::DeadStorageDeclarationForFunction {
-                        unneeded_attrib: Purity::$unneeded_attrib.to_attribute_syntax(),
-                    },
-                    span,
-                });
-            }};
-        }
-
-        match (attributed_purity, reads, writes) {
-            // Has no attributes but needs some.
-            (None, true, false) => mk_err!("read", Pure, Reads),
-            (None, false, true) => mk_err!("write", Pure, Writes),
-            (None, true, true) => mk_err!("read & write", Pure, ReadsWrites),
-
-            // Or the attribute must match the behaviour.
-            (Some(StorageOperation::Reads), _, true) => mk_err!("write", Reads, Writes),
-            (Some(StorageOperation::Writes), true, _) => mk_err!("read", Writes, Reads),
-
-            // Or we have unneeded attributes.
-            (Some(StorageOperation::ReadsWrites), false, true) => mk_warn!(Reads),
-            (Some(StorageOperation::ReadsWrites), true, false) => mk_warn!(Writes),
-            (Some(StorageOperation::Reads), false, false) => mk_warn!(Reads),
-            (Some(StorageOperation::Writes), false, false) => mk_warn!(Writes),
-
-            // (Pure, false, false) is OK, as is (ReadsWrites, true, true).
-            _otherwise => (),
-        };
-
-        (reads, writes)
-    }
-
-    pub(crate) fn results(self) -> CompileResult<()> {
-        if self.errors.is_empty() {
-            ok((), self.warnings, self.errors)
-        } else {
-            err(self.warnings, self.errors)
-        }
-    }
-}
-
-// -------------------------------------------------------------------------------------------------
-
-#[cfg(test)]
-mod tests {
-    use crate::semantic_analysis::{namespace, TypedProgram};
-    use std::path::PathBuf;
-
-    // ---------------------------------------------------------------------------------------------
-
-    #[test]
-    fn sway_to_ir_tests() {
-        let manifest_dir = env!("CARGO_MANIFEST_DIR");
-        let dir: PathBuf = format!("{}/tests/sway_to_ir", manifest_dir).into();
-        for entry in std::fs::read_dir(dir).unwrap() {
-            // We're only interested in the `.sw` files here.
-            let path = entry.unwrap().path();
-            match path.extension().unwrap().to_str() {
-                Some("sw") => {
-                    //
-                    // Run the tests!
-                    //
-                    tracing::info!("---- Sway To IR: {:?} ----", path);
-                    test_sway_to_ir(path);
-                }
-                Some("ir") | Some("disabled") => (),
-                _ => panic!(
-                    "File with invalid extension in tests dir: {:?}",
-                    path.file_name().unwrap_or(path.as_os_str())
-                ),
-            }
-        }
-    }
-
-    fn test_sway_to_ir(sw_path: PathBuf) {
-        let input_bytes = std::fs::read(&sw_path).unwrap();
-        let input = String::from_utf8_lossy(&input_bytes);
-
-        let mut ir_path = sw_path.clone();
-        ir_path.set_extension("ir");
-
-        let expected_bytes = std::fs::read(&ir_path).unwrap();
-        let expected = String::from_utf8_lossy(&expected_bytes);
-
-        let typed_program = parse_to_typed_program(sw_path.clone(), &input);
-        let ir = super::compile_program(typed_program).unwrap();
-        let output = sway_ir::printer::to_string(&ir);
-
-        // Use a tricky regex to replace the local path in the metadata with something generic.  It
-        // should convert, e.g.,
-        //     `!0 = filepath "/usr/home/me/sway/sway-core/tests/sway_to_ir/foo.sw"`
-        //  to `!0 = filepath "/path/to/foo.sw"`
-        let path_converter = regex::Regex::new(r#"(!\d = filepath ")(?:[^/]*/)*(.+)"#).unwrap();
-        let output = path_converter.replace_all(output.as_str(), "$1/path/to/$2");
-
-        if output != expected {
-            println!("{}", prettydiff::diff_lines(&expected, &output));
-            panic!("{} failed.", sw_path.display());
-        }
-    }
-
-    // ---------------------------------------------------------------------------------------------
-
-    #[test]
-    fn ir_printer_parser_tests() {
-        let manifest_dir = env!("CARGO_MANIFEST_DIR");
-        let dir: PathBuf = format!("{}/tests/sway_to_ir", manifest_dir).into();
-        for entry in std::fs::read_dir(dir).unwrap() {
-            // We're only interested in the `.ir` files here.
-            let path = entry.unwrap().path();
-            match path.extension().unwrap().to_str() {
-                Some("ir") => {
-                    //
-                    // Run the tests!
-                    //
-                    tracing::info!("---- IR Print and Parse Test: {:?} ----", path);
-                    test_printer_parser(path);
-                }
-                Some("sw") | Some("disabled") => (),
-                _ => panic!(
-                    "File with invalid extension in tests dir: {:?}",
-                    path.file_name().unwrap_or(path.as_os_str())
-                ),
-            }
-        }
-    }
-
-    fn test_printer_parser(path: PathBuf) {
-        let input_bytes = std::fs::read(&path).unwrap();
-        let input = String::from_utf8_lossy(&input_bytes);
-
-        // Use another tricky regex to inject the proper metadata filepath back, so we can create
-        // spans in the parser.  NOTE, if/when we refactor spans to not have the source string and
-        // just the path these tests should pass without needing this conversion.
-        let mut true_path = path.clone();
-        true_path.set_extension("sw");
-        let path_converter = regex::Regex::new(r#"(!\d = filepath )(?:.+)"#).unwrap();
-        let input = path_converter.replace_all(&input, format!("$1\"{}\"", true_path.display()));
-
-        let parsed_ctx = match sway_ir::parser::parse(&input) {
-            Ok(p) => p,
-            Err(e) => {
-                println!("{}: {}", path.display(), e);
-                panic!();
-            }
-        };
-        let printed = sway_ir::printer::to_string(&parsed_ctx);
-        if printed != input {
-            println!("{}", prettydiff::diff_lines(&input, &printed));
-            panic!("{} failed.", path.display());
-        }
-    }
-
-    // ---------------------------------------------------------------------------------------------
-
-    fn parse_to_typed_program(path: PathBuf, input: &str) -> TypedProgram {
-        let root_module = std::sync::Arc::new(path);
-        let canonical_root_module = std::sync::Arc::new(root_module.canonicalize().unwrap());
-
-        let build_config = crate::build_config::BuildConfig {
-            canonical_root_module,
-            print_intermediate_asm: false,
-            print_finalized_asm: false,
-            print_ir: false,
-        };
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let src = std::sync::Arc::from(input);
-        let parsed_program =
-            crate::parse(src, Some(&build_config)).unwrap(&mut warnings, &mut errors);
-
-        let initial_namespace = namespace::Module::default();
-        let typed_program = TypedProgram::type_check(parsed_program, initial_namespace)
-            .unwrap(&mut warnings, &mut errors);
-
-        crate::perform_control_flow_analysis(&typed_program).unwrap(&mut warnings, &mut errors);
-
-        typed_program
-    }
-}
-
-// -------------------------------------------------------------------------------------------------

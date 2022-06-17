@@ -32,6 +32,12 @@ To build book:
 mdbook build
 ```
 
+To build the book on strict mode to check if pages should be removed or added within the Forc Reference:
+
+```sh
+MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs
+```
+
 To serve locally:
 
 ```sh

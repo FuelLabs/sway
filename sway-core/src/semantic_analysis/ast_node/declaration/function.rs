@@ -262,31 +262,6 @@ impl TypedFunctionDeclaration {
         }
     }
 
-    pub(crate) fn replace_self_types(self, self_type: TypeId) -> Self {
-        TypedFunctionDeclaration {
-            parameters: self
-                .parameters
-                .iter()
-                .map(|x| {
-                    let mut x = x.clone();
-                    x.type_id = match look_up_type_id(x.type_id) {
-                        TypeInfo::SelfType => self_type,
-                        _otherwise => x.type_id,
-                    };
-                    x
-                })
-                .collect(),
-            span: self.span.clone(),
-            return_type: match look_up_type_id(self.return_type) {
-                TypeInfo::SelfType => self_type,
-                _otherwise => self.return_type,
-            },
-            type_parameters: self.type_parameters.clone(),
-            return_type_span: self.return_type_span.clone(),
-            ..self
-        }
-    }
-
     pub fn to_fn_selector_value_untruncated(&self) -> CompileResult<Vec<u8>> {
         let mut errors = vec![];
         let mut warnings = vec![];
@@ -376,11 +351,13 @@ fn test_function_selector_behavior() {
         parameters: vec![
             TypedFunctionParameter {
                 name: Ident::new_no_span("foo"),
+                is_mutable: false,
                 type_id: crate::type_engine::insert_type(TypeInfo::Str(5)),
                 type_span: Span::dummy(),
             },
             TypedFunctionParameter {
                 name: Ident::new_no_span("baz"),
+                is_mutable: false,
                 type_id: insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
                 type_span: Span::dummy(),
             },
