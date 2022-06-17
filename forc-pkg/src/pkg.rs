@@ -870,14 +870,19 @@ pub fn graph_to_path_map(
                 .ok_or_else(|| anyhow!("more than one root package detected in graph"))?;
 
             let parent = &graph[parent_node].clone();
-
             // Construct the path relative to the parent's path.
             let parent_path = &path_map[&parent.id()];
             let parent_manifest = ManifestFile::from_dir(parent_path, sway_git_tag)?;
 
             // Check if parent's manifest file includes this dependency.
             // If not this is a removed dependency and we should continue with the following dep
-            if parent_manifest.dep(&dep.name).is_none() {
+            // Note that we need to check from package name as well since dependency name and package name is not the same thing
+            if parent_manifest.dep(&dep.name).is_none()
+                && !parent_manifest
+                    .deps()
+                    .filter_map(|dep| dep.1.package())
+                    .any(|package| package == &dep.name)
+            {
                 removed_deps.insert(dep_node);
                 continue;
             }
