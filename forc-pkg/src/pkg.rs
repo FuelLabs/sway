@@ -1498,7 +1498,7 @@ pub fn check(
         }
         source_map.insert_dependency(path.clone());
 
-        // return just the last one instead of all in a vec
+        // We only need to return the final CompileAstResult
         let ast_res = compile_ast(&manifest, config, dep_namespace)?;
         if i == build_plan.compilation_order.len() - 1 {
             return Ok(ast_res);
