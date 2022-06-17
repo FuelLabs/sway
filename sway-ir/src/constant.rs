@@ -171,4 +171,21 @@ impl Constant {
         ));
         Value::new_constant(context, value, span_md_idx)
     }
+
+    pub fn eq(&self, context: &Context, other: &Constant) -> bool {
+        self.ty.eq(context, &other.ty)
+            && match (&self.value, &other.value) {
+                (ConstantValue::Undef, ConstantValue::Undef)
+                | (ConstantValue::Unit, ConstantValue::Unit) => true,
+                (ConstantValue::Bool(v1), ConstantValue::Bool(v2)) => v1 == v2,
+                (ConstantValue::Uint(v1), ConstantValue::Uint(v2)) => v1 == v2,
+                (ConstantValue::B256(a1), ConstantValue::B256(a2)) => a1 == a2,
+                (ConstantValue::String(s1), ConstantValue::String(s2)) => s1 == s2,
+                (ConstantValue::Array(a1), ConstantValue::Array(a2))
+                | (ConstantValue::Struct(a1), ConstantValue::Struct(a2)) => {
+                    a1.iter().zip(a2.iter()).all(|(c1, c2)| c1.eq(context, c2))
+                }
+                _ => false,
+            }
+    }
 }

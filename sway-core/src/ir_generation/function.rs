@@ -5,6 +5,7 @@ use crate::{
     parse_tree::{AsmOp, AsmRegister, LazyOp, Literal, Purity, Visibility},
     semantic_analysis::*,
     type_engine::{insert_type, resolve_type, TypeId, TypeInfo},
+    types::deterministically_aborts::DeterministicallyAborts,
 };
 
 use super::{compile::compile_function, convert::*, lexical_map::LexicalMap, types::*};
@@ -743,6 +744,12 @@ impl FnCompiler {
         let cond_value = self.compile_expression(context, ast_condition)?;
         let entry_block = self.current_block;
 
+        let body_deterministically_aborts = ast_then.deterministically_aborts()
+            && (ast_else
+                .as_ref()
+                .map(|x| x.deterministically_aborts())
+                .unwrap_or(false));
+
         // To keep the blocks in a nice order we create them only as we populate them.  It's
         // possible when compiling other expressions for the 'current' block to change, and it
         // should always be the block to which instructions are added.  So for the true and false
@@ -777,16 +784,45 @@ impl FnCompiler {
             cond_span_md_idx,
         );
 
+        if body_deterministically_aborts {
+            return Ok(Constant::get_unit(context, None));
+        }
+
+        let need_phi = match (
+            context.values.get(true_value.0).unwrap(),
+            context.values.get(false_value.0).unwrap(),
+        ) {
+            (
+                ValueContent {
+                    value: ValueDatum::Constant(c1),
+                    ..
+                },
+                ValueContent {
+                    value: ValueDatum::Constant(c2),
+                    ..
+                },
+            ) if c1.eq(context, c2) => false,
+            _ => true,
+        };
+
         let merge_block = self.function.create_block(context, None);
-        true_block_end
-            .ins(context)
-            .branch(merge_block, Some(true_value), None);
-        false_block_end
-            .ins(context)
-            .branch(merge_block, Some(false_value), None);
+        true_block_end.ins(context).branch(
+            merge_block,
+            if need_phi { Some(true_value) } else { None },
+            None,
+        );
+        false_block_end.ins(context).branch(
+            merge_block,
+            if need_phi { Some(false_value) } else { None },
+            None,
+        );
 
         self.current_block = merge_block;
-        Ok(merge_block.get_phi(context))
+        if need_phi {
+            Ok(merge_block.get_phi(context))
+        } else {
+            Ok(true_value)
+        }
     }
 
     fn compile_unsafe_downcast(
