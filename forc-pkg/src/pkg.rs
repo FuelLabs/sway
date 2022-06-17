@@ -5,7 +5,7 @@ use crate::{
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
     find_file_name, git_checkouts_directory, kebab_to_snake_case, print_on_failure,
-    print_on_success, print_on_success_library, println_yellow_err,
+    print_on_success, print_on_success_library, println_red, println_yellow_err,
 };
 use fuels_types::JsonABI;
 use petgraph::{
@@ -163,13 +163,6 @@ pub struct BuildPlan {
     graph: Graph,
     path_map: PathMap,
     compilation_order: Vec<NodeIx>,
-    /// The differences between graph described by lock_file and the graph that actually constructed.
-    ///
-    /// If the BuildPlan is constructed from a manifest file, this will be empty.
-    ///
-    /// If the BuildPlan is constructed from a lock file there might be some differences between the graph described by the lock file and the one that actually created.
-    /// The differences between them are the path dependencies that are removed from the manifest file after the lock file is created.
-    removed_deps: Vec<DependencyName>,
 }
 
 /// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
@@ -238,7 +231,6 @@ impl BuildPlan {
             graph,
             path_map,
             compilation_order,
-            removed_deps: vec![],
         })
     }
 
@@ -279,37 +271,54 @@ impl BuildPlan {
             graph,
             path_map,
             compilation_order,
-            removed_deps: vec![],
         })
     }
 
     /// Attempt to load the build plan from the `Lock`.
-    pub fn from_lock(proj_path: &Path, lock: &Lock, sway_git_tag: &str) -> Result<Self> {
+    pub fn from_lock(
+        proj_path: &Path,
+        lock: &Lock,
+        sway_git_tag: &str,
+    ) -> Result<(Self, Vec<String>)> {
         let mut graph = lock.to_graph()?;
         let tmp_compilation_order = compilation_order(&graph)?;
         let (path_map, removed_deps) =
-            graph_to_path_map(proj_path, &mut graph, &tmp_compilation_order, sway_git_tag)?;
+            graph_to_path_map(proj_path, &graph, &tmp_compilation_order, sway_git_tag)?;
+        let removed_deps_vec = removed_deps
+            .clone()
+            .into_iter()
+            .map(|dep| graph[dep].name.clone())
+            .collect();
+        // Remove the unresolveable path dependencies from the graph
+        apply_diff_after_lock(removed_deps, &mut graph, &path_map, sway_git_tag)?;
         // Since path_map removes removed dependencies from the graph compilation order may change
         let compilation_order = compilation_order(&graph)?;
-        Ok(Self {
-            graph,
-            path_map,
-            compilation_order,
-            removed_deps,
-        })
+        Ok((
+            Self {
+                graph,
+                path_map,
+                compilation_order,
+            },
+            removed_deps_vec,
+        ))
     }
 
     /// Attempt to load the build plan from the `Forc.lock` file.
-    pub fn from_lock_file(lock_path: &Path, sway_git_tag: &str) -> Result<Self> {
+    pub fn from_lock_file(lock_path: &Path, sway_git_tag: &str) -> Result<(Self, Vec<String>)> {
         let proj_path = lock_path.parent().unwrap();
         let lock = Lock::from_path(lock_path)?;
         Self::from_lock(proj_path, &lock, sway_git_tag)
     }
 
     /// Ensure that the build plan is valid for the given manifest.
-    pub fn validate(&self, manifest: &Manifest, sway_git_tag: &str) -> Result<PkgDiff> {
+    pub fn validate(
+        &self,
+        removed: Vec<String>,
+        manifest: &Manifest,
+        sway_git_tag: &str,
+    ) -> Result<PkgDiff> {
         let mut added = vec![];
-        let mut removed = self.removed_deps.clone();
+        let mut removed = removed;
         // Retrieve project's graph node.
         let proj_node = *self
             .compilation_order
@@ -764,16 +773,75 @@ pub fn compilation_order(graph: &Graph) -> Result<Vec<NodeIx>> {
     })
 }
 
+/// Applies the differences between the graph that is described by the lock file and the graph that
+/// is actually possible to build.
+///
+///
+/// There might be some differences between the graph that is described by the lock file and
+/// the graph that can actually possible to build. This is happening in the case of a dependency
+/// (described by path) removal after the lock file is generated. Since dependency is removed
+/// graph_to_path_map cannot find the required path for the dependency entry in the lock file.
+/// This requires us to remove those removed nodes from the graph so that we can have a BuildPlan
+/// generated from lock file. After the BuildPlan is generated it can be used to apply diffs by
+/// apply_pkg_diff().
+fn apply_diff_after_lock(
+    deps_to_remove: HashSet<NodeIx>,
+    graph: &mut Graph,
+    path_map: &PathMap,
+    sway_git_tag: &str,
+) -> Result<()> {
+    for dep in deps_to_remove {
+        let dep_name = &graph[dep].name.clone();
+
+        let (parent_node, _) = graph
+            .edges_directed(dep, Direction::Incoming)
+            .next()
+            .map(|edge| (edge.source(), edge.weight().clone()))
+            .ok_or_else(|| anyhow!("more than one root package detected in graph"))?;
+
+        let parent = &graph[parent_node].clone();
+        // Construct the path relative to the parent's path.
+        let parent_path = &path_map[&parent.id()];
+        let parent_manifest = ManifestFile::from_dir(parent_path, sway_git_tag)?;
+
+        // Check if parent's manifest file includes this dependency.
+        // If not this is a removed dependency and we should remove the removed dependency from the graph.
+        if parent_manifest.dep(dep_name).is_none() {
+            // We should be connecting the parent of the removed dependency to each child of removed node.
+            // Consider the following scenerio: a -> b -> c
+            // If you remove b, the edges between b -> c will be unvalidated so while processing c, you cannot find the parent.
+            // Instead you need to fetch all children of b and add an edge between those children and a before removing.
+
+            // Get children of the node to delete
+            let child_nodes: Vec<NodeIx> = graph
+                .edges_directed(dep, Direction::Outgoing)
+                .map(|edges| (edges.target()))
+                .collect();
+            // Add an edge between the node that is going to be removed's child nodes and parent of the same node.
+            for child in child_nodes {
+                // Check if there is already an edge if there is not add it
+                if !graph.edges(parent_node).any(|edge| edge.target() == child) {
+                    graph.add_edge(parent_node, child, graph[child].name.clone());
+                }
+            }
+            println_red(&format!("  Removing {}", dep_name));
+            // Remove the deleted node
+            graph.remove_node(dep);
+        }
+    }
+    Ok(())
+}
+
 /// Given graph of pinned dependencies and the directory for the root node, produce a path map
 /// containing the path to the local source for every node in the graph.
 pub fn graph_to_path_map(
     proj_manifest_dir: &Path,
-    graph: &mut Graph,
+    graph: &Graph,
     compilation_order: &[NodeIx],
     sway_git_tag: &str,
-) -> Result<(PathMap, Vec<String>)> {
+) -> Result<(PathMap, HashSet<NodeIx>)> {
     let mut path_map = PathMap::new();
-    let mut removed_deps = vec![];
+    let mut removed_deps = HashSet::new();
 
     // We resolve all paths in reverse compilation order.
     // That is, we follow paths starting from the project root.
@@ -808,25 +876,9 @@ pub fn graph_to_path_map(
             let parent_manifest = ManifestFile::from_dir(parent_path, sway_git_tag)?;
 
             // Check if parent's manifest file includes this dependency.
-            // If not this is a removed dependency and we should continue with the following dep and remove the removed dependency from the graph.
+            // If not this is a removed dependency and we should continue with the following dep
             if parent_manifest.dep(&dep.name).is_none() {
-                removed_deps.push(dep.name.clone());
-                // We should be connecting the parent of the removed dependency to each child of removed node.
-                // Consider the following scenerio: a -> b -> c
-                // If you remove b, the edges between b -> c will be unvalidated so while processing c, you cannot find the parent.
-                // Instead you need to fetch all children of b and add an edge between those children and a before removing.
-
-                // Get children of the node to delete
-                let child_nodes: Vec<NodeIx> = graph
-                    .edges_directed(dep_node, Direction::Outgoing)
-                    .map(|edges| (edges.target()))
-                    .collect();
-                // Add an edge between the node that is going to be removed's child nodes and parent of the same node.
-                for child in child_nodes {
-                    graph.add_edge(parent_node, child, parent.name.clone());
-                }
-                // Remove the deleted node
-                graph.remove_node(dep_node);
+                removed_deps.insert(dep_node);
                 continue;
             }
         }

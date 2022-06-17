@@ -77,7 +77,13 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
 
     let lock_path = lock_path(manifest.dir());
 
-    let plan_result = pkg::BuildPlan::from_lock_file(&lock_path, SWAY_GIT_TAG);
+    let from_lock = pkg::BuildPlan::from_lock_file(&lock_path, SWAY_GIT_TAG);
+    let removed_deps = from_lock
+        .as_ref()
+        .map(|from_lock| from_lock.1.clone())
+        .unwrap_or_default();
+
+    let plan_result = from_lock.map(|from_lock| from_lock.0);
 
     // Retrieve the old lock file state so we can produce a diff.
     let old_lock = plan_result
@@ -85,7 +91,6 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         .ok()
         .map(|plan| Lock::from_graph(plan.graph()))
         .unwrap_or_default();
-
     // Check if there are any errors coming from the BuildPlan generation from the lock file
     // If there are errors we will need to create the BuildPlan from scratch, i.e fetch & pin everything
     let mut new_lock_cause = None;
@@ -108,7 +113,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     // If there are no issues with the BuildPlan generated from the lock file
     // Check and apply the diff.
     if new_lock_cause.is_none() {
-        let diff = plan.validate(&manifest, SWAY_GIT_TAG)?;
+        let diff = plan.validate(removed_deps, &manifest, SWAY_GIT_TAG)?;
         if !diff.added.is_empty() || !diff.removed.is_empty() {
             new_lock_cause = Some(anyhow!("lock file did not match manifest `diff`"));
             plan = plan.apply_pkg_diff(diff, SWAY_GIT_TAG, offline)?;
