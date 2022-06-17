@@ -718,14 +718,15 @@ impl FnCompiler {
         if codeblock.contents.is_empty() {
             Some(insert_type(TypeInfo::Tuple(Vec::new())))
         } else {
-            codeblock
-                .contents
-                .iter()
-                .find_map(|node| match &node.content {
-                    TypedAstNodeContent::ReturnStatement(trs) => Some(trs.expr.return_type),
-                    TypedAstNodeContent::ImplicitReturnExpression(te) => Some(te.return_type),
-                    _otherwise => None,
-                })
+            codeblock.contents.iter().find_map(|node| {
+                match node.gather_return_statements().first() {
+                    Some(TypedReturnStatement { expr }) => Some(expr.return_type),
+                    None => match &node.content {
+                        TypedAstNodeContent::ImplicitReturnExpression(te) => Some(te.return_type),
+                        _otherwise => None,
+                    },
+                }
+            })
         }
     }
 
