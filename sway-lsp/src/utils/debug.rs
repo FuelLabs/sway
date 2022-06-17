@@ -29,19 +29,9 @@ pub fn generate_warnings_for_parsed_tokens(tokens: &[Token]) -> Vec<Diagnostic> 
     warnings
 }
 
-pub fn generate_warnings_for_typed_tokens(
-    tokens: &TokenMap,
-    current_path: &str,
-) -> Vec<Diagnostic> {
+pub fn generate_warnings_for_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
     let warnings = tokens
         .keys()
-        .filter(|(_, span)| {
-            if let Some(path) = span.path_str() {
-                path == current_path
-            } else {
-                false
-            }
-        })
         .map(|(ident, span)| Diagnostic {
             range: get_range_from_span(span),
             severity: Some(DiagnosticSeverity::WARNING),

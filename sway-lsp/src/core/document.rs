@@ -9,10 +9,7 @@ use crate::{capabilities, core::token::traverse_node, utils};
 use forc_pkg::{self as pkg};
 use ropey::Rope;
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
-use sway_core::{
-    parse, semantic_analysis::ast_node::TypedAstNode, CompileAstResult, TreeType, TypedProgramKind,
-};
-use sway_types::Spanned;
+use sway_core::{parse, semantic_analysis::ast_node::TypedAstNode, CompileAstResult, TreeType};
 use tower_lsp::lsp_types::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
 
 #[derive(Debug)]
@@ -165,18 +162,7 @@ impl TextDocument {
 
         match res {
             CompileAstResult::Failure { .. } => None,
-            CompileAstResult::Success { typed_program, .. } => {
-                match typed_program.kind {
-                    TypedProgramKind::Predicate { main_function, .. }
-                    | TypedProgramKind::Script { main_function, .. } => {
-                        // This will be used when creating a 'run' button in VS Code
-                        let _main_fn_line_num =
-                            main_function.name.span().start_pos().line_col().0 as u32;
-                    }
-                    _ => (),
-                }
-                Some(typed_program.root.all_nodes)
-            }
+            CompileAstResult::Success { typed_program, .. } => Some(typed_program.root.all_nodes),
         }
     }
 
