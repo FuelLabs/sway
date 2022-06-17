@@ -44,7 +44,12 @@ impl<T> RawVec<T> {
     /// from the old allocation to the new allocation
     fn grow(mut self) {
         let new_cap = match self.cap {
-            0 => 1, _ => 2 * self.cap, 
+            0 => {
+                1
+            },
+            _ => {
+                2 * self.cap
+            },
         };
 
         self.ptr = realloc(self.ptr, self.cap * size_of::<T>(), new_cap * size_of::<T>());
@@ -98,7 +103,7 @@ impl<T> Vec<T> {
         write(end, value);
 
         // Increment length.
-        self.len = self.len + 1;
+        self.len += 1;
     }
 
     /// Gets the capacity of the allocation.

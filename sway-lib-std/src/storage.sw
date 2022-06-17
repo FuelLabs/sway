@@ -1,11 +1,11 @@
 library storage;
 
 use ::hash::sha256;
+use ::mem::read;
 use ::context::registers::stack_ptr;
 
 /// Store a stack variable in storage.
-#[storage(write)]
-pub fn store<T>(key: b256, value: T) {
+#[storage(write)]pub fn store<T>(key: b256, value: T) {
     if !__is_reference_type::<T>() {
         // If copy type, then it's a single word and can be stored with a single SWW.
         asm(k: key, v: value) {
@@ -46,8 +46,7 @@ pub fn store<T>(key: b256, value: T) {
 }
 
 /// Load a stack variable from storage.
-#[storage(read)]
-pub fn get<T>(key: b256) -> T {
+#[storage(read)]pub fn get<T>(key: b256) -> T {
     if !__is_reference_type::<T>() {
         // If copy type, then it's a single word and can be read with a single
         // SRW.
@@ -87,24 +86,21 @@ pub fn get<T>(key: b256) -> T {
             srwq v k;
         }
 
-        // Return the final result as type T
-        asm(res: result_ptr) {
-            res: T
-        }
+        // Return the final result
+        read(result_ptr) 
     }
 }
 
-pub struct StorageMap<K, V> { }
+pub struct StorageMap<K, V> {
+}
 
 impl<K, V> StorageMap<K, V> {
-    #[storage(write)]
-    fn insert(self, key: K, value: V) {
+    #[storage(write)]fn insert(self, key: K, value: V) {
         let key = sha256((key, __get_storage_key()));
         store::<V>(key, value);
     }
 
-    #[storage(read)]
-    fn get(self, key: K) -> V {
+    #[storage(read)]fn get(self, key: K) -> V {
         let key = sha256((key, __get_storage_key()));
         get::<V>(key)
     }
