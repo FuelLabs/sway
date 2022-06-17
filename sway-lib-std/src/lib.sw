@@ -26,5 +26,6 @@ dep reentrancy;
 dep vm/mod;
 dep flags;
 dep u128;
+dep vec;
 
 use core::*;
