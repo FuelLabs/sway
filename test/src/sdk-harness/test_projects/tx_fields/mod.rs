@@ -1,7 +1,7 @@
 use fuel_types::bytes::WORD_SIZE;
-use fuel_vm::consts::VM_TX_MEMORY;
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
+use fuel_gql_client::fuel_tx::consensus_parameters::ConsensusParameters::*;
 use fuels::tx::{Bytes32, ContractId};
 use fuels_abigen_macro::abigen;
 
@@ -289,9 +289,11 @@ async fn can_get_tx_id() {
     let call_handler = contract_instance
     .get_tx_id();
 
+    /**
+    There is now a helper fn `tx_offset()` on the `ConsensusParams` struct from fuel-tx, so the safest thing to do is use the fuel-gql-client to fetch these parameters from the node api, and then use the helper fn provided on that struct
     let script = call_handler.get_script().await;
     let id = script.tx.id();
-
+    */
     let result = call_handler
         .call()
         .await
