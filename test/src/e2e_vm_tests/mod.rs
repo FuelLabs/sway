@@ -222,6 +222,7 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
         ),
         ("should_pass/stdlib/b512_test", ProgramState::Return(1)), // true
         ("should_pass/stdlib/block_height", ProgramState::Return(1)), // true
+        ("should_pass/stdlib/vec", ProgramState::Return(1)),       // true
         (
             "should_pass/language/trait_override_bug",
             ProgramState::Return(7),
