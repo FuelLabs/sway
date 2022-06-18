@@ -1,0 +1,14 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-2C390E6658D85F3D'
+dependencies = []
+
+[[package]]
+name = 'logarythmic_test'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-2C390E6658D85F3D'
+dependencies = ['core']
