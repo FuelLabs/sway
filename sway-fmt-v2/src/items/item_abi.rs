@@ -7,7 +7,7 @@ use sway_parse::ItemAbi;
 use sway_types::Spanned;
 
 impl Format for ItemAbi {
-    fn format(&self, formatter: &mut Formatter) -> FormattedCode {
+    fn format(&self, _formatter: &mut Formatter) -> FormattedCode {
         let mut formatted_code = String::new();
 
         // Add enum token
@@ -16,14 +16,16 @@ impl Format for ItemAbi {
 
         // Add name of the abi
         formatted_code.push_str(self.name.as_str());
-        Self::open_curly_brace(&mut formatted_code, formatter);
+        formatted_code.push(' ');
 
         // Add items
+        //
+        // TODO: Braces are included in item span which makes
+        // adding custom formatting impossible
         match &self.abi_defs_opt {
             Some(abi_defs) => formatted_code.push_str(abi_defs.span().as_str()),
             None => formatted_code.push_str(self.abi_items.span().as_str()),
         }
-        Self::close_curly_brace(&mut formatted_code, formatter);
 
         formatted_code
     }

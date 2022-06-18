@@ -135,4 +135,19 @@ enum Color {
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert!(correct_sway_code == formatted_sway_code)
     }
+    #[test]
+    fn test_item_abi() {
+        let sway_code_to_format = r#"contract;
+
+abi StorageMapExample {
+    #[storage(write)]fn insert_into_map1(key: u64, value: u64);
+}"#;
+        let correct_sway_code = r#"abi StorageMapExample {
+    #[storage(write)]fn insert_into_map1(key: u64, value: u64);
+}"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert!(dbg!(correct_sway_code) == dbg!(formatted_sway_code))
+    }
 }
