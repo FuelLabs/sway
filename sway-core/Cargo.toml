@@ -1,6 +1,6 @@
 [package]
 name = "sway-core"
-version = "0.16.0"
+version = "0.16.1"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -28,10 +28,10 @@ regex = "1"
 serde = { version = "1.0", features = ["derive"] }
 sha2 = "0.9"
 smallvec = "1.7"
-sway-ir = { version = "0.16.0", path = "../sway-ir" }
-sway-parse = { version = "0.16.0", path = "../sway-parse" }
-sway-types = { version = "0.16.0", path = "../sway-types" }
-sway-utils = { version = "0.16.0", path = "../sway-utils" }
+sway-ir = { version = "0.16.1", path = "../sway-ir" }
+sway-parse = { version = "0.16.1", path = "../sway-parse" }
+sway-types = { version = "0.16.1", path = "../sway-types" }
+sway-utils = { version = "0.16.1", path = "../sway-utils" }
 thiserror = "1.0"
 tracing = "0.1"
 uint = "0.9"
