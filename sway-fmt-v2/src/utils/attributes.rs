@@ -33,6 +33,6 @@ impl SquareBracket for AttributeDecl {
         line.push('[');
     }
     fn close_square_bracket(line: &mut String, _formatter: &mut Formatter) {
-        line.push_str("test]\n");
+        line.push_str("]\n");
     }
 }
