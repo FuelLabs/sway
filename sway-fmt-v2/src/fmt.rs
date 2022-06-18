@@ -73,14 +73,9 @@ impl Formatter {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::indent_style::Shape;
     use std::sync::Arc;
 
-    use super::{Config, Formatter};
-
-    fn get_formatter(config: Config, shape: Shape) -> Formatter {
-        Formatter { config, shape }
-    }
+    use super::Formatter;
 
     #[test]
     fn test_enum_without_variant_alignment() {
@@ -101,7 +96,7 @@ enum Color {
  Silver : (),
  Grey : (),
 }"#;
-        let mut formatter = get_formatter(Config::default(), Shape::default());
+        let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert!(correct_sway_code == formatted_sway_code)
@@ -127,10 +122,9 @@ enum Color {
 }"#;
 
         // Creating a config with enum_variant_align_threshold that exceeds longest variant length
-        let mut config = Config::default();
-        config.structures.enum_variant_align_threshold = 20;
+        let mut formatter = Formatter::default();
+        formatter.config.structures.enum_variant_align_threshold = 20;
 
-        let mut formatter = get_formatter(config, Shape::default());
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert!(correct_sway_code == formatted_sway_code)
@@ -147,8 +141,7 @@ abi StorageMapExample {
         let correct_sway_code = r#"#[storage(write)]
 fn insert_into_map1(key: u64, value: u64);"#;
 
-        let config = Config::default();
-        let mut formatter = get_formatter(config, Shape::default());
+        let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert!(correct_sway_code == formatted_sway_code)
