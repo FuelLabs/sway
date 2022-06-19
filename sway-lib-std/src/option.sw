@@ -30,16 +30,24 @@ impl<T> Option<T> {
     /// Returns `true` if the result is [`Some`].
     fn is_some(self) -> bool {
         match self {
-            Option::Some(_) => true,
-            _ => false, 
+            Option::Some(_) => {
+                true
+            },
+            _ => {
+                false
+            },
         }
     }
 
     /// Returns `true` if the result is [`None`].
     fn is_none(self) -> bool {
         match self {
-            Option::Some(_) => false,
-            _ => true, 
+            Option::Some(_) => {
+                false
+            },
+            _ => {
+                true
+            },
         }
     }
 
@@ -50,8 +58,12 @@ impl<T> Option<T> {
     /// case explicitly.
     fn unwrap(self) -> T {
         match self {
-            Option::Some(inner_value) => inner_value,
-            _ => revert(0), 
+            Option::Some(inner_value) => {
+                inner_value
+            },
+            _ => {
+                revert(0)
+            },
         }
     }
 }
