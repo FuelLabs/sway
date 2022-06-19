@@ -201,7 +201,7 @@ impl<V> StorageVec<V> {
     /// Down one index
     /// WARNING: Expensive for larger vecs
     #[storage(read, write)]
-    pub fn remove_index(self, index: u64) -> Result<V, StorageVecError> {
+    pub fn remove(self, index: u64) -> Result<V, StorageVecError> {
         let len = get::<u64>(__get_storage_key());
         // if the index is larger or equal to len, there is no item to remove
         if len <= index {
