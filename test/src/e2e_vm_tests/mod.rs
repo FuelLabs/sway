@@ -431,6 +431,7 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
             ProgramState::Revert(0), // false
         ),
         ("should_pass/language/const_inits", ProgramState::Return(1)),
+        ("should_pass/language/impure_ifs", ProgramState::Return(2)),
         (
             "should_pass/language/enum_padding",
             ProgramState::ReturnData(Bytes32::from([
