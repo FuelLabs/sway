@@ -156,7 +156,7 @@ pub struct StorageVec<V> {}
 impl<V> StorageVec<V> {
     /// Appends the value to the end of the vector
     #[storage(read, write)]
-    fn push(self, value: V) {
+    pub fn push(self, value: V) {
         // The length of the vec is stored in the __get_storage_key() slot
         let len = get::<u64>(__get_storage_key());
         
@@ -170,7 +170,7 @@ impl<V> StorageVec<V> {
 
     /// Removes the last element of the vector
     #[storage(read, write)]
-    fn pop(self) -> Option<V> {
+    pub fn pop(self) -> Option<V> {
         let len = get::<u64>(__get_storage_key());
         // if the length is 0, there is no item to pop from the vec
         if len == 0 {
@@ -186,7 +186,7 @@ impl<V> StorageVec<V> {
 
     /// Gets the value in the given index
     #[storage(read)]
-    fn get(self, index: u64) -> Option<V> {
+    pub fn get(self, index: u64) -> Option<V> {
         let len = get::<u64>(__get_storage_key());
         // if the index is larger or equal to len, there is no item to return
         if len <= index {
@@ -201,7 +201,7 @@ impl<V> StorageVec<V> {
     /// Down one index
     /// WARNING: Expensive for larger vecs
     #[storage(read, write)]
-    fn remove_index(self, index: u64) -> Result<V, StorageVecError> {
+    pub fn remove_index(self, index: u64) -> Result<V, StorageVecError> {
         let len = get::<u64>(__get_storage_key());
         // if the index is larger or equal to len, there is no item to remove
         if len <= index {
@@ -234,7 +234,7 @@ impl<V> StorageVec<V> {
     /// Up one index
     /// WARNING: Expensive for larger vecs
     #[storage(read, write)]
-    fn insert(self, index: u64, value: V) -> Result<(), StorageVecError> {
+    pub fn insert(self, index: u64, value: V) -> Result<(), StorageVecError> {
         let len = get::<u64>(__get_storage_key());
         // if the index is larger or equal to len, there is no space to insert
         if index >= len {
@@ -262,5 +262,27 @@ impl<V> StorageVec<V> {
         Result::Ok(())
     }
 
+    /// Returns the length of the vector
+    #[storage(read)]
+    pub fn len(self) -> u64 {
+        get::<u64>(__get_storage_key())
+    }
 
+    /// Checks whether the len is 0 or not
+    #[storage(read)]
+    pub fn is_empty(self) -> bool {
+        let len = get::<u64>(__get_storage_key());
+
+        if len == 0 {
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Sets the len to 0
+    #[storage(write)]
+    pub fn clear(self) {
+        store(__get_storage_key(), 0);
+    }
 }
