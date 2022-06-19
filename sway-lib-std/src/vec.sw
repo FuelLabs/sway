@@ -2,8 +2,11 @@ library vec;
 
 use ::alloc::{alloc, realloc};
 use ::intrinsics::size_of;
+use ::hash::sha256;
 use ::mem::{read, write};
 use ::option::Option;
+use ::result::Result;
+use ::storage::{store, get};
 
 struct RawVec<T> {
     ptr: u64,
@@ -140,5 +143,86 @@ impl<T> Vec<T> {
     /// Returns `true` if the vector contains no elements.
     pub fn is_empty(self) -> bool {
         self.len == 0
+    }
+}
+
+/// TODO: Add proper errors
+
+pub struct StorageVec<V> {}
+
+impl<V> StorageVec<V> {
+    #[storage(read, write)]
+    fn push(self, value: V) {
+        let len = get::<u64>(__get_storage_key());
+        let key = sha256((len, __get_storage_key()));
+        store::<V>(key, value);
+        store(__get_storage_key(), len + 1);
+    }
+
+    #[storage(read, write)]
+    fn pop(self) -> Option<V> {
+        let len = get::<u64>(__get_storage_key());
+        if len == 0 {
+            return Option::None;
+        }
+    
+        let key = sha256((len, __get_storage_key()));
+        store(__get_storage_key(), len - 1);
+
+        Option::Some(get::<V>(key))
+    }
+
+    #[storage(read)]
+    fn get(self, index: u64) -> Option<V> {
+        let len = get::<u64>(__get_storage_key());
+        if len <= index {
+            return Option::None;
+        }
+
+        let key = sha256((index, __get_storage_key()));
+        Option::Some(get::<V>(key))
+    }
+
+    #[storage(read, write)]
+    fn remove_index(self, index: u64) -> Result<(), ()> {
+        let len = get::<u64>(__get_storage_key());
+        if len <= index {
+            return Result::Err(());
+        }
+
+        let mut count = index + 1;
+        while count < len {
+            let key = sha256((count - 1, __get_storage_key()));
+            // shifts all the values down one index
+            store::<V>(key, get::<V>(sha256((count, __get_storage_key()))));
+            
+            count += 1;
+        }
+
+        store(__get_storage_key(), len - 1);
+        Result::Ok(())
+    }
+
+    #[storage(read, write)]
+    fn insert(self, index: u64, value: V) -> Result<(), ()> {
+        let len = get::<u64>(__get_storage_key());
+        if index >= len {
+            return Result::Err(());
+        }
+
+        let mut count = len;
+        while count > index {
+            let key = sha256((count + 1, __get_storage_key()));
+            // shifts all the values up one index
+            store::<V>(key, get::<V>(sha256((count, __get_storage_key()))));
+
+            count -= 1
+        }
+
+        let key = sha256((index, __get_storage_key()));
+        store::<V>(key, value);
+
+        store(__get_storage_key(), len + 1);
+        Result::Ok(())
     }
 }
