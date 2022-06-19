@@ -148,6 +148,7 @@ impl<T> Vec<T> {
 
 enum StorageVecError {
     IndexOutOfBounds: (),
+    CannotSwapAndRemoveTheSameElement: (),
 }
 
 /// A persistant vector struct
@@ -162,7 +163,7 @@ impl<V> StorageVec<V> {
         
         // Storing the value at the current length index (if this is the first item, starts off at 0)
         let key = sha256((len, __get_storage_key()));
-        store::<V>(key, value);
+        store(key, value);
 
         // Incrementing the length
         store(__get_storage_key(), len + 1);
@@ -181,7 +182,7 @@ impl<V> StorageVec<V> {
         store(__get_storage_key(), len - 1);
 
         let key = sha256((len, __get_storage_key()));
-        Option::Some(get::<V>(key))
+        Option::Some(get(key))
     }
 
     /// Gets the value in the given index
@@ -194,7 +195,7 @@ impl<V> StorageVec<V> {
         }
 
         let key = sha256((index, __get_storage_key()));
-        Option::Some(get::<V>(key))
+        Option::Some(get(key))
     }
 
     /// Removes the value in the given index and moves all the values in the following indexes
@@ -209,7 +210,7 @@ impl<V> StorageVec<V> {
         }
 
         // gets the element before removing it, so it can be returned
-        let element_to_be_removed = get::<V>(sha256((index, __get_storage_key())));
+        let element_to_be_removed = get(sha256((index, __get_storage_key())));
 
         // for every element in the vec with an index greater than the input index,
         // shifts the index for that element down one
@@ -218,7 +219,7 @@ impl<V> StorageVec<V> {
             // gets the storage location for the previous index
             let key = sha256((count - 1, __get_storage_key()));
             // moves the element of the current index into the previous index
-            store::<V>(key, get::<V>(sha256((count, __get_storage_key()))));
+            store(key, get(sha256((count, __get_storage_key()))));
             
             count += 1;
         }
@@ -228,6 +229,30 @@ impl<V> StorageVec<V> {
 
         // returns the removed element
         Result::Ok(element_to_be_removed)
+    }
+
+    /// Removes the element at the specified index and fills it with the last element
+    /// Does not preserve ordering
+    #[storage(read, write)]
+    pub fn swap_remove(self, index: u64) -> Result<(), StorageVecError> {
+        let len = get::<u64>(__get_storage_key());
+        // if the index is larger or equal to len, there is no item to remove
+        if len <= index {
+            return Result::Err(StorageVecError::IndexOutOfBounds);
+        }
+
+        // if the index is the last one, the function should not try to remove and then swap the same element
+        if index == len - 1 {
+            return Result::Err(StorageVecError::CannotSwapAndRemoveTheSameElement);
+        }
+
+        let last_element = get(sha256(len - 1, __get_storage_key()));
+        store(sha256(index, __get_storage_key()), last_element);
+
+        // decrements len by 1
+        store(__get_storage_key(), len - 1);
+
+        Result::Ok(())
     }
 
     /// Inserts the value at the given index, moving the current index's value aswell as the following's
@@ -248,14 +273,14 @@ impl<V> StorageVec<V> {
         while count > index {
             let key = sha256((count + 1, __get_storage_key()));
             // shifts all the values up one index
-            store::<V>(key, get::<V>(sha256((count, __get_storage_key()))));
+            store(key, get(sha256((count, __get_storage_key()))));
 
             count -= 1
         }
 
         // inserts the value into the now unused index
         let key = sha256((index, __get_storage_key()));
-        store::<V>(key, value);
+        store(key, value);
 
         // increments len by 1
         store(__get_storage_key(), len + 1);
