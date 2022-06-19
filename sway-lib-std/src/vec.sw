@@ -273,11 +273,7 @@ impl<V> StorageVec<V> {
     pub fn is_empty(self) -> bool {
         let len = get::<u64>(__get_storage_key());
 
-        if len == 0 {
-            true
-        } else {
-            false
-        }
+        len == 0
     }
 
     /// Sets the len to 0
