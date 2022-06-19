@@ -201,7 +201,7 @@ impl<V> StorageVec<V> {
     /// Down one index
     /// WARNING: Expensive for larger vecs
     #[storage(read, write)]
-    fn remove_index(self, index: u64) -> Result<StorageVecError, V> {
+    fn remove_index(self, index: u64) -> Result<V, StorageVecError> {
         let len = get::<u64>(__get_storage_key());
         // if the index is larger or equal to len, there is no item to remove
         if len <= index {
@@ -234,7 +234,7 @@ impl<V> StorageVec<V> {
     /// Up one index
     /// WARNING: Expensive for larger vecs
     #[storage(read, write)]
-    fn insert(self, index: u64, value: V) -> Result<StorageVecError, ()> {
+    fn insert(self, index: u64, value: V) -> Result<(), StorageVecError> {
         let len = get::<u64>(__get_storage_key());
         // if the index is larger or equal to len, there is no space to insert
         if index >= len {
@@ -261,4 +261,6 @@ impl<V> StorageVec<V> {
         store(__get_storage_key(), len + 1);
         Result::Ok(())
     }
+
+
 }
