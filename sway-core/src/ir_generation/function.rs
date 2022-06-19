@@ -744,11 +744,11 @@ impl FnCompiler {
         let cond_value = self.compile_expression(context, ast_condition)?;
         let entry_block = self.current_block;
 
-        let body_deterministically_aborts = ast_then.deterministically_aborts()
-            && (ast_else
-                .as_ref()
-                .map(|x| x.deterministically_aborts())
-                .unwrap_or(false));
+        let then_deterministically_aborts = ast_then.deterministically_aborts();
+        let else_deterministically_aborts = ast_else
+            .as_ref()
+            .map(|x| x.deterministically_aborts())
+            .unwrap_or(false);
 
         // To keep the blocks in a nice order we create them only as we populate them.  It's
         // possible when compiling other expressions for the 'current' block to change, and it
@@ -784,44 +784,36 @@ impl FnCompiler {
             cond_span_md_idx,
         );
 
-        if body_deterministically_aborts {
+        if then_deterministically_aborts && else_deterministically_aborts {
             return Ok(Constant::get_unit(context, None));
         }
-
-        let need_phi = match (
-            context.values.get(true_value.0).unwrap(),
-            context.values.get(false_value.0).unwrap(),
-        ) {
-            (
-                ValueContent {
-                    value: ValueDatum::Constant(c1),
-                    ..
-                },
-                ValueContent {
-                    value: ValueDatum::Constant(c2),
-                    ..
-                },
-            ) if c1.eq(context, c2) => false,
-            _ => true,
-        };
 
         let merge_block = self.function.create_block(context, None);
         true_block_end.ins(context).branch(
             merge_block,
-            if need_phi { Some(true_value) } else { None },
+            if !then_deterministically_aborts {
+                Some(true_value)
+            } else {
+                None
+            },
             None,
         );
         false_block_end.ins(context).branch(
             merge_block,
-            if need_phi { Some(false_value) } else { None },
+            if !else_deterministically_aborts {
+                Some(false_value)
+            } else {
+                None
+            },
             None,
         );
 
         self.current_block = merge_block;
-        if need_phi {
+
+        if !then_deterministically_aborts || !else_deterministically_aborts {
             Ok(merge_block.get_phi(context))
         } else {
-            Ok(true_value)
+            Ok(Constant::get_unit(context, None))
         }
     }
 
