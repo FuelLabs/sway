@@ -1,7 +1,7 @@
 library assert;
 
-use ::revert::revert;
 use ::logging::log;
+use ::revert::revert;
 
 const FAILED_REQUIRE_SIGNAL = 42;
 

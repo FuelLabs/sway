@@ -1,0 +1,14 @@
+[[package]]
+name = 'const_inits'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-76FD265A93458D61'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'path+from-root-76FD265A93458D61'
+dependencies = ['core']

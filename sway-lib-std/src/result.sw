@@ -31,14 +31,24 @@ impl<T, E> Result<T, E> {
     /// Returns `true` if the result is [`Ok`].
     fn is_ok(self) -> bool {
         match self {
-            Result::Ok(_) => true, _ => false, 
+            Result::Ok(_) => {
+                true
+            },
+            _ => {
+                false
+            },
         }
     }
 
     /// Returns `true` if the result is [`Err`].
     fn is_err(self) -> bool {
         match self {
-            Result::Ok(_) => false, _ => true, 
+            Result::Ok(_) => {
+                false
+            },
+            _ => {
+                true
+            },
         }
     }
 
@@ -49,7 +59,12 @@ impl<T, E> Result<T, E> {
     /// case explicitly.
     fn unwrap(self) -> T {
         match self {
-            Result::Ok(inner_value) => inner_value, _ => revert(0), 
+            Result::Ok(inner_value) => {
+                inner_value
+            },
+            _ => {
+                revert(0)
+            },
         }
     }
 }
