@@ -1,0 +1,2 @@
+category = "run"
+expected_result = { action = "return", value = 1 }
