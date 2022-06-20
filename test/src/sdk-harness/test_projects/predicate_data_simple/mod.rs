@@ -4,6 +4,7 @@ use fuel_vm::prelude::Opcode;
 use fuels::contract::script::Script;
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
+use fuels::contract::abi_encoder::ABIEncoder;
 use fuels::tx::{Address, AssetId, Contract, Input, Output, Transaction, UtxoId};
 use std::str::FromStr;
 
@@ -126,9 +127,10 @@ async fn get_balance(wallet: &Wallet, address: Address, asset_id: AssetId) -> u6
 
 #[tokio::test]
 async fn valid_predicate_data_simple() {
-    let value = 12345_i32.to_be_bytes();
-    let mut predicate_data = Vec::<u8>::new();
-    predicate_data.extend_from_slice(&value);
+    let arg = Token::U32(12345_u32);
+    let args: Vec<Token> = vec![arg];
+    let mut abi = ABIEncoder::new();
+    let predicate_data = abi.encode(&args).unwrap();
 
     let receiver_address =
         Address::from_str("0xde97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c")
@@ -163,9 +165,11 @@ async fn valid_predicate_data_simple() {
 
 #[tokio::test]
 async fn invalid_predicate_data_simple() {
-    let value = 101_i32.to_be_bytes();
-    let mut predicate_data = Vec::<u8>::new();
-    predicate_data.extend_from_slice(&value);
+    let arg = Token::U32(1001_u32);
+    let args: Vec<Token> = vec![arg];
+    let mut abi = ABIEncoder::new();
+    let predicate_data = abi.encode(&args).unwrap();
+    
     let receiver_address =
         Address::from_str("0xde97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c")
             .unwrap();

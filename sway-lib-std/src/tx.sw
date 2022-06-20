@@ -220,7 +220,7 @@ pub fn tx_predicate_data_start_offset() -> u64 {
     };
 
     let predicate_data_ptr = is + predicate_code_length;
-    predicate_data_ptr
+    predicate_data_ptr + predicate_data_ptr % 8
 }
 
 pub fn get_predicate_data<T>() -> T {
