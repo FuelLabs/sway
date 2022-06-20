@@ -1,7 +1,7 @@
 [project]
 name = "identity"
 version = "0.1.0"
-authors = ["Cam Fuel"]
+authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 license = "Apache-2.0"
 
