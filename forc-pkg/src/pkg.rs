@@ -277,6 +277,10 @@ impl BuildPlan {
     }
 
     /// Attempt to load the build plan from the `Lock`.
+    /// Returns the best effor BuildPlan and the packages removed  
+    /// from project's manifest file after the lock file is generated.
+    ///
+    /// The returned removed dependencies are already removed from the dependency graph.
     pub fn from_lock(
         proj_path: &Path,
         lock: &Lock,
@@ -318,8 +322,10 @@ impl BuildPlan {
     }
 
     /// Attempt to load the build plan from the `Forc.lock` file.
-    /// Return the best effor BuildPlan and the packages removed  
+    /// Returns the best effor BuildPlan and the packages removed  
     /// from project's manifest file after the lock file is generated.
+    ///
+    /// The returned removed dependencies are already removed from the dependency graph.
     pub fn from_lock_file(
         lock_path: &Path,
         sway_git_tag: &str,
@@ -329,6 +335,17 @@ impl BuildPlan {
         Self::from_lock(proj_path, &lock, sway_git_tag)
     }
 
+    /// Attempt to find the difference between the graph constructed from the lock file
+    /// and the graph that is described by the manifest file. The difference is used to
+    /// update BuildPlan.
+    ///
+    /// The `removed` is the dependencies that needed to be removed by the BuildPlan::from_lock
+    /// in order to construct the BuildPlan from the lock file. The removal is needed once there
+    /// is a dependency (provided as a path dependency) removed from the manifest file after the
+    /// lock file is generated.
+    ///
+    /// generate_diff combines those removed packages with other types of dependencies (ex: git dependencies)
+    /// and returnes the complete set of differences between the lock file and manifest file.
     pub fn generate_diff(
         &self,
         removed: Vec<DependencyName>,
