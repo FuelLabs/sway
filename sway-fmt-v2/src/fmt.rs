@@ -121,7 +121,7 @@ enum Color {
     Silver: (),
                     Grey: (), }
         "#;
-        
+
         let correct_sway_code = r#"contract;
 
 enum Color {
@@ -130,7 +130,7 @@ enum Color {
  Red : (),
  Silver : (),
  Grey : (),
-}"#; 
+}"#;
         let mut formatter = get_formatter(Config::default(), Shape::default());
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
