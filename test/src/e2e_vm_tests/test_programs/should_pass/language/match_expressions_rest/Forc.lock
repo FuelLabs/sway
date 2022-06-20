@@ -1,4 +1,14 @@
 [[package]]
+name = 'core'
+source = 'path+from-root-8F0E3A0B953247F5'
+dependencies = []
+
+[[package]]
 name = 'match_expressions_rest'
 source = 'root'
-dependencies = []
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'git+https://github.com/fuellabs/sway?tag=v0.16.0#948f7aba42b4138433fb5b61c698c8f4a60db424'
+dependencies = ['core']
