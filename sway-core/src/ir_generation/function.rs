@@ -750,10 +750,10 @@ impl FnCompiler {
         let cond_value = self.compile_expression(context, ast_condition)?;
         let entry_block = self.current_block;
 
-        let then_deterministically_aborts = ast_then.deterministically_aborts();
+        let then_deterministically_aborts = ast_then.deterministically_aborts(false);
         let else_deterministically_aborts = ast_else
             .as_ref()
-            .map(|x| x.deterministically_aborts())
+            .map(|x| x.deterministically_aborts(false))
             .unwrap_or(false);
 
         // To keep the blocks in a nice order we create them only as we populate them.  It's

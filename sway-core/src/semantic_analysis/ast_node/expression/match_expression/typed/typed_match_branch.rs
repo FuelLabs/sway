@@ -101,7 +101,7 @@ impl TypedMatchBranch {
         );
 
         // unify the return type from the typed result with the type annotation
-        if !typed_result.deterministically_aborts() {
+        if !typed_result.deterministically_aborts(true) {
             let (mut new_warnings, new_errors) = unify_with_self(
                 typed_result.return_type,
                 return_type_annotation,
