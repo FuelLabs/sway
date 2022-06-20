@@ -616,13 +616,6 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
         ),
         (
             (
-                "should_pass/test_contracts/find_associated_methods_contract",
-                "should_pass/require_contract_deployment/call_find_associated_methods",
-            ),
-            1,
-        ),
-        (
-            (
                 "should_pass/test_contracts/increment_contract",
                 "should_pass/require_contract_deployment/call_increment_contract",
             ),
