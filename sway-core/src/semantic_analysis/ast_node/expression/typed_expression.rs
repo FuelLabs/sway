@@ -296,7 +296,7 @@ impl TypedExpression {
         };
         let arguments = VecDeque::from(arguments);
         let method = check!(
-            resolve_method_name(ctx, &method_name, arguments.clone(), vec![], span.clone(),),
+            resolve_method_name(ctx, &method_name, arguments.clone(), vec![], span.clone()),
             return err(warnings, errors),
             warnings,
             errors
@@ -399,7 +399,7 @@ impl TypedExpression {
                 r#else,
                 span,
             } => Self::type_check_if_expression(
-                ctx.by_ref(),
+                ctx.by_ref().with_help_text(""),
                 *condition,
                 *then,
                 r#else.map(|e| *e),
@@ -409,7 +409,12 @@ impl TypedExpression {
                 value,
                 branches,
                 span,
-            } => Self::type_check_match_expression(ctx.by_ref(), *value, branches, span),
+            } => Self::type_check_match_expression(
+                ctx.by_ref().with_help_text(""),
+                *value,
+                branches,
+                span,
+            ),
             Expression::AsmExpression { asm, span, .. } => {
                 Self::type_check_asm_expression(ctx.by_ref(), asm, span)
             }
@@ -480,13 +485,15 @@ impl TypedExpression {
             } => {
                 let ctx = ctx
                     .by_ref()
-                    .with_type_annotation(insert_type(TypeInfo::Unknown));
+                    .with_type_annotation(insert_type(TypeInfo::Unknown))
+                    .with_help_text("");
                 Self::type_check_array_index(ctx, *prefix, *index, span)
             }
             Expression::StorageAccess { field_names, .. } => {
                 let ctx = ctx
                     .by_ref()
-                    .with_type_annotation(insert_type(TypeInfo::Unknown));
+                    .with_type_annotation(insert_type(TypeInfo::Unknown))
+                    .with_help_text("");
                 Self::type_check_storage_load(ctx, field_names, &expr_span)
             }
             Expression::IntrinsicFunction { kind, span } => {
@@ -806,12 +813,15 @@ impl TypedExpression {
             .collect::<Vec<_>>();
 
         // type check the match expression and create a TypedMatchExpression object
-        let typed_match_expression = check!(
-            TypedMatchExpression::type_check(ctx.by_ref(), typed_value, branches, span.clone()),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let typed_match_expression = {
+            let ctx = ctx.by_ref().with_help_text("");
+            check!(
+                TypedMatchExpression::type_check(ctx, typed_value, branches, span.clone()),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )
+        };
 
         // check to see if the match expression is exhaustive and if all match arms are reachable
         let (witness_report, arms_reachability) = check!(
@@ -950,7 +960,7 @@ impl TypedExpression {
 
         // monomorphize the struct definition
         let mut struct_decl = check!(
-            ctx.monomorphize(struct_decl, type_arguments, EnforceTypeArguments::No, None,),
+            ctx.monomorphize(struct_decl, type_arguments, EnforceTypeArguments::No, None),
             return err(warnings, errors),
             warnings,
             errors
@@ -1219,7 +1229,7 @@ impl TypedExpression {
                 return err(warnings, errors);
             }
             check!(
-                instantiate_enum(ctx, enum_decl, call_path.suffix, args, type_arguments,),
+                instantiate_enum(ctx, enum_decl, call_path.suffix, args, type_arguments),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -1241,7 +1251,7 @@ impl TypedExpression {
             match decl {
                 TypedDeclaration::EnumDeclaration(enum_decl) => {
                     check!(
-                        instantiate_enum(ctx, enum_decl, call_path.suffix, args, type_arguments,),
+                        instantiate_enum(ctx, enum_decl, call_path.suffix, args, type_arguments),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -1458,13 +1468,10 @@ impl TypedExpression {
 
         let elem_type = typed_contents[0].return_type;
         for typed_elem in &typed_contents[1..] {
-            let (mut new_warnings, new_errors) = unify_with_self(
-                typed_elem.return_type,
-                elem_type,
-                ctx.self_type(),
-                &typed_elem.span,
-                "",
-            );
+            let (mut new_warnings, new_errors) = ctx
+                .by_ref()
+                .with_type_annotation(elem_type)
+                .unify_with_self(typed_elem.return_type, &typed_elem.span);
             let no_warnings = new_warnings.is_empty();
             let no_errors = new_errors.is_empty();
             warnings.append(&mut new_warnings);
@@ -1676,8 +1683,8 @@ mod tests {
 
     fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<TypedExpression> {
         let mut namespace = Namespace::init_root(namespace::Module::default());
-        let ctx = Context::from_module_namespace(&mut namespace)
-            .with_type_annotation(type_annotation);
+        let ctx =
+            Context::from_module_namespace(&mut namespace).with_type_annotation(type_annotation);
         TypedExpression::type_check(ctx, expr)
     }
 

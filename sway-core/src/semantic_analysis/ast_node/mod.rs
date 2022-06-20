@@ -365,6 +365,9 @@ impl TypedAstNode {
                             decl
                         }
                         Declaration::Reassignment(Reassignment { lhs, rhs, span }) => {
+                            let ctx = ctx
+                                .with_type_annotation(insert_type(TypeInfo::Unknown))
+                                .with_help_text("");
                             check!(
                                 reassignment(ctx, lhs, rhs, span),
                                 return err(warnings, errors),
@@ -462,6 +465,9 @@ impl TypedAstNode {
                     })
                 }
                 AstNodeContent::Expression(expr) => {
+                    let ctx = ctx
+                        .with_type_annotation(insert_type(TypeInfo::Unknown))
+                        .with_help_text("");
                     let inner = check!(
                         TypedExpression::type_check(ctx, expr.clone()),
                         error_recovery_expr(expr.span()),
@@ -635,7 +641,7 @@ fn reassignment(
                 errors
             );
             // type check the reassignment
-            let ctx = ctx.with_type_annotation(ty_of_field);
+            let ctx = ctx.with_type_annotation(ty_of_field).with_help_text("");
             let rhs = check!(
                 TypedExpression::type_check(ctx, rhs),
                 error_recovery_expr(span),
@@ -655,7 +661,10 @@ fn reassignment(
             )
         }
         ReassignmentTarget::StorageField(fields) => {
-            { reassign_storage_subfield(ctx, fields, rhs, span) }
+            let ctx = ctx
+                .with_type_annotation(insert_type(TypeInfo::Unknown))
+                .with_help_text("");
+            reassign_storage_subfield(ctx, fields, rhs, span)
                 .map(TypedDeclaration::StorageReassignment)
         }
     }
