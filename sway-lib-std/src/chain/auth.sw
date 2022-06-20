@@ -55,9 +55,7 @@ fn get_coins_owner() -> Result<Identity, AuthError> {
 
     while i < inputs_count {
         let input_pointer = tx_input_pointer(i);
-        log(input_pointer);
         let input_type = tx_input_type(input_pointer);
-        log(input_type);
         if input_type != target_input_type {
             // type != InputCoin
             // Continue looping.
