@@ -66,6 +66,10 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
             ProgramState::Return(1),
         ),
         (
+            "should_pass/language/fixing_generic_type",
+            ProgramState::Return(1),
+        ),
+        (
             "should_pass/language/struct_field_reassignment",
             ProgramState::Return(0),
         ),
