@@ -6,4 +6,4 @@ name = "methods_contract"
 
 [dependencies]
 std = { path = "../../../../../sway-lib-std" }
-methods_abi = { path = "../../test_abis/methods_abi" }
+methods_abi = { path = "../methods_abi" }
