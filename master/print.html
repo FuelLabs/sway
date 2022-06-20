@@ -1127,6 +1127,62 @@ let forty_two: b256 = my_address.into();
 let my_contract_id: ContractId = ~ContractId::from(my_number);
 let forty_two: b256 = my_contract_id.into();
 </code></pre>
+<h2 id="identity-type"><a class="header" href="#identity-type"><code>Identity</code> Type</a></h2>
+<p>The <code>Identity</code> type is an enum that allows for the handling of both <code>Address</code> and <code>ContractId</code> types. This is useful in cases where either type is accepted, e.g. receiving funds from an identified sender, but not caring if the sender is an address or a contract.</p>
+<p>An <code>Identity</code> is implemented as follows.</p>
+<pre><code class="language-sway">pub enum Identity {
+    Address: Address,
+    ContractId: ContractId,
+}
+</code></pre>
+<p>Casting to an <code>Identity</code> must be done explicitly:</p>
+<pre><code class="language-sway">        let my_address: Address = ~Address::from(BASE_ASSET_ID);
+        let my_identity: Identity = Identity::Address(my_address);
+</code></pre>
+<p>A <code>match</code> statement can be used to return to an <code>Address</code> or <code>ContractId</code> as well as handle cases in which their execution differs.</p>
+<pre><code class="language-sway">        let my_contract_id: ContractId = match my_identity {
+            Identity::ContractId(identity) =&gt; {
+                identity
+            },
+            _ =&gt; {
+                revert(0);
+            }
+        };
+    }
+
+    fn different_executions(my_identity: Identity) {
+        let amount = 1;
+        let token_id = ~ContractId::from(BASE_ASSET_ID);
+
+        match my_identity {
+            Identity::Address(identity) =&gt; {
+                transfer_to_output(amount, token_id, identity);
+            },
+            Identity::ContractId(identity) =&gt; {
+                force_transfer_to_contract(amount, token_id, identity);
+            },
+        };
+    }
+
+    #[storage(read)]fn access_control_with_identity() {
+        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
+        require(sender.unwrap() == storage.owner, MyError::UnauthorizedUser);
+    }
+}
+</code></pre>
+<pre><code class="language-sway">        match my_identity {
+            Identity::Address(identity) =&gt; {
+                transfer_to_output(amount, token_id, identity);
+            },
+            Identity::ContractId(identity) =&gt; {
+                force_transfer_to_contract(amount, token_id, identity);
+            },
+        };
+</code></pre>
+<p>A common use case for <code>Identity</code> is for access control. The use of <code>Identity</code> uniquely allows both <code>ContractId</code> and <code>Address</code> to have access control inclusively. </p>
+<pre><code class="language-sway">        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
+        require(sender.unwrap() == storage.owner, MyError::UnauthorizedUser);
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="functions"><a class="header" href="#functions">Functions</a></h1>
 <p>Functions in Sway are declared with the <code>fn</code> keyword. Let's take a look:</p>
 <pre><code class="language-sway">fn equals(first_param: u64, second_param: u64) -&gt; bool {
