@@ -106,7 +106,7 @@ pub fn transfer_to_output(amount: u64, asset_id: ContractId, to: Address) {
             index = outputs_count; // break early and use the output we found
             // use `break;` when it's implemented #587
         };
-        index = index + 1;
+        index += 1;
     }
 
     if !output_found {

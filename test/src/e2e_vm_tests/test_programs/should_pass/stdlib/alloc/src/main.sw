@@ -49,5 +49,12 @@ fn main() -> bool {
     assert(ptr == hp - 16 + 1);
     assert(heap_ptr() == hp - 16);
 
+    // Make sure that reallocating an old allocation of size 0 does not cause a
+    // panic. 
+    let hp = heap_ptr(); // old allocation of size 0
+    let ptr = realloc(hp, 0, 16);
+    assert(ptr == hp - 16 + 1);
+    assert(heap_ptr() == hp - 16);
+
     true
 }
