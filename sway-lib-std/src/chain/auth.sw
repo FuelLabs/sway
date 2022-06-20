@@ -5,10 +5,10 @@ use ::address::Address;
 use ::assert::assert;
 use ::b512::B512;
 use ::contract_id::ContractId;
+use ::identity::Identity;
 use ::option::*;
 use ::result::Result;
 use ::tx::*;
-use ::identity::Identity;
 
 pub enum AuthError {
     InputsNotAllOwnedBySameAddress: (),
@@ -59,21 +59,21 @@ fn get_coins_owner() -> Result<Identity, AuthError> {
         if input_type != target_input_type {
             // type != InputCoin
             // Continue looping.
-            i = i + 1;
+            i += 1;
         } else {
             // type == InputCoin
             let input_owner = Option::Some(tx_input_coin_owner(input_pointer));
             if candidate.is_none() {
                 // This is the first input seen of the correct type.
                 candidate = input_owner;
-                i = i + 1;
+                i += 1;
             } else {
                 // Compare current coin owner to candidate.
                 // `candidate` and `input_owner` must be `Option::Some` at this point,
                 // so can unwrap safely.
                 if input_owner.unwrap() == candidate.unwrap() {
                     // Owners are a match, continue looping.
-                    i = i + 1;
+                    i += 1;
                 } else {
                     // Owners don't match. Return Err.
                     i = inputs_count;

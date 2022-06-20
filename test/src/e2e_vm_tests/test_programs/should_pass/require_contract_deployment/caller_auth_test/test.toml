@@ -1,0 +1,3 @@
+category = "run_on_node"
+expected_result = { action = "result", value = 1 }
+contracts = ["should_pass/test_contracts/auth_testing_contract"]
