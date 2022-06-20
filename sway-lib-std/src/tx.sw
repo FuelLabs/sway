@@ -205,6 +205,25 @@ pub fn tx_input_coin_owner(input_ptr: u32) -> Address {
     owner_addr
 }
 
+/// If the input's type is `InputMessage`, return the owner.
+/// Otherwise, undefined behavior.
+pub fn tx_input_messsage_owner(input_ptr: u32) -> Address {
+    let owner_addr = ~Address::from(asm(buffer, ptr: input_ptr) {
+        // Need to skip over eighteen words, so add 8*18=144
+        addi ptr ptr i144;
+        // Save old stack pointer
+        move buffer sp;
+        // Extend stack by 32 bytes
+        cfei i32;
+        // Copy 32 bytes
+        mcpi buffer ptr i32;
+        // `buffer` now points to the 32 bytes
+        buffer: b256
+    });
+
+    owner_addr
+}
+
 ////////////////////////////////////////
 // Outputs
 ////////////////////////////////////////
