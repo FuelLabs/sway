@@ -131,6 +131,8 @@ enum Color {
     }
     #[test]
     fn test_format_attributes() {
+        // currently this is passing incorrectly since `storage` attributes
+        // are unreachable and are the only attributes we currently have.
         let sway_code_to_format = r#"contract;
 
 use std::storage::StorageMap;
