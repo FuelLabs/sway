@@ -1,6 +1,6 @@
 contract;
 
-use find_associated_methods_library::MyContract;
+use methods_abi::MethodsContract;
 
 use std::result::*;
 use std::identity::*;
@@ -13,6 +13,10 @@ fn bogus() -> Identity {
     sender.unwrap()
 }
 
+fn bogus2() -> Identity {
+    msg_sender().unwrap()
+}
+
 struct MyStruct {
     int_option: Option<u64>
 }
@@ -21,10 +25,11 @@ storage {
     stored_struct: MyStruct,
 }
 
-impl MyContract for Contract {
+impl MethodsContract for Contract {
     #[storage(read, write)]
     fn test_function() -> bool {
         let identity = bogus();
+        let identity2 = bogus2();
         storage.stored_struct = MyStruct {
             int_option: Option::Some(99u64)
         };

@@ -1,6 +1,6 @@
-library find_associated_methods_library;
+library methods_abi;
 
-abi MyContract {
+abi MethodsContract {
     #[storage(read, write)]
     fn test_function() -> bool;
 }
