@@ -45,6 +45,8 @@ impl Format for AttributeDecl {
             args.pop(); // pop the ending comma
             line.push_str(&args);
         }
+        // ')'
+        Self::close_parenthesis(line, formatter);
         // `]\n`
         Self::close_square_bracket(line, formatter);
     }
