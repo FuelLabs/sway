@@ -6,6 +6,7 @@ use ::address::Address;
 use ::contract_id::ContractId;
 use ::intrinsics::is_reference_type;
 use ::context::registers::instrs_start;
+use ::mem;
 
 ////////////////////////////////////////
 // Transaction fields
@@ -223,16 +224,7 @@ pub fn tx_predicate_data_start_offset() -> u64 {
 
 pub fn get_predicate_data<T>() -> T {
     let ptr = tx_predicate_data_start_offset();
-    if is_reference_type::<T>() {
-        asm(r1: ptr) {
-            r1: T
-        }
-    } else {
-        asm(r1: ptr) {
-            lw r1 r1 i0;
-            r1: T
-        }
-    }
+    mem::read(ptr)
 }
 
 ////////////////////////////////////////
