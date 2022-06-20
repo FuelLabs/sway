@@ -6,7 +6,7 @@ use ::address::Address;
 use ::contract_id::ContractId;
 use ::intrinsics::is_reference_type;
 use ::context::registers::instrs_start;
-use ::mem;
+use ::mem::read;
 
 ////////////////////////////////////////
 // Transaction fields
@@ -210,6 +210,7 @@ pub fn tx_input_coin_owner(input_ptr: u32) -> Address {
 ////////////////////////////////////////
 // Inputs > Predicate
 ////////////////////////////////////////
+
 pub fn tx_predicate_data_start_offset() -> u64 {
     let is = instrs_start();
     let predicate_length_ptr = is - 16;
@@ -224,7 +225,7 @@ pub fn tx_predicate_data_start_offset() -> u64 {
 
 pub fn get_predicate_data<T>() -> T {
     let ptr = tx_predicate_data_start_offset();
-    mem::read(ptr)
+    read(ptr)
 }
 
 ////////////////////////////////////////
