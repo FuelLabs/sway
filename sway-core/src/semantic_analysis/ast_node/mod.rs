@@ -8,7 +8,6 @@ pub mod while_loop;
 use std::fmt;
 
 pub(crate) use code_block::*;
-pub use const_eval::*;
 pub use declaration::*;
 pub(crate) use expression::*;
 pub(crate) use mode::*;
@@ -428,7 +427,7 @@ impl TypedAstNode {
                             );
                             namespace.insert_trait_implementation(
                                 impl_trait.trait_name.clone(),
-                                look_up_type_id(implementing_for_type_id),
+                                implementing_for_type_id,
                                 impl_trait.methods.clone(),
                             );
                             TypedDeclaration::ImplTrait(impl_trait)
@@ -442,7 +441,7 @@ impl TypedAstNode {
                             );
                             namespace.insert_trait_implementation(
                                 impl_trait.trait_name.clone(),
-                                look_up_type_id(impl_trait.implementing_for_type_id),
+                                impl_trait.implementing_for_type_id,
                                 impl_trait.methods.clone(),
                             );
                             TypedDeclaration::ImplTrait(impl_trait)
@@ -771,10 +770,12 @@ fn type_check_interface_surface(
                     .map(
                         |FunctionParameter {
                              name,
+                             is_mutable,
                              type_id,
                              type_span,
                          }| TypedFunctionParameter {
                             name,
+                            is_mutable,
                             type_id: check!(
                                 namespace.resolve_type_with_self(
                                     look_up_type_id(type_id),
@@ -907,10 +908,12 @@ fn type_check_trait_methods(
                 |FunctionParameter {
                      name,
                      type_id,
+                     is_mutable,
                      type_span,
                  }| {
                     TypedFunctionParameter {
                         name,
+                        is_mutable,
                         type_id: check!(
                             namespace.resolve_type_with_self(
                                 look_up_type_id(type_id),

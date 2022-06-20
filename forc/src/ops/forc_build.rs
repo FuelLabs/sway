@@ -1,10 +1,11 @@
 use crate::{
     cli::BuildCommand,
-    utils::{SWAY_BIN_HASH_SUFFIX, SWAY_GIT_TAG},
+    utils::{SWAY_BIN_HASH_SUFFIX, SWAY_BIN_ROOT_SUFFIX, SWAY_GIT_TAG},
 };
 use anyhow::{anyhow, bail, Result};
 use forc_pkg::{self as pkg, lock, Lock, ManifestFile};
 use forc_util::{default_output_directory, lock_path};
+use fuel_tx::Contract;
 use std::{
     fs::{self, File},
     path::{Path, PathBuf},
@@ -164,13 +165,24 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
 
     info!("  Bytecode size is {} bytes.", compiled.bytecode.len());
 
-    if let TreeType::Script | TreeType::Predicate = compiled.tree_type {
-        // hash the bytecode for scripts/predicates and store it in a file in the output directory
-        let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&compiled.bytecode));
-        let hash_file_name = format!("{}{}", &manifest.project.name, SWAY_BIN_HASH_SUFFIX);
-        let hash_path = output_dir.join(hash_file_name);
-        fs::write(hash_path, &bytecode_hash)?;
-        info!("  Bytecode hash is: {}", bytecode_hash);
+    match compiled.tree_type {
+        TreeType::Script => {
+            // hash the bytecode for scripts and store the result in a file in the output directory
+            let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&compiled.bytecode));
+            let hash_file_name = format!("{}{}", &manifest.project.name, SWAY_BIN_HASH_SUFFIX);
+            let hash_path = output_dir.join(hash_file_name);
+            fs::write(hash_path, &bytecode_hash)?;
+            info!("  Script bytecode hash: {}", bytecode_hash);
+        }
+        TreeType::Predicate => {
+            // get the root hash of the bytecode for predicates and store the result in a file in the output directory
+            let root = format!("0x{}", Contract::root_from_code(&compiled.bytecode));
+            let root_file_name = format!("{}{}", &manifest.project.name, SWAY_BIN_ROOT_SUFFIX);
+            let root_path = output_dir.join(root_file_name);
+            fs::write(root_path, &root)?;
+            info!("  Predicate root: {}", root);
+        }
+        _ => (),
     }
 
     Ok(compiled)

@@ -952,10 +952,12 @@ fn fn_args_to_function_parameters(
             .collect::<Result<_, _>>()?,
         FnArgs::NonStatic {
             self_token,
+            mutable_self,
             args_opt,
         } => {
             let mut function_parameters = vec![FunctionParameter {
                 name: Ident::new(self_token.span()),
+                is_mutable: mutable_self.is_some(),
                 type_id: insert_type(TypeInfo::SelfType),
                 type_span: self_token.span(),
             }];
@@ -1925,6 +1927,7 @@ fn fn_arg_to_function_parameter(
     };
     let function_parameter = FunctionParameter {
         name,
+        is_mutable: false,
         type_id: insert_type(ty_to_type_info(ec, fn_arg.ty)?),
         type_span,
     };
@@ -2552,14 +2555,12 @@ fn statement_let_to_ast_nodes(
         span: Span,
     ) -> Result<Vec<AstNode>, ErrorEmitted> {
         let ast_nodes = match pattern {
-            Pattern::Wildcard { .. } => {
-                let ast_node = AstNode {
-                    content: AstNodeContent::Expression(expression),
-                    span,
+            Pattern::Wildcard { .. } | Pattern::Var { .. } => {
+                let (mutable, name) = match pattern {
+                    Pattern::Var { mutable, name } => (mutable, name),
+                    Pattern::Wildcard { .. } => (None, Ident::new_no_span("_")),
+                    _ => unreachable!(),
                 };
-                vec![ast_node]
-            }
-            Pattern::Var { mutable, name } => {
                 let (type_ascription, type_ascription_span) = match ty_opt {
                     Some(ty) => {
                         let type_ascription_span = ty.span();
@@ -2863,11 +2864,36 @@ fn assignable_to_expression(
             index: Box::new(expr_to_expression(ec, *arg.into_inner())?),
             span,
         },
-        Assignable::FieldProjection { target, name, .. } => Expression::SubfieldExpression {
-            prefix: Box::new(assignable_to_expression(ec, *target)?),
-            field_to_access: name,
-            span,
-        },
+        Assignable::FieldProjection { target, name, .. } => {
+            let mut idents = vec![&name];
+            let mut base = &*target;
+            let storage_access_field_names_opt = loop {
+                match base {
+                    Assignable::FieldProjection { target, name, .. } => {
+                        idents.push(name);
+                        base = target;
+                    }
+                    Assignable::Var(name) => {
+                        if name.as_str() == "storage" {
+                            break Some(idents);
+                        }
+                        break None;
+                    }
+                    _ => break None,
+                }
+            };
+            match storage_access_field_names_opt {
+                Some(field_names) => {
+                    let field_names = field_names.into_iter().rev().cloned().collect();
+                    Expression::StorageAccess { field_names, span }
+                }
+                None => Expression::SubfieldExpression {
+                    prefix: Box::new(assignable_to_expression(ec, *target)?),
+                    field_to_access: name,
+                    span,
+                },
+            }
+        }
         Assignable::TupleFieldProjection {
             target,
             field,

@@ -18,12 +18,17 @@ impl<'a, 'e> Parser<'a, 'e> {
     pub fn emit_error(&mut self, kind: ParseErrorKind) -> ErrorEmitted {
         let span = match self.token_trees.first() {
             Some(token_tree) => token_tree.span(),
-            None => Span::new(
-                self.full_span.src().clone(),
-                self.full_span.end(),
-                self.full_span.end(),
-                self.full_span.path().cloned(),
-            )
+            None => {
+                // Create a new span that points to _just_ after the last parsed item
+                let num_trailing_spaces =
+                    self.full_span.as_str().len() - self.full_span.as_str().trim_end().len();
+                Span::new(
+                    self.full_span.src().clone(),
+                    self.full_span.end() - num_trailing_spaces,
+                    self.full_span.end() - num_trailing_spaces + 1,
+                    self.full_span.path().cloned(),
+                )
+            }
             .unwrap(),
         };
         self.emit_error_with_span(kind, span)

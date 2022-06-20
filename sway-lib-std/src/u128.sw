@@ -239,7 +239,7 @@ impl core::ops::Subtract for U128 {
         // If necessary, borrow and carry for lower subtraction
         if self.lower < other.lower {
             lower = ~u64::max() - (other.lower - self.lower - 1);
-            upper = upper - 1;
+            upper -= 1;
         } else {
             lower = self.lower - other.lower;
         }
@@ -265,12 +265,12 @@ impl core::ops::Multiply for U128 {
         while i > 0 {
             // Workaround for not having break keyword
             let shift = i - 1;
-            total = total << 1;
+            total <<= 1;
             if (other & (one << shift)) != zero {
                 total = total + self;
             }
 
-            i = i - 1;
+            i -= 1;
         }
 
         total
@@ -295,16 +295,16 @@ impl core::ops::Divide for U128 {
         while i > 0 {
             // Workaround for not having break keyword
             let shift = i - 1;
-            quotient = quotient << 1;
-            remainder = remainder << 1;
+            quotient <<= 1;
+            remainder <<= 1;
             remainder = remainder | ((self & (one << shift)) >> shift);
             // TODO use >= once OrdEq can be implemented.
             if remainder > divisor || remainder == divisor {
-                remainder = remainder - divisor;
+                remainder -= divisor;
                 quotient = quotient | one;
             }
 
-            i = i - 1;
+            i -= 1;
         }
 
         quotient
