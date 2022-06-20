@@ -237,10 +237,11 @@ impl BuildPlan {
     /// Create a new build plan from an existing one. Needs the difference with the existing plan with the lock.
     pub fn apply_pkg_diff(
         &self,
-        pkg_diff: PkgDiff,
+        pkg_diff: &PkgDiff,
         sway_git_tag: &str,
         offline_mode: bool,
     ) -> Result<Self> {
+        self.validate(sway_git_tag)?;
         let mut graph = self.graph.clone();
         let mut path_map = self.path_map.clone();
 
@@ -249,7 +250,7 @@ impl BuildPlan {
             .last()
             .ok_or_else(|| anyhow!("Invalid Graph"))?;
         let PkgDiff { added, removed } = pkg_diff;
-        remove_deps(&mut graph, &path_map, proj_node, &removed);
+        remove_deps(&mut graph, &path_map, proj_node, removed);
 
         let mut visited_map: HashMap<Pinned, NodeIx> = graph
             .node_references()
@@ -261,12 +262,13 @@ impl BuildPlan {
             &mut graph,
             &mut path_map,
             &self.compilation_order,
-            &added,
+            added,
             sway_git_tag,
             offline_mode,
             &mut visited_map,
         )?;
         let compilation_order = compilation_order(&graph)?;
+        self.validate(sway_git_tag)?;
         Ok(Self {
             graph,
             path_map,
@@ -279,7 +281,7 @@ impl BuildPlan {
         proj_path: &Path,
         lock: &Lock,
         sway_git_tag: &str,
-    ) -> Result<(Self, Vec<String>)> {
+    ) -> Result<(Self, Vec<DependencyName>)> {
         let mut graph = lock.to_graph()?;
         let tmp_compilation_order = compilation_order(&graph)?;
         let (path_map, removed_deps) =
@@ -304,18 +306,19 @@ impl BuildPlan {
     }
 
     /// Attempt to load the build plan from the `Forc.lock` file.
-    pub fn from_lock_file(lock_path: &Path, sway_git_tag: &str) -> Result<(Self, Vec<String>)> {
+    pub fn from_lock_file(
+        lock_path: &Path,
+        sway_git_tag: &str,
+    ) -> Result<(Self, Vec<DependencyName>)> {
         let proj_path = lock_path.parent().unwrap();
         let lock = Lock::from_path(lock_path)?;
         Self::from_lock(proj_path, &lock, sway_git_tag)
     }
 
-    /// Ensure that the build plan is valid for the given manifest.
-    pub fn validate(
+    pub fn generate_diff(
         &self,
-        removed: Vec<String>,
+        removed: Vec<DependencyName>,
         manifest: &Manifest,
-        sway_git_tag: &str,
     ) -> Result<PkgDiff> {
         let mut added = vec![];
         let mut removed = removed;
@@ -347,7 +350,7 @@ impl BuildPlan {
                     if det.version.is_some() {
                         println_yellow_err(&format!(
                             "  WARNING! Dependency \"{}\" specifies the unused `version` field: \
-                            consider using `branch` or `tag` instead",
+                                consider using `branch` or `tag` instead",
                             dep_name
                         ));
                     }
@@ -375,6 +378,11 @@ impl BuildPlan {
             removed.append(&mut temp_removed);
         }
 
+        Ok(PkgDiff { added, removed })
+    }
+
+    /// Ensure that the build plan is valid for the given manifest.
+    fn validate(&self, sway_git_tag: &str) -> Result<()> {
         // Ensure the pkg names of all nodes match their associated manifests.
         for node in self.graph.node_indices() {
             let pkg = &self.graph[node];
@@ -389,7 +397,7 @@ impl BuildPlan {
                 );
             }
         }
-        Ok(PkgDiff { added, removed })
+        Ok(())
     }
 
     /// View the build plan's compilation graph.

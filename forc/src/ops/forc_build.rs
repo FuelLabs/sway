@@ -113,10 +113,10 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     // If there are no issues with the BuildPlan generated from the lock file
     // Check and apply the diff.
     if new_lock_cause.is_none() {
-        let diff = plan.validate(removed_deps, &manifest, SWAY_GIT_TAG)?;
+        let diff = plan.generate_diff(removed_deps, &manifest)?;
         if !diff.added.is_empty() || !diff.removed.is_empty() {
             new_lock_cause = Some(anyhow!("lock file did not match manifest `diff`"));
-            plan = plan.apply_pkg_diff(diff, SWAY_GIT_TAG, offline)?;
+            plan = plan.apply_pkg_diff(&diff, SWAY_GIT_TAG, offline)?;
         }
     }
 
