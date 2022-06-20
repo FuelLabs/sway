@@ -4,8 +4,7 @@ use ::hash::sha256;
 use ::context::registers::stack_ptr;
 
 /// Store a stack variable in storage.
-#[storage(write)]
-pub fn store<T>(key: b256, value: T) {
+#[storage(write)]pub fn store<T>(key: b256, value: T) {
     if !__is_reference_type::<T>() {
         // If copy type, then it's a single word and can be stored with a single SWW.
         asm(k: key, v: value) {
@@ -17,7 +16,7 @@ pub fn store<T>(key: b256, value: T) {
         let mut size_left = __size_of::<T>();
         let mut local_key = key;
 
-        // Cast the the pointer to `value` to a u64. This lets us increment
+        // Cast the pointer to `value` to a u64. This lets us increment
         // this pointer later on to iterate over 32 byte chunks of `value`.
         let mut ptr_to_value = asm(v: value) {
             v
@@ -31,7 +30,7 @@ pub fn store<T>(key: b256, value: T) {
 
             // Move by 32 bytes
             ptr_to_value = ptr_to_value + 32;
-            size_left = size_left - 32;
+            size_left -= 32;
 
             // Generate a new key for each 32 byte chunk TODO Should eventually
             // replace this with `local_key = local_key + 1
@@ -46,8 +45,7 @@ pub fn store<T>(key: b256, value: T) {
 }
 
 /// Load a stack variable from storage.
-#[storage(read)]
-pub fn get<T>(key: b256) -> T {
+#[storage(read)]pub fn get<T>(key: b256) -> T {
     if !__is_reference_type::<T>() {
         // If copy type, then it's a single word and can be read with a single
         // SRW.
@@ -73,7 +71,7 @@ pub fn get<T>(key: b256) -> T {
             };
 
             // Move by 32 bytes
-            size_left = size_left - 32;
+            size_left -= 32;
 
             // Generate a new key for each 32 byte chunk TODO Should eventually
             // replace this with `local_key = local_key + 1
@@ -94,17 +92,16 @@ pub fn get<T>(key: b256) -> T {
     }
 }
 
-pub struct StorageMap<K, V> { }
+pub struct StorageMap<K, V> {
+}
 
 impl<K, V> StorageMap<K, V> {
-    #[storage(write)]
-    fn insert(self, key: K, value: V) {
+    #[storage(write)]fn insert(self, key: K, value: V) {
         let key = sha256((key, __get_storage_key()));
         store::<V>(key, value);
     }
 
-    #[storage(read)]
-    fn get(self, key: K) -> V {
+    #[storage(read)]fn get(self, key: K) -> V {
         let key = sha256((key, __get_storage_key()));
         get::<V>(key)
     }

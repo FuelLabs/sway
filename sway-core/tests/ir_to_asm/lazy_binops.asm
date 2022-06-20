@@ -11,7 +11,7 @@ lw   $r0 data_0               ; literal instantiation
 jnzi $r0 i11
 ji   i12
 lw   $r1 data_1               ; literal instantiation
-move $r0 $r1
+move $r0 $r1                  ; branch to phi value
 jnzi $r1 i15
 lw   $r1 data_1               ; literal instantiation
 ret  $r1
