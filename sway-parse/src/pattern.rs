@@ -75,6 +75,19 @@ impl Parse for Pattern {
             return Ok(Pattern::Constructor { path, args });
         }
         if let Some(fields) = Braces::try_parse(parser)? {
+            let inner_fields: &Punctuated<_, _> = fields.get();
+            let rest_pattern = inner_fields
+                .value_separator_pairs
+                .iter()
+                .find(|(p, _)| matches!(p, PatternStructField::Rest { token: _ }));
+
+            if let Some((rest_pattern, _)) = rest_pattern {
+                return Err(parser.emit_error_with_span(
+                    ParseErrorKind::UnexpectedRestPattern,
+                    rest_pattern.span(),
+                ));
+            }
+
             return Ok(Pattern::Struct { path, fields });
         }
         match path.try_into_ident() {
@@ -88,22 +101,39 @@ impl Parse for Pattern {
 }
 
 #[derive(Clone, Debug)]
-pub struct PatternStructField {
-    pub field_name: Ident,
-    pub pattern_opt: Option<(ColonToken, Box<Pattern>)>,
+pub enum PatternStructField {
+    Rest {
+        token: DoubleDotToken,
+    },
+    Field {
+        field_name: Ident,
+        pattern_opt: Option<(ColonToken, Box<Pattern>)>,
+    },
 }
 
 impl Spanned for PatternStructField {
     fn span(&self) -> Span {
-        match &self.pattern_opt {
-            Some((_colon_token, pattern)) => Span::join(self.field_name.span(), pattern.span()),
-            None => self.field_name.span(),
+        use PatternStructField::*;
+        match &self {
+            Rest { token } => token.span(),
+            Field {
+                field_name,
+                pattern_opt,
+            } => match pattern_opt {
+                Some((_colon_token, pattern)) => Span::join(field_name.span(), pattern.span()),
+                None => field_name.span(),
+            },
         }
     }
 }
 
 impl Parse for PatternStructField {
     fn parse(parser: &mut Parser) -> ParseResult<PatternStructField> {
+        if parser.peek::<DoubleDotToken>().is_some() {
+            let token = parser.parse()?;
+            return Ok(PatternStructField::Rest { token });
+        }
+
         let field_name = parser.parse()?;
         let pattern_opt = match parser.take() {
             Some(colon_token) => {
@@ -112,7 +142,7 @@ impl Parse for PatternStructField {
             }
             None => None,
         };
-        Ok(PatternStructField {
+        Ok(PatternStructField::Field {
             field_name,
             pattern_opt,
         })

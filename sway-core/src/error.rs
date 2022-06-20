@@ -883,6 +883,13 @@ pub enum CompileError {
         missing_patterns: String,
         span: Span,
     },
+    #[error("Pattern does not mention {}: {}",
+        if missing_fields.len() == 1 { "field" } else { "fields" },
+        missing_fields.join(", "))]
+    MatchStructPatternMissingFields {
+        missing_fields: Vec<String>,
+        span: Span,
+    },
     #[error(
         "Storage attribute access mismatch. Try giving the surrounding function more access by \
         adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\" to the function declaration."
@@ -1107,6 +1114,7 @@ impl Spanned for CompileError {
             StarImportShadowsOtherSymbol { name } => name.span(),
             MatchWrongType { span, .. } => span.clone(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
+            MatchStructPatternMissingFields { span, .. } => span.clone(),
             NotAnEnum { span, .. } => span.clone(),
             StorageAccessMismatch { span, .. } => span.clone(),
             TraitDeclPureImplImpure { span, .. } => span.clone(),
