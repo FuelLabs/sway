@@ -191,7 +191,7 @@ impl UnresolvedTypeCheck for TypedExpression {
 }
 
 impl DeterministicallyAborts for TypedExpression {
-    fn deterministically_aborts(&self, look_inside_callee: bool) -> bool {
+    fn deterministically_aborts(&self) -> bool {
         use TypedExpressionVariant::*;
         match &self.expression {
             FunctionApplication {
@@ -199,37 +199,30 @@ impl DeterministicallyAborts for TypedExpression {
                 arguments,
                 ..
             } => {
-                (look_inside_callee && function_body.deterministically_aborts(look_inside_callee))
-                    || arguments
-                        .iter()
-                        .any(|(_, x)| x.deterministically_aborts(look_inside_callee))
+                function_body.deterministically_aborts()
+                    || arguments.iter().any(|(_, x)| x.deterministically_aborts())
             }
-            Tuple { fields, .. } => fields
-                .iter()
-                .any(|x| x.deterministically_aborts(look_inside_callee)),
-            Array { contents, .. } => contents
-                .iter()
-                .any(|x| x.deterministically_aborts(look_inside_callee)),
-            CodeBlock(contents) => contents.deterministically_aborts(look_inside_callee),
-            LazyOperator { lhs, .. } => lhs.deterministically_aborts(look_inside_callee),
-            StructExpression { fields, .. } => fields
-                .iter()
-                .any(|x| x.value.deterministically_aborts(look_inside_callee)),
+            Tuple { fields, .. } => fields.iter().any(|x| x.deterministically_aborts()),
+            Array { contents, .. } => contents.iter().any(|x| x.deterministically_aborts()),
+            CodeBlock(contents) => contents.deterministically_aborts(),
+            LazyOperator { lhs, .. } => lhs.deterministically_aborts(),
+            StructExpression { fields, .. } => {
+                fields.iter().any(|x| x.value.deterministically_aborts())
+            }
             EnumInstantiation { contents, .. } => contents
                 .as_ref()
-                .map(|x| x.deterministically_aborts(look_inside_callee))
+                .map(|x| x.deterministically_aborts())
                 .unwrap_or(false),
-            AbiCast { address, .. } => address.deterministically_aborts(look_inside_callee),
+            AbiCast { address, .. } => address.deterministically_aborts(),
             StructFieldAccess { .. }
             | Literal(_)
             | StorageAccess { .. }
             | VariableExpression { .. }
             | FunctionParameter
             | TupleElemAccess { .. } => false,
-            IntrinsicFunction(kind) => kind.deterministically_aborts(look_inside_callee),
+            IntrinsicFunction(kind) => kind.deterministically_aborts(),
             ArrayIndex { prefix, index } => {
-                prefix.deterministically_aborts(look_inside_callee)
-                    || index.deterministically_aborts(look_inside_callee)
+                prefix.deterministically_aborts() || index.deterministically_aborts()
             }
             AsmExpression {
                 registers, body, ..
@@ -244,7 +237,7 @@ impl DeterministicallyAborts for TypedExpression {
                 registers.iter().any(|x| {
                     x.initializer
                         .as_ref()
-                        .map(|x| x.deterministically_aborts(look_inside_callee))
+                        .map(|x| x.deterministically_aborts())
                         .unwrap_or(false)
                 }) || body_deterministically_aborts
             }
@@ -254,16 +247,16 @@ impl DeterministicallyAborts for TypedExpression {
                 r#else,
                 ..
             } => {
-                condition.deterministically_aborts(look_inside_callee)
-                    || (then.deterministically_aborts(look_inside_callee)
+                condition.deterministically_aborts()
+                    || (then.deterministically_aborts()
                         && r#else
                             .as_ref()
-                            .map(|x| x.deterministically_aborts(look_inside_callee))
+                            .map(|x| x.deterministically_aborts())
                             .unwrap_or(false))
             }
             AbiName(_) => false,
-            EnumTag { exp } => exp.deterministically_aborts(look_inside_callee),
-            UnsafeDowncast { exp, .. } => exp.deterministically_aborts(look_inside_callee),
+            EnumTag { exp } => exp.deterministically_aborts(),
+            UnsafeDowncast { exp, .. } => exp.deterministically_aborts(),
         }
     }
 }
@@ -585,7 +578,7 @@ impl TypedExpression {
         let mut errors = res.errors;
 
         // if one of the expressions deterministically aborts, we don't want to type check it.
-        if !typed_expression.deterministically_aborts(true) {
+        if !typed_expression.deterministically_aborts() {
             // if the return type cannot be cast into the annotation type then it is a type error
             let (mut new_warnings, new_errors) = unify_with_self(
                 typed_expression.return_type,

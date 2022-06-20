@@ -16,10 +16,8 @@ impl CopyTypes for TypedCodeBlock {
 }
 
 impl DeterministicallyAborts for TypedCodeBlock {
-    fn deterministically_aborts(&self, look_inside_callee: bool) -> bool {
-        self.contents
-            .iter()
-            .any(|x| x.deterministically_aborts(look_inside_callee))
+    fn deterministically_aborts(&self) -> bool {
+        self.contents.iter().any(|x| x.deterministically_aborts())
     }
 }
 
@@ -78,7 +76,7 @@ impl TypedCodeBlock {
                         ..
                     }),
                 ..
-            } if !x.deterministically_aborts(true) => Some(*return_type),
+            } if !x.deterministically_aborts() => Some(*return_type),
             _ => None,
         });
 

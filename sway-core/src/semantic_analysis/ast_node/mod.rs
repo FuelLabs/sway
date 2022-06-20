@@ -121,17 +121,14 @@ impl UnresolvedTypeCheck for TypedAstNode {
 }
 
 impl DeterministicallyAborts for TypedAstNode {
-    fn deterministically_aborts(&self, look_inside_callee: bool) -> bool {
+    fn deterministically_aborts(&self) -> bool {
         use TypedAstNodeContent::*;
         match &self.content {
             ReturnStatement(_) => true,
             Declaration(_) => false,
-            Expression(exp) | ImplicitReturnExpression(exp) => {
-                exp.deterministically_aborts(look_inside_callee)
-            }
+            Expression(exp) | ImplicitReturnExpression(exp) => exp.deterministically_aborts(),
             WhileLoop(TypedWhileLoop { condition, body }) => {
-                condition.deterministically_aborts(look_inside_callee)
-                    || body.deterministically_aborts(look_inside_callee)
+                condition.deterministically_aborts() || body.deterministically_aborts()
             }
             SideEffect => false,
         }

@@ -82,10 +82,10 @@ impl fmt::Display for TypedIntrinsicFunctionKind {
 }
 
 impl DeterministicallyAborts for TypedIntrinsicFunctionKind {
-    fn deterministically_aborts(&self, look_inside_callee: bool) -> bool {
+    fn deterministically_aborts(&self) -> bool {
         use TypedIntrinsicFunctionKind::*;
         match self {
-            SizeOfVal { exp } => exp.deterministically_aborts(look_inside_callee),
+            SizeOfVal { exp } => exp.deterministically_aborts(),
             SizeOfType { .. } | GetStorageKey | IsRefType { .. } => false,
         }
     }
