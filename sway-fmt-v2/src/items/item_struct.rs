@@ -55,6 +55,10 @@ fn handle_struct_lit_single_line(
         formatted_code.push_str(visibility.span().as_str());
         formatted_code.push(' ');
     }
+    // Add struct token
+    formatted_code.push_str(item_struct.struct_token.span().as_str());
+    formatted_code.push(' ');
+
     // Add struct name
     formatted_code.push_str(item_struct.name.as_str());
 
@@ -90,6 +94,7 @@ fn handle_struct_lit_single_line(
         formatted_code.push_str(type_field.name.as_str());
         // Add `:`
         formatted_code.push_str(type_field.colon_token.ident().as_str());
+        formatted_code.push(' ');
         // TODO: We are currently converting ty to string directly but we will probably need to format ty before adding.
         // Add ty
         formatted_code.push_str(type_field.ty.span().as_str());

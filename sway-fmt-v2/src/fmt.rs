@@ -96,6 +96,27 @@ mod tests {
     }
 
     #[test]
+    fn test_struct_single_line() {
+        let sway_code_to_format = r#"contract;
+pub struct Foo {
+    bar: u64,
+    baz: bool,
+}
+"#;
+
+        let correct_sway_code = r#"contract;
+
+pub struct Foo { bar: u64, baz: bool }"#;
+        let mut config = Config::default();
+        config.structures.struct_lit_single_line = true;
+        config.whitespace.max_width = 300;
+        let mut formatter = get_formatter(config, Shape::default());
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert!(correct_sway_code == formatted_sway_code)
+    }
+
+    #[test]
     fn test_enum_without_variant_alignment() {
         let sway_code_to_format = r#"contract;
 
