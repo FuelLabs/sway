@@ -1,6 +1,6 @@
 script;
 
-use std::result::*;
+use std::result::Result;
 use std::revert::revert;
 
 fn main() -> bool {
