@@ -33,7 +33,7 @@ impl IdentityExample for Contract {
     fn identity_to_contract_id(my_identity: Identity) {
         // ANCHOR: identity_to_contract_id
         let my_contract_id: ContractId = match my_identity {
-            Identity::ContractId(identity) => identity, _ => {
+            Identity::ContractId(identity) => { identity }, _ => {
                 revert(0);
             }
         };
