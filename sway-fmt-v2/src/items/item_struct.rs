@@ -33,22 +33,32 @@ impl Format for ItemStruct {
             .to_width_heuristics(&config_whitespace);
         let struct_lit_width = width_heuristics.struct_lit_width;
 
-        if struct_lit_single_line {
-            // Check if the struct len is smaller than struct_lit_width
-            if self.get_formatted_len() < struct_lit_width {
-                handle_struct_lit_single_line(self, &mut formatted_code, formatter);
-            }
+        // Check if the struct len is smaller than struct_lit_width
+        if struct_lit_single_line && self.get_formatted_len() < struct_lit_width {
+            format_struct(self, &mut formatted_code, formatter, false);
+        } else {
+            format_struct(self, &mut formatted_code, formatter, true);
         }
 
         formatted_code
     }
 }
 
-/// Handles the scenerio when struct literals should be formatted to a single line.
-fn handle_struct_lit_single_line(
+/// Format the struct if the multiline is passed as false struct will be formatted into a single line.
+///
+/// Example (multiline : false):
+/// struct Foo { bar: u64,  baz: bool }
+///
+/// Example (multiline : true):
+/// struct Foo {
+///  bar: u64,
+///  baz: bool,
+/// }
+fn format_struct(
     item_struct: &ItemStruct,
     formatted_code: &mut FormattedCode,
     formatter: &mut Formatter,
+    multiline: bool,
 ) {
     // If there is a visibility token add it to the formatted_code with a ` ` after it.
     if let Some(visibility) = &item_struct.visibility {
@@ -77,11 +87,15 @@ fn handle_struct_lit_single_line(
             }
         }
     }
+
     // Handle openning brace
     ItemStruct::open_curly_brace(formatted_code, formatter);
-
-    // Push the current indentation level after `{`
-    formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
+    if multiline {
+        formatted_code.push('\n');
+    } else {
+        // Push the current indentation level after `{`
+        formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
+    }
 
     let items = item_struct
         .fields
@@ -89,6 +103,9 @@ fn handle_struct_lit_single_line(
         .into_inner()
         .value_separator_pairs;
     for (item_index, item) in items.iter().enumerate() {
+        if multiline {
+            formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
+        }
         let type_field = &item.0;
         // Add name
         formatted_code.push_str(type_field.name.as_str());
@@ -99,13 +116,16 @@ fn handle_struct_lit_single_line(
         // Add ty
         formatted_code.push_str(type_field.ty.span().as_str());
         // Add `, ` if this isn't the last field.
-        if item_index != items.len() - 1 {
+        if !multiline && item_index != items.len() - 1 {
             formatted_code.push_str(", ");
+        } else if multiline {
+            formatted_code.push_str(",\n");
         }
     }
-    // Push a ' '
-    formatted_code.push(' ');
-
+    if !multiline {
+        // Push a ' '
+        formatted_code.push(' ');
+    }
     // Handle closing brace
     ItemStruct::close_curly_brace(formatted_code, formatter);
 }
