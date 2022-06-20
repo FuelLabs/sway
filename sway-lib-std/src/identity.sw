@@ -4,10 +4,12 @@ library identity;
 use ::address::Address;
 use ::contract_id::ContractId;
 
+// ANCHOR: docs_identity
 pub enum Identity {
     Address: Address,
     ContractId: ContractId,
 }
+// ANCHOR_END: docs_identity
 
 impl core::ops::Eq for Identity {
     fn eq(self, other: Self) -> bool {
