@@ -161,6 +161,7 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
             ProgramState::Return(1),
         ), // true
         ("should_pass/stdlib/ge_test", ProgramState::Return(1)), // true
+        ("should_pass/stdlib/identity_eq", ProgramState::Return(1)), // true
         ("should_pass/stdlib/intrinsics", ProgramState::Return(1)), // true
         ("should_pass/stdlib/option", ProgramState::Return(1)),  // true
         ("should_pass/stdlib/require", ProgramState::Return(1)), // true
@@ -222,6 +223,7 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
         ),
         ("should_pass/stdlib/b512_test", ProgramState::Return(1)), // true
         ("should_pass/stdlib/block_height", ProgramState::Return(1)), // true
+        ("should_pass/stdlib/vec", ProgramState::Return(1)),       // true
         (
             "should_pass/language/trait_override_bug",
             ProgramState::Return(7),
@@ -442,6 +444,10 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
                 0x1f, 0x04, 0xff, 0x6d, 0x24, 0x70, 0xf2, 0x4a, 0xa9, 0xbd, 0x88, 0x65, 0x40, 0xe5,
                 0xdc, 0xe7, 0x7f, 0x70,
             ])), // "ReturnData":{"data":"0000000000000002", .. }
+        ),
+        (
+            "should_pass/language/match_expressions_with_self",
+            ProgramState::Return(1),
         ),
         (
             "should_pass/test_contracts/auth_testing_contract",
