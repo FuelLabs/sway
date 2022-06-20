@@ -51,7 +51,7 @@ The `Identity` type is an enum that allows for the handling of both `Address` an
 An `Identity` is implemented as follows.
 
 ```sway
-{{#include ../../../sway-lib-std/src/identity.sw:7:10}}
+{{#include ../../../sway-lib-std/src/identity.sw:docs_identity}}
 ```
 
 Casting to an `Identity` must be done explicitly:
