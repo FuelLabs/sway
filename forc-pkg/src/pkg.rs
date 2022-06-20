@@ -286,14 +286,26 @@ impl BuildPlan {
         let tmp_compilation_order = compilation_order(&graph)?;
         let (path_map, removed_deps) =
             graph_to_path_map(proj_path, &graph, &tmp_compilation_order, sway_git_tag)?;
-        let removed_deps_vec = removed_deps
+        let removed_deps_vec: Vec<DependencyName> = removed_deps
             .clone()
             .into_iter()
             .map(|dep| graph[dep].name.clone())
             .collect();
+        // Get the project node from compilation order.
+        let project_node = *tmp_compilation_order
+            .last()
+            .ok_or_else(|| anyhow!("can't get the project node"))?;
+
         // Remove the unresolveable path dependencies from the graph
-        apply_diff_after_lock(removed_deps, &mut graph, &path_map, sway_git_tag)?;
-        // Since path_map removes removed dependencies from the graph compilation order may change
+        apply_diff_after_lock(
+            removed_deps,
+            &mut graph,
+            project_node,
+            &path_map,
+            sway_git_tag,
+        )?;
+
+        // Since apply_diff_after_lock removes removed dependencies from the graph compilation order may change
         let compilation_order = compilation_order(&graph)?;
         Ok((
             Self {
@@ -306,6 +318,8 @@ impl BuildPlan {
     }
 
     /// Attempt to load the build plan from the `Forc.lock` file.
+    /// Return the best effor BuildPlan and the packages removed  
+    /// from project's manifest file after the lock file is generated.
     pub fn from_lock_file(
         lock_path: &Path,
         sway_git_tag: &str,
@@ -795,14 +809,21 @@ pub fn compilation_order(graph: &Graph) -> Result<Vec<NodeIx>> {
 fn apply_diff_after_lock(
     deps_to_remove: HashSet<NodeIx>,
     graph: &mut Graph,
+    project_node: NodeIx,
     path_map: &PathMap,
     sway_git_tag: &str,
 ) -> Result<()> {
-    for dep in deps_to_remove {
-        let dep_name = &graph[dep].name.clone();
+    use petgraph::visit::{Bfs, Walker};
+    // Visit all the nodes after their parent is visited.
+    let deps: Vec<NodeIx> = Bfs::new(&*graph, project_node).iter(&*graph).collect();
+
+    // Reverse the order so that we are sure we will get to a child node before it's parent.
+    // This is needed because if we remove parent of a node before itself we cannot find and check parent's manifest.
+    for dep in deps.iter().rev().filter(|dep| deps_to_remove.contains(dep)) {
+        let dep_name = &graph[*dep].name.clone();
 
         let (parent_node, _) = graph
-            .edges_directed(dep, Direction::Incoming)
+            .edges_directed(*dep, Direction::Incoming)
             .next()
             .map(|edge| (edge.source(), edge.weight().clone()))
             .ok_or_else(|| anyhow!("more than one root package detected in graph"))?;
@@ -814,27 +835,12 @@ fn apply_diff_after_lock(
 
         // Check if parent's manifest file includes this dependency.
         // If not this is a removed dependency and we should remove the removed dependency from the graph.
-        if parent_manifest.dep(dep_name).is_none() {
-            // We should be connecting the parent of the removed dependency to each child of removed node.
-            // Consider the following scenerio: a -> b -> c
-            // If you remove b, the edges between b -> c will be unvalidated so while processing c, you cannot find the parent.
-            // Instead you need to fetch all children of b and add an edge between those children and a before removing.
 
-            // Get children of the node to delete
-            let child_nodes: Vec<NodeIx> = graph
-                .edges_directed(dep, Direction::Outgoing)
-                .map(|edges| (edges.target()))
-                .collect();
-            // Add an edge between the node that is going to be removed's child nodes and parent of the same node.
-            for child in child_nodes {
-                // Check if there is already an edge if there is not add it
-                if !graph.edges(parent_node).any(|edge| edge.target() == child) {
-                    graph.add_edge(parent_node, child, graph[child].name.clone());
-                }
-            }
+        // After #1836 is merged, we will also need to check if it is inside patches section of the manifest.
+        if parent_manifest.dep(dep_name).is_none() {
             println_red(&format!("  Removing {}", dep_name));
             // Remove the deleted node
-            graph.remove_node(dep);
+            graph.remove_node(*dep);
         }
     }
     Ok(())
