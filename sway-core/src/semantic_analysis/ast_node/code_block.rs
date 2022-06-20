@@ -98,7 +98,7 @@ impl TypedCodeBlock {
                         ..
                     }),
                 ..
-            } => Some(*return_type),
+            } if !x.deterministically_aborts() => Some(*return_type),
             _ => None,
         });
 
