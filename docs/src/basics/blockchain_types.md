@@ -51,38 +51,27 @@ The `Identity` type is an enum that allows for the handling of both `Address` an
 An `Identity` is implemented as follows.
 
 ```sway
-pub enum Identity {
-    Address: Address,
-    ContractId: ContractId,
-}
+{{#include ../../../sway-lib-std/src/identity.sw:7:10}}
 ```
 
 Casting to an `Identity` must be done explicity:
 
 ```sway
-let my_number: b256 = 0x000000000000000000000000000000000000000000000000000000000000002A;
-let my_address: Address = ~Address::from(my_number);
-let my_identity: Identity = ~Identity::Address(my_address);
+{{#include ../../../examples/identity/src/main.sw:cast_to_identity}}
 ```
 
 A `match` statement can be used to return to an `Address` or `ContractId` as well as handle cases in which their execution differs.
 
 ```sway
-let my_contract_id: ContractId = match my_identity {
-    Identity::ContractId(identity) => identity,
-    _ => {
-        revert(0);
-    }
-};
+{{#include ../../../examples/identity/src/main.sw:identity_to_contract_id}}
 ```
 
 ```sway
-match my_identity {
-    Identity::Address(identity) => {
-        transfer_to_output(amount, token_id, identity);    
-    },
-    Identity::ContractId(identity) => {
-        force_transfer_to_contract(amount, token_id, identity);
-    },
-};
+{{#include ../../../examples/identity/src/main.sw:different_executions}}
+```
+
+A common use case for `Identity` is for access control. The use of `Identity` uniquely allows both `ContractId` and `Address` to have access control inclusively. 
+
+```sway
+{{#include ../../../examples/identity/src/main.sw:access_control_with_identity}}
 ```
