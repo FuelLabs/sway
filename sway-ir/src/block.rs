@@ -151,7 +151,7 @@ impl Block {
 
     pub fn is_terminated_by_ret(&self, context: &Context) -> bool {
         self.get_term_inst(context)
-            .map_or_else(|| false, |i| matches!(i, Instruction::Ret { .. }))
+            .map_or(false, |i| matches!(i, Instruction::Ret { .. }))
     }
 
     /// Replace a value within this block.
