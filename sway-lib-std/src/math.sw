@@ -84,42 +84,42 @@ impl Exponentiate for u8 {
     }
 }
 
-// pub trait Logarithm {
-//     fn log(self, base: Self) -> Self;
-// }
+pub trait Logarithm {
+    fn log(self, base: Self) -> Self;
+}
 
-// impl Logarithm for u64 {
-//     fn log(self, exponent: Self) -> Self {
-//         asm(r1: self, r2: base, r3) {
-//             mlog r3 r1 r2;
-//             r3: Self
-//         }
-//     }
-// }
+impl Logarithm for u64 {
+    fn log(self, exponent: Self) -> Self {
+        asm(r1: self, r2: base, r3) {
+            mlog r3 r1 r2;
+            r3: Self
+        }
+    }
+}
 
-// impl Logarithm for u32 {
-//     fn log(self, exponent: Self) -> Self {
-//         asm(r1: self, r2: base, r3) {
-//             mlog r3 r1 r2;
-//             r3: Self
-//         }
-//     }
-// }
+impl Logarithm for u32 {
+    fn log(self, exponent: Self) -> Self {
+        asm(r1: self, r2: base, r3) {
+            mlog r3 r1 r2;
+            r3: Self
+        }
+    }
+}
 
-// impl Logarithm for u16 {
-//     fn log(self, exponent: Self) -> Self {
-//         asm(r1: self, r2: base, r3) {
-//             mlog r3 r1 r2;
-//             r3: Self
-//         }
-//     }
-// }
+impl Logarithm for u16 {
+    fn log(self, exponent: Self) -> Self {
+        asm(r1: self, r2: base, r3) {
+            mlog r3 r1 r2;
+            r3: Self
+        }
+    }
+}
 
-// impl Logarithm for u8 {
-//     fn log(self, exponent: Self) -> Self {
-//         asm(r1: self, r2: base, r3) {
-//             mlog r3 r1 r2;
-//             r3: Self
-//         }
-//     }
-// }
+impl Logarithm for u8 {
+    fn log(self, exponent: Self) -> Self {
+        asm(r1: self, r2: base, r3) {
+            mlog r3 r1 r2;
+            r3: Self
+        }
+    }
+}

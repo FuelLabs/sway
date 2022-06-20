@@ -4,6 +4,7 @@ use core::num::*;
 use ::assert::assert;
 use ::flags::*;
 use ::result::Result;
+use std::math::*;
 
 /// The 128-bit unsigned integer type.
 /// Represented as two 64-bit components: `(upper, lower)`, where `value = (upper << 64) + lower`.
@@ -308,5 +309,51 @@ impl core::ops::Divide for U128 {
         }
 
         quotient
+    }
+}
+
+impl Root for u128 {
+    fn sqrt(self) -> Self {
+        let mut x0 = self / 2;
+
+        if x0 != ~Self::min() {
+            let mut x1 = (x0 + self) / 2;
+
+            while x1 < x0 {
+                x0 = x1;
+                x1 = (x0 + s / x0) / 2;
+            }
+
+            return x0;
+        } else {
+            return self;
+        }
+    }
+}
+
+impl Exponentiate for u128 {
+    fn pow(self, exponent: Self) -> Self {
+        if exponent == 0 {
+            return ~Self::from(0, 1);
+        }
+
+        while exponent & 1 == 0 {
+            self = self.clone() * self;
+            exponent >>= 1;
+        }
+
+        if exponent == 1 {
+            return self;
+        }
+
+        let mut acc = self.clone();
+        while exponent > 1 {
+            exponent >>= 1;
+            self = self.clone() * self;
+            if exponent & 1 == 1 {
+                acc = acc * self.clone();
+            }
+        }
+        acc
     }
 }
