@@ -54,7 +54,7 @@ An `Identity` is implemented as follows.
 {{#include ../../../sway-lib-std/src/identity.sw:7:10}}
 ```
 
-Casting to an `Identity` must be done explicity:
+Casting to an `Identity` must be done explicitly:
 
 ```sway
 {{#include ../../../examples/identity/src/main.sw:cast_to_identity}}
