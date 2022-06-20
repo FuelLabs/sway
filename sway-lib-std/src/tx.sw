@@ -207,7 +207,7 @@ pub fn tx_input_coin_owner(input_ptr: u32) -> Address {
 
 /// If the input's type is `InputMessage`, return the owner.
 /// Otherwise, undefined behavior.
-pub fn tx_input_messsage_owner(input_ptr: u32) -> Address {
+pub fn tx_input_message_owner(input_ptr: u32) -> Address {
     let owner_addr = ~Address::from(asm(buffer, ptr: input_ptr) {
         // Need to skip over eighteen words, so add 8*18=144
         addi ptr ptr i144;
