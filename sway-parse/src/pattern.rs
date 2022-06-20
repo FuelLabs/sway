@@ -75,8 +75,8 @@ impl Parse for Pattern {
             return Ok(Pattern::Constructor { path, args });
         }
         if let Some(fields) = Braces::try_parse(parser)? {
-            let _fields: &Punctuated<PatternStructField, CommaToken> = fields.get();
-            let rest_pattern = _fields
+            let inner_fields: &Punctuated<_, _> = fields.get();
+            let rest_pattern = inner_fields
                 .value_separator_pairs
                 .iter()
                 .find(|(p, _)| matches!(p, PatternStructField::Rest { token: _ }));
