@@ -5,7 +5,6 @@ use crate::{
     parse_tree::{AsmOp, AsmRegister, LazyOp, Literal, Purity, Visibility},
     semantic_analysis::*,
     type_engine::{insert_type, resolve_type, TypeId, TypeInfo},
-    types::deterministically_aborts::DeterministicallyAborts,
 };
 
 use super::{compile::compile_function, convert::*, lexical_map::LexicalMap, types::*};
@@ -370,9 +369,6 @@ impl FnCompiler {
                 self.current_block
                     .ins(context)
                     .ret(ret_value, ret_ty, span_md_idx);
-                // RET is a terminator so we must create a new block here.  If anything is added to
-                // it then it'll almost certainly be dead code.
-                self.current_block = self.function.create_block(context, None);
                 Ok(Constant::get_unit(context, span_md_idx))
             }
         }
@@ -750,12 +746,6 @@ impl FnCompiler {
         let cond_value = self.compile_expression(context, ast_condition)?;
         let entry_block = self.current_block;
 
-        let then_deterministically_aborts = ast_then.deterministically_aborts();
-        let else_deterministically_aborts = ast_else
-            .as_ref()
-            .map(|x| x.deterministically_aborts())
-            .unwrap_or(false);
-
         // To keep the blocks in a nice order we create them only as we populate them.  It's
         // possible when compiling other expressions for the 'current' block to change, and it
         // should always be the block to which instructions are added.  So for the true and false
@@ -773,6 +763,7 @@ impl FnCompiler {
         self.current_block = true_block_begin;
         let true_value = self.compile_expression(context, ast_then)?;
         let true_block_end = self.current_block;
+        let then_returns = true_block_end.is_terminated_by_ret(context);
 
         let false_block_begin = self.function.create_block(context, None);
         self.current_block = false_block_begin;
@@ -781,6 +772,7 @@ impl FnCompiler {
             Some(expr) => self.compile_expression(context, *expr)?,
         };
         let false_block_end = self.current_block;
+        let else_returns = false_block_end.is_terminated_by_ret(context);
 
         entry_block.ins(context).conditional_branch(
             cond_value,
@@ -790,33 +782,24 @@ impl FnCompiler {
             cond_span_md_idx,
         );
 
-        if then_deterministically_aborts && else_deterministically_aborts {
+        if then_returns && else_returns {
             return Ok(Constant::get_unit(context, None));
         }
 
         let merge_block = self.function.create_block(context, None);
-        true_block_end.ins(context).branch(
-            merge_block,
-            if !then_deterministically_aborts {
-                Some(true_value)
-            } else {
-                None
-            },
-            None,
-        );
-        false_block_end.ins(context).branch(
-            merge_block,
-            if !else_deterministically_aborts {
-                Some(false_value)
-            } else {
-                None
-            },
-            None,
-        );
+        if !then_returns {
+            true_block_end
+                .ins(context)
+                .branch(merge_block, Some(true_value), None);
+        }
+        if !else_returns {
+            false_block_end
+                .ins(context)
+                .branch(merge_block, Some(false_value), None);
+        }
 
         self.current_block = merge_block;
-
-        if !then_deterministically_aborts || !else_deterministically_aborts {
+        if !then_returns || !else_returns {
             Ok(merge_block.get_phi(context))
         } else {
             Ok(Constant::get_unit(context, None))
