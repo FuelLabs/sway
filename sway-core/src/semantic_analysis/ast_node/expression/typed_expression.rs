@@ -72,11 +72,13 @@ impl UnresolvedTypeCheck for TypedExpression {
                 function_body,
                 ..
             } => {
-                res.append(&mut arguments
-                    .iter()
-                    .map(|x| &x.1)
-                    .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
-                    .collect::<Vec<_>>());
+                res.append(
+                    &mut arguments
+                        .iter()
+                        .map(|x| &x.1)
+                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .collect::<Vec<_>>(),
+                );
                 res.append(
                     &mut function_body
                         .contents
@@ -86,45 +88,55 @@ impl UnresolvedTypeCheck for TypedExpression {
                 );
             }
             Tuple { fields } => {
-                res.append(&mut fields
-                    .iter()
-                    .flat_map(|x| x.check_for_unresolved_types())
-                    .collect());
-            },
+                res.append(
+                    &mut fields
+                        .iter()
+                        .flat_map(|x| x.check_for_unresolved_types())
+                        .collect(),
+                );
+            }
             AsmExpression { registers, .. } => {
-                res.append(&mut registers
-                    .iter()
-                    .filter_map(|x| x.initializer.as_ref())
-                    .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
-                    .collect::<Vec<_>>());
-            },
+                res.append(
+                    &mut registers
+                        .iter()
+                        .filter_map(|x| x.initializer.as_ref())
+                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .collect::<Vec<_>>(),
+                );
+            }
             StructExpression { fields, .. } => {
-                res.append(&mut fields
-                    .iter()
-                    .flat_map(|x| x.value.check_for_unresolved_types())
-                    .collect());
-            },
+                res.append(
+                    &mut fields
+                        .iter()
+                        .flat_map(|x| x.value.check_for_unresolved_types())
+                        .collect(),
+                );
+            }
             LazyOperator { lhs, rhs, .. } => {
                 res.append(&mut lhs.check_for_unresolved_types());
                 res.append(&mut rhs.check_for_unresolved_types());
-            },
+            }
             Array { contents } => {
-                res.append(&mut contents
-                    .iter()
-                    .flat_map(|x| x.check_for_unresolved_types())
-                    .collect());
-            },
+                res.append(
+                    &mut contents
+                        .iter()
+                        .flat_map(|x| x.check_for_unresolved_types())
+                        .collect(),
+                );
+            }
             ArrayIndex { prefix, index } => {
                 res.append(&mut prefix.check_for_unresolved_types());
                 res.append(&mut index.check_for_unresolved_types());
-            },
+            }
             CodeBlock(block) => {
-                res.append(&mut block
-                    .contents
-                    .iter()
-                    .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
-                    .collect());
-            },
+                res.append(
+                    &mut block
+                        .contents
+                        .iter()
+                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .collect(),
+                );
+            }
             IfExp {
                 condition,
                 then,
@@ -143,7 +155,7 @@ impl UnresolvedTypeCheck for TypedExpression {
             } => {
                 res.append(&mut prefix.check_for_unresolved_types());
                 res.append(&mut resolved_type_of_parent.check_for_unresolved_types());
-            },
+            }
             TupleElemAccess {
                 prefix,
                 resolved_type_of_parent,
@@ -151,7 +163,7 @@ impl UnresolvedTypeCheck for TypedExpression {
             } => {
                 res.append(&mut prefix.check_for_unresolved_types());
                 res.append(&mut resolved_type_of_parent.check_for_unresolved_types());
-            },
+            }
             EnumInstantiation {
                 enum_decl,
                 contents,
@@ -165,33 +177,37 @@ impl UnresolvedTypeCheck for TypedExpression {
                         .variants
                         .iter()
                         .flat_map(|x| x.type_id.check_for_unresolved_types())
-                        .collect()
+                        .collect(),
                 );
                 res.append(
                     &mut enum_decl
                         .type_parameters
                         .iter()
                         .flat_map(|x| x.type_id.check_for_unresolved_types())
-                        .collect()
+                        .collect(),
                 );
             }
             AbiCast { address, .. } => {
                 res.append(&mut address.check_for_unresolved_types());
-            },
+            }
             IntrinsicFunction(kind) => {
                 res.append(&mut kind.check_for_unresolved_types());
-            },
+            }
             EnumTag { exp } => {
                 res.append(&mut exp.check_for_unresolved_types());
-            },
+            }
             UnsafeDowncast { exp, variant } => {
                 res.append(&mut exp.check_for_unresolved_types());
                 res.append(&mut variant.type_id.check_for_unresolved_types());
-            },
+            }
             // storage access can never be generic
             // variable expressions don't ever have return types themselves, they're stored in
             // `TypedExpression::return_type`. Variable expressions are just names of variables.
-            VariableExpression { .. } | StorageAccess { .. } | Literal(_) | AbiName(_) | FunctionParameter => {},
+            VariableExpression { .. }
+            | StorageAccess { .. }
+            | Literal(_)
+            | AbiName(_)
+            | FunctionParameter => {}
         }
         res
     }
