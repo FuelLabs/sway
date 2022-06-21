@@ -36,10 +36,15 @@ pub enum Scrutinee {
 }
 
 #[derive(Debug, Clone)]
-pub struct StructScrutineeField {
-    pub field: Ident,
-    pub scrutinee: Option<Scrutinee>,
-    pub span: Span,
+pub enum StructScrutineeField {
+    Rest {
+        span: Span,
+    },
+    Field {
+        field: Ident,
+        scrutinee: Option<Scrutinee>,
+        span: Span,
+    },
 }
 
 impl Spanned for Scrutinee {
@@ -122,9 +127,12 @@ impl Scrutinee {
                 }];
                 let fields = fields
                     .iter()
-                    .flat_map(|StructScrutineeField { scrutinee, .. }| match scrutinee {
-                        Some(scrutinee) => scrutinee.gather_approximate_typeinfo_dependencies(),
-                        None => vec![],
+                    .flat_map(|f| match f {
+                        StructScrutineeField::Field {
+                            scrutinee: Some(scrutinee),
+                            ..
+                        } => scrutinee.gather_approximate_typeinfo_dependencies(),
+                        _ => vec![],
                     })
                     .collect::<Vec<TypeInfo>>();
                 vec![name, fields].concat()
