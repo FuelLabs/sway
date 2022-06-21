@@ -30,8 +30,11 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-fuels = "0.16"
+fuels = {{ version = "0.16", features = ["fuel-core-lib"] }}
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
+
+[features]
+fuel-core-lib = ["fuels/fuel-core-lib"]
 
 [[test]]
 harness = true
