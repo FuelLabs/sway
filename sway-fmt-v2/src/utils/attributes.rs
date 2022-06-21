@@ -1,23 +1,30 @@
-use crate::Formatter;
-use sway_parse::attribute::AttributeDecl;
+use crate::fmt::{Format, FormattedCode, Formatter};
+use sway_parse::{
+    attribute::{Annotated, AttributeDecl},
+    Parse,
+};
 use sway_types::Spanned;
 
 use super::bracket::{Parenthesis, SquareBracket};
 
-trait Format {
+impl<T: Parse> Format for Annotated<T> {
+    fn format(&self, formatter: &mut Formatter) -> FormattedCode {
+        let attributes = &self.attribute_list;
+        let mut formatted_code = String::new();
+
+        for attr in attributes {
+            AttributeDecl::format(attr, &mut formatted_code, formatter);
+        }
+
+        formatted_code
+    }
+}
+
+trait FormatDecl {
     fn format(&self, line: &mut String, formatter: &mut Formatter);
 }
 
-pub fn format_attributes(attributes: Vec<AttributeDecl>, formatter: &mut Formatter) -> String {
-    let mut formatted_code = String::new();
-    for attr in &attributes {
-        AttributeDecl::format(attr, &mut formatted_code, formatter);
-    }
-
-    formatted_code
-}
-
-impl Format for AttributeDecl {
+impl FormatDecl for AttributeDecl {
     fn format(&self, line: &mut String, formatter: &mut Formatter) {
         // At some point there will be enough attributes to warrant the need
         // of formatting the list according to `config::lists::ListTactic`.

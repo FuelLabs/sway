@@ -1,10 +1,9 @@
 use crate::utils::{
-    attributes::format_attributes, indent_style::Shape, newline_style::apply_newline_style,
-    program_type::insert_program_type,
+    indent_style::Shape, newline_style::apply_newline_style, program_type::insert_program_type,
 };
 use std::{path::Path, sync::Arc};
 use sway_core::BuildConfig;
-use sway_parse::ItemKind;
+use sway_parse::{attribute::Annotated, ItemKind};
 
 pub use crate::{
     config::manifest::Config,
@@ -57,7 +56,7 @@ impl Formatter {
             .map(|item| -> Result<String, FormatterError> {
                 use ItemKind::*;
                 // format attributes first, then add corresponding item
-                let mut buf = format_attributes(item.attribute_list, self);
+                let mut buf = Annotated::format(&item, self);
                 buf.push_str(&match item.value {
                     Use(item_use) => item_use.format(self),
                     Struct(item_struct) => item_struct.format(self),
