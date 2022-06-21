@@ -54,7 +54,7 @@ impl Formatter {
         // Insert parsed & formatted items into the formatted code.
         raw_formatted_code += &items
             .into_iter()
-            .map(|item| -> Result<String, FormatterError> {
+            .map(|item| -> Result<FormattedCode, FormatterError> {
                 use ItemKind::*;
                 // format attributes first, then add corresponding item
                 let mut buf = format_attributes(item.attribute_list, self);
@@ -157,7 +157,9 @@ enum Color {
 abi StorageMapExample {
     #[storage(write)]fn insert_into_map1(key: u64, value: u64);
 }"#;
-        let correct_sway_code = r#"abi StorageMapExample {
+        let correct_sway_code = r#"contract;
+
+abi StorageMapExample {
     #[storage(write)]fn insert_into_map1(key: u64, value: u64);
 }"#;
         let mut formatter = Formatter::default();
