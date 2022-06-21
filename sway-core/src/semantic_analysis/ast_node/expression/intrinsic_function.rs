@@ -139,7 +139,7 @@ impl TypedIntrinsicFunctionKind {
             } => {
                 let type_id = check!(
                     namespace.resolve_type_with_self(
-                        type_name,
+                        insert_type(type_name),
                         self_type,
                         &type_span,
                         EnforceTypeArguments::Yes
@@ -159,7 +159,7 @@ impl TypedIntrinsicFunctionKind {
             } => {
                 let type_id = check!(
                     namespace.resolve_type_with_self(
-                        type_name,
+                        insert_type(type_name),
                         self_type,
                         &type_span,
                         EnforceTypeArguments::Yes

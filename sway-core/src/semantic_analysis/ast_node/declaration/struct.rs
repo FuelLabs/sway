@@ -210,7 +210,7 @@ impl TypedStructField {
         let mut errors = vec![];
         let r#type = check!(
             namespace.resolve_type_with_self(
-                field.type_info,
+                insert_type(field.type_info),
                 self_type,
                 &field.type_span,
                 EnforceTypeArguments::Yes
