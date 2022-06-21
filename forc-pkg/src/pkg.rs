@@ -16,7 +16,7 @@ use petgraph::{
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map, BTreeSet, HashMap, HashSet},
-    fmt,
+    fmt, fs,
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
     str::FromStr,
@@ -233,6 +233,61 @@ impl BuildPlan {
             path_map,
             compilation_order,
         })
+    }
+
+    // Create a new build plan and syncronize manifest and lock file
+    pub fn load_from_manifest(
+        manifest: &ManifestFile,
+        locked: bool,
+        offline: bool,
+        sway_git_tag: &str,
+    ) -> Result<Self> {
+        let lock_path = forc_util::lock_path(manifest.dir());
+        let plan_result = BuildPlan::from_lock_file(&lock_path, sway_git_tag);
+
+        // Retrieve the old lock file state so we can produce a diff.
+        let old_lock = plan_result
+            .as_ref()
+            .ok()
+            .map(|plan| Lock::from_graph(plan.graph()))
+            .unwrap_or_default();
+
+        // Check if there are any errors coming from the BuildPlan generation from the lock file
+        // If there are errors we will need to create the BuildPlan from scratch, i.e fetch & pin everything
+        let mut new_lock_cause = None;
+        let mut plan = plan_result.or_else(|e| -> Result<BuildPlan> {
+            if locked {
+                bail!(
+                    "The lock file {} needs to be updated but --locked was passed to prevent this.",
+                    lock_path.to_string_lossy()
+                );
+            }
+            new_lock_cause = if e.to_string().contains("No such file or directory") {
+                Some(anyhow!("lock file did not exist"))
+            } else {
+                Some(e)
+            };
+            let plan = BuildPlan::new(&manifest, sway_git_tag, offline)?;
+            Ok(plan)
+        })?;
+
+        // If there are no issues with the BuildPlan generated from the lock file
+        // Check and apply the diff.
+        if new_lock_cause.is_none() {
+            let diff = plan.validate(&manifest, sway_git_tag)?;
+            if !diff.added.is_empty() || !diff.removed.is_empty() {
+                new_lock_cause = Some(anyhow!("lock file did not match manifest `diff`"));
+                plan = plan.apply_pkg_diff(diff, sway_git_tag, offline)?;
+            }
+        }
+
+        if let Some(cause) = new_lock_cause {
+            info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
+            create_new_lock(&plan, &old_lock, &manifest, &lock_path)?;
+            info!("   Created new lock file at {}", lock_path.display());
+        }
+
+        Ok(plan)
     }
 
     /// Create a new build plan from an existing one. Needs the difference with the existing plan with the lock.
@@ -1459,15 +1514,13 @@ pub fn build(
     Ok((compiled, source_map))
 }
 
+/// Compile the entire forc package and return a CompileAstResult.
 pub fn check(
-    manifest_dir: &Path,
+    plan: &BuildPlan,
     silent_mode: bool,
     sway_git_tag: &str,
 ) -> anyhow::Result<CompileAstResult> {
-    let manifest = ManifestFile::from_dir(manifest_dir, sway_git_tag)?;
-    let lock_path = forc_util::lock_path(manifest.dir());
-    let build_plan = BuildPlan::from_lock_file(&lock_path, sway_git_tag)?;
-    let config = &BuildConfig {
+    let conf = &BuildConfig {
         print_ir: false,
         print_finalized_asm: false,
         print_intermediate_asm: false,
@@ -1476,35 +1529,26 @@ pub fn check(
 
     let mut namespace_map = Default::default();
     let mut source_map = SourceMap::new();
-    for (i, &node) in build_plan.compilation_order.iter().enumerate() {
-        let dep_namespace = dependency_namespace(
-            &namespace_map,
-            &build_plan.graph,
-            &build_plan.compilation_order,
-            node,
-        );
-        let pkg = &build_plan.graph[node];
-        let path = &build_plan.path_map[&pkg.id()];
+    for (i, &node) in plan.compilation_order.iter().enumerate() {
+        let dep_namespace =
+            dependency_namespace(&namespace_map, &plan.graph, &plan.compilation_order, node);
+        let pkg = &plan.graph[node];
+        let path = &plan.path_map[&pkg.id()];
         let manifest = ManifestFile::from_dir(path, sway_git_tag)?;
-        let (_, maybe_namespace) = compile(
-            pkg,
-            &manifest,
-            config,
-            dep_namespace.clone(),
-            &mut source_map,
-        )?;
+        let (_, maybe_namespace) =
+            compile(pkg, &manifest, conf, dep_namespace.clone(), &mut source_map)?;
         if let Some(namespace) = maybe_namespace {
             namespace_map.insert(node, namespace.into());
         }
         source_map.insert_dependency(path.clone());
 
         // We only need to return the final CompileAstResult
-        let ast_res = compile_ast(&manifest, config, dep_namespace)?;
-        if i == build_plan.compilation_order.len() - 1 {
+        let ast_res = compile_ast(&manifest, conf, dep_namespace)?;
+        if i == plan.compilation_order.len() - 1 {
             return Ok(ast_res);
         }
     }
-    Err(anyhow!("unable to check sway program from build plan"))
+    bail!("unable to check sway program from build plan")
 }
 
 /// Attempt to find a `Forc.toml` with the given project name within the given directory.
@@ -1627,4 +1671,19 @@ pub fn wrong_program_type(
 pub fn fuel_core_not_running(node_url: &str) -> anyhow::Error {
     let message = format!("could not get a response from node at the URL {}. Start a node with `fuel-core`. See https://github.com/FuelLabs/fuel-core#running for more information", node_url);
     Error::msg(message)
+}
+
+fn create_new_lock(
+    plan: &BuildPlan,
+    old_lock: &Lock,
+    manifest: &ManifestFile,
+    lock_path: &Path,
+) -> Result<()> {
+    let lock = Lock::from_graph(plan.graph());
+    let diff = lock.diff(old_lock);
+    super::lock::print_diff(&manifest.project.name, &diff);
+    let string = toml::ser::to_string_pretty(&lock)
+        .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
+    fs::write(&lock_path, &string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
+    Ok(())
 }

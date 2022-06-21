@@ -158,7 +158,11 @@ impl TextDocument {
     fn parse_typed_tokens_from_text(&self) -> Option<Vec<TypedAstNode>> {
         let manifest_dir = PathBuf::from(self.get_uri());
         let silent_mode = true;
-        let res = pkg::check(&manifest_dir, silent_mode, forc::utils::SWAY_GIT_TAG).unwrap();
+        let manifest =
+            pkg::ManifestFile::from_dir(&manifest_dir, forc::utils::SWAY_GIT_TAG).unwrap();
+        let lock_path = forc_util::lock_path(manifest.dir());
+        let plan = pkg::BuildPlan::from_lock_file(&lock_path, forc::utils::SWAY_GIT_TAG).unwrap();
+        let res = pkg::check(&plan, silent_mode, forc::utils::SWAY_GIT_TAG).unwrap();
 
         match res {
             CompileAstResult::Failure { .. } => None,
