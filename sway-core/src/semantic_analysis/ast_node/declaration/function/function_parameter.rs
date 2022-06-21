@@ -45,7 +45,7 @@ impl TypedFunctionParameter {
         let mut errors = vec![];
         let type_id = check!(
             namespace.resolve_type_with_self(
-                look_up_type_id(parameter.type_id),
+                parameter.type_id,
                 self_type,
                 &parameter.type_span,
                 EnforceTypeArguments::Yes
