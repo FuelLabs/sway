@@ -1,9 +1,6 @@
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{
-    error::*, namespace::*, type_engine::*, CompileError, CompileResult, TypeArgument, TypeInfo,
-    TypeParameter,
-};
+use crate::{error::*, namespace::*, type_engine::*, CompileError, CompileResult, TypeInfo};
 
 use super::CreateTypeId;
 

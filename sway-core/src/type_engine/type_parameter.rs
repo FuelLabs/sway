@@ -1,4 +1,4 @@
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
+use crate::{error::*, semantic_analysis::*, type_engine::*};
 
 use sway_types::{ident::Ident, span::Span, Spanned};
 
@@ -97,9 +97,4 @@ impl TypeParameter {
         };
         ok(type_parameter, warnings, errors)
     }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub(crate) struct TraitConstraint {
-    pub(crate) call_path: CallPath,
 }

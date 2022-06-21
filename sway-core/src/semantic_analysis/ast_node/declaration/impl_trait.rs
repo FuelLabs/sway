@@ -6,10 +6,11 @@ use crate::{
     error::{err, ok},
     semantic_analysis::{Mode, TCOpts, TypeCheckArguments},
     type_engine::{
-        insert_type, look_up_type_id, resolve_type, unify_with_self, CopyTypes, TypeId, TypeMapping,
+        insert_type, look_up_type_id, resolve_type, unify_with_self, CopyTypes, TypeId,
+        TypeMapping, TypeParameter,
     },
     CallPath, CompileError, CompileResult, FunctionDeclaration, ImplSelf, ImplTrait, Namespace,
-    Purity, TypeInfo, TypeParameter, TypedDeclaration, TypedFunctionDeclaration,
+    Purity, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use super::TypedTraitFn;
