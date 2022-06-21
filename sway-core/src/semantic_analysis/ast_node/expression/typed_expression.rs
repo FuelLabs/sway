@@ -1683,8 +1683,7 @@ mod tests {
 
     fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<TypedExpression> {
         let mut namespace = Namespace::init_root(namespace::Module::default());
-        let ctx = TypeCheckContext::from_module_namespace(&mut namespace)
-            .with_type_annotation(type_annotation);
+        let ctx = TypeCheckContext::from_root(&mut namespace).with_type_annotation(type_annotation);
         TypedExpression::type_check(ctx, expr)
     }
 
