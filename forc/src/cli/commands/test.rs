@@ -70,7 +70,7 @@ pub(crate) fn exec(command: Command) -> Result<()> {
 
     // Pass through cargo test args.
     if !command.cargo_test_args.is_empty() {
-        cmd.arg("--");
+        // cmd.arg("--");   
         cmd.args(&command.cargo_test_args);
     }
 
