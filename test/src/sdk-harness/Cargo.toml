@@ -11,7 +11,7 @@ fuel-core = { version = "0.8", default-features = false }
 fuel-gql-client = { version = "0.9", default-features = false }
 fuel-types = "0.5"
 fuel-vm = "0.12"
-fuels = "0.15"
+fuels = "0.16"
 fuels-abigen-macro = "0.16"
 hex = "0.4.3"
 sha2 = "0.10"

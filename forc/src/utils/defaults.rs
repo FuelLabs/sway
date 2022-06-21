@@ -30,7 +30,7 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-fuels = "0.15"
+fuels = "0.16"
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
 
 [[test]]
