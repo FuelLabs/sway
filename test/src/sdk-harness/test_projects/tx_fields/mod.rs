@@ -1,5 +1,5 @@
 use fuel_types::bytes::WORD_SIZE;
-use fuel_vm::consts::VM_TX_MEMORY;
+use fuel_vm::fuel_tx::ConsensusParameters;
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
 use fuels::tx::{Bytes32, ContractId};
@@ -187,7 +187,7 @@ async fn can_get_script_start_offset() {
     + WORD_SIZE // Outputs size
     + WORD_SIZE // Witnesses size
     + Bytes32::LEN; // Receipts root
-    let script_start_offset = VM_TX_MEMORY + TRANSACTION_SCRIPT_FIXED_SIZE;
+    let script_start_offset =  ConsensusParameters::DEFAULT.tx_offset() + TRANSACTION_SCRIPT_FIXED_SIZE;
 
     let result = contract_instance
         .get_tx_script_start_offset()

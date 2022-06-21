@@ -2,7 +2,7 @@ use assert_matches::assert_matches;
 use fuel_core::service::{Config, FuelService};
 use fuel_gql_client::client::FuelClient;
 use fuels::contract::script::Script;
-use fuels::tx::{default_parameters::MAX_GAS_PER_TX, Receipt, Transaction};
+use fuels::tx::{ConsensusParameters, Receipt, Transaction};
 
 async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>, fuels::prelude::Error> {
     let bin = std::fs::read("test_projects/script_data/out/debug/script_data.bin");
@@ -11,7 +11,7 @@ async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>, fuels::prelud
 
     let tx = Transaction::Script {
         gas_price: 0,
-        gas_limit: MAX_GAS_PER_TX,
+        gas_limit: ConsensusParameters::DEFAULT.max_gas_per_tx,
         maturity: 0,
         byte_price: 0,
         receipts_root: Default::default(),

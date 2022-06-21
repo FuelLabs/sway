@@ -1,6 +1,6 @@
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
-use fuels::tx::{default_parameters::MAX_GAS_PER_TX, ContractId};
+use fuels::tx::ContractId;
 use fuels_abigen_macro::abigen;
 
 abigen!(
