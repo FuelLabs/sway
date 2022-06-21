@@ -140,20 +140,22 @@ impl Pattern {
                 ..
             } => {
                 let mut new_fields = vec![];
-                for StructScrutineeField {
-                    field, scrutinee, ..
-                } in fields.into_iter()
-                {
-                    let f = match scrutinee {
-                        Some(scrutinee) => check!(
-                            Pattern::from_scrutinee(scrutinee),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        ),
-                        None => Pattern::Wildcard,
-                    };
-                    new_fields.push((field.as_str().to_string(), f));
+                for field in fields.into_iter() {
+                    if let StructScrutineeField::Field {
+                        field, scrutinee, ..
+                    } = field
+                    {
+                        let f = match scrutinee {
+                            Some(scrutinee) => check!(
+                                Pattern::from_scrutinee(scrutinee),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            ),
+                            None => Pattern::Wildcard,
+                        };
+                        new_fields.push((field.as_str().to_string(), f));
+                    }
                 }
                 Pattern::Struct(StructPattern {
                     struct_name: struct_name.to_string(),

@@ -148,7 +148,7 @@ fn const_eval_typed_expr(
         TypedExpressionVariant::StructExpression { fields, .. } => {
             let (field_typs, field_vals): (Vec<_>, Vec<_>) = fields
                 .iter()
-                .filter_map(|TypedStructExpressionField { name: _, value }| {
+                .filter_map(|TypedStructExpressionField { name: _, value, .. }| {
                     const_eval_typed_expr(context, module, known_consts, value)
                         .map(|cv| (value.return_type, cv))
                 })

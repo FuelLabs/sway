@@ -1,9 +1,7 @@
 use crate::{
-    type_engine::{look_up_type_id, TypeId},
+    type_engine::{create_type_mapping, look_up_type_id, CopyTypes, TypeId},
     CallPath, TypeInfo, TypedFunctionDeclaration,
 };
-
-use std::collections::HashMap;
 
 type TraitName = CallPath;
 
@@ -46,8 +44,7 @@ impl TraitMap {
     ) {
         let mut methods_map = im::HashMap::new();
         for method in methods.into_iter() {
-            let method_name = method.name.as_str().to_string();
-            methods_map.insert(method_name, method);
+            methods_map.insert(method.name.as_str().to_string(), method);
         }
         self.trait_map
             .push_back(((trait_name, incoming_type_id), methods_map));
@@ -69,7 +66,7 @@ impl TraitMap {
     ) -> Vec<((CallPath, TypeId), Vec<TypedFunctionDeclaration>)> {
         let mut ret = vec![];
         for ((call_path, map_type_id), methods) in self.trait_map.iter() {
-            if look_up_type_id(*map_type_id) == look_up_type_id(incoming_type_id) {
+            if look_up_type_id(incoming_type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
                 ret.push((
                     (call_path.clone(), *map_type_id),
                     methods.values().cloned().collect(),
@@ -88,29 +85,14 @@ impl TraitMap {
         if look_up_type_id(incoming_type_id) == TypeInfo::ErrorRecovery {
             return methods;
         }
-        for ((_, map_type_id), l_methods) in self.trait_map.iter() {
-            if look_up_type_id(*map_type_id) == look_up_type_id(incoming_type_id) {
-                methods.append(&mut l_methods.values().cloned().collect());
-            }
-        }
-        methods
-    }
-
-    pub(crate) fn get_methods_for_type_by_trait(
-        &self,
-        incoming_type_id: TypeId,
-    ) -> HashMap<TraitName, Vec<TypedFunctionDeclaration>> {
-        let mut methods: HashMap<TraitName, Vec<TypedFunctionDeclaration>> = HashMap::new();
-        // small performance gain in bad case
-        if look_up_type_id(incoming_type_id) == TypeInfo::ErrorRecovery {
-            return methods;
-        }
-        for ((trait_name, map_type_id), trait_methods) in self.trait_map.iter() {
-            if look_up_type_id(*map_type_id) == look_up_type_id(incoming_type_id) {
-                methods.insert(
-                    (*trait_name).clone(),
-                    trait_methods.values().cloned().collect(),
-                );
+        for ((_, map_type_id), trait_methods) in self.trait_map.iter() {
+            if look_up_type_id(incoming_type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
+                let type_mapping = create_type_mapping(*map_type_id, incoming_type_id);
+                let mut trait_methods = trait_methods.values().cloned().collect::<Vec<_>>();
+                trait_methods
+                    .iter_mut()
+                    .for_each(|x| x.copy_types(&type_mapping));
+                methods.append(&mut trait_methods);
             }
         }
         methods

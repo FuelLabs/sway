@@ -96,6 +96,60 @@ mod tests {
     }
 
     #[test]
+    fn test_const() {
+        let sway_code_to_format = r#"contract;
+pub const TEST:u16=10;"#;
+        let correct_sway_code = r#"contract;
+
+pub const TEST: u16 = 10;"#;
+        let mut formatter = get_formatter(Config::default(), Shape::default());
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert!(correct_sway_code == formatted_sway_code)
+    }
+
+    #[test]
+    fn test_struct_single_line_alignment() {
+        let sway_code_to_format = r#"contract;
+pub struct Foo {
+    bar: u64,
+    baz: bool,
+}
+"#;
+        let correct_sway_code = r#"contract;
+
+pub struct Foo { bar: u64, baz: bool }"#;
+        let mut config = Config::default();
+        config.structures.struct_lit_single_line = true;
+        config.structures.struct_field_align_threshold = 40;
+        config.whitespace.max_width = 300;
+        let mut formatter = get_formatter(config, Shape::default());
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert!(correct_sway_code == formatted_sway_code)
+    }
+    #[test]
+    fn test_struct_multiline_line_alignment() {
+        let sway_code_to_format = r#"contract;
+pub struct Foo {
+   barbazfoo: u64,
+   baz  : bool,
+}
+"#;
+        let correct_sway_code = r#"contract;
+
+pub struct Foo {
+ barbazfoo: u64,
+ baz      : bool,
+}"#;
+        let mut config = Config::default();
+        config.structures.struct_field_align_threshold = 40;
+        let mut formatter = get_formatter(config, Shape::default());
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert!(correct_sway_code == formatted_sway_code)
+    }
+    #[test]
     fn test_struct_single_line() {
         let sway_code_to_format = r#"contract;
 pub struct Foo {
@@ -103,7 +157,6 @@ pub struct Foo {
     baz: bool,
 }
 "#;
-
         let correct_sway_code = r#"contract;
 
 pub struct Foo { bar: u64, baz: bool }"#;
@@ -124,7 +177,6 @@ pub struct Foo {
     baz: bool,
 }
 "#;
-
         let correct_sway_code = r#"contract;
 
 pub struct Foo {
@@ -147,7 +199,6 @@ enum Color {
     Silver: (),
                     Grey: (), }
         "#;
-
         let correct_sway_code = r#"contract;
 
 enum Color {
@@ -172,7 +223,6 @@ enum Color {
     Silver: (),
                     Grey: (), }
         "#;
-
         let correct_sway_code = r#"contract;
 
 enum Color {
