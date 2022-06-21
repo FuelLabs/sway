@@ -3,11 +3,11 @@ use sway_types::{Ident, Span, Spanned};
 use crate::semantic_analysis::declaration::EnforceTypeArguments;
 use crate::semantic_analysis::namespace::Namespace;
 use crate::semantic_analysis::TypedEnumVariant;
-use crate::type_engine::CreateTypeId;
+use crate::type_engine::{CreateTypeId, TypeArgument};
 use crate::{
     error::{err, ok},
     type_engine::{insert_type, TypeId},
-    CompileResult, Literal, Scrutinee, TypeArgument, TypeInfo,
+    CompileResult, Literal, Scrutinee, TypeInfo,
 };
 use crate::{CompileError, StructScrutineeField};
 

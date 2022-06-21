@@ -6,10 +6,11 @@ use crate::{
     error::{err, ok},
     semantic_analysis::{Mode, TCOpts, TypeCheckArguments},
     type_engine::{
-        insert_type, look_up_type_id, resolve_type, unify_with_self, CopyTypes, TypeId, TypeMapping,
+        insert_type, look_up_type_id, resolve_type, unify_with_self, CopyTypes, TypeId,
+        TypeMapping, TypeParameter,
     },
     CallPath, CompileError, CompileResult, FunctionDeclaration, ImplSelf, ImplTrait, Namespace,
-    Purity, TypeInfo, TypeParameter, TypedDeclaration, TypedFunctionDeclaration,
+    Purity, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use super::TypedTraitFn;
@@ -67,18 +68,6 @@ impl TypedImplTrait {
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
             namespace.resolve_type_without_self(insert_type(type_implementing_for)),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
-        // check for unconstrained type parameters
-        check!(
-            check_for_unconstrained_type_parameters(
-                &new_type_parameters,
-                implementing_for_type_id,
-                &type_implementing_for_span
-            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -228,18 +217,6 @@ impl TypedImplTrait {
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
             namespace.resolve_type_without_self(insert_type(type_implementing_for)),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
-        // check for unconstrained type parameters
-        check!(
-            check_for_unconstrained_type_parameters(
-                &new_type_parameters,
-                implementing_for_type_id,
-                &type_implementing_for_span
-            ),
             return err(warnings, errors),
             warnings,
             errors

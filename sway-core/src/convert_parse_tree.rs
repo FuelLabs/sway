@@ -1,3 +1,5 @@
+use crate::type_engine::{TraitConstraint, TypeArgument, TypeParameter};
+
 use {
     crate::{
         constants::{
@@ -11,9 +13,8 @@ use {
         ImportType, IncludeStatement, IntrinsicFunctionKind, LazyOp, Literal, MatchBranch,
         MethodName, ParseTree, Purity, Reassignment, ReassignmentTarget, ReturnStatement,
         Scrutinee, StorageDeclaration, StorageField, StructDeclaration, StructExpressionField,
-        StructField, StructScrutineeField, Supertrait, TraitConstraint, TraitDeclaration, TraitFn,
-        TreeType, TypeArgument, TypeInfo, TypeParameter, UseStatement, VariableDeclaration,
-        Visibility, WhileLoop,
+        StructField, StructScrutineeField, Supertrait, TraitDeclaration, TraitFn, TreeType,
+        TypeInfo, UseStatement, VariableDeclaration, Visibility, WhileLoop,
     },
     std::{
         collections::HashMap,
