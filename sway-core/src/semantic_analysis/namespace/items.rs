@@ -138,33 +138,6 @@ impl Items {
             .get_methods_for_type(implementing_for_type_id)
     }
 
-    // Given a TypeInfo old_type with a set of methods available to it, make those same methods
-    // available to TypeInfo new_type. This is useful in situations where old_type is being
-    // monomorphized to new_type and and we want `get_methods_for_type()` to return the same set of
-    // methods for new_type as it does for old_type.
-    pub(crate) fn copy_methods_to_type(
-        &mut self,
-        old_type: TypeId,
-        new_type: TypeId,
-        type_mapping: &TypeMapping,
-    ) {
-        // This map grabs all (trait name, vec of methods) from self.implemented_traits
-        // corresponding to `old_type`.
-        let methods = self
-            .implemented_traits
-            .get_methods_for_type_by_trait(old_type);
-
-        // Insert into `self.implemented_traits` the contents of the map above but with `new_type`
-        // as the `TypeInfo` key.
-        for (trait_name, mut trait_methods) in methods.into_iter() {
-            trait_methods
-                .iter_mut()
-                .for_each(|method| method.copy_types(type_mapping));
-            self.implemented_traits
-                .insert(trait_name, new_type, trait_methods);
-        }
-    }
-
     pub(crate) fn get_canonical_path(&self, symbol: &Ident) -> &[Ident] {
         self.use_synonyms.get(symbol).map(|v| &v[..]).unwrap_or(&[])
     }

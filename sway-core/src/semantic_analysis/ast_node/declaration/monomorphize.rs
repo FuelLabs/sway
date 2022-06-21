@@ -64,7 +64,7 @@ where
 
     fn monomorphize(
         self,
-        type_arguments: Vec<TypeArgument>,
+        mut type_arguments: Vec<TypeArgument>,
         enforce_type_arguments: EnforceTypeArguments,
         self_type: Option<TypeId>,
         call_site_span: Option<&Span>,
@@ -107,7 +107,6 @@ where
                 err(warnings, errors)
             }
             (false, false) => {
-                let mut type_arguments = type_arguments;
                 for type_argument in type_arguments.iter_mut() {
                     let type_id = match self_type {
                         Some(self_type) => namespace.resolve_type_with_self(
@@ -191,13 +190,15 @@ pub(crate) trait MonomorphizeHelper {
     fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output;
 }
 
-pub(crate) fn monomorphize_inner<T>(decl: T, type_mapping: &TypeMapping, namespace: &mut Items) -> T
+pub(crate) fn monomorphize_inner<T>(
+    decl: T,
+    type_mapping: &TypeMapping,
+    _namespace: &mut Items,
+) -> T
 where
     T: CopyTypes + CreateTypeId,
 {
-    let old_type_id = decl.create_type_id();
     let mut new_decl = decl;
     new_decl.copy_types(type_mapping);
-    namespace.copy_methods_to_type(old_type_id, new_decl.create_type_id(), type_mapping);
     new_decl
 }
