@@ -143,25 +143,4 @@ enum Color {
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert!(correct_sway_code == formatted_sway_code)
     }
-    #[test]
-    fn test_format_attributes() {
-        // currently this is passing incorrectly since `storage` attributes
-        // are unreachable and are the only attributes we currently have.
-        let sway_code_to_format = r#"contract;
-
-use std::storage::StorageMap;
-
-abi StorageMapExample {
-    #[storage(write)]fn insert_into_map1(key: u64, value: u64);
-}"#;
-        let correct_sway_code = r#"use std::storage::StorageMap;
-abi StorageMapExample {
-    #[storage(write)]fn insert_into_map1(key: u64, value: u64);
-}"#;
-
-        let mut formatter = Formatter::default();
-        let formatted_sway_code =
-            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert!(correct_sway_code == formatted_sway_code)
-    }
 }
