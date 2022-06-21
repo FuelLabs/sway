@@ -4,7 +4,7 @@ use core::num::*;
 use ::assert::assert;
 use ::flags::*;
 use ::result::Result;
-use std::math::*;
+use ::math::*;
 
 /// The 128-bit unsigned integer type.
 /// Represented as two 64-bit components: `(upper, lower)`, where `value = (upper << 64) + lower`.
@@ -312,46 +312,54 @@ impl core::ops::Divide for U128 {
     }
 }
 
-impl Root for u128 {
+impl Root for U128 {
     fn sqrt(self) -> Self {
-        let mut x0 = self / 2;
+        let two = ~U128::from(0, 2);
+
+        let mut x0 = self / two;
+
+        let mut res = self;
 
         if x0 != ~Self::min() {
-            let mut x1 = (x0 + self) / 2;
+            let mut x1 = (x0 + self) / two;
 
             while x1 < x0 {
                 x0 = x1;
-                x1 = (x0 + s / x0) / 2;
+                x1 = (x0 + self / x0) / two;
             }
 
-            return x0;
-        } else {
-            return self;
+            res = x0;
         }
+        return res;
     }
 }
 
-impl Exponentiate for u128 {
-    fn pow(self, exponent: Self) -> Self {
-        if exponent == 0 {
+impl Exponentiate for U128 {
+    pub fn pow(self, exponent: Self) -> Self {
+        let mut s = self;
+        let mut exp: U128 = exponent;
+        let one: U128 = ~U128::from(0, 1);
+        let zero: U128 = ~U128::from(0, 0);
+
+        if exp == zero {
             return ~Self::from(0, 1);
         }
 
-        while exponent & 1 == 0 {
-            self = self.clone() * self;
-            exponent >>= 1;
+        while exp & one == zero {
+            s = s * s;
+            exp >>= 1;
         }
 
-        if exponent == 1 {
+        if exp == one {
             return self;
         }
 
-        let mut acc = self.clone();
-        while exponent > 1 {
-            exponent >>= 1;
-            self = self.clone() * self;
-            if exponent & 1 == 1 {
-                acc = acc * self.clone();
+        let mut acc = s;
+        while exp > one {
+            exp >>= 1;
+            s = s * s;
+            if exp & one == one {
+                acc = acc * self;
             }
         }
         acc

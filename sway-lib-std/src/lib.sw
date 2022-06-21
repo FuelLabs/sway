@@ -27,7 +27,6 @@ dep vm/mod;
 dep flags;
 dep u128;
 dep vec;
-dep b256_ops;
 // dep fixed_point;
 
 use core::*;
