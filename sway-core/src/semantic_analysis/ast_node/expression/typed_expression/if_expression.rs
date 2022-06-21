@@ -37,11 +37,16 @@ pub(crate) fn instantiate_if_expression(
     let mut else_deterministically_aborts = false;
     let r#else = r#else.map(|r#else| {
         else_deterministically_aborts = r#else.deterministically_aborts();
+        let ty_to_check = if then_deterministically_aborts {
+            type_annotation
+        } else {
+            then.return_type
+        };
         if !else_deterministically_aborts {
             // if this does not deterministically_abort, check the block return type
             let (mut new_warnings, new_errors) = unify_with_self(
                 r#else.return_type,
-                then.return_type,
+                ty_to_check,
                 self_type,
                 &r#else.span,
                 "`else` branch must return expected type.",
@@ -78,7 +83,11 @@ pub(crate) fn instantiate_if_expression(
         }
     }
 
-    let return_type = then.return_type;
+    let return_type = if !then_deterministically_aborts {
+        then.return_type
+    } else {
+        r#else_ret_ty
+    };
     let exp = TypedExpression {
         expression: TypedExpressionVariant::IfExp {
             condition: Box::new(condition),

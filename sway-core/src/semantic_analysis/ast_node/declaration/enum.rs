@@ -225,7 +225,7 @@ impl TypedEnumVariant {
         let mut errors = vec![];
         let enum_variant_type = check!(
             namespace.resolve_type_with_self(
-                variant.type_info.clone(),
+                insert_type(variant.type_info),
                 self_type,
                 &span,
                 EnforceTypeArguments::Yes

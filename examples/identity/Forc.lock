@@ -1,0 +1,14 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-C38E96E529F27BA9'
+dependencies = []
+
+[[package]]
+name = 'identity'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-C38E96E529F27BA9'
+dependencies = ['core']

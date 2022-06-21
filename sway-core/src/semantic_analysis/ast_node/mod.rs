@@ -234,7 +234,7 @@ impl TypedAstNode {
             |namespace: &mut Namespace, type_ascription: TypeInfo, value| {
                 let type_id = check!(
                     namespace.resolve_type_with_self(
-                        type_ascription,
+                        insert_type(type_ascription),
                         self_type,
                         &node.span,
                         EnforceTypeArguments::No
@@ -289,7 +289,7 @@ impl TypedAstNode {
                             };
                             let type_ascription = check!(
                                 namespace.resolve_type_with_self(
-                                    type_ascription,
+                                    insert_type(type_ascription),
                                     self_type,
                                     &type_ascription_span,
                                     EnforceTypeArguments::Yes,
@@ -478,13 +478,9 @@ impl TypedAstNode {
                         }
                         Declaration::StorageDeclaration(StorageDeclaration { span, fields }) => {
                             let mut fields_buf = Vec::with_capacity(fields.len());
-                            for StorageField {
-                                name,
-                                type_info: r#type,
-                            } in fields
-                            {
+                            for StorageField { name, type_info } in fields {
                                 let r#type = check!(
-                                    namespace.resolve_type_without_self(r#type),
+                                    namespace.resolve_type_without_self(insert_type(type_info)),
                                     return err(warnings, errors),
                                     warnings,
                                     errors
@@ -778,7 +774,7 @@ fn type_check_interface_surface(
                             is_mutable,
                             type_id: check!(
                                 namespace.resolve_type_with_self(
-                                    look_up_type_id(type_id),
+                                    type_id,
                                     insert_type(TypeInfo::SelfType),
                                     &type_span,
                                     EnforceTypeArguments::Yes
@@ -793,7 +789,7 @@ fn type_check_interface_surface(
                     .collect(),
                 return_type: check!(
                     namespace.resolve_type_with_self(
-                        return_type,
+                        insert_type(return_type),
                         insert_type(TypeInfo::SelfType),
                         &return_type_span,
                         EnforceTypeArguments::Yes
@@ -830,13 +826,11 @@ fn type_check_trait_methods(
     {
         parameters.clone().into_iter().for_each(
             |FunctionParameter {
-                 name,
-                 type_id: ref r#type,
-                 ..
+                 name, ref type_id, ..
              }| {
                 let r#type = check!(
                     namespace.resolve_type_with_self(
-                        look_up_type_id(*r#type),
+                        *type_id,
                         insert_type(TypeInfo::SelfType),
                         &name.span(),
                         EnforceTypeArguments::Yes
@@ -916,7 +910,7 @@ fn type_check_trait_methods(
                         is_mutable,
                         type_id: check!(
                             namespace.resolve_type_with_self(
-                                look_up_type_id(type_id),
+                                type_id,
                                 crate::type_engine::insert_type(TypeInfo::SelfType),
                                 &type_span,
                                 EnforceTypeArguments::Yes
@@ -934,7 +928,7 @@ fn type_check_trait_methods(
         // TODO check code block implicit return
         let return_type = check!(
             namespace.resolve_type_with_self(
-                return_type,
+                insert_type(return_type),
                 self_type,
                 &return_type_span,
                 EnforceTypeArguments::Yes
