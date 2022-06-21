@@ -48,57 +48,42 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
 /// Get the owner of the inputs (of type `InputCoin`) to a TransactionScript,
 /// if they all share the same owner.
 fn get_coins_owner() -> Result<Identity, AuthError> {
-    let coin_input_type = 0u8;
-    let message_input_type = 2u8;
     let inputs_count = tx_inputs_count();
-
     let mut candidate = Option::None::<Address>();
     let mut i = 0u64;
 
     while i < inputs_count {
-        let input_pointer = tx_input_pointer(i);
-        let input_type = tx_input_type(input_pointer);
-        let input_owner = Option::None;
-
-        match input_type {
-            coin_input_type => {
-                input_owner = Option::Some(tx_input_coin_owner(input_pointer));
-            },
-            message_input_type => {
-                input_owner = Option::Some(tx_input_message_owner(input_pointer));
-            },
-            _ => {
-                input_owner = Option::None();
-                // type != InputCoin  or InputMessage
-                // Continue looping.
+        let input_owner = tx_input_owner(tx_input_pointer(i));
+        match input_owner {
+            Option::None => {
+                // input not InputCoin or InputMesssage, keep looping.
                 i += 1;
-            }
-        };
-
-        if input_owner.is_some() {
-            if candidate.is_none() {
-                // This is the first input seen of the correct type.
-                candidate = input_owner;
-                i += 1;
-            } else {
-                // Compare current coin owner to candidate.
-                // `candidate` and `input_owner` must be `Option::Some` at this point,
-                // so can unwrap safely.
-                if input_owner.unwrap() == candidate.unwrap() {
-                    // Owners are a match, continue looping.
+            },
+            Option::Some => {
+                if candidate.is_none() {
+                    // This is the first input seen of the correct type.
+                    candidate = input_owner;
                     i += 1;
                 } else {
-                    // Owners don't match. Return Err.
-                    i = inputs_count;
-                    return Result::Err(AuthError::InputsNotAllOwnedBySameAddress);
-                };
-            };
+                    // Compare current coin owner to candidate.
+                    // `candidate` and `input_owner` must be `Option::Some`
+                    // at this point, so we can unwrap safely.
+                    if input_owner.unwrap() == candidate.unwrap() {
+                        // Owners are a match, continue looping.
+                        i += 1;
+                    } else {
+                        // Owners don't match. Return Err.
+                        i = inputs_count;
+                        return Result::Err(AuthError::InputsNotAllOwnedBySameAddress);
+                    };
+               };
+            },
         }
     }
 
     // we want to return an error here rather than reverting
     if candidate.is_none() {
-        return Result::Error(AuthError::NoCoinOrMessageInputs);
+        return Result::Err(AuthError::NoCoinOrMessageInputs);
     };
 
     // `candidate` must be `Option::Some` at this point, so can unwrap safely.
