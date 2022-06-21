@@ -1,6 +1,7 @@
 use crate::fmt::{Format, FormattedCode, Formatter};
 use sway_parse::{
     attribute::{Annotated, AttributeDecl},
+    token::Delimiter,
     Parse,
 };
 use sway_types::Spanned;
@@ -61,18 +62,21 @@ impl FormatDecl for AttributeDecl {
 
 impl SquareBracket for AttributeDecl {
     fn open_square_bracket(line: &mut String, _formatter: &mut Formatter) {
-        line.push('[');
+        line.push(Delimiter::as_open_char(Delimiter::Bracket));
     }
     fn close_square_bracket(line: &mut String, _formatter: &mut Formatter) {
-        line.push_str("]\n");
+        line.push_str(&format!(
+            "{}\n",
+            Delimiter::as_close_char(Delimiter::Bracket)
+        ));
     }
 }
 
 impl Parenthesis for AttributeDecl {
     fn open_parenthesis(line: &mut String, _formatter: &mut Formatter) {
-        line.push('(')
+        line.push(Delimiter::as_open_char(Delimiter::Parenthesis))
     }
     fn close_parenthesis(line: &mut String, _formatter: &mut Formatter) {
-        line.push(')')
+        line.push(Delimiter::as_close_char(Delimiter::Parenthesis))
     }
 }
