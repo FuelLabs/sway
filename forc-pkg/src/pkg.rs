@@ -235,7 +235,7 @@ impl BuildPlan {
         })
     }
 
-    // Create a new build plan and syncronize manifest and lock file
+    /// Create a new build plan and syncronize manifest and lock file
     pub fn load_from_manifest(
         manifest: &ManifestFile,
         locked: bool,
@@ -267,14 +267,14 @@ impl BuildPlan {
             } else {
                 Some(e)
             };
-            let plan = BuildPlan::new(&manifest, sway_git_tag, offline)?;
+            let plan = BuildPlan::new(manifest, sway_git_tag, offline)?;
             Ok(plan)
         })?;
 
         // If there are no issues with the BuildPlan generated from the lock file
         // Check and apply the diff.
         if new_lock_cause.is_none() {
-            let diff = plan.validate(&manifest, sway_git_tag)?;
+            let diff = plan.validate(manifest, sway_git_tag)?;
             if !diff.added.is_empty() || !diff.removed.is_empty() {
                 new_lock_cause = Some(anyhow!("lock file did not match manifest `diff`"));
                 plan = plan.apply_pkg_diff(diff, sway_git_tag, offline)?;
@@ -283,7 +283,7 @@ impl BuildPlan {
 
         if let Some(cause) = new_lock_cause {
             info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
-            create_new_lock(&plan, &old_lock, &manifest, &lock_path)?;
+            create_new_lock(&plan, &old_lock, manifest, &lock_path)?;
             info!("   Created new lock file at {}", lock_path.display());
         }
 
