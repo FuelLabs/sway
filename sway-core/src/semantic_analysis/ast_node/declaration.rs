@@ -178,6 +178,14 @@ impl UnresolvedTypeCheck for TypedDeclaration {
                         .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
                         .collect(),
                 );
+                body.append(
+                    &mut decl
+                        .parameters
+                        .iter()
+                        .map(|x| &x.type_id)
+                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .collect(),
+                );
                 body
             }
             ConstantDeclaration(TypedConstantDeclaration { value, .. }) => {
