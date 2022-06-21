@@ -18,13 +18,19 @@ pub struct TypeCheckContext<'ns> {
     // into a new node during type checking, these fields should be updated using the `with_*`
     // methods which provides a new `TypeCheckContext`, ensuring we don't leak our changes into
     // the parent nodes.
+
+    /// While type-checking an `impl` (whether inherent or for a `trait`/`abi`) this represents the
+    /// type for which we are implementing. For example in `impl Foo {}` or `impl Trait for Foo
+    /// {}`, this represents the type ID of `Foo`.
     self_type: TypeId,
     /// While type-checking an expression, this indicates the expected type.
     ///
     /// Assists type inference.
     type_annotation: TypeId,
     mode: Mode,
-    // TODO: Should this be removed to `CompileError` and `CompileWarning`?
+    /// Provides "help text" to `TypeError`s during unification.
+    // TODO: We probably shouldn't carry this through the `Context`, but instead pass it directly
+    // to `unify` as necessary?
     help_text: &'static str,
     /// Tracks the purity of the context, e.g. whether or not we should be allowed to write to
     /// storage.
