@@ -4,12 +4,12 @@ use crate::semantic_analysis::declaration::EnforceTypeArguments;
 use crate::semantic_analysis::namespace::Namespace;
 use crate::semantic_analysis::TypedEnumVariant;
 use crate::type_engine::CreateTypeId;
-use crate::CompileError;
 use crate::{
     error::{err, ok},
     type_engine::{insert_type, TypeId},
     CompileResult, Literal, Scrutinee, TypeArgument, TypeInfo,
 };
+use crate::{CompileError, StructScrutineeField};
 
 #[derive(Debug, Clone)]
 pub(crate) struct TypedScrutinee {
@@ -96,29 +96,55 @@ impl TypedScrutinee {
                 );
                 // type check the fields
                 let mut typed_fields = vec![];
+                let mut rest_pattern = None;
                 for field in fields.into_iter() {
-                    // ensure that the struct definition has this field
-                    let _ = check!(
-                        struct_decl.expect_field(&field.field),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    // type check the nested scrutinee
-                    let typed_scrutinee = match field.scrutinee {
-                        None => None,
-                        Some(scrutinee) => Some(check!(
-                            TypedScrutinee::type_check(scrutinee, namespace, self_type),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        )),
-                    };
-                    typed_fields.push(TypedStructScrutineeField {
-                        field: field.field,
-                        scrutinee: typed_scrutinee,
-                        span: field.span,
+                    match field {
+                        StructScrutineeField::Rest { .. } => rest_pattern = Some(field),
+                        StructScrutineeField::Field {
+                            field,
+                            scrutinee,
+                            span,
+                        } => {
+                            // ensure that the struct definition has this field
+                            let _ = check!(
+                                struct_decl.expect_field(&field),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            // type check the nested scrutinee
+                            let typed_scrutinee = match scrutinee {
+                                None => None,
+                                Some(scrutinee) => Some(check!(
+                                    TypedScrutinee::type_check(scrutinee, namespace, self_type),
+                                    return err(warnings, errors),
+                                    warnings,
+                                    errors
+                                )),
+                            };
+                            typed_fields.push(TypedStructScrutineeField {
+                                field,
+                                scrutinee: typed_scrutinee,
+                                span,
+                            });
+                        }
+                    }
+                }
+                // ensure that the pattern uses all fields of the struct unless the rest pattern is present
+                if (struct_decl.fields.len() != typed_fields.len()) && rest_pattern.is_none() {
+                    let missing_fields = struct_decl
+                        .fields
+                        .iter()
+                        .filter(|f| !typed_fields.iter().any(|tf| f.name == tf.field))
+                        .map(|f| f.name.to_string())
+                        .collect::<Vec<_>>();
+
+                    errors.push(CompileError::MatchStructPatternMissingFields {
+                        span,
+                        missing_fields,
                     });
+
+                    return err(warnings, errors);
                 }
                 TypedScrutinee {
                     variant: TypedScrutineeVariant::StructScrutinee(typed_fields),

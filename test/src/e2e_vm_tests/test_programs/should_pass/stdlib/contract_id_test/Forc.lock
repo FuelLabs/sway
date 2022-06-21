@@ -1,13 +1,14 @@
 [[package]]
 name = 'contract_id_test'
-dependencies = ['std git+https://github.com/FuelLabs/sway-lib-std?reference=master#247270e7d8911e754a989b2fe280c462605ae2f6']
+source = 'root'
+dependencies = ['std']
 
 [[package]]
 name = 'core'
-source = 'git+https://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20ebc9d646acec6b8ee8f408627ce3b573'
+source = 'path+from-root-16F6D7874F5EC2F3'
 dependencies = []
 
 [[package]]
 name = 'std'
-source = 'git+https://github.com/FuelLabs/sway-lib-std?reference=master#247270e7d8911e754a989b2fe280c462605ae2f6'
-dependencies = ['core git+https://github.com/FuelLabs/sway-lib-core?reference=master#c331ed20ebc9d646acec6b8ee8f408627ce3b573']
+source = 'path+from-root-16F6D7874F5EC2F3'
+dependencies = ['core']

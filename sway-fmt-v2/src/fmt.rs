@@ -1,9 +1,11 @@
-use crate::utils::indent_style::Shape;
+use crate::utils::{
+    attributes::format_attributes, indent_style::Shape, newline_style::apply_newline_style,
+    program_type::insert_program_type,
+};
 use std::{path::Path, sync::Arc};
 use sway_core::BuildConfig;
 use sway_parse::ItemKind;
 
-use crate::utils::newline_style::apply_newline_style;
 pub use crate::{
     config::manifest::Config,
     error::{ConfigError, FormatterError},
@@ -37,12 +39,26 @@ impl Formatter {
         build_config: Option<&BuildConfig>,
     ) -> Result<FormattedCode, FormatterError> {
         let path = build_config.map(|build_config| build_config.canonical_root_module());
-        let items = sway_parse::parse_file(src, path)?.items;
-        let formatted_raw_newline = items
+        let module = sway_parse::parse_file(src, path)?;
+        // Get parsed items
+        let items = module.items;
+        // Get the program type (script, predicate, contract or library)
+        let program_type = module.kind;
+
+        // Formatted code will be pushed here with raw newline stlye.
+        // Which means newlines are not converted into system-specific versions by apply_newline_style
+        let mut raw_formatted_code = String::new();
+
+        // Insert program type to the formatted code.
+        insert_program_type(&mut raw_formatted_code, program_type);
+        // Insert parsed & formatted items into the formatted code.
+        raw_formatted_code += &items
             .into_iter()
             .map(|item| -> Result<String, FormatterError> {
                 use ItemKind::*;
-                Ok(match item.value {
+                // format attributes first, then add corresponding item
+                let mut buf = format_attributes(item.attribute_list, self);
+                buf.push_str(&match item.value {
                     Use(item_use) => item_use.format(self),
                     Struct(item_struct) => item_struct.format(self),
                     Enum(item_enum) => item_enum.format(self),
@@ -52,17 +68,100 @@ impl Formatter {
                     Abi(item_abi) => item_abi.format(self),
                     Const(item_const) => item_const.format(self),
                     Storage(item_storage) => item_storage.format(self),
-                })
+                });
+                Ok(buf)
             })
             .collect::<Result<Vec<String>, _>>()?
             .join("\n");
-        let mut formatted_code = String::from(&formatted_raw_newline);
+        let mut formatted_code = String::from(&raw_formatted_code);
         apply_newline_style(
             // The user's setting for `NewlineStyle`
             self.config.whitespace.newline_style,
             &mut formatted_code,
-            &formatted_raw_newline,
+            &raw_formatted_code,
         );
         Ok(formatted_code)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::utils::indent_style::Shape;
+    use std::sync::Arc;
+
+    use super::{Config, Formatter};
+
+    fn get_formatter(config: Config, shape: Shape) -> Formatter {
+        Formatter { config, shape }
+    }
+
+    #[test]
+    fn test_const() {
+        let sway_code_to_format = r#"contract;
+pub const TEST:u16=10;"#;
+        let correct_sway_code = r#"contract;
+
+pub const TEST: u16 = 10;"#;
+
+        let mut formatter = get_formatter(Config::default(), Shape::default());
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert!(correct_sway_code == formatted_sway_code)
+    }
+
+    #[test]
+    fn test_enum_without_variant_alignment() {
+        let sway_code_to_format = r#"contract;
+
+enum Color {
+    Blue: (), Green: (),
+            Red: (),
+    Silver: (),
+                    Grey: (), }
+        "#;
+
+        let correct_sway_code = r#"contract;
+
+enum Color {
+ Blue : (),
+ Green : (),
+ Red : (),
+ Silver : (),
+ Grey : (),
+}"#;
+        let mut formatter = get_formatter(Config::default(), Shape::default());
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert!(correct_sway_code == formatted_sway_code)
+    }
+    #[test]
+    fn test_enum_with_variant_alignment() {
+        let sway_code_to_format = r#"contract;
+
+enum Color {
+    Blue: (), Green: (),
+            Red: (),
+    Silver: (),
+                    Grey: (), }
+        "#;
+
+        let correct_sway_code = r#"contract;
+
+enum Color {
+ Blue   : (),
+ Green  : (),
+ Red    : (),
+ Silver : (),
+ Grey   : (),
+}"#;
+
+        // Creating a config with enum_variant_align_threshold that exceeds longest variant length
+        let mut config = Config::default();
+        config.structures.enum_variant_align_threshold = 20;
+
+        let mut formatter = get_formatter(config, Shape::default());
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert!(correct_sway_code == formatted_sway_code)
     }
 }

@@ -66,7 +66,7 @@ impl Root {
 
     pub(crate) fn resolve_type_with_self(
         &mut self,
-        type_info: TypeInfo,
+        type_id: TypeId,
         self_type: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
@@ -74,7 +74,7 @@ impl Root {
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let type_id = match type_info {
+        let type_id = match look_up_type_id(type_id) {
             TypeInfo::Custom {
                 ref name,
                 type_arguments,
@@ -133,7 +133,7 @@ impl Root {
             TypeInfo::Array(type_id, n) => {
                 let new_type_id = check!(
                     self.resolve_type_with_self(
-                        look_up_type_id(type_id),
+                        type_id,
                         self_type,
                         span,
                         enforce_type_arguments,
@@ -149,7 +149,7 @@ impl Root {
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = check!(
                         self.resolve_type_with_self(
-                            look_up_type_id(type_argument.type_id),
+                            type_argument.type_id,
                             self_type,
                             span,
                             enforce_type_arguments,
@@ -169,12 +169,12 @@ impl Root {
 
     pub(crate) fn resolve_type_without_self(
         &mut self,
-        type_info: TypeInfo,
+        type_id: TypeId,
         mod_path: &Path,
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let type_id = match type_info {
+        let type_id = match look_up_type_id(type_id) {
             TypeInfo::Custom {
                 name,
                 type_arguments,
@@ -225,7 +225,7 @@ impl Root {
             TypeInfo::Ref(id, _) => id,
             TypeInfo::Array(type_id, n) => {
                 let new_type_id = check!(
-                    self.resolve_type_without_self(look_up_type_id(type_id), mod_path),
+                    self.resolve_type_without_self(type_id, mod_path),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
                     errors
@@ -235,10 +235,7 @@ impl Root {
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = check!(
-                        self.resolve_type_without_self(
-                            look_up_type_id(type_argument.type_id),
-                            mod_path
-                        ),
+                        self.resolve_type_without_self(type_argument.type_id, mod_path),
                         insert_type(TypeInfo::ErrorRecovery),
                         warnings,
                         errors
@@ -262,7 +259,7 @@ impl Root {
     pub(crate) fn find_method_for_type(
         &mut self,
         mod_path: &Path,
-        r#type: TypeId,
+        type_id: TypeId,
         method_path: &Path,
         self_type: TypeId,
         args_buf: &VecDeque<TypedExpression>,
@@ -279,15 +276,15 @@ impl Root {
         );
 
         // grab the local methods from the local module
-        let local_methods = local_module.get_methods_for_type(r#type);
+        let local_methods = local_module.get_methods_for_type(type_id);
 
         // split into the method name and method prefix
         let (method_name, method_prefix) = method_path.split_last().expect("method path is empty");
 
         // resolve the type
-        let r#type = check!(
+        let type_id = check!(
             self.resolve_type_with_self(
-                look_up_type_id(r#type),
+                type_id,
                 self_type,
                 &method_name.span(),
                 EnforceTypeArguments::No,
@@ -307,7 +304,7 @@ impl Root {
         );
 
         // grab the methods from where the type is declared
-        let mut type_methods = type_module.get_methods_for_type(r#type);
+        let mut type_methods = type_module.get_methods_for_type(type_id);
 
         let mut methods = local_methods;
         methods.append(&mut type_methods);
@@ -323,7 +320,7 @@ impl Root {
                 {
                     errors.push(CompileError::MethodNotFound {
                         method_name: method_name.clone(),
-                        type_name: r#type.to_string(),
+                        type_name: type_id.to_string(),
                     });
                 }
                 err(warnings, errors)
