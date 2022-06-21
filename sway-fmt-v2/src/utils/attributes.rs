@@ -62,21 +62,18 @@ impl FormatDecl for AttributeDecl {
 
 impl SquareBracket for AttributeDecl {
     fn open_square_bracket(line: &mut String, _formatter: &mut Formatter) {
-        line.push(Delimiter::as_open_char(Delimiter::Bracket));
+        line.push(Delimiter::Bracket.as_open_char());
     }
     fn close_square_bracket(line: &mut String, _formatter: &mut Formatter) {
-        line.push_str(&format!(
-            "{}\n",
-            Delimiter::as_close_char(Delimiter::Bracket)
-        ));
+        line.push_str(&format!("{}\n", Delimiter::Bracket.as_close_char()));
     }
 }
 
 impl Parenthesis for AttributeDecl {
     fn open_parenthesis(line: &mut String, _formatter: &mut Formatter) {
-        line.push(Delimiter::as_open_char(Delimiter::Parenthesis))
+        line.push(Delimiter::Parenthesis.as_open_char())
     }
     fn close_parenthesis(line: &mut String, _formatter: &mut Formatter) {
-        line.push(Delimiter::as_close_char(Delimiter::Parenthesis))
+        line.push(Delimiter::Parenthesis.as_close_char())
     }
 }
