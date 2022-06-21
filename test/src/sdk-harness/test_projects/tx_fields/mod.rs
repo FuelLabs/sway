@@ -230,6 +230,7 @@ async fn can_get_tx_input_type() {
     assert_eq!(result.value, input_type);
 }
 
+// TODO: Add tests for getting InputMessage owner, type
 #[tokio::test]
 async fn can_get_tx_input_coin_owner() {
     let (contract_instance, _, wallet) = get_contracts().await;
