@@ -4,7 +4,7 @@ use sway_types::Span;
 
 use crate::{
     error::{err, ok},
-    semantic_analysis::{Context, EnforceTypeArguments},
+    semantic_analysis::{EnforceTypeArguments, TypeCheckContext},
     type_engine::*,
     types::DeterministicallyAborts,
     CompileError, CompileResult, IntrinsicFunctionKind,
@@ -105,7 +105,7 @@ impl UnresolvedTypeCheck for TypedIntrinsicFunctionKind {
 
 impl TypedIntrinsicFunctionKind {
     pub(crate) fn type_check(
-        mut ctx: Context,
+        mut ctx: TypeCheckContext,
         kind: IntrinsicFunctionKind,
     ) -> CompileResult<(Self, TypeId)> {
         let mut warnings = vec![];

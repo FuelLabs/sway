@@ -214,12 +214,14 @@ impl TypedAstNode {
         }
     }
 
-    pub(crate) fn type_check(mut ctx: Context, node: AstNode) -> CompileResult<Self> {
+    pub(crate) fn type_check(mut ctx: TypeCheckContext, node: AstNode) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
         // A little utility used to check an ascribed type matches its associated expression.
-        let mut type_check_ascribed_expr = |mut ctx: Context, type_ascription: TypeInfo, expr| {
+        let mut type_check_ascribed_expr = |mut ctx: TypeCheckContext,
+                                            type_ascription: TypeInfo,
+                                            expr| {
             let type_id = check!(
                 ctx.resolve_type_with_self(type_ascription, &node.span, EnforceTypeArguments::No),
                 insert_type(TypeInfo::ErrorRecovery),
@@ -574,7 +576,7 @@ impl TypedAstNode {
 }
 
 fn reassignment(
-    ctx: Context,
+    ctx: TypeCheckContext,
     lhs: ReassignmentTarget,
     rhs: Expression,
     span: Span,
@@ -733,7 +735,7 @@ fn type_check_interface_surface(
 }
 
 fn type_check_trait_methods(
-    mut ctx: Context,
+    mut ctx: TypeCheckContext,
     methods: Vec<FunctionDeclaration>,
 ) -> CompileResult<Vec<TypedFunctionDeclaration>> {
     let mut warnings = vec![];
@@ -967,7 +969,7 @@ impl PartialEq for TypeCheckedStorageReassignDescriptor {
 }
 
 fn reassign_storage_subfield(
-    ctx: Context,
+    ctx: TypeCheckContext,
     fields: Vec<Ident>,
     rhs: Expression,
     span: Span,

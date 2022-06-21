@@ -1,8 +1,8 @@
 use crate::{
     error::ok,
     semantic_analysis::{
-        Context, EnforceTypeArguments, IsConstant, TypedExpression, TypedExpressionVariant,
-        TypedVariableDeclaration, VariableMutability,
+        EnforceTypeArguments, IsConstant, TypeCheckContext, TypedExpression,
+        TypedExpressionVariant, TypedVariableDeclaration, VariableMutability,
     },
     type_engine::*,
     CompileResult, FunctionParameter, Ident, TypedDeclaration,
@@ -37,7 +37,7 @@ impl CopyTypes for TypedFunctionParameter {
 
 impl TypedFunctionParameter {
     pub(crate) fn type_check(
-        mut ctx: Context,
+        mut ctx: TypeCheckContext,
         parameter: FunctionParameter,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];

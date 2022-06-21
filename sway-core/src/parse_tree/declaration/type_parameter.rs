@@ -58,7 +58,10 @@ impl ReplaceSelfType for TypeParameter {
 }
 
 impl TypeParameter {
-    pub(crate) fn type_check(ctx: Context, type_parameter: TypeParameter) -> CompileResult<Self> {
+    pub(crate) fn type_check(
+        ctx: TypeCheckContext,
+        type_parameter: TypeParameter,
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         if !type_parameter.trait_constraints.is_empty() {

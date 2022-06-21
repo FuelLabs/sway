@@ -5,7 +5,7 @@ use crate::{
     error::{err, ok},
     semantic_analysis::{
         ast_node::{type_check_interface_surface, type_check_trait_methods},
-        Context,
+        TypeCheckContext,
     },
     type_engine::{insert_type, AbiName, TypeId},
     AbiDeclaration, CompileResult, FunctionDeclaration, TypeInfo,
@@ -42,7 +42,10 @@ impl CreateTypeId for TypedAbiDeclaration {
 }
 
 impl TypedAbiDeclaration {
-    pub(crate) fn type_check(ctx: Context, abi_decl: AbiDeclaration) -> CompileResult<Self> {
+    pub(crate) fn type_check(
+        ctx: TypeCheckContext,
+        abi_decl: AbiDeclaration,
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
 

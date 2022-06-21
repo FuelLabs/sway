@@ -12,7 +12,7 @@ use sway_types::{Ident, Spanned};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn type_check_method_application(
-    mut ctx: Context,
+    mut ctx: TypeCheckContext,
     method_name: MethodName,
     contract_call_params: Vec<StructExpressionField>,
     arguments: Vec<Expression>,
@@ -317,7 +317,7 @@ pub(crate) fn type_check_method_application(
 }
 
 pub(crate) fn resolve_method_name(
-    ctx: Context,
+    ctx: TypeCheckContext,
     method_name: &MethodName,
     arguments: VecDeque<TypedExpression>,
     type_arguments: Vec<TypeArgument>,
@@ -381,7 +381,7 @@ pub(crate) fn resolve_method_name(
 }
 
 fn find_method(
-    ctx: Context,
+    ctx: TypeCheckContext,
     type_name: &TypeInfo,
     type_name_span: &Span,
     type_arguments: Vec<TypeArgument>,

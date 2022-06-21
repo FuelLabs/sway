@@ -273,7 +273,7 @@ pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
 #[allow(clippy::too_many_arguments)]
 impl TypedExpression {
     pub(crate) fn core_ops_eq(
-        ctx: Context,
+        ctx: TypeCheckContext,
         arguments: Vec<TypedExpression>,
         span: Span,
     ) -> CompileResult<TypedExpression> {
@@ -362,7 +362,7 @@ impl TypedExpression {
         }
     }
 
-    pub(crate) fn type_check(mut ctx: Context, expr: Expression) -> CompileResult<Self> {
+    pub(crate) fn type_check(mut ctx: TypeCheckContext, expr: Expression) -> CompileResult<Self> {
         let expr_span = expr.span();
         let res = match expr {
             Expression::Literal { value: lit, span } => Self::type_check_literal(lit, span),
@@ -624,7 +624,7 @@ impl TypedExpression {
 
     #[allow(clippy::type_complexity)]
     fn type_check_function_application(
-        ctx: Context,
+        ctx: TypeCheckContext,
         name: CallPath,
         arguments: Vec<Expression>,
         type_arguments: Vec<TypeArgument>,
@@ -654,7 +654,7 @@ impl TypedExpression {
     }
 
     fn type_check_lazy_operator(
-        ctx: Context,
+        ctx: TypeCheckContext,
         op: LazyOp,
         lhs: Expression,
         rhs: Expression,
@@ -683,7 +683,7 @@ impl TypedExpression {
     }
 
     fn type_check_code_block(
-        mut ctx: Context,
+        mut ctx: TypeCheckContext,
         contents: CodeBlock,
         span: Span,
     ) -> CompileResult<TypedExpression> {
@@ -716,7 +716,7 @@ impl TypedExpression {
 
     #[allow(clippy::type_complexity)]
     fn type_check_if_expression(
-        mut ctx: Context,
+        mut ctx: TypeCheckContext,
         condition: Expression,
         then: Expression,
         r#else: Option<Expression>,
@@ -777,7 +777,7 @@ impl TypedExpression {
     }
 
     fn type_check_match_expression(
-        mut ctx: Context,
+        mut ctx: TypeCheckContext,
         value: Expression,
         branches: Vec<MatchBranch>,
         span: Span,
@@ -859,7 +859,7 @@ impl TypedExpression {
 
     #[allow(clippy::too_many_arguments)]
     fn type_check_asm_expression(
-        mut ctx: Context,
+        mut ctx: TypeCheckContext,
         asm: AsmExpression,
         span: Span,
     ) -> CompileResult<TypedExpression> {
@@ -922,7 +922,7 @@ impl TypedExpression {
 
     #[allow(clippy::too_many_arguments)]
     fn type_check_struct_expression(
-        mut ctx: Context,
+        mut ctx: TypeCheckContext,
         call_path: CallPath,
         type_arguments: Vec<TypeArgument>,
         fields: Vec<StructExpressionField>,
@@ -1035,7 +1035,7 @@ impl TypedExpression {
 
     #[allow(clippy::too_many_arguments)]
     fn type_check_subfield_expression(
-        ctx: Context,
+        ctx: TypeCheckContext,
         prefix: Expression,
         span: Span,
         field_to_access: Ident,
@@ -1061,7 +1061,7 @@ impl TypedExpression {
     }
 
     fn type_check_tuple(
-        mut ctx: Context,
+        mut ctx: TypeCheckContext,
         fields: Vec<Expression>,
         span: Span,
     ) -> CompileResult<Self> {
@@ -1116,7 +1116,7 @@ impl TypedExpression {
     /// If there isn't any storage, then this is an error. If there is storage, find the corresponding
     /// field that has been specified and return that value.
     fn type_check_storage_load(
-        ctx: Context,
+        ctx: TypeCheckContext,
         checkee: Vec<Ident>,
         span: &Span,
     ) -> CompileResult<Self> {
@@ -1154,7 +1154,7 @@ impl TypedExpression {
     }
 
     fn type_check_tuple_index(
-        ctx: Context,
+        ctx: TypeCheckContext,
         prefix: Expression,
         index: usize,
         index_span: Span,
@@ -1182,7 +1182,7 @@ impl TypedExpression {
 
     #[allow(clippy::too_many_arguments)]
     fn type_check_delineated_path(
-        ctx: Context,
+        ctx: TypeCheckContext,
         call_path: CallPath,
         span: Span,
         args: Vec<Expression>,
@@ -1295,7 +1295,7 @@ impl TypedExpression {
 
     #[allow(clippy::too_many_arguments)]
     fn type_check_abi_cast(
-        mut ctx: Context,
+        mut ctx: TypeCheckContext,
         abi_name: CallPath,
         address: Box<Expression>,
         span: Span,
@@ -1428,7 +1428,7 @@ impl TypedExpression {
     }
 
     fn type_check_array(
-        mut ctx: Context,
+        mut ctx: TypeCheckContext,
         contents: Vec<Expression>,
         span: Span,
     ) -> CompileResult<Self> {
@@ -1499,7 +1499,7 @@ impl TypedExpression {
     }
 
     fn type_check_array_index(
-        mut ctx: Context,
+        mut ctx: TypeCheckContext,
         prefix: Expression,
         index: Expression,
         span: Span,
@@ -1570,7 +1570,7 @@ impl TypedExpression {
     }
 
     fn type_check_intrinsic_function(
-        ctx: Context,
+        ctx: TypeCheckContext,
         kind: IntrinsicFunctionKind,
         span: Span,
     ) -> CompileResult<Self> {
@@ -1683,8 +1683,8 @@ mod tests {
 
     fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<TypedExpression> {
         let mut namespace = Namespace::init_root(namespace::Module::default());
-        let ctx =
-            Context::from_module_namespace(&mut namespace).with_type_annotation(type_annotation);
+        let ctx = TypeCheckContext::from_module_namespace(&mut namespace)
+            .with_type_annotation(type_annotation);
         TypedExpression::type_check(ctx, expr)
     }
 

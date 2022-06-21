@@ -4,7 +4,7 @@ use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     error::{err, ok},
-    semantic_analysis::{Context, Mode},
+    semantic_analysis::{Mode, TypeCheckContext},
     type_engine::{
         insert_type, look_up_type_id, resolve_type, unify_with_self, CopyTypes, TypeId, TypeMapping,
     },
@@ -32,7 +32,7 @@ impl CopyTypes for TypedImplTrait {
 
 impl TypedImplTrait {
     pub(crate) fn type_check_impl_trait(
-        ctx: Context,
+        ctx: TypeCheckContext,
         impl_trait: ImplTrait,
     ) -> CompileResult<(Self, TypeId)> {
         let mut errors = vec![];
@@ -173,7 +173,10 @@ impl TypedImplTrait {
         ok(impl_trait, warnings, errors)
     }
 
-    pub(crate) fn type_check_impl_self(ctx: Context, impl_self: ImplSelf) -> CompileResult<Self> {
+    pub(crate) fn type_check_impl_self(
+        ctx: TypeCheckContext,
+        impl_self: ImplSelf,
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -260,7 +263,7 @@ impl TypedImplTrait {
 
 #[allow(clippy::too_many_arguments)]
 fn type_check_trait_implementation(
-    mut ctx: Context,
+    mut ctx: TypeCheckContext,
     trait_interface_surface: &[TypedTraitFn],
     trait_methods: &[FunctionDeclaration],
     functions: &[FunctionDeclaration],

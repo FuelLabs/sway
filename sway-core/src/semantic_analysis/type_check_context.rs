@@ -11,12 +11,13 @@ use crate::{
 use sway_types::{span::Span, Spanned};
 
 /// Contextual state tracked and accumulated throughout type-checking.
-pub struct Context<'ns> {
+pub struct TypeCheckContext<'ns> {
     pub(crate) namespace: &'ns mut Namespace,
 
-    // The following set of fields are intentionally private. When a `Context` is passed into a new
-    // node during type checking, these fields should be updated using the `with_*` methods which
-    // provides a new `Context`, ensuring we don't leak our changes into the parent nodes.
+    // The following set of fields are intentionally private. When a `TypeCheckContext` is passed
+    // into a new node during type checking, these fields should be updated using the `with_*`
+    // methods which provides a new `TypeCheckContext`, ensuring we don't leak our changes into
+    // the parent nodes.
     self_type: TypeId,
     /// While type-checking an expression, this indicates the expected type.
     ///
@@ -30,7 +31,7 @@ pub struct Context<'ns> {
     purity: Purity,
 }
 
-impl<'ns> Context<'ns> {
+impl<'ns> TypeCheckContext<'ns> {
     /// Initialise a context at the top-level of a module with its namespace.
     ///
     /// Initializes with:
@@ -59,8 +60,8 @@ impl<'ns> Context<'ns> {
     /// rather than the original namespace reference, we instead restrict the returned context to
     /// the local scope and avoid consuming the original context when providing context to the
     /// first visited child node.
-    pub fn by_ref(&mut self) -> Context {
-        Context {
+    pub fn by_ref(&mut self) -> TypeCheckContext {
+        TypeCheckContext {
             namespace: self.namespace,
             type_annotation: self.type_annotation,
             self_type: self.self_type,
@@ -70,9 +71,9 @@ impl<'ns> Context<'ns> {
         }
     }
 
-    /// Scope the `Context` with the given `Namespace`.
-    pub fn scoped(self, namespace: &mut Namespace) -> Context {
-        Context {
+    /// Scope the `TypeCheckContext` with the given `Namespace`.
+    pub fn scoped(self, namespace: &mut Namespace) -> TypeCheckContext {
+        TypeCheckContext {
             namespace,
             type_annotation: self.type_annotation,
             self_type: self.self_type,
@@ -82,12 +83,12 @@ impl<'ns> Context<'ns> {
         }
     }
 
-    /// Map this `Context` instance to a new one with the given `help_text`.
+    /// Map this `TypeCheckContext` instance to a new one with the given `help_text`.
     pub(crate) fn with_help_text(self, help_text: &'static str) -> Self {
         Self { help_text, ..self }
     }
 
-    /// Map this `Context` instance to a new one with the given type annotation.
+    /// Map this `TypeCheckContext` instance to a new one with the given type annotation.
     pub(crate) fn with_type_annotation(self, type_annotation: TypeId) -> Self {
         Self {
             type_annotation,
@@ -95,23 +96,23 @@ impl<'ns> Context<'ns> {
         }
     }
 
-    /// Map this `Context` instance to a new one with the given ABI `mode`.
+    /// Map this `TypeCheckContext` instance to a new one with the given ABI `mode`.
     pub(crate) fn with_mode(self, mode: Mode) -> Self {
         Self { mode, ..self }
     }
 
-    /// Map this `Context` instance to a new one with the given purity.
+    /// Map this `TypeCheckContext` instance to a new one with the given purity.
     pub(crate) fn with_purity(self, purity: Purity) -> Self {
         Self { purity, ..self }
     }
 
-    /// Map this `Context` instance to a new one with the given purity.
+    /// Map this `TypeCheckContext` instance to a new one with the given purity.
     pub(crate) fn with_self_type(self, self_type: TypeId) -> Self {
         Self { self_type, ..self }
     }
 
     // A set of accessor methods. We do this rather than making the fields `pub` in order to ensure
-    // that these are only updated via the `with_*` methods that produce a new `Context`.
+    // that these are only updated via the `with_*` methods that produce a new `TypeCheckContext`.
 
     pub(crate) fn help_text(&self) -> &'static str {
         self.help_text
@@ -157,7 +158,7 @@ impl<'ns> Context<'ns> {
     }
 
     /// Short-hand for calling [Namespace::resolve_type_with_self] with the `self_type` provided by
-    /// the `Context`.
+    /// the `TypeCheckContext`.
     pub(crate) fn resolve_type_with_self(
         &mut self,
         type_info: TypeInfo,
@@ -168,8 +169,8 @@ impl<'ns> Context<'ns> {
             .resolve_type_with_self(type_info, self.self_type, span, enforce_type_args)
     }
 
-    /// Short-hand around `type_engine::unify_with_self`, where the `Context` provides the type
-    /// annotation, self type and help text.
+    /// Short-hand around `type_engine::unify_with_self`, where the `TypeCheckContext` provides the
+    /// type annotation, self type and help text.
     pub(crate) fn unify_with_self(
         &self,
         ty: TypeId,

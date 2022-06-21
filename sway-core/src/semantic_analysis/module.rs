@@ -63,7 +63,7 @@ impl TypedModule {
         let typed_nodes = nodes
             .into_iter()
             .map(|node| {
-                let ctx = Context::from_module_namespace(namespace);
+                let ctx = TypeCheckContext::from_module_namespace(namespace);
                 TypedAstNode::type_check(ctx, node)
             })
             .filter_map(|res| res.ok(&mut warnings, &mut errors))

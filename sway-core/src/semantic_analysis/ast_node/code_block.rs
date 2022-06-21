@@ -22,7 +22,7 @@ impl DeterministicallyAborts for TypedCodeBlock {
 
 impl TypedCodeBlock {
     pub(crate) fn type_check(
-        mut ctx: Context,
+        mut ctx: TypeCheckContext,
         code_block: CodeBlock,
     ) -> CompileResult<(Self, TypeId)> {
         let mut warnings = Vec::new();

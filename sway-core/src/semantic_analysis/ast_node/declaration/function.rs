@@ -121,7 +121,7 @@ impl ToJsonAbi for TypedFunctionDeclaration {
 }
 
 impl TypedFunctionDeclaration {
-    pub fn type_check(ctx: Context, fn_decl: FunctionDeclaration) -> CompileResult<Self> {
+    pub fn type_check(ctx: TypeCheckContext, fn_decl: FunctionDeclaration) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 

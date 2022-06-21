@@ -3,8 +3,8 @@ use sway_types::{Span, Spanned};
 use crate::{
     error::{err, ok},
     semantic_analysis::{
-        ast_node::expression::match_expression::typed::typed_scrutinee::TypedScrutinee, Context,
-        IsConstant, TypedAstNode, TypedAstNodeContent, TypedCodeBlock, TypedExpression,
+        ast_node::expression::match_expression::typed::typed_scrutinee::TypedScrutinee, IsConstant,
+        TypeCheckContext, TypedAstNode, TypedAstNodeContent, TypedCodeBlock, TypedExpression,
         TypedExpressionVariant, TypedVariableDeclaration, VariableMutability,
     },
     type_engine::insert_type,
@@ -24,7 +24,7 @@ pub(crate) struct TypedMatchBranch {
 
 impl TypedMatchBranch {
     pub(crate) fn type_check(
-        mut ctx: Context,
+        mut ctx: TypeCheckContext,
         typed_value: &TypedExpression,
         branch: MatchBranch,
     ) -> CompileResult<Self> {

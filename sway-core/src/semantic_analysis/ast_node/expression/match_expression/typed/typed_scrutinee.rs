@@ -1,6 +1,8 @@
 use sway_types::{Ident, Span, Spanned};
 
-use crate::semantic_analysis::{declaration::EnforceTypeArguments, Context, TypedEnumVariant};
+use crate::semantic_analysis::{
+    declaration::EnforceTypeArguments, TypeCheckContext, TypedEnumVariant,
+};
 use crate::type_engine::CreateTypeId;
 use crate::{
     error::{err, ok},
@@ -38,7 +40,10 @@ pub(crate) struct TypedStructScrutineeField {
 }
 
 impl TypedScrutinee {
-    pub(crate) fn type_check(mut ctx: Context, scrutinee: Scrutinee) -> CompileResult<Self> {
+    pub(crate) fn type_check(
+        mut ctx: TypeCheckContext,
+        scrutinee: Scrutinee,
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let typed_scrutinee = match scrutinee {

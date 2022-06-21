@@ -6,7 +6,7 @@ use crate::{
         ast_node::expression::typed_expression::{
             instantiate_if_expression, instantiate_lazy_operator,
         },
-        Context, IsConstant, TypedExpression, TypedExpressionVariant,
+        IsConstant, TypeCheckContext, TypedExpression, TypedExpressionVariant,
     },
     type_engine::{insert_type, TypeId},
     CompileError, CompileResult, LazyOp, Literal, MatchBranch, TypeInfo,
@@ -24,7 +24,7 @@ pub(crate) struct TypedMatchExpression {
 
 impl TypedMatchExpression {
     pub(crate) fn type_check(
-        ctx: Context,
+        ctx: TypeCheckContext,
         typed_value: TypedExpression,
         branches: Vec<MatchBranch>,
         span: Span,
@@ -60,7 +60,7 @@ impl TypedMatchExpression {
 
     pub(crate) fn convert_to_typed_if_expression(
         self,
-        mut ctx: Context,
+        mut ctx: TypeCheckContext,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];

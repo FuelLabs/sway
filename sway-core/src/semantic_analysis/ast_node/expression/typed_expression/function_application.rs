@@ -1,13 +1,13 @@
 use crate::{
     error::*,
-    semantic_analysis::{ast_node::*, Context},
+    semantic_analysis::{ast_node::*, TypeCheckContext},
 };
 use std::collections::{hash_map::RandomState, HashMap, VecDeque};
 use sway_types::{state::StateIndex, Spanned};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
-    mut ctx: Context,
+    mut ctx: TypeCheckContext,
     function_decl: TypedFunctionDeclaration,
     call_path: CallPath,
     type_arguments: Vec<TypeArgument>,

@@ -78,7 +78,7 @@ impl MonomorphizeHelper for TypedEnumDeclaration {
 }
 
 impl TypedEnumDeclaration {
-    pub fn type_check(ctx: Context, decl: EnumDeclaration) -> CompileResult<Self> {
+    pub fn type_check(ctx: TypeCheckContext, decl: EnumDeclaration) -> CompileResult<Self> {
         let mut errors = vec![];
         let mut warnings = vec![];
 
@@ -207,7 +207,10 @@ impl ReplaceSelfType for TypedEnumVariant {
 }
 
 impl TypedEnumVariant {
-    pub(crate) fn type_check(mut ctx: Context, variant: EnumVariant) -> CompileResult<Self> {
+    pub(crate) fn type_check(
+        mut ctx: TypeCheckContext,
+        variant: EnumVariant,
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let enum_variant_type = check!(

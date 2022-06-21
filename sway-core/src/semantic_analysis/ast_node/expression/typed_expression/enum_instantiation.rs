@@ -6,7 +6,7 @@ use sway_types::{Ident, Spanned};
 /// [TypedExpression].
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_enum(
-    mut ctx: Context,
+    mut ctx: TypeCheckContext,
     enum_decl: TypedEnumDeclaration,
     enum_field_name: Ident,
     args: Vec<Expression>,

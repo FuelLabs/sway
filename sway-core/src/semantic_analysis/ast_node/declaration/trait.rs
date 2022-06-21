@@ -5,7 +5,7 @@ use crate::{
     error::{err, ok},
     semantic_analysis::{
         ast_node::{type_check_interface_surface, type_check_trait_methods},
-        Context, Mode, TypedCodeBlock,
+        Mode, TypeCheckContext, TypedCodeBlock,
     },
     style::is_upper_camel_case,
     type_engine::{insert_type, look_up_type_id, CopyTypes, TypeMapping},
@@ -40,7 +40,10 @@ impl CopyTypes for TypedTraitDeclaration {
 }
 
 impl TypedTraitDeclaration {
-    pub(crate) fn type_check(ctx: Context, trait_decl: TraitDeclaration) -> CompileResult<Self> {
+    pub(crate) fn type_check(
+        ctx: TypeCheckContext,
+        trait_decl: TraitDeclaration,
+    ) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
