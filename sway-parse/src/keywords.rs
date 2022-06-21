@@ -165,6 +165,7 @@ define_token!(
     [GreaterThan, Equals]
 );
 define_token!(DotToken, "`.`", [Dot], []);
+define_token!(DoubleDotToken, "`..`", [Dot, Dot], [Dot]);
 define_token!(BangToken, "`!`", [Bang], [Equals]);
 define_token!(PercentToken, "`%`", [Percent], []);
 define_token!(AddToken, "`+`", [Add], [Equals]);

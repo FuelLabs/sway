@@ -1,5 +1,6 @@
 use crate::utils::{
     attributes::format_attributes, indent_style::Shape, newline_style::apply_newline_style,
+    program_type::insert_program_type,
 };
 use std::{path::Path, sync::Arc};
 use sway_core::BuildConfig;
@@ -38,8 +39,20 @@ impl Formatter {
         build_config: Option<&BuildConfig>,
     ) -> Result<FormattedCode, FormatterError> {
         let path = build_config.map(|build_config| build_config.canonical_root_module());
-        let items = sway_parse::parse_file(src, path)?.items;
-        let formatted_raw_newline = items
+        let module = sway_parse::parse_file(src, path)?;
+        // Get parsed items
+        let items = module.items;
+        // Get the program type (script, predicate, contract or library)
+        let program_type = module.kind;
+
+        // Formatted code will be pushed here with raw newline stlye.
+        // Which means newlines are not converted into system-specific versions by apply_newline_style
+        let mut raw_formatted_code = String::new();
+
+        // Insert program type to the formatted code.
+        insert_program_type(&mut raw_formatted_code, program_type);
+        // Insert parsed & formatted items into the formatted code.
+        raw_formatted_code += &items
             .into_iter()
             .map(|item| -> Result<String, FormatterError> {
                 use ItemKind::*;
@@ -60,12 +73,12 @@ impl Formatter {
             })
             .collect::<Result<Vec<String>, _>>()?
             .join("\n");
-        let mut formatted_code = String::from(&formatted_raw_newline);
+        let mut formatted_code = String::from(&raw_formatted_code);
         apply_newline_style(
             // The user's setting for `NewlineStyle`
             self.config.whitespace.newline_style,
             &mut formatted_code,
-            &formatted_raw_newline,
+            &raw_formatted_code,
         );
         Ok(formatted_code)
     }
@@ -83,6 +96,20 @@ mod tests {
     }
 
     #[test]
+    fn test_const() {
+        let sway_code_to_format = r#"contract;
+pub const TEST:u16=10;"#;
+        let correct_sway_code = r#"contract;
+
+pub const TEST: u16 = 10;"#;
+
+        let mut formatter = get_formatter(Config::default(), Shape::default());
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert!(correct_sway_code == formatted_sway_code)
+    }
+
+    #[test]
     fn test_enum_without_variant_alignment() {
         let sway_code_to_format = r#"contract;
 
@@ -93,8 +120,9 @@ enum Color {
                     Grey: (), }
         "#;
 
-        // Until #1995 is addressed we will not have contract; in the output
-        let correct_sway_code = r#"enum Color {
+        let correct_sway_code = r#"contract;
+
+enum Color {
  Blue : (),
  Green : (),
  Red : (),
@@ -117,8 +145,9 @@ enum Color {
                     Grey: (), }
         "#;
 
-        // Until #1995 is addressed we will not have contract; in the output
-        let correct_sway_code = r#"enum Color {
+        let correct_sway_code = r#"contract;
+
+enum Color {
  Blue   : (),
  Green  : (),
  Red    : (),
