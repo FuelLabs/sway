@@ -8,7 +8,7 @@ use crate::{
     type_engine::{insert_type, unify_with_self, TypeId, TypeInfo},
     CompileResult, CompileWarning, TypeArgument, TypeError,
 };
-use sway_types::{span::Span, Spanned};
+use sway_types::{span::Span, Ident, Spanned};
 
 /// Contextual state tracked and accumulated throughout type-checking.
 pub struct TypeCheckContext<'ns> {
@@ -18,7 +18,6 @@ pub struct TypeCheckContext<'ns> {
     // into a new node during type checking, these fields should be updated using the `with_*`
     // methods which provides a new `TypeCheckContext`, ensuring we don't leak our changes into
     // the parent nodes.
-
     /// While type-checking an `impl` (whether inherent or for a `trait`/`abi`) this represents the
     /// type for which we are implementing. For example in `impl Foo {}` or `impl Trait for Foo
     /// {}`, this represents the type ID of `Foo`.
@@ -50,7 +49,11 @@ impl<'ns> TypeCheckContext<'ns> {
     /// - mode: NoneAbi
     /// - help_text: ""
     /// - purity: Pure
-    pub fn from_module_namespace(namespace: &'ns mut Namespace) -> Self {
+    pub fn from_root(root_namespace: &'ns mut Namespace) -> Self {
+        Self::from_module_namespace(root_namespace)
+    }
+
+    fn from_module_namespace(namespace: &'ns mut Namespace) -> Self {
         Self {
             namespace,
             type_annotation: insert_type(TypeInfo::Unknown),
@@ -91,6 +94,23 @@ impl<'ns> TypeCheckContext<'ns> {
             help_text: self.help_text,
             purity: self.purity,
         }
+    }
+
+    /// Enter the submodule with the given name and produce a type-check context ready for
+    /// type-checking its content.
+    ///
+    /// Returns the result of the given `with_submod_ctx` function.
+    pub fn enter_submodule<F, T>(self, dep_name: Ident, with_submod_ctx: F) -> T
+    where
+        F: FnOnce(TypeCheckContext) -> T,
+    {
+        // We're checking a submodule, so no need to pass through anything other than the
+        // namespace. However, we will likely want to pass through the type engine and declaration
+        // engine here once they're added.
+        let Self { namespace, .. } = self;
+        let mut submod_ns = namespace.enter_submodule(dep_name);
+        let submod_ctx = TypeCheckContext::from_module_namespace(&mut submod_ns);
+        with_submod_ctx(submod_ctx)
     }
 
     /// Map this `TypeCheckContext` instance to a new one with the given `help_text`.
