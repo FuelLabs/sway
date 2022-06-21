@@ -8,11 +8,11 @@ version = "0.0.0"
 [dependencies]
 assert_matches = "1.5.0"
 fuel-core = { version = "0.8", default-features = false }
-fuel-gql-client = { version = "0.8", default-features = false }
+fuel-gql-client = { version = "0.9", default-features = false }
 fuel-types = "0.5"
-fuel-vm = "0.11"
+fuel-vm = "0.12"
 fuels = "0.15"
-fuels-abigen-macro = "0.15"
+fuels-abigen-macro = "0.16"
 hex = "0.4.3"
 sha2 = "0.10"
 sha3 = "0.10.1"
