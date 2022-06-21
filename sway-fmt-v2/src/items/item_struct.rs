@@ -18,7 +18,7 @@ impl Format for ItemStruct {
         // Get the unformatted
 
         // Get struct_variant_align_threshold from config.
-        let _struct_variant_align_threshold =
+        let struct_variant_align_threshold =
             formatter.config.structures.struct_field_align_threshold;
 
         // Should small structs formatted into a single line.
@@ -35,9 +35,21 @@ impl Format for ItemStruct {
 
         // Check if the struct len is smaller than struct_lit_width
         if struct_lit_single_line && self.get_formatted_len() < struct_lit_width {
-            format_struct(self, &mut formatted_code, formatter, false);
+            format_struct(
+                self,
+                &mut formatted_code,
+                formatter,
+                false,
+                struct_variant_align_threshold,
+            );
         } else {
-            format_struct(self, &mut formatted_code, formatter, true);
+            format_struct(
+                self,
+                &mut formatted_code,
+                formatter,
+                true,
+                struct_variant_align_threshold,
+            );
         }
 
         formatted_code
@@ -59,6 +71,7 @@ fn format_struct(
     formatted_code: &mut FormattedCode,
     formatter: &mut Formatter,
     multiline: bool,
+    struct_variant_align_threshold: usize,
 ) {
     // If there is a visibility token add it to the formatted_code with a ` ` after it.
     if let Some(visibility) = &item_struct.visibility {
@@ -102,6 +115,21 @@ fn format_struct(
         .clone()
         .into_inner()
         .value_separator_pairs;
+
+    // In first iteration we are going to be collecting the lengths of the enum variants.
+    let variant_length: Vec<usize> = items
+        .iter()
+        .map(|variant| variant.0.name.as_str().len())
+        .collect();
+
+    // Find the maximum length in the variant_length vector that is still smaller than enum_variant_align_threshold.
+    let mut max_valid_variant_length = 0;
+
+    variant_length.iter().for_each(|length| {
+        if *length > max_valid_variant_length && *length < struct_variant_align_threshold {
+            max_valid_variant_length = *length;
+        }
+    });
     for (item_index, item) in items.iter().enumerate() {
         if multiline {
             formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
@@ -109,6 +137,15 @@ fn format_struct(
         let type_field = &item.0;
         // Add name
         formatted_code.push_str(type_field.name.as_str());
+        let current_variant_length = variant_length[item_index];
+        if current_variant_length < max_valid_variant_length {
+            // We need to add alignment between : and ty
+            // max_valid_variant_length: the length of the variant that we are taking as a reference to allign
+            // current_variant_length: the length of the current variant that we are trying to format
+            let required_alignment = max_valid_variant_length - current_variant_length;
+            // TODO: Improve handling this
+            formatted_code.push_str(&(0..required_alignment).map(|_| ' ').collect::<String>());
+        }
         // Add `:`
         formatted_code.push_str(type_field.colon_token.ident().as_str());
         formatted_code.push(' ');
