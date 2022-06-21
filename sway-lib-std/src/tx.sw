@@ -5,6 +5,7 @@ library tx;
 use ::address::Address;
 use ::contract_id::ContractId;
 use ::intrinsics::is_reference_type;
+use ::option::*;
 
 ////////////////////////////////////////
 // Transaction fields
@@ -186,42 +187,42 @@ pub fn tx_input_type(ptr: u32) -> u8 {
     }
 }
 
-/// If the input's type is `InputCoin`, return the owner.
-/// Otherwise, undefined behavior.
-pub fn tx_input_coin_owner(input_ptr: u32) -> Address {
-    let owner_addr = ~Address::from(asm(buffer, ptr: input_ptr) {
-        // Need to skip over six words, so add 8*6=48
-        addi ptr ptr i48;
-        // Save old stack pointer
-        move buffer sp;
-        // Extend stack by 32 bytes
-        cfei i32;
-        // Copy 32 bytes
-        mcpi buffer ptr i32;
-        // `buffer` now points to the 32 bytes
-        buffer: b256
-    });
+/// If the input's type is `InputCoin` or `InputMessage`,
+/// return the owner as an Option::Some(owner).
+/// Otherwise, returns Option::None.
+pub fn tx_input_owner(input_ptr: u32) -> Option<Address> {
+    let type = tx_input_type(input_ptr);
+    let owner_offset = match type {
+        0u8 => {
+            // Need to skip over six words, so add 8*6=48
+            48
+        },
+        2u8 => {
+            // Need to skip over eighteen words, so add 8*18=144
+            144
+        },
+        _ => {
+            return Option::None;
+        },
+    };
 
-    owner_addr
-}
+    Option::Some(~Address::from(asm(
+        buffer,
+        ptr: input_ptr,
+        offset: owner_offset) {
+            // Need to skip over `offset` words
+            add ptr ptr offset;
+            // Save old stack pointer
+            move buffer sp;
+            // Extend stack by 32 bytes
+            cfei i32;
+            // Copy 32 bytes
+            mcpi buffer ptr i32;
+            // `buffer` now points to the 32 bytes
+            buffer: b256
+        }
+    ))
 
-/// If the input's type is `InputMessage`, return the owner.
-/// Otherwise, undefined behavior.
-pub fn tx_input_message_owner(input_ptr: u32) -> Address {
-    let owner_addr = ~Address::from(asm(buffer, ptr: input_ptr) {
-        // Need to skip over eighteen words, so add 8*18=144
-        addi ptr ptr i144;
-        // Save old stack pointer
-        move buffer sp;
-        // Extend stack by 32 bytes
-        cfei i32;
-        // Copy 32 bytes
-        mcpi buffer ptr i32;
-        // `buffer` now points to the 32 bytes
-        buffer: b256
-    });
-
-    owner_addr
 }
 
 ////////////////////////////////////////
