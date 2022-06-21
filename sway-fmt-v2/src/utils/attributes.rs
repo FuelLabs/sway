@@ -1,4 +1,4 @@
-use crate::fmt::{Format, Formatter, FormattedCode};
+use crate::fmt::{Format, FormattedCode, Formatter};
 use sway_parse::{
     attribute::{Annotated, AttributeDecl},
     Parse,
