@@ -219,21 +219,24 @@ impl TypedAstNode {
         let mut errors = Vec::new();
 
         // A little utility used to check an ascribed type matches its associated expression.
-        let mut type_check_ascribed_expr = |mut ctx: TypeCheckContext,
-                                            type_ascription: TypeInfo,
-                                            expr| {
-            let type_id = check!(
-                ctx.resolve_type_with_self(type_ascription, &node.span, EnforceTypeArguments::No),
-                insert_type(TypeInfo::ErrorRecovery),
-                warnings,
-                errors,
-            );
-            let ctx = ctx.with_type_annotation(type_id).with_help_text(
-                "This declaration's type annotation does not match up with the assigned \
+        let mut type_check_ascribed_expr =
+            |mut ctx: TypeCheckContext, type_ascription: TypeInfo, expr| {
+                let type_id = check!(
+                    ctx.resolve_type_with_self(
+                        insert_type(type_ascription),
+                        &node.span,
+                        EnforceTypeArguments::No
+                    ),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors,
+                );
+                let ctx = ctx.with_type_annotation(type_id).with_help_text(
+                    "This declaration's type annotation does not match up with the assigned \
                         expression's type.",
-            );
-            TypedExpression::type_check(ctx, expr)
-        };
+                );
+                TypedExpression::type_check(ctx, expr)
+            };
 
         let node = TypedAstNode {
             content: match node.content.clone() {
@@ -269,7 +272,7 @@ impl TypedAstNode {
                             };
                             let type_ascription = check!(
                                 ctx.resolve_type_with_self(
-                                    type_ascription,
+                                    insert_type(type_ascription),
                                     &type_ascription_span,
                                     EnforceTypeArguments::Yes,
                                 ),
@@ -437,13 +440,10 @@ impl TypedAstNode {
                         }
                         Declaration::StorageDeclaration(StorageDeclaration { span, fields }) => {
                             let mut fields_buf = Vec::with_capacity(fields.len());
-                            for StorageField {
-                                name,
-                                type_info: r#type,
-                            } in fields
-                            {
+                            for StorageField { name, type_info } in fields {
                                 let r#type = check!(
-                                    ctx.namespace.resolve_type_without_self(r#type),
+                                    ctx.namespace
+                                        .resolve_type_without_self(insert_type(type_info)),
                                     return err(warnings, errors),
                                     warnings,
                                     errors
@@ -704,7 +704,7 @@ fn type_check_interface_surface(
                             is_mutable,
                             type_id: check!(
                                 namespace.resolve_type_with_self(
-                                    look_up_type_id(type_id),
+                                    type_id,
                                     insert_type(TypeInfo::SelfType),
                                     &type_span,
                                     EnforceTypeArguments::Yes
@@ -719,7 +719,7 @@ fn type_check_interface_surface(
                     .collect(),
                 return_type: check!(
                     namespace.resolve_type_with_self(
-                        return_type,
+                        insert_type(return_type),
                         insert_type(TypeInfo::SelfType),
                         &return_type_span,
                         EnforceTypeArguments::Yes
@@ -757,13 +757,11 @@ fn type_check_trait_methods(
         let mut sig_ctx = ctx.by_ref().with_self_type(insert_type(TypeInfo::SelfType));
         parameters.clone().into_iter().for_each(
             |FunctionParameter {
-                 name,
-                 type_id: ref r#type,
-                 ..
+                 name, ref type_id, ..
              }| {
                 let r#type = check!(
                     sig_ctx.resolve_type_with_self(
-                        look_up_type_id(*r#type),
+                        *type_id,
                         &name.span(),
                         EnforceTypeArguments::Yes
                     ),
@@ -842,7 +840,7 @@ fn type_check_trait_methods(
                         is_mutable,
                         type_id: check!(
                             sig_ctx.resolve_type_with_self(
-                                look_up_type_id(type_id),
+                                type_id,
                                 &type_span,
                                 EnforceTypeArguments::Yes
                             ),
@@ -858,7 +856,11 @@ fn type_check_trait_methods(
 
         // TODO check code block implicit return
         let return_type = check!(
-            ctx.resolve_type_with_self(return_type, &return_type_span, EnforceTypeArguments::Yes),
+            ctx.resolve_type_with_self(
+                insert_type(return_type),
+                &return_type_span,
+                EnforceTypeArguments::Yes
+            ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,

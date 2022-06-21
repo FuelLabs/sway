@@ -206,7 +206,7 @@ impl TypedStructField {
         let mut errors = vec![];
         let r#type = check!(
             ctx.resolve_type_with_self(
-                field.type_info,
+                insert_type(field.type_info),
                 &field.type_span,
                 EnforceTypeArguments::Yes
             ),

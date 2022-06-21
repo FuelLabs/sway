@@ -170,7 +170,11 @@ impl TypedFunctionDeclaration {
 
         // type check the return type
         let return_type = check!(
-            ctx.resolve_type_with_self(return_type, &return_type_span, EnforceTypeArguments::Yes),
+            ctx.resolve_type_with_self(
+                insert_type(return_type),
+                &return_type_span,
+                EnforceTypeArguments::Yes
+            ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,

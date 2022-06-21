@@ -131,7 +131,11 @@ impl TypedIntrinsicFunctionKind {
                 type_span,
             } => {
                 let type_id = check!(
-                    ctx.resolve_type_with_self(type_name, &type_span, EnforceTypeArguments::Yes),
+                    ctx.resolve_type_with_self(
+                        insert_type(type_name),
+                        &type_span,
+                        EnforceTypeArguments::Yes
+                    ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
                     errors,
@@ -146,7 +150,11 @@ impl TypedIntrinsicFunctionKind {
                 type_span,
             } => {
                 let type_id = check!(
-                    ctx.resolve_type_with_self(type_name, &type_span, EnforceTypeArguments::Yes),
+                    ctx.resolve_type_with_self(
+                        insert_type(type_name),
+                        &type_span,
+                        EnforceTypeArguments::Yes
+                    ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
                     errors,

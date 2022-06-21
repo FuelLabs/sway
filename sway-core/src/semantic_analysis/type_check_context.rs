@@ -199,12 +199,12 @@ impl<'ns> TypeCheckContext<'ns> {
     /// the `TypeCheckContext`.
     pub(crate) fn resolve_type_with_self(
         &mut self,
-        type_info: TypeInfo,
+        type_id: TypeId,
         span: &Span,
         enforce_type_args: EnforceTypeArguments,
     ) -> CompileResult<TypeId> {
         self.namespace
-            .resolve_type_with_self(type_info, self.self_type, span, enforce_type_args)
+            .resolve_type_with_self(type_id, self.self_type, span, enforce_type_args)
     }
 
     /// Short-hand around `type_engine::unify_with_self`, where the `TypeCheckContext` provides the
