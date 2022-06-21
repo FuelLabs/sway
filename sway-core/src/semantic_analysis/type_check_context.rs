@@ -12,6 +12,14 @@ use sway_types::{span::Span, Ident, Spanned};
 
 /// Contextual state tracked and accumulated throughout type-checking.
 pub struct TypeCheckContext<'ns> {
+    /// The namespace context accumulated throughout type-checking.
+    ///
+    /// Internally, this includes:
+    ///
+    /// - The `root` module from which all other modules maybe be accessed using absolute paths.
+    /// - The `init` module used to initialise submodule namespaces.
+    /// - A `mod_path` that represents the current module being type-checked. This is automatically
+    ///   updated upon entering/exiting submodules via the `enter_submodule` method.
     pub(crate) namespace: &'ns mut Namespace,
 
     // The following set of fields are intentionally private. When a `TypeCheckContext` is passed
