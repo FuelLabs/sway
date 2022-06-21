@@ -1,0 +1,6 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+name = "match_expressions_struct_missing_fields"
+entry = "main.sw"
+implicit-std = false
