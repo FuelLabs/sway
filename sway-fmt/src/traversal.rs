@@ -154,9 +154,8 @@ fn handle_expression(expr: &Expression, changes: &mut Vec<Change>) {
         }
         Expression::DelineatedPath {
             span,
-            args: _,
-            call_path: _,
-            type_arguments: _,
+            arguments: _,
+            call_path_binding: _,
         } => {
             changes.push(Change::new(span, ChangeType::DelineatedPath));
         }

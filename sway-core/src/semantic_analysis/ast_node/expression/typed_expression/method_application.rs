@@ -7,15 +7,14 @@ use crate::{
     type_engine::*,
 };
 use std::collections::{HashMap, VecDeque};
+use sway_types::Spanned;
 use sway_types::{state::StateIndex, Span};
-use sway_types::{Ident, Spanned};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn type_check_method_application(
-    method_name: MethodName,
+    method_name_binding: TypeBinding<MethodName>,
     contract_call_params: Vec<StructExpressionField>,
     arguments: Vec<Expression>,
-    type_arguments: Vec<TypeArgument>,
     span: Span,
     namespace: &mut Namespace,
     self_type: TypeId,
@@ -43,10 +42,9 @@ pub(crate) fn type_check_method_application(
     }
 
     let method = check!(
-        resolve_method_name(
-            &method_name,
+        TypedFunctionDeclaration::find_from_method_name(
+            method_name_binding.clone(),
             args_buf.clone(),
-            type_arguments,
             span.clone(),
             namespace,
             self_type
@@ -67,7 +65,7 @@ pub(crate) fn type_check_method_application(
         if !opts.purity.can_call(method.purity) {
             errors.push(CompileError::StorageAccessMismatch {
                 attrs: promote_purity(opts.purity, method.purity).to_attribute_syntax(),
-                span: method_name.easy_name().span(),
+                span: method_name_binding.inner.easy_name().span(),
             });
         }
 
@@ -215,7 +213,7 @@ pub(crate) fn type_check_method_application(
 
         if !variable_decl.is_mutable.is_mutable() && *is_mutable {
             errors.push(CompileError::MethodRequiresMutableSelf {
-                method_name: method_name.easy_name(),
+                method_name: method_name_binding.inner.easy_name(),
                 variable_name: name.clone(),
                 span,
             });
@@ -223,7 +221,7 @@ pub(crate) fn type_check_method_application(
         }
     }
 
-    match method_name {
+    match method_name_binding.inner {
         // something like a.b(c)
         MethodName::FromModule { method_name } => {
             let selector = if method.is_contract_call {
@@ -327,123 +325,4 @@ pub(crate) fn type_check_method_application(
             ok(exp, warnings, errors)
         }
     }
-}
-
-pub(crate) fn resolve_method_name(
-    method_name: &MethodName,
-    arguments: VecDeque<TypedExpression>,
-    type_arguments: Vec<TypeArgument>,
-    span: Span,
-    namespace: &mut Namespace,
-    self_type: TypeId,
-) -> CompileResult<TypedFunctionDeclaration> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-    let func_decl = match method_name {
-        MethodName::FromType {
-            call_path,
-            type_name,
-            type_name_span,
-        } => check!(
-            find_method(
-                type_name,
-                type_name_span,
-                type_arguments,
-                namespace,
-                &arguments,
-                call_path,
-                self_type
-            ),
-            return err(warnings, errors),
-            warnings,
-            errors
-        ),
-        MethodName::FromTrait { call_path } => {
-            let (type_name, type_name_span) = arguments
-                .get(0)
-                .map(|x| (look_up_type_id(x.return_type), x.span.clone()))
-                .unwrap_or_else(|| (TypeInfo::Unknown, span.clone()));
-            check!(
-                find_method(
-                    &type_name,
-                    &type_name_span,
-                    type_arguments,
-                    namespace,
-                    &arguments,
-                    call_path,
-                    self_type
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )
-        }
-        MethodName::FromModule { method_name } => {
-            let ty = arguments
-                .get(0)
-                .map(|x| x.return_type)
-                .unwrap_or_else(|| insert_type(TypeInfo::Unknown));
-            let abs_path: Vec<_> = namespace.find_module_path(Some(method_name));
-            check!(
-                namespace.find_method_for_type(ty, &abs_path, self_type, &arguments),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )
-        }
-    };
-    ok(func_decl, warnings, errors)
-}
-
-fn find_method(
-    type_name: &TypeInfo,
-    type_name_span: &Span,
-    type_arguments: Vec<TypeArgument>,
-    namespace: &mut Namespace,
-    arguments: &VecDeque<TypedExpression>,
-    call_path: &CallPath,
-    self_type: TypeId,
-) -> CompileResult<TypedFunctionDeclaration> {
-    let warnings = vec![];
-    let mut errors = vec![];
-    let ty = match (type_name, type_arguments.is_empty()) {
-        (
-            TypeInfo::Custom {
-                name,
-                type_arguments: type_args,
-            },
-            false,
-        ) => {
-            if type_args.is_empty() {
-                TypeInfo::Custom {
-                    name: name.clone(),
-                    type_arguments,
-                }
-            } else {
-                let type_args_span = type_args
-                    .iter()
-                    .map(|x| x.span.clone())
-                    .fold(type_args[0].span.clone(), Span::join);
-                errors.push(CompileError::Internal(
-                    "did not expect to find type arguments here",
-                    type_args_span,
-                ));
-                return err(warnings, errors);
-            }
-        }
-        (_, false) => {
-            errors.push(CompileError::DoesNotTakeTypeArguments {
-                span: type_name_span.clone(),
-                name: call_path.suffix.clone(),
-            });
-            return err(warnings, errors);
-        }
-        (ty, true) => ty.clone(),
-    };
-    let abs_path: Vec<Ident> = if call_path.is_absolute {
-        call_path.full_path().cloned().collect()
-    } else {
-        namespace.find_module_path(call_path.full_path())
-    };
-    namespace.find_method_for_type(insert_type(ty), &abs_path, self_type, arguments)
 }

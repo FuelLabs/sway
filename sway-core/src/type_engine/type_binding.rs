@@ -1,3 +1,5 @@
+use sway_types::{Span, Spanned};
+
 use super::TypeArgument;
 
 /// A `TypeBinding` is the result of using turbofish to bind types to
@@ -15,7 +17,7 @@ use super::TypeArgument;
 ///
 /// ```ignore
 /// TypeBinding {
-///     prefix: CallPath(["Data"]),
+///     inner: CallPath(["Data"]),
 ///     type_arguments: [bool]
 /// }
 /// ```
@@ -61,14 +63,23 @@ use super::TypeArgument;
 ///     together
 #[derive(Debug, Clone)]
 pub struct TypeBinding<T> {
-    pub prefix: T,
+    pub inner: T,
     pub(crate) type_arguments: Vec<TypeArgument>,
 }
 
+impl<T> Spanned for TypeBinding<T>
+where
+    T: Spanned,
+{
+    fn span(&self) -> Span {
+        self.inner.span()
+    }
+}
+
 impl<T> TypeBinding<T> {
-    pub(crate) fn new_with_empty_type_arguments(prefix: T) -> TypeBinding<T> {
+    pub(crate) fn new_with_empty_type_arguments(inner: T) -> TypeBinding<T> {
         TypeBinding {
-            prefix,
+            inner,
             type_arguments: vec![],
         }
     }

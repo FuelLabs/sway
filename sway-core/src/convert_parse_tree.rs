@@ -1,4 +1,4 @@
-use crate::type_engine::{TraitConstraint, TypeArgument, TypeParameter};
+use crate::type_engine::{TraitConstraint, TypeArgument, TypeBinding, TypeParameter};
 
 use {
     crate::{
@@ -1201,18 +1201,20 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
         }
         Expr::Struct { path, fields } => {
             let (struct_name, type_arguments) = path_expr_to_call_path_type_args(ec, path)?;
-            Expression::StructExpression {
-                struct_name,
-                fields: {
-                    fields
-                        .into_inner()
-                        .into_iter()
-                        .map(|expr_struct_field| {
-                            expr_struct_field_to_struct_expression_field(ec, expr_struct_field)
-                        })
-                        .collect::<Result<_, _>>()?
-                },
+            let type_binding = TypeBinding {
+                inner: struct_name,
                 type_arguments,
+            };
+            let fields = fields
+                .into_inner()
+                .into_iter()
+                .map(|expr_struct_field| {
+                    expr_struct_field_to_struct_expression_field(ec, expr_struct_field)
+                })
+                .collect::<Result<_, _>>()?;
+            Expression::StructExpression {
+                call_path_binding: type_binding,
+                fields,
                 span,
             }
         }
@@ -1429,15 +1431,18 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         }
                         None => Vec::new(),
                     };
-                    Expression::MethodApplication {
-                        method_name: MethodName::FromType {
+                    let method_name_binding = TypeBinding {
+                        inner: MethodName::FromType {
                             call_path,
                             type_name,
                             type_name_span,
                         },
+                        type_arguments,
+                    };
+                    Expression::MethodApplication {
+                        method_name_binding,
                         contract_call_params: Vec::new(),
                         arguments,
-                        type_arguments,
                         span,
                     }
                 }
@@ -1541,18 +1546,20 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                             }
                             None => Vec::new(),
                         };
-                        if call_path.prefixes.is_empty() {
+                        let type_binding = TypeBinding {
+                            inner: call_path,
+                            type_arguments,
+                        };
+                        if type_binding.inner.prefixes.is_empty() {
                             Expression::FunctionApplication {
-                                name: call_path,
+                                call_path_binding: type_binding,
                                 arguments,
-                                type_arguments,
                                 span,
                             }
                         } else {
                             Expression::DelineatedPath {
-                                call_path,
-                                args: arguments,
-                                type_arguments,
+                                call_path_binding: type_binding,
+                                arguments,
                                 span,
                             }
                         }
@@ -1571,9 +1578,12 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             args,
             contract_args_opt,
             ..
-        } => Expression::MethodApplication {
-            method_name: MethodName::FromModule { method_name: name },
-            contract_call_params: match contract_args_opt {
+        } => {
+            let method_name_binding = TypeBinding {
+                inner: MethodName::FromModule { method_name: name },
+                type_arguments: vec![],
+            };
+            let contract_call_params = match contract_args_opt {
                 None => Vec::new(),
                 Some(contract_args) => contract_args
                     .into_inner()
@@ -1582,16 +1592,18 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         expr_struct_field_to_struct_expression_field(ec, expr_struct_field)
                     })
                     .collect::<Result<_, _>>()?,
-            },
-            arguments: {
-                iter::once(*target)
-                    .chain(args.into_inner().into_iter())
-                    .map(|expr| expr_to_expression(ec, expr))
-                    .collect::<Result<_, _>>()?
-            },
-            type_arguments: Vec::new(),
-            span,
-        },
+            };
+            let arguments = iter::once(*target)
+                .chain(args.into_inner().into_iter())
+                .map(|expr| expr_to_expression(ec, expr))
+                .collect::<Result<_, _>>()?;
+            Expression::MethodApplication {
+                method_name_binding,
+                contract_call_params,
+                arguments,
+                span,
+            }
+        }
         Expr::FieldProjection { target, name, .. } => {
             let mut idents = vec![&name];
             let mut base = &*target;
@@ -1820,17 +1832,18 @@ fn unary_op_call(
     span: Span,
     arg: Expr,
 ) -> Result<Expression, ErrorEmitted> {
+    let type_binding = TypeBinding::new_with_empty_type_arguments(CallPath {
+        prefixes: vec![
+            Ident::new_with_override("core", op_span.clone()),
+            Ident::new_with_override("ops", op_span.clone()),
+        ],
+        suffix: Ident::new_with_override(name, op_span),
+        is_absolute: false,
+    });
+    let arguments = vec![expr_to_expression(ec, arg)?];
     Ok(Expression::FunctionApplication {
-        name: CallPath {
-            prefixes: vec![
-                Ident::new_with_override("core", op_span.clone()),
-                Ident::new_with_override("ops", op_span.clone()),
-            ],
-            suffix: Ident::new_with_override(name, op_span),
-            is_absolute: false,
-        },
-        arguments: vec![expr_to_expression(ec, arg)?],
-        type_arguments: Vec::new(),
+        call_path_binding: type_binding,
+        arguments,
         span,
     })
 }
@@ -1842,8 +1855,8 @@ fn binary_op_call(
     lhs: Expression,
     rhs: Expression,
 ) -> Result<Expression, ErrorEmitted> {
-    Ok(Expression::MethodApplication {
-        method_name: MethodName::FromTrait {
+    let method_name_binding = TypeBinding {
+        inner: MethodName::FromTrait {
             call_path: CallPath {
                 prefixes: vec![
                     Ident::new_with_override("core", op_span.clone()),
@@ -1853,9 +1866,12 @@ fn binary_op_call(
                 is_absolute: true,
             },
         },
+        type_arguments: vec![],
+    };
+    Ok(Expression::MethodApplication {
+        method_name_binding,
         contract_call_params: Vec::new(),
         arguments: vec![lhs, rhs],
-        type_arguments: Vec::new(),
         span,
     })
 }
@@ -2123,12 +2139,12 @@ fn path_expr_to_expression(
         let name = path_expr_segment_to_ident(ec, path_expr.prefix)?;
         Expression::VariableExpression { name, span }
     } else {
-        let call_path = path_expr_to_call_path(ec, path_expr)?;
+        let type_binding =
+            TypeBinding::new_with_empty_type_arguments(path_expr_to_call_path(ec, path_expr)?);
         Expression::DelineatedPath {
-            call_path,
-            args: Vec::new(),
+            call_path_binding: type_binding,
+            arguments: Vec::new(),
             span,
-            type_arguments: Vec::new(),
         }
     };
     Ok(expression)

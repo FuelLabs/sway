@@ -9,8 +9,7 @@ use sway_types::{state::StateIndex, Spanned};
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
     function_decl: TypedFunctionDeclaration,
-    call_path: CallPath,
-    type_arguments: Vec<TypeArgument>,
+    type_binding: TypeBinding<CallPath>,
     arguments: Vec<Expression>,
     namespace: &mut Namespace,
     self_type: TypeId,
@@ -23,10 +22,10 @@ pub(crate) fn instantiate_function_application(
     let function_decl = check!(
         namespace.monomorphize(
             function_decl,
-            type_arguments,
+            type_binding.type_arguments.clone(),
             EnforceTypeArguments::No,
             Some(self_type),
-            Some(&call_path.span())
+            Some(&type_binding.span())
         ),
         return err(warnings, errors),
         warnings,
@@ -37,7 +36,7 @@ pub(crate) fn instantiate_function_application(
     if !opts.purity.can_call(function_decl.purity) {
         errors.push(CompileError::StorageAccessMismatch {
             attrs: promote_purity(opts.purity, function_decl.purity).to_attribute_syntax(),
-            span: call_path.span(),
+            span: type_binding.inner.span(),
         });
     }
 
@@ -71,7 +70,7 @@ pub(crate) fn instantiate_function_application(
     let span = function_decl.span.clone();
     let exp = check!(
         instantiate_function_application_inner(
-            call_path,
+            type_binding.inner,
             HashMap::new(),
             typed_call_arguments,
             function_decl,

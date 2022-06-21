@@ -76,11 +76,11 @@ impl Root {
         let mut errors = vec![];
         let type_id = match look_up_type_id(type_id) {
             TypeInfo::Custom {
-                ref name,
+                name,
                 type_arguments,
             } => {
                 match self
-                    .resolve_symbol(mod_path, name)
+                    .resolve_symbol(mod_path, &name)
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {

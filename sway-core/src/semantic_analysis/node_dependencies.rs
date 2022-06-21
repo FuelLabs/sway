@@ -392,7 +392,7 @@ impl Dependencies {
         .gather_from_type_parameters(type_parameters)
     }
 
-    fn gather_from_expr(mut self, expr: &Expression) -> Self {
+    fn gather_from_expr(self, expr: &Expression) -> Self {
         match expr {
             Expression::VariableExpression { name, .. } => {
                 // in the case of ABI variables, we actually want to check if the ABI needs to be
@@ -400,9 +400,12 @@ impl Dependencies {
                 self.gather_from_call_path(&(name.clone()).into(), false, false)
             }
             Expression::FunctionApplication {
-                name, arguments, ..
+                call_path_binding: type_binding,
+                arguments,
+                ..
             } => self
-                .gather_from_call_path(name, false, true)
+                .gather_from_call_path(&type_binding.inner, false, true)
+                .gather_from_type_arguments(&type_binding.type_arguments)
                 .gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg)),
             Expression::LazyOperator { lhs, rhs, .. } => {
                 self.gather_from_expr(lhs).gather_from_expr(rhs)
@@ -434,24 +437,26 @@ impl Dependencies {
                 self.gather_from_expr(prefix).gather_from_expr(index)
             }
             Expression::StructExpression {
-                struct_name,
+                call_path_binding: type_binding,
                 fields,
                 ..
-            } => {
-                self.deps
-                    .insert(DependentSymbol::Symbol(struct_name.suffix.clone()));
-                self.gather_from_iter(fields.iter(), |deps, field| {
+            } => self
+                .gather_from_call_path(&type_binding.inner, true, false)
+                .gather_from_type_arguments(&type_binding.type_arguments)
+                .gather_from_iter(fields.iter(), |deps, field| {
                     deps.gather_from_expr(&field.value)
-                })
-            }
+                }),
             Expression::SubfieldExpression { prefix, .. } => self.gather_from_expr(prefix),
             Expression::DelineatedPath {
-                call_path, args, ..
+                call_path_binding: type_binding,
+                arguments: args,
+                ..
             } => {
                 // It's either a module path which we can ignore, or an enum variant path, in which
                 // case we're interested in the enum name and initialiser args, ignoring the
                 // variant name.
-                self.gather_from_call_path(call_path, true, false)
+                self.gather_from_call_path(&type_binding.inner, true, false)
+                    .gather_from_type_arguments(&type_binding.type_arguments)
                     .gather_from_iter(args.iter(), |deps, arg| deps.gather_from_expr(arg))
             }
             Expression::MethodApplication { arguments, .. } => {

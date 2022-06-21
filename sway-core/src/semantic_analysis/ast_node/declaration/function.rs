@@ -1,4 +1,6 @@
 mod function_parameter;
+use std::collections::VecDeque;
+
 pub use function_parameter::*;
 
 use crate::{
@@ -250,6 +252,71 @@ impl TypedFunctionDeclaration {
         ok(function_decl, warnings, errors)
     }
 
+    pub(crate) fn find_from_method_name(
+        method_name_binding: TypeBinding<MethodName>,
+        arguments: VecDeque<TypedExpression>,
+        span: Span,
+        namespace: &mut Namespace,
+        self_type: TypeId,
+    ) -> CompileResult<TypedFunctionDeclaration> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let func_decl = match method_name_binding.inner {
+            MethodName::FromType {
+                call_path,
+                type_name,
+                type_name_span,
+            } => check!(
+                find_method(
+                    &type_name,
+                    &type_name_span,
+                    vec!(),
+                    namespace,
+                    &arguments,
+                    &call_path,
+                    self_type
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
+            MethodName::FromTrait { call_path } => {
+                let (type_name, type_name_span) = arguments
+                    .get(0)
+                    .map(|x| (look_up_type_id(x.return_type), x.span.clone()))
+                    .unwrap_or_else(|| (TypeInfo::Unknown, span.clone()));
+                check!(
+                    find_method(
+                        &type_name,
+                        &type_name_span,
+                        vec!(),
+                        namespace,
+                        &arguments,
+                        &call_path,
+                        self_type
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            MethodName::FromModule { method_name } => {
+                let ty = arguments
+                    .get(0)
+                    .map(|x| x.return_type)
+                    .unwrap_or_else(|| insert_type(TypeInfo::Unknown));
+                let abs_path: Vec<_> = namespace.find_module_path(Some(&method_name));
+                check!(
+                    namespace.find_method_for_type(ty, &abs_path, self_type, &arguments),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+        };
+        ok(func_decl, warnings, errors)
+    }
+
     /// If there are parameters, join their spans. Otherwise, use the fn name span.
     pub(crate) fn parameters_span(&self) -> Span {
         if !self.parameters.is_empty() {
@@ -376,4 +443,57 @@ fn test_function_selector_behavior() {
     };
 
     assert_eq!(selector_text, "bar(str[5],u32)".to_string());
+}
+
+fn find_method(
+    type_name: &TypeInfo,
+    type_name_span: &Span,
+    type_arguments: Vec<TypeArgument>,
+    namespace: &mut Namespace,
+    arguments: &VecDeque<TypedExpression>,
+    call_path: &CallPath,
+    self_type: TypeId,
+) -> CompileResult<TypedFunctionDeclaration> {
+    let warnings = vec![];
+    let mut errors = vec![];
+    let ty = match (type_name, type_arguments.is_empty()) {
+        (
+            TypeInfo::Custom {
+                name,
+                type_arguments: type_args,
+            },
+            false,
+        ) => {
+            if type_args.is_empty() {
+                TypeInfo::Custom {
+                    name: name.clone(),
+                    type_arguments,
+                }
+            } else {
+                let type_args_span = type_args
+                    .iter()
+                    .map(|x| x.span.clone())
+                    .fold(type_args[0].span.clone(), Span::join);
+                errors.push(CompileError::Internal(
+                    "did not expect to find type arguments here",
+                    type_args_span,
+                ));
+                return err(warnings, errors);
+            }
+        }
+        (_, false) => {
+            errors.push(CompileError::DoesNotTakeTypeArguments {
+                span: type_name_span.clone(),
+                name: call_path.suffix.clone(),
+            });
+            return err(warnings, errors);
+        }
+        (ty, true) => ty.clone(),
+    };
+    let abs_path: Vec<Ident> = if call_path.is_absolute {
+        call_path.full_path().cloned().collect()
+    } else {
+        namespace.find_module_path(call_path.full_path())
+    };
+    namespace.find_method_for_type(insert_type(ty), &abs_path, self_type, arguments)
 }
