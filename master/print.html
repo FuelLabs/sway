@@ -2558,12 +2558,7 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 <div style="break-before: page; page-break-before: always;"></div><h1 id="known-issues-and-workarounds"><a class="header" href="#known-issues-and-workarounds">Known Issues and Workarounds</a></h1>
 <h2 id="known-issues"><a class="header" href="#known-issues">Known Issues</a></h2>
 <ul>
-<li>
-<p><a href="https://github.com/FuelLabs/sway/issues/1663">#1663</a>: Using an explicit <code>return</code> in all branches of an <code>if let</code> expression causes a compile error. The workaround is to use implicit returns instead.</p>
-</li>
-<li>
-<p><a href="https://github.com/FuelLabs/sway/issues/870">#870</a>: All <code>impl</code> blocks need to be defined before any of the functions they define can be called.</p>
-</li>
+<li><a href="https://github.com/FuelLabs/sway/issues/870">#870</a>: All <code>impl</code> blocks need to be defined before any of the functions they define can be called.</li>
 </ul>
 <h2 id="missing-features"><a class="header" href="#missing-features">Missing Features</a></h2>
 <ul>
@@ -2574,7 +2569,10 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 <p><a href="https://github.com/FuelLabs/sway/issues/428">#428</a>: Arrays are currently immutable which means that changing elements of an array once initialized is not yet possible.</p>
 </li>
 <li>
-<p><a href="https://github.com/FuelLabs/sway/issues/1077">#1077</a>: Dynamic vectors, i.e. <code>Vec&lt;T&gt;</code>, have not yet been implemented.</p>
+<p><a href="https://github.com/FuelLabs/sway/issues/2035">#2035</a>: Dynamic vectors <em>in storage</em> have not yet been implemented. Only <a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/vec.sw">vectors in memory</a> are available at the moment.</p>
+</li>
+<li>
+<p><a href="https://github.com/FuelLabs/sway/issues/1188">#1188</a>: Mutable function arguments are not yet allowed except for <code>self</code>.</p>
 </li>
 </ul>
 <h2 id="general"><a class="header" href="#general">General</a></h2>
