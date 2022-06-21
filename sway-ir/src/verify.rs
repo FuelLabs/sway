@@ -173,10 +173,9 @@ impl<'a> InstructionVerifier<'a> {
 
     fn verify_bitcast(&self, value: &Value, ty: &Type) -> Result<(), IrError> {
         // The to and from types must be copy-types, excluding short strings, and the same size.
-        let val_ty = match value.get_type(self.context) {
-            None => return Err(IrError::VerifyBitcastUnknownSourceType),
-            Some(ty) => ty,
-        };
+        let val_ty = value
+            .get_type(self.context)
+            .ok_or(IrError::VerifyBitcastUnknownSourceType)?;
         if !val_ty.is_copy_type() {
             return Err(IrError::VerifyBitcastFromNonCopyType(
                 val_ty.as_string(self.context),
