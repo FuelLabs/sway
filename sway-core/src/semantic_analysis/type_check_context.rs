@@ -27,6 +27,10 @@ pub struct TypeCheckContext<'ns> {
     ///
     /// Assists type inference.
     type_annotation: TypeId,
+    /// Whether or not we're within an `abi` implementation.
+    ///
+    /// This is `ImplAbiFn` while checking `abi` implementations whether at their original impl
+    /// declaration or within an abi cast expression.
     mode: Mode,
     /// Provides "help text" to `TypeError`s during unification.
     // TODO: We probably shouldn't carry this through the `Context`, but instead pass it directly
