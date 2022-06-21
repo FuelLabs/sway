@@ -163,31 +163,18 @@ impl Root {
     /// This function will generate a missing method error if the method is not found.
     ///
     /// This method should only be called on the root namespace. `mod_path` is the current module,
-    /// `method_path` is assumed to be absolute.
+    /// `given_path` is assumed to be absolute.
     pub(crate) fn find_method_for_type(
         &mut self,
         mod_path: &Path,
         mut type_id: TypeId,
-        method_path: &Path,
+        given_path: &Path,
+        method_name: &Ident,
         self_type: TypeId,
         args_buf: &VecDeque<TypedExpression>,
     ) -> CompileResult<TypedFunctionDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
-
-        // grab the local module
-        let local_module = check!(
-            self.check_submodule(mod_path),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
-        // grab the local methods from the local module
-        let local_methods = local_module.get_methods_for_type(type_id);
-
-        // split into the method name and method prefix
-        let (method_name, method_prefix) = method_path.split_last().expect("method path is empty");
 
         type_id.replace_self_type(self_type);
 
@@ -197,26 +184,36 @@ impl Root {
                 type_id,
                 &method_name.span(),
                 EnforceTypeArguments::No,
-                method_prefix
+                given_path
             ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors
         );
 
-        // grab the module where the type itself is declared
-        let type_module = check!(
-            self.check_submodule(method_prefix),
+        let mut methods = vec![];
+
+        // grab the local module
+        let local_module = check!(
+            self.check_submodule(mod_path),
             return err(warnings, errors),
             warnings,
             errors
         );
 
-        // grab the methods from where the type is declared
-        let mut type_methods = type_module.get_methods_for_type(type_id);
+        // grab the methods from the local module
+        methods.append(&mut local_module.get_methods_for_type(type_id));
 
-        let mut methods = local_methods;
-        methods.append(&mut type_methods);
+        // grab the given module
+        let type_module = check!(
+            self.check_submodule(given_path),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        // grab the methods from the given module
+        methods.append(&mut type_module.get_methods_for_type(type_id));
 
         match methods
             .into_iter()
@@ -224,6 +221,7 @@ impl Root {
         {
             Some(o) => ok(o, warnings, errors),
             None => {
+                println!("{}, {}", given_path.iter().map(|x| x.to_string()).collect::<Vec<_>>().join("::"), method_name);
                 if args_buf.get(0).map(|x| look_up_type_id(x.return_type))
                     != Some(TypeInfo::ErrorRecovery)
                 {

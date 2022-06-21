@@ -722,13 +722,13 @@ impl TypedExpression {
             errors
         );
         let function_decl = check!(
-            unknown_decl.expect_function(),
+            unknown_decl.expect_function().cloned(),
             return err(warnings, errors),
             warnings,
             errors
         );
         instantiate_function_application(
-            function_decl.clone(),
+            function_decl,
             name,
             type_arguments,
             arguments,

@@ -1,7 +1,10 @@
 script;
 
-use std::mem::*;
-use std::intrinsics::*;
+dep pointer;
+dep buffer;
+
+use buffer::*;
+
 use std::assert::assert;
 
 struct TestStruct {
@@ -12,13 +15,13 @@ struct TestStruct {
 fn main() -> bool {
     // Create a struct
     let foo = TestStruct { boo: true, uwu: 42 };
-    let foo_len = size_of::<TestStruct>();
+    let foo_len = __size_of::<TestStruct>();
     assert(foo_len == 16);
 
     // Create a clone of the struct
     let buf = ~Buffer::alloc(foo_len);
     buf.write(true, 0);
-    buf.write(42, size_of::<bool>());
+    buf.write(42, __size_of::<bool>());
     // ^^ This parameter was declared as type bool, but argument of type u64 was provided.
     let foo: TestStruct = buf.into_unchecked();
     assert(foo.boo == true);

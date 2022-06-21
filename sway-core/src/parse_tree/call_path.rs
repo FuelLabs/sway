@@ -27,6 +27,9 @@ impl std::convert::From<Ident> for CallPath {
 impl fmt::Display for CallPath {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut buf = String::new();
+        if self.is_absolute {
+            buf.push_str("::");
+        }
         for prefix in self.prefixes.iter() {
             buf.push_str(prefix.as_str());
             buf.push_str("::");
