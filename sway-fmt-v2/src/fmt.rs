@@ -3,7 +3,7 @@ use crate::utils::{
 };
 use std::{path::Path, sync::Arc};
 use sway_core::BuildConfig;
-use sway_parse::{attribute::Annotated, ItemKind};
+use sway_parse::attribute::Annotated;
 
 pub use crate::{
     config::manifest::Config,
@@ -54,21 +54,8 @@ impl Formatter {
         raw_formatted_code += &items
             .into_iter()
             .map(|item| -> Result<String, FormatterError> {
-                use ItemKind::*;
-                // format attributes first, then add corresponding item
-                let mut buf = Annotated::format(&item, self);
-                buf.push_str(&match item.value {
-                    Use(item_use) => item_use.format(self),
-                    Struct(item_struct) => item_struct.format(self),
-                    Enum(item_enum) => item_enum.format(self),
-                    Fn(item_fn) => item_fn.format(self),
-                    Trait(item_trait) => item_trait.format(self),
-                    Impl(item_impl) => item_impl.format(self),
-                    Abi(item_abi) => item_abi.format(self),
-                    Const(item_const) => item_const.format(self),
-                    Storage(item_storage) => item_storage.format(self),
-                });
-                Ok(buf)
+                // format Annotated<ItemKind>
+                Ok(Annotated::format(&item, self))
             })
             .collect::<Result<Vec<String>, _>>()?
             .join("\n");

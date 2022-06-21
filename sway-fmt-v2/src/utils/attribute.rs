@@ -8,7 +8,7 @@ use sway_types::Spanned;
 
 use super::bracket::{Parenthesis, SquareBracket};
 
-impl<T: Parse> Format for Annotated<T> {
+impl<T: Parse + Format> Format for Annotated<T> {
     fn format(&self, formatter: &mut Formatter) -> FormattedCode {
         let attributes = &self.attribute_list;
         let mut formatted_code = String::new();
@@ -17,7 +17,7 @@ impl<T: Parse> Format for Annotated<T> {
             AttributeDecl::format(attr, &mut formatted_code, formatter);
         }
 
-        formatted_code
+        formatted_code + &self.value.format(formatter)
     }
 }
 
