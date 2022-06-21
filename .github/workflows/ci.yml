@@ -177,7 +177,7 @@ jobs:
 
           [workspace]" >> test-proj/Cargo.toml
       - name: Build test project
-        run: forc build --path test-proj --features fuel-core-lib
+        run: forc build --path test-proj
       - name: Run test project's test suite
         run: cd test-proj && forc test --features fuel-core-lib
 
