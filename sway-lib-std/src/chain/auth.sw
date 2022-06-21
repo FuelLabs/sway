@@ -52,6 +52,7 @@ fn get_coins_owner() -> Result<Identity, AuthError> {
     let mut candidate = Option::None::<Address>();
     let mut i = 0u64;
 
+    // Note: `inputs_count` is guaranteed to be at least 1 for any valid tx.
     while i < inputs_count {
         let input_owner = tx_input_owner(tx_input_pointer(i));
         match input_owner {
@@ -73,6 +74,7 @@ fn get_coins_owner() -> Result<Identity, AuthError> {
                         i += 1;
                     } else {
                         // Owners don't match. Return Err.
+                        // TODO: Use break keyword when possible
                         i = inputs_count;
                         return Result::Err(AuthError::InputsNotAllOwnedBySameAddress);
                     };
@@ -87,6 +89,5 @@ fn get_coins_owner() -> Result<Identity, AuthError> {
     };
 
     // `candidate` must be `Option::Some` at this point, so can unwrap safely.
-    // Note: `inputs_count` is guaranteed to be at least 1 for any valid tx.
     Result::Ok(Identity::Address(candidate.unwrap()))
 }
