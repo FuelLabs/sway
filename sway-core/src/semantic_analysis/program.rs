@@ -13,7 +13,7 @@ use crate::{
     types::ToJsonAbi,
 };
 use fuels_types::JsonABI;
-use sway_types::{span::Span, Ident, Spanned};
+use sway_types::{span::Span, Ident, JsonStorageInitializers, Spanned};
 
 #[derive(Clone, Debug)]
 pub struct TypedProgram {
@@ -266,6 +266,24 @@ impl TypedProgramKind {
             TypedProgramKind::Library { name } => TreeType::Library { name: name.clone() },
             TypedProgramKind::Predicate { .. } => TreeType::Predicate,
             TypedProgramKind::Script { .. } => TreeType::Script,
+        }
+    }
+
+    pub fn generate_json_storage_initializers(&self) -> JsonStorageInitializers {
+        match self {
+            TypedProgramKind::Contract { declarations, .. } => {
+                let storage_decl = declarations
+                    .iter()
+                    .find(|decl| matches!(decl, TypedDeclaration::StorageDeclaration(_)));
+
+                match storage_decl {
+                    Some(TypedDeclaration::StorageDeclaration(decl)) => {
+                        decl.generate_json_storage_initializers()
+                    }
+                    _ => vec![],
+                }
+            }
+            _ => vec![],
         }
     }
 }

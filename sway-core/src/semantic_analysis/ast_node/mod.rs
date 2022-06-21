@@ -478,14 +478,43 @@ impl TypedAstNode {
                         }
                         Declaration::StorageDeclaration(StorageDeclaration { span, fields }) => {
                             let mut fields_buf = Vec::with_capacity(fields.len());
-                            for StorageField { name, type_info } in fields {
+                            for StorageField {
+                                name,
+                                type_info,
+                                initializer,
+                            } in fields
+                            {
                                 let r#type = check!(
                                     namespace.resolve_type_without_self(insert_type(type_info)),
                                     return err(warnings, errors),
                                     warnings,
                                     errors
                                 );
-                                fields_buf.push(TypedStorageField::new(name, r#type, span.clone()));
+
+                                let initializer = match initializer {
+                                    Some(initializer) => Some(check!(
+                                        TypedExpression::type_check(TypeCheckArguments {
+                                            checkee: initializer,
+                                            namespace,
+                                            return_type_annotation: r#type,
+                                            help_text: Default::default(),
+                                            self_type,
+                                            mode: Mode::NonAbi,
+                                            opts
+                                        }),
+                                        return err(warnings, errors),
+                                        warnings,
+                                        errors,
+                                    )),
+                                    None => None,
+                                };
+
+                                fields_buf.push(TypedStorageField::new(
+                                    name,
+                                    r#type,
+                                    initializer,
+                                    span.clone(),
+                                ));
                             }
 
                             let decl = TypedStorageDeclaration::new(fields_buf, span);

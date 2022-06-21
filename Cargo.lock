@@ -1204,6 +1204,7 @@ dependencies = [
  "serde",
  "serde_ignored",
  "sway-core",
+ "sway-types",
  "sway-utils",
  "toml",
  "tracing",

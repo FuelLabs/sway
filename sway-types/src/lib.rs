@@ -339,3 +339,11 @@ impl Context {
         }
     }
 }
+
+pub type JsonStorageInitializers = Vec<StorageInitializer>;
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct StorageInitializer {
+    pub slot: Bytes32,
+    pub value: Bytes32,
+}

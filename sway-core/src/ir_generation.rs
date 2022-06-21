@@ -1,5 +1,5 @@
 mod compile;
-mod const_eval;
+pub mod const_eval;
 mod convert;
 mod function;
 mod lexical_map;

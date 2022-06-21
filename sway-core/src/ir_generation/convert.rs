@@ -6,8 +6,10 @@ use crate::{
 
 use super::types::{create_enum_aggregate, create_tuple_aggregate};
 
+use fuel_crypto::Hasher;
+use fuel_types::Bytes32;
 use sway_ir::{Aggregate, Constant, Context, MetadataIndex, Type, Value};
-use sway_types::span::Span;
+use sway_types::{span::Span, state::StateIndex};
 
 use std::sync::Arc;
 
@@ -156,4 +158,18 @@ pub(super) fn add_to_b256(x: fuel_types::Bytes32, y: u64) -> fuel_types::Bytes32
     let y = U256::from(y);
     let res: [u8; 32] = (x + y).into();
     fuel_types::Bytes32::from(res)
+}
+
+pub(super) fn get_storage_key<T>(ix: &StateIndex, indices: &[T]) -> Bytes32
+where
+    T: std::fmt::Display,
+{
+    Hasher::hash(indices.iter().fold(
+        format!(
+            "{}{}",
+            sway_utils::constants::STORAGE_DOMAIN_SEPARATOR,
+            ix.to_usize()
+        ),
+        |acc, i| format!("{}_{}", acc, i),
+    ))
 }

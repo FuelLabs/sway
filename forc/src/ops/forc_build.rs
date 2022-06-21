@@ -25,6 +25,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         silent_mode,
         output_directory,
         minify_json_abi,
+        minify_json_storage_initializers,
         locked,
         build_profile,
         release,
@@ -159,6 +160,21 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
             serde_json::to_writer(&file, &compiled.json_abi)
         } else {
             serde_json::to_writer_pretty(&file, &compiled.json_abi)
+        };
+        res?;
+    }
+
+    if !compiled.json_storage_initializers.is_empty() {
+        let json_storage_initializers_stem =
+            format!("{}-storage_initializers", manifest.project.name);
+        let json_storage_initializers_path = output_dir
+            .join(&json_storage_initializers_stem)
+            .with_extension("json");
+        let file = File::create(json_storage_initializers_path)?;
+        let res = if minify_json_storage_initializers {
+            serde_json::to_writer(&file, &compiled.json_storage_initializers)
+        } else {
+            serde_json::to_writer_pretty(&file, &compiled.json_storage_initializers)
         };
         res?;
     }

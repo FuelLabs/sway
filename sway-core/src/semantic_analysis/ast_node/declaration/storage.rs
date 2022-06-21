@@ -1,16 +1,18 @@
-use crate::semantic_analysis::{
-    TypeCheckedStorageAccess, TypeCheckedStorageAccessDescriptor, TypedStructField,
-};
-use crate::type_engine::look_up_type_id;
 use crate::{
     error::*,
-    type_engine::{TypeId, TypeInfo},
+    ir_generation::const_eval::{
+        compile_constant_expression_to_constant, serialize_to_storage_slots,
+    },
+    semantic_analysis::{
+        TypeCheckedStorageAccess, TypeCheckedStorageAccessDescriptor, TypedExpression,
+        TypedStructField,
+    },
+    type_engine::{look_up_type_id, TypeId, TypeInfo},
     Ident,
 };
-use sway_types::Spanned;
-use sway_types::{state::StateIndex, Span};
-
 use derivative::Derivative;
+use sway_ir::{Context, Kind, Module};
+use sway_types::{state::StateIndex, JsonStorageInitializers, Span, Spanned};
 
 #[derive(Clone, Debug, Derivative)]
 #[derivative(PartialEq, Eq)]
@@ -134,6 +136,7 @@ impl TypedStorageDeclaration {
                      ref name,
                      type_id: ref r#type,
                      ref span,
+                     ..
                  }| TypedStructField {
                     name: name.clone(),
                     type_id: *r#type,
@@ -142,12 +145,21 @@ impl TypedStorageDeclaration {
             )
             .collect()
     }
+
+    pub(crate) fn generate_json_storage_initializers(&self) -> JsonStorageInitializers {
+        self.fields
+            .iter()
+            .enumerate()
+            .flat_map(|(i, f)| f.generate_json_storage_initializers(&StateIndex::new(i)))
+            .collect()
+    }
 }
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedStorageField {
     pub name: Ident,
     pub type_id: TypeId,
+    pub initializer: Option<TypedExpression>,
     pub(crate) span: Span,
 }
 
@@ -156,16 +168,42 @@ pub struct TypedStorageField {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEq for TypedStorageField {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
+        self.name == other.name
+            && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
+            && self.initializer == other.initializer
     }
 }
 
 impl TypedStorageField {
-    pub fn new(name: Ident, r#type: TypeId, span: Span) -> Self {
+    pub fn new(
+        name: Ident,
+        r#type: TypeId,
+        initializer: Option<TypedExpression>,
+        span: Span,
+    ) -> Self {
         TypedStorageField {
             name,
             type_id: r#type,
+            initializer,
             span,
+        }
+    }
+
+    pub fn generate_json_storage_initializers(&self, ix: &StateIndex) -> JsonStorageInitializers {
+        let mut context = Context::default();
+        let module = Module::new(&mut context, Kind::Contract);
+        match &self.initializer {
+            None => vec![],
+            Some(initializer) => {
+                let constant_evaluated_initializer =
+                    compile_constant_expression_to_constant(&mut context, module, initializer);
+                match constant_evaluated_initializer {
+                    Ok(constant) => {
+                        serialize_to_storage_slots(&constant, &context, ix, &constant.ty, &[])
+                    }
+                    _ => vec![],
+                }
+            }
         }
     }
 }

@@ -18,6 +18,7 @@ semver = { version = "1.0", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_ignored = "0.1"
 sway-core = { version = "0.16.1", path = "../sway-core" }
+sway-types = { version = "0.16.1", path = "../sway-types" }
 sway-utils = { version = "0.16.1", path = "../sway-utils" }
 toml = "0.5"
 tracing = "0.1"

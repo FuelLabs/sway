@@ -9,7 +9,6 @@ use crate::{
 
 use super::{compile::compile_function, convert::*, lexical_map::LexicalMap, types::*};
 
-use fuel_crypto::Hasher;
 use sway_ir::*;
 use sway_types::{
     ident::Ident,
@@ -1609,16 +1608,7 @@ impl FnCompiler {
                 Ok(struct_val)
             }
             _ => {
-                // Calculate the storage location hash for the given field
-                let mut storage_slot_to_hash = format!(
-                    "{}{}",
-                    sway_utils::constants::STORAGE_DOMAIN_SEPARATOR,
-                    ix.to_usize()
-                );
-                for ix in &indices {
-                    storage_slot_to_hash = format!("{}_{}", storage_slot_to_hash, ix);
-                }
-                let hashed_storage_slot = Hasher::hash(storage_slot_to_hash);
+                let storage_key = get_storage_key(ix, &indices);
 
                 // New name for the key
                 let mut key_name = format!("{}{}", "key_for_", ix.to_usize());
@@ -1638,7 +1628,7 @@ impl FnCompiler {
                 // Const value for the key from the hash
                 let const_key = convert_literal_to_value(
                     context,
-                    &Literal::B256(hashed_storage_slot.into()),
+                    &Literal::B256(storage_key.into()),
                     span_md_idx,
                 );
 
@@ -1684,7 +1674,7 @@ impl FnCompiler {
                         &indices,
                         &mut key_ptr_val,
                         &key_ptr,
-                        &hashed_storage_slot,
+                        &storage_key,
                         r#type,
                         rhs,
                         span_md_idx,
@@ -1804,7 +1794,7 @@ impl FnCompiler {
         indices: &[u64],
         key_ptr_val: &mut Value,
         key_ptr: &Pointer,
-        hashed_storage_slot: &fuel_types::Bytes32,
+        storage_key: &fuel_types::Bytes32,
         r#type: &Type,
         rhs: &Option<Value>,
         span_md_idx: Option<MetadataIndex>,
@@ -1862,7 +1852,7 @@ impl FnCompiler {
                 // Const value for the key from the initial hash + array_index
                 let const_key = convert_literal_to_value(
                     context,
-                    &Literal::B256(*add_to_b256(*hashed_storage_slot, array_index)),
+                    &Literal::B256(*add_to_b256(*storage_key, array_index)),
                     span_md_idx,
                 );
 
