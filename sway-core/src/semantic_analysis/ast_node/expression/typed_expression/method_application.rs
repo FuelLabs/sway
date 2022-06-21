@@ -367,16 +367,7 @@ pub(crate) fn resolve_method_name(
         },
         MethodName::FromTrait { call_path } => {
             let (type_id, type_name_span) =  match arguments.get(0) {
-                Some(x) => {
-                    let type_name_span = x.span.clone();
-                    let type_id = check!(
-                        namespace.resolve_type_with_self(x.return_type, self_type, &type_name_span, EnforceTypeArguments::No),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    (type_id, type_name_span)
-                },
+                Some(x) => (x.return_type, x.span),
                 None => (insert_type(TypeInfo::Unknown), span),
             };
             check!(
@@ -409,6 +400,12 @@ pub(crate) fn resolve_method_name(
             )
         }
     };
+    let func_decl = check!(
+        namespace.monomorphize(func_decl, type_arguments, EnforceTypeArguments::Yes, Some(self_type), Some(&method_name.span())),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
     ok(func_decl, warnings, errors)
 }
 

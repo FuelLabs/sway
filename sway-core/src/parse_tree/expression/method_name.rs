@@ -1,6 +1,6 @@
 use std::fmt;
 
-use sway_types::Span;
+use sway_types::{Span, Spanned};
 
 use crate::parse_tree::CallPath;
 use crate::{Ident, TypeInfo};
@@ -45,6 +45,18 @@ impl fmt::Display for MethodName {
             MethodName::FromTrait { call_path } => call_path.to_string(),
         };
         write!(f, "{}", s)
+    }
+}
+
+impl Spanned for MethodName {
+    fn span(&self) -> Span {
+        match self {
+            MethodName::FromType { call_path, type_name, type_name_span } => {
+                Span::join(call_path.span(), type_name_span.clone())
+            },
+            MethodName::FromModule { method_name } => method_name.span(),
+            MethodName::FromTrait { call_path } => call_path.span(),
+        }
     }
 }
 
