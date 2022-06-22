@@ -2,13 +2,13 @@ use crate::{
     cli::BuildCommand,
     utils::{SWAY_BIN_HASH_SUFFIX, SWAY_BIN_ROOT_SUFFIX, SWAY_GIT_TAG},
 };
-use anyhow::{anyhow, bail, Result};
-use forc_pkg::{self as pkg, lock, Lock, ManifestFile};
-use forc_util::{default_output_directory, lock_path};
+use anyhow::Result;
+use forc_pkg::{self as pkg, ManifestFile};
+use forc_util::default_output_directory;
 use fuel_tx::Contract;
 use std::{
     fs::{self, File},
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 use sway_core::TreeType;
 use tracing::{info, warn};
@@ -56,6 +56,8 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
 
     let manifest = ManifestFile::from_dir(&this_dir, SWAY_GIT_TAG)?;
 
+    let plan = pkg::BuildPlan::load_from_manifest(&manifest, locked, offline, SWAY_GIT_TAG)?;
+
     // If any cli parameter is passed by the user it overrides the selected build profile.
     let mut config = &pkg::BuildConfig {
         print_ir,
@@ -78,52 +80,6 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
                 );
                 config
             });
-    }
-
-    let lock_path = lock_path(manifest.dir());
-
-    let plan_result = pkg::BuildPlan::from_lock_file(&lock_path, SWAY_GIT_TAG);
-
-    // Retrieve the old lock file state so we can produce a diff.
-    let old_lock = plan_result
-        .as_ref()
-        .ok()
-        .map(|plan| Lock::from_graph(plan.graph()))
-        .unwrap_or_default();
-
-    // Check if there are any errors coming from the BuildPlan generation from the lock file
-    // If there are errors we will need to create the BuildPlan from scratch, i.e fetch & pin everything
-    let mut new_lock_cause = None;
-    let mut plan = plan_result.or_else(|e| -> Result<pkg::BuildPlan> {
-        if locked {
-            bail!(
-                "The lock file {} needs to be updated but --locked was passed to prevent this.",
-                lock_path.to_string_lossy()
-            );
-        }
-        new_lock_cause = if e.to_string().contains("No such file or directory") {
-            Some(anyhow!("lock file did not exist"))
-        } else {
-            Some(e)
-        };
-        let plan = pkg::BuildPlan::new(&manifest, SWAY_GIT_TAG, offline)?;
-        Ok(plan)
-    })?;
-
-    // If there are no issues with the BuildPlan generated from the lock file
-    // Check and apply the diff.
-    if new_lock_cause.is_none() {
-        let diff = plan.validate(&manifest, SWAY_GIT_TAG)?;
-        if !diff.added.is_empty() || !diff.removed.is_empty() {
-            new_lock_cause = Some(anyhow!("lock file did not match manifest `diff`"));
-            plan = plan.apply_pkg_diff(diff, SWAY_GIT_TAG, offline)?;
-        }
-    }
-
-    if let Some(cause) = new_lock_cause {
-        info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
-        create_new_lock(&plan, &old_lock, &manifest, &lock_path)?;
-        info!("   Created new lock file at {}", lock_path.display());
     }
 
     // Build it!
@@ -186,19 +142,4 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     }
 
     Ok(compiled)
-}
-
-fn create_new_lock(
-    plan: &pkg::BuildPlan,
-    old_lock: &Lock,
-    manifest: &ManifestFile,
-    lock_path: &Path,
-) -> Result<()> {
-    let lock = Lock::from_graph(plan.graph());
-    let diff = lock.diff(old_lock);
-    lock::print_diff(&manifest.project.name, &diff);
-    let string = toml::ser::to_string_pretty(&lock)
-        .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
-    fs::write(&lock_path, &string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
-    Ok(())
 }
