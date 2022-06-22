@@ -74,12 +74,12 @@ impl CurlyBrace for ItemAbi {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
                 line.push_str(&format!("\n{}\n", open_brace));
-                shape = shape.block_indent(1);
+                shape = shape.block_indent(4);
             }
             _ => {
                 // Add opening brace to the same line
                 line.push_str(&format!(" {}\n", open_brace));
-                shape = shape.block_indent(1);
+                shape = shape.block_indent(4);
             }
         }
 
@@ -88,6 +88,6 @@ impl CurlyBrace for ItemAbi {
     fn close_curly_brace(line: &mut String, formatter: &mut Formatter) {
         line.push(Delimiter::Brace.as_close_char());
         // If shape is becoming left-most alligned or - indent just have the defualt shape
-        formatter.shape = formatter.shape.shrink_left(1).unwrap_or_default();
+        formatter.shape = formatter.shape.shrink_left(4).unwrap_or_default();
     }
 }

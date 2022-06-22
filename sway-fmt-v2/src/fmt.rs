@@ -104,11 +104,11 @@ enum Color {
         let correct_sway_code = r#"contract;
 
 enum Color {
- Blue : (),
- Green : (),
- Red : (),
- Silver : (),
- Grey : (),
+    Blue : (),
+    Green : (),
+    Red : (),
+    Silver : (),
+    Grey : (),
 }"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
@@ -129,11 +129,11 @@ enum Color {
         let correct_sway_code = r#"contract;
 
 enum Color {
- Blue   : (),
- Green  : (),
- Red    : (),
- Silver : (),
- Grey   : (),
+    Blue   : (),
+    Green  : (),
+    Red    : (),
+    Silver : (),
+    Grey   : (),
 }"#;
 
         // Creating a config with enum_variant_align_threshold that exceeds longest variant length
