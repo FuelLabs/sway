@@ -1,7 +1,8 @@
 use crate::{
     error::*,
-    ir_generation::const_eval::{
-        compile_constant_expression_to_constant, serialize_to_storage_slots,
+    ir_generation::{
+        const_eval::compile_constant_expression_to_constant,
+        storage::serialize_to_storage_initializers,
     },
     semantic_analysis::{
         TypeCheckedStorageAccess, TypeCheckedStorageAccessDescriptor, TypedExpression,
@@ -198,9 +199,13 @@ impl TypedStorageField {
                 let constant_evaluated_initializer =
                     compile_constant_expression_to_constant(&mut context, module, initializer);
                 match constant_evaluated_initializer {
-                    Ok(constant) => {
-                        serialize_to_storage_slots(&constant, &context, ix, &constant.ty, &[])
-                    }
+                    Ok(constant) => serialize_to_storage_initializers(
+                        &constant,
+                        &context,
+                        ix,
+                        &constant.ty,
+                        &[],
+                    ),
                     _ => vec![],
                 }
             }

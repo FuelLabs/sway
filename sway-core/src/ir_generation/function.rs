@@ -1,4 +1,10 @@
-use super::{compile::compile_function, convert::*, lexical_map::LexicalMap, types::*};
+use super::{
+    compile::compile_function,
+    convert::*,
+    lexical_map::LexicalMap,
+    storage::{add_to_b256, get_storage_key},
+    types::*,
+};
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     constants,

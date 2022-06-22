@@ -1,5 +1,4 @@
 use crate::{
-    asm_generation::from_ir::ir_type_size_in_bytes,
     error::CompileError,
     semantic_analysis::{
         declaration::ProjectionKind, TypedAstNode, TypedAstNodeContent, TypedExpression,
@@ -7,22 +6,15 @@ use crate::{
     },
 };
 
-use super::{
-    convert::{add_to_b256, convert_literal_to_constant, get_storage_key},
-    types::*,
-};
+use super::{convert::convert_literal_to_constant, types::*};
 
 use sway_ir::{
     constant::{Constant, ConstantValue},
     context::Context,
-    irtype::{AggregateContent, Type},
     metadata::MetadataIndex,
     module::Module,
     value::Value,
 };
-
-use fuel_types::{Bytes32, Bytes8};
-use sway_types::{state::StateIndex, JsonStorageInitializers, StorageInitializer};
 
 use sway_types::{ident::Ident, span::Spanned};
 
@@ -308,182 +300,5 @@ fn const_eval_typed_ast_node(
             const_eval_typed_expr(context, module, known_consts, e)
         }
         TypedAstNodeContent::WhileLoop(_) | TypedAstNodeContent::SideEffect => None,
-    }
-}
-
-pub fn serialize_to_storage_slots(
-    constant: &Constant,
-    context: &Context,
-    ix: &StateIndex,
-    ty: &Type,
-    indices: &[usize],
-) -> JsonStorageInitializers {
-    match (&ty, &constant.value) {
-        (_, ConstantValue::Undef) => vec![],
-        (Type::Unit, ConstantValue::Unit) => vec![StorageInitializer {
-            slot: get_storage_key(ix, indices),
-            value: Bytes32::new([0; 32]),
-        }],
-        (Type::Bool, ConstantValue::Bool(b)) => {
-            vec![StorageInitializer {
-                slot: get_storage_key(ix, indices),
-                value: Bytes32::new(
-                    [0; 31]
-                        .iter()
-                        .cloned()
-                        .chain([if *b { 0x01 } else { 0x00 }].iter().cloned())
-                        .collect::<Vec<u8>>()
-                        .try_into()
-                        .unwrap(),
-                ),
-            }]
-        }
-        (Type::Uint(_), ConstantValue::Uint(n)) => {
-            vec![StorageInitializer {
-                slot: get_storage_key(ix, indices),
-                value: Bytes32::new(
-                    [0; 24]
-                        .iter()
-                        .cloned()
-                        .chain(n.to_be_bytes().iter().cloned())
-                        .collect::<Vec<u8>>()
-                        .try_into()
-                        .unwrap(),
-                ),
-            }]
-        }
-        (Type::B256, ConstantValue::B256(b)) => {
-            vec![StorageInitializer {
-                slot: get_storage_key(ix, indices),
-                value: Bytes32::new(*b),
-            }]
-        }
-        (Type::Array(_), ConstantValue::Array(_a)) => {
-            unimplemented!("Arrays in storage have not been implemented yet.")
-        }
-        (Type::Struct(aggregate), ConstantValue::Struct(vec)) => {
-            match &context.aggregates[aggregate.0] {
-                AggregateContent::FieldTypes(field_tys) => vec
-                    .iter()
-                    .zip(field_tys.iter())
-                    .enumerate()
-                    .flat_map(|(i, (f, ty))| {
-                        serialize_to_storage_slots(
-                            f,
-                            context,
-                            ix,
-                            ty,
-                            &indices
-                                .iter()
-                                .cloned()
-                                .chain(vec![i].iter().cloned())
-                                .collect::<Vec<usize>>(),
-                        )
-                    })
-                    .collect(),
-                _ => unreachable!("Wrong content for struct."),
-            }
-        }
-        (Type::Union(_), _) | (Type::String(_), _) => {
-            // Serialize the constant data in words and add zero words until the number of words
-            // is a multiple of 4. This is useful because each storage slot is 4 words.
-            let mut packed = serialize_to_words(constant, context, ty);
-            packed.extend(vec![
-                Bytes8::new([0; 8]);
-                ((packed.len() + 3) / 4) * 4 - packed.len()
-            ]);
-
-            assert!(packed.len() % 4 == 0);
-
-            // Return a list of StorageInitializers
-            // First get the keys then get the values
-            (0..(ir_type_size_in_bytes(context, ty) + 31) / 32)
-                .into_iter()
-                .map(|i| add_to_b256(get_storage_key(ix, indices), i))
-                .zip((0..packed.len() / 4).into_iter().map(|i| {
-                    Bytes32::new(
-                        Vec::from_iter((0..4).into_iter().flat_map(|j| *packed[4 * i + j]))
-                            .try_into()
-                            .unwrap(),
-                    )
-                }))
-                .map(|(k, r)| StorageInitializer { slot: k, value: r })
-                .collect()
-        }
-        _ => vec![],
-    }
-}
-
-pub fn serialize_to_words(constant: &Constant, context: &Context, ty: &Type) -> Vec<Bytes8> {
-    match (&ty, &constant.value) {
-        (_, ConstantValue::Undef) => vec![],
-        (Type::Unit, ConstantValue::Unit) => vec![Bytes8::new([0; 8])],
-        (Type::Bool, ConstantValue::Bool(b)) => {
-            vec![Bytes8::new(
-                [0; 7]
-                    .iter()
-                    .cloned()
-                    .chain([if *b { 0x01 } else { 0x00 }].iter().cloned())
-                    .collect::<Vec<u8>>()
-                    .try_into()
-                    .unwrap(),
-            )]
-        }
-        (Type::Uint(_), ConstantValue::Uint(n)) => {
-            vec![Bytes8::new(n.to_be_bytes())]
-        }
-        (Type::B256, ConstantValue::B256(b)) => Vec::from_iter(
-            (0..4)
-                .into_iter()
-                .map(|i| Bytes8::new(b[8 * i..8 * i + 8].try_into().unwrap())),
-        ),
-        (Type::String(_), ConstantValue::String(s)) => {
-            // Turn the serialized words (Bytes8) into seriliazed storage slots (Bytes32)
-            // Pad to word alignment
-            let mut s = s.clone();
-            s.extend(vec![0; ((s.len() + 3) / 4) * 4 - s.len()]);
-
-            assert!(s.len() % 8 == 0);
-
-            // Group into words
-            Vec::from_iter((0..s.len() / 8).into_iter().map(|i| {
-                Bytes8::new(
-                    Vec::from_iter((0..8).into_iter().map(|j| s[8 * i + j]))
-                        .try_into()
-                        .unwrap(),
-                )
-            }))
-        }
-        (Type::Array(_), ConstantValue::Array(_a)) => {
-            unimplemented!("Arrays in storage have not been implemented yet.")
-        }
-        (Type::Struct(aggregate), ConstantValue::Struct(vec)) => {
-            match &context.aggregates[aggregate.0] {
-                AggregateContent::FieldTypes(field_tys) => vec
-                    .iter()
-                    .zip(field_tys.iter())
-                    .flat_map(|(f, ty)| serialize_to_words(f, context, ty))
-                    .collect(),
-                _ => unreachable!("Wrong content for struct."),
-            }
-        }
-        (Type::Union(_), _) => {
-            let value_size = ir_type_size_in_bytes(context, ty) / 8;
-            let constant_size = ir_type_size_in_bytes(context, &constant.ty) / 8;
-            assert!(value_size >= constant_size);
-
-            // Add enough left padding to satisfy the actual size of the union
-            let padding_size = value_size - constant_size;
-            vec![Bytes8::new([0; 8]); padding_size as usize]
-                .iter()
-                .cloned()
-                .chain(
-                    serialize_to_words(constant, context, &constant.ty)
-                        .iter()
-                        .cloned(),
-                )
-                .collect()
-        }
-        _ => vec![],
     }
 }

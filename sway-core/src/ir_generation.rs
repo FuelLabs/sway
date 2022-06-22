@@ -4,6 +4,7 @@ mod convert;
 mod function;
 mod lexical_map;
 mod purity;
+pub mod storage;
 mod types;
 
 use crate::{
