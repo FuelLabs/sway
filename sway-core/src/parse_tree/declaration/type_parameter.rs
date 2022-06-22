@@ -2,7 +2,10 @@ use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
 
 use sway_types::{ident::Ident, span::Span, Spanned};
 
-use std::hash::{Hash, Hasher};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
 
 #[derive(Debug, Clone, Eq)]
 pub struct TypeParameter {
@@ -57,11 +60,17 @@ impl ReplaceSelfType for TypeParameter {
     }
 }
 
+impl fmt::Display for TypeParameter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.name_ident, self.type_id)
+    }
+}
+
 impl TypeParameter {
     pub(crate) fn type_check(
+        ctx: TypeCheckContext,
         type_parameter: TypeParameter,
-        namespace: &mut Namespace,
-    ) -> CompileResult<TypeParameter> {
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         if !type_parameter.trait_constraints.is_empty() {
@@ -78,7 +87,7 @@ impl TypeParameter {
             name: type_parameter.name_ident.clone(),
             type_id,
         };
-        namespace
+        ctx.namespace
             .insert_symbol(type_parameter.name_ident.clone(), type_parameter_decl)
             .ok(&mut warnings, &mut errors);
         let type_parameter = TypeParameter {

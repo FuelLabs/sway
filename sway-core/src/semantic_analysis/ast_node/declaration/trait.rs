@@ -5,10 +5,10 @@ use crate::{
     error::{err, ok},
     semantic_analysis::{
         ast_node::{type_check_interface_surface, type_check_trait_methods},
-        Mode, TypedCodeBlock,
+        Mode, TypeCheckContext, TypedCodeBlock,
     },
     style::is_upper_camel_case,
-    type_engine::{insert_type, look_up_type_id, CopyTypes, TypeMapping},
+    type_engine::{insert_type, CopyTypes, TypeMapping},
     CallPath, CompileError, CompileResult, FunctionDeclaration, FunctionParameter, Namespace,
     Supertrait, TraitDeclaration, TypeInfo, TypedDeclaration, TypedFunctionDeclaration, Visibility,
 };
@@ -41,9 +41,9 @@ impl CopyTypes for TypedTraitDeclaration {
 
 impl TypedTraitDeclaration {
     pub(crate) fn type_check(
+        ctx: TypeCheckContext,
         trait_decl: TraitDeclaration,
-        namespace: &mut Namespace,
-    ) -> CompileResult<TypedTraitDeclaration> {
+    ) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
@@ -51,18 +51,19 @@ impl TypedTraitDeclaration {
 
         // type check the interface surface
         let interface_surface = check!(
-            type_check_interface_surface(trait_decl.interface_surface.to_vec(), namespace),
+            type_check_interface_surface(trait_decl.interface_surface.to_vec(), ctx.namespace),
             return err(warnings, errors),
             warnings,
             errors
         );
 
         // A temporary namespace for checking within the trait's scope.
-        let mut namespace = namespace.clone();
+        let mut trait_namespace = ctx.namespace.clone();
+        let ctx = ctx.scoped(&mut trait_namespace);
 
         // Recursively handle supertraits: make their interfaces and methods available to this trait
         check!(
-            handle_supertraits(&trait_decl.supertraits, &mut namespace),
+            handle_supertraits(&trait_decl.supertraits, ctx.namespace),
             return err(warnings, errors),
             warnings,
             errors
@@ -70,7 +71,7 @@ impl TypedTraitDeclaration {
 
         // insert placeholder functions representing the interface surface
         // to allow methods to use those functions
-        namespace.insert_trait_implementation(
+        ctx.namespace.insert_trait_implementation(
             CallPath {
                 prefixes: vec![],
                 suffix: trait_decl.name.clone(),
@@ -83,12 +84,9 @@ impl TypedTraitDeclaration {
                 .collect(),
         );
         // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
+        let ctx = ctx.with_self_type(insert_type(TypeInfo::SelfType));
         let _methods = check!(
-            type_check_trait_methods(
-                trait_decl.methods.clone(),
-                &mut namespace,
-                insert_type(TypeInfo::SelfType),
-            ),
+            type_check_trait_methods(ctx, trait_decl.methods.clone()),
             vec![],
             warnings,
             errors
@@ -205,7 +203,7 @@ fn convert_trait_methods_to_dummy_funcs(
                             is_mutable: *is_mutable,
                             type_id: check!(
                                 trait_namespace.resolve_type_with_self(
-                                    look_up_type_id(*type_id),
+                                    *type_id,
                                     insert_type(TypeInfo::SelfType),
                                     type_span,
                                     EnforceTypeArguments::Yes
@@ -221,7 +219,7 @@ fn convert_trait_methods_to_dummy_funcs(
                 span: name.span(),
                 return_type: check!(
                     trait_namespace.resolve_type_with_self(
-                        return_type.clone(),
+                        insert_type(return_type.clone()),
                         insert_type(TypeInfo::SelfType),
                         return_type_span,
                         EnforceTypeArguments::Yes

@@ -201,7 +201,7 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
         .map_err(|e| format!("Failed to parse: {e}"))?;
 
     if !toml_content.is_table() {
-        Err("Malformed test description.".to_owned())?;
+        return Err("Malformed test description.".to_owned());
     }
 
     let category = toml_content
