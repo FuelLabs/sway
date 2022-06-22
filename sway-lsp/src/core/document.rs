@@ -94,8 +94,7 @@ impl TextDocument {
         self.clear_tokens();
         self.clear_hash_maps();
 
-        self.test_typed_parse();
-        eprintln!("{:#?}", self.token_map);
+        //self.test_typed_parse();
 
         match self.parse_tokens_from_text() {
             Ok((tokens, diagnostics)) => {

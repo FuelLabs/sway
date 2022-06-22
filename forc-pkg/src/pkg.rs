@@ -1380,31 +1380,15 @@ pub fn dependency_namespace(
 
 /// Compiles the package to an AST.
 pub fn compile_ast(
-    pkg: &Pinned,
     manifest: &ManifestFile,
     build_config: &BuildConfig,
     namespace: namespace::Module,
-) -> Result<(CompileAstResult, Option<namespace::Root>)> {
+) -> Result<CompileAstResult> {
     let source = manifest.entry_string()?;
     let sway_build_config =
         sway_build_config(manifest.dir(), &manifest.entry_path(), build_config)?;
     let ast_res = sway_core::compile_to_ast(source, namespace, Some(&sway_build_config));
-    let silent_mode = build_config.silent;
-    let namespace = match &ast_res {
-        CompileAstResult::Failure { warnings, errors } => {
-            print_on_failure(silent_mode, warnings, errors);
-            bail!("Failed to compile {}", pkg.name);
-        }
-        CompileAstResult::Success { typed_program, .. } => match typed_program.kind.tree_type() {
-            TreeType::Library { .. } => {
-                let lib_namespace = typed_program.root.namespace.clone();
-                Some(lib_namespace.into())
-            }
-            TreeType::Contract | TreeType::Predicate | TreeType::Script => None,
-        },
-    };
-
-    Ok((ast_res, namespace))
+    Ok(ast_res)
 }
 
 /// Compiles the given package.
@@ -1437,7 +1421,7 @@ pub fn compile(
     let silent_mode = build_config.silent;
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
-    let (ast_res, maybe_namespace) = compile_ast(pkg, manifest, build_config, namespace)?;
+    let ast_res = compile_ast(manifest, build_config, namespace)?;
     match &ast_res {
         CompileAstResult::Failure { warnings, errors } => {
             print_on_failure(silent_mode, warnings, errors);
@@ -1455,12 +1439,13 @@ pub fn compile(
                 TreeType::Library { .. } => {
                     print_on_success_library(silent_mode, &pkg.name, warnings);
                     let bytecode = vec![];
+                    let lib_namespace = typed_program.root.namespace.clone();
                     let compiled = Compiled {
                         json_abi,
                         bytecode,
                         tree_type,
                     };
-                    Ok((compiled, maybe_namespace))
+                    Ok((compiled, Some(lib_namespace.into())))
                 }
 
                 // For all other program types, we'll compile the bytecode.
@@ -1476,7 +1461,7 @@ pub fn compile(
                                 bytecode,
                                 tree_type,
                             };
-                            Ok((compiled, maybe_namespace))
+                            Ok((compiled, None))
                         }
                         BytecodeCompilationResult::Library { .. } => {
                             unreachable!("compilation of library program types is handled above")
@@ -1554,9 +1539,11 @@ pub fn check(
         let pkg = &plan.graph[node];
         let path = &plan.path_map[&pkg.id()];
         let manifest = ManifestFile::from_dir(path, sway_git_tag)?;
-        let (ast_res, maybe_namespace) = compile_ast(pkg, &manifest, conf, dep_namespace)?;
-        if let Some(namespace) = maybe_namespace {
-            namespace_map.insert(node, namespace.into());
+        let ast_res = compile_ast(&manifest, conf, dep_namespace)?;
+        if let CompileAstResult::Success { typed_program, .. } = &ast_res {
+            if let TreeType::Library { .. } = typed_program.kind.tree_type() {
+                namespace_map.insert(node, typed_program.root.namespace.clone());
+            }
         }
         source_map.insert_dependency(path.clone());
 
