@@ -102,12 +102,16 @@ fn format_struct(
     }
 
     // Handle openning brace
-    ItemStruct::open_curly_brace(formatted_code, formatter);
     if multiline {
+        ItemStruct::open_curly_brace(formatted_code, formatter);
         formatted_code.push('\n');
     } else {
-        // Push the current indentation level after `{`
-        formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
+        // Push a single whitespace before `{`
+        formatted_code.push(' ');
+        // Push open brace
+        formatted_code.push('{');
+        // Push a single whitespace after `{`
+        formatted_code.push(' ');
     }
 
     let items = item_struct
@@ -178,17 +182,18 @@ impl ItemLen for ItemStruct {
 impl CurlyBrace for ItemStruct {
     fn open_curly_brace(line: &mut String, formatter: &mut Formatter) {
         let brace_style = formatter.config.items.item_brace_style;
+        let extra_width = formatter.config.whitespace.tab_spaces;
         let mut shape = formatter.shape;
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
                 line.push_str("\n{");
-                shape = shape.block_indent(1);
+                shape = shape.block_indent(extra_width);
             }
             _ => {
                 // Add opening brace to the same line
                 line.push_str(" {");
-                shape = shape.block_indent(1);
+                shape = shape.block_indent(extra_width);
             }
         }
 
@@ -198,7 +203,10 @@ impl CurlyBrace for ItemStruct {
     fn close_curly_brace(line: &mut String, formatter: &mut Formatter) {
         line.push('}');
         // If shape is becoming left-most alligned or - indent just have the defualt shape
-        formatter.shape = formatter.shape.shrink_left(1).unwrap_or_default();
+        formatter.shape = formatter
+            .shape
+            .shrink_left(formatter.config.whitespace.tab_spaces)
+            .unwrap_or_default();
     }
 }
 
