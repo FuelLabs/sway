@@ -263,10 +263,10 @@ impl BuildPlan {
         // If there are errors we will need to create the BuildPlan from scratch, i.e fetch & pin everything
         let mut new_lock_cause = None;
         let mut plan = plan_result.or_else(|e| -> Result<BuildPlan> {
-            if e.to_string().contains("dependency cycle detected") {
-                // We have a dependency cycle. Do not try to create BuildPlan!!
-                bail!(e);
-            }
+            // In the event of an unsuccessfull attempt at creating a BuildPlan while the user
+            // provided `--locked`, we should be printing the error instead of complaining about
+            // lack of lock file. So try to creat the BuildPlan first then check if `--locked` is provided
+            let plan = BuildPlan::new(manifest, sway_git_tag, offline)?;
             if locked {
                 bail!(
                     "The lock file {} needs to be updated but --locked was passed to prevent this.",
@@ -278,7 +278,6 @@ impl BuildPlan {
             } else {
                 Some(e)
             };
-            let plan = BuildPlan::new(manifest, sway_git_tag, offline)?;
             Ok(plan)
         })?;
 
