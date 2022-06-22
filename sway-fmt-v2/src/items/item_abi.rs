@@ -50,9 +50,11 @@ impl Format for ItemAbi {
                 .iter()
                 .map(|item| -> FormattedCode {
                     let mut buf = String::new();
+                    buf.push_str(&formatter.shape.indent.to_string(formatter));
                     for attr in item.attribute_list.clone() {
                         AttributeDecl::format(&attr, &mut buf, formatter)
                     }
+                    buf.push_str(&formatter.shape.indent.to_string(formatter));
                     buf.push_str(&item.value.format(formatter)); // ItemFn formatting (todo!)
 
                     buf
