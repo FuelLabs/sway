@@ -198,7 +198,7 @@ impl<V> StorageVec<V> {
     /// Removes the element at the specified index and fills it with the last element
     /// Does not preserve ordering
     #[storage(read, write)]
-    pub fn swap_remove(self, index: u64) -> Result<(), StorageVecError> {
+    pub fn swap_remove(self, index: u64) -> Result<V, StorageVecError> {
         let len = get::<u64>(__get_storage_key());
         // if the index is larger or equal to len, there is no item to remove
         if len <= index {
@@ -210,13 +210,16 @@ impl<V> StorageVec<V> {
             return Result::Err(StorageVecError::CannotSwapAndRemoveTheSameElement);
         }
 
+        // gets the element before removing it, so it can be returned
+        let element_to_be_removed = get(sha256((index, __get_storage_key())));
+
         let last_element = get(sha256(len - 1, __get_storage_key()));
         store(sha256(index, __get_storage_key()), last_element);
 
         // decrements len by 1
         store(__get_storage_key(), len - 1);
 
-        Result::Ok(())
+        Result::Ok(element_to_be_removed))
     }
 
     /// Inserts the value at the given index, moving the current index's value aswell as the following's
