@@ -110,7 +110,7 @@ impl<K, V> StorageMap<K, V> {
 }
 
 
-enum StorageVecError {
+pub enum StorageVecError {
     IndexOutOfBounds: (),
     CannotSwapAndRemoveTheSameElement: (),
 }
