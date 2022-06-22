@@ -260,7 +260,8 @@ impl Root {
         &mut self,
         mod_path: &Path,
         type_id: TypeId,
-        method_path: &Path,
+        method_prefix: &Path,
+        method_name: &Ident,
         self_type: TypeId,
         args_buf: &VecDeque<TypedExpression>,
     ) -> CompileResult<TypedFunctionDeclaration> {
@@ -277,9 +278,6 @@ impl Root {
 
         // grab the local methods from the local module
         let local_methods = local_module.get_methods_for_type(type_id);
-
-        // split into the method name and method prefix
-        let (method_name, method_prefix) = method_path.split_last().expect("method path is empty");
 
         // resolve the type
         let type_id = check!(

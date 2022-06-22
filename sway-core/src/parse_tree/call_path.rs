@@ -66,8 +66,4 @@ impl CallPath {
             }
         }
     }
-
-    pub(crate) fn full_path(&self) -> impl Iterator<Item = &Ident> {
-        self.prefixes.iter().chain(Some(&self.suffix))
-    }
 }

@@ -221,108 +221,61 @@ pub(crate) fn type_check_method_application(
         }
     }
 
-    match method_name_binding.inner {
-        // something like a.b(c)
-        MethodName::FromModule { method_name } => {
-            let selector = if method.is_contract_call {
-                let contract_address = match contract_caller.map(|x| look_up_type_id(x.return_type))
-                {
-                    Some(TypeInfo::ContractCaller { address, .. }) => address,
-                    _ => {
-                        errors.push(CompileError::Internal(
-                            "Attempted to find contract address of non-contract-call.",
-                            span.clone(),
-                        ));
-                        None
-                    }
-                };
-                let contract_address = if let Some(addr) = contract_address {
-                    addr
-                } else {
-                    errors.push(CompileError::ContractAddressMustBeKnown {
-                        span: method_name.span(),
-                    });
-                    return err(warnings, errors);
-                };
-                let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
-                Some(ContractCallMetadata {
-                    func_selector,
-                    contract_address,
-                })
-            } else {
-                None
+    let call_path = match method_name_binding.inner {
+        MethodName::FromModule { method_name } => CallPath {
+            prefixes: vec![],
+            suffix: method_name,
+            is_absolute: false,
+        },
+        MethodName::FromType {
+            call_path_binding, ..
+        } => call_path_binding.inner,
+        MethodName::FromTrait { call_path } => call_path,
+    };
+
+    let selector = if method.is_contract_call {
+        let contract_address =
+            match contract_caller.map(|x| crate::type_engine::look_up_type_id(x.return_type)) {
+                Some(TypeInfo::ContractCaller { address, .. }) => address,
+                _ => {
+                    errors.push(CompileError::Internal(
+                        "Attempted to find contract address of non-contract-call.",
+                        span.clone(),
+                    ));
+                    None
+                }
             };
+        let contract_address = if let Some(addr) = contract_address {
+            addr
+        } else {
+            errors.push(CompileError::ContractAddressMustBeKnown {
+                span: call_path.span(),
+            });
+            return err(warnings, errors);
+        };
+        let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
+        Some(ContractCallMetadata {
+            func_selector,
+            contract_address,
+        })
+    } else {
+        None
+    };
 
-            let exp = check!(
-                instantiate_function_application_simple(
-                    CallPath {
-                        prefixes: vec![],
-                        suffix: method_name,
-                        is_absolute: false,
-                    },
-                    contract_call_params_map,
-                    args_buf,
-                    method,
-                    selector,
-                    IsConstant::No,
-                    self_state_idx,
-                    span,
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            ok(exp, warnings, errors)
-        }
-
-        // something like blah::blah::~Type::foo()
-        MethodName::FromType { call_path, .. } | MethodName::FromTrait { call_path } => {
-            let selector = if method.is_contract_call {
-                let contract_address = match contract_caller
-                    .map(|x| crate::type_engine::look_up_type_id(x.return_type))
-                {
-                    Some(TypeInfo::ContractCaller { address, .. }) => address,
-                    _ => {
-                        errors.push(CompileError::Internal(
-                            "Attempted to find contract address of non-contract-call.",
-                            span.clone(),
-                        ));
-                        None
-                    }
-                };
-                let contract_address = if let Some(addr) = contract_address {
-                    addr
-                } else {
-                    errors.push(CompileError::ContractAddressMustBeKnown {
-                        span: call_path.span(),
-                    });
-                    return err(warnings, errors);
-                };
-                let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
-                Some(ContractCallMetadata {
-                    func_selector,
-                    contract_address,
-                })
-            } else {
-                None
-            };
-
-            let exp = check!(
-                instantiate_function_application_simple(
-                    call_path,
-                    contract_call_params_map,
-                    args_buf,
-                    method,
-                    selector,
-                    IsConstant::No,
-                    self_state_idx,
-                    span,
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            ok(exp, warnings, errors)
-        }
-    }
+    let exp = check!(
+        instantiate_function_application_simple(
+            call_path,
+            contract_call_params_map,
+            args_buf,
+            method,
+            selector,
+            IsConstant::No,
+            self_state_idx,
+            span,
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    ok(exp, warnings, errors)
 }

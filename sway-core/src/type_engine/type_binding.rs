@@ -64,7 +64,7 @@ use super::TypeArgument;
 #[derive(Debug, Clone)]
 pub struct TypeBinding<T> {
     pub inner: T,
-    pub(crate) type_arguments: Vec<TypeArgument>,
+    pub type_arguments: Vec<TypeArgument>,
 }
 
 impl<T> Spanned for TypeBinding<T>

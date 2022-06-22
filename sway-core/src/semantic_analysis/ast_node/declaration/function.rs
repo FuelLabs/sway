@@ -263,37 +263,50 @@ impl TypedFunctionDeclaration {
         let mut errors = vec![];
         let func_decl = match method_name_binding.inner {
             MethodName::FromType {
-                call_path,
-                type_name,
-                type_name_span,
-            } => check!(
-                find_method(
-                    &type_name,
-                    &type_name_span,
-                    vec!(),
-                    namespace,
-                    &arguments,
-                    &call_path,
-                    self_type
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ),
-            MethodName::FromTrait { call_path } => {
-                let (type_name, type_name_span) = arguments
-                    .get(0)
-                    .map(|x| (look_up_type_id(x.return_type), x.span.clone()))
-                    .unwrap_or_else(|| (TypeInfo::Unknown, span.clone()));
+                call_path_binding,
+                method_name,
+            } => {
+                let type_info = TypeInfo::Custom {
+                    name: call_path_binding.inner.suffix,
+                    type_arguments: call_path_binding.type_arguments,
+                };
+                let type_id = check!(
+                    namespace.root.resolve_type_with_self(
+                        insert_type(type_info),
+                        self_type,
+                        &span,
+                        EnforceTypeArguments::No,
+                        &call_path_binding.inner.prefixes
+                    ),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors
+                );
                 check!(
-                    find_method(
-                        &type_name,
-                        &type_name_span,
-                        vec!(),
-                        namespace,
-                        &arguments,
-                        &call_path,
-                        self_type
+                    namespace.find_method_for_type(
+                        type_id,
+                        &call_path_binding.inner.prefixes,
+                        &method_name,
+                        self_type,
+                        &arguments
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            MethodName::FromTrait { call_path } => {
+                let type_id = arguments
+                    .get(0)
+                    .map(|x| x.return_type)
+                    .unwrap_or_else(|| insert_type(TypeInfo::Unknown));
+                check!(
+                    namespace.find_method_for_type(
+                        type_id,
+                        &call_path.prefixes,
+                        &call_path.suffix,
+                        self_type,
+                        &arguments
                     ),
                     return err(warnings, errors),
                     warnings,
@@ -301,19 +314,37 @@ impl TypedFunctionDeclaration {
                 )
             }
             MethodName::FromModule { method_name } => {
-                let ty = arguments
+                let type_id = arguments
                     .get(0)
                     .map(|x| x.return_type)
                     .unwrap_or_else(|| insert_type(TypeInfo::Unknown));
-                let abs_path: Vec<_> = namespace.find_module_path(Some(&method_name));
+                let method_prefix = namespace.mod_path.clone();
                 check!(
-                    namespace.find_method_for_type(ty, &abs_path, self_type, &arguments),
+                    namespace.find_method_for_type(
+                        type_id,
+                        &method_prefix,
+                        &method_name,
+                        self_type,
+                        &arguments
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors
                 )
             }
         };
+        let func_decl = check!(
+            namespace.monomorphize(
+                func_decl,
+                method_name_binding.type_arguments,
+                EnforceTypeArguments::No,
+                Some(self_type),
+                Some(&span)
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
         ok(func_decl, warnings, errors)
     }
 
@@ -443,57 +474,4 @@ fn test_function_selector_behavior() {
     };
 
     assert_eq!(selector_text, "bar(str[5],u32)".to_string());
-}
-
-fn find_method(
-    type_name: &TypeInfo,
-    type_name_span: &Span,
-    type_arguments: Vec<TypeArgument>,
-    namespace: &mut Namespace,
-    arguments: &VecDeque<TypedExpression>,
-    call_path: &CallPath,
-    self_type: TypeId,
-) -> CompileResult<TypedFunctionDeclaration> {
-    let warnings = vec![];
-    let mut errors = vec![];
-    let ty = match (type_name, type_arguments.is_empty()) {
-        (
-            TypeInfo::Custom {
-                name,
-                type_arguments: type_args,
-            },
-            false,
-        ) => {
-            if type_args.is_empty() {
-                TypeInfo::Custom {
-                    name: name.clone(),
-                    type_arguments,
-                }
-            } else {
-                let type_args_span = type_args
-                    .iter()
-                    .map(|x| x.span.clone())
-                    .fold(type_args[0].span.clone(), Span::join);
-                errors.push(CompileError::Internal(
-                    "did not expect to find type arguments here",
-                    type_args_span,
-                ));
-                return err(warnings, errors);
-            }
-        }
-        (_, false) => {
-            errors.push(CompileError::DoesNotTakeTypeArguments {
-                span: type_name_span.clone(),
-                name: call_path.suffix.clone(),
-            });
-            return err(warnings, errors);
-        }
-        (ty, true) => ty.clone(),
-    };
-    let abs_path: Vec<Ident> = if call_path.is_absolute {
-        call_path.full_path().cloned().collect()
-    } else {
-        namespace.find_module_path(call_path.full_path())
-    };
-    namespace.find_method_for_type(insert_type(ty), &abs_path, self_type, arguments)
 }
