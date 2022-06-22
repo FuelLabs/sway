@@ -29,7 +29,7 @@ impl Format for ItemAbi {
                 let mut buf = String::new();
                 let attribute_list = item.0.attribute_list.clone();
                 // add indent + format attribute if it exists
-                if attribute_list.len() >= 1 {
+                if !attribute_list.is_empty() {
                     buf.push_str(&formatter.shape.indent.to_string(formatter));
                     for attr in attribute_list {
                         AttributeDecl::format(&attr, &mut buf, formatter)
@@ -57,7 +57,7 @@ impl Format for ItemAbi {
                     let mut buf = String::new();
                     let attribute_list = item.attribute_list.clone();
                     // add indent + format attribute if it exists
-                    if attribute_list.len() >= 1 {
+                    if !attribute_list.is_empty() {
                         buf.push_str(&formatter.shape.indent.to_string(formatter));
                         for attr in attribute_list {
                             AttributeDecl::format(&attr, &mut buf, formatter)
