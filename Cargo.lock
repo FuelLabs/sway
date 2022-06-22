@@ -1197,6 +1197,7 @@ version = "0.16.1"
 dependencies = [
  "anyhow",
  "forc-util",
+ "fuel-tx",
  "fuels-types",
  "git2",
  "petgraph",
@@ -1204,7 +1205,6 @@ dependencies = [
  "serde",
  "serde_ignored",
  "sway-core",
- "sway-types",
  "sway-utils",
  "toml",
  "tracing",
@@ -3575,6 +3575,7 @@ dependencies = [
  "either",
  "fuel-asm",
  "fuel-crypto",
+ "fuel-tx",
  "fuel-types",
  "fuel-vm",
  "fuels-types",

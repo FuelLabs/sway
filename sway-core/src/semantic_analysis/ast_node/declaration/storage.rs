@@ -1,8 +1,7 @@
 use crate::{
     error::*,
     ir_generation::{
-        const_eval::compile_constant_expression_to_constant,
-        storage::serialize_to_storage_initializers,
+        const_eval::compile_constant_expression_to_constant, storage::serialize_to_storage_slots,
     },
     semantic_analysis::{
         TypeCheckedStorageAccess, TypeCheckedStorageAccessDescriptor, TypedExpression,
@@ -12,8 +11,9 @@ use crate::{
     Ident,
 };
 use derivative::Derivative;
+use fuel_tx::StorageSlot;
 use sway_ir::{Context, Kind, Module};
-use sway_types::{state::StateIndex, JsonStorageInitializers, Span, Spanned};
+use sway_types::{state::StateIndex, Span, Spanned};
 
 #[derive(Clone, Debug, Derivative)]
 #[derivative(PartialEq, Eq)]
@@ -147,11 +147,11 @@ impl TypedStorageDeclaration {
             .collect()
     }
 
-    pub(crate) fn generate_json_storage_initializers(&self) -> JsonStorageInitializers {
+    pub(crate) fn generate_initialized_storage_slots(&self) -> Vec<StorageSlot> {
         self.fields
             .iter()
             .enumerate()
-            .flat_map(|(i, f)| f.generate_json_storage_initializers(&StateIndex::new(i)))
+            .flat_map(|(i, f)| f.generate_initialized_storage_slots(&StateIndex::new(i)))
             .collect()
     }
 }
@@ -190,7 +190,7 @@ impl TypedStorageField {
         }
     }
 
-    pub fn generate_json_storage_initializers(&self, ix: &StateIndex) -> JsonStorageInitializers {
+    pub fn generate_initialized_storage_slots(&self, ix: &StateIndex) -> Vec<StorageSlot> {
         let mut context = Context::default();
         let module = Module::new(&mut context, Kind::Contract);
         match &self.initializer {
@@ -199,13 +199,9 @@ impl TypedStorageField {
                 let constant_evaluated_initializer =
                     compile_constant_expression_to_constant(&mut context, module, initializer);
                 match constant_evaluated_initializer {
-                    Ok(constant) => serialize_to_storage_initializers(
-                        &constant,
-                        &context,
-                        ix,
-                        &constant.ty,
-                        &[],
-                    ),
+                    Ok(constant) => {
+                        serialize_to_storage_slots(&constant, &context, ix, &constant.ty, &[])
+                    }
                     _ => vec![],
                 }
             }

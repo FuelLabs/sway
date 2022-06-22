@@ -7,6 +7,7 @@ use forc_util::{
     find_file_name, git_checkouts_directory, kebab_to_snake_case, print_on_failure,
     print_on_success, print_on_success_library, println_yellow_err,
 };
+use fuel_tx::StorageSlot;
 use fuels_types::JsonABI;
 use petgraph::{
     self,
@@ -25,7 +26,6 @@ use sway_core::{
     semantic_analysis::namespace, source_map::SourceMap, types::*, BytecodeCompilationResult,
     CompileAstResult, CompileError, TreeType,
 };
-use sway_types::JsonStorageInitializers;
 use sway_utils::constants;
 use tracing::info;
 use url::Url;
@@ -46,7 +46,7 @@ pub struct PinnedId(u64);
 /// The result of successfully compiling a package.
 pub struct Compiled {
     pub json_abi: JsonABI,
-    pub json_storage_initializers: JsonStorageInitializers,
+    pub json_storage_initializers: Vec<StorageSlot>,
     pub bytecode: Vec<u8>,
     pub tree_type: TreeType,
 }
@@ -1434,7 +1434,7 @@ pub fn compile(
             warnings,
         } => {
             let json_abi = typed_program.kind.generate_json_abi();
-            let json_storage_initializers = typed_program.kind.generate_json_storage_initializers();
+            let json_storage_initializers = typed_program.kind.generate_initialized_storage_slots();
             let tree_type = typed_program.kind.tree_type();
             match tree_type {
                 // If we're compiling a library, we don't need to compile any further.

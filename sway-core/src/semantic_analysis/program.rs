@@ -12,8 +12,9 @@ use crate::{
     type_engine::*,
     types::ToJsonAbi,
 };
+use fuel_tx::StorageSlot;
 use fuels_types::JsonABI;
-use sway_types::{span::Span, Ident, JsonStorageInitializers, Spanned};
+use sway_types::{span::Span, Ident, Spanned};
 
 #[derive(Clone, Debug)]
 pub struct TypedProgram {
@@ -270,7 +271,7 @@ impl TypedProgramKind {
         }
     }
 
-    pub fn generate_json_storage_initializers(&self) -> JsonStorageInitializers {
+    pub fn generate_initialized_storage_slots(&self) -> Vec<StorageSlot> {
         match self {
             TypedProgramKind::Contract { declarations, .. } => {
                 let storage_decl = declarations
@@ -279,7 +280,7 @@ impl TypedProgramKind {
 
                 match storage_decl {
                     Some(TypedDeclaration::StorageDeclaration(decl)) => {
-                        decl.generate_json_storage_initializers()
+                        decl.generate_initialized_storage_slots()
                     }
                     _ => vec![],
                 }

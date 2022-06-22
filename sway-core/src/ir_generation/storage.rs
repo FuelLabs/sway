@@ -1,12 +1,13 @@
 use crate::asm_generation::from_ir::ir_type_size_in_bytes;
 use fuel_crypto::Hasher;
+use fuel_tx::StorageSlot;
 use fuel_types::{Bytes32, Bytes8};
 use sway_ir::{
     constant::{Constant, ConstantValue},
     context::Context,
     irtype::{AggregateContent, Type},
 };
-use sway_types::{state::StateIndex, JsonStorageInitializers, StorageInitializer};
+use sway_types::state::StateIndex;
 
 /// Hands out storage keys using a state index and a list of subfield indices.
 /// Basically returns sha256("storage_<state_index>_<idx1>_<idx2>_..")
@@ -43,7 +44,7 @@ pub(super) fn add_to_b256(x: fuel_types::Bytes32, y: u64) -> fuel_types::Bytes32
 }
 
 /// Given a constant value `constant`, a type `ty`, a state index, and a vector of subfield
-/// indices, serialize the constant into a vector of storage initializers. The keys (slots) are
+/// indices, serialize the constant into a vector of storage slots. The keys (slots) are
 /// generated using the state index and the subfield indices which are recursively built. The
 /// values are generated such that each subfield gets its own storage slot except for enums and
 /// strings which are spread over successive storage slots (use `serialize_to_words` in this case).
@@ -51,23 +52,23 @@ pub(super) fn add_to_b256(x: fuel_types::Bytes32, y: u64) -> fuel_types::Bytes32
 /// This behavior matches the behavior of how storage slots are assigned for storage reads and
 /// writes (i.e. how `state_read_*` and `state_write_*` instructions are generated).
 ///
-pub fn serialize_to_storage_initializers(
+pub fn serialize_to_storage_slots(
     constant: &Constant,
     context: &Context,
     ix: &StateIndex,
     ty: &Type,
     indices: &[usize],
-) -> JsonStorageInitializers {
+) -> Vec<StorageSlot> {
     match (&ty, &constant.value) {
         (_, ConstantValue::Undef) => vec![],
-        (Type::Unit, ConstantValue::Unit) => vec![StorageInitializer {
-            slot: get_storage_key(ix, indices),
-            value: Bytes32::new([0; 32]),
-        }],
+        (Type::Unit, ConstantValue::Unit) => vec![StorageSlot::new(
+            get_storage_key(ix, indices),
+            Bytes32::new([0; 32]),
+        )],
         (Type::Bool, ConstantValue::Bool(b)) => {
-            vec![StorageInitializer {
-                slot: get_storage_key(ix, indices),
-                value: Bytes32::new(
+            vec![StorageSlot::new(
+                get_storage_key(ix, indices),
+                Bytes32::new(
                     [0; 31]
                         .iter()
                         .cloned()
@@ -76,12 +77,12 @@ pub fn serialize_to_storage_initializers(
                         .try_into()
                         .unwrap(),
                 ),
-            }]
+            )]
         }
         (Type::Uint(_), ConstantValue::Uint(n)) => {
-            vec![StorageInitializer {
-                slot: get_storage_key(ix, indices),
-                value: Bytes32::new(
+            vec![StorageSlot::new(
+                get_storage_key(ix, indices),
+                Bytes32::new(
                     [0; 24]
                         .iter()
                         .cloned()
@@ -90,13 +91,13 @@ pub fn serialize_to_storage_initializers(
                         .try_into()
                         .unwrap(),
                 ),
-            }]
+            )]
         }
         (Type::B256, ConstantValue::B256(b)) => {
-            vec![StorageInitializer {
-                slot: get_storage_key(ix, indices),
-                value: Bytes32::new(*b),
-            }]
+            vec![StorageSlot::new(
+                get_storage_key(ix, indices),
+                Bytes32::new(*b),
+            )]
         }
         (Type::Array(_), ConstantValue::Array(_a)) => {
             unimplemented!("Arrays in storage have not been implemented yet.")
@@ -108,7 +109,7 @@ pub fn serialize_to_storage_initializers(
                     .zip(field_tys.iter())
                     .enumerate()
                     .flat_map(|(i, (f, ty))| {
-                        serialize_to_storage_initializers(
+                        serialize_to_storage_slots(
                             f,
                             context,
                             ix,
@@ -135,7 +136,7 @@ pub fn serialize_to_storage_initializers(
 
             assert!(packed.len() % 4 == 0);
 
-            // Return a list of StorageInitializers
+            // Return a list of `StorageSlot`s
             // First get the keys then get the values
             (0..(ir_type_size_in_bytes(context, ty) + 31) / 32)
                 .into_iter()
@@ -147,7 +148,7 @@ pub fn serialize_to_storage_initializers(
                             .unwrap(),
                     )
                 }))
-                .map(|(k, r)| StorageInitializer { slot: k, value: r })
+                .map(|(k, r)| StorageSlot::new(k, r))
                 .collect()
         }
         _ => vec![],
