@@ -263,9 +263,10 @@ impl BuildPlan {
         // If there are errors we will need to create the BuildPlan from scratch, i.e fetch & pin everything
         let mut new_lock_cause = None;
         let mut plan = plan_result.or_else(|e| -> Result<BuildPlan> {
-            // In the event of an unsuccessfull attempt at creating a BuildPlan while the user
+            // In the event of an unsuccessfull attempt of creating a BuildPlan while the user
             // provided `--locked`, we should be printing the error instead of complaining about
-            // lack of lock file. So try to creat the BuildPlan first then check if `--locked` is provided
+            // lack of lock file (if that is the case). So try to create the BuildPlan first
+            // then check if `--locked` is provided.
             let plan = BuildPlan::new(manifest, sway_git_tag, offline)?;
             if locked {
                 bail!(
