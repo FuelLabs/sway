@@ -554,7 +554,7 @@ impl MyContract for Contract {
 
 
      #[store(write)]
-    fn vec_u64_array_push(value: [u64, u64]) {
+    fn vec_u64_array_push(value: [u64; 2]) {
         storage.vec_u64_array.push(value);
     }
     #[store(read)]
@@ -566,15 +566,15 @@ impl MyContract for Contract {
         storage.vec_u64_array.pop();
     }
     #[store(read, write)]
-    fn vec_u64_array_remove(index: u64) -> Result<[u64, u64], StorageVecError> {
+    fn vec_u64_array_remove(index: u64) -> Result<[u64; 2], StorageVecError> {
         storage.vec_u64_array.remove(index)
     }
     #[store(read, write)]
-    fn vec_u64_array_swap_remove(index: u64) -> Result<[u64, u64], StorageVecError> {
+    fn vec_u64_array_swap_remove(index: u64) -> Result<[u64; 2], StorageVecError> {
         storage.vec_u64_array.swap_remove(index)
     }
     #[store(read, write)]
-    fn vec_u64_array_insert(index: u64, value: [u64, u64]) -> Result<(), StorageVecError> {
+    fn vec_u64_array_insert(index: u64, value: [u64; 2]) -> Result<(), StorageVecError> {
         storage.vec_u64_array.insert(index, value)
     }
     #[store(read)]
