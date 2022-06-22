@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::{semantic_analysis::*, types::*, CallPath, Ident, TypeArgument, TypeParameter};
+use crate::{semantic_analysis::*, types::*, CallPath, Ident};
 
 use sway_types::{span::Span, Spanned};
 

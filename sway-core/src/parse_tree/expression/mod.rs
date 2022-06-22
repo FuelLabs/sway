@@ -1,6 +1,7 @@
 use crate::{
     parse_tree::{CallPath, Literal},
-    CodeBlock, TypeArgument,
+    type_engine::TypeArgument,
+    CodeBlock,
 };
 use sway_types::{ident::Ident, Span, Spanned};
 
