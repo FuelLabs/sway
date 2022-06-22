@@ -235,7 +235,14 @@ impl BuildPlan {
         })
     }
 
-    /// Create a new build plan and syncronize manifest and lock file
+    /// Create a new build plan taking into account the state of both the Manifest and the existing lock file if there is one.
+    ///
+    /// This will first attempt to load a build plan from the lock file and validate the resulting graph using the current state of the Manifest.
+    ///
+    /// This includes checking if the [dependencies] or [patch] tables have changed and checking the validity of the local path dependencies.
+    /// If any changes are detected, the graph is updated and any new packages that require fetching are fetched.
+    ///
+    /// The resulting build plan should always be in a valid state that is ready for building or checking.
     pub fn load_from_manifest(
         manifest: &ManifestFile,
         locked: bool,
@@ -1373,18 +1380,31 @@ pub fn dependency_namespace(
 
 /// Compiles the package to an AST.
 pub fn compile_ast(
+    pkg: &Pinned,
     manifest: &ManifestFile,
     build_config: &BuildConfig,
     namespace: namespace::Module,
-) -> Result<CompileAstResult> {
+) -> Result<(CompileAstResult, Option<namespace::Root>)> {
     let source = manifest.entry_string()?;
     let sway_build_config =
         sway_build_config(manifest.dir(), &manifest.entry_path(), build_config)?;
-    Ok(sway_core::compile_to_ast(
-        source,
-        namespace,
-        Some(&sway_build_config),
-    ))
+    let ast_res = sway_core::compile_to_ast(source, namespace, Some(&sway_build_config));
+    let silent_mode = build_config.silent;
+    let namespace = match &ast_res {
+        CompileAstResult::Failure { warnings, errors } => {
+            print_on_failure(silent_mode, warnings, errors);
+            bail!("Failed to compile {}", pkg.name);
+        }
+        CompileAstResult::Success { typed_program, .. } => match typed_program.kind.tree_type() {
+            TreeType::Library { .. } => {
+                let lib_namespace = typed_program.root.namespace.clone();
+                Some(lib_namespace.into())
+            }
+            TreeType::Contract | TreeType::Predicate | TreeType::Script => None,
+        },
+    };
+
+    Ok((ast_res, namespace))
 }
 
 /// Compiles the given package.
@@ -1417,7 +1437,7 @@ pub fn compile(
     let silent_mode = build_config.silent;
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
-    let ast_res = compile_ast(manifest, build_config, namespace)?;
+    let (ast_res, maybe_namespace) = compile_ast(pkg, manifest, build_config, namespace)?;
     match &ast_res {
         CompileAstResult::Failure { warnings, errors } => {
             print_on_failure(silent_mode, warnings, errors);
@@ -1435,13 +1455,12 @@ pub fn compile(
                 TreeType::Library { .. } => {
                     print_on_success_library(silent_mode, &pkg.name, warnings);
                     let bytecode = vec![];
-                    let lib_namespace = typed_program.root.namespace.clone();
                     let compiled = Compiled {
                         json_abi,
                         bytecode,
                         tree_type,
                     };
-                    Ok((compiled, Some(lib_namespace.into())))
+                    Ok((compiled, maybe_namespace))
                 }
 
                 // For all other program types, we'll compile the bytecode.
@@ -1457,7 +1476,7 @@ pub fn compile(
                                 bytecode,
                                 tree_type,
                             };
-                            Ok((compiled, None))
+                            Ok((compiled, maybe_namespace))
                         }
                         BytecodeCompilationResult::Library { .. } => {
                             unreachable!("compilation of library program types is handled above")
@@ -1535,15 +1554,13 @@ pub fn check(
         let pkg = &plan.graph[node];
         let path = &plan.path_map[&pkg.id()];
         let manifest = ManifestFile::from_dir(path, sway_git_tag)?;
-        let (_, maybe_namespace) =
-            compile(pkg, &manifest, conf, dep_namespace.clone(), &mut source_map)?;
+        let (ast_res, maybe_namespace) = compile_ast(pkg, &manifest, conf, dep_namespace)?;
         if let Some(namespace) = maybe_namespace {
             namespace_map.insert(node, namespace.into());
         }
         source_map.insert_dependency(path.clone());
 
         // We only need to return the final CompileAstResult
-        let ast_res = compile_ast(&manifest, conf, dep_namespace)?;
         if i == plan.compilation_order.len() - 1 {
             return Ok(ast_res);
         }
