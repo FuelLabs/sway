@@ -1,6 +1,5 @@
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
-use fuels::tx::ContractId;
 use fuels_abigen_macro::abigen;
 
 abigen!(
@@ -13,11 +12,7 @@ async fn run_methods_test() {
     let wallet = launch_provider_and_get_single_wallet().await;
     let instance = get_methods_instance(wallet).await;
 
-    let result = instance
-        .test_function()
-        .call()
-        .await
-        .unwrap();
+    let result = instance.test_function().call().await.unwrap();
     assert_eq!(result.value, true);
 }
 
