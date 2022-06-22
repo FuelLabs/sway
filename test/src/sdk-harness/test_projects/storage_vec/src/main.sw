@@ -1,25 +1,16 @@
 contract;
 
+use std::option::*;
 use std::result::*;
 use std::storage::{StorageVec, StorageVecError};
 
-enum TestEnum {
-    A: (),
-    B: (),
-}
-
-struct TestStruct {
-    A: bool,
-    B: u64,
-}
-
 abi MyContract {
-    #[storage(write)]
+    #[storage(read, write)]
     fn vec_u8_push(value: u8);
     #[storage(read)]
-    fn vec_u8_get(index: u64);
-    #[storage(write)]
-    fn vec_u8_pop();
+    fn vec_u8_get(index: u64) -> Option<u8>;
+    #[storage(read, write)]
+    fn vec_u8_pop() -> Option<u8>;
     #[storage(read, write)]
     fn vec_u8_remove(index: u64) -> Result<u8, StorageVecError>;
     #[storage(read, write)]
@@ -32,36 +23,24 @@ abi MyContract {
     fn vec_u8_is_empty() -> bool;
     #[storage(write)]
     fn vec_u8_clear();
-
-    
 }
 
 storage {
     vec_u8: StorageVec<u8>,
-    vec_u16: StorageVec<u16>,
-    vec_u32: StorageVec<u32>,
-    vec_u64: StorageVec<u64>,
-    vec_bool: StorageVec<bool>,
-    vec_str4: StorageVec<str[4]>,
-    vec_b256: StorageVec<b256>,
-    vec_u64_tuple: StorageVec<(u64, u64)>,
-    vec_u64_array: StorageVec<[u64; 2]>,
-    vec_enum: StorageVec<TestEnum>,
-    vec_struct: StorageVec<TestStruct>,
 }
 
 impl MyContract for Contract {
-    #[storage(write)]
+    #[storage(read, write)]
     fn vec_u8_push(value: u8) {
         storage.vec_u8.push(value);
     }
     #[storage(read)]
-    fn vec_u8_get(index: u64) {
-        storage.vec_u8.get(index);
+    fn vec_u8_get(index: u64) -> Option<u8> {
+        storage.vec_u8.get(index)
     }
-    #[storage(write)]
-    fn vec_u8_pop() {
-        storage.vec_u8.pop();
+    #[storage(read, write)]
+    fn vec_u8_pop() -> Option<u8> {
+        storage.vec_u8.pop()
     }
     #[storage(read, write)]
     fn vec_u8_remove(index: u64) -> Result<u8, StorageVecError> {
@@ -87,8 +66,4 @@ impl MyContract for Contract {
     fn vec_u8_clear() {
         storage.vec_u8.clear();
     }
-
-
-
-    
 }
