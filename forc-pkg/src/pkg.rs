@@ -1552,7 +1552,7 @@ pub fn check(
             return Ok(ast_res);
         }
     }
-    bail!("unable to check sway program from build plan")
+    bail!("unable to check sway program: build plan contains no packages")
 }
 
 /// Attempt to find a `Forc.toml` with the given project name within the given directory.
