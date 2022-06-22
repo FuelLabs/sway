@@ -27,10 +27,15 @@ impl Format for ItemAbi {
             .iter()
             .map(|item| -> FormattedCode {
                 let mut buf = String::new();
-                buf.push_str(&formatter.shape.indent.to_string(formatter));
-                for attr in item.0.attribute_list.clone() {
-                    AttributeDecl::format(&attr, &mut buf, formatter)
+                let attribute_list = item.0.attribute_list.clone();
+                // add indent + format attribute if it exists
+                if attribute_list.len() >= 1 {
+                    buf.push_str(&formatter.shape.indent.to_string(formatter));
+                    for attr in attribute_list {
+                        AttributeDecl::format(&attr, &mut buf, formatter)
+                    }
                 }
+                // add indent + format item
                 buf.push_str(&formatter.shape.indent.to_string(formatter));
                 buf.push_str(&format!(
                     "{}{}\n",
@@ -50,10 +55,15 @@ impl Format for ItemAbi {
                 .iter()
                 .map(|item| -> FormattedCode {
                     let mut buf = String::new();
-                    buf.push_str(&formatter.shape.indent.to_string(formatter));
-                    for attr in item.attribute_list.clone() {
-                        AttributeDecl::format(&attr, &mut buf, formatter)
+                    let attribute_list = item.attribute_list.clone();
+                    // add indent + format attribute if it exists
+                    if attribute_list.len() >= 1 {
+                        buf.push_str(&formatter.shape.indent.to_string(formatter));
+                        for attr in attribute_list {
+                            AttributeDecl::format(&attr, &mut buf, formatter)
+                        }
                     }
+                    // add indent + format item
                     buf.push_str(&formatter.shape.indent.to_string(formatter));
                     buf.push_str(&item.value.format(formatter)); // ItemFn formatting (todo!)
 
