@@ -1,31 +1,27 @@
 use crate::{
     error::*,
-    semantic_analysis::{ast_node::*, TCOpts, TypeCheckArguments},
-    type_engine::TypeId,
+    semantic_analysis::{ast_node::*, TypeCheckContext},
 };
 use std::collections::{hash_map::RandomState, HashMap, VecDeque};
 use sway_types::{state::StateIndex, Spanned};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
+    mut ctx: TypeCheckContext,
     function_decl: TypedFunctionDeclaration,
     call_path: CallPath,
     type_arguments: Vec<TypeArgument>,
     arguments: Vec<Expression>,
-    namespace: &mut Namespace,
-    self_type: TypeId,
-    opts: TCOpts,
 ) -> CompileResult<TypedExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
     // monomorphize the function declaration
     let function_decl = check!(
-        namespace.monomorphize(
+        ctx.monomorphize(
             function_decl,
             type_arguments,
             EnforceTypeArguments::No,
-            Some(self_type),
             Some(&call_path.span())
         ),
         return err(warnings, errors),
@@ -34,9 +30,9 @@ pub(crate) fn instantiate_function_application(
     );
 
     // 'purity' is that of the callee, 'opts.purity' of the caller.
-    if !opts.purity.can_call(function_decl.purity) {
+    if !ctx.purity().can_call(function_decl.purity) {
         errors.push(CompileError::StorageAccessMismatch {
-            attrs: promote_purity(opts.purity, function_decl.purity).to_attribute_syntax(),
+            attrs: promote_purity(ctx.purity(), function_decl.purity).to_attribute_syntax(),
             span: call_path.span(),
         });
     }
@@ -48,18 +44,16 @@ pub(crate) fn instantiate_function_application(
         .into_iter()
         .zip(function_decl.parameters.iter())
         .map(|(arg, param)| {
+            let ctx = ctx
+                .by_ref()
+                .with_help_text(
+                    "The argument that has been provided to this function's type does \
+                    not match the declared type of the parameter in the function \
+                    declaration.",
+                )
+                .with_type_annotation(param.type_id);
             let exp = check!(
-                TypedExpression::type_check(TypeCheckArguments {
-                    checkee: arg.clone(),
-                    namespace,
-                    return_type_annotation: param.type_id,
-                    help_text: "The argument that has been provided to this function's type does \
-                        not match the declared type of the parameter in the function \
-                        declaration.",
-                    self_type,
-                    mode: Mode::NonAbi,
-                    opts,
-                }),
+                TypedExpression::type_check(ctx, arg.clone()),
                 error_recovery_expr(arg.span()),
                 warnings,
                 errors
