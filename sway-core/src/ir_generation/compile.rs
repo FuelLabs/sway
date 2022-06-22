@@ -1,7 +1,7 @@
 use crate::{
     error::CompileError,
     parse_tree::{Purity, Visibility},
-    semantic_analysis::{ast_node::*, *},
+    semantic_analysis::{ast_node::*, namespace},
 };
 
 use super::{
@@ -230,6 +230,8 @@ fn compile_fn_with_args(
         ret_val = Constant::get_unit(context, None);
     }
 
+    let already_returns = compiler.current_block.is_terminated_by_ret(context);
+
     // Another special case: if the last expression in a function is a return then we don't want to
     // add another implicit return instruction here, as `ret_val` will be unit regardless of the
     // function return type actually is.  This new RET will be going into an unreachable block
@@ -239,9 +241,10 @@ fn compile_fn_with_args(
     // To tell if this is the case we can check that the current block is empty and has no
     // predecessors (and isn't the entry block which has none by definition), implying the most
     // recent instruction was a RET.
-    if compiler.current_block.num_instructions(context) > 0
-        || compiler.current_block == compiler.function.get_entry_block(context)
-        || compiler.current_block.num_predecessors(context) > 0
+    if !already_returns
+        && (compiler.current_block.num_instructions(context) > 0
+            || compiler.current_block == compiler.function.get_entry_block(context)
+            || compiler.current_block.num_predecessors(context) > 0)
     {
         if ret_type.eq(context, &Type::Unit) {
             ret_val = Constant::get_unit(context, None);

@@ -12,30 +12,24 @@ use sway_types::{Ident, Spanned};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn type_check_method_application(
+    mut ctx: TypeCheckContext,
     method_name: MethodName,
     contract_call_params: Vec<StructExpressionField>,
     arguments: Vec<Expression>,
     type_arguments: Vec<TypeArgument>,
     span: Span,
-    namespace: &mut Namespace,
-    self_type: TypeId,
-    opts: TCOpts,
 ) -> CompileResult<TypedExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut args_buf = VecDeque::new();
     let mut contract_call_params_map = HashMap::new();
     for arg in &arguments {
+        let ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(insert_type(TypeInfo::Unknown));
         args_buf.push_back(check!(
-            TypedExpression::type_check(TypeCheckArguments {
-                checkee: arg.clone(),
-                namespace,
-                return_type_annotation: insert_type(TypeInfo::Unknown),
-                help_text: Default::default(),
-                self_type,
-                mode: Mode::NonAbi,
-                opts,
-            }),
+            TypedExpression::type_check(ctx, arg.clone()),
             error_recovery_expr(span.clone()),
             warnings,
             errors
@@ -44,12 +38,11 @@ pub(crate) fn type_check_method_application(
 
     let method = check!(
         resolve_method_name(
+            ctx.by_ref(),
             &method_name,
             args_buf.clone(),
             type_arguments,
             span.clone(),
-            namespace,
-            self_type
         ),
         return err(warnings, errors),
         warnings,
@@ -64,9 +57,9 @@ pub(crate) fn type_check_method_application(
 
     if !method.is_contract_call {
         // 'method.purity' is that of the callee, 'opts.purity' of the caller.
-        if !opts.purity.can_call(method.purity) {
+        if !ctx.purity().can_call(method.purity) {
             errors.push(CompileError::StorageAccessMismatch {
-                attrs: promote_purity(opts.purity, method.purity).to_attribute_syntax(),
+                attrs: promote_purity(ctx.purity(), method.purity).to_attribute_syntax(),
                 span: method_name.easy_name().span(),
             });
         }
@@ -96,6 +89,18 @@ pub(crate) fn type_check_method_application(
         }
 
         for param in contract_call_params {
+            let type_annotation = match param.name.span().as_str() {
+                constants::CONTRACT_CALL_GAS_PARAMETER_NAME
+                | constants::CONTRACT_CALL_COINS_PARAMETER_NAME => {
+                    insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour))
+                }
+                constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME => insert_type(TypeInfo::B256),
+                _ => unreachable!(),
+            };
+            let ctx = ctx
+                .by_ref()
+                .with_help_text("")
+                .with_type_annotation(type_annotation);
             match param.name.span().as_str() {
                 constants::CONTRACT_CALL_GAS_PARAMETER_NAME
                 | constants::CONTRACT_CALL_COINS_PARAMETER_NAME
@@ -103,23 +108,7 @@ pub(crate) fn type_check_method_application(
                     contract_call_params_map.insert(
                         param.name.to_string(),
                         check!(
-                            TypedExpression::type_check(TypeCheckArguments {
-                                checkee: param.value,
-                                namespace,
-                                return_type_annotation: match param.name.span().as_str() {
-                                    constants::CONTRACT_CALL_GAS_PARAMETER_NAME
-                                    | constants::CONTRACT_CALL_COINS_PARAMETER_NAME => insert_type(
-                                        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
-                                    ),
-                                    constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME =>
-                                        insert_type(TypeInfo::B256),
-                                    _ => unreachable!(),
-                                },
-                                help_text: Default::default(),
-                                self_type,
-                                mode: Mode::NonAbi,
-                                opts,
-                            }),
+                            TypedExpression::type_check(ctx, param.value),
                             error_recovery_expr(span.clone()),
                             warnings,
                             errors
@@ -139,9 +128,9 @@ pub(crate) fn type_check_method_application(
     // If this method was called with self being a `StorageAccess` (e.g. storage.map.insert(..)),
     // then record the index of that storage variable and pass it on.
     let mut self_state_idx = None;
-    if namespace.has_storage_declared() {
+    if ctx.namespace.has_storage_declared() {
         let storage_fields = check!(
-            namespace.get_storage_field_descriptors(),
+            ctx.namespace.get_storage_field_descriptors(),
             return err(warnings, errors),
             warnings,
             errors
@@ -172,13 +161,11 @@ pub(crate) fn type_check_method_application(
     // type check all of the arguments against the parameters in the method declaration
     for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
         // if the return type cannot be cast into the annotation type then it is a type error
-        let (mut new_warnings, new_errors) = unify_with_self(
-            arg.return_type,
-            param.type_id,
-            self_type,
-            &arg.span,
-            "This argument's type is not castable to the declared parameter type.",
-        );
+        let (mut new_warnings, new_errors) = ctx
+            .by_ref()
+            .with_help_text("This argument's type is not castable to the declared parameter type.")
+            .with_type_annotation(param.type_id)
+            .unify_with_self(arg.return_type, &arg.span);
         warnings.append(&mut new_warnings);
         if !new_errors.is_empty() {
             errors.push(CompileError::ArgumentParameterTypeMismatch {
@@ -201,7 +188,7 @@ pub(crate) fn type_check_method_application(
     ) = (args_buf.get(0), method.parameters.get(0))
     {
         let unknown_decl = check!(
-            namespace.resolve_symbol(name).cloned(),
+            ctx.namespace.resolve_symbol(name).cloned(),
             return err(warnings, errors),
             warnings,
             errors
@@ -330,12 +317,11 @@ pub(crate) fn type_check_method_application(
 }
 
 pub(crate) fn resolve_method_name(
+    ctx: TypeCheckContext,
     method_name: &MethodName,
     arguments: VecDeque<TypedExpression>,
     type_arguments: Vec<TypeArgument>,
     span: Span,
-    namespace: &mut Namespace,
-    self_type: TypeId,
 ) -> CompileResult<TypedFunctionDeclaration> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -346,13 +332,12 @@ pub(crate) fn resolve_method_name(
             type_name_span,
         } => check!(
             find_method(
+                ctx,
                 type_name,
                 type_name_span,
                 type_arguments,
-                namespace,
                 &arguments,
                 call_path,
-                self_type
             ),
             return err(warnings, errors),
             warnings,
@@ -365,13 +350,12 @@ pub(crate) fn resolve_method_name(
                 .unwrap_or_else(|| (TypeInfo::Unknown, span.clone()));
             check!(
                 find_method(
+                    ctx,
                     &type_name,
                     &type_name_span,
                     type_arguments,
-                    namespace,
                     &arguments,
                     call_path,
-                    self_type
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -383,9 +367,10 @@ pub(crate) fn resolve_method_name(
                 .get(0)
                 .map(|x| x.return_type)
                 .unwrap_or_else(|| insert_type(TypeInfo::Unknown));
-            let abs_path: Vec<_> = namespace.find_module_path(Some(method_name));
+            let abs_path: Vec<_> = ctx.namespace.find_module_path(Some(method_name));
             check!(
-                namespace.find_method_for_type(ty, &abs_path, self_type, &arguments),
+                ctx.namespace
+                    .find_method_for_type(ty, &abs_path, ctx.self_type(), &arguments),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -396,13 +381,12 @@ pub(crate) fn resolve_method_name(
 }
 
 fn find_method(
+    ctx: TypeCheckContext,
     type_name: &TypeInfo,
     type_name_span: &Span,
     type_arguments: Vec<TypeArgument>,
-    namespace: &mut Namespace,
     arguments: &VecDeque<TypedExpression>,
     call_path: &CallPath,
-    self_type: TypeId,
 ) -> CompileResult<TypedFunctionDeclaration> {
     let warnings = vec![];
     let mut errors = vec![];
@@ -443,7 +427,8 @@ fn find_method(
     let abs_path: Vec<Ident> = if call_path.is_absolute {
         call_path.full_path().cloned().collect()
     } else {
-        namespace.find_module_path(call_path.full_path())
+        ctx.namespace.find_module_path(call_path.full_path())
     };
-    namespace.find_method_for_type(insert_type(ty), &abs_path, self_type, arguments)
+    ctx.namespace
+        .find_method_for_type(insert_type(ty), &abs_path, ctx.self_type(), arguments)
 }
