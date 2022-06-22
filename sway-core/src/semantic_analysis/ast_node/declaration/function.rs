@@ -263,20 +263,35 @@ impl TypedFunctionDeclaration {
         let mut errors = vec![];
         let func_decl = match method_name_binding.inner {
             MethodName::FromType {
-                call_path_binding,
+                path_prefixes,
+                type_info_binding,
                 method_name,
             } => {
-                let type_info = TypeInfo::Custom {
-                    name: call_path_binding.inner.suffix,
-                    type_arguments: call_path_binding.type_arguments,
-                };
+                // find the module that the symbol is in
+                let module_path = namespace.find_module_path(&path_prefixes, false);
+                println!(
+                    "{}",
+                    module_path
+                        .iter()
+                        .map(|x| x.to_string())
+                        .collect::<Vec<_>>()
+                        .join("::")
+                );
+                check!(
+                    namespace
+                        .root()
+                        .check_submodule(&call_path_binding.inner.prefixes),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
                 let type_id = check!(
                     namespace.root.resolve_type_with_self(
                         insert_type(type_info),
                         self_type,
                         &span,
                         EnforceTypeArguments::No,
-                        &call_path_binding.inner.prefixes
+                        &module_path
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,

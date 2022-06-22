@@ -1,6 +1,14 @@
 use sway_types::{Span, Spanned};
 
-use super::TypeArgument;
+use crate::{
+    error::{err, ok},
+    namespace::Path,
+    semantic_analysis::EnforceTypeArguments,
+    type_engine::{insert_type, look_up_type_id},
+    CompileError, CompileResult, Namespace, TypeInfo,
+};
+
+use super::{type_argument, type_parameter, unify_with_self, TypeArgument, TypeId, TypeParameter};
 
 /// A `TypeBinding` is the result of using turbofish to bind types to
 /// generic parameters.
@@ -65,22 +73,120 @@ use super::TypeArgument;
 pub struct TypeBinding<T> {
     pub inner: T,
     pub type_arguments: Vec<TypeArgument>,
+    pub span: Span,
 }
 
-impl<T> Spanned for TypeBinding<T>
-where
-    T: Spanned,
-{
+impl<T> Spanned for TypeBinding<T> {
     fn span(&self) -> Span {
-        self.inner.span()
+        self.span.clone()
     }
 }
 
 impl<T> TypeBinding<T> {
-    pub(crate) fn new_with_empty_type_arguments(inner: T) -> TypeBinding<T> {
+    pub(crate) fn new_with_empty_type_arguments(inner: T, span: Span) -> TypeBinding<T> {
         TypeBinding {
             inner,
             type_arguments: vec![],
+            span,
         }
+    }
+}
+
+impl TypeBinding<TypeInfo> {
+    pub(crate) fn type_check(
+        self,
+        module_path: &Path,
+        namespace: &mut Namespace,
+        self_type: TypeId,
+    ) -> CompileResult<TypeId> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        println!(
+            "{}",
+            module_path
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join("::")
+        );
+        check!(
+            namespace.root().check_submodule(&module_path),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let type_id = check!(
+            namespace.root.resolve_type_with_self(
+                insert_type(self.inner),
+                self_type,
+                &self.span(),
+                EnforceTypeArguments::No,
+                &module_path
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+        let type_id = match look_up_type_id(type_id) {
+            TypeInfo::Enum {
+                name,
+                type_parameters,
+                variant_types,
+            } => {
+                check!()
+            }
+            TypeInfo::Struct {
+                name,
+                type_parameters,
+                fields,
+            } => todo!(),
+            type_info => {
+                errors.push(CompileError::DoesNotTakeTypeArguments {
+                    name: type_info.to_string(),
+                    span: self.span(),
+                });
+                type_id
+            }
+        };
+        ok(type_id, warnings, errors)
+    }
+}
+
+fn unify_type_parameters_and_type_arguments(
+    type_parameters: &[TypeParameter],
+    type_arguments: &[TypeArgument],
+    self_type: TypeId,
+    span: &Span,
+) -> CompileResult<()> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+
+    // check to see if we got the expected number of type arguments
+    if type_parameters.len() != type_arguments.len() {
+        errors.push(CompileError::IncorrectNumberOfTypeArguments {
+            given: type_arguments.len(),
+            expected: type_parameters.len(),
+            span: span.clone(),
+        });
+        return err(warnings, errors);
+    }
+
+    // unify the type parameters and the type arguments
+    for (type_parameter, type_argument) in type_parameters.into_iter().zip(type_arguments.iter()) {
+        let (mut new_warnings, new_errors) = unify_with_self(
+            type_parameter.type_id,
+            type_argument.type_id,
+            self_type,
+            &type_parameter.span(),
+            "cannot unify the type argument with the type parameter",
+        );
+        warnings.append(&mut new_warnings);
+        errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+    }
+
+    if errors.is_empty() {
+        ok((), warnings, errors)
+    } else {
+        err(warnings, errors)
     }
 }

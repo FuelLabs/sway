@@ -98,7 +98,7 @@ where
                     .reduce(Span::join)
                     .unwrap_or_else(|| self.span());
                 errors.push(CompileError::DoesNotTakeTypeArguments {
-                    name: self.name().clone(),
+                    name: self.name().to_string(),
                     span: type_arguments_span,
                 });
                 err(warnings, errors)

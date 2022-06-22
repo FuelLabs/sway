@@ -1411,23 +1411,27 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             };
             match method_type_opt {
                 Some(type_name) => {
+                    let type_info = match type_name_to_type_info_opt(&type_name) {
+                        Some(type_info) => type_info,
+                        None => TypeInfo::Custom {
+                            name: type_name,
+                            type_arguments: Vec::new(),
+                        },
+                    };
                     let type_arguments = match function_name.generics_opt {
                         Some((_, generic_args)) => {
                             generic_args_to_type_arguments(ec, generic_args)?
                         }
                         None => Vec::new(),
                     };
-                    let call_path_binding = TypeBinding {
-                        inner: CallPath {
-                            is_absolute,
-                            prefixes,
-                            suffix: type_name,
-                        },
-                        type_arguments: parent_type_arguments,
+                    let type_info_binding = TypeBinding {
+                        inner: type_info,
+                        type_arguments,
                     };
                     let method_name_binding = TypeBinding {
                         inner: MethodName::FromType {
-                            call_path_binding,
+                            path_prefixes: prefixes,
+                            type_info_binding,
                             method_name: function_name.name,
                         },
                         type_arguments,

@@ -258,11 +258,7 @@ impl TypedAstNode {
         let node = TypedAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
-                    let path = if a.is_absolute {
-                        a.call_path.clone()
-                    } else {
-                        namespace.find_module_path(&a.call_path)
-                    };
+                    let path = namespace.find_module_path(&a.call_path, a.is_absolute);
                     let mut res = match a.import_type {
                         ImportType::Star => namespace.star_import(&path),
                         ImportType::SelfImport => namespace.self_import(&path, a.alias),

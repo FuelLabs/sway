@@ -562,7 +562,7 @@ pub enum CompileError {
         span: Span,
     },
     #[error("\"{name}\" does not take type arguments.")]
-    DoesNotTakeTypeArguments { name: Ident, span: Span },
+    DoesNotTakeTypeArguments { name: String, span: Span },
     #[error("\"{name}\" needs type arguments.")]
     NeedsTypeArguments { name: Ident, span: Span },
     #[error(

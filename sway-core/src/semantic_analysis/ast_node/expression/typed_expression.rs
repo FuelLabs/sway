@@ -412,12 +412,12 @@ impl TypedExpression {
                 Self::type_check_variable_expression(name, span, namespace)
             }
             Expression::FunctionApplication {
-                call_path_binding: type_binding,
+                call_path_binding,
                 arguments,
                 span,
             } => Self::type_check_function_application(
                 TypeCheckArguments {
-                    checkee: (type_binding, arguments),
+                    checkee: (call_path_binding, arguments),
                     namespace,
                     return_type_annotation: insert_type(TypeInfo::Unknown),
                     help_text,
@@ -487,11 +487,11 @@ impl TypedExpression {
                 Self::type_check_asm_expression(asm, span, namespace, self_type, opts)
             }
             Expression::StructExpression {
-                call_path_binding: type_binding,
+                call_path_binding,
                 fields,
                 span,
             } => Self::type_check_struct_expression(
-                type_binding,
+                call_path_binding,
                 fields,
                 span,
                 namespace,
@@ -536,11 +536,11 @@ impl TypedExpression {
                 *prefix, index, index_span, span, namespace, self_type, opts,
             ),
             Expression::DelineatedPath {
-                call_path_binding: type_binding,
+                call_path_binding,
                 span,
                 arguments,
             } => Self::type_check_delineated_path(
-                type_binding,
+                call_path_binding,
                 span,
                 arguments,
                 namespace,
@@ -726,14 +726,16 @@ impl TypedExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
         let TypeCheckArguments {
-            checkee: (type_binding, arguments),
+            checkee: (call_path_binding, arguments),
             namespace,
             self_type,
             opts,
             ..
         } = arguments;
         let unknown_decl = check!(
-            namespace.resolve_call_path(&type_binding.inner).cloned(),
+            namespace
+                .resolve_call_path(&call_path_binding.inner)
+                .cloned(),
             return err(warnings, errors),
             warnings,
             errors
@@ -746,7 +748,7 @@ impl TypedExpression {
         );
         instantiate_function_application(
             function_decl.clone(),
-            type_binding,
+            call_path_binding,
             arguments,
             namespace,
             self_type,
@@ -1090,7 +1092,7 @@ impl TypedExpression {
 
     #[allow(clippy::too_many_arguments)]
     fn type_check_struct_expression(
-        type_binding: TypeBinding<CallPath>,
+        call_path_binding: TypeBinding<CallPath>,
         fields: Vec<StructExpressionField>,
         span: Span,
         namespace: &mut Namespace,
@@ -1101,7 +1103,10 @@ impl TypedExpression {
         let mut errors = vec![];
 
         // find the module that the symbol is in
-        let module_path = namespace.find_module_path(&type_binding.inner.prefixes);
+        let module_path = namespace.find_module_path(
+            &call_path_binding.inner.prefixes,
+            call_path_binding.inner.is_absolute,
+        );
         check!(
             namespace.root().check_submodule(&module_path),
             return err(warnings, errors),
@@ -1113,25 +1118,24 @@ impl TypedExpression {
         let unknown_decl = check!(
             namespace
                 .root()
-                .resolve_symbol(&module_path, &type_binding.inner.suffix)
+                .resolve_symbol(&module_path, &call_path_binding.inner.suffix)
                 .cloned(),
             return err(warnings, errors),
             warnings,
             errors
         );
         let struct_decl = check!(
-            unknown_decl.expect_struct(),
+            unknown_decl.expect_struct().cloned(),
             return err(warnings, errors),
             warnings,
             errors
-        )
-        .clone();
+        );
 
         // monomorphize the struct definition
         let mut struct_decl = check!(
             namespace.monomorphize(
                 struct_decl,
-                type_binding.type_arguments,
+                call_path_binding.type_arguments,
                 EnforceTypeArguments::No,
                 Some(self_type),
                 None
@@ -1201,7 +1205,7 @@ impl TypedExpression {
         }
         let exp = TypedExpression {
             expression: TypedExpressionVariant::StructExpression {
-                struct_name: type_binding.inner.suffix,
+                struct_name: call_path_binding.inner.suffix,
                 fields: typed_fields_buf,
             },
             return_type: struct_decl.create_type_id(),
@@ -1384,7 +1388,7 @@ impl TypedExpression {
 
     #[allow(clippy::too_many_arguments)]
     fn type_check_delineated_path(
-        type_binding: TypeBinding<CallPath>,
+        call_path_binding: TypeBinding<CallPath>,
         span: Span,
         arguments: Vec<Expression>,
         namespace: &mut Namespace,
@@ -1405,22 +1409,31 @@ impl TypedExpression {
         // First, check if this could be a module. We check first so that we can check for
         // ambiguity in the following enum check.
         let is_module = namespace
-            .check_submodule(&type_binding.inner.prefixes)
+            .check_submodule(&call_path_binding.inner.prefixes)
             .ok(&mut probe_warnings, &mut probe_errors)
             .is_some();
 
         // Check if the call path refers to an enum in another module.
-        let (enum_name, enum_mod_path) = type_binding
+        let (enum_name, enum_mod_path) = call_path_binding
             .inner
             .prefixes
             .split_last()
             .expect("empty call path");
-        let abs_enum_mod_path: Vec<_> = namespace.find_module_path(enum_mod_path);
+        let abs_enum_mod_path: Vec<_> =
+            namespace.find_module_path(enum_mod_path, call_path_binding.inner.is_absolute);
         let exp = if let Some(enum_decl) = namespace
-            .check_submodule_mut(enum_mod_path)
+            .check_submodule_mut(&abs_enum_mod_path)
             .ok(&mut warnings, &mut errors)
             .map(|_| ())
             .and_then(|_| {
+                println!(
+                    ">> {}",
+                    abs_enum_mod_path
+                        .iter()
+                        .map(|x| x.to_string())
+                        .collect::<Vec<_>>()
+                        .join("::")
+                );
                 namespace
                     .root()
                     .resolve_symbol(&abs_enum_mod_path, enum_name)
@@ -1436,7 +1449,7 @@ impl TypedExpression {
             check!(
                 instantiate_enum(
                     enum_decl,
-                    type_binding,
+                    call_path_binding,
                     arguments,
                     namespace,
                     self_type,
@@ -1450,12 +1463,15 @@ impl TypedExpression {
 
         // Otherwise, our prefix should point to some module ending with an enum or function.
         } else if namespace
-            .check_submodule_mut(&type_binding.inner.prefixes)
+            .check_submodule_mut(&abs_enum_mod_path)
             .ok(&mut probe_warnings, &mut probe_errors)
             .is_some()
         {
             let decl = check!(
-                namespace.resolve_call_path(&type_binding.inner).cloned(),
+                namespace
+                    .root()
+                    .resolve_symbol(&abs_enum_mod_path, enum_name)
+                    .cloned(),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -1465,7 +1481,7 @@ impl TypedExpression {
                     check!(
                         instantiate_enum(
                             enum_decl,
-                            type_binding,
+                            call_path_binding,
                             arguments,
                             namespace,
                             self_type,
@@ -1481,7 +1497,7 @@ impl TypedExpression {
                     check!(
                         instantiate_function_application(
                             func_decl,
-                            type_binding,
+                            call_path_binding,
                             arguments,
                             namespace,
                             self_type,
@@ -1495,7 +1511,7 @@ impl TypedExpression {
                 a => {
                     // TODO: Should this be `NotAnEnumOrFunction`?
                     errors.push(CompileError::NotAnEnum {
-                        name: type_binding.inner.to_string(),
+                        name: call_path_binding.inner.to_string(),
                         span,
                         actually: a.friendly_name().to_string(),
                     });
@@ -1506,7 +1522,7 @@ impl TypedExpression {
         // If prefix is neither a module or enum, there's nothing to be found.
         } else {
             errors.push(CompileError::SymbolNotFound {
-                name: type_binding.inner.suffix.clone(),
+                name: call_path_binding.inner.suffix.clone(),
             });
             return err(warnings, errors);
         };

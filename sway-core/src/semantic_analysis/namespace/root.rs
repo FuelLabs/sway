@@ -70,7 +70,7 @@ impl Root {
         self_type: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
-        mod_path: &Path,
+        module_path: &Path,
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -80,7 +80,7 @@ impl Root {
                 type_arguments,
             } => {
                 match self
-                    .resolve_symbol(mod_path, &name)
+                    .resolve_symbol(module_path, &name)
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
@@ -92,7 +92,7 @@ impl Root {
                                 Some(self_type),
                                 Some(span),
                                 self,
-                                mod_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
+                                module_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -108,7 +108,7 @@ impl Root {
                                 Some(self_type),
                                 Some(span),
                                 self,
-                                mod_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
+                                module_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -120,9 +120,18 @@ impl Root {
                         insert_type(TypeInfo::Ref(type_id, name.span()))
                     }
                     _ => {
+                        println!(
+                            "< {}",
+                            module_path
+                                .iter()
+                                .map(|x| x.to_string())
+                                .collect::<Vec<_>>()
+                                .join("::")
+                        );
+                        panic!();
                         errors.push(CompileError::UnknownTypeName {
                             name: name.to_string(),
-                            span: name.span(),
+                            span: span.clone(),
                         });
                         return err(warnings, errors);
                     }
@@ -137,7 +146,7 @@ impl Root {
                         self_type,
                         span,
                         enforce_type_arguments,
-                        mod_path
+                        module_path
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
@@ -153,7 +162,7 @@ impl Root {
                             self_type,
                             span,
                             enforce_type_arguments,
-                            mod_path
+                            module_path
                         ),
                         insert_type(TypeInfo::ErrorRecovery),
                         warnings,
@@ -170,7 +179,7 @@ impl Root {
     pub(crate) fn resolve_type_without_self(
         &mut self,
         type_id: TypeId,
-        mod_path: &Path,
+        module_path: &Path,
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -180,7 +189,7 @@ impl Root {
                 type_arguments,
             } => {
                 match self
-                    .resolve_symbol(mod_path, &name)
+                    .resolve_symbol(module_path, &name)
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
@@ -192,7 +201,7 @@ impl Root {
                                 None,
                                 None,
                                 self,
-                                mod_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
+                                module_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -208,7 +217,7 @@ impl Root {
                                 None,
                                 None,
                                 self,
-                                mod_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
+                                module_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -225,7 +234,7 @@ impl Root {
             TypeInfo::Ref(id, _) => id,
             TypeInfo::Array(type_id, n) => {
                 let new_type_id = check!(
-                    self.resolve_type_without_self(type_id, mod_path),
+                    self.resolve_type_without_self(type_id, module_path),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
                     errors
@@ -235,7 +244,7 @@ impl Root {
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = check!(
-                        self.resolve_type_without_self(type_argument.type_id, mod_path),
+                        self.resolve_type_without_self(type_argument.type_id, module_path),
                         insert_type(TypeInfo::ErrorRecovery),
                         warnings,
                         errors
@@ -267,6 +276,11 @@ impl Root {
     ) -> CompileResult<TypedFunctionDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        // don't lookup methods for error types
+        if look_up_type_id(type_id) == TypeInfo::ErrorRecovery {
+            return err(warnings, errors);
+        }
 
         // grab the local module
         let local_module = check!(

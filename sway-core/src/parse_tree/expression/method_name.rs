@@ -1,13 +1,14 @@
 use crate::parse_tree::CallPath;
 use crate::type_engine::TypeBinding;
-use crate::Ident;
+use crate::{Ident, TypeInfo};
 
 #[derive(Debug, Clone)]
 pub enum MethodName {
     /// Represents a method lookup with a type somewhere in the path
     /// a::b::~C::<T, E>::d::<F>(..)
     FromType {
-        call_path_binding: TypeBinding<CallPath>,
+        path_prefixes: Vec<Ident>,
+        type_info_binding: TypeBinding<TypeInfo>,
         method_name: Ident,
     },
     /// Represents a method lookup that does not contain any types in the path
