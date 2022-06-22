@@ -7,7 +7,7 @@ use crate::{
     parse_tree::{ParseProgram, Purity, TreeType},
     semantic_analysis::{
         namespace::{self, Namespace},
-        TypedModule,
+        TypeCheckContext, TypedModule,
     },
     type_engine::*,
     types::ToJsonAbi,
@@ -31,9 +31,10 @@ impl TypedProgram {
         initial_namespace: namespace::Module,
     ) -> CompileResult<Self> {
         let mut namespace = Namespace::init_root(initial_namespace);
+        let ctx = TypeCheckContext::from_root(&mut namespace);
         let ParseProgram { root, kind } = parsed;
         let mod_span = root.tree.span.clone();
-        let mod_res = TypedModule::type_check(root, &mut namespace);
+        let mod_res = TypedModule::type_check(ctx, root);
         mod_res.flat_map(|root| {
             let kind_res = Self::validate_root(&root, kind, mod_span);
             kind_res.map(|kind| Self { kind, root })

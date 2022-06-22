@@ -1,3 +1,4 @@
+use super::{compile::compile_function, convert::*, lexical_map::LexicalMap, types::*};
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     constants,
@@ -6,10 +7,7 @@ use crate::{
     semantic_analysis::*,
     type_engine::{insert_type, resolve_type, TypeId, TypeInfo},
 };
-
-use super::{compile::compile_function, convert::*, lexical_map::LexicalMap, types::*};
-
-use sway_ir::*;
+use sway_ir::{Context, *};
 use sway_types::{
     ident::Ident,
     span::{Span, Spanned},

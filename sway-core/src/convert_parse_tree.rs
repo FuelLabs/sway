@@ -2707,10 +2707,10 @@ fn asm_register_declaration_to_asm_register_declaration(
 ) -> Result<AsmRegisterDeclaration, ErrorEmitted> {
     Ok(AsmRegisterDeclaration {
         name: asm_register_declaration.register,
-        initializer: match asm_register_declaration.value_opt {
-            None => None,
-            Some((_colon_token, expr)) => Some(expr_to_expression(ec, *expr)?),
-        },
+        initializer: asm_register_declaration
+            .value_opt
+            .map(|(_colon_token, expr)| expr_to_expression(ec, *expr))
+            .transpose()?,
     })
 }
 
@@ -2880,10 +2880,9 @@ fn pattern_struct_field_to_struct_scrutinee_field(
         } => {
             let struct_scrutinee_field = StructScrutineeField::Field {
                 field: field_name,
-                scrutinee: match pattern_opt {
-                    Some((_colon_token, pattern)) => Some(pattern_to_scrutinee(ec, *pattern)?),
-                    None => None,
-                },
+                scrutinee: pattern_opt
+                    .map(|(_colon_token, pattern)| pattern_to_scrutinee(ec, *pattern))
+                    .transpose()?,
                 span,
             };
             Ok(struct_scrutinee_field)

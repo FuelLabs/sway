@@ -3638,6 +3638,8 @@ version = "0.16.1"
 dependencies = [
  "async-trait",
  "dashmap 5.3.4",
+ "forc",
+ "forc-pkg",
  "forc-util",
  "futures",
  "ropey",
