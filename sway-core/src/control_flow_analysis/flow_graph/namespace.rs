@@ -1,7 +1,7 @@
 use super::{EntryPoint, ExitPoint};
 use crate::parse_tree::CallPath;
 use crate::semantic_analysis::declaration::TypedStorageField;
-use crate::type_engine::TypeInfo;
+use crate::type_engine::{look_up_type_id, TypeId, TypeInfo};
 use crate::Ident;
 use petgraph::prelude::NodeIndex;
 use std::collections::HashMap;
@@ -30,7 +30,9 @@ pub(crate) struct StructNamespaceEntry {
 /// of scope at this point, as that would have been caught earlier and aborted the compilation
 /// process.
 pub struct ControlFlowNamespace {
-    pub(crate) function_namespace: HashMap<Ident, FunctionNamespaceEntry>,
+    // function_namespaces use a combination of the function name and its parameter types
+    // as a key into the table so that different impl of different traits can be uniqued.
+    pub(crate) function_namespace: HashMap<(Ident, Vec<TypeInfo>), FunctionNamespaceEntry>,
     pub(crate) enum_namespace: HashMap<Ident, (NodeIndex, HashMap<Ident, NodeIndex>)>,
     pub(crate) trait_namespace: HashMap<CallPath, NodeIndex>,
     /// This is a mapping from trait name to method names and their node indexes
@@ -43,11 +45,28 @@ pub struct ControlFlowNamespace {
 }
 
 impl ControlFlowNamespace {
-    pub(crate) fn get_function(&self, ident: &Ident) -> Option<&FunctionNamespaceEntry> {
-        self.function_namespace.get(ident)
+    pub(crate) fn get_function(
+        &self,
+        ident: &Ident,
+        arg_types: &Vec<TypeId>,
+    ) -> Option<&FunctionNamespaceEntry> {
+        let arg_types = arg_types
+            .iter()
+            .map(|id| look_up_type_id(id.clone()))
+            .collect();
+        self.function_namespace.get(&(ident.clone(), arg_types))
     }
-    pub(crate) fn insert_function(&mut self, ident: Ident, entry: FunctionNamespaceEntry) {
-        self.function_namespace.insert(ident, entry);
+    pub(crate) fn insert_function(
+        &mut self,
+        ident: Ident,
+        arg_types: Vec<TypeId>,
+        entry: FunctionNamespaceEntry,
+    ) {
+        let args = arg_types
+            .iter()
+            .map(|id| look_up_type_id(id.clone()))
+            .collect();
+        self.function_namespace.insert((ident, args), entry);
     }
     pub(crate) fn get_constant(&self, ident: &Ident) -> Option<&NodeIndex> {
         self.const_namespace.get(ident)

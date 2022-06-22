@@ -46,7 +46,7 @@ impl ControlFlowGraph {
             errors.append(&mut self.ensure_all_paths_reach_exit(
                 *entry_point,
                 *exit_point,
-                name,
+                &name.0,
                 return_type,
             ));
         }
@@ -280,9 +280,10 @@ fn connect_typed_fn_decl(
         return_type: resolve_type(fn_decl.return_type, &fn_decl.return_type_span)
             .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new())),
     };
+    let arg_types: Vec<_> = fn_decl.parameters.iter().map(|p| p.type_id).collect();
     graph
         .namespace
-        .insert_function(fn_decl.name.clone(), namespace_entry);
+        .insert_function(fn_decl.name.clone(), arg_types, namespace_entry);
 }
 
 type ReturnStatementNodes = Vec<NodeIndex>;

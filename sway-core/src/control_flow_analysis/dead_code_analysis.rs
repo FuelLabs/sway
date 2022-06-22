@@ -610,10 +610,10 @@ fn connect_typed_fn_decl(
         exit_point: fn_exit_node,
         return_type: ty,
     };
-
+    let arg_types: Vec<_> = fn_decl.parameters.iter().map(|p| p.type_id).collect();
     graph
         .namespace
-        .insert_function(fn_decl.name.clone(), namespace_entry);
+        .insert_function(fn_decl.name.clone(), arg_types, namespace_entry);
     Ok(())
 }
 
@@ -652,11 +652,12 @@ fn connect_expression(
             arguments,
             ..
         } => {
+            let arg_types: Vec<_> = arguments.iter().map(|p| p.1.return_type).collect();
             let mut is_external = false;
             // find the function in the namespace
             let (fn_entrypoint, fn_exit_point) = graph
                 .namespace
-                .get_function(&name.suffix)
+                .get_function(&name.suffix, &arg_types)
                 .cloned()
                 .map(
                     |FunctionNamespaceEntry {
