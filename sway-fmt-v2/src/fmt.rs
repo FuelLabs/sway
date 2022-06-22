@@ -1,10 +1,9 @@
 use crate::utils::{
-    attributes::format_attributes, indent_style::Shape, newline_style::apply_newline_style,
-    program_type::insert_program_type,
+    indent_style::Shape, newline_style::apply_newline_style, program_type::insert_program_type,
 };
 use std::{path::Path, sync::Arc};
 use sway_core::BuildConfig;
-use sway_parse::ItemKind;
+use sway_parse::attribute::Annotated;
 
 pub use crate::{
     config::manifest::Config,
@@ -55,21 +54,8 @@ impl Formatter {
         raw_formatted_code += &items
             .into_iter()
             .map(|item| -> Result<String, FormatterError> {
-                use ItemKind::*;
-                // format attributes first, then add corresponding item
-                let mut buf = format_attributes(item.attribute_list, self);
-                buf.push_str(&match item.value {
-                    Use(item_use) => item_use.format(self),
-                    Struct(item_struct) => item_struct.format(self),
-                    Enum(item_enum) => item_enum.format(self),
-                    Fn(item_fn) => item_fn.format(self),
-                    Trait(item_trait) => item_trait.format(self),
-                    Impl(item_impl) => item_impl.format(self),
-                    Abi(item_abi) => item_abi.format(self),
-                    Const(item_const) => item_const.format(self),
-                    Storage(item_storage) => item_storage.format(self),
-                });
-                Ok(buf)
+                // format Annotated<ItemKind>
+                Ok(Annotated::format(&item, self))
             })
             .collect::<Result<Vec<String>, _>>()?
             .join("\n");
@@ -86,10 +72,9 @@ impl Formatter {
 
 #[cfg(test)]
 mod tests {
+    use super::{Config, Formatter};
     use crate::utils::indent_style::Shape;
     use std::sync::Arc;
-
-    use super::{Config, Formatter};
 
     fn get_formatter(config: Config, shape: Shape) -> Formatter {
         Formatter { config, shape }
@@ -184,7 +169,7 @@ pub struct Foo {
     bar: u64,
     baz: bool,
 }"#;
-        let mut formatter = get_formatter(Config::default(), Shape::default());
+        let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         println!("{}", formatted_sway_code);
@@ -210,7 +195,7 @@ enum Color {
  Silver : (),
  Grey : (),
 }"#;
-        let mut formatter = get_formatter(Config::default(), Shape::default());
+        let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert!(correct_sway_code == formatted_sway_code)
@@ -236,10 +221,9 @@ enum Color {
 }"#;
 
         // Creating a config with enum_variant_align_threshold that exceeds longest variant length
-        let mut config = Config::default();
-        config.structures.enum_variant_align_threshold = 20;
+        let mut formatter = Formatter::default();
+        formatter.config.structures.enum_variant_align_threshold = 20;
 
-        let mut formatter = get_formatter(config, Shape::default());
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert!(correct_sway_code == formatted_sway_code)

@@ -242,7 +242,7 @@ impl LanguageServer for Backend {
 #[cfg(test)]
 mod tests {
     use serde_json::json;
-    use std::{env, fs::File, io::Write};
+    use std::{env, fs, io::Read};
     use tower::{Service, ServiceExt};
 
     use super::*;
@@ -250,46 +250,20 @@ mod tests {
     use tower_lsp::jsonrpc::{self, Request, Response};
     use tower_lsp::LspService;
 
-    // Simple sway script used for testing LSP capabilites
-    const SWAY_PROGRAM: &str = r#"script;
+    fn load_sway_example() -> (Url, String) {
+        let manifest_dir = env::current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("examples/liquidity_pool");
+        let src_path = manifest_dir.join("src/main.sw");
+        let mut file = fs::File::open(&src_path).unwrap();
+        let mut sway_program = String::new();
+        file.read_to_string(&mut sway_program).unwrap();
 
-//use std::*;
+        let uri = Url::from_file_path(src_path).unwrap();
 
-/// A simple Particle struct
-struct Particle {
-    position: [u64; 3],
-    velocity: [u64; 3],
-    acceleration: [u64; 3],
-    mass: u64,
-}
-
-impl Particle {
-    /// Creates a new Particle with the given position, velocity, acceleration, and mass
-    fn new(position: [u64; 3], velocity: [u64; 3], acceleration: [u64; 3], mass: u64) -> Particle {
-        Particle {
-            position: position,
-            velocity: velocity,
-            acceleration: acceleration,
-            mass: mass,
-        }
-    }
-}
-
-fn main() {
-    let position = [0, 0, 0];
-    let velocity = [0, 1, 0];
-    let acceleration = [1, 1, 0];
-    let mass = 10;
-    let p = ~Particle::new(position, velocity, acceleration, mass);
-}
-"#;
-
-    fn load_test_sway_file(sway_file: &str) -> Url {
-        let file_name = "tmp_sway_test_file.sw";
-        let dir = env::temp_dir().join(file_name);
-        let mut file = File::create(&dir).unwrap();
-        file.write_all(sway_file.as_bytes()).unwrap();
-        Url::from_file_path(dir.as_os_str().to_str().unwrap()).unwrap()
+        (uri, sway_program)
     }
 
     async fn initialize_request(service: &mut LspService<Backend>) -> Request {
@@ -440,10 +414,10 @@ fn main() {
         // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
         messages.next().await.unwrap();
 
-        let uri = load_test_sway_file(SWAY_PROGRAM);
+        let (uri, sway_program) = load_sway_example();
 
         // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, SWAY_PROGRAM).await;
+        did_open_notification(&mut service, &uri, &sway_program).await;
 
         // ignore the "textDocument/publishDiagnostics" notification
         messages.next().await.unwrap();
@@ -465,10 +439,10 @@ fn main() {
         // send "initialized" notification
         initialized_notification(&mut service).await;
 
-        let uri = load_test_sway_file(SWAY_PROGRAM);
+        let (uri, sway_program) = load_sway_example();
 
         // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, SWAY_PROGRAM).await;
+        did_open_notification(&mut service, &uri, &sway_program).await;
 
         // send "textDocument/didClose" notification for `uri`
         did_close_notification(&mut service).await;
