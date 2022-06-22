@@ -10,7 +10,7 @@ use crate::{
 use super::{compile::compile_function, convert::*, lexical_map::LexicalMap, types::*};
 
 use fuel_crypto::Hasher;
-use sway_ir::*;
+use sway_ir::{Context, *};
 use sway_types::{
     ident::Ident,
     span::{Span, Spanned},
