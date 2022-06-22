@@ -33,25 +33,14 @@ impl Format for ItemStruct {
             .to_width_heuristics(&config_whitespace);
         let struct_lit_width = width_heuristics.struct_lit_width;
 
-        // Check if the struct len is smaller than struct_lit_width
-        if struct_lit_single_line && self.get_formatted_len() < struct_lit_width {
-            format_struct(
-                self,
-                &mut formatted_code,
-                formatter,
-                false,
-                struct_variant_align_threshold,
-            );
-        } else {
-            format_struct(
-                self,
-                &mut formatted_code,
-                formatter,
-                true,
-                struct_variant_align_threshold,
-            );
-        }
-
+        let multiline = !struct_lit_single_line || self.get_formatted_len() > struct_lit_width;
+        format_struct(
+            self,
+            &mut formatted_code,
+            formatter,
+            multiline,
+            struct_variant_align_threshold,
+        );
         formatted_code
     }
 }
