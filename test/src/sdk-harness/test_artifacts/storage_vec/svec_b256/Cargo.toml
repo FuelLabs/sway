@@ -1,0 +1,16 @@
+[project]
+name = "svec_b256"
+version = "0.1.0"
+authors = ["Swaystar"]
+edition = "2021"
+license = "Apache-2.0"
+
+[dependencies]
+fuels = "0.15"
+fuels-abigen-macro = "0.15"
+tokio = { version = "1.12", features = ["rt", "macros"] }
+
+[[test]]
+harness = true
+name = "integration_tests"
+path = "tests/harness.rs"
