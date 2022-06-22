@@ -16,7 +16,6 @@ impl Format for ItemAbi {
 
         // Add name of the abi
         formatted_code.push_str(self.name.as_str());
-        formatted_code.push(' ');
         Self::open_curly_brace(&mut formatted_code, formatter);
 
         // Add item fields
@@ -32,8 +31,8 @@ impl Format for ItemAbi {
                     AttributeDecl::format(&attr, &mut buf, formatter)
                 }
                 buf.push_str(&format!(
-                    "{}{}",
-                    item.0.value.span().as_str(), // FnSignature
+                    "{}{}\n",
+                    item.0.value.span().as_str(), // FnSignature formatting (todo!)
                     item.1.span().as_str(),       // SemicolonToken
                 ));
 

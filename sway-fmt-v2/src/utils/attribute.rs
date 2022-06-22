@@ -42,16 +42,20 @@ impl FormatDecl for AttributeDecl {
         Self::open_parenthesis(line, formatter);
         // format and add args `read, write`
         if let Some(args) = attr.args {
-            let mut args = args
-                .into_inner()
-                .value_separator_pairs
+            let args = args.into_inner().value_separator_pairs;
+            let mut buf = args
                 .iter()
                 .map(|arg| format!("{}{}", arg.0.as_str(), arg.1.span().as_str()))
                 .collect::<Vec<String>>()
                 .join(" ");
-            args.pop(); // pop the ending space
-            args.pop(); // pop the ending comma
-            line.push_str(&args);
+            if args.len() == 1 {
+                buf.pop(); // pop the ending comma
+                line.push_str(&buf);
+            } else {
+                buf.pop(); // pop the ending space
+                buf.pop(); // pop the ending comma
+                line.push_str(&buf);
+            }
         }
         // ')'
         Self::close_parenthesis(line, formatter);

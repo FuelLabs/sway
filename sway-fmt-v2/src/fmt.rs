@@ -149,12 +149,13 @@ enum Color {
         let sway_code_to_format = r#"contract;
 
 abi StorageMapExample {
-    #[storage(write)]fn insert_into_map1(key: u64, value: u64);
+    #[storage(write,)]fn insert_into_map1(key: u64, value: u64);
 }"#;
         let correct_sway_code = r#"contract;
 
 abi StorageMapExample {
-    #[storage(write)]fn insert_into_map1(key: u64, value: u64);
+    #[storage(write)]
+    fn insert_into_map1(key: u64, value: u64);
 }"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
