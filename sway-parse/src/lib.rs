@@ -17,7 +17,7 @@ pub mod pattern;
 mod priv_prelude;
 pub mod punctuated;
 pub mod statement;
-mod token;
+pub mod token;
 pub mod ty;
 pub mod where_clause;
 
