@@ -48,12 +48,9 @@ impl ControlFlowNamespace {
     pub(crate) fn get_function(
         &self,
         ident: &Ident,
-        arg_types: &Vec<TypeId>,
+        arg_types: &[TypeId],
     ) -> Option<&FunctionNamespaceEntry> {
-        let arg_types = arg_types
-            .iter()
-            .map(|id| look_up_type_id(id.clone()))
-            .collect();
+        let arg_types = arg_types.iter().map(|id| look_up_type_id(*id)).collect();
         self.function_namespace.get(&(ident.clone(), arg_types))
     }
     pub(crate) fn insert_function(
@@ -62,10 +59,7 @@ impl ControlFlowNamespace {
         arg_types: Vec<TypeId>,
         entry: FunctionNamespaceEntry,
     ) {
-        let args = arg_types
-            .iter()
-            .map(|id| look_up_type_id(id.clone()))
-            .collect();
+        let args = arg_types.iter().map(|id| look_up_type_id(*id)).collect();
         self.function_namespace.insert((ident, args), entry);
     }
     pub(crate) fn get_constant(&self, ident: &Ident) -> Option<&NodeIndex> {
