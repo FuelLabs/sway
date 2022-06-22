@@ -1,11 +1,11 @@
 use crate::{
     error::ok,
     semantic_analysis::{
-        EnforceTypeArguments, IsConstant, TypedExpression, TypedExpressionVariant,
-        TypedVariableDeclaration, VariableMutability,
+        EnforceTypeArguments, IsConstant, TypeCheckContext, TypedExpression,
+        TypedExpressionVariant, TypedVariableDeclaration, VariableMutability,
     },
     type_engine::*,
-    CompileResult, FunctionParameter, Ident, Namespace, TypedDeclaration,
+    CompileResult, FunctionParameter, Ident, TypedDeclaration,
 };
 
 use sway_types::{span::Span, Spanned};
@@ -37,16 +37,14 @@ impl CopyTypes for TypedFunctionParameter {
 
 impl TypedFunctionParameter {
     pub(crate) fn type_check(
+        mut ctx: TypeCheckContext,
         parameter: FunctionParameter,
-        namespace: &mut Namespace,
-        self_type: TypeId,
-    ) -> CompileResult<TypedFunctionParameter> {
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_id = check!(
-            namespace.resolve_type_with_self(
-                look_up_type_id(parameter.type_id),
-                self_type,
+            ctx.resolve_type_with_self(
+                parameter.type_id,
                 &parameter.type_span,
                 EnforceTypeArguments::Yes
             ),
@@ -54,7 +52,7 @@ impl TypedFunctionParameter {
             warnings,
             errors,
         );
-        namespace.insert_symbol(
+        ctx.namespace.insert_symbol(
             parameter.name.clone(),
             TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                 name: parameter.name.clone(),
