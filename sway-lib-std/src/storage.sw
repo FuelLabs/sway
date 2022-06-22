@@ -219,7 +219,7 @@ impl<V> StorageVec<V> {
         // decrements len by 1
         store(__get_storage_key(), len - 1);
 
-        Result::Ok(element_to_be_removed))
+        Result::Ok(element_to_be_removed)
     }
 
     /// Inserts the value at the given index, moving the current index's value aswell as the following's
