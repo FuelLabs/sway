@@ -3636,7 +3636,9 @@ name = "sway-lsp"
 version = "0.16.1"
 dependencies = [
  "async-trait",
- "dashmap 4.0.2",
+ "dashmap 5.3.4",
+ "forc",
+ "forc-pkg",
  "forc-util",
  "futures",
  "ropey",

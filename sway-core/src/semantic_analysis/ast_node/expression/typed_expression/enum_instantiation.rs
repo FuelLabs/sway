@@ -6,24 +6,21 @@ use sway_types::{Ident, Spanned};
 /// [TypedExpression].
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_enum(
+    mut ctx: TypeCheckContext,
     enum_decl: TypedEnumDeclaration,
     enum_field_name: Ident,
     args: Vec<Expression>,
     type_arguments: Vec<TypeArgument>,
-    namespace: &mut Namespace,
-    self_type: TypeId,
-    opts: TCOpts,
 ) -> CompileResult<TypedExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
     // monomorphize the enum definition with the type arguments
     let enum_decl = check!(
-        namespace.monomorphize(
+        ctx.monomorphize(
             enum_decl,
             type_arguments,
             EnforceTypeArguments::No,
-            Some(self_type),
             Some(&enum_field_name.span())
         ),
         return err(warnings, errors),
@@ -61,16 +58,11 @@ pub(crate) fn instantiate_enum(
             errors,
         ),
         ([single_expr], _) => {
+            let ctx = ctx
+                .with_help_text("Enum instantiator must match its declared variant type.")
+                .with_type_annotation(enum_variant.type_id);
             let typed_expr = check!(
-                TypedExpression::type_check(TypeCheckArguments {
-                    checkee: single_expr.clone(),
-                    namespace,
-                    return_type_annotation: enum_variant.type_id,
-                    help_text: "Enum instantiator must match its declared variant type.",
-                    self_type,
-                    mode: Mode::NonAbi,
-                    opts,
-                }),
+                TypedExpression::type_check(ctx, single_expr.clone()),
                 return err(warnings, errors),
                 warnings,
                 errors
