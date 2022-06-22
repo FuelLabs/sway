@@ -263,6 +263,10 @@ impl BuildPlan {
         // If there are errors we will need to create the BuildPlan from scratch, i.e fetch & pin everything
         let mut new_lock_cause = None;
         let mut plan = plan_result.or_else(|e| -> Result<BuildPlan> {
+            if e.to_string().contains("dependency cycle detected") {
+                // We have a dependency cycle. Do not try to create BuildPlan!!
+                bail!(e);
+            }
             if locked {
                 bail!(
                     "The lock file {} needs to be updated but --locked was passed to prevent this.",
