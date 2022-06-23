@@ -886,35 +886,11 @@ fn apply_diff_after_lock(
     path_map: &PathMap,
     sway_git_tag: &str,
 ) -> Result<()> {
-    use petgraph::visit::{Bfs, Walker};
-    // Visit all the nodes after their parent is visited.
-    let deps: Vec<NodeIx> = Bfs::new(&*graph, project_node).iter(&*graph).collect();
-
-    // Reverse the order so that we are sure we will get to a child node before it's parent.
-    // This is needed because if we remove parent of a node before itself we cannot find and check parent's manifest.
-    for dep in deps.iter().rev().filter(|dep| deps_to_remove.contains(dep)) {
+    for dep in deps_to_remove {
         let dep_name = &graph[*dep].name.clone();
-
-        let (parent_node, _) = graph
-            .edges_directed(*dep, Direction::Incoming)
-            .next()
-            .map(|edge| (edge.source(), edge.weight().clone()))
-            .ok_or_else(|| anyhow!("more than one root package detected in graph"))?;
-
-        let parent = &graph[parent_node].clone();
-        // Construct the path relative to the parent's path.
-        let parent_path = &path_map[&parent.id()];
-        let parent_manifest = ManifestFile::from_dir(parent_path, sway_git_tag)?;
-
-        // Check if parent's manifest file includes this dependency.
-        // If not this is a removed dependency and we should remove the removed dependency from the graph.
-
-        // After #1836 is merged, we will also need to check if it is inside patches section of the manifest.
-        if parent_manifest.dep(dep_name).is_none() {
-            println_red(&format!("  Removing {}", dep_name));
-            // Remove the deleted node
-            graph.remove_node(*dep);
-        }
+        println_red(&format!("  Removing {}", dep_name));
+        // Remove the deleted node
+        graph.remove_node(*dep);
     }
     Ok(())
 }
