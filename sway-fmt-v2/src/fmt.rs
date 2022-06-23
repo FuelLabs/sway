@@ -10,16 +10,24 @@ pub use crate::{
     error::{ConfigError, FormatterError},
 };
 
+/// Finalized Sway formatting configurations, and code shape.
 #[derive(Debug, Default)]
 pub struct Formatter {
     pub shape: Shape,
     pub config: Config,
 }
 
+/// Formatted Sway code.
 pub type FormattedCode = String;
 
-pub trait Format {
+/// Formatting for `ItemKind`.
+pub trait FormatItem {
     fn format(&self, formatter: &mut Formatter) -> FormattedCode;
+}
+
+/// Formatting for complex `ItemKind` fields e.g. `AttributeDecl` or `FnSignature`.
+pub trait FormatInner {
+    fn format(&self, line: &mut String, formatter: &mut Formatter);
 }
 
 impl Formatter {

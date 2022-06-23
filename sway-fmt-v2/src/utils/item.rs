@@ -1,8 +1,8 @@
 use sway_parse::{Item, ItemKind::*};
 
-use crate::fmt::{Format, FormattedCode, Formatter};
+use crate::fmt::{FormatItem, FormattedCode, Formatter};
 
-impl Format for Item {
+impl FormatItem for Item {
     fn format(&self, formatter: &mut Formatter) -> FormattedCode {
         match &self.value {
             Use(item_use) => item_use.format(formatter),

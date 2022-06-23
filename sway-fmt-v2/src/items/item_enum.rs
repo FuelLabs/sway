@@ -1,12 +1,12 @@
 use crate::{
     config::items::ItemBraceStyle,
-    fmt::{Format, FormattedCode, Formatter},
+    fmt::{FormatItem, FormattedCode, Formatter},
     utils::bracket::CurlyBrace,
 };
 use sway_parse::ItemEnum;
 use sway_types::Spanned;
 
-impl Format for ItemEnum {
+impl FormatItem for ItemEnum {
     fn format(&self, formatter: &mut Formatter) -> FormattedCode {
         // TODO: creating this formatted_code with String::new() will likely cause lots of
         // reallocations maybe we can explore how we can do this, starting with with_capacity may help.

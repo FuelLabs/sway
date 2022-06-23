@@ -1,7 +1,7 @@
-use crate::fmt::{Format, FormattedCode, Formatter};
+use crate::fmt::{FormatItem, FormattedCode, Formatter};
 use sway_parse::ItemFn;
 
-impl Format for ItemFn {
+impl FormatItem for ItemFn {
     fn format(&self, _formatter: &mut Formatter) -> FormattedCode {
         todo!()
     }

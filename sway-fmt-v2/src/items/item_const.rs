@@ -1,8 +1,8 @@
-use crate::fmt::{Format, FormattedCode, Formatter};
+use crate::fmt::{FormatItem, FormattedCode, Formatter};
 use sway_parse::ItemConst;
 use sway_types::Spanned;
 
-impl Format for ItemConst {
+impl FormatItem for ItemConst {
     fn format(&self, _formatter: &mut Formatter) -> FormattedCode {
         // TODO: creating this formatted_code with String::new() will likely cause lots of
         // reallocations maybe we can explore how we can do this, starting with with_capacity may help.
