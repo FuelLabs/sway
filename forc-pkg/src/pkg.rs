@@ -383,7 +383,7 @@ impl BuildPlan {
     }
 
     /// Attempt to load the build plan from the `Forc.lock` file.
-    /// Returns the best effor BuildPlan and the packages removed  
+    /// Returns the best effort BuildPlan and the packages removed  
     /// from project's manifest file after the lock file is generated.
     ///
     /// The returned removed dependencies are already removed from the dependency graph.
@@ -399,14 +399,6 @@ impl BuildPlan {
     /// Attempt to find the difference between the graph constructed from the lock file
     /// and the graph that is described by the manifest file. The difference is used to
     /// update BuildPlan.
-    ///
-    /// The `removed` is the dependencies that needed to be removed by the BuildPlan::from_lock
-    /// in order to construct the BuildPlan from the lock file. The removal is needed once there
-    /// is a dependency (provided as a path dependency) removed from the manifest file after the
-    /// lock file is generated.
-    ///
-    /// generate_diff combines those removed packages with other types of dependencies (ex: git dependencies)
-    /// and returnes the complete set of differences between the lock file and manifest file.
     pub fn generate_diff(&self, manifest: &Manifest) -> Result<PkgDiff> {
         let mut added = vec![];
         let mut removed = vec![];
@@ -871,6 +863,7 @@ pub fn compilation_order(graph: &Graph) -> Result<Vec<NodeIx>> {
 /// Applies the differences between the graph that is described by the lock file and the graph that
 /// is actually possible to build.
 ///
+/// `deps_to_remove` : Indices of path dependencies that are removed from manifest file after the lock file is generated.
 ///
 /// There might be some differences between the graph that is described by the lock file and
 /// the graph that can actually possible to build. This is happening in the case of a dependency
