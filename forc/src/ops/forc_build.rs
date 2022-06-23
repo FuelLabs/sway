@@ -123,7 +123,10 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     // Additional ops required depending on the program type
     match compiled.tree_type {
         TreeType::Contract => {
-            // For contracts, emit a JSON file with all the initialized storage slots
+            // For contracts, emit a JSON file with all the initialized storage slots. We sort the
+            // slots here, though not strictly required by the spec. This standardizes the output
+            // and matches the expectations of the VM as the VM requires that the vector of storage
+            // slots used for building the contract transaction is sorted.
             let mut storage_slots = compiled.storage_slots.clone();
             storage_slots.sort();
             let json_storage_slots_stem = format!("{}-storage_slots", manifest.project.name);
@@ -132,9 +135,9 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
                 .with_extension("json");
             let file = File::create(json_storage_slots_path)?;
             let res = if minify_json_storage_slots {
-                serde_json::to_writer(&file, &compiled.storage_slots)
+                serde_json::to_writer(&file, &storage_slots)
             } else {
-                serde_json::to_writer_pretty(&file, &compiled.storage_slots)
+                serde_json::to_writer_pretty(&file, &storage_slots)
             };
             res?;
         }
