@@ -454,8 +454,7 @@ impl TypedAstNode {
                                     errors
                                 );
 
-                                let mut ctx =
-                                    ctx.by_ref().with_type_annotation(r#type).with_help_text("");
+                                let mut ctx = ctx.by_ref().with_type_annotation(r#type);
                                 let initializer = match initializer {
                                     Some(initializer) => Some(check!(
                                         TypedExpression::type_check(ctx.by_ref(), initializer),
