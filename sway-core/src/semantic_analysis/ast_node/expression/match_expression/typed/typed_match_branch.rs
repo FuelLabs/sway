@@ -4,10 +4,10 @@ use crate::{
     error::{err, ok},
     semantic_analysis::{
         ast_node::expression::match_expression::typed::typed_scrutinee::TypedScrutinee, IsConstant,
-        TypeCheckArguments, TypedAstNode, TypedAstNodeContent, TypedCodeBlock, TypedExpression,
+        TypeCheckContext, TypedAstNode, TypedAstNodeContent, TypedCodeBlock, TypedExpression,
         TypedExpressionVariant, TypedVariableDeclaration, VariableMutability,
     },
-    type_engine::{insert_type, unify_with_self},
+    type_engine::insert_type,
     types::DeterministicallyAborts,
     CompileResult, MatchBranch, TypeInfo, TypedDeclaration,
 };
@@ -24,20 +24,12 @@ pub(crate) struct TypedMatchBranch {
 
 impl TypedMatchBranch {
     pub(crate) fn type_check(
-        arguments: TypeCheckArguments<'_, (&TypedExpression, MatchBranch)>,
+        mut ctx: TypeCheckContext,
+        typed_value: &TypedExpression,
+        branch: MatchBranch,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-
-        let TypeCheckArguments {
-            checkee: (typed_value, branch),
-            namespace,
-            return_type_annotation,
-            self_type,
-            opts,
-            help_text,
-            mode,
-        } = arguments;
 
         let MatchBranch {
             scrutinee,
@@ -47,7 +39,7 @@ impl TypedMatchBranch {
 
         // type check the scrutinee
         let typed_scrutinee = check!(
-            TypedScrutinee::type_check(scrutinee, namespace, self_type),
+            TypedScrutinee::type_check(ctx.by_ref(), scrutinee),
             return err(warnings, errors),
             warnings,
             errors
@@ -55,14 +47,15 @@ impl TypedMatchBranch {
 
         // calculate the requirements map and the declarations map
         let (match_req_map, match_decl_map) = check!(
-            matcher(typed_value, typed_scrutinee, namespace),
+            matcher(typed_value, typed_scrutinee, ctx.namespace),
             return err(warnings, errors),
             warnings,
             errors
         );
 
         // create a new namespace for this branch
-        let mut namespace = namespace.clone();
+        let mut namespace = ctx.namespace.clone();
+        let mut ctx = ctx.scoped(&mut namespace);
 
         // for every item in the declarations map, create a variable declaration,
         // insert it into the branch namespace, and add it to a block of code statements
@@ -77,7 +70,7 @@ impl TypedMatchBranch {
                 type_ascription,
                 const_decl_origin: false,
             });
-            namespace.insert_symbol(left_decl, var_decl.clone());
+            ctx.namespace.insert_symbol(left_decl, var_decl.clone());
             code_block_contents.push(TypedAstNode {
                 content: TypedAstNodeContent::Declaration(var_decl),
                 span,
@@ -85,30 +78,22 @@ impl TypedMatchBranch {
         }
 
         // type check the branch result
-        let typed_result = check!(
-            TypedExpression::type_check(TypeCheckArguments {
-                checkee: result,
-                namespace: &mut namespace,
-                return_type_annotation: insert_type(TypeInfo::Unknown),
-                help_text,
-                self_type,
-                mode,
-                opts,
-            }),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let typed_result = {
+            let ctx = ctx
+                .by_ref()
+                .with_type_annotation(insert_type(TypeInfo::Unknown));
+            check!(
+                TypedExpression::type_check(ctx, result),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )
+        };
 
         // unify the return type from the typed result with the type annotation
         if !typed_result.deterministically_aborts() {
-            let (mut new_warnings, new_errors) = unify_with_self(
-                typed_result.return_type,
-                return_type_annotation,
-                self_type,
-                &typed_result.span,
-                help_text,
-            );
+            let (mut new_warnings, new_errors) =
+                ctx.unify_with_self(typed_result.return_type, &typed_result.span);
             warnings.append(&mut new_warnings);
             errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
         }
