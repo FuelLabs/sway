@@ -1,4 +1,4 @@
-use sway_parse::ModuleKind;
+use sway_parse::{ ModuleKind, token::PunctKind} ;
 use sway_types::Spanned;
 
 /// Insert the program type without applying a formatting to it.
@@ -24,7 +24,6 @@ pub(crate) fn insert_program_type(push_to: &mut String, module_kind: ModuleKind)
             push_to.push_str(name.as_str());
         }
     };
-    push_to.push(';');
-    push_to.push('\n');
-    push_to.push('\n');
+    push_to.push(PunctKind::Semicolon.as_char());
+    push_to.push_str("\n\n");
 }

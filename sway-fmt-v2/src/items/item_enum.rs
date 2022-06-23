@@ -3,13 +3,11 @@ use crate::{
     fmt::{Format, FormattedCode, Formatter},
     utils::bracket::CurlyBrace,
 };
-use sway_parse::{token::Delimiter, ItemEnum};
+use sway_parse::{token::Delimiter, ItemEnum, token::PunctKind};
 use sway_types::Spanned;
 
 impl Format for ItemEnum {
     fn format(&self, formatter: &mut Formatter) -> FormattedCode {
-        // TODO: creating this formatted_code with String::new() will likely cause lots of
-        // reallocations maybe we can explore how we can do this, starting with with_capacity may help.
         let mut formatted_code = String::new();
         let enum_variant_align_threshold = formatter.config.structures.enum_variant_align_threshold;
 
@@ -62,7 +60,9 @@ impl Format for ItemEnum {
                 // TODO: Improve handling this
                 formatted_code.push_str(&(0..required_alignment).map(|_| ' ').collect::<String>());
             }
-            formatted_code.push_str(" : ");
+            formatted_code.push(' ');
+            formatted_code.push(PunctKind::Colon.as_char());
+            formatted_code.push(' ');
             // TODO: We are currently converting ty to string directly but we will probably need to format ty before adding.
             formatted_code.push_str(type_field.ty.span().as_str());
             formatted_code.push(',');
