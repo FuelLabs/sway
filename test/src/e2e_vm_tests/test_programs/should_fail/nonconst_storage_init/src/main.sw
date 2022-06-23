@@ -12,5 +12,6 @@ abi Test {
 
 impl Test for Contract {
     fn foo() {
+        storage.x += 1;
     }
 }

@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: x: u64 = 5 + 5
+# nextln: $()Could not evaluate initializer to a const declaration.
