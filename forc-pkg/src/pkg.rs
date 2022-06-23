@@ -46,7 +46,7 @@ pub struct PinnedId(u64);
 /// The result of successfully compiling a package.
 pub struct Compiled {
     pub json_abi: JsonABI,
-    pub json_storage_initializers: Vec<StorageSlot>,
+    pub storage_slots: Vec<StorageSlot>,
     pub bytecode: Vec<u8>,
     pub tree_type: TreeType,
 }
@@ -1434,7 +1434,7 @@ pub fn compile(
             warnings,
         } => {
             let json_abi = typed_program.kind.generate_json_abi();
-            let json_storage_initializers = typed_program.kind.generate_initialized_storage_slots();
+            let storage_slots = typed_program.kind.generate_initialized_storage_slots();
             let tree_type = typed_program.kind.tree_type();
             match tree_type {
                 // If we're compiling a library, we don't need to compile any further.
@@ -1445,7 +1445,7 @@ pub fn compile(
                     let lib_namespace = typed_program.root.namespace.clone();
                     let compiled = Compiled {
                         json_abi,
-                        json_storage_initializers,
+                        storage_slots,
                         bytecode,
                         tree_type,
                     };
@@ -1462,7 +1462,7 @@ pub fn compile(
                             let bytecode = bytes;
                             let compiled = Compiled {
                                 json_abi,
-                                json_storage_initializers,
+                                storage_slots,
                                 bytecode,
                                 tree_type,
                             };
@@ -1495,7 +1495,7 @@ pub fn build(
     let mut namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     let mut json_abi = vec![];
-    let mut json_storage_initializers = vec![];
+    let mut storage_slots = vec![];
     let mut bytecode = vec![];
     let mut tree_type = None;
     for &node in &plan.compilation_order {
@@ -1510,7 +1510,7 @@ pub fn build(
             namespace_map.insert(node, namespace.into());
         }
         json_abi.extend(compiled.json_abi);
-        json_storage_initializers.extend(compiled.json_storage_initializers);
+        storage_slots.extend(compiled.storage_slots);
         bytecode = compiled.bytecode;
         tree_type = Some(compiled.tree_type);
         source_map.insert_dependency(path.clone());
@@ -1520,7 +1520,7 @@ pub fn build(
     let compiled = Compiled {
         bytecode,
         json_abi,
-        json_storage_initializers,
+        storage_slots,
         tree_type,
     };
     Ok((compiled, source_map))

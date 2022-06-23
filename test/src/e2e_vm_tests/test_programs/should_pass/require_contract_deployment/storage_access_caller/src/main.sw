@@ -1,9 +1,8 @@
 script;
 use storage_access_abi::*;
-use std::{assert::assert, hash::sha256};
+use std::{assert::assert, hash::sha256, revert::revert};
 
 fn main() -> bool {
-
     let contract_id = 0x1c7c76380ef43c048596b4cda60eff2763d7c081b70d8662a3e1d18a9ee1dc2b;
     let caller = abi(StorageAccess, contract_id);
 
@@ -27,23 +26,27 @@ fn main() -> bool {
     assert(s.t.int32 == 9);
     let e = caller.get_e();
     match e {
-            E::B(t) => {
-                assert(t.x == 1);
-                assert(t.y == 2);
-                assert(t.z == 0x0000000000000000000000000000000000000000000000000000000000000003);
-                assert(t.boolean == true);
-                assert(t.int8 == 4);
-                assert(t.int16 == 5);
-                assert(t.int32 == 6);
-            }
-            _ => {}
+        E::B(t) => {
+            assert(t.x == 1);
+            assert(t.y == 2);
+            assert(t.z == 0x0000000000000000000000000000000000000000000000000000000000000003);
+            assert(t.boolean == true);
+            assert(t.int8 == 4);
+            assert(t.int16 == 5);
+            assert(t.int32 == 6);
+        }
+        _ => {
+            revert(0)
+        }
     }
     let e2 = caller.get_e2();
-    match e {
+    match e2 {
         E::A(val) => {
             assert(val == 777);
         }
-        _ => {}
+        _ => {
+            revert(0)
+        }
     }
     assert(sha256(caller.get_string()) == sha256("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"));
 
@@ -183,6 +186,7 @@ fn main() -> bool {
     let e = caller.get_e();
     match e {
         E::A(val) => assert(val == 42), _ => {
+            revert(0)
         }
     }
 
@@ -199,6 +203,7 @@ fn main() -> bool {
             assert(val.int32 == t.int32);
         }
         _ => {
+            revert(0)
         }
     };
 

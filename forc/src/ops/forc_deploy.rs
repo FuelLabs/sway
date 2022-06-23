@@ -33,7 +33,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         silent_mode,
         output_directory,
         minify_json_abi,
-        minify_json_storage_initializers,
+        minify_json_storage_slots,
         locked,
         url,
         build_profile,
@@ -51,7 +51,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         silent_mode,
         output_directory,
         minify_json_abi,
-        minify_json_storage_initializers,
+        minify_json_storage_slots,
         locked,
         build_profile,
         release,
@@ -62,7 +62,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         compiled.bytecode,
         Vec::<fuel_tx::Input>::new(),
         Vec::<fuel_tx::Output>::new(),
-        compiled.json_storage_initializers,
+        compiled.storage_slots,
     );
 
     let node_url = match &manifest.network {

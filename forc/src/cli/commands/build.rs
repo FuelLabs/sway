@@ -52,10 +52,10 @@ pub struct Command {
     /// output will be "minified", i.e. all on one line without whitespace.
     #[clap(long)]
     pub minify_json_abi: bool,
-    /// By default the JSON for storage initializers is formatted for human readability. By using
+    /// By default the JSON for initial storage slots is formatted for human readability. By using
     /// this option JSON output will be "minified", i.e. all on one line without whitespace.
     #[clap(long)]
-    pub minify_json_storage_initializers: bool,
+    pub minify_json_storage_slots: bool,
     /// Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it
     /// needs to be updated, Forc will exit with an error
     #[clap(long)]

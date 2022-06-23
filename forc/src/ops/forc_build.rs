@@ -25,7 +25,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         silent_mode,
         output_directory,
         minify_json_abi,
-        minify_json_storage_initializers,
+        minify_json_storage_slots,
         locked,
         build_profile,
         release,
@@ -124,18 +124,17 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     match compiled.tree_type {
         TreeType::Contract => {
             // For contracts, emit a JSON file with all the initialized storage slots
-            let mut storage_slots = compiled.json_storage_initializers.clone();
+            let mut storage_slots = compiled.storage_slots.clone();
             storage_slots.sort();
-            let json_storage_initializers_stem =
-                format!("{}-storage_initializers", manifest.project.name);
-            let json_storage_initializers_path = output_dir
-                .join(&json_storage_initializers_stem)
+            let json_storage_slots_stem = format!("{}-storage_slots", manifest.project.name);
+            let json_storage_slots_path = output_dir
+                .join(&json_storage_slots_stem)
                 .with_extension("json");
-            let file = File::create(json_storage_initializers_path)?;
-            let res = if minify_json_storage_initializers {
-                serde_json::to_writer(&file, &compiled.json_storage_initializers)
+            let file = File::create(json_storage_slots_path)?;
+            let res = if minify_json_storage_slots {
+                serde_json::to_writer(&file, &compiled.storage_slots)
             } else {
-                serde_json::to_writer_pretty(&file, &compiled.json_storage_initializers)
+                serde_json::to_writer_pretty(&file, &compiled.storage_slots)
             };
             res?;
         }
