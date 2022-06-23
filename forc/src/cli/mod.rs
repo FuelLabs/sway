@@ -1,6 +1,6 @@
 use self::commands::{
-    addr2line, build, check, clean, completions, deploy, init, json_abi, parse_bytecode, plugins,
-    run, template, test, update,
+    addr2line, build, check, clean, completions, deploy, init, json_abi, json_storage_slots,
+    parse_bytecode, plugins, run, template, test, update,
 };
 use addr2line::Command as Addr2LineCommand;
 use anyhow::{anyhow, Result};
@@ -12,6 +12,7 @@ pub use completions::Command as CompletionsCommand;
 pub use deploy::Command as DeployCommand;
 pub use init::Command as InitCommand;
 pub use json_abi::Command as JsonAbiCommand;
+pub use json_storage_slots::Command as JsonStorageSlotsCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
 pub use plugins::Command as PluginsCommand;
 pub use run::Command as RunCommand;
@@ -47,6 +48,7 @@ enum Forc {
     Test(TestCommand),
     Update(UpdateCommand),
     JsonAbi(JsonAbiCommand),
+    JsonStorageSlots(JsonStorageSlotsCommand),
     Plugins(PluginsCommand),
     Template(TemplateCommand),
     /// This is a catch-all for unknown subcommands and their arguments.
@@ -77,6 +79,7 @@ pub async fn run_cli() -> Result<()> {
         Forc::Test(command) => test::exec(command),
         Forc::Update(command) => update::exec(command).await,
         Forc::JsonAbi(command) => json_abi::exec(command),
+        Forc::JsonStorageSlots(command) => json_storage_slots::exec(command),
         Forc::Template(command) => template::exec(command),
         Forc::Plugin(args) => {
             let output = plugin::execute_external_subcommand(args)?;

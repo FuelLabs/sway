@@ -240,12 +240,15 @@ impl TypedProgram {
                 // Expecting at most a single storage declaration
                 match storage_decl {
                     Some(TypedDeclaration::StorageDeclaration(decl)) => {
-                        let storage_slots = check!(
+                        let mut storage_slots = check!(
                             decl.get_initialized_storage_slots(),
                             return err(warnings, errors),
                             warnings,
                             errors,
                         );
+                        // Sort the slots to standardize the output. Not strictly required by the
+                        // spec but the VM expects sorted slots
+                        storage_slots.sort();
                         ok(
                             Self {
                                 kind: self.kind.clone(),

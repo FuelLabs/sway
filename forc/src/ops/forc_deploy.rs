@@ -105,7 +105,7 @@ fn create_contract_tx(
     let contract = Contract::from(compiled_contract);
     let root = contract.root();
 
-    // The VM requires that storage slots are sorted
+    // The VM requires that storage slots are sorted.
     let mut storage_slots = storage_slots;
     storage_slots.sort();
     let state_root = Contract::initial_state_root(storage_slots.iter());

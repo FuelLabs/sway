@@ -33,6 +33,7 @@ struct TestDescription {
     expected_result: Option<TestResult>,
     contract_paths: Vec<String>,
     validate_abi: bool,
+    validate_storage_slots: bool,
     checker: filecheck::Checker,
 }
 
@@ -55,6 +56,7 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
         expected_result,
         contract_paths,
         validate_abi,
+        validate_storage_slots,
         checker,
     } in configured_tests
     {
@@ -88,6 +90,12 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
 
             TestCategory::Compiles => {
                 assert!(crate::e2e_vm_tests::harness::compile_to_bytes(&name, locked).is_ok());
+                if validate_abi {
+                    assert!(crate::e2e_vm_tests::harness::test_json_abi(&name).is_ok());
+                }
+                if validate_storage_slots {
+                    assert!(crate::e2e_vm_tests::harness::test_json_storage_slots(&name).is_ok());
+                }
                 number_of_tests_executed += 1;
             }
 
@@ -273,6 +281,11 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
         .map(|v| v.as_bool().unwrap_or(false))
         .unwrap_or(false);
 
+    let validate_storage_slots = toml_content
+        .get("validate_storage_slots")
+        .map(|v| v.as_bool().unwrap_or(false))
+        .unwrap_or(false);
+
     // We need to adjust the path to start relative to `test_programs`.
     let name = path
         .iter()
@@ -294,6 +307,7 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
         expected_result,
         contract_paths,
         validate_abi,
+        validate_storage_slots,
         checker,
     })
 }

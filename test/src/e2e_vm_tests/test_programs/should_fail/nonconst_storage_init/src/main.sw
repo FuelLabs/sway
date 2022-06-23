@@ -4,6 +4,7 @@ use core::*;
 
 storage {
     x: u64 = 5 + 5,
+    y: u64 = 5 + 5,
 }
 
 abi Test {
@@ -13,5 +14,6 @@ abi Test {
 impl Test for Contract {
     fn foo() {
         storage.x += 1;
+        storage.y += 1;
     }
 }
