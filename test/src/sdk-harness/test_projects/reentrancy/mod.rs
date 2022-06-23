@@ -1,7 +1,6 @@
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
 use fuels::tx::{ConsensusParameters, ContractId};
-use fuels_abigen_macro::abigen;
 
 abigen!(
     AttackerContract,

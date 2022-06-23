@@ -1,5 +1,4 @@
 use fuels::prelude::*;
-use fuels_abigen_macro::abigen;
 
 abigen!(
     TestStorageContract,

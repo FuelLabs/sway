@@ -1,6 +1,5 @@
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
-use fuels_abigen_macro::abigen;
 
 abigen!(
     MethodsContract,

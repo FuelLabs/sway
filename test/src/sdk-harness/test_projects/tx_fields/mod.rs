@@ -3,7 +3,6 @@ use fuel_vm::fuel_tx::ConsensusParameters;
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
 use fuels::tx::{Bytes32, ContractId};
-use fuels_abigen_macro::abigen;
 use std::str::FromStr;
 
 abigen!(
