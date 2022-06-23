@@ -120,6 +120,8 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         res?;
     }
 
+    info!("  Bytecode size is {} bytes.", compiled.bytecode.len());
+
     // Additional ops required depending on the program type
     match compiled.tree_type {
         TreeType::Contract => {
