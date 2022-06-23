@@ -263,12 +263,6 @@ impl BuildPlan {
         // If there are errors we will need to create the BuildPlan from scratch, i.e fetch & pin everything
         let mut new_lock_cause = None;
         let mut plan = plan_result.or_else(|e| -> Result<BuildPlan> {
-            if locked {
-                bail!(
-                    "The lock file {} needs to be updated but --locked was passed to prevent this.",
-                    lock_path.to_string_lossy()
-                );
-            }
             new_lock_cause = if e.to_string().contains("No such file or directory") {
                 Some(anyhow!("lock file did not exist"))
             } else {
@@ -289,6 +283,15 @@ impl BuildPlan {
         }
 
         if let Some(cause) = new_lock_cause {
+            if locked {
+                bail!(
+                    "The lock file {} needs to be updated (Cause: {}) \
+                    but --locked was passed to prevent this.",
+                    lock_path.to_string_lossy(),
+                    cause,
+                );
+            }
+
             info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
             create_new_lock(&plan, &old_lock, manifest, &lock_path)?;
             info!("   Created new lock file at {}", lock_path.display());
