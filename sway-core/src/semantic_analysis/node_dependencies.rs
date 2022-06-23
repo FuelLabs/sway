@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
+use crate::type_engine::{TypeArgument, TypeParameter};
 use crate::{
     error::*,
     parse_tree::*,

@@ -441,14 +441,20 @@ impl TypedAstNode {
                         Declaration::StorageDeclaration(StorageDeclaration { span, fields }) => {
                             let mut fields_buf = Vec::with_capacity(fields.len());
                             for StorageField { name, type_info } in fields {
-                                let r#type = check!(
-                                    ctx.namespace
-                                        .resolve_type_without_self(insert_type(type_info)),
+                                let type_id = check!(
+                                    ctx.namespace.resolve_type_without_self(
+                                        insert_type(type_info),
+                                        &name.span()
+                                    ),
                                     return err(warnings, errors),
                                     warnings,
                                     errors
                                 );
-                                fields_buf.push(TypedStorageField::new(name, r#type, span.clone()));
+                                fields_buf.push(TypedStorageField::new(
+                                    name,
+                                    type_id,
+                                    span.clone(),
+                                ));
                             }
 
                             let decl = TypedStorageDeclaration::new(fields_buf, span);
