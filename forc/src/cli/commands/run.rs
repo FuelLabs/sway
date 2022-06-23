@@ -31,15 +31,20 @@ pub struct Command {
     #[clap(short, long)]
     pub kill_node: bool,
 
-    /// Whether to compile to bytecode (false) or to print out the generated ASM (true).
+    /// Print the finalized ASM.
+    ///
+    /// This is the state of the ASM with registers allocated and optimisations applied.
     #[clap(long)]
     pub print_finalized_asm: bool,
 
-    /// Whether to compile to bytecode (false) or to print out the generated ASM (true).
+    /// Print the generated ASM.
+    ///
+    /// This is the state of the ASM prior to performing register allocation and other ASM
+    /// optimisations.
     #[clap(long)]
     pub print_intermediate_asm: bool,
 
-    /// Whether to compile to bytecode (false) or to print out the IR (true).
+    /// Print the generated Sway IR (Intermediate Representation).
     #[clap(long)]
     pub print_ir: bool,
 
