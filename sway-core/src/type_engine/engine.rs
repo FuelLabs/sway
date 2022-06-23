@@ -1,9 +1,10 @@
 use super::*;
 use crate::concurrent_slab::ConcurrentSlab;
+use crate::namespace::{Path, Root};
 use crate::type_engine::AbiName;
 use lazy_static::lazy_static;
 use sway_types::span::Span;
-use sway_types::Spanned;
+use sway_types::{Ident, Spanned};
 
 lazy_static! {
     static ref TYPE_ENGINE: Engine = Engine::default();
@@ -29,6 +30,121 @@ impl Engine {
             ty => ty,
         }
     }
+
+    fn monomorphize<T>(
+        &self,
+        value: &mut T,
+        mut type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        call_site_span: &Span,
+        namespace: &mut Root,
+        module_path: &Path,
+    ) -> CompileResult<()>
+    where
+        T: MonomorphizeHelper + CopyTypes,
+    {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        match (
+            value.type_parameters().is_empty(),
+            type_arguments.is_empty(),
+        ) {
+            (true, true) => ok((), warnings, errors),
+            (false, true) => {
+                if let EnforceTypeArguments::Yes = enforce_type_arguments {
+                    errors.push(CompileError::NeedsTypeArguments {
+                        name: value.name().clone(),
+                        span: call_site_span.clone(),
+                    });
+                    return err(warnings, errors);
+                }
+                let type_mapping = insert_type_parameters(value.type_parameters());
+                value.copy_types(&type_mapping);
+                ok((), warnings, errors)
+            }
+            (true, false) => {
+                let type_arguments_span = type_arguments
+                    .iter()
+                    .map(|x| x.span.clone())
+                    .reduce(Span::join)
+                    .unwrap_or_else(|| value.name().span());
+                errors.push(CompileError::DoesNotTakeTypeArguments {
+                    name: value.name().clone(),
+                    span: type_arguments_span,
+                });
+                err(warnings, errors)
+            }
+            (false, false) => {
+                let type_arguments_span = type_arguments
+                    .iter()
+                    .map(|x| x.span.clone())
+                    .reduce(Span::join)
+                    .unwrap_or_else(|| value.name().span());
+                if value.type_parameters().len() != type_arguments.len() {
+                    errors.push(CompileError::IncorrectNumberOfTypeArguments {
+                        given: type_arguments.len(),
+                        expected: value.type_parameters().len(),
+                        span: type_arguments_span,
+                    });
+                    return err(warnings, errors);
+                }
+                for type_argument in type_arguments.iter_mut() {
+                    type_argument.type_id = check!(
+                        namespace.resolve_type(
+                            type_argument.type_id,
+                            &type_argument.span,
+                            enforce_type_arguments,
+                            module_path
+                        ),
+                        insert_type(TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors
+                    );
+                }
+                let type_mapping = insert_type_parameters(value.type_parameters());
+                for ((_, interim_type), type_argument) in
+                    type_mapping.iter().zip(type_arguments.iter())
+                {
+                    let (mut new_warnings, new_errors) = unify(
+                        *interim_type,
+                        type_argument.type_id,
+                        &type_argument.span,
+                        "Type argument is not assignable to generic type parameter.",
+                    );
+                    warnings.append(&mut new_warnings);
+                    errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+                }
+                value.copy_types(&type_mapping);
+                ok((), warnings, errors)
+            }
+        }
+    }
+
+    // pub(crate) fn monomorphize_with_self<T>(
+    //     &self,
+    //     value: &mut T,
+    //     mut type_arguments: Vec<TypeArgument>,
+    //     enforce_type_arguments: EnforceTypeArguments,
+    //     call_site_span: &Span,
+    //     self_type: TypeId,
+    //     namespace: &mut Root,
+    //     module_path: &Path,
+    // ) -> CompileResult<()>
+    // where
+    //     T: MonomorphizeHelper + CopyTypes,
+    // {
+    //     for type_argument in type_arguments.iter_mut() {
+    //         type_argument.replace_self_type(self_type);
+    //     }
+    //     self.monomorphize(
+    //         value,
+    //         type_arguments,
+    //         enforce_type_arguments,
+    //         call_site_span,
+    //         namespace,
+    //         module_path,
+    //     )
+    // }
 
     /// Make the types of two type terms equivalent (or produce an error if
     /// there is a conflict between them).
@@ -380,6 +496,50 @@ pub(crate) fn look_up_type_id_raw(id: TypeId) -> TypeInfo {
     TYPE_ENGINE.look_up_type_id_raw(id)
 }
 
+pub(crate) fn monomorphize<T>(
+    value: &mut T,
+    type_arguments: Vec<TypeArgument>,
+    enforce_type_arguments: EnforceTypeArguments,
+    call_site_span: &Span,
+    namespace: &mut Root,
+    module_path: &Path,
+) -> CompileResult<()>
+where
+    T: MonomorphizeHelper + CopyTypes,
+{
+    TYPE_ENGINE.monomorphize(
+        value,
+        type_arguments,
+        enforce_type_arguments,
+        call_site_span,
+        namespace,
+        module_path,
+    )
+}
+
+// pub(crate) fn monomorphize_with_self<T>(
+//     value: &mut T,
+//     type_arguments: Vec<TypeArgument>,
+//     enforce_type_arguments: EnforceTypeArguments,
+//     call_site_span: &Span,
+//     self_type: TypeId,
+//     namespace: &mut Root,
+//     module_path: &Path,
+// ) -> CompileResult<()>
+// where
+//     T: MonomorphizeHelper + CopyTypes,
+// {
+//     TYPE_ENGINE.monomorphize_with_self(
+//         value,
+//         type_arguments,
+//         enforce_type_arguments,
+//         call_site_span,
+//         self_type,
+//         namespace,
+//         module_path,
+//     )
+// }
+
 pub fn unify_with_self(
     a: TypeId,
     b: TypeId,
@@ -426,4 +586,44 @@ fn numeric_cast_compat(new_size: IntegerBits, old_size: IntegerBits) -> NumericC
 enum NumericCastCompatResult {
     Compatible,
     CastableWithWarning(Warning),
+}
+
+pub(crate) trait MonomorphizeHelper {
+    fn name(&self) -> &Ident;
+    fn type_parameters(&self) -> &[TypeParameter];
+}
+
+/// This type is used to denote if, during monomorphization, the compiler
+/// should enforce that type arguments be provided. An example of that
+/// might be this:
+///
+/// ```ignore
+/// struct Point<T> {
+///   x: u64,
+///   y: u64
+/// }
+///
+/// fn add<T>(p1: Point<T>, p2: Point<T>) -> Point<T> {
+///   Point {
+///     x: p1.x + p2.x,
+///     y: p1.y + p2.y
+///   }
+/// }
+/// ```
+///
+/// `EnforeTypeArguments` would require that the type annotations
+/// for `p1` and `p2` contain `<...>`. This is to avoid ambiguous definitions:
+///
+/// ```ignore
+/// fn add(p1: Point, p2: Point) -> Point {
+///   Point {
+///     x: p1.x + p2.x,
+///     y: p1.y + p2.y
+///   }
+/// }
+/// ```
+#[derive(Clone, Copy)]
+pub(crate) enum EnforceTypeArguments {
+    Yes,
+    No,
 }

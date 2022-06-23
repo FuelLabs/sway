@@ -8,7 +8,7 @@ use sway_types::{state::StateIndex, Spanned};
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
-    function_decl: TypedFunctionDeclaration,
+    mut function_decl: TypedFunctionDeclaration,
     call_path: CallPath,
     type_arguments: Vec<TypeArgument>,
     arguments: Vec<Expression>,
@@ -17,12 +17,12 @@ pub(crate) fn instantiate_function_application(
     let mut errors = vec![];
 
     // monomorphize the function declaration
-    let function_decl = check!(
+    check!(
         ctx.monomorphize(
-            function_decl,
+            &mut function_decl,
             type_arguments,
             EnforceTypeArguments::No,
-            Some(&call_path.span())
+            &call_path.span()
         ),
         return err(warnings, errors),
         warnings,

@@ -1,14 +1,13 @@
 use crate::{
     parse_tree::declaration::Purity,
-    semantic_analysis::{
-        ast_node::Mode,
-        declaration::{EnforceTypeArguments, MonomorphizeHelper},
-        Namespace,
+    semantic_analysis::{ast_node::Mode, Namespace},
+    type_engine::{
+        insert_type, monomorphize, unify_with_self, CopyTypes, EnforceTypeArguments,
+        MonomorphizeHelper, TypeArgument, TypeId, TypeInfo,
     },
-    type_engine::{insert_type, unify_with_self, TypeArgument, TypeId, TypeInfo},
     CompileResult, CompileWarning, TypeError,
 };
-use sway_types::{span::Span, Ident, Spanned};
+use sway_types::{span::Span, Ident};
 
 /// Contextual state tracked and accumulated throughout type-checking.
 pub struct TypeCheckContext<'ns> {
@@ -174,26 +173,49 @@ impl<'ns> TypeCheckContext<'ns> {
 
     // Provide some convenience functions around the inner context.
 
-    /// Short-hand for calling the `monomorphize` method on `Namespace` with the context's known
-    /// `self_type`.
+    /// Short-hand for calling the `monomorphize` function in the type engine
     pub(crate) fn monomorphize<T>(
         &mut self,
-        decl: T,
-        type_args: Vec<TypeArgument>,
-        enforce_type_args: EnforceTypeArguments,
-        call_site_span: Option<&Span>,
-    ) -> CompileResult<T>
+        value: &mut T,
+        type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        call_site_span: &Span,
+    ) -> CompileResult<()>
     where
-        T: MonomorphizeHelper<Output = T> + Spanned,
+        T: MonomorphizeHelper + CopyTypes,
     {
-        self.namespace.monomorphize(
-            decl,
-            type_args,
-            enforce_type_args,
-            Some(self.self_type),
+        monomorphize(
+            value,
+            type_arguments,
+            enforce_type_arguments,
             call_site_span,
+            &mut self.namespace.root,
+            &self.namespace.mod_path,
         )
     }
+
+    // /// Short-hand for calling the `monomorphize_with_self` function in the type engine
+    // pub(crate) fn monomorphize_with_self<T>(
+    //     &mut self,
+    //     value: &mut T,
+    //     type_arguments: Vec<TypeArgument>,
+    //     enforce_type_arguments: EnforceTypeArguments,
+    //     call_site_span: &Span,
+    //     self_type: TypeId
+    // ) -> CompileResult<()>
+    // where
+    //     T: MonomorphizeHelper + CopyTypes,
+    // {
+    //     monomorphize_with_self(
+    //         value,
+    //         type_arguments,
+    //         enforce_type_arguments,
+    //         call_site_span,
+    //         self_type,
+    //         &mut self.namespace.root,
+    //         &self.namespace.mod_path,
+    //     )
+    // }
 
     /// Short-hand for calling [Namespace::resolve_type_with_self] with the `self_type` provided by
     /// the `TypeCheckContext`.
