@@ -1,0 +1,14 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-BAD4826C86E6CE3D'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'path+from-root-BAD4826C86E6CE3D'
+dependencies = ['core']
+
+[[package]]
+name = 'svec_b256'
+source = 'root'
+dependencies = ['std']

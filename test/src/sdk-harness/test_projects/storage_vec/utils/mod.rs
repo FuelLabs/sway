@@ -2,13 +2,13 @@ use fuels::{prelude::*, tx::ContractId};
 use fuels_abigen_macro::abigen;
 
 // Load abi from json
-abigen!(MyContract, "out/debug/storage_vec-abi.json");
+abigen!(MyContract, "test_artifacts/storage_vec/svec_u8/out/debug/svec_u8-abi.json");
 
 async fn get_contract_instance() -> (MyContract, ContractId) {
     // Launch a local network and deploy the contract
     let wallet = launch_provider_and_get_single_wallet().await;
 
-    let id = Contract::deploy("./out/debug/storage_vec.bin", &wallet, TxParameters::default())
+    let id = Contract::deploy("./out/debug/svec_u8.bin", &wallet, TxParameters::default())
         .await
         .unwrap();
 
@@ -18,7 +18,7 @@ async fn get_contract_instance() -> (MyContract, ContractId) {
 }
 
 #[tokio::test]
-async fn can_get_contract_id() {
+async fn can_get_contract_id() { 
     let (_instance, _id) = get_contract_instance().await;
 
     // Now you have an instance of your contract you can use to test each function
