@@ -69,10 +69,11 @@ pub fn serialize_to_storage_slots(
             vec![StorageSlot::new(
                 get_storage_key(ix, indices),
                 Bytes32::new(
-                    [0; 31]
+                    [0; 7]
                         .iter()
                         .cloned()
                         .chain([if *b { 0x01 } else { 0x00 }].iter().cloned())
+                        .chain([0; 24].iter().cloned())
                         .collect::<Vec<u8>>()
                         .try_into()
                         .unwrap(),
@@ -83,10 +84,10 @@ pub fn serialize_to_storage_slots(
             vec![StorageSlot::new(
                 get_storage_key(ix, indices),
                 Bytes32::new(
-                    [0; 24]
+                    n.to_be_bytes()
                         .iter()
                         .cloned()
-                        .chain(n.to_be_bytes().iter().cloned())
+                        .chain([0; 24].iter().cloned())
                         .collect::<Vec<u8>>()
                         .try_into()
                         .unwrap(),

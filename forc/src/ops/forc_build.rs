@@ -120,31 +120,24 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         res?;
     }
 
-    if !compiled.json_storage_initializers.is_empty() {
-        let json_storage_initializers_stem =
-            format!("{}-storage_initializers", manifest.project.name);
-        let json_storage_initializers_path = output_dir
-            .join(&json_storage_initializers_stem)
-            .with_extension("json");
-        let file = File::create(json_storage_initializers_path)?;
-        let res = if minify_json_storage_initializers {
-            serde_json::to_writer(&file, &compiled.json_storage_initializers)
-        } else {
-            serde_json::to_writer_pretty(&file, &compiled.json_storage_initializers)
-        };
-        res?;
-    }
-
-    info!("  Bytecode size is {} bytes.", compiled.bytecode.len());
-
+    // Additional ops required depending on the program type
     match compiled.tree_type {
-        TreeType::Script => {
-            // hash the bytecode for scripts and store the result in a file in the output directory
-            let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&compiled.bytecode));
-            let hash_file_name = format!("{}{}", &manifest.project.name, SWAY_BIN_HASH_SUFFIX);
-            let hash_path = output_dir.join(hash_file_name);
-            fs::write(hash_path, &bytecode_hash)?;
-            info!("  Script bytecode hash: {}", bytecode_hash);
+        TreeType::Contract => {
+            // For contracts, emit a JSON file with all the initialized storage slots
+            let mut storage_slots = compiled.json_storage_initializers.clone();
+            storage_slots.sort();
+            let json_storage_initializers_stem =
+                format!("{}-storage_initializers", manifest.project.name);
+            let json_storage_initializers_path = output_dir
+                .join(&json_storage_initializers_stem)
+                .with_extension("json");
+            let file = File::create(json_storage_initializers_path)?;
+            let res = if minify_json_storage_initializers {
+                serde_json::to_writer(&file, &compiled.json_storage_initializers)
+            } else {
+                serde_json::to_writer_pretty(&file, &compiled.json_storage_initializers)
+            };
+            res?;
         }
         TreeType::Predicate => {
             // get the root hash of the bytecode for predicates and store the result in a file in the output directory
@@ -153,6 +146,14 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
             let root_path = output_dir.join(root_file_name);
             fs::write(root_path, &root)?;
             info!("  Predicate root: {}", root);
+        }
+        TreeType::Script => {
+            // hash the bytecode for scripts and store the result in a file in the output directory
+            let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&compiled.bytecode));
+            let hash_file_name = format!("{}{}", &manifest.project.name, SWAY_BIN_HASH_SUFFIX);
+            let hash_path = output_dir.join(hash_file_name);
+            fs::write(hash_path, &bytecode_hash)?;
+            info!("  Script bytecode hash: {}", bytecode_hash);
         }
         _ => (),
     }
