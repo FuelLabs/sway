@@ -1,11 +1,11 @@
 use crate::{
     error::ok,
     semantic_analysis::{
-        EnforceTypeArguments, IsConstant, TypedExpression, TypedExpressionVariant,
-        TypedVariableDeclaration, VariableMutability,
+        EnforceTypeArguments, IsConstant, TypeCheckContext, TypedExpression,
+        TypedExpressionVariant, TypedVariableDeclaration, VariableMutability,
     },
     type_engine::*,
-    CompileResult, FunctionParameter, Ident, Namespace, TypedDeclaration,
+    CompileResult, FunctionParameter, Ident, TypedDeclaration,
 };
 
 use sway_types::{span::Span, Spanned};
@@ -13,6 +13,7 @@ use sway_types::{span::Span, Spanned};
 #[derive(Debug, Clone, Eq)]
 pub struct TypedFunctionParameter {
     pub name: Ident,
+    pub is_mutable: bool,
     pub type_id: TypeId,
     pub(crate) type_span: Span,
 }
@@ -22,7 +23,9 @@ pub struct TypedFunctionParameter {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEq for TypedFunctionParameter {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
+        self.name == other.name
+            && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
+            && self.is_mutable == other.is_mutable
     }
 }
 
@@ -34,16 +37,14 @@ impl CopyTypes for TypedFunctionParameter {
 
 impl TypedFunctionParameter {
     pub(crate) fn type_check(
+        mut ctx: TypeCheckContext,
         parameter: FunctionParameter,
-        namespace: &mut Namespace,
-        self_type: TypeId,
-    ) -> CompileResult<TypedFunctionParameter> {
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_id = check!(
-            namespace.resolve_type_with_self(
-                look_up_type_id(parameter.type_id),
-                self_type,
+            ctx.resolve_type_with_self(
+                parameter.type_id,
                 &parameter.type_span,
                 EnforceTypeArguments::Yes
             ),
@@ -51,7 +52,7 @@ impl TypedFunctionParameter {
             warnings,
             errors,
         );
-        namespace.insert_symbol(
+        ctx.namespace.insert_symbol(
             parameter.name.clone(),
             TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                 name: parameter.name.clone(),
@@ -61,13 +62,18 @@ impl TypedFunctionParameter {
                     is_constant: IsConstant::No,
                     span: parameter.name.span(),
                 },
-                is_mutable: VariableMutability::Immutable,
+                is_mutable: if parameter.is_mutable {
+                    VariableMutability::Mutable
+                } else {
+                    VariableMutability::Immutable
+                },
                 const_decl_origin: false,
                 type_ascription: type_id,
             }),
         );
         let parameter = TypedFunctionParameter {
             name: parameter.name,
+            is_mutable: parameter.is_mutable,
             type_id,
             type_span: parameter.type_span,
         };

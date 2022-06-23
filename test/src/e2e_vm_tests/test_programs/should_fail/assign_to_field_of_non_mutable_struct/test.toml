@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()Assignment to immutable variable. Variable thing is not declared as mutable.

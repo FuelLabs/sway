@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: fn bar(a: bool, b: u64) -> u64 {
+# check: $()Function "bar" expects 2 arguments but you provided 1.

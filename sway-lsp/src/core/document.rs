@@ -6,14 +6,10 @@ use super::traverse_typed_tree;
 use super::typed_token_type::TokenMap;
 
 use crate::{capabilities, core::token::traverse_node, utils};
+use forc_pkg::{self as pkg};
 use ropey::Rope;
-use std::collections::HashMap;
-use std::sync::Arc;
-use sway_core::{
-    parse,
-    semantic_analysis::{ast_node::TypedAstNode, namespace},
-    CompileAstResult, TreeType,
-};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use sway_core::{parse, semantic_analysis::ast_node::TypedAstNode, CompileAstResult, TreeType};
 use tower_lsp::lsp_types::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
 
 #[derive(Debug)]
@@ -160,10 +156,15 @@ impl TextDocument {
 // private methods
 impl TextDocument {
     fn parse_typed_tokens_from_text(&self) -> Option<Vec<TypedAstNode>> {
-        let text = Arc::from(self.get_text());
-        let namespace = namespace::Module::default();
-        let ast_res = sway_core::compile_to_ast(text, namespace, None);
-        match ast_res {
+        let manifest_dir = PathBuf::from(self.get_uri());
+        let silent_mode = true;
+        let manifest =
+            pkg::ManifestFile::from_dir(&manifest_dir, forc::utils::SWAY_GIT_TAG).unwrap();
+        let lock_path = forc_util::lock_path(manifest.dir());
+        let plan = pkg::BuildPlan::from_lock_file(&lock_path, forc::utils::SWAY_GIT_TAG).unwrap();
+        let res = pkg::check(&plan, silent_mode, forc::utils::SWAY_GIT_TAG).unwrap();
+
+        match res {
             CompileAstResult::Failure { .. } => None,
             CompileAstResult::Success { typed_program, .. } => Some(typed_program.root.all_nodes),
         }

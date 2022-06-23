@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: self.f()
+# nextln: $()Storage attribute access mismatch. Try giving the surrounding function more access by adding "#[storage(read)]" to the function declaration.

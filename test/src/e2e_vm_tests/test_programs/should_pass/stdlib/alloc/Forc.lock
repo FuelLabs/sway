@@ -1,0 +1,14 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-F836694FA318B000'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'path+from-root-F836694FA318B000'
+dependencies = ['core']
+
+[[package]]
+name = 'std_alloc_test'
+source = 'root'
+dependencies = ['std']

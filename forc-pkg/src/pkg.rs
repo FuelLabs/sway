@@ -1,6 +1,6 @@
 use crate::{
     lock::Lock,
-    manifest::{Dependency, Manifest, ManifestFile},
+    manifest::{BuildProfile, Dependency, Manifest, ManifestFile},
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
@@ -16,7 +16,7 @@ use petgraph::{
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map, BTreeSet, HashMap, HashSet},
-    fmt,
+    fmt, fs,
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
     str::FromStr,
@@ -166,16 +166,6 @@ pub struct BuildPlan {
     compilation_order: Vec<NodeIx>,
 }
 
-/// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "kebab-case")]
-pub struct BuildConfig {
-    pub print_ir: bool,
-    pub print_finalized_asm: bool,
-    pub print_intermediate_asm: bool,
-    pub silent: bool,
-}
-
 /// Error returned upon failed parsing of `PinnedId::from_str`.
 #[derive(Clone, Debug)]
 pub struct PinnedIdParseError;
@@ -233,6 +223,71 @@ impl BuildPlan {
             path_map,
             compilation_order,
         })
+    }
+
+    /// Create a new build plan taking into account the state of both the Manifest and the existing lock file if there is one.
+    ///
+    /// This will first attempt to load a build plan from the lock file and validate the resulting graph using the current state of the Manifest.
+    ///
+    /// This includes checking if the [dependencies] or [patch] tables have changed and checking the validity of the local path dependencies.
+    /// If any changes are detected, the graph is updated and any new packages that require fetching are fetched.
+    ///
+    /// The resulting build plan should always be in a valid state that is ready for building or checking.
+    pub fn load_from_manifest(
+        manifest: &ManifestFile,
+        locked: bool,
+        offline: bool,
+        sway_git_tag: &str,
+    ) -> Result<Self> {
+        let lock_path = forc_util::lock_path(manifest.dir());
+        let plan_result = BuildPlan::from_lock_file(&lock_path, sway_git_tag);
+
+        // Retrieve the old lock file state so we can produce a diff.
+        let old_lock = plan_result
+            .as_ref()
+            .ok()
+            .map(|plan| Lock::from_graph(plan.graph()))
+            .unwrap_or_default();
+
+        // Check if there are any errors coming from the BuildPlan generation from the lock file
+        // If there are errors we will need to create the BuildPlan from scratch, i.e fetch & pin everything
+        let mut new_lock_cause = None;
+        let mut plan = plan_result.or_else(|e| -> Result<BuildPlan> {
+            new_lock_cause = if e.to_string().contains("No such file or directory") {
+                Some(anyhow!("lock file did not exist"))
+            } else {
+                Some(e)
+            };
+            let plan = BuildPlan::new(manifest, sway_git_tag, offline)?;
+            Ok(plan)
+        })?;
+
+        // If there are no issues with the BuildPlan generated from the lock file
+        // Check and apply the diff.
+        if new_lock_cause.is_none() {
+            let diff = plan.validate(manifest, sway_git_tag)?;
+            if !diff.added.is_empty() || !diff.removed.is_empty() {
+                new_lock_cause = Some(anyhow!("lock file did not match manifest `diff`"));
+                plan = plan.apply_pkg_diff(diff, sway_git_tag, offline)?;
+            }
+        }
+
+        if let Some(cause) = new_lock_cause {
+            if locked {
+                bail!(
+                    "The lock file {} needs to be updated (Cause: {}) \
+                    but --locked was passed to prevent this.",
+                    lock_path.to_string_lossy(),
+                    cause,
+                );
+            }
+
+            info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
+            create_new_lock(&plan, &old_lock, manifest, &lock_path)?;
+            info!("   Created new lock file at {}", lock_path.display());
+        }
+
+        Ok(plan)
     }
 
     /// Create a new build plan from an existing one. Needs the difference with the existing plan with the lock.
@@ -1262,12 +1317,12 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
     Ok(source)
 }
 
-/// Given a `forc_pkg::BuildConfig`, produce the necessary `sway_core::BuildConfig` required for
+/// Given a `forc_pkg::BuildProfile`, produce the necessary `sway_core::BuildConfig` required for
 /// compilation.
 pub fn sway_build_config(
     manifest_dir: &Path,
     entry_path: &Path,
-    build_conf: &BuildConfig,
+    build_profile: &BuildProfile,
 ) -> Result<sway_core::BuildConfig> {
     // Prepare the build config to pass through to the compiler.
     let file_name = find_file_name(manifest_dir, entry_path)?;
@@ -1275,9 +1330,9 @@ pub fn sway_build_config(
         file_name.to_path_buf(),
         manifest_dir.to_path_buf(),
     )
-    .print_finalized_asm(build_conf.print_finalized_asm)
-    .print_intermediate_asm(build_conf.print_intermediate_asm)
-    .print_ir(build_conf.print_ir);
+    .print_finalized_asm(build_profile.print_finalized_asm)
+    .print_intermediate_asm(build_profile.print_intermediate_asm)
+    .print_ir(build_profile.print_ir);
     Ok(build_config)
 }
 
@@ -1316,6 +1371,19 @@ pub fn dependency_namespace(
     namespace
 }
 
+/// Compiles the package to an AST.
+pub fn compile_ast(
+    manifest: &ManifestFile,
+    build_profile: &BuildProfile,
+    namespace: namespace::Module,
+) -> Result<CompileAstResult> {
+    let source = manifest.entry_string()?;
+    let sway_build_config =
+        sway_build_config(manifest.dir(), &manifest.entry_path(), build_profile)?;
+    let ast_res = sway_core::compile_to_ast(source, namespace, Some(&sway_build_config));
+    Ok(ast_res)
+}
+
 /// Compiles the given package.
 ///
 /// ## Program Types
@@ -1337,17 +1405,16 @@ pub fn dependency_namespace(
 pub fn compile(
     pkg: &Pinned,
     manifest: &ManifestFile,
-    build_config: &BuildConfig,
+    build_profile: &BuildProfile,
     namespace: namespace::Module,
     source_map: &mut SourceMap,
 ) -> Result<(Compiled, Option<namespace::Root>)> {
     let entry_path = manifest.entry_path();
-    let source = manifest.entry_string()?;
-    let sway_build_config = sway_build_config(manifest.dir(), &entry_path, build_config)?;
-    let silent_mode = build_config.silent;
+    let sway_build_config = sway_build_config(manifest.dir(), &entry_path, build_profile)?;
+    let silent_mode = build_profile.silent;
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
-    let ast_res = sway_core::compile_to_ast(source, namespace, Some(&sway_build_config));
+    let ast_res = compile_ast(manifest, build_profile, namespace)?;
     match &ast_res {
         CompileAstResult::Failure { warnings, errors } => {
             print_on_failure(silent_mode, warnings, errors);
@@ -1410,7 +1477,7 @@ pub fn compile(
 /// Also returns the resulting `sway_core::SourceMap` which may be useful for debugging purposes.
 pub fn build(
     plan: &BuildPlan,
-    conf: &BuildConfig,
+    profile: &BuildProfile,
     sway_git_tag: &str,
 ) -> anyhow::Result<(Compiled, SourceMap)> {
     let mut namespace_map = Default::default();
@@ -1424,7 +1491,7 @@ pub fn build(
         let pkg = &plan.graph[node];
         let path = &plan.path_map[&pkg.id()];
         let manifest = ManifestFile::from_dir(path, sway_git_tag)?;
-        let res = compile(pkg, &manifest, conf, dep_namespace, &mut source_map)?;
+        let res = compile(pkg, &manifest, profile, dep_namespace, &mut source_map)?;
         let (compiled, maybe_namespace) = res;
         if let Some(namespace) = maybe_namespace {
             namespace_map.insert(node, namespace.into());
@@ -1442,6 +1509,41 @@ pub fn build(
         tree_type,
     };
     Ok((compiled, source_map))
+}
+
+/// Compile the entire forc package and return a CompileAstResult.
+pub fn check(
+    plan: &BuildPlan,
+    silent_mode: bool,
+    sway_git_tag: &str,
+) -> anyhow::Result<CompileAstResult> {
+    let profile = BuildProfile {
+        silent: silent_mode,
+        ..BuildProfile::debug()
+    };
+
+    let mut namespace_map = Default::default();
+    let mut source_map = SourceMap::new();
+    for (i, &node) in plan.compilation_order.iter().enumerate() {
+        let dep_namespace =
+            dependency_namespace(&namespace_map, &plan.graph, &plan.compilation_order, node);
+        let pkg = &plan.graph[node];
+        let path = &plan.path_map[&pkg.id()];
+        let manifest = ManifestFile::from_dir(path, sway_git_tag)?;
+        let ast_res = compile_ast(&manifest, &profile, dep_namespace)?;
+        if let CompileAstResult::Success { typed_program, .. } = &ast_res {
+            if let TreeType::Library { .. } = typed_program.kind.tree_type() {
+                namespace_map.insert(node, typed_program.root.namespace.clone());
+            }
+        }
+        source_map.insert_dependency(path.clone());
+
+        // We only need to return the final CompileAstResult
+        if i == plan.compilation_order.len() - 1 {
+            return Ok(ast_res);
+        }
+    }
+    bail!("unable to check sway program: build plan contains no packages")
 }
 
 /// Attempt to find a `Forc.toml` with the given project name within the given directory.
@@ -1564,4 +1666,19 @@ pub fn wrong_program_type(
 pub fn fuel_core_not_running(node_url: &str) -> anyhow::Error {
     let message = format!("could not get a response from node at the URL {}. Start a node with `fuel-core`. See https://github.com/FuelLabs/fuel-core#running for more information", node_url);
     Error::msg(message)
+}
+
+fn create_new_lock(
+    plan: &BuildPlan,
+    old_lock: &Lock,
+    manifest: &ManifestFile,
+    lock_path: &Path,
+) -> Result<()> {
+    let lock = Lock::from_graph(plan.graph());
+    let diff = lock.diff(old_lock);
+    super::lock::print_diff(&manifest.project.name, &diff);
+    let string = toml::ser::to_string_pretty(&lock)
+        .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
+    fs::write(&lock_path, &string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
+    Ok(())
 }

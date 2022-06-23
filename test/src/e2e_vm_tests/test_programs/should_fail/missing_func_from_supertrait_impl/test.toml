@@ -1,0 +1,6 @@
+category = "fail"
+
+# check: impl A for Y {
+# nextln: fn a1() { }
+# nextln: }
+# nextln: $()Functions are missing from this trait implementation: a2

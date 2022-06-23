@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()Could not find symbol "Coin" in this scope.

@@ -4,24 +4,35 @@ use clap::Parser;
 
 /// Compile the current or target project.
 ///
-/// The output produced will depend on the project's program type. Building script, predicate and
-/// contract projects will produce their bytecode in binary format `<project-name>.bin` as well as
-/// a file containing the hash of the bytecode binary `<project-name>-bin-hash` (hashed using `fuel_cypto::Hasher`).
+/// The output produced will depend on the project's program type.
 ///
-/// Building contracts and libraries will also produce the public ABI in JSON format
+/// - `script`, `predicate` and `contract` projects will produce their bytecode in binary format `<project-name>.bin`.
+///
+/// - `script` projects will also produce a file containing the hash of the bytecode binary
+/// `<project-name>-bin-hash` (using `fuel_cypto::Hasher`).
+///
+/// - `predicate` projects will also produce a file containing the **root** hash of the bytecode binary
+/// `<project-name>-bin-root` (using `fuel_tx::Contract::root_from_code`).
+///
+/// - `contract` and `library` projects will also produce the public ABI in JSON format
 /// `<project-name>-abi.json`.
 #[derive(Debug, Default, Parser)]
 pub struct Command {
     /// Path to the project, if not specified, current working directory will be used.
     #[clap(short, long)]
     pub path: Option<String>,
-    /// Whether to compile to bytecode (false) or to print out the generated ASM (true).
+    /// Print the finalized ASM.
+    ///
+    /// This is the state of the ASM with registers allocated and optimisations applied.
     #[clap(long)]
     pub print_finalized_asm: bool,
-    /// Whether to compile to bytecode (false) or to print out the generated ASM (true).
+    /// Print the generated ASM.
+    ///
+    /// This is the state of the ASM prior to performing register allocation and other ASM
+    /// optimisations.
     #[clap(long)]
     pub print_intermediate_asm: bool,
-    /// Whether to compile to bytecode (false) or to print out the generated IR (true).
+    /// Print the generated Sway IR (Intermediate Representation).
     #[clap(long)]
     pub print_ir: bool,
     /// If set, outputs a binary file representing the script bytes.

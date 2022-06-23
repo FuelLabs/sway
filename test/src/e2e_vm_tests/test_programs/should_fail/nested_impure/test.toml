@@ -1,0 +1,10 @@
+category = "fail"
+
+# check: baz();
+# nextln: $()This returns a value of type u64, which is not assigned to anything and is ignored.
+
+# check: let z = baz();
+# nextln: $()Storage attribute access mismatch. Try giving the surrounding function more access by adding "#[storage(read)]" to the function declaration.
+
+# check: baz();
+# nextln: $()Storage attribute access mismatch. Try giving the surrounding function more access by adding "#[storage(read)]" to the function declaration.

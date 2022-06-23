@@ -1,0 +1,10 @@
+category = "fail"
+
+# check: let data = Data::<bool> {
+# nextln: $()"Data" does not take type arguments.
+
+# check: let res1 = Result::<bool> {
+# nextln: $()Expected 2 type arguments, but instead found 1.
+
+# check: foo::<u64>();
+# nextln: $()"foo" does not take type arguments.

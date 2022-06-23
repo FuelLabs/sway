@@ -51,10 +51,9 @@ impl Parse for UseTree {
         if let Some(star_token) = parser.take() {
             return Ok(UseTree::Glob { star_token });
         }
-        let name = match parser.take() {
-            Some(name) => name,
-            None => return Err(parser.emit_error(ParseErrorKind::ExpectedImportNameGroupOrGlob)),
-        };
+        let name = parser
+            .take()
+            .ok_or_else(|| parser.emit_error(ParseErrorKind::ExpectedImportNameGroupOrGlob))?;
         if let Some(as_token) = parser.take() {
             let alias = parser.parse()?;
             return Ok(UseTree::Rename {

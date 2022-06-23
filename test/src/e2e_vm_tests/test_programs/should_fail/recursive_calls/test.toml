@@ -1,0 +1,8 @@
+category = "fail"
+
+# check: $()Function a is recursive, which is unsupported at this time.
+# check: $()Function b is recursive via c, which is unsupported at this time.
+# check: $()Function c is recursive via b, which is unsupported at this time.
+# check: $()Function d is recursive via e and f, which is unsupported at this time.
+# check: $()Function e is recursive via f and d, which is unsupported at this time.
+# check: $()Function f is recursive via d and e, which is unsupported at this time.

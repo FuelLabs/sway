@@ -1,0 +1,6 @@
+category = "fail"
+
+# check: ary[false]
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    bool.

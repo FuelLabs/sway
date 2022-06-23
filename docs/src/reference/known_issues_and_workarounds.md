@@ -2,16 +2,6 @@
 
 ## Known Issues
 
-* [#1663](https://github.com/FuelLabs/sway/issues/1663): Using an explicit `return` in all branches of an `if let` expression causes a compile error. The workaround is to use implicit returns instead.
-
-* [#1664](https://github.com/FuelLabs/sway/issues/1664): Binary and hex literals cannot be used for integer types (i.e. `u8`, `u16`, `u32`, `u64`). Only decimal literals can be used at the moment.
-
-* [#1657](https://github.com/FuelLabs/sway/issues/1657): Accessing data members of a `struct` directly from a function call does not currently work. The same applies to `enum` types and arrays. The workaround is to store the result of the function call in a temporary variable and accessing the required elements from that variable instead.
-
-* [#1387](https://github.com/FuelLabs/sway/issues/1387): In order to use `unwrap()` from the `result` library, all symbols of `result` needs to be imported via `use::result::*;`.
-
-* [#996](https://github.com/FuelLabs/sway/issues/996): Constants defined via the `const` keyword can only have primitive types. That is, it is not possible to define a `ContractId` or an `Address` as `const` for example.
-
 * [#870](https://github.com/FuelLabs/sway/issues/870): All `impl` blocks need to be defined before any of the functions they define can be called.
 
 ## Missing Features
@@ -20,7 +10,9 @@
 
 * [#428](https://github.com/FuelLabs/sway/issues/428): Arrays are currently immutable which means that changing elements of an array once initialized is not yet possible.
 
-* [#1077](https://github.com/FuelLabs/sway/issues/1077): Dynamic vectors, i.e. `Vec<T>`, have not yet been implemented.
+* [#2035](https://github.com/FuelLabs/sway/issues/2035): Dynamic vectors _in storage_ have not yet been implemented. Only [vectors in memory](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/vec.sw) are available at the moment.
+
+* [#1188](https://github.com/FuelLabs/sway/issues/1188): Mutable function arguments are not yet allowed except for `self`.
 
 ## General
 

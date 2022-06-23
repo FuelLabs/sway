@@ -1,0 +1,3 @@
+category = "run"
+expected_result = { action = "revert", value = 42 }
+validate_abi = true

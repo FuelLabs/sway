@@ -878,5 +878,113 @@
       }
     ],
     "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "k",
+        "type": "u64"
+      }
+    ],
+    "name": "add_to_s_dot_t_dot_x",
+    "outputs": [
+      {
+        "components": [],
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "k",
+        "type": "u64"
+      }
+    ],
+    "name": "subtract_from_s_dot_t_dot_x",
+    "outputs": [
+      {
+        "components": [],
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "k",
+        "type": "u64"
+      }
+    ],
+    "name": "multiply_by_s_dot_t_dot_x",
+    "outputs": [
+      {
+        "components": [],
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "k",
+        "type": "u64"
+      }
+    ],
+    "name": "divide_s_dot_t_dot_x",
+    "outputs": [
+      {
+        "components": [],
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "k",
+        "type": "u64"
+      }
+    ],
+    "name": "shift_left_s_dot_t_dot_x",
+    "outputs": [
+      {
+        "components": [],
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "k",
+        "type": "u64"
+      }
+    ],
+    "name": "shift_right_s_dot_t_dot_x",
+    "outputs": [
+      {
+        "components": [],
+        "name": "",
+        "type": "()"
+      }
+    ],
+    "type": "function"
   }
 ]

@@ -110,7 +110,7 @@ impl Items {
     pub(crate) fn insert_trait_implementation(
         &mut self,
         trait_name: CallPath,
-        type_implementing_for: TypeInfo,
+        implementing_for_type_id: TypeId,
         functions_buf: Vec<TypedFunctionDeclaration>,
     ) {
         let new_prefixes = if trait_name.prefixes.is_empty() {
@@ -127,39 +127,15 @@ impl Items {
             is_absolute: trait_name.is_absolute,
         };
         self.implemented_traits
-            .insert(trait_name, type_implementing_for, functions_buf);
+            .insert(trait_name, implementing_for_type_id, functions_buf);
     }
 
-    pub(crate) fn get_methods_for_type(&self, r#type: TypeId) -> Vec<TypedFunctionDeclaration> {
+    pub(crate) fn get_methods_for_type(
+        &self,
+        implementing_for_type_id: TypeId,
+    ) -> Vec<TypedFunctionDeclaration> {
         self.implemented_traits
-            .get_methods_for_type(look_up_type_id(r#type))
-    }
-
-    // Given a TypeInfo old_type with a set of methods available to it, make those same methods
-    // available to TypeInfo new_type. This is useful in situations where old_type is being
-    // monomorphized to new_type and and we want `get_methods_for_type()` to return the same set of
-    // methods for new_type as it does for old_type.
-    pub(crate) fn copy_methods_to_type(
-        &mut self,
-        old_type: TypeInfo,
-        new_type: TypeInfo,
-        type_mapping: &TypeMapping,
-    ) {
-        // This map grabs all (trait name, vec of methods) from self.implemented_traits
-        // corresponding to `old_type`.
-        let methods = self
-            .implemented_traits
-            .get_methods_for_type_by_trait(old_type);
-
-        // Insert into `self.implemented_traits` the contents of the map above but with `new_type`
-        // as the `TypeInfo` key.
-        for (trait_name, mut trait_methods) in methods.into_iter() {
-            trait_methods
-                .iter_mut()
-                .for_each(|method| method.copy_types(type_mapping));
-            self.implemented_traits
-                .insert(trait_name, new_type.clone(), trait_methods);
-        }
+            .get_methods_for_type(implementing_for_type_id)
     }
 
     pub(crate) fn get_canonical_path(&self, symbol: &Ident) -> &[Ident] {

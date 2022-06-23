@@ -7,14 +7,16 @@ publish = false
 
 [dependencies]
 anyhow = "1.0.41"
-assert_matches = "1.5.0"
+filecheck = "0.5"
 forc = { path = "../forc", features = ["test"], default-features = false }
 forc-util = { path = "../forc-util" }
 fuel-asm = "0.5"
 fuel-tx = "0.12"
 fuel-vm = { version = "0.11", features = ["random"] }
+gag = "1.0"
 rand = "0.8"
 regex = "1"
 serde_json = "1.0.73"
 tokio = "1.12"
+toml = "0.5"
 tracing = "0.1"

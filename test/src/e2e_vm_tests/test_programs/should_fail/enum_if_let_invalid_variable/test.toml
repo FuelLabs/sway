@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: if let
+# nextln: $()Variable "y" does not exist in this scope.

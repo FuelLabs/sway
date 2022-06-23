@@ -140,20 +140,22 @@ impl Pattern {
                 ..
             } => {
                 let mut new_fields = vec![];
-                for StructScrutineeField {
-                    field, scrutinee, ..
-                } in fields.into_iter()
-                {
-                    let f = match scrutinee {
-                        Some(scrutinee) => check!(
-                            Pattern::from_scrutinee(scrutinee),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        ),
-                        None => Pattern::Wildcard,
-                    };
-                    new_fields.push((field.as_str().to_string(), f));
+                for field in fields.into_iter() {
+                    if let StructScrutineeField::Field {
+                        field, scrutinee, ..
+                    } = field
+                    {
+                        let f = match scrutinee {
+                            Some(scrutinee) => check!(
+                                Pattern::from_scrutinee(scrutinee),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            ),
+                            None => Pattern::Wildcard,
+                        };
+                        new_fields.push((field.as_str().to_string(), f));
+                    }
                 }
                 Pattern::Struct(StructPattern {
                     struct_name: struct_name.to_string(),
@@ -657,13 +659,7 @@ impl Pattern {
         }
     }
 
-    pub(crate) fn matches_type_info(
-        &self,
-        type_info: &TypeInfo,
-        span: &Span,
-    ) -> CompileResult<bool> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn matches_type_info(&self, type_info: &TypeInfo, span: &Span) -> bool {
         match (self, type_info) {
             (pattern, TypeInfo::Ref(type_id, _)) => {
                 pattern.matches_type_info(&look_up_type_id(*type_id), span)
@@ -680,20 +676,13 @@ impl Pattern {
                     ..
                 },
             ) => {
-                let res = l_enum_name.as_str() == r_enum_name.as_str()
+                l_enum_name.as_str() == r_enum_name.as_str()
                     && variant_types
                         .iter()
-                        .map(|x| x.name.clone())
-                        .any(|x| x.as_str() == variant_name.as_str());
-                ok(res, warnings, errors)
+                        .map(|variant_type| variant_type.name.clone())
+                        .any(|name| name.as_str() == variant_name.as_str())
             }
-            _ => {
-                errors.push(CompileError::Unimplemented(
-                    "cannot yet compare this pattern with this type",
-                    span.clone(),
-                ));
-                err(warnings, errors)
-            }
+            _ => false, // NOTE: We may need to expand this in the future
         }
     }
 

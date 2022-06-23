@@ -1,726 +1,376 @@
+// Please take a look in test_programs/README.md for details on how these tests work.
+
 mod harness;
-use assert_matches::assert_matches;
+
 use forc_util::init_tracing_subscriber;
 use fuel_vm::prelude::*;
+
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
+
+#[derive(PartialEq)]
+enum TestCategory {
+    Compiles,
+    FailsToCompile,
+    Runs,
+    RunsWithContract,
+    Disabled,
+}
+
+#[derive(Debug)]
+enum TestResult {
+    Result(Word),
+    Return(u64),
+    ReturnData(Bytes32),
+    Revert(u64),
+}
+
+struct TestDescription {
+    name: String,
+    category: TestCategory,
+    expected_result: Option<TestResult>,
+    contract_paths: Vec<String>,
+    validate_abi: bool,
+    checker: filecheck::Checker,
+}
+
 pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
     init_tracing_subscriber();
-    let filter = |name| {
-        filter_regex
-            .as_ref()
-            .map(|regex| regex.is_match(name))
-            .unwrap_or(true)
-    };
 
-    // Predicate programs that should successfully compile and terminate
-    // with some known state. Note that if you are adding a non-predicate, it may pass by mistake.
-    // Please add non-predicates to `positive_project_names_with_abi`.
-    let positive_project_names_no_abi = vec![(
-        "should_pass/language/basic_predicate",
-        ProgramState::Return(1),
-    )];
-
-    let mut number_of_tests_run =
-        positive_project_names_no_abi
-            .iter()
-            .fold(0, |acc, (name, res)| {
-                if filter(name) {
-                    assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name, locked), *res);
-                    acc + 1
-                } else {
-                    acc
-                }
-            });
-
-    // Programs that should successfully compile, include abi and terminate
-    // with some known state. Note that if a predicate is included
-    // it will be rejected during assertion. Please move it to
-    // `positive_project_names_no_abi` above.
-    let positive_project_names_with_abi = vec![
-        (
-            "should_pass/forc/dependency_package_field",
-            ProgramState::Return(0),
-        ),
-        (
-            "should_pass/language/asm_expr_basic",
-            ProgramState::Return(6),
-        ),
-        (
-            "should_pass/language/basic_func_decl",
-            ProgramState::Return(1), // 1 == true
-        ),
-        (
-            "should_pass/language/builtin_type_method_call",
-            ProgramState::Return(3),
-        ),
-        ("should_pass/language/dependencies", ProgramState::Return(0)), // 0 == false
-        (
-            "should_pass/language/if_elseif_enum",
-            ProgramState::Return(10),
-        ),
-        (
-            "should_pass/language/tuple_types",
-            ProgramState::Return(123),
-        ),
-        (
-            "should_pass/language/out_of_order_decl",
-            ProgramState::Return(1),
-        ),
-        (
-            "should_pass/language/struct_field_reassignment",
-            ProgramState::Return(0),
-        ),
-        (
-            "should_pass/language/tuple_field_reassignment",
-            ProgramState::Return(320),
-        ),
-        (
-            "should_pass/language/enum_in_fn_decl",
-            ProgramState::Return(255),
-        ),
-        (
-            "should_pass/language/main_returns_unit",
-            ProgramState::Return(0),
-        ),
-        (
-            "should_pass/language/unary_not_basic",
-            ProgramState::Return(1), // 1 == true
-        ),
-        (
-            "should_pass/language/unary_not_basic_2",
-            ProgramState::Return(1), // 1 == true
-        ),
-        (
-            "should_pass/language/fix_opcode_bug",
-            ProgramState::Return(30),
-        ),
-        (
-            "should_pass/language/retd_b256",
-            ProgramState::ReturnData(Bytes32::from([
-                102, 104, 122, 173, 248, 98, 189, 119, 108, 143, 193, 139, 142, 159, 142, 32, 8,
-                151, 20, 133, 110, 226, 51, 179, 144, 42, 89, 29, 13, 95, 41, 37,
-            ])),
-        ),
-        (
-            "should_pass/language/retd_struct",
-            ProgramState::ReturnData(Bytes32::from([
-                251, 57, 24, 241, 63, 94, 17, 102, 252, 182, 8, 110, 140, 105, 102, 105, 138, 202,
-                155, 39, 97, 32, 94, 129, 141, 144, 190, 142, 33, 32, 33, 75,
-            ])),
-        ),
-        (
-            "should_pass/language/op_precedence",
-            ProgramState::Return(0),
-        ),
-        (
-            "should_pass/language/asm_without_return",
-            ProgramState::Return(0),
-        ),
-        (
-            "should_pass/language/b256_bad_jumps",
-            ProgramState::Return(1),
-        ),
-        (
-            "should_pass/language/b256_bitwise_ops",
-            ProgramState::Return(1),
-        ),
-        ("should_pass/language/b256_ops", ProgramState::Return(100)),
-        (
-            "should_pass/language/struct_field_access",
-            ProgramState::Return(43),
-        ),
-        ("should_pass/language/bool_and_or", ProgramState::Return(42)),
-        ("should_pass/language/eq_and_neq", ProgramState::Return(1)),
-        (
-            "should_pass/language/local_impl_for_ord",
-            ProgramState::Return(1), // true
-        ),
-        ("should_pass/language/const_decl", ProgramState::Return(100)),
-        (
-            "should_pass/language/const_decl_in_library",
-            ProgramState::Return(1), // true
-        ),
-        (
-            "should_pass/language/aliased_imports",
-            ProgramState::Return(42),
-        ),
-        (
-            "should_pass/language/empty_method_initializer",
-            ProgramState::Return(1), // true
-        ),
-        (
-            "should_pass/stdlib/b512_struct_alignment",
-            ProgramState::Return(1), // true
-        ),
-        (
-            "should_pass/stdlib/contract_id_type",
-            ProgramState::Return(1),
-        ), // true
-        ("should_pass/stdlib/evm_ecr", ProgramState::Return(1)), // true
-        (
-            "should_pass/stdlib/exponentiation_test",
-            ProgramState::Return(1),
-        ), // true
-        ("should_pass/stdlib/ge_test", ProgramState::Return(1)), // true
-        ("should_pass/stdlib/intrinsics", ProgramState::Return(1)), // true
-        ("should_pass/stdlib/option", ProgramState::Return(1)),  // true
-        ("should_pass/stdlib/require", ProgramState::Return(1)), // true
-        ("should_pass/stdlib/result", ProgramState::Return(1)),  // true
-        ("should_pass/stdlib/u128_test", ProgramState::Return(1)), // true
-        ("should_pass/stdlib/u128_div_test", ProgramState::Return(1)), // true
-        ("should_pass/stdlib/u128_mul_test", ProgramState::Return(1)), // true
-        (
-            "should_pass/language/generic_structs",
-            ProgramState::Return(1), // true
-        ),
-        (
-            "should_pass/language/generic_functions",
-            ProgramState::Return(1), // true
-        ),
-        ("should_pass/language/generic_enum", ProgramState::Return(1)), // true
-        (
-            "should_pass/language/numeric_constants",
-            ProgramState::Return(1),
-        ), // true
-        ("should_pass/language/u64_ops", ProgramState::Return(1)),      // true
-        (
-            "should_pass/language/import_method_from_other_file",
-            ProgramState::Return(10), // true
-        ),
-        (
-            "should_pass/stdlib/ec_recover_test",
-            ProgramState::Return(1), // true
-        ),
-        ("should_pass/stdlib/address_test", ProgramState::Return(1)), // true
-        (
-            "should_pass/language/generic_struct",
-            ProgramState::Return(1), // true
-        ),
-        (
-            "should_pass/language/zero_field_types",
-            ProgramState::Return(10), // true
-        ),
-        ("should_pass/stdlib/assert_test", ProgramState::Return(1)), // true
-        (
-            "should_pass/language/match_expressions",
-            ProgramState::Return(42),
-        ),
-        ("should_pass/language/array_basics", ProgramState::Return(1)), // true
-        // Disabled, pending decision on runtime OOB checks. ("array_dynamic_oob", ProgramState::Revert(1)),
-        (
-            "should_pass/language/abort_control_flow_good",
-            ProgramState::Revert(42),
-        ),
-        (
-            "should_pass/language/array_generics",
-            ProgramState::Return(1), // true
-        ),
-        (
-            "should_pass/language/match_expressions_structs",
-            ProgramState::Return(4),
-        ),
-        ("should_pass/stdlib/b512_test", ProgramState::Return(1)), // true
-        ("should_pass/stdlib/block_height", ProgramState::Return(1)), // true
-        (
-            "should_pass/language/trait_override_bug",
-            ProgramState::Return(7),
-        ),
-        (
-            "should_pass/language/if_implicit_unit",
-            ProgramState::Return(0),
-        ),
-        (
-            "should_pass/language/modulo_uint_test",
-            ProgramState::Return(1), // true
-        ),
-        (
-            "should_pass/language/trait_import_with_star",
-            ProgramState::Return(0),
-        ),
-        (
-            "should_pass/language/tuple_desugaring",
-            ProgramState::Return(9),
-        ),
-        (
-            "should_pass/language/multi_item_import",
-            ProgramState::Return(0), // false
-        ),
-        (
-            "should_pass/language/use_full_path_names",
-            ProgramState::Return(1),
-        ),
-        (
-            "should_pass/language/tuple_indexing",
-            ProgramState::Return(1),
-        ),
-        (
-            "should_pass/language/tuple_access",
-            ProgramState::Return(42),
-        ),
-        (
-            "should_pass/language/funcs_with_generic_types",
-            ProgramState::Return(1), // true
-        ),
-        (
-            "should_pass/language/enum_if_let",
-            ProgramState::Return(143),
-        ),
-        (
-            "should_pass/language/enum_destructuring",
-            ProgramState::Return(15),
-        ),
-        (
-            "should_pass/language/enum_if_let_large_type",
-            ProgramState::Return(15),
-        ),
-        (
-            "should_pass/language/enum_type_inference",
-            ProgramState::Return(5),
-        ),
-        ("should_pass/language/size_of", ProgramState::Return(1)),
-        ("should_pass/language/supertraits", ProgramState::Return(1)),
-        (
-            "should_pass/language/new_allocator_test",
-            ProgramState::Return(42), // true
-        ),
-        (
-            "should_pass/language/chained_if_let",
-            ProgramState::Return(5), // true
-        ),
-        (
-            "should_pass/language/inline_if_expr_const",
-            ProgramState::Return(0),
-        ),
-        (
-            "should_pass/language/method_on_empty_struct",
-            ProgramState::Return(1),
-        ),
-        (
-            "should_pass/language/tuple_in_struct",
-            ProgramState::Return(1),
-        ),
-        (
-            "should_pass/language/nested_structs",
-            ProgramState::Return(1),
-        ),
-        ("should_pass/language/while_loops", ProgramState::Return(1)),
-        (
-            "should_pass/language/retd_small_array",
-            ProgramState::ReturnData(Bytes32::from([
-                0xcd, 0x26, 0x62, 0x15, 0x4e, 0x6d, 0x76, 0xb2, 0xb2, 0xb9, 0x2e, 0x70, 0xc0, 0xca,
-                0xc3, 0xcc, 0xf5, 0x34, 0xf9, 0xb7, 0x4e, 0xb5, 0xb8, 0x98, 0x19, 0xec, 0x50, 0x90,
-                0x83, 0xd0, 0x0a, 0x50,
-            ])),
-        ),
-        (
-            "should_pass/language/retd_zero_len_array",
-            ProgramState::ReturnData(Bytes32::from([
-                0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14, 0x9a, 0xfb, 0xf4, 0xc8, 0x99, 0x6f,
-                0xb9, 0x24, 0x27, 0xae, 0x41, 0xe4, 0x64, 0x9b, 0x93, 0x4c, 0xa4, 0x95, 0x99, 0x1b,
-                0x78, 0x52, 0xb8, 0x55,
-            ])),
-        ),
-        ("should_pass/language/is_prime", ProgramState::Return(1)),
-        (
-            "should_pass/language/generic_impl_self",
-            ProgramState::Return(10),
-        ),
-        (
-            "should_pass/language/enum_init_fn_call",
-            ProgramState::Return(1),
-        ),
-        (
-            "should_pass/language/nested_while_and_if",
-            ProgramState::Return(1),
-        ),
-        (
-            "should_pass/language/is_reference_type",
-            ProgramState::Return(1),
-        ),
-        (
-            "should_pass/language/contract_caller_as_type",
-            ProgramState::Return(42),
-        ),
-        (
-            "should_pass/language/non_literal_const_decl",
-            ProgramState::Return(42),
-        ),
-        /*
-         * This test is disabled because in order to work correctly it requires that we implement
-         * `&mut self` methods.
-         *
-         * See: #1188
-        (
-            "should_pass/language/self_impl_reassignment",
-            ProgramState::Return(1),
-        ),
-        */
-        (
-            "should_pass/language/import_trailing_comma",
-            ProgramState::Return(0),
-        ),
-        (
-            "should_pass/language/primitive_type_argument",
-            ProgramState::Return(5),
-        ),
-        (
-            "should_pass/language/generic-type-inference",
-            ProgramState::Return(0),
-        ),
-        (
-            "should_pass/language/ret_small_string",
-            ProgramState::ReturnData(Bytes32::from([
-                0x6a, 0x4e, 0x01, 0xe9, 0x40, 0xab, 0xc0, 0x04, 0x30, 0xfe, 0x21, 0x62, 0xed, 0x69,
-                0xc0, 0xe2, 0x31, 0x04, 0xf9, 0xfd, 0xa7, 0x81, 0x59, 0x09, 0x2f, 0xea, 0x8f, 0x7e,
-                0xcb, 0x7f, 0x6d, 0xd4,
-            ])),
-        ),
-        (
-            "should_pass/language/many_stack_variables",
-            ProgramState::Return(10),
-        ),
-        (
-            "should_pass/language/ret_string_in_struct",
-            ProgramState::ReturnData(Bytes32::from([
-                0xaa, 0x5e, 0xfc, 0xa8, 0xda, 0xaf, 0x6e, 0xe6, 0x3f, 0x44, 0x93, 0xb2, 0x88, 0xb3,
-                0x85, 0xd7, 0x60, 0xb8, 0xef, 0x93, 0xdc, 0x70, 0xe0, 0xfb, 0xc3, 0x06, 0xed, 0x9b,
-                0x67, 0x6e, 0x5f, 0x13,
-            ])),
-        ),
-        (
-            "should_pass/language/match_expressions_simple",
-            ProgramState::Return(42),
-        ),
-        (
-            "should_pass/language/multi_impl_self",
-            ProgramState::Return(42),
-        ),
-        (
-            "should_pass/language/implicit_return",
-            ProgramState::Return(42),
-        ),
-        (
-            "should_pass/language/match_expressions_enums",
-            ProgramState::Return(42),
-        ),
-        (
-            "should_pass/language/match_expressions_nested",
-            ProgramState::Return(123),
-        ),
-        (
-            "should_pass/language/match_expressions_mismatched",
-            ProgramState::Return(5),
-        ),
-        (
-            "should_pass/language/match_expressions_inside_generic_functions",
-            ProgramState::Return(1),
-        ),
-        (
-            "should_pass/language/generic_inside_generic",
-            ProgramState::Return(7),
-        ),
-        (
-            "should_pass/language/tuple_single_element",
-            ProgramState::Return(1),
-        ),
-        (
-            "should_pass/language/reassignment_operators",
-            ProgramState::Return(1),
-        ),
-        (
-            "should_pass/language/valid_impurity",
-            ProgramState::Revert(0), // false
-        ),
-        ("should_pass/language/const_inits", ProgramState::Return(1)),
-        (
-            "should_pass/language/enum_padding",
-            ProgramState::ReturnData(Bytes32::from([
-                0xce, 0x55, 0xff, 0x05, 0x11, 0x3a, 0x24, 0x2e, 0xc7, 0x9a, 0x23, 0x75, 0x0c, 0x7e,
-                0x2b, 0xab, 0xaf, 0x98, 0xa8, 0xdc, 0x41, 0x66, 0x90, 0xc8, 0x57, 0xdd, 0x31, 0x72,
-                0x0c, 0x74, 0x82, 0xb6,
-            ])),
-        ),
-        (
-            "should_pass/language/unit_type_variants",
-            ProgramState::ReturnData(Bytes32::from([
-                0xcd, 0x04, 0xa4, 0x75, 0x44, 0x98, 0xe0, 0x6d, 0xb5, 0xa1, 0x3c, 0x5f, 0x37, 0x1f,
-                0x1f, 0x04, 0xff, 0x6d, 0x24, 0x70, 0xf2, 0x4a, 0xa9, 0xbd, 0x88, 0x65, 0x40, 0xe5,
-                0xdc, 0xe7, 0x7f, 0x70,
-            ])), // "ReturnData":{"data":"0000000000000002", .. }
-        ),
-        (
-            "should_pass/test_contracts/auth_testing_contract",
-            ProgramState::Revert(0),
-        ),
-        (
-            "should_pass/test_contracts/balance_test_contract",
-            ProgramState::Revert(0),
-        ),
-        (
-            "should_pass/test_contracts/basic_storage",
-            ProgramState::Revert(0),
-        ),
-        (
-            "should_pass/test_contracts/context_testing_contract",
-            ProgramState::Revert(0),
-        ),
-        (
-            "should_pass/test_contracts/increment_contract",
-            ProgramState::Revert(0),
-        ),
-        (
-            "should_pass/test_contracts/storage_access_contract",
-            ProgramState::Revert(0),
-        ),
-        (
-            "should_pass/test_contracts/test_fuel_coin_contract",
-            ProgramState::Revert(0),
-        ),
-        (
-            "should_pass/test_contracts/nested_struct_args_contract",
-            ProgramState::Revert(0),
-        ),
-        (
-            "should_pass/test_contracts/issue_1512_repro",
-            ProgramState::Revert(0),
-        ),
-        (
-            "should_pass/test_contracts/array_of_structs_contract",
-            ProgramState::Revert(0),
-        ),
-        (
-            "should_pass/test_contracts/abi_with_tuples_contract",
-            ProgramState::Revert(0),
-        ),
-        (
-            "should_pass/test_contracts/get_storage_key_contract",
-            ProgramState::Revert(0),
-        ),
-        (
-            "should_pass/test_contracts/multiple_impl",
-            ProgramState::Revert(0),
-        ),
-    ];
-
-    number_of_tests_run += positive_project_names_with_abi
-        .iter()
-        .fold(0, |acc, (name, res)| {
-            if filter(name) {
-                assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name, locked), *res);
-                assert_matches!(crate::e2e_vm_tests::harness::test_json_abi(name), Ok(_));
-                acc + 1
-            } else {
-                acc
-            }
-        });
-
-    // source code that should _not_ compile
-    let negative_project_names = vec![
-        "should_fail/cyclic_dependency/dependency_a",
-        "should_fail/recursive_calls",
-        "should_fail/asm_missing_return",
-        "should_fail/asm_should_not_have_return",
-        "should_fail/missing_fn_arguments",
-        "should_fail/excess_fn_arguments",
-        // the feature for the below test, detecting inf deps, was reverted
-        // when that is re-implemented we should reenable this test
-        //"should_fail/infinite_dependencies",
-        "should_fail/top_level_vars",
-        "should_fail/dependency_parsing_error",
-        "should_fail/disallowed_gm",
-        "should_fail/bad_generic_annotation",
-        "should_fail/bad_generic_var_annotation",
-        "should_fail/unify_identical_unknowns",
-        "should_fail/array_oob",
-        "should_fail/array_bad_index",
-        "should_fail/name_shadowing",
-        "should_fail/match_expressions_wrong_struct",
-        "should_fail/match_expressions_enums",
-        "should_fail/pure_calls_impure",
-        "should_fail/nested_impure",
-        "should_fail/predicate_calls_impure",
-        "should_fail/script_calls_impure",
-        "should_fail/contract_pure_calls_impure",
-        "should_fail/literal_too_large_for_type",
-        "should_fail/star_import_alias",
-        "should_fail/item_used_without_import",
-        "should_fail/shadow_import",
-        "should_fail/missing_supertrait_impl",
-        "should_fail/enum_if_let_invalid_variable",
-        "should_fail/enum_bad_type_inference",
-        "should_fail/missing_func_from_supertrait_impl",
-        "should_fail/supertrait_does_not_exist",
-        "should_fail/chained_if_let_missing_branch",
-        "should_fail/abort_control_flow_bad",
-        "should_fail/match_expressions_non_exhaustive",
-        "should_fail/empty_impl",
-        "should_fail/disallow_turbofish",
-        "should_fail/generics_unhelpful_error",
-        "should_fail/generic_shadows_generic",
-        "should_fail/different_contract_caller_types",
-        "should_fail/insufficient_type_info",
-        "should_fail/primitive_type_argument",
-        "should_fail/double_underscore_fn",
-        "should_fail/double_underscore_trait_fn",
-        "should_fail/double_underscore_impl_self_fn",
-        "should_fail/double_underscore_var",
-        "should_fail/double_underscore_struct",
-        "should_fail/double_underscore_enum",
-        "should_fail/assign_to_field_of_non_mutable_struct",
-        "should_fail/abi_method_signature_mismatch",
-        "should_fail/trait_method_signature_mismatch",
-        "should_fail/impure_read_calls_impure_write",
-        "should_fail/abi_impl_purity_mismatch",
-        "should_fail/abi_pure_calls_impure",
-        "should_fail/impure_abi_read_calls_impure_write",
-        "should_fail/impure_trait_read_calls_impure_write",
-        "should_fail/trait_impl_purity_mismatch",
-        "should_fail/trait_pure_calls_impure",
-        "should_fail/match_expressions_empty_arms",
-        "should_fail/type_mismatch_error_message",
-        "should_fail/recursive_enum",
-        "should_fail/recursive_struct",
-        "should_fail/recursive_type_chain",
-        "should_fail/better_type_error_message",
-        "should_fail/storage_in_library",
-        "should_fail/storage_in_predicate",
-        "should_fail/storage_in_script",
-        "should_fail/multiple_impl_abi",
-        "should_fail/multiple_impl_fns",
-        "should_fail/repeated_enum_variant",
-        "should_fail/repeated_storage_field",
-        "should_fail/repeated_struct_field",
-        "should_fail/storage_conflict",
-    ];
-    number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
-        if filter(name) {
-            crate::e2e_vm_tests::harness::does_not_compile(name, locked);
-            acc + 1
-        } else {
-            acc
-        }
+    let configured_tests = discover_test_configs().unwrap_or_else(|e| {
+        panic!("Discovering tests {e}");
     });
 
-    // ---- Tests paired with contracts upon which they depend which must be pre-deployed.
-    let contract_and_project_names = &[
-        (
-            (
-                "should_pass/test_contracts/basic_storage",
-                "should_pass/require_contract_deployment/call_basic_storage",
-            ),
-            4242,
-        ),
-        (
-            (
-                "should_pass/test_contracts/increment_contract",
-                "should_pass/require_contract_deployment/call_increment_contract",
-            ),
-            1, // true
-        ),
-        (
-            (
-                "should_pass/test_contracts/auth_testing_contract",
-                "should_pass/require_contract_deployment/caller_auth_test",
-            ),
-            1, // true
-        ),
-        (
-            (
-                "should_pass/test_contracts/context_testing_contract",
-                "should_pass/require_contract_deployment/caller_context_test",
-            ),
-            1, // true
-        ),
-        (
-            (
-                "should_pass/test_contracts/balance_test_contract",
-                "should_pass/require_contract_deployment/bal_opcode",
-            ),
-            1, // true
-        ),
-        (
-            (
-                "should_pass/test_contracts/test_fuel_coin_contract",
-                "should_pass/require_contract_deployment/token_ops_test",
-            ),
-            1, // true
-        ),
-        (
-            (
-                "should_pass/test_contracts/storage_access_contract",
-                "should_pass/require_contract_deployment/storage_access_caller",
-            ),
-            1, // true
-        ),
-        (
-            (
-                "should_pass/test_contracts/get_storage_key_contract",
-                "should_pass/require_contract_deployment/get_storage_key_caller",
-            ),
-            1,
-        ),
-        (
-            (
-                "should_pass/test_contracts/array_of_structs_contract",
-                "should_pass/require_contract_deployment/array_of_structs_caller",
-            ),
-            1,
-        ),
-        (
-            (
-                "should_pass/test_contracts/abi_with_tuples_contract",
-                "should_pass/require_contract_deployment/call_abi_with_tuples",
-            ),
-            1,
-        ),
-    ];
+    let total_number_of_tests = configured_tests.len();
+    let mut number_of_tests_executed = 0;
+    let mut number_of_disabled_tests = 0;
 
-    let total_number_of_tests = positive_project_names_no_abi.len()
-        + positive_project_names_with_abi.len()
-        + negative_project_names.len()
-        + contract_and_project_names.len();
+    let mut deployed_contracts = HashMap::<String, ContractId>::new();
 
-    // Filter them first.
-    let (contracts_and_projects, vals): (Vec<_>, Vec<_>) = contract_and_project_names
-        .iter()
-        .filter(|names| filter(names.0 .1))
-        .cloned()
-        .unzip();
+    for TestDescription {
+        name,
+        category,
+        expected_result,
+        contract_paths,
+        validate_abi,
+        checker,
+    } in configured_tests
+    {
+        if !filter_regex
+            .as_ref()
+            .map(|regex| regex.is_match(&name))
+            .unwrap_or(true)
+        {
+            continue;
+        }
 
-    let (contracts, projects): (Vec<_>, Vec<_>) = contracts_and_projects.iter().cloned().unzip();
+        match category {
+            TestCategory::Runs => {
+                let res = match expected_result {
+                    Some(TestResult::Return(v)) => ProgramState::Return(v),
+                    Some(TestResult::ReturnData(bytes)) => ProgramState::ReturnData(bytes),
+                    Some(TestResult::Revert(v)) => ProgramState::Revert(v),
 
-    // Deploy and then test.
-    number_of_tests_run += projects.len();
-    let mut contract_ids = Vec::<fuel_tx::ContractId>::with_capacity(contracts.len());
-    for name in contracts {
-        let contract_id = harness::deploy_contract(name, locked);
-        contract_ids.push(contract_id);
+                    _ => panic!(
+                        "For {name}:\n\
+                        Invalid expected result for a 'runs' test: {expected_result:?}."
+                    ),
+                };
+
+                assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(&name, locked), res);
+                if validate_abi {
+                    assert!(crate::e2e_vm_tests::harness::test_json_abi(&name).is_ok());
+                }
+                number_of_tests_executed += 1;
+            }
+
+            TestCategory::Compiles => {
+                assert!(crate::e2e_vm_tests::harness::compile_to_bytes(&name, locked).is_ok());
+                number_of_tests_executed += 1;
+            }
+
+            TestCategory::FailsToCompile => {
+                match crate::e2e_vm_tests::harness::does_not_compile(&name, locked) {
+                    Ok(output) => match checker.explain(&output, filecheck::NO_VARIABLES) {
+                        Ok((success, report)) if !success => {
+                            panic!("For {name}:\nFilecheck failed:\n{report}");
+                        }
+                        Err(e) => {
+                            panic!("For {name}:\nFilecheck directive error: {e}");
+                        }
+                        _ => (),
+                    },
+                    Err(_) => {
+                        panic!("For {name}:\nFailing test did not fail.");
+                    }
+                }
+                number_of_tests_executed += 1;
+            }
+
+            TestCategory::RunsWithContract => {
+                let val = if let Some(TestResult::Result(val)) = expected_result {
+                    val
+                } else {
+                    panic!(
+                        "For {name}:\nExpecting a 'result' action for a 'run_on_node' test, \
+                        found: {expected_result:?}."
+                    )
+                };
+
+                if contract_paths.is_empty() {
+                    panic!(
+                        "For {name}\n\
+                        One or more ontract paths are required for 'run_on_node' tests."
+                    );
+                }
+
+                let contract_ids = contract_paths
+                    .into_iter()
+                    .map(|contract_path| {
+                        *deployed_contracts
+                            .entry(contract_path.clone())
+                            .or_insert_with(|| {
+                                harness::deploy_contract(contract_path.as_str(), locked)
+                            })
+                    })
+                    .collect::<Vec<_>>();
+
+                let result = harness::runs_on_node(&name, locked, &contract_ids);
+                assert!(result.iter().all(|res| !matches!(
+                    res,
+                    fuel_tx::Receipt::Revert { .. } | fuel_tx::Receipt::Panic { .. }
+                )));
+                assert!(
+                    result.len() >= 2
+                        && matches!(result[result.len() - 2], fuel_tx::Receipt::Return { .. })
+                        && result[result.len() - 2].val().unwrap() == val
+                );
+
+                number_of_tests_executed += 1;
+            }
+
+            TestCategory::Disabled => {
+                number_of_disabled_tests += 1;
+            }
+        }
     }
 
-    for (name, val) in projects.iter().zip(vals.iter()) {
-        let result = harness::runs_on_node(name, locked, &contract_ids);
-        assert!(result.iter().all(|r| !matches!(
-            r,
-            fuel_tx::Receipt::Revert { .. } | fuel_tx::Receipt::Panic { .. }
-        )));
-        assert!(
-            result.len() >= 2
-                && matches!(result[result.len() - 2], fuel_tx::Receipt::Return { .. })
-                && result[result.len() - 2].val().unwrap() == *val
-        );
-    }
-
-    if number_of_tests_run == 0 {
+    if number_of_tests_executed == 0 {
         tracing::info!(
             "No tests were run. Regex filter \"{}\" filtered out all {} tests.",
-            filter_regex.map(|x| x.to_string()).unwrap_or_default(),
+            filter_regex
+                .map(|regex| regex.to_string())
+                .unwrap_or_default(),
             total_number_of_tests
         );
     } else {
         tracing::info!("_________________________________\nTests passed.");
         tracing::info!(
-            "{} tests run ({} skipped)",
-            number_of_tests_run,
-            total_number_of_tests - number_of_tests_run
+            "{} tests run ({} skipped, {} disabled)",
+            number_of_tests_executed,
+            total_number_of_tests - number_of_tests_executed - number_of_disabled_tests,
+            number_of_disabled_tests,
         );
     }
+}
+
+fn discover_test_configs() -> Result<Vec<TestDescription>, String> {
+    fn recursive_search(path: &Path, configs: &mut Vec<TestDescription>) -> Result<(), String> {
+        let wrap_err = |e| {
+            let relative_path = path
+                .iter()
+                .skip_while(|part| part.to_string_lossy() != "test_programs")
+                .skip(1)
+                .collect::<PathBuf>();
+            format!("{}: {}", relative_path.display(), e)
+        };
+        if path.is_dir() {
+            for entry in std::fs::read_dir(path).unwrap() {
+                recursive_search(&entry.unwrap().path(), configs)?;
+            }
+        } else if path.is_file() && path.file_name() == Some(std::ffi::OsStr::new("test.toml")) {
+            configs.push(parse_test_toml(path).map_err(wrap_err)?);
+        }
+        Ok(())
+    }
+
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let tests_root_dir = format!("{manifest_dir}/src/e2e_vm_tests/test_programs");
+
+    let mut configs = Vec::new();
+    recursive_search(&PathBuf::from(tests_root_dir), &mut configs)?;
+    Ok(configs)
+}
+
+fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
+    let (toml_content, checker) = std::fs::read_to_string(path)
+        .map_err(|e| e.to_string())
+        .and_then(|toml_content_str| {
+            // Parse the file for FileCheck directives and_then parse the file into TOML.
+            filecheck::CheckerBuilder::new()
+                .text(&toml_content_str)
+                .map_err(|e| e.to_string())
+                .and_then(|checker| {
+                    toml_content_str
+                        .parse::<toml::Value>()
+                        .map_err(|e| e.to_string())
+                        .map(|toml_content| (toml_content, checker.finish()))
+                })
+        })
+        .map_err(|e| format!("Failed to parse: {e}"))?;
+
+    if !toml_content.is_table() {
+        return Err("Malformed test description.".to_owned());
+    }
+
+    let category = toml_content
+        .get("category")
+        .ok_or_else(|| "Missing mandatory 'category' entry.".to_owned())
+        .and_then(|category_val| match category_val.as_str() {
+            Some("run") => Ok(TestCategory::Runs),
+            Some("run_on_node") => Ok(TestCategory::RunsWithContract),
+            Some("fail") => Ok(TestCategory::FailsToCompile),
+            Some("compile") => Ok(TestCategory::Compiles),
+            Some("disabled") => Ok(TestCategory::Disabled),
+            None => Err(format!(
+                "Malformed category '{category_val}', should be a string."
+            )),
+            Some(other) => Err(format!("Unknown category '{}'.", other,)),
+        })?;
+
+    // Abort early if we find a FailsToCompile test without any Checker directives.
+    if category == TestCategory::FailsToCompile && checker.is_empty() {
+        return Err("'fail' tests must contain some FileCheck verification directives.".to_owned());
+    }
+
+    let expected_result = match &category {
+        TestCategory::Runs | TestCategory::RunsWithContract => {
+            Some(get_expected_result(&toml_content)?)
+        }
+        TestCategory::Compiles | TestCategory::FailsToCompile | TestCategory::Disabled => None,
+    };
+
+    let contract_paths = match toml_content.get("contracts") {
+        None => Vec::new(),
+        Some(contracts) => contracts
+            .as_array()
+            .ok_or_else(|| "Contracts must be an array of strings.".to_owned())
+            .and_then(|vals| {
+                vals.iter()
+                    .map(|val| {
+                        val.as_str()
+                            .ok_or_else(|| "Contracts must be path strings.".to_owned())
+                            .map(|path_str| path_str.to_owned())
+                    })
+                    .collect::<Result<Vec<_>, _>>()
+            })?,
+    };
+
+    let validate_abi = toml_content
+        .get("validate_abi")
+        .map(|v| v.as_bool().unwrap_or(false))
+        .unwrap_or(false);
+
+    // We need to adjust the path to start relative to `test_programs`.
+    let name = path
+        .iter()
+        .skip_while(|part| part.to_string_lossy() != "test_programs")
+        .skip(1)
+        .collect::<PathBuf>();
+
+    // And it needs to chop off the `test.toml` and convert to a String.
+    let name = name
+        .parent()
+        .unwrap()
+        .to_str()
+        .map(|s| s.to_owned())
+        .unwrap();
+
+    Ok(TestDescription {
+        name,
+        category,
+        expected_result,
+        contract_paths,
+        validate_abi,
+        checker,
+    })
+}
+
+fn get_expected_result(toml_content: &toml::Value) -> Result<TestResult, String> {
+    fn get_action_value(
+        action: &toml::Value,
+        expected_value: &toml::Value,
+    ) -> Result<TestResult, String> {
+        match (action.as_str(), expected_value) {
+            // A simple integer value.
+            (Some("return"), toml::Value::Integer(v)) => Ok(TestResult::Return(*v as u64)),
+
+            // Also a simple integer value, but is a result from a contract call.
+            (Some("result"), toml::Value::Integer(v)) => Ok(TestResult::Result(*v as Word)),
+
+            // A bytes32 value.
+            (Some("return_data"), toml::Value::Array(ary)) => ary
+                .iter()
+                .map(|byte_val| {
+                    byte_val.as_integer().ok_or_else(|| {
+                        format!(
+                            "Return data must only contain integer values; \
+                                                    found {byte_val}."
+                        )
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()
+                .and_then(|bytes| {
+                    if bytes.iter().any(|byte| *byte < 0 || *byte > 255) {
+                        Err("Return data byte values must be less than 256.".to_owned())
+                    } else if bytes.len() != 32 {
+                        Err(format!(
+                            "Return data must be a 32 byte array; \
+                                                found {} values.",
+                            bytes.len()
+                        ))
+                    } else {
+                        Ok(bytes.iter().map(|byte| *byte as u8).collect())
+                    }
+                })
+                .map(|bytes: Vec<u8>| {
+                    let fixed_byte_array =
+                        bytes
+                            .iter()
+                            .enumerate()
+                            .fold([0_u8; 32], |mut ary, (idx, byte)| {
+                                ary[idx] = *byte;
+                                ary
+                            });
+                    TestResult::ReturnData(Bytes32::from(fixed_byte_array))
+                }),
+
+            // Revert with a specific code.
+            (Some("revert"), toml::Value::Integer(v)) => Ok(TestResult::Revert(*v as u64)),
+
+            _otherwise => Err(format!("Malformed action value: {action} {expected_value}")),
+        }
+    }
+
+    toml_content
+        .get("expected_result")
+        .ok_or_else(|| "Could not find mandatory 'expected_result' entry.".to_owned())
+        .and_then(|expected_result_table| {
+            expected_result_table
+                .get("action")
+                .ok_or_else(|| {
+                    "Could not find mandatory 'action' field in 'expected_result' entry.".to_owned()
+                })
+                .and_then(|action| {
+                    expected_result_table
+                        .get("value")
+                        .ok_or_else(|| {
+                            "Could not find mandatory 'value' field in 'expected_result' entry."
+                                .to_owned()
+                        })
+                        .and_then(|expected_value| get_action_value(action, expected_value))
+                })
+        })
 }

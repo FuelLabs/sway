@@ -37,16 +37,16 @@ jobs:
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v1
         with:
-          mdbook-version: '0.4.15'
+          mdbook-version: "0.4.15"
 
       - run: MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs
 
-      - name: Deploy latest
+      - name: Deploy master
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/book
-          destination_dir: latest
+          destination_dir: master
         if: github.ref == 'refs/heads/master'
 
       - name: Get tag
@@ -61,4 +61,23 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/book
           destination_dir: ${{ steps.branch_name.outputs.BRANCH_NAME }}
+        if: startsWith(github.ref, 'refs/tags')
+
+      - name: Create latest HTML redirect file
+        if: startsWith(github.ref, 'refs/tags')
+        run: |
+          mkdir ./latest
+          cat > ./latest/index.html <<EOF
+          <!DOCTYPE html>
+          <meta charset="utf-8">
+          <meta http-equiv="refresh" content="0; URL=../${{ steps.branch_name.outputs.BRANCH_NAME }}/">
+          <link rel="canonical" href="../${{ steps.branch_name.outputs.BRANCH_NAME }}/">
+          EOF
+
+      - name: Set latest to point to tag
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./latest/
+          destination_dir: ./latest/
         if: startsWith(github.ref, 'refs/tags')

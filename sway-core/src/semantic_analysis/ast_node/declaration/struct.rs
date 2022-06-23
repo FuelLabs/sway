@@ -71,10 +71,9 @@ impl MonomorphizeHelper for TypedStructDeclaration {
 
 impl TypedStructDeclaration {
     pub(crate) fn type_check(
+        ctx: TypeCheckContext,
         decl: StructDeclaration,
-        namespace: &mut Namespace,
-        self_type: TypeId,
-    ) -> CompileResult<TypedStructDeclaration> {
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -87,14 +86,15 @@ impl TypedStructDeclaration {
         } = decl;
 
         // create a namespace for the decl, used to create a scope for generics
-        let mut namespace = namespace.clone();
+        let mut decl_namespace = ctx.namespace.clone();
+        let mut ctx = ctx.scoped(&mut decl_namespace);
 
         // type check the type parameters
         // insert them into the namespace
         let mut new_type_parameters = vec![];
         for type_parameter in type_parameters.into_iter() {
             new_type_parameters.push(check!(
-                TypeParameter::type_check(type_parameter, &mut namespace),
+                TypeParameter::type_check(ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -105,7 +105,7 @@ impl TypedStructDeclaration {
         let mut new_fields = vec![];
         for field in fields.into_iter() {
             new_fields.push(check!(
-                TypedStructField::type_check(field, &mut namespace, self_type),
+                TypedStructField::type_check(ctx.by_ref(), field),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -201,17 +201,12 @@ impl ReplaceSelfType for TypedStructField {
 }
 
 impl TypedStructField {
-    pub(crate) fn type_check(
-        field: StructField,
-        namespace: &mut Namespace,
-        self_type: TypeId,
-    ) -> CompileResult<TypedStructField> {
+    pub(crate) fn type_check(mut ctx: TypeCheckContext, field: StructField) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let r#type = check!(
-            namespace.resolve_type_with_self(
-                field.type_info,
-                self_type,
+            ctx.resolve_type_with_self(
+                insert_type(field.type_info),
                 &field.type_span,
                 EnforceTypeArguments::Yes
             ),

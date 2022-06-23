@@ -1,3 +1,5 @@
+use crate::type_engine::{TraitConstraint, TypeArgument, TypeParameter};
+
 use {
     crate::{
         constants::{
@@ -11,9 +13,8 @@ use {
         ImportType, IncludeStatement, IntrinsicFunctionKind, LazyOp, Literal, MatchBranch,
         MethodName, ParseTree, Purity, Reassignment, ReassignmentTarget, ReturnStatement,
         Scrutinee, StorageDeclaration, StorageField, StructDeclaration, StructExpressionField,
-        StructField, StructScrutineeField, Supertrait, TraitConstraint, TraitDeclaration, TraitFn,
-        TreeType, TypeArgument, TypeInfo, TypeParameter, UseStatement, VariableDeclaration,
-        Visibility, WhileLoop,
+        StructField, StructScrutineeField, Supertrait, TraitDeclaration, TraitFn, TreeType,
+        TypeInfo, UseStatement, VariableDeclaration, Visibility, WhileLoop,
     },
     std::{
         collections::HashMap,
@@ -952,10 +953,12 @@ fn fn_args_to_function_parameters(
             .collect::<Result<_, _>>()?,
         FnArgs::NonStatic {
             self_token,
+            mutable_self,
             args_opt,
         } => {
             let mut function_parameters = vec![FunctionParameter {
                 name: Ident::new(self_token.span()),
+                is_mutable: mutable_self.is_some(),
                 type_id: insert_type(TypeInfo::SelfType),
                 type_span: self_token.span(),
             }];
@@ -1925,6 +1928,7 @@ fn fn_arg_to_function_parameter(
     };
     let function_parameter = FunctionParameter {
         name,
+        is_mutable: false,
         type_id: insert_type(ty_to_type_info(ec, fn_arg.ty)?),
         type_span,
     };
@@ -2701,10 +2705,10 @@ fn asm_register_declaration_to_asm_register_declaration(
 ) -> Result<AsmRegisterDeclaration, ErrorEmitted> {
     Ok(AsmRegisterDeclaration {
         name: asm_register_declaration.register,
-        initializer: match asm_register_declaration.value_opt {
-            None => None,
-            Some((_colon_token, expr)) => Some(expr_to_expression(ec, *expr)?),
-        },
+        initializer: asm_register_declaration
+            .value_opt
+            .map(|(_colon_token, expr)| expr_to_expression(ec, *expr))
+            .transpose()?,
     })
 }
 
@@ -2756,17 +2760,42 @@ fn pattern_to_scrutinee(
                 span,
             }
         }
-        Pattern::Struct { path, fields } => Scrutinee::StructScrutinee {
-            struct_name: path_expr_to_ident(ec, path)?,
-            fields: {
-                fields
-                    .into_inner()
-                    .into_iter()
-                    .map(|field| pattern_struct_field_to_struct_scrutinee_field(ec, field))
-                    .collect::<Result<_, _>>()?
-            },
-            span,
-        },
+        Pattern::Struct { path, fields } => {
+            let mut errors = Vec::new();
+            let fields = fields.into_inner();
+
+            // Make sure each struct field is declared once
+            let mut names_of_fields = std::collections::HashSet::new();
+            fields.clone().into_iter().for_each(|v| {
+                if let PatternStructField::Field {
+                    field_name,
+                    pattern_opt: _,
+                } = v
+                {
+                    if !names_of_fields.insert(field_name.clone()) {
+                        errors.push(ConvertParseTreeError::DuplicateStructField {
+                            name: field_name.clone(),
+                            span: field_name.span(),
+                        });
+                    }
+                }
+            });
+
+            if let Some(errors) = ec.errors(errors) {
+                return Err(errors);
+            }
+
+            let scrutinee_fields = fields
+                .into_iter()
+                .map(|field| pattern_struct_field_to_struct_scrutinee_field(ec, field))
+                .collect::<Result<_, _>>()?;
+
+            Scrutinee::StructScrutinee {
+                struct_name: path_expr_to_ident(ec, path)?,
+                fields: { scrutinee_fields },
+                span,
+            }
+        }
         Pattern::Tuple(pat_tuple) => Scrutinee::Tuple {
             elems: {
                 pat_tuple
@@ -2838,15 +2867,25 @@ fn pattern_struct_field_to_struct_scrutinee_field(
     pattern_struct_field: PatternStructField,
 ) -> Result<StructScrutineeField, ErrorEmitted> {
     let span = pattern_struct_field.span();
-    let struct_scrutinee_field = StructScrutineeField {
-        field: pattern_struct_field.field_name,
-        scrutinee: match pattern_struct_field.pattern_opt {
-            Some((_colon_token, pattern)) => Some(pattern_to_scrutinee(ec, *pattern)?),
-            None => None,
-        },
-        span,
-    };
-    Ok(struct_scrutinee_field)
+    match pattern_struct_field {
+        PatternStructField::Rest { token } => {
+            let struct_scrutinee_field = StructScrutineeField::Rest { span: token.span() };
+            Ok(struct_scrutinee_field)
+        }
+        PatternStructField::Field {
+            field_name,
+            pattern_opt,
+        } => {
+            let struct_scrutinee_field = StructScrutineeField::Field {
+                field: field_name,
+                scrutinee: pattern_opt
+                    .map(|(_colon_token, pattern)| pattern_to_scrutinee(ec, *pattern))
+                    .transpose()?,
+                span,
+            };
+            Ok(struct_scrutinee_field)
+        }
+    }
 }
 
 fn assignable_to_expression(
@@ -2861,11 +2900,36 @@ fn assignable_to_expression(
             index: Box::new(expr_to_expression(ec, *arg.into_inner())?),
             span,
         },
-        Assignable::FieldProjection { target, name, .. } => Expression::SubfieldExpression {
-            prefix: Box::new(assignable_to_expression(ec, *target)?),
-            field_to_access: name,
-            span,
-        },
+        Assignable::FieldProjection { target, name, .. } => {
+            let mut idents = vec![&name];
+            let mut base = &*target;
+            let storage_access_field_names_opt = loop {
+                match base {
+                    Assignable::FieldProjection { target, name, .. } => {
+                        idents.push(name);
+                        base = target;
+                    }
+                    Assignable::Var(name) => {
+                        if name.as_str() == "storage" {
+                            break Some(idents);
+                        }
+                        break None;
+                    }
+                    _ => break None,
+                }
+            };
+            match storage_access_field_names_opt {
+                Some(field_names) => {
+                    let field_names = field_names.into_iter().rev().cloned().collect();
+                    Expression::StorageAccess { field_names, span }
+                }
+                None => Expression::SubfieldExpression {
+                    prefix: Box::new(assignable_to_expression(ec, *target)?),
+                    field_to_access: name,
+                    span,
+                },
+            }
+        }
         Assignable::TupleFieldProjection {
             target,
             field,
