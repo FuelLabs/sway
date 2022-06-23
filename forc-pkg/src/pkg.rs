@@ -356,19 +356,9 @@ impl BuildPlan {
             .into_iter()
             .map(|dep| graph[dep].name.clone())
             .collect();
-        // Get the project node from compilation order.
-        let project_node = *tmp_compilation_order
-            .last()
-            .ok_or_else(|| anyhow!("can't get the project node"))?;
 
         // Remove the unresolveable path dependencies from the graph
-        apply_diff_after_lock(
-            removed_deps,
-            &mut graph,
-            project_node,
-            &path_map,
-            sway_git_tag,
-        )?;
+        apply_diff_after_lock(removed_deps, &mut graph)?;
 
         // Since apply_diff_after_lock removes removed dependencies from the graph compilation order may change
         let compilation_order = compilation_order(&graph)?;
@@ -872,18 +862,12 @@ pub fn compilation_order(graph: &Graph) -> Result<Vec<NodeIx>> {
 /// This requires us to remove those removed nodes from the graph so that we can have a BuildPlan
 /// generated from lock file. After the BuildPlan is generated it can be used to apply diffs by
 /// apply_pkg_diff().
-fn apply_diff_after_lock(
-    deps_to_remove: HashSet<NodeIx>,
-    graph: &mut Graph,
-    project_node: NodeIx,
-    path_map: &PathMap,
-    sway_git_tag: &str,
-) -> Result<()> {
+fn apply_diff_after_lock(deps_to_remove: HashSet<NodeIx>, graph: &mut Graph) -> Result<()> {
     for dep in deps_to_remove {
-        let dep_name = &graph[*dep].name.clone();
+        let dep_name = &graph[dep].name.clone();
         println_red(&format!("  Removing {}", dep_name));
         // Remove the deleted node
-        graph.remove_node(*dep);
+        graph.remove_node(dep);
     }
     Ok(())
 }
