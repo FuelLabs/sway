@@ -179,7 +179,7 @@ jobs:
       - name: Build test project
         run: forc build --path test-proj
       - name: Run test project's test suite
-        run: cd test-proj && forc test -- --features fuel-core-lib
+        run: cd test-proj && forc test --cargo-test-opts="--features fuel-core-lib"
 
   cargo-build-workspace:
     needs: cancel-previous-runs
