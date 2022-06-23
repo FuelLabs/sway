@@ -157,10 +157,10 @@ impl TypedStorageDeclaration {
             .filter_map(|s| s.map_err(|e| errors.push(e)).ok())
             .flatten()
             .collect::<Vec<_>>();
-        if errors.is_empty() {
-            ok(storage_slots, vec![], vec![])
-        } else {
-            err(vec![], errors)
+
+        match errors.is_empty() {
+            true => ok(storage_slots, vec![], vec![]),
+            false => err(vec![], errors),
         }
     }
 }

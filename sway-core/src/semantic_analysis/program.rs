@@ -228,7 +228,7 @@ impl TypedProgram {
         }
     }
 
-    pub fn get_initialized_storage_slots(&self) -> CompileResult<Self> {
+    pub fn get_typed_program_with_initialized_storage_slots(&self) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match &self.kind {
