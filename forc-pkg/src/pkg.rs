@@ -1,6 +1,6 @@
 use crate::{
     lock::Lock,
-    manifest::{Dependency, Manifest, ManifestFile},
+    manifest::{BuildProfile, Dependency, Manifest, ManifestFile},
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
@@ -164,16 +164,6 @@ pub struct BuildPlan {
     graph: Graph,
     path_map: PathMap,
     compilation_order: Vec<NodeIx>,
-}
-
-/// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "kebab-case")]
-pub struct BuildConfig {
-    pub print_ir: bool,
-    pub print_finalized_asm: bool,
-    pub print_intermediate_asm: bool,
-    pub silent: bool,
 }
 
 /// Error returned upon failed parsing of `PinnedId::from_str`.
@@ -1327,12 +1317,12 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
     Ok(source)
 }
 
-/// Given a `forc_pkg::BuildConfig`, produce the necessary `sway_core::BuildConfig` required for
+/// Given a `forc_pkg::BuildProfile`, produce the necessary `sway_core::BuildConfig` required for
 /// compilation.
 pub fn sway_build_config(
     manifest_dir: &Path,
     entry_path: &Path,
-    build_conf: &BuildConfig,
+    build_profile: &BuildProfile,
 ) -> Result<sway_core::BuildConfig> {
     // Prepare the build config to pass through to the compiler.
     let file_name = find_file_name(manifest_dir, entry_path)?;
@@ -1340,9 +1330,9 @@ pub fn sway_build_config(
         file_name.to_path_buf(),
         manifest_dir.to_path_buf(),
     )
-    .print_finalized_asm(build_conf.print_finalized_asm)
-    .print_intermediate_asm(build_conf.print_intermediate_asm)
-    .print_ir(build_conf.print_ir);
+    .print_finalized_asm(build_profile.print_finalized_asm)
+    .print_intermediate_asm(build_profile.print_intermediate_asm)
+    .print_ir(build_profile.print_ir);
     Ok(build_config)
 }
 
@@ -1384,12 +1374,12 @@ pub fn dependency_namespace(
 /// Compiles the package to an AST.
 pub fn compile_ast(
     manifest: &ManifestFile,
-    build_config: &BuildConfig,
+    build_profile: &BuildProfile,
     namespace: namespace::Module,
 ) -> Result<CompileAstResult> {
     let source = manifest.entry_string()?;
     let sway_build_config =
-        sway_build_config(manifest.dir(), &manifest.entry_path(), build_config)?;
+        sway_build_config(manifest.dir(), &manifest.entry_path(), build_profile)?;
     let ast_res = sway_core::compile_to_ast(source, namespace, Some(&sway_build_config));
     Ok(ast_res)
 }
@@ -1415,16 +1405,16 @@ pub fn compile_ast(
 pub fn compile(
     pkg: &Pinned,
     manifest: &ManifestFile,
-    build_config: &BuildConfig,
+    build_profile: &BuildProfile,
     namespace: namespace::Module,
     source_map: &mut SourceMap,
 ) -> Result<(Compiled, Option<namespace::Root>)> {
     let entry_path = manifest.entry_path();
-    let sway_build_config = sway_build_config(manifest.dir(), &entry_path, build_config)?;
-    let silent_mode = build_config.silent;
+    let sway_build_config = sway_build_config(manifest.dir(), &entry_path, build_profile)?;
+    let silent_mode = build_profile.silent;
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
-    let ast_res = compile_ast(manifest, build_config, namespace)?;
+    let ast_res = compile_ast(manifest, build_profile, namespace)?;
     match &ast_res {
         CompileAstResult::Failure { warnings, errors } => {
             print_on_failure(silent_mode, warnings, errors);
@@ -1487,7 +1477,7 @@ pub fn compile(
 /// Also returns the resulting `sway_core::SourceMap` which may be useful for debugging purposes.
 pub fn build(
     plan: &BuildPlan,
-    conf: &BuildConfig,
+    profile: &BuildProfile,
     sway_git_tag: &str,
 ) -> anyhow::Result<(Compiled, SourceMap)> {
     let mut namespace_map = Default::default();
@@ -1501,7 +1491,7 @@ pub fn build(
         let pkg = &plan.graph[node];
         let path = &plan.path_map[&pkg.id()];
         let manifest = ManifestFile::from_dir(path, sway_git_tag)?;
-        let res = compile(pkg, &manifest, conf, dep_namespace, &mut source_map)?;
+        let res = compile(pkg, &manifest, profile, dep_namespace, &mut source_map)?;
         let (compiled, maybe_namespace) = res;
         if let Some(namespace) = maybe_namespace {
             namespace_map.insert(node, namespace.into());
@@ -1527,11 +1517,9 @@ pub fn check(
     silent_mode: bool,
     sway_git_tag: &str,
 ) -> anyhow::Result<CompileAstResult> {
-    let conf = &BuildConfig {
-        print_ir: false,
-        print_finalized_asm: false,
-        print_intermediate_asm: false,
+    let profile = BuildProfile {
         silent: silent_mode,
+        ..BuildProfile::debug()
     };
 
     let mut namespace_map = Default::default();
@@ -1542,7 +1530,7 @@ pub fn check(
         let pkg = &plan.graph[node];
         let path = &plan.path_map[&pkg.id()];
         let manifest = ManifestFile::from_dir(path, sway_git_tag)?;
-        let ast_res = compile_ast(&manifest, conf, dep_namespace)?;
+        let ast_res = compile_ast(&manifest, &profile, dep_namespace)?;
         if let CompileAstResult::Success { typed_program, .. } = &ast_res {
             if let TreeType::Library { .. } = typed_program.kind.tree_type() {
                 namespace_map.insert(node, typed_program.root.namespace.clone());
