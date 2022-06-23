@@ -15,19 +15,20 @@ curl --proto '=https' --tlsv1.2 -sSf \
     https://fuellabs.github.io/fuelup/fuelup-init.sh | sh
 ```
 
-You may need to add `~/.fuelup/bin` to your PATH. For Bash:
+`fuelup-init` will ask for permission to add `~/.fuelup/bin` to your PATH. Otherwise, you can also pass `--no-modify-path` so that `fuelup-init` does not modify your PATH and will not ask for permission to do so:
 
 ```sh
-export PATH="${HOME}/.fuelup/bin/:${PATH}"
+curl --proto '=https' --tlsv1.2 -sSf \
+    https://fuellabs.github.io/fuelup/fuelup-init.sh | sh -s -- --no-modify-path
 ```
 
-Then run
+Once `fuelup` is installed, `fuelup-init` automatically runs the command below
 
 ```sh
 fuelup toolchain install latest
 ```
 
-to install the latest Sway toolchain.
+to install the latest Sway toolchain. You can run the same command at a later time to update the toolchain.
 
 
 ## Installing from Source
