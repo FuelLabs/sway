@@ -194,29 +194,6 @@ impl<'ns> TypeCheckContext<'ns> {
         )
     }
 
-    // /// Short-hand for calling the `monomorphize_with_self` function in the type engine
-    // pub(crate) fn monomorphize_with_self<T>(
-    //     &mut self,
-    //     value: &mut T,
-    //     type_arguments: Vec<TypeArgument>,
-    //     enforce_type_arguments: EnforceTypeArguments,
-    //     call_site_span: &Span,
-    //     self_type: TypeId
-    // ) -> CompileResult<()>
-    // where
-    //     T: MonomorphizeHelper + CopyTypes,
-    // {
-    //     monomorphize_with_self(
-    //         value,
-    //         type_arguments,
-    //         enforce_type_arguments,
-    //         call_site_span,
-    //         self_type,
-    //         &mut self.namespace.root,
-    //         &self.namespace.mod_path,
-    //     )
-    // }
-
     /// Short-hand for calling [Namespace::resolve_type_with_self] with the `self_type` provided by
     /// the `TypeCheckContext`.
     pub(crate) fn resolve_type_with_self(
