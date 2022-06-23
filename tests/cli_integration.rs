@@ -38,18 +38,20 @@ fn test_cli() {
     cmd.send_line("breakpoint 0").unwrap();
     cmd.exp_regex(r">> ").unwrap();
     cmd.send_line("start_tx examples/example_tx.json").unwrap();
-    cmd.exp_regex(r"breakpoint.+0{64}.+pc: U64\(0\)").unwrap();
+    cmd.exp_regex(r"Stopped on breakpoint at address 0 of contract 0x0{64}")
+        .unwrap();
     cmd.send_line("step on").unwrap();
     cmd.exp_regex(r">> ").unwrap();
     cmd.send_line("continue").unwrap();
-    cmd.exp_regex(r"breakpoint.+0{64}.+pc: U64\(4\)").unwrap();
+    cmd.exp_regex(r"Stopped on breakpoint at address 4 of contract 0x0{64}")
+        .unwrap();
     cmd.send_line("step off").unwrap();
     cmd.exp_regex(r">> ").unwrap();
     cmd.send_line("continue").unwrap();
-    cmd.exp_regex(r"breakpoint: None").unwrap();
+    cmd.exp_regex(r"Receipt: Return").unwrap();
     cmd.send_line("reset").unwrap();
     cmd.send_line("start_tx examples/example_tx.json").unwrap();
-    cmd.exp_regex(r"breakpoint: None").unwrap();
+    cmd.exp_regex(r"Receipt: Return").unwrap();
     cmd.send_line(r"exit").unwrap();
 
     fuel_core.kill().expect("Couldn't kill fuel-core");
