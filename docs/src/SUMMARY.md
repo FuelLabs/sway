@@ -62,6 +62,7 @@
     - [forc deploy](./forc/commands/forc_deploy.md)
     - [forc init](./forc/commands/forc_init.md)
     - [forc json-abi](./forc/commands/forc_json-abi.md)
+    - [forc json-storage-slots](./forc/commands/forc_json-storage-slots.md)
     - [forc parse-bytecode](./forc/commands/forc_parse-bytecode.md)
     - [forc plugins](./forc/commands/forc_plugins.md)
     - [forc run](./forc/commands/forc_run.md)
