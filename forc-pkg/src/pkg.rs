@@ -338,7 +338,7 @@ impl BuildPlan {
     }
 
     /// Attempt to load the build plan from the `Lock`.
-    /// Returns the best effor BuildPlan and the packages removed  
+    /// Returns the best effort BuildPlan and the packages removed  
     /// from project's manifest file after the lock file is generated.
     ///
     /// The returned removed dependencies are already removed from the dependency graph.
