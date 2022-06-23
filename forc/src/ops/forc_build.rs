@@ -28,6 +28,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         locked,
         build_profile,
         release,
+        time_phases,
     } = command;
 
     let key_debug: String = "debug".to_string();
@@ -64,10 +65,12 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         print_finalized_asm,
         print_intermediate_asm,
         silent: silent_mode,
+        time_phases,
     };
 
     // Check if any cli parameter is passed by the user if not fetch the build profile from manifest.
-    if !print_ir && !print_intermediate_asm && !print_finalized_asm && !silent_mode {
+    if !print_ir && !print_intermediate_asm && !print_finalized_asm && !silent_mode && !time_phases
+    {
         config = manifest
             .build_profile
             .as_ref()

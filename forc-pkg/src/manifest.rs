@@ -304,6 +304,7 @@ impl Manifest {
                     print_finalized_asm: false,
                     print_intermediate_asm: false,
                     silent: false,
+                    time_phases: false,
                 },
             );
         }
@@ -315,6 +316,7 @@ impl Manifest {
                     print_finalized_asm: false,
                     print_intermediate_asm: false,
                     silent: false,
+                    time_phases: false,
                 },
             );
         }

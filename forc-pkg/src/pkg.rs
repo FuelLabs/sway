@@ -174,6 +174,7 @@ pub struct BuildConfig {
     pub print_finalized_asm: bool,
     pub print_intermediate_asm: bool,
     pub silent: bool,
+    pub time_phases: bool,
 }
 
 /// Error returned upon failed parsing of `PinnedId::from_str`.
@@ -1416,12 +1417,41 @@ pub fn compile(
     namespace: namespace::Module,
     source_map: &mut SourceMap,
 ) -> Result<(Compiled, Option<namespace::Root>)> {
+    let get_time_now = || {
+        if build_config.time_phases {
+            Some(std::time::Instant::now())
+        } else {
+            None
+        }
+    };
+
+    let time_elapsed =
+        |time_period_description: &str, start_time: Option<std::time::Instant>| -> Result<()> {
+            if build_config.time_phases {
+                info!(
+                    "  Time elapsed to {}: {:?}",
+                    time_period_description,
+                    start_time
+                        .ok_or_else(|| anyhow!(
+                            "start_time should have a value if --time-phases flag is used"
+                        ))?
+                        .elapsed()
+                );
+            }
+            Ok(())
+        };
+
+    let sway_build_config_start = get_time_now();
     let entry_path = manifest.entry_path();
     let sway_build_config = sway_build_config(manifest.dir(), &entry_path, build_config)?;
     let silent_mode = build_config.silent;
+    time_elapsed("produce `sway_core::BuildConfig`", sway_build_config_start)?;
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
+    let compile_to_ast_start = get_time_now();
     let ast_res = compile_ast(manifest, build_config, namespace)?;
+    time_elapsed("compile to ast", compile_to_ast_start)?;
+
     match &ast_res {
         CompileAstResult::Failure { warnings, errors } => {
             print_on_failure(silent_mode, warnings, errors);
@@ -1431,7 +1461,10 @@ pub fn compile(
             typed_program,
             warnings,
         } => {
+            let generate_json_abi_start = get_time_now();
             let json_abi = typed_program.kind.generate_json_abi();
+            time_elapsed("generate JSON ABI", generate_json_abi_start)?;
+
             let tree_type = typed_program.kind.tree_type();
             match tree_type {
                 // If we're compiling a library, we don't need to compile any further.
@@ -1450,8 +1483,14 @@ pub fn compile(
 
                 // For all other program types, we'll compile the bytecode.
                 TreeType::Contract | TreeType::Predicate | TreeType::Script => {
+                    let ast_to_asm_start = get_time_now();
                     let asm_res = sway_core::ast_to_asm(ast_res, &sway_build_config);
+                    time_elapsed("compile ast to asm", ast_to_asm_start)?;
+
+                    let asm_to_bytecode_start = get_time_now();
                     let bc_res = sway_core::asm_to_bytecode(asm_res, source_map);
+                    time_elapsed("compile asm to bytecode", asm_to_bytecode_start)?;
+
                     match bc_res {
                         BytecodeCompilationResult::Success { bytes, warnings } => {
                             print_on_success(silent_mode, &pkg.name, &warnings, &tree_type);
@@ -1529,6 +1568,7 @@ pub fn check(
         print_finalized_asm: false,
         print_intermediate_asm: false,
         silent: silent_mode,
+        time_phases: false,
     };
 
     let mut namespace_map = Default::default();

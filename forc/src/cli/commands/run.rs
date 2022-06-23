@@ -55,6 +55,10 @@ pub struct Command {
     #[clap(long = "silent", short = 's')]
     pub silent_mode: bool,
 
+    /// Output the time elapsed over each part of the compilation process.
+    #[clap(long)]
+    pub time_phases: bool,
+
     /// Pretty-print the outputs from the node.
     #[clap(long = "pretty-print", short = 'r')]
     pub pretty_print: bool,
