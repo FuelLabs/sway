@@ -446,15 +446,17 @@ impl TypedAstNode {
                                 initializer,
                             } in fields
                             {
-                                let r#type = check!(
-                                    ctx.namespace
-                                        .resolve_type_without_self(insert_type(type_info)),
+                                let type_id = check!(
+                                    ctx.namespace.resolve_type_without_self(
+                                        insert_type(type_info),
+                                        &name.span()
+                                    ),
                                     return err(warnings, errors),
                                     warnings,
                                     errors
                                 );
 
-                                let mut ctx = ctx.by_ref().with_type_annotation(r#type);
+                                let mut ctx = ctx.by_ref().with_type_annotation(type_id);
                                 let initializer = match initializer {
                                     Some(initializer) => Some(check!(
                                         TypedExpression::type_check(ctx.by_ref(), initializer),
@@ -467,7 +469,7 @@ impl TypedAstNode {
 
                                 fields_buf.push(TypedStorageField::new(
                                     name,
-                                    r#type,
+                                    type_id,
                                     initializer,
                                     span.clone(),
                                 ));

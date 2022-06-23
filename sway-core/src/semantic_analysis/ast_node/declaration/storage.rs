@@ -147,12 +147,21 @@ impl TypedStorageDeclaration {
             .collect()
     }
 
-    pub(crate) fn generate_initialized_storage_slots(&self) -> Vec<StorageSlot> {
-        self.fields
+    pub(crate) fn get_initialized_storage_slots(&self) -> CompileResult<Vec<StorageSlot>> {
+        let mut errors = vec![];
+        let storage_slots = self
+            .fields
             .iter()
             .enumerate()
-            .flat_map(|(i, f)| f.generate_initialized_storage_slots(&StateIndex::new(i)))
-            .collect()
+            .map(|(i, f)| f.get_initialized_storage_slots(&StateIndex::new(i)))
+            .filter_map(|s| s.map_err(|e| errors.push(e)).ok())
+            .flatten()
+            .collect::<Vec<_>>();
+        if errors.is_empty() {
+            ok(storage_slots, vec![], vec![])
+        } else {
+            err(vec![], errors)
+        }
     }
 }
 
@@ -190,21 +199,20 @@ impl TypedStorageField {
         }
     }
 
-    pub fn generate_initialized_storage_slots(&self, ix: &StateIndex) -> Vec<StorageSlot> {
+    pub fn get_initialized_storage_slots(
+        &self,
+        ix: &StateIndex,
+    ) -> Result<Vec<StorageSlot>, CompileError> {
         let mut context = Context::default();
         let module = Module::new(&mut context, Kind::Contract);
         match &self.initializer {
-            None => vec![],
-            Some(initializer) => {
-                let constant_evaluated_initializer =
-                    compile_constant_expression_to_constant(&mut context, module, initializer);
-                match constant_evaluated_initializer {
-                    Ok(constant) => {
-                        serialize_to_storage_slots(&constant, &context, ix, &constant.ty, &[])
-                    }
-                    _ => vec![],
-                }
-            }
+            None => Ok(vec![]),
+            Some(initializer) => compile_constant_expression_to_constant(
+                &mut context,
+                module,
+                initializer,
+            )
+            .map(|constant| serialize_to_storage_slots(&constant, &context, ix, &constant.ty, &[])),
         }
     }
 }

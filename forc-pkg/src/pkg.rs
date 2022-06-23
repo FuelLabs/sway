@@ -1437,7 +1437,7 @@ pub fn compile(
             warnings,
         } => {
             let json_abi = typed_program.kind.generate_json_abi();
-            let storage_slots = typed_program.kind.generate_initialized_storage_slots();
+            let storage_slots = typed_program.storage_slots.clone();
             let tree_type = typed_program.kind.tree_type();
             match tree_type {
                 // If we're compiling a library, we don't need to compile any further.
