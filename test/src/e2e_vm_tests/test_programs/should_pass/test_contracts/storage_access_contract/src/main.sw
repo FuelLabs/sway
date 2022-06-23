@@ -3,15 +3,39 @@ contract;
 use storage_access_abi::{E, S, StorageAccess, T};
 
 storage {
-    x: u64,
-    y: b256,
-    s: S,
-    boolean: bool,
-    int8: u8,
-    int16: u16,
-    int32: u32,
-    e: E,
-    string: str[40],
+    x: u64 = 64,
+    y: b256 = 0x0101010101010101010101010101010101010101010101010101010101010101,
+    s: S = S {
+        x: 1,
+        y: 2,
+        z: 0x0000000000000000000000000000000000000000000000000000000000000003,
+        t: T {
+            x: 4,
+            y: 5,
+            z: 0x0000000000000000000000000000000000000000000000000000000000000006,
+            boolean: true,
+            int8: 7,
+            int16: 8,
+            int32: 9,
+        },
+    },
+    boolean: bool = true,
+    int8: u8 = 8,
+    int16: u16 = 16,
+    int32: u32 = 32,
+    e: E = E::B(
+        T {
+            x: 1,
+            y: 2,
+            z: 0x0000000000000000000000000000000000000000000000000000000000000003,
+            boolean: true,
+            int8: 4,
+            int16: 5,
+            int32: 6,
+        }
+    ),
+    e2: E = E::A(777),
+    string: str[40] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
 }
 
 impl StorageAccess for Contract {
@@ -173,6 +197,10 @@ impl StorageAccess for Contract {
     #[storage(read)]
     fn get_e() -> E {
         storage.e
+    }
+    #[storage(read)]
+    fn get_e2() -> E {
+        storage.e2
     }
     #[storage(read)]
     fn get_string() -> str[40] {
