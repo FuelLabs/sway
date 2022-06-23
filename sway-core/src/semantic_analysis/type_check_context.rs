@@ -5,8 +5,8 @@ use crate::{
         declaration::{EnforceTypeArguments, MonomorphizeHelper},
         Namespace,
     },
-    type_engine::{insert_type, unify_with_self, TypeId, TypeInfo},
-    CompileResult, CompileWarning, TypeArgument, TypeError,
+    type_engine::{insert_type, unify_with_self, TypeArgument, TypeId, TypeInfo},
+    CompileResult, CompileWarning, TypeError,
 };
 use sway_types::{span::Span, Ident, Spanned};
 

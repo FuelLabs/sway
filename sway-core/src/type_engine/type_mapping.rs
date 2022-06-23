@@ -1,5 +1,3 @@
-use crate::TypeParameter;
-
 use super::*;
 
 pub(crate) type TypeMapping = Vec<(TypeId, TypeId)>;
