@@ -1,7 +1,7 @@
 script;
 
 fn foo<T>() {
-    let x = size_of::<T>();
+    let x = __size_of::<T>();
 }
 
 fn main() {
