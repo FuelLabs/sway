@@ -1,9 +1,6 @@
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{
-    error::*, namespace::*, type_engine::*, CompileError, CompileResult, TypeArgument, TypeInfo,
-    TypeParameter,
-};
+use crate::{error::*, namespace::*, type_engine::*, CompileError, CompileResult, TypeInfo};
 
 use super::CreateTypeId;
 
@@ -49,7 +46,6 @@ pub(crate) trait Monomorphize {
         self,
         type_arguments: Vec<TypeArgument>,
         enforce_type_arguments: EnforceTypeArguments,
-        self_type: Option<TypeId>,
         call_site_span: Option<&Span>,
         namespace: &mut Root,
         module_path: &Path,
@@ -66,7 +62,6 @@ where
         self,
         mut type_arguments: Vec<TypeArgument>,
         enforce_type_arguments: EnforceTypeArguments,
-        self_type: Option<TypeId>,
         call_site_span: Option<&Span>,
         namespace: &mut Root,
         module_path: &Path,
@@ -108,20 +103,13 @@ where
             }
             (false, false) => {
                 for type_argument in type_arguments.iter_mut() {
-                    let type_id = match self_type {
-                        Some(self_type) => namespace.resolve_type_with_self(
+                    type_argument.type_id = check!(
+                        namespace.resolve_type(
                             type_argument.type_id,
-                            self_type,
                             &type_argument.span,
                             enforce_type_arguments,
-                            module_path,
+                            module_path
                         ),
-                        None => {
-                            namespace.resolve_type_without_self(type_argument.type_id, module_path)
-                        }
-                    };
-                    type_argument.type_id = check!(
-                        type_id,
                         insert_type(TypeInfo::ErrorRecovery),
                         warnings,
                         errors
@@ -144,29 +132,14 @@ where
                 for ((_, interim_type), type_argument) in
                     type_mapping.iter().zip(type_arguments.iter())
                 {
-                    match self_type {
-                        Some(self_type) => {
-                            let (mut new_warnings, new_errors) = unify_with_self(
-                                *interim_type,
-                                type_argument.type_id,
-                                self_type,
-                                &type_argument.span,
-                                "Type argument is not assignable to generic type parameter.",
-                            );
-                            warnings.append(&mut new_warnings);
-                            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-                        }
-                        None => {
-                            let (mut new_warnings, new_errors) = unify(
-                                *interim_type,
-                                type_argument.type_id,
-                                &type_argument.span,
-                                "Type argument is not assignable to generic type parameter.",
-                            );
-                            warnings.append(&mut new_warnings);
-                            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-                        }
-                    }
+                    let (mut new_warnings, new_errors) = unify(
+                        *interim_type,
+                        type_argument.type_id,
+                        &type_argument.span,
+                        "Type argument is not assignable to generic type parameter.",
+                    );
+                    warnings.append(&mut new_warnings);
+                    errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
                 }
                 let module = check!(
                     namespace.check_submodule_mut(module_path),

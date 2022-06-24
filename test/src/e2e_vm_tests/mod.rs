@@ -10,7 +10,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-#[derive(Debug)]
+#[derive(PartialEq)]
 enum TestCategory {
     Compiles,
     FailsToCompile,
@@ -27,13 +27,13 @@ enum TestResult {
     Revert(u64),
 }
 
-#[derive(Debug)]
 struct TestDescription {
     name: String,
     category: TestCategory,
     expected_result: Option<TestResult>,
     contract_paths: Vec<String>,
     validate_abi: bool,
+    checker: filecheck::Checker,
 }
 
 pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
@@ -55,6 +55,7 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
         expected_result,
         contract_paths,
         validate_abi,
+        checker,
     } in configured_tests
     {
         if !filter_regex
@@ -91,7 +92,20 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
             }
 
             TestCategory::FailsToCompile => {
-                crate::e2e_vm_tests::harness::does_not_compile(&name, locked);
+                match crate::e2e_vm_tests::harness::does_not_compile(&name, locked) {
+                    Ok(output) => match checker.explain(&output, filecheck::NO_VARIABLES) {
+                        Ok((success, report)) if !success => {
+                            panic!("For {name}:\nFilecheck failed:\n{report}");
+                        }
+                        Err(e) => {
+                            panic!("For {name}:\nFilecheck directive error: {e}");
+                        }
+                        _ => (),
+                    },
+                    Err(_) => {
+                        panic!("For {name}:\nFailing test did not fail.");
+                    }
+                }
                 number_of_tests_executed += 1;
             }
 
@@ -191,12 +205,19 @@ fn discover_test_configs() -> Result<Vec<TestDescription>, String> {
 }
 
 fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
-    let toml_content = std::fs::read_to_string(path)
+    let (toml_content, checker) = std::fs::read_to_string(path)
         .map_err(|e| e.to_string())
         .and_then(|toml_content_str| {
-            toml_content_str
-                .parse::<toml::Value>()
+            // Parse the file for FileCheck directives and_then parse the file into TOML.
+            filecheck::CheckerBuilder::new()
+                .text(&toml_content_str)
                 .map_err(|e| e.to_string())
+                .and_then(|checker| {
+                    toml_content_str
+                        .parse::<toml::Value>()
+                        .map_err(|e| e.to_string())
+                        .map(|toml_content| (toml_content, checker.finish()))
+                })
         })
         .map_err(|e| format!("Failed to parse: {e}"))?;
 
@@ -218,6 +239,11 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
             )),
             Some(other) => Err(format!("Unknown category '{}'.", other,)),
         })?;
+
+    // Abort early if we find a FailsToCompile test without any Checker directives.
+    if category == TestCategory::FailsToCompile && checker.is_empty() {
+        return Err("'fail' tests must contain some FileCheck verification directives.".to_owned());
+    }
 
     let expected_result = match &category {
         TestCategory::Runs | TestCategory::RunsWithContract => {
@@ -268,6 +294,7 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
         expected_result,
         contract_paths,
         validate_abi,
+        checker,
     })
 }
 
