@@ -9,13 +9,18 @@ pub struct Command {
     /// Path to the project, if not specified, current working directory will be used.
     #[clap(short, long)]
     pub path: Option<String>,
-    /// Whether to compile to bytecode (false) or to print out the generated ASM (true).
+    /// Print the finalized ASM.
+    ///
+    /// This is the state of the ASM with registers allocated and optimisations applied.
     #[clap(long)]
     pub print_finalized_asm: bool,
-    /// Whether to compile to bytecode (false) or to print out the generated ASM (true).
+    /// Print the generated ASM.
+    ///
+    /// This is the state of the ASM prior to performing register allocation and other ASM
+    /// optimisations.
     #[clap(long)]
     pub print_intermediate_asm: bool,
-    /// Whether to compile to bytecode (false) or to print out the IR (true).
+    /// Print the generated Sway IR (Intermediate Representation).
     #[clap(long)]
     pub print_ir: bool,
     /// If set, outputs a binary file representing the script bytes.
@@ -57,6 +62,9 @@ pub struct Command {
     /// If --build-profile is also provided, forc omits this flag and uses provided build-profile.
     #[clap(long)]
     pub release: bool,
+    /// Output the time elapsed over each part of the compilation process.
+    #[clap(long)]
+    pub time_phases: bool,
 }
 
 pub(crate) async fn exec(command: Command) -> Result<()> {

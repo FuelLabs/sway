@@ -1,6 +1,6 @@
 use crate::{
     lock::Lock,
-    manifest::{Dependency, Manifest, ManifestFile},
+    manifest::{BuildProfile, Dependency, Manifest, ManifestFile},
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
@@ -166,16 +166,6 @@ pub struct BuildPlan {
     compilation_order: Vec<NodeIx>,
 }
 
-/// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "kebab-case")]
-pub struct BuildConfig {
-    pub print_ir: bool,
-    pub print_finalized_asm: bool,
-    pub print_intermediate_asm: bool,
-    pub silent: bool,
-}
-
 /// Error returned upon failed parsing of `PinnedId::from_str`.
 #[derive(Clone, Debug)]
 pub struct PinnedIdParseError;
@@ -263,12 +253,6 @@ impl BuildPlan {
         // If there are errors we will need to create the BuildPlan from scratch, i.e fetch & pin everything
         let mut new_lock_cause = None;
         let mut plan = plan_result.or_else(|e| -> Result<BuildPlan> {
-            if locked {
-                bail!(
-                    "The lock file {} needs to be updated but --locked was passed to prevent this.",
-                    lock_path.to_string_lossy()
-                );
-            }
             new_lock_cause = if e.to_string().contains("No such file or directory") {
                 Some(anyhow!("lock file did not exist"))
             } else {
@@ -289,6 +273,15 @@ impl BuildPlan {
         }
 
         if let Some(cause) = new_lock_cause {
+            if locked {
+                bail!(
+                    "The lock file {} needs to be updated (Cause: {}) \
+                    but --locked was passed to prevent this.",
+                    lock_path.to_string_lossy(),
+                    cause,
+                );
+            }
+
             info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
             create_new_lock(&plan, &old_lock, manifest, &lock_path)?;
             info!("   Created new lock file at {}", lock_path.display());
@@ -395,7 +388,8 @@ impl BuildPlan {
                 }
 
                 let name = dep.package().unwrap_or(dep_name).to_string();
-                let source = dep_to_source(proj_path, dep)?;
+                let source =
+                    apply_patch(&name, &dep_to_source(proj_path, dep)?, manifest, proj_path)?;
                 let dep_pkg = Pkg { name, source };
                 Ok((dep_name, dep_pkg))
             })
@@ -889,10 +883,24 @@ pub fn graph_to_path_map(
                             bail!("missing path info for dependency: {}", &dep_name);
                         }
                     })?;
-                let rel_dep_path = detailed
-                    .path
-                    .as_ref()
-                    .ok_or_else(|| anyhow!("missing path info for dependency: {}", dep.name))?;
+                // Check if there is a patch for this dep
+                let patch = parent_manifest
+                    .patches()
+                    .find_map(|patches| patches.1.get(&dep_name));
+                // If there is one fetch the details.
+                let patch_details = patch.and_then(|patch| match patch {
+                    Dependency::Simple(_) => None,
+                    Dependency::Detailed(detailed) => Some(detailed),
+                });
+                // If there is a detail we should have the path.
+                // If not either we do not have a patch so we are checking dependencies of parent
+                // If we can't find the path there, either patch or dep is provided as a basic dependency, so we are missing the path info.
+                let rel_dep_path = if let Some(patch_details) = patch_details {
+                    patch_details.path.as_ref()
+                } else {
+                    detailed.path.as_ref()
+                }
+                .ok_or_else(|| anyhow!("missing path info for dep: {}", &dep_name))?;
                 let path = parent_path.join(rel_dep_path);
                 if !path.exists() {
                     bail!("pinned `path` dependency \"{}\" source missing", dep.name);
@@ -992,6 +1000,38 @@ pub(crate) fn fetch_deps(
     Ok((graph, path_map))
 }
 
+fn apply_patch(
+    name: &str,
+    source: &Source,
+    manifest: &Manifest,
+    parent_path: &Path,
+) -> Result<Source> {
+    match source {
+        // Check if the patch is for a git dependency.
+        Source::Git(git) => {
+            // Check if we got a patch for the git dependency.
+            if let Some(source_patches) = manifest
+                .patch
+                .as_ref()
+                .and_then(|patches| patches.get(git.repo.as_str()))
+            {
+                if let Some(patch) = source_patches.get(name) {
+                    Ok(dep_to_source(parent_path, patch)?)
+                } else {
+                    bail!(
+                        "Cannot find the patch for the {} for package {}",
+                        git.repo,
+                        name
+                    )
+                }
+            } else {
+                Ok(source.clone())
+            }
+        }
+        _ => Ok(source.clone()),
+    }
+}
+
 /// Produce a unique ID for a particular fetch pass.
 ///
 /// This is used in the temporary git directory and allows for avoiding contention over the git repo directory.
@@ -1020,7 +1060,12 @@ fn fetch_children(
     let parent_path = path_map[&parent_id].clone();
     for (dep_name, dep) in manifest.deps() {
         let name = dep.package().unwrap_or(dep_name).to_string();
-        let source = dep_to_source(&parent_path, dep)?;
+        let source = apply_patch(
+            &name,
+            &dep_to_source(&parent_path, dep)?,
+            manifest,
+            &parent_path,
+        )?;
         if offline_mode && !matches!(source, Source::Path(_)) {
             bail!("Unable to fetch pkg {:?} in offline mode", source);
         }
@@ -1299,7 +1344,9 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
         Dependency::Detailed(ref det) => match (&det.path, &det.version, &det.git) {
             (Some(relative_path), _, _) => {
                 let path = pkg_path.join(relative_path);
-                Source::Path(path.canonicalize()?)
+                Source::Path(path.canonicalize().map_err(|err| {
+                    anyhow!("Cant apply patch from {}, cause: {}", relative_path, &err)
+                })?)
             }
             (_, _, Some(repo)) => {
                 let reference = match (&det.branch, &det.tag, &det.rev) {
@@ -1324,12 +1371,12 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
     Ok(source)
 }
 
-/// Given a `forc_pkg::BuildConfig`, produce the necessary `sway_core::BuildConfig` required for
+/// Given a `forc_pkg::BuildProfile`, produce the necessary `sway_core::BuildConfig` required for
 /// compilation.
 pub fn sway_build_config(
     manifest_dir: &Path,
     entry_path: &Path,
-    build_conf: &BuildConfig,
+    build_profile: &BuildProfile,
 ) -> Result<sway_core::BuildConfig> {
     // Prepare the build config to pass through to the compiler.
     let file_name = find_file_name(manifest_dir, entry_path)?;
@@ -1337,9 +1384,9 @@ pub fn sway_build_config(
         file_name.to_path_buf(),
         manifest_dir.to_path_buf(),
     )
-    .print_finalized_asm(build_conf.print_finalized_asm)
-    .print_intermediate_asm(build_conf.print_intermediate_asm)
-    .print_ir(build_conf.print_ir);
+    .print_finalized_asm(build_profile.print_finalized_asm)
+    .print_intermediate_asm(build_profile.print_intermediate_asm)
+    .print_ir(build_profile.print_ir);
     Ok(build_config)
 }
 
@@ -1381,12 +1428,12 @@ pub fn dependency_namespace(
 /// Compiles the package to an AST.
 pub fn compile_ast(
     manifest: &ManifestFile,
-    build_config: &BuildConfig,
+    build_profile: &BuildProfile,
     namespace: namespace::Module,
 ) -> Result<CompileAstResult> {
     let source = manifest.entry_string()?;
     let sway_build_config =
-        sway_build_config(manifest.dir(), &manifest.entry_path(), build_config)?;
+        sway_build_config(manifest.dir(), &manifest.entry_path(), build_profile)?;
     let ast_res = sway_core::compile_to_ast(source, namespace, Some(&sway_build_config));
     Ok(ast_res)
 }
@@ -1412,16 +1459,40 @@ pub fn compile_ast(
 pub fn compile(
     pkg: &Pinned,
     manifest: &ManifestFile,
-    build_config: &BuildConfig,
+    build_profile: &BuildProfile,
     namespace: namespace::Module,
     source_map: &mut SourceMap,
 ) -> Result<(Compiled, Option<namespace::Root>)> {
+    // Time the given expression and print the result if `build_config.time_phases` is true.
+    macro_rules! time_expr {
+        ($description:expr, $expression:expr) => {{
+            if build_profile.time_phases {
+                let expr_start = std::time::Instant::now();
+                let output = { $expression };
+                println!(
+                    "  Time elapsed to {}: {:?}",
+                    $description,
+                    expr_start.elapsed()
+                );
+                output
+            } else {
+                $expression
+            }
+        }};
+    }
+
     let entry_path = manifest.entry_path();
-    let sway_build_config = sway_build_config(manifest.dir(), &entry_path, build_config)?;
-    let silent_mode = build_config.silent;
+    let sway_build_config = time_expr!(
+        "produce `sway_core::BuildConfig`",
+        sway_build_config(manifest.dir(), &entry_path, build_profile)?
+    );
+    let silent_mode = build_profile.silent;
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
-    let ast_res = compile_ast(manifest, build_config, namespace)?;
+    let ast_res = time_expr!(
+        "compile to ast",
+        compile_ast(manifest, build_profile, namespace)?
+    );
     match &ast_res {
         CompileAstResult::Failure { warnings, errors } => {
             print_on_failure(silent_mode, warnings, errors);
@@ -1431,7 +1502,7 @@ pub fn compile(
             typed_program,
             warnings,
         } => {
-            let json_abi = typed_program.kind.generate_json_abi();
+            let json_abi = time_expr!("generate JSON ABI", typed_program.kind.generate_json_abi());
             let tree_type = typed_program.kind.tree_type();
             match tree_type {
                 // If we're compiling a library, we don't need to compile any further.
@@ -1450,8 +1521,14 @@ pub fn compile(
 
                 // For all other program types, we'll compile the bytecode.
                 TreeType::Contract | TreeType::Predicate | TreeType::Script => {
-                    let asm_res = sway_core::ast_to_asm(ast_res, &sway_build_config);
-                    let bc_res = sway_core::asm_to_bytecode(asm_res, source_map);
+                    let asm_res = time_expr!(
+                        "compile ast to asm",
+                        sway_core::ast_to_asm(ast_res, &sway_build_config)
+                    );
+                    let bc_res = time_expr!(
+                        "compile asm to bytecode",
+                        sway_core::asm_to_bytecode(asm_res, source_map)
+                    );
                     match bc_res {
                         BytecodeCompilationResult::Success { bytes, warnings } => {
                             print_on_success(silent_mode, &pkg.name, &warnings, &tree_type);
@@ -1484,7 +1561,7 @@ pub fn compile(
 /// Also returns the resulting `sway_core::SourceMap` which may be useful for debugging purposes.
 pub fn build(
     plan: &BuildPlan,
-    conf: &BuildConfig,
+    profile: &BuildProfile,
     sway_git_tag: &str,
 ) -> anyhow::Result<(Compiled, SourceMap)> {
     let mut namespace_map = Default::default();
@@ -1498,7 +1575,7 @@ pub fn build(
         let pkg = &plan.graph[node];
         let path = &plan.path_map[&pkg.id()];
         let manifest = ManifestFile::from_dir(path, sway_git_tag)?;
-        let res = compile(pkg, &manifest, conf, dep_namespace, &mut source_map)?;
+        let res = compile(pkg, &manifest, profile, dep_namespace, &mut source_map)?;
         let (compiled, maybe_namespace) = res;
         if let Some(namespace) = maybe_namespace {
             namespace_map.insert(node, namespace.into());
@@ -1524,11 +1601,9 @@ pub fn check(
     silent_mode: bool,
     sway_git_tag: &str,
 ) -> anyhow::Result<CompileAstResult> {
-    let conf = &BuildConfig {
-        print_ir: false,
-        print_finalized_asm: false,
-        print_intermediate_asm: false,
+    let profile = BuildProfile {
         silent: silent_mode,
+        ..BuildProfile::debug()
     };
 
     let mut namespace_map = Default::default();
@@ -1539,7 +1614,7 @@ pub fn check(
         let pkg = &plan.graph[node];
         let path = &plan.path_map[&pkg.id()];
         let manifest = ManifestFile::from_dir(path, sway_git_tag)?;
-        let ast_res = compile_ast(&manifest, conf, dep_namespace)?;
+        let ast_res = compile_ast(&manifest, &profile, dep_namespace)?;
         if let CompileAstResult::Success { typed_program, .. } = &ast_res {
             if let TreeType::Library { .. } = typed_program.kind.tree_type() {
                 namespace_map.insert(node, typed_program.root.namespace.clone());
