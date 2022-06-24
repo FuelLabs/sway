@@ -122,7 +122,8 @@ impl Session {
     pub fn get_completion_items(&self, url: &Url) -> Option<Vec<CompletionItem>> {
         if let Some(document) = self.documents.get(url.path()) {
             return Some(capabilities::completion::to_completion_items(
-                document.get_tokens(),
+                document.get_token_map()
+                //document.get_tokens(),
             ));
         }
 
@@ -132,7 +133,8 @@ impl Session {
     pub fn get_semantic_tokens(&self, url: &Url) -> Option<Vec<SemanticToken>> {
         if let Some(document) = self.documents.get(url.path()) {
             return Some(capabilities::semantic_tokens::to_semantic_tokes(
-                document.get_tokens(),
+                document.get_token_map(),
+                // document.get_tokens(),
             ));
         }
 
@@ -142,7 +144,8 @@ impl Session {
     pub fn get_symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
         if let Some(document) = self.documents.get(url.path()) {
             return Some(capabilities::document_symbol::to_symbol_information(
-                document.get_tokens(),
+                document.get_token_map(),
+                // document.get_tokens(),
                 url.clone(),
             ));
         }

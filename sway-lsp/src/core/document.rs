@@ -1,9 +1,11 @@
 #![allow(dead_code)]
 
-use super::token::Token;
+use super::token::{TokenMap};
 use super::token_type::TokenType;
-use super::traverse_typed_tree;
-use super::typed_token_type::TokenMap;
+use super::{
+    traverse_parse_tree,
+    traverse_typed_tree,
+};
 
 use crate::{capabilities, core::token::traverse_node, utils};
 use forc::utils::SWAY_GIT_TAG;
@@ -24,9 +26,9 @@ pub struct TextDocument {
     version: i32,
     uri: String,
     content: Rope,
-    tokens: Vec<Token>,
-    lines: HashMap<u32, Vec<usize>>,
-    values: HashMap<String, Vec<usize>>,
+    //tokens: Vec<Token>,
+    //lines: HashMap<u32, Vec<usize>>,
+    //values: HashMap<String, Vec<usize>>,
     token_map: TokenMap,
 }
 
@@ -38,9 +40,9 @@ impl TextDocument {
                 version: 1,
                 uri: path.into(),
                 content: Rope::from_str(&content),
-                tokens: vec![],
-                lines: HashMap::new(),
-                values: HashMap::new(),
+                //tokens: vec![],
+                //lines: HashMap::new(),
+                //values: HashMap::new(),
                 token_map: HashMap::new(),
             }),
             Err(_) => Err(DocumentError::DocumentNotFound),
@@ -66,7 +68,7 @@ impl TextDocument {
             let tokens = indices.iter().map(|index| &self.tokens[*index]).collect();
             Some(tokens)
         } else {
-            None
+            None 
         }
     }
 
@@ -82,12 +84,8 @@ impl TextDocument {
         None
     }
 
-    pub fn _get_token_map(&self) -> &TokenMap {
+    pub fn get_token_map(&self) -> &TokenMap {
         &self.token_map
-    }
-
-    pub fn get_tokens(&self) -> &Vec<Token> {
-        &self.tokens
     }
 
     pub fn get_uri(&self) -> &str {
@@ -95,8 +93,7 @@ impl TextDocument {
     }
 
     pub fn parse(&mut self) -> Result<Vec<Diagnostic>, DocumentError> {
-        self.clear_tokens();
-        self.clear_hash_maps();
+        self.clear_token_map();
 
         let manifest_dir = PathBuf::from(self.get_uri());
         let manifest = pkg::ManifestFile::from_dir(&manifest_dir, SWAY_GIT_TAG).unwrap();
@@ -107,15 +104,8 @@ impl TextDocument {
             .unwrap();
         let (parsed_res, _ast_res) = pkg::check(&plan, silent_mode).unwrap();
 
-        //self.test_typed_parse(ast_res);
-
-        match self.parse_tokens_from_text(parsed_res) {
-            Ok((tokens, diagnostics)) => {
-                self.store_tokens(tokens);
-                Ok(diagnostics)
-            }
-            Err(diagnostics) => Err(DocumentError::FailedToParse(diagnostics)),
-        }
+        //self.parse_typed_tokens_from_text(ast_res)
+        self.parse_tokens_from_text(parsed_res)
     }
 
     pub fn apply_change(&mut self, change: &TextDocumentContentChangeEvent) {
@@ -150,7 +140,7 @@ impl TextDocument {
             // Retrieve the typed_ast_node from our BTreeMap
             if let Some(token) = self.token_map.get(&(ident, span)) {
                 // Look up the tokens TypeId
-                if let Some(type_id) = traverse_typed_tree::get_type_id(token) {
+                if let Some(type_id) = utils::token::get_type_id(token) {
                     tracing::info!("type_id = {:#?}", type_id);
 
                     // Use the TypeId to look up the actual type (I think there is a method in the type_engine for this)
@@ -178,76 +168,61 @@ impl TextDocument {
     fn parse_tokens_from_text(
         &self,
         parsed_result: CompileResult<ParseProgram>,
-    ) -> Result<(Vec<Token>, Vec<Diagnostic>), Vec<Diagnostic>> {
+    ) -> Result<Vec<Diagnostic>, DocumentError> {
         match parsed_result.value {
-            None => Err(capabilities::diagnostic::get_diagnostics(
-                parsed_result.warnings,
-                parsed_result.errors,
-            )),
+            None => {
+                let diagnostics = capabilities::diagnostic::get_diagnostics(
+                    parsed_result.warnings,
+                    parsed_result.errors);
+                Err(DocumentError::FailedToParse(diagnostics))
+            },
             Some(parse_program) => {
-                let mut tokens = vec![];
-
-                if let TreeType::Library { name } = parse_program.kind {
-                    // TODO
-                    // Is library name necessary to store for the LSP?
-                    let token = Token::from_ident(&name, TokenType::Library);
-                    tokens.push(token);
-                };
-                for node in parse_program.root.tree.root_nodes {
-                    traverse_node(node, &mut tokens);
+                for node in &parse_program.root.tree.root_nodes {
+                    traverse_parse_tree::traverse_node(node, &mut self.token_map);
                 }
 
-                Ok((
-                    tokens,
-                    capabilities::diagnostic::get_diagnostics(
+                Ok(capabilities::diagnostic::get_diagnostics(
                         parsed_result.warnings,
-                        parsed_result.errors,
-                    ),
-                ))
+                        parsed_result.errors),
+                )
             }
         }
     }
 
-    fn store_tokens(&mut self, tokens: Vec<Token>) {
-        self.tokens = Vec::with_capacity(tokens.len());
+    // fn store_tokens(&mut self, tokens: Vec<Token>) {
+    //     self.tokens = Vec::with_capacity(tokens.len());
 
-        for (index, token) in tokens.into_iter().enumerate() {
-            let line = token.get_line_start();
-            let token_name = token.name.clone();
+    //     for (index, token) in tokens.into_iter().enumerate() {
+    //         let line = token.get_line_start();
+    //         let token_name = token.name.clone();
 
-            // insert to tokens
-            self.tokens.push(token);
+    //         // insert to tokens
+    //         self.tokens.push(token);
 
-            // insert index into hashmap for lines
-            match self.lines.get_mut(&line) {
-                Some(v) => {
-                    v.push(index);
-                }
-                None => {
-                    self.lines.insert(line, vec![index]);
-                }
-            }
+    //         // insert index into hashmap for lines
+    //         match self.lines.get_mut(&line) {
+    //             Some(v) => {
+    //                 v.push(index);
+    //             }
+    //             None => {
+    //                 self.lines.insert(line, vec![index]);
+    //             }
+    //         }
 
-            // insert index into hashmap for names
-            match self.values.get_mut(&token_name) {
-                Some(v) => {
-                    v.push(index);
-                }
-                None => {
-                    self.values.insert(token_name, vec![index]);
-                }
-            }
-        }
-    }
+    //         // insert index into hashmap for names
+    //         match self.values.get_mut(&token_name) {
+    //             Some(v) => {
+    //                 v.push(index);
+    //             }
+    //             None => {
+    //                 self.values.insert(token_name, vec![index]);
+    //             }
+    //         }
+    //     }
+    // }
 
-    fn clear_hash_maps(&mut self) {
-        self.lines = HashMap::new();
-        self.values = HashMap::new();
+    fn clear_token_map(&mut self) {
         self.token_map = HashMap::new();
-    }
-
-    fn clear_tokens(&mut self) {
-        self.tokens = vec![];
     }
 
     fn build_edit<'change>(

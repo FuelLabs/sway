@@ -1,5 +1,5 @@
 use crate::core::token_type::VarBody;
-use crate::core::typed_token_type::TokenMap;
+use crate::core::token::TokenMap;
 use sway_core::{Expression, Literal, VariableDeclaration, Visibility};
 use sway_types::{Ident, Span};
 use tower_lsp::lsp_types::{Position, Range};
