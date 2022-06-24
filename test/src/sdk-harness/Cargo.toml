@@ -23,6 +23,3 @@ name = "integration_tests"
 path = "test_projects/harness.rs"
 
 [workspace]
-
-[features]
-fuel-core-lib = ["fuels/fuel-core-lib"]
