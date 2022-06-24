@@ -1,21 +1,21 @@
 #![allow(dead_code)]
 
-use super::token::{TokenMap};
-use super::token_type::TokenType;
+use super::token::{TokenMap, TokenType};
 use super::{
     traverse_parse_tree,
     traverse_typed_tree,
 };
 
-use crate::{capabilities, core::token::traverse_node, utils};
+use crate::{capabilities, utils};
 use forc::utils::SWAY_GIT_TAG;
 use forc_pkg::{self as pkg};
 use ropey::Rope;
 use std::{collections::HashMap, path::PathBuf};
 use sway_core::{
     semantic_analysis::ast_node::TypedAstNode, CompileAstResult, CompileResult, ParseProgram,
-    TreeType,
+    TreeType, TypeInfo,
 };
+use sway_types::Ident;
 use tower_lsp::lsp_types::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
 
 #[derive(Debug)]
@@ -49,40 +49,65 @@ impl TextDocument {
         }
     }
 
-    pub fn get_token_at_position(&self, position: Position) -> Option<&Token> {
-        let line = position.line;
+    /// Check if the code editor's cursor is currently over an of our collected tokens
+    pub fn get_token_at_position(&self, position: Position) -> Option<&TokenType> {
+        match utils::common::ident_and_span_at_position(position, &self.token_map) {
+            Some((ident, span)) => {
+                // Retrieve the TokenType from our HashMap
+                self.token_map.get(&(ident, span))
+            }
+            None => None,
+        }
+    }
 
-        if let Some(indices) = self.lines.get(&line) {
-            for index in indices {
-                let token = &self.tokens[*index];
-                if token.is_within_character_range(position.character) {
-                    return Some(token);
+    pub fn get_all_tokens_by_single_name(&self, name: &str) -> Vec<&TokenType> {
+        self.token_map.iter()
+            .filter(|(k,v)| {
+                if k.0.as_str() == name {
+                    true
+                } else {
+                    false
+                }
+            })
+            .map(|(k,v)| {
+                v
+            })
+            .collect()
+    }
+
+    pub fn get_declared_token_ident(&self, token: &TokenType) -> Option<Ident> {
+        // Look up the tokens TypeId
+        match utils::token::get_type_id(token) {
+            Some(type_id) => {
+                tracing::info!("type_id = {:#?}", type_id);
+
+                // Use the TypeId to look up the actual type
+                let type_info = sway_core::type_engine::look_up_type_id(type_id);
+                tracing::info!("type_info = {:#?}", type_info);
+    
+                match type_info {
+                    TypeInfo::UnknownGeneric{ name }
+                    | TypeInfo::Enum{ name, .. }
+                    | TypeInfo::Struct{ name, .. }
+                    | TypeInfo::Custom{ name, .. } => Some(name),
+                    _ => None
                 }
             }
-        }
-        None
+            None => None
+        }        
     }
 
-    pub fn get_all_tokens_by_single_name(&self, name: &str) -> Option<Vec<&Token>> {
-        if let Some(indices) = self.values.get(name) {
-            let tokens = indices.iter().map(|index| &self.tokens[*index]).collect();
-            Some(tokens)
-        } else {
-            None 
-        }
-    }
-
-    pub fn get_declared_token(&self, name: &str) -> Option<&Token> {
-        if let Some(indices) = self.values.get(name) {
-            for index in indices {
-                let token = &self.tokens[*index];
-                if token.is_initial_declaration() {
-                    return Some(token);
-                }
-            }
-        }
-        None
-    }
+    // pub fn get_declared_token(&self, name: &str) -> Option<&Token> {
+    //     if let Some(indices) = self.values.get(name) {
+    //         for index in indices {
+    //             let token = &self.tokens[*index];
+    //             if token.is_initial_declaration() {
+    //                 return Some(token);
+    //             }
+    //         }
+    //     }
+    //     None
+    // }
 
     pub fn get_token_map(&self) -> &TokenMap {
         &self.token_map
@@ -133,25 +158,19 @@ impl TextDocument {
         //let cursor_position = Position::new(25, 14); //Cursor's hovered over the position var decl in main()
         let cursor_position = Position::new(29, 18); //Cursor's hovered over the ~Particle in p = decl in main()
 
-        // Check if the code editor's cursor is currently over an of our collected tokens
-        if let Some((ident, span)) =
-            utils::common::ident_and_span_at_position(cursor_position, &self.token_map)
-        {
-            // Retrieve the typed_ast_node from our BTreeMap
-            if let Some(token) = self.token_map.get(&(ident, span)) {
-                // Look up the tokens TypeId
-                if let Some(type_id) = utils::token::get_type_id(token) {
-                    tracing::info!("type_id = {:#?}", type_id);
+        if let Some(token) = self.get_token_at_position(cursor_position) {
+            // Look up the tokens TypeId
+            if let Some(type_id) = utils::token::get_type_id(token) {
+                tracing::info!("type_id = {:#?}", type_id);
 
-                    // Use the TypeId to look up the actual type (I think there is a method in the type_engine for this)
-                    let type_info = sway_core::type_engine::look_up_type_id(type_id);
-                    tracing::info!("type_info = {:#?}", type_info);
-                }
-
-                // Find the ident / span on the returned type
-
-                // Contruct a go_to LSP request from the declerations span
+                // Use the TypeId to look up the actual type (I think there is a method in the type_engine for this)
+                let type_info = sway_core::type_engine::look_up_type_id(type_id);
+                tracing::info!("type_info = {:#?}", type_info);
             }
+
+            // Find the ident / span on the returned type
+
+            // Contruct a go_to LSP request from the declerations span
         }
     }
 }
@@ -188,38 +207,6 @@ impl TextDocument {
             }
         }
     }
-
-    // fn store_tokens(&mut self, tokens: Vec<Token>) {
-    //     self.tokens = Vec::with_capacity(tokens.len());
-
-    //     for (index, token) in tokens.into_iter().enumerate() {
-    //         let line = token.get_line_start();
-    //         let token_name = token.name.clone();
-
-    //         // insert to tokens
-    //         self.tokens.push(token);
-
-    //         // insert index into hashmap for lines
-    //         match self.lines.get_mut(&line) {
-    //             Some(v) => {
-    //                 v.push(index);
-    //             }
-    //             None => {
-    //                 self.lines.insert(line, vec![index]);
-    //             }
-    //         }
-
-    //         // insert index into hashmap for names
-    //         match self.values.get_mut(&token_name) {
-    //             Some(v) => {
-    //                 v.push(index);
-    //             }
-    //             None => {
-    //                 self.values.insert(token_name, vec![index]);
-    //             }
-    //         }
-    //     }
-    // }
 
     fn clear_token_map(&mut self) {
         self.token_map = HashMap::new();

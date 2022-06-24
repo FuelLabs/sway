@@ -1,10 +1,11 @@
 use crate::core::{
-    token::{TokenMap, TokenType, TypedAstToken},
+    token::{AstToken, TokenMap, TokenType, TypedAstToken},
 };
 use crate::utils::{
     common::get_range_from_span,
     token::get_type_id,
 };
+use sway_core::{Expression, Literal};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
 
@@ -84,7 +85,29 @@ fn ast_node_type(token_type: &TokenType) -> String {
             _ => "".to_string(),
         }
         None => {
-            "".to_string()
+            match token_type.parsed {
+                AstToken::Expression(exp) => {
+                    match exp {
+                        Expression::Literal { value, .. } => literal_to_string(&value),
+                        _ => "".to_string()
+                    }
+                }
+                _ => "".to_string()
+            }
         }
+    }
+}
+
+fn literal_to_string(literal: &Literal) -> String {
+    match literal {
+        Literal::U8(_) => "u8".into(),
+        Literal::U16(_) => "u16".into(),
+        Literal::U32(_) => "u32".into(),
+        Literal::U64(_) => "u64".into(),
+        Literal::Numeric(_) => "u64".into(),
+        Literal::String(len) => format!("str[{}]", len.as_str().len()),
+        Literal::Boolean(_) => "bool".into(),
+        Literal::Byte(_) => "u8".into(),
+        Literal::B256(_) => "b256".into(),
     }
 }

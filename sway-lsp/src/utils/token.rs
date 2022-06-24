@@ -3,10 +3,6 @@ use sway_core::semantic_analysis::ast_node::TypedDeclaration;
 use sway_core::{parse_tree::MethodName, type_engine::TypeId};
 use sway_types::{ident::Ident, span::Span, Spanned};
 
-pub fn is_within_character_range(&self, character: u32) -> bool {
-    let range = self.range;
-    character >= range.start.character && character <= range.end.character
-}
 
 pub fn is_same_type(&self, other_token: &Token) -> bool {
     if other_token.token_type == self.token_type {
