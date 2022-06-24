@@ -2920,6 +2920,8 @@ added to the manifest file.</p>
 build-profile.</p>
 <p><code>-s</code>, <code>--silent</code> </p>
 <p>Silent mode. Don't output any warnings or errors to the command line</p>
+<p><code>--time-phases</code> </p>
+<p>Output the time elapsed over each part of the compilation process</p>
 <h2 id="example-2"><a class="header" href="#example-2">EXAMPLE:</a></h2>
 <p>Compile the sway files of the current project.</p>
 <pre><code class="language-console">$ forc build
@@ -3095,6 +3097,8 @@ added to the manifest file.</p>
 build-profile.</p>
 <p><code>-s</code>, <code>--silent</code> </p>
 <p>Silent mode. Don't output any warnings or errors to the command line</p>
+<p><code>--time-phases</code> </p>
+<p>Output the time elapsed over each part of the compilation process</p>
 <p><code>-u</code>, <code>--url</code> &lt;<em>URL</em>&gt;</p>
 <p>The node url to deploy, if not specified uses DEFAULT_NODE_URL. If url is specified
 overrides network url in manifest file (if there is one)</p>
@@ -3260,6 +3264,8 @@ optimisations.</p>
 <p>Execute the transaction and return the final mutated transaction along with receipts
 (which includes whether the transaction reverted or not). The transaction is not
 inserted in the node's view of the blockchain, (i.e. it does not affect the chain state)</p>
+<p><code>--time-phases</code> </p>
+<p>Output the time elapsed over each part of the compilation process</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="forc-test"><a class="header" href="#forc-test">forc-test</a></h1>
 <p>Run Rust-based tests on current project. As of now, <code>forc test</code> is a simple wrapper on <code>cargo test</code>;
 <code>forc init</code> also creates a rust package under your project, named <code>tests</code>. You can opt to either run
