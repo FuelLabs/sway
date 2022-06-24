@@ -81,20 +81,26 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
                     ),
                 };
 
-                assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(&name, locked), res);
+                let result = crate::e2e_vm_tests::harness::runs_in_vm(&name, locked);
+                assert_eq!(result.0, res);
                 if validate_abi {
-                    assert!(crate::e2e_vm_tests::harness::test_json_abi(&name).is_ok());
+                    assert!(crate::e2e_vm_tests::harness::test_json_abi(&name, &result.1).is_ok());
                 }
                 number_of_tests_executed += 1;
             }
 
             TestCategory::Compiles => {
-                assert!(crate::e2e_vm_tests::harness::compile_to_bytes(&name, locked).is_ok());
+                let result = crate::e2e_vm_tests::harness::compile_to_bytes(&name, locked);
+                assert!(result.is_ok());
+                let compiled = result.unwrap();
                 if validate_abi {
-                    assert!(crate::e2e_vm_tests::harness::test_json_abi(&name).is_ok());
+                    assert!(crate::e2e_vm_tests::harness::test_json_abi(&name, &compiled).is_ok());
                 }
                 if validate_storage_slots {
-                    assert!(crate::e2e_vm_tests::harness::test_json_storage_slots(&name).is_ok());
+                    assert!(crate::e2e_vm_tests::harness::test_json_storage_slots(
+                        &name, &compiled
+                    )
+                    .is_ok());
                 }
                 number_of_tests_executed += 1;
             }

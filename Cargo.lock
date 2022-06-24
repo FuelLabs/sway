@@ -3794,6 +3794,7 @@ dependencies = [
  "anyhow",
  "filecheck",
  "forc",
+ "forc-pkg",
  "forc-util",
  "fuel-asm",
  "fuel-tx",

@@ -6,7 +6,6 @@ pub mod completions;
 pub mod deploy;
 pub mod init;
 pub mod json_abi;
-pub mod json_storage_slots;
 pub mod parse_bytecode;
 pub mod plugins;
 pub mod run;
