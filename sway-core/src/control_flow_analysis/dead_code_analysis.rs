@@ -1066,6 +1066,28 @@ fn connect_intrinsic_function(
             }
             vec![node]
         }
+        TypedIntrinsicFunctionKind::Eq { lhs, rhs } => {
+            let mut lhsres = connect_expression(
+                &(*lhs).expression,
+                graph,
+                leaves,
+                exit_node,
+                "size_of",
+                tree_type,
+                rhs.span.clone(),
+            )?;
+            let mut rhsres = connect_expression(
+                &(*rhs).expression,
+                graph,
+                leaves,
+                exit_node,
+                "size_of",
+                tree_type,
+                rhs.span.clone(),
+            )?;
+            lhsres.append(&mut rhsres);
+            lhsres
+        }
     };
     Ok(result)
 }

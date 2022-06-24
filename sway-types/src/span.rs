@@ -96,6 +96,11 @@ impl Span {
         })
     }
 
+    pub fn from_string(source: String) -> Span {
+        let len = source.len();
+        Span::new(Arc::from(source), 0, len, None).unwrap()
+    }
+
     pub fn src(&self) -> &Arc<str> {
         &self.src
     }

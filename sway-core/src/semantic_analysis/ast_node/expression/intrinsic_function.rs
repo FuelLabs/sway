@@ -14,10 +14,22 @@ use super::TypedExpression;
 
 #[derive(Debug, Clone)]
 pub enum TypedIntrinsicFunctionKind {
-    SizeOfVal { exp: Box<TypedExpression> },
-    SizeOfType { type_id: TypeId, type_span: Span },
-    IsRefType { type_id: TypeId, type_span: Span },
+    SizeOfVal {
+        exp: Box<TypedExpression>,
+    },
+    SizeOfType {
+        type_id: TypeId,
+        type_span: Span,
+    },
+    IsRefType {
+        type_id: TypeId,
+        type_span: Span,
+    },
     GetStorageKey,
+    Eq {
+        lhs: Box<TypedExpression>,
+        rhs: Box<TypedExpression>,
+    },
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -45,6 +57,16 @@ impl PartialEq for TypedIntrinsicFunctionKind {
                 },
             ) => look_up_type_id(*l_type_id) == look_up_type_id(*r_type_id),
             (GetStorageKey, GetStorageKey) => true,
+            (
+                Eq {
+                    lhs: l_lhs,
+                    rhs: l_rhs,
+                },
+                Eq {
+                    lhs: r_lhs,
+                    rhs: r_rhs,
+                },
+            ) => *l_lhs == *r_lhs && *l_rhs == *r_rhs,
             _ => false,
         }
     }
@@ -64,6 +86,10 @@ impl CopyTypes for TypedIntrinsicFunctionKind {
                 type_id.update_type(type_mapping, type_span);
             }
             GetStorageKey => {}
+            Eq { lhs, rhs } => {
+                lhs.copy_types(type_mapping);
+                rhs.copy_types(type_mapping);
+            }
         }
     }
 }
@@ -76,6 +102,7 @@ impl fmt::Display for TypedIntrinsicFunctionKind {
             SizeOfType { type_id, .. } => format!("size_of({})", look_up_type_id(*type_id)),
             IsRefType { type_id, .. } => format!("is_ref_type({})", look_up_type_id(*type_id)),
             GetStorageKey => "get_storage_key".to_string(),
+            Eq { lhs, rhs, .. } => format!("eq ({}, {})", lhs, rhs),
         };
         write!(f, "{}", s)
     }
@@ -86,7 +113,7 @@ impl DeterministicallyAborts for TypedIntrinsicFunctionKind {
         use TypedIntrinsicFunctionKind::*;
         match self {
             SizeOfVal { exp } => exp.deterministically_aborts(),
-            SizeOfType { .. } | GetStorageKey | IsRefType { .. } => false,
+            SizeOfType { .. } | GetStorageKey | IsRefType { .. } | Eq { .. } => false,
         }
     }
 }
@@ -99,6 +126,12 @@ impl UnresolvedTypeCheck for TypedIntrinsicFunctionKind {
             SizeOfType { type_id, .. } => type_id.check_for_unresolved_types(),
             IsRefType { type_id, .. } => type_id.check_for_unresolved_types(),
             GetStorageKey => vec![],
+            Eq { lhs, rhs } => {
+                let mut result = vec![];
+                result.append(&mut (lhs.check_for_unresolved_types()));
+                result.append(&mut (rhs.check_for_unresolved_types()));
+                result
+            }
         }
     }
 }
@@ -167,6 +200,44 @@ impl TypedIntrinsicFunctionKind {
                 TypedIntrinsicFunctionKind::GetStorageKey,
                 insert_type(TypeInfo::B256),
             ),
+            IntrinsicFunctionKind::Eq { lhs, rhs } => {
+                let mut ctx = ctx
+                    .by_ref()
+                    .with_type_annotation(insert_type(TypeInfo::Unknown));
+                let lhs = check!(
+                    TypedExpression::type_check(ctx.by_ref(), *lhs),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
+                // Check for supported argument types
+                let arg_ty = resolve_type(lhs.return_type, &lhs.span).unwrap();
+                let is_valid_arg_ty = matches!(arg_ty, TypeInfo::UnsignedInteger(_))
+                    || matches!(arg_ty, TypeInfo::Boolean);
+                if !is_valid_arg_ty {
+                    errors.push(CompileError::UnsupportedIntrinsicArgType { span: lhs.span });
+                    return err(warnings, errors);
+                }
+
+                let ctx = ctx
+                    .by_ref()
+                    .with_help_text("Incorrect argument type")
+                    .with_type_annotation(lhs.return_type);
+                let rhs = check!(
+                    TypedExpression::type_check(ctx, *rhs),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                (
+                    TypedIntrinsicFunctionKind::Eq {
+                        lhs: Box::new(lhs),
+                        rhs: Box::new(rhs),
+                    },
+                    insert_type(TypeInfo::Boolean),
+                )
+            }
         };
         ok((intrinsic_function, return_type), warnings, errors)
     }

@@ -340,6 +340,10 @@ fn handle_intrinsic_function(kind: &TypedIntrinsicFunctionKind, tokens: &mut Tok
         TypedIntrinsicFunctionKind::SizeOfType { .. } => {}
         TypedIntrinsicFunctionKind::IsRefType { .. } => {}
         TypedIntrinsicFunctionKind::GetStorageKey => {}
+        TypedIntrinsicFunctionKind::Eq { lhs, rhs } => {
+            handle_expression(lhs, tokens);
+            handle_expression(rhs, tokens);
+        }
     }
 }
 

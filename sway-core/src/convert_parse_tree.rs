@@ -112,6 +112,8 @@ pub enum ConvertParseTreeError {
     IsReferenceTypeOneGenericArg { span: Span },
     #[error("__size_of_val requires exactly one argument")]
     SizeOfValOneArg { span: Span },
+    #[error("__eq requires exactly two arguments")]
+    EqTwoArgs { span: Span },
     #[error("tuple index out of range")]
     TupleIndexOutOfRange { span: Span },
     #[error("shift-left expressions are not implemented")]
@@ -204,6 +206,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::IsReferenceTypeTooManyArgs { span } => span.clone(),
             ConvertParseTreeError::IsReferenceTypeOneGenericArg { span } => span.clone(),
             ConvertParseTreeError::SizeOfValOneArg { span } => span.clone(),
+            ConvertParseTreeError::EqTwoArgs { span } => span.clone(),
             ConvertParseTreeError::TupleIndexOutOfRange { span } => span.clone(),
             ConvertParseTreeError::ShlNotImplemented { span } => span.clone(),
             ConvertParseTreeError::ShrNotImplemented { span } => span.clone(),
@@ -1532,6 +1535,21 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         };
                         Expression::IntrinsicFunction {
                             kind: IntrinsicFunctionKind::SizeOfVal { exp },
+                            span,
+                        }
+                    } else if call_path.prefixes.is_empty()
+                        && !call_path.is_absolute
+                        && Intrinsic::try_from_str(call_path.suffix.as_str()) == Some(Intrinsic::Eq)
+                    {
+                        let (lhs, rhs) = match <[_; 2]>::try_from(arguments) {
+                            Ok([lhs, rhs]) => (Box::new(lhs), Box::new(rhs)),
+                            Err(..) => {
+                                let error = ConvertParseTreeError::EqTwoArgs { span };
+                                return Err(ec.error(error));
+                            }
+                        };
+                        Expression::IntrinsicFunction {
+                            kind: IntrinsicFunctionKind::Eq { lhs, rhs },
                             span,
                         }
                     } else {

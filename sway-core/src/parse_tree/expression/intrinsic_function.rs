@@ -15,4 +15,8 @@ pub enum IntrinsicFunctionKind {
         type_span: Span,
     },
     GetStorageKey,
+    Eq {
+        lhs: Box<Expression>,
+        rhs: Box<Expression>,
+    },
 }
