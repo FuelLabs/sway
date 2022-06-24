@@ -29,6 +29,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         locked,
         build_profile,
         release,
+        time_phases,
     } = command;
 
     let key_debug: String = "debug".to_string();
@@ -75,6 +76,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     profile.print_finalized_asm |= print_finalized_asm;
     profile.print_intermediate_asm |= print_intermediate_asm;
     profile.silent |= silent_mode;
+    profile.time_phases |= time_phases;
 
     // Build it!
     let (compiled, source_map) = pkg::build(&plan, &profile, SWAY_GIT_TAG)?;
