@@ -37,6 +37,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         url,
         build_profile,
         release,
+        time_phases,
     } = command;
 
     let build_command = BuildCommand {
@@ -53,6 +54,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         locked,
         build_profile,
         release,
+        time_phases,
     };
 
     let compiled = forc_build::build(build_command)?;

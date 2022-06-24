@@ -1463,12 +1463,36 @@ pub fn compile(
     namespace: namespace::Module,
     source_map: &mut SourceMap,
 ) -> Result<(Compiled, Option<namespace::Root>)> {
+    // Time the given expression and print the result if `build_config.time_phases` is true.
+    macro_rules! time_expr {
+        ($description:expr, $expression:expr) => {{
+            if build_profile.time_phases {
+                let expr_start = std::time::Instant::now();
+                let output = { $expression };
+                println!(
+                    "  Time elapsed to {}: {:?}",
+                    $description,
+                    expr_start.elapsed()
+                );
+                output
+            } else {
+                $expression
+            }
+        }};
+    }
+
     let entry_path = manifest.entry_path();
-    let sway_build_config = sway_build_config(manifest.dir(), &entry_path, build_profile)?;
+    let sway_build_config = time_expr!(
+        "produce `sway_core::BuildConfig`",
+        sway_build_config(manifest.dir(), &entry_path, build_profile)?
+    );
     let silent_mode = build_profile.silent;
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
-    let ast_res = compile_ast(manifest, build_profile, namespace)?;
+    let ast_res = time_expr!(
+        "compile to ast",
+        compile_ast(manifest, build_profile, namespace)?
+    );
     match &ast_res {
         CompileAstResult::Failure { warnings, errors } => {
             print_on_failure(silent_mode, warnings, errors);
@@ -1478,7 +1502,7 @@ pub fn compile(
             typed_program,
             warnings,
         } => {
-            let json_abi = typed_program.kind.generate_json_abi();
+            let json_abi = time_expr!("generate JSON ABI", typed_program.kind.generate_json_abi());
             let tree_type = typed_program.kind.tree_type();
             match tree_type {
                 // If we're compiling a library, we don't need to compile any further.
@@ -1497,8 +1521,14 @@ pub fn compile(
 
                 // For all other program types, we'll compile the bytecode.
                 TreeType::Contract | TreeType::Predicate | TreeType::Script => {
-                    let asm_res = sway_core::ast_to_asm(ast_res, &sway_build_config);
-                    let bc_res = sway_core::asm_to_bytecode(asm_res, source_map);
+                    let asm_res = time_expr!(
+                        "compile ast to asm",
+                        sway_core::ast_to_asm(ast_res, &sway_build_config)
+                    );
+                    let bc_res = time_expr!(
+                        "compile asm to bytecode",
+                        sway_core::asm_to_bytecode(asm_res, source_map)
+                    );
                     match bc_res {
                         BytecodeCompilationResult::Success { bytes, warnings } => {
                             print_on_success(silent_mode, &pkg.name, &warnings, &tree_type);

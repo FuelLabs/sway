@@ -84,6 +84,7 @@ pub struct BuildProfile {
     pub print_finalized_asm: bool,
     pub print_intermediate_asm: bool,
     pub silent: bool,
+    pub time_phases: bool,
 }
 
 impl Dependency {
@@ -358,6 +359,7 @@ impl BuildProfile {
             print_finalized_asm: false,
             print_intermediate_asm: false,
             silent: false,
+            time_phases: false,
         }
     }
 
@@ -367,6 +369,7 @@ impl BuildProfile {
             print_finalized_asm: false,
             print_intermediate_asm: false,
             silent: false,
+            time_phases: false,
         }
     }
 }
