@@ -3,13 +3,13 @@ script;
 use core::num::*;
 use std::{
     assert::assert,
-    u256::*,
     result::Result,
+    u256::*
 };
 
 fn main() -> bool {
     let new = ~U256::new();
-    let (l, m, n, o) = new.into();
+    let(l, m, n, o) = new.into();
     assert(l == 0);
     assert(m == 0);
     assert(n == 0);
@@ -27,7 +27,7 @@ fn main() -> bool {
     assert(x.c == c);
     assert(x.d == d);
 
-    let (e, f, g, h) = x.into();
+    let(e, f, g, h) = x.into();
     assert(e == a);
     assert(f == b);
     assert(g == c);
@@ -46,7 +46,7 @@ fn main() -> bool {
         },
     });
 
-    let (one, two, three, four) = max.into();
+    let(one, two, three, four) = max.into();
     assert(one == ~u64::max());
     assert(two == ~u64::max());
     assert(three == ~u64::max());

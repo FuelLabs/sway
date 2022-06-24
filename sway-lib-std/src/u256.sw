@@ -25,10 +25,7 @@ pub trait From {
 impl From for U256 {
     pub fn from(a: u64, b: u64, c: u64, d: u64) -> U256 {
         U256 {
-            a,
-            b,
-            c,
-            d,
+            a, b, c, d, 
         }
     }
 }
@@ -51,8 +48,7 @@ impl U256 {
         }
     }
 
-
-     /// Downcast to `u64`. Err if precision would be lost, Ok otherwise.
+    /// Downcast to `u64`. Err if precision would be lost, Ok otherwise.
     pub fn to_u64(self) -> Result<u64, ()> {
         if self.a == 0 && self.b == 0 && self.c == 0 {
             Result::Ok(self.d)
