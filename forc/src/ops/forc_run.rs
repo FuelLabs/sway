@@ -40,6 +40,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         locked: command.locked,
         build_profile: None,
         release: false,
+        time_phases: command.time_phases,
     };
 
     let compiled = forc_build::build(build_command)?;
