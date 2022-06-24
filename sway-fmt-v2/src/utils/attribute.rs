@@ -21,7 +21,7 @@ impl<T: Parse + Format> Format for Annotated<T> {
     }
 }
 
-pub trait FormatDecl {
+pub(crate) trait FormatDecl {
     fn format(&self, line: &mut String, formatter: &mut Formatter);
 }
 
