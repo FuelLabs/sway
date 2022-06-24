@@ -167,6 +167,9 @@
 <li>
 <p><a href="#the-build-profiles--section"><code>[build-profiles]</code></a> - Defines the build profiles.</p>
 </li>
+<li>
+<p><a href="#the-patch-section"><code>[patch]</code></a> - Defines the patches.</p>
+</li>
 </ul>
 <h2 id="the-project-section"><a class="header" href="#the-project-section">The <code>[project]</code> section</a></h2>
 <p>An example <code>Forc.toml</code> is shown below. Under <code>[project]</code> the following fields are optional:</p>
@@ -239,6 +242,39 @@ silent = true
 <li>print-ir - false</li>
 <li>silent - false</li>
 </ul>
+<h2 id="the-patch-section"><a class="header" href="#the-patch-section">The <code>[patch]</code> section</a></h2>
+<p>The [patch] section of <code>Forc.toml</code> can be used to override dependencies with other copies. The example provided below patches <a href="https://github.com/fuellabs/sway">https://github.com/fuellabs/sway</a> source with master branch of the same repo.</p>
+<pre><code class="language-toml">[project]
+authors = [&quot;user&quot;]
+entry = &quot;main.sw&quot;
+organization = &quot;Fuel_Labs&quot;
+license = &quot;Apache-2.0&quot;
+name = &quot;wallet_contract&quot;
+
+[dependencies]
+
+[patch.'https://github.com/fuellabs/sway']
+std = { git = &quot;https://github.com/fuellabs/sway&quot;, branch = &quot;test&quot; }
+</code></pre>
+<p>In the example above, <code>std</code> is patched with the <code>test</code> branch from <code>std</code> repo. You can also patch git dependencies with dependencies defined with a path.</p>
+<pre><code class="language-toml">[patch.'https://github.com/fuellabs/sway']
+std = { path = &quot;/path/to/local_std_version&quot; }
+</code></pre>
+<p>Just like <code>std</code> or <code>core</code> you can also patch dependencies you declared with a git repo.</p>
+<pre><code class="language-toml">[project]
+authors = [&quot;user&quot;]
+entry = &quot;main.sw&quot;
+organization = &quot;Fuel_Labs&quot;
+license = &quot;Apache-2.0&quot;
+name = &quot;wallet_contract&quot;
+
+[dependencies]
+foo = { git = &quot;https://github.com/foo/foo&quot;, branch = &quot;master&quot; }
+
+[patch.'https://github.com/foo']
+foo = { git = &quot;https://github.com/foo/foo&quot;, branch = &quot;test&quot; }
+</code></pre>
+<p>Note that each key after the <code>[patch]</code> is a URL of the source that is being patched.</p>
 
                     </main>
 
