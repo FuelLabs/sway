@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()Unsupported argument type to intrinsic.
+# check: $()Mismatched types.
