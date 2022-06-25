@@ -70,6 +70,9 @@ pub struct Command {
     ///  If --build-profile is also provided, forc omits this flag and uses provided build-profile.
     #[clap(long)]
     pub release: bool,
+    /// Output the time elapsed over each part of the compilation process.
+    #[clap(long)]
+    pub time_phases: bool,
 }
 
 pub(crate) fn exec(command: Command) -> Result<()> {
