@@ -353,6 +353,9 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
         ItemKind::Break(_) => {
             vec![AstNodeContent::Declaration(Declaration::Break)]
         }
+        ItemKind::Continue(_) => {
+            vec![AstNodeContent::Declaration(Declaration::Continue)]
+        }
     };
     Ok(contents
         .into_iter()

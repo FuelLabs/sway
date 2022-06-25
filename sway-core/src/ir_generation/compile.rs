@@ -138,7 +138,8 @@ fn compile_declarations(
             | TypedDeclaration::GenericTypeForFunctionScope { .. }
             | TypedDeclaration::StorageDeclaration(_)
             | TypedDeclaration::ErrorRecovery
-            | TypedDeclaration::Break => (),
+            | TypedDeclaration::Break
+            | TypedDeclaration::Continue => (),
         }
     }
     Ok(())

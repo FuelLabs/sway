@@ -41,6 +41,7 @@ pub enum TypedDeclaration {
     StorageDeclaration(TypedStorageDeclaration),
     StorageReassignment(TypeCheckedStorageReassignment),
     Break,
+    Continue,
 }
 
 impl CopyTypes for TypedDeclaration {
@@ -61,7 +62,7 @@ impl CopyTypes for TypedDeclaration {
             AbiDeclaration(..) => (),
             StorageDeclaration(..) => (),
             StorageReassignment(..) => (),
-            GenericTypeForFunctionScope { .. } | ErrorRecovery | Break => (),
+            GenericTypeForFunctionScope { .. } | ErrorRecovery | Break | Continue => (),
         }
     }
 }
@@ -87,7 +88,7 @@ impl Spanned for TypedDeclaration {
             ImplTrait(TypedImplTrait { span, .. }) => span.clone(),
             StorageDeclaration(decl) => decl.span(),
             StorageReassignment(decl) => decl.span(),
-            ErrorRecovery | GenericTypeForFunctionScope { .. } | Break => {
+            ErrorRecovery | GenericTypeForFunctionScope { .. } | Break | Continue => {
                 unreachable!("No span exists for these ast node types")
             }
         }
@@ -206,7 +207,8 @@ impl UnresolvedTypeCheck for TypedDeclaration {
             | ImplTrait { .. }
             | AbiDeclaration(_)
             | GenericTypeForFunctionScope { .. }
-            | Break => vec![],
+            | Break
+            | Continue => vec![],
         }
     }
 }
@@ -374,6 +376,7 @@ impl TypedDeclaration {
             StorageDeclaration(_) => "contract storage declaration",
             StorageReassignment(_) => "contract storage reassignment",
             Break => "break",
+            Continue => "continue",
         }
     }
 
@@ -424,7 +427,8 @@ impl TypedDeclaration {
             | StorageReassignment { .. }
             | AbiDeclaration(..)
             | ErrorRecovery
-            | Break => Visibility::Public,
+            | Break
+            | Continue => Visibility::Public,
             VariableDeclaration(TypedVariableDeclaration { is_mutable, .. }) => {
                 is_mutable.visibility()
             }

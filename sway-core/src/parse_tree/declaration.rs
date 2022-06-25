@@ -34,4 +34,5 @@ pub enum Declaration {
     ConstantDeclaration(ConstantDeclaration),
     StorageDeclaration(StorageDeclaration),
     Break,
+    Continue,
 }

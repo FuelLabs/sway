@@ -15,6 +15,7 @@ impl Format for Item {
             Const(item_const) => item_const.format(formatter),
             Storage(item_storage) => item_storage.format(formatter),
             Break(_item_break) => unimplemented!(),
+            Continue(_item_continue) => unimplemented!(),
         }
     }
 }

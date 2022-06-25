@@ -24,6 +24,7 @@ pub(super) struct FnCompiler {
     pub(super) function: Function,
     pub(super) current_block: Block,
     pub(super) block_to_break_to: Option<Block>,
+    pub(super) block_to_continue_to: Option<Block>,
     lexical_map: LexicalMap,
 }
 
@@ -44,6 +45,7 @@ impl FnCompiler {
             function,
             current_block: function.get_entry_block(context),
             block_to_break_to: None,
+            block_to_continue_to: None,
             lexical_map,
         }
     }
@@ -74,18 +76,21 @@ impl FnCompiler {
         ast_block: TypedCodeBlock,
     ) -> Result<Value, CompileError> {
         self.lexical_map.enter_scope();
-        let index_of_first_break = ast_block.contents.clone().into_iter().position(|r| {
-            matches!(
-                r.content,
-                TypedAstNodeContent::Declaration(TypedDeclaration::Break)
-            )
-        });
+        let index_of_first_break_or_continue =
+            ast_block.contents.clone().into_iter().position(|r| {
+                matches!(
+                    r.content,
+                    TypedAstNodeContent::Declaration(TypedDeclaration::Break)
+                        | TypedAstNodeContent::Declaration(TypedDeclaration::Continue)
+                )
+            });
+
         // Filter out all ast nodes *after* a `break` statement. Those nodes are essentially dead.
         let value = ast_block
             .contents
             .into_iter()
             .enumerate()
-            .filter(|(i, _)| match &index_of_first_break {
+            .filter(|(i, _)| match &index_of_first_break_or_continue {
                 Some(index) => i <= index,
                 None => true,
             })
@@ -174,6 +179,18 @@ impl FnCompiler {
                                 None,
                             )),
                             None => Err(CompileError::BreakOutsideLoop {
+                                span: ast_node.span,
+                            }),
+                        },
+                        TypedDeclaration::Continue { .. } => match self.block_to_continue_to {
+                            // If `self.block_to_continue_to` is not None, then it has been set inside
+                            // a loop and the use of `continue` here is legal, so create a branch
+                            // instruction. Error out otherwise.
+                            Some(block_to_continue_to) => Ok(self
+                                .current_block
+                                .ins(context)
+                                .branch(block_to_continue_to, None, None)),
+                            None => Err(CompileError::ContinueOutsideLoop {
                                 span: ast_node.span,
                             }),
                         },
@@ -920,12 +937,15 @@ impl FnCompiler {
             .function
             .create_block(context, Some("end_while".into()));
 
-        // Keep track of the previous block we have to jump to in case of a break. This is
-        // useful for nested loops containing their own breaks.
+        // Keep track of the previous blocks we have to jump to in case of a break or a continue.
+        // This should be `None` if we're not in a loop already or the previous break or continue
+        // destinations for the outer loop that contains the current loop.
         let prev_block_to_break_to = self.block_to_break_to;
+        let prev_block_to_continue_to = self.block_to_continue_to;
 
-        // Keep track of the current block to jump to in case of a break.
+        // Keep track of the current blocks to jump to in case of a break or continue.
         self.block_to_break_to = Some(final_block);
+        self.block_to_continue_to = Some(cond_block);
 
         // Compile the body and a branch to the condition block if no branch is already present in
         // the body block
@@ -937,8 +957,9 @@ impl FnCompiler {
                 .branch(cond_block, None, None);
         }
 
-        // Restore the block to jump to now that we're done with the current loop
+        // Restore the blocks to jump to now that we're done with the current loop
         self.block_to_break_to = prev_block_to_break_to;
+        self.block_to_continue_to = prev_block_to_continue_to;
 
         // Add the conditional which jumps into the body or out to the final block.
         self.current_block = cond_block;

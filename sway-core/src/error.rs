@@ -997,6 +997,8 @@ pub enum CompileError {
     StorageDeclarationInNonContract { program_kind: String, span: Span },
     #[error("\"break\" used outside of a loop")]
     BreakOutsideLoop { span: Span },
+    #[error("\"continue\" used outside of a loop")]
+    ContinueOutsideLoop { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1154,6 +1156,7 @@ impl Spanned for CompileError {
             NonConstantDeclValue { span } => span.clone(),
             StorageDeclarationInNonContract { span, .. } => span.clone(),
             BreakOutsideLoop { span } => span.clone(),
+            ContinueOutsideLoop { span } => span.clone(),
         }
     }
 }

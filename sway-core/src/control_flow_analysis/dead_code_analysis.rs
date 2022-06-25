@@ -414,7 +414,9 @@ fn connect_declaration(
             connect_storage_declaration(storage, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
-        ErrorRecovery | GenericTypeForFunctionScope { .. } | Break => Ok(leaves.to_vec()),
+        ErrorRecovery | GenericTypeForFunctionScope { .. } | Break | Continue => {
+            Ok(leaves.to_vec())
+        }
     }
 }
 

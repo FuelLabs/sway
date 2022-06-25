@@ -174,7 +174,8 @@ fn connect_declaration(
         | EnumDeclaration(_)
         | StorageDeclaration(_)
         | GenericTypeForFunctionScope { .. }
-        | Break => leaves.to_vec(),
+        | Break
+        | Continue => leaves.to_vec(),
         VariableDeclaration(_) | ConstantDeclaration(_) => {
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {

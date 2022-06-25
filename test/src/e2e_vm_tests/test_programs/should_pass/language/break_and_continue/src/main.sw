@@ -24,6 +24,10 @@ fn break_test() -> u64 {
             sum1 += i * J + j;
             j += 1;
 
+            if j % 2 == 0 {
+                continue;
+            }
+
             while n < N {
                 sum1 += n;
                 n += 2;
@@ -39,11 +43,26 @@ fn break_test() -> u64 {
             }
             sum1 += i * K + k;
             k += 1;
+
+            if k % 2 == 0 {
+                continue;
+            }
+
+            sum1 *= 2;
+
         }
         i += 1;
+
+        if i % 3 == 0 {
+            continue;
+        }
+
+        sum1 *= 2;
+        sum2 *= 2;
+
     }
 
-    sum1 + sum2 // = 615, Validated against Rust
+    sum1 + sum2 // = 281250103296, Validated against Rust
 }
 
 fn main() -> u64 {

@@ -476,6 +476,7 @@ impl ParseToEnd for CodeBlockContents {
                 || parser.peek2::<AbiToken, Ident>().is_some()
                 || parser.peek::<ConstToken>().is_some()
                 || parser.peek::<BreakToken>().is_some()
+                || parser.peek::<ContinueToken>().is_some()
                 || matches!(
                     parser.peek2::<StorageToken, Delimiter>(),
                     Some((_, Delimiter::Brace))

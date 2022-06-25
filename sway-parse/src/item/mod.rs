@@ -35,6 +35,7 @@ pub enum ItemKind {
     Const(ItemConst),
     Storage(ItemStorage),
     Break(ItemBreak),
+    Continue(ItemContinue),
 }
 
 impl Spanned for ItemKind {
@@ -50,6 +51,7 @@ impl Spanned for ItemKind {
             ItemKind::Const(item_const) => item_const.span(),
             ItemKind::Storage(item_storage) => item_storage.span(),
             ItemKind::Break(item_break) => item_break.span(),
+            ItemKind::Continue(item_continue) => item_continue.span(),
         }
     }
 }
@@ -99,6 +101,10 @@ impl Parse for ItemKind {
         if parser.peek::<BreakToken>().is_some() {
             let item_break = parser.parse()?;
             return Ok(ItemKind::Break(item_break));
+        }
+        if parser.peek::<ContinueToken>().is_some() {
+            let item_break = parser.parse()?;
+            return Ok(ItemKind::Continue(item_break));
         }
         Err(parser.emit_error(ParseErrorKind::ExpectedAnItem))
     }
