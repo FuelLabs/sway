@@ -28,7 +28,7 @@ impl Format for ItemEnum {
 
         // Add name of the enum.
         formatted_code.push_str(self.name.as_str());
-        ItemEnum::open_curly_brace(formatted_code, formatter);
+        Self::open_curly_brace(formatted_code, formatter);
 
         let type_fields = &self.fields.clone().into_inner().value_separator_pairs;
 
@@ -75,7 +75,7 @@ impl Format for ItemEnum {
             // from the config we may understand next enum variant should be in the same line instead.
             formatted_code.push('\n');
         }
-        ItemEnum::close_curly_brace(formatted_code, formatter);
+        Self::close_curly_brace(formatted_code, formatter);
         Ok(())
     }
 }

@@ -3,7 +3,6 @@ use crate::utils::{
 };
 use std::{path::Path, sync::Arc};
 use sway_core::BuildConfig;
-use sway_parse::attribute::Annotated;
 
 pub use crate::{
     config::manifest::Config,
@@ -58,7 +57,8 @@ impl Formatter {
 
         let mut iter = items.iter().peekable();
         while let Some(item) = iter.next() {
-            Annotated::format(item, &mut raw_formatted_code, self)?;
+            // format Annotated<ItemKind>
+            item.format(&mut raw_formatted_code, self)?;
             if iter.peek().is_some() {
                 raw_formatted_code.push('\n');
             }

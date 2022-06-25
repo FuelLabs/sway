@@ -20,7 +20,7 @@ impl<T: Parse + Format> Format for Annotated<T> {
         let attributes = &self.attribute_list;
 
         for attr in attributes {
-            AttributeDecl::format(attr, formatted_code, formatter);
+            attr.format(formatted_code, formatter);
         }
 
         self.value.format(formatted_code, formatter)

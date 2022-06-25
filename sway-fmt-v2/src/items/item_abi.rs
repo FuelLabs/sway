@@ -4,7 +4,7 @@ use crate::{
     utils::{attribute::FormatDecl, bracket::CurlyBrace},
     FormatterError,
 };
-use sway_parse::{token::Delimiter, AttributeDecl, ItemAbi};
+use sway_parse::{token::Delimiter, ItemAbi};
 use sway_types::Spanned;
 
 impl Format for ItemAbi {
@@ -30,7 +30,7 @@ impl Format for ItemAbi {
             if !attribute_list.is_empty() {
                 formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
                 for attr in attribute_list {
-                    AttributeDecl::format(&attr, formatted_code, formatter)
+                    attr.format(formatted_code, formatter);
                 }
             }
             // add indent + format item
@@ -55,7 +55,7 @@ impl Format for ItemAbi {
                 if !attribute_list.is_empty() {
                     formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
                     for attr in attribute_list {
-                        AttributeDecl::format(&attr, formatted_code, formatter)
+                        attr.format(formatted_code, formatter);
                     }
                 }
 
