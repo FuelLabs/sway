@@ -13,7 +13,9 @@ impl Format for GenericParams {
     fn format(&self, formatter: &mut Formatter) -> FormattedCode {
         let mut formatted_code = String::new();
         let params = self.parameters.clone().into_inner().value_separator_pairs;
+        // `<`
         Self::open_angle_bracket(self.clone(), &mut formatted_code, formatter);
+        // parameters
         let mut buf = params
             .iter()
             .map(|param| format!("{}{}", param.0.as_str(), param.1.span().as_str()))
@@ -27,7 +29,9 @@ impl Format for GenericParams {
             buf.pop(); // pop the ending comma
             formatted_code.push_str(&buf);
         }
+        // `>`
         Self::close_angle_bracket(self.clone(), &mut formatted_code, formatter);
+
         formatted_code
     }
 }
