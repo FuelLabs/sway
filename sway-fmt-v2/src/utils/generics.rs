@@ -12,23 +12,12 @@ use sway_types::Spanned;
 impl Format for GenericParams {
     fn format(&self, formatter: &mut Formatter) -> FormattedCode {
         let mut formatted_code = String::new();
-        let params = self.parameters.clone().into_inner().value_separator_pairs;
+        let params = self.parameters.clone().into_inner();
+
         // `<`
         Self::open_angle_bracket(self.clone(), &mut formatted_code, formatter);
-        // parameters
-        let mut buf = params
-            .iter()
-            .map(|param| format!("{}{}", param.0.as_str(), param.1.span().as_str()))
-            .collect::<Vec<String>>()
-            .join(" ");
-        if params.len() == 1 {
-            buf.pop(); // pop the ending comma
-            formatted_code.push_str(&buf);
-        } else {
-            buf.pop(); // pop the ending space
-            buf.pop(); // pop the ending comma
-            formatted_code.push_str(&buf);
-        }
+        // format and add parameters
+        params.format(formatter);
         // `>`
         Self::close_angle_bracket(self.clone(), &mut formatted_code, formatter);
 
