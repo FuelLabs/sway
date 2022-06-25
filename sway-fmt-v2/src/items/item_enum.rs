@@ -4,6 +4,7 @@ use crate::{
     utils::bracket::CurlyBrace,
     FormatterError,
 };
+use std::fmt::Write;
 use sway_parse::{token::Delimiter, ItemEnum};
 use sway_types::Spanned;
 
@@ -26,7 +27,7 @@ impl Format for ItemEnum {
 
         // Add name of the enum.
         formatted_code.push_str(self.name.as_str());
-        Self::open_curly_brace(formatted_code, formatter);
+        Self::open_curly_brace(formatted_code, formatter)?;
 
         let type_fields = &self.fields.clone().into_inner().value_separator_pairs;
 
@@ -73,13 +74,16 @@ impl Format for ItemEnum {
             // from the config we may understand next enum variant should be in the same line instead.
             formatted_code.push('\n');
         }
-        Self::close_curly_brace(formatted_code, formatter);
+        Self::close_curly_brace(formatted_code, formatter)?;
         Ok(())
     }
 }
 
 impl CurlyBrace for ItemEnum {
-    fn open_curly_brace(line: &mut String, formatter: &mut Formatter) {
+    fn open_curly_brace(
+        line: &mut String,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
         let extra_width = formatter.config.whitespace.tab_spaces;
         let mut shape = formatter.shape;
@@ -87,24 +91,29 @@ impl CurlyBrace for ItemEnum {
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
-                line.push_str(&format!("\n{}\n", open_brace));
+                write!(line, "\n{}\n", open_brace)?;
                 shape = shape.block_indent(extra_width);
             }
             _ => {
                 // Add opening brace to the same line
-                line.push_str(&format!(" {}\n", open_brace));
+                write!(line, " {}\n", open_brace)?;
                 shape = shape.block_indent(extra_width);
             }
         }
 
         formatter.shape = shape;
+        Ok(())
     }
-    fn close_curly_brace(line: &mut String, formatter: &mut Formatter) {
+    fn close_curly_brace(
+        line: &mut String,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         line.push(Delimiter::Brace.as_close_char());
         // If shape is becoming left-most aligned or - indent just have the defualt shape
         formatter.shape = formatter
             .shape
             .shrink_left(formatter.config.whitespace.tab_spaces)
             .unwrap_or_default();
+        Ok(())
     }
 }

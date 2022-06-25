@@ -4,6 +4,7 @@ use crate::{
     utils::{attribute::FormatDecl, bracket::CurlyBrace},
     FormatterError,
 };
+use std::fmt::Write;
 use sway_parse::{token::Delimiter, ItemAbi};
 use sway_types::Spanned;
 
@@ -19,7 +20,7 @@ impl Format for ItemAbi {
 
         // Add name of the abi
         formatted_code.push_str(self.name.as_str());
-        Self::open_curly_brace(formatted_code, formatter);
+        Self::open_curly_brace(formatted_code, formatter)?;
 
         // Add item fields
         // abi_items
@@ -30,16 +31,17 @@ impl Format for ItemAbi {
             if !attribute_list.is_empty() {
                 formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
                 for attr in attribute_list {
-                    attr.format(formatted_code, formatter);
+                    attr.format(formatted_code, formatter)?;
                 }
             }
             // add indent + format item
             formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
-            formatted_code.push_str(&format!(
+            write!(
+                formatted_code,
                 "{}{}\n",
                 item.0.value.span().as_str(), // FnSignature formatting (todo!)
-                item.1.span().as_str(),       // SemicolonToken
-            ));
+                item.1.span().as_str()        // SemicolonToken
+            )?;
 
             if abi_items_iter.peek().is_some() {
                 formatted_code.push('\n');
@@ -55,7 +57,7 @@ impl Format for ItemAbi {
                 if !attribute_list.is_empty() {
                     formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
                     for attr in attribute_list {
-                        attr.format(formatted_code, formatter);
+                        attr.format(formatted_code, formatter)?;
                     }
                 }
 
@@ -67,13 +69,16 @@ impl Format for ItemAbi {
                 }
             }
         }
-        Self::close_curly_brace(formatted_code, formatter);
+        Self::close_curly_brace(formatted_code, formatter)?;
         Ok(())
     }
 }
 
 impl CurlyBrace for ItemAbi {
-    fn open_curly_brace(line: &mut String, formatter: &mut Formatter) {
+    fn open_curly_brace(
+        line: &mut String,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
         let extra_width = formatter.config.whitespace.tab_spaces;
         let mut shape = formatter.shape;
@@ -81,24 +86,29 @@ impl CurlyBrace for ItemAbi {
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
-                line.push_str(&format!("\n{}\n", open_brace));
+                write!(line, "\n{}\n", open_brace)?;
                 shape = shape.block_indent(extra_width);
             }
             _ => {
                 // Add opening brace to the same line
-                line.push_str(&format!(" {}\n", open_brace));
+                write!(line, " {}\n", open_brace)?;
                 shape = shape.block_indent(extra_width);
             }
         }
 
         formatter.shape = shape;
+        Ok(())
     }
-    fn close_curly_brace(line: &mut String, formatter: &mut Formatter) {
+    fn close_curly_brace(
+        line: &mut String,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         line.push(Delimiter::Brace.as_close_char());
         // If shape is becoming left-most alligned or - indent just have the defualt shape
         formatter.shape = formatter
             .shape
             .shrink_left(formatter.config.whitespace.tab_spaces)
             .unwrap_or_default();
+        Ok(())
     }
 }

@@ -50,14 +50,14 @@ impl Formatter {
 
         // Formatted code will be pushed here with raw newline stlye.
         // Which means newlines are not converted into system-specific versions by apply_newline_style
-        // Use the length of src as a hint of the memory size needed for raw_formatted_code, 
+        // Use the length of src as a hint of the memory size needed for raw_formatted_code,
         // which will reduce the number of reallocations
         let mut raw_formatted_code = String::with_capacity(src_len);
 
         // Insert program type to the formatted code.
         insert_program_type(&mut raw_formatted_code, program_type);
-        // Insert parsed & formatted items into the formatted code.
 
+        // Insert parsed & formatted items into the formatted code.
         let mut iter = items.iter().peekable();
         while let Some(item) = iter.next() {
             // format Annotated<ItemKind>
