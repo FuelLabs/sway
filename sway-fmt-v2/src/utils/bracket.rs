@@ -29,7 +29,7 @@ pub(crate) trait Parenthesis {
 }
 
 pub(crate) trait AngleBracket {
-    fn open_angle_bracket(&self, line: &mut String, formatter: &mut Formatter);
+    fn open_angle_bracket(self, line: &mut String, formatter: &mut Formatter);
 
-    fn close_angle_bracket(&self, line: &mut String, formatter: &mut Formatter);
+    fn close_angle_bracket(self, line: &mut String, formatter: &mut Formatter);
 }
