@@ -23,7 +23,7 @@ pub(super) struct FnCompiler {
     module: Module,
     pub(super) function: Function,
     pub(super) current_block: Block,
-    pub(super) break_block: Block,
+    pub(super) block_to_break_to: Option<Block>,
     lexical_map: LexicalMap,
 }
 
@@ -43,7 +43,7 @@ impl FnCompiler {
             module,
             function,
             current_block: function.get_entry_block(context),
-            break_block: function.get_entry_block(context),
+            block_to_break_to: None,
             lexical_map,
         }
     }
@@ -74,17 +74,18 @@ impl FnCompiler {
         ast_block: TypedCodeBlock,
     ) -> Result<Value, CompileError> {
         self.lexical_map.enter_scope();
-        let first_break_index = ast_block.contents.clone().into_iter().position(|r| {
+        let index_of_first_break = ast_block.contents.clone().into_iter().position(|r| {
             matches!(
                 r.content,
                 TypedAstNodeContent::Declaration(TypedDeclaration::Break)
             )
         });
+        // Filter out all ast nodes *after* a `break` statement. Those nodes are essentially dead.
         let value = ast_block
             .contents
             .into_iter()
             .enumerate()
-            .filter(|(i, _)| match &first_break_index {
+            .filter(|(i, _)| match &index_of_first_break {
                 Some(index) => i <= index,
                 None => true,
             })
@@ -163,10 +164,19 @@ impl FnCompiler {
                                 span: ast_node.span,
                             })
                         }
-                        TypedDeclaration::Break { .. } => Ok(self
-                            .current_block
-                            .ins(context)
-                            .branch(self.break_block, None, None)),
+                        TypedDeclaration::Break { .. } => match self.block_to_break_to {
+                            // If `self.block_to_break_to` is not None, then it has been set inside
+                            // a loop and the use of `break` here is legal, so create a branch
+                            // instruction. Error out otherwise.
+                            Some(block_to_break_to) => Ok(self.current_block.ins(context).branch(
+                                block_to_break_to,
+                                None,
+                                None,
+                            )),
+                            None => Err(CompileError::BreakOutsideLoop {
+                                span: ast_node.span,
+                            }),
+                        },
                         TypedDeclaration::StorageDeclaration(_) => {
                             Err(CompileError::UnexpectedDeclaration {
                                 decl_type: "storage",
@@ -405,29 +415,34 @@ impl FnCompiler {
         let lhs_val = self.compile_expression(context, ast_lhs)?;
         let rhs_block = self.function.create_block(context, None);
         let final_block = self.function.create_block(context, None);
-        let cond_builder = self.current_block.ins(context);
-        match ast_op {
-            LazyOp::And => cond_builder.conditional_branch(
-                lhs_val,
-                rhs_block,
-                final_block,
-                Some(lhs_val),
-                span_md_idx,
-            ),
-            LazyOp::Or => cond_builder.conditional_branch(
-                lhs_val,
-                final_block,
-                rhs_block,
-                Some(lhs_val),
-                span_md_idx,
-            ),
-        };
+        if !self.current_block.is_terminated_by_a_branch(context) {
+            let cond_builder = self.current_block.ins(context);
+            match ast_op {
+                LazyOp::And => cond_builder.conditional_branch(
+                    lhs_val,
+                    rhs_block,
+                    final_block,
+                    Some(lhs_val),
+                    span_md_idx,
+                ),
+                LazyOp::Or => cond_builder.conditional_branch(
+                    lhs_val,
+                    final_block,
+                    rhs_block,
+                    Some(lhs_val),
+                    span_md_idx,
+                ),
+            };
+        }
 
         self.current_block = rhs_block;
         let rhs_val = self.compile_expression(context, ast_rhs)?;
-        self.current_block
-            .ins(context)
-            .branch(final_block, Some(rhs_val), span_md_idx);
+
+        if !self.current_block.is_terminated_by_a_branch(context) {
+            self.current_block
+                .ins(context)
+                .branch(final_block, Some(rhs_val), span_md_idx);
+        }
 
         self.current_block = final_block;
         Ok(final_block.get_phi(context))
@@ -782,7 +797,7 @@ impl FnCompiler {
         let true_value = self.compile_expression(context, ast_then)?;
         let true_block_end = self.current_block;
         let then_returns = true_block_end.is_terminated_by_ret(context);
-        let then_branches = true_block_end.is_terminated_by_br(context);
+        let then_branches = true_block_end.is_terminated_by_a_branch(context);
 
         let false_block_begin = self.function.create_block(context, None);
         self.current_block = false_block_begin;
@@ -792,15 +807,17 @@ impl FnCompiler {
         };
         let false_block_end = self.current_block;
         let else_returns = false_block_end.is_terminated_by_ret(context);
-        let else_branches = false_block_end.is_terminated_by_br(context);
+        let else_branches = false_block_end.is_terminated_by_a_branch(context);
 
-        entry_block.ins(context).conditional_branch(
-            cond_value,
-            true_block_begin,
-            false_block_begin,
-            None,
-            cond_span_md_idx,
-        );
+        if !entry_block.is_terminated_by_a_branch(context) {
+            entry_block.ins(context).conditional_branch(
+                cond_value,
+                true_block_begin,
+                false_block_begin,
+                None,
+                cond_span_md_idx,
+            );
+        }
 
         if then_returns && else_returns {
             return Ok(Constant::get_unit(context, None));
@@ -886,9 +903,12 @@ impl FnCompiler {
 
         // Jump to the while cond block.
         let cond_block = self.function.create_block(context, Some("while".into()));
-        self.current_block
-            .ins(context)
-            .branch(cond_block, None, None);
+
+        if !self.current_block.is_terminated_by_a_branch(context) {
+            self.current_block
+                .ins(context)
+                .branch(cond_block, None, None);
+        }
 
         // Fill in the body block now, jump unconditionally to the cond block at its end.
         let body_block = self
@@ -900,29 +920,38 @@ impl FnCompiler {
             .function
             .create_block(context, Some("end_while".into()));
 
-        let prev_break_block = self.break_block;
+        // Keep track of the previous block we have to jump to in case of a break. This is
+        // useful for nested loops containing their own breaks.
+        let prev_block_to_break_to = self.block_to_break_to;
 
-        self.break_block = final_block;
+        // Keep track of the current block to jump to in case of a break.
+        self.block_to_break_to = Some(final_block);
+
+        // Compile the body and a branch to the condition block if no branch is already present in
+        // the body block
         self.current_block = body_block;
         self.compile_code_block(context, ast_while_loop.body)?;
-        if !self.current_block.is_terminated_by_br(context) {
+        if !self.current_block.is_terminated_by_a_branch(context) {
             self.current_block
                 .ins(context)
                 .branch(cond_block, None, None);
         }
 
-        self.break_block = prev_break_block;
+        // Restore the block to jump to now that we're done with the current loop
+        self.block_to_break_to = prev_block_to_break_to;
 
         // Add the conditional which jumps into the body or out to the final block.
         self.current_block = cond_block;
         let cond_value = self.compile_expression(context, ast_while_loop.condition)?;
-        self.current_block.ins(context).conditional_branch(
-            cond_value,
-            body_block,
-            final_block,
-            None,
-            None,
-        );
+        if !self.current_block.is_terminated_by_a_branch(context) {
+            self.current_block.ins(context).conditional_branch(
+                cond_value,
+                body_block,
+                final_block,
+                None,
+                None,
+            );
+        }
 
         self.current_block = final_block;
         Ok(Constant::get_unit(context, span_md_idx))

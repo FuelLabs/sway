@@ -137,8 +137,8 @@ fn compile_declarations(
             | TypedDeclaration::AbiDeclaration(_)
             | TypedDeclaration::GenericTypeForFunctionScope { .. }
             | TypedDeclaration::StorageDeclaration(_)
-            | TypedDeclaration::ErrorRecovery => (),
-            TypedDeclaration::Break => (),
+            | TypedDeclaration::ErrorRecovery
+            | TypedDeclaration::Break => (),
         }
     }
     Ok(())

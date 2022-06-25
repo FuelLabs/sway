@@ -165,7 +165,6 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut TokenMap) {
             );
         }
         TypedDeclaration::ErrorRecovery => {}
-        TypedDeclaration::Break => {}
         TypedDeclaration::StorageDeclaration(storage_decl) => {
             for field in &storage_decl.fields {
                 tokens.insert(
@@ -183,6 +182,7 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut TokenMap) {
             }
             handle_expression(&storage_reassignment.rhs, tokens);
         }
+        TypedDeclaration::Break => {}
     }
 }
 

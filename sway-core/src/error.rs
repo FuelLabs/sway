@@ -995,6 +995,8 @@ pub enum CompileError {
     NonConstantDeclValue { span: Span },
     #[error("Declaring storage in a {program_kind} is not allowed.")]
     StorageDeclarationInNonContract { program_kind: String, span: Span },
+    #[error("\"break\" used outside of a loop")]
+    BreakOutsideLoop { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1151,6 +1153,7 @@ impl Spanned for CompileError {
             TupleIndexOutOfBounds { span, .. } => span.clone(),
             NonConstantDeclValue { span } => span.clone(),
             StorageDeclarationInNonContract { span, .. } => span.clone(),
+            BreakOutsideLoop { span } => span.clone(),
         }
     }
 }

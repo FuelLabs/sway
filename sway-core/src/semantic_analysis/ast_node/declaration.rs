@@ -38,9 +38,9 @@ pub enum TypedDeclaration {
     // the body of that function.
     GenericTypeForFunctionScope { name: Ident, type_id: TypeId },
     ErrorRecovery,
-    Break,
     StorageDeclaration(TypedStorageDeclaration),
     StorageReassignment(TypeCheckedStorageReassignment),
+    Break,
 }
 
 impl CopyTypes for TypedDeclaration {
@@ -200,13 +200,13 @@ impl UnresolvedTypeCheck for TypedDeclaration {
             Reassignment(TypedReassignment { rhs, .. }) => rhs.check_for_unresolved_types(),
             ErrorRecovery
             | StorageDeclaration(_)
-            | Break
             | TraitDeclaration(_)
             | StructDeclaration(_)
             | EnumDeclaration(_)
             | ImplTrait { .. }
             | AbiDeclaration(_)
-            | GenericTypeForFunctionScope { .. } => vec![],
+            | GenericTypeForFunctionScope { .. }
+            | Break => vec![],
         }
     }
 }
@@ -371,9 +371,9 @@ impl TypedDeclaration {
             AbiDeclaration(..) => "abi",
             GenericTypeForFunctionScope { .. } => "generic type parameter",
             ErrorRecovery => "error",
-            Break => "break",
             StorageDeclaration(_) => "contract storage declaration",
             StorageReassignment(_) => "contract storage reassignment",
+            Break => "break",
         }
     }
 
@@ -423,8 +423,8 @@ impl TypedDeclaration {
             | StorageDeclaration { .. }
             | StorageReassignment { .. }
             | AbiDeclaration(..)
-            | Break
-            | ErrorRecovery => Visibility::Public,
+            | ErrorRecovery
+            | Break => Visibility::Public,
             VariableDeclaration(TypedVariableDeclaration { is_mutable, .. }) => {
                 is_mutable.visibility()
             }

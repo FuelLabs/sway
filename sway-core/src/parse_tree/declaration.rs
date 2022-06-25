@@ -23,7 +23,6 @@ pub use variable::*;
 #[derive(Debug, Clone)]
 pub enum Declaration {
     VariableDeclaration(VariableDeclaration),
-    Break,
     FunctionDeclaration(FunctionDeclaration),
     TraitDeclaration(TraitDeclaration),
     StructDeclaration(StructDeclaration),
@@ -34,4 +33,5 @@ pub enum Declaration {
     AbiDeclaration(AbiDeclaration),
     ConstantDeclaration(ConstantDeclaration),
     StorageDeclaration(StorageDeclaration),
+    Break,
 }

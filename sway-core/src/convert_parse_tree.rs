@@ -304,9 +304,6 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
                 .map(AstNodeContent::UseStatement)
                 .collect()
         }
-        ItemKind::Break(_) => {
-            vec![AstNodeContent::Declaration(Declaration::Break)]
-        }
         ItemKind::Struct(item_struct) => {
             let struct_declaration = item_struct_to_struct_declaration(ec, item_struct)?;
             vec![AstNodeContent::Declaration(Declaration::StructDeclaration(
@@ -352,6 +349,9 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
             vec![AstNodeContent::Declaration(
                 Declaration::StorageDeclaration(storage_declaration),
             )]
+        }
+        ItemKind::Break(_) => {
+            vec![AstNodeContent::Declaration(Declaration::Break)]
         }
     };
     Ok(contents

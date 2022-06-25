@@ -373,6 +373,7 @@ impl Dependencies {
                 .gather_from_iter(fields.iter(), |deps, StorageField { ref type_info, .. }| {
                     deps.gather_from_typeinfo(type_info)
                 }),
+            // Nothing to do for `break`
             Declaration::Break => self,
         }
     }
@@ -667,7 +668,6 @@ fn decl_name(decl: &Declaration) -> Option<DependentSymbol> {
         Declaration::EnumDeclaration(decl) => dep_sym(decl.name.clone()),
         Declaration::TraitDeclaration(decl) => dep_sym(decl.name.clone()),
         Declaration::AbiDeclaration(decl) => dep_sym(decl.name.clone()),
-        Declaration::Break => None,
 
         // These have the added complexity of converting CallPath and/or TypeInfo into a name.
         Declaration::ImplSelf(decl) => {
@@ -704,6 +704,8 @@ fn decl_name(decl: &Declaration) -> Option<DependentSymbol> {
         Declaration::Reassignment(_) => None,
         // Storage cannot be depended upon or exported
         Declaration::StorageDeclaration(_) => None,
+        // Nothing depends on a `break`
+        Declaration::Break => None,
     }
 }
 
