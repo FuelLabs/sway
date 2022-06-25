@@ -1,21 +1,14 @@
 script;
 
-fn main() {
+fn main() -> u64 {
     let m = 5;
     let mut i = 0;
-    let mut j = 0;
+    // Expand this example to have many nested loops
     while i < 10 {
-        while i < 10 {
-            i += 1;
-            if i > m {
-                break;
-                let x = 777;
-            }
-        }
-
-        j += 1;
-        if j > m {
+        i += 1;
+        if i > 5 {
             break;
         }
     }
+    i // 6
 }

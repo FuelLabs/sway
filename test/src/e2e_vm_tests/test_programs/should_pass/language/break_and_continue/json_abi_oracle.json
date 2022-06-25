@@ -6,7 +6,7 @@
       {
         "components": null,
         "name": "",
-        "type": "str[3]"
+        "type": "u64"
       }
     ],
     "type": "function"

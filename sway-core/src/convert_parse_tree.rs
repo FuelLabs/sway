@@ -305,10 +305,7 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
                 .collect()
         }
         ItemKind::Break(_) => {
-            dbg!("HERE?");
-            vec![
-                AstNodeContent::Declaration(Declaration::Break)
-            ]
+            vec![AstNodeContent::Declaration(Declaration::Break)]
         }
         ItemKind::Struct(item_struct) => {
             let struct_declaration = item_struct_to_struct_declaration(ec, item_struct)?;

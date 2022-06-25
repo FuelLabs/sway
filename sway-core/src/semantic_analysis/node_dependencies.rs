@@ -373,7 +373,7 @@ impl Dependencies {
                 .gather_from_iter(fields.iter(), |deps, StorageField { ref type_info, .. }| {
                     deps.gather_from_typeinfo(type_info)
                 }),
-            Declaration::Break => self
+            Declaration::Break => self,
         }
     }
 

@@ -20,9 +20,9 @@ use crate::{
 impl Context {
     /// Verify the contents of this [`Context`] is valid.
     pub fn verify(self) -> Result<Self, IrError> {
-//        for (_, module) in &self.modules {
-//            self.verify_module(module)?;
-//        }
+        for (_, module) in &self.modules {
+            self.verify_module(module)?;
+        }
         Ok(self)
     }
 

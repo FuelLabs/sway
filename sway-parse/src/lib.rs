@@ -38,6 +38,7 @@ pub use crate::{
     item::{
         item_abi::ItemAbi,
         item_const::ItemConst,
+        item_control_flow::ItemBreak,
         item_enum::ItemEnum,
         item_fn::ItemFn,
         item_impl::ItemImpl,
@@ -45,7 +46,6 @@ pub use crate::{
         item_struct::ItemStruct,
         item_trait::{ItemTrait, Traits},
         item_use::{ItemUse, UseTree},
-        item_control_flow::ItemBreak,
         FnArg, FnArgs, FnSignature, Item, ItemKind, TypeField,
     },
     keywords::{DoubleColonToken, PubToken},

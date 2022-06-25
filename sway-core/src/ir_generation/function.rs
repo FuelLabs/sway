@@ -74,20 +74,21 @@ impl FnCompiler {
         ast_block: TypedCodeBlock,
     ) -> Result<Value, CompileError> {
         self.lexical_map.enter_scope();
-        let mut break_seen = false;
+        let first_break_index = ast_block.contents.clone().into_iter().position(|r| {
+            matches!(
+                r.content,
+                TypedAstNodeContent::Declaration(TypedDeclaration::Break)
+            )
+        });
         let value = ast_block
             .contents
             .into_iter()
-            .skip(2)
-//            .filter(|ast_node| {
-//                    let prev_break_seen = break_seen;
-//                    if let TypedAstNodeContent::Declaration(TypedDeclaration::Break) 
-//                            = ast_node.content.clone() {
-//                        break_seen = true;
-//                    }
-//                    !prev_break_seen
-//                }
-//            )
+            .enumerate()
+            .filter(|(i, _)| match &first_break_index {
+                Some(index) => i <= index,
+                None => true,
+            })
+            .map(|(_, ast_node)| ast_node)
             .map(|ast_node| {
                 let span_md_idx = MetadataIndex::from_span(context, &ast_node.span);
                 match ast_node.content {
@@ -162,14 +163,10 @@ impl FnCompiler {
                                 span: ast_node.span,
                             })
                         }
-                        TypedDeclaration::Break { .. } => {
-                            break_seen = true;
-                            Ok(
-                                self.current_block
-                                    .ins(context)
-                                    .branch(self.break_block, None, None)
-                            )
-                        },
+                        TypedDeclaration::Break { .. } => Ok(self
+                            .current_block
+                            .ins(context)
+                            .branch(self.break_block, None, None)),
                         TypedDeclaration::StorageDeclaration(_) => {
                             Err(CompileError::UnexpectedDeclaration {
                                 decl_type: "storage",
@@ -785,6 +782,7 @@ impl FnCompiler {
         let true_value = self.compile_expression(context, ast_then)?;
         let true_block_end = self.current_block;
         let then_returns = true_block_end.is_terminated_by_ret(context);
+        let then_branches = true_block_end.is_terminated_by_br(context);
 
         let false_block_begin = self.function.create_block(context, None);
         self.current_block = false_block_begin;
@@ -794,6 +792,7 @@ impl FnCompiler {
         };
         let false_block_end = self.current_block;
         let else_returns = false_block_end.is_terminated_by_ret(context);
+        let else_branches = false_block_end.is_terminated_by_br(context);
 
         entry_block.ins(context).conditional_branch(
             cond_value,
@@ -808,12 +807,12 @@ impl FnCompiler {
         }
 
         let merge_block = self.function.create_block(context, None);
-        if !then_returns {
+        if !then_returns && !then_branches {
             true_block_end
                 .ins(context)
                 .branch(merge_block, Some(true_value), None);
         }
-        if !else_returns {
+        if !else_returns && !else_branches {
             false_block_end
                 .ins(context)
                 .branch(merge_block, Some(false_value), None);
@@ -906,10 +905,12 @@ impl FnCompiler {
         self.break_block = final_block;
         self.current_block = body_block;
         self.compile_code_block(context, ast_while_loop.body)?;
-        self.current_block
-            .ins(context)
-            .branch(cond_block, None, None);
-      
+        if !self.current_block.is_terminated_by_br(context) {
+            self.current_block
+                .ins(context)
+                .branch(cond_block, None, None);
+        }
+
         self.break_block = prev_break_block;
 
         // Add the conditional which jumps into the body or out to the final block.

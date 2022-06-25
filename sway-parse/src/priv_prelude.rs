@@ -15,6 +15,7 @@ pub use {
         item::{
             item_abi::ItemAbi,
             item_const::ItemConst,
+            item_control_flow::ItemBreak,
             item_enum::ItemEnum,
             item_fn::ItemFn,
             item_impl::ItemImpl,
@@ -22,7 +23,6 @@ pub use {
             item_struct::ItemStruct,
             item_trait::{ItemTrait, Traits},
             item_use::ItemUse,
-            item_control_flow::ItemBreak,
             FnSignature, Item, ItemKind, TypeField,
         },
         keywords::*,

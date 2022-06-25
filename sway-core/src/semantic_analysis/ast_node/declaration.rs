@@ -200,7 +200,7 @@ impl UnresolvedTypeCheck for TypedDeclaration {
             Reassignment(TypedReassignment { rhs, .. }) => rhs.check_for_unresolved_types(),
             ErrorRecovery
             | StorageDeclaration(_)
-            | Break 
+            | Break
             | TraitDeclaration(_)
             | StructDeclaration(_)
             | EnumDeclaration(_)
@@ -423,7 +423,7 @@ impl TypedDeclaration {
             | StorageDeclaration { .. }
             | StorageReassignment { .. }
             | AbiDeclaration(..)
-            | Break 
+            | Break
             | ErrorRecovery => Visibility::Public,
             VariableDeclaration(TypedVariableDeclaration { is_mutable, .. }) => {
                 is_mutable.visibility()
