@@ -96,7 +96,7 @@ impl CurlyBrace for ItemEnum {
             }
             _ => {
                 // Add opening brace to the same line
-                write!(line, " {}\n", open_brace)?;
+                writeln!(line, " {}", open_brace)?;
                 shape = shape.block_indent(extra_width);
             }
         }

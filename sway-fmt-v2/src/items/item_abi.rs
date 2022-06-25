@@ -36,9 +36,9 @@ impl Format for ItemAbi {
             }
             // add indent + format item
             formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
-            write!(
+            writeln!(
                 formatted_code,
-                "{}{}\n",
+                "{}{}",
                 item.0.value.span().as_str(), // FnSignature formatting (todo!)
                 item.1.span().as_str()        // SemicolonToken
             )?;
@@ -91,7 +91,7 @@ impl CurlyBrace for ItemAbi {
             }
             _ => {
                 // Add opening brace to the same line
-                write!(line, " {}\n", open_brace)?;
+                writeln!(line, " {}", open_brace)?;
                 shape = shape.block_indent(extra_width);
             }
         }

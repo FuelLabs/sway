@@ -84,7 +84,7 @@ impl SquareBracket for AttributeDecl {
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}\n", Delimiter::Bracket.as_close_char())?;
+        writeln!(line, "{}", Delimiter::Bracket.as_close_char())?;
         Ok(())
     }
 }
