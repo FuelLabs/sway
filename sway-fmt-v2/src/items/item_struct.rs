@@ -1,10 +1,7 @@
 use crate::{
     config::items::ItemBraceStyle,
     fmt::{Format, FormattedCode, Formatter},
-    utils::{
-        bracket::{AngleBracket, CurlyBrace},
-        item_len::ItemLen,
-    },
+    utils::{bracket::CurlyBrace, item_len::ItemLen},
 };
 use sway_parse::ItemStruct;
 use sway_types::Spanned;
@@ -74,20 +71,9 @@ fn format_struct(
     // Add struct name
     formatted_code.push_str(item_struct.name.as_str());
 
-    // Check if there is generic provided
+    // Format `GenericParams`, if any
     if let Some(generics) = &item_struct.generics {
-        // Push angle brace
-        ItemStruct::open_angle_bracket(formatted_code, formatter);
-        // Get generics fields
-        let generics = generics.parameters.inner.value_separator_pairs.clone();
-        for (index, generic) in generics.iter().enumerate() {
-            // Push ident
-            formatted_code.push_str(generic.0.as_str());
-            if index != generics.len() - 1 {
-                // Push `, ` if this is not the last generic
-                formatted_code.push_str(", ");
-            }
-        }
+        formatted_code.push_str(&generics.format(formatter))
     }
 
     // Handle openning brace
@@ -196,15 +182,5 @@ impl CurlyBrace for ItemStruct {
             .shape
             .shrink_left(formatter.config.whitespace.tab_spaces)
             .unwrap_or_default();
-    }
-}
-
-impl AngleBracket for ItemStruct {
-    fn open_angle_bracket(line: &mut String, _formatter: &mut Formatter) {
-        line.push('<');
-    }
-
-    fn close_angle_bracket(line: &mut String, _formatter: &mut Formatter) {
-        line.push('>');
     }
 }
