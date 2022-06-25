@@ -17,7 +17,7 @@ impl Format for GenericParams {
         // `<`
         Self::open_angle_bracket(self.clone(), &mut formatted_code, formatter);
         // format and add parameters
-        params.format(formatter);
+        formatted_code.push_str(&params.format(formatter));
         // `>`
         Self::close_angle_bracket(self.clone(), &mut formatted_code, formatter);
 
