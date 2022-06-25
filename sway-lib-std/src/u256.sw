@@ -1,7 +1,7 @@
 library u256;
 
 use core::num::*;
-use ::result::*;
+use ::result::Result;
 
 /// The 256-bit unsigned integer type.
 /// Represented as four u64-bit components: `(a, b, c, d)`, where `value = (a << 192) + (b << 128) + (c << 64) + d`.
@@ -25,7 +25,7 @@ pub trait From {
 impl From for U256 {
     pub fn from(a: u64, b: u64, c: u64, d: u64) -> U256 {
         U256 {
-            a, b, c, d, 
+            a, b, c, d,
         }
     }
 }
