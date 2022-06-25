@@ -18,14 +18,8 @@ where
             .map(|pair| format!("{}{}", pair.0.span().as_str(), pair.1.span().as_str()))
             .collect::<Vec<String>>()
             .join(" ");
-        if sep_pairs.len() == 1 {
-            buf.pop(); // pop the ending comma
-            formatted_code.push_str(&buf);
-        } else {
-            buf.pop(); // pop the ending space
-            buf.pop(); // pop the ending comma
-            formatted_code.push_str(&buf);
-        }
+        buf.pop(); // pop the ending comma
+        formatted_code.push_str(&buf);
 
         // add boxed type
         if let Some(final_value) = value_opt {
