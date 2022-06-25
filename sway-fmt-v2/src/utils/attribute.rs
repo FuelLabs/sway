@@ -1,4 +1,7 @@
-use crate::fmt::{Format, FormattedCode, Formatter};
+use crate::{
+    fmt::{Format, FormattedCode, Formatter},
+    FormatterError,
+};
 use sway_parse::{
     attribute::{Annotated, AttributeDecl},
     token::Delimiter,
@@ -9,15 +12,18 @@ use sway_types::Spanned;
 use super::bracket::{Parenthesis, SquareBracket};
 
 impl<T: Parse + Format> Format for Annotated<T> {
-    fn format(&self, formatter: &mut Formatter) -> FormattedCode {
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         let attributes = &self.attribute_list;
-        let mut formatted_code = String::new();
 
         for attr in attributes {
-            AttributeDecl::format(attr, &mut formatted_code, formatter);
+            AttributeDecl::format(attr, formatted_code, formatter);
         }
 
-        formatted_code + &self.value.format(formatter)
+        self.value.format(formatted_code, formatter)
     }
 }
 

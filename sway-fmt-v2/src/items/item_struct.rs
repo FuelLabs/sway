@@ -5,16 +5,17 @@ use crate::{
         bracket::{AngleBracket, CurlyBrace},
         item_len::ItemLen,
     },
+    FormatterError,
 };
 use sway_parse::ItemStruct;
 use sway_types::Spanned;
 
 impl Format for ItemStruct {
-    fn format(&self, formatter: &mut Formatter) -> FormattedCode {
-        // TODO: creating this formatted_code with FormattedCode::new() will likely cause lots of
-        // reallocations maybe we can explore how we can do this, starting with with_capacity may help.
-        let mut formatted_code = FormattedCode::new();
-
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         // Get the unformatted
 
         // Get struct_variant_align_threshold from config.
@@ -36,12 +37,12 @@ impl Format for ItemStruct {
         let multiline = !struct_lit_single_line || self.get_formatted_len() > struct_lit_width;
         format_struct(
             self,
-            &mut formatted_code,
+            formatted_code,
             formatter,
             multiline,
             struct_variant_align_threshold,
         );
-        formatted_code
+        Ok(())
     }
 }
 
