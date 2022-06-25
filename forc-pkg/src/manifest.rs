@@ -11,6 +11,8 @@ use std::{
 use sway_core::{parse, TreeType};
 use sway_utils::constants;
 
+type PatchMap = BTreeMap<String, Dependency>;
+
 /// A [Manifest] that was deserialized from a file at a particular path.
 #[derive(Debug)]
 pub struct ManifestFile {
@@ -27,6 +29,7 @@ pub struct Manifest {
     pub project: Project,
     pub network: Option<Network>,
     pub dependencies: Option<BTreeMap<String, Dependency>>,
+    pub patch: Option<BTreeMap<String, PatchMap>>,
     build_profile: Option<BTreeMap<String, BuildProfile>>,
 }
 
@@ -269,6 +272,14 @@ impl Manifest {
             Dependency::Detailed(ref det) => Some((name, det)),
             Dependency::Simple(_) => None,
         })
+    }
+
+    /// Produce an iterator yielding all listed patches.
+    pub fn patches(&self) -> impl Iterator<Item = (&String, &PatchMap)> {
+        self.patch
+            .as_ref()
+            .into_iter()
+            .flat_map(|patches| patches.iter())
     }
 
     /// Check for the `core` and `std` packages under `[dependencies]`. If both are missing, add
