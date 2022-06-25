@@ -2,6 +2,7 @@ use crate::priv_prelude::*;
 
 pub mod item_abi;
 pub mod item_const;
+pub mod item_control_flow;
 pub mod item_enum;
 pub mod item_fn;
 pub mod item_impl;
@@ -25,6 +26,7 @@ impl Spanned for Item {
 #[derive(Clone, Debug)]
 pub enum ItemKind {
     Use(ItemUse),
+    Break(ItemBreak),
     Struct(ItemStruct),
     Enum(ItemEnum),
     Fn(ItemFn),
@@ -39,6 +41,7 @@ impl Spanned for ItemKind {
     fn span(&self) -> Span {
         match self {
             ItemKind::Use(item_use) => item_use.span(),
+            ItemKind::Break(item_break) => item_break.span(),
             ItemKind::Struct(item_struct) => item_struct.span(),
             ItemKind::Enum(item_enum) => item_enum.span(),
             ItemKind::Fn(item_fn) => item_fn.span(),
@@ -56,6 +59,10 @@ impl Parse for ItemKind {
         if parser.peek::<UseToken>().is_some() || parser.peek2::<PubToken, UseToken>().is_some() {
             let item_use = parser.parse()?;
             return Ok(ItemKind::Use(item_use));
+        }
+        if parser.peek::<BreakToken>().is_some() {
+            let item_break = parser.parse()?;
+            return Ok(ItemKind::Break(item_break));
         }
         if parser.peek::<StructToken>().is_some()
             || parser.peek2::<PubToken, StructToken>().is_some()

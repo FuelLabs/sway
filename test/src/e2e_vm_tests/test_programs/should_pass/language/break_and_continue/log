@@ -1,0 +1,4 @@
+[0m[32m  Compiled library "core".
+[0m[sway-core/src/convert_parse_tree.rs:308] "HERE?" = "HERE?"
+thread 'main' panicked at 'called `Option::unwrap()` on a `None` value', sway-core/src/asm_generation/from_ir.rs:2006:55
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

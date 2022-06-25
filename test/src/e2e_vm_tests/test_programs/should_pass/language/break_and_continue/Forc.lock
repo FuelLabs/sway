@@ -1,9 +1,9 @@
 [[package]]
 name = 'core'
-source = 'path+from-root-EDFF019BE08098DD'
+source = 'path+from-root-8040345C04CDD52C'
 dependencies = []
 
 [[package]]
-name = 'storage_declaration'
+name = 'ret_small_string'
 source = 'root'
 dependencies = ['core']

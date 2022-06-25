@@ -22,6 +22,7 @@ pub use {
             item_struct::ItemStruct,
             item_trait::{ItemTrait, Traits},
             item_use::ItemUse,
+            item_control_flow::ItemBreak,
             FnSignature, Item, ItemKind, TypeField,
         },
         keywords::*,

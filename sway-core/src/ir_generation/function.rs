@@ -23,6 +23,7 @@ pub(super) struct FnCompiler {
     module: Module,
     pub(super) function: Function,
     pub(super) current_block: Block,
+    pub(super) break_block: Block,
     lexical_map: LexicalMap,
 }
 
@@ -42,6 +43,7 @@ impl FnCompiler {
             module,
             function,
             current_block: function.get_entry_block(context),
+            break_block: function.get_entry_block(context),
             lexical_map,
         }
     }
@@ -72,9 +74,20 @@ impl FnCompiler {
         ast_block: TypedCodeBlock,
     ) -> Result<Value, CompileError> {
         self.lexical_map.enter_scope();
+        let mut break_seen = false;
         let value = ast_block
             .contents
             .into_iter()
+            .skip(2)
+//            .filter(|ast_node| {
+//                    let prev_break_seen = break_seen;
+//                    if let TypedAstNodeContent::Declaration(TypedDeclaration::Break) 
+//                            = ast_node.content.clone() {
+//                        break_seen = true;
+//                    }
+//                    !prev_break_seen
+//                }
+//            )
             .map(|ast_node| {
                 let span_md_idx = MetadataIndex::from_span(context, &ast_node.span);
                 match ast_node.content {
@@ -149,6 +162,14 @@ impl FnCompiler {
                                 span: ast_node.span,
                             })
                         }
+                        TypedDeclaration::Break { .. } => {
+                            break_seen = true;
+                            Ok(
+                                self.current_block
+                                    .ins(context)
+                                    .branch(self.break_block, None, None)
+                            )
+                        },
                         TypedDeclaration::StorageDeclaration(_) => {
                             Err(CompileError::UnexpectedDeclaration {
                                 decl_type: "storage",
@@ -874,16 +895,22 @@ impl FnCompiler {
         let body_block = self
             .function
             .create_block(context, Some("while_body".into()));
-        self.current_block = body_block;
-        self.compile_code_block(context, ast_while_loop.body)?;
-        self.current_block
-            .ins(context)
-            .branch(cond_block, None, None);
 
         // Create the final block after we're finished with the body.
         let final_block = self
             .function
             .create_block(context, Some("end_while".into()));
+
+        let prev_break_block = self.break_block;
+
+        self.break_block = final_block;
+        self.current_block = body_block;
+        self.compile_code_block(context, ast_while_loop.body)?;
+        self.current_block
+            .ins(context)
+            .branch(cond_block, None, None);
+      
+        self.break_block = prev_break_block;
 
         // Add the conditional which jumps into the body or out to the final block.
         self.current_block = cond_block;

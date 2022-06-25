@@ -1,0 +1,239 @@
+script {
+    fn main() -> (), !1 {
+        local mut ptr u64 i
+        local mut ptr u64 j
+        local ptr u64 m
+        local ptr u64 x
+
+        entry:
+        v0 = get_ptr ptr u64 m, ptr u64, 0, !2
+        v1 = const u64 5, !3
+        store v1, ptr v0, !2
+        v2 = get_ptr mut ptr u64 i, ptr u64, 0, !4
+        v3 = const u64 0, !5
+        store v3, ptr v2, !4
+        v4 = get_ptr mut ptr u64 j, ptr u64, 0, !6
+        v5 = const u64 0, !7
+        store v5, ptr v4, !6
+        br while
+
+        while:
+        v6 = get_ptr mut ptr u64 i, ptr u64, 0, !8
+        v7 = load ptr v6, !8
+        v8 = const u64 10, !9
+        v9 = asm(r1: v7, r2: v8, r3) -> bool r3, !11 {
+            lt     r3 r1 r2, !12
+        }
+        br block9
+
+        block9:
+        v10 = phi(while: v9)
+        cbr v10, while_body, end_while
+
+        while_body:
+        br while0
+
+        end_while:
+        v11 = const unit ()
+        ret () v11
+
+        while0:
+        v12 = get_ptr mut ptr u64 i, ptr u64, 0, !13
+        v13 = load ptr v12, !13
+        v14 = const u64 10, !14
+        v15 = asm(r1: v13, r2: v14, r3) -> bool r3, !15 {
+            lt     r3 r1 r2, !16
+        }
+        br block10
+
+        block10:
+        v16 = phi(while0: v15)
+        cbr v16, while_body1, end_while2
+
+        while_body1:
+        v17 = get_ptr mut ptr u64 i, ptr u64, 0, !17
+        v18 = get_ptr mut ptr u64 i, ptr u64, 0, !18
+        v19 = load ptr v18, !18
+        v20 = const u64 1, !19
+        v21 = asm(r1: v19, r2: v20, r3) -> u64 r3, !20 {
+            add    r3 r2 r1, !21
+        }
+        br block11
+
+        block11:
+        v22 = phi(while_body1: v21)
+        store v22, ptr v17, !17
+        v23 = get_ptr mut ptr u64 i, ptr u64, 0, !22
+        v24 = load ptr v23, !22
+        v25 = get_ptr ptr u64 m, ptr u64, 0, !23
+        v26 = load ptr v25, !23
+        v27 = asm(r1: v24, r2: v26, r3) -> bool r3, !24 {
+            gt     r3 r1 r2, !25
+        }
+        br block12
+
+        block12:
+        v28 = phi(block11: v27)
+        cbr v28, block3, block4, !26
+
+        end_while2:
+        v29 = get_ptr mut ptr u64 j, ptr u64, 0, !27
+        v30 = get_ptr mut ptr u64 j, ptr u64, 0, !28
+        v31 = load ptr v30, !28
+        v32 = const u64 1, !29
+        v33 = asm(r1: v31, r2: v32, r3) -> u64 r3, !30 {
+            add    r3 r2 r1, !31
+        }
+        br block13
+
+        block13:
+        v34 = phi(end_while2: v33)
+        store v34, ptr v29, !27
+        v35 = get_ptr mut ptr u64 j, ptr u64, 0, !32
+        v36 = load ptr v35, !32
+        v37 = get_ptr ptr u64 m, ptr u64, 0, !33
+        v38 = load ptr v37, !33
+        v39 = asm(r1: v36, r2: v38, r3) -> bool r3, !34 {
+            gt     r3 r1 r2, !35
+        }
+        br block14
+
+        block14:
+        v40 = phi(block13: v39)
+        cbr v40, block6, block7, !36
+
+        block3:
+        br end_while2
+        v41 = get_ptr ptr u64 x, ptr u64, 0, !37
+        v42 = const u64 777, !38
+        store v42, ptr v41, !37
+        br block5
+
+        block4:
+        v43 = const unit ()
+        br block5
+
+        block5:
+        v44 = phi(block3: v42, block4: v43)
+        br while0
+
+        block6:
+        br end_while
+        br block8
+
+        block7:
+        v45 = const unit ()
+        br block8
+
+        block8:
+        v47 = phi(block6: v46, block7: v45)
+        br while
+    }
+
+    fn anon_0(self !39: u64, other !40: u64) -> u64, !41 {
+        entry:
+        v0 = asm(r1: self, r2: other, r3) -> u64 r3, !20 {
+            add    r3 r2 r1, !21
+        }
+        ret u64 v0
+    }
+
+    fn anon_1(self !42: u64, other !43: u64) -> bool, !44 {
+        entry:
+        v0 = asm(r1: self, r2: other, r3) -> bool r3, !24 {
+            gt     r3 r1 r2, !25
+        }
+        ret bool v0
+    }
+
+    fn anon_2(self !45: u64, other !46: u64) -> bool, !47 {
+        entry:
+        v0 = asm(r1: self, r2: other, r3) -> bool r3, !15 {
+            lt     r3 r1 r2, !16
+        }
+        ret bool v0
+    }
+
+    fn anon_3(self !48: u64, other !49: u64) -> u64, !50 {
+        entry:
+        v0 = asm(r1: self, r2: other, r3) -> u64 r3, !30 {
+            add    r3 r2 r1, !31
+        }
+        ret u64 v0
+    }
+
+    fn anon_4(self !51: u64, other !52: u64) -> bool, !53 {
+        entry:
+        v0 = asm(r1: self, r2: other, r3) -> bool r3, !34 {
+            gt     r3 r1 r2, !35
+        }
+        ret bool v0
+    }
+
+    fn anon_5(self !54: u64, other !55: u64) -> bool, !56 {
+        entry:
+        v0 = asm(r1: self, r2: other, r3) -> bool r3, !11 {
+            lt     r3 r1 r2, !12
+        }
+        ret bool v0
+    }
+}
+
+!0 = filepath "/Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/language/break_and_continue/src/main.sw"
+!1 = span !0 9 307
+!2 = span !0 25 35
+!3 = span !0 33 34
+!4 = span !0 40 54
+!5 = span !0 52 53
+!6 = span !0 59 73
+!7 = span !0 71 72
+!8 = span !0 84 85
+!9 = span !0 88 90
+!10 = filepath "/Users/mohammad/Desktop/fuel/sway/sway-lib-core/src/ops.sw"
+!11 = span !10 5203 5289
+!12 = span !10 5246 5257
+!13 = span !0 107 108
+!14 = span !0 111 113
+!15 = span !10 5203 5289
+!16 = span !10 5246 5257
+!17 = span !0 128 134
+!18 = span !0 128 129
+!19 = span !0 133 134
+!20 = span !10 139 225
+!21 = span !10 182 194
+!22 = span !0 151 152
+!23 = span !0 155 156
+!24 = span !10 5063 5149
+!25 = span !10 5106 5117
+!26 = span !0 151 156
+!27 = span !0 244 250
+!28 = span !0 244 245
+!29 = span !0 249 250
+!30 = span !10 139 225
+!31 = span !10 182 194
+!32 = span !0 263 264
+!33 = span !0 267 268
+!34 = span !10 5063 5149
+!35 = span !10 5106 5117
+!36 = span !0 263 268
+!37 = span !0 198 210
+!38 = span !0 206 209
+!39 = span !10 102 106
+!40 = span !10 108 113
+!41 = span !10 98 101
+!42 = span !10 5026 5030
+!43 = span !10 5032 5037
+!44 = span !10 5023 5025
+!45 = span !10 5166 5170
+!46 = span !10 5172 5177
+!47 = span !10 5163 5165
+!48 = span !10 102 106
+!49 = span !10 108 113
+!50 = span !10 98 101
+!51 = span !10 5026 5030
+!52 = span !10 5032 5037
+!53 = span !10 5023 5025
+!54 = span !10 5166 5170
+!55 = span !10 5172 5177
+!56 = span !10 5163 5165
+

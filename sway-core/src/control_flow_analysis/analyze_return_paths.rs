@@ -169,6 +169,7 @@ fn connect_declaration(
     use TypedDeclaration::*;
     match decl {
         TraitDeclaration(_)
+        | Break
         | AbiDeclaration(_)
         | StructDeclaration(_)
         | EnumDeclaration(_)

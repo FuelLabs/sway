@@ -1,0 +1,134 @@
+script {
+    fn main() -> (), !1 {
+        local mut ptr u64 i
+        local mut ptr u64 j
+        local ptr u64 m
+
+        entry:
+        v0 = get_ptr ptr u64 m, ptr u64, 0, !2
+        v1 = const u64 5, !3
+        store v1, ptr v0, !2
+        v2 = get_ptr mut ptr u64 i, ptr u64, 0, !4
+        v3 = const u64 0, !5
+        store v3, ptr v2, !4
+        v4 = get_ptr mut ptr u64 j, ptr u64, 0, !6
+        v5 = const u64 0, !7
+        store v5, ptr v4, !6
+        br while
+
+        while:
+        v6 = get_ptr mut ptr u64 i, ptr u64, 0, !8
+        v7 = load ptr v6, !8
+        v8 = const u64 10, !9
+        v9 = asm(r1: v7, r2: v8, r3) -> bool r3, !11 {
+            lt     r3 r1 r2, !12
+        }
+        br block3
+
+        block3:
+        v10 = phi(while: v9)
+        cbr v10, while_body, end_while
+
+        while_body:
+        v11 = get_ptr mut ptr u64 i, ptr u64, 0, !13
+        v12 = get_ptr mut ptr u64 i, ptr u64, 0, !14
+        v13 = load ptr v12, !14
+        v14 = const u64 1, !15
+        v15 = asm(r1: v13, r2: v14, r3) -> u64 r3, !16 {
+            add    r3 r2 r1, !17
+        }
+        br block4
+
+        block4:
+        v16 = phi(while_body: v15)
+        store v16, ptr v11, !13
+        v17 = get_ptr mut ptr u64 i, ptr u64, 0, !18
+        v18 = load ptr v17, !18
+        v19 = get_ptr ptr u64 m, ptr u64, 0, !19
+        v20 = load ptr v19, !19
+        v21 = asm(r1: v18, r2: v20, r3) -> bool r3, !20 {
+            gt     r3 r1 r2, !21
+        }
+        br block5
+
+        block5:
+        v22 = phi(block4: v21)
+        cbr v22, block0, block1, !22
+
+        end_while:
+        v23 = const unit ()
+        ret () v23
+
+        block0:
+        v24 = const unit ()
+        br block2
+
+        block1:
+        v25 = const unit ()
+        br block2
+
+        block2:
+        v26 = phi(block0: v24, block1: v25)
+        br while
+    }
+
+    fn anon_0(self !23: u64, other !24: u64) -> u64, !25 {
+        entry:
+        v0 = asm(r1: self, r2: other, r3) -> u64 r3, !16 {
+            add    r3 r2 r1, !17
+        }
+        ret u64 v0
+    }
+
+    fn anon_1(self !26: u64, other !27: u64) -> bool, !28 {
+        entry:
+        v0 = asm(r1: self, r2: other, r3) -> bool r3, !20 {
+            gt     r3 r1 r2, !21
+        }
+        ret bool v0
+    }
+
+    fn anon_2(self !29: u64, other !30: u64) -> bool, !31 {
+        entry:
+        v0 = asm(r1: self, r2: other, r3) -> bool r3, !11 {
+            lt     r3 r1 r2, !12
+        }
+        ret bool v0
+    }
+}
+
+!0 = filepath "/Users/mohammad/Desktop/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/language/break_and_continue/src/main.sw"
+!1 = span !0 9 166
+!2 = span !0 25 35
+!3 = span !0 33 34
+!4 = span !0 40 54
+!5 = span !0 52 53
+!6 = span !0 59 73
+!7 = span !0 71 72
+!8 = span !0 84 85
+!9 = span !0 88 90
+!10 = filepath "/Users/mohammad/Desktop/fuel/sway/sway-lib-core/src/ops.sw"
+!11 = span !10 5203 5289
+!12 = span !10 5246 5257
+!13 = span !0 101 107
+!14 = span !0 101 102
+!15 = span !0 106 107
+!16 = span !10 139 225
+!17 = span !10 182 194
+!18 = span !0 120 121
+!19 = span !0 124 125
+!20 = span !10 5063 5149
+!21 = span !10 5106 5117
+!22 = span !0 120 125
+!23 = span !10 102 106
+!24 = span !10 108 113
+!25 = span !10 98 101
+!26 = span !10 5026 5030
+!27 = span !10 5032 5037
+!28 = span !10 5023 5025
+!29 = span !10 5166 5170
+!30 = span !10 5172 5177
+!31 = span !10 5163 5165
+
+  Bytecode size is 196 bytes.
+  Script bytecode hash: 0x321fba5ed79141dce8e7beb23166179a3ac9441f19d04fca88820000a2850509

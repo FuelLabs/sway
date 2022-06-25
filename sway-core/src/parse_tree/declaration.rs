@@ -23,6 +23,7 @@ pub use variable::*;
 #[derive(Debug, Clone)]
 pub enum Declaration {
     VariableDeclaration(VariableDeclaration),
+    Break,
     FunctionDeclaration(FunctionDeclaration),
     TraitDeclaration(TraitDeclaration),
     StructDeclaration(StructDeclaration),

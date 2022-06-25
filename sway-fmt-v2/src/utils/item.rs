@@ -6,6 +6,7 @@ impl Format for Item {
     fn format(&self, formatter: &mut Formatter) -> FormattedCode {
         match &self.value {
             Use(item_use) => item_use.format(formatter),
+            Break(_item_break) => unimplemented!(),
             Struct(item_struct) => item_struct.format(formatter),
             Enum(item_enum) => item_enum.format(formatter),
             Fn(item_fn) => item_fn.format(formatter),
