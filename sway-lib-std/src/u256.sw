@@ -4,7 +4,7 @@ use core::num::*;
 use ::result::*;
 
 /// The 256-bit unsigned integer type.
-/// Represented as four u64-bit components: `(a, b, c, d)`, where `value = (a << 192) + (b << 128) + (c << 64) + d`.
+/// Represented as four 64-bit components: `(a, b, c, d)`, where `value = (a << 192) + (b << 128) + (c << 64) + d`.
 pub struct U256 {
     a: u64,
     b: u64,
