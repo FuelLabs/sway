@@ -107,7 +107,9 @@ fn create_contract_tx(
     let contract = Contract::from(compiled_contract);
     let root = contract.root();
 
-    // The VM requires that storage slots are sorted.
+    // The VM currently requires that storage slots are sorted but this shouldn't be neessary.
+    // Downstream tooling should do the sorting themselves. 
+    // Ref: https://github.com/FuelLabs/fuel-tx/issues/153
     let mut storage_slots = storage_slots;
     storage_slots.sort();
     let state_root = Contract::initial_state_root(storage_slots.iter());

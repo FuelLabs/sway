@@ -247,7 +247,7 @@ impl TypedProgram {
                             errors,
                         );
                         // Sort the slots to standardize the output. Not strictly required by the
-                        // spec but the VM expects sorted slots
+                        // spec.
                         storage_slots.sort();
                         ok(
                             Self {
