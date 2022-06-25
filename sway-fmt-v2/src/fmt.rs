@@ -41,6 +41,7 @@ impl Formatter {
         build_config: Option<&BuildConfig>,
     ) -> Result<FormattedCode, FormatterError> {
         let path = build_config.map(|build_config| build_config.canonical_root_module());
+        let src_len = src.len();
         let module = sway_parse::parse_file(src, path)?;
         // Get parsed items
         let items = module.items;
@@ -49,7 +50,9 @@ impl Formatter {
 
         // Formatted code will be pushed here with raw newline stlye.
         // Which means newlines are not converted into system-specific versions by apply_newline_style
-        let mut raw_formatted_code = String::new();
+        // Use the length of src as a hint of the memory size needed for raw_formatted_code, 
+        // which will reduce the number of reallocations
+        let mut raw_formatted_code = String::with_capacity(src_len);
 
         // Insert program type to the formatted code.
         insert_program_type(&mut raw_formatted_code, program_type);
