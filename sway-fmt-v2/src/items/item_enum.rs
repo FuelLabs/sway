@@ -13,8 +13,6 @@ impl Format for ItemEnum {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        // TODO: creating this formatted_code with String::new() will likely cause lots of
-        // reallocations maybe we can explore how we can do this, starting with with_capacity may help.
         let enum_variant_align_threshold = formatter.config.structures.enum_variant_align_threshold;
 
         if let Some(visibility_token) = &self.visibility {
