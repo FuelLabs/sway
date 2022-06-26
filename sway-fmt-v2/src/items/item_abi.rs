@@ -15,7 +15,7 @@ impl Format for ItemAbi {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         // Add enum token
-        writeln!(formatted_code, "{} ", self.abi_token.span().as_str())?;
+        write!(formatted_code, "{} ", self.abi_token.span().as_str())?;
 
         // Add name of the abi
         formatted_code.push_str(self.name.as_str());
