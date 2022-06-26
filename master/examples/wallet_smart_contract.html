@@ -167,7 +167,7 @@ abi Wallet {
 impl Wallet for Contract {
     #[storage(read, write)]fn receive_funds() {
         if msg_asset_id() == ~ContractId::from(BASE_ASSET_ID) {
-            // If we received `NATIVE_ASSET_ID` then keep track of the balance.
+            // If we received `BASE_ASSET_ID` then keep track of the balance.
             // Otherwise, we're receiving other native assets and don't care
             // about our balance of tokens.
             storage.balance = storage.balance + msg_amount();
