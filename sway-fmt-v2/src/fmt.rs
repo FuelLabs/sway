@@ -3,7 +3,6 @@ use crate::utils::{
 };
 use std::{path::Path, sync::Arc};
 use sway_core::BuildConfig;
-use sway_parse::attribute::Annotated;
 
 pub use crate::{
     config::manifest::Config,
@@ -19,7 +18,11 @@ pub struct Formatter {
 pub type FormattedCode = String;
 
 pub trait Format {
-    fn format(&self, formatter: &mut Formatter) -> FormattedCode;
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError>;
 }
 
 impl Formatter {
@@ -38,6 +41,7 @@ impl Formatter {
         build_config: Option<&BuildConfig>,
     ) -> Result<FormattedCode, FormatterError> {
         let path = build_config.map(|build_config| build_config.canonical_root_module());
+        let src_len = src.len();
         let module = sway_parse::parse_file(src, path)?;
         // Get parsed items
         let items = module.items;
@@ -45,20 +49,24 @@ impl Formatter {
         let program_type = module.kind;
 
         // Formatted code will be pushed here with raw newline stlye.
-        // Which means newlines are not converted into system-specific versions by apply_newline_style
-        let mut raw_formatted_code = String::new();
+        // Which means newlines are not converted into system-specific versions by `apply_newline_style`.
+        // Use the length of src as a hint of the memory size needed for `raw_formatted_code`,
+        // which will reduce the number of reallocations
+        let mut raw_formatted_code = String::with_capacity(src_len);
 
         // Insert program type to the formatted code.
         insert_program_type(&mut raw_formatted_code, program_type);
+
         // Insert parsed & formatted items into the formatted code.
-        raw_formatted_code += &items
-            .into_iter()
-            .map(|item| -> Result<String, FormatterError> {
-                // format Annotated<ItemKind>
-                Ok(Annotated::format(&item, self))
-            })
-            .collect::<Result<Vec<String>, _>>()?
-            .join("\n");
+        let mut iter = items.iter().peekable();
+        while let Some(item) = iter.next() {
+            // format Annotated<ItemKind>
+            item.format(&mut raw_formatted_code, self)?;
+            if iter.peek().is_some() {
+                raw_formatted_code.push('\n');
+            }
+        }
+
         let mut formatted_code = String::from(&raw_formatted_code);
         apply_newline_style(
             // The user's setting for `NewlineStyle`
@@ -246,6 +254,23 @@ abi StorageMapExample {
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert!(dbg!(correct_sway_code) == dbg!(formatted_sway_code))
+        assert!(correct_sway_code == formatted_sway_code)
+    }
+
+    #[test]
+    fn test_multi_items() {
+        let sway_code_to_format = r#"contract;
+
+pub const TEST: u16 = 10;
+pub const TEST1: u16 = 10;"#;
+        let correct_sway_code = r#"contract;
+
+pub const TEST: u16 = 10;
+pub const TEST1: u16 = 10;"#;
+
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert!(correct_sway_code == formatted_sway_code)
     }
 }
