@@ -55,7 +55,7 @@ pub use crate::{
     path::{PathExpr, PathExprSegment, PathType, PathTypeSegment, QualifiedPathRoot},
     pattern::{Pattern, PatternStructField},
     statement::{Statement, StatementLet},
-    token::lex,
+    token::{lex, lex_commented},
     token::LexError,
     ty::Ty,
     where_clause::{WhereBound, WhereClause},
