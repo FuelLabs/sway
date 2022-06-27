@@ -12,6 +12,10 @@ pub struct U256 {
     d: u64,
 }
 
+pub enum U256Error {
+    LossOfPrecision: (),
+}
+
 pub trait From {
     /// Function for creating a U256 from its u64 components.
     pub fn from(a: u64, b: u64, c: u64, d: u64) -> Self;
@@ -49,11 +53,11 @@ impl U256 {
     }
 
     /// Downcast to `u64`. Err if precision would be lost, Ok otherwise.
-    pub fn to_u64(self) -> Result<u64, ()> {
+    pub fn to_u64(self) -> Result<u64, U256Error> {
         if self.a == 0 && self.b == 0 && self.c == 0 {
             Result::Ok(self.d)
         } else {
-            Result::Err(())
+            Result::Err(U256Error::LossOfPrecision)
         }
     }
 
