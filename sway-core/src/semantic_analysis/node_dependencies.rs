@@ -400,9 +400,12 @@ impl Dependencies {
                 self.gather_from_call_path(&(name.clone()).into(), false, false)
             }
             Expression::FunctionApplication {
-                name, arguments, ..
+                call_path_binding,
+                arguments,
+                ..
             } => self
-                .gather_from_call_path(name, false, true)
+                .gather_from_call_path(&call_path_binding.inner, false, true)
+                .gather_from_type_arguments(&call_path_binding.type_arguments)
                 .gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg)),
             Expression::LazyOperator { lhs, rhs, .. } => {
                 self.gather_from_expr(lhs).gather_from_expr(rhs)

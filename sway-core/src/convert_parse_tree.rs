@@ -1,4 +1,4 @@
-use crate::type_engine::{TraitConstraint, TypeArgument, TypeParameter};
+use crate::type_engine::{TraitConstraint, TypeArgument, TypeBinding, TypeParameter};
 
 use {
     crate::{
@@ -1542,10 +1542,14 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                             None => Vec::new(),
                         };
                         if call_path.prefixes.is_empty() {
-                            Expression::FunctionApplication {
-                                name: call_path,
-                                arguments,
+                            let call_path_binding = TypeBinding {
+                                inner: call_path.clone(),
                                 type_arguments,
+                                span: call_path.span(),
+                            };
+                            Expression::FunctionApplication {
+                                call_path_binding,
+                                arguments,
                                 span,
                             }
                         } else {
@@ -1820,17 +1824,21 @@ fn unary_op_call(
     span: Span,
     arg: Expr,
 ) -> Result<Expression, ErrorEmitted> {
-    Ok(Expression::FunctionApplication {
-        name: CallPath {
+    let call_path_binding = TypeBinding {
+        inner: CallPath {
             prefixes: vec![
                 Ident::new_with_override("core", op_span.clone()),
                 Ident::new_with_override("ops", op_span.clone()),
             ],
-            suffix: Ident::new_with_override(name, op_span),
+            suffix: Ident::new_with_override(name, op_span.clone()),
             is_absolute: false,
         },
+        type_arguments: vec![],
+        span: op_span,
+    };
+    Ok(Expression::FunctionApplication {
+        call_path_binding,
         arguments: vec![expr_to_expression(ec, arg)?],
-        type_arguments: Vec::new(),
         span,
     })
 }

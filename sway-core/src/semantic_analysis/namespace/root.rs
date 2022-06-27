@@ -76,7 +76,7 @@ impl Root {
         let type_id = match look_up_type_id(type_id) {
             TypeInfo::Custom {
                 ref name,
-                type_arguments,
+                ref mut type_arguments,
             } => {
                 match self
                     .resolve_symbol(mod_path, name)

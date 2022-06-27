@@ -393,16 +393,14 @@ impl TypedExpression {
                 Self::type_check_variable_expression(ctx.namespace, name, span)
             }
             Expression::FunctionApplication {
-                name,
+                call_path_binding,
                 arguments,
                 span,
-                type_arguments,
                 ..
             } => Self::type_check_function_application(
                 ctx.by_ref(),
-                name,
+                call_path_binding,
                 arguments,
-                type_arguments,
                 span,
             ),
             Expression::LazyOperator { op, lhs, rhs, span } => {
@@ -650,33 +648,26 @@ impl TypedExpression {
 
     #[allow(clippy::type_complexity)]
     fn type_check_function_application(
-        ctx: TypeCheckContext,
-        name: CallPath,
+        mut ctx: TypeCheckContext,
+        mut call_path_binding: TypeBinding<CallPath>,
         arguments: Vec<Expression>,
-        type_arguments: Vec<TypeArgument>,
         _span: Span,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let unknown_decl = check!(
-            ctx.namespace.resolve_call_path(&name).cloned(),
+            TypeBinding::type_check(&mut call_path_binding, &mut ctx),
             return err(warnings, errors),
             warnings,
             errors
         );
         let function_decl = check!(
-            unknown_decl.expect_function(),
+            unknown_decl.expect_function().cloned(),
             return err(warnings, errors),
             warnings,
             errors
         );
-        instantiate_function_application(
-            ctx,
-            function_decl.clone(),
-            name,
-            type_arguments,
-            arguments,
-        )
+        instantiate_function_application(ctx, function_decl, call_path_binding.inner, arguments)
     }
 
     fn type_check_lazy_operator(
@@ -950,7 +941,7 @@ impl TypedExpression {
     fn type_check_struct_expression(
         mut ctx: TypeCheckContext,
         call_path: CallPath,
-        type_arguments: Vec<TypeArgument>,
+        mut type_arguments: Vec<TypeArgument>,
         fields: Vec<StructExpressionField>,
         span: Span,
     ) -> CompileResult<TypedExpression> {
@@ -987,7 +978,7 @@ impl TypedExpression {
         check!(
             ctx.monomorphize(
                 &mut struct_decl,
-                type_arguments,
+                &mut type_arguments,
                 EnforceTypeArguments::No,
                 &call_path.span()
             ),
@@ -1289,13 +1280,7 @@ impl TypedExpression {
                 }
                 TypedDeclaration::FunctionDeclaration(func_decl) => {
                     check!(
-                        instantiate_function_application(
-                            ctx,
-                            func_decl,
-                            call_path,
-                            vec!(), // the type args in this position are guarenteed to be empty due to parsing
-                            args,
-                        ),
+                        instantiate_function_application(ctx, func_decl, call_path, args,),
                         return err(warnings, errors),
                         warnings,
                         errors

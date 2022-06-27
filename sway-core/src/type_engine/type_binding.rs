@@ -1,6 +1,12 @@
 use sway_types::{Span, Spanned};
 
-use super::TypeArgument;
+use crate::{
+    error::{err, ok},
+    semantic_analysis::TypeCheckContext,
+    CallPath, CompileResult, TypedDeclaration,
+};
+
+use super::{EnforceTypeArguments, ReplaceSelfType, TypeArgument};
 
 /// A `TypeBinding` is the result of using turbofish to bind types to
 /// generic parameters.
@@ -81,5 +87,67 @@ impl<T> TypeBinding<T> {
             type_arguments: vec![],
             span,
         }
+    }
+}
+
+impl TypeBinding<CallPath> {
+    pub(crate) fn type_check(
+        &mut self,
+        ctx: &mut TypeCheckContext,
+    ) -> CompileResult<TypedDeclaration> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        for type_argument in self.type_arguments.iter_mut() {
+            type_argument.replace_self_type(ctx.self_type());
+        }
+        let mut unknown_decl = check!(
+            ctx.namespace.resolve_call_path(&self.inner).cloned(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        match unknown_decl {
+            TypedDeclaration::FunctionDeclaration(ref mut decl) => {
+                check!(
+                    ctx.monomorphize(
+                        decl,
+                        &mut self.type_arguments,
+                        EnforceTypeArguments::No,
+                        &self.span
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            TypedDeclaration::EnumDeclaration(ref mut decl) => {
+                check!(
+                    ctx.monomorphize(
+                        decl,
+                        &mut self.type_arguments,
+                        EnforceTypeArguments::No,
+                        &self.span
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            TypedDeclaration::StructDeclaration(ref mut decl) => {
+                check!(
+                    ctx.monomorphize(
+                        decl,
+                        &mut self.type_arguments,
+                        EnforceTypeArguments::No,
+                        &self.span
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            _ => {}
+        }
+        ok(unknown_decl, warnings, errors)
     }
 }
