@@ -69,13 +69,13 @@ impl PunctKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
-pub struct Group {
+pub struct Group<T> {
     pub delimiter: Delimiter,
-    pub token_stream: TokenStream,
+    pub token_stream: T,
     pub span: Span,
 }
 
-impl Spanned for Group {
+impl<T> Spanned for Group<T> {
     fn span(&self) -> Span {
         self.span.clone()
     }
@@ -106,21 +106,79 @@ impl Delimiter {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
-pub enum TokenTree {
+pub struct Comment;
+
+/// Allows for generalizing over commented and uncommented token streams.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
+pub enum GenericTokenTree<T> {
     Punct(Punct),
     Ident(Ident),
-    Group(Group),
+    Group(Group<T>),
     Literal(Literal),
 }
 
-impl Spanned for TokenTree {
+pub type TokenTree = GenericTokenTree<TokenStream>;
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
+pub enum CommentedTokenTree {
+    Comment(Comment),
+    Tree(GenericTokenTree<CommentedTokenStream>),
+}
+
+impl Group<CommentedTokenStream> {
+    pub fn strip_comments(self) -> Group<TokenStream> {
+        Group {
+            delimiter: self.delimiter,
+            token_stream: self.token_stream.strip_comments(),
+            span: self.span,
+        }
+    }
+}
+
+impl<T> Spanned for GenericTokenTree<T> {
     fn span(&self) -> Span {
         match self {
-            TokenTree::Punct(punct) => punct.span(),
-            TokenTree::Ident(ident) => ident.span(),
-            TokenTree::Group(group) => group.span(),
-            TokenTree::Literal(literal) => literal.span(),
+            Self::Punct(punct) => punct.span(),
+            Self::Ident(ident) => ident.span(),
+            Self::Group(group) => group.span(),
+            Self::Literal(literal) => literal.span(),
         }
+    }
+}
+
+impl<T> From<Punct> for GenericTokenTree<T> {
+    fn from(punct: Punct) -> Self {
+        Self::Punct(punct)
+    }
+}
+
+impl<T> From<Ident> for GenericTokenTree<T> {
+    fn from(ident: Ident) -> Self {
+        Self::Ident(ident)
+    }
+}
+
+impl<T> From<Group<T>> for GenericTokenTree<T> {
+    fn from(group: Group<T>) -> Self {
+        Self::Group(group)
+    }
+}
+
+impl<T> From<Literal> for GenericTokenTree<T> {
+    fn from(lit: Literal) -> Self {
+        Self::Literal(lit)
+    }
+}
+
+impl From<Comment> for CommentedTokenTree {
+    fn from(comment: Comment) -> Self {
+        Self::Comment(comment)
+    }
+}
+
+impl From<GenericTokenTree<CommentedTokenStream>> for CommentedTokenTree {
+    fn from(tree: GenericTokenTree<CommentedTokenStream>) -> Self {
+        Self::Tree(tree)
     }
 }
 
@@ -128,6 +186,42 @@ impl Spanned for TokenTree {
 pub struct TokenStream {
     token_trees: Vec<TokenTree>,
     full_span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
+pub struct CommentedTokenStream {
+    token_trees: Vec<CommentedTokenTree>,
+    full_span: Span,
+}
+
+impl CommentedTokenTree {
+    pub fn strip_comments(self) -> Option<TokenTree> {
+        let commented_tt = match self {
+            Self::Comment(_) => return None,
+            Self::Tree(commented_tt) => commented_tt,
+        };
+        let tt = match commented_tt {
+            GenericTokenTree::Punct(punct) => punct.into(),
+            GenericTokenTree::Ident(ident) => ident.into(),
+            GenericTokenTree::Group(group) => group.strip_comments().into(),
+            GenericTokenTree::Literal(lit) => lit.into(),
+        };
+        Some(tt)
+    }
+}
+
+impl CommentedTokenStream {
+    pub fn strip_comments(self) -> TokenStream {
+        let token_trees = self
+            .token_trees
+            .into_iter()
+            .filter_map(|tree| tree.strip_comments())
+            .collect();
+        TokenStream {
+            token_trees,
+            full_span: self.full_span,
+        }
+    }
 }
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
@@ -277,13 +371,22 @@ pub fn lex(
     end: usize,
     path: Option<Arc<PathBuf>>,
 ) -> Result<TokenStream, LexError> {
+    lex_commented(src, start, end, path).map(|stream| stream.strip_comments())
+}
+
+pub fn lex_commented(
+    src: &Arc<str>,
+    start: usize,
+    end: usize,
+    path: Option<Arc<PathBuf>>,
+) -> Result<CommentedTokenStream, LexError> {
     let mut char_indices = CharIndicesInner {
         src: &src[..end],
         position: start,
     }
     .peekable();
     let mut parent_token_trees = Vec::new();
-    let mut token_trees = Vec::new();
+    let mut token_trees: Vec<CommentedTokenTree> = Vec::new();
     while let Some((mut index, mut character)) = char_indices.next() {
         if character.is_whitespace() {
             continue;
@@ -380,7 +483,7 @@ pub fn lex(
                         spacing,
                         span,
                     };
-                    token_trees.push(TokenTree::Punct(punct));
+                    token_trees.push(CommentedTokenTree::Tree(punct.into()));
                 }
                 None => {
                     let span = Span::new(src.clone(), start, end, path.clone()).unwrap();
@@ -389,7 +492,7 @@ pub fn lex(
                         spacing: Spacing::Alone,
                         span,
                     };
-                    token_trees.push(TokenTree::Punct(punct));
+                    token_trees.push(CommentedTokenTree::Tree(punct.into()));
                 }
             }
             continue;
@@ -419,7 +522,7 @@ pub fn lex(
                 }
                 let span = span_until(src, index, &mut char_indices, &path);
                 let ident = Ident::new_with_raw(span, is_raw_ident);
-                token_trees.push(TokenTree::Ident(ident));
+                token_trees.push(CommentedTokenTree::Tree(ident.into()));
                 continue;
             }
         }
@@ -468,14 +571,14 @@ pub fn lex(
                     let full_span =
                         Span::new(src.clone(), start_index, index, path.clone()).unwrap();
                     let group = Group {
-                        token_stream: TokenStream {
+                        token_stream: CommentedTokenStream {
                             token_trees: parent,
                             full_span,
                         },
                         delimiter: close_delimiter,
                         span: span_until(src, open_index, &mut char_indices, &path),
                     };
-                    token_trees.push(TokenTree::Group(group));
+                    token_trees.push(CommentedTokenTree::Tree(group.into()));
                 }
             }
             continue;
@@ -523,7 +626,7 @@ pub fn lex(
             }
             let span = span_until(src, index, &mut char_indices, &path);
             let literal = Literal::String(LitString { span, parsed });
-            token_trees.push(TokenTree::Literal(literal));
+            token_trees.push(CommentedTokenTree::Tree(literal.into()));
             continue;
         }
         if character == '\'' {
@@ -575,7 +678,7 @@ pub fn lex(
             }
             let span = span_until(src, index, &mut char_indices, &path);
             let literal = Literal::Char(LitChar { span, parsed });
-            token_trees.push(TokenTree::Literal(literal));
+            token_trees.push(CommentedTokenTree::Tree(literal.into()));
             continue;
         }
         if let Some(digit) = character.to_digit(10) {
@@ -755,7 +858,7 @@ pub fn lex(
                 parsed: big_uint,
                 ty_opt,
             });
-            token_trees.push(TokenTree::Literal(literal));
+            token_trees.push(CommentedTokenTree::Tree(literal.into()));
             continue;
         }
         if let Some(kind) = character.as_punct_kind() {
@@ -771,7 +874,7 @@ pub fn lex(
                 spacing,
                 span,
             };
-            token_trees.push(TokenTree::Punct(punct));
+            token_trees.push(CommentedTokenTree::Tree(punct.into()));
             continue;
         }
         return Err(LexError {
@@ -804,7 +907,7 @@ pub fn lex(
         });
     }
     let full_span = Span::new(src.clone(), start, end, path).unwrap();
-    let token_stream = TokenStream {
+    let token_stream = CommentedTokenStream {
         token_trees,
         full_span,
     };
