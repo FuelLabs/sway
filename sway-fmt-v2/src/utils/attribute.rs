@@ -2,7 +2,6 @@ use crate::{
     fmt::{Format, FormattedCode, Formatter},
     FormatterError,
 };
-use std::fmt::Write;
 use sway_parse::{
     attribute::{Annotated, AttributeDecl},
     token::Delimiter,
@@ -63,14 +62,14 @@ impl SquareBracket for AttributeDecl {
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Bracket.as_open_char())?;
+        line.push(Delimiter::Bracket.as_open_char());
         Ok(())
     }
     fn close_square_bracket(
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        writeln!(line, "{}", Delimiter::Bracket.as_close_char())?;
+        line.push(Delimiter::Bracket.as_close_char());
         Ok(())
     }
 }
@@ -80,14 +79,14 @@ impl Parenthesis for AttributeDecl {
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Parenthesis.as_open_char())?;
+        line.push(Delimiter::Parenthesis.as_open_char());
         Ok(())
     }
     fn close_parenthesis(
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Parenthesis.as_close_char())?;
+        line.push(Delimiter::Parenthesis.as_close_char());
         Ok(())
     }
 }
