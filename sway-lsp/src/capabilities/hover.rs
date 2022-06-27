@@ -3,8 +3,11 @@ use crate::{
         session::{Documents, Session},
         token::{AstToken, TokenType, TypedAstToken},
     },
-    utils::common::{extract_visibility, get_range_from_span},
-    utils::function::extract_fn_signature,
+    utils::{
+        common::{extract_visibility, get_range_from_span},
+        function::extract_fn_signature,
+        token::is_initial_declaration,
+    },
 };
 
 use std::sync::Arc;
@@ -20,7 +23,7 @@ pub fn get_hover_data(session: Arc<Session>, params: HoverParams) -> Option<Hove
     match session.documents.get(url.path()) {
         Some(ref document) => {
             if let Some(token) = document.get_token_at_position(position) {
-                if token.is_initial_declaration() {
+                if is_initial_declaration(token) {
                     Some(get_hover_format(token, &session.documents))
                 } else {
                     // todo: this logic is flawed at the moment

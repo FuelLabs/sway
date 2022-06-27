@@ -1,4 +1,4 @@
-use crate::core::token::{TokenType, TypedAstToken};
+use crate::core::token::{AstToken, TokenType, TypedAstToken};
 use sway_core::semantic_analysis::ast_node::TypedDeclaration;
 use sway_core::{parse_tree::MethodName, type_engine::TypeId};
 use sway_types::{ident::Ident, span::Span, Spanned};
@@ -24,18 +24,21 @@ pub fn get_line_start(&self) -> u32 {
     self.line_start
 }
 
-pub fn is_initial_declaration(&self) -> bool {
-    matches!(
-        self.token_type,
-        TokenType::VariableDeclaration(_)
-            | TokenType::FunctionDeclaration(_)
-            | TokenType::TraitDeclaration(_)
-            | TokenType::StructDeclaration(_)
-            | TokenType::EnumDeclaration(_)
-            | TokenType::AbiDeclaration
-            | TokenType::ConstantDeclaration(_)
-            | TokenType::StorageFieldDeclaration
-    )
+pub fn is_initial_declaration(token_type: &TokenType) -> bool {
+    match token_type.typed {
+        Some(typed_ast_token) => {
+            matches!(
+                typed_ast_token,
+                TypedAstToken::TypedDeclaration(_) | TypedAstToken::TypedFunctionDeclaration(_)
+            )
+        }
+        None => {
+            matches!(
+                token_type.parsed,
+                AstToken::Declaration(_) | AstToken::FunctionDeclaration(_)
+            )
+        }
+    }
 }
 
 // Check if the given method is a `core::ops` application desugared from short-hand syntax like / + * - etc.
@@ -57,9 +60,8 @@ pub(crate) fn to_ident_key(ident: &Ident) -> (Ident, Span) {
 }
 
 pub fn get_type_id(token_type: &TokenType) -> Option<TypeId> {
-    match token_type {
-        TokenType::Token(_ast_token) => None,
-        TokenType::TypedToken(typed_ast_token) => match typed_ast_token {
+    match token_type.typed {
+        Some(typed_ast_token) => match typed_ast_token {
             TypedAstToken::TypedDeclaration(dec) => match dec {
                 TypedDeclaration::VariableDeclaration(var_decl) => Some(var_decl.type_ascription),
                 TypedDeclaration::ConstantDeclaration(const_decl) => {
@@ -79,5 +81,6 @@ pub fn get_type_id(token_type: &TokenType) -> Option<TypeId> {
             TypedAstToken::TypedReassignment(reassignment) => Some(reassignment.lhs_type),
             _ => None,
         },
+        None => None,
     }
 }

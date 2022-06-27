@@ -7,8 +7,8 @@ use sway_core::{
 };
 use tower_lsp::lsp_types::SymbolKind;
 
-pub fn parsed_to_symbol_kind(typed_ast_token: &AstToken) -> SymbolKind {
-    match typed_ast_token {
+pub fn parsed_to_symbol_kind(ast_token: &AstToken) -> SymbolKind {
+    match ast_token {
         AstToken::Declaration(dec) => {
             match dec {
                 Declaration::VariableDeclaration(_) => SymbolKind::VARIABLE,

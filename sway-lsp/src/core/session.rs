@@ -2,6 +2,7 @@ use super::document::{DocumentError, TextDocument};
 use crate::{
     capabilities::{self, formatting::get_format_text_edits},
     sway_config::SwayConfig,
+    utils::token::is_initial_declaration,
 };
 use dashmap::DashMap;
 use serde_json::Value;
@@ -98,7 +99,7 @@ impl Session {
 
         if let Some(document) = self.documents.get(key) {
             if let Some(token) = document.get_token_at_position(position) {
-                if token.is_initial_declaration() {
+                if is_initial_declaration(token) {
                     return Some(capabilities::go_to::to_definition_response(url, token));
                 } else {
                     for document_ref in &self.documents {
