@@ -154,6 +154,15 @@ impl<T> Spanned for GenericTokenTree<T> {
     }
 }
 
+impl Spanned for CommentedTokenTree {
+    fn span(&self) -> Span {
+        match self {
+            Self::Comment(cmt) => cmt.span(),
+            Self::Tree(tt) => tt.span(),
+        }
+    }
+}
+
 impl<T> From<Punct> for GenericTokenTree<T> {
     fn from(punct: Punct) -> Self {
         Self::Punct(punct)
@@ -1082,5 +1091,53 @@ impl CommentedTokenStream {
 impl Spanned for CommentedTokenStream {
     fn span(&self) -> Span {
         self.full_span.clone()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{lex_commented, CommentedTokenTree, GenericTokenTree};
+    use crate::priv_prelude::*;
+    use std::sync::Arc;
+
+    #[test]
+    fn lex_commented_token_stream() {
+        let input = r#"
+        // Single-line comment.
+        struct Foo {
+            /* multi-
+             * line-
+             * comment */
+            bar: i32,
+        }
+        "#;
+        let start = 0;
+        let end = input.len();
+        let path = None;
+        let stream = lex_commented(&Arc::from(input), start, end, path).unwrap();
+        let mut tts = stream.token_trees().iter();
+        assert_eq!(
+            tts.next().unwrap().span().as_str(),
+            "// Single-line comment."
+        );
+        assert_eq!(tts.next().unwrap().span().as_str(), "struct");
+        assert_eq!(tts.next().unwrap().span().as_str(), "Foo");
+        {
+            let group = match tts.next() {
+                Some(CommentedTokenTree::Tree(GenericTokenTree::Group(group))) => group,
+                _ => panic!("expected group"),
+            };
+            let mut tts = group.token_stream.token_trees().iter();
+            assert_eq!(
+                tts.next().unwrap().span().as_str(),
+                "/* multi-\n             * line-\n             * comment *",
+            );
+            assert_eq!(tts.next().unwrap().span().as_str(), "bar");
+            assert_eq!(tts.next().unwrap().span().as_str(), ":");
+            assert_eq!(tts.next().unwrap().span().as_str(), "i32");
+            assert_eq!(tts.next().unwrap().span().as_str(), ",");
+            assert!(tts.next().is_none());
+        }
+        assert!(tts.next().is_none());
     }
 }
