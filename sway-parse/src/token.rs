@@ -69,13 +69,16 @@ impl PunctKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
-pub struct Group<T> {
+pub struct GenericGroup<T> {
     pub delimiter: Delimiter,
     pub token_stream: T,
     pub span: Span,
 }
 
-impl<T> Spanned for Group<T> {
+pub type Group = GenericGroup<TokenStream>;
+pub type CommentedGroup = GenericGroup<CommentedTokenStream>;
+
+impl<T> Spanned for GenericGroup<T> {
     fn span(&self) -> Span {
         self.span.clone()
     }
@@ -121,20 +124,21 @@ impl Spanned for Comment {
 pub enum GenericTokenTree<T> {
     Punct(Punct),
     Ident(Ident),
-    Group(Group<T>),
+    Group(GenericGroup<T>),
     Literal(Literal),
 }
 
 pub type TokenTree = GenericTokenTree<TokenStream>;
+pub type CommentedTree = GenericTokenTree<CommentedTokenStream>;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub enum CommentedTokenTree {
     Comment(Comment),
-    Tree(GenericTokenTree<CommentedTokenStream>),
+    Tree(CommentedTree),
 }
 
-impl Group<CommentedTokenStream> {
-    pub fn strip_comments(self) -> Group<TokenStream> {
+impl CommentedGroup {
+    pub fn strip_comments(self) -> Group {
         Group {
             delimiter: self.delimiter,
             token_stream: self.token_stream.strip_comments(),
@@ -175,8 +179,8 @@ impl<T> From<Ident> for GenericTokenTree<T> {
     }
 }
 
-impl<T> From<Group<T>> for GenericTokenTree<T> {
-    fn from(group: Group<T>) -> Self {
+impl<T> From<GenericGroup<T>> for GenericTokenTree<T> {
+    fn from(group: GenericGroup<T>) -> Self {
         Self::Group(group)
     }
 }
@@ -193,8 +197,8 @@ impl From<Comment> for CommentedTokenTree {
     }
 }
 
-impl From<GenericTokenTree<CommentedTokenStream>> for CommentedTokenTree {
-    fn from(tree: GenericTokenTree<CommentedTokenStream>) -> Self {
+impl From<CommentedTree> for CommentedTokenTree {
+    fn from(tree: CommentedTree) -> Self {
         Self::Tree(tree)
     }
 }
@@ -553,7 +557,7 @@ pub fn lex_commented(
                     let start_index = open_index + open_delimiter.as_open_char().len_utf8();
                     let full_span =
                         Span::new(src.clone(), start_index, index, path.clone()).unwrap();
-                    let group = Group {
+                    let group = CommentedGroup {
                         token_stream: CommentedTokenStream {
                             token_trees: parent,
                             full_span,
