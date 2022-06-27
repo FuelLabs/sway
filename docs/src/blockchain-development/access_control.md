@@ -16,7 +16,7 @@ The `msg_sender` function works as follows:
 - If the caller is external (i.e. from a script), then all coin input owners in the transaction are checked. If all owners are the same, then `Result::Ok(Sender)` is returned with the `Address` sender variant.
 - If the caller is external and coin input owners are different, then the caller cannot be determined and a `Result::Err(AuthError)` is returned.
 
-## Using `BASE_ASSET_ID` as deafult/null address
+## Using `BASE_ASSET_ID` as default/null address
 
 The `BASE_ASSET_ID` constant is **not** a reserved address and should not be treated as such.
 
