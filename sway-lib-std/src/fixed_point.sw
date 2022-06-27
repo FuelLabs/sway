@@ -133,40 +133,28 @@ impl core::ops::Divide for UFP64 {
             }
         } else {
 
-            let q1 = u128_max / divisor.value;
+            let inter = u128_max / divisor.value;
 
-            // log("u128_max.value");
-            // log(u128_max.upper);
-            // log(u128_max.lower);
-
-            // log("divisor.value");
-            // log(divisor.value.upper);
-            // log(divisor.value.lower);
-
-            // log("q1");
-            // log(q1.upper);
-            // log(q1.lower);
-
-            if q1.upper == 0 {
+            if inter.upper == 0 {
 
 
-                let l1 = self.value * q1;
+                let l1 = self.value * inter;
                 log("l1");
                 log(l1.upper);
                 log(l1.lower);
 
-                let result = (self.value * q1) / denominator;
+                let result = (self.value * inter) / denominator;
                 res = UFP64 {
                     value: result
                 }
             } else {
-                let mid = ~U128::from(0, 2.pow(32));
+                let mid = ~U128::from(0, 2 << 32);
 
                 let s = self.value / mid;
 
-                let q1 = q1 / mid;
+                let inter = inter / mid;
 
-                let result = s * q1;
+                let result = s * inter;
                 res = UFP64 {
                     value: result
                 }
