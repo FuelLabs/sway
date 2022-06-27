@@ -881,8 +881,8 @@ fn check_manifest_for_pinned(manifest: &ManifestFile, pinned_dep: &Pinned) -> bo
             .deps()
             .filter_map(|dep| dep.1.package())
             .any(|package| package == pinned_dep.name)
-        && !manifest.patch(&pinned_dep.name).is_none()
-        && !manifest
+        && manifest.patch(&pinned_dep.name).is_none()
+        && manifest
             .patches()
             .find_map(|patches| patches.1.get(&pinned_dep.name))
             .is_none()
