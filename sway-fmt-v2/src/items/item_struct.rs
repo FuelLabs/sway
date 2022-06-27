@@ -139,7 +139,7 @@ fn format_struct(
         if !multiline && item_index != items.len() - 1 {
             write!(formatted_code, "{} ", PunctKind::Comma.as_char())?;
         } else if multiline {
-            write!(formatted_code, "{}\n", PunctKind::Comma.as_char())?;
+            writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
         }
     }
     if !multiline {

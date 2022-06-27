@@ -2,6 +2,7 @@ use crate::{
     fmt::{Format, FormattedCode, Formatter},
     FormatterError,
 };
+use std::fmt::Write;
 use sway_parse::{
     attribute::{Annotated, AttributeDecl},
     token::Delimiter,
@@ -69,7 +70,7 @@ impl SquareBracket for AttributeDecl {
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        line.push(Delimiter::Bracket.as_close_char());
+        writeln!(line, "{}", Delimiter::Bracket.as_close_char())?;
         Ok(())
     }
 }
