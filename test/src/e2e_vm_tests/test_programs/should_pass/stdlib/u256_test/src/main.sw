@@ -4,6 +4,7 @@ use core::num::*;
 use std::{assert::assert, result::Result, u256::{U256, U256Error}};
 
 fn main() -> bool {
+    // test new()
     let new = ~U256::new();
     let empty = U256 {
         a: 0,
@@ -12,11 +13,13 @@ fn main() -> bool {
         d: 0,
     };
     assert(new == empty);
+
+    // test from() & into()
     let(l, m, n, o) = new.into();
     assert(l == 0);
     assert(m == 0);
     assert(n == 0);
-    assert(0 == 0);
+    assert(o == 0);
 
     let a = 11;
     let b = 42;
@@ -42,18 +45,9 @@ fn main() -> bool {
 
     assert(x == y);
 
+    // test min() & max()
     let max = ~U256::max();
     let min = ~U256::min();
-    let err = max.to_u64();
-    assert(match err {
-        Result::Err(U256Error::LossOfPrecision) => {
-            true
-        },
-        _ => {
-            false
-        },
-    });
-
     let(one, two, three, four) = max.into();
     assert(one == ~u64::max());
     assert(two == ~u64::max());
@@ -66,10 +60,21 @@ fn main() -> bool {
     assert(min_3 == ~u64::min());
     assert(min_4 == ~u64::min());
 
+    // test to_u64()
+    let err = max.to_u64();
+    assert(match err {
+        Result::Err(U256Error::LossOfPrecision) => {
+            true
+        },
+        _ => {
+            false
+        },
+    });
     let eleven = ~U256::from(0, 0, 0, 11);
     let unwrapped = eleven.to_u64().unwrap();
     assert(unwrapped == 11);
 
+    // test bits()
     assert(~U256::bits() == 256u32);
 
     true
