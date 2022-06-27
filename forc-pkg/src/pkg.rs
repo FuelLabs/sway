@@ -853,7 +853,7 @@ pub fn compilation_order(graph: &Graph) -> Result<Vec<NodeIx>> {
 /// Applies the differences between the graph that is described by the lock file and the graph that
 /// is actually possible to build.
 ///
-/// `deps_to_remove` : Indices of path dependencies that are removed from manifest file after the lock file is generated.
+/// `deps_to_remove` : Indices of path dependencies that are removed from their parent's manifest file after the lock file is generated.
 ///
 /// There might be some differences between the graph that is described by the lock file and
 /// the graph that can actually possible to build. This is happening in the case of a dependency
@@ -874,6 +874,9 @@ fn apply_diff_after_lock(deps_to_remove: HashSet<NodeIx>, graph: &mut Graph) -> 
 
 /// Given graph of pinned dependencies and the directory for the root node, produce a path map
 /// containing the path to the local source for every node in the graph.
+///
+/// Returns the generated path map and the nodes that should be removed from the graph (the nodes
+/// that are removed from their parent's manifest file).
 pub fn graph_to_path_map(
     proj_manifest_dir: &Path,
     graph: &Graph,
