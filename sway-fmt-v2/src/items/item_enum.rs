@@ -2,15 +2,18 @@ use crate::{
     config::items::ItemBraceStyle,
     fmt::{Format, FormattedCode, Formatter},
     utils::bracket::CurlyBrace,
+    FormatterError,
 };
-use sway_parse::ItemEnum;
+use std::fmt::Write;
+use sway_parse::{token::Delimiter, ItemEnum};
 use sway_types::Spanned;
 
 impl Format for ItemEnum {
-    fn format(&self, formatter: &mut Formatter) -> FormattedCode {
-        // TODO: creating this formatted_code with String::new() will likely cause lots of
-        // reallocations maybe we can explore how we can do this, starting with with_capacity may help.
-        let mut formatted_code = String::new();
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         let enum_variant_align_threshold = formatter.config.structures.enum_variant_align_threshold;
 
         if let Some(visibility_token) = &self.visibility {
@@ -24,7 +27,7 @@ impl Format for ItemEnum {
 
         // Add name of the enum.
         formatted_code.push_str(self.name.as_str());
-        ItemEnum::open_curly_brace(&mut formatted_code, formatter);
+        Self::open_curly_brace(formatted_code, formatter)?;
 
         let type_fields = &self.fields.clone().into_inner().value_separator_pairs;
 
@@ -71,34 +74,46 @@ impl Format for ItemEnum {
             // from the config we may understand next enum variant should be in the same line instead.
             formatted_code.push('\n');
         }
-        ItemEnum::close_curly_brace(&mut formatted_code, formatter);
-        formatted_code
+        Self::close_curly_brace(formatted_code, formatter)?;
+        Ok(())
     }
 }
 
 impl CurlyBrace for ItemEnum {
-    fn open_curly_brace(line: &mut String, formatter: &mut Formatter) {
+    fn open_curly_brace(
+        line: &mut String,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
+        let extra_width = formatter.config.whitespace.tab_spaces;
         let mut shape = formatter.shape;
+        let open_brace = Delimiter::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
-                line.push_str("\n{\n");
-                shape = shape.block_indent(1);
+                write!(line, "\n{}\n", open_brace)?;
+                shape = shape.block_indent(extra_width);
             }
             _ => {
                 // Add opening brace to the same line
-                line.push_str(" {\n");
-                shape = shape.block_indent(1);
+                writeln!(line, " {}", open_brace)?;
+                shape = shape.block_indent(extra_width);
             }
         }
 
         formatter.shape = shape;
+        Ok(())
     }
-
-    fn close_curly_brace(line: &mut String, formatter: &mut Formatter) {
-        line.push('}');
-        // If shape is becoming left-most alligned or - indent just have the defualt shape
-        formatter.shape = formatter.shape.shrink_left(1).unwrap_or_default();
+    fn close_curly_brace(
+        line: &mut String,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        line.push(Delimiter::Brace.as_close_char());
+        // If shape is becoming left-most aligned or - indent just have the defualt shape
+        formatter.shape = formatter
+            .shape
+            .shrink_left(formatter.config.whitespace.tab_spaces)
+            .unwrap_or_default();
+        Ok(())
     }
 }

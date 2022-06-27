@@ -120,32 +120,6 @@ impl Engine {
         }
     }
 
-    // pub(crate) fn monomorphize_with_self<T>(
-    //     &self,
-    //     value: &mut T,
-    //     mut type_arguments: Vec<TypeArgument>,
-    //     enforce_type_arguments: EnforceTypeArguments,
-    //     call_site_span: &Span,
-    //     self_type: TypeId,
-    //     namespace: &mut Root,
-    //     module_path: &Path,
-    // ) -> CompileResult<()>
-    // where
-    //     T: MonomorphizeHelper + CopyTypes,
-    // {
-    //     for type_argument in type_arguments.iter_mut() {
-    //         type_argument.replace_self_type(self_type);
-    //     }
-    //     self.monomorphize(
-    //         value,
-    //         type_arguments,
-    //         enforce_type_arguments,
-    //         call_site_span,
-    //         namespace,
-    //         module_path,
-    //     )
-    // }
-
     /// Make the types of two type terms equivalent (or produce an error if
     /// there is a conflict between them).
     //

@@ -1,4 +1,4 @@
-library storage;
+library r#storage;
 
 use ::hash::sha256;
 use ::context::registers::stack_ptr;
