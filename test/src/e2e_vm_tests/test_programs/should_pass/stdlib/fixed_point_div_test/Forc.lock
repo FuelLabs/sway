@@ -1,0 +1,14 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-5A2DC54D0F4C461C'
+dependencies = []
+
+[[package]]
+name = 'fixed_point_div_test'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-5A2DC54D0F4C461C'
+dependencies = ['core']

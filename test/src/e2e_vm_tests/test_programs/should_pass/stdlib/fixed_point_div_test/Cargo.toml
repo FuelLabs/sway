@@ -1,5 +1,5 @@
 [project]
-name = "fixed_point_test"
+name = "fixed_point_div_test"
 version = "0.1.0"
 authors = ["Rostyslav Tyshko"]
 edition = "2021"

@@ -45,7 +45,7 @@ impl Root for u8 {
 }
 
 pub trait Exponentiate {
-    fn pow(self, exponent: Self) -> Self;
+    pub fn pow(self, exponent: Self) -> Self;
 }
 
 impl Exponentiate for u64 {
@@ -122,4 +122,12 @@ impl Logarithm for u8 {
             r3: Self
         }
     }
+}
+
+pub trait BinaryLogarithm {
+    pub fn log2(self) -> Self;
+}
+
+pub trait Exponent {
+    pub fn exp(exponent: Self) -> Self;
 }

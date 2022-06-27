@@ -314,23 +314,23 @@ impl core::ops::Divide for U128 {
 
 impl Root for U128 {
     fn sqrt(self) -> Self {
+        let zero = ~U128::from(0, 0);
         let two = ~U128::from(0, 2);
-
         let mut x0 = self / two;
+        let mut s = self;
 
-        let mut res = self;
-
-        if x0 != ~Self::min() {
-            let mut x1 = (x0 + self) / two;
+        if x0 != zero {
+            let mut x1 = (x0 + s / x0) / two;
 
             while x1 < x0 {
                 x0 = x1;
                 x1 = (x0 + self / x0) / two;
             }
 
-            res = x0;
+            return x0;
+        } else {
+            return s;
         }
-        return res;
     }
 }
 
@@ -342,7 +342,7 @@ impl Exponentiate for U128 {
         let zero: U128 = ~U128::from(0, 0);
 
         if exp == zero {
-            return ~Self::from(0, 1);
+            return one;
         }
 
         while exp & one == zero {
@@ -351,7 +351,7 @@ impl Exponentiate for U128 {
         }
 
         if exp == one {
-            return self;
+            return s;
         }
 
         let mut acc = s;
@@ -359,9 +359,33 @@ impl Exponentiate for U128 {
             exp >>= 1;
             s = s * s;
             if exp & one == one {
-                acc = acc * self;
+                acc = acc * s;
             }
         }
         acc
+    }
+}
+
+impl BinaryLogarithm for U128 {
+    pub fn log2(self) -> Self {
+        let zero = ~U128::from(0, 0);
+        let one = ~U128::from(0, 1);
+        let mut res = zero;
+        let mut s = self;
+        // If trying to get a log2(0), panic, due to infinity not existing.
+        assert(!(self == zero));
+        while s > zero {
+            res += one;
+            s >>= 1;
+        }
+        res
+    }
+}
+
+impl Logarithm for U128 {
+    fn log(self, base: Self) -> Self {
+        let self_log2 = self.log2();
+        let base_log2 = base.log2();
+        self_log2 / base_log2
     }
 }
