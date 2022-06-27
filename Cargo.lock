@@ -1208,6 +1208,7 @@ version = "0.16.2"
 dependencies = [
  "anyhow",
  "forc-util",
+ "fuel-tx",
  "fuels-types",
  "git2",
  "petgraph",
@@ -3595,6 +3596,7 @@ dependencies = [
  "either",
  "fuel-asm",
  "fuel-crypto",
+ "fuel-tx",
  "fuel-types",
  "fuel-vm",
  "fuels-types",
@@ -3792,6 +3794,7 @@ dependencies = [
  "anyhow",
  "filecheck",
  "forc",
+ "forc-pkg",
  "forc-util",
  "fuel-asm",
  "fuel-tx",

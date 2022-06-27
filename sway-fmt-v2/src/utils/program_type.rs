@@ -1,4 +1,4 @@
-use sway_parse::{ ModuleKind, token::PunctKind} ;
+use sway_parse::{token::PunctKind, ModuleKind};
 use sway_types::Spanned;
 
 /// Insert the program type without applying a formatting to it.

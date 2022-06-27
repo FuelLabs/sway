@@ -1,11 +1,16 @@
-use crate::fmt::{Format, FormattedCode, Formatter};
+use crate::{
+    fmt::{Format, FormattedCode, Formatter},
+    FormatterError,
+};
 use sway_parse::ItemConst;
 use sway_types::Spanned;
 
 impl Format for ItemConst {
-    fn format(&self, _formatter: &mut Formatter) -> FormattedCode {
-        let mut formatted_code = String::new();
-
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        _formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         // Check if visibility token exists if so add it.
         if let Some(visibility_token) = &self.visibility {
             formatted_code.push_str(visibility_token.span().as_str());
@@ -37,6 +42,6 @@ impl Format for ItemConst {
         // TODO: We are not applying any custom formatting to expr, probably we will need to in the future.
         formatted_code.push_str(self.expr.span().as_str());
         formatted_code.push_str(self.semicolon_token.ident().as_str());
-        formatted_code
+        Ok(())
     }
 }
