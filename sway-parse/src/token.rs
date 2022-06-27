@@ -218,20 +218,6 @@ impl CommentedTokenTree {
     }
 }
 
-impl CommentedTokenStream {
-    pub fn strip_comments(self) -> TokenStream {
-        let token_trees = self
-            .token_trees
-            .into_iter()
-            .filter_map(|tree| tree.strip_comments())
-            .collect();
-        TokenStream {
-            token_trees,
-            full_span: self.full_span,
-        }
-    }
-}
-
 #[derive(Error, Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 #[error("{}", kind)]
 pub struct LexError {
@@ -1070,6 +1056,30 @@ impl TokenStream {
 }
 
 impl Spanned for TokenStream {
+    fn span(&self) -> Span {
+        self.full_span.clone()
+    }
+}
+
+impl CommentedTokenStream {
+    pub fn token_trees(&self) -> &[CommentedTokenTree] {
+        &self.token_trees
+    }
+
+    pub fn strip_comments(self) -> TokenStream {
+        let token_trees = self
+            .token_trees
+            .into_iter()
+            .filter_map(|tree| tree.strip_comments())
+            .collect();
+        TokenStream {
+            token_trees,
+            full_span: self.full_span,
+        }
+    }
+}
+
+impl Spanned for CommentedTokenStream {
     fn span(&self) -> Span {
         self.full_span.clone()
     }
