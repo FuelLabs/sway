@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: do_storage::side_effects();
+# nextln: $()Storage attribute access mismatch. Try giving the surrounding function more access by adding "#[storage(read, write)]" to the function declaration.

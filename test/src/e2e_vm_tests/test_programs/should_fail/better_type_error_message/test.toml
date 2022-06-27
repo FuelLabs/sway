@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()Could not find symbol "Result" in this scope.
+# check: $()Unknown type name "Result".

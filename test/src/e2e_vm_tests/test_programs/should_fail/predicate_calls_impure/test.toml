@@ -1,0 +1,9 @@
+category = "fail"
+
+# check: #[storage(read,write)]
+# nextln: fn foo() {
+# nextln: $()Impure function inside of non-contract. Contract storage is only accessible from contracts.
+
+# check: #[storage(read, write)]
+# nextln: fn main() -> bool {
+# nextln: $()Impure function inside of non-contract. Contract storage is only accessible from contracts.

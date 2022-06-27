@@ -1,3 +1,10 @@
+use super::{
+    compile::compile_function,
+    convert::*,
+    lexical_map::LexicalMap,
+    storage::{add_to_b256, get_storage_key},
+    types::*,
+};
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     constants,
@@ -6,11 +13,7 @@ use crate::{
     semantic_analysis::*,
     type_engine::{insert_type, resolve_type, TypeId, TypeInfo},
 };
-
-use super::{compile::compile_function, convert::*, lexical_map::LexicalMap, types::*};
-
-use fuel_crypto::Hasher;
-use sway_ir::*;
+use sway_ir::{Context, *};
 use sway_types::{
     ident::Ident,
     span::{Span, Spanned},
@@ -369,9 +372,6 @@ impl FnCompiler {
                 self.current_block
                     .ins(context)
                     .ret(ret_value, ret_ty, span_md_idx);
-                // RET is a terminator so we must create a new block here.  If anything is added to
-                // it then it'll almost certainly be dead code.
-                self.current_block = self.function.create_block(context, None);
                 Ok(Constant::get_unit(context, span_md_idx))
             }
         }
@@ -724,14 +724,15 @@ impl FnCompiler {
         if codeblock.contents.is_empty() {
             Some(insert_type(TypeInfo::Tuple(Vec::new())))
         } else {
-            codeblock
-                .contents
-                .iter()
-                .find_map(|node| match &node.content {
-                    TypedAstNodeContent::ReturnStatement(trs) => Some(trs.expr.return_type),
-                    TypedAstNodeContent::ImplicitReturnExpression(te) => Some(te.return_type),
-                    _otherwise => None,
-                })
+            codeblock.contents.iter().find_map(|node| {
+                match node.gather_return_statements().first() {
+                    Some(TypedReturnStatement { expr }) => Some(expr.return_type),
+                    None => match &node.content {
+                        TypedAstNodeContent::ImplicitReturnExpression(te) => Some(te.return_type),
+                        _otherwise => None,
+                    },
+                }
+            })
         }
     }
 
@@ -765,6 +766,7 @@ impl FnCompiler {
         self.current_block = true_block_begin;
         let true_value = self.compile_expression(context, ast_then)?;
         let true_block_end = self.current_block;
+        let then_returns = true_block_end.is_terminated_by_ret(context);
 
         let false_block_begin = self.function.create_block(context, None);
         self.current_block = false_block_begin;
@@ -773,6 +775,7 @@ impl FnCompiler {
             Some(expr) => self.compile_expression(context, *expr)?,
         };
         let false_block_end = self.current_block;
+        let else_returns = false_block_end.is_terminated_by_ret(context);
 
         entry_block.ins(context).conditional_branch(
             cond_value,
@@ -782,16 +785,28 @@ impl FnCompiler {
             cond_span_md_idx,
         );
 
+        if then_returns && else_returns {
+            return Ok(Constant::get_unit(context, None));
+        }
+
         let merge_block = self.function.create_block(context, None);
-        true_block_end
-            .ins(context)
-            .branch(merge_block, Some(true_value), None);
-        false_block_end
-            .ins(context)
-            .branch(merge_block, Some(false_value), None);
+        if !then_returns {
+            true_block_end
+                .ins(context)
+                .branch(merge_block, Some(true_value), None);
+        }
+        if !else_returns {
+            false_block_end
+                .ins(context)
+                .branch(merge_block, Some(false_value), None);
+        }
 
         self.current_block = merge_block;
-        Ok(merge_block.get_phi(context))
+        if !then_returns || !else_returns {
+            Ok(merge_block.get_phi(context))
+        } else {
+            Ok(Constant::get_unit(context, None))
+        }
     }
 
     fn compile_unsafe_downcast(
@@ -1597,16 +1612,7 @@ impl FnCompiler {
                 Ok(struct_val)
             }
             _ => {
-                // Calculate the storage location hash for the given field
-                let mut storage_slot_to_hash = format!(
-                    "{}{}",
-                    sway_utils::constants::STORAGE_DOMAIN_SEPARATOR,
-                    ix.to_usize()
-                );
-                for ix in &indices {
-                    storage_slot_to_hash = format!("{}_{}", storage_slot_to_hash, ix);
-                }
-                let hashed_storage_slot = Hasher::hash(storage_slot_to_hash);
+                let storage_key = get_storage_key(ix, &indices);
 
                 // New name for the key
                 let mut key_name = format!("{}{}", "key_for_", ix.to_usize());
@@ -1626,7 +1632,7 @@ impl FnCompiler {
                 // Const value for the key from the hash
                 let const_key = convert_literal_to_value(
                     context,
-                    &Literal::B256(hashed_storage_slot.into()),
+                    &Literal::B256(storage_key.into()),
                     span_md_idx,
                 );
 
@@ -1672,7 +1678,7 @@ impl FnCompiler {
                         &indices,
                         &mut key_ptr_val,
                         &key_ptr,
-                        &hashed_storage_slot,
+                        &storage_key,
                         r#type,
                         rhs,
                         span_md_idx,
@@ -1792,7 +1798,7 @@ impl FnCompiler {
         indices: &[u64],
         key_ptr_val: &mut Value,
         key_ptr: &Pointer,
-        hashed_storage_slot: &fuel_types::Bytes32,
+        storage_key: &fuel_types::Bytes32,
         r#type: &Type,
         rhs: &Option<Value>,
         span_md_idx: Option<MetadataIndex>,
@@ -1850,7 +1856,7 @@ impl FnCompiler {
                 // Const value for the key from the initial hash + array_index
                 let const_key = convert_literal_to_value(
                     context,
-                    &Literal::B256(*add_to_b256(*hashed_storage_slot, array_index)),
+                    &Literal::B256(*add_to_b256(*storage_key, array_index)),
                     span_md_idx,
                 );
 

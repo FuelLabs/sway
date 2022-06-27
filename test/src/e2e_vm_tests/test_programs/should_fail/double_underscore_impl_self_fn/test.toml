@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: fn __double_underscore(self, x: bool) -> bool {
+# nextln: $()Identifiers cannot begin with a double underscore, as that naming convention is reserved for compiler intrinsics.

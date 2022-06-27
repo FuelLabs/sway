@@ -1,0 +1,13 @@
+category = "fail"
+
+# check: let g: str[3] = three_generics(true, "foo", 10);
+# nextln: $()Mismatched types.
+# nextln: $()expected: bool
+# nextln: $()found:    str[3].
+# nextln: $()help: The argument that has been provided to this function's type does not match the declared type of the parameter in the function declaration.
+
+# check: let g: str[3] = three_generics(true, "foo", 10);
+# nextln: $()Mismatched types.
+# nextln: $()expected: str[3]
+# nextln: $()found:    bool.
+# nextln: $()help: Variable declaration's type annotation does not match up with the assigned expression's type.

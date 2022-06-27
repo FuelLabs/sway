@@ -4,9 +4,12 @@ mod engine;
 mod integer_bits;
 mod replace_self_type;
 mod resolved_type;
+mod trait_constraint;
+mod type_argument;
 mod type_id;
 mod type_info;
 mod type_mapping;
+mod type_parameter;
 mod unresolved_type_check;
 
 pub(crate) use copy_types::*;
@@ -15,9 +18,12 @@ pub use engine::*;
 pub use integer_bits::*;
 pub(crate) use replace_self_type::*;
 pub(crate) use resolved_type::*;
+pub(crate) use trait_constraint::*;
+pub(crate) use type_argument::*;
 pub use type_id::*;
 pub use type_info::*;
 pub(crate) use type_mapping::*;
+pub(crate) use type_parameter::*;
 pub(crate) use unresolved_type_check::*;
 
 use crate::error::*;

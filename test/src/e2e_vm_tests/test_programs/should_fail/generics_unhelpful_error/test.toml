@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: fn f(a: DoubleIdentity<u64>) {
+# nextln: $()Expected 2 type arguments, but instead found 1.

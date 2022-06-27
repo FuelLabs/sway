@@ -96,6 +96,13 @@ impl Delimiter {
             Delimiter::Bracket => '[',
         }
     }
+    pub fn as_close_char(self) -> char {
+        match self {
+            Delimiter::Parenthesis => ')',
+            Delimiter::Brace => '}',
+            Delimiter::Bracket => ']',
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]

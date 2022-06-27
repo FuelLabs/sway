@@ -869,6 +869,65 @@
   },
   {
     "inputs": [],
+    "name": "get_e2",
+    "outputs": [
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "A",
+            "type": "u64"
+          },
+          {
+            "components": [
+              {
+                "components": null,
+                "name": "x",
+                "type": "u64"
+              },
+              {
+                "components": null,
+                "name": "y",
+                "type": "u64"
+              },
+              {
+                "components": null,
+                "name": "z",
+                "type": "b256"
+              },
+              {
+                "components": null,
+                "name": "boolean",
+                "type": "bool"
+              },
+              {
+                "components": null,
+                "name": "int8",
+                "type": "u8"
+              },
+              {
+                "components": null,
+                "name": "int16",
+                "type": "u16"
+              },
+              {
+                "components": null,
+                "name": "int32",
+                "type": "u32"
+              }
+            ],
+            "name": "B",
+            "type": "struct T"
+          }
+        ],
+        "name": "",
+        "type": "enum E"
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "get_string",
     "outputs": [
       {

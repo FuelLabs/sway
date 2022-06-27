@@ -37,9 +37,11 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         silent_mode: command.silent_mode,
         output_directory: command.output_directory,
         minify_json_abi: command.minify_json_abi,
+        minify_json_storage_slots: command.minify_json_storage_slots,
         locked: command.locked,
         build_profile: None,
         release: false,
+        time_phases: command.time_phases,
     };
 
     let compiled = forc_build::build(build_command)?;

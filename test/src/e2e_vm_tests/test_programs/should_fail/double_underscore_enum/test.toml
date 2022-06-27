@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: enum __MyEnum {
+# nextln: $()Identifiers cannot begin with a double underscore, as that naming convention is reserved for compiler intrinsics.

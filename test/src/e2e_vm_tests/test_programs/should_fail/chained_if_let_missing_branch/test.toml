@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()Variable "num" does not exist in this scope.

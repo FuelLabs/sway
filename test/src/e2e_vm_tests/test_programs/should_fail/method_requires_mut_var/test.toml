@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()Cannot call method "f" on variable "a" because "a" is not declared as mutable.
