@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: let mut script = 0;
+# nextln: $()Identifiers cannot be a reserved keyword.

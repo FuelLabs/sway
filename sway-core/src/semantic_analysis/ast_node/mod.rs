@@ -265,7 +265,6 @@ impl TypedAstNode {
                             body,
                             is_mutable,
                         }) => {
-                            check_if_name_is_invalid(&name).ok(&mut warnings, &mut errors);
                             let type_ascription_span = match type_ascription_span {
                                 Some(type_ascription_span) => type_ascription_span,
                                 None => name.span(),
