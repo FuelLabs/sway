@@ -48,6 +48,7 @@ fn test_vector_new_u8() {
     vector.push(number2);
     vector.push(number3);
     vector.push(number4);
+    vector.push(false);
 
     assert(vector.len() == 5);
     assert(vector.capacity() == 8);
@@ -101,6 +102,7 @@ fn test_vector_new_u8() {
     vector.push(number2);
     vector.push(number3);
     vector.push(number4);
+    vector.push("this should break it 1");
 
     assert(vector.len() == 5);
     assert(vector.capacity() == 16);
@@ -117,7 +119,7 @@ fn test_vector_new_u8() {
 }
 
 fn test_vector_new_b256() {
-    let mut vector: Vec<b256> = ~Vec::new();
+    let mut vector: Vec<b256> = ~Vec::new::<b256>();
 
     let b0 = 0x0000000000000000000000000000000000000000000000000000000000000000;
     let b1 = 0x0000000000000000000000000000000000000000000000000000000000000001;
@@ -138,6 +140,7 @@ fn test_vector_new_b256() {
     vector.push(b2);
     vector.push(b3);
     vector.push(b4);
+    vector.push("this should break it 2");
 
     assert(vector.len() == 5);
     assert(vector.capacity() == 8);
@@ -152,6 +155,7 @@ fn test_vector_new_b256() {
     vector.push(b6);
     vector.push(b7);
     vector.push(b8);
+    vector.push("this should break it 3");
 
     match vector.get(4) {
         Option::Some(val) => assert(val == b4), Option::None => revert(0), 
@@ -191,6 +195,7 @@ fn test_vector_new_b256() {
     vector.push(b2);
     vector.push(b3);
     vector.push(b4);
+    vector.push("this should break it 4");
 
     assert(vector.len() == 5);
     assert(vector.capacity() == 16);
@@ -239,6 +244,7 @@ fn test_vector_new_struct() {
     vector.push(SimpleStruct {
         x: number1, y: b1
     });
+    vector.push("this should break it 5");
     vector.push(SimpleStruct {
         x: number2, y: b2
     });
@@ -265,6 +271,7 @@ fn test_vector_new_struct() {
     vector.push(SimpleStruct {
         x: number5, y: b5
     });
+    vector.push("this should break it 6");
     vector.push(SimpleStruct {
         x: number6, y: b6
     });
@@ -339,6 +346,7 @@ fn test_vector_new_struct() {
     vector.push(SimpleStruct {
         x: number4, y: b4
     });
+    vector.push("this should break it 7");
 
     assert(vector.len() == 5);
     assert(vector.capacity() == 16);
@@ -372,6 +380,7 @@ fn test_vector_new_enum() {
     vector.push(SimpleEnum::Y(b0));
     vector.push(SimpleEnum::X);
     vector.push(SimpleEnum::Z((b1, b2)));
+    vector.push("this should break it 8");
 
     assert(vector.len() == 3);
     assert(vector.capacity() == 4);

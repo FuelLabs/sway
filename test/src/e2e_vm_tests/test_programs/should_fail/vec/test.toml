@@ -1,0 +1,28 @@
+category = "fail"
+
+# check: vector.push(false);
+# nextln: $()This parameter was declared as type u8, but argument of type bool was provided.
+
+# check: vector.push("this should break it 1");
+# nextln: $()This parameter was declared as type u8, but argument of type str[22] was provided.
+
+# check: vector.push("this should break it 2");
+# nextln: $()This parameter was declared as type b256, but argument of type str[22] was provided.
+
+# check: vector.push("this should break it 3");
+# nextln: $()This parameter was declared as type b256, but argument of type str[22] was provided.
+
+# check: vector.push("this should break it 4");
+# nextln: $()This parameter was declared as type b256, but argument of type str[22] was provided.
+
+# check: vector.push("this should break it 5");
+# nextln: $()This parameter was declared as type SimpleStruct, but argument of type str[22] was provided.
+
+# check: vector.push("this should break it 6");
+# nextln: $()This parameter was declared as type SimpleStruct, but argument of type str[22] was provided.
+
+# check: vector.push("this should break it 7");
+# nextln: $()This parameter was declared as type SimpleStruct, but argument of type str[22] was provided.
+
+# check: vector.push("this should break it 8");
+# nextln: $()This parameter was declared as type SimpleEnum, but argument of type str[22] was provided.
