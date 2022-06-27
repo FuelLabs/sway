@@ -1,7 +1,7 @@
 use crate::{
     error::CompileError,
     parse_tree::{Purity, Visibility},
-    semantic_analysis::{ast_node::*, *},
+    semantic_analysis::{ast_node::*, namespace},
 };
 
 use super::{

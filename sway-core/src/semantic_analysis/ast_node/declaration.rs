@@ -178,6 +178,14 @@ impl UnresolvedTypeCheck for TypedDeclaration {
                         .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
                         .collect(),
                 );
+                body.append(
+                    &mut decl
+                        .parameters
+                        .iter()
+                        .map(|x| &x.type_id)
+                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .collect(),
+                );
                 body
             }
             ConstantDeclaration(TypedConstantDeclaration { value, .. }) => {
@@ -381,6 +389,7 @@ impl TypedDeclaration {
                 )
             }
             TypedDeclaration::StructDeclaration(decl) => decl.create_type_id(),
+            TypedDeclaration::EnumDeclaration(decl) => decl.create_type_id(),
             TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => rhs.return_type,
             TypedDeclaration::StorageDeclaration(decl) => insert_type(TypeInfo::Storage {
                 fields: decl.fields_as_typed_struct_fields(),

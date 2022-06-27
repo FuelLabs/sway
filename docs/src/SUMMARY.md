@@ -56,6 +56,7 @@
   - [Commands](./forc/commands/index.md)
     - [forc addr2line](./forc/commands/forc_addr2line.md)
     - [forc build](./forc/commands/forc_build.md)
+    - [forc check](./forc/commands/forc_check.md)
     - [forc clean](./forc/commands/forc_clean.md)
     - [forc completions](./forc/commands/forc_completions.md)
     - [forc deploy](./forc/commands/forc_deploy.md)

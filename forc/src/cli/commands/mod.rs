@@ -1,5 +1,6 @@
 pub mod addr2line;
 pub mod build;
+pub mod check;
 pub mod clean;
 pub mod completions;
 pub mod deploy;
