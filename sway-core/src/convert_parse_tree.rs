@@ -10,11 +10,11 @@ use {
         AbiDeclaration, AsmExpression, AsmOp, AsmRegister, AsmRegisterDeclaration, AstNode,
         AstNodeContent, CallPath, CodeBlock, ConstantDeclaration, Declaration, EnumDeclaration,
         EnumVariant, Expression, FunctionDeclaration, FunctionParameter, ImplSelf, ImplTrait,
-        ImportType, IncludeStatement, IntrinsicFunctionKind, LazyOp, Literal, MatchBranch,
-        MethodName, ParseTree, Purity, Reassignment, ReassignmentTarget, ReturnStatement,
-        Scrutinee, StorageDeclaration, StorageField, StructDeclaration, StructExpressionField,
-        StructField, StructScrutineeField, Supertrait, TraitDeclaration, TraitFn, TreeType,
-        TypeInfo, UseStatement, VariableDeclaration, Visibility, WhileLoop,
+        ImportType, IncludeStatement, LazyOp, Literal, MatchBranch, MethodName, ParseTree, Purity,
+        Reassignment, ReassignmentTarget, ReturnStatement, Scrutinee, StorageDeclaration,
+        StorageField, StructDeclaration, StructExpressionField, StructField, StructScrutineeField,
+        Supertrait, TraitDeclaration, TraitFn, TreeType, TypeInfo, UseStatement,
+        VariableDeclaration, Visibility, WhileLoop,
     },
     std::{
         collections::HashMap,
@@ -102,16 +102,10 @@ pub enum ConvertParseTreeError {
     GenericsNotSupportedHere { span: Span },
     #[error("fully qualified paths are not supported here")]
     FullyQualifiedPathsNotSupportedHere { span: Span },
-    #[error("__size_of does not take arguments")]
-    SizeOfTooManyArgs { span: Span },
-    #[error("__size_of requires exactly one generic argument")]
-    SizeOfOneGenericArg { span: Span },
     #[error("__is_reference_type does not take arguments")]
     IsReferenceTypeTooManyArgs { span: Span },
     #[error("__is_reference_type requires exactly one generic argument")]
     IsReferenceTypeOneGenericArg { span: Span },
-    #[error("__size_of_val requires exactly one argument")]
-    SizeOfValOneArg { span: Span },
     #[error("__eq requires exactly two arguments")]
     EqTwoArgs { span: Span },
     #[error("tuple index out of range")]
@@ -201,11 +195,8 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::FunctionArbitraryExpression { span } => span.clone(),
             ConvertParseTreeError::GenericsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::FullyQualifiedPathsNotSupportedHere { span } => span.clone(),
-            ConvertParseTreeError::SizeOfTooManyArgs { span } => span.clone(),
-            ConvertParseTreeError::SizeOfOneGenericArg { span } => span.clone(),
             ConvertParseTreeError::IsReferenceTypeTooManyArgs { span } => span.clone(),
             ConvertParseTreeError::IsReferenceTypeOneGenericArg { span } => span.clone(),
-            ConvertParseTreeError::SizeOfValOneArg { span } => span.clone(),
             ConvertParseTreeError::EqTwoArgs { span } => span.clone(),
             ConvertParseTreeError::TupleIndexOutOfRange { span } => span.clone(),
             ConvertParseTreeError::ShlNotImplemented { span } => span.clone(),
@@ -1445,134 +1436,37 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                     }
                 }
                 None => {
+                    let type_arguments = match generics_opt {
+                        Some((_double_colon_token, generic_args)) => {
+                            generic_args_to_type_arguments(ec, generic_args)?
+                        }
+                        None => Vec::new(),
+                    };
+                    let intrinsic = Intrinsic::try_from_str(call_path.suffix.as_str());
                     if call_path.prefixes.is_empty()
                         && !call_path.is_absolute
-                        && Intrinsic::try_from_str(call_path.suffix.as_str())
-                            == Some(Intrinsic::SizeOf)
+                        && intrinsic.is_some()
                     {
-                        if !arguments.is_empty() {
-                            let error = ConvertParseTreeError::SizeOfTooManyArgs { span };
-                            return Err(ec.error(error));
-                        }
-                        let ty = match {
-                            generics_opt.and_then(|(_double_colon_token, generic_args)| {
-                                iter_to_array(generic_args.parameters.into_inner())
-                            })
-                        } {
-                            Some([ty]) => ty,
-                            None => {
-                                let error = ConvertParseTreeError::SizeOfOneGenericArg { span };
-                                return Err(ec.error(error));
-                            }
-                        };
-                        let type_span = ty.span();
-                        let type_name = ty_to_type_info(ec, ty)?;
                         Expression::IntrinsicFunction {
-                            kind: IntrinsicFunctionKind::SizeOfType {
-                                type_name,
-                                type_span,
-                            },
+                            #[allow(clippy::unnecessary_unwrap)]
+                            kind: intrinsic.unwrap(),
+                            arguments,
+                            type_arguments,
                             span,
                         }
-                    } else if call_path.prefixes.is_empty()
-                        && !call_path.is_absolute
-                        && Intrinsic::try_from_str(call_path.suffix.as_str())
-                            == Some(Intrinsic::GetStorageKey)
-                    {
-                        if !arguments.is_empty() {
-                            let error = ConvertParseTreeError::GetStorageKeyTooManyArgs { span };
-                            return Err(ec.error(error));
-                        }
-                        if generics_opt.is_some() {
-                            let error = ConvertParseTreeError::GenericsNotSupportedHere { span };
-                            return Err(ec.error(error));
-                        }
-                        Expression::IntrinsicFunction {
-                            kind: IntrinsicFunctionKind::GetStorageKey,
-                            span,
-                        }
-                    } else if call_path.prefixes.is_empty()
-                        && !call_path.is_absolute
-                        && Intrinsic::try_from_str(call_path.suffix.as_str())
-                            == Some(Intrinsic::IsReferenceType)
-                    {
-                        if !arguments.is_empty() {
-                            let error = ConvertParseTreeError::IsReferenceTypeTooManyArgs { span };
-                            return Err(ec.error(error));
-                        }
-                        let ty = match {
-                            generics_opt.and_then(|(_double_colon_token, generic_args)| {
-                                iter_to_array(generic_args.parameters.into_inner())
-                            })
-                        } {
-                            Some([ty]) => ty,
-                            None => {
-                                let error =
-                                    ConvertParseTreeError::IsReferenceTypeOneGenericArg { span };
-                                return Err(ec.error(error));
-                            }
-                        };
-                        let type_span = ty.span();
-                        let type_name = ty_to_type_info(ec, ty)?;
-                        Expression::IntrinsicFunction {
-                            kind: IntrinsicFunctionKind::IsRefType {
-                                type_name,
-                                type_span,
-                            },
-                            span,
-                        }
-                    } else if call_path.prefixes.is_empty()
-                        && !call_path.is_absolute
-                        && Intrinsic::try_from_str(call_path.suffix.as_str())
-                            == Some(Intrinsic::SizeOfVal)
-                    {
-                        let exp = match <[_; 1]>::try_from(arguments) {
-                            Ok([exp]) => Box::new(exp),
-                            Err(..) => {
-                                let error = ConvertParseTreeError::SizeOfValOneArg { span };
-                                return Err(ec.error(error));
-                            }
-                        };
-                        Expression::IntrinsicFunction {
-                            kind: IntrinsicFunctionKind::SizeOfVal { exp },
-                            span,
-                        }
-                    } else if call_path.prefixes.is_empty()
-                        && !call_path.is_absolute
-                        && Intrinsic::try_from_str(call_path.suffix.as_str()) == Some(Intrinsic::Eq)
-                    {
-                        let (lhs, rhs) = match <[_; 2]>::try_from(arguments) {
-                            Ok([lhs, rhs]) => (Box::new(lhs), Box::new(rhs)),
-                            Err(..) => {
-                                let error = ConvertParseTreeError::EqTwoArgs { span };
-                                return Err(ec.error(error));
-                            }
-                        };
-                        Expression::IntrinsicFunction {
-                            kind: IntrinsicFunctionKind::Eq { lhs, rhs },
+                    } else if call_path.prefixes.is_empty() {
+                        Expression::FunctionApplication {
+                            name: call_path,
+                            arguments,
+                            type_arguments,
                             span,
                         }
                     } else {
-                        let type_arguments = match generics_opt {
-                            Some((_double_colon_token, generic_args)) => {
-                                generic_args_to_type_arguments(ec, generic_args)?
-                            }
-                            None => Vec::new(),
-                        };
-                        if call_path.prefixes.is_empty() {
-                            Expression::FunctionApplication {
-                                name: call_path,
-                                arguments,
-                                type_arguments,
-                                span,
-                            }
-                        } else {
-                            Expression::DelineatedPath {
-                                call_path,
-                                args: arguments,
-                                type_arguments,
-                                span,
-                            }
+                        Expression::DelineatedPath {
+                            call_path,
+                            args: arguments,
+                            type_arguments,
+                            span,
                         }
                     }
                 }

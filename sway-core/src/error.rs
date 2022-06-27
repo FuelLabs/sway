@@ -995,8 +995,20 @@ pub enum CompileError {
     NonConstantDeclValue { span: Span },
     #[error("Declaring storage in a {program_kind} is not allowed.")]
     StorageDeclarationInNonContract { program_kind: String, span: Span },
-    #[error("Unsupported argument type to intrinsic.")]
-    UnsupportedIntrinsicArgType { span: Span },
+    #[error("Unsupported argument type to {name}.")]
+    IntrinsicUnsupportedArgType { name: String, span: Span },
+    #[error("Call to {name} expectes {expected} arguments")]
+    IntrinsicIncorrectNumArgs {
+        name: String,
+        expected: u64,
+        span: Span,
+    },
+    #[error("Call to {name} expectes {expected} type arguments")]
+    IntrinsicIncorrectNumTArgs {
+        name: String,
+        expected: u64,
+        span: Span,
+    },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1153,7 +1165,9 @@ impl Spanned for CompileError {
             TupleIndexOutOfBounds { span, .. } => span.clone(),
             NonConstantDeclValue { span } => span.clone(),
             StorageDeclarationInNonContract { span, .. } => span.clone(),
-            UnsupportedIntrinsicArgType { span } => span.clone(),
+            IntrinsicUnsupportedArgType { span, .. } => span.clone(),
+            IntrinsicIncorrectNumArgs { span, .. } => span.clone(),
+            IntrinsicIncorrectNumTArgs { span, .. } => span.clone(),
         }
     }
 }

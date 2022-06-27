@@ -332,18 +332,12 @@ fn handle_expression(expression: &TypedExpression, tokens: &mut TokenMap) {
     }
 }
 
-fn handle_intrinsic_function(kind: &TypedIntrinsicFunctionKind, tokens: &mut TokenMap) {
-    match kind {
-        TypedIntrinsicFunctionKind::SizeOfVal { exp } => {
-            handle_expression(exp, tokens);
-        }
-        TypedIntrinsicFunctionKind::SizeOfType { .. } => {}
-        TypedIntrinsicFunctionKind::IsRefType { .. } => {}
-        TypedIntrinsicFunctionKind::GetStorageKey => {}
-        TypedIntrinsicFunctionKind::Eq { lhs, rhs } => {
-            handle_expression(lhs, tokens);
-            handle_expression(rhs, tokens);
-        }
+fn handle_intrinsic_function(
+    TypedIntrinsicFunctionKind { arguments, .. }: &TypedIntrinsicFunctionKind,
+    tokens: &mut TokenMap,
+) {
+    for arg in arguments {
+        handle_expression(arg, tokens);
     }
 }
 

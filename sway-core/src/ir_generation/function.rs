@@ -11,6 +11,7 @@ use super::{compile::compile_function, convert::*, lexical_map::LexicalMap, type
 
 use fuel_crypto::Hasher;
 use sway_ir::{Context, *};
+use sway_parse::intrinsics::Intrinsic;
 use sway_types::{
     ident::Ident,
     span::{Span, Spanned},
@@ -315,14 +316,21 @@ impl FnCompiler {
     fn compile_intrinsic_function(
         &mut self,
         context: &mut Context,
-        kind: TypedIntrinsicFunctionKind,
+        TypedIntrinsicFunctionKind {
+            kind,
+            arguments,
+            type_arguments,
+            span: _,
+        }: TypedIntrinsicFunctionKind,
         span: Span,
     ) -> Result<Value, CompileError> {
         match kind {
-            TypedIntrinsicFunctionKind::SizeOfVal { exp } => {
+            Intrinsic::SizeOfVal => {
+                // We index the array with confidence that the type-checker did its job.
+                let exp = arguments[0].clone();
                 // Compile the expression in case of side-effects but ignore its value.
                 let ir_type = convert_resolved_typeid(context, &exp.return_type, &exp.span)?;
-                self.compile_expression(context, *exp)?;
+                self.compile_expression(context, exp)?;
                 Ok(Constant::get_uint(
                     context,
                     64,
@@ -330,8 +338,10 @@ impl FnCompiler {
                     None,
                 ))
             }
-            TypedIntrinsicFunctionKind::SizeOfType { type_id, type_span } => {
-                let ir_type = convert_resolved_typeid(context, &type_id, &type_span)?;
+            Intrinsic::SizeOfType => {
+                // We index the array with confidence that the type-checker did its job.
+                let targ = type_arguments[0].clone();
+                let ir_type = convert_resolved_typeid(context, &targ.type_id, &targ.span)?;
                 Ok(Constant::get_uint(
                     context,
                     64,
@@ -339,20 +349,25 @@ impl FnCompiler {
                     None,
                 ))
             }
-            TypedIntrinsicFunctionKind::IsRefType { type_id, type_span } => {
-                let ir_type = convert_resolved_typeid(context, &type_id, &type_span)?;
+            Intrinsic::IsReferenceType => {
+                // We index the array with confidence that the type-checker did its job.
+                let targ = type_arguments[0].clone();
+                let ir_type = convert_resolved_typeid(context, &targ.type_id, &targ.span)?;
                 Ok(Constant::get_bool(context, !ir_type.is_copy_type(), None))
             }
-            TypedIntrinsicFunctionKind::GetStorageKey => {
+            Intrinsic::GetStorageKey => {
                 let span_md_idx = MetadataIndex::from_span(context, &span);
                 Ok(self
                     .current_block
                     .ins(context)
                     .get_storage_key(span_md_idx, None))
             }
-            TypedIntrinsicFunctionKind::Eq { lhs, rhs } => {
-                let lhs_value = self.compile_expression(context, *lhs)?;
-                let rhs_value = self.compile_expression(context, *rhs)?;
+            Intrinsic::Eq => {
+                // We index the array with confidence that the type-checker did its job.
+                let lhs = arguments[0].clone();
+                let rhs = arguments[1].clone();
+                let lhs_value = self.compile_expression(context, lhs)?;
+                let rhs_value = self.compile_expression(context, rhs)?;
                 Ok(self.current_block.ins(context).cmp(
                     Predicate::Equal,
                     lhs_value,

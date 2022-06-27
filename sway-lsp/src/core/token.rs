@@ -8,7 +8,7 @@ use crate::{
 use sway_core::{
     constants::TUPLE_NAME_PREFIX, parse_tree::MethodName, type_engine::TypeInfo, AstNode,
     AstNodeContent, Declaration, Expression, FunctionDeclaration, FunctionParameter,
-    IntrinsicFunctionKind, VariableDeclaration, WhileLoop,
+    VariableDeclaration, WhileLoop,
 };
 use sway_types::{ident::Ident, span::Span, Spanned};
 use tower_lsp::lsp_types::Range;
@@ -441,24 +441,15 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
                 tokens.push(token);
             }
         }
-        Expression::IntrinsicFunction { kind, .. } => {
-            handle_intrinsic_function(kind, tokens);
+        Expression::IntrinsicFunction { arguments, .. } => {
+            handle_intrinsic_function(arguments, tokens);
         }
     }
 }
 
-fn handle_intrinsic_function(kind: IntrinsicFunctionKind, tokens: &mut Vec<Token>) {
-    match kind {
-        IntrinsicFunctionKind::SizeOfVal { exp } => {
-            handle_expression(*exp, tokens);
-        }
-        IntrinsicFunctionKind::SizeOfType { .. } => {}
-        IntrinsicFunctionKind::IsRefType { .. } => {}
-        IntrinsicFunctionKind::GetStorageKey => {}
-        IntrinsicFunctionKind::Eq { lhs, rhs } => {
-            handle_expression(*lhs, tokens);
-            handle_expression(*rhs, tokens);
-        }
+fn handle_intrinsic_function(arguments: Vec<Expression>, tokens: &mut Vec<Token>) {
+    for arg in arguments {
+        handle_expression(arg, tokens);
     }
 }
 
