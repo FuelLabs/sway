@@ -8,7 +8,7 @@ use sway_types::ident::Ident;
 
 use sway_core::{
     constants::TUPLE_NAME_PREFIX, AstNode, AstNodeContent, Declaration, Expression,
-    FunctionDeclaration, IntrinsicFunctionKind, WhileLoop, TypeInfo,
+    FunctionDeclaration, IntrinsicFunctionKind, TypeInfo, WhileLoop,
 };
 
 pub fn traverse_node(node: &AstNode, tokens: &mut TokenMap) {
@@ -47,7 +47,7 @@ fn handle_function_declation(func: &FunctionDeclaration, tokens: &mut TokenMap) 
 }
 
 fn handle_custom_type(type_info: &TypeInfo, tokens: &mut TokenMap) {
-    // TODO: Not obvious how to handle this now with the new types 
+    // TODO: Not obvious how to handle this now with the new types
 
     // if let TypeInfo::Custom { name, .. } = type_info {
     //     //Iterate through the tokens and find the first token that has the same name as the custom type.

@@ -1,13 +1,17 @@
 use crate::{
     core::{
         session::{Documents, Session},
-        token::Token,
-        token_type::{TokenType, VarBody},
+        token::{AstToken, TokenType, TypedAstToken},
     },
-    utils::common::extract_visibility,
+    utils::common::{extract_visibility, get_range_from_span},
+    utils::function::extract_fn_signature,
 };
+
 use std::sync::Arc;
 use tower_lsp::lsp_types::{Hover, HoverContents, HoverParams, MarkupContent, MarkupKind};
+
+use sway_core::{semantic_analysis::ast_node::TypedDeclaration, Declaration, Visibility};
+use sway_types::{Ident, Spanned};
 
 pub fn get_hover_data(session: Arc<Session>, params: HoverParams) -> Option<Hover> {
     let position = params.text_document_position_params.position;
@@ -39,7 +43,62 @@ pub fn get_hover_data(session: Arc<Session>, params: HoverParams) -> Option<Hove
     }
 }
 
-fn get_hover_format(token: &Token, documents: &Documents) -> Hover {
+fn get_hover_format(token: &TokenType, ident: &Ident, documents: &Documents) -> Hover {
+    let token_name: String = ident.as_str().into();
+    let range = get_range_from_span(&ident.span());
+
+    let format_visibility_hover = |visibility: Visibility, decl_name: &str| -> String {
+        format!(
+            "{}{} {}",
+            extract_visibility(&visibility),
+            decl_name,
+            token_name
+        )
+    };
+
+    let value = match token.typed {
+        Some(typed_token) => match typed_token {
+            TypedAstToken::TypedDeclaration(decl) => match decl {
+                TypedDeclaration::VariableDeclaration(var) => {
+                    format!(
+                        "let{} {}: {}",
+                        if var_details.is_mutable { " mut" } else { "" },
+                        token_name,
+                        var_type
+                    )
+                }
+                TypedDeclaration::FunctionDeclaration(func) => extract_fn_signature(&func.span()),
+                TypedDeclaration::StructDeclaration(struct_decl) => {
+                    format_visibility_hover(struct_decl.visibility, decl.friendly_name())
+                }
+                TypedDeclaration::TraitDeclaration(trait_decl) => {
+                    format_visibility_hover(trait_decl.visibility, decl.friendly_name())
+                }
+                TypedDeclaration::EnumDeclaration(enum_decl) => {
+                    format_visibility_hover(enum_decl.visibility, decl.friendly_name())
+                }
+                _ => token_name,
+            },
+            _ => token_name,
+        },
+        None => match token.parsed {
+            AstToken::Declaration(decl) => match decl {
+                Declaration::FunctionDeclaration(func) => extract_fn_signature(&func.span),
+                Declaration::StructDeclaration(struct_decl) => {
+                    format_visibility_hover(struct_decl.visibility, "struct")
+                }
+                Declaration::TraitDeclaration(trait_decl) => {
+                    format_visibility_hover(trait_decl.visibility, "trait")
+                }
+                Declaration::EnumDeclaration(enum_decl) => {
+                    format_visibility_hover(enum_decl.visibility, "enum")
+                }
+                _ => token_name,
+            },
+            _ => token_name,
+        },
+    };
+
     let value = match &token.token_type {
         TokenType::VariableDeclaration(var_details) => {
             let var_type = match &var_details.var_body {
@@ -55,23 +114,23 @@ fn get_hover_format(token: &Token, documents: &Documents) -> Hover {
                 var_type
             )
         }
-        TokenType::FunctionDeclaration(func_details) => func_details.signature.clone(),
-        TokenType::StructDeclaration(struct_details) => format!(
-            "{}struct {}",
-            extract_visibility(&struct_details.visibility),
-            &token.name
-        ),
-        TokenType::TraitDeclaration(trait_details) => format!(
-            "{}trait {}",
-            extract_visibility(&trait_details.visibility),
-            &token.name
-        ),
-        TokenType::EnumDeclaration(enum_details) => format!(
-            "{}enum {}",
-            extract_visibility(&enum_details.visibility),
-            &token.name
-        ),
-        _ => token.name.clone(),
+        //TokenType::FunctionDeclaration(func_details) => func_details.signature.clone(),
+        // TokenType::StructDeclaration(struct_details) => format!(
+        //     "{}struct {}",
+        //     extract_visibility(&struct_details.visibility),
+        //     &token.name
+        // ),
+        // TokenType::TraitDeclaration(trait_details) => format!(
+        //     "{}trait {}",
+        //     extract_visibility(&trait_details.visibility),
+        //     &token.name
+        // ),
+        // TokenType::EnumDeclaration(enum_details) => format!(
+        //     "{}enum {}",
+        //     extract_visibility(&enum_details.visibility),
+        //     &token.name
+        // ),
+        //_ => token.name.clone(),
     };
 
     Hover {
@@ -79,7 +138,7 @@ fn get_hover_format(token: &Token, documents: &Documents) -> Hover {
             value: format!("```sway\n{}\n```", value),
             kind: MarkupKind::Markdown,
         }),
-        range: Some(token.range),
+        range: Some(range),
     }
 }
 

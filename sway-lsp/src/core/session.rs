@@ -122,8 +122,7 @@ impl Session {
     pub fn get_completion_items(&self, url: &Url) -> Option<Vec<CompletionItem>> {
         if let Some(document) = self.documents.get(url.path()) {
             return Some(capabilities::completion::to_completion_items(
-                document.get_token_map()
-                //document.get_tokens(),
+                document.get_token_map(), //document.get_tokens(),
             ));
         }
 

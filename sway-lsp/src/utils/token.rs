@@ -3,7 +3,6 @@ use sway_core::semantic_analysis::ast_node::TypedDeclaration;
 use sway_core::{parse_tree::MethodName, type_engine::TypeId};
 use sway_types::{ident::Ident, span::Span, Spanned};
 
-
 pub fn is_same_type(&self, other_token: &Token) -> bool {
     if other_token.token_type == self.token_type {
         true

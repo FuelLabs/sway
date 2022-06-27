@@ -1,10 +1,5 @@
-use crate::core::{
-    token::{AstToken, TokenMap, TokenType, TypedAstToken},
-};
-use crate::utils::{
-    common::get_range_from_span,
-    token::get_type_id,
-};
+use crate::core::token::{AstToken, TokenMap, TokenType, TypedAstToken};
+use crate::utils::{common::get_range_from_span, token::get_type_id};
 use sway_core::{Expression, Literal};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
@@ -20,27 +15,18 @@ pub struct DebugFlags {
 pub fn generate_warnings_for_parsed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
     let warnings = tokens
         .iter()
-        .filter(|(k,v)| {
-            v.typed.is_none()
-        })
-        .map(|((ident,_), _)|
-            warning_from_ident(ident)
-        )
+        .filter(|(k, v)| v.typed.is_none())
+        .map(|((ident, _), _)| warning_from_ident(ident))
         .collect();
 
     warnings
 }
 
-
 pub fn generate_warnings_for_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
     let warnings = tokens
         .iter()
-        .filter(|(k,v)| {
-            v.typed.is_some()
-        })
-        .map(|((ident,_), _)|
-            warning_from_ident(ident)
-        )
+        .filter(|(k, v)| v.typed.is_some())
+        .map(|((ident, _), _)| warning_from_ident(ident))
         .collect();
 
     warnings
@@ -83,18 +69,14 @@ fn ast_node_type(token_type: &TokenType) -> String {
             }
             TypedAstToken::TypedReassignment(_) => "reassignment".to_string(),
             _ => "".to_string(),
-        }
-        None => {
-            match token_type.parsed {
-                AstToken::Expression(exp) => {
-                    match exp {
-                        Expression::Literal { value, .. } => literal_to_string(&value),
-                        _ => "".to_string()
-                    }
-                }
-                _ => "".to_string()
-            }
-        }
+        },
+        None => match token_type.parsed {
+            AstToken::Expression(exp) => match exp {
+                Expression::Literal { value, .. } => literal_to_string(&value),
+                _ => "".to_string(),
+            },
+            _ => "".to_string(),
+        },
     }
 }
 

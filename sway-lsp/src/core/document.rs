@@ -1,10 +1,7 @@
 #![allow(dead_code)]
 
 use super::token::{TokenMap, TokenType};
-use super::{
-    traverse_parse_tree,
-    traverse_typed_tree,
-};
+use super::{traverse_parse_tree, traverse_typed_tree};
 
 use crate::{capabilities, utils};
 use forc::utils::SWAY_GIT_TAG;
@@ -61,17 +58,10 @@ impl TextDocument {
     }
 
     pub fn get_all_tokens_by_single_name(&self, name: &str) -> Vec<&TokenType> {
-        self.token_map.iter()
-            .filter(|(k,v)| {
-                if k.0.as_str() == name {
-                    true
-                } else {
-                    false
-                }
-            })
-            .map(|(k,v)| {
-                v
-            })
+        self.token_map
+            .iter()
+            .filter(|(k, v)| if k.0.as_str() == name { true } else { false })
+            .map(|(k, v)| v)
             .collect()
     }
 
@@ -84,17 +74,17 @@ impl TextDocument {
                 // Use the TypeId to look up the actual type
                 let type_info = sway_core::type_engine::look_up_type_id(type_id);
                 tracing::info!("type_info = {:#?}", type_info);
-    
+
                 match type_info {
-                    TypeInfo::UnknownGeneric{ name }
-                    | TypeInfo::Enum{ name, .. }
-                    | TypeInfo::Struct{ name, .. }
-                    | TypeInfo::Custom{ name, .. } => Some(name),
-                    _ => None
+                    TypeInfo::UnknownGeneric { name }
+                    | TypeInfo::Enum { name, .. }
+                    | TypeInfo::Struct { name, .. }
+                    | TypeInfo::Custom { name, .. } => Some(name),
+                    _ => None,
                 }
             }
-            None => None
-        }        
+            None => None,
+        }
     }
 
     // pub fn get_declared_token(&self, name: &str) -> Option<&Token> {
@@ -192,18 +182,19 @@ impl TextDocument {
             None => {
                 let diagnostics = capabilities::diagnostic::get_diagnostics(
                     parsed_result.warnings,
-                    parsed_result.errors);
+                    parsed_result.errors,
+                );
                 Err(DocumentError::FailedToParse(diagnostics))
-            },
+            }
             Some(parse_program) => {
                 for node in &parse_program.root.tree.root_nodes {
                     traverse_parse_tree::traverse_node(node, &mut self.token_map);
                 }
 
                 Ok(capabilities::diagnostic::get_diagnostics(
-                        parsed_result.warnings,
-                        parsed_result.errors),
-                )
+                    parsed_result.warnings,
+                    parsed_result.errors,
+                ))
             }
         }
     }

@@ -122,7 +122,8 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut TokenMap) {
                 }
                 for paramater in &method.parameters {
                     if let Some(token) = tokens.get_mut(&to_ident_key(&paramater.name)) {
-                        token.typed = Some(TypedAstToken::TypedFunctionParameter(paramater.clone()));
+                        token.typed =
+                            Some(TypedAstToken::TypedFunctionParameter(paramater.clone()));
                     }
                 }
 
@@ -159,7 +160,9 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut TokenMap) {
         TypedDeclaration::StorageReassignment(storage_reassignment) => {
             for field in &storage_reassignment.fields {
                 if let Some(token) = tokens.get_mut(&to_ident_key(&field.name)) {
-                    token.typed = Some(TypedAstToken::TypeCheckedStorageReassignDescriptor(field.clone()));
+                    token.typed = Some(TypedAstToken::TypeCheckedStorageReassignDescriptor(
+                        field.clone(),
+                    ));
                 }
             }
             handle_expression(&storage_reassignment.rhs, tokens);
