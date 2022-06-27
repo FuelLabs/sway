@@ -1,12 +1,9 @@
 use anyhow::{bail, Result};
-use forc::test::{
-    forc_abi_json, forc_build, forc_deploy, forc_run, BuildCommand, DeployCommand, JsonAbiCommand,
-    RunCommand,
-};
+use forc::test::{forc_build, forc_deploy, forc_run, BuildCommand, DeployCommand, RunCommand};
+use forc_pkg::Compiled;
 use fuel_tx::Transaction;
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
-use serde_json::Value;
 use std::fs;
 
 pub(crate) fn deploy_contract(file_name: &str, locked: bool) -> ContractId {
@@ -67,7 +64,7 @@ pub(crate) fn runs_on_node(
 
 /// Very basic check that code does indeed run in the VM.
 /// `true` if it does, `false` if not.
-pub(crate) fn runs_in_vm(file_name: &str, locked: bool) -> ProgramState {
+pub(crate) fn runs_in_vm(file_name: &str, locked: bool) -> (ProgramState, Compiled) {
     let storage = MemoryStorage::default();
 
     let script = compile_to_bytes(file_name, locked).unwrap();
@@ -84,7 +81,7 @@ pub(crate) fn runs_in_vm(file_name: &str, locked: bool) -> ProgramState {
         gas_limit,
         byte_price,
         maturity,
-        script,
+        script.bytecode.clone(),
         script_data,
         inputs,
         outputs,
@@ -95,7 +92,7 @@ pub(crate) fn runs_in_vm(file_name: &str, locked: bool) -> ProgramState {
         .validate(block_height, &Default::default())
         .unwrap();
     let mut i = Interpreter::with_storage(storage, Default::default());
-    *i.transact(tx_to_test).unwrap().state()
+    (*i.transact(tx_to_test).unwrap().state(), script)
 }
 
 /// Returns Err(()) if code _does_ compile, used for test cases where the source
@@ -132,7 +129,7 @@ pub(crate) fn does_not_compile(file_name: &str, locked: bool) -> Result<String, 
 
 /// Returns `true` if a file compiled without any errors or warnings,
 /// and `false` if it did not.
-pub(crate) fn compile_to_bytes(file_name: &str, locked: bool) -> Result<Vec<u8>> {
+pub(crate) fn compile_to_bytes(file_name: &str, locked: bool) -> Result<Compiled> {
     compile_to_bytes_verbose(file_name, locked, get_test_config_from_env())
 }
 
@@ -140,7 +137,7 @@ pub(crate) fn compile_to_bytes_verbose(
     file_name: &str,
     locked: bool,
     verbose: bool,
-) -> Result<Vec<u8>> {
+) -> Result<Compiled> {
     tracing::info!(" Compiling {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     forc_build::build(BuildCommand {
@@ -152,11 +149,10 @@ pub(crate) fn compile_to_bytes_verbose(
         silent_mode: !verbose,
         ..Default::default()
     })
-    .map(|compiled| compiled.bytecode)
 }
 
-pub(crate) fn test_json_abi(file_name: &str) -> Result<()> {
-    let _compiled_res = compile_to_json_abi(file_name)?;
+pub(crate) fn test_json_abi(file_name: &str, compiled: &Compiled) -> Result<()> {
+    emit_json_abi(file_name, compiled)?;
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let oracle_path = format!(
         "{}/src/e2e_vm_tests/test_programs/{}/{}",
@@ -182,21 +178,59 @@ pub(crate) fn test_json_abi(file_name: &str) -> Result<()> {
     Ok(())
 }
 
-fn compile_to_json_abi(file_name: &str) -> Result<Value> {
+fn emit_json_abi(file_name: &str, compiled: &Compiled) -> Result<()> {
     tracing::info!("   ABI gen {}", file_name);
+    let json_abi = serde_json::json!(compiled.json_abi);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    forc_abi_json::build(JsonAbiCommand {
-        path: Some(format!(
-            "{}/src/e2e_vm_tests/test_programs/{}",
-            manifest_dir, file_name
-        )),
-        json_outfile: Some(format!(
-            "{}/src/e2e_vm_tests/test_programs/{}/{}",
-            manifest_dir, file_name, "json_abi_output.json"
-        )),
-        silent_mode: true,
-        ..Default::default()
-    })
+    let file = std::fs::File::create(format!(
+        "{}/src/e2e_vm_tests/test_programs/{}/{}",
+        manifest_dir, file_name, "json_abi_output.json"
+    ))
+    .map_err(|e| e)?;
+    let res = serde_json::to_writer_pretty(&file, &json_abi);
+    res.map_err(|e| e)?;
+    Ok(())
+}
+
+pub(crate) fn test_json_storage_slots(file_name: &str, compiled: &Compiled) -> Result<()> {
+    emit_json_storage_slots(file_name, compiled)?;
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let oracle_path = format!(
+        "{}/src/e2e_vm_tests/test_programs/{}/{}",
+        manifest_dir, file_name, "json_storage_slots_oracle.json"
+    );
+    let output_path = format!(
+        "{}/src/e2e_vm_tests/test_programs/{}/{}",
+        manifest_dir, file_name, "json_storage_slots_output.json"
+    );
+    if fs::metadata(oracle_path.clone()).is_err() {
+        bail!("JSON storage slots oracle file does not exist for this test.");
+    }
+    if fs::metadata(output_path.clone()).is_err() {
+        bail!("JSON storage slots output file does not exist for this test.");
+    }
+    let oracle_contents =
+        fs::read_to_string(oracle_path).expect("Something went wrong reading the file.");
+    let output_contents =
+        fs::read_to_string(output_path).expect("Something went wrong reading the file.");
+    if oracle_contents != output_contents {
+        bail!("Mismatched storage slots JSON output.");
+    }
+    Ok(())
+}
+
+fn emit_json_storage_slots(file_name: &str, compiled: &Compiled) -> Result<()> {
+    tracing::info!("   storage slots JSON gen {}", file_name);
+    let json_storage_slots = serde_json::json!(compiled.storage_slots);
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let file = std::fs::File::create(format!(
+        "{}/src/e2e_vm_tests/test_programs/{}/{}",
+        manifest_dir, file_name, "json_storage_slots_output.json"
+    ))
+    .map_err(|e| e)?;
+    let res = serde_json::to_writer_pretty(&file, &json_storage_slots);
+    res.map_err(|e| e)?;
+    Ok(())
 }
 
 fn get_test_config_from_env() -> bool {
