@@ -222,7 +222,6 @@ impl AngleBracket for ItemStruct {
     ) -> Result<(), FormatterError> {
         let open_angle = PunctKind::LessThan.as_char();
         write!(line, "{}", open_angle)?;
-        line.push('<');
         Ok(())
     }
 
