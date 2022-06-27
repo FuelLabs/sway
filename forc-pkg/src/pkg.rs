@@ -874,6 +874,19 @@ fn apply_diff_after_lock(deps_to_remove: HashSet<NodeIx>, graph: &mut Graph) -> 
     }
     Ok(())
 }
+/// Search dependencies and patches for the details for a pinned dependency
+fn check_manifest_for_pinned(manifest: &ManifestFile, pinned_dep: &Pinned) -> bool {
+    manifest.dep(&pinned_dep.name).is_none()
+        && !manifest
+            .deps()
+            .filter_map(|dep| dep.1.package())
+            .any(|package| package == pinned_dep.name)
+        && !manifest.patch(&pinned_dep.name).is_none()
+        && !manifest
+            .patches()
+            .find_map(|patches| patches.1.get(&pinned_dep.name))
+            .is_none()
+}
 
 /// Given graph of pinned dependencies and the directory for the root node, produce a path map
 /// containing the path to the local source for every node in the graph.
@@ -941,12 +954,7 @@ pub fn graph_to_path_map(
                 // Check if parent's manifest file includes this dependency.
                 // If not this is a removed dependency and we should continue with the following dep
                 // Note that we need to check from package name as well since dependency name and package name is not the same thing
-                if parent_manifest.dep(&dep.name).is_none()
-                    && !parent_manifest
-                        .deps()
-                        .filter_map(|dep| dep.1.package())
-                        .any(|package| package == dep.name)
-                {
+                if check_manifest_for_pinned(&parent_manifest, dep) {
                     removed_deps.insert(dep_node);
                     continue;
                 }

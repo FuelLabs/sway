@@ -334,6 +334,13 @@ impl Manifest {
             .and_then(|deps| deps.get(dep_name))
     }
 
+    /// Retrieve the listed patches for the given name.
+    pub fn patch(&self, patch_name: &str) -> Option<&BTreeMap<std::string::String, Dependency>> {
+        self.patch
+            .as_ref()
+            .and_then(|patches| patches.get(patch_name))
+    }
+
     /// Finds and returns the name of the dependency associated with a package of the specified
     /// name if there is one.
     ///
