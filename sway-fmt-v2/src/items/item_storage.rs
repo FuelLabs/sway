@@ -18,7 +18,6 @@ impl Format for ItemStorage {
     ) -> Result<(), FormatterError> {
         // Add storage token
         formatted_code.push_str(self.storage_token.span().as_str());
-        formatted_code.push(' ');
 
         // Add `{`
         Self::open_curly_brace(formatted_code, formatter)?;
