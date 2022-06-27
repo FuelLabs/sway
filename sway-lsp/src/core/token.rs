@@ -13,12 +13,6 @@ use sway_core::{
 
 pub type TokenMap = HashMap<(Ident, Span), TokenType>;
 
-//#[derive(Debug, Clone)]
-// pub enum TokenType {
-//     Token(AstToken),
-//     TypedToken(TypedAstToken),
-// }
-
 #[derive(Debug, Clone)]
 pub struct TokenType {
     pub parsed: AstToken,

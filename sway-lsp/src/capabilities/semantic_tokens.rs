@@ -1,4 +1,4 @@
-use crate::core::{session::Session, token::Token, token_type::TokenType};
+use crate::core::{session::Session, token::TokenType};
 use std::sync::Arc;
 use tower_lsp::lsp_types::{
     SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens,
