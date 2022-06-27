@@ -20,7 +20,7 @@ The `msg_sender` function works as follows:
 
 The `BASE_ASSET_ID` constant is **not** a reserved address and should not be treated as such.
 
-`BASE_ASSET_ID` is defined in the Standard Library. It is a `b256` type and is eqivalent to the 0 value.
+`BASE_ASSET_ID` is defined in the standard library as a `ContractId` type whose value should not be depended on.
 
 Many contracts require some form of ownership. When revoking ownership, it is disadvised to use the `BASE_ASSET_ID` of a `Address` or `ContractId` to reset the owner. Instead, it is recommended to use an `Option` of type `Identity` and setting the `Option` to `None`. 
 
