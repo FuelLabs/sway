@@ -40,7 +40,7 @@ impl IdentityExample for Contract {
                 revert(0);
             }
         };
-        // ANCHOR_END: identity_to_contract_ids
+        // ANCHOR_END: identity_to_contract_id
     }
 
     fn different_executions(my_identity: Identity) {

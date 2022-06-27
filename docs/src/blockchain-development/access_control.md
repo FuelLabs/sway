@@ -15,3 +15,17 @@ The `msg_sender` function works as follows:
 - If the caller is a contract, then `Result::Ok(Sender)` is returned with the `ContractId` sender variant.
 - If the caller is external (i.e. from a script), then all coin input owners in the transaction are checked. If all owners are the same, then `Result::Ok(Sender)` is returned with the `Address` sender variant.
 - If the caller is external and coin input owners are different, then the caller cannot be determined and a `Result::Err(AuthError)` is returned.
+
+## Using `BASE_ASSET_ID` as deafult/null address
+
+The `BASE_ASSET_ID` constant is **not** a reserved address and should not be treated as such.
+
+The `BASE_ASSET_ID` is defined in the Standard Library. It is a `b256` type and is eqivalent to the 0 value.
+
+Many contracts require some form of ownership. When revoking ownership, it is disadvised to the the `BASE_ASSET_ID` of a `Address` or `ContractId` for the new ownership. Instead, it is recommended to use an `Option` of type `Identity` and setting the `Option` to `None`. 
+
+Here is an example of how to properly revoke ownership:
+
+```sway
+{{#include ../../../examples/ownership/src/main.sw:revoke_owner_example}}
+```
