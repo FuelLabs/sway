@@ -5,6 +5,8 @@ use thiserror::Error;
 pub enum FormatterError {
     #[error("Error parsing file: {0}")]
     ParseFileError(#[from] sway_parse::ParseFileError),
+    #[error("Error formatting a message into a stream: {0}")]
+    FormatError(#[from] std::fmt::Error),
 }
 
 #[derive(Debug, Error)]

@@ -1,9 +1,10 @@
 mod compile;
-mod const_eval;
+pub mod const_eval;
 mod convert;
 mod function;
 mod lexical_map;
 mod purity;
+pub mod storage;
 mod types;
 
 use crate::{
@@ -17,7 +18,7 @@ use sway_types::span::Span;
 pub(crate) use purity::PurityChecker;
 
 pub(crate) fn compile_program(program: TypedProgram) -> Result<Context, CompileError> {
-    let TypedProgram { kind, root } = program;
+    let TypedProgram { kind, root, .. } = program;
 
     let mut ctx = Context::default();
     match kind {

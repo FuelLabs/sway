@@ -5,16 +5,17 @@ use crate::{
         bracket::{AngleBracket, CurlyBrace},
         item_len::ItemLen,
     },
+    FormatterError,
 };
 use sway_parse::ItemStruct;
 use sway_types::Spanned;
 
 impl Format for ItemStruct {
-    fn format(&self, formatter: &mut Formatter) -> FormattedCode {
-        // TODO: creating this formatted_code with FormattedCode::new() will likely cause lots of
-        // reallocations maybe we can explore how we can do this, starting with with_capacity may help.
-        let mut formatted_code = FormattedCode::new();
-
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         // Get the unformatted
 
         // Get struct_variant_align_threshold from config.
@@ -36,12 +37,12 @@ impl Format for ItemStruct {
         let multiline = !struct_lit_single_line || self.get_formatted_len() > struct_lit_width;
         format_struct(
             self,
-            &mut formatted_code,
+            formatted_code,
             formatter,
             multiline,
             struct_variant_align_threshold,
-        );
-        formatted_code
+        )?;
+        Ok(())
     }
 }
 
@@ -61,7 +62,7 @@ fn format_struct(
     formatter: &mut Formatter,
     multiline: bool,
     struct_variant_align_threshold: usize,
-) {
+) -> Result<(), FormatterError> {
     // If there is a visibility token add it to the formatted_code with a ` ` after it.
     if let Some(visibility) = &item_struct.visibility {
         formatted_code.push_str(visibility.span().as_str());
@@ -77,7 +78,7 @@ fn format_struct(
     // Check if there is generic provided
     if let Some(generics) = &item_struct.generics {
         // Push angle brace
-        ItemStruct::open_angle_bracket(formatted_code, formatter);
+        ItemStruct::open_angle_bracket(formatted_code, formatter)?;
         // Get generics fields
         let generics = generics.parameters.inner.value_separator_pairs.clone();
         for (index, generic) in generics.iter().enumerate() {
@@ -92,7 +93,7 @@ fn format_struct(
 
     // Handle openning brace
     if multiline {
-        ItemStruct::open_curly_brace(formatted_code, formatter);
+        ItemStruct::open_curly_brace(formatted_code, formatter)?;
         formatted_code.push('\n');
     } else {
         // Push a single whitespace before `{`
@@ -157,7 +158,8 @@ fn format_struct(
         formatted_code.push(' ');
     }
     // Handle closing brace
-    ItemStruct::close_curly_brace(formatted_code, formatter);
+    ItemStruct::close_curly_brace(formatted_code, formatter)?;
+    Ok(())
 }
 
 impl ItemLen for ItemStruct {
@@ -169,7 +171,10 @@ impl ItemLen for ItemStruct {
 }
 
 impl CurlyBrace for ItemStruct {
-    fn open_curly_brace(line: &mut String, formatter: &mut Formatter) {
+    fn open_curly_brace(
+        line: &mut String,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
         let extra_width = formatter.config.whitespace.tab_spaces;
         let mut shape = formatter.shape;
@@ -187,24 +192,37 @@ impl CurlyBrace for ItemStruct {
         }
 
         formatter.shape = shape;
+        Ok(())
     }
 
-    fn close_curly_brace(line: &mut String, formatter: &mut Formatter) {
+    fn close_curly_brace(
+        line: &mut String,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         line.push('}');
         // If shape is becoming left-most alligned or - indent just have the defualt shape
         formatter.shape = formatter
             .shape
             .shrink_left(formatter.config.whitespace.tab_spaces)
             .unwrap_or_default();
+        Ok(())
     }
 }
 
 impl AngleBracket for ItemStruct {
-    fn open_angle_bracket(line: &mut String, _formatter: &mut Formatter) {
+    fn open_angle_bracket(
+        line: &mut String,
+        _formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         line.push('<');
+        Ok(())
     }
 
-    fn close_angle_bracket(line: &mut String, _formatter: &mut Formatter) {
+    fn close_angle_bracket(
+        line: &mut String,
+        _formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         line.push('>');
+        Ok(())
     }
 }
