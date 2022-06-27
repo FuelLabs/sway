@@ -1,6 +1,12 @@
-use crate::core::{session::Session, token::Token, token_type::TokenType};
+use crate::core::{
+    session::Session,
+    symbol_kind,
+    token::{TokenMap, TokenType},
+};
+use crate::utils::common::get_range_from_span;
 use std::sync::Arc;
-use tower_lsp::lsp_types::{DocumentSymbolResponse, Location, SymbolInformation, SymbolKind, Url};
+use sway_types::{Ident, Spanned};
+use tower_lsp::lsp_types::{DocumentSymbolResponse, Location, SymbolInformation, Url};
 
 pub fn document_symbol(session: Arc<Session>, url: Url) -> Option<DocumentSymbolResponse> {
     session
@@ -8,11 +14,11 @@ pub fn document_symbol(session: Arc<Session>, url: Url) -> Option<DocumentSymbol
         .map(DocumentSymbolResponse::Flat)
 }
 
-pub fn to_symbol_information(tokens: &[Token], url: Url) -> Vec<SymbolInformation> {
+pub fn to_symbol_information(token_map: &TokenMap, url: Url) -> Vec<SymbolInformation> {
     let mut symbols: Vec<SymbolInformation> = vec![];
 
-    for token in tokens {
-        let symbol = create_symbol_info(token, url.clone());
+    for ((ident, _), token) in token_map {
+        let symbol = create_symbol_info(ident, token, url.clone());
         symbols.push(symbol)
     }
 
@@ -21,30 +27,19 @@ pub fn to_symbol_information(tokens: &[Token], url: Url) -> Vec<SymbolInformatio
 
 #[allow(warnings)]
 // TODO: the "deprecated: None" field is deprecated according to this library
-fn create_symbol_info(token: &Token, url: Url) -> SymbolInformation {
+fn create_symbol_info(ident: &Ident, token: &TokenType, url: Url) -> SymbolInformation {
+    let range = get_range_from_span(&ident.span());
     SymbolInformation {
-        name: token.name.clone(),
-        kind: get_kind(&token.token_type),
-        location: Location::new(url, token.range),
+        name: ident.as_str().to_string(),
+        kind: {
+            match token.typed {
+                Some(typed_token) => symbol_kind::typed_to_symbol_kind(&typed_token),
+                None => symbol_kind::parsed_to_symbol_kind(&token.parsed),
+            }
+        },
+        location: Location::new(url, range),
         tags: None,
         container_name: None,
         deprecated: None,
-    }
-}
-
-fn get_kind(token_type: &TokenType) -> SymbolKind {
-    match token_type {
-        TokenType::VariableDeclaration(_) | TokenType::VariableExpression => SymbolKind::VARIABLE,
-        TokenType::FunctionDeclaration(_)
-        | TokenType::FunctionApplication
-        | TokenType::TraitFunction => SymbolKind::FUNCTION,
-        TokenType::TraitDeclaration(_) | TokenType::ImplTrait => SymbolKind::INTERFACE,
-        TokenType::StructDeclaration(_) | TokenType::Struct => SymbolKind::STRUCT,
-        TokenType::EnumDeclaration(_) | TokenType::EnumApplication => SymbolKind::ENUM,
-        TokenType::ConstantDeclaration(_) => SymbolKind::CONSTANT,
-        TokenType::Library => SymbolKind::MODULE,
-        TokenType::Reassignment => SymbolKind::OPERATOR,
-        // currently we return `variable` type as default
-        _ => SymbolKind::VARIABLE,
     }
 }
