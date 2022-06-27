@@ -42,6 +42,8 @@ pub const DEFAULT_INLINE_ATTR_WIDTH: usize = 0;
 pub const DEFAULT_STRUCT_FIELD_ALIGN_THRESHOLD: usize = 0;
 /// Default max threshold for aligning enum variants.
 pub const DEFAULT_ENUM_VARIANT_ALIGN_THRESHOLD: usize = 0;
+/// Default max threshold for aligning storage fields.
+pub const DEFAULT_STORAGE_FIELD_ALIGN_THRESHOLD: usize = 0;
 
 /////COMMENTS/////
 

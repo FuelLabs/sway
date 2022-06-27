@@ -7,8 +7,6 @@ mod reassignment;
 mod storage;
 mod r#struct;
 mod r#trait;
-mod type_argument;
-mod type_parameter;
 mod variable;
 
 pub(crate) use abi::*;
@@ -20,8 +18,6 @@ pub use r#struct::*;
 pub use r#trait::*;
 pub(crate) use reassignment::*;
 pub use storage::*;
-pub(crate) use type_argument::*;
-pub(crate) use type_parameter::*;
 pub use variable::*;
 
 #[derive(Debug, Clone)]

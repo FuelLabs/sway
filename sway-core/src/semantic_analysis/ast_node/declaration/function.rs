@@ -121,19 +121,10 @@ impl ToJsonAbi for TypedFunctionDeclaration {
 }
 
 impl TypedFunctionDeclaration {
-    pub fn type_check(
-        arguments: TypeCheckArguments<'_, FunctionDeclaration>,
-    ) -> CompileResult<TypedFunctionDeclaration> {
+    pub fn type_check(ctx: TypeCheckContext, fn_decl: FunctionDeclaration) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let TypeCheckArguments {
-            checkee: fn_decl,
-            namespace,
-            self_type,
-            mode,
-            mut opts,
-            ..
-        } = arguments;
+
         let FunctionDeclaration {
             name,
             body,
@@ -147,17 +138,18 @@ impl TypedFunctionDeclaration {
             ..
         } = fn_decl;
         is_snake_case(&name).ok(&mut warnings, &mut errors);
-        opts.purity = purity;
 
         // create a namespace for the function
-        let mut namespace = namespace.clone();
+        let mut fn_namespace = ctx.namespace.clone();
+
+        let mut ctx = ctx.scoped(&mut fn_namespace).with_purity(purity);
 
         // type check the type parameters
         // insert them into the namespace
         let mut new_type_parameters = vec![];
         for type_parameter in type_parameters.into_iter() {
             new_type_parameters.push(check!(
-                TypeParameter::type_check(type_parameter, &mut namespace),
+                TypeParameter::type_check(ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -169,7 +161,7 @@ impl TypedFunctionDeclaration {
         let mut new_parameters = vec![];
         for parameter in parameters.into_iter() {
             new_parameters.push(check!(
-                TypedFunctionParameter::type_check(parameter, &mut namespace, self_type),
+                TypedFunctionParameter::type_check(ctx.by_ref(), parameter),
                 continue,
                 warnings,
                 errors
@@ -178,9 +170,8 @@ impl TypedFunctionDeclaration {
 
         // type check the return type
         let return_type = check!(
-            namespace.resolve_type_with_self(
-                return_type,
-                self_type,
+            ctx.resolve_type_with_self(
+                insert_type(return_type),
                 &return_type_span,
                 EnforceTypeArguments::Yes
             ),
@@ -193,24 +184,21 @@ impl TypedFunctionDeclaration {
         //
         // If there are no implicit block returns, then we do not want to type check them, so we
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
-        let (body, _implicit_block_return) = check!(
-            TypedCodeBlock::type_check(TypeCheckArguments {
-                checkee: body,
-                namespace: &mut namespace,
-                return_type_annotation: return_type,
-                help_text:
-                    "Function body's return type does not match up with its return type annotation.",
-                self_type,
-                mode: Mode::NonAbi,
-                opts,
-            }),
-            (
-                TypedCodeBlock { contents: vec![] },
-                insert_type(TypeInfo::ErrorRecovery)
-            ),
-            warnings,
-            errors
-        );
+        let (body, _implicit_block_return) = {
+            let ctx = ctx
+                .by_ref()
+                .with_help_text("Function body's return type does not match up with its return type annotation.")
+                .with_type_annotation(return_type);
+            check!(
+                TypedCodeBlock::type_check(ctx, body),
+                (
+                    TypedCodeBlock { contents: vec![] },
+                    insert_type(TypeInfo::ErrorRecovery)
+                ),
+                warnings,
+                errors
+            )
+        };
 
         // gather the return statements
         let return_statements: Vec<&TypedExpression> = body
@@ -222,13 +210,11 @@ impl TypedFunctionDeclaration {
 
         // unify the types of the return statements with the function return type
         for stmt in return_statements {
-            let (mut new_warnings, new_errors) = unify_with_self(
-                stmt.return_type,
-                return_type,
-                self_type,
-                &stmt.span,
-                "Return statement must return the declared function return type.",
-            );
+            let (mut new_warnings, new_errors) = ctx
+                .by_ref()
+                .with_type_annotation(return_type)
+                .with_help_text("Return statement must return the declared function return type.")
+                .unify_with_self(stmt.return_type, &stmt.span);
             warnings.append(&mut new_warnings);
             errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
         }
@@ -243,7 +229,7 @@ impl TypedFunctionDeclaration {
             return_type_span,
             visibility,
             // if this is for a contract, then it is a contract call
-            is_contract_call: mode == Mode::ImplAbiFn,
+            is_contract_call: ctx.mode() == Mode::ImplAbiFn,
             purity,
         };
 

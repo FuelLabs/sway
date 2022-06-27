@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: dependency cycle detected: dependency_a -> dependency_b -> dependency_a

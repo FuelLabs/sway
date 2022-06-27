@@ -12,24 +12,26 @@ Start by installing `fuelup` with:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -sSf \
-    https://fuellabs.github.io/fuelup/fuelup-init.sh | sh -s install
+    https://fuellabs.github.io/fuelup/fuelup-init.sh | sh
 ```
 
-You may need to add `~/.fuelup/bin` to your PATH. For Bash:
+`fuelup-init` will ask for permission to add `~/.fuelup/bin` to your PATH. Otherwise, you can also pass `--no-modify-path` so that `fuelup-init` does not modify your PATH:
 
 ```sh
-export PATH="${HOME}/.fuelup/bin/:${PATH}"
+curl --proto '=https' --tlsv1.2 -sSf \
+    https://fuellabs.github.io/fuelup/fuelup-init.sh | sh -s -- --no-modify-path
 ```
 
-Then run
+Once `fuelup` is installed, `fuelup-init` automatically runs the command below
 
 ```sh
-fuelup install
+fuelup toolchain install latest
 ```
 
-to install the latest Sway toolchain.
+to install the latest Sway toolchain. 
 
-> **Note**: A `curl: (22) The requested URL returned error: 404` error when running any of the steps above is most likely an indication that a new release was published but binaries were not yet uploaded by CI. See: <https://github.com/FuelLabs/fuelup/issues/44>. Simply re-try the commands after binaries are uploaded.
+You can run the same command at a later time to update the toolchain.
+
 
 ## Installing from Source
 

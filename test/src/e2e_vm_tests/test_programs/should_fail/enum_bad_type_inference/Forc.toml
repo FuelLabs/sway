@@ -5,4 +5,4 @@ license = "Apache-2.0"
 name = "enum_bad_type_inference"
 
 [dependencies]
-core = { path = "../../../../../../../sway-lib-core" }
+core = { path = "../../../../../../sway-lib-core" }

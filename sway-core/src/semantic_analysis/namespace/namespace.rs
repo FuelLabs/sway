@@ -4,8 +4,7 @@ use crate::{
         declaration::{EnforceTypeArguments, Monomorphize, MonomorphizeHelper},
     },
     type_engine::*,
-    CallPath, CompileResult, Ident, TypeArgument, TypeInfo, TypedDeclaration,
-    TypedFunctionDeclaration,
+    CallPath, CompileResult, Ident, TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use super::{module::Module, root::Root, submodule_namespace::SubmoduleNamespace, Path, PathBuf};
@@ -100,34 +99,31 @@ impl Namespace {
     /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
     pub(crate) fn resolve_type_with_self(
         &mut self,
-        type_info: TypeInfo,
+        mut type_id: TypeId,
         self_type: TypeId,
         span: &Span,
         enforce_type_args: EnforceTypeArguments,
     ) -> CompileResult<TypeId> {
-        self.root.resolve_type_with_self(
-            type_info,
-            self_type,
-            span,
-            enforce_type_args,
-            &self.mod_path,
-        )
+        type_id.replace_self_type(self_type);
+        self.root
+            .resolve_type(type_id, span, enforce_type_args, &self.mod_path)
     }
 
     /// Short-hand for calling [Root::resolve_type_without_self] on `root` and with the `mod_path`.
     pub(crate) fn resolve_type_without_self(
         &mut self,
-        type_info: TypeInfo,
+        type_id: TypeId,
+        span: &Span,
     ) -> CompileResult<TypeId> {
         self.root
-            .resolve_type_without_self(type_info, &self.mod_path)
+            .resolve_type(type_id, span, EnforceTypeArguments::Yes, &self.mod_path)
     }
 
     /// Short-hand for calling `monomorphize` from the `Monomorphize` trait, on `root` with the `mod_path`.
     pub(crate) fn monomorphize<T>(
         &mut self,
         decl: T,
-        type_arguments: Vec<TypeArgument>,
+        mut type_arguments: Vec<TypeArgument>,
         enforce_type_arguments: EnforceTypeArguments,
         self_type: Option<TypeId>,
         call_site_span: Option<&Span>,
@@ -135,10 +131,14 @@ impl Namespace {
     where
         T: MonomorphizeHelper<Output = T> + Spanned,
     {
+        if let Some(self_type) = self_type {
+            for type_argument in type_arguments.iter_mut() {
+                type_argument.replace_self_type(self_type);
+            }
+        }
         decl.monomorphize(
             type_arguments,
             enforce_type_arguments,
-            self_type,
             call_site_span,
             &mut self.root,
             &self.mod_path,
