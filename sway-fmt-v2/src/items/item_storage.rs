@@ -16,6 +16,9 @@ impl Format for ItemStorage {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        // Get storage field alignment threshold
+        let storage_field_align_threshold =
+            formatter.config.structures.storage_field_align_threshold;
         // Add storage token
         formatted_code.push_str(self.storage_token.span().as_str());
 
@@ -25,15 +28,40 @@ impl Format for ItemStorage {
         // Get the fields
         let items = self.fields.clone().into_inner();
 
+        // In first iteration we are going to be collecting the lengths of the enum variants.
+        let variant_length: Vec<usize> = items
+            .clone()
+            .into_iter()
+            .map(|variant| variant.name.as_str().len())
+            .collect();
+
+        // Find the maximum length in the variant_length vector that is still smaller than enum_variant_align_threshold.
+        let mut max_valid_variant_length = 0;
+
+        variant_length.iter().for_each(|length| {
+            if *length > max_valid_variant_length && *length < storage_field_align_threshold {
+                max_valid_variant_length = *length;
+            }
+        });
+
         // Should we apply storage field alignment
 
-        for item in items {
+        for (item_index, item) in items.into_iter().enumerate() {
             // Push the current indentation level
             formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
 
             // Push the storage field name
             formatted_code.push_str(item.name.as_str());
 
+            let current_variant_length = variant_length[item_index];
+
+            if current_variant_length < max_valid_variant_length {
+                // We need to add alignment between : and ty
+                // max_valid_variant_length: the length of the variant that we are taking as a reference to allign
+                // current_variant_length: the length of the current variant that we are trying to format
+                let required_alignment = max_valid_variant_length - current_variant_length;
+                formatted_code.push_str(&(0..required_alignment).map(|_| ' ').collect::<String>());
+            }
             // Push the colon token
             formatted_code.push_str(item.colon_token.span().as_str());
             formatted_code.push(' ');
