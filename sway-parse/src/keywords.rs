@@ -167,6 +167,8 @@ pub(crate) const RESERVED_KEYWORDS: phf::Set<&'static str> = phf::phf_set! {
     "deref",
     "true",
     "false",
+    "break",
+    "continue",
 };
 
 define_token!(SemicolonToken, "a semicolon", [Semicolon], []);
