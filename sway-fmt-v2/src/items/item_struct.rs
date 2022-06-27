@@ -79,7 +79,6 @@ fn format_struct(
 
     // Format `GenericParams`, if any
     if let Some(generics) = &item_struct.generics {
-        // Push angle brace
         generics.format(formatted_code, formatter)?;
     }
 

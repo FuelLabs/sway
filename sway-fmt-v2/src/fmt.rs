@@ -124,14 +124,14 @@ pub struct Foo { bar: u64, baz: bool }"#;
     #[test]
     fn test_struct_multiline_line_alignment() {
         let sway_code_to_format = r#"contract;
-pub struct Foo {
+pub struct Foo<T, P,> {
    barbazfoo: u64,
    baz  : bool,
 }
 "#;
         let correct_sway_code = r#"contract;
 
-pub struct Foo {
+pub struct Foo<T, P> {
     barbazfoo: u64,
     baz      : bool,
 }"#;
@@ -140,7 +140,7 @@ pub struct Foo {
         let mut formatter = get_formatter(config, Shape::default());
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert!(correct_sway_code == formatted_sway_code)
+        assert!(dbg!(correct_sway_code) == dbg!(formatted_sway_code))
     }
     #[test]
     fn test_struct_single_line() {
