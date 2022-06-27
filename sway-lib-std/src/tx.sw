@@ -3,9 +3,9 @@
 library tx;
 
 use ::address::Address;
+use ::context::registers::instrs_start;
 use ::contract_id::ContractId;
 use ::intrinsics::is_reference_type;
-use ::context::registers::instrs_start;
 use ::mem::read;
 
 ////////////////////////////////////////
@@ -212,6 +212,7 @@ pub fn tx_input_coin_owner(input_ptr: u32) -> Address {
 ////////////////////////////////////////
 
 pub fn tx_predicate_data_start_offset() -> u64 {
+    // $is is word-aligned
     let is = instrs_start();
     let predicate_length_ptr = is - 16;
     let predicate_code_length = asm(r1, r2: predicate_length_ptr) {
@@ -220,6 +221,9 @@ pub fn tx_predicate_data_start_offset() -> u64 {
     };
 
     let predicate_data_ptr = is + predicate_code_length;
+    // predicate_data_ptr % 8 is guaranteed to be either
+    //  0: if there are an even number of instructions (predicate_data_ptr is word-aligned already)
+    //  4: if there are an odd number of instructions
     predicate_data_ptr + predicate_data_ptr % 8
 }
 
