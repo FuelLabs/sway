@@ -30,7 +30,7 @@ where
 
         // add boxed type
         if let Some(final_value) = &self.final_value_opt {
-            writeln!(formatted_code, "{}", final_value.span().as_str())?;
+            write!(formatted_code, "{}", final_value.span().as_str())?;
         }
 
         Ok(())
