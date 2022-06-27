@@ -105,6 +105,8 @@ abi StorageAccess {
     #[storage(read)]
     fn get_e() -> E;
     #[storage(read)]
+    fn get_e2() -> E;
+    #[storage(read)]
     fn get_string() -> str[40];
 
     // Operations

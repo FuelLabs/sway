@@ -9,6 +9,7 @@ publish = false
 anyhow = "1.0.41"
 filecheck = "0.5"
 forc = { path = "../forc", features = ["test"], default-features = false }
+forc-pkg = { path = "../forc-pkg" }
 forc-util = { path = "../forc-util" }
 fuel-asm = "0.5"
 fuel-tx = "0.13"
