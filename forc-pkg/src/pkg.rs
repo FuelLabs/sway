@@ -296,7 +296,7 @@ impl BuildPlan {
     }
 
     /// Create a new build plan from an existing one. Needs the difference with the existing plan with the lock.
-    pub fn apply_pkg_diff(
+    fn apply_pkg_diff(
         &self,
         pkg_diff: &PkgDiff,
         sway_git_tag: &str,
@@ -338,11 +338,11 @@ impl BuildPlan {
     }
 
     /// Attempt to load the build plan from the `Lock`.
-    /// Returns the best effort BuildPlan and the packages removed  
+    /// Returns the best effort BuildPlan and the packages removed
     /// from project's manifest file after the lock file is generated.
     ///
     /// The returned removed dependencies are already removed from the dependency graph.
-    pub fn from_lock(
+    fn from_lock(
         proj_path: &Path,
         lock: &Lock,
         sway_git_tag: &str,
