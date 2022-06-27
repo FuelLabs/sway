@@ -106,7 +106,15 @@ impl Delimiter {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
-pub struct Comment;
+pub struct Comment {
+    pub span: Span,
+}
+
+impl Spanned for Comment {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
 
 /// Allows for generalizing over commented and uncommented token streams.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
@@ -404,42 +412,33 @@ pub fn lex_commented(
                 Some((_, '*')) => {
                     let _ = char_indices.next();
                     let mut unclosed_indices = vec![index];
+
+                    let unclosed_multiline_comment = |unclosed_indices: Vec<_>| {
+                        let span = Span::new(
+                            src.clone(),
+                            *unclosed_indices.last().unwrap(),
+                            src.len(),
+                            path.clone(),
+                        )
+                        .unwrap();
+                        LexError {
+                            kind: LexErrorKind::UnclosedMultilineComment { unclosed_indices },
+                            span,
+                        }
+                    };
+
                     loop {
                         match char_indices.next() {
-                            None => {
-                                let span = Span::new(
-                                    src.clone(),
-                                    *unclosed_indices.last().unwrap(),
-                                    src.len(),
-                                    path.clone(),
-                                )
-                                .unwrap();
-                                return Err(LexError {
-                                    kind: LexErrorKind::UnclosedMultilineComment {
-                                        unclosed_indices,
-                                    },
-                                    span,
-                                });
-                            }
+                            None => return Err(unclosed_multiline_comment(unclosed_indices)),
                             Some((_, '*')) => match char_indices.next() {
-                                None => {
-                                    let span = Span::new(
-                                        src.clone(),
-                                        *unclosed_indices.last().unwrap(),
-                                        src.len(),
-                                        path.clone(),
-                                    )
-                                    .unwrap();
-                                    return Err(LexError {
-                                        kind: LexErrorKind::UnclosedMultilineComment {
-                                            unclosed_indices,
-                                        },
-                                        span,
-                                    });
-                                }
-                                Some((_, '/')) => {
+                                None => return Err(unclosed_multiline_comment(unclosed_indices)),
+                                Some((end, '/')) => {
                                     let _ = char_indices.next();
-                                    unclosed_indices.pop();
+                                    let start = unclosed_indices.pop().unwrap();
+                                    let span =
+                                        Span::new(src.clone(), start, end, path.clone()).unwrap();
+                                    let comment = Comment { span };
+                                    token_trees.push(comment.into());
                                     if unclosed_indices.is_empty() {
                                         break;
                                     }
@@ -447,21 +446,7 @@ pub fn lex_commented(
                                 Some((_, _)) => (),
                             },
                             Some((next_index, '/')) => match char_indices.next() {
-                                None => {
-                                    let span = Span::new(
-                                        src.clone(),
-                                        *unclosed_indices.last().unwrap(),
-                                        src.len(),
-                                        path.clone(),
-                                    )
-                                    .unwrap();
-                                    return Err(LexError {
-                                        kind: LexErrorKind::UnclosedMultilineComment {
-                                            unclosed_indices,
-                                        },
-                                        span,
-                                    });
-                                }
+                                None => return Err(unclosed_multiline_comment(unclosed_indices)),
                                 Some((_, '*')) => {
                                     unclosed_indices.push(next_index);
                                 }
