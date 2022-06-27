@@ -900,33 +900,6 @@ pub fn graph_to_path_map(
     // Resolve all following dependencies, knowing their parents' paths will already be resolved.
     for dep_node in path_resolve_order {
         let dep = &graph[dep_node];
-        // If the dep is a path dependency check if it is removed.
-        if let SourcePinned::Path(_) = &dep.source {
-            // Retrieve the parent node to construct the relative path.
-            let (parent_node, _) = graph
-                .edges_directed(dep_node, Direction::Incoming)
-                .next()
-                .map(|edge| (edge.source(), edge.weight().clone()))
-                .ok_or_else(|| anyhow!("more than one root package detected in graph"))?;
-
-            let parent = &graph[parent_node].clone();
-            // Construct the path relative to the parent's path.
-            let parent_path = &path_map[&parent.id()];
-            let parent_manifest = ManifestFile::from_dir(parent_path, sway_git_tag)?;
-
-            // Check if parent's manifest file includes this dependency.
-            // If not this is a removed dependency and we should continue with the following dep
-            // Note that we need to check from package name as well since dependency name and package name is not the same thing
-            if parent_manifest.dep(&dep.name).is_none()
-                && !parent_manifest
-                    .deps()
-                    .filter_map(|dep| dep.1.package())
-                    .any(|package| package == dep.name)
-            {
-                removed_deps.insert(dep_node);
-                continue;
-            }
-        }
         let dep_path = match &dep.source {
             SourcePinned::Root => bail!("more than one root package detected in graph"),
             SourcePinned::Git(git) => {
@@ -959,6 +932,18 @@ pub fn graph_to_path_map(
                 // Construct the path relative to the parent's path.
                 let parent_path = &path_map[&parent.id()];
                 let parent_manifest = ManifestFile::from_dir(parent_path, sway_git_tag)?;
+                // Check if parent's manifest file includes this dependency.
+                // If not this is a removed dependency and we should continue with the following dep
+                // Note that we need to check from package name as well since dependency name and package name is not the same thing
+                if parent_manifest.dep(&dep.name).is_none()
+                    && !parent_manifest
+                        .deps()
+                        .filter_map(|dep| dep.1.package())
+                        .any(|package| package == dep.name)
+                {
+                    removed_deps.insert(dep_node);
+                    continue;
+                }
                 let detailed = parent_manifest
                     .dependencies
                     .as_ref()
