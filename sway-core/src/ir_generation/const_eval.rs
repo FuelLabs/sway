@@ -6,7 +6,7 @@ use crate::{
     },
 };
 
-use super::types::*;
+use super::{convert::convert_literal_to_constant, types::*};
 
 use sway_ir::{
     constant::{Constant, ConstantValue},
@@ -26,6 +26,20 @@ pub(super) fn compile_constant_expression(
     const_expr: &TypedExpression,
 ) -> Result<Value, CompileError> {
     let span_id_idx = MetadataIndex::from_span(context, &const_expr.span);
+
+    let constant_evaluated = compile_constant_expression_to_constant(context, module, const_expr)?;
+    Ok(Value::new_constant(
+        context,
+        constant_evaluated,
+        span_id_idx,
+    ))
+}
+
+pub(crate) fn compile_constant_expression_to_constant(
+    context: &mut Context,
+    module: Module,
+    const_expr: &TypedExpression,
+) -> Result<Constant, CompileError> {
     let err = match &const_expr.expression {
         // Special case functions because the span in `const_expr` is to the inlined function
         // definition, rather than the actual call site.
@@ -39,8 +53,8 @@ pub(super) fn compile_constant_expression(
         }),
     };
     let mut known_consts = MappedStack::<Ident, Constant>::new();
-    const_eval_typed_expr(context, module, &mut known_consts, const_expr)
-        .map_or(err, |c| Ok(Value::new_constant(context, c, span_id_idx)))
+
+    const_eval_typed_expr(context, module, &mut known_consts, const_expr).map_or(err, Ok)
 }
 
 // A HashMap that can hold multiple values and
@@ -97,7 +111,7 @@ fn const_eval_typed_expr(
     expr: &TypedExpression,
 ) -> Option<Constant> {
     match &expr.expression {
-        TypedExpressionVariant::Literal(l) => Some(super::convert::convert_literal_to_constant(l)),
+        TypedExpressionVariant::Literal(l) => Some(convert_literal_to_constant(l)),
         TypedExpressionVariant::FunctionApplication {
             arguments,
             function_body,

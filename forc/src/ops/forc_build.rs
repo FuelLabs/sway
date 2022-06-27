@@ -25,6 +25,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         silent_mode,
         output_directory,
         minify_json_abi,
+        minify_json_storage_slots,
         locked,
         build_profile,
         release,
@@ -116,14 +117,21 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
 
     info!("  Bytecode size is {} bytes.", compiled.bytecode.len());
 
+    // Additional ops required depending on the program type
     match compiled.tree_type {
-        TreeType::Script => {
-            // hash the bytecode for scripts and store the result in a file in the output directory
-            let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&compiled.bytecode));
-            let hash_file_name = format!("{}{}", &manifest.project.name, SWAY_BIN_HASH_SUFFIX);
-            let hash_path = output_dir.join(hash_file_name);
-            fs::write(hash_path, &bytecode_hash)?;
-            info!("  Script bytecode hash: {}", bytecode_hash);
+        TreeType::Contract => {
+            // For contracts, emit a JSON file with all the initialized storage slots.
+            let json_storage_slots_stem = format!("{}-storage_slots", manifest.project.name);
+            let json_storage_slots_path = output_dir
+                .join(&json_storage_slots_stem)
+                .with_extension("json");
+            let file = File::create(json_storage_slots_path)?;
+            let res = if minify_json_storage_slots {
+                serde_json::to_writer(&file, &compiled.storage_slots)
+            } else {
+                serde_json::to_writer_pretty(&file, &compiled.storage_slots)
+            };
+            res?;
         }
         TreeType::Predicate => {
             // get the root hash of the bytecode for predicates and store the result in a file in the output directory
@@ -132,6 +140,14 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
             let root_path = output_dir.join(root_file_name);
             fs::write(root_path, &root)?;
             info!("  Predicate root: {}", root);
+        }
+        TreeType::Script => {
+            // hash the bytecode for scripts and store the result in a file in the output directory
+            let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&compiled.bytecode));
+            let hash_file_name = format!("{}{}", &manifest.project.name, SWAY_BIN_HASH_SUFFIX);
+            let hash_path = output_dir.join(hash_file_name);
+            fs::write(hash_path, &bytecode_hash)?;
+            info!("  Script bytecode hash: {}", bytecode_hash);
         }
         _ => (),
     }

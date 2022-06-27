@@ -2,6 +2,7 @@ use crate::{
     config::items::ItemBraceStyle,
     fmt::{Format, FormattedCode, Formatter},
     utils::bracket::CurlyBrace,
+    FormatterError,
 };
 use sway_parse::{
     token::{Delimiter, PunctKind},
@@ -10,15 +11,17 @@ use sway_parse::{
 use sway_types::Spanned;
 
 impl Format for ItemStorage {
-    fn format(&self, formatter: &mut Formatter) -> FormattedCode {
-        let mut formatted_code = String::new();
-
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         // Add storage token
         formatted_code.push_str(self.storage_token.span().as_str());
         formatted_code.push(' ');
 
         // Add `{`
-        Self::open_curly_brace(&mut formatted_code, formatter);
+        Self::open_curly_brace(formatted_code, formatter)?;
 
         // Get the fields
         let items = self.fields.clone().into_inner();
@@ -63,14 +66,17 @@ impl Format for ItemStorage {
         }
 
         // Add `}`
-        Self::close_curly_brace(&mut formatted_code, formatter);
+        Self::close_curly_brace(formatted_code, formatter)?;
 
-        formatted_code
+        Ok(())
     }
 }
 
 impl CurlyBrace for ItemStorage {
-    fn open_curly_brace(line: &mut String, formatter: &mut Formatter) {
+    fn open_curly_brace(
+        line: &mut String,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
         let extra_width = formatter.config.whitespace.tab_spaces;
         let mut shape = formatter.shape;
@@ -89,13 +95,18 @@ impl CurlyBrace for ItemStorage {
         }
 
         formatter.shape = shape;
+        Ok(())
     }
-    fn close_curly_brace(line: &mut String, formatter: &mut Formatter) {
+    fn close_curly_brace(
+        line: &mut String,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         line.push(Delimiter::Brace.as_close_char());
         // If shape is becoming left-most alligned or - indent just have the defualt shape
         formatter.shape = formatter
             .shape
             .shrink_left(formatter.config.whitespace.tab_spaces)
             .unwrap_or_default();
+        Ok(())
     }
 }
