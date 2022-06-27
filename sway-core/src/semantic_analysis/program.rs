@@ -12,6 +12,7 @@ use crate::{
     type_engine::*,
     types::ToJsonAbi,
 };
+use fuel_tx::StorageSlot;
 use fuels_types::JsonABI;
 use sway_types::{span::Span, Ident, Spanned};
 
@@ -19,6 +20,7 @@ use sway_types::{span::Span, Ident, Spanned};
 pub struct TypedProgram {
     pub kind: TypedProgramKind,
     pub root: TypedModule,
+    pub storage_slots: Vec<StorageSlot>,
 }
 
 impl TypedProgram {
@@ -37,7 +39,11 @@ impl TypedProgram {
         let mod_res = TypedModule::type_check(ctx, root);
         mod_res.flat_map(|root| {
             let kind_res = Self::validate_root(&root, kind, mod_span);
-            kind_res.map(|kind| Self { kind, root })
+            kind_res.map(|kind| Self {
+                kind,
+                root,
+                storage_slots: vec![],
+            })
         })
     }
 
@@ -219,6 +225,60 @@ impl TypedProgram {
             ok((), vec![], errors)
         } else {
             err(vec![], errors)
+        }
+    }
+
+    pub fn get_typed_program_with_initialized_storage_slots(&self) -> CompileResult<Self> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        match &self.kind {
+            TypedProgramKind::Contract { declarations, .. } => {
+                let storage_decl = declarations
+                    .iter()
+                    .find(|decl| matches!(decl, TypedDeclaration::StorageDeclaration(_)));
+
+                // Expecting at most a single storage declaration
+                match storage_decl {
+                    Some(TypedDeclaration::StorageDeclaration(decl)) => {
+                        let mut storage_slots = check!(
+                            decl.get_initialized_storage_slots(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors,
+                        );
+                        // Sort the slots to standardize the output. Not strictly required by the
+                        // spec.
+                        storage_slots.sort();
+                        ok(
+                            Self {
+                                kind: self.kind.clone(),
+                                root: self.root.clone(),
+                                storage_slots,
+                            },
+                            warnings,
+                            errors,
+                        )
+                    }
+                    _ => ok(
+                        Self {
+                            kind: self.kind.clone(),
+                            root: self.root.clone(),
+                            storage_slots: vec![],
+                        },
+                        warnings,
+                        errors,
+                    ),
+                }
+            }
+            _ => ok(
+                Self {
+                    kind: self.kind.clone(),
+                    root: self.root.clone(),
+                    storage_slots: vec![],
+                },
+                warnings,
+                errors,
+            ),
         }
     }
 }
