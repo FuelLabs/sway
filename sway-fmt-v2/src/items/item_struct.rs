@@ -102,7 +102,8 @@ fn format_struct(
         // Push a single whitespace before `{`
         formatted_code.push(' ');
         // Push open brace
-        formatted_code.push('{');
+        let open_brace = Delimiter::Brace.as_open_char();
+        formatted_code.push(open_brace);
         // Push a single whitespace after `{`
         formatted_code.push(' ');
     }
