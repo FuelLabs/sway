@@ -403,8 +403,11 @@ pub fn lex_commented(
             match char_indices.peek() {
                 Some((_, '/')) => {
                     let _ = char_indices.next();
-                    for (_, character) in char_indices.by_ref() {
+                    for (end, character) in char_indices.by_ref() {
                         if character == '\n' {
+                            let span = Span::new(src.clone(), index, end, path.clone()).unwrap();
+                            let comment = Comment { span };
+                            token_trees.push(comment.into());
                             break;
                         }
                     }
