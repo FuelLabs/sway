@@ -13,7 +13,6 @@ storage {
 }
 
 impl OwnershipExample for Contract {
-
     // ANCHOR: revoke_owner_example
     #[storage(write)]fn revoke_ownership() {
         storage.owner = Option::None();
