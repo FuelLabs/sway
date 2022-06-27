@@ -1442,31 +1442,33 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         }
                         None => Vec::new(),
                     };
-                    let intrinsic = Intrinsic::try_from_str(call_path.suffix.as_str());
-                    if call_path.prefixes.is_empty()
-                        && !call_path.is_absolute
-                        && intrinsic.is_some()
-                    {
-                        Expression::IntrinsicFunction {
-                            #[allow(clippy::unnecessary_unwrap)]
-                            kind: intrinsic.unwrap(),
-                            arguments,
-                            type_arguments,
-                            span,
+                    match Intrinsic::try_from_str(call_path.suffix.as_str()) {
+                        Some(intrinsic)
+                            if call_path.prefixes.is_empty() && !call_path.is_absolute =>
+                        {
+                            Expression::IntrinsicFunction {
+                                kind: intrinsic,
+                                arguments,
+                                type_arguments,
+                                span,
+                            }
                         }
-                    } else if call_path.prefixes.is_empty() {
-                        Expression::FunctionApplication {
-                            name: call_path,
-                            arguments,
-                            type_arguments,
-                            span,
-                        }
-                    } else {
-                        Expression::DelineatedPath {
-                            call_path,
-                            args: arguments,
-                            type_arguments,
-                            span,
+                        _ => {
+                            if call_path.prefixes.is_empty() {
+                                Expression::FunctionApplication {
+                                    name: call_path,
+                                    arguments,
+                                    type_arguments,
+                                    span,
+                                }
+                            } else {
+                                Expression::DelineatedPath {
+                                    call_path,
+                                    args: arguments,
+                                    type_arguments,
+                                    span,
+                                }
+                            }
                         }
                     }
                 }
