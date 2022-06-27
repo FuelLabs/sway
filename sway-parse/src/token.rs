@@ -1065,10 +1065,10 @@ impl CommentedTokenTree {
             Self::Tree(commented_tt) => commented_tt,
         };
         let tt = match commented_tt {
-            GenericTokenTree::Punct(punct) => punct.into(),
-            GenericTokenTree::Ident(ident) => ident.into(),
-            GenericTokenTree::Group(group) => group.strip_comments().into(),
-            GenericTokenTree::Literal(lit) => lit.into(),
+            CommentedTree::Punct(punct) => punct.into(),
+            CommentedTree::Ident(ident) => ident.into(),
+            CommentedTree::Group(group) => group.strip_comments().into(),
+            CommentedTree::Literal(lit) => lit.into(),
         };
         Some(tt)
     }
@@ -1100,7 +1100,7 @@ impl Spanned for CommentedTokenStream {
 
 #[cfg(test)]
 mod tests {
-    use super::{lex_commented, CommentedTokenTree, GenericTokenTree};
+    use super::{lex_commented, CommentedTokenTree, CommentedTree};
     use crate::priv_prelude::*;
     use std::sync::Arc;
 
@@ -1128,7 +1128,7 @@ mod tests {
         assert_eq!(tts.next().unwrap().span().as_str(), "Foo");
         {
             let group = match tts.next() {
-                Some(CommentedTokenTree::Tree(GenericTokenTree::Group(group))) => group,
+                Some(CommentedTokenTree::Tree(CommentedTree::Group(group))) => group,
                 _ => panic!("expected group"),
             };
             let mut tts = group.token_stream.token_trees().iter();
