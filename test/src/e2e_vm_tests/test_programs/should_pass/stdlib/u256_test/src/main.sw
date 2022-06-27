@@ -1,11 +1,7 @@
 script;
 
 use core::num::*;
-use std::{
-    assert::assert,
-    result::Result,
-    u256::{U256, U256Error}
-};
+use std::{assert::assert, result::Result, u256::{U256, U256Error}};
 
 fn main() -> bool {
     let new = ~U256::new();
@@ -64,7 +60,7 @@ fn main() -> bool {
     assert(three == ~u64::max());
     assert(four == ~u64::max());
 
-    let (min_1, min_2, min_3, min_4) = min.into();
+    let(min_1, min_2, min_3, min_4) = min.into();
     assert(min_1 == ~u64::min());
     assert(min_2 == ~u64::min());
     assert(min_3 == ~u64::min());
