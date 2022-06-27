@@ -1,12 +1,34 @@
 script;
 
-const J = 10;
-const K = 20;
-const I = 30;
-const N = 100;
+use std::{assert::assert, logging::log};
 
-fn break_test() -> u64 {
-    let m = 5;
+const N = 10;
+
+fn simple_break_test() {
+    let mut i = 0;
+    while true {
+        if i >= N {
+            break;
+        }
+        i += 1
+    }
+    assert(i == N);
+}
+
+fn simple_continue_test() {
+    let mut i = 0;
+    let mut sum = 0;
+    while i < N {
+        i += 1;
+        if i % 2 == 0 {
+            continue;
+        }
+        sum += 1;
+    }
+    assert(sum == N / 2);
+}
+
+fn break_and_continue_test() {
     let mut i = 0;
     let mut j = 0;
     let mut k = 0;
@@ -14,14 +36,14 @@ fn break_test() -> u64 {
     let mut sum1 = 0;
     let mut sum2 = 0;
     while true {
-        if i >= I {
+        if i >= N {
             break;
         }
         while true {
-            if j >= J {
+            if j >= N {
                 break;
             }
-            sum1 += i * J + j;
+            sum1 += i * N + j;
             j += 1;
 
             if j % 2 == 0 {
@@ -30,18 +52,18 @@ fn break_test() -> u64 {
 
             while n < N {
                 sum1 += n;
-                n += 2;
-                if sum1 > 100 {
+                n += 1;
+                if sum1 > 50 {
                     break;
                 }
             }
         }
 
         while true {
-            if k >= K {
+            if k >= N {
                 break;
             }
-            sum1 += i * K + k;
+            sum1 += i * N + k;
             k += 1;
 
             if k % 2 == 0 {
@@ -49,22 +71,25 @@ fn break_test() -> u64 {
             }
 
             sum1 *= 2;
-
         }
         i += 1;
 
-        if i % 3 == 0 {
+        if i % 2 == 0 {
             continue;
         }
 
-        sum1 *= 2;
-        sum2 *= 2;
-
+        sum1 += 1;
+        sum2 += 1;
     }
 
-    sum1 + sum2 // = 281250103296, Validated against Rust
+    assert(sum1 == 3072);
+    assert(sum2 == 5);
 }
 
-fn main() -> u64 {
-    break_test()
+fn main() -> bool {
+    simple_break_test();
+    simple_continue_test();
+    break_and_continue_test();
+
+    true
 }

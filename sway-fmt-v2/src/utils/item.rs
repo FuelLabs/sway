@@ -18,8 +18,8 @@ impl Format for Item {
             Abi(item_abi) => item_abi.format(formatted_code, formatter),
             Const(item_const) => item_const.format(formatted_code, formatter),
             Storage(item_storage) => item_storage.format(formatted_code, formatter),
-            Break(_item_break) => unimplemented!(),
-            Continue(_item_continue) => unimplemented!(),
+            Break(_item_break) => todo!(),
+            Continue(_item_continue) => todo!(),
         }
     }
 }
