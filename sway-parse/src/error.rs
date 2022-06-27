@@ -66,6 +66,8 @@ pub enum ParseErrorKind {
     InvalidDoubleUnderscore,
     #[error("Unexpected rest token, must be at the end of pattern.")]
     UnexpectedRestPattern,
+    #[error("Identifiers cannot be a reserved keyword.")]
+    ReservedKeywordIdentifier,
 }
 
 #[derive(Debug, Error, Clone, PartialEq, Hash)]
