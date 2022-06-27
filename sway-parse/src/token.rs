@@ -215,22 +215,6 @@ pub struct CommentedTokenStream {
     full_span: Span,
 }
 
-impl CommentedTokenTree {
-    pub fn strip_comments(self) -> Option<TokenTree> {
-        let commented_tt = match self {
-            Self::Comment(_) => return None,
-            Self::Tree(commented_tt) => commented_tt,
-        };
-        let tt = match commented_tt {
-            GenericTokenTree::Punct(punct) => punct.into(),
-            GenericTokenTree::Ident(ident) => ident.into(),
-            GenericTokenTree::Group(group) => group.strip_comments().into(),
-            GenericTokenTree::Literal(lit) => lit.into(),
-        };
-        Some(tt)
-    }
-}
-
 #[derive(Error, Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 #[error("{}", kind)]
 pub struct LexError {
@@ -1071,6 +1055,22 @@ impl TokenStream {
 impl Spanned for TokenStream {
     fn span(&self) -> Span {
         self.full_span.clone()
+    }
+}
+
+impl CommentedTokenTree {
+    pub fn strip_comments(self) -> Option<TokenTree> {
+        let commented_tt = match self {
+            Self::Comment(_) => return None,
+            Self::Tree(commented_tt) => commented_tt,
+        };
+        let tt = match commented_tt {
+            GenericTokenTree::Punct(punct) => punct.into(),
+            GenericTokenTree::Ident(ident) => ident.into(),
+            GenericTokenTree::Group(group) => group.strip_comments().into(),
+            GenericTokenTree::Literal(lit) => lit.into(),
+        };
+        Some(tt)
     }
 }
 
