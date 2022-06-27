@@ -13,6 +13,18 @@ macro_rules! define_keyword (
             }
         }
 
+        impl $ty_name {
+            pub fn ident(&self) -> Ident {
+                Ident::new(self.span())
+            }
+        }
+
+        impl From<$ty_name> for Ident {
+            fn from(o: $ty_name) -> Ident {
+                o.ident()
+            }
+        }
+
         impl Peek for $ty_name {
             fn peek(peeker: Peeker<'_>) -> Option<$ty_name> {
                 let ident = peeker.peek_ident().ok()?;
@@ -120,6 +132,42 @@ macro_rules! define_token (
         }
     };
 );
+
+// Keep this in sync with the list above defined by define_keyword!
+pub(crate) const RESERVED_KEYWORDS: phf::Set<&'static str> = phf::phf_set! {
+    "script",
+    "contract",
+    "predicate",
+    "library",
+    "dep",
+    "pub",
+    "use",
+    "as",
+    "struct",
+    "enum",
+    "self",
+    "fn",
+    "trait",
+    "impl",
+    "for",
+    "abi",
+    "const",
+    "storage",
+    "str",
+    "asm",
+    "return",
+    "if",
+    "else",
+    "match",
+    "mut",
+    "let",
+    "while",
+    "where",
+    "ref",
+    "deref",
+    "true",
+    "false",
+};
 
 define_token!(SemicolonToken, "a semicolon", [Semicolon], []);
 define_token!(
