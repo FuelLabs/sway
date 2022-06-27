@@ -351,50 +351,14 @@ impl FnCompiler {
                     .get_storage_key(span_md_idx, None))
             }
             TypedIntrinsicFunctionKind::Eq { lhs, rhs } => {
-                // We're generting this code:
-                // fn eq(self, other: Self) -> bool {
-                //     asm(r1: self, r2: other, r3) {
-                //         eq r3 r1 r2;
-                //         r3: bool
-                //     }
-                // }
-                // TODO: Introduce intrinscs in the IR and delay ASM lowering.
-                let registers = vec![
-                    TypedAsmRegisterDeclaration {
-                        name: Ident::new_no_span("r1"),
-                        initializer: Some(*lhs),
-                    },
-                    TypedAsmRegisterDeclaration {
-                        name: Ident::new_no_span("r2"),
-                        initializer: Some(*rhs),
-                    },
-                    TypedAsmRegisterDeclaration {
-                        name: Ident::new_no_span("r3"),
-                        initializer: None,
-                    },
-                ];
-                let body = vec![AsmOp {
-                    op_name: Ident::new_no_span("eq"),
-                    op_args: vec![
-                        Ident::new_no_span("r3"),
-                        Ident::new_no_span("r1"),
-                        Ident::new_no_span("r2"),
-                    ],
-                    span: Span::dummy(),
-                    immediate: None,
-                }];
-                let reg = String::from("r3");
-                // We can't use a dummy span below because compile_asm_expr uses the
-                // span to build an Ident for AsmBlock's "return".
-                let returns = Some((AsmRegister { name: reg.clone() }, Span::from_string(reg)));
-                self.compile_asm_expr(
-                    context,
-                    registers,
-                    body,
-                    insert_type(TypeInfo::Boolean),
-                    returns,
+                let lhs_value = self.compile_expression(context, *lhs)?;
+                let rhs_value = self.compile_expression(context, *rhs)?;
+                Ok(self.current_block.ins(context).cmp(
+                    Predicate::Equal,
+                    lhs_value,
+                    rhs_value,
                     None,
-                )
+                ))
             }
         }
     }
