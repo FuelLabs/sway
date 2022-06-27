@@ -136,13 +136,6 @@ impl core::ops::Divide for UFP64 {
             let inter = u128_max / divisor.value;
 
             if inter.upper == 0 {
-
-
-                let l1 = self.value * inter;
-                log("l1");
-                log(l1.upper);
-                log(l1.lower);
-
                 let result = (self.value * inter) / denominator;
                 res = UFP64 {
                     value: result
