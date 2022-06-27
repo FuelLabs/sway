@@ -17,7 +17,7 @@ where
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         // format and add Type & Punct
-        writeln!(
+        write!(
             formatted_code,
             "{}",
             self.value_separator_pairs
@@ -27,7 +27,6 @@ where
                 .join(" ")
         )?;
         formatted_code.pop(); // pop the ending comma
-        formatted_code.pop();
 
         // add boxed type
         if let Some(final_value) = &self.final_value_opt {
