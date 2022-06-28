@@ -239,7 +239,7 @@ enum Color {
         let sway_code_to_format = r#"contract;
 
 abi StorageMapExample {
-    #[storage(write,)]fn insert_into_map1(key: u64, value: u64);
+    #[storage(write)]fn insert_into_map1(key: u64, value: u64);
 
 fn hello(key: u64, value: u64);
 }"#;

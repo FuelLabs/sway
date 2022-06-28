@@ -19,19 +19,15 @@ where
         // format and add Type & Punct
         let value_pairs = &self.value_separator_pairs;
 
-        // Later on we may want to handle trailing commas for instances where
-        // `value_separator_pairs.len()` > 1 and the user wants to keep the trailing comma.
-        if self.value_separator_pairs.len() == 1 {
-            formatted_code.push_str(value_pairs.get(0).unwrap().0.span().as_str())
-        } else {
-            for pair in value_pairs.iter() {
-                write!(
-                    formatted_code,
-                    "{}{} ",
-                    pair.0.span().as_str(),
-                    pair.1.span().as_str(),
-                )?;
-            }
+        // Later on we may want to handle instances
+        // where the user wants to keep the trailing commas.
+        for pair in value_pairs.iter() {
+            write!(
+                formatted_code,
+                "{}{} ",
+                pair.0.span().as_str(),
+                pair.1.span().as_str(),
+            )?;
         }
 
         // add final value, if any
