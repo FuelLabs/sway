@@ -24,7 +24,7 @@ impl ControlFlowGraph {
                 leaves = nodes;
             }
         }
-
+        //        graph.visualize();
         Ok(graph)
     }
     /// This function looks through the control flow graph and ensures that all paths that are
@@ -160,8 +160,9 @@ fn connect_node(
                 graph,
                 &leaves,
                 Some(while_loop_exit), // break_to_node
-                Some(entry), // continue_to_node
-            )?;
+                Some(entry),           // continue_to_node
+            )?
+            .1;
 
             // insert edges from end of block back to beginning of it
             for leaf in &l_leaves {
@@ -339,7 +340,7 @@ fn connect_typed_fn_decl(
 ) -> Result<(), CompileError> {
     let fn_exit_node = graph.add_node(format!("\"{}\" fn exit", fn_decl.name.as_str()).into());
     let return_nodes =
-        depth_first_insertion_code_block(&fn_decl.body, graph, &[entry_node], None, None)?;
+        depth_first_insertion_code_block(&fn_decl.body, graph, &[entry_node], None, None)?.0;
     for node in return_nodes {
         graph.add_edge(node, fn_exit_node, "return".into());
     }
@@ -364,7 +365,7 @@ fn depth_first_insertion_code_block(
     leaves: &[NodeIndex],
     break_to_node: Option<NodeIndex>,
     continue_to_node: Option<NodeIndex>,
-) -> Result<ReturnStatementNodes, CompileError> {
+) -> Result<(ReturnStatementNodes, Vec<NodeIndex>), CompileError> {
     let mut leaves = leaves.to_vec();
     let mut return_nodes = vec![];
     for node in node_content.contents.iter() {
@@ -376,5 +377,5 @@ fn depth_first_insertion_code_block(
             }
         }
     }
-    Ok(return_nodes)
+    Ok((return_nodes, leaves))
 }
