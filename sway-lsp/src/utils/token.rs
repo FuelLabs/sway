@@ -3,23 +3,6 @@ use sway_core::semantic_analysis::ast_node::TypedDeclaration;
 use sway_core::{parse_tree::MethodName, type_engine::TypeId};
 use sway_types::{ident::Ident, span::Span, Spanned};
 
-pub fn is_same_type(&self, other_token: &Token) -> bool {
-    if other_token.token_type == self.token_type {
-        true
-    } else {
-        matches!(
-            (&other_token.token_type, &self.token_type),
-            (
-                TokenType::FunctionApplication,
-                TokenType::FunctionDeclaration(_)
-            ) | (
-                TokenType::FunctionDeclaration(_),
-                TokenType::FunctionApplication
-            ),
-        )
-    }
-}
-
 pub fn is_initial_declaration(token_type: &TokenType) -> bool {
     match token_type.typed {
         Some(typed_ast_token) => {
