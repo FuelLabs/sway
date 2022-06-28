@@ -45,7 +45,7 @@ impl IdentityExample for Contract {
 
     fn different_executions(my_identity: Identity) {
         let amount = 1;
-        let token_id = ~ContractId::from(BASE_ASSET_ID);
+        let token_id = BASE_ASSET_ID;
 
         // ANCHOR: different_executions
         match my_identity {
