@@ -43,13 +43,13 @@ export default function(hljs) {
     "script",
     "Self",
     "self",
+    "storage",
     "str",
     "struct",
     "trait",
     "use",
     "where",
     "while",
-    "storage"
   ];
   const LITERALS = [
     "true",

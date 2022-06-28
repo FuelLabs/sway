@@ -303,7 +303,7 @@ anyNumberOfTimes:g};for(const e in A)"object"==typeof A[e]&&n(A[e])
 grmr_sway:e=>{const t={className:"title.function.invoke",relevance:0,
 begin:b(/\b/,/(?!let\b)/,e.IDENT_RE,u(/\s*\(/))},n="([u](8|16|32|64))?";return{
 name:"Sway",aliases:["sw"],keywords:{$pattern:e.IDENT_RE+"!?",
-keyword:["abi","as","asm","const","contract","deref","enum","fn","if","impl","let","library","match","mut","else","predicate","ref","return","script","Self","self","str","struct","trait","use","where","while","storage"],
+keyword:["abi","as","asm","const","contract","deref","enum","fn","if","impl","let","library","match","mut","else","predicate","ref","return","script","Self","self","storage","str","struct","trait","use","where","while"],
 literal:["true","false"],
 built_in:["bool","char","u8","u16","u32","u64","b256","str","Self"]},
 illegal:"</",contains:[e.C_LINE_COMMENT_MODE,e.COMMENT("/\\*","\\*/",{
