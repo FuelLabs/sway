@@ -20,3 +20,6 @@ category = "fail"
 
 # check: $()__eq(B::Second(1), B::Second(1));
 # check-next: $()Unsupported argument type to intrinsic "eq".
+
+# check: $()__eq(my_number1, my_number1);
+# check-next: $()Unsupported argument type to intrinsic "eq".
