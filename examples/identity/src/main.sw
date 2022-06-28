@@ -25,7 +25,7 @@ storage {
 impl IdentityExample for Contract {
     fn cast_to_identity() {
         // ANCHOR: cast_to_identity
-        let my_address: Address = ~Address::from(BASE_ASSET_ID);
+        let my_address: Address = ~Address::from(BASE_ASSET_ID.into());
         let my_identity: Identity = Identity::Address(my_address);
         // ANCHOR_END: cast_to_identity
     }
