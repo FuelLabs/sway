@@ -32,7 +32,7 @@ fn create_symbol_info(ident: &Ident, token: &TokenType, url: Url) -> SymbolInfor
     SymbolInformation {
         name: ident.as_str().to_string(),
         kind: {
-            match token.typed {
+            match &token.typed {
                 Some(typed_token) => symbol_kind::typed_to_symbol_kind(&typed_token),
                 None => symbol_kind::parsed_to_symbol_kind(&token.parsed),
             }

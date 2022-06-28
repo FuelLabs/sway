@@ -23,9 +23,6 @@ pub struct TextDocument {
     version: i32,
     uri: String,
     content: Rope,
-    //tokens: Vec<Token>,
-    //lines: HashMap<u32, Vec<usize>>,
-    //values: HashMap<String, Vec<usize>>,
     token_map: TokenMap,
 }
 
@@ -37,9 +34,6 @@ impl TextDocument {
                 version: 1,
                 uri: path.into(),
                 content: Rope::from_str(&content),
-                //tokens: vec![],
-                //lines: HashMap::new(),
-                //values: HashMap::new(),
                 token_map: HashMap::new(),
             }),
             Err(_) => Err(DocumentError::DocumentNotFound),
@@ -47,21 +41,26 @@ impl TextDocument {
     }
 
     /// Check if the code editor's cursor is currently over an of our collected tokens
-    pub fn get_token_at_position(&self, position: Position) -> Option<&TokenType> {
+    pub fn get_token_at_position(&self, position: Position) -> Option<(Ident, &TokenType)> {
         match utils::common::ident_and_span_at_position(position, &self.token_map) {
-            Some((ident, span)) => {
+            Some((ident, _)) => {
                 // Retrieve the TokenType from our HashMap
-                self.token_map.get(&(ident, span))
+                match self.token_map.get(&utils::token::to_ident_key(&ident)) {
+                    Some(token) => Some((ident.clone(), token)),
+                    None => None,
+                }
             }
             None => None,
         }
     }
 
-    pub fn get_all_tokens_by_single_name(&self, name: &str) -> Vec<&TokenType> {
+    pub fn get_all_references(&self, token: &TokenType) -> Vec<(&Ident, &TokenType)> {
+        let current_type_id = utils::token::get_type_id(token);
+
         self.token_map
             .iter()
-            .filter(|(k, v)| if k.0.as_str() == name { true } else { false })
-            .map(|(k, v)| v)
+            .filter(|((_, _), token)| current_type_id == utils::token::get_type_id(token))
+            .map(|((ident, _), token)| (ident, token))
             .collect()
     }
 
@@ -86,18 +85,6 @@ impl TextDocument {
             None => None,
         }
     }
-
-    // pub fn get_declared_token(&self, name: &str) -> Option<&Token> {
-    //     if let Some(indices) = self.values.get(name) {
-    //         for index in indices {
-    //             let token = &self.tokens[*index];
-    //             if token.is_initial_declaration() {
-    //                 return Some(token);
-    //             }
-    //         }
-    //     }
-    //     None
-    // }
 
     pub fn get_token_map(&self) -> &TokenMap {
         &self.token_map
@@ -148,7 +135,7 @@ impl TextDocument {
         //let cursor_position = Position::new(25, 14); //Cursor's hovered over the position var decl in main()
         let cursor_position = Position::new(29, 18); //Cursor's hovered over the ~Particle in p = decl in main()
 
-        if let Some(token) = self.get_token_at_position(cursor_position) {
+        if let Some((_, token)) = self.get_token_at_position(cursor_position) {
             // Look up the tokens TypeId
             if let Some(type_id) = utils::token::get_type_id(token) {
                 tracing::info!("type_id = {:#?}", type_id);

@@ -33,7 +33,7 @@ pub fn to_completion_items(token_map: &TokenMap) -> Vec<CompletionItem> {
             let item = CompletionItem {
                 label: ident.as_str().to_string(),
                 kind: {
-                    match token.typed {
+                    match &token.typed {
                         Some(typed_token) => typed_to_completion_kind(&typed_token),
                         None => parsed_to_completion_kind(&token.parsed),
                     }

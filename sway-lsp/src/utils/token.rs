@@ -4,7 +4,7 @@ use sway_core::{parse_tree::MethodName, type_engine::TypeId};
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 pub fn is_initial_declaration(token_type: &TokenType) -> bool {
-    match token_type.typed {
+    match &token_type.typed {
         Some(typed_ast_token) => {
             matches!(
                 typed_ast_token,
@@ -39,7 +39,7 @@ pub(crate) fn to_ident_key(ident: &Ident) -> (Ident, Span) {
 }
 
 pub fn get_type_id(token_type: &TokenType) -> Option<TypeId> {
-    match token_type.typed {
+    match &token_type.typed {
         Some(typed_ast_token) => match typed_ast_token {
             TypedAstToken::TypedDeclaration(dec) => match dec {
                 TypedDeclaration::VariableDeclaration(var_decl) => Some(var_decl.type_ascription),

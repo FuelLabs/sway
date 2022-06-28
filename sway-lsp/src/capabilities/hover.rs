@@ -22,7 +22,7 @@ pub fn get_hover_data(session: Arc<Session>, params: HoverParams) -> Option<Hove
 
     match session.documents.get(url.path()) {
         Some(ref document) => {
-            if let Some(token) = document.get_token_at_position(position) {
+            if let Some((_, token)) = document.get_token_at_position(position) {
                 if let Some(decl_ident) = document.get_declared_token_ident(token) {
                     if let Some(decl_token) =
                         document.get_token_map().get(&to_ident_key(&decl_ident))
@@ -55,7 +55,7 @@ fn get_hover_format(token: &TokenType, ident: &Ident) -> Hover {
         format!("let{} {}: {}", is_mutable, token_name, type_name,)
     };
 
-    let value = match token.typed {
+    let value = match &token.typed {
         Some(typed_token) => match typed_token {
             TypedAstToken::TypedDeclaration(decl) => match decl {
                 TypedDeclaration::VariableDeclaration(var_decl) => {
@@ -63,20 +63,20 @@ fn get_hover_format(token: &TokenType, ident: &Ident) -> Hover {
                     format_variable_hover(var_decl.is_mutable.is_mutable(), type_name)
                 }
                 TypedDeclaration::FunctionDeclaration(func) => extract_fn_signature(&func.span()),
-                TypedDeclaration::StructDeclaration(struct_decl) => {
+                TypedDeclaration::StructDeclaration(ref struct_decl) => {
                     format_visibility_hover(struct_decl.visibility, decl.friendly_name())
                 }
-                TypedDeclaration::TraitDeclaration(trait_decl) => {
+                TypedDeclaration::TraitDeclaration(ref trait_decl) => {
                     format_visibility_hover(trait_decl.visibility, decl.friendly_name())
                 }
-                TypedDeclaration::EnumDeclaration(enum_decl) => {
+                TypedDeclaration::EnumDeclaration(ref enum_decl) => {
                     format_visibility_hover(enum_decl.visibility, decl.friendly_name())
                 }
                 _ => token_name,
             },
             _ => token_name,
         },
-        None => match token.parsed {
+        None => match &token.parsed {
             AstToken::Declaration(decl) => match decl {
                 Declaration::VariableDeclaration(var_decl) => {
                     let type_name = format!("{}", var_decl.type_ascription);

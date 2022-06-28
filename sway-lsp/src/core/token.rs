@@ -26,10 +26,6 @@ impl TokenType {
             typed: None,
         }
     }
-
-    // an iterator that just returns tokens
-    // that have typed(Some)
-    //pub fn get_typed_tokens() ->
 }
 
 #[derive(Debug, Clone)]

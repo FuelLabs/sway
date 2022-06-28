@@ -2,11 +2,12 @@ use super::document::{DocumentError, TextDocument};
 use crate::{
     capabilities::{self, formatting::get_format_text_edits},
     sway_config::SwayConfig,
-    utils::token::is_initial_declaration,
+    utils::common::get_range_from_span,
 };
 use dashmap::DashMap;
 use serde_json::Value;
 use std::sync::{Arc, LockResult, RwLock};
+use sway_types::Spanned;
 use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, GotoDefinitionResponse, Position, Range, SemanticToken,
     SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
@@ -75,15 +76,17 @@ impl Session {
     // Token
     pub fn get_token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
         if let Some(document) = self.documents.get(url.path()) {
-            if let Some(token) = document.get_token_at_position(position) {
-                let result = document
-                    .get_all_tokens_by_single_name(&token.name)
-                    .unwrap()
+            if let Some((_, token)) = document.get_token_at_position(position) {
+                let token_ranges = document
+                    .get_all_references(token)
                     .iter()
-                    .map(|token| token.range)
+                    .map(|(ident, _)| {
+                        let range = get_range_from_span(&ident.span());
+                        range
+                    })
                     .collect();
 
-                return Some(result);
+                return Some(token_ranges);
             }
         }
 
@@ -98,21 +101,12 @@ impl Session {
         let key = url.path();
 
         if let Some(document) = self.documents.get(key) {
-            if let Some(token) = document.get_token_at_position(position) {
-                if is_initial_declaration(token) {
-                    return Some(capabilities::go_to::to_definition_response(url, token));
-                } else {
-                    for document_ref in &self.documents {
-                        if let Some(declared_token) = document_ref.get_declared_token(&token.name) {
-                            return match Url::from_file_path(document_ref.key()) {
-                                Ok(url) => Some(capabilities::go_to::to_definition_response(
-                                    url,
-                                    declared_token,
-                                )),
-                                Err(_) => None,
-                            };
-                        }
-                    }
+            if let Some((_, token)) = document.get_token_at_position(position) {
+                if let Some(decl_ident) = document.get_declared_token_ident(token) {
+                    return Some(capabilities::go_to::to_definition_response(
+                        url,
+                        &decl_ident,
+                    ));
                 }
             }
         }
