@@ -49,8 +49,8 @@ impl Formatter {
         let program_type = module.kind;
 
         // Formatted code will be pushed here with raw newline stlye.
-        // Which means newlines are not converted into system-specific versions by apply_newline_style
-        // Use the length of src as a hint of the memory size needed for raw_formatted_code,
+        // Which means newlines are not converted into system-specific versions by `apply_newline_style`.
+        // Use the length of src as a hint of the memory size needed for `raw_formatted_code`,
         // which will reduce the number of reallocations
         let mut raw_formatted_code = String::with_capacity(src_len);
 
@@ -124,14 +124,14 @@ pub struct Foo { bar: u64, baz: bool }"#;
     #[test]
     fn test_struct_multiline_line_alignment() {
         let sway_code_to_format = r#"contract;
-pub struct Foo {
+pub struct Foo<T, P> {
    barbazfoo: u64,
    baz  : bool,
 }
 "#;
         let correct_sway_code = r#"contract;
 
-pub struct Foo {
+pub struct Foo<T, P> {
     barbazfoo: u64,
     baz      : bool,
 }"#;
@@ -239,7 +239,7 @@ enum Color {
         let sway_code_to_format = r#"contract;
 
 abi StorageMapExample {
-    #[storage(write,)]fn insert_into_map1(key: u64, value: u64);
+    #[storage(write)]fn insert_into_map1(key: u64, value: u64);
 
 fn hello(key: u64, value: u64);
 }"#;

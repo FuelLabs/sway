@@ -1,13 +1,14 @@
 use crate::{
     config::items::ItemBraceStyle,
     fmt::{Format, FormattedCode, Formatter},
-    utils::{
-        bracket::{AngleBracket, CurlyBrace},
-        item_len::ItemLen,
-    },
+    utils::{bracket::CurlyBrace, item_len::ItemLen},
     FormatterError,
 };
-use sway_parse::ItemStruct;
+use std::fmt::Write;
+use sway_parse::{
+    token::{Delimiter, PunctKind},
+    ItemStruct,
+};
 use sway_types::Spanned;
 
 impl Format for ItemStruct {
@@ -24,12 +25,11 @@ impl Format for ItemStruct {
         let struct_lit_single_line = formatter.config.structures.struct_lit_single_line;
 
         // Get the width limit of a struct to be formatted into single line if struct_lit_single_line is true.
-        let config_whitespace = formatter.config.whitespace;
         let width_heuristics = formatter
             .config
             .heuristics
             .heuristics_pref
-            .to_width_heuristics(&config_whitespace);
+            .to_width_heuristics(&formatter.config.whitespace);
         let struct_lit_width = width_heuristics.struct_lit_width;
 
         let multiline = !struct_lit_single_line || self.get_formatted_len()? > struct_lit_width;
@@ -63,30 +63,21 @@ fn format_struct(
 ) -> Result<(), FormatterError> {
     // If there is a visibility token add it to the formatted_code with a ` ` after it.
     if let Some(visibility) = &item_struct.visibility {
-        formatted_code.push_str(visibility.span().as_str());
-        formatted_code.push(' ');
+        write!(formatted_code, "{} ", visibility.span().as_str())?;
     }
     // Add struct token
-    formatted_code.push_str(item_struct.struct_token.span().as_str());
-    formatted_code.push(' ');
+    write!(
+        formatted_code,
+        "{} ",
+        item_struct.struct_token.span().as_str()
+    )?;
 
     // Add struct name
     formatted_code.push_str(item_struct.name.as_str());
 
-    // Check if there is generic provided
+    // Format `GenericParams`, if any
     if let Some(generics) = &item_struct.generics {
-        // Push angle brace
-        ItemStruct::open_angle_bracket(formatted_code, formatter)?;
-        // Get generics fields
-        let generics = generics.parameters.inner.value_separator_pairs.clone();
-        for (index, generic) in generics.iter().enumerate() {
-            // Push ident
-            formatted_code.push_str(generic.0.as_str());
-            if index != generics.len() - 1 {
-                // Push `, ` if this is not the last generic
-                formatted_code.push_str(", ");
-            }
-        }
+        generics.format(formatted_code, formatter)?;
     }
 
     // Handle openning brace
@@ -94,12 +85,7 @@ fn format_struct(
         ItemStruct::open_curly_brace(formatted_code, formatter)?;
         formatted_code.push('\n');
     } else {
-        // Push a single whitespace before `{`
-        formatted_code.push(' ');
-        // Push open brace
-        formatted_code.push('{');
-        // Push a single whitespace after `{`
-        formatted_code.push(' ');
+        write!(formatted_code, " {} ", Delimiter::Brace.as_open_char())?;
     }
 
     let items = item_struct
@@ -138,17 +124,19 @@ fn format_struct(
             // TODO: Improve handling this
             formatted_code.push_str(&(0..required_alignment).map(|_| ' ').collect::<String>());
         }
-        // Add `:`
-        formatted_code.push_str(type_field.colon_token.ident().as_str());
-        formatted_code.push(' ');
+        // Add `:` and ty
         // TODO: We are currently converting ty to string directly but we will probably need to format ty before adding.
-        // Add ty
-        formatted_code.push_str(type_field.ty.span().as_str());
+        write!(
+            formatted_code,
+            "{} {}",
+            type_field.colon_token.ident().as_str(),
+            type_field.ty.span().as_str()
+        )?;
         // Add `, ` if this isn't the last field.
         if !multiline && item_index != items.len() - 1 {
-            formatted_code.push_str(", ");
+            write!(formatted_code, "{} ", PunctKind::Comma.as_char())?;
         } else if multiline {
-            formatted_code.push_str(",\n");
+            writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
         }
     }
     if !multiline {
@@ -179,12 +167,12 @@ impl CurlyBrace for ItemStruct {
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
-                line.push_str("\n{");
+                write!(line, "\n{}", Delimiter::Brace.as_open_char())?;
                 shape = shape.block_indent(extra_width);
             }
             _ => {
                 // Add opening brace to the same line
-                line.push_str(" {");
+                write!(line, " {}", Delimiter::Brace.as_open_char())?;
                 shape = shape.block_indent(extra_width);
             }
         }
@@ -197,30 +185,12 @@ impl CurlyBrace for ItemStruct {
         line: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        line.push('}');
+        line.push(Delimiter::Brace.as_close_char());
         // If shape is becoming left-most alligned or - indent just have the defualt shape
         formatter.shape = formatter
             .shape
             .shrink_left(formatter.config.whitespace.tab_spaces)
             .unwrap_or_default();
-        Ok(())
-    }
-}
-
-impl AngleBracket for ItemStruct {
-    fn open_angle_bracket(
-        line: &mut String,
-        _formatter: &mut Formatter,
-    ) -> Result<(), FormatterError> {
-        line.push('<');
-        Ok(())
-    }
-
-    fn close_angle_bracket(
-        line: &mut String,
-        _formatter: &mut Formatter,
-    ) -> Result<(), FormatterError> {
-        line.push('>');
         Ok(())
     }
 }
