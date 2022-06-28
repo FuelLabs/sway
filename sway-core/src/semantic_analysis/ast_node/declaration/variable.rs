@@ -1,4 +1,4 @@
-use crate::{constants::*, error::*, semantic_analysis::*, type_engine::*, Ident, Visibility};
+use crate::{semantic_analysis::*, type_engine::*, Ident, Visibility};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum VariableMutability {
@@ -74,22 +74,4 @@ impl CopyTypes for TypedVariableDeclaration {
             .update_type(type_mapping, &self.body.span);
         self.body.copy_types(type_mapping)
     }
-}
-
-// there are probably more names we should check here, this is the only one that will result in an
-// actual issue right now, though
-pub fn check_if_name_is_invalid(name: &Ident) -> CompileResult<()> {
-    INVALID_NAMES
-        .iter()
-        .find_map(|x| {
-            if *x == name.as_str() {
-                Some(err(
-                    vec![],
-                    [CompileError::InvalidVariableName { name: name.clone() }].to_vec(),
-                ))
-            } else {
-                None
-            }
-        })
-        .unwrap_or_else(|| ok((), vec![], vec![]))
 }
