@@ -18,7 +18,7 @@ The `msg_sender` function works as follows:
 
 ## Contract Ownership
 
-Many contracts require some form of ownership and storing of an `Identity` for access control. When storing an `Identity` where the `BASE_ASSET_ID` should not be allowed as a default(such as ownership), it is recommended to use an `Option<Identity>` instead.
+Many contracts require some form of ownership for access control. To accomplish this, it is recommended that a storage variable of type `Option<Identity>` is used to keep track of the owner. This allows setting and revoking ownership using the variants `Some(..)` and `None` respectively. This is better, safer, and more readable than using the `Identity` type directly where revoking ownership has to be done using some default value such as `BASE_ASSET_ID` or otherwise.
 
 The following is an example of how to properly set ownership of a contract:
 
@@ -26,9 +26,7 @@ The following is an example of how to properly set ownership of a contract:
 {{#include ../../../examples/ownership/src/main.sw:set_owner_example}}
 ```
 
-When revoking ownership, it is disadvised to set ownership to the zero address of an `Address` or `ContractId`. Instead, it is recommended to set the ownership `Option<Identity>` to `None`. 
-
-This is an example of how to properly revoke ownership:
+The following is an example of how to properly revoke ownership of a contract:
 
 ```sway
 {{#include ../../../examples/ownership/src/main.sw:revoke_owner_example}}
