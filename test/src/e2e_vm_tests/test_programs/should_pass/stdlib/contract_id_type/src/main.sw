@@ -10,7 +10,7 @@ fn main() -> bool {
 
     assert(id_1 == id_2);
     assert(id_1 == BASE_ASSET_ID);
-    assert(id_1.into() == BASE_ASSET_ID.into());
+    assert(0x0000000000000000000000000000000000000000000000000000000000000000 == id_1.into());
 
     true
 }
