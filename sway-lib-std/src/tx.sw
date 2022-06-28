@@ -169,10 +169,10 @@ pub fn get_script_data<T>() -> T {
 /// Get the script bytecode
 fn get_script_bytecode<T>() -> T {
     let script_ptr = tx_script_start_offset();
-    let script = asm(r1: script_ptr) {
+    let script_bytecode = asm(r1: script_ptr) {
         r1: T
     };
-    script
+    script_bytecode
 }
 
 ////////////////////////////////////////
