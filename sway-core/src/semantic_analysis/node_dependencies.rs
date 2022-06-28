@@ -392,7 +392,7 @@ impl Dependencies {
         .gather_from_type_parameters(type_parameters)
     }
 
-    fn gather_from_expr(mut self, expr: &Expression) -> Self {
+    fn gather_from_expr(self, expr: &Expression) -> Self {
         match expr {
             Expression::VariableExpression { name, .. } => {
                 // in the case of ABI variables, we actually want to check if the ABI needs to be
@@ -437,13 +437,13 @@ impl Dependencies {
                 self.gather_from_expr(prefix).gather_from_expr(index)
             }
             Expression::StructExpression {
-                struct_name,
+                call_path_binding,
                 fields,
                 ..
             } => {
-                self.deps
-                    .insert(DependentSymbol::Symbol(struct_name.suffix.clone()));
-                self.gather_from_iter(fields.iter(), |deps, field| {
+                self.gather_from_call_path(&call_path_binding.inner, true, false)
+                    .gather_from_type_arguments(&call_path_binding.type_arguments)
+                    .gather_from_iter(fields.iter(), |deps, field| {
                     deps.gather_from_expr(&field.value)
                 })
             }

@@ -53,8 +53,7 @@ pub enum Expression {
         span: Span,
     },
     StructExpression {
-        struct_name: CallPath,
-        type_arguments: Vec<TypeArgument>,
+        call_path_binding: TypeBinding<CallPath>,
         fields: Vec<StructExpressionField>,
         span: Span,
     },

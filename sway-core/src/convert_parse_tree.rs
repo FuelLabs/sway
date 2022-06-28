@@ -1200,9 +1200,9 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             }
         }
         Expr::Struct { path, fields } => {
-            let (struct_name, type_arguments) = path_expr_to_call_path_type_args(ec, path)?;
+            let call_path_binding = path_expr_to_type_binding_with_call_path(ec, path)?;
             Expression::StructExpression {
-                struct_name,
+                call_path_binding,
                 fields: {
                     fields
                         .into_inner()
@@ -1212,7 +1212,6 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         })
                         .collect::<Result<_, _>>()?
                 },
-                type_arguments,
                 span,
             }
         }
@@ -2375,17 +2374,17 @@ fn literal_to_literal(
 /// Like [path_expr_to_call_path], but instead can potentially return type arguments.
 /// Use this when converting a call path that could potentially include type arguments, i.e. the
 /// turbofish.
-fn path_expr_to_call_path_type_args(
+fn path_expr_to_type_binding_with_call_path(
     ec: &mut ErrorContext,
     path_expr: PathExpr,
-) -> Result<(CallPath, Vec<TypeArgument>), ErrorEmitted> {
+) -> Result<TypeBinding<CallPath>, ErrorEmitted> {
     let PathExpr {
         root_opt,
         prefix,
         mut suffix,
     } = path_expr;
     let is_absolute = path_root_opt_to_bool(ec, root_opt)?;
-    let (call_path, type_arguments) = match suffix.pop() {
+    let call_path_binding = match suffix.pop() {
         Some((_double_colon_token, call_path_suffix)) => {
             let mut prefixes = vec![path_expr_segment_to_ident(ec, prefix)?];
             for (_double_colon_token, call_path_prefix) in suffix {
@@ -2396,28 +2395,32 @@ fn path_expr_to_call_path_type_args(
             }
             let (suffix, ty_args) =
                 path_expr_segment_to_ident_or_type_argument(ec, call_path_suffix)?;
-            (
-                CallPath {
-                    prefixes,
-                    suffix,
-                    is_absolute,
-                },
-                ty_args,
-            )
+            let call_path = CallPath {
+                prefixes,
+                suffix,
+                is_absolute,
+            };
+            TypeBinding {
+                inner: call_path.clone(),
+                type_arguments: ty_args,
+                span: call_path.span()
+            }
         }
         None => {
             let (suffix, ty_args) = path_expr_segment_to_ident_or_type_argument(ec, prefix)?;
-            (
-                CallPath {
-                    prefixes: Default::default(),
-                    suffix,
-                    is_absolute,
-                },
-                ty_args,
-            )
+            let call_path = CallPath {
+                prefixes: Default::default(),
+                suffix,
+                is_absolute,
+            };
+            TypeBinding {
+                inner: call_path.clone(),
+                type_arguments: ty_args,
+                span: call_path.span()
+            }
         }
     };
-    Ok((call_path, type_arguments))
+    Ok(call_path_binding)
 }
 
 fn path_expr_to_call_path(

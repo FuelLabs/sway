@@ -440,14 +440,12 @@ impl TypedExpression {
                 Self::type_check_asm_expression(ctx.by_ref(), asm, span)
             }
             Expression::StructExpression {
-                span,
-                type_arguments,
-                struct_name,
+                call_path_binding,
                 fields,
+                span,
             } => Self::type_check_struct_expression(
                 ctx.by_ref(),
-                struct_name,
-                type_arguments,
+                call_path_binding,
                 fields,
                 span,
             ),
@@ -940,48 +938,24 @@ impl TypedExpression {
     #[allow(clippy::too_many_arguments)]
     fn type_check_struct_expression(
         mut ctx: TypeCheckContext,
-        call_path: CallPath,
-        mut type_arguments: Vec<TypeArgument>,
+        mut call_path_binding: TypeBinding<CallPath>,
         fields: Vec<StructExpressionField>,
         span: Span,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        // find the module that the symbol is in
-        let module_path = ctx.namespace.find_module_path(&call_path.prefixes);
-        check!(
-            ctx.namespace.root().check_submodule(&module_path),
+        // type check the type binding
+        let unknown_decl = check!(
+            TypeBinding::type_check(&mut call_path_binding, &mut ctx),
             return err(warnings, errors),
             warnings,
             errors
         );
 
-        // find the struct definition from the name
-        let unknown_decl = check!(
-            ctx.namespace
-                .root()
-                .resolve_symbol(&module_path, &call_path.suffix)
-                .cloned(),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        // extract the struct definition
         let mut struct_decl = check!(
             unknown_decl.expect_struct().cloned(),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
-        // monomorphize the struct definition
-        check!(
-            ctx.monomorphize(
-                &mut struct_decl,
-                &mut type_arguments,
-                EnforceTypeArguments::No,
-                &call_path.span()
-            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -1044,7 +1018,7 @@ impl TypedExpression {
         }
         let exp = TypedExpression {
             expression: TypedExpressionVariant::StructExpression {
-                struct_name: call_path.suffix,
+                struct_name: call_path_binding.inner.suffix,
                 fields: typed_fields_buf,
             },
             return_type: struct_decl.create_type_id(),
