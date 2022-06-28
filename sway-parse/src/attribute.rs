@@ -71,7 +71,12 @@ impl Spanned for Attribute {
 
 impl Parse for Attribute {
     fn parse(parser: &mut Parser) -> ParseResult<Self> {
-        let name = parser.parse()?;
+        let storage = parser.take::<StorageToken>();
+        let name = if let Some(storage) = storage {
+            Ident::from(storage)
+        } else {
+            parser.parse()?
+        };
         let args = Parens::try_parse(parser)?;
         Ok(Attribute { name, args })
     }

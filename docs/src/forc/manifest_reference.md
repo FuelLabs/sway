@@ -17,6 +17,8 @@ The `Forc.toml` (the _manifest_ file) is a compulsory file for each package and 
 
 * [`[build-profiles]`](#the-build-profiles--section) - Defines the build profiles.
 
+* [`[patch]`](#the-patch-section) - Defines the patches.
+
 ## The `[project]` section
 
 An example `Forc.toml` is shown below. Under `[project]` the following fields are optional:
@@ -99,3 +101,47 @@ Note that providing the corresponding cli options (like `--print-finalized-asm`)
 * print-intermediate-asm - false
 * print-ir - false
 * silent - false
+
+## The `[patch]` section
+
+The [patch] section of `Forc.toml` can be used to override dependencies with other copies. The example provided below patches <https://github.com/fuellabs/sway> source with master branch of the same repo.
+
+```toml
+[project]
+authors = ["user"]
+entry = "main.sw"
+organization = "Fuel_Labs"
+license = "Apache-2.0"
+name = "wallet_contract"
+
+[dependencies]
+
+[patch.'https://github.com/fuellabs/sway']
+std = { git = "https://github.com/fuellabs/sway", branch = "test" }
+```
+
+In the example above, `std` is patched with the `test` branch from `std` repo. You can also patch git dependencies with dependencies defined with a path.
+
+```toml
+[patch.'https://github.com/fuellabs/sway']
+std = { path = "/path/to/local_std_version" }
+```
+
+Just like `std` or `core` you can also patch dependencies you declared with a git repo.
+
+```toml
+[project]
+authors = ["user"]
+entry = "main.sw"
+organization = "Fuel_Labs"
+license = "Apache-2.0"
+name = "wallet_contract"
+
+[dependencies]
+foo = { git = "https://github.com/foo/foo", branch = "master" }
+
+[patch.'https://github.com/foo']
+foo = { git = "https://github.com/foo/foo", branch = "test" }
+```
+
+Note that each key after the `[patch]` is a URL of the source that is being patched.

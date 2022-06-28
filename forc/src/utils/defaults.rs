@@ -30,8 +30,7 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-fuels = "0.15"
-fuels-abigen-macro = "0.15"
+fuels = {{ version = "0.16", features = ["fuel-core-lib"] }}
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
 
 [[test]]
@@ -93,7 +92,6 @@ pub(crate) fn default_test_program(project_name: &str) -> String {
     format!(
         "{}{}{}{}{}",
         r#"use fuels::{prelude::*, tx::ContractId};
-use fuels_abigen_macro::abigen;
 
 // Load abi from json
 abigen!(MyContract, "out/debug/"#,

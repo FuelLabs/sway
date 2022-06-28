@@ -68,10 +68,9 @@ impl Peek for Literal {
 
 impl Parse for Literal {
     fn parse(parser: &mut Parser) -> ParseResult<Literal> {
-        match parser.take() {
-            Some(literal) => Ok(literal),
-            None => Err(parser.emit_error(ParseErrorKind::ExpectedLiteral)),
-        }
+        parser
+            .take()
+            .ok_or_else(|| parser.emit_error(ParseErrorKind::ExpectedLiteral))
     }
 }
 

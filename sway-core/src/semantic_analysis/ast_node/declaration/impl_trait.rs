@@ -4,12 +4,13 @@ use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     error::{err, ok},
-    semantic_analysis::{Mode, TCOpts, TypeCheckArguments},
+    semantic_analysis::{Mode, TypeCheckContext},
     type_engine::{
-        insert_type, look_up_type_id, resolve_type, unify_with_self, CopyTypes, TypeId, TypeMapping,
+        insert_type, look_up_type_id, resolve_type, unify_with_self, CopyTypes, TypeId,
+        TypeMapping, TypeParameter,
     },
-    CallPath, CompileError, CompileResult, FunctionDeclaration, ImplSelf, ImplTrait, Namespace,
-    Purity, TypeInfo, TypeParameter, TypedDeclaration, TypedFunctionDeclaration,
+    CallPath, CompileError, CompileResult, FunctionDeclaration, ImplSelf, ImplTrait, Purity,
+    TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use super::TypedTraitFn;
@@ -32,10 +33,9 @@ impl CopyTypes for TypedImplTrait {
 
 impl TypedImplTrait {
     pub(crate) fn type_check_impl_trait(
+        ctx: TypeCheckContext,
         impl_trait: ImplTrait,
-        namespace: &mut Namespace,
-        opts: TCOpts,
-    ) -> CompileResult<(TypedImplTrait, TypeId)> {
+    ) -> CompileResult<(Self, TypeId)> {
         let mut errors = vec![];
         let mut warnings = vec![];
 
@@ -49,7 +49,8 @@ impl TypedImplTrait {
         } = impl_trait;
 
         // create a namespace for the impl
-        let mut namespace = namespace.clone();
+        let mut impl_namespace = ctx.namespace.clone();
+        let mut ctx = ctx.scoped(&mut impl_namespace);
 
         // type check the type parameters
         // insert them into the namespace
@@ -57,7 +58,7 @@ impl TypedImplTrait {
         let mut new_type_parameters = vec![];
         for type_parameter in type_parameters.into_iter() {
             new_type_parameters.push(check!(
-                TypeParameter::type_check(type_parameter, &mut namespace),
+                TypeParameter::type_check(ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -66,7 +67,10 @@ impl TypedImplTrait {
 
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
-            namespace.resolve_type_without_self(type_implementing_for),
+            ctx.namespace.resolve_type_without_self(
+                insert_type(type_implementing_for),
+                &type_implementing_for_span
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -84,7 +88,11 @@ impl TypedImplTrait {
             errors
         );
 
-        let impl_trait = match namespace
+        // Update the context with the new `self` type.
+        let ctx = ctx.with_self_type(implementing_for_type_id);
+
+        let impl_trait = match ctx
+            .namespace
             .resolve_call_path(&trait_name)
             .ok(&mut warnings, &mut errors)
             .cloned()
@@ -92,16 +100,13 @@ impl TypedImplTrait {
             Some(TypedDeclaration::TraitDeclaration(tr)) => {
                 let functions_buf = check!(
                     type_check_trait_implementation(
+                        ctx,
                         &tr.interface_surface,
                         &tr.methods,
                         &functions,
                         &trait_name,
-                        &mut namespace,
-                        implementing_for_type_id,
                         &type_implementing_for_span,
                         &block_span,
-                        Mode::NonAbi,
-                        opts,
                     ),
                     return err(warnings, errors),
                     warnings,
@@ -136,18 +141,17 @@ impl TypedImplTrait {
                     });
                 }
 
+                let ctx = ctx.with_mode(Mode::ImplAbiFn);
+
                 let functions_buf = check!(
                     type_check_trait_implementation(
+                        ctx,
                         &abi.interface_surface,
                         &abi.methods,
                         &functions,
                         &trait_name,
-                        &mut namespace,
-                        implementing_for_type_id,
                         &type_implementing_for_span,
                         &block_span,
-                        Mode::ImplAbiFn,
-                        opts,
                     ),
                     return err(warnings, errors),
                     warnings,
@@ -173,10 +177,9 @@ impl TypedImplTrait {
     }
 
     pub(crate) fn type_check_impl_self(
+        ctx: TypeCheckContext,
         impl_self: ImplSelf,
-        namespace: &mut Namespace,
-        opts: TCOpts,
-    ) -> CompileResult<TypedImplTrait> {
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -189,7 +192,8 @@ impl TypedImplTrait {
         } = impl_self;
 
         // create the namespace for the impl
-        let mut namespace = namespace.clone();
+        let mut impl_namespace = ctx.namespace.clone();
+        let mut ctx = ctx.scoped(&mut impl_namespace);
 
         // create the trait name
         let trait_name = CallPath {
@@ -206,7 +210,7 @@ impl TypedImplTrait {
         let mut new_type_parameters = vec![];
         for type_parameter in type_parameters.into_iter() {
             new_type_parameters.push(check!(
-                TypeParameter::type_check(type_parameter, &mut namespace),
+                TypeParameter::type_check(ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -215,7 +219,10 @@ impl TypedImplTrait {
 
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
-            namespace.resolve_type_without_self(type_implementing_for),
+            ctx.namespace.resolve_type_without_self(
+                insert_type(type_implementing_for),
+                &type_implementing_for_span
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -233,19 +240,16 @@ impl TypedImplTrait {
             errors
         );
 
+        let mut ctx = ctx
+            .with_self_type(implementing_for_type_id)
+            .with_help_text("")
+            .with_type_annotation(insert_type(TypeInfo::Unknown));
+
         // type check the methods inside of the impl block
         let mut methods = vec![];
         for fn_decl in functions.into_iter() {
             methods.push(check!(
-                TypedFunctionDeclaration::type_check(TypeCheckArguments {
-                    checkee: fn_decl,
-                    namespace: &mut namespace,
-                    return_type_annotation: insert_type(TypeInfo::Unknown),
-                    help_text: "",
-                    self_type: implementing_for_type_id,
-                    mode: Mode::NonAbi,
-                    opts,
-                }),
+                TypedFunctionDeclaration::type_check(ctx.by_ref(), fn_decl),
                 continue,
                 warnings,
                 errors
@@ -264,16 +268,13 @@ impl TypedImplTrait {
 
 #[allow(clippy::too_many_arguments)]
 fn type_check_trait_implementation(
+    mut ctx: TypeCheckContext,
     trait_interface_surface: &[TypedTraitFn],
     trait_methods: &[FunctionDeclaration],
     functions: &[FunctionDeclaration],
     trait_name: &CallPath,
-    namespace: &mut Namespace,
-    self_type: TypeId,
     self_type_span: &Span,
     block_span: &Span,
-    mode: Mode,
-    opts: TCOpts,
 ) -> CompileResult<Vec<TypedFunctionDeclaration>> {
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -289,17 +290,14 @@ fn type_check_trait_implementation(
         .map(|decl| (&decl.name, decl))
         .collect();
     for fn_decl in functions {
+        let mut ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(insert_type(TypeInfo::Unknown));
+
         // type check the function declaration
         let fn_decl = check!(
-            TypedFunctionDeclaration::type_check(TypeCheckArguments {
-                checkee: fn_decl.clone(),
-                namespace,
-                return_type_annotation: insert_type(TypeInfo::Unknown),
-                help_text: Default::default(),
-                self_type,
-                mode,
-                opts,
-            }),
+            TypedFunctionDeclaration::type_check(ctx.by_ref(), fn_decl.clone()),
             continue,
             warnings,
             errors
@@ -353,9 +351,9 @@ fn type_check_trait_implementation(
             let (mut new_warnings, new_errors) = unify_with_self(
                 fn_decl_param_type,
                 fn_signature_param_type,
-                self_type,
+                ctx.self_type(),
                 &fn_signature_param.type_span,
-                "",
+                ctx.help_text(),
             );
             warnings.append(&mut new_warnings);
             if !new_errors.is_empty() {
@@ -393,9 +391,9 @@ fn type_check_trait_implementation(
         let (mut new_warnings, new_errors) = unify_with_self(
             fn_decl.return_type,
             fn_signature.return_type,
-            self_type,
+            ctx.self_type(),
             &fn_decl.return_type_span,
-            "",
+            ctx.help_text(),
         );
         warnings.append(&mut new_warnings);
         if !new_errors.is_empty() {
@@ -412,7 +410,8 @@ fn type_check_trait_implementation(
 
     // This name space is temporary! It is used only so that the below methods
     // can reference functions from the interface
-    let mut impl_trait_namespace = namespace.clone();
+    let mut impl_trait_namespace = ctx.namespace.clone();
+    let ctx = ctx.scoped(&mut impl_trait_namespace);
 
     // A trait impl needs access to everything that the trait methods have access to, which is
     // basically everything in the path where the trait is declared.
@@ -420,26 +419,31 @@ fn type_check_trait_implementation(
     // in the symbols map and the path stored in the CallPath.
     let trait_path = [
         &trait_name.prefixes[..],
-        impl_trait_namespace.get_canonical_path(&trait_name.suffix),
+        ctx.namespace.get_canonical_path(&trait_name.suffix),
     ]
     .concat();
-    impl_trait_namespace.star_import(&trait_path);
+    ctx.namespace.star_import(&trait_path);
 
-    impl_trait_namespace.insert_trait_implementation(
+    let self_type_id = insert_type(match resolve_type(ctx.self_type(), self_type_span) {
+        Ok(o) => o,
+        Err(e) => {
+            errors.push(e.into());
+            return err(warnings, errors);
+        }
+    });
+    ctx.namespace.insert_trait_implementation(
         CallPath {
             prefixes: vec![],
             suffix: trait_name.suffix.clone(),
             is_absolute: false,
         },
-        insert_type(match resolve_type(self_type, self_type_span) {
-            Ok(o) => o,
-            Err(e) => {
-                errors.push(e.into());
-                return err(warnings, errors);
-            }
-        }),
+        self_type_id,
         functions_buf.clone(),
     );
+
+    let mut ctx = ctx
+        .with_help_text("")
+        .with_type_annotation(insert_type(TypeInfo::Unknown));
 
     // type check the methods now that the interface
     // they depends upon has been implemented
@@ -447,15 +451,7 @@ fn type_check_trait_implementation(
     // into it as a trait implementation for this
     for method in trait_methods {
         let method = check!(
-            TypedFunctionDeclaration::type_check(TypeCheckArguments {
-                checkee: method.clone(),
-                namespace: &mut impl_trait_namespace,
-                return_type_annotation: insert_type(TypeInfo::Unknown),
-                help_text: Default::default(),
-                self_type,
-                mode,
-                opts,
-            }),
+            TypedFunctionDeclaration::type_check(ctx.by_ref(), method.clone()),
             continue,
             warnings,
             errors
