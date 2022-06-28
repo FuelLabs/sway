@@ -18,6 +18,8 @@ pub struct Structures {
     pub storage_field_align_threshold: usize,
     /// Put small struct literals on a single line.
     pub struct_lit_single_line: bool,
+    /// Put small storage on a single line.
+    pub storage_single_line: bool,
 }
 
 impl Default for Structures {
@@ -27,6 +29,7 @@ impl Default for Structures {
             struct_field_align_threshold: DEFAULT_STRUCT_FIELD_ALIGN_THRESHOLD,
             storage_field_align_threshold: DEFAULT_STORAGE_FIELD_ALIGN_THRESHOLD,
             struct_lit_single_line: true,
+            storage_single_line: true,
         }
     }
 }
@@ -47,6 +50,9 @@ impl Structures {
             struct_lit_single_line: opts
                 .struct_lit_single_line
                 .unwrap_or(default.struct_lit_single_line),
+            storage_single_line: opts
+                .storage_single_line
+                .unwrap_or(default.storage_single_line),
         }
     }
 }

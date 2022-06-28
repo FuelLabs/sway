@@ -18,6 +18,8 @@ pub const DEFAULT_ATTR_FN_LIKE_WIDTH: usize = 70;
 pub const DEFAULT_STRUCT_LIT_WIDTH: usize = 18;
 /// Default max width in the body of a struct variant before falling back to vertical formatting.
 pub const DEFAULT_STRUCT_VAR_WIDTH: usize = 35;
+/// Default max width of a storage before falling back to vertical formatting.
+pub const DEFAULT_STORAGE_WIDTH: usize = 35;
 /// Default Maximum width of an array literal before falling back to vertical formatting.
 pub const DEFAULT_ARRAY_WIDTH: usize = 60;
 /// Defalt width threshold for an array element to be considered short.

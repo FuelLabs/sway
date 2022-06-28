@@ -292,8 +292,6 @@ storage {
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        println!("{}", formatted_sway_code);
-        println!("{}", correct_sway_code);
         assert!(correct_sway_code == formatted_sway_code)
     }
     #[test]
@@ -317,6 +315,8 @@ storage {
         let mut formatter = get_formatter(config, Shape::default());
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        println!("{}", formatted_sway_code);
+        println!("{}", correct_sway_code);
         assert!(correct_sway_code == formatted_sway_code)
     }
 }

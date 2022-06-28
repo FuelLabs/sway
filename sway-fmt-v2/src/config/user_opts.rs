@@ -81,6 +81,7 @@ pub struct StructuresOptions {
     pub struct_field_align_threshold: Option<usize>,
     pub struct_lit_single_line: Option<bool>,
     pub storage_field_align_threshold: Option<usize>,
+    pub storage_single_line: Option<bool>,
 }
 /// See parent struct [Comments].
 #[derive(Serialize, Deserialize, Debug, Copy, Clone)]

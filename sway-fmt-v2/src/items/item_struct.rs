@@ -16,8 +16,6 @@ impl Format for ItemStruct {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        // Get the unformatted
-
         // Get struct_variant_align_threshold from config.
         let struct_variant_align_threshold =
             formatter.config.structures.struct_field_align_threshold;
@@ -34,7 +32,7 @@ impl Format for ItemStruct {
             .to_width_heuristics(&config_whitespace);
         let struct_lit_width = width_heuristics.struct_lit_width;
 
-        let multiline = !struct_lit_single_line || self.get_formatted_len() > struct_lit_width;
+        let multiline = !struct_lit_single_line || self.get_formatted_len()? > struct_lit_width;
         format_struct(
             self,
             formatted_code,
@@ -163,10 +161,10 @@ fn format_struct(
 }
 
 impl ItemLen for ItemStruct {
-    fn get_formatted_len(&self) -> usize {
+    fn get_formatted_len(&self) -> Result<usize, FormatterError> {
         // TODO while determininig the length we may want to format to some degree and take length.
         let str_item = &self.span().as_str().len();
-        *str_item as usize
+        Ok(*str_item as usize)
     }
 }
 
