@@ -327,9 +327,10 @@ impl FnCompiler {
         }: TypedIntrinsicFunctionKind,
         span: Span,
     ) -> Result<Value, CompileError> {
+        // We safely index into arguments and type_arguments arrays below
+        // because the type-checker ensures that the arguments are all there.
         match kind {
             Intrinsic::SizeOfVal => {
-                // We index the array with confidence that the type-checker did its job.
                 let exp = arguments[0].clone();
                 // Compile the expression in case of side-effects but ignore its value.
                 let ir_type = convert_resolved_typeid(context, &exp.return_type, &exp.span)?;
@@ -342,7 +343,6 @@ impl FnCompiler {
                 ))
             }
             Intrinsic::SizeOfType => {
-                // We index the array with confidence that the type-checker did its job.
                 let targ = type_arguments[0].clone();
                 let ir_type = convert_resolved_typeid(context, &targ.type_id, &targ.span)?;
                 Ok(Constant::get_uint(
@@ -353,7 +353,6 @@ impl FnCompiler {
                 ))
             }
             Intrinsic::IsReferenceType => {
-                // We index the array with confidence that the type-checker did its job.
                 let targ = type_arguments[0].clone();
                 let ir_type = convert_resolved_typeid(context, &targ.type_id, &targ.span)?;
                 Ok(Constant::get_bool(context, !ir_type.is_copy_type(), None))
@@ -366,7 +365,6 @@ impl FnCompiler {
                     .get_storage_key(span_md_idx, None))
             }
             Intrinsic::Eq => {
-                // We index the array with confidence that the type-checker did its job.
                 let lhs = arguments[0].clone();
                 let rhs = arguments[1].clone();
                 let lhs_value = self.compile_expression(context, lhs)?;

@@ -102,12 +102,6 @@ pub enum ConvertParseTreeError {
     GenericsNotSupportedHere { span: Span },
     #[error("fully qualified paths are not supported here")]
     FullyQualifiedPathsNotSupportedHere { span: Span },
-    #[error("__is_reference_type does not take arguments")]
-    IsReferenceTypeTooManyArgs { span: Span },
-    #[error("__is_reference_type requires exactly one generic argument")]
-    IsReferenceTypeOneGenericArg { span: Span },
-    #[error("__eq requires exactly two arguments")]
-    EqTwoArgs { span: Span },
     #[error("tuple index out of range")]
     TupleIndexOutOfRange { span: Span },
     #[error("shift-left expressions are not implemented")]
@@ -195,9 +189,6 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::FunctionArbitraryExpression { span } => span.clone(),
             ConvertParseTreeError::GenericsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::FullyQualifiedPathsNotSupportedHere { span } => span.clone(),
-            ConvertParseTreeError::IsReferenceTypeTooManyArgs { span } => span.clone(),
-            ConvertParseTreeError::IsReferenceTypeOneGenericArg { span } => span.clone(),
-            ConvertParseTreeError::EqTwoArgs { span } => span.clone(),
             ConvertParseTreeError::TupleIndexOutOfRange { span } => span.clone(),
             ConvertParseTreeError::ShlNotImplemented { span } => span.clone(),
             ConvertParseTreeError::ShrNotImplemented { span } => span.clone(),

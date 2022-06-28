@@ -54,16 +54,15 @@ impl DeterministicallyAborts for TypedIntrinsicFunctionKind {
 
 impl UnresolvedTypeCheck for TypedIntrinsicFunctionKind {
     fn check_for_unresolved_types(&self) -> Vec<CompileError> {
-        let mut result = vec![];
-        self.type_arguments.iter().fold(&mut result, |accum, targ| {
-            accum.append(&mut targ.type_id.check_for_unresolved_types());
-            accum
-        });
-        self.arguments.iter().fold(&mut result, |accum, texpr| {
-            accum.append(&mut texpr.check_for_unresolved_types());
-            accum
-        });
-        result
+        self.type_arguments
+            .iter()
+            .flat_map(|targ| targ.type_id.check_for_unresolved_types())
+            .chain(
+                self.arguments
+                    .iter()
+                    .flat_map(UnresolvedTypeCheck::check_for_unresolved_types),
+            )
+            .collect()
     }
 }
 
@@ -81,7 +80,7 @@ impl TypedIntrinsicFunctionKind {
             Intrinsic::SizeOfVal => {
                 if arguments.len() != 1 {
                     errors.push(CompileError::IntrinsicIncorrectNumArgs {
-                        name: format!("{}", kind),
+                        name: kind.to_string(),
                         expected: 1,
                         span,
                     });
@@ -108,7 +107,7 @@ impl TypedIntrinsicFunctionKind {
             Intrinsic::SizeOfType => {
                 if !arguments.is_empty() {
                     errors.push(CompileError::IntrinsicIncorrectNumArgs {
-                        name: format!("{}", kind),
+                        name: kind.to_string(),
                         expected: 0,
                         span,
                     });
@@ -116,7 +115,7 @@ impl TypedIntrinsicFunctionKind {
                 }
                 if type_arguments.len() != 1 {
                     errors.push(CompileError::IntrinsicIncorrectNumTArgs {
-                        name: format!("{}", kind),
+                        name: kind.to_string(),
                         expected: 1,
                         span,
                     });
@@ -148,7 +147,7 @@ impl TypedIntrinsicFunctionKind {
             Intrinsic::IsReferenceType => {
                 if type_arguments.len() != 1 {
                     errors.push(CompileError::IntrinsicIncorrectNumTArgs {
-                        name: format!("{}", kind),
+                        name: kind.to_string(),
                         expected: 1,
                         span,
                     });
@@ -188,7 +187,7 @@ impl TypedIntrinsicFunctionKind {
             Intrinsic::Eq => {
                 if arguments.len() != 2 {
                     errors.push(CompileError::IntrinsicIncorrectNumArgs {
-                        name: format!("{}", kind),
+                        name: kind.to_string(),
                         expected: 2,
                         span,
                     });
@@ -212,7 +211,7 @@ impl TypedIntrinsicFunctionKind {
                     || matches!(arg_ty, TypeInfo::Boolean);
                 if !is_valid_arg_ty {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
-                        name: format!("{}", kind),
+                        name: kind.to_string(),
                         span: lhs.span,
                     });
                     return err(warnings, errors);

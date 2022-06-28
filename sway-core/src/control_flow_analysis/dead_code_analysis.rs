@@ -1037,7 +1037,7 @@ fn connect_intrinsic_function(
     exit_node: Option<NodeIndex>,
     tree_type: &TreeType,
 ) -> Result<Vec<NodeIndex>, CompileError> {
-    let node = graph.add_node(format!("{}", kind).into());
+    let node = graph.add_node(kind.to_string().into());
     for leaf in leaves {
         graph.add_edge(*leaf, node, "".into());
     }

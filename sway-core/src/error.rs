@@ -995,15 +995,15 @@ pub enum CompileError {
     NonConstantDeclValue { span: Span },
     #[error("Declaring storage in a {program_kind} is not allowed.")]
     StorageDeclarationInNonContract { program_kind: String, span: Span },
-    #[error("Unsupported argument type to {name}.")]
+    #[error("Unsupported argument type to intrinsic \"{name}\".")]
     IntrinsicUnsupportedArgType { name: String, span: Span },
-    #[error("Call to {name} expectes {expected} arguments")]
+    #[error("Call to \"{name}\" expects {expected} arguments")]
     IntrinsicIncorrectNumArgs {
         name: String,
         expected: u64,
         span: Span,
     },
-    #[error("Call to {name} expectes {expected} type arguments")]
+    #[error("Call to \"{name}\" expects {expected} type arguments")]
     IntrinsicIncorrectNumTArgs {
         name: String,
         expected: u64,

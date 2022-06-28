@@ -1,4 +1,0 @@
-category = "fail"
-
-# check: $()Unsupported argument type to eq.
-# check: $()Mismatched types.
