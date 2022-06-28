@@ -27,7 +27,7 @@ fn main() -> bool {
 }
 
 fn test_vector_new_u8() {
-    let mut vector: Vec<u8> = ~Vec::new();
+    let mut vector = ~Vec::new();
 
     let number0 = 0u8;
     let number1 = 1u8;
@@ -117,7 +117,7 @@ fn test_vector_new_u8() {
 }
 
 fn test_vector_new_b256() {
-    let mut vector: Vec<b256> = ~Vec::new();
+    let mut vector = ~Vec::new();
 
     let b0 = 0x0000000000000000000000000000000000000000000000000000000000000000;
     let b1 = 0x0000000000000000000000000000000000000000000000000000000000000001;
@@ -207,7 +207,7 @@ fn test_vector_new_b256() {
 }
 
 fn test_vector_new_struct() {
-    let mut vector: Vec<SimpleStruct> = ~Vec::new();
+    let mut vector = ~Vec::new();
 
     let number0 = 0u32;
     let number1 = 1u32;
@@ -359,7 +359,7 @@ fn test_vector_new_struct() {
 }
 
 fn test_vector_new_enum() {
-    let mut vector: Vec<SimpleEnum> = ~Vec::new();
+    let mut vector = ~Vec::new();
 
     let b0 = 0x0000000000000000000000000000000000000000000000000000000000000000;
     let b1 = 0x0000000000000000000000000000000000000000000000000000000000000001;
@@ -412,7 +412,7 @@ fn test_vector_new_enum() {
 }
 
 fn test_vector_new_tuple() {
-    let mut vector: Vec<(u16, b256)> = ~Vec::new();
+    let mut vector = ~Vec::new();
 
     let number0 = 0u16;
     let number1 = 1u16;
@@ -536,7 +536,7 @@ fn test_vector_new_tuple() {
 }
 
 fn test_vector_new_string() {
-    let mut vector: Vec<str[4]> = ~Vec::new();
+    let mut vector = ~Vec::new();
 
     let s0 = "fuel";
     let s1 = "john";
@@ -578,7 +578,7 @@ fn test_vector_new_string() {
 }
 
 fn test_vector_new_array() {
-    let mut vector: Vec<[u64; 3]> = ~Vec::new();
+    let mut vector = ~Vec::new();
 
     let a0 = [0, 1, 2];
     let a1 = [3, 4, 5];
@@ -626,7 +626,7 @@ fn test_vector_new_array() {
 }
 
 fn test_vector_with_capacity_u64() {
-    let mut vector: Vec<u64> = ~Vec::with_capacity::<u64>(8);
+    let mut vector = ~Vec::with_capacity(8);
 
     let number0 = 0;
     let number1 = 1;
