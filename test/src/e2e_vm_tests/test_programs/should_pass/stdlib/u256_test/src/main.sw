@@ -61,7 +61,7 @@ fn main() -> bool {
     assert(min_4 == ~u64::min());
 
     // test to_u64()
-    let err_1 = max.to_u64();
+    let err_1 = ~U256::from(42, 0, 0, 11).to_u64();
     assert(match err_1 {
         Result::Err(U256Error::LossOfPrecision) => {
             true
@@ -71,7 +71,7 @@ fn main() -> bool {
         },
     });
 
-    let err_2 = ~U256::from(42, 0, 0, 11).to_u64();
+    let err_2 = ~U256::from(0, 42, 0, 11).to_u64();
     assert(match err_2 {
         Result::Err(U256Error::LossOfPrecision) => {
             true
@@ -81,18 +81,8 @@ fn main() -> bool {
         },
     });
 
-    let err_3 = ~U256::from(0, 42, 0, 11).to_u64();
+    let err_3 = ~U256::from(0, 0, 42, 11).to_u64();
     assert(match err_3 {
-        Result::Err(U256Error::LossOfPrecision) => {
-            true
-        },
-        _ => {
-            false
-        },
-    });
-
-    let err_4 = ~U256::from(0, 0, 42, 11).to_u64();
-    assert(match err_4 {
         Result::Err(U256Error::LossOfPrecision) => {
             true
         },
