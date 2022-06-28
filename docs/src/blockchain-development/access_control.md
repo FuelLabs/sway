@@ -26,7 +26,7 @@ The following is an example of how to properly set ownership of a contract:
 {{#include ../../../examples/ownership/src/main.sw:set_owner_example}}
 ```
 
-When revoking ownership, it is disadvised to set ownership to the zero address of an `Address` or `ContractId`. Instead, it is recommended to set the ownerhsip `Option<Identity>` to `None`. 
+When revoking ownership, it is disadvised to set ownership to the zero address of an `Address` or `ContractId`. Instead, it is recommended to set the ownership `Option<Identity>` to `None`. 
 
 This is an example of how to properly revoke ownership:
 
