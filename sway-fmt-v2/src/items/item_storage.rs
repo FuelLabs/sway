@@ -29,7 +29,7 @@ impl Format for ItemStorage {
         let storage_width = width_heuristics.storage_width;
 
         let multiline = !storage_single_line || self.get_formatted_len()? > storage_width;
-        format_storage(&self, formatter, formatted_code, multiline)?;
+        format_storage(self, formatter, formatted_code, multiline)?;
         Ok(())
     }
 }
@@ -39,7 +39,7 @@ impl ItemLen for ItemStorage {
         // Format to single line and return the length
         let mut str_item = String::new();
         let mut formatter = Formatter::default();
-        format_storage(&self, &mut formatter, &mut str_item, false)?;
+        format_storage(self, &mut formatter, &mut str_item, false)?;
         Ok(str_item.len() as usize)
     }
 }

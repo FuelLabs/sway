@@ -277,16 +277,17 @@ pub const TEST1: u16 = 10;"#;
     fn test_storage_without_alignment() {
         let sway_code_to_format = r#"contract;
 
-storage {
- long_var_name: Type1,
-      var2: Type2,
-}
+storage{foo:Test,bar
+: 
+    Test
+, baz: u64 } 
 "#;
         let correct_sway_code = r#"contract;
 
 storage {
-    long_var_name: Type1,
-    var2: Type2,
+    foo: Test,
+    bar: Test,
+    baz: u64,
 }"#;
 
         let mut formatter = Formatter::default();
