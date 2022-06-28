@@ -24,7 +24,6 @@ impl ControlFlowGraph {
                 leaves = nodes;
             }
         }
-        //        graph.visualize();
         Ok(graph)
     }
     /// This function looks through the control flow graph and ensures that all paths that are
