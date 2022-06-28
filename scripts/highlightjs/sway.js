@@ -49,6 +49,7 @@ export default function(hljs) {
     "use",
     "where",
     "while",
+    "storage"
   ];
   const LITERALS = [
     "true",
