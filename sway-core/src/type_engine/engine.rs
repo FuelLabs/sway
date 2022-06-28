@@ -491,29 +491,6 @@ where
     )
 }
 
-// pub(crate) fn monomorphize_with_self<T>(
-//     value: &mut T,
-//     type_arguments: Vec<TypeArgument>,
-//     enforce_type_arguments: EnforceTypeArguments,
-//     call_site_span: &Span,
-//     self_type: TypeId,
-//     namespace: &mut Root,
-//     module_path: &Path,
-// ) -> CompileResult<()>
-// where
-//     T: MonomorphizeHelper + CopyTypes,
-// {
-//     TYPE_ENGINE.monomorphize_with_self(
-//         value,
-//         type_arguments,
-//         enforce_type_arguments,
-//         call_site_span,
-//         self_type,
-//         namespace,
-//         module_path,
-//     )
-// }
-
 pub fn unify_with_self(
     a: TypeId,
     b: TypeId,

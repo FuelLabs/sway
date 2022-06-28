@@ -1,7 +1,9 @@
-pub mod attribute;
-pub mod bracket;
-pub mod indent_style;
-pub mod item;
-pub mod item_len;
-pub mod newline_style;
-pub mod program_type;
+pub(crate) mod attribute;
+pub(crate) mod bracket;
+pub(crate) mod generics;
+pub(crate) mod indent_style;
+pub(crate) mod item;
+pub(crate) mod item_len;
+pub(crate) mod newline_style;
+pub(crate) mod program_type;
+pub(crate) mod punctuated;
