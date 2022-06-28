@@ -44,8 +44,6 @@ impl Format for ItemStorage {
             }
         });
 
-        // Should we apply storage field alignment
-
         for (item_index, item) in items.into_iter().enumerate() {
             // Push the current indentation level
             formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
@@ -57,7 +55,7 @@ impl Format for ItemStorage {
 
             if current_variant_length < max_valid_variant_length {
                 // We need to add alignment between : and ty
-                // max_valid_variant_length: the length of the variant that we are taking as a reference to allign
+                // max_valid_variant_length: the length of the variant that we are taking as a reference to align
                 // current_variant_length: the length of the current variant that we are trying to format
                 let required_alignment = max_valid_variant_length - current_variant_length;
                 formatted_code.push_str(&(0..required_alignment).map(|_| ' ').collect::<String>());
@@ -110,7 +108,7 @@ impl CurlyBrace for ItemStorage {
         let open_brace = Delimiter::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
-                // Add openning brace to the next line.
+                // Add opening brace to the next line.
                 line.push_str(&format!("\n{}\n", open_brace));
                 shape = shape.block_indent(extra_width);
             }
@@ -129,7 +127,8 @@ impl CurlyBrace for ItemStorage {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         line.push(Delimiter::Brace.as_close_char());
-        // If shape is becoming left-most alligned or - indent just have the defualt shape
+        // shrink_left would return error if the current indentation level is becoming < 0, in that
+        // case we should use the Shape::default() which has 0 indentation level.
         formatter.shape = formatter
             .shape
             .shrink_left(formatter.config.whitespace.tab_spaces)
