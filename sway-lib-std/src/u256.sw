@@ -52,8 +52,9 @@ impl U256 {
         }
     }
 
-    /// Downcast to `u64`. Err if precision would be lost, Ok otherwise.
-    pub fn to_u64(self) -> Result<u64, U256Error> {
+    /// Safely downcast to `u64` without loss of precision.
+    /// Returns Err if the number > ~u64::max()
+    pub fn as_u64(self) -> Result<u64, U256Error> {
         if self.a == 0 && self.b == 0 && self.c == 0 {
             Result::Ok(self.d)
         } else {
