@@ -5,7 +5,10 @@ use crate::{
     FormatterError,
 };
 use std::fmt::Write;
-use sway_parse::{token::Delimiter, token::PunctKind, ItemEnum};
+use sway_parse::{
+    token::{Delimiter, PunctKind},
+    ItemEnum,
+};
 use sway_types::Spanned;
 
 impl Format for ItemEnum {
@@ -17,13 +20,11 @@ impl Format for ItemEnum {
         let enum_variant_align_threshold = formatter.config.structures.enum_variant_align_threshold;
 
         if let Some(visibility_token) = &self.visibility {
-            formatted_code.push_str(visibility_token.span().as_str());
-            formatted_code.push(' ');
+            write!(formatted_code, "{} ", visibility_token.span().as_str())?;
         }
 
         // Add enum token
-        formatted_code.push_str(self.enum_token.span().as_str());
-        formatted_code.push(' ');
+        write!(formatted_code, "{} ", self.enum_token.span().as_str())?;
 
         // Add name of the enum.
         formatted_code.push_str(self.name.as_str());
@@ -51,8 +52,12 @@ impl Format for ItemEnum {
         for (index, type_field) in type_fields.iter().enumerate() {
             let type_field = &type_field.0;
             // Push the current indentation level
-            formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
-            formatted_code.push_str(type_field.name.as_str());
+            write!(
+                formatted_code,
+                "{}{}",
+                &formatter.shape.indent.to_string(formatter),
+                type_field.name.as_str()
+            )?;
 
             // Currently does not apply custom formatting for ty,
             let current_variant_length = variant_length[index];
@@ -65,12 +70,14 @@ impl Format for ItemEnum {
                 // TODO: Improve handling this
                 formatted_code.push_str(&(0..required_alignment).map(|_| ' ').collect::<String>());
             }
-            formatted_code.push(' ');
-            formatted_code.push(PunctKind::Colon.as_char());
-            formatted_code.push(' ');
             // TODO: We are currently converting ty to string directly but we will probably need to format ty before adding.
-            formatted_code.push_str(type_field.ty.span().as_str());
-            formatted_code.push(',');
+            write!(
+                formatted_code,
+                " {} {}{}",
+                type_field.colon_token.span().as_str(),
+                type_field.ty.span().as_str(),
+                PunctKind::Comma.as_char(),
+            )?;
 
             // TODO: Here we assume that next enum variant is going to be in the new line but
             // from the config we may understand next enum variant should be in the same line instead.

@@ -1,9 +1,9 @@
 contract;
 
-dep abi;
+dep r#abi;
 dep errors;
 
-use abi::IdentityExample;
+use r#abi::IdentityExample;
 use errors::MyError;
 
 use std::{

@@ -1,6 +1,5 @@
 use fuel_vm::consts::VM_MAX_RAM;
 use fuels::{prelude::*, tx::ContractId};
-use fuels_abigen_macro::abigen;
 
 abigen!(
     CallFramesTestContract,
