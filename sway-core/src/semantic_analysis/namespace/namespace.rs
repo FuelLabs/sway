@@ -1,15 +1,11 @@
 use crate::{
-    semantic_analysis::{
-        ast_node::TypedExpression,
-        declaration::{EnforceTypeArguments, Monomorphize, MonomorphizeHelper},
-    },
-    type_engine::*,
-    CallPath, CompileResult, Ident, TypedDeclaration, TypedFunctionDeclaration,
+    semantic_analysis::ast_node::TypedExpression, type_engine::*, CallPath, CompileResult, Ident,
+    TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use super::{module::Module, root::Root, submodule_namespace::SubmoduleNamespace, Path, PathBuf};
 
-use sway_types::{span::Span, Spanned};
+use sway_types::span::Span;
 
 use std::collections::VecDeque;
 
@@ -117,32 +113,6 @@ impl Namespace {
     ) -> CompileResult<TypeId> {
         self.root
             .resolve_type(type_id, span, EnforceTypeArguments::Yes, &self.mod_path)
-    }
-
-    /// Short-hand for calling `monomorphize` from the `Monomorphize` trait, on `root` with the `mod_path`.
-    pub(crate) fn monomorphize<T>(
-        &mut self,
-        decl: T,
-        mut type_arguments: Vec<TypeArgument>,
-        enforce_type_arguments: EnforceTypeArguments,
-        self_type: Option<TypeId>,
-        call_site_span: Option<&Span>,
-    ) -> CompileResult<T>
-    where
-        T: MonomorphizeHelper<Output = T> + Spanned,
-    {
-        if let Some(self_type) = self_type {
-            for type_argument in type_arguments.iter_mut() {
-                type_argument.replace_self_type(self_type);
-            }
-        }
-        decl.monomorphize(
-            type_arguments,
-            enforce_type_arguments,
-            call_site_span,
-            &mut self.root,
-            &self.mod_path,
-        )
     }
 
     /// Short-hand for calling [Root::find_method_for_type] on `root` with the `mod_path`.

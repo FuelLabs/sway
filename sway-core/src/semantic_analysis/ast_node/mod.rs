@@ -473,7 +473,6 @@ impl TypedAstNode {
                                     span.clone(),
                                 ));
                             }
-
                             let decl = TypedStorageDeclaration::new(fields_buf, span);
                             // insert the storage declaration into the symbols
                             // if there already was one, return an error that duplicate storage

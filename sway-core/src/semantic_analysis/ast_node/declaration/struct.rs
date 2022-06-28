@@ -1,6 +1,4 @@
-use crate::{
-    error::*, namespace::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*,
-};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
 use fuels_types::Property;
 use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Span, Spanned};
@@ -54,18 +52,12 @@ impl Spanned for TypedStructDeclaration {
 }
 
 impl MonomorphizeHelper for TypedStructDeclaration {
-    type Output = TypedStructDeclaration;
-
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
 
     fn name(&self) -> &Ident {
         &self.name
-    }
-
-    fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output {
-        monomorphize_inner(self, type_mapping, namespace)
     }
 }
 
