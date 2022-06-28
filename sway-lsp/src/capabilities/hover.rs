@@ -51,16 +51,16 @@ fn get_hover_format(token: &TokenType, ident: &Ident) -> Hover {
         )
     };
 
+    let format_variable_hover = |is_mutable: bool, type_name: String| -> String {
+        format!("let{} {}: {}", is_mutable, token_name, type_name,)
+    };
+
     let value = match token.typed {
         Some(typed_token) => match typed_token {
             TypedAstToken::TypedDeclaration(decl) => match decl {
                 TypedDeclaration::VariableDeclaration(var_decl) => {
-                    format!(
-                        "let{} {}: {}",
-                        extract_visibility(&var_decl.is_mutable.visibility()),
-                        token_name,
-                        var_decl.type_ascription
-                    )
+                    let type_name = format!("{}", var_decl.type_ascription);
+                    format_variable_hover(var_decl.is_mutable.is_mutable(), type_name)
                 }
                 TypedDeclaration::FunctionDeclaration(func) => extract_fn_signature(&func.span()),
                 TypedDeclaration::StructDeclaration(struct_decl) => {
@@ -79,12 +79,8 @@ fn get_hover_format(token: &TokenType, ident: &Ident) -> Hover {
         None => match token.parsed {
             AstToken::Declaration(decl) => match decl {
                 Declaration::VariableDeclaration(var_decl) => {
-                    format!(
-                        "let{} {}: {}",
-                        if var_decl.is_mutable { " mut" } else { "" },
-                        token_name,
-                        var_decl.type_ascription
-                    )
+                    let type_name = format!("{}", var_decl.type_ascription);
+                    format_variable_hover(var_decl.is_mutable, type_name)
                 }
                 Declaration::FunctionDeclaration(func) => extract_fn_signature(&func.span),
                 Declaration::StructDeclaration(struct_decl) => {
