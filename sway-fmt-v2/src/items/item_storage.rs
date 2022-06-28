@@ -85,13 +85,16 @@ fn format_storage(
         // Push the storage field name
         formatted_code.push_str(item.name.as_str());
 
-        let current_variant_length = variant_length[item_index];
-        if current_variant_length < max_valid_variant_length {
-            // We need to add alignment between : and ty
-            // max_valid_variant_length: the length of the variant that we are taking as a reference to align
-            // current_variant_length: the length of the current variant that we are trying to format
-            let required_alignment = max_valid_variant_length - current_variant_length;
-            formatted_code.push_str(&(0..required_alignment).map(|_| ' ').collect::<String>());
+        // Alignment only makes sense when we are formatting to multiline
+        if multiline {
+            let current_variant_length = variant_length[item_index];
+            if current_variant_length < max_valid_variant_length {
+                // We need to add alignment between : and ty
+                // max_valid_variant_length: the length of the variant that we are taking as a reference to align
+                // current_variant_length: the length of the current variant that we are trying to format
+                let required_alignment = max_valid_variant_length - current_variant_length;
+                formatted_code.push_str(&(0..required_alignment).map(|_| ' ').collect::<String>());
+            }
         }
 
         // Push the colon token
