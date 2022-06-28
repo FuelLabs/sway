@@ -7,7 +7,7 @@ use crate::{Ident, TypeInfo};
 pub enum MethodName {
     /// Represents a method lookup with a type somewhere in the path
     FromType {
-        call_path: CallPath,
+        call_path: CallPath<Ident>,
         type_name: TypeInfo,
         type_name_span: Span,
     },
@@ -19,7 +19,7 @@ pub enum MethodName {
     /// in this case, the path defines where the fn symbol is defined
     /// used for things like core::ops::add(a, b).
     /// in this case, the first argument determines the type to look for
-    FromTrait { call_path: CallPath },
+    FromTrait { call_path: CallPath<Ident> },
 }
 
 impl MethodName {

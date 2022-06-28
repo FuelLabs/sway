@@ -32,9 +32,9 @@ pub(crate) struct StructNamespaceEntry {
 pub struct ControlFlowNamespace {
     pub(crate) function_namespace: HashMap<Ident, FunctionNamespaceEntry>,
     pub(crate) enum_namespace: HashMap<Ident, (NodeIndex, HashMap<Ident, NodeIndex>)>,
-    pub(crate) trait_namespace: HashMap<CallPath, NodeIndex>,
+    pub(crate) trait_namespace: HashMap<CallPath<Ident>, NodeIndex>,
     /// This is a mapping from trait name to method names and their node indexes
-    pub(crate) trait_method_namespace: HashMap<CallPath, HashMap<Ident, NodeIndex>>,
+    pub(crate) trait_method_namespace: HashMap<CallPath<Ident>, HashMap<Ident, NodeIndex>>,
     /// This is a mapping from struct name to field names and their node indexes
     /// TODO this should be an Ident and not a String, switch when static spans are implemented
     pub(crate) struct_namespace: HashMap<String, StructNamespaceEntry>,
@@ -86,17 +86,17 @@ impl ControlFlowNamespace {
         Some((*enum_ix, *enum_decl.get(variant_name)?))
     }
 
-    pub(crate) fn add_trait(&mut self, trait_name: CallPath, trait_idx: NodeIndex) {
+    pub(crate) fn add_trait(&mut self, trait_name: CallPath<Ident>, trait_idx: NodeIndex) {
         self.trait_namespace.insert(trait_name, trait_idx);
     }
 
-    pub(crate) fn find_trait(&self, name: &CallPath) -> Option<&NodeIndex> {
+    pub(crate) fn find_trait(&self, name: &CallPath<Ident>) -> Option<&NodeIndex> {
         self.trait_namespace.get(name)
     }
 
     pub(crate) fn insert_trait_methods(
         &mut self,
-        trait_name: CallPath,
+        trait_name: CallPath<Ident>,
         methods: Vec<(Ident, NodeIndex)>,
     ) {
         match self.trait_method_namespace.get_mut(&trait_name) {

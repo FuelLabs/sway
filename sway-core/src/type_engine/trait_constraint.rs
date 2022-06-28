@@ -1,6 +1,8 @@
+use sway_types::Ident;
+
 use crate::CallPath;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub(crate) struct TraitConstraint {
-    pub(crate) call_path: CallPath,
+    pub(crate) call_path: CallPath<Ident>,
 }

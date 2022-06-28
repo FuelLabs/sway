@@ -30,7 +30,7 @@ impl Root {
     pub(crate) fn resolve_call_path(
         &self,
         mod_path: &Path,
-        call_path: &CallPath,
+        call_path: &CallPath<Ident>,
     ) -> CompileResult<&TypedDeclaration> {
         let symbol_path: Vec<_> = mod_path
             .iter()

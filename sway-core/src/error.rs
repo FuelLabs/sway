@@ -5,7 +5,7 @@ use crate::{
     convert_parse_tree::ConvertParseTreeError,
     style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case},
     type_engine::*,
-    VariableDeclaration,
+    CallPath, VariableDeclaration,
 };
 use sway_types::{ident::Ident, span::Span, Spanned};
 
@@ -441,7 +441,7 @@ pub enum CompileError {
          {what_it_is}."
     )]
     NotAFunction {
-        name: crate::parse_tree::CallPath,
+        name: CallPath<Ident>,
         what_it_is: &'static str,
     },
     #[error("Unimplemented feature: {0}")]
@@ -782,7 +782,7 @@ pub enum CompileError {
     #[error("This enum variant represents the unit type, so it should not be instantiated with any value.")]
     UnnecessaryEnumInstantiator { span: Span },
     #[error("Cannot find trait \"{name}\" in this scope.")]
-    TraitNotFound { name: crate::parse_tree::CallPath },
+    TraitNotFound { name: CallPath<Ident> },
     #[error("This expression is not valid on the left hand side of a reassignment.")]
     InvalidExpressionOnLhs { span: Span },
     #[error(
@@ -941,7 +941,7 @@ pub enum CompileError {
     AbiAsSupertrait { span: Span },
     #[error("The trait \"{supertrait_name}\" is not implemented for type \"{type_name}\"")]
     SupertraitImplMissing {
-        supertrait_name: crate::parse_tree::CallPath,
+        supertrait_name: CallPath<Ident>,
         type_name: String,
         span: Span,
     },
@@ -949,7 +949,7 @@ pub enum CompileError {
         "Implementation of trait \"{supertrait_name}\" is required by this bound in \"{trait_name}\""
     )]
     SupertraitImplRequired {
-        supertrait_name: crate::parse_tree::CallPath,
+        supertrait_name: CallPath<Ident>,
         trait_name: Ident,
         span: Span,
     },

@@ -386,7 +386,7 @@ fn find_method(
     type_name_span: &Span,
     type_arguments: Vec<TypeArgument>,
     arguments: &VecDeque<TypedExpression>,
-    call_path: &CallPath,
+    call_path: &CallPath<Ident>,
 ) -> CompileResult<TypedFunctionDeclaration> {
     let warnings = vec![];
     let mut errors = vec![];

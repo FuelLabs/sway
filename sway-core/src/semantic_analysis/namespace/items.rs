@@ -109,7 +109,7 @@ impl Items {
 
     pub(crate) fn insert_trait_implementation(
         &mut self,
-        trait_name: CallPath,
+        trait_name: CallPath<Ident>,
         implementing_for_type_id: TypeId,
         functions_buf: Vec<TypedFunctionDeclaration>,
     ) {

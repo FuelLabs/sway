@@ -24,7 +24,7 @@ pub enum Expression {
         span: Span,
     },
     FunctionApplication {
-        name: CallPath,
+        name: CallPath<Ident>,
         arguments: Vec<Expression>,
         type_arguments: Vec<TypeArgument>,
         span: Span,
@@ -54,7 +54,7 @@ pub enum Expression {
         span: Span,
     },
     StructExpression {
-        struct_name: CallPath,
+        struct_name: CallPath<Ident>,
         type_arguments: Vec<TypeArgument>,
         fields: Vec<StructExpressionField>,
         span: Span,
@@ -118,14 +118,14 @@ pub enum Expression {
     /// MyEnum::Variant1
     /// ```
     DelineatedPath {
-        call_path: CallPath,
+        call_path: CallPath<Ident>,
         args: Vec<Expression>,
         span: Span,
         type_arguments: Vec<TypeArgument>,
     },
     /// A cast of a hash to an ABI for calling a contract.
     AbiCast {
-        abi_name: CallPath,
+        abi_name: CallPath<Ident>,
         address: Box<Expression>,
         span: Span,
     },

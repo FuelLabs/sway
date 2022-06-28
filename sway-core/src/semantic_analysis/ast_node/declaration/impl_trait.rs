@@ -17,7 +17,7 @@ use super::TypedTraitFn;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypedImplTrait {
-    pub trait_name: CallPath,
+    pub trait_name: CallPath<Ident>,
     pub(crate) span: Span,
     pub methods: Vec<TypedFunctionDeclaration>,
     pub(crate) implementing_for_type_id: TypeId,
@@ -272,7 +272,7 @@ fn type_check_trait_implementation(
     trait_interface_surface: &[TypedTraitFn],
     trait_methods: &[FunctionDeclaration],
     functions: &[FunctionDeclaration],
-    trait_name: &CallPath,
+    trait_name: &CallPath<Ident>,
     self_type_span: &Span,
     block_span: &Span,
 ) -> CompileResult<Vec<TypedFunctionDeclaration>> {

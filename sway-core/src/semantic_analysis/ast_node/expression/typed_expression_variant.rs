@@ -16,7 +16,7 @@ pub struct ContractCallMetadata {
 pub enum TypedExpressionVariant {
     Literal(Literal),
     FunctionApplication {
-        call_path: CallPath,
+        call_path: CallPath<Ident>,
         #[derivative(Eq(bound = ""))]
         contract_call_params: HashMap<String, TypedExpression>,
         arguments: Vec<(Ident, TypedExpression)>,
@@ -91,7 +91,7 @@ pub enum TypedExpressionVariant {
         instantiation_span: Span,
     },
     AbiCast {
-        abi_name: CallPath,
+        abi_name: CallPath<Ident>,
         address: Box<TypedExpression>,
         #[allow(dead_code)]
         // this span may be used for errors in the future, although it is not right now.

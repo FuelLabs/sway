@@ -1046,7 +1046,7 @@ fn fn_signature_to_trait_fn(
 fn traits_to_call_paths(
     ec: &mut ErrorContext,
     traits: Traits,
-) -> Result<Vec<CallPath>, ErrorEmitted> {
+) -> Result<Vec<CallPath<Ident>>, ErrorEmitted> {
     let mut call_paths = vec![path_type_to_call_path(ec, traits.prefix)?];
     for (_add_token, suffix) in traits.suffixes {
         let supertrait = path_type_to_call_path(ec, suffix)?;
@@ -1070,7 +1070,7 @@ fn traits_to_supertraits(
 fn path_type_to_call_path(
     ec: &mut ErrorContext,
     path_type: PathType,
-) -> Result<CallPath, ErrorEmitted> {
+) -> Result<CallPath<Ident>, ErrorEmitted> {
     let PathType {
         root_opt,
         prefix,
@@ -2370,7 +2370,7 @@ fn literal_to_literal(
 fn path_expr_to_call_path_type_args(
     ec: &mut ErrorContext,
     path_expr: PathExpr,
-) -> Result<(CallPath, Vec<TypeArgument>), ErrorEmitted> {
+) -> Result<(CallPath<Ident>, Vec<TypeArgument>), ErrorEmitted> {
     let PathExpr {
         root_opt,
         prefix,
@@ -2415,7 +2415,7 @@ fn path_expr_to_call_path_type_args(
 fn path_expr_to_call_path(
     ec: &mut ErrorContext,
     path_expr: PathExpr,
-) -> Result<CallPath, ErrorEmitted> {
+) -> Result<CallPath<Ident>, ErrorEmitted> {
     let PathExpr {
         root_opt,
         prefix,
