@@ -16,15 +16,19 @@ The `msg_sender` function works as follows:
 - If the caller is external (i.e. from a script), then all coin input owners in the transaction are checked. If all owners are the same, then `Result::Ok(Sender)` is returned with the `Address` sender variant.
 - If the caller is external and coin input owners are different, then the caller cannot be determined and a `Result::Err(AuthError)` is returned.
 
-## Using `BASE_ASSET_ID` as default/null address
+## Contract Ownership
 
-The `BASE_ASSET_ID` constant is **not** a reserved address and should not be treated as such.
+Many contracts require some form of ownership and storing of an `Identity` for access control. When storing an `Identity` where the `BASE_ASSET_ID` should not be allowed as a default(such as ownership), it is recommended to use an `Option<Identity>` instead.
 
-`BASE_ASSET_ID` is defined in the standard library as a `ContractId` type whose value should not be depended on.
+The following is an example of how to properly set ownership of a contract:
 
-Many contracts require some form of ownership. When revoking ownership, it is disadvised to use the `BASE_ASSET_ID` of a `Address` or `ContractId` to reset the owner. Instead, it is recommended to use an `Option` of type `Identity` and setting the `Option` to `None`. 
+```sway
+{{#include ../../../examples/ownership/src/main.sw:set_owner_example}}
+```
 
-Here is an example of how to properly revoke ownership:
+When revoking ownership, it is disadvised to set ownership to the zero address of an `Address` or `ContractId`. Instead, it is recommended to set the ownerhsip `Option<Identity>` to `None`. 
+
+This is an example of how to properly revoke ownership:
 
 ```sway
 {{#include ../../../examples/ownership/src/main.sw:revoke_owner_example}}
