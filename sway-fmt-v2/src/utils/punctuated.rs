@@ -17,21 +17,24 @@ where
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         // format and add Type & Punct
-        let mut value_pairs_iter = self.value_separator_pairs.iter().peekable();
-        while let Some(pair) = value_pairs_iter.next() {
-            write!(
-                formatted_code,
-                "{}{}",
-                pair.0.span().as_str(),
-                pair.1.span().as_str(),
-            )?;
-            if value_pairs_iter.peek().is_some() {
-                formatted_code.push(' ')
+        let value_pairs = &self.value_separator_pairs;
+
+        // Later on we may want to handle trailing commas for instances where
+        // `value_separator_pairs.len()` > 1 and the user wants to keep the trailing comma.
+        if self.value_separator_pairs.len() == 1 {
+            formatted_code.push_str(value_pairs.get(0).unwrap().0.span().as_str())
+        } else {
+            for pair in value_pairs.iter() {
+                write!(
+                    formatted_code,
+                    "{}{} ",
+                    pair.0.span().as_str(),
+                    pair.1.span().as_str(),
+                )?;
             }
         }
-        formatted_code.pop(); // pop the ending comma
 
-        // add boxed type
+        // add final value, if any
         if let Some(final_value) = &self.final_value_opt {
             formatted_code.push_str(final_value.span().as_str());
         }

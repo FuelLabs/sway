@@ -124,7 +124,7 @@ pub struct Foo { bar: u64, baz: bool }"#;
     #[test]
     fn test_struct_multiline_line_alignment() {
         let sway_code_to_format = r#"contract;
-pub struct Foo<T, P,> {
+pub struct Foo<T, P> {
    barbazfoo: u64,
    baz  : bool,
 }
@@ -239,14 +239,14 @@ enum Color {
         let sway_code_to_format = r#"contract;
 
 abi StorageMapExample {
-    #[storage(write, read,)]fn insert_into_map1(key: u64, value: u64);
+    #[storage(write,)]fn insert_into_map1(key: u64, value: u64);
 
 fn hello(key: u64, value: u64);
 }"#;
         let correct_sway_code = r#"contract;
 
 abi StorageMapExample {
-    #[storage(write, read)]
+    #[storage(write)]
     fn insert_into_map1(key: u64, value: u64);
 
     fn hello(key: u64, value: u64);
