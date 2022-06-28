@@ -2403,7 +2403,7 @@ fn path_expr_to_type_binding_with_call_path(
             TypeBinding {
                 inner: call_path.clone(),
                 type_arguments: ty_args,
-                span: call_path.span()
+                span: call_path.span(),
             }
         }
         None => {
@@ -2416,7 +2416,7 @@ fn path_expr_to_type_binding_with_call_path(
             TypeBinding {
                 inner: call_path.clone(),
                 type_arguments: ty_args,
-                span: call_path.span()
+                span: call_path.span(),
             }
         }
     };

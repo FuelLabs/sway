@@ -440,13 +440,12 @@ impl Dependencies {
                 call_path_binding,
                 fields,
                 ..
-            } => {
-                self.gather_from_call_path(&call_path_binding.inner, true, false)
-                    .gather_from_type_arguments(&call_path_binding.type_arguments)
-                    .gather_from_iter(fields.iter(), |deps, field| {
+            } => self
+                .gather_from_call_path(&call_path_binding.inner, true, false)
+                .gather_from_type_arguments(&call_path_binding.type_arguments)
+                .gather_from_iter(fields.iter(), |deps, field| {
                     deps.gather_from_expr(&field.value)
-                })
-            }
+                }),
             Expression::SubfieldExpression { prefix, .. } => self.gather_from_expr(prefix),
             Expression::DelineatedPath {
                 call_path, args, ..

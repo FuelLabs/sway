@@ -443,12 +443,7 @@ impl TypedExpression {
                 call_path_binding,
                 fields,
                 span,
-            } => Self::type_check_struct_expression(
-                ctx.by_ref(),
-                call_path_binding,
-                fields,
-                span,
-            ),
+            } => Self::type_check_struct_expression(ctx.by_ref(), call_path_binding, fields, span),
             Expression::SubfieldExpression {
                 prefix,
                 span,
@@ -654,7 +649,7 @@ impl TypedExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
         let unknown_decl = check!(
-            TypeBinding::type_check(&mut call_path_binding, &mut ctx),
+            TypeBinding::type_check_as_decl(&mut call_path_binding, &mut ctx),
             return err(warnings, errors),
             warnings,
             errors
@@ -938,7 +933,7 @@ impl TypedExpression {
     #[allow(clippy::too_many_arguments)]
     fn type_check_struct_expression(
         mut ctx: TypeCheckContext,
-        mut call_path_binding: TypeBinding<CallPath>,
+        call_path_binding: TypeBinding<CallPath>,
         fields: Vec<StructExpressionField>,
         span: Span,
     ) -> CompileResult<TypedExpression> {
@@ -946,31 +941,34 @@ impl TypedExpression {
         let mut errors = vec![];
 
         // type check the type binding
-        let unknown_decl = check!(
-            TypeBinding::type_check(&mut call_path_binding, &mut ctx),
+        let type_id = check!(
+            TypeBinding::type_check_as_type_info(&call_path_binding, &mut ctx),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+
+        // expect that the type is a struct
+        let type_info = look_up_type_id(type_id);
+        let (struct_name, struct_fields) = check!(
+            type_info.expect_struct(call_path_binding.inner.suffix.to_string(), &call_path_binding.span()),
             return err(warnings, errors),
             warnings,
             errors
         );
 
-        // extract the struct definition
-        let mut struct_decl = check!(
-            unknown_decl.expect_struct().cloned(),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let mut struct_fields = struct_fields.clone();
 
         // match up the names with their type annotations from the declaration
         let mut typed_fields_buf = vec![];
-        for def_field in struct_decl.fields.iter_mut() {
-            let expr_field: crate::parse_tree::StructExpressionField =
+        for def_field in struct_fields.iter_mut() {
+            let expr_field: StructExpressionField =
                 match fields.iter().find(|x| x.name == def_field.name) {
                     Some(val) => val.clone(),
                     None => {
                         errors.push(CompileError::StructMissingField {
                             field_name: def_field.name.clone(),
-                            struct_name: struct_decl.name.clone(),
+                            struct_name: struct_name.clone(),
                             span: span.clone(),
                         });
                         typed_fields_buf.push(TypedStructExpressionField {
@@ -1008,10 +1006,10 @@ impl TypedExpression {
 
         // check that there are no extra fields
         for field in fields {
-            if !struct_decl.fields.iter().any(|x| x.name == field.name) {
+            if !struct_fields.iter().any(|x| x.name == field.name) {
                 errors.push(CompileError::StructDoesNotHaveField {
                     field_name: field.name.clone(),
-                    struct_name: struct_decl.name.clone(),
+                    struct_name: struct_name.clone(),
                     span: field.span,
                 });
             }
@@ -1021,7 +1019,7 @@ impl TypedExpression {
                 struct_name: call_path_binding.inner.suffix,
                 fields: typed_fields_buf,
             },
-            return_type: struct_decl.create_type_id(),
+            return_type: type_id,
             is_constant: IsConstant::No,
             span,
         };

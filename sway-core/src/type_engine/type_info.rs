@@ -1143,6 +1143,31 @@ impl TypeInfo {
             ),
         }
     }
+
+    /// Given a `TypeInfo` `self`, expect that `self` is a `TypeInfo::Struct`,
+    /// and return its contents.
+    ///
+    /// Returns an error if `self` is not a `TypeInfo::Struct`.
+    pub(crate) fn expect_struct(
+        &self,
+        debug_string: impl Into<String>,
+        debug_span: &Span,
+    ) -> CompileResult<(&Ident, &Vec<TypedStructField>)> {
+        let warnings = vec![];
+        let errors = vec![];
+        match self {
+            TypeInfo::Struct { name, fields, .. } => ok((name, fields), warnings, errors),
+            TypeInfo::ErrorRecovery => err(warnings, errors),
+            a => err(
+                vec![],
+                vec![CompileError::NotAStruct {
+                    name: debug_string.into(),
+                    span: debug_span.clone(),
+                    actually: a.to_string(),
+                }],
+            ),
+        }
+    }
 }
 
 /// Given two lists of `TypeInfo`'s `left` and `right`, check to see if

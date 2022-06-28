@@ -63,6 +63,11 @@ impl Namespace {
         &self.root
     }
 
+    /// A mutable reference to the root of the project namespace.
+    pub fn root_mut(&mut self) -> &mut Root {
+        &mut self.root
+    }
+
     /// Access to the current [Module], i.e. the module at the inner `mod_path`.
     ///
     /// Note that the [Namespace] will automatically dereference to this [Module] when attempting
@@ -95,14 +100,18 @@ impl Namespace {
     /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
     pub(crate) fn resolve_type_with_self(
         &mut self,
-        mut type_id: TypeId,
+        type_id: TypeId,
         self_type: TypeId,
         span: &Span,
-        enforce_type_args: EnforceTypeArguments,
+        enforce_type_arguments: EnforceTypeArguments,
     ) -> CompileResult<TypeId> {
-        type_id.replace_self_type(self_type);
-        self.root
-            .resolve_type(type_id, span, enforce_type_args, &self.mod_path)
+        self.root.resolve_type_with_self(
+            type_id,
+            self_type,
+            span,
+            enforce_type_arguments,
+            &self.mod_path,
+        )
     }
 
     /// Short-hand for calling [Root::resolve_type_without_self] on `root` and with the `mod_path`.

@@ -64,6 +64,18 @@ impl Root {
         })
     }
 
+    pub(crate) fn resolve_type_with_self(
+        &mut self,
+        mut type_id: TypeId,
+        self_type: TypeId,
+        span: &Span,
+        enforce_type_arguments: EnforceTypeArguments,
+        mod_path: &Path,
+    ) -> CompileResult<TypeId> {
+        type_id.replace_self_type(self_type);
+        self.resolve_type(type_id, span, enforce_type_arguments, mod_path)
+    }
+
     pub(crate) fn resolve_type(
         &mut self,
         type_id: TypeId,

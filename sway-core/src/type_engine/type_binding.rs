@@ -3,10 +3,11 @@ use sway_types::{Span, Spanned};
 use crate::{
     error::{err, ok},
     semantic_analysis::TypeCheckContext,
-    CallPath, CompileResult, TypedDeclaration,
+    type_engine::insert_type,
+    CallPath, CompileResult, TypeInfo, TypedDeclaration,
 };
 
-use super::{EnforceTypeArguments, ReplaceSelfType, TypeArgument};
+use super::{EnforceTypeArguments, ReplaceSelfType, TypeArgument, TypeId};
 
 /// A `TypeBinding` is the result of using turbofish to bind types to
 /// generic parameters.
@@ -80,18 +81,45 @@ impl<T> Spanned for TypeBinding<T> {
     }
 }
 
-impl<T> TypeBinding<T> {
-    pub(crate) fn new_with_empty_type_arguments(inner: T, span: Span) -> TypeBinding<T> {
-        TypeBinding {
-            inner,
-            type_arguments: vec![],
-            span,
-        }
-    }
-}
-
 impl TypeBinding<CallPath> {
-    pub(crate) fn type_check(
+    pub(crate) fn type_check_as_type_info(&self, ctx: &mut TypeCheckContext) -> CompileResult<TypeId> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        // find the module that the symbol is in
+        let module_path = ctx.namespace.find_module_path(&self.inner.prefixes);
+        check!(
+            ctx.namespace.root().check_submodule(&module_path),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        // create the type info object
+        let type_id = insert_type(TypeInfo::Custom {
+            name: self.inner.suffix.clone(),
+            type_arguments: self.type_arguments.clone(),
+        });
+
+        // resolve the type of the type info object
+        let self_type = ctx.self_type();
+        let type_id = check!(
+            ctx.namespace.root_mut().resolve_type_with_self(
+                type_id,
+                self_type,
+                &self.span(),
+                EnforceTypeArguments::No,
+                &module_path
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+
+        ok(type_id, warnings, errors)
+    }
+
+    pub(crate) fn type_check_as_decl(
         &mut self,
         ctx: &mut TypeCheckContext,
     ) -> CompileResult<TypedDeclaration> {
