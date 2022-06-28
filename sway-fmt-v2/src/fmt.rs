@@ -315,8 +315,26 @@ storage {
         let mut formatter = get_formatter(config, Shape::default());
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        println!("{}", formatted_sway_code);
-        println!("{}", correct_sway_code);
+        assert!(correct_sway_code == formatted_sway_code)
+    }
+    #[test]
+    fn test_storage_single_line() {
+        let sway_code_to_format = r#"contract;
+
+storage {
+ long_var_name: Type1,
+      var2: Type2,
+}
+"#;
+        let correct_sway_code = r#"contract;
+
+storage { long_var_name: Type1, var2: Type2, }"#;
+        let mut config = Config::default();
+        config.structures.struct_lit_single_line = true;
+        config.whitespace.max_width = 300;
+        let mut formatter = get_formatter(config, Shape::default());
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert!(correct_sway_code == formatted_sway_code)
     }
 }
