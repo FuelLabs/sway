@@ -15,8 +15,7 @@ impl Format for ItemAbi {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         // Add enum token
-        formatted_code.push_str(self.abi_token.span().as_str());
-        formatted_code.push(' ');
+        write!(formatted_code, "{} ", self.abi_token.span().as_str())?;
 
         // Add name of the abi
         formatted_code.push_str(self.name.as_str());
@@ -70,6 +69,7 @@ impl Format for ItemAbi {
             }
         }
         Self::close_curly_brace(formatted_code, formatter)?;
+
         Ok(())
     }
 }
