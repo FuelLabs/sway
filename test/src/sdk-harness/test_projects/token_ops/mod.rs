@@ -1,7 +1,6 @@
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
 use fuels::tx::{AssetId, ContractId};
-use fuels_abigen_macro::abigen;
 
 abigen!(
     TestFuelCoinContract,

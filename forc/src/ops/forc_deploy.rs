@@ -95,7 +95,7 @@ fn create_contract_tx(
     storage_slots: Vec<StorageSlot>,
 ) -> (Transaction, fuel_tx::ContractId) {
     let gas_price = 0;
-    let gas_limit = fuel_tx::default_parameters::MAX_GAS_PER_TX;
+    let gas_limit = fuel_tx::ConsensusParameters::default().max_gas_per_tx;
     let byte_price = 0;
     let maturity = 0;
     let bytecode_witness_index = 0;
