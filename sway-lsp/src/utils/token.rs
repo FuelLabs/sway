@@ -20,10 +20,6 @@ pub fn is_same_type(&self, other_token: &Token) -> bool {
     }
 }
 
-pub fn get_line_start(&self) -> u32 {
-    self.line_start
-}
-
 pub fn is_initial_declaration(token_type: &TokenType) -> bool {
     match token_type.typed {
         Some(typed_ast_token) => {
