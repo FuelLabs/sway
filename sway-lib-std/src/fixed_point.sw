@@ -244,22 +244,9 @@ impl Exponent for UFP64 {
         let p6 = one / ~UFP64::from(720, 0);
         let p7 = one / ~UFP64::from(5040, 0);
 
-        log(p2.value.upper);
-        log(p2.value.lower);
-        log(p3.value.upper);
-        log(p3.value.lower);
-        log(p4.value.upper);
-        log(p4.value.lower);
-        log(p5.value.upper);
-        log(p5.value.lower);
-        log(p6.value.upper);
-        log(p6.value.lower);
-        log(p7.value.upper);
-        log(p7.value.lower);
-
         // common technique to counter loosing sugnifucant numbers in usual approximation
-        // let res_minus_1 = exponent + exponent * exponent * (p2 + exponent * (p3 + exponent * (p4 + exponent * (p5 + exponent * (p6 + exponent * p7)))));
-        // let res = res_minus_1 + one;
+        let res_minus_1 = exponent + exponent * exponent * (p2 + exponent * (p3 + exponent * (p4 + exponent * (p5 + exponent * (p6 + exponent * p7)))));
+        let res = res_minus_1 + one;
         let res = one;
         res
     }
