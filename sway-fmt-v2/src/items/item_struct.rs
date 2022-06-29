@@ -7,6 +7,7 @@ use crate::{
 use std::fmt::Write;
 use sway_parse::{
     token::{Delimiter, PunctKind},
+    ty::Ty,
     ItemStruct,
 };
 use sway_types::Spanned;
@@ -138,10 +139,11 @@ fn format_struct(
         // TODO: We are currently converting ty to string directly but we will probably need to format ty before adding.
         write!(
             formatted_code,
-            "{} {}",
+            "{} ",
             type_field.colon_token.ident().as_str(),
-            type_field.ty.span().as_str()
         )?;
+        // Format Ty
+        Ty::format(&type_field.ty, formatted_code, formatter)?;
         // Add `, ` if this isn't the last field.
         if !multiline && item_index != items.len() - 1 {
             write!(formatted_code, "{} ", PunctKind::Comma.as_char())?;

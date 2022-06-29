@@ -7,6 +7,7 @@ use crate::{
 use std::fmt::Write;
 use sway_parse::{
     token::{Delimiter, PunctKind},
+    ty::Ty,
     ItemEnum,
 };
 use sway_types::Spanned;
@@ -70,14 +71,13 @@ impl Format for ItemEnum {
                 // TODO: Improve handling this
                 formatted_code.push_str(&(0..required_alignment).map(|_| ' ').collect::<String>());
             }
-            // TODO: We are currently converting ty to string directly but we will probably need to format ty before adding.
             write!(
                 formatted_code,
-                " {} {}{}",
+                " {} ",
                 type_field.colon_token.span().as_str(),
-                type_field.ty.span().as_str(),
-                PunctKind::Comma.as_char(),
             )?;
+            Ty::format(&type_field.ty, formatted_code, formatter)?;
+            write!(formatted_code, "{}", PunctKind::Comma.as_char())?;
 
             // TODO: Here we assume that next enum variant is going to be in the new line but
             // from the config we may understand next enum variant should be in the same line instead.
