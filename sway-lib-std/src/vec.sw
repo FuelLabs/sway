@@ -145,6 +145,7 @@ impl<T> Vec<T> {
 
     /// Removes and returns the element at position `index` within the vector,
     /// shifting all elements after it to the left.
+    /// Panics if `index >= self.len`
     pub fn remove(mut self, index: u64) -> T {
         assert(index < self.len);
 
@@ -164,6 +165,37 @@ impl<T> Vec<T> {
         // Decrease length.
         self.len -= 1;
         ret
+    }
+
+    /// Inserts an element at position `index` within the vector, shifting all
+    /// elements after it to the right.
+    /// Panics if `index > len`.
+    pub fn insert(mut self, index: u64, element: T) {
+        assert(index <= self.len);
+
+        // If there is insufficient capacity, grow the buffer.
+        if self.len == self.buf.cap {
+            self.buf.grow();
+        }
+
+        let val_size = size_of::<T>();
+        let buf_start = self.buf.ptr();
+
+        // The spot to put the new value
+        let index_ptr = buf_start + index * val_size;
+
+        // Shift everything over to make space. 
+        let mut curr_ptr = buf_start + self.len * val_size;
+        while curr_ptr > index_ptr {
+            copy(curr_ptr, curr_ptr - val_size, val_size);
+            curr_ptr -= val_size;
+        }
+
+        // Write `element` at pointer `index`
+        write(index_ptr, element);
+
+        // Increment length.
+        self.len += 1;
     }
 
     /// Removes the last element from a vector and returns it, or [`None`] if it

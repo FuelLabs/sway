@@ -24,6 +24,8 @@ fn main() -> bool {
     test_vector_new_array();
     test_vector_with_capacity_u64();
     test_vector_remove();
+    test_vector_insert();
+    test_vector_pop();
     true
 }
 
@@ -729,16 +731,19 @@ fn test_vector_remove() {
     assert(vector.len() == 5);
     assert(vector.capacity() == 8);
 
+    // remove the first
     let val = vector.remove(0);
     assert(val == number0);
     assert(vector.len() == 4);
     assert(vector.capacity() == 8);
 
+    // remove the last
     let val = vector.remove(3);
     assert(val == number4);
     assert(vector.len() == 3);
     assert(vector.capacity() == 8);
 
+    // remove the middle
     let val = vector.remove(1);
     assert(val == number2);
     assert(vector.len() == 2);
@@ -775,3 +780,55 @@ fn test_vector_pop() {
     }
 }
 
+fn test_vector_insert() {
+    let mut vector: Vec<u8> = ~Vec::new::<u8>();
+
+    let number0 = 0u8;
+    let number1 = 1u8;
+    let number2 = 2u8;
+    let number3 = 3u8;
+
+    // insert to empty
+    vector.insert(0, number2);
+    assert(vector.len() == 1);
+    assert(vector.capacity() == 1);
+    match vector.get(0) {
+        Option::Some(val) => assert(val == number2), Option::None => revert(0), 
+    }
+
+    // insert at first
+    vector.insert(0, number0);
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 2);
+    match vector.get(0) {
+        Option::Some(val) => assert(val == number0), Option::None => revert(0), 
+    }
+
+    // insert at middle
+    vector.insert(1, number1);
+    assert(vector.len() == 3);
+    assert(vector.capacity() == 4);
+    match vector.get(1) {
+        Option::Some(val) => assert(val == number1), Option::None => revert(0), 
+    }
+
+    // insert at last
+    vector.insert(3, number3);
+    assert(vector.len() == 4);
+    assert(vector.capacity() == 4);
+    match vector.get(3) {
+        Option::Some(val) => assert(val == number3), Option::None => revert(0), 
+    }
+
+    match vector.get(0) {
+        Option::Some(val) => assert(val == number0), Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => assert(val == number1), Option::None => revert(0), 
+    }
+
+    match vector.get(2) {
+        Option::Some(val) => assert(val == number2), Option::None => revert(0), 
+    }
+}
