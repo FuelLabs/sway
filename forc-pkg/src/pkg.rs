@@ -17,7 +17,7 @@ use petgraph::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{hash_map, BTreeSet, HashMap},
+    collections::{hash_map, BTreeSet, HashMap, HashSet},
     fmt, fs,
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
