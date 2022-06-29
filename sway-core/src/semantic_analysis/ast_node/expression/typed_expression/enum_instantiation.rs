@@ -7,7 +7,7 @@ use sway_types::{Ident, Spanned};
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_enum(
     mut ctx: TypeCheckContext,
-    enum_decl: TypedEnumDeclaration,
+    mut enum_decl: TypedEnumDeclaration,
     enum_field_name: Ident,
     args: Vec<Expression>,
     type_arguments: Vec<TypeArgument>,
@@ -16,12 +16,12 @@ pub(crate) fn instantiate_enum(
     let mut errors = vec![];
 
     // monomorphize the enum definition with the type arguments
-    let enum_decl = check!(
+    check!(
         ctx.monomorphize(
-            enum_decl,
+            &mut enum_decl,
             type_arguments,
             EnforceTypeArguments::No,
-            Some(&enum_field_name.span())
+            &enum_field_name.span()
         ),
         return err(warnings, errors),
         warnings,
