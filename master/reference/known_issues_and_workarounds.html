@@ -140,7 +140,7 @@
                         <h1 id="known-issues-and-workarounds"><a class="header" href="#known-issues-and-workarounds">Known Issues and Workarounds</a></h1>
 <h2 id="known-issues"><a class="header" href="#known-issues">Known Issues</a></h2>
 <ul>
-<li><a href="https://github.com/FuelLabs/sway/issues/870">#870</a>: All <code>impl</code> blocks need to be defined before any of the functions they define can be called.</li>
+<li><a href="https://github.com/FuelLabs/sway/issues/870">#870</a>: All <code>impl</code> blocks need to be defined before any of the functions they define can be called.  This includes sibling functions in the same <code>impl</code> declaration, i.e., functions in an <code>impl</code> can't call each other yet.</li>
 </ul>
 <h2 id="missing-features"><a class="header" href="#missing-features">Missing Features</a></h2>
 <ul>
