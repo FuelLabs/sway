@@ -142,6 +142,7 @@ pub(crate) enum VirtualOp {
     NOOP,
     FLAG(VirtualRegister),
     GM(VirtualRegister, VirtualImmediate18),
+    GTF(VirtualRegister, VirtualRegister, VirtualImmediate18),
     Undefined,
     DataSectionOffsetPlaceholder,
     DataSectionRegisterLoadPlaceholder,
@@ -234,6 +235,7 @@ impl VirtualOp {
             NOOP => vec![],
             FLAG(r1) => vec![r1],
             GM(r1, _imm) => vec![r1],
+            GTF(r1, r2, _imm) => vec![r1, r2],
             Undefined | DataSectionOffsetPlaceholder => vec![],
             DataSectionRegisterLoadPlaceholder => vec![
                 &VirtualRegister::Constant(ConstantRegister::DataSectionStart),
@@ -331,6 +333,7 @@ impl VirtualOp {
             NOOP => vec![],
             FLAG(r1) => vec![r1],
             GM(_r1, _imm) => vec![],
+            GTF(_r1, r2, _imm) => vec![r2],
             Undefined | DataSectionOffsetPlaceholder => vec![],
             DataSectionRegisterLoadPlaceholder => vec![&VirtualRegister::Constant(
                 ConstantRegister::InstructionStart,
@@ -428,6 +431,7 @@ impl VirtualOp {
             NOOP => vec![],
             FLAG(_r1) => vec![],
             GM(r1, _imm) => vec![r1],
+            GTF(r1, _r2, _imm) => vec![r1],
             Undefined | DataSectionOffsetPlaceholder => vec![],
             DataSectionRegisterLoadPlaceholder => vec![&VirtualRegister::Constant(
                 ConstantRegister::DataSectionStart,
@@ -835,6 +839,11 @@ impl VirtualOp {
             NOOP => Self::NOOP,
             FLAG(r1) => Self::FLAG(update_reg(reg_to_reg_map, r1)),
             GM(r1, i) => Self::GM(update_reg(reg_to_reg_map, r1), i.clone()),
+            GTF(r1, r2, i) => Self::GTF(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
             Undefined => Self::Undefined,
             DataSectionOffsetPlaceholder => Self::DataSectionOffsetPlaceholder,
             DataSectionRegisterLoadPlaceholder => Self::DataSectionRegisterLoadPlaceholder,
@@ -902,9 +911,11 @@ impl VirtualOp {
                 }
             }
             None => {
-                unimplemented!("The allocator cannot resolve a register mapping for this program. 
-                 This is a temporary artifact of the extremely early stage version of this language. 
-                 Try to lower the number of variables you use.");
+                unimplemented!(
+                    "The allocator cannot resolve a register mapping for this program.
+                 This is a temporary artifact of the extremely early stage version of this language.
+                 Try to lower the number of variables you use."
+                );
             }
         };
 
@@ -1229,6 +1240,11 @@ impl VirtualOp {
             NOOP => AllocatedOpcode::NOOP,
             FLAG(reg) => AllocatedOpcode::FLAG(map_reg(&mapping, reg)),
             GM(reg, imm) => AllocatedOpcode::GM(map_reg(&mapping, reg), imm.clone()),
+            GTF(reg1, reg2, imm) => AllocatedOpcode::GTF(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                imm.clone(),
+            ),
             Undefined => AllocatedOpcode::Undefined,
             DataSectionOffsetPlaceholder => AllocatedOpcode::DataSectionOffsetPlaceholder,
             DataSectionRegisterLoadPlaceholder => {
