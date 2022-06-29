@@ -303,25 +303,16 @@ impl TypedAstNode {
                             value,
                             visibility,
                         }) => {
-                            let result = type_check_ascribed_expr(
-                                ctx.by_ref(),
-                                type_ascription.clone(),
-                                value,
-                            );
+                            let result =
+                                type_check_ascribed_expr(ctx.by_ref(), type_ascription, value);
                             is_screaming_snake_case(&name).ok(&mut warnings, &mut errors);
                             let value =
                                 check!(result, error_recovery_expr(name.span()), warnings, errors);
                             let typed_const_decl =
-                                TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                                TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
                                     name: name.clone(),
-                                    body: value,
-                                    is_mutable: if visibility.is_public() {
-                                        VariableMutability::ExportedConst
-                                    } else {
-                                        VariableMutability::Immutable
-                                    },
-                                    const_decl_origin: true,
-                                    type_ascription: insert_type(type_ascription),
+                                    value,
+                                    visibility,
                                 });
                             ctx.namespace.insert_symbol(name, typed_const_decl.clone());
                             typed_const_decl

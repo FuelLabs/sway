@@ -9,6 +9,7 @@ use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     constants,
     error::CompileError,
+    ir_generation::const_eval::compile_constant_expression,
     parse_tree::{AsmOp, AsmRegister, LazyOp, Literal, Purity, Visibility},
     semantic_analysis::*,
     type_engine::{insert_type, resolve_type, TypeId, TypeInfo},
@@ -997,29 +998,33 @@ impl FnCompiler {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
         let TypedConstantDeclaration { name, value, .. } = ast_const_decl;
+        let const_expr_val = compile_constant_expression(context, self.module, &value)?;
+        let local_name = self.lexical_map.insert(name.as_str().to_owned());
+        let return_type = convert_resolved_typeid(context, &value.return_type, &value.span)?;
 
-        if let TypedExpressionVariant::Literal(literal) = &value.expression {
-            let initialiser = convert_literal_to_constant(literal);
-            let return_type = convert_resolved_typeid(context, &value.return_type, &value.span)?;
-            let name = name.as_str().to_owned();
-            self.function
-                .new_local_ptr(context, name.clone(), return_type, false, Some(initialiser))
-                .map_err(|ir_error| {
-                    CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
-                })?;
+        // We compile consts the same as vars are compiled. This is because ASM generation
+        // cannot handle
+        //    1. initializing aggregates
+        //    2. get_ptr()
+        // into the data section.
+        let ptr = self
+            .function
+            .new_local_ptr(context, local_name, return_type, false, None)
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
 
-            // We still insert this into the symbol table, as itself... can they be shadowed?
-            // (Hrmm, name resolution in the variable expression code could be smarter about var
-            // decls vs const decls, for now they're essentially the same...)
-            self.lexical_map.insert(name);
-
-            Ok(Constant::get_unit(context, span_md_idx))
-        } else {
-            Err(CompileError::Internal(
-                "Unsupported constant declaration type, expecting a literal.",
-                name.span(),
-            ))
+        // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
+        // otherwise use a store.
+        let ptr_ty = *ptr.get_type(context);
+        if ir_type_size_in_bytes(context, &ptr_ty) > 0 {
+            let ptr_val = self
+                .current_block
+                .ins(context)
+                .get_ptr(ptr, ptr_ty, 0, span_md_idx);
+            self.current_block
+                .ins(context)
+                .store(ptr_val, const_expr_val, span_md_idx);
         }
+        Ok(const_expr_val)
     }
 
     fn compile_reassignment(
