@@ -16,29 +16,33 @@ use crate::{
     type_engine::{resolve_type, TypeInfo},
     CompileError, CompileWarning, Ident, TreeType, Warning,
 };
+use std::collections::BTreeSet;
 use sway_types::{span::Span, Spanned};
 
 use crate::semantic_analysis::TypedStorageDeclaration;
 
-use petgraph::algo::has_path_connecting;
 use petgraph::prelude::NodeIndex;
+use petgraph::visit::Dfs;
 
 impl ControlFlowGraph {
     pub(crate) fn find_dead_code(&self) -> Vec<CompileWarning> {
-        // dead code is code that has no path to the entry point
-        let mut dead_nodes = vec![];
-        for destination in self.graph.node_indices() {
-            let mut is_connected = false;
-            for entry in &self.entry_points {
-                if has_path_connecting(&self.graph, *entry, destination, None) {
-                    is_connected = true;
-                    break;
-                }
-            }
-            if !is_connected {
-                dead_nodes.push(destination);
+        // Dead code is code that has no path to the entry point.
+        // Collect all connected nodes by traversing from the entries.
+        // The dead nodes are those we did not collect.
+        let mut connected = BTreeSet::new();
+        let mut dfs = Dfs::empty(&self.graph);
+        for &entry in &self.entry_points {
+            dfs.move_to(entry);
+            while let Some(node) = dfs.next(&self.graph) {
+                connected.insert(node);
             }
         }
+        let dead_nodes: Vec<_> = self
+            .graph
+            .node_indices()
+            .filter(|n| !connected.contains(n))
+            .collect();
+
         let dead_enum_variant_warnings = dead_nodes
             .iter()
             .filter_map(|x| match &self.graph[*x] {

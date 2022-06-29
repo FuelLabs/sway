@@ -43,6 +43,7 @@ export default function(hljs) {
     "script",
     "Self",
     "self",
+    "storage",
     "str",
     "struct",
     "trait",

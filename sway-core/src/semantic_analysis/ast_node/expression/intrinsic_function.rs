@@ -6,7 +6,7 @@ use sway_types::Span;
 
 use crate::{
     error::{err, ok},
-    semantic_analysis::{EnforceTypeArguments, TypeCheckContext},
+    semantic_analysis::TypeCheckContext,
     type_engine::*,
     types::DeterministicallyAborts,
     CompileError, CompileResult, Expression,

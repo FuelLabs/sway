@@ -986,17 +986,21 @@ impl TypedExpression {
             warnings,
             errors
         );
-        let struct_decl = check!(
-            unknown_decl.expect_struct(),
+        let mut struct_decl = check!(
+            unknown_decl.expect_struct().cloned(),
             return err(warnings, errors),
             warnings,
             errors
-        )
-        .clone();
+        );
 
         // monomorphize the struct definition
-        let mut struct_decl = check!(
-            ctx.monomorphize(struct_decl, type_arguments, EnforceTypeArguments::No, None),
+        check!(
+            ctx.monomorphize(
+                &mut struct_decl,
+                type_arguments,
+                EnforceTypeArguments::No,
+                &call_path.span()
+            ),
             return err(warnings, errors),
             warnings,
             errors

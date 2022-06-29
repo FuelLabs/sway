@@ -161,12 +161,6 @@ impl Span {
     /// This panics if the spans are not from the same file. This should
     /// only be used on spans that are actually next to each other.
     pub fn join(s1: Span, s2: Span) -> Span {
-        // FIXME(canndrew): This is horrifying. Where did it come from and why is it needed?
-        // FIXME(sezna): I don't know, but I'm on the blame for it. Ah. We should remove this.
-        if s1.as_str() == "core" {
-            return s2;
-        }
-
         assert!(
             Arc::ptr_eq(&s1.src, &s2.src) && s1.path == s2.path,
             "Spans from different files cannot be joined.",

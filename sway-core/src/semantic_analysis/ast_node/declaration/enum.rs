@@ -1,11 +1,10 @@
 use crate::{
     error::*,
-    namespace::*,
     parse_tree::*,
     semantic_analysis::*,
     type_engine::{
-        insert_type, look_up_type_id, CopyTypes, CreateTypeId, ReplaceSelfType, TypeId,
-        TypeMapping, TypeParameter,
+        insert_type, look_up_type_id, CopyTypes, CreateTypeId, EnforceTypeArguments,
+        MonomorphizeHelper, ReplaceSelfType, TypeId, TypeMapping, TypeParameter,
     },
     types::{JsonAbiString, ToJsonAbi},
     TypeInfo,
@@ -63,18 +62,12 @@ impl Spanned for TypedEnumDeclaration {
 }
 
 impl MonomorphizeHelper for TypedEnumDeclaration {
-    type Output = TypedEnumDeclaration;
-
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
 
     fn name(&self) -> &Ident {
         &self.name
-    }
-
-    fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output {
-        monomorphize_inner(self, type_mapping, namespace)
     }
 }
 
