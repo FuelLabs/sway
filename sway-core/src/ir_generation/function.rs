@@ -9,6 +9,7 @@ use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     constants,
     error::CompileError,
+    ir_generation::const_eval::compile_constant_expression,
     parse_tree::{AsmOp, AsmRegister, LazyOp, Literal, Purity, Visibility},
     semantic_analysis::*,
     type_engine::{insert_type, resolve_type, TypeId, TypeInfo},
@@ -62,16 +63,18 @@ impl FnCompiler {
     pub(super) fn compile_code_block(
         &mut self,
         context: &mut Context,
+        module: Module,
         ast_block: TypedCodeBlock,
     ) -> Result<Value, CompileError> {
         self.compile_with_new_scope(|fn_compiler| {
-            fn_compiler.compile_code_block_inner(context, ast_block)
+            fn_compiler.compile_code_block_inner(context, module, ast_block)
         })
     }
 
     fn compile_code_block_inner(
         &mut self,
         context: &mut Context,
+        module: Module,
         ast_block: TypedCodeBlock,
     ) -> Result<Value, CompileError> {
         self.lexical_map.enter_scope();
@@ -82,14 +85,14 @@ impl FnCompiler {
                 let span_md_idx = MetadataIndex::from_span(context, &ast_node.span);
                 match ast_node.content {
                     TypedAstNodeContent::ReturnStatement(trs) => {
-                        self.compile_return_statement(context, trs.expr)
+                        self.compile_return_statement(context, module, trs.expr)
                     }
                     TypedAstNodeContent::Declaration(td) => match td {
                         TypedDeclaration::VariableDeclaration(tvd) => {
-                            self.compile_var_decl(context, tvd, span_md_idx)
+                            self.compile_var_decl(context, module, tvd, span_md_idx)
                         }
                         TypedDeclaration::ConstantDeclaration(tcd) => {
-                            self.compile_const_decl(context, tcd, span_md_idx)
+                            self.compile_const_decl(context, module, tcd, span_md_idx)
                         }
                         TypedDeclaration::FunctionDeclaration(_) => {
                             Err(CompileError::UnexpectedDeclaration {
@@ -115,11 +118,12 @@ impl FnCompiler {
                             Ok(Constant::get_unit(context, span_md_idx))
                         }
                         TypedDeclaration::Reassignment(tr) => {
-                            self.compile_reassignment(context, tr, span_md_idx)
+                            self.compile_reassignment(context, module, tr, span_md_idx)
                         }
                         TypedDeclaration::StorageReassignment(tr) => self
                             .compile_storage_reassignment(
                                 context,
+                                module,
                                 &tr.fields,
                                 &tr.ix,
                                 &tr.rhs,
@@ -161,13 +165,13 @@ impl FnCompiler {
                     },
                     TypedAstNodeContent::Expression(te) => {
                         // An expression with an ignored return value... I assume.
-                        self.compile_expression(context, te)
+                        self.compile_expression(context, module, te)
                     }
                     TypedAstNodeContent::ImplicitReturnExpression(te) => {
-                        self.compile_expression(context, te)
+                        self.compile_expression(context, module, te)
                     }
                     TypedAstNodeContent::WhileLoop(twl) => {
-                        self.compile_while_loop(context, twl, span_md_idx)
+                        self.compile_while_loop(context, module, twl, span_md_idx)
                     }
                     // a side effect can be () because it just impacts the type system/namespacing.
                     // There should be no new IR generated.
@@ -185,6 +189,7 @@ impl FnCompiler {
     fn compile_expression(
         &mut self,
         context: &mut Context,
+        module: Module,
         ast_expr: TypedExpression,
     ) -> Result<Value, CompileError> {
         let span_md_idx = MetadataIndex::from_span(context, &ast_expr.span);
@@ -207,6 +212,7 @@ impl FnCompiler {
                         &metadata,
                         &contract_call_params,
                         context,
+                        module,
                         name.suffix.as_str(),
                         arguments,
                         ast_expr.return_type,
@@ -215,6 +221,7 @@ impl FnCompiler {
                 } else {
                     self.compile_fn_call(
                         context,
+                        module,
                         arguments,
                         function_body,
                         function_body_name_span,
@@ -225,21 +232,21 @@ impl FnCompiler {
                 }
             }
             TypedExpressionVariant::LazyOperator { op, lhs, rhs } => {
-                self.compile_lazy_op(context, op, *lhs, *rhs, span_md_idx)
+                self.compile_lazy_op(context, module, op, *lhs, *rhs, span_md_idx)
             }
             TypedExpressionVariant::VariableExpression { name } => {
                 self.compile_var_expr(context, name.as_str(), span_md_idx)
             }
             TypedExpressionVariant::Array { contents } => {
-                self.compile_array_expr(context, contents, span_md_idx)
+                self.compile_array_expr(context, module, contents, span_md_idx)
             }
             TypedExpressionVariant::ArrayIndex { prefix, index } => {
-                self.compile_array_index(context, *prefix, *index, span_md_idx)
+                self.compile_array_index(context, module, *prefix, *index, span_md_idx)
             }
             TypedExpressionVariant::StructExpression { fields, .. } => {
-                self.compile_struct_expr(context, fields, span_md_idx)
+                self.compile_struct_expr(context, module, fields, span_md_idx)
             }
-            TypedExpressionVariant::CodeBlock(cb) => self.compile_code_block(context, cb),
+            TypedExpressionVariant::CodeBlock(cb) => self.compile_code_block(context, module, cb),
             TypedExpressionVariant::FunctionParameter => Err(CompileError::Internal(
                 "Unexpected function parameter declaration.",
                 ast_expr.span,
@@ -248,7 +255,7 @@ impl FnCompiler {
                 condition,
                 then,
                 r#else,
-            } => self.compile_if(context, *condition, *then, r#else),
+            } => self.compile_if(context, module, *condition, *then, r#else),
             TypedExpressionVariant::AsmExpression {
                 registers,
                 body,
@@ -258,6 +265,7 @@ impl FnCompiler {
                 let span_md_idx = MetadataIndex::from_span(context, &whole_block_span);
                 self.compile_asm_expr(
                     context,
+                    module,
                     registers,
                     body,
                     ast_expr.return_type,
@@ -273,6 +281,7 @@ impl FnCompiler {
                 let span_md_idx = MetadataIndex::from_span(context, &field_to_access.span);
                 self.compile_struct_field_expr(
                     context,
+                    module,
                     *prefix,
                     resolved_type_of_parent,
                     field_to_access,
@@ -284,16 +293,16 @@ impl FnCompiler {
                 tag,
                 contents,
                 ..
-            } => self.compile_enum_expr(context, enum_decl, tag, contents),
+            } => self.compile_enum_expr(context, module, enum_decl, tag, contents),
             TypedExpressionVariant::Tuple { fields } => {
-                self.compile_tuple_expr(context, fields, span_md_idx)
+                self.compile_tuple_expr(context, module, fields, span_md_idx)
             }
             TypedExpressionVariant::TupleElemAccess {
                 prefix,
                 elem_to_access_num: idx,
                 elem_to_access_span: span,
                 resolved_type_of_parent: tuple_type,
-            } => self.compile_tuple_elem_expr(context, *prefix, tuple_type, idx, span),
+            } => self.compile_tuple_elem_expr(context, module, *prefix, tuple_type, idx, span),
             TypedExpressionVariant::AbiCast { span, .. } => {
                 let span_md_idx = MetadataIndex::from_span(context, &span);
                 Ok(Constant::get_unit(context, span_md_idx))
@@ -303,21 +312,22 @@ impl FnCompiler {
                 self.compile_storage_access(context, &access.fields, &access.ix, span_md_idx)
             }
             TypedExpressionVariant::IntrinsicFunction(kind) => {
-                self.compile_intrinsic_function(context, kind, ast_expr.span)
+                self.compile_intrinsic_function(context, module, kind, ast_expr.span)
             }
             TypedExpressionVariant::AbiName(_) => {
                 Ok(Value::new_constant(context, Constant::new_unit(), None))
             }
             TypedExpressionVariant::UnsafeDowncast { exp, variant } => {
-                self.compile_unsafe_downcast(context, exp, variant)
+                self.compile_unsafe_downcast(context, module, exp, variant)
             }
-            TypedExpressionVariant::EnumTag { exp } => self.compile_enum_tag(context, exp),
+            TypedExpressionVariant::EnumTag { exp } => self.compile_enum_tag(context, module, exp),
         }
     }
 
     fn compile_intrinsic_function(
         &mut self,
         context: &mut Context,
+        module: Module,
         kind: TypedIntrinsicFunctionKind,
         span: Span,
     ) -> Result<Value, CompileError> {
@@ -325,7 +335,7 @@ impl FnCompiler {
             TypedIntrinsicFunctionKind::SizeOfVal { exp } => {
                 // Compile the expression in case of side-effects but ignore its value.
                 let ir_type = convert_resolved_typeid(context, &exp.return_type, &exp.span)?;
-                self.compile_expression(context, *exp)?;
+                self.compile_expression(context, module, *exp)?;
                 Ok(Constant::get_uint(
                     context,
                     64,
@@ -359,9 +369,10 @@ impl FnCompiler {
     fn compile_return_statement(
         &mut self,
         context: &mut Context,
+        module: Module,
         ast_expr: TypedExpression,
     ) -> Result<Value, CompileError> {
-        let ret_value = self.compile_expression(context, ast_expr.clone())?;
+        let ret_value = self.compile_expression(context, module, ast_expr.clone())?;
         match ret_value.get_type(context) {
             None => Err(CompileError::Internal(
                 "Unable to determine type for return statement expression.",
@@ -380,6 +391,7 @@ impl FnCompiler {
     fn compile_lazy_op(
         &mut self,
         context: &mut Context,
+        module: Module,
         ast_op: LazyOp,
         ast_lhs: TypedExpression,
         ast_rhs: TypedExpression,
@@ -387,7 +399,7 @@ impl FnCompiler {
     ) -> Result<Value, CompileError> {
         // Short-circuit: if LHS is true for AND we still must eval the RHS block; for OR we can
         // skip the RHS block, and vice-versa.
-        let lhs_val = self.compile_expression(context, ast_lhs)?;
+        let lhs_val = self.compile_expression(context, module, ast_lhs)?;
         let rhs_block = self.function.create_block(context, None);
         let final_block = self.function.create_block(context, None);
         let cond_builder = self.current_block.ins(context);
@@ -409,7 +421,7 @@ impl FnCompiler {
         };
 
         self.current_block = rhs_block;
-        let rhs_val = self.compile_expression(context, ast_rhs)?;
+        let rhs_val = self.compile_expression(context, module, ast_rhs)?;
         self.current_block
             .ins(context)
             .branch(final_block, Some(rhs_val), span_md_idx);
@@ -424,6 +436,7 @@ impl FnCompiler {
         metadata: &ContractCallMetadata,
         contract_call_parameters: &HashMap<String, TypedExpression>,
         context: &mut Context,
+        module: Module,
         ast_name: &str,
         ast_args: Vec<(Ident, TypedExpression)>,
         return_type: TypeId,
@@ -432,7 +445,7 @@ impl FnCompiler {
         // Compile each user argument
         let compiled_args = ast_args
             .into_iter()
-            .map(|(_, expr)| self.compile_expression(context, expr))
+            .map(|(_, expr)| self.compile_expression(context, module, expr))
             .collect::<Result<Vec<Value>, CompileError>>()?;
 
         let user_args_val = match compiled_args.len() {
@@ -543,7 +556,7 @@ impl FnCompiler {
             [Type::B256, Type::Uint(64), Type::Uint(64)].to_vec(),
         );
 
-        let addr = self.compile_expression(context, *metadata.contract_address.clone())?;
+        let addr = self.compile_expression(context, module, *metadata.contract_address.clone())?;
         let mut ra_struct_val =
             Constant::get_undef(context, Type::Struct(ra_struct_aggregate), span_md_idx);
 
@@ -587,7 +600,7 @@ impl FnCompiler {
         let coins = match contract_call_parameters
             .get(&constants::CONTRACT_CALL_COINS_PARAMETER_NAME.to_string())
         {
-            Some(coins_expr) => self.compile_expression(context, coins_expr.clone())?,
+            Some(coins_expr) => self.compile_expression(context, module, coins_expr.clone())?,
             None => convert_literal_to_value(
                 context,
                 &Literal::U64(constants::CONTRACT_CALL_COINS_PARAMETER_DEFAULT_VALUE),
@@ -598,7 +611,9 @@ impl FnCompiler {
         let asset_id = match contract_call_parameters
             .get(&constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME.to_string())
         {
-            Some(asset_id_expr) => self.compile_expression(context, asset_id_expr.clone())?,
+            Some(asset_id_expr) => {
+                self.compile_expression(context, module, asset_id_expr.clone())?
+            }
             None => convert_literal_to_value(
                 context,
                 &Literal::B256(constants::CONTRACT_CALL_ASSET_ID_PARAMETER_DEFAULT_VALUE),
@@ -609,7 +624,7 @@ impl FnCompiler {
         let gas = match contract_call_parameters
             .get(&constants::CONTRACT_CALL_GAS_PARAMETER_NAME.to_string())
         {
-            Some(gas_expr) => self.compile_expression(context, gas_expr.clone())?,
+            Some(gas_expr) => self.compile_expression(context, module, gas_expr.clone())?,
             None => self
                 .current_block
                 .ins(context)
@@ -634,6 +649,7 @@ impl FnCompiler {
     fn compile_fn_call(
         &mut self,
         context: &mut Context,
+        module: Module,
         ast_args: Vec<(Ident, TypedExpression)>,
         callee_body: TypedCodeBlock,
         callee_span: Span,
@@ -703,7 +719,7 @@ impl FnCompiler {
             // Now actually call the new function.
             let args = ast_args
                 .into_iter()
-                .map(|(_, expr)| self.compile_expression(context, expr))
+                .map(|(_, expr)| self.compile_expression(context, module, expr))
                 .collect::<Result<Vec<Value>, CompileError>>()?;
             let state_idx_md_idx = match self_state_idx {
                 Some(self_state_idx) => {
@@ -739,6 +755,7 @@ impl FnCompiler {
     fn compile_if(
         &mut self,
         context: &mut Context,
+        module: Module,
         ast_condition: TypedExpression,
         ast_then: TypedExpression,
         ast_else: Option<Box<TypedExpression>>,
@@ -746,7 +763,7 @@ impl FnCompiler {
         // Compile the condition expression in the entry block.  Then save the current block so we
         // can jump to the true and false blocks after we've created them.
         let cond_span_md_idx = MetadataIndex::from_span(context, &ast_condition.span);
-        let cond_value = self.compile_expression(context, ast_condition)?;
+        let cond_value = self.compile_expression(context, module, ast_condition)?;
         let entry_block = self.current_block;
 
         // To keep the blocks in a nice order we create them only as we populate them.  It's
@@ -764,7 +781,7 @@ impl FnCompiler {
 
         let true_block_begin = self.function.create_block(context, None);
         self.current_block = true_block_begin;
-        let true_value = self.compile_expression(context, ast_then)?;
+        let true_value = self.compile_expression(context, module, ast_then)?;
         let true_block_end = self.current_block;
         let then_returns = true_block_end.is_terminated_by_ret(context);
 
@@ -772,7 +789,7 @@ impl FnCompiler {
         self.current_block = false_block_begin;
         let false_value = match ast_else {
             None => Constant::get_unit(context, None),
-            Some(expr) => self.compile_expression(context, *expr)?,
+            Some(expr) => self.compile_expression(context, module, *expr)?,
         };
         let false_block_end = self.current_block;
         let else_returns = false_block_end.is_terminated_by_ret(context);
@@ -812,6 +829,7 @@ impl FnCompiler {
     fn compile_unsafe_downcast(
         &mut self,
         context: &mut Context,
+        module: Module,
         exp: Box<TypedExpression>,
         variant: TypedEnumVariant,
     ) -> Result<Value, CompileError> {
@@ -826,7 +844,7 @@ impl FnCompiler {
             }
         };
         // compile the expression to asm
-        let compiled_value = self.compile_expression(context, *exp)?;
+        let compiled_value = self.compile_expression(context, module, *exp)?;
         // retrieve the value minus the tag
         Ok(self.current_block.ins(context).extract_value(
             compiled_value,
@@ -839,6 +857,7 @@ impl FnCompiler {
     fn compile_enum_tag(
         &mut self,
         context: &mut Context,
+        module: Module,
         exp: Box<TypedExpression>,
     ) -> Result<Value, CompileError> {
         let tag_span_md_idx = MetadataIndex::from_span(context, &exp.span);
@@ -848,7 +867,7 @@ impl FnCompiler {
                 return Err(CompileError::Internal("Expected enum type here.", exp.span));
             }
         };
-        let exp = self.compile_expression(context, *exp)?;
+        let exp = self.compile_expression(context, module, *exp)?;
         Ok(self.current_block.ins(context).extract_value(
             exp,
             enum_aggregate,
@@ -860,6 +879,7 @@ impl FnCompiler {
     fn compile_while_loop(
         &mut self,
         context: &mut Context,
+        module: Module,
         ast_while_loop: TypedWhileLoop,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
@@ -878,7 +898,7 @@ impl FnCompiler {
             .function
             .create_block(context, Some("while_body".into()));
         self.current_block = body_block;
-        self.compile_code_block(context, ast_while_loop.body)?;
+        self.compile_code_block(context, module, ast_while_loop.body)?;
         self.current_block
             .ins(context)
             .branch(cond_block, None, None);
@@ -890,7 +910,7 @@ impl FnCompiler {
 
         // Add the conditional which jumps into the body or out to the final block.
         self.current_block = cond_block;
-        let cond_value = self.compile_expression(context, ast_while_loop.condition)?;
+        let cond_value = self.compile_expression(context, module, ast_while_loop.condition)?;
         self.current_block.ins(context).conditional_branch(
             cond_value,
             body_block,
@@ -941,6 +961,7 @@ impl FnCompiler {
     fn compile_var_decl(
         &mut self,
         context: &mut Context,
+        module: Module,
         ast_var_decl: TypedVariableDeclaration,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
@@ -966,7 +987,7 @@ impl FnCompiler {
 
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
-        let init_val = self.compile_expression(context, body)?;
+        let init_val = self.compile_expression(context, module, body)?;
         let local_name = self.lexical_map.insert(name.as_str().to_owned());
         let ptr = self
             .function
@@ -991,40 +1012,54 @@ impl FnCompiler {
     fn compile_const_decl(
         &mut self,
         context: &mut Context,
+        module: Module,
         ast_const_decl: TypedConstantDeclaration,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
         let TypedConstantDeclaration { name, value, .. } = ast_const_decl;
+        let const_expr_val = compile_constant_expression(context, module, &value)?;
+        let const_expr = context.values[const_expr_val.0].value.clone();
+        let local_name = self.lexical_map.insert(name.as_str().to_owned());
 
-        if let TypedExpressionVariant::Literal(literal) = &value.expression {
-            let initialiser = convert_literal_to_constant(literal);
+        if let ValueDatum::Constant(_) = const_expr {
             let return_type = convert_resolved_typeid(context, &value.return_type, &value.span)?;
-            let name = name.as_str().to_owned();
-            self.function
-                .new_local_ptr(context, name.clone(), return_type, false, Some(initialiser))
+
+            // We compile consts the same as vars are compiled. This is because ASM generation
+            // cannot handle
+            //    1. initializing aggregates
+            //    2. get_ptr()
+            // into the data section.
+            let ptr = self
+                .function
+                .new_local_ptr(context, local_name, return_type, false, None)
                 .map_err(|ir_error| {
                     CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                 })?;
 
-            // We still insert this into the symbol table, as itself... can they be shadowed?
-            // (Hrmm, name resolution in the variable expression code could be smarter about var
-            // decls vs const decls, for now they're essentially the same...)
-            self.lexical_map.insert(name);
-
-            Ok(Constant::get_unit(context, span_md_idx))
+            // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
+            // otherwise use a store.
+            let ptr_ty = *ptr.get_type(context);
+            if ir_type_size_in_bytes(context, &ptr_ty) > 0 {
+                let ptr_val = self
+                    .current_block
+                    .ins(context)
+                    .get_ptr(ptr, ptr_ty, 0, span_md_idx);
+                self.current_block
+                    .ins(context)
+                    .store(ptr_val, const_expr_val, span_md_idx);
+            }
+            Ok(const_expr_val)
         } else {
-            Err(CompileError::Internal(
-                "Unsupported constant declaration type, expecting a literal.",
-                name.span(),
-            ))
+            unreachable!("compile_constant_expression must have returned a Constant (or error)");
         }
     }
 
     fn compile_reassignment(
         &mut self,
         context: &mut Context,
+        module: Module,
         ast_reassignment: TypedReassignment,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
@@ -1056,7 +1091,7 @@ impl FnCompiler {
             }
         };
 
-        let reassign_val = self.compile_expression(context, ast_reassignment.rhs)?;
+        let reassign_val = self.compile_expression(context, module, ast_reassignment.rhs)?;
 
         if ast_reassignment.lhs_indices.is_empty() {
             // A non-aggregate; use a `store`.
@@ -1105,13 +1140,14 @@ impl FnCompiler {
     fn compile_storage_reassignment(
         &mut self,
         context: &mut Context,
+        module: Module,
         fields: &[TypeCheckedStorageReassignDescriptor],
         ix: &StateIndex,
         rhs: &TypedExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         // Compile the RHS into a value
-        let rhs = self.compile_expression(context, rhs.clone())?;
+        let rhs = self.compile_expression(context, module, rhs.clone())?;
 
         // Get the type of the access which can be a subfield
         let access_type = convert_resolved_typeid_no_span(
@@ -1140,6 +1176,7 @@ impl FnCompiler {
     fn compile_array_expr(
         &mut self,
         context: &mut Context,
+        module: Module,
         contents: Vec<TypedExpression>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
@@ -1164,7 +1201,7 @@ impl FnCompiler {
                     Err(_) => array_value,
                     Ok(array_value) => {
                         let index_val = Constant::get_uint(context, 64, idx as u64, span_md_idx);
-                        self.compile_expression(context, elem_expr)
+                        self.compile_expression(context, module, elem_expr)
                             .map(|elem_value| {
                                 self.current_block.ins(context).insert_element(
                                     array_value,
@@ -1182,12 +1219,13 @@ impl FnCompiler {
     fn compile_array_index(
         &mut self,
         context: &mut Context,
+        module: Module,
         array_expr: TypedExpression,
         index_expr: TypedExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         let array_expr_span = array_expr.span.clone();
-        let array_val = self.compile_expression(context, array_expr)?;
+        let array_val = self.compile_expression(context, module, array_expr)?;
         let aggregate = match &context.values[array_val.0].value {
             ValueDatum::Instruction(instruction) => {
                 instruction.get_aggregate(context).ok_or_else(|| {
@@ -1219,7 +1257,7 @@ impl FnCompiler {
             }
         }
 
-        let index_val = self.compile_expression(context, index_expr)?;
+        let index_val = self.compile_expression(context, module, index_expr)?;
 
         Ok(self.current_block.ins(context).extract_element(
             array_val,
@@ -1232,6 +1270,7 @@ impl FnCompiler {
     fn compile_struct_expr(
         &mut self,
         context: &mut Context,
+        module: Module,
         fields: Vec<TypedStructExpressionField>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
@@ -1247,7 +1286,7 @@ impl FnCompiler {
             .enumerate()
             .map(|(insert_idx, struct_field)| {
                 let field_ty = struct_field.value.return_type;
-                self.compile_expression(context, struct_field.value)
+                self.compile_expression(context, module, struct_field.value)
                     .map(|insert_val| ((insert_val, insert_idx as u64), field_ty))
             })
             .collect::<Result<Vec<_>, CompileError>>()?;
@@ -1274,13 +1313,14 @@ impl FnCompiler {
     fn compile_struct_field_expr(
         &mut self,
         context: &mut Context,
+        module: Module,
         ast_struct_expr: TypedExpression,
         struct_type_id: TypeId,
         ast_field: TypedStructField,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         let ast_struct_expr_span = ast_struct_expr.span.clone();
-        let struct_val = self.compile_expression(context, ast_struct_expr)?;
+        let struct_val = self.compile_expression(context, module, ast_struct_expr)?;
         let aggregate = match &context.values[struct_val.0].value {
             ValueDatum::Instruction(instruction) => {
                 instruction.get_aggregate(context).ok_or_else(|| {
@@ -1335,6 +1375,7 @@ impl FnCompiler {
     fn compile_enum_expr(
         &mut self,
         context: &mut Context,
+        module: Module,
         enum_decl: TypedEnumDeclaration,
         tag: usize,
         contents: Option<Box<TypedExpression>>,
@@ -1371,7 +1412,7 @@ impl FnCompiler {
                         None => agg_value,
                         Some(te) => {
                             // Insert the value too.
-                            let contents_value = self.compile_expression(context, *te)?;
+                            let contents_value = self.compile_expression(context, module, *te)?;
                             self.current_block.ins(context).insert_value(
                                 agg_value,
                                 aggregate,
@@ -1390,6 +1431,7 @@ impl FnCompiler {
     fn compile_tuple_expr(
         &mut self,
         context: &mut Context,
+        module: Module,
         fields: Vec<TypedExpression>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
@@ -1403,7 +1445,7 @@ impl FnCompiler {
                 .map(|field_expr| {
                     convert_resolved_typeid_no_span(context, &field_expr.return_type).and_then(
                         |init_type| {
-                            self.compile_expression(context, field_expr)
+                            self.compile_expression(context, module, field_expr)
                                 .map(|init_value| (init_value, init_type))
                         },
                     )
@@ -1433,12 +1475,13 @@ impl FnCompiler {
     fn compile_tuple_elem_expr(
         &mut self,
         context: &mut Context,
+        module: Module,
         tuple: TypedExpression,
         tuple_type: TypeId,
         idx: usize,
         span: Span,
     ) -> Result<Value, CompileError> {
-        let tuple_value = self.compile_expression(context, tuple)?;
+        let tuple_value = self.compile_expression(context, module, tuple)?;
         if let Type::Struct(aggregate) = convert_resolved_typeid(context, &tuple_type, &span)? {
             let span_md_idx = MetadataIndex::from_span(context, &span);
             Ok(self.current_block.ins(context).extract_value(
@@ -1487,9 +1530,11 @@ impl FnCompiler {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn compile_asm_expr(
         &mut self,
         context: &mut Context,
+        module: Module,
         registers: Vec<TypedAsmRegisterDeclaration>,
         body: Vec<AsmOp>,
         return_type: TypeId,
@@ -1505,7 +1550,7 @@ impl FnCompiler {
                     // Take the optional initialiser, map it to an Option<Result<Value>>,
                     // transpose that to Result<Option<Value>> and map that to an AsmArg.
                     initializer
-                        .map(|init_expr| self.compile_expression(context, init_expr))
+                        .map(|init_expr| self.compile_expression(context, module, init_expr))
                         .transpose()
                         .map(|init| AsmArg {
                             name,
