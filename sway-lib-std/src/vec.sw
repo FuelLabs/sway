@@ -150,13 +150,14 @@ impl<T> Vec<T> {
         assert(index < self.len);
 
         let val_size = size_of::<T>();
-        let mut ptr = self.buf.ptr() + val_size * index;
+        let buf_start = self.buf.ptr();
+        let mut ptr = buf_start + val_size * index;
 
         // Read from `ptr`
         let ret = read(ptr);
 
         // Shift everything down to fill in that spot.
-        let end = self.buf.ptr() + val_size * self.len;
+        let end = buf_start + val_size * self.len;
         while ptr < end {
             copy(ptr, ptr + val_size, val_size);
             ptr += val_size;
