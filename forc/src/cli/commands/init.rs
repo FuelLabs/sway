@@ -2,23 +2,26 @@ use crate::ops::forc_init;
 use anyhow::Result;
 use clap::Parser;
 
-/// Create a new Forc project.
+/// Create a new Forc project in an existing directory.
 #[derive(Debug, Parser)]
 pub struct Command {
+    #[clap(long)]
+    pub path: Option<String>,
     /// The default program type, excluding all flags or adding this flag creates a basic contract program.
     #[clap(long)]
     pub contract: bool,
-    /// Adding this flag creates an empty script program.
+    /// Create a package with a script target (src/main.sw).
     #[clap(long)]
     pub script: bool,
-    /// Adding this flag creates an empty predicate program.
+    /// Create a package with a predicate target (src/predicate.rs).
     #[clap(long)]
     pub predicate: bool,
-    /// Adding this flag creates an empty library program.
+    /// Create a package with a library target (src/lib.sw).
     #[clap(long)]
     pub library: bool,
-    /// The name of your project
-    pub project_name: String,
+    /// Set the package name. Defaults to the directory name
+    #[clap(long = "name")]
+    pub name: Option<String>,
 }
 
 pub(crate) fn exec(command: Command) -> Result<()> {
