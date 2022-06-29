@@ -1,8 +1,8 @@
 use crate::{
     error::ok,
     semantic_analysis::{
-        EnforceTypeArguments, IsConstant, TypeCheckContext, TypedExpression,
-        TypedExpressionVariant, TypedVariableDeclaration, VariableMutability,
+        IsConstant, TypeCheckContext, TypedExpression, TypedExpressionVariant,
+        TypedVariableDeclaration, VariableMutability,
     },
     type_engine::*,
     CompileResult, FunctionParameter, Ident, TypedDeclaration,
