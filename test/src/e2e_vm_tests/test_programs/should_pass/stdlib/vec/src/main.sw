@@ -752,3 +752,26 @@ fn test_vector_remove() {
         Option::Some(val) => assert(val == number3), Option::None => revert(0), 
     }
 }
+
+fn test_vector_pop() {
+    let mut vector: Vec<u8> = ~Vec::new::<u8>();
+
+    let number0 = 0u8;
+    let number1 = 1u8;
+
+    vector.push(number0);
+    vector.push(number1);
+
+    match vector.pop() {
+        Option::Some(val) => assert(val == number1), Option::None => revert(0), 
+    }
+
+    match vector.pop() {
+        Option::Some(val) => assert(val == number0), Option::None => revert(0), 
+    }
+    
+    match vector.pop() {
+        Option::Some(val) => revert(0), Option::None => {}, 
+    }
+}
+
