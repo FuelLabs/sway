@@ -303,11 +303,8 @@ impl TypedAstNode {
                             value,
                             visibility,
                         }) => {
-                            let result = type_check_ascribed_expr(
-                                ctx.by_ref(),
-                                type_ascription,
-                                value,
-                            );
+                            let result =
+                                type_check_ascribed_expr(ctx.by_ref(), type_ascription, value);
                             is_screaming_snake_case(&name).ok(&mut warnings, &mut errors);
                             let value =
                                 check!(result, error_recovery_expr(name.span()), warnings, errors);
