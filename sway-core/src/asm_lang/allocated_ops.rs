@@ -168,7 +168,7 @@ pub(crate) enum AllocatedOpcode {
     NOOP,
     FLAG(AllocatedRegister),
     GM(AllocatedRegister, VirtualImmediate18),
-    GTF(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
+    GTF(AllocatedRegister, AllocatedRegister, VirtualImmediate18),
     Undefined,
     DataSectionOffsetPlaceholder,
     DataSectionRegisterLoadPlaceholder,
