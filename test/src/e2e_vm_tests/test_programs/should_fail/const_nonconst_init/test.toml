@@ -1,4 +1,4 @@
 category = "fail"
 
 # check: $()const X = bla(0);
-# check-next: $()Could not evaluate initializer to a const declaration.
+# nextln: $()Could not evaluate initializer to a const declaration.

@@ -219,7 +219,7 @@ fn compile_fn_with_args(
     // may remain within the function scope.
     let mut compiler = FnCompiler::new(context, module, func);
 
-    let mut ret_val = compiler.compile_code_block(context, module, body)?;
+    let mut ret_val = compiler.compile_code_block(context, body)?;
 
     // Special case: if the return type is unit but the return value type is not, then we have an
     // implicit return from the last expression in the code block having a semi-colon.  This isn't
