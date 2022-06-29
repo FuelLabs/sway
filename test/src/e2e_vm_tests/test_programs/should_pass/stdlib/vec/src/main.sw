@@ -23,6 +23,7 @@ fn main() -> bool {
     test_vector_new_string();
     test_vector_new_array();
     test_vector_with_capacity_u64();
+    test_vector_remove();
     true
 }
 
@@ -703,5 +704,51 @@ fn test_vector_with_capacity_u64() {
     // Out of bounds access
     match vector.get(5) {
         Option::Some(val) => revert(0), Option::None => (), 
+    }
+}
+
+fn test_vector_remove() {
+    let mut vector: Vec<u8> = ~Vec::new::<u8>();
+
+    let number0 = 0u8;
+    let number1 = 1u8;
+    let number2 = 2u8;
+    let number3 = 3u8;
+    let number4 = 4u8;
+
+    assert(vector.len() == 0);
+    assert(vector.capacity() == 0);
+    assert(vector.is_empty());
+
+    vector.push(number0);
+    vector.push(number1);
+    vector.push(number2);
+    vector.push(number3);
+    vector.push(number4);
+
+    assert(vector.len() == 5);
+    assert(vector.capacity() == 8);
+
+    let val = vector.remove(0);
+    assert(val == number0);
+    assert(vector.len() == 4);
+    assert(vector.capacity() == 8);
+
+    let val = vector.remove(3);
+    assert(val == number4);
+    assert(vector.len() == 3);
+    assert(vector.capacity() == 8);
+
+    let val = vector.remove(1);
+    assert(val == number2);
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 8);
+
+    match vector.get(0) {
+        Option::Some(val) => assert(val == number1), Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => assert(val == number3), Option::None => revert(0), 
     }
 }

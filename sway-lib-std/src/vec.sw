@@ -2,8 +2,9 @@ library vec;
 
 use ::alloc::{alloc, realloc};
 use ::intrinsics::size_of;
-use ::mem::{read, write};
+use ::mem::{copy, read, write};
 use ::option::Option;
+use ::assert::assert;
 
 struct RawVec<T> {
     ptr: u64,
@@ -140,5 +141,28 @@ impl<T> Vec<T> {
     /// Returns `true` if the vector contains no elements.
     pub fn is_empty(self) -> bool {
         self.len == 0
+    }
+
+    /// Removes and returns the element at position `index` within the vector,
+    /// shifting all elements after it to the left.
+    pub fn remove(mut self, index: u64) -> T {
+        assert(index < self.len);
+
+        let val_size = size_of::<T>();
+        let mut ptr = self.buf.ptr() + val_size * index;
+
+        // Read from `ptr`
+        let ret = read(ptr);
+
+        // Shift everything down to fill in that spot.
+        let end = self.buf.ptr() + val_size * self.len;
+        while ptr < end {
+            copy(ptr, ptr + val_size, val_size);
+            ptr += val_size;
+        }
+
+        // Decrease length.
+        self.len -= 1;
+        ret
     }
 }
