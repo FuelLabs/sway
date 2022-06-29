@@ -39,14 +39,21 @@ impl Format for ItemEnum {
 
 /// Format the enum if the multiline is passed as false enum will be formatted into a single line.
 ///
-/// Example (multiline : false):
-/// enum Foo { bar: u64,  baz: bool }
+/// ##examples
 ///
-/// Example (multiline : true):
+/// (multiline : false):
+///
+/// ```rust,ignore
+/// enum Foo { bar: u64,  baz: bool }
+/// ```
+///
+/// (multiline : true):
+/// ```rust,ignore
 /// enum Foo {
 ///     bar: u64,
 ///     baz: bool,
 /// }
+/// ```
 fn format_enum(
     item_enum: &ItemEnum,
     formatted_code: &mut FormattedCode,
