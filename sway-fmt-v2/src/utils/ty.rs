@@ -1,4 +1,5 @@
 use crate::fmt::{Format, FormattedCode, Formatter, FormatterError};
+use std::fmt::Write;
 use sway_parse::{
     brackets::SquareBrackets,
     expr::Expr,
@@ -26,10 +27,12 @@ impl Format for Ty {
     }
 }
 
+/// Simply inserts a `_` token to the `formatted_code`.
 fn format_infer(
-    _formatted_code: &mut FormattedCode,
-    _underscore_token: &UnderscoreToken,
+    formatted_code: &mut FormattedCode,
+    underscore_token: &UnderscoreToken,
 ) -> Result<(), FormatterError> {
+    write!(formatted_code, "{}", underscore_token.ident().as_str())?;
     Ok(())
 }
 
