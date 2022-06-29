@@ -18,9 +18,6 @@ where
     ) -> Result<(), FormatterError> {
         // format and add Type & Punct
         let value_pairs = &self.value_separator_pairs;
-
-        // Later on we may want to handle instances
-        // where the user wants to keep the trailing commas.
         for pair in value_pairs.iter() {
             write!(
                 formatted_code,

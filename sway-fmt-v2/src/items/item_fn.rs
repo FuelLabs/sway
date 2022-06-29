@@ -1,18 +1,50 @@
 use crate::{
     fmt::{Format, FormattedCode, Formatter, FormatterError},
-    utils::bracket::Parenthesis,
+    utils::bracket::{CurlyBrace, Parenthesis},
 };
 use std::fmt::Write;
-use sway_parse::{token::Delimiter, FnArg, FnArgs, FnSignature, ItemFn};
+use sway_parse::{token::Delimiter, CodeBlockContents, FnArg, FnArgs, FnSignature, ItemFn};
 use sway_types::Spanned;
 
 impl Format for ItemFn {
     fn format(
         &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        self.fn_signature.format(formatted_code, formatter)?;
+        Self::open_curly_brace(formatted_code, formatter)?;
+        self.body
+            .clone()
+            .into_inner()
+            .format(formatted_code, formatter)?;
+        Self::close_curly_brace(formatted_code, formatter)?;
+        Ok(())
+    }
+}
+
+impl Format for CodeBlockContents {
+    fn format(
+        &self,
         _formatted_code: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        todo!()
+        Ok(())
+    }
+}
+
+impl CurlyBrace for ItemFn {
+    fn open_curly_brace(
+        _line: &mut FormattedCode,
+        _formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        Ok(())
+    }
+    fn close_curly_brace(
+        _line: &mut FormattedCode,
+        _formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        Ok(())
     }
 }
 
@@ -50,45 +82,73 @@ impl FormatSig for FnSignature {
         // FnArgs
         match self.arguments.clone().into_inner() {
             FnArgs::Static(args) => {
-                let mut buf = args
-                    .value_separator_pairs
-                    .iter()
-                    .map(|arg| format!("{}{}", arg.0.format(formatter), arg.1.span().as_str()))
-                    .collect::<Vec<String>>()
-                    .join(" ");
+                // TODO: Refactor into `Punctuated::format()`
+                args.format(formatted_code, formatter)?;
             }
-            FnArgs::NonStatic { .. } => {}
+            FnArgs::NonStatic {
+                self_token,
+                mutable_self,
+                args_opt,
+            } => {
+                // mut
+                if let Some(mut_token) = mutable_self {
+                    write!(formatted_code, "{} ", mut_token.span().as_str())?;
+                }
+                // self
+                formatted_code.push_str(self_token.span().as_str());
+                // args
+                if let Some(args) = args_opt {
+                    // `, `
+                    write!(formatted_code, "{} ", args.0.span().as_str())?;
+                    args.1.format(formatted_code, formatter)?;
+                }
+            }
         }
         // `)`
         Self::close_parenthesis(formatted_code, formatter)?;
+        // return_type_opt
+        if let Some(return_type) = &self.return_type_opt {
+            // TODO: fix when `ty` formatting is done
+            write!(
+                formatted_code,
+                " {} {}",
+                return_type.0.span().as_str(), // `->`
+                return_type.1.span().as_str()  // `Ty`
+            )?;
+        }
+        // `WhereClause`
+        if let Some(where_clause) = &self.where_clause_opt {
+            where_clause.format(formatted_code, formatter)?;
+        }
         Ok(())
     }
 }
 
+// We will need to add logic to handle the case of long fn arguments, and break into new line
 impl Parenthesis for FnSignature {
     fn open_parenthesis(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         line.push(Delimiter::Parenthesis.as_open_char());
         Ok(())
     }
     fn close_parenthesis(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         line.push(Delimiter::Parenthesis.as_close_char());
         Ok(())
     }
 }
 
-trait FormatFnArg {
-    fn format(&self, formatter: &mut Formatter) -> String;
-}
-
-impl FormatFnArg for FnArg {
-    fn format(&self, _formatter: &mut Formatter) -> String {
-        let formatted_code = String::new();
-        formatted_code
+// TODO: Use this in `Punctuated::format()`
+impl Format for FnArg {
+    fn format(
+        &self,
+        _formatted_code: &mut FormattedCode,
+        _formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        Ok(())
     }
 }
