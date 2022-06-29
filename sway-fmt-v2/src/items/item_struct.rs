@@ -46,14 +46,22 @@ impl Format for ItemStruct {
 
 /// Format the struct if the multiline is passed as false struct will be formatted into a single line.
 ///
-/// Example (multiline : false):
-/// struct Foo { bar: u64,  baz: bool }
+/// ## Examples
 ///
-/// Example (multiline : true):
+/// (multiline : false):
+///
+/// ```rust,ignore
+/// struct Foo { bar: u64,  baz: bool }
+/// ```
+///
+/// (multiline : true):
+///
+/// ```rust,ignore
 /// struct Foo {
-///  bar: u64,
-///  baz: bool,
+///     bar: u64,
+///     baz: bool,
 /// }
+/// ```
 fn format_struct(
     item_struct: &ItemStruct,
     formatted_code: &mut FormattedCode,
