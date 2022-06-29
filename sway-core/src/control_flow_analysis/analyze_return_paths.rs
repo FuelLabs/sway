@@ -19,7 +19,7 @@ impl ControlFlowGraph {
         // do a depth first traversal and cover individual inner ast nodes
         let mut leaves = vec![];
         for ast_entrypoint in module_nodes {
-            let l_leaves = connect_node(ast_entrypoint, &mut graph, &leaves, None, None)?;
+            let l_leaves = connect_node(ast_entrypoint, &mut graph, &leaves, None, None)?.0;
             if let NodeConnection::NextStep(nodes) = l_leaves {
                 leaves = nodes;
             }
@@ -125,7 +125,7 @@ fn connect_node(
     leaves: &[NodeIndex],
     break_to_node: Option<NodeIndex>,
     continue_to_node: Option<NodeIndex>,
-) -> Result<NodeConnection, CompileError> {
+) -> Result<(NodeConnection, ReturnStatementNodes), CompileError> {
     let span = node.span.clone();
     match &node.content {
         TypedAstNodeContent::ReturnStatement(_)
@@ -134,7 +134,7 @@ fn connect_node(
             for leaf_ix in leaves {
                 graph.add_edge(*leaf_ix, this_index, "".into());
             }
-            Ok(NodeConnection::Return(this_index))
+            Ok((NodeConnection::Return(this_index), vec![]))
         }
         TypedAstNodeContent::WhileLoop(TypedWhileLoop { body, .. }) => {
             // This is very similar to the dead code analysis for a while loop.
@@ -154,14 +154,13 @@ fn connect_node(
 
             // We need to dig into the body of the while loop in case there is a break or a
             // continue at some level.
-            let l_leaves = depth_first_insertion_code_block(
+            let (l_leaves, inner_returns) = depth_first_insertion_code_block(
                 body,
                 graph,
                 &leaves,
                 Some(while_loop_exit), // break_to_node
                 Some(entry),           // continue_to_node
-            )?
-            .1;
+            )?;
 
             // insert edges from end of block back to beginning of it
             for leaf in &l_leaves {
@@ -173,7 +172,10 @@ fn connect_node(
                 graph.add_edge(leaf, while_loop_exit, "".into());
             }
 
-            Ok(NodeConnection::NextStep(vec![while_loop_exit]))
+            Ok((
+                NodeConnection::NextStep(vec![while_loop_exit]),
+                inner_returns,
+            ))
         }
         TypedAstNodeContent::Expression(TypedExpression { .. }) => {
             let entry = graph.add_node(node.into());
@@ -182,11 +184,11 @@ fn connect_node(
             for leaf in leaves {
                 graph.add_edge(*leaf, entry, "".into());
             }
-            Ok(NodeConnection::NextStep(vec![entry]))
+            Ok((NodeConnection::NextStep(vec![entry]), vec![]))
         }
-        TypedAstNodeContent::SideEffect => Ok(NodeConnection::NextStep(leaves.to_vec())),
-        TypedAstNodeContent::Declaration(decl) => {
-            Ok(NodeConnection::NextStep(connect_declaration(
+        TypedAstNodeContent::SideEffect => Ok((NodeConnection::NextStep(leaves.to_vec()), vec![])),
+        TypedAstNodeContent::Declaration(decl) => Ok((
+            NodeConnection::NextStep(connect_declaration(
                 node,
                 decl,
                 graph,
@@ -194,8 +196,9 @@ fn connect_node(
                 leaves,
                 break_to_node,
                 continue_to_node,
-            )?))
-        }
+            )?),
+            vec![],
+        )),
     }
 }
 
@@ -368,13 +371,15 @@ fn depth_first_insertion_code_block(
     let mut leaves = leaves.to_vec();
     let mut return_nodes = vec![];
     for node in node_content.contents.iter() {
-        let this_node = connect_node(node, graph, &leaves, break_to_node, continue_to_node)?;
+        let (this_node, inner_returns) =
+            connect_node(node, graph, &leaves, break_to_node, continue_to_node)?;
         match this_node {
             NodeConnection::NextStep(nodes) => leaves = nodes,
             NodeConnection::Return(node) => {
                 return_nodes.push(node);
             }
         }
+        return_nodes.extend(inner_returns);
     }
     Ok((return_nodes, leaves))
 }
