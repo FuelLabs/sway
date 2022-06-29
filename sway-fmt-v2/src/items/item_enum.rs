@@ -77,7 +77,7 @@ impl Format for ItemEnum {
                 type_field.colon_token.span().as_str(),
             )?;
             Ty::format(&type_field.ty, formatted_code, formatter)?;
-            write!(formatted_code, "{}", PunctKind::Comma.as_char())?;
+            formatted_code.push(PunctKind::Comma.as_char());
 
             // TODO: Here we assume that next enum variant is going to be in the new line but
             // from the config we may understand next enum variant should be in the same line instead.

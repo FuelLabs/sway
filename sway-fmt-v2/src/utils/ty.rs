@@ -1,5 +1,4 @@
 use crate::fmt::{Format, FormattedCode, Formatter, FormatterError};
-use std::fmt::Write;
 use sway_parse::{
     brackets::{Parens, SquareBrackets},
     expr::Expr,
@@ -31,7 +30,7 @@ fn format_infer(
     formatted_code: &mut FormattedCode,
     underscore_token: &UnderscoreToken,
 ) -> Result<(), FormatterError> {
-    write!(formatted_code, "{}", underscore_token.ident().as_str())?;
+    formatted_code.push_str(underscore_token.ident().as_str());
     Ok(())
 }
 
@@ -40,7 +39,7 @@ fn format_array(
     formatted_code: &mut FormattedCode,
     array_descriptor: SquareBrackets<TyArrayDescriptor>,
 ) -> Result<(), FormatterError> {
-    write!(formatted_code, "{}", array_descriptor.span().as_str())?;
+    formatted_code.push_str(array_descriptor.span().as_str());
     Ok(())
 }
 
@@ -49,7 +48,7 @@ fn format_path(
     formatted_code: &mut FormattedCode,
     path_type: &PathType,
 ) -> Result<(), FormatterError> {
-    write!(formatted_code, "{}", path_type.span().as_str())?;
+    formatted_code.push_str(path_type.span().as_str());
     Ok(())
 }
 
@@ -59,7 +58,7 @@ fn format_str(
     str_token: StrToken,
     _length: SquareBrackets<Box<Expr>>,
 ) -> Result<(), FormatterError> {
-    write!(formatted_code, "{}", str_token.span().as_str())?;
+    formatted_code.push_str(str_token.span().as_str());
     Ok(())
 }
 /// Currently does not apply formatting, just pushes the str version of span
@@ -67,6 +66,6 @@ fn format_tuple(
     formatted_code: &mut FormattedCode,
     tuple_descriptor: Parens<TyTupleDescriptor>,
 ) -> Result<(), FormatterError> {
-    write!(formatted_code, "{}", tuple_descriptor.span().as_str())?;
+    formatted_code.push_str(tuple_descriptor.span().as_str());
     Ok(())
 }
