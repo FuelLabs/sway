@@ -4,6 +4,7 @@ use std::address::Address;
 use std::assert::assert;
 use std::b512::B512;
 use std::contract_id::ContractId;
+use std::constants::ZERO_B256;
 
 fn main() -> bool {
     // Primitive types
@@ -22,7 +23,7 @@ fn main() -> bool {
     assert(true == true);
     assert(true != false);
 
-    let zero = 0x0000000000000000000000000000000000000000000000000000000000000000;
+    let zero = ZERO_B256;
     let one = 0x0000000000000000000000000000000000000000000000000000000000000001;
     assert(zero == zero);
     assert(zero != one);
