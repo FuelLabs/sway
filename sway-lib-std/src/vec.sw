@@ -204,9 +204,8 @@ impl<T> Vec<T> {
     fn pop(mut self) -> Option<T> {
         if self.len == 0 {
             return Option::None;        
-        } else {
-            self.len -= 1;
-            return Option::Some(read(self.buf.ptr() + self.len * size_of::<T>()));
         }
+        self.len -= 1;
+        Option::Some(read(self.buf.ptr() + self.len * size_of::<T>()))
     }
 }

@@ -804,22 +804,14 @@ fn test_vector_insert() {
         Option::Some(val) => assert(val == number0), Option::None => revert(0), 
     }
 
+    match vector.get(1) {
+        Option::Some(val) => assert(val == number2), Option::None => revert(0), 
+    }
+
     // insert at middle
     vector.insert(1, number1);
     assert(vector.len() == 3);
     assert(vector.capacity() == 4);
-    match vector.get(1) {
-        Option::Some(val) => assert(val == number1), Option::None => revert(0), 
-    }
-
-    // insert at last
-    vector.insert(3, number3);
-    assert(vector.len() == 4);
-    assert(vector.capacity() == 4);
-    match vector.get(3) {
-        Option::Some(val) => assert(val == number3), Option::None => revert(0), 
-    }
-
     match vector.get(0) {
         Option::Some(val) => assert(val == number0), Option::None => revert(0), 
     }
@@ -830,5 +822,25 @@ fn test_vector_insert() {
 
     match vector.get(2) {
         Option::Some(val) => assert(val == number2), Option::None => revert(0), 
+    }
+
+    // insert at last
+    vector.insert(3, number3);
+    assert(vector.len() == 4);
+    assert(vector.capacity() == 4);
+    match vector.get(0) {
+        Option::Some(val) => assert(val == number0), Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => assert(val == number1), Option::None => revert(0), 
+    }
+
+    match vector.get(2) {
+        Option::Some(val) => assert(val == number2), Option::None => revert(0), 
+    }
+
+    match vector.get(3) {
+        Option::Some(val) => assert(val == number3), Option::None => revert(0), 
     }
 }
