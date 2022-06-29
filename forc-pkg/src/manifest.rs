@@ -291,8 +291,7 @@ impl Manifest {
     /// Note: If only `core` is specified, we are unable to implicitly add `std` as we cannot
     /// guarantee that the user's `core` is compatible with the implicit `std`.
     fn implicitly_include_std_if_missing(&mut self, sway_git_tag: &str) {
-        const CORE: &str = "core";
-        const STD: &str = "std";
+        use crate::{CORE, STD};
         // Don't include `std` if:
         // - this *is* `core` or `std`.
         // - either `core` or `std` packages are already specified.

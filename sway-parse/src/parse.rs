@@ -97,6 +97,13 @@ impl Parse for Ident {
                     ));
                 }
 
+                if !ident.is_raw_ident() && RESERVED_KEYWORDS.contains(ident_str) {
+                    return Err(parser.emit_error_with_span(
+                        ParseErrorKind::ReservedKeywordIdentifier,
+                        ident.span(),
+                    ));
+                }
+
                 Ok(ident)
             }
             None => Err(parser.emit_error(ParseErrorKind::ExpectedIdent)),

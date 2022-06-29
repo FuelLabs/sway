@@ -265,7 +265,6 @@ impl TypedAstNode {
                             body,
                             is_mutable,
                         }) => {
-                            check_if_name_is_invalid(&name).ok(&mut warnings, &mut errors);
                             let type_ascription_span = match type_ascription_span {
                                 Some(type_ascription_span) => type_ascription_span,
                                 None => name.span(),
@@ -474,7 +473,6 @@ impl TypedAstNode {
                                     span.clone(),
                                 ));
                             }
-
                             let decl = TypedStorageDeclaration::new(fields_buf, span);
                             // insert the storage declaration into the symbols
                             // if there already was one, return an error that duplicate storage
