@@ -1033,44 +1033,32 @@ fn connect_expression(
 }
 
 fn connect_intrinsic_function(
-    kind: &TypedIntrinsicFunctionKind,
+    TypedIntrinsicFunctionKind {
+        kind, arguments, ..
+    }: &TypedIntrinsicFunctionKind,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
     exit_node: Option<NodeIndex>,
     tree_type: &TreeType,
 ) -> Result<Vec<NodeIndex>, CompileError> {
-    let result = match kind {
-        TypedIntrinsicFunctionKind::SizeOfVal { exp } => connect_expression(
+    let node = graph.add_node(kind.to_string().into());
+    for leaf in leaves {
+        graph.add_edge(*leaf, node, "".into());
+    }
+    let mut result = vec![node];
+    let _ = arguments.iter().try_fold(&mut result, |accum, exp| {
+        let mut res = connect_expression(
             &(*exp).expression,
             graph,
             leaves,
             exit_node,
-            "size_of",
+            "intrinsic",
             tree_type,
             exp.span.clone(),
-        )?,
-        TypedIntrinsicFunctionKind::SizeOfType { .. } => {
-            let node = graph.add_node("size of type".into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, node, "".into());
-            }
-            vec![node]
-        }
-        TypedIntrinsicFunctionKind::IsRefType { .. } => {
-            let node = graph.add_node("is ref type".into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, node, "".into());
-            }
-            vec![node]
-        }
-        TypedIntrinsicFunctionKind::GetStorageKey => {
-            let node = graph.add_node("Get storage key".into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, node, "".into());
-            }
-            vec![node]
-        }
-    };
+        )?;
+        accum.append(&mut res);
+        Ok::<_, CompileError>(accum)
+    })?;
     Ok(result)
 }
 
