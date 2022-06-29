@@ -490,6 +490,15 @@ impl Op {
                     );
                     VirtualOp::SLLI(r1, r2, imm)
                 }
+                "smo" => {
+                    let (r1, r2, r3, r4) = check!(
+                        four_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SMO(r1, r2, r3, r4)
+                }
                 "srl" => {
                     let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
