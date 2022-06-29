@@ -1,9 +1,7 @@
 mod function_parameter;
 pub use function_parameter::*;
 
-use crate::{
-    error::*, namespace::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*, types::*,
-};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*, types::*};
 use fuels_types::{Function, Property};
 use sha2::{Digest, Sha256};
 use sway_types::{Ident, Span, Spanned};
@@ -74,24 +72,12 @@ impl Spanned for TypedFunctionDeclaration {
 }
 
 impl MonomorphizeHelper for TypedFunctionDeclaration {
-    type Output = TypedFunctionDeclaration;
-
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
 
     fn name(&self) -> &Ident {
         &self.name
-    }
-
-    fn monomorphize_inner(
-        self,
-        type_mapping: &TypeMapping,
-        _namespace: &mut Items,
-    ) -> Self::Output {
-        let mut new_decl = self;
-        new_decl.copy_types(type_mapping);
-        new_decl
     }
 }
 
