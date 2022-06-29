@@ -1,11 +1,14 @@
 [[package]]
 name = 'b512_panic_test'
+source = 'root'
 dependencies = ['std']
 
 [[package]]
 name = 'core'
+source = 'path+from-root-668AEDF20AD093DA'
 dependencies = []
 
 [[package]]
 name = 'std'
+source = 'path+from-root-668AEDF20AD093DA'
 dependencies = ['core']

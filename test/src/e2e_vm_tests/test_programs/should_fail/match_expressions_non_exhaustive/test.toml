@@ -1,0 +1,34 @@
+category = "fail"
+
+# check: match_expressions_non_exhaustive/src/main.sw:41:9
+# check: $()This match arm is unreachable.
+
+# check: match_expressions_non_exhaustive/src/main.sw:61:9
+# check: $()This match arm is unreachable.
+
+# check: match_expressions_non_exhaustive/src/main.sw:90:9
+# check: $()This match arm is unreachable.
+
+# check: match_expressions_non_exhaustive/src/main.sw:95:9
+# check: $()This match arm is unreachable.
+
+# check: match_expressions_non_exhaustive/src/main.sw:101:9
+# check: $()This match arm is unreachable.
+
+# check: match_expressions_non_exhaustive/src/main.sw:107:9
+# check: $()This match arm is unreachable.
+
+# check: match_expressions_non_exhaustive/src/main.sw:37:13
+# check: $()Non-exhaustive match expression. Missing patterns `[1...4]`, `[6...9]`, `[11...MAX]`
+
+# check: match_expressions_non_exhaustive/src/main.sw:58:13
+# check: $()Non-exhaustive match expression. Missing patterns `(_, [2...MAX])`
+
+# check: match_expressions_non_exhaustive/src/main.sw:88:15
+# check: $()Non-exhaustive match expression. Missing patterns `Point { x: [MIN...2], ... }`, `Point { x: [4...MAX], ... }`
+
+# check: match_expressions_non_exhaustive/src/main.sw:122:15
+# check: $()Non-exhaustive match expression. Missing patterns `CrazyPoint { p1: Point { x: [1...MAX], ... }, ... }`
+
+# check: match_expressions_non_exhaustive/src/main.sw:128:16
+# check: $()Variable "newvariable" does not exist in this scope.

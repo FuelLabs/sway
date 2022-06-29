@@ -1,0 +1,4 @@
+[[package]]
+name = 'non_literal_const_decl'
+source = 'root'
+dependencies = []

@@ -1,4 +1,4 @@
-use crate::span::Span;
+use crate::{span::Span, Spanned};
 
 use std::{
     cmp::{Ord, Ordering},
@@ -11,6 +11,7 @@ use std::{
 pub struct Ident {
     name_override_opt: Option<&'static str>,
     span: Span,
+    is_raw_ident: bool,
 }
 
 // custom implementation of Hash so that namespacing isn't reliant on the span itself, which will
@@ -41,6 +42,18 @@ impl PartialOrd for Ident {
 
 impl Eq for Ident {}
 
+impl Spanned for Ident {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
+
+impl fmt::Display for Ident {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(formatter, "{}", self.as_str())
+    }
+}
+
 impl Ident {
     pub fn as_str(&self) -> &str {
         match self.name_override_opt {
@@ -49,8 +62,8 @@ impl Ident {
         }
     }
 
-    pub fn span(&self) -> &Span {
-        &self.span
+    pub fn is_raw_ident(&self) -> bool {
+        self.is_raw_ident
     }
 
     pub fn new(span: Span) -> Ident {
@@ -58,6 +71,16 @@ impl Ident {
         Ident {
             name_override_opt: None,
             span,
+            is_raw_ident: false,
+        }
+    }
+
+    pub fn new_with_raw(span: Span, is_raw_ident: bool) -> Ident {
+        let span = span.trim();
+        Ident {
+            name_override_opt: None,
+            span,
+            is_raw_ident,
         }
     }
 
@@ -65,6 +88,7 @@ impl Ident {
         Ident {
             name_override_opt: Some(name_override),
             span,
+            is_raw_ident: false,
         }
     }
 
@@ -72,12 +96,7 @@ impl Ident {
         Ident {
             name_override_opt: Some(name),
             span: Span::dummy(),
+            is_raw_ident: false,
         }
-    }
-}
-
-impl fmt::Display for Ident {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "{}", self.as_str())
     }
 }

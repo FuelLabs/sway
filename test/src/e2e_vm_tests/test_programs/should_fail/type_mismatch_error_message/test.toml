@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: foo.does_not_exist();
+# nextln: $()No method named "does_not_exist" found for type "Result<Data<bool>, str[4]>".

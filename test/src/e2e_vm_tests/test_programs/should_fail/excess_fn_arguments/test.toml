@@ -1,0 +1,5 @@
+# This test should be a "fail" but it's currently passing.
+# See https://github.com/FuelLabs/sway/issues/2081
+category = "compile"
+
+# check: ... something about too many args ...

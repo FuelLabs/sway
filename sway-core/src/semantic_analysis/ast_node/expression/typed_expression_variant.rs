@@ -1,9 +1,9 @@
-use crate::{parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
+use crate::{parse_tree::*, semantic_analysis::*, type_engine::*};
 
-use sway_types::{state::StateIndex, Ident, Span};
+use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
 use derivative::Derivative;
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
 #[derive(Clone, Debug)]
 pub struct ContractCallMetadata {
@@ -21,6 +21,8 @@ pub enum TypedExpressionVariant {
         contract_call_params: HashMap<String, TypedExpression>,
         arguments: Vec<(Ident, TypedExpression)>,
         function_body: TypedCodeBlock,
+        function_body_name_span: Span,
+        function_body_purity: Purity,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
         self_state_idx: Option<StateIndex>,
@@ -97,17 +99,7 @@ pub enum TypedExpressionVariant {
     },
     #[allow(dead_code)]
     StorageAccess(TypeCheckedStorageAccess),
-    TypeProperty {
-        property: BuiltinProperty,
-        type_id: TypeId,
-        span: Span,
-    },
-    GetStorageKey {
-        span: Span,
-    },
-    SizeOfValue {
-        expr: Box<TypedExpression>,
-    },
+    IntrinsicFunction(TypedIntrinsicFunctionKind),
     /// a zero-sized type-system-only compile-time thing that is used for constructing ABI casts.
     AbiName(AbiName),
     /// grabs the enum tag from the particular enum and variant of the `exp`
@@ -303,21 +295,7 @@ impl PartialEq for TypedExpressionVariant {
                     ..
                 },
             ) => l_abi_name == r_abi_name && (**l_address) == (**r_address),
-            (
-                Self::TypeProperty {
-                    property: l_prop,
-                    type_id: l_type_id,
-                    ..
-                },
-                Self::TypeProperty {
-                    property: r_prop,
-                    type_id: r_type_id,
-                    ..
-                },
-            ) => l_prop == r_prop && look_up_type_id(*l_type_id) == look_up_type_id(*r_type_id),
-            (Self::SizeOfValue { expr: l_expr }, Self::SizeOfValue { expr: r_expr }) => {
-                l_expr == r_expr
-            }
+            (Self::IntrinsicFunction(l_kind), Self::IntrinsicFunction(r_kind)) => l_kind == r_kind,
             (
                 Self::UnsafeDowncast {
                     exp: l_exp,
@@ -419,10 +397,9 @@ impl CopyTypes for TypedExpressionVariant {
             AbiCast { address, .. } => address.copy_types(type_mapping),
             // storage is never generic and cannot be monomorphized
             StorageAccess { .. } => (),
-            TypeProperty { type_id, span, .. } => {
-                type_id.update_type(type_mapping, span);
+            IntrinsicFunction(kind) => {
+                kind.copy_types(type_mapping);
             }
-            SizeOfValue { expr } => expr.copy_types(type_mapping),
             EnumTag { exp } => {
                 exp.copy_types(type_mapping);
             }
@@ -430,9 +407,95 @@ impl CopyTypes for TypedExpressionVariant {
                 exp.copy_types(type_mapping);
                 variant.copy_types(type_mapping);
             }
-            GetStorageKey { .. } => (),
             AbiName(_) => (),
         }
+    }
+}
+
+impl fmt::Display for TypedExpressionVariant {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            TypedExpressionVariant::Literal(lit) => format!("literal {}", lit),
+            TypedExpressionVariant::FunctionApplication {
+                call_path: name, ..
+            } => {
+                format!("\"{}\" fn entry", name.suffix.as_str())
+            }
+            TypedExpressionVariant::LazyOperator { op, .. } => match op {
+                LazyOp::And => "&&".into(),
+                LazyOp::Or => "||".into(),
+            },
+            TypedExpressionVariant::Tuple { fields } => {
+                let fields = fields
+                    .iter()
+                    .map(|field| field.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("tuple({})", fields)
+            }
+            TypedExpressionVariant::Array { .. } => "array".into(),
+            TypedExpressionVariant::ArrayIndex { .. } => "[..]".into(),
+            TypedExpressionVariant::StructExpression { struct_name, .. } => {
+                format!("\"{}\" struct init", struct_name.as_str())
+            }
+            TypedExpressionVariant::CodeBlock(_) => "code block entry".into(),
+            TypedExpressionVariant::FunctionParameter => "fn param access".into(),
+            TypedExpressionVariant::IfExp { .. } => "if exp".into(),
+            TypedExpressionVariant::AsmExpression { .. } => "inline asm".into(),
+            TypedExpressionVariant::AbiCast { abi_name, .. } => {
+                format!("abi cast {}", abi_name.suffix.as_str())
+            }
+            TypedExpressionVariant::StructFieldAccess {
+                resolved_type_of_parent,
+                field_to_access,
+                ..
+            } => {
+                format!(
+                    "\"{}.{}\" struct field access",
+                    look_up_type_id(*resolved_type_of_parent),
+                    field_to_access.name
+                )
+            }
+            TypedExpressionVariant::TupleElemAccess {
+                resolved_type_of_parent,
+                elem_to_access_num,
+                ..
+            } => {
+                format!(
+                    "\"{}.{}\" tuple index",
+                    look_up_type_id(*resolved_type_of_parent),
+                    elem_to_access_num
+                )
+            }
+            TypedExpressionVariant::VariableExpression { name, .. } => {
+                format!("\"{}\" variable exp", name.as_str())
+            }
+            TypedExpressionVariant::EnumInstantiation {
+                tag,
+                enum_decl,
+                variant_name,
+                ..
+            } => {
+                format!(
+                    "{}::{} enum instantiation (tag: {})",
+                    enum_decl.name.as_str(),
+                    variant_name.as_str(),
+                    tag
+                )
+            }
+            TypedExpressionVariant::StorageAccess(access) => {
+                format!("storage field {} access", access.storage_field_name())
+            }
+            TypedExpressionVariant::IntrinsicFunction(kind) => kind.to_string(),
+            TypedExpressionVariant::AbiName(n) => format!("ABI name {}", n),
+            TypedExpressionVariant::EnumTag { exp } => {
+                format!("({} as tag)", look_up_type_id(exp.return_type))
+            }
+            TypedExpressionVariant::UnsafeDowncast { exp, variant } => {
+                format!("({} as {})", look_up_type_id(exp.return_type), variant.name)
+            }
+        };
+        write!(f, "{}", s)
     }
 }
 
@@ -443,11 +506,8 @@ pub struct TypeCheckedStorageAccess {
     pub(crate) ix: StateIndex,
 }
 
-impl TypeCheckedStorageAccess {
-    pub fn storage_field_name(&self) -> Ident {
-        self.fields[0].name.clone()
-    }
-    pub fn span(&self) -> Span {
+impl Spanned for TypeCheckedStorageAccess {
+    fn span(&self) -> Span {
         self.fields
             .iter()
             .fold(self.fields[0].span.clone(), |acc, field| {
@@ -456,11 +516,17 @@ impl TypeCheckedStorageAccess {
     }
 }
 
+impl TypeCheckedStorageAccess {
+    pub fn storage_field_name(&self) -> Ident {
+        self.fields[0].name.clone()
+    }
+}
+
 /// Describes a single subfield access in the sequence when accessing a subfield within storage.
 #[derive(Clone, Debug)]
 pub struct TypeCheckedStorageAccessDescriptor {
     pub name: Ident,
-    pub(crate) r#type: TypeId,
+    pub(crate) type_id: TypeId,
     pub(crate) span: Span,
 }
 
@@ -488,128 +554,6 @@ impl CopyTypes for TypedAsmRegisterDeclaration {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         if let Some(ref mut initializer) = self.initializer {
             initializer.copy_types(type_mapping)
-        }
-    }
-}
-
-impl TypedExpressionVariant {
-    pub fn pretty_print(&self) -> String {
-        match self {
-            TypedExpressionVariant::Literal(lit) => format!(
-                "literal {}",
-                match lit {
-                    Literal::U8(content) => content.to_string(),
-                    Literal::U16(content) => content.to_string(),
-                    Literal::U32(content) => content.to_string(),
-                    Literal::U64(content) => content.to_string(),
-                    Literal::Numeric(content) => content.to_string(),
-                    Literal::String(content) => content.as_str().to_string(),
-                    Literal::Boolean(content) => content.to_string(),
-                    Literal::Byte(content) => content.to_string(),
-                    Literal::B256(content) => content
-                        .iter()
-                        .map(|x| x.to_string())
-                        .collect::<Vec<_>>()
-                        .join(", "),
-                }
-            ),
-            TypedExpressionVariant::FunctionApplication {
-                call_path: name, ..
-            } => {
-                format!("\"{}\" fn entry", name.suffix.as_str())
-            }
-            TypedExpressionVariant::LazyOperator { op, .. } => match op {
-                LazyOp::And => "&&".into(),
-                LazyOp::Or => "||".into(),
-            },
-            TypedExpressionVariant::Tuple { fields } => {
-                let fields = fields
-                    .iter()
-                    .map(|field| field.pretty_print())
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                format!("tuple({})", fields)
-            }
-            TypedExpressionVariant::Array { .. } => "array".into(),
-            TypedExpressionVariant::ArrayIndex { .. } => "[..]".into(),
-            TypedExpressionVariant::StructExpression { struct_name, .. } => {
-                format!("\"{}\" struct init", struct_name.as_str())
-            }
-            TypedExpressionVariant::CodeBlock(_) => "code block entry".into(),
-            TypedExpressionVariant::FunctionParameter => "fn param access".into(),
-            TypedExpressionVariant::IfExp { .. } => "if exp".into(),
-            TypedExpressionVariant::AsmExpression { .. } => "inline asm".into(),
-            TypedExpressionVariant::AbiCast { abi_name, .. } => {
-                format!("abi cast {}", abi_name.suffix.as_str())
-            }
-            TypedExpressionVariant::StructFieldAccess {
-                resolved_type_of_parent,
-                field_to_access,
-                ..
-            } => {
-                format!(
-                    "\"{}.{}\" struct field access",
-                    look_up_type_id(*resolved_type_of_parent).friendly_type_str(),
-                    field_to_access.name
-                )
-            }
-            TypedExpressionVariant::TupleElemAccess {
-                resolved_type_of_parent,
-                elem_to_access_num,
-                ..
-            } => {
-                format!(
-                    "\"{}.{}\" tuple index",
-                    look_up_type_id(*resolved_type_of_parent).friendly_type_str(),
-                    elem_to_access_num
-                )
-            }
-            TypedExpressionVariant::VariableExpression { name, .. } => {
-                format!("\"{}\" variable exp", name.as_str())
-            }
-            TypedExpressionVariant::EnumInstantiation {
-                tag,
-                enum_decl,
-                variant_name,
-                ..
-            } => {
-                format!(
-                    "{}::{} enum instantiation (tag: {})",
-                    enum_decl.name.as_str(),
-                    variant_name.as_str(),
-                    tag
-                )
-            }
-            TypedExpressionVariant::StorageAccess(access) => {
-                format!("storage field {} access", access.storage_field_name())
-            }
-            TypedExpressionVariant::TypeProperty {
-                property, type_id, ..
-            } => {
-                let type_str = look_up_type_id(*type_id).friendly_type_str();
-                match property {
-                    BuiltinProperty::SizeOfType => format!("size_of({type_str:?})"),
-                    BuiltinProperty::IsRefType => format!("is_ref_type({type_str:?})"),
-                }
-            }
-            TypedExpressionVariant::SizeOfValue { expr } => {
-                format!("size_of_val({:?})", expr.pretty_print())
-            }
-            TypedExpressionVariant::GetStorageKey { .. } => "get_storage_key".to_string(),
-            TypedExpressionVariant::AbiName(n) => format!("ABI name {}", n),
-            TypedExpressionVariant::EnumTag { exp } => {
-                format!(
-                    "({} as tag)",
-                    look_up_type_id(exp.return_type).friendly_type_str()
-                )
-            }
-            TypedExpressionVariant::UnsafeDowncast { exp, variant } => {
-                format!(
-                    "({} as {})",
-                    look_up_type_id(exp.return_type).friendly_type_str(),
-                    variant.name
-                )
-            }
         }
     }
 }

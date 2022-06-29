@@ -1,0 +1,10 @@
+category = "fail"
+
+# check: let i = b.add();
+# nextln: $()No method named "add" found for type "DoubleIdentity<bool, bool>".
+
+# check: let j = c.get_first();
+# nextln: $()No method named "get_first" found for type "DoubleIdentity<u64, str[2]>".
+
+# check: let l = c.add();
+# nextln: $()No method named "add" found for type "DoubleIdentity<u64, str[2]>".

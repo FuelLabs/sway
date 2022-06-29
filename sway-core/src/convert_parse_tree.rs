@@ -1,3 +1,5 @@
+use crate::type_engine::{TraitConstraint, TypeArgument, TypeParameter};
+
 use {
     crate::{
         constants::{
@@ -6,14 +8,13 @@ use {
         error::{err, ok, CompileError, CompileResult, CompileWarning},
         type_engine::{insert_type, AbiName, IntegerBits},
         AbiDeclaration, AsmExpression, AsmOp, AsmRegister, AsmRegisterDeclaration, AstNode,
-        AstNodeContent, BuiltinProperty, CallPath, CodeBlock, ConstantDeclaration, Declaration,
-        EnumDeclaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter, ImplSelf,
-        ImplTrait, ImportType, IncludeStatement, LazyOp, Literal, MatchBranch, MethodName,
-        ParseTree, Purity, Reassignment, ReassignmentTarget, ReturnStatement, Scrutinee,
-        StorageDeclaration, StorageField, StructDeclaration, StructExpressionField, StructField,
-        StructScrutineeField, Supertrait, TraitConstraint, TraitDeclaration, TraitFn, TreeType,
-        TypeArgument, TypeInfo, TypeParameter, UseStatement, VariableDeclaration, Visibility,
-        WhileLoop,
+        AstNodeContent, CallPath, CodeBlock, ConstantDeclaration, Declaration, EnumDeclaration,
+        EnumVariant, Expression, FunctionDeclaration, FunctionParameter, ImplSelf, ImplTrait,
+        ImportType, IncludeStatement, LazyOp, Literal, MatchBranch, MethodName, ParseTree, Purity,
+        Reassignment, ReassignmentTarget, ReturnStatement, Scrutinee, StorageDeclaration,
+        StorageField, StructDeclaration, StructExpressionField, StructField, StructScrutineeField,
+        Supertrait, TraitDeclaration, TraitFn, TreeType, TypeInfo, UseStatement,
+        VariableDeclaration, Visibility, WhileLoop,
     },
     std::{
         collections::HashMap,
@@ -101,16 +102,6 @@ pub enum ConvertParseTreeError {
     GenericsNotSupportedHere { span: Span },
     #[error("fully qualified paths are not supported here")]
     FullyQualifiedPathsNotSupportedHere { span: Span },
-    #[error("__size_of does not take arguments")]
-    SizeOfTooManyArgs { span: Span },
-    #[error("__size_of requires exactly one generic argument")]
-    SizeOfOneGenericArg { span: Span },
-    #[error("__is_reference_type does not take arguments")]
-    IsReferenceTypeTooManyArgs { span: Span },
-    #[error("__is_reference_type requires exactly one generic argument")]
-    IsReferenceTypeOneGenericArg { span: Span },
-    #[error("__size_of_val requires exactly one argument")]
-    SizeOfValOneArg { span: Span },
     #[error("tuple index out of range")]
     TupleIndexOutOfRange { span: Span },
     #[error("shift-left expressions are not implemented")]
@@ -133,9 +124,9 @@ pub enum ConvertParseTreeError {
     QualifiedPathRootsNotImplemented { span: Span },
     #[error("char literals are not implemented")]
     CharLiteralsNotImplemented { span: Span },
-    #[error("hex literals must have either 2 or 64 digits")]
+    #[error("hex literals must have 1..16 or 64 digits")]
     HexLiteralLength { span: Span },
-    #[error("binary literals must have either 8 or 258 digits")]
+    #[error("binary literals must have either 1..64 or 256 digits")]
     BinaryLiteralLength { span: Span },
     #[error("u8 literal out of range")]
     U8LiteralOutOfRange { span: Span },
@@ -181,10 +172,16 @@ pub enum ConvertParseTreeError {
     GetStorageKeyTooManyArgs { span: Span },
     #[error("recursive types are not supported")]
     RecursiveType { span: Span },
+    #[error("enum variant \"{name}\" already declared")]
+    DuplicateEnumVariant { name: Ident, span: Span },
+    #[error("storage field \"{name}\" already declared")]
+    DuplicateStorageField { name: Ident, span: Span },
+    #[error("struct field \"{name}\" already declared")]
+    DuplicateStructField { name: Ident, span: Span },
 }
 
-impl ConvertParseTreeError {
-    pub fn span(&self) -> Span {
+impl Spanned for ConvertParseTreeError {
+    fn span(&self) -> Span {
         match self {
             ConvertParseTreeError::PubUseNotSupported { span } => span.clone(),
             ConvertParseTreeError::ReturnOutsideOfBlock { span } => span.clone(),
@@ -192,11 +189,6 @@ impl ConvertParseTreeError {
             ConvertParseTreeError::FunctionArbitraryExpression { span } => span.clone(),
             ConvertParseTreeError::GenericsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::FullyQualifiedPathsNotSupportedHere { span } => span.clone(),
-            ConvertParseTreeError::SizeOfTooManyArgs { span } => span.clone(),
-            ConvertParseTreeError::SizeOfOneGenericArg { span } => span.clone(),
-            ConvertParseTreeError::IsReferenceTypeTooManyArgs { span } => span.clone(),
-            ConvertParseTreeError::IsReferenceTypeOneGenericArg { span } => span.clone(),
-            ConvertParseTreeError::SizeOfValOneArg { span } => span.clone(),
             ConvertParseTreeError::TupleIndexOutOfRange { span } => span.clone(),
             ConvertParseTreeError::ShlNotImplemented { span } => span.clone(),
             ConvertParseTreeError::ShrNotImplemented { span } => span.clone(),
@@ -232,6 +224,9 @@ impl ConvertParseTreeError {
             ConvertParseTreeError::ConstrainedNonExistentType { span, .. } => span.clone(),
             ConvertParseTreeError::GetStorageKeyTooManyArgs { span, .. } => span.clone(),
             ConvertParseTreeError::RecursiveType { span } => span.clone(),
+            ConvertParseTreeError::DuplicateEnumVariant { span, .. } => span.clone(),
+            ConvertParseTreeError::DuplicateStorageField { span, .. } => span.clone(),
+            ConvertParseTreeError::DuplicateStructField { span, .. } => span.clone(),
         }
     }
 }
@@ -476,6 +471,7 @@ fn item_struct_to_struct_declaration(
     ec: &mut ErrorContext,
     item_struct: ItemStruct,
 ) -> Result<StructDeclaration, ErrorEmitted> {
+    let mut errors = Vec::new();
     let span = item_struct.span();
     let fields = item_struct
         .fields
@@ -483,11 +479,28 @@ fn item_struct_to_struct_declaration(
         .into_iter()
         .map(|type_field| type_field_to_struct_field(ec, type_field))
         .collect::<Result<Vec<_>, _>>()?;
+
     if fields.iter().any(
-        |field| matches!(&field.r#type, TypeInfo::Custom { name, ..} if name == &item_struct.name),
+        |field| matches!(&field.type_info, TypeInfo::Custom { name, ..} if name == &item_struct.name),
     ) {
-        return Err(ec.error(ConvertParseTreeError::RecursiveType { span }));
+        errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
+
+    // Make sure each struct field is declared once
+    let mut names_of_fields = std::collections::HashSet::new();
+    fields.iter().for_each(|v| {
+        if !names_of_fields.insert(v.name.clone()) {
+            errors.push(ConvertParseTreeError::DuplicateStructField {
+                name: v.name.clone(),
+                span: v.name.span(),
+            });
+        }
+    });
+
+    if let Some(errors) = ec.errors(errors) {
+        return Err(errors);
+    }
+
     let struct_declaration = StructDeclaration {
         name: item_struct.name,
         fields,
@@ -506,6 +519,7 @@ fn item_enum_to_enum_declaration(
     ec: &mut ErrorContext,
     item_enum: ItemEnum,
 ) -> Result<EnumDeclaration, ErrorEmitted> {
+    let mut errors = Vec::new();
     let span = item_enum.span();
     let variants = item_enum
         .fields
@@ -514,11 +528,28 @@ fn item_enum_to_enum_declaration(
         .enumerate()
         .map(|(tag, type_field)| type_field_to_enum_variant(ec, type_field, tag))
         .collect::<Result<Vec<_>, _>>()?;
+
     if variants.iter().any(|variant| {
-       matches!(&variant.r#type, TypeInfo::Custom { name, ..} if name == &item_enum.name)
+       matches!(&variant.type_info, TypeInfo::Custom { name, ..} if name == &item_enum.name)
     }) {
-        return Err(ec.error(ConvertParseTreeError::RecursiveType { span }));
+        errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
+
+    // Make sure each enum variant is declared once
+    let mut names_of_variants = std::collections::HashSet::new();
+    variants.iter().for_each(|v| {
+        if !names_of_variants.insert(v.name.clone()) {
+            errors.push(ConvertParseTreeError::DuplicateEnumVariant {
+                name: v.name.clone(),
+                span: v.name.span(),
+            });
+        }
+    });
+
+    if let Some(errors) = ec.errors(errors) {
+        return Err(errors);
+    }
+
     let enum_declaration = EnumDeclaration {
         name: item_enum.name,
         type_parameters: generic_params_opt_to_type_parameters(
@@ -587,7 +618,7 @@ fn get_attributed_purity(
                     _otherwise => {
                         return Err(ec.error(ConvertParseTreeError::InvalidAttributeArgument {
                             attribute: "storage".to_owned(),
-                            span: arg.span().clone(),
+                            span: arg.span(),
                         }));
                     }
                 }
@@ -670,7 +701,7 @@ fn item_impl_to_declaration(
                 trait_name: path_type_to_call_path(ec, path_type)?,
                 type_implementing_for,
                 type_implementing_for_span,
-                type_arguments: type_parameters,
+                type_parameters,
                 functions,
                 block_span,
             };
@@ -743,18 +774,31 @@ fn item_storage_to_storage_declaration(
     ec: &mut ErrorContext,
     item_storage: ItemStorage,
 ) -> Result<StorageDeclaration, ErrorEmitted> {
+    let mut errors = Vec::new();
     let span = item_storage.span();
-    let storage_declaration = StorageDeclaration {
-        span,
-        fields: {
-            item_storage
-                .fields
-                .into_inner()
-                .into_iter()
-                .map(|storage_field| storage_field_to_storage_field(ec, storage_field))
-                .collect::<Result<_, _>>()?
-        },
-    };
+    let fields: Vec<StorageField> = item_storage
+        .fields
+        .into_inner()
+        .into_iter()
+        .map(|storage_field| storage_field_to_storage_field(ec, storage_field))
+        .collect::<Result<_, _>>()?;
+
+    // Make sure each storage field is declared once
+    let mut names_of_fields = std::collections::HashSet::new();
+    fields.iter().for_each(|v| {
+        if !names_of_fields.insert(v.name.clone()) {
+            errors.push(ConvertParseTreeError::DuplicateStorageField {
+                name: v.name.clone(),
+                span: v.name.span(),
+            });
+        }
+    });
+
+    if let Some(errors) = ec.errors(errors) {
+        return Err(errors);
+    }
+
+    let storage_declaration = StorageDeclaration { span, fields };
     Ok(storage_declaration)
 }
 
@@ -766,7 +810,7 @@ fn type_field_to_struct_field(
     let type_span = type_field.ty.span();
     let struct_field = StructField {
         name: type_field.name,
-        r#type: ty_to_type_info(ec, type_field.ty)?,
+        type_info: ty_to_type_info(ec, type_field.ty)?,
         span,
         type_span,
     };
@@ -852,7 +896,7 @@ fn type_field_to_enum_variant(
     let span = type_field.span();
     let enum_variant = EnumVariant {
         name: type_field.name,
-        r#type: ty_to_type_info(ec, type_field.ty)?,
+        type_info: ty_to_type_info(ec, type_field.ty)?,
         tag,
         span,
     };
@@ -894,10 +938,12 @@ fn fn_args_to_function_parameters(
             .collect::<Result<_, _>>()?,
         FnArgs::NonStatic {
             self_token,
+            mutable_self,
             args_opt,
         } => {
             let mut function_parameters = vec![FunctionParameter {
                 name: Ident::new(self_token.span()),
+                is_mutable: mutable_self.is_some(),
                 type_id: insert_type(TypeInfo::SelfType),
                 type_span: self_token.span(),
             }];
@@ -1354,7 +1400,7 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             };
             match method_type_opt {
                 Some(type_name) => {
-                    let type_name_span = type_name.span().clone();
+                    let type_name_span = type_name.span();
                     let type_name = match type_name_to_type_info_opt(&type_name) {
                         Some(type_info) => type_info,
                         None => TypeInfo::Custom {
@@ -1381,110 +1427,38 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                     }
                 }
                 None => {
-                    if call_path.prefixes.is_empty()
-                        && !call_path.is_absolute
-                        && Intrinsic::try_from_str(call_path.suffix.as_str())
-                            == Some(Intrinsic::SizeOf)
-                    {
-                        if !arguments.is_empty() {
-                            let error = ConvertParseTreeError::SizeOfTooManyArgs { span };
-                            return Err(ec.error(error));
+                    let type_arguments = match generics_opt {
+                        Some((_double_colon_token, generic_args)) => {
+                            generic_args_to_type_arguments(ec, generic_args)?
                         }
-                        let ty = match {
-                            generics_opt.and_then(|(_double_colon_token, generic_args)| {
-                                iter_to_array(generic_args.parameters.into_inner())
-                            })
-                        } {
-                            Some([ty]) => ty,
-                            None => {
-                                let error = ConvertParseTreeError::SizeOfOneGenericArg { span };
-                                return Err(ec.error(error));
-                            }
-                        };
-                        let type_span = ty.span();
-                        let type_name = ty_to_type_info(ec, ty)?;
-                        Expression::BuiltinGetTypeProperty {
-                            builtin: BuiltinProperty::SizeOfType,
-                            type_name,
-                            type_span,
-                            span,
-                        }
-                    } else if call_path.prefixes.is_empty()
-                        && !call_path.is_absolute
-                        && Intrinsic::try_from_str(call_path.suffix.as_str())
-                            == Some(Intrinsic::GetStorageKey)
-                    {
-                        if !arguments.is_empty() {
-                            let error = ConvertParseTreeError::GetStorageKeyTooManyArgs { span };
-                            return Err(ec.error(error));
-                        }
-                        if generics_opt.is_some() {
-                            let error = ConvertParseTreeError::GenericsNotSupportedHere { span };
-                            return Err(ec.error(error));
-                        }
-                        Expression::BuiltinGetStorageKey { span }
-                    } else if call_path.prefixes.is_empty()
-                        && !call_path.is_absolute
-                        && Intrinsic::try_from_str(call_path.suffix.as_str())
-                            == Some(Intrinsic::IsReferenceType)
-                    {
-                        if !arguments.is_empty() {
-                            let error = ConvertParseTreeError::IsReferenceTypeTooManyArgs { span };
-                            return Err(ec.error(error));
-                        }
-                        let ty = match {
-                            generics_opt.and_then(|(_double_colon_token, generic_args)| {
-                                iter_to_array(generic_args.parameters.into_inner())
-                            })
-                        } {
-                            Some([ty]) => ty,
-                            None => {
-                                let error =
-                                    ConvertParseTreeError::IsReferenceTypeOneGenericArg { span };
-                                return Err(ec.error(error));
-                            }
-                        };
-                        let type_span = ty.span();
-                        let type_name = ty_to_type_info(ec, ty)?;
-                        Expression::BuiltinGetTypeProperty {
-                            builtin: BuiltinProperty::IsRefType,
-                            type_name,
-                            type_span,
-                            span,
-                        }
-                    } else if call_path.prefixes.is_empty()
-                        && !call_path.is_absolute
-                        && Intrinsic::try_from_str(call_path.suffix.as_str())
-                            == Some(Intrinsic::SizeOfVal)
-                    {
-                        let exp = match <[_; 1]>::try_from(arguments) {
-                            Ok([exp]) => Box::new(exp),
-                            Err(..) => {
-                                let error = ConvertParseTreeError::SizeOfValOneArg { span };
-                                return Err(ec.error(error));
-                            }
-                        };
-                        Expression::SizeOfVal { exp, span }
-                    } else {
-                        let type_arguments = match generics_opt {
-                            Some((_double_colon_token, generic_args)) => {
-                                generic_args_to_type_arguments(ec, generic_args)?
-                            }
-                            None => Vec::new(),
-                        };
-                        if call_path.prefixes.is_empty() {
-                            Expression::FunctionApplication {
-                                name: call_path,
+                        None => Vec::new(),
+                    };
+                    match Intrinsic::try_from_str(call_path.suffix.as_str()) {
+                        Some(intrinsic)
+                            if call_path.prefixes.is_empty() && !call_path.is_absolute =>
+                        {
+                            Expression::IntrinsicFunction {
+                                kind: intrinsic,
                                 arguments,
                                 type_arguments,
                                 span,
                             }
-                        } else {
-                            Expression::DelineatedPath {
-                                call_path,
-                                args: arguments,
-                                type_arguments,
-                                span,
+                        }
+                        _ => {
+                            if call_path.prefixes.is_empty() {
+                                Expression::FunctionApplication {
+                                    name: call_path,
+                                    arguments,
+                                    type_arguments,
+                                    span,
+                                }
+                            } else {
+                                Expression::DelineatedPath {
+                                    call_path,
+                                    args: arguments,
+                                    type_arguments,
+                                    span,
+                                }
                             }
                         }
                     }
@@ -1797,8 +1771,11 @@ fn storage_field_to_storage_field(
 ) -> Result<StorageField, ErrorEmitted> {
     let storage_field = StorageField {
         name: storage_field.name,
-        r#type: ty_to_type_info(ec, storage_field.ty)?,
-        //initializer: expr_to_expression(storage_field.expr),
+        type_info: ty_to_type_info(ec, storage_field.ty)?,
+        initializer: storage_field
+            .initializer
+            .map(|initializer| expr_to_expression(ec, initializer.1))
+            .transpose()?,
     };
     Ok(storage_field)
 }
@@ -1859,6 +1836,7 @@ fn fn_arg_to_function_parameter(
     };
     let function_parameter = FunctionParameter {
         name,
+        is_mutable: false,
         type_id: insert_type(ty_to_type_info(ec, fn_arg.ty)?),
         type_span,
     };
@@ -2202,7 +2180,7 @@ fn literal_to_literal(
                     if let Some(hex_digits) = orig_str.strip_prefix("0x") {
                         let num_digits = hex_digits.chars().filter(|c| *c != '_').count();
                         match num_digits {
-                            2 => Literal::Byte(u8::try_from(parsed).unwrap()),
+                            1..=16 => Literal::U64(u64::try_from(parsed).unwrap()),
                             64 => {
                                 let bytes = parsed.to_bytes_be();
                                 let mut full_bytes = [0u8; 32];
@@ -2217,7 +2195,7 @@ fn literal_to_literal(
                     } else if let Some(bin_digits) = orig_str.strip_prefix("0b") {
                         let num_digits = bin_digits.chars().filter(|c| *c != '_').count();
                         match num_digits {
-                            8 => Literal::Byte(u8::try_from(parsed).unwrap()),
+                            1..=64 => Literal::U64(u64::try_from(parsed).unwrap()),
                             256 => {
                                 let bytes = parsed.to_bytes_be();
                                 let mut full_bytes = [0u8; 32];
@@ -2418,7 +2396,7 @@ fn asm_block_to_asm_expression(
             let asm_register = AsmRegister {
                 name: asm_final_expr.register.as_str().to_owned(),
             };
-            let returns = Some((asm_register, asm_final_expr.register.span().clone()));
+            let returns = Some((asm_register, asm_final_expr.register.span()));
             let return_type = match asm_final_expr.ty_opt {
                 Some((_colon_token, ty)) => ty_to_type_info(ec, ty)?,
                 None => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
@@ -2486,14 +2464,12 @@ fn statement_let_to_ast_nodes(
         span: Span,
     ) -> Result<Vec<AstNode>, ErrorEmitted> {
         let ast_nodes = match pattern {
-            Pattern::Wildcard { .. } => {
-                let ast_node = AstNode {
-                    content: AstNodeContent::Expression(expression),
-                    span,
+            Pattern::Wildcard { .. } | Pattern::Var { .. } => {
+                let (mutable, name) = match pattern {
+                    Pattern::Var { mutable, name } => (mutable, name),
+                    Pattern::Wildcard { .. } => (None, Ident::new_no_span("_")),
+                    _ => unreachable!(),
                 };
-                vec![ast_node]
-            }
-            Pattern::Var { mutable, name } => {
                 let (type_ascription, type_ascription_span) = match ty_opt {
                     Some(ty) => {
                         let type_ascription_span = ty.span();
@@ -2637,10 +2613,10 @@ fn asm_register_declaration_to_asm_register_declaration(
 ) -> Result<AsmRegisterDeclaration, ErrorEmitted> {
     Ok(AsmRegisterDeclaration {
         name: asm_register_declaration.register,
-        initializer: match asm_register_declaration.value_opt {
-            None => None,
-            Some((_colon_token, expr)) => Some(expr_to_expression(ec, *expr)?),
-        },
+        initializer: asm_register_declaration
+            .value_opt
+            .map(|(_colon_token, expr)| expr_to_expression(ec, *expr))
+            .transpose()?,
     })
 }
 
@@ -2692,17 +2668,42 @@ fn pattern_to_scrutinee(
                 span,
             }
         }
-        Pattern::Struct { path, fields } => Scrutinee::StructScrutinee {
-            struct_name: path_expr_to_ident(ec, path)?,
-            fields: {
-                fields
-                    .into_inner()
-                    .into_iter()
-                    .map(|field| pattern_struct_field_to_struct_scrutinee_field(ec, field))
-                    .collect::<Result<_, _>>()?
-            },
-            span,
-        },
+        Pattern::Struct { path, fields } => {
+            let mut errors = Vec::new();
+            let fields = fields.into_inner();
+
+            // Make sure each struct field is declared once
+            let mut names_of_fields = std::collections::HashSet::new();
+            fields.clone().into_iter().for_each(|v| {
+                if let PatternStructField::Field {
+                    field_name,
+                    pattern_opt: _,
+                } = v
+                {
+                    if !names_of_fields.insert(field_name.clone()) {
+                        errors.push(ConvertParseTreeError::DuplicateStructField {
+                            name: field_name.clone(),
+                            span: field_name.span(),
+                        });
+                    }
+                }
+            });
+
+            if let Some(errors) = ec.errors(errors) {
+                return Err(errors);
+            }
+
+            let scrutinee_fields = fields
+                .into_iter()
+                .map(|field| pattern_struct_field_to_struct_scrutinee_field(ec, field))
+                .collect::<Result<_, _>>()?;
+
+            Scrutinee::StructScrutinee {
+                struct_name: path_expr_to_ident(ec, path)?,
+                fields: { scrutinee_fields },
+                span,
+            }
+        }
         Pattern::Tuple(pat_tuple) => Scrutinee::Tuple {
             elems: {
                 pat_tuple
@@ -2774,15 +2775,25 @@ fn pattern_struct_field_to_struct_scrutinee_field(
     pattern_struct_field: PatternStructField,
 ) -> Result<StructScrutineeField, ErrorEmitted> {
     let span = pattern_struct_field.span();
-    let struct_scrutinee_field = StructScrutineeField {
-        field: pattern_struct_field.field_name,
-        scrutinee: match pattern_struct_field.pattern_opt {
-            Some((_colon_token, pattern)) => Some(pattern_to_scrutinee(ec, *pattern)?),
-            None => None,
-        },
-        span,
-    };
-    Ok(struct_scrutinee_field)
+    match pattern_struct_field {
+        PatternStructField::Rest { token } => {
+            let struct_scrutinee_field = StructScrutineeField::Rest { span: token.span() };
+            Ok(struct_scrutinee_field)
+        }
+        PatternStructField::Field {
+            field_name,
+            pattern_opt,
+        } => {
+            let struct_scrutinee_field = StructScrutineeField::Field {
+                field: field_name,
+                scrutinee: pattern_opt
+                    .map(|(_colon_token, pattern)| pattern_to_scrutinee(ec, *pattern))
+                    .transpose()?,
+                span,
+            };
+            Ok(struct_scrutinee_field)
+        }
+    }
 }
 
 fn assignable_to_expression(
@@ -2797,11 +2808,36 @@ fn assignable_to_expression(
             index: Box::new(expr_to_expression(ec, *arg.into_inner())?),
             span,
         },
-        Assignable::FieldProjection { target, name, .. } => Expression::SubfieldExpression {
-            prefix: Box::new(assignable_to_expression(ec, *target)?),
-            field_to_access: name,
-            span,
-        },
+        Assignable::FieldProjection { target, name, .. } => {
+            let mut idents = vec![&name];
+            let mut base = &*target;
+            let storage_access_field_names_opt = loop {
+                match base {
+                    Assignable::FieldProjection { target, name, .. } => {
+                        idents.push(name);
+                        base = target;
+                    }
+                    Assignable::Var(name) => {
+                        if name.as_str() == "storage" {
+                            break Some(idents);
+                        }
+                        break None;
+                    }
+                    _ => break None,
+                }
+            };
+            match storage_access_field_names_opt {
+                Some(field_names) => {
+                    let field_names = field_names.into_iter().rev().cloned().collect();
+                    Expression::StorageAccess { field_names, span }
+                }
+                None => Expression::SubfieldExpression {
+                    prefix: Box::new(assignable_to_expression(ec, *target)?),
+                    field_to_access: name,
+                    span,
+                },
+            }
+        }
         Assignable::TupleFieldProjection {
             target,
             field,

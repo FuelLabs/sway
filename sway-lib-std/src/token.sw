@@ -1,5 +1,5 @@
+//! Functionality for performing common operations with tokens.
 library token;
-//! Functionality for performing common operations on tokens.
 
 use ::address::Address;
 use ::contract_id::ContractId;
@@ -8,24 +8,32 @@ use ::tx::*;
 use ::context::call_frames::contract_id;
 use ::identity::Identity;
 
-/// Mint `amount` coins of the current contract's `asset_id` and transfer them to `destination` by calling either force_transfer_to_contract() or transfer_to_output(), depending on the type of `Identity`.
-pub fn mint_to(amount: u64, recipient: Identity) {
+/// Mint `amount` coins of the current contract's `asset_id` and transfer them
+/// to `to` by calling either force_transfer_to_contract() or
+/// transfer_to_output(), depending on the type of `Identity`.
+pub fn mint_to(amount: u64, to: Identity) {
     mint(amount);
-    transfer_to(amount, recipient);
+    transfer(amount, contract_id(), to);
 }
 
-/// Mint `amount` coins of the current contract's `asset_id` and send them (!!! UNCONDITIONALLY !!!) to the contract at `destination`.
-/// This will allow the transfer of coins even if there is no way to retrieve them !!!
-/// Use of this function can lead to irretrievable loss of coins if not used with caution.
-pub fn mint_to_contract(amount: u64, destination: ContractId) {
+/// Mint `amount` coins of the current contract's `asset_id` and send them
+/// UNCONDITIONALLY to the contract at `to`.
+///
+/// CAUTION !!!
+///
+/// This will transfer coins to a contract even with no way to retrieve them
+/// (i.e: no withdrawal functionality on the receiving contract), possibly leading to
+/// the PERMANENT LOSS OF COINS if not used with care.
+pub fn mint_to_contract(amount: u64, to: ContractId) {
     mint(amount);
-    force_transfer_to_contract(amount, contract_id(), destination);
+    force_transfer_to_contract(amount, contract_id(), to);
 }
 
-/// Mint `amount` coins of the current contract's `asset_id` and send them to the Address `recipient`.
-pub fn mint_to_address(amount: u64, recipient: Address) {
+/// Mint `amount` coins of the current contract's `asset_id` and send them to
+/// the Address `to`.
+pub fn mint_to_address(amount: u64, to: Address) {
     mint(amount);
-    transfer_to_output(amount, contract_id(), recipient);
+    transfer_to_output(amount, contract_id(), to);
 }
 
 /// Mint `amount` coins of the current contract's `asset_id`.
@@ -42,29 +50,43 @@ pub fn burn(amount: u64) {
     }
 }
 
-/// Transfer `amount` coins of the current contract's `asset_id` and send them to `destination` by calling either force_transfer_to_contract() or transfer_to_output(), depending on the type of `Identity`.
-pub fn transfer_to(amount: u64, recipient: Identity) {
-    match recipient {
+/// Transfer `amount` coins of the current contract's `asset_id` and send them
+/// to `to` by calling either force_transfer_to_contract() or
+/// transfer_to_output(), depending on the type of `Identity`.
+///
+/// CAUTION !!!
+///
+/// This may transfer coins to a contract even with no way to retrieve them
+/// (i.e. no withdrawal functionality on receiving contract), possibly leading
+/// to the PERMANENT LOSS OF COINS if not used with care.
+pub fn transfer(amount: u64, asset_id: ContractId, to: Identity) {
+    match to {
         Identity::Address(addr) => {
-            transfer_to_output(amount, contract_id(), addr);
+            transfer_to_output(amount, asset_id, addr);
         },
         Identity::ContractId(id) => {
-            force_transfer_to_contract(amount, contract_id(), id);
+            force_transfer_to_contract(amount, asset_id, id);
         },
     }
 }
 
-/// !!! UNCONDITIONAL transfer of `amount` coins of type `asset_id` to contract at `destination`.
-/// This will allow the transfer of coins even if there is no way to retrieve them !!!
-/// Use of this function can lead to irretrievable loss of coins if not used with caution.
-pub fn force_transfer_to_contract(amount: u64, asset_id: ContractId, destination: ContractId) {
-    asm(r1: amount, r2: asset_id.value, r3: destination.value) {
+/// UNCONDITIONAL transfer of `amount` coins of type `asset_id` to
+/// the contract at `to`.
+///
+/// CAUTION !!!
+///
+/// This will transfer coins to a contract even with no way to retrieve them
+/// (i.e. no withdrawal functionality on receiving contract), possibly leading
+/// to the PERMANENT LOSS OF COINS if not used with care.
+pub fn force_transfer_to_contract(amount: u64, asset_id: ContractId, to: ContractId) {
+    asm(r1: amount, r2: asset_id.value, r3: to.value) {
         tr r3 r1 r2;
     }
 }
 
-/// Transfer `amount` coins of tof type `asset_id` and send them to the address `recipient`.
-pub fn transfer_to_output(amount: u64, asset_id: ContractId, recipient: Address) {
+/// Transfer `amount` coins of type `asset_id` and send them to
+/// the address `to`.
+pub fn transfer_to_output(amount: u64, asset_id: ContractId, to: Address) {
     const OUTPUT_VARIABLE_TYPE: u8 = 4;
 
     // maintain a manual index as we only have `while` loops in sway atm:
@@ -84,13 +106,13 @@ pub fn transfer_to_output(amount: u64, asset_id: ContractId, recipient: Address)
             index = outputs_count; // break early and use the output we found
             // use `break;` when it's implemented #587
         };
-        index = index + 1;
+        index += 1;
     }
 
     if !output_found {
         revert(0);
     } else {
-        asm(r1: recipient.value, r2: output_index, r3: amount, r4: asset_id.value) {
+        asm(r1: to.value, r2: output_index, r3: amount, r4: asset_id.value) {
             tro r1 r2 r3 r4;
         };
     }

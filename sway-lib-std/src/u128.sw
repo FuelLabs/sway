@@ -12,6 +12,10 @@ pub struct U128 {
     lower: u64,
 }
 
+pub enum U128Error {
+    LossOfPrecision: (),
+}
+
 pub trait From {
     /// Function for creating U128 from its u64 components.
     pub fn from(upper: u64, lower: u64) -> Self;
@@ -24,7 +28,7 @@ pub trait From {
 impl From for U128 {
     pub fn from(upper: u64, lower: u64) -> U128 {
         U128 {
-            upper, lower, 
+            upper, lower,
         }
     }
 }
@@ -102,14 +106,15 @@ impl U128 {
         }
     }
 
-    /// Downcast to `u64`. Err if precision would be lost, Ok otherwise.
-    pub fn to_u64(self) -> Result<u64, ()> {
+    /// Safely downcast to `u64` without loss of precision.
+    /// Returns Err if the number > ~u64::max()
+    pub fn as_u64(self) -> Result<u64, U128Error> {
         match self.upper {
             0 => {
                 Result::Ok(self.lower)
             },
             _ => {
-                Result::Err(())
+                Result::Err(U128Error::LossOfPrecision)
             },
         }
     }
@@ -239,13 +244,13 @@ impl core::ops::Subtract for U128 {
         // If necessary, borrow and carry for lower subtraction
         if self.lower < other.lower {
             lower = ~u64::max() - (other.lower - self.lower - 1);
-            upper = upper - 1;
+            upper -= 1;
         } else {
             lower = self.lower - other.lower;
         }
 
         U128 {
-            upper, lower, 
+            upper, lower,
         }
     }
 }
@@ -265,12 +270,12 @@ impl core::ops::Multiply for U128 {
         while i > 0 {
             // Workaround for not having break keyword
             let shift = i - 1;
-            total = total << 1;
+            total <<= 1;
             if (other & (one << shift)) != zero {
                 total = total + self;
             }
 
-            i = i - 1;
+            i -= 1;
         }
 
         total
@@ -295,16 +300,16 @@ impl core::ops::Divide for U128 {
         while i > 0 {
             // Workaround for not having break keyword
             let shift = i - 1;
-            quotient = quotient << 1;
-            remainder = remainder << 1;
+            quotient <<= 1;
+            remainder <<= 1;
             remainder = remainder | ((self & (one << shift)) >> shift);
             // TODO use >= once OrdEq can be implemented.
             if remainder > divisor || remainder == divisor {
-                remainder = remainder - divisor;
+                remainder -= divisor;
                 quotient = quotient | one;
             }
 
-            i = i - 1;
+            i -= 1;
         }
 
         quotient

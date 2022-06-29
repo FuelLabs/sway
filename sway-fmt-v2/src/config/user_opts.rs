@@ -80,6 +80,7 @@ pub struct StructuresOptions {
     pub enum_variant_align_threshold: Option<usize>,
     pub struct_field_align_threshold: Option<usize>,
     pub struct_lit_single_line: Option<bool>,
+    pub storage_field_align_threshold: Option<usize>,
 }
 /// See parent struct [Comments].
 #[derive(Serialize, Deserialize, Debug, Copy, Clone)]

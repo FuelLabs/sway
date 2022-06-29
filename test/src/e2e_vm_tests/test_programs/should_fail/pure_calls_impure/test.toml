@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: impure_function();
+# nextln: $()Storage attribute access mismatch. Try giving the surrounding function more access by adding "#[storage(write)]" to the function declaration.

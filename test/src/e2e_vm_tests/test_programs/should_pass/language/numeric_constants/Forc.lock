@@ -1,11 +1,14 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-1D28A47FA12C061E'
 dependencies = []
 
 [[package]]
 name = 'numeric_constants'
+source = 'root'
 dependencies = ['std']
 
 [[package]]
 name = 'std'
+source = 'path+from-root-1D28A47FA12C061E'
 dependencies = ['core']

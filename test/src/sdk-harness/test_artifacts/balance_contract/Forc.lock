@@ -1,11 +1,14 @@
 [[package]]
 name = 'balance_contract'
+source = 'root'
 dependencies = ['std']
 
 [[package]]
 name = 'core'
+source = 'path+from-root-448CB6CD985B149D'
 dependencies = []
 
 [[package]]
 name = 'std'
+source = 'path+from-root-448CB6CD985B149D'
 dependencies = ['core']

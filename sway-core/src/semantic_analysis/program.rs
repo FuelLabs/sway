@@ -1,38 +1,26 @@
-use super::{TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration};
+use super::{
+    TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration, TypedImplTrait,
+    TypedStorageDeclaration,
+};
 use crate::{
     error::*,
     parse_tree::{ParseProgram, Purity, TreeType},
     semantic_analysis::{
         namespace::{self, Namespace},
-        TypedModule,
+        TypeCheckContext, TypedModule,
     },
     type_engine::*,
+    types::ToJsonAbi,
 };
-use sway_types::{span::Span, Ident};
+use fuel_tx::StorageSlot;
+use fuels_types::JsonABI;
+use sway_types::{span::Span, Ident, Spanned};
 
 #[derive(Clone, Debug)]
 pub struct TypedProgram {
     pub kind: TypedProgramKind,
     pub root: TypedModule,
-}
-
-#[derive(Clone, Debug)]
-pub enum TypedProgramKind {
-    Contract {
-        abi_entries: Vec<TypedFunctionDeclaration>,
-        declarations: Vec<TypedDeclaration>,
-    },
-    Library {
-        name: Ident,
-    },
-    Predicate {
-        main_function: TypedFunctionDeclaration,
-        declarations: Vec<TypedDeclaration>,
-    },
-    Script {
-        main_function: TypedFunctionDeclaration,
-        declarations: Vec<TypedDeclaration>,
-    },
+    pub storage_slots: Vec<StorageSlot>,
 }
 
 impl TypedProgram {
@@ -45,12 +33,17 @@ impl TypedProgram {
         initial_namespace: namespace::Module,
     ) -> CompileResult<Self> {
         let mut namespace = Namespace::init_root(initial_namespace);
+        let ctx = TypeCheckContext::from_root(&mut namespace);
         let ParseProgram { root, kind } = parsed;
         let mod_span = root.tree.span.clone();
-        let mod_res = TypedModule::type_check(root, &mut namespace);
+        let mod_res = TypedModule::type_check(ctx, root);
         mod_res.flat_map(|root| {
             let kind_res = Self::validate_root(&root, kind, mod_span);
-            kind_res.map(|kind| Self { kind, root })
+            kind_res.map(|kind| Self {
+                kind,
+                root,
+                storage_slots: vec![],
+            })
         })
     }
 
@@ -62,9 +55,28 @@ impl TypedProgram {
     ) -> CompileResult<TypedProgramKind> {
         // Extract program-kind-specific properties from the root nodes.
         let mut errors = vec![];
+        let mut warnings = vec![];
+
+        // Validate all submodules
+        for (_, submodule) in &root.submodules {
+            check!(
+                Self::validate_root(
+                    &submodule.module,
+                    TreeType::Library {
+                        name: submodule.library_name.clone(),
+                    },
+                    submodule.library_name.span().clone(),
+                ),
+                continue,
+                warnings,
+                errors
+            );
+        }
+
         let mut mains = Vec::new();
         let mut declarations = Vec::new();
         let mut abi_entries = Vec::new();
+        let mut fn_declarations = std::collections::HashSet::new();
         for node in &root.all_nodes {
             match &node.content {
                 TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(func))
@@ -74,20 +86,55 @@ impl TypedProgram {
                 }
                 // ABI entries are all functions declared in impl_traits on the contract type
                 // itself.
-                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait {
+                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(TypedImplTrait {
                     methods,
-                    type_implementing_for: TypeInfo::Contract,
+                    implementing_for_type_id,
                     ..
-                }) => abi_entries.extend(methods.clone()),
+                })) if matches!(
+                    look_up_type_id(*implementing_for_type_id),
+                    TypeInfo::Contract
+                ) =>
+                {
+                    abi_entries.extend(methods.clone())
+                }
                 // XXX we're excluding the above ABI methods, is that OK?
-                TypedAstNodeContent::Declaration(decl) => declarations.push(decl.clone()),
+                TypedAstNodeContent::Declaration(decl) => {
+                    // Variable and constant declarations don't need a duplicate check.
+                    // Type declarations are checked elsewhere. That leaves functions.
+                    if let TypedDeclaration::FunctionDeclaration(func) = &decl {
+                        let name = func.name.clone();
+                        if !fn_declarations.insert(name.clone()) {
+                            errors.push(CompileError::MultipleDefinitionsOfFunction { name });
+                        }
+                    }
+                    declarations.push(decl.clone())
+                }
                 _ => (),
             };
         }
 
-        // impure functions are disallowed in non-contracts
+        // Some checks that are specific to non-contracts
         if kind != TreeType::Contract {
-            errors.extend(disallow_impure_functions(&declarations, &mains));
+            // impure functions are disallowed in non-contracts
+            if !matches!(kind, TreeType::Library { .. }) {
+                errors.extend(disallow_impure_functions(&declarations, &mains));
+            }
+
+            // `storage` declarations are not allowed in non-contracts
+            let storage_decl = declarations
+                .iter()
+                .find(|decl| matches!(decl, TypedDeclaration::StorageDeclaration(_)));
+
+            if let Some(TypedDeclaration::StorageDeclaration(TypedStorageDeclaration {
+                span,
+                ..
+            })) = storage_decl
+            {
+                errors.push(CompileError::StorageDeclarationInNonContract {
+                    program_kind: format!("{kind}"),
+                    span: span.clone(),
+                });
+            }
         }
 
         // Perform other validation based on the tree type.
@@ -104,9 +151,9 @@ impl TypedProgram {
                     return err(vec![], errors);
                 }
                 if mains.len() > 1 {
-                    errors.push(CompileError::MultiplePredicateMainFunctions(
-                        mains.last().unwrap().span.clone(),
-                    ));
+                    errors.push(CompileError::MultipleDefinitionsOfFunction {
+                        name: mains.last().unwrap().name.clone(),
+                    });
                 }
                 let main_func = mains.remove(0);
                 match look_up_type_id(main_func.return_type) {
@@ -127,9 +174,9 @@ impl TypedProgram {
                     return err(vec![], errors);
                 }
                 if mains.len() > 1 {
-                    errors.push(CompileError::MultipleScriptMainFunctions(
-                        mains.last().unwrap().span.clone(),
-                    ));
+                    errors.push(CompileError::MultipleDefinitionsOfFunction {
+                        name: mains.last().unwrap().name.clone(),
+                    });
                 }
                 TypedProgramKind::Script {
                     main_function: mains.remove(0),
@@ -180,6 +227,96 @@ impl TypedProgram {
             err(vec![], errors)
         }
     }
+
+    pub fn get_typed_program_with_initialized_storage_slots(&self) -> CompileResult<Self> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        match &self.kind {
+            TypedProgramKind::Contract { declarations, .. } => {
+                let storage_decl = declarations
+                    .iter()
+                    .find(|decl| matches!(decl, TypedDeclaration::StorageDeclaration(_)));
+
+                // Expecting at most a single storage declaration
+                match storage_decl {
+                    Some(TypedDeclaration::StorageDeclaration(decl)) => {
+                        let mut storage_slots = check!(
+                            decl.get_initialized_storage_slots(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors,
+                        );
+                        // Sort the slots to standardize the output. Not strictly required by the
+                        // spec.
+                        storage_slots.sort();
+                        ok(
+                            Self {
+                                kind: self.kind.clone(),
+                                root: self.root.clone(),
+                                storage_slots,
+                            },
+                            warnings,
+                            errors,
+                        )
+                    }
+                    _ => ok(
+                        Self {
+                            kind: self.kind.clone(),
+                            root: self.root.clone(),
+                            storage_slots: vec![],
+                        },
+                        warnings,
+                        errors,
+                    ),
+                }
+            }
+            _ => ok(
+                Self {
+                    kind: self.kind.clone(),
+                    root: self.root.clone(),
+                    storage_slots: vec![],
+                },
+                warnings,
+                errors,
+            ),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum TypedProgramKind {
+    Contract {
+        abi_entries: Vec<TypedFunctionDeclaration>,
+        declarations: Vec<TypedDeclaration>,
+    },
+    Library {
+        name: Ident,
+    },
+    Predicate {
+        main_function: TypedFunctionDeclaration,
+        declarations: Vec<TypedDeclaration>,
+    },
+    Script {
+        main_function: TypedFunctionDeclaration,
+        declarations: Vec<TypedDeclaration>,
+    },
+}
+
+impl ToJsonAbi for TypedProgramKind {
+    type Output = JsonABI;
+
+    // TODO: Update this to match behaviour described in the `compile` doc comment above.
+    fn generate_json_abi(&self) -> Self::Output {
+        match self {
+            TypedProgramKind::Contract { abi_entries, .. } => {
+                abi_entries.iter().map(|x| x.generate_json_abi()).collect()
+            }
+            TypedProgramKind::Script { main_function, .. } => {
+                vec![main_function.generate_json_abi()]
+            }
+            _ => vec![],
+        }
+    }
 }
 
 impl TypedProgramKind {
@@ -208,9 +345,7 @@ fn disallow_impure_functions(
     fn_decls
         .filter_map(|TypedFunctionDeclaration { purity, name, .. }| {
             if *purity != Purity::Pure {
-                Some(CompileError::ImpureInNonContract {
-                    span: name.span().clone(),
-                })
+                Some(CompileError::ImpureInNonContract { span: name.span() })
             } else {
                 None
             }

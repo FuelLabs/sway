@@ -96,6 +96,13 @@ impl Delimiter {
             Delimiter::Bracket => '[',
         }
     }
+    pub fn as_close_char(self) -> char {
+        match self {
+            Delimiter::Parenthesis => ')',
+            Delimiter::Brace => '}',
+            Delimiter::Bracket => ']',
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
@@ -110,7 +117,7 @@ impl Spanned for TokenTree {
     fn span(&self) -> Span {
         match self {
             TokenTree::Punct(punct) => punct.span(),
-            TokenTree::Ident(ident) => ident.span().clone(),
+            TokenTree::Ident(ident) => ident.span(),
             TokenTree::Group(group) => group.span(),
             TokenTree::Literal(literal) => literal.span(),
         }
@@ -181,11 +188,13 @@ pub enum LexErrorKind {
     InvalidEscapeCode { position: usize },
 }
 
-impl LexError {
-    pub fn span(&self) -> Span {
+impl Spanned for LexError {
+    fn span(&self) -> Span {
         self.span.clone()
     }
+}
 
+impl LexError {
     pub fn span_ref(&self) -> &Span {
         &self.span
     }
@@ -275,7 +284,7 @@ pub fn lex(
     .peekable();
     let mut parent_token_trees = Vec::new();
     let mut token_trees = Vec::new();
-    while let Some((index, character)) = char_indices.next() {
+    while let Some((mut index, mut character)) = char_indices.next() {
         if character.is_whitespace() {
             continue;
         }
@@ -386,6 +395,16 @@ pub fn lex(
             continue;
         }
         if character.is_xid_start() || character == '_' {
+            let is_raw_ident = character == 'r' && matches!(char_indices.peek(), Some((_, '#')));
+            if is_raw_ident {
+                char_indices.next();
+                if let Some((_, next_character)) = char_indices.peek() {
+                    character = *next_character;
+                    if let Some((next_index, _)) = char_indices.next() {
+                        index = next_index;
+                    }
+                }
+            }
             let is_single_underscore = character == '_'
                 && match char_indices.peek() {
                     Some((_, next_character)) => !next_character.is_xid_continue(),
@@ -399,7 +418,7 @@ pub fn lex(
                     let _ = char_indices.next();
                 }
                 let span = span_until(src, index, &mut char_indices, &path);
-                let ident = Ident::new(span);
+                let ident = Ident::new_with_raw(span, is_raw_ident);
                 token_trees.push(TokenTree::Ident(ident));
                 continue;
             }

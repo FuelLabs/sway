@@ -8,7 +8,7 @@ mod concurrent_slab;
 pub mod constants;
 mod control_flow_analysis;
 mod convert_parse_tree;
-mod optimize;
+mod ir_generation;
 pub mod parse_tree;
 pub mod semantic_analysis;
 pub mod source_map;
@@ -208,7 +208,7 @@ pub enum BytecodeCompilationResult {
 pub fn compile_to_ast(
     input: Arc<str>,
     initial_namespace: namespace::Module,
-    build_config: &BuildConfig,
+    build_config: Option<&BuildConfig>,
 ) -> CompileAstResult {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
@@ -217,7 +217,7 @@ pub fn compile_to_ast(
         value: parse_program_opt,
         warnings: new_warnings,
         errors: new_errors,
-    } = parse(input, Some(build_config));
+    } = parse(input, build_config);
     warnings.extend(new_warnings);
     errors.extend(new_errors);
     let parse_program = match parse_program_opt {
@@ -255,8 +255,25 @@ pub fn compile_to_ast(
         return CompileAstResult::Failure { errors, warnings };
     }
 
+    // Check that all storage initializers can be evaluated at compile time.
+    let CompileResult {
+        value: typed_program_with_storage_slots_result,
+        warnings: new_warnings,
+        errors: new_errors,
+    } = typed_program.get_typed_program_with_initialized_storage_slots();
+    warnings.extend(new_warnings);
+    errors.extend(new_errors);
+    let typed_program_with_storage_slots = match typed_program_with_storage_slots_result {
+        Some(typed_program_with_storage_slots) => typed_program_with_storage_slots,
+        None => {
+            errors = dedup_unsorted(errors);
+            warnings = dedup_unsorted(warnings);
+            return CompileAstResult::Failure { errors, warnings };
+        }
+    };
+
     CompileAstResult::Success {
-        typed_program: Box::new(typed_program),
+        typed_program: Box::new(typed_program_with_storage_slots),
         warnings,
     }
 }
@@ -268,7 +285,7 @@ pub fn compile_to_asm(
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
 ) -> CompilationResult {
-    let ast_res = compile_to_ast(input, initial_namespace, &build_config);
+    let ast_res = compile_to_ast(input, initial_namespace, Some(&build_config));
     ast_to_asm(ast_res, &build_config)
 }
 
@@ -336,7 +353,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     );
 
     let tree_type = program.kind.tree_type();
-    let mut ir = match optimize::compile_program(program) {
+    let mut ir = match ir_generation::compile_program(program) {
         Ok(ir) => ir,
         Err(e) => {
             errors.push(e);
@@ -344,30 +361,47 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         }
     };
 
-    // Inline function calls since we don't support them yet.  For scripts and predicates we inline
-    // into main(), and for contracts we inline into ABI impls, which are found due to them having
-    // a selector.
-    let mut functions_to_inline_to = Vec::new();
-    for (idx, fc) in &ir.functions {
-        if (matches!(tree_type, TreeType::Script | TreeType::Predicate)
-            && fc.name == crate::constants::DEFAULT_ENTRY_POINT_FN_NAME)
-            || (tree_type == TreeType::Contract && fc.selector.is_some())
-        {
-            functions_to_inline_to.push(::sway_ir::function::Function(idx));
-        }
+    // Find all the entry points.  This is main for scripts and predicates, or ABI methods for
+    // contracts, identified by them having a selector.
+    let entry_point_functions: Vec<::sway_ir::Function> = ir
+        .functions
+        .iter()
+        .filter_map(|(idx, fc)| {
+            if (matches!(tree_type, TreeType::Script | TreeType::Predicate)
+                && fc.name == crate::constants::DEFAULT_ENTRY_POINT_FN_NAME)
+                || (tree_type == TreeType::Contract && fc.selector.is_some())
+            {
+                Some(::sway_ir::function::Function(idx))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Do a purity check on the _unoptimised_ IR.
+    let mut purity_checker = ir_generation::PurityChecker::default();
+    for entry_point in &entry_point_functions {
+        purity_checker.check_function(&ir, entry_point);
     }
     check!(
-        inline_function_calls(&mut ir, &functions_to_inline_to),
+        purity_checker.results(),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    // Inline function calls from the entry points.
+    check!(
+        inline_function_calls(&mut ir, &entry_point_functions),
         return err(warnings, errors),
         warnings,
         errors
     );
 
     // The only other optimisation we have at the moment is constant combining.  In lieu of a
-    // forthcoming pass manager we can just call it here now.  We can re-use the inline functions
-    // list.
+    // forthcoming pass manager we can just call it here now.
     check!(
-        combine_constants(&mut ir, &functions_to_inline_to),
+        combine_constants(&mut ir, &entry_point_functions),
         return err(warnings, errors),
         warnings,
         errors

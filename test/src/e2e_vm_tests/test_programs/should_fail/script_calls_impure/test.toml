@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: fn main() {}
+# nextln: $()Impure function inside of non-contract. Contract storage is only accessible from contracts.

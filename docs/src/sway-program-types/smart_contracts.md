@@ -59,7 +59,7 @@ Implementing an ABI for a contract is accomplished with `impl <ABI name> for Con
 ```sway
 impl Wallet for Contract {
     fn receive_funds() {
-        if asset_id == NATIVE_ASSET_ID {
+        if asset_id == BASE_ASSET_ID {
             let balance = storage.balance.write();
             deref balance = balance + coins_to_forward;
         };
@@ -86,7 +86,7 @@ Now that we have defined our interface and implemented it for our contract, we n
 ```sway
 script;
 
-use std::consts::NATIVE_ASSET_ID;
+use std::consts::BASE_ASSET_ID;
 
 use wallet_abi::Wallet;
 use wallet_abi::SendFundsRequest;
@@ -96,7 +96,7 @@ fn main() {
     let caller = abi(Wallet, contract_address);
     let amount_to_send = 200;
     let recipient_address: 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
-    caller.send_funds{gas: 10000, coins: 0, asset_id: NATIVE_ASSET_ID}(amount_to_send, recipient_address);
+    caller.send_funds{gas: 10000, coins: 0, asset_id: BASE_ASSET_ID}(amount_to_send, recipient_address);
 }
 ```
 

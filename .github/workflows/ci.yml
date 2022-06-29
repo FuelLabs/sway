@@ -139,7 +139,7 @@ jobs:
           mdbook-version: "0.4.15"
       - name: Emit logs to tmp.txt, fail if build logs contain 'ERROR'
         run: |
-          mdbook build docs &> tmp.txt
+          MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs &> tmp.txt
           if cat tmp.txt | grep 'ERROR'
           then
             rm tmp.txt && exit 1
@@ -162,11 +162,6 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc
-      - name: Install Forc fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --debug --path ./forc-plugins/forc-fmt
       - name: Initialize test project
         run: forc new test-proj
       - name: Update project forc manifest to use local sway-lib-std
@@ -191,21 +186,6 @@ jobs:
           profile: minimal
           toolchain: stable
       - uses: Swatinem/rust-cache@v1
-      - name: Install Forc
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --debug --path ./forc
-      - name: Install Forc fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --debug --path ./forc-plugins/forc-fmt
-      - name: Build Sway examples
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --bin examples-checker build --all-examples
       - uses: actions-rs/cargo@v1
         name: Cargo Build Workspace
         with:
@@ -223,21 +203,6 @@ jobs:
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@v1
-      - name: Install Forc
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --debug --path ./forc
-      - name: Install Forc fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --debug --path ./forc-plugins/forc-fmt
-      - name: Build Sway examples
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --bin examples-checker build --all-examples
       - name: Check Clippy Linter
         uses: actions-rs/cargo@v1
         with:
@@ -293,7 +258,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --locked --release --bin test
+          args: --locked --release --bin test -- --locked
 
   # TODO: Remove this upon merging std tests with the rest of the E2E tests.
   cargo-test-lib-std:
@@ -311,23 +276,8 @@ jobs:
           profile: minimal
           toolchain: stable
       - uses: Swatinem/rust-cache@v1
-      - name: Install Forc
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --debug --path ./forc
-      - name: Install Forc fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --debug --path ./forc-plugins/forc-fmt
-      - name: Build Sway examples
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --locked --bin examples-checker build --all-examples
       - name: Build All Tests
-        run: cd test/src/sdk-harness && bash build.sh && cd ../../../
+        run: cd test/src/sdk-harness && bash build.sh --locked && cd ../../../
       - name: Cargo Test sway-lib-std
         uses: actions-rs/cargo@v1
         with:
@@ -344,21 +294,6 @@ jobs:
           profile: minimal
           toolchain: stable
       - uses: Swatinem/rust-cache@v1
-      - name: Install Forc
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --debug --path ./forc
-      - name: Install Forc fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --debug --path ./forc-plugins/forc-fmt
-      - name: Build Sway examples
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --bin examples-checker build --all-examples
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
@@ -376,21 +311,6 @@ jobs:
           toolchain: nightly
           default: true
       - uses: Swatinem/rust-cache@v1
-      - name: Install Forc
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --debug --path ./forc
-      - name: Install Forc fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --debug --path ./forc-plugins/forc-fmt
-      - name: Build Sway examples
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --locked --bin examples-checker build --all-examples
       - name: Install cargo-udeps
         uses: actions-rs/cargo@v1
         with:

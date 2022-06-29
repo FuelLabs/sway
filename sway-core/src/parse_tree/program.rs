@@ -20,3 +20,18 @@ pub enum TreeType {
     Contract,
     Library { name: Ident },
 }
+
+impl std::fmt::Display for TreeType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Predicate => "predicate",
+                Self::Script => "script",
+                Self::Contract => "contract",
+                Self::Library { .. } => "library",
+            }
+        )
+    }
+}

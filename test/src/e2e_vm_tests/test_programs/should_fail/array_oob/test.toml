@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()Array index out of bounds; the length is 3 but the index is 4.

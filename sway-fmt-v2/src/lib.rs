@@ -9,6 +9,7 @@ mod constants;
 mod error;
 mod fmt;
 mod items;
+mod utils;
 
 pub use crate::fmt::Formatter;
 pub use error::FormatterError;

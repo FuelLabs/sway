@@ -52,7 +52,7 @@ move $r4 $sp                  ; save register for temporary stack value
 cfei i48                      ; allocate 48 bytes for temporary struct
 lw   $r0 data_4               ; literal instantiation for aggregate field
 sw   $r4 $r0 i0               ; initialise aggregate field
-sw   $r4 $r3 i1               ; insert_value @ 1
+sw   $r4 $r3 i5               ; insert_value @ 1
 lw   $r2 $r4 i0               ; extract_value @ 0
 addi $r0 $r5 i64              ; get offset reg for get_ptr
 lw   $r1 data_5               ; literal instantiation

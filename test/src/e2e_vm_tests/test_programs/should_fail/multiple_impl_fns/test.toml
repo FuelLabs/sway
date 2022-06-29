@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()Function "foo" was already defined in scope.
+# check: $()Function "bar" was already defined in scope.

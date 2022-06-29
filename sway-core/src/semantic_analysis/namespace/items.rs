@@ -1,10 +1,8 @@
-use crate::{
-    error::*, namespace::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*,
-};
+use crate::{error::*, namespace::*, parse_tree::*, semantic_analysis::*, type_engine::*};
 
 use super::TraitMap;
 
-use sway_types::span::Span;
+use sway_types::{span::Span, Spanned};
 
 use std::sync::Arc;
 
@@ -48,7 +46,7 @@ impl Items {
             None => err(
                 vec![],
                 vec![CompileError::NoDeclaredStorage {
-                    span: fields[0].span().clone(),
+                    span: fields[0].span(),
                 }],
             ),
         }
@@ -89,7 +87,7 @@ impl Items {
                 }
                 _ => {
                     warnings.push(CompileWarning {
-                        span: name.span().clone(),
+                        span: name.span(),
                         warning_content: Warning::ShadowsOtherSymbol { name: name.clone() },
                     });
                 }
@@ -112,11 +110,9 @@ impl Items {
     pub(crate) fn insert_trait_implementation(
         &mut self,
         trait_name: CallPath,
-        type_implementing_for: TypeInfo,
+        implementing_for_type_id: TypeId,
         functions_buf: Vec<TypedFunctionDeclaration>,
-    ) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    ) {
         let new_prefixes = if trait_name.prefixes.is_empty() {
             self.use_synonyms
                 .get(&trait_name.suffix)
@@ -130,80 +126,20 @@ impl Items {
             prefixes: new_prefixes,
             is_absolute: trait_name.is_absolute,
         };
-        check!(
-            self.implemented_traits
-                .insert(trait_name, type_implementing_for, functions_buf),
-            (),
-            warnings,
-            errors
-        );
-        ok((), warnings, errors)
-    }
-
-    pub(crate) fn get_methods_for_type(&self, r#type: TypeId) -> Vec<TypedFunctionDeclaration> {
         self.implemented_traits
-            .get_methods_for_type(look_up_type_id(r#type))
+            .insert(trait_name, implementing_for_type_id, functions_buf);
     }
 
-    // Given a TypeInfo old_type with a set of methods available to it, make those same methods
-    // available to TypeInfo new_type. This is useful in situations where old_type is being
-    // monomorphized to new_type and and we want `get_methods_for_type()` to return the same set of
-    // methods for new_type as it does for old_type.
-    pub(crate) fn copy_methods_to_type(
-        &mut self,
-        old_type: TypeInfo,
-        new_type: TypeInfo,
-        type_mapping: &TypeMapping,
-    ) {
-        // This map grabs all (trait name, vec of methods) from self.implemented_traits
-        // corresponding to `old_type`.
-        let methods = self
-            .implemented_traits
-            .get_methods_for_type_by_trait(old_type);
-
-        // Insert into `self.implemented_traits` the contents of the map above but with `new_type`
-        // as the `TypeInfo` key.
-        for (trait_name, mut trait_methods) in methods.into_iter() {
-            trait_methods
-                .iter_mut()
-                .for_each(|method| method.copy_types(type_mapping));
-            self.implemented_traits
-                .insert(trait_name, new_type.clone(), trait_methods);
-        }
+    pub(crate) fn get_methods_for_type(
+        &self,
+        implementing_for_type_id: TypeId,
+    ) -> Vec<TypedFunctionDeclaration> {
+        self.implemented_traits
+            .get_methods_for_type(implementing_for_type_id)
     }
 
     pub(crate) fn get_canonical_path(&self, symbol: &Ident) -> &[Ident] {
         self.use_synonyms.get(symbol).map(|v| &v[..]).unwrap_or(&[])
-    }
-
-    /// Given a declaration that may refer to a variable which contains a struct, find that
-    /// struct's fields and name for use in determining if a subfield expression is valid.
-    ///
-    /// E.g. `foo.bar.baz`
-    ///
-    /// Is foo a struct? Does it contain a field bar? Is foo.bar a struct? Does `foo.bar` contain a
-    /// field `baz`? This is the problem this function addresses.
-    pub(crate) fn get_struct_type_fields(
-        &self,
-        ty: TypeId,
-        debug_string: impl Into<String>,
-        debug_span: &Span,
-    ) -> CompileResult<(Vec<TypedStructField>, Ident)> {
-        let ty = look_up_type_id(ty);
-        match ty {
-            TypeInfo::Struct { name, fields, .. } => ok((fields.to_vec(), name), vec![], vec![]),
-            // If we hit `ErrorRecovery` then the source of that type should have populated
-            // the error buffer elsewhere
-            TypeInfo::ErrorRecovery => err(vec![], vec![]),
-            a => err(
-                vec![],
-                vec![CompileError::NotAStruct {
-                    name: debug_string.into(),
-                    span: debug_span.clone(),
-                    actually: a.friendly_type_str(),
-                }],
-            ),
-        }
     }
 
     pub(crate) fn has_storage_declared(&self) -> bool {
@@ -224,81 +160,124 @@ impl Items {
     /// the second is the [ResolvedType] of its parent, for control-flow analysis.
     pub(crate) fn find_subfield_type(
         &self,
-        subfield_exp: &[Ident],
+        base_name: &Ident,
+        projections: &[ProjectionKind],
     ) -> CompileResult<(TypeId, TypeId)> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let mut ident_iter = subfield_exp.iter().peekable();
-        let first_ident = ident_iter.next().unwrap();
-        let symbol = match self.symbols.get(first_ident).cloned() {
+        let symbol = match self.symbols.get(base_name).cloned() {
             Some(s) => s,
             None => {
                 errors.push(CompileError::UnknownVariable {
-                    var_name: first_ident.clone(),
+                    var_name: base_name.clone(),
                 });
                 return err(warnings, errors);
             }
         };
-        if ident_iter.peek().is_none() {
-            let ty = check!(
-                symbol.return_type(),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            return ok((ty, ty), warnings, errors);
-        }
         let mut symbol = check!(
             symbol.return_type(),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let mut type_fields =
-            self.get_struct_type_fields(symbol, first_ident.as_str(), first_ident.span());
-        warnings.append(&mut type_fields.warnings);
-        errors.append(&mut type_fields.errors);
-        let (mut fields, struct_name): (Vec<TypedStructField>, Ident) = match type_fields.value {
-            // if it is missing, the error message comes from within the above method
-            // so we don't need to re-add it here
-            None => return err(warnings, errors),
-            Some(value) => value,
-        };
-
+        let mut symbol_span = base_name.span();
         let mut parent_rover = symbol;
-
-        for ident in ident_iter {
-            // find the ident in the currently available fields
-            let TypedStructField { r#type, .. } =
-                match fields.iter().find(|x| x.name.as_str() == ident.as_str()) {
-                    Some(field) => field.clone(),
-                    None => {
-                        // gather available fields for the error message
-                        let available_fields =
-                            fields.iter().map(|x| x.name.as_str()).collect::<Vec<_>>();
-
-                        errors.push(CompileError::FieldNotFound {
-                            field_name: ident.clone(),
-                            struct_name,
-                            available_fields: available_fields.join(", "),
-                        });
-                        return err(warnings, errors);
-                    }
-                };
-
-            match look_up_type_id(r#type) {
-                TypeInfo::Struct {
-                    fields: ref l_fields,
-                    ..
-                } => {
-                    parent_rover = symbol;
-                    fields = l_fields.clone();
-                    symbol = r#type;
+        let mut full_name_for_error = base_name.to_string();
+        let mut full_span_for_error = base_name.span();
+        for projection in projections {
+            let resolved_type = match resolve_type(symbol, &symbol_span) {
+                Ok(resolved_type) => resolved_type,
+                Err(error) => {
+                    errors.push(CompileError::TypeError(error));
+                    return err(warnings, errors);
                 }
-                _ => {
-                    fields = vec![];
+            };
+            match (resolved_type, projection) {
+                (
+                    TypeInfo::Struct {
+                        name: struct_name,
+                        fields,
+                        ..
+                    },
+                    ProjectionKind::StructField { name: field_name },
+                ) => {
+                    let field_type_opt = {
+                        fields.iter().find_map(
+                            |TypedStructField {
+                                 type_id: r#type,
+                                 name,
+                                 ..
+                             }| {
+                                if name == field_name {
+                                    Some(r#type)
+                                } else {
+                                    None
+                                }
+                            },
+                        )
+                    };
+                    let field_type = match field_type_opt {
+                        Some(field_type) => field_type,
+                        None => {
+                            // gather available fields for the error message
+                            let available_fields = fields
+                                .iter()
+                                .map(|field| field.name.as_str())
+                                .collect::<Vec<_>>();
+
+                            errors.push(CompileError::FieldNotFound {
+                                field_name: field_name.clone(),
+                                struct_name,
+                                available_fields: available_fields.join(", "),
+                            });
+                            return err(warnings, errors);
+                        }
+                    };
                     parent_rover = symbol;
-                    symbol = r#type;
+                    symbol = *field_type;
+                    symbol_span = field_name.span().clone();
+                    full_name_for_error.push_str(field_name.as_str());
+                    full_span_for_error =
+                        Span::join(full_span_for_error, field_name.span().clone());
+                }
+                (TypeInfo::Tuple(fields), ProjectionKind::TupleField { index, index_span }) => {
+                    let field_type_opt = {
+                        fields
+                            .get(*index)
+                            .map(|TypeArgument { type_id, .. }| type_id)
+                    };
+                    let field_type = match field_type_opt {
+                        Some(field_type) => field_type,
+                        None => {
+                            errors.push(CompileError::TupleIndexOutOfBounds {
+                                index: *index,
+                                count: fields.len(),
+                                span: Span::join(full_span_for_error, index_span.clone()),
+                            });
+                            return err(warnings, errors);
+                        }
+                    };
+                    parent_rover = symbol;
+                    symbol = *field_type;
+                    symbol_span = index_span.clone();
+                    full_name_for_error.push_str(&index.to_string());
+                    full_span_for_error = Span::join(full_span_for_error, index_span.clone());
+                }
+                (actually, ProjectionKind::StructField { .. }) => {
+                    errors.push(CompileError::NotAStruct {
+                        name: full_name_for_error,
+                        span: full_span_for_error,
+                        actually: actually.to_string(),
+                    });
+                    return err(warnings, errors);
+                }
+                (actually, ProjectionKind::TupleField { .. }) => {
+                    errors.push(CompileError::NotATuple {
+                        name: full_name_for_error,
+                        span: full_span_for_error,
+                        actually: actually.to_string(),
+                    });
+                    return err(warnings, errors);
                 }
             }
         }

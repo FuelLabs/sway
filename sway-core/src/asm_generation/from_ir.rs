@@ -16,14 +16,17 @@ use crate::{
         compiler_constants, finalized_asm::FinalizedAsm, register_sequencer::RegisterSequencer,
         AbstractInstructionSet, DataId, DataSection, SwayAsmSet,
     },
-    asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate24, VirtualOp},
+    asm_lang::{
+        virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24,
+        VirtualOp,
+    },
     error::*,
     parse_tree::Literal,
     BuildConfig,
 };
 
 use sway_ir::*;
-use sway_types::span::Span;
+use sway_types::{span::Span, Spanned};
 
 use either::Either;
 
@@ -636,7 +639,7 @@ impl<'ir> AsmBuilder<'ir> {
                 .map(|reg_name| -> Result<_, CompileError> {
                     realize_register(reg_name.as_str()).ok_or_else(|| {
                         CompileError::UnknownRegister {
-                            span: reg_name.span().clone(),
+                            span: reg_name.span(),
                             initialized_registers: inline_reg_map
                                 .iter()
                                 .map(|(name, _)| *name)
@@ -710,7 +713,7 @@ impl<'ir> AsmBuilder<'ir> {
                             .map(|(name, _)| name.to_string())
                             .collect::<Vec<_>>()
                             .join("\n"),
-                        span: ret_reg_name.span().clone(),
+                        span: ret_reg_name.span(),
                     });
                     return err(warnings, errors);
                 }
@@ -812,10 +815,16 @@ impl<'ir> AsmBuilder<'ir> {
 
     fn compile_branch_to_phi_value(&mut self, from_block: &Block, to_block: &Block) {
         if let Some(local_val) = to_block.get_phi_val_coming_from(self.context, from_block) {
-            let local_reg = self.value_to_register(&local_val);
-            let phi_reg = self.value_to_register(&to_block.get_phi(self.context));
-            self.bytecode
-                .push(Op::unowned_register_move(phi_reg, local_reg));
+            // We only need a MOVE here if get_phi_val_coming_from() is actually assigned to a
+            // register
+            if let Some(local_reg) = self.value_to_register_or_none(&local_val) {
+                let phi_reg = self.value_to_register(&to_block.get_phi(self.context));
+                self.bytecode.push(Op::unowned_register_move_comment(
+                    phi_reg,
+                    local_reg,
+                    "branch to phi value",
+                ));
+            }
         }
     }
 
@@ -1251,18 +1260,30 @@ impl<'ir> AsmBuilder<'ir> {
         let base_reg = self.value_to_register(aggregate_val);
 
         let insert_reg = self.value_to_register(value);
-        let ((insert_offs, value_size), _) = aggregate_idcs_to_field_layout(
+        let ((mut insert_offs, field_size_in_bytes), field_type) = aggregate_idcs_to_field_layout(
             self.context,
             &aggregate_val.get_type(self.context).unwrap(),
             indices,
         );
+
+        let value_type = value.get_type(self.context).unwrap();
+        let value_size_in_bytes = ir_type_size_in_bytes(self.context, &value_type);
+        let value_size_in_words = size_bytes_in_words!(value_size_in_bytes);
+
+        // Account for the padding if the final field type is a union and the value we're trying to
+        // insert is smaller than the size of the union (i.e. we're inserting a small variant).
+        if matches!(field_type, Type::Union(_)) {
+            let field_size_in_words = size_bytes_in_words!(field_size_in_bytes);
+            assert!(field_size_in_words >= value_size_in_words);
+            insert_offs += field_size_in_words - value_size_in_words;
+        }
 
         let indices_str = indices
             .iter()
             .map(|idx| format!("{}", idx))
             .collect::<Vec<String>>()
             .join(",");
-        if value.get_type(self.context).unwrap().is_copy_type() {
+        if value_type.is_copy_type() {
             if insert_offs > compiler_constants::TWELVE_BITS {
                 let insert_offs_reg = self.reg_seqr.next();
                 self.number_to_reg(
@@ -1318,9 +1339,13 @@ impl<'ir> AsmBuilder<'ir> {
                     owning_span: instr_val.get_span(self.context),
                 });
             }
-            if value_size > compiler_constants::TWELVE_BITS {
+            if value_size_in_bytes > compiler_constants::TWELVE_BITS {
                 let size_reg = self.reg_seqr.next();
-                self.number_to_reg(value_size, &size_reg, instr_val.get_span(self.context));
+                self.number_to_reg(
+                    value_size_in_bytes,
+                    &size_reg,
+                    instr_val.get_span(self.context),
+                );
                 self.bytecode.push(Op {
                     opcode: Either::Left(VirtualOp::MCP(offs_reg, insert_reg, size_reg)),
                     comment: "store struct field value".into(),
@@ -1332,7 +1357,7 @@ impl<'ir> AsmBuilder<'ir> {
                         offs_reg,
                         insert_reg,
                         VirtualImmediate12 {
-                            value: value_size as u16,
+                            value: value_size_in_bytes as u16,
                         },
                     )),
                     comment: "store struct field value".into(),
@@ -1885,116 +1910,136 @@ impl<'ir> AsmBuilder<'ir> {
         }
     }
 
-    fn value_to_register(&mut self, value: &Value) -> VirtualRegister {
+    fn initialise_non_aggregate_type(
+        &mut self,
+        constant: &Constant,
+        span: Option<Span>,
+    ) -> VirtualRegister {
+        // Get the constant into the namespace.
+        let lit = ir_constant_to_ast_literal(constant);
+        let data_id = self.data_section.insert_data_value(&lit);
+
+        // Allocate a register for it, and a load instruction.
+        let reg = self.reg_seqr.next();
+        self.bytecode.push(Op {
+            opcode: either::Either::Left(VirtualOp::LWDataId(reg.clone(), data_id)),
+            comment: "literal instantiation".into(),
+            owning_span: span,
+        });
+
+        // Insert the value into the map.
+        //self.reg_map.insert(*value, reg.clone());
+        //
+        // Actually, no, don't.  It's possible for constant values to be
+        // reused in the IR, especially with transforms which copy blocks
+        // around, like inlining.  The `LW`/`LWDataId` instruction above
+        // initialises that constant value but it may be in a conditional
+        // block and not actually get evaluated for every possible
+        // execution. So using the register later on by pulling it from
+        // `self.reg_map` will have a potentially uninitialised register.
+        //
+        // By not putting it in the map we recreate the `LW` each time it's
+        // used, which also isn't ideal.  A better solution is to put this
+        // initialisation into the IR itself, and allow for analysis there
+        // to determine when it may be initialised and/or reused.
+
+        // Return register.
+        reg
+    }
+
+    fn initialise_aggregate_type(
+        &mut self,
+        constant: &Constant,
+        value_type: &Type,
+        span: Option<Span>,
+    ) -> VirtualRegister {
+        // A constant struct or array.  We still allocate space for it on
+        // the stack, but create the field or element initialisers
+        // recursively.
+
+        // Get the total size using the value type. We shouldn't use constant.ty here because
+        // the actual type might containt unions which constant.ty doesn't account for.
+        let total_size = size_bytes_round_up_to_word_alignment!(ir_type_size_in_bytes(
+            self.context,
+            value_type,
+        ));
+        if total_size > compiler_constants::TWENTY_FOUR_BITS {
+            todo!("Enormous stack usage for locals.");
+        }
+
+        let start_reg = self.reg_seqr.next();
+
+        // We can have zero sized structs and maybe arrays?
+        if total_size > 0 {
+            // Save the stack pointer.
+            self.bytecode.push(Op::unowned_register_move_comment(
+                start_reg.clone(),
+                VirtualRegister::Constant(ConstantRegister::StackPointer),
+                "save register for temporary stack value",
+            ));
+
+            let mut alloc_op = Op::unowned_stack_allocate_memory(VirtualImmediate24 {
+                value: total_size as u32,
+            });
+            alloc_op.comment = format!(
+                "allocate {} bytes for temporary {}",
+                total_size,
+                if matches!(&constant.value, ConstantValue::Struct(_)) {
+                    "struct"
+                } else {
+                    "array"
+                },
+            );
+            self.bytecode.push(alloc_op);
+
+            // Fill in the fields.
+            self.initialise_constant_memory(constant, value_type, &start_reg, 0, span);
+        }
+
+        // Return the start ptr.
+        start_reg
+    }
+
+    // Get the reg corresponding to `value`
+    // Returns None if the value is not in reg_map or is not a constant
+    fn value_to_register_or_none(&mut self, value: &Value) -> Option<VirtualRegister> {
+        let value_type = value.get_type(self.context).unwrap();
         match self.reg_map.get(value) {
-            Some(reg) => reg.clone(),
+            Some(reg) => Some(reg.clone()),
             None => {
                 match &self.context.values[value.0].value {
                     // Handle constants.
-                    ValueDatum::Constant(constant) => {
-                        match &constant.value {
-                            ConstantValue::Struct(_) | ConstantValue::Array(_) => {
-                                // A constant struct or array.  We still allocate space for it on
-                                // the stack, but create the field or element initialisers
-                                // recursively.
-
-                                // Get the total size.
-                                let total_size = size_bytes_round_up_to_word_alignment!(
-                                    self.constant_size_in_bytes(constant)
-                                );
-                                if total_size > compiler_constants::TWENTY_FOUR_BITS {
-                                    todo!("Enormous stack usage for locals.");
-                                }
-
-                                let start_reg = self.reg_seqr.next();
-
-                                // We can have zero sized structs and maybe arrays?
-                                if total_size > 0 {
-                                    // Save the stack pointer.
-                                    self.bytecode.push(Op::unowned_register_move_comment(
-                                        start_reg.clone(),
-                                        VirtualRegister::Constant(ConstantRegister::StackPointer),
-                                        "save register for temporary stack value",
-                                    ));
-
-                                    let mut alloc_op =
-                                        Op::unowned_stack_allocate_memory(VirtualImmediate24 {
-                                            value: total_size as u32,
-                                        });
-                                    alloc_op.comment = format!(
-                                        "allocate {} bytes for temporary {}",
-                                        total_size,
-                                        if matches!(&constant.value, ConstantValue::Struct(_)) {
-                                            "struct"
-                                        } else {
-                                            "array"
-                                        },
-                                    );
-                                    self.bytecode.push(alloc_op);
-
-                                    // Fill in the fields.
-                                    self.initialise_constant_memory(
-                                        constant,
-                                        &start_reg,
-                                        0,
-                                        value.get_span(self.context),
-                                    );
-                                }
-
-                                // Return the start ptr.
-                                start_reg
-                            }
-
-                            ConstantValue::Undef
-                            | ConstantValue::Unit
-                            | ConstantValue::Bool(_)
-                            | ConstantValue::Uint(_)
-                            | ConstantValue::B256(_)
-                            | ConstantValue::String(_) => {
-                                // Get the constant into the namespace.
-                                let lit = ir_constant_to_ast_literal(constant);
-                                let data_id = self.data_section.insert_data_value(&lit);
-
-                                // Allocate a register for it, and a load instruction.
-                                let reg = self.reg_seqr.next();
-                                self.bytecode.push(Op {
-                                    opcode: either::Either::Left(VirtualOp::LWDataId(
-                                        reg.clone(),
-                                        data_id,
-                                    )),
-                                    comment: "literal instantiation".into(),
-                                    owning_span: value.get_span(self.context),
-                                });
-
-                                // Insert the value into the map.
-                                //self.reg_map.insert(*value, reg.clone());
-                                //
-                                // Actually, no, don't.  It's possible for constant values to be
-                                // reused in the IR, especially with transforms which copy blocks
-                                // around, like inlining.  The `LW`/`LWDataId` instruction above
-                                // initialises that constant value but it may be in a conditional
-                                // block and not actually get evaluated for every possible
-                                // execution. So using the register later on by pulling it from
-                                // `self.reg_map` will have a potentially uninitialised register.
-                                //
-                                // By not putting it in the map we recreate the `LW` each time it's
-                                // used, which also isn't ideal.  A better solution is to put this
-                                // initialisation into the IR itself, and allow for analysis there
-                                // to determine when it may be initialised and/or reused.
-
-                                // Return register.
-                                reg
-                            }
+                    ValueDatum::Constant(constant) => match &value_type {
+                        Type::Unit | Type::Bool | Type::Uint(_) | Type::B256 | Type::String(_) => {
+                            Some(self.initialise_non_aggregate_type(
+                                constant,
+                                value.get_span(self.context),
+                            ))
                         }
-                    }
-
-                    _otherwise => {
-                        // Just make a new register for this value.
-                        let reg = self.reg_seqr.next();
-                        self.reg_map.insert(*value, reg.clone());
-                        reg
-                    }
+                        Type::Array(_) | Type::Struct(_) | Type::Union(_) => {
+                            Some(self.initialise_aggregate_type(
+                                constant,
+                                &value_type,
+                                value.get_span(self.context),
+                            ))
+                        }
+                    },
+                    _otherwise => None,
                 }
+            }
+        }
+    }
+
+    // Same as `value_to_register_or_none` but returns a new register if no register is found or if
+    // `value` is not a constant.
+    fn value_to_register(&mut self, value: &Value) -> VirtualRegister {
+        match self.value_to_register_or_none(value) {
+            Some(reg) => reg,
+            None => {
+                // Just make a new register for this value.
+                let reg = self.reg_seqr.next();
+                self.reg_map.insert(*value, reg.clone());
+                reg
             }
         }
     }
@@ -2038,46 +2083,81 @@ impl<'ir> AsmBuilder<'ir> {
         });
     }
 
-    fn constant_size_in_bytes(&mut self, constant: &Constant) -> u64 {
-        match &constant.value {
-            ConstantValue::Undef => ir_type_size_in_bytes(self.context, &constant.ty),
-            ConstantValue::Unit => 8,
-            ConstantValue::Bool(_) => 8,
-            ConstantValue::Uint(_) => 8,
-            ConstantValue::B256(_) => 32,
-            ConstantValue::String(v) => size_bytes_round_up_to_word_alignment!(v.len() as u64),
-            ConstantValue::Array(elems) => {
-                if elems.is_empty() {
-                    0
-                } else {
-                    self.constant_size_in_bytes(&elems[0]) * elems.len() as u64
-                }
-            }
-            ConstantValue::Struct(fields) => fields
-                .iter()
-                .fold(0, |acc, field| acc + self.constant_size_in_bytes(field)),
-        }
-    }
-
+    // Insert asm instructions to initialise a stack variable of type `value_type` with a Constant
+    // `constant`. Here, `value_type` accounts for the fact that the stack variable might include
+    // unions.
+    //
+    // If the initialiser is smaller than `value_type` (e.g. initialising a union with one of
+    // its small variants), add zero padding.
     fn initialise_constant_memory(
         &mut self,
         constant: &Constant,
+        value_type: &Type,
         start_reg: &VirtualRegister,
         offs_in_words: u64,
         span: Option<Span>,
     ) -> u64 {
-        let constant_size = self.constant_size_in_bytes(constant);
-        match &constant.value {
-            ConstantValue::Undef => {
-                // We don't need to actually create an initialiser, but we do need to return the
-                // field size in words.
-                size_bytes_in_words!(ir_type_size_in_bytes(self.context, &constant.ty))
+        let value_size = ir_type_size_in_bytes(self.context, value_type);
+        let value_size_in_words = size_bytes_in_words!(value_size);
+
+        if matches!(constant.value, ConstantValue::Undef) {
+            // We don't need to actually create an initialiser, but we do need to return the
+            // field size in words.
+            return size_bytes_in_words!(value_size);
+        }
+
+        match &value_type {
+            Type::Unit | Type::Bool | Type::Uint(_) => {
+                // Get the constant into the namespace.
+                let lit = ir_constant_to_ast_literal(constant);
+                let data_id = self.data_section.insert_data_value(&lit);
+
+                // Load the initialiser value.
+                let init_reg = self.reg_seqr.next();
+                self.bytecode.push(Op {
+                    opcode: either::Either::Left(VirtualOp::LWDataId(init_reg.clone(), data_id)),
+                    comment: "literal instantiation for aggregate field".into(),
+                    owning_span: span.clone(),
+                });
+
+                if offs_in_words > compiler_constants::TWELVE_BITS {
+                    let offs_reg = self.reg_seqr.next();
+                    self.number_to_reg(offs_in_words, &offs_reg, span.clone());
+                    self.bytecode.push(Op {
+                        opcode: either::Either::Left(VirtualOp::ADD(
+                            start_reg.clone(),
+                            start_reg.clone(),
+                            offs_reg.clone(),
+                        )),
+                        comment: "calculate byte offset to aggregate field".into(),
+                        owning_span: span.clone(),
+                    });
+                    self.bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::SW(
+                            start_reg.clone(),
+                            init_reg,
+                            VirtualImmediate12 { value: 0 },
+                        )),
+                        comment: "initialise aggregate field".into(),
+                        owning_span: span,
+                    });
+                } else {
+                    self.bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::SW(
+                            start_reg.clone(),
+                            init_reg,
+                            VirtualImmediate12 {
+                                value: offs_in_words as u16,
+                            },
+                        )),
+                        comment: "initialise aggregate field".into(),
+                        owning_span: span,
+                    });
+                }
+
+                1
             }
-            ConstantValue::Unit
-            | ConstantValue::Bool(_)
-            | ConstantValue::Uint(_)
-            | ConstantValue::B256(_)
-            | ConstantValue::String(_) => {
+            Type::B256 | Type::String(_) => {
                 // Get the constant into the namespace.
                 let lit = ir_constant_to_ast_literal(constant);
                 let data_id = self.data_section.insert_data_value(&lit);
@@ -2092,96 +2172,143 @@ impl<'ir> AsmBuilder<'ir> {
 
                 // Write the initialiser to memory.  Most Literals are 1 word, B256 is 32 bytes and
                 // needs to use a MCP instruction.
-                if matches!(lit, Literal::B256(_)) || matches!(lit, Literal::String(_)) {
-                    let offs_reg = self.reg_seqr.next();
+                let offs_reg = self.reg_seqr.next();
+                if offs_in_words * 8 > compiler_constants::TWELVE_BITS {
+                    self.number_to_reg(offs_in_words * 8, &offs_reg, span.clone());
+                    self.bytecode.push(Op {
+                        opcode: either::Either::Left(VirtualOp::ADD(
+                            offs_reg.clone(),
+                            start_reg.clone(),
+                            offs_reg.clone(),
+                        )),
+                        comment: "calculate byte offset to aggregate field".into(),
+                        owning_span: span.clone(),
+                    });
+                } else {
+                    self.bytecode.push(Op {
+                        opcode: either::Either::Left(VirtualOp::ADDI(
+                            offs_reg.clone(),
+                            start_reg.clone(),
+                            VirtualImmediate12 {
+                                value: (offs_in_words * 8) as u16,
+                            },
+                        )),
+                        comment: "calculate byte offset to aggregate field".into(),
+                        owning_span: span.clone(),
+                    });
+                }
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::MCPI(
+                        offs_reg,
+                        init_reg,
+                        VirtualImmediate12 {
+                            value: value_size as u16,
+                        },
+                    )),
+                    comment: "initialise aggregate field".into(),
+                    owning_span: span,
+                });
+
+                value_size_in_words
+            }
+            Type::Array(aggregate) => {
+                match (&constant.value, &self.context.aggregates[aggregate.0]) {
+                    (ConstantValue::Array(items), AggregateContent::ArrayType(element_type, _)) => {
+                        // Recurse for each item, accumulating the field offset and the final size.
+                        items.iter().fold(0, |local_offs, item| {
+                            local_offs
+                                + self.initialise_constant_memory(
+                                    item,
+                                    element_type,
+                                    start_reg,
+                                    offs_in_words + local_offs,
+                                    span.clone(),
+                                )
+                        })
+                    }
+                    _ => unreachable!("Inconsistent types for constant initialisation"),
+                }
+            }
+            Type::Struct(aggregate) => {
+                match (&constant.value, &self.context.aggregates[aggregate.0]) {
+                    (ConstantValue::Struct(items), AggregateContent::FieldTypes(field_tys)) => {
+                        // Recurse for each item, accumulating the field offset and the final size.
+                        items.iter().zip(field_tys.iter()).fold(
+                            0,
+                            |local_offs, (item, field_tys)| {
+                                local_offs
+                                    + self.initialise_constant_memory(
+                                        item,
+                                        field_tys,
+                                        start_reg,
+                                        offs_in_words + local_offs,
+                                        span.clone(),
+                                    )
+                            },
+                        )
+                    }
+                    _ => unreachable!("Inconsistent types for constant initialisation"),
+                }
+            }
+            Type::Union(_) => {
+                // If the literal we're trying to initialise with is smaller than than the actual
+                // size of the union, then a padding of zeros is required. Calculate the size of
+                // the padding and set the appropriate bytes to zero.
+                let constant_size = ir_type_size_in_bytes(self.context, &constant.ty);
+                assert!(constant_size <= value_size);
+                let padding_size = value_size - constant_size;
+                let padding_size_in_words = size_bytes_in_words!(padding_size);
+
+                if padding_size > 0 {
+                    // Store padding of zeros and then store the value itself
+                    let union_base_reg = self.reg_seqr.next();
                     if offs_in_words * 8 > compiler_constants::TWELVE_BITS {
+                        let offs_reg = self.reg_seqr.next();
                         self.number_to_reg(offs_in_words * 8, &offs_reg, span.clone());
                         self.bytecode.push(Op {
                             opcode: either::Either::Left(VirtualOp::ADD(
-                                offs_reg.clone(),
+                                union_base_reg.clone(),
                                 start_reg.clone(),
                                 offs_reg.clone(),
                             )),
-                            comment: "calculate byte offset to aggregate field".into(),
+                            comment: "get base pointer for union".into(),
                             owning_span: span.clone(),
                         });
                     } else {
                         self.bytecode.push(Op {
                             opcode: either::Either::Left(VirtualOp::ADDI(
-                                offs_reg.clone(),
+                                union_base_reg.clone(),
                                 start_reg.clone(),
                                 VirtualImmediate12 {
                                     value: (offs_in_words * 8) as u16,
                                 },
                             )),
-                            comment: "calculate byte offset to aggregate field".into(),
+                            comment: "get base pointer for union".into(),
                             owning_span: span.clone(),
                         });
                     }
                     self.bytecode.push(Op {
-                        opcode: Either::Left(VirtualOp::MCPI(
-                            offs_reg,
-                            init_reg,
-                            VirtualImmediate12 {
-                                value: constant_size as u16,
+                        opcode: Either::Left(VirtualOp::MCLI(
+                            union_base_reg,
+                            VirtualImmediate18 {
+                                value: padding_size as u32,
                             },
                         )),
-                        comment: "initialise aggregate field".into(),
-                        owning_span: span,
+                        comment: "clear padding for union initialisation".into(),
+                        owning_span: span.clone(),
                     });
-
-                    constant_size / 8
-                } else {
-                    if offs_in_words > compiler_constants::TWELVE_BITS {
-                        let offs_reg = self.reg_seqr.next();
-                        self.number_to_reg(offs_in_words, &offs_reg, span.clone());
-                        self.bytecode.push(Op {
-                            opcode: either::Either::Left(VirtualOp::ADD(
-                                start_reg.clone(),
-                                start_reg.clone(),
-                                offs_reg.clone(),
-                            )),
-                            comment: "calculate byte offset to aggregate field".into(),
-                            owning_span: span.clone(),
-                        });
-                        self.bytecode.push(Op {
-                            opcode: Either::Left(VirtualOp::SW(
-                                start_reg.clone(),
-                                init_reg,
-                                VirtualImmediate12 { value: 0 },
-                            )),
-                            comment: "initialise aggregate field".into(),
-                            owning_span: span,
-                        });
-                    } else {
-                        self.bytecode.push(Op {
-                            opcode: Either::Left(VirtualOp::SW(
-                                start_reg.clone(),
-                                init_reg,
-                                VirtualImmediate12 {
-                                    value: offs_in_words as u16,
-                                },
-                            )),
-                            comment: "initialise aggregate field".into(),
-                            owning_span: span,
-                        });
-                    }
-
-                    1
                 }
-            }
 
-            ConstantValue::Array(items) | ConstantValue::Struct(items) => {
-                // Recurse for each item, accumulating the field offset and the final size.
-                items.iter().fold(0, |local_offs, item| {
-                    local_offs
-                        + self.initialise_constant_memory(
-                            item,
-                            start_reg,
-                            offs_in_words + local_offs,
-                            span.clone(),
-                        )
-                })
+                // Now do the actual initialisation
+                self.initialise_constant_memory(
+                    constant,
+                    &constant.ty,
+                    start_reg,
+                    offs_in_words + padding_size_in_words,
+                    span,
+                );
+
+                value_size_in_words
             }
         }
     }
@@ -2287,10 +2414,17 @@ pub fn aggregate_idcs_to_field_layout(
             Type::Union(aggregate) => {
                 let idx = *idx as usize;
                 let field_type = context.aggregates[aggregate.0].field_types()[idx];
+                let union_size_in_bytes = ir_type_size_in_bytes(context, &ty);
                 let field_size_in_bytes = ir_type_size_in_bytes(context, &field_type);
 
-                // The union fields are all at offset 0.
-                ((offs, field_size_in_bytes), field_type)
+                // The union fields are at offset (union_size - variant_size) due to left padding.
+                (
+                    (
+                        offs + size_bytes_in_words!(union_size_in_bytes - field_size_in_bytes),
+                        field_size_in_bytes,
+                    ),
+                    field_type,
+                )
             }
 
             _otherwise => panic!("Attempt to access field in non-aggregate."),
@@ -2346,7 +2480,7 @@ mod tests {
                 canonical_root_module: std::sync::Arc::new("".into()),
                 print_intermediate_asm: false,
                 print_finalized_asm: false,
-                print_ir: false,
+                print_ir: true,
             },
         );
 

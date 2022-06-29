@@ -203,6 +203,7 @@ fn inline_instruction(
     if let ValueContent {
         value: ValueDatum::Instruction(old_ins),
         span_md_idx,
+        state_idx_md_idx: current_state_idx_md_idx,
         ..
     } = context.values[instruction.0].clone()
     {
@@ -240,7 +241,7 @@ fn inline_instruction(
                     .collect::<Vec<Value>>()
                     .as_slice(),
                 span_md_idx,
-                state_idx_md_idx,
+                current_state_idx_md_idx,
             ),
             Instruction::Cmp(pred, lhs_value, rhs_value) => new_block.ins(context).cmp(
                 pred,

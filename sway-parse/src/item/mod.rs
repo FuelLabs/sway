@@ -106,7 +106,7 @@ pub struct TypeField {
 
 impl Spanned for TypeField {
     fn span(&self) -> Span {
-        Span::join(self.name.span().clone(), self.ty.span())
+        Span::join(self.name.span(), self.ty.span())
     }
 }
 
@@ -128,6 +128,7 @@ pub enum FnArgs {
     Static(Punctuated<FnArg, CommaToken>),
     NonStatic {
         self_token: SelfToken,
+        mutable_self: Option<MutToken>,
         args_opt: Option<(CommaToken, Punctuated<FnArg, CommaToken>)>,
     },
 }
@@ -149,6 +150,13 @@ impl ParseToEnd for FnArgs {
     fn parse_to_end<'a, 'e>(
         mut parser: Parser<'a, 'e>,
     ) -> ParseResult<(FnArgs, ParserConsumed<'a>)> {
+        let mutable_self = match parser.peek::<MutToken>() {
+            Some(_mut_token) => {
+                let mut_token = parser.parse()?;
+                Some(mut_token)
+            }
+            None => None,
+        };
         match parser.take() {
             Some(self_token) => {
                 match parser.take() {
@@ -156,6 +164,7 @@ impl ParseToEnd for FnArgs {
                         let (args, consumed) = parser.parse_to_end()?;
                         let fn_args = FnArgs::NonStatic {
                             self_token,
+                            mutable_self,
                             args_opt: Some((comma_token, args)),
                         };
                         Ok((fn_args, consumed))
@@ -163,6 +172,7 @@ impl ParseToEnd for FnArgs {
                     None => {
                         let fn_args = FnArgs::NonStatic {
                             self_token,
+                            mutable_self,
                             args_opt: None,
                         };
                         match parser.check_empty() {

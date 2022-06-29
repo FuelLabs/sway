@@ -1,13 +1,10 @@
-use sway_types::{Ident, Span};
+use sway_types::{Ident, Span, Spanned};
 
-use crate::semantic_analysis::declaration::{CreateTypeId, EnforceTypeArguments};
-use crate::semantic_analysis::namespace::Namespace;
-use crate::semantic_analysis::TypedEnumVariant;
-use crate::CompileError;
 use crate::{
     error::{err, ok},
-    type_engine::{insert_type, TypeId},
-    CompileResult, Literal, Scrutinee, TypeArgument, TypeInfo,
+    semantic_analysis::{TypeCheckContext, TypedEnumVariant},
+    type_engine::{insert_type, CreateTypeId, EnforceTypeArguments, TypeArgument, TypeId},
+    CompileError, CompileResult, Literal, Scrutinee, StructScrutineeField, TypeInfo,
 };
 
 #[derive(Debug, Clone)]
@@ -40,9 +37,8 @@ pub(crate) struct TypedStructScrutineeField {
 
 impl TypedScrutinee {
     pub(crate) fn type_check(
+        mut ctx: TypeCheckContext,
         scrutinee: Scrutinee,
-        namespace: &mut Namespace,
-        self_type: TypeId,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -69,25 +65,24 @@ impl TypedScrutinee {
             } => {
                 // find the struct definition from the name
                 let unknown_decl = check!(
-                    namespace.resolve_symbol(&struct_name).cloned(),
+                    ctx.namespace.resolve_symbol(&struct_name).cloned(),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                let struct_decl = check!(
+                let mut struct_decl = check!(
                     unknown_decl.expect_struct().cloned(),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
                 // monomorphize the struct definition
-                let struct_decl = check!(
-                    namespace.monomorphize(
-                        struct_decl,
+                check!(
+                    ctx.monomorphize(
+                        &mut struct_decl,
                         vec!(),
                         EnforceTypeArguments::No,
-                        Some(self_type),
-                        None
+                        &struct_name.span()
                     ),
                     return err(warnings, errors),
                     warnings,
@@ -95,29 +90,55 @@ impl TypedScrutinee {
                 );
                 // type check the fields
                 let mut typed_fields = vec![];
+                let mut rest_pattern = None;
                 for field in fields.into_iter() {
-                    // ensure that the struct definition has this field
-                    let _ = check!(
-                        struct_decl.expect_field(&field.field),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    // type check the nested scrutinee
-                    let typed_scrutinee = match field.scrutinee {
-                        None => None,
-                        Some(scrutinee) => Some(check!(
-                            TypedScrutinee::type_check(scrutinee, namespace, self_type),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        )),
-                    };
-                    typed_fields.push(TypedStructScrutineeField {
-                        field: field.field,
-                        scrutinee: typed_scrutinee,
-                        span: field.span,
+                    match field {
+                        StructScrutineeField::Rest { .. } => rest_pattern = Some(field),
+                        StructScrutineeField::Field {
+                            field,
+                            scrutinee,
+                            span,
+                        } => {
+                            // ensure that the struct definition has this field
+                            let _ = check!(
+                                struct_decl.expect_field(&field),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            // type check the nested scrutinee
+                            let typed_scrutinee = match scrutinee {
+                                None => None,
+                                Some(scrutinee) => Some(check!(
+                                    TypedScrutinee::type_check(ctx.by_ref(), scrutinee),
+                                    return err(warnings, errors),
+                                    warnings,
+                                    errors
+                                )),
+                            };
+                            typed_fields.push(TypedStructScrutineeField {
+                                field,
+                                scrutinee: typed_scrutinee,
+                                span,
+                            });
+                        }
+                    }
+                }
+                // ensure that the pattern uses all fields of the struct unless the rest pattern is present
+                if (struct_decl.fields.len() != typed_fields.len()) && rest_pattern.is_none() {
+                    let missing_fields = struct_decl
+                        .fields
+                        .iter()
+                        .filter(|f| !typed_fields.iter().any(|tf| f.name == tf.field))
+                        .map(|f| f.name.to_string())
+                        .collect::<Vec<_>>();
+
+                    errors.push(CompileError::MatchStructPatternMissingFields {
+                        span,
+                        missing_fields,
                     });
+
+                    return err(warnings, errors);
                 }
                 TypedScrutinee {
                     variant: TypedScrutineeVariant::StructScrutinee(typed_fields),
@@ -135,7 +156,7 @@ impl TypedScrutinee {
                     None => {
                         errors.push(CompileError::EnumNotFound {
                             name: call_path.suffix.clone(),
-                            span: call_path.suffix.span().clone(),
+                            span: call_path.suffix.span(),
                         });
                         return err(warnings, errors);
                     }
@@ -143,25 +164,24 @@ impl TypedScrutinee {
                 let variant_name = call_path.suffix;
                 // find the enum definition from the name
                 let unknown_decl = check!(
-                    namespace.resolve_symbol(enum_name).cloned(),
+                    ctx.namespace.resolve_symbol(enum_name).cloned(),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                let enum_decl = check!(
+                let mut enum_decl = check!(
                     unknown_decl.expect_enum().cloned(),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
                 // monomorphize the enum definition
-                let enum_decl = check!(
-                    namespace.monomorphize(
-                        enum_decl,
+                check!(
+                    ctx.monomorphize(
+                        &mut enum_decl,
                         vec!(),
                         EnforceTypeArguments::No,
-                        Some(self_type),
-                        None
+                        &enum_name.span()
                     ),
                     return err(warnings, errors),
                     warnings,
@@ -177,7 +197,7 @@ impl TypedScrutinee {
                 );
                 // type check the nested scrutinee
                 let typed_value = check!(
-                    TypedScrutinee::type_check(*value, namespace, self_type),
+                    TypedScrutinee::type_check(ctx, *value),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -195,7 +215,7 @@ impl TypedScrutinee {
                 let mut typed_elems = vec![];
                 for elem in elems.into_iter() {
                     typed_elems.push(check!(
-                        TypedScrutinee::type_check(elem, namespace, self_type),
+                        TypedScrutinee::type_check(ctx.by_ref(), elem),
                         continue,
                         warnings,
                         errors

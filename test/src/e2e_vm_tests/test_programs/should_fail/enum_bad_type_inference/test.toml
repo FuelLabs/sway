@@ -1,0 +1,12 @@
+category = "fail"
+
+
+# check: Ok: T,
+# nextln: $()Mismatched types.
+# nextln: $()expected: bool
+# nextln: $()found:    u64.
+
+# check: enum Result<T, E> {
+# nextln: $()Mismatched types.
+# nextln: $()expected: bool
+# nextln: $()found:    u64.

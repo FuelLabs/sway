@@ -1,0 +1,20 @@
+[
+  {
+    "inputs": [],
+    "name": "main",
+    "outputs": [
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "name",
+            "type": "str[9]"
+          }
+        ],
+        "name": "",
+        "type": "struct Wrapper"
+      }
+    ],
+    "type": "function"
+  }
+]

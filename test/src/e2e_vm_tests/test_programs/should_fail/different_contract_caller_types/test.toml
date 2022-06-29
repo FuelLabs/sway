@@ -1,0 +1,15 @@
+category = "fail"
+
+# check: let caller = abi(OtherAbi, ADDRESS);
+# nextln: caller
+# nextln: $()Mismatched types.
+# nextln: $()expected: contract caller SomeAbi
+# nextln: $()found:    contract caller OtherAbi.
+# nextln: $()help: Implicit return must match up with block's type.
+
+# check: let caller = abi(OtherAbi, ADDRESS);
+# nextln: caller
+# nextln: $()Mismatched types.
+# nextln: $()expected: contract caller SomeAbi
+# nextln: $()found:    contract caller OtherAbi.
+# nextln: $()help: Function body's return type does not match up with its return type annotation.
