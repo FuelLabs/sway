@@ -1004,6 +1004,15 @@ impl Op {
                     );
                     VirtualOp::GM(r1, imm)
                 }
+                "gtf" => {
+                    let (r1, r2, imm) = check!(
+                        two_regs_imm_12(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::GTF(r1, r2, imm)
+                }
                 _ => {
                     errors.push(CompileError::UnrecognizedOp {
                         op_name: name.clone(),
@@ -1429,6 +1438,7 @@ impl fmt::Display for Op {
                 NOOP => "noop".to_string(),
                 FLAG(a) => format!("flag {}", a),
                 GM(a, b) => format!("gm {} {}", a, b),
+                GTF(a, b, c) => format!("gtf {} {} {}", a, b, c),
                 Undefined => "undefined op".into(),
                 VirtualOp::DataSectionOffsetPlaceholder => "data section offset placeholder".into(),
                 DataSectionRegisterLoadPlaceholder => {
