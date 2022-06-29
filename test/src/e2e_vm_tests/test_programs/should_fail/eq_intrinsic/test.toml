@@ -4,22 +4,22 @@ category = "fail"
 # nextln: $()Unsupported argument type to intrinsic "eq".
 
 # check: $()__eq(false, 11);
-# nextln: $()Mismatched types.
+# check: $()Mismatched types.
 
 # check: $()__eq(A { a: 1 }, B { a: 1 });
-# nextln: $()Unsupported argument type to intrinsic "eq".
+# check: $()Unsupported argument type to intrinsic "eq".
 
 # check: $()__eq((1, 2), (1, 2));
-# nextln: $()Unsupported argument type to intrinsic "eq".
+# check: $()Unsupported argument type to intrinsic "eq".
 
 # check: $()__eq([1, 2], [1, 2]);
-# nextln: $()Unsupported argument type to intrinsic "eq".
+# check: $()Unsupported argument type to intrinsic "eq".
 
 # check: $()__eq(B::First, B::First);
-# nextln: $()Unsupported argument type to intrinsic "eq".
+# check: $()Unsupported argument type to intrinsic "eq".
 
 # check: $()__eq(B::Second(1), B::Second(1));
-# nextln: $()Unsupported argument type to intrinsic "eq".
+# check: $()Unsupported argument type to intrinsic "eq".
 
 # check: $()__eq(my_number1, my_number1);
-# nextln: $()Unsupported argument type to intrinsic "eq".
+# check: $()Unsupported argument type to intrinsic "eq".
