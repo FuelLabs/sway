@@ -1,4 +1,8 @@
-use crate::fmt::{Format, FormattedCode, Formatter};
+use crate::{
+    fmt::{Format, FormattedCode, Formatter},
+    FormatterError,
+};
+use std::fmt::Write;
 use sway_parse::{
     attribute::{Annotated, AttributeDecl},
     token::Delimiter,
@@ -9,24 +13,26 @@ use sway_types::Spanned;
 use super::bracket::{Parenthesis, SquareBracket};
 
 impl<T: Parse + Format> Format for Annotated<T> {
-    fn format(&self, formatter: &mut Formatter) -> FormattedCode {
-        let attributes = &self.attribute_list;
-        let mut formatted_code = String::new();
-
-        for attr in attributes {
-            AttributeDecl::format(attr, &mut formatted_code, formatter);
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        // format each `Attribute`
+        for attr in &self.attribute_list {
+            attr.format(formatted_code, formatter)?;
         }
-
-        formatted_code + &self.value.format(formatter)
+        // format `ItemKind`
+        self.value.format(formatted_code, formatter)
     }
 }
 
-pub(crate) trait FormatDecl {
-    fn format(&self, line: &mut String, formatter: &mut Formatter);
+pub trait FormatDecl {
+    fn format(&self, line: &mut String, formatter: &mut Formatter) -> Result<(), FormatterError>;
 }
 
 impl FormatDecl for AttributeDecl {
-    fn format(&self, line: &mut String, formatter: &mut Formatter) {
+    fn format(&self, line: &mut String, formatter: &mut Formatter) -> Result<(), FormatterError> {
         // At some point there will be enough attributes to warrant the need
         // of formatting the list according to `config::lists::ListTactic`.
         // For now the default implementation will be `Horizontal`.
@@ -34,50 +40,54 @@ impl FormatDecl for AttributeDecl {
         // `#`
         line.push_str(self.hash_token.span().as_str());
         // `[`
-        Self::open_square_bracket(line, formatter);
+        Self::open_square_bracket(line, formatter)?;
         let attr = self.attribute.clone().into_inner();
         // name e.g. `storage`
         line.push_str(attr.name.span().as_str());
         // `(`
-        Self::open_parenthesis(line, formatter);
-        // format and add args `read, write`
+        Self::open_parenthesis(line, formatter)?;
+        // format and add args e.g. `read, write`
         if let Some(args) = attr.args {
-            let args = args.into_inner().value_separator_pairs;
-            let mut buf = args
-                .iter()
-                .map(|arg| format!("{}{}", arg.0.as_str(), arg.1.span().as_str()))
-                .collect::<Vec<String>>()
-                .join(" ");
-            if args.len() == 1 {
-                buf.pop(); // pop the ending comma
-                line.push_str(&buf);
-            } else {
-                buf.pop(); // pop the ending space
-                buf.pop(); // pop the ending comma
-                line.push_str(&buf);
-            }
+            args.into_inner().format(line, formatter)?;
         }
         // ')'
-        Self::close_parenthesis(line, formatter);
+        Self::close_parenthesis(line, formatter)?;
         // `]\n`
-        Self::close_square_bracket(line, formatter);
+        Self::close_square_bracket(line, formatter)?;
+        Ok(())
     }
 }
 
 impl SquareBracket for AttributeDecl {
-    fn open_square_bracket(line: &mut String, _formatter: &mut Formatter) {
+    fn open_square_bracket(
+        line: &mut String,
+        _formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         line.push(Delimiter::Bracket.as_open_char());
+        Ok(())
     }
-    fn close_square_bracket(line: &mut String, _formatter: &mut Formatter) {
-        line.push_str(&format!("{}\n", Delimiter::Bracket.as_close_char()));
+    fn close_square_bracket(
+        line: &mut String,
+        _formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        writeln!(line, "{}", Delimiter::Bracket.as_close_char())?;
+        Ok(())
     }
 }
 
 impl Parenthesis for AttributeDecl {
-    fn open_parenthesis(line: &mut String, _formatter: &mut Formatter) {
-        line.push(Delimiter::Parenthesis.as_open_char())
+    fn open_parenthesis(
+        line: &mut String,
+        _formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        line.push(Delimiter::Parenthesis.as_open_char());
+        Ok(())
     }
-    fn close_parenthesis(line: &mut String, _formatter: &mut Formatter) {
-        line.push(Delimiter::Parenthesis.as_close_char())
+    fn close_parenthesis(
+        line: &mut String,
+        _formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        line.push(Delimiter::Parenthesis.as_close_char());
+        Ok(())
     }
 }

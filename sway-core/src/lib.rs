@@ -255,8 +255,25 @@ pub fn compile_to_ast(
         return CompileAstResult::Failure { errors, warnings };
     }
 
+    // Check that all storage initializers can be evaluated at compile time.
+    let CompileResult {
+        value: typed_program_with_storage_slots_result,
+        warnings: new_warnings,
+        errors: new_errors,
+    } = typed_program.get_typed_program_with_initialized_storage_slots();
+    warnings.extend(new_warnings);
+    errors.extend(new_errors);
+    let typed_program_with_storage_slots = match typed_program_with_storage_slots_result {
+        Some(typed_program_with_storage_slots) => typed_program_with_storage_slots,
+        None => {
+            errors = dedup_unsorted(errors);
+            warnings = dedup_unsorted(warnings);
+            return CompileAstResult::Failure { errors, warnings };
+        }
+    };
+
     CompileAstResult::Success {
-        typed_program: Box::new(typed_program),
+        typed_program: Box::new(typed_program_with_storage_slots),
         warnings,
     }
 }

@@ -265,7 +265,6 @@ impl TypedAstNode {
                             body,
                             is_mutable,
                         }) => {
-                            check_if_name_is_invalid(&name).ok(&mut warnings, &mut errors);
                             let type_ascription_span = match type_ascription_span {
                                 Some(type_ascription_span) => type_ascription_span,
                                 None => name.span(),
@@ -304,25 +303,16 @@ impl TypedAstNode {
                             value,
                             visibility,
                         }) => {
-                            let result = type_check_ascribed_expr(
-                                ctx.by_ref(),
-                                type_ascription.clone(),
-                                value,
-                            );
+                            let result =
+                                type_check_ascribed_expr(ctx.by_ref(), type_ascription, value);
                             is_screaming_snake_case(&name).ok(&mut warnings, &mut errors);
                             let value =
                                 check!(result, error_recovery_expr(name.span()), warnings, errors);
                             let typed_const_decl =
-                                TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                                TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
                                     name: name.clone(),
-                                    body: value,
-                                    is_mutable: if visibility.is_public() {
-                                        VariableMutability::ExportedConst
-                                    } else {
-                                        VariableMutability::Immutable
-                                    },
-                                    const_decl_origin: true,
-                                    type_ascription: insert_type(type_ascription),
+                                    value,
+                                    visibility,
                                 });
                             ctx.namespace.insert_symbol(name, typed_const_decl.clone());
                             typed_const_decl
@@ -440,7 +430,12 @@ impl TypedAstNode {
                         }
                         Declaration::StorageDeclaration(StorageDeclaration { span, fields }) => {
                             let mut fields_buf = Vec::with_capacity(fields.len());
-                            for StorageField { name, type_info } in fields {
+                            for StorageField {
+                                name,
+                                type_info,
+                                initializer,
+                            } in fields
+                            {
                                 let type_id = check!(
                                     ctx.namespace.resolve_type_without_self(
                                         insert_type(type_info),
@@ -450,13 +445,25 @@ impl TypedAstNode {
                                     warnings,
                                     errors
                                 );
+
+                                let mut ctx = ctx.by_ref().with_type_annotation(type_id);
+                                let initializer = match initializer {
+                                    Some(initializer) => Some(check!(
+                                        TypedExpression::type_check(ctx.by_ref(), initializer),
+                                        return err(warnings, errors),
+                                        warnings,
+                                        errors,
+                                    )),
+                                    None => None,
+                                };
+
                                 fields_buf.push(TypedStorageField::new(
                                     name,
                                     type_id,
+                                    initializer,
                                     span.clone(),
                                 ));
                             }
-
                             let decl = TypedStorageDeclaration::new(fields_buf, span);
                             // insert the storage declaration into the symbols
                             // if there already was one, return an error that duplicate storage

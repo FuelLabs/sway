@@ -1,38 +1,52 @@
 use crate::{
-    fmt::{Format, FormattedCode, Formatter},
+    fmt::{Format, FormattedCode, Formatter, FormatterError},
     utils::bracket::Parenthesis,
 };
+use std::fmt::Write;
 use sway_parse::{token::Delimiter, FnArg, FnArgs, FnSignature, ItemFn};
 use sway_types::Spanned;
 
 impl Format for ItemFn {
-    fn format(&self, _formatter: &mut Formatter) -> FormattedCode {
+    fn format(
+        &self,
+        _formatted_code: &mut FormattedCode,
+        _formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         todo!()
     }
 }
 
 pub(crate) trait FormatSig {
-    fn format(&self, line: &mut String, formatter: &mut Formatter);
+    fn format(
+        &self,
+        formatted_code: &mut String,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError>;
 }
 
 impl FormatSig for FnSignature {
-    fn format(&self, line: &mut String, formatter: &mut Formatter) {
+    fn format(
+        &self,
+        formatted_code: &mut String,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         // `pub `
         if let Some(visibility_token) = &self.visibility {
-            line.push_str(visibility_token.span().as_str());
-            line.push(' ');
+            write!(formatted_code, "{} ", visibility_token.span().as_str())?;
         }
-        // `fn `
-        line.push_str(self.fn_token.span().as_str());
-        line.push(' ');
-        // name
-        line.push_str(self.name.as_str());
+        // `fn ` + name
+        write!(
+            formatted_code,
+            "{} {}",
+            self.fn_token.span().as_str(),
+            self.name.as_str()
+        )?;
         // `<T>`
         if let Some(generics) = &self.generics.clone() {
-            line.push_str(&generics.format(formatter))
+            generics.format(formatted_code, formatter)?;
         }
         // `(`
-        Self::open_parenthesis(line, formatter);
+        Self::open_parenthesis(formatted_code, formatter)?;
         // FnArgs
         match self.arguments.clone().into_inner() {
             FnArgs::Static(args) => {
@@ -46,16 +60,25 @@ impl FormatSig for FnSignature {
             FnArgs::NonStatic { .. } => {}
         }
         // `)`
-        Self::close_parenthesis(line, formatter);
+        Self::close_parenthesis(formatted_code, formatter)?;
+        Ok(())
     }
 }
 
 impl Parenthesis for FnSignature {
-    fn open_parenthesis(line: &mut String, _formatter: &mut Formatter) {
-        line.push(Delimiter::Parenthesis.as_open_char())
+    fn open_parenthesis(
+        line: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        line.push(Delimiter::Parenthesis.as_open_char());
+        Ok(())
     }
-    fn close_parenthesis(line: &mut String, _formatter: &mut Formatter) {
-        line.push(Delimiter::Parenthesis.as_close_char())
+    fn close_parenthesis(
+        line: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        line.push(Delimiter::Parenthesis.as_close_char());
+        Ok(())
     }
 }
 

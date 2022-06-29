@@ -1,12 +1,14 @@
 use crate::{
     lock::Lock,
     manifest::{BuildProfile, Dependency, Manifest, ManifestFile},
+    CORE, STD,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
     find_file_name, git_checkouts_directory, kebab_to_snake_case, print_on_failure,
     print_on_success, print_on_success_library, println_yellow_err,
 };
+use fuel_tx::StorageSlot;
 use fuels_types::JsonABI;
 use petgraph::{
     self,
@@ -15,7 +17,7 @@ use petgraph::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{hash_map, BTreeSet, HashMap, HashSet},
+    collections::{hash_map, BTreeSet, HashMap},
     fmt, fs,
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
@@ -45,6 +47,7 @@ pub struct PinnedId(u64);
 /// The result of successfully compiling a package.
 pub struct Compiled {
     pub json_abi: JsonABI,
+    pub storage_slots: Vec<StorageSlot>,
     pub bytecode: Vec<u8>,
     pub tree_type: TreeType,
 }
@@ -1393,36 +1396,76 @@ pub fn sway_build_config(
 /// Builds the dependency namespace for the package at the given node index within the graph.
 ///
 /// This function is designed to be called for each node in order of compilation.
+///
+/// This function ensures that if `core` exists in the graph (the vastly common case) it is also
+/// present within the namespace. This is a necessity for operators to work for example.
 pub fn dependency_namespace(
     namespace_map: &HashMap<NodeIx, namespace::Module>,
     graph: &Graph,
-    compilation_order: &[NodeIx],
     node: NodeIx,
 ) -> namespace::Module {
-    use petgraph::visit::{Dfs, Walker};
-
-    // Find all nodes that are a dependency of this one with a depth-first search.
-    let deps: HashSet<NodeIx> = Dfs::new(graph, node).iter(graph).collect();
-
-    // In order of compilation, accumulate dependency namespaces as submodules.
     let mut namespace = namespace::Module::default();
-    for &dep_node in compilation_order.iter().filter(|n| deps.contains(n)) {
-        if dep_node == node {
-            break;
-        }
-        // Add the namespace once for each of its names.
+
+    // Add direct dependencies.
+    let mut core_added = false;
+    for edge in graph.edges_directed(node, Direction::Outgoing) {
+        let dep_node = edge.target();
         let dep_namespace = &namespace_map[&dep_node];
-        let dep_names: BTreeSet<_> = graph
-            .edges_directed(dep_node, Direction::Incoming)
-            .map(|e| e.weight())
-            .collect();
-        for dep_name in dep_names {
-            let dep_name = kebab_to_snake_case(dep_name);
-            namespace.insert_submodule(dep_name.to_string(), dep_namespace.clone());
+        let dep_name = kebab_to_snake_case(edge.weight());
+        namespace.insert_submodule(dep_name, dep_namespace.clone());
+        let dep = &graph[dep_node];
+        if dep.name == CORE {
+            core_added = true;
+        }
+    }
+
+    // Add `core` if not already added.
+    if !core_added {
+        if let Some(core_node) = find_core_dep(graph, node) {
+            let core_namespace = &namespace_map[&core_node];
+            namespace.insert_submodule(CORE.to_string(), core_namespace.clone());
         }
     }
 
     namespace
+}
+
+/// Find the `core` dependency (whether direct or transitive) for the given node if it exists.
+fn find_core_dep(graph: &Graph, node: NodeIx) -> Option<NodeIx> {
+    use petgraph::visit::{Dfs, Walker};
+
+    // If we are `core`, do nothing.
+    let pkg = &graph[node];
+    if pkg.name == CORE {
+        return None;
+    }
+
+    // If we have `core` as a direct dep, use it.
+    let mut maybe_std = None;
+    for edge in graph.edges_directed(node, Direction::Outgoing) {
+        let dep_node = edge.target();
+        let dep = &graph[dep_node];
+        match &dep.name[..] {
+            CORE => return Some(dep_node),
+            STD => maybe_std = Some(dep_node),
+            _ => (),
+        }
+    }
+
+    // If we have `std`, select `core` via `std`.
+    if let Some(std) = maybe_std {
+        return find_core_dep(graph, std);
+    }
+
+    // Otherwise, search from this node.
+    for dep_node in Dfs::new(graph, node).iter(graph) {
+        let dep = &graph[dep_node];
+        if dep.name == CORE {
+            return Some(dep_node);
+        }
+    }
+
+    None
 }
 
 /// Compiles the package to an AST.
@@ -1503,6 +1546,7 @@ pub fn compile(
             warnings,
         } => {
             let json_abi = time_expr!("generate JSON ABI", typed_program.kind.generate_json_abi());
+            let storage_slots = typed_program.storage_slots.clone();
             let tree_type = typed_program.kind.tree_type();
             match tree_type {
                 // If we're compiling a library, we don't need to compile any further.
@@ -1513,6 +1557,7 @@ pub fn compile(
                     let lib_namespace = typed_program.root.namespace.clone();
                     let compiled = Compiled {
                         json_abi,
+                        storage_slots,
                         bytecode,
                         tree_type,
                     };
@@ -1535,6 +1580,7 @@ pub fn compile(
                             let bytecode = bytes;
                             let compiled = Compiled {
                                 json_abi,
+                                storage_slots,
                                 bytecode,
                                 tree_type,
                             };
@@ -1567,11 +1613,11 @@ pub fn build(
     let mut namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     let mut json_abi = vec![];
+    let mut storage_slots = vec![];
     let mut bytecode = vec![];
     let mut tree_type = None;
     for &node in &plan.compilation_order {
-        let dep_namespace =
-            dependency_namespace(&namespace_map, &plan.graph, &plan.compilation_order, node);
+        let dep_namespace = dependency_namespace(&namespace_map, &plan.graph, node);
         let pkg = &plan.graph[node];
         let path = &plan.path_map[&pkg.id()];
         let manifest = ManifestFile::from_dir(path, sway_git_tag)?;
@@ -1581,6 +1627,7 @@ pub fn build(
             namespace_map.insert(node, namespace.into());
         }
         json_abi.extend(compiled.json_abi);
+        storage_slots.extend(compiled.storage_slots);
         bytecode = compiled.bytecode;
         tree_type = Some(compiled.tree_type);
         source_map.insert_dependency(path.clone());
@@ -1590,6 +1637,7 @@ pub fn build(
     let compiled = Compiled {
         bytecode,
         json_abi,
+        storage_slots,
         tree_type,
     };
     Ok((compiled, source_map))
@@ -1609,8 +1657,7 @@ pub fn check(
     let mut namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     for (i, &node) in plan.compilation_order.iter().enumerate() {
-        let dep_namespace =
-            dependency_namespace(&namespace_map, &plan.graph, &plan.compilation_order, node);
+        let dep_namespace = dependency_namespace(&namespace_map, &plan.graph, node);
         let pkg = &plan.graph[node];
         let path = &plan.path_map[&pkg.id()];
         let manifest = ManifestFile::from_dir(path, sway_git_tag)?;

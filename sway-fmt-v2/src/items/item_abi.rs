@@ -2,85 +2,83 @@ use crate::{
     config::items::ItemBraceStyle,
     fmt::{Format, FormattedCode, Formatter},
     utils::{attribute::FormatDecl, bracket::CurlyBrace},
+    FormatterError,
 };
-use sway_parse::{token::Delimiter, AttributeDecl, ItemAbi};
+use std::fmt::Write;
+use sway_parse::{token::Delimiter, ItemAbi};
 use sway_types::Spanned;
 
 impl Format for ItemAbi {
-    fn format(&self, formatter: &mut Formatter) -> FormattedCode {
-        let mut formatted_code = String::new();
-
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         // Add enum token
-        formatted_code.push_str(self.abi_token.span().as_str());
-        formatted_code.push(' ');
+        write!(formatted_code, "{} ", self.abi_token.span().as_str())?;
 
         // Add name of the abi
         formatted_code.push_str(self.name.as_str());
-        Self::open_curly_brace(&mut formatted_code, formatter);
+        Self::open_curly_brace(formatted_code, formatter)?;
 
         // Add item fields
         // abi_items
-        formatted_code += self
-            .abi_items
-            .clone()
-            .into_inner()
-            .iter()
-            .map(|item| -> FormattedCode {
-                let mut buf = String::new();
-                let attribute_list = item.0.attribute_list.clone();
-                // add indent + format attribute if it exists
-                if !attribute_list.is_empty() {
-                    buf.push_str(&formatter.shape.indent.to_string(formatter));
-                    for attr in attribute_list {
-                        AttributeDecl::format(&attr, &mut buf, formatter)
-                    }
+        let mut abi_items_iter = self.abi_items.get().iter().peekable();
+        while let Some(item) = abi_items_iter.next() {
+            let attribute_list = item.0.attribute_list.clone();
+            // add indent + format attribute if it exists
+            if !attribute_list.is_empty() {
+                formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
+                for attr in attribute_list {
+                    attr.format(formatted_code, formatter)?;
                 }
-                // add indent + format item
-                buf.push_str(&formatter.shape.indent.to_string(formatter));
-                buf.push_str(&format!(
-                    "{}{}\n",
-                    item.0.value.span().as_str(), // FnSignature formatting (todo!)
-                    item.1.span().as_str(),       // SemicolonToken
-                ));
+            }
+            // add indent + format item
+            formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
+            writeln!(
+                formatted_code,
+                "{}{}",
+                item.0.value.span().as_str(), // FnSignature formatting (todo!)
+                item.1.span().as_str()        // SemicolonToken
+            )?;
 
-                buf
-            })
-            .collect::<Vec<String>>()
-            .join("\n")
-            .as_str();
+            if abi_items_iter.peek().is_some() {
+                formatted_code.push('\n');
+            }
+        }
+
         // abi_defs_opt
         if let Some(abi_defs) = self.abi_defs_opt.clone() {
-            formatted_code += abi_defs
-                .into_inner()
-                .iter()
-                .map(|item| -> FormattedCode {
-                    let mut buf = String::new();
-                    let attribute_list = item.attribute_list.clone();
-                    // add indent + format attribute if it exists
-                    if !attribute_list.is_empty() {
-                        buf.push_str(&formatter.shape.indent.to_string(formatter));
-                        for attr in attribute_list {
-                            AttributeDecl::format(&attr, &mut buf, formatter)
-                        }
+            let mut iter = abi_defs.get().iter().peekable();
+            while let Some(item) = iter.next() {
+                let attribute_list = item.attribute_list.clone();
+                // add indent + format attribute if it exists
+                if !attribute_list.is_empty() {
+                    formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
+                    for attr in attribute_list {
+                        attr.format(formatted_code, formatter)?;
                     }
-                    // add indent + format item
-                    buf.push_str(&formatter.shape.indent.to_string(formatter));
-                    buf.push_str(&item.value.format(formatter)); // ItemFn formatting (todo!)
+                }
 
-                    buf
-                })
-                .collect::<Vec<String>>()
-                .join("\n")
-                .as_str();
+                // add indent + format item
+                formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
+                item.value.format(formatted_code, formatter)?; // ItemFn formatting (todo!)
+                if iter.peek().is_some() {
+                    formatted_code.push('\n');
+                }
+            }
         }
-        Self::close_curly_brace(&mut formatted_code, formatter);
+        Self::close_curly_brace(formatted_code, formatter)?;
 
-        formatted_code
+        Ok(())
     }
 }
 
 impl CurlyBrace for ItemAbi {
-    fn open_curly_brace(line: &mut String, formatter: &mut Formatter) {
+    fn open_curly_brace(
+        line: &mut String,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
         let extra_width = formatter.config.whitespace.tab_spaces;
         let mut shape = formatter.shape;
@@ -88,24 +86,29 @@ impl CurlyBrace for ItemAbi {
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
-                line.push_str(&format!("\n{}\n", open_brace));
+                write!(line, "\n{}\n", open_brace)?;
                 shape = shape.block_indent(extra_width);
             }
             _ => {
                 // Add opening brace to the same line
-                line.push_str(&format!(" {}\n", open_brace));
+                writeln!(line, " {}", open_brace)?;
                 shape = shape.block_indent(extra_width);
             }
         }
 
         formatter.shape = shape;
+        Ok(())
     }
-    fn close_curly_brace(line: &mut String, formatter: &mut Formatter) {
+    fn close_curly_brace(
+        line: &mut String,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         line.push(Delimiter::Brace.as_close_char());
         // If shape is becoming left-most alligned or - indent just have the defualt shape
         formatter.shape = formatter
             .shape
             .shrink_left(formatter.config.whitespace.tab_spaces)
             .unwrap_or_default();
+        Ok(())
     }
 }
