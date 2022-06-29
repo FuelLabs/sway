@@ -379,10 +379,7 @@ impl BuildPlan {
     /// from project's manifest file after the lock file is generated.
     ///
     /// The returned removed dependencies are already removed from the dependency graph.
-    pub fn from_lock_file(
-        lock_path: &Path,
-        sway_git_tag: &str,
-    ) -> Result<(Self, Vec<DependencyName>)> {
+    fn from_lock_file(lock_path: &Path, sway_git_tag: &str) -> Result<(Self, Vec<DependencyName>)> {
         let proj_path = lock_path.parent().unwrap();
         let lock = Lock::from_path(lock_path)?;
         Self::from_lock(proj_path, &lock, sway_git_tag)

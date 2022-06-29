@@ -160,9 +160,10 @@ impl TextDocument {
         let silent_mode = true;
         let manifest =
             pkg::ManifestFile::from_dir(&manifest_dir, forc::utils::SWAY_GIT_TAG).unwrap();
-        let lock_path = forc_util::lock_path(manifest.dir());
-        let plan = pkg::BuildPlan::from_lock_file(&lock_path, forc::utils::SWAY_GIT_TAG).unwrap();
-        let res = pkg::check(&plan.0, silent_mode, forc::utils::SWAY_GIT_TAG).unwrap();
+        let plan =
+            pkg::BuildPlan::load_from_manifest(&manifest, false, false, forc::utils::SWAY_GIT_TAG)
+                .unwrap();
+        let res = pkg::check(&plan, silent_mode, forc::utils::SWAY_GIT_TAG).unwrap();
 
         match res {
             CompileAstResult::Failure { .. } => None,
