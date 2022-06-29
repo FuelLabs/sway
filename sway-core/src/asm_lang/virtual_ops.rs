@@ -142,7 +142,7 @@ pub(crate) enum VirtualOp {
     NOOP,
     FLAG(VirtualRegister),
     GM(VirtualRegister, VirtualImmediate18),
-    GTF(VirtualRegister, VirtualRegister, VirtualImmediate18),
+    GTF(VirtualRegister, VirtualRegister, VirtualImmediate12),
     Undefined,
     DataSectionOffsetPlaceholder,
     DataSectionRegisterLoadPlaceholder,
