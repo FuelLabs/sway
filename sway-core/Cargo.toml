@@ -13,7 +13,7 @@ clap = { version = "3.1", features = ["derive"], optional = true }
 derivative = "2.2.0"
 dirs = "3.0"
 either = "1.6"
-fuel-asm = "0.6"
+fuel-asm = "0.5.3"
 fuel-crypto = "0.5"
 fuel-tx = "0.13"
 fuel-types = "0.5"
