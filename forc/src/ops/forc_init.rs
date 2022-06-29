@@ -46,7 +46,7 @@ pub fn init(command: InitCommand) -> Result<()> {
         anyhow::bail!("'{}' is not a valid directory.", project_dir.display());
     }
 
-    if project_dir.join("Forc.toml").exists() {
+    if project_dir.join(constants::MANIFEST_FILE_NAME).exists() {
         anyhow::bail!(
             "'{}' already includes a Forc.toml file.",
             project_dir.display()
