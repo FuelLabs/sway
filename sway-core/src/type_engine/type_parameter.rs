@@ -1,4 +1,4 @@
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
+use crate::{error::*, semantic_analysis::*, type_engine::*};
 
 use sway_types::{ident::Ident, span::Span, Spanned};
 
@@ -68,9 +68,9 @@ impl fmt::Display for TypeParameter {
 
 impl TypeParameter {
     pub(crate) fn type_check(
+        ctx: TypeCheckContext,
         type_parameter: TypeParameter,
-        namespace: &mut Namespace,
-    ) -> CompileResult<TypeParameter> {
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         if !type_parameter.trait_constraints.is_empty() {
@@ -87,7 +87,7 @@ impl TypeParameter {
             name: type_parameter.name_ident.clone(),
             type_id,
         };
-        namespace
+        ctx.namespace
             .insert_symbol(type_parameter.name_ident.clone(), type_parameter_decl)
             .ok(&mut warnings, &mut errors);
         let type_parameter = TypeParameter {
@@ -97,9 +97,4 @@ impl TypeParameter {
         };
         ok(type_parameter, warnings, errors)
     }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub(crate) struct TraitConstraint {
-    pub(crate) call_path: CallPath,
 }

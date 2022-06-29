@@ -1,5 +1,4 @@
 use fuels::{prelude::*, tx::ContractId};
-use fuels_abigen_macro::abigen;
 
 abigen!(
     AuthContract,

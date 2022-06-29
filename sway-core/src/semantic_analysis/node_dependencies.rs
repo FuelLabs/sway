@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
+use crate::type_engine::{TypeArgument, TypeParameter};
 use crate::{
     error::*,
     parse_tree::*,
@@ -474,10 +475,9 @@ impl Dependencies {
             }
             Expression::TupleIndex { prefix, .. } => self.gather_from_expr(prefix),
             Expression::StorageAccess { .. } => self,
-            Expression::IntrinsicFunction { kind, .. } => match kind {
-                IntrinsicFunctionKind::SizeOfVal { exp } => self.gather_from_expr(exp),
-                _ => self,
-            },
+            Expression::IntrinsicFunction { arguments, .. } => {
+                self.gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg))
+            }
         }
     }
 

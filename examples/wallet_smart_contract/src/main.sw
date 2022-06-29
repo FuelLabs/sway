@@ -26,8 +26,8 @@ abi Wallet {
 
 impl Wallet for Contract {
     #[storage(read, write)]fn receive_funds() {
-        if msg_asset_id() == ~ContractId::from(BASE_ASSET_ID) {
-            // If we received `NATIVE_ASSET_ID` then keep track of the balance.
+        if msg_asset_id() == BASE_ASSET_ID {
+            // If we received `BASE_ASSET_ID` then keep track of the balance.
             // Otherwise, we're receiving other native assets and don't care
             // about our balance of tokens.
             storage.balance = storage.balance + msg_amount();
@@ -54,6 +54,6 @@ impl Wallet for Contract {
         // Note: `transfer_to_output()` is not a call and thus not an
         // interaction. Regardless, this code conforms to
         // checks-effects-interactions to avoid re-entrancy.
-        transfer_to_output(amount_to_send, ~ContractId::from(BASE_ASSET_ID), recipient_address);
+        transfer_to_output(amount_to_send, BASE_ASSET_ID, recipient_address);
     }
 }
