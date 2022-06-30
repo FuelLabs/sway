@@ -46,7 +46,7 @@ pub fn is_conflicting_artifact_name(name: &str) -> bool {
 pub fn contains_invalid_char(name: &str, use_case: &str) -> Result<()> {
     let mut chars = name.chars();
     if let Some(ch) = chars.next() {
-        if ch.is_digit(10) {
+        if ch.is_ascii_digit() {
             // A specific error for a potentially common case.
             bail!(
                 "the name `{name}` cannot be used as a {use_case}, \
