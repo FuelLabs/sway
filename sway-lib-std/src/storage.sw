@@ -213,8 +213,8 @@ impl<V> StorageVec<V> {
         // gets the element before removing it, so it can be returned
         let element_to_be_removed = get::<V>(sha256((index, __get_storage_key())));
 
-        let last_element = get::<V>(sha256(len - 1, __get_storage_key()));
-        store::<V>(sha256(index, __get_storage_key()), last_element);
+        let last_element = get::<V>(sha256((len - 1, __get_storage_key())));
+        store::<V>(sha256((index, __get_storage_key())), last_element);
 
         // decrements len by 1
         store(__get_storage_key(), len - 1);
