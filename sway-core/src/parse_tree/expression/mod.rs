@@ -1,6 +1,6 @@
 use crate::{
     parse_tree::{CallPath, Literal},
-    type_engine::{TypeArgument, TypeBinding},
+    type_engine::TypeBinding,
     CodeBlock, TypeInfo,
 };
 use sway_types::{ident::Ident, Span, Spanned};
@@ -134,9 +134,8 @@ pub enum Expression {
         span: Span,
     },
     IntrinsicFunction {
-        kind: Intrinsic,
+        kind_binding: TypeBinding<Intrinsic>,
         arguments: Vec<Expression>,
-        type_arguments: Vec<TypeArgument>,
         span: Span,
     },
 }

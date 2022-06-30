@@ -506,17 +506,10 @@ impl TypedExpression {
                 Self::type_check_storage_load(ctx, field_names, &expr_span)
             }
             Expression::IntrinsicFunction {
-                kind,
-                type_arguments,
+                kind_binding,
                 arguments,
                 span,
-            } => Self::type_check_intrinsic_function(
-                ctx.by_ref(),
-                kind,
-                type_arguments,
-                arguments,
-                span,
-            ),
+            } => Self::type_check_intrinsic_function(ctx.by_ref(), kind_binding, arguments, span),
         };
         let mut typed_expression = match res.value {
             Some(r) => r,
@@ -1571,21 +1564,14 @@ impl TypedExpression {
 
     fn type_check_intrinsic_function(
         ctx: TypeCheckContext,
-        kind: Intrinsic,
-        type_arguments: Vec<TypeArgument>,
+        kind_binding: TypeBinding<Intrinsic>,
         arguments: Vec<Expression>,
         span: Span,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let (intrinsic_function, return_type) = check!(
-            TypedIntrinsicFunctionKind::type_check(
-                ctx,
-                kind,
-                type_arguments,
-                arguments,
-                span.clone()
-            ),
+            TypedIntrinsicFunctionKind::type_check(ctx, kind_binding, arguments, span.clone()),
             return err(warnings, errors),
             warnings,
             errors
