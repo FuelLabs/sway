@@ -12,6 +12,16 @@ struct TestStruct {
     uwu: u64
 }
 
+struct Data<T> {
+    value: T
+}
+
+impl<T> Data<T> {
+    fn noop<F>(other: F) -> F {
+        other
+    }
+}
+
 fn main() -> bool {
     // Create a struct
     let foo = TestStruct { boo: true, uwu: 42 };
@@ -26,6 +36,8 @@ fn main() -> bool {
     let foo: TestStruct = buf.into_unchecked();
     assert(foo.boo == true);
     assert(foo.uwu == 42);
+
+    let data = ~Data::<bool>::noop::<u64>(1u64);
 
     true
 }
