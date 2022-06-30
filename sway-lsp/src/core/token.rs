@@ -288,7 +288,9 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
     match exp {
         Expression::Literal { .. } => {}
         Expression::FunctionApplication {
-            name, arguments, ..
+            call_path_binding: name,
+            arguments,
+            ..
         } => {
             let ident = name.suffix;
             let token = Token::from_ident(&ident, TokenType::FunctionApplication);

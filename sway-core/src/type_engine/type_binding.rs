@@ -1,6 +1,12 @@
-use sway_types::{Span, Spanned};
+use sway_types::{Ident, Span, Spanned};
 
-use super::TypeArgument;
+use crate::{
+    error::{err, ok},
+    semantic_analysis::TypeCheckContext,
+    CallPath, CompileResult, TypedDeclaration,
+};
+
+use super::{EnforceTypeArguments, ReplaceSelfType, TypeArgument};
 
 /// A `TypeBinding` is the result of using turbofish to bind types to
 /// generic parameters.

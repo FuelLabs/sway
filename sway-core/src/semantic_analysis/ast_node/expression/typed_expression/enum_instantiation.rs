@@ -10,7 +10,7 @@ pub(crate) fn instantiate_enum(
     mut enum_decl: TypedEnumDeclaration,
     enum_field_name: Ident,
     args: Vec<Expression>,
-    type_arguments: Vec<TypeArgument>,
+    mut type_arguments: Vec<TypeArgument>,
 ) -> CompileResult<TypedExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -19,7 +19,7 @@ pub(crate) fn instantiate_enum(
     check!(
         ctx.monomorphize(
             &mut enum_decl,
-            type_arguments,
+            &mut type_arguments,
             EnforceTypeArguments::No,
             &enum_field_name.span()
         ),

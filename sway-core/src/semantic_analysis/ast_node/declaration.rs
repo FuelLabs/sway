@@ -208,6 +208,74 @@ impl UnresolvedTypeCheck for TypedDeclaration {
 }
 
 impl TypedDeclaration {
+    pub(crate) fn type_check(
+        call_path_binding: &mut TypeBinding<CallPath<Ident>>,
+        ctx: &mut TypeCheckContext,
+    ) -> CompileResult<TypedDeclaration> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        // replace the self types inside of the type arguments
+        for type_argument in call_path_binding.type_arguments.iter_mut() {
+            type_argument.replace_self_type(ctx.self_type());
+        }
+
+        // grab the declaration
+        let mut unknown_decl = check!(
+            ctx.namespace
+                .resolve_call_path(&call_path_binding.inner)
+                .cloned(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        // monomorphize the declaration, if needed
+        match unknown_decl {
+            TypedDeclaration::FunctionDeclaration(ref mut decl) => {
+                check!(
+                    ctx.monomorphize(
+                        decl,
+                        &mut call_path_binding.type_arguments,
+                        EnforceTypeArguments::No,
+                        &call_path_binding.span
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            TypedDeclaration::EnumDeclaration(ref mut decl) => {
+                check!(
+                    ctx.monomorphize(
+                        decl,
+                        &mut call_path_binding.type_arguments,
+                        EnforceTypeArguments::No,
+                        &call_path_binding.span
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            TypedDeclaration::StructDeclaration(ref mut decl) => {
+                check!(
+                    ctx.monomorphize(
+                        decl,
+                        &mut call_path_binding.type_arguments,
+                        EnforceTypeArguments::No,
+                        &call_path_binding.span
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            _ => {}
+        }
+        ok(unknown_decl, warnings, errors)
+    }
+
     /// Attempt to retrieve the declaration as an enum declaration.
     ///
     /// Returns `None` if `self` is not an `TypedEnumDeclaration`.

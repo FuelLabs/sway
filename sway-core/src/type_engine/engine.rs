@@ -34,7 +34,7 @@ impl Engine {
     fn monomorphize<T>(
         &self,
         value: &mut T,
-        mut type_arguments: Vec<TypeArgument>,
+        type_arguments: &mut [TypeArgument],
         enforce_type_arguments: EnforceTypeArguments,
         call_site_span: &Span,
         namespace: &mut Root,
@@ -473,7 +473,7 @@ pub(crate) fn look_up_type_id_raw(id: TypeId) -> TypeInfo {
 
 pub(crate) fn monomorphize<T>(
     value: &mut T,
-    type_arguments: Vec<TypeArgument>,
+    type_arguments: &mut [TypeArgument],
     enforce_type_arguments: EnforceTypeArguments,
     call_site_span: &Span,
     namespace: &mut Root,

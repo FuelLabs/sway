@@ -1,6 +1,6 @@
 use crate::{
     parse_tree::{CallPath, Literal},
-    type_engine::TypeArgument,
+    type_engine::{TypeArgument, TypeBinding},
     CodeBlock, TypeInfo,
 };
 use sway_types::{ident::Ident, Span, Spanned};
@@ -23,9 +23,8 @@ pub enum Expression {
         span: Span,
     },
     FunctionApplication {
-        name: CallPath<Ident>,
+        call_path_binding: TypeBinding<CallPath<Ident>>,
         arguments: Vec<Expression>,
-        type_arguments: Vec<TypeArgument>,
         span: Span,
     },
     LazyOperator {

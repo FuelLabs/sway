@@ -99,11 +99,11 @@ impl Root {
         };
         let type_id = match look_up_type_id(type_id) {
             TypeInfo::Custom {
-                ref name,
+                name,
                 type_arguments,
             } => {
                 match self
-                    .resolve_symbol(module_path, name)
+                    .resolve_symbol(module_path, &name)
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
@@ -111,7 +111,7 @@ impl Root {
                         check!(
                             monomorphize(
                                 &mut decl,
-                                type_arguments.unwrap_or_default(),
+                                &mut type_arguments.unwrap_or_default(),
                                 enforce_type_arguments,
                                 span,
                                 self,
@@ -127,7 +127,7 @@ impl Root {
                         check!(
                             monomorphize(
                                 &mut decl,
-                                type_arguments.unwrap_or_default(),
+                                &mut type_arguments.unwrap_or_default(),
                                 enforce_type_arguments,
                                 span,
                                 self,

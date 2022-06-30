@@ -178,7 +178,7 @@ impl<'ns> TypeCheckContext<'ns> {
     pub(crate) fn monomorphize<T>(
         &mut self,
         value: &mut T,
-        type_arguments: Vec<TypeArgument>,
+        type_arguments: &mut [TypeArgument],
         enforce_type_arguments: EnforceTypeArguments,
         call_site_span: &Span,
     ) -> CompileResult<()>
