@@ -31,13 +31,13 @@ pub fn build(command: JsonAbiCommand) -> Result<Value> {
     let json_abi = json!(compiled.json_abi);
 
     if let Some(outfile) = command.json_outfile {
-        let file = File::create(outfile).map_err(|e| e)?;
+        let file = File::create(outfile)?;
         let res = if command.minify {
             serde_json::to_writer(&file, &json_abi)
         } else {
             serde_json::to_writer_pretty(&file, &json_abi)
         };
-        res.map_err(|e| e)?;
+        res?;
     } else if command.minify {
         info!("{json_abi}");
     } else {
