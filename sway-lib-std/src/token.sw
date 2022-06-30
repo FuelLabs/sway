@@ -2,6 +2,7 @@ library token;
 //! Functionality for performing common operations on tokens.
 
 use ::address::Address;
+use ::constants::*;
 use ::contract_id::ContractId;
 use ::revert::revert;
 use ::tx::*;
@@ -46,7 +47,6 @@ pub fn force_transfer(amount: u64, asset_id: ContractId, destination: ContractId
 
 /// Transfer `amount` coins of tof type `asset_id` and send them to the address `recipient`.
 pub fn transfer_to_output(amount: u64, asset_id: ContractId, recipient: Address) {
-    const OUTPUT_VARIABLE_TYPE: u8 = 4;
 
     // maintain a manual index as we only have `while` loops in sway atm:
     let mut index = 0;
@@ -59,7 +59,7 @@ pub fn transfer_to_output(amount: u64, asset_id: ContractId, recipient: Address)
     let outputs_count = tx_outputs_count();
     while index < outputs_count {
         let output_pointer = tx_output_pointer(index);
-        if tx_output_type(output_pointer) == OUTPUT_VARIABLE_TYPE && tx_output_amount(output_pointer) == 0 {
+        if tx_output_type(output_pointer) == OUTPUT_VARIABLE && tx_output_amount(output_pointer) == 0 {
             output_index = index;
             output_found = true;
             index = outputs_count; // break early and use the output we found
