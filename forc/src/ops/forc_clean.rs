@@ -36,8 +36,7 @@ pub fn clean(command: CleanCommand) -> Result<()> {
             .arg("clean")
             .stderr(process::Stdio::inherit())
             .stdout(process::Stdio::inherit())
-            .output()
-            .map_err(|e| e)?;
+            .output()?;
     }
 
     Ok(())
