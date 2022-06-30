@@ -58,7 +58,7 @@ mod success {
         let item = swap_remove(&instance, 1).await;
         let new_item_at_index = get(&instance, 1).await;
     
-        // assert_eq!(item, 100);
+        assert_eq!(item, 100);
         assert_eq!(new_item_at_index, 200);
     }
 }
