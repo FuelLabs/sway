@@ -99,8 +99,7 @@ pub fn transfer_to_output(amount: u64, asset_id: ContractId, to: Address) {
     // variable output with a value of zero is by definition unused.
     let outputs_count = tx_outputs_count();
     while index < outputs_count {
-        let output_pointer = tx_output_pointer(index);
-        if tx_output_type(output_pointer) == OUTPUT_VARIABLE_TYPE && tx_output_amount(output_pointer) == 0 {
+        if tx_output_type(index) == OUTPUT_VARIABLE_TYPE && tx_output_amount(index) == 0 {
             output_index = index;
             output_found = true;
             index = outputs_count; // break early and use the output we found
