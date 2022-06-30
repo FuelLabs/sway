@@ -14,3 +14,11 @@ pub async fn get_contract_instance() -> (MyContract, ContractId) {
 
     (instance, id)
 }
+
+pub async fn push(instance: &MyContract, value: u8) {
+    instance.vec_u8_push(value).call().await.unwrap();
+}
+
+pub async fn get(instance: &MyContract, index: u64) -> u8 {
+    instance.vec_u8_get(index).call().await.unwrap().value
+}
