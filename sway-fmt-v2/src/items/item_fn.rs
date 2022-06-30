@@ -19,44 +19,30 @@ impl Format for ItemFn {
             .into_inner()
             .format(formatted_code, formatter)?;
         Self::close_curly_brace(formatted_code, formatter)?;
+
         Ok(())
     }
 }
 
-impl Format for CodeBlockContents {
-    fn format(
-        &self,
-        _formatted_code: &mut FormattedCode,
-        _formatter: &mut Formatter,
-    ) -> Result<(), FormatterError> {
-        Ok(())
-    }
-}
-
+// For now this just pushes the char
 impl CurlyBrace for ItemFn {
     fn open_curly_brace(
-        _line: &mut FormattedCode,
+        line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        line.push(Delimiter::Brace.as_open_char());
         Ok(())
     }
     fn close_curly_brace(
-        _line: &mut FormattedCode,
+        line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        line.push(Delimiter::Brace.as_close_char());
         Ok(())
     }
 }
 
-pub(crate) trait FormatSig {
-    fn format(
-        &self,
-        formatted_code: &mut String,
-        formatter: &mut Formatter,
-    ) -> Result<(), FormatterError>;
-}
-
-impl FormatSig for FnSignature {
+impl Format for FnSignature {
     fn format(
         &self,
         formatted_code: &mut String,
@@ -142,13 +128,38 @@ impl Parenthesis for FnSignature {
     }
 }
 
+impl Format for CodeBlockContents {
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        for statement in self.statements.iter() {
+            statement.format(formatted_code, formatter)?;
+        }
+        if let Some(final_expr) = &self.final_expr_opt {
+            final_expr.format(formatted_code, formatter)?;
+        }
+
+        Ok(())
+    }
+}
+
 // TODO: Use this in `Punctuated::format()`
 impl Format for FnArg {
     fn format(
         &self,
-        _formatted_code: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        self.pattern.format(formatted_code, formatter)?;
+        write!(
+            formatted_code,
+            "{} {}",
+            self.colon_token.span().as_str(),
+            self.ty.span().as_str() // Update once `Ty` formatting is merged
+        )?;
+
         Ok(())
     }
 }

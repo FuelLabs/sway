@@ -54,7 +54,7 @@ impl Format for WhereBound {
             &formatter.shape.indent.to_string(formatter), // `Indent`
             self.ty_name.as_str(),                        // `Ident`
             self.colon_token.span().as_str(),             // `ColonToken`
-            self.bounds.span().as_str()                   // TODO: `Traits`
+            self.bounds.span().as_str()                   //  TODO: `Traits`
         )?;
         Ok(())
     }
