@@ -69,12 +69,12 @@ pub struct WidthHeuristics {
     // Maximum width of the args of a function-like attributes before falling
     // back to vertical formatting.
     pub(crate) attr_fn_like_width: usize,
-    // Maximum width in the body of a struct lit before falling back to
+    // Maximum width in the body of a user-defined structure literal before falling back to
     // vertical formatting.
-    pub(crate) struct_lit_width: usize,
-    // Maximum width in the body of a struct variant before falling back
+    pub(crate) structure_lit_width: usize,
+    // Maximum width in the body of a user-defined structure field before falling back
     // to vertical formatting.
-    pub(crate) struct_variant_width: usize,
+    pub(crate) structure_field_width: usize,
     // Maximum width of an array literal before falling back to vertical
     // formatting.
     pub(crate) array_width: usize,
@@ -97,8 +97,8 @@ impl WidthHeuristics {
         WidthHeuristics {
             fn_call_width: usize::max_value(),
             attr_fn_like_width: usize::max_value(),
-            struct_lit_width: 0,
-            struct_variant_width: 0,
+            structure_lit_width: 0,
+            structure_field_width: 0,
             array_width: usize::max_value(),
             chain_width: usize::max_value(),
             single_line_if_else_max_width: 0,
@@ -109,8 +109,8 @@ impl WidthHeuristics {
         WidthHeuristics {
             fn_call_width: max_width,
             attr_fn_like_width: max_width,
-            struct_lit_width: max_width,
-            struct_variant_width: max_width,
+            structure_lit_width: max_width,
+            structure_field_width: max_width,
             array_width: max_width,
             chain_width: max_width,
             single_line_if_else_max_width: max_width,
@@ -131,8 +131,9 @@ impl WidthHeuristics {
             fn_call_width: (DEFAULT_FN_CALL_WIDTH as f32 * max_width_ratio).round() as usize,
             attr_fn_like_width: (DEFAULT_ATTR_FN_LIKE_WIDTH as f32 * max_width_ratio).round()
                 as usize,
-            struct_lit_width: (DEFAULT_STRUCT_LIT_WIDTH as f32 * max_width_ratio).round() as usize,
-            struct_variant_width: (DEFAULT_STRUCT_VAR_WIDTH as f32 * max_width_ratio).round()
+            structure_lit_width: (DEFAULT_STRUCT_LIT_WIDTH as f32 * max_width_ratio).round()
+                as usize,
+            structure_field_width: (DEFAULT_STRUCT_VAR_WIDTH as f32 * max_width_ratio).round()
                 as usize,
             array_width: (DEFAULT_ARRAY_WIDTH as f32 * max_width_ratio).round() as usize,
             chain_width: (DEFAULT_CHAIN_WIDTH as f32 * max_width_ratio).round() as usize,

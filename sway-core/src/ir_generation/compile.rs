@@ -63,14 +63,6 @@ fn compile_constants(
                     None
                 }
             }
-
-            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                name,
-                body,
-                const_decl_origin,
-                ..
-            }) if *const_decl_origin => Some((name, body)),
-
             _otherwise => None,
         };
 

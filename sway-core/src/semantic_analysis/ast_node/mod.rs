@@ -291,7 +291,6 @@ impl TypedAstNode {
                                     name: name.clone(),
                                     body,
                                     is_mutable: is_mutable.into(),
-                                    const_decl_origin: false,
                                     type_ascription,
                                 });
                             ctx.namespace.insert_symbol(name, typed_var_decl.clone());
@@ -794,7 +793,6 @@ fn type_check_trait_methods(
                         },
                         // TODO allow mutable function params?
                         is_mutable: VariableMutability::Immutable,
-                        const_decl_origin: false,
                         type_ascription: r#type,
                     }),
                 );
