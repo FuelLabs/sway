@@ -19,13 +19,13 @@ impl TypedModule {
     /// Type-check the given parsed module to produce a typed module.
     ///
     /// Recursively type-checks submodules first.
-    pub fn type_check(parsed: ParseModule, namespace: &mut Namespace) -> CompileResult<Self> {
+    pub fn type_check(mut ctx: TypeCheckContext, parsed: ParseModule) -> CompileResult<Self> {
         let ParseModule { submodules, tree } = parsed;
 
         // Type-check submodules first in order of declaration.
         let mut submodules_res = ok(vec![], vec![], vec![]);
         for (name, submodule) in submodules {
-            let submodule_res = TypedSubmodule::type_check(name.clone(), submodule, namespace);
+            let submodule_res = TypedSubmodule::type_check(ctx.by_ref(), name.clone(), submodule);
             submodules_res = submodules_res.flat_map(|mut submodules| {
                 submodule_res.map(|submodule| {
                     submodules.push((name, submodule));
@@ -38,41 +38,31 @@ impl TypedModule {
         let ordered_nodes_res = node_dependencies::order_ast_nodes_by_dependency(tree.root_nodes);
 
         let typed_nodes_res = ordered_nodes_res
-            .flat_map(|ordered_nodes| Self::type_check_nodes(ordered_nodes, namespace));
+            .flat_map(|ordered_nodes| Self::type_check_nodes(ctx.by_ref(), ordered_nodes));
 
         let validated_nodes_res = typed_nodes_res.flat_map(|typed_nodes| {
-            let errors = check_supertraits(&typed_nodes, namespace);
+            let errors = check_supertraits(&typed_nodes, ctx.namespace);
             ok(typed_nodes, vec![], errors)
         });
 
         submodules_res.flat_map(|submodules| {
             validated_nodes_res.map(|all_nodes| Self {
                 submodules,
-                namespace: namespace.module().clone(),
+                namespace: ctx.namespace.module().clone(),
                 all_nodes,
             })
         })
     }
 
     fn type_check_nodes(
+        mut ctx: TypeCheckContext,
         nodes: Vec<AstNode>,
-        namespace: &mut Namespace,
     ) -> CompileResult<Vec<TypedAstNode>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let typed_nodes = nodes
             .into_iter()
-            .map(|node| {
-                TypedAstNode::type_check(TypeCheckArguments {
-                    checkee: node,
-                    namespace,
-                    return_type_annotation: insert_type(TypeInfo::Unknown),
-                    help_text: Default::default(),
-                    self_type: insert_type(TypeInfo::Contract),
-                    mode: Mode::NonAbi,
-                    opts: Default::default(),
-                })
-            })
+            .map(|node| TypedAstNode::type_check(ctx.by_ref(), node))
             .filter_map(|res| res.ok(&mut warnings, &mut errors))
             .collect();
 
@@ -86,19 +76,20 @@ impl TypedModule {
 
 impl TypedSubmodule {
     pub fn type_check(
+        parent_ctx: TypeCheckContext,
         dep_name: DepName,
         submodule: ParseSubmodule,
-        parent_namespace: &mut Namespace,
     ) -> CompileResult<Self> {
         let ParseSubmodule {
             library_name,
             module,
         } = submodule;
-        let mut dep_namespace = parent_namespace.enter_submodule(dep_name);
-        let module_res = TypedModule::type_check(module, &mut dep_namespace);
-        module_res.map(|module| TypedSubmodule {
-            library_name,
-            module,
+        parent_ctx.enter_submodule(dep_name, |submod_ctx| {
+            let module_res = TypedModule::type_check(submod_ctx, module);
+            module_res.map(|module| TypedSubmodule {
+                library_name,
+                module,
+            })
         })
     }
 }

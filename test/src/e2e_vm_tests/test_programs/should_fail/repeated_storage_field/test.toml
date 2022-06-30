@@ -1,0 +1,10 @@
+category = "fail"
+
+# check: x: u64,
+# nextln: x: b256,
+# nextln: $()storage field "x" already declared
+# nextln: x: str[4],
+
+# check: x: b256,
+# nextln: x: str[4],
+# nextln: $()storage field "x" already declared

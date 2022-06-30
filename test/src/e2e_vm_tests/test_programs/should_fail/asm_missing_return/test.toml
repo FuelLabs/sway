@@ -1,0 +1,13 @@
+category = "fail"
+
+# check: asm(r1: 5) {
+# check: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Implicit return must match up with block's type.
+
+# check: asm(r1: 5) {
+# check: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Function body's return type does not match up with its return type annotation.

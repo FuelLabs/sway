@@ -883,6 +883,13 @@ pub enum CompileError {
         missing_patterns: String,
         span: Span,
     },
+    #[error("Pattern does not mention {}: {}",
+        if missing_fields.len() == 1 { "field" } else { "fields" },
+        missing_fields.join(", "))]
+    MatchStructPatternMissingFields {
+        missing_fields: Vec<String>,
+        span: Span,
+    },
     #[error(
         "Storage attribute access mismatch. Try giving the surrounding function more access by \
         adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\" to the function declaration."
@@ -988,6 +995,20 @@ pub enum CompileError {
     NonConstantDeclValue { span: Span },
     #[error("Declaring storage in a {program_kind} is not allowed.")]
     StorageDeclarationInNonContract { program_kind: String, span: Span },
+    #[error("Unsupported argument type to intrinsic \"{name}\".")]
+    IntrinsicUnsupportedArgType { name: String, span: Span },
+    #[error("Call to \"{name}\" expects {expected} arguments")]
+    IntrinsicIncorrectNumArgs {
+        name: String,
+        expected: u64,
+        span: Span,
+    },
+    #[error("Call to \"{name}\" expects {expected} type arguments")]
+    IntrinsicIncorrectNumTArgs {
+        name: String,
+        expected: u64,
+        span: Span,
+    },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1107,6 +1128,7 @@ impl Spanned for CompileError {
             StarImportShadowsOtherSymbol { name } => name.span(),
             MatchWrongType { span, .. } => span.clone(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
+            MatchStructPatternMissingFields { span, .. } => span.clone(),
             NotAnEnum { span, .. } => span.clone(),
             StorageAccessMismatch { span, .. } => span.clone(),
             TraitDeclPureImplImpure { span, .. } => span.clone(),
@@ -1143,6 +1165,9 @@ impl Spanned for CompileError {
             TupleIndexOutOfBounds { span, .. } => span.clone(),
             NonConstantDeclValue { span } => span.clone(),
             StorageDeclarationInNonContract { span, .. } => span.clone(),
+            IntrinsicUnsupportedArgType { span, .. } => span.clone(),
+            IntrinsicIncorrectNumArgs { span, .. } => span.clone(),
+            IntrinsicIncorrectNumTArgs { span, .. } => span.clone(),
         }
     }
 }

@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: gm r1 i1;
+# nextln: $()The GM (get-metadata) opcode, when called from an external context, will cause the VM to panic.

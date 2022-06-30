@@ -36,13 +36,6 @@ pub const DEFAULT_BLANK_LINES_LOWER_BOUND: usize = 0;
 /// Write an items and its attribute on the same line if their combined width is below a threshold.
 pub const DEFAULT_INLINE_ATTR_WIDTH: usize = 0;
 
-/////USER_DEFINED_STRUCTURES/////
-
-/// Default max threshold for aligning struct fields.
-pub const DEFAULT_STRUCT_FIELD_ALIGN_THRESHOLD: usize = 0;
-/// Default max threshold for aligning enum variants.
-pub const DEFAULT_ENUM_VARIANT_ALIGN_THRESHOLD: usize = 0;
-
 /////COMMENTS/////
 
 /// Default max length of comments.

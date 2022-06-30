@@ -17,7 +17,7 @@ pub mod pattern;
 mod priv_prelude;
 pub mod punctuated;
 pub mod statement;
-mod token;
+pub mod token;
 pub mod ty;
 pub mod where_clause;
 
@@ -55,8 +55,8 @@ pub use crate::{
     path::{PathExpr, PathExprSegment, PathType, PathTypeSegment, QualifiedPathRoot},
     pattern::{Pattern, PatternStructField},
     statement::{Statement, StatementLet},
-    token::lex,
     token::LexError,
+    token::{lex, lex_commented},
     ty::Ty,
     where_clause::{WhereBound, WhereClause},
 };

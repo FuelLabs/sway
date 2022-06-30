@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: Point { x, .., .. } => { x },
+# nextln: $()Unexpected rest token, must be at the end of pattern.

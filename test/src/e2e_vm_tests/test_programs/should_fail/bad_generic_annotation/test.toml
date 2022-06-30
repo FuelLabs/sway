@@ -1,0 +1,7 @@
+category = "fail"
+
+# check: let g: u32 = three_generics(true, "foo", 10);
+# nextln: $()Mismatched types.
+# nextln: $()expected: u32
+# nextln: $()found:    str[3].
+# nextln: $()help: Variable declaration's type annotation does not match up with the assigned expression's type.

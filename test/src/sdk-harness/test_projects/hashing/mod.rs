@@ -1,5 +1,4 @@
 use fuels::{prelude::*, tx::ContractId};
-use fuels_abigen_macro::abigen;
 use sha2::{Digest, Sha256};
 use sha3::Keccak256;
 

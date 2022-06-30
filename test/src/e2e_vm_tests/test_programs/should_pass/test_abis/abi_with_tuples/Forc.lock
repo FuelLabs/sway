@@ -1,3 +1,9 @@
 [[package]]
-name = 'auth_testing_abi'
+name = 'abi_with_tuples'
+source = 'root'
+dependencies = ['core']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-D1CDC58B8291BA8B'
 dependencies = []

@@ -1,3 +1,5 @@
+use crate::type_engine::{TraitConstraint, TypeArgument, TypeParameter};
+
 use {
     crate::{
         constants::{
@@ -8,12 +10,11 @@ use {
         AbiDeclaration, AsmExpression, AsmOp, AsmRegister, AsmRegisterDeclaration, AstNode,
         AstNodeContent, CallPath, CodeBlock, ConstantDeclaration, Declaration, EnumDeclaration,
         EnumVariant, Expression, FunctionDeclaration, FunctionParameter, ImplSelf, ImplTrait,
-        ImportType, IncludeStatement, IntrinsicFunctionKind, LazyOp, Literal, MatchBranch,
-        MethodName, ParseTree, Purity, Reassignment, ReassignmentTarget, ReturnStatement,
-        Scrutinee, StorageDeclaration, StorageField, StructDeclaration, StructExpressionField,
-        StructField, StructScrutineeField, Supertrait, TraitConstraint, TraitDeclaration, TraitFn,
-        TreeType, TypeArgument, TypeInfo, TypeParameter, UseStatement, VariableDeclaration,
-        Visibility, WhileLoop,
+        ImportType, IncludeStatement, LazyOp, Literal, MatchBranch, MethodName, ParseTree, Purity,
+        Reassignment, ReassignmentTarget, ReturnStatement, Scrutinee, StorageDeclaration,
+        StorageField, StructDeclaration, StructExpressionField, StructField, StructScrutineeField,
+        Supertrait, TraitDeclaration, TraitFn, TreeType, TypeInfo, UseStatement,
+        VariableDeclaration, Visibility, WhileLoop,
     },
     std::{
         collections::HashMap,
@@ -101,16 +102,6 @@ pub enum ConvertParseTreeError {
     GenericsNotSupportedHere { span: Span },
     #[error("fully qualified paths are not supported here")]
     FullyQualifiedPathsNotSupportedHere { span: Span },
-    #[error("__size_of does not take arguments")]
-    SizeOfTooManyArgs { span: Span },
-    #[error("__size_of requires exactly one generic argument")]
-    SizeOfOneGenericArg { span: Span },
-    #[error("__is_reference_type does not take arguments")]
-    IsReferenceTypeTooManyArgs { span: Span },
-    #[error("__is_reference_type requires exactly one generic argument")]
-    IsReferenceTypeOneGenericArg { span: Span },
-    #[error("__size_of_val requires exactly one argument")]
-    SizeOfValOneArg { span: Span },
     #[error("tuple index out of range")]
     TupleIndexOutOfRange { span: Span },
     #[error("shift-left expressions are not implemented")]
@@ -198,11 +189,6 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::FunctionArbitraryExpression { span } => span.clone(),
             ConvertParseTreeError::GenericsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::FullyQualifiedPathsNotSupportedHere { span } => span.clone(),
-            ConvertParseTreeError::SizeOfTooManyArgs { span } => span.clone(),
-            ConvertParseTreeError::SizeOfOneGenericArg { span } => span.clone(),
-            ConvertParseTreeError::IsReferenceTypeTooManyArgs { span } => span.clone(),
-            ConvertParseTreeError::IsReferenceTypeOneGenericArg { span } => span.clone(),
-            ConvertParseTreeError::SizeOfValOneArg { span } => span.clone(),
             ConvertParseTreeError::TupleIndexOutOfRange { span } => span.clone(),
             ConvertParseTreeError::ShlNotImplemented { span } => span.clone(),
             ConvertParseTreeError::ShrNotImplemented { span } => span.clone(),
@@ -1441,118 +1427,38 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                     }
                 }
                 None => {
-                    if call_path.prefixes.is_empty()
-                        && !call_path.is_absolute
-                        && Intrinsic::try_from_str(call_path.suffix.as_str())
-                            == Some(Intrinsic::SizeOf)
-                    {
-                        if !arguments.is_empty() {
-                            let error = ConvertParseTreeError::SizeOfTooManyArgs { span };
-                            return Err(ec.error(error));
+                    let type_arguments = match generics_opt {
+                        Some((_double_colon_token, generic_args)) => {
+                            generic_args_to_type_arguments(ec, generic_args)?
                         }
-                        let ty = match {
-                            generics_opt.and_then(|(_double_colon_token, generic_args)| {
-                                iter_to_array(generic_args.parameters.into_inner())
-                            })
-                        } {
-                            Some([ty]) => ty,
-                            None => {
-                                let error = ConvertParseTreeError::SizeOfOneGenericArg { span };
-                                return Err(ec.error(error));
-                            }
-                        };
-                        let type_span = ty.span();
-                        let type_name = ty_to_type_info(ec, ty)?;
-                        Expression::IntrinsicFunction {
-                            kind: IntrinsicFunctionKind::SizeOfType {
-                                type_name,
-                                type_span,
-                            },
-                            span,
-                        }
-                    } else if call_path.prefixes.is_empty()
-                        && !call_path.is_absolute
-                        && Intrinsic::try_from_str(call_path.suffix.as_str())
-                            == Some(Intrinsic::GetStorageKey)
-                    {
-                        if !arguments.is_empty() {
-                            let error = ConvertParseTreeError::GetStorageKeyTooManyArgs { span };
-                            return Err(ec.error(error));
-                        }
-                        if generics_opt.is_some() {
-                            let error = ConvertParseTreeError::GenericsNotSupportedHere { span };
-                            return Err(ec.error(error));
-                        }
-                        Expression::IntrinsicFunction {
-                            kind: IntrinsicFunctionKind::GetStorageKey,
-                            span,
-                        }
-                    } else if call_path.prefixes.is_empty()
-                        && !call_path.is_absolute
-                        && Intrinsic::try_from_str(call_path.suffix.as_str())
-                            == Some(Intrinsic::IsReferenceType)
-                    {
-                        if !arguments.is_empty() {
-                            let error = ConvertParseTreeError::IsReferenceTypeTooManyArgs { span };
-                            return Err(ec.error(error));
-                        }
-                        let ty = match {
-                            generics_opt.and_then(|(_double_colon_token, generic_args)| {
-                                iter_to_array(generic_args.parameters.into_inner())
-                            })
-                        } {
-                            Some([ty]) => ty,
-                            None => {
-                                let error =
-                                    ConvertParseTreeError::IsReferenceTypeOneGenericArg { span };
-                                return Err(ec.error(error));
-                            }
-                        };
-                        let type_span = ty.span();
-                        let type_name = ty_to_type_info(ec, ty)?;
-                        Expression::IntrinsicFunction {
-                            kind: IntrinsicFunctionKind::IsRefType {
-                                type_name,
-                                type_span,
-                            },
-                            span,
-                        }
-                    } else if call_path.prefixes.is_empty()
-                        && !call_path.is_absolute
-                        && Intrinsic::try_from_str(call_path.suffix.as_str())
-                            == Some(Intrinsic::SizeOfVal)
-                    {
-                        let exp = match <[_; 1]>::try_from(arguments) {
-                            Ok([exp]) => Box::new(exp),
-                            Err(..) => {
-                                let error = ConvertParseTreeError::SizeOfValOneArg { span };
-                                return Err(ec.error(error));
-                            }
-                        };
-                        Expression::IntrinsicFunction {
-                            kind: IntrinsicFunctionKind::SizeOfVal { exp },
-                            span,
-                        }
-                    } else {
-                        let type_arguments = match generics_opt {
-                            Some((_double_colon_token, generic_args)) => {
-                                generic_args_to_type_arguments(ec, generic_args)?
-                            }
-                            None => Vec::new(),
-                        };
-                        if call_path.prefixes.is_empty() {
-                            Expression::FunctionApplication {
-                                name: call_path,
+                        None => Vec::new(),
+                    };
+                    match Intrinsic::try_from_str(call_path.suffix.as_str()) {
+                        Some(intrinsic)
+                            if call_path.prefixes.is_empty() && !call_path.is_absolute =>
+                        {
+                            Expression::IntrinsicFunction {
+                                kind: intrinsic,
                                 arguments,
                                 type_arguments,
                                 span,
                             }
-                        } else {
-                            Expression::DelineatedPath {
-                                call_path,
-                                args: arguments,
-                                type_arguments,
-                                span,
+                        }
+                        _ => {
+                            if call_path.prefixes.is_empty() {
+                                Expression::FunctionApplication {
+                                    name: call_path,
+                                    arguments,
+                                    type_arguments,
+                                    span,
+                                }
+                            } else {
+                                Expression::DelineatedPath {
+                                    call_path,
+                                    args: arguments,
+                                    type_arguments,
+                                    span,
+                                }
                             }
                         }
                     }
@@ -1866,7 +1772,10 @@ fn storage_field_to_storage_field(
     let storage_field = StorageField {
         name: storage_field.name,
         type_info: ty_to_type_info(ec, storage_field.ty)?,
-        //initializer: expr_to_expression(storage_field.expr),
+        initializer: storage_field
+            .initializer
+            .map(|initializer| expr_to_expression(ec, initializer.1))
+            .transpose()?,
     };
     Ok(storage_field)
 }
@@ -2704,10 +2613,10 @@ fn asm_register_declaration_to_asm_register_declaration(
 ) -> Result<AsmRegisterDeclaration, ErrorEmitted> {
     Ok(AsmRegisterDeclaration {
         name: asm_register_declaration.register,
-        initializer: match asm_register_declaration.value_opt {
-            None => None,
-            Some((_colon_token, expr)) => Some(expr_to_expression(ec, *expr)?),
-        },
+        initializer: asm_register_declaration
+            .value_opt
+            .map(|(_colon_token, expr)| expr_to_expression(ec, *expr))
+            .transpose()?,
     })
 }
 
@@ -2759,17 +2668,42 @@ fn pattern_to_scrutinee(
                 span,
             }
         }
-        Pattern::Struct { path, fields } => Scrutinee::StructScrutinee {
-            struct_name: path_expr_to_ident(ec, path)?,
-            fields: {
-                fields
-                    .into_inner()
-                    .into_iter()
-                    .map(|field| pattern_struct_field_to_struct_scrutinee_field(ec, field))
-                    .collect::<Result<_, _>>()?
-            },
-            span,
-        },
+        Pattern::Struct { path, fields } => {
+            let mut errors = Vec::new();
+            let fields = fields.into_inner();
+
+            // Make sure each struct field is declared once
+            let mut names_of_fields = std::collections::HashSet::new();
+            fields.clone().into_iter().for_each(|v| {
+                if let PatternStructField::Field {
+                    field_name,
+                    pattern_opt: _,
+                } = v
+                {
+                    if !names_of_fields.insert(field_name.clone()) {
+                        errors.push(ConvertParseTreeError::DuplicateStructField {
+                            name: field_name.clone(),
+                            span: field_name.span(),
+                        });
+                    }
+                }
+            });
+
+            if let Some(errors) = ec.errors(errors) {
+                return Err(errors);
+            }
+
+            let scrutinee_fields = fields
+                .into_iter()
+                .map(|field| pattern_struct_field_to_struct_scrutinee_field(ec, field))
+                .collect::<Result<_, _>>()?;
+
+            Scrutinee::StructScrutinee {
+                struct_name: path_expr_to_ident(ec, path)?,
+                fields: { scrutinee_fields },
+                span,
+            }
+        }
         Pattern::Tuple(pat_tuple) => Scrutinee::Tuple {
             elems: {
                 pat_tuple
@@ -2841,15 +2775,25 @@ fn pattern_struct_field_to_struct_scrutinee_field(
     pattern_struct_field: PatternStructField,
 ) -> Result<StructScrutineeField, ErrorEmitted> {
     let span = pattern_struct_field.span();
-    let struct_scrutinee_field = StructScrutineeField {
-        field: pattern_struct_field.field_name,
-        scrutinee: match pattern_struct_field.pattern_opt {
-            Some((_colon_token, pattern)) => Some(pattern_to_scrutinee(ec, *pattern)?),
-            None => None,
-        },
-        span,
-    };
-    Ok(struct_scrutinee_field)
+    match pattern_struct_field {
+        PatternStructField::Rest { token } => {
+            let struct_scrutinee_field = StructScrutineeField::Rest { span: token.span() };
+            Ok(struct_scrutinee_field)
+        }
+        PatternStructField::Field {
+            field_name,
+            pattern_opt,
+        } => {
+            let struct_scrutinee_field = StructScrutineeField::Field {
+                field: field_name,
+                scrutinee: pattern_opt
+                    .map(|(_colon_token, pattern)| pattern_to_scrutinee(ec, *pattern))
+                    .transpose()?,
+                span,
+            };
+            Ok(struct_scrutinee_field)
+        }
+    }
 }
 
 fn assignable_to_expression(

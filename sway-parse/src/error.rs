@@ -64,6 +64,10 @@ pub enum ParseErrorKind {
     UnexpectedTokenAfterAttribute,
     #[error("Identifiers cannot begin with a double underscore, as that naming convention is reserved for compiler intrinsics.")]
     InvalidDoubleUnderscore,
+    #[error("Unexpected rest token, must be at the end of pattern.")]
+    UnexpectedRestPattern,
+    #[error("Identifiers cannot be a reserved keyword.")]
+    ReservedKeywordIdentifier,
 }
 
 #[derive(Debug, Error, Clone, PartialEq, Hash)]

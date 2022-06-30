@@ -1,3 +1,4 @@
 [[package]]
 name = 'infinite_dependencies'
+source = 'root'
 dependencies = []

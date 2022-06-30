@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()Storage attribute access mismatch. The trait function "test_function" in trait "MyContract" requires the storage attribute(s) #[storage(read)].

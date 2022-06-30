@@ -1,4 +1,4 @@
-library storage;
+library r#storage;
 
 use ::hash::sha256;
 use ::option::Option;
@@ -18,7 +18,7 @@ use ::context::registers::stack_ptr;
         let mut size_left = __size_of::<T>();
         let mut local_key = key;
 
-        // Cast the the pointer to `value` to a u64. This lets us increment
+        // Cast the pointer to `value` to a u64. This lets us increment
         // this pointer later on to iterate over 32 byte chunks of `value`.
         let mut ptr_to_value = asm(v: value) {
             v

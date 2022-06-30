@@ -1,0 +1,7 @@
+category = "fail"
+
+# check: impl<T> S {
+# nextln: $()The generic type parameter "T" is unconstrained.
+
+# check: (S{}).f(true);
+# nextln: $()No method named "f" found for type "S".

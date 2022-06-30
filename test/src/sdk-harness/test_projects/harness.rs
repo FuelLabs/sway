@@ -6,6 +6,7 @@ mod context;
 mod exponentiation;
 mod hashing;
 mod logging;
+mod methods;
 mod reentrancy;
 mod registers;
 mod script_data;
