@@ -900,7 +900,7 @@ impl fmt::Display for EnumPattern {
         builder.push_str("::");
         builder.push_str(self.variant_name.as_str());
         builder.push('(');
-        builder.push_str(&format!("{}", self.value));
+        builder.push_str(&self.value.to_string());
         builder.push(')');
         write!(f, "{}", builder)
     }

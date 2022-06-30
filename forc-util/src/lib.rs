@@ -148,9 +148,9 @@ pub fn print_on_success(
     }
 
     if warnings.is_empty() {
-        let _ = println_green_err(&format!("  Compiled {} {:?}.", type_str, proj_name));
+        println_green_err(&format!("  Compiled {} {:?}.", type_str, proj_name));
     } else {
-        let _ = println_yellow_err(&format!(
+        println_yellow_err(&format!(
             "  Compiled {} {:?} with {} {}.",
             type_str,
             proj_name,
@@ -170,9 +170,9 @@ pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: &[
     }
 
     if warnings.is_empty() {
-        let _ = println_green_err(&format!("  Compiled library {:?}.", proj_name));
+        println_green_err(&format!("  Compiled library {:?}.", proj_name));
     } else {
-        let _ = println_yellow_err(&format!(
+        println_yellow_err(&format!(
             "  Compiled library {:?} with {} {}.",
             proj_name,
             warnings.len(),
