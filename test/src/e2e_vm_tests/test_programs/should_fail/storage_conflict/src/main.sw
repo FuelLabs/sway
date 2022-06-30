@@ -1,5 +1,5 @@
 contract;
-
+use std::constants::ZERO_B256;
 abi MyContract {
     fn test_function_a() -> bool;
     fn test_function_b() -> bool;
@@ -110,7 +110,7 @@ fn read_storage_word() -> u64 {
 }
 
 fn read_storage_b256() -> b256 {
-    let res = 0x0000000000000000000000000000000000000000000000000000000000000000;
+    let res = ZERO_B256;
     asm (key: KEY, buf: res, a, b, c) {
         modi a b i10;
         lt a b c;

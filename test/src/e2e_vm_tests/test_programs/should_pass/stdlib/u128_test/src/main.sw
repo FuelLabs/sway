@@ -78,5 +78,30 @@ fn main() -> bool {
     assert(three_left_shift_one.upper == 0);
     assert(three_left_shift_one.lower == 6);
 
+    // test as_u64()
+    let eleven = ~U128::from(0, 11);
+    let unwrapped = eleven.as_u64().unwrap();
+    assert(unwrapped == 11);
+
+    let err_1 = ~U128::from(42, 11).as_u64();
+    assert(match err_1 {
+        Result::Err(U128Error::LossOfPrecision) => {
+            true
+        },
+        _ => {
+            false
+        },
+    });
+
+    let err_1 = ~U128::from(42, 0).as_u64();
+    assert(match err_1 {
+        Result::Err(U128Error::LossOfPrecision) => {
+            true
+        },
+        _ => {
+            false
+        },
+    });
+
     true
 }

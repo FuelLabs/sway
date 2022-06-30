@@ -210,46 +210,31 @@ pub trait Eq {
 
 impl Eq for bool {
     fn eq(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            eq r3 r1 r2;
-            r3: bool
-        }
+        __eq(self, other)
     }
 }
 
 impl Eq for u64 {
     fn eq(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            eq r3 r1 r2;
-            r3: bool
-        }
+        __eq(self, other)
     }
 }
 
 impl Eq for u32 {
     fn eq(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            eq r3 r1 r2;
-            r3: bool
-        }
+        __eq(self, other)
     }
 }
 
 impl Eq for u16 {
     fn eq(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            eq r3 r1 r2;
-            r3: bool
-        }
+        __eq(self, other)
     }
 }
 
 impl Eq for u8 {
     fn eq(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            eq r3 r1 r2;
-            r3: bool
-        }
+        __eq(self, other)
     }
 }
 

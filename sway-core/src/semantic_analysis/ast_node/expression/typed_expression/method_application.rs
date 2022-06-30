@@ -185,14 +185,21 @@ pub(crate) fn type_check_method_application(
             warnings,
             errors
         );
-        let variable_decl = check!(
-            unknown_decl.expect_variable().cloned(),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
 
-        if !variable_decl.is_mutable.is_mutable() && *is_mutable {
+        let is_decl_mutable = match unknown_decl {
+            TypedDeclaration::ConstantDeclaration(_) => false,
+            _ => {
+                let variable_decl = check!(
+                    unknown_decl.expect_variable().cloned(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                variable_decl.is_mutable.is_mutable()
+            }
+        };
+
+        if !is_decl_mutable && *is_mutable {
             errors.push(CompileError::MethodRequiresMutableSelf {
                 method_name: method_name.easy_name(),
                 variable_name: name.clone(),
