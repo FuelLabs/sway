@@ -277,7 +277,7 @@ pub(crate) fn type_check_method_application(
 }
 
 pub(crate) fn resolve_method_name(
-    ctx: TypeCheckContext,
+    mut ctx: TypeCheckContext,
     method_name: &MethodName,
     arguments: VecDeque<TypedExpression>,
     type_arguments: Vec<TypeArgument>,
@@ -292,9 +292,9 @@ pub(crate) fn resolve_method_name(
             let (type_info, type_info_span) = call_path.suffix.clone();
 
             // find the module that the symbol is in
-            let module_path = ctx.namespace.find_module_path(&call_path.prefixes);
+            let type_info_prefix = ctx.namespace.find_module_path(&call_path.prefixes);
             check!(
-                ctx.namespace.root().check_submodule(&module_path),
+                ctx.namespace.root().check_submodule(&type_info_prefix),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -309,14 +309,12 @@ pub(crate) fn resolve_method_name(
             );
 
             // resolve the type of the type info object
-            let self_type = ctx.self_type();
             let type_id = check!(
-                ctx.namespace.root_mut().resolve_type_with_self(
+                ctx.resolve_type_with_self(
                     insert_type(type_info),
-                    self_type,
                     &type_info_span,
                     EnforceTypeArguments::No,
-                    &module_path
+                    Some(&type_info_prefix)
                 ),
                 insert_type(TypeInfo::ErrorRecovery),
                 warnings,
@@ -327,7 +325,7 @@ pub(crate) fn resolve_method_name(
             check!(
                 ctx.namespace.find_method_for_type(
                     type_id,
-                    &module_path,
+                    &type_info_prefix,
                     method_name,
                     ctx.self_type(),
                     &arguments

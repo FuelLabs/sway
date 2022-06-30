@@ -1,4 +1,5 @@
 use crate::{
+    namespace::Path,
     parse_tree::declaration::Purity,
     semantic_analysis::{ast_node::Mode, Namespace},
     type_engine::{
@@ -201,9 +202,26 @@ impl<'ns> TypeCheckContext<'ns> {
         type_id: TypeId,
         span: &Span,
         enforce_type_args: EnforceTypeArguments,
+        type_info_prefix: Option<&Path>,
+    ) -> CompileResult<TypeId> {
+        self.namespace.resolve_type_with_self(
+            type_id,
+            self.self_type,
+            span,
+            enforce_type_args,
+            type_info_prefix,
+        )
+    }
+
+    /// Short-hand for calling [Namespace::resolve_type_without_self]
+    pub(crate) fn resolve_type_without_self(
+        &mut self,
+        type_id: TypeId,
+        span: &Span,
+        type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         self.namespace
-            .resolve_type_with_self(type_id, self.self_type, span, enforce_type_args)
+            .resolve_type_without_self(type_id, span, type_info_prefix)
     }
 
     /// Short-hand around `type_engine::unify_with_self`, where the `TypeCheckContext` provides the

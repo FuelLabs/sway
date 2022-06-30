@@ -67,9 +67,10 @@ impl TypedImplTrait {
 
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
-            ctx.namespace.resolve_type_without_self(
+            ctx.resolve_type_without_self(
                 insert_type(type_implementing_for),
-                &type_implementing_for_span
+                &type_implementing_for_span,
+                None
             ),
             return err(warnings, errors),
             warnings,
@@ -219,9 +220,10 @@ impl TypedImplTrait {
 
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
-            ctx.namespace.resolve_type_without_self(
+            ctx.resolve_type_without_self(
                 insert_type(type_implementing_for),
-                &type_implementing_for_span
+                &type_implementing_for_span,
+                None
             ),
             return err(warnings, errors),
             warnings,

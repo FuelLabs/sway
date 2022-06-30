@@ -70,10 +70,17 @@ impl Root {
         self_type: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
+        type_info_prefix: Option<&Path>,
         mod_path: &Path,
     ) -> CompileResult<TypeId> {
         type_id.replace_self_type(self_type);
-        self.resolve_type(type_id, span, enforce_type_arguments, mod_path)
+        self.resolve_type(
+            type_id,
+            span,
+            enforce_type_arguments,
+            type_info_prefix,
+            mod_path,
+        )
     }
 
     pub(crate) fn resolve_type(
@@ -81,17 +88,22 @@ impl Root {
         type_id: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
+        type_info_prefix: Option<&Path>,
         mod_path: &Path,
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let module_path = match type_info_prefix {
+            Some(type_info_prefix) => type_info_prefix,
+            None => mod_path,
+        };
         let type_id = match look_up_type_id(type_id) {
             TypeInfo::Custom {
                 ref name,
                 type_arguments,
             } => {
                 match self
-                    .resolve_symbol(mod_path, name)
+                    .resolve_symbol(module_path, name)
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
@@ -103,7 +115,7 @@ impl Root {
                                 enforce_type_arguments,
                                 span,
                                 self,
-                                mod_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
+                                mod_path
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -119,7 +131,7 @@ impl Root {
                                 enforce_type_arguments,
                                 span,
                                 self,
-                                mod_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
+                                mod_path
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -142,7 +154,7 @@ impl Root {
             TypeInfo::Ref(id, _) => id,
             TypeInfo::Array(type_id, n) => {
                 let new_type_id = check!(
-                    self.resolve_type(type_id, span, enforce_type_arguments, mod_path),
+                    self.resolve_type(type_id, span, enforce_type_arguments, None, mod_path),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
                     errors
@@ -156,6 +168,7 @@ impl Root {
                             type_argument.type_id,
                             span,
                             enforce_type_arguments,
+                            None,
                             mod_path
                         ),
                         insert_type(TypeInfo::ErrorRecovery),
@@ -209,6 +222,7 @@ impl Root {
                 type_id,
                 &method_name.span(),
                 EnforceTypeArguments::No,
+                None,
                 method_prefix
             ),
             insert_type(TypeInfo::ErrorRecovery),

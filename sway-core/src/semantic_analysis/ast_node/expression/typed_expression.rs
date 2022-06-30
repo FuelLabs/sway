@@ -554,7 +554,8 @@ impl TypedExpression {
             ctx.resolve_type_with_self(
                 typed_expression.return_type,
                 &expr_span,
-                EnforceTypeArguments::No
+                EnforceTypeArguments::No,
+                None
             ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
@@ -910,7 +911,8 @@ impl TypedExpression {
             ctx.resolve_type_with_self(
                 insert_type(asm.return_type.clone()),
                 &asm_span,
-                EnforceTypeArguments::No
+                EnforceTypeArguments::No,
+                None
             ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
@@ -970,9 +972,9 @@ impl TypedExpression {
         let (type_info, type_info_span) = call_path.suffix.clone();
 
         // find the module that the symbol is in
-        let module_path = ctx.namespace.find_module_path(&call_path.prefixes);
+        let type_info_prefix = ctx.namespace.find_module_path(&call_path.prefixes);
         check!(
-            ctx.namespace.root().check_submodule(&module_path),
+            ctx.namespace.root().check_submodule(&type_info_prefix),
             return err(warnings, errors),
             warnings,
             errors
@@ -987,14 +989,12 @@ impl TypedExpression {
         );
 
         // resolve the type of the type info object
-        let self_type = ctx.self_type();
         let type_id = check!(
-            ctx.namespace.root_mut().resolve_type_with_self(
+            ctx.resolve_type_with_self(
                 insert_type(type_info),
-                self_type,
-                &type_info_span,
+                &span,
                 EnforceTypeArguments::No,
-                &module_path
+                Some(&type_info_prefix)
             ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,

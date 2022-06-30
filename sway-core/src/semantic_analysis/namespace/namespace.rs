@@ -104,12 +104,14 @@ impl Namespace {
         self_type: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
+        type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         self.root.resolve_type_with_self(
             type_id,
             self_type,
             span,
             enforce_type_arguments,
+            type_info_prefix,
             &self.mod_path,
         )
     }
@@ -119,9 +121,15 @@ impl Namespace {
         &mut self,
         type_id: TypeId,
         span: &Span,
+        type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
-        self.root
-            .resolve_type(type_id, span, EnforceTypeArguments::Yes, &self.mod_path)
+        self.root.resolve_type(
+            type_id,
+            span,
+            EnforceTypeArguments::Yes,
+            type_info_prefix,
+            &self.mod_path,
+        )
     }
 
     /// Short-hand for calling [Root::find_method_for_type] on `root` with the `mod_path`.

@@ -225,7 +225,8 @@ impl TypedAstNode {
                     ctx.resolve_type_with_self(
                         insert_type(type_ascription),
                         &node.span,
-                        EnforceTypeArguments::No
+                        EnforceTypeArguments::No,
+                        None
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
@@ -274,6 +275,7 @@ impl TypedAstNode {
                                     insert_type(type_ascription),
                                     &type_ascription_span,
                                     EnforceTypeArguments::Yes,
+                                    None
                                 ),
                                 insert_type(TypeInfo::ErrorRecovery),
                                 warnings,
@@ -436,9 +438,10 @@ impl TypedAstNode {
                             } in fields
                             {
                                 let type_id = check!(
-                                    ctx.namespace.resolve_type_without_self(
+                                    ctx.resolve_type_without_self(
                                         insert_type(type_info),
-                                        &name.span()
+                                        &name.span(),
+                                        None
                                     ),
                                     return err(warnings, errors),
                                     warnings,
@@ -719,7 +722,8 @@ fn type_check_interface_surface(
                                     type_id,
                                     insert_type(TypeInfo::SelfType),
                                     &type_span,
-                                    EnforceTypeArguments::Yes
+                                    EnforceTypeArguments::Yes,
+                                    None
                                 ),
                                 insert_type(TypeInfo::ErrorRecovery),
                                 warnings,
@@ -734,7 +738,8 @@ fn type_check_interface_surface(
                         insert_type(return_type),
                         insert_type(TypeInfo::SelfType),
                         &return_type_span,
-                        EnforceTypeArguments::Yes
+                        EnforceTypeArguments::Yes,
+                        None
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
@@ -775,7 +780,8 @@ fn type_check_trait_methods(
                     sig_ctx.resolve_type_with_self(
                         *type_id,
                         &name.span(),
-                        EnforceTypeArguments::Yes
+                        EnforceTypeArguments::Yes,
+                        None
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
@@ -853,7 +859,8 @@ fn type_check_trait_methods(
                             sig_ctx.resolve_type_with_self(
                                 type_id,
                                 &type_span,
-                                EnforceTypeArguments::Yes
+                                EnforceTypeArguments::Yes,
+                                None
                             ),
                             insert_type(TypeInfo::ErrorRecovery),
                             warnings,
@@ -870,7 +877,8 @@ fn type_check_trait_methods(
             ctx.resolve_type_with_self(
                 insert_type(return_type),
                 &return_type_span,
-                EnforceTypeArguments::Yes
+                EnforceTypeArguments::Yes,
+                None
             ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
