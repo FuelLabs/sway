@@ -221,7 +221,8 @@ fn b256_from_pointer_offset(pointer: u32, offset: u32) -> b256 {
 }
 /// If the input's type is `InputCoin`, return the owner.
 /// Otherwise, undefined behavior.
-pub fn tx_input_coin_owner(input_ptr: u32) -> Address {
+pub fn tx_input_coin_owner(index: u8) -> Address {
+    let input_ptr = tx_input_pointer(index);
     // Need to skip over six words, so offset is 8*6=48
     let owner_addr = ~Address::from(b256_from_pointer_offset(input_ptr, 48));
     owner_addr
@@ -257,7 +258,8 @@ fn tx_output_type(index: u8) -> u8 {
 /// Get the amount of coins to send for an output given a pointer to the output.
 /// This method is only meaningful if the output type has the `amount` field.
 /// Specifically: OutputCoin, OutputWithdrawal, OutputChange, OutputVariable.
-pub fn tx_output_amount(ptr: u32) -> u64 {
+pub fn tx_output_amount(index: u8) -> u64 {
+    let ptr = tx_output_pointer(index);
     asm(r1, r2, r3: ptr) {
         addi r2 r3 i40;
         lw r1 r2 i0;
