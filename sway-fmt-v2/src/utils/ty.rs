@@ -1,4 +1,5 @@
 use crate::fmt::{Format, FormattedCode, Formatter, FormatterError};
+use std::fmt::Write;
 use sway_parse::{
     brackets::{Parens, SquareBrackets},
     expr::Expr,
@@ -11,10 +12,18 @@ impl Format for Ty {
     fn format(
         &self,
         formatted_code: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         match self {
-            Self::Array(arr_descriptor) => format_array(formatted_code, arr_descriptor.clone()),
+            Self::Array(arr_descriptor) => {
+                formatted_code.push('[');
+                arr_descriptor
+                    .clone()
+                    .into_inner()
+                    .format(formatted_code, formatter)?;
+                formatted_code.push(']');
+                Ok(())
+            }
             Self::Infer { underscore_token } => format_infer(formatted_code, underscore_token),
             Self::Path(path_ty) => format_path(formatted_code, path_ty),
             Self::Str { str_token, length } => {
@@ -34,13 +43,21 @@ fn format_infer(
     Ok(())
 }
 
-/// Currently does not apply formatting, just pushes the str version of span
-fn format_array(
-    formatted_code: &mut FormattedCode,
-    array_descriptor: SquareBrackets<TyArrayDescriptor>,
-) -> Result<(), FormatterError> {
-    formatted_code.push_str(array_descriptor.span().as_str());
-    Ok(())
+impl Format for TyArrayDescriptor {
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        self.ty.format(formatted_code, formatter)?;
+        write!(
+            formatted_code,
+            "{} {}",
+            self.semicolon_token.span().as_str(),
+            self.length.span().as_str()
+        )?;
+        Ok(())
+    }
 }
 
 /// Currently does not apply formatting, just pushes the str version of span

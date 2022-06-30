@@ -271,4 +271,25 @@ pub const TEST1: u16 = 10;"#;
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert!(correct_sway_code == formatted_sway_code)
     }
+    #[test]
+    fn test_ty_formatting() {
+        let sway_code_to_format = r#"contract;
+
+enum test_ty {
+    Infer:
+    _,
+    Array : [u8;
+    40],
+}"#;
+        let correct_sway_code = r#"contract;
+
+enum test_ty {
+    Infer: _,
+    Array: [u8; 40],
+}"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+    }
 }
