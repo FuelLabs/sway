@@ -304,6 +304,7 @@ impl<'a> InstructionVerifier<'a> {
                         Ok(())
                     }
                 }
+                (Type::Bool, Type::Bool) => Ok(()),
                 _otherwise => Err(IrError::VerifyCmpBadTypes(
                     lhs_ty.as_string(self.context),
                     rhs_ty.as_string(self.context),
