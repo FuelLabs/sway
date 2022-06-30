@@ -8,15 +8,15 @@ abi MyContract {
     #[storage(read, write)]
     fn vec_u8_push(value: u8);
     #[storage(read)]
-    fn vec_u8_get(index: u64) -> Option<u8>;
+    fn vec_u8_get(index: u64) -> u8;
     #[storage(read, write)]
-    fn vec_u8_pop() -> Option<u8>;
+    fn vec_u8_pop() -> u8;
     #[storage(read, write)]
-    fn vec_u8_remove(index: u64) -> Result<u8, StorageVecError>;
+    fn vec_u8_remove(index: u64) -> u8;
     #[storage(read, write)]
-    fn vec_u8_swap_remove(index: u64) -> Result<u8, StorageVecError>;
+    fn vec_u8_swap_remove(index: u64) -> u8;
     #[storage(read, write)]
-    fn vec_u8_insert(index: u64, value: u8) -> Result<(), StorageVecError>;
+    fn vec_u8_insert(index: u64, value: u8);
     #[storage(read)]
     fn vec_u8_len() -> u64;
     #[storage(read)]
@@ -35,25 +35,28 @@ impl MyContract for Contract {
         storage.vec_u8.push(value);
     }
     #[storage(read)]
-    fn vec_u8_get(index: u64) -> Option<u8> {
-        storage.vec_u8.get(index)
+    fn vec_u8_get(index: u64) -> u8 {
+        let item: Option<u8> = storage.vec_u8.get(index);
+        item.unwrap()
     }
     #[storage(read, write)]
-    fn vec_u8_pop() -> Option<u8> {
-        storage.vec_u8.pop()
+    fn vec_u8_pop() -> u8 {
+        let res: Option<u8> = storage.vec_u8.pop();
+        res.unwrap()
     }
     #[storage(read, write)]
-    fn vec_u8_remove(index: u64) -> Result<u8, StorageVecError> {
+    fn vec_u8_remove(index: u64) -> u8 {
         let res: Result<u8, StorageVecError> = storage.vec_u8.remove(index);
-        res
+        res.unwrap()
     }
     #[storage(read, write)]
-    fn vec_u8_swap_remove(index: u64) -> Result<u8, StorageVecError> {
-        storage.vec_u8.swap_remove(index)
+    fn vec_u8_swap_remove(index: u64) -> u8 {
+        let res: Result<u8, StorageVecError> = storage.vec_u8.swap_remove(index);
+        res.unwrap()
     }
     #[storage(read, write)]
-    fn vec_u8_insert(index: u64, value: u8) -> Result<(), StorageVecError> {
-        storage.vec_u8.insert(index, value)
+    fn vec_u8_insert(index: u64, value: u8) {
+        let _ = storage.vec_u8.insert(index, value);
     }
     #[storage(read)]
     fn vec_u8_len() -> u64 {
