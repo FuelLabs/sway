@@ -222,13 +222,15 @@ fn format_use_statement_length(s: &str, max_length: usize, level: usize) -> Stri
 
         match token {
             "," => {
-                line.push_str(token);
+                #[allow(clippy::format_push_string)]
+                line.push_str(&format!("{} ", token));
                 if *open_brackets == 1 {
                     is_line = true;
                 }
             }
             "{" => {
-                line.push_str(token);
+                #[allow(clippy::format_push_string)]
+                line.push_str(&format!(" {} ", token));
                 if *open_brackets == 0 {
                     is_line = true;
                 }

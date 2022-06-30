@@ -9,13 +9,13 @@ use errors::MyError;
 use std::{
     address::Address,
     assert::require,
-    chain::auth::{AuthError,msg_sender},
+    chain::auth::{AuthError, msg_sender},
     constants::BASE_ASSET_ID,
     contract_id::ContractId,
     identity::*,
     result::*,
     revert::revert,
-    token::{force_transfer_to_contract,transfer_to_output}
+    token::{force_transfer_to_contract, transfer_to_output}
 };
 
 storage {
