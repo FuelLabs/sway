@@ -8,6 +8,7 @@ use super::{
     items::{ItemBraceStyle, ItemsLayout},
     lists::{ListTactic, SeparatorTactic},
     literals::HexLiteralCase,
+    user_def::FieldAlignment,
     whitespace::{IndentStyle, NewlineStyle},
 };
 /// See parent struct [Whitespace].
@@ -77,11 +78,8 @@ pub struct HeuristicsOptions {
 /// See parent struct [Structures].
 #[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub struct StructuresOptions {
-    pub enum_variant_align_threshold: Option<usize>,
-    pub struct_field_align_threshold: Option<usize>,
+    pub field_alignment: Option<FieldAlignment>,
     pub struct_lit_single_line: Option<bool>,
-    pub storage_field_align_threshold: Option<usize>,
-    pub storage_single_line: Option<bool>,
 }
 /// See parent struct [Comments].
 #[derive(Serialize, Deserialize, Debug, Copy, Clone)]

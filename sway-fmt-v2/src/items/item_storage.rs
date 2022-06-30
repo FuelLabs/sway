@@ -1,9 +1,10 @@
 use crate::{
-    config::items::ItemBraceStyle,
+    config::{items::ItemBraceStyle, user_def::FieldAlignment},
     fmt::{Format, FormattedCode, Formatter},
     utils::{bracket::CurlyBrace, item_len::ItemLen},
     FormatterError,
 };
+use std::fmt::Write;
 use sway_parse::{
     token::{Delimiter, PunctKind},
     ItemStorage,
@@ -17,7 +18,7 @@ impl Format for ItemStorage {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         // Should we format small storage into single line
-        let storage_single_line = formatter.config.structures.storage_single_line;
+        let storage_single_line = formatter.config.structures.small_structures_single_line;
 
         // Get the width limit of a storage to be formatted into single line if storage_single_line is true
         let config_whitespace = formatter.config.whitespace;
@@ -26,7 +27,7 @@ impl Format for ItemStorage {
             .heuristics
             .heuristics_pref
             .to_width_heuristics(&config_whitespace);
-        let storage_width = width_heuristics.storage_width;
+        let storage_width = width_heuristics.structure_lit_width;
 
         let multiline = !storage_single_line || self.get_formatted_len()? > storage_width;
         format_storage(self, formatter, formatted_code, multiline)?;
@@ -50,83 +51,109 @@ fn format_storage(
     formatted_code: &mut String,
     multiline: bool,
 ) -> Result<(), FormatterError> {
-    // Get storage field alignment threshold
-    let storage_field_align_threshold = formatter.config.structures.storage_field_align_threshold;
     // Add storage token
     formatted_code.push_str(item_storage.storage_token.span().as_str());
+    let fields = item_storage.fields.clone().into_inner();
 
-    // Add `{`
+    // Handle openning brace
     ItemStorage::open_curly_brace(formatted_code, formatter)?;
-    let offset = if multiline { '\n' } else { ' ' };
-    formatted_code.push(offset);
-    // Get the fields
-    let items = item_storage.fields.clone().into_inner();
+    if multiline {
+        formatted_code.push('\n');
+        // Determine alignment tactic
+        match formatter.config.structures.field_alignment {
+            FieldAlignment::AlignFields(storage_field_align_threshold) => {
+                let value_pairs = fields.value_separator_pairs;
+                // In first iteration we are going to be collecting the lengths of the struct fields.
+                let field_length: Vec<usize> = value_pairs
+                    .iter()
+                    .map(|field| field.0.name.as_str().len())
+                    .collect();
 
-    // In first iteration we are going to be collecting the lengths of the enum variants.
-    let variant_length: Vec<usize> = items
-        .clone()
-        .into_iter()
-        .map(|variant| variant.name.as_str().len())
-        .collect();
-    // Find the maximum length in the variant_length vector that is still smaller than enum_variant_align threshold.
-    let mut max_valid_variant_length = 0;
+                // Find the maximum length in the `field_length` vector that is still smaller than `storage_field_align_threshold`.
+                // `max_valid_field_length`: the length of the field that we are taking as a reference to align.
+                let mut max_valid_field_length = 0;
+                field_length.iter().for_each(|length| {
+                    if *length > max_valid_field_length && *length < storage_field_align_threshold {
+                        max_valid_field_length = *length;
+                    }
+                });
 
-    variant_length.iter().for_each(|length| {
-        if *length > max_valid_variant_length && *length < storage_field_align_threshold {
-            max_valid_variant_length = *length;
-        }
-    });
+                let mut value_pairs_iter = value_pairs.iter().enumerate().peekable();
+                for (field_index, field) in value_pairs_iter.clone() {
+                    formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
 
-    for (item_index, item) in items.into_iter().enumerate() {
-        if multiline {
-            // If we are formatting to multiline push the current indentation level
-            formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
-        }
-        // Push the storage field name
-        formatted_code.push_str(item.name.as_str());
+                    let type_field = &field.0;
+                    // Add name
+                    formatted_code.push_str(type_field.name.as_str());
 
-        // Alignment only makes sense when we are formatting to multiline
-        if multiline {
-            let current_variant_length = variant_length[item_index];
-            if current_variant_length < max_valid_variant_length {
-                // We need to add alignment between : and ty
-                // max_valid_variant_length: the length of the variant that we are taking as a reference to align
-                // current_variant_length: the length of the current variant that we are trying to format
-                let required_alignment = max_valid_variant_length - current_variant_length;
-                formatted_code.push_str(&(0..required_alignment).map(|_| ' ').collect::<String>());
+                    // `current_field_length`: the length of the current field that we are trying to format.
+                    let current_field_length = field_length[field_index];
+                    if current_field_length < max_valid_field_length {
+                        // We need to add alignment between `:` and `ty`
+                        let mut required_alignment = max_valid_field_length - current_field_length;
+                        while required_alignment != 0 {
+                            formatted_code.push(' ');
+                            required_alignment -= 1;
+                        }
+                    }
+                    // Add `:`, `ty` & `CommaToken`
+                    //
+                    // TODO(#2101): We are currently converting ty to string directly but
+                    // we will probably need to format `ty` before adding.
+                    write!(
+                        formatted_code,
+                        "{} {}",
+                        type_field.colon_token.ident().as_str(),
+                        type_field.ty.span().as_str(),
+                    )?;
+                    if value_pairs_iter.peek().is_some() {
+                        writeln!(formatted_code, "{}", field.1.span().as_str())?;
+                    } else if let Some(final_value) = &fields.final_value_opt {
+                        final_value.format(formatted_code, formatter)?;
+                    }
+                }
+            }
+            FieldAlignment::Off => {
+                let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
+                for field in value_pairs_iter.clone() {
+                    formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
+                    let item_field = &field.0;
+                    item_field.format(formatted_code, formatter)?;
+
+                    if value_pairs_iter.peek().is_some() {
+                        writeln!(formatted_code, "{}", field.1.span().as_str())?;
+                    }
+                }
+                if let Some(final_value) = &fields.final_value_opt {
+                    formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
+                    final_value.format(formatted_code, formatter)?;
+                    writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
+                }
             }
         }
-
-        // Push the colon token
-        formatted_code.push_str(item.colon_token.span().as_str());
+    } else {
+        // non-multiline formatting
         formatted_code.push(' ');
+        let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
+        for field in value_pairs_iter.clone() {
+            let type_field = &field.0;
+            type_field.format(formatted_code, formatter)?;
 
-        // Push the ty
-        formatted_code.push_str(item.ty.span().as_str());
-
-        // Push initializer if it exists.
-        if let Some(initializer) = item.initializer {
-            // Push a ` `
-            formatted_code.push(' ');
-
-            let expr = initializer.1;
-
-            // Push the `=`
-            formatted_code.push(PunctKind::Equals.as_char());
-
-            // Push a ` `
-            formatted_code.push(' ');
-
-            // Push the unformatted expr
-            formatted_code.push_str(expr.span().as_str());
+            if value_pairs_iter.peek().is_some() {
+                write!(formatted_code, "{} ", field.1.span().as_str())?;
+            }
         }
-
-        formatted_code.push(PunctKind::Comma.as_char());
-        // If we are formatting to multiple lines push a `\n` before the next item
-        // For single line add a single space.
-        formatted_code.push(offset);
+        if let Some(final_value) = &fields.final_value_opt {
+            final_value.format(formatted_code, formatter)?;
+            formatted_code.push(' ');
+        } else {
+            formatted_code.pop();
+            formatted_code.pop();
+            formatted_code.push(' ');
+        }
     }
-    // Add `}`
+
+    // Handle closing brace
     ItemStorage::close_curly_brace(formatted_code, formatter)?;
     Ok(())
 }

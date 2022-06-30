@@ -81,7 +81,7 @@ impl Formatter {
 #[cfg(test)]
 mod tests {
     use super::{Config, Formatter};
-    use crate::utils::indent_style::Shape;
+    use crate::{config::user_def::FieldAlignment, utils::indent_style::Shape};
     use std::sync::Arc;
 
     fn get_formatter(config: Config, shape: Shape) -> Formatter {
@@ -102,26 +102,6 @@ pub const TEST: u16 = 10;"#;
     }
 
     #[test]
-    fn test_struct_single_line_alignment() {
-        let sway_code_to_format = r#"contract;
-pub struct Foo {
-    bar: u64,
-    baz: bool,
-}
-"#;
-        let correct_sway_code = r#"contract;
-
-pub struct Foo { bar: u64, baz: bool }"#;
-        let mut config = Config::default();
-        config.structures.struct_lit_single_line = true;
-        config.structures.struct_field_align_threshold = 40;
-        config.whitespace.max_width = 300;
-        let mut formatter = get_formatter(config, Shape::default());
-        let formatted_sway_code =
-            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert!(correct_sway_code == formatted_sway_code)
-    }
-    #[test]
     fn test_struct_multiline_line_alignment() {
         let sway_code_to_format = r#"contract;
 pub struct Foo<T, P> {
@@ -132,11 +112,11 @@ pub struct Foo<T, P> {
         let correct_sway_code = r#"contract;
 
 pub struct Foo<T, P> {
-    barbazfoo: u64,
-    baz      : bool,
+    barbazfoo : u64,
+    baz       : bool,
 }"#;
         let mut config = Config::default();
-        config.structures.struct_field_align_threshold = 40;
+        config.structures.field_alignment = FieldAlignment::AlignFields(40);
         let mut formatter = get_formatter(config, Shape::default());
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
@@ -154,20 +134,38 @@ pub struct Foo {
 
 pub struct Foo { bar: u64, baz: bool }"#;
         let mut config = Config::default();
-        config.structures.struct_lit_single_line = true;
+        config.structures.small_structures_single_line = true;
         config.whitespace.max_width = 300;
         let mut formatter = get_formatter(config, Shape::default());
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert!(correct_sway_code == formatted_sway_code)
     }
+    #[test]
+    fn test_enum_single_line() {
+        let sway_code_to_format = r#"contract;
+pub enum Foo {
+    bar: u64,
+    baz: bool,
+}
+"#;
+        let correct_sway_code = r#"contract;
 
+pub enum Foo { bar: u64, baz: bool }"#;
+        let mut config = Config::default();
+        config.structures.small_structures_single_line = true;
+        config.whitespace.max_width = 300;
+        let mut formatter = get_formatter(config, Shape::default());
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert!(correct_sway_code == formatted_sway_code)
+    }
     #[test]
     fn test_struct_multi_line() {
         let sway_code_to_format = r#"contract;
 pub struct Foo {
     bar: u64,
-    baz: bool,
+    baz: bool
 }
 "#;
         let correct_sway_code = r#"contract;
@@ -190,16 +188,16 @@ enum Color {
     Blue: (), Green: (),
             Red: (),
     Silver: (),
-                    Grey: (), }
+                    Grey: () }
         "#;
         let correct_sway_code = r#"contract;
 
 enum Color {
-    Blue : (),
-    Green : (),
-    Red : (),
-    Silver : (),
-    Grey : (),
+    Blue: (),
+    Green: (),
+    Red: (),
+    Silver: (),
+    Grey: (),
 }"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
@@ -228,14 +226,14 @@ enum Color {
 
         // Creating a config with enum_variant_align_threshold that exceeds longest variant length
         let mut formatter = Formatter::default();
-        formatter.config.structures.enum_variant_align_threshold = 20;
+        formatter.config.structures.field_alignment = FieldAlignment::AlignFields(20);
 
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert!(correct_sway_code == formatted_sway_code)
     }
     #[test]
-    fn test_item_abi() {
+    fn test_item_abi_with_generics_and_attributes() {
         let sway_code_to_format = r#"contract;
 
 abi StorageMapExample {
@@ -293,7 +291,7 @@ storage {
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert!(correct_sway_code == formatted_sway_code)
+        assert_eq!(correct_sway_code, formatted_sway_code)
     }
     #[test]
     fn test_storage_with_alignment() {
@@ -312,11 +310,11 @@ storage {
 }"#;
 
         let mut config = Config::default();
-        config.structures.storage_field_align_threshold = 50;
+        config.structures.field_alignment = FieldAlignment::AlignFields(50);
         let mut formatter = get_formatter(config, Shape::default());
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert!(correct_sway_code == formatted_sway_code)
+        assert_eq!(correct_sway_code, formatted_sway_code)
     }
     #[test]
     fn test_storage_single_line() {
@@ -329,13 +327,13 @@ storage {
 "#;
         let correct_sway_code = r#"contract;
 
-storage { long_var_name: Type1, var2: Type2, }"#;
+storage { long_var_name: Type1, var2: Type2 }"#;
         let mut config = Config::default();
-        config.structures.struct_lit_single_line = true;
+        config.structures.small_structures_single_line = true;
         config.whitespace.max_width = 300;
         let mut formatter = get_formatter(config, Shape::default());
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert!(correct_sway_code == formatted_sway_code)
+        assert_eq!(correct_sway_code, formatted_sway_code)
     }
 }
