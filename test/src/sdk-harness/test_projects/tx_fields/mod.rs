@@ -232,7 +232,7 @@ async fn can_get_tx_input_type() {
 #[tokio::test]
 async fn can_get_tx_input_coin_owner() {
     let (contract_instance, _, wallet) = get_contracts().await;
-    
+
     let result = contract_instance
         .get_tx_input_coin_owner(1)
         .call()
