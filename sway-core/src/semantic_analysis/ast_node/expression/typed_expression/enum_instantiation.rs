@@ -6,31 +6,17 @@ use sway_types::{Ident, Spanned};
 /// [TypedExpression].
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_enum(
-    mut ctx: TypeCheckContext,
-    mut enum_decl: TypedEnumDeclaration,
-    enum_field_name: Ident,
+    ctx: TypeCheckContext,
+    enum_decl: TypedEnumDeclaration,
+    enum_variant_name: Ident,
     args: Vec<Expression>,
-    mut type_arguments: Vec<TypeArgument>,
 ) -> CompileResult<TypedExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    // monomorphize the enum definition with the type arguments
-    check!(
-        ctx.monomorphize(
-            &mut enum_decl,
-            &mut type_arguments,
-            EnforceTypeArguments::No,
-            &enum_field_name.span()
-        ),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
     let enum_variant = check!(
         enum_decl
-            .expect_variant_from_name(&enum_field_name)
+            .expect_variant_from_name(&enum_variant_name)
             .cloned(),
         return err(warnings, errors),
         warnings,
@@ -49,10 +35,10 @@ pub(crate) fn instantiate_enum(
                     contents: None,
                     enum_decl,
                     variant_name: enum_variant.name,
-                    instantiation_span: enum_field_name.span(),
+                    instantiation_span: enum_variant_name.span(),
                 },
                 is_constant: IsConstant::No,
-                span: enum_field_name.span(),
+                span: enum_variant_name.span(),
             },
             warnings,
             errors,
@@ -79,10 +65,10 @@ pub(crate) fn instantiate_enum(
                         contents: Some(Box::new(typed_expr)),
                         enum_decl,
                         variant_name: enum_variant.name,
-                        instantiation_span: enum_field_name.span(),
+                        instantiation_span: enum_variant_name.span(),
                     },
                     is_constant: IsConstant::No,
-                    span: enum_field_name.span(),
+                    span: enum_variant_name.span(),
                 },
                 warnings,
                 errors,
@@ -90,19 +76,19 @@ pub(crate) fn instantiate_enum(
         }
         ([], _) => {
             errors.push(CompileError::MissingEnumInstantiator {
-                span: enum_field_name.span(),
+                span: enum_variant_name.span(),
             });
             err(warnings, errors)
         }
         (_too_many_expressions, ty) if ty.is_unit() => {
             errors.push(CompileError::UnnecessaryEnumInstantiator {
-                span: enum_field_name.span(),
+                span: enum_variant_name.span(),
             });
             err(warnings, errors)
         }
         (_too_many_expressions, ty) => {
             errors.push(CompileError::MoreThanOneEnumInstantiator {
-                span: enum_field_name.span(),
+                span: enum_variant_name.span(),
                 ty: ty.to_string(),
             });
             err(warnings, errors)

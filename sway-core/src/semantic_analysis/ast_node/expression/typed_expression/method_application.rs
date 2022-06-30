@@ -291,7 +291,7 @@ pub(crate) fn resolve_method_name(
         } => {
             // type check the call path
             let type_id = check!(
-                call_path_binding.type_check(&mut ctx),
+                call_path_binding.type_check_with_type_info(&mut ctx),
                 insert_type(TypeInfo::ErrorRecovery),
                 warnings,
                 errors
@@ -384,6 +384,6 @@ pub(crate) fn resolve_method_name(
         warnings,
         errors
     );
-    
+
     ok(func_decl, warnings, errors)
 }

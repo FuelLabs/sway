@@ -475,17 +475,10 @@ impl TypedExpression {
                 span,
             } => Self::type_check_tuple_index(ctx.by_ref(), *prefix, index, index_span, span),
             Expression::DelineatedPath {
-                call_path,
+                call_path_binding,
                 span,
                 args,
-                type_arguments,
-            } => Self::type_check_delineated_path(
-                ctx.by_ref(),
-                call_path,
-                span,
-                args,
-                type_arguments,
-            ),
+            } => Self::type_check_delineated_path(ctx.by_ref(), call_path_binding, span, args),
             Expression::AbiCast {
                 abi_name,
                 address,
@@ -652,7 +645,7 @@ impl TypedExpression {
     }
 
     fn type_check_function_application(
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
         mut call_path_binding: TypeBinding<CallPath<Ident>>,
         arguments: Vec<Expression>,
         _span: Span,
@@ -662,7 +655,7 @@ impl TypedExpression {
 
         // type deck the declaration
         let unknown_decl = check!(
-            TypedDeclaration::type_check(&mut call_path_binding, &mut ctx),
+            TypeBinding::type_check_with_ident(&mut call_path_binding, &ctx),
             return err(warnings, errors),
             warnings,
             errors
@@ -959,7 +952,7 @@ impl TypedExpression {
 
         // type check the call path
         let type_id = check!(
-            call_path_binding.type_check(&mut ctx),
+            call_path_binding.type_check_with_type_info(&mut ctx),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors
@@ -1189,109 +1182,115 @@ impl TypedExpression {
         ok(exp, warnings, errors)
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn type_check_delineated_path(
         ctx: TypeCheckContext,
-        call_path: CallPath<Ident>,
+        call_path_binding: TypeBinding<CallPath<Ident>>,
         span: Span,
         args: Vec<Expression>,
-        type_arguments: Vec<TypeArgument>,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
         // The first step is to determine if the call path refers to a module, enum, or function.
-        // We could rely on the capitalization convention, where modules are lowercase
-        // and enums are uppercase, but this is not robust in the long term.
-        // Instead, we try to resolve all paths.
         // If only one exists, then we use that one. Otherwise, if more than one exist, it is
         // an ambiguous reference error.
-        let mut probe_warnings = Vec::new();
-        let mut probe_errors = Vec::new();
 
-        // First, check if this could be a module. We check first so that we can check for
-        // ambiguity in the following enum check.
-        let is_module = ctx
-            .namespace
-            .check_submodule(&call_path.prefixes)
-            .ok(&mut probe_warnings, &mut probe_errors)
-            .is_some();
+        // Check if this could be a module
+        let mut module_probe_warnings = Vec::new();
+        let mut module_probe_errors = Vec::new();
+        let is_module = {
+            let call_path_binding = call_path_binding.clone();
+            ctx.namespace
+                .check_submodule(
+                    &[
+                        call_path_binding.inner.prefixes,
+                        vec![call_path_binding.inner.suffix],
+                    ]
+                    .concat(),
+                )
+                .ok(&mut module_probe_warnings, &mut module_probe_errors)
+                .is_some()
+        };
 
-        // Check if the call path refers to an enum in another module.
-        let (enum_name, enum_mod_path) = call_path.prefixes.split_last().expect("empty call path");
-        let abs_enum_mod_path: Vec<_> = ctx.namespace.find_module_path(enum_mod_path);
-        let exp = if let Some(enum_decl) = ctx
-            .namespace
-            .check_submodule_mut(enum_mod_path)
-            .ok(&mut warnings, &mut errors)
-            .map(|_| ())
-            .and_then(|_| {
-                ctx.namespace
-                    .root()
-                    .resolve_symbol(&abs_enum_mod_path, enum_name)
-                    .value
-            })
-            .and_then(|decl| decl.as_enum().cloned())
-        {
-            // Check for ambiguity between this enum name and a module name.
-            if is_module {
+        // Check if this could be a function
+        let mut function_probe_warnings = Vec::new();
+        let mut function_probe_errors = Vec::new();
+        let maybe_function = {
+            let mut call_path_binding = call_path_binding.clone();
+            TypeBinding::type_check_with_ident(&mut call_path_binding, &ctx)
+                .flat_map(|unknown_decl| unknown_decl.expect_function().cloned())
+                .ok(&mut function_probe_warnings, &mut function_probe_errors)
+        };
+
+        // Check if this could be an enum
+        let mut enum_probe_warnings = vec![];
+        let mut enum_probe_errors = vec![];
+        let maybe_enum = {
+            let call_path_binding = call_path_binding.clone();
+            let variant_name = call_path_binding.inner.suffix.clone();
+            let enum_call_path = call_path_binding.inner.rshift();
+            let mut call_path_binding = TypeBinding {
+                inner: enum_call_path,
+                type_arguments: call_path_binding.type_arguments,
+                span: call_path_binding.span,
+            };
+            TypeBinding::type_check_with_ident(&mut call_path_binding, &ctx)
+                .flat_map(|unknown_decl| unknown_decl.expect_enum().cloned())
+                .ok(&mut enum_probe_warnings, &mut enum_probe_errors)
+                .map(|enum_decl| (enum_decl, variant_name))
+        };
+
+        // compare the results of the checks
+        let exp = match (is_module, maybe_function, maybe_enum) {
+            (false, None, Some((enum_decl, variant_name))) => {
+                warnings.append(&mut enum_probe_warnings);
+                errors.append(&mut enum_probe_errors);
+                check!(
+                    instantiate_enum(ctx, enum_decl, variant_name, args),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            (false, Some(func_decl), None) => {
+                warnings.append(&mut function_probe_warnings);
+                errors.append(&mut function_probe_errors);
+                check!(
+                    instantiate_function_application(ctx, func_decl, call_path_binding.inner, args,),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            (true, None, None) => {
+                module_probe_errors.push(CompileError::Unimplemented(
+                    "this case is not yet implemented",
+                    span,
+                ));
+                return err(module_probe_warnings, module_probe_errors);
+            }
+            (true, None, Some(_)) => {
                 errors.push(CompileError::AmbiguousPath { span });
                 return err(warnings, errors);
             }
-            check!(
-                instantiate_enum(ctx, enum_decl, call_path.suffix, args, type_arguments),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )
-
-        // Otherwise, our prefix should point to some module ending with an enum or function.
-        } else if ctx
-            .namespace
-            .check_submodule_mut(&call_path.prefixes)
-            .ok(&mut probe_warnings, &mut probe_errors)
-            .is_some()
-        {
-            let decl = check!(
-                ctx.namespace.resolve_call_path(&call_path).cloned(),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            match decl {
-                TypedDeclaration::EnumDeclaration(enum_decl) => {
-                    check!(
-                        instantiate_enum(ctx, enum_decl, call_path.suffix, args, type_arguments),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    )
-                }
-                TypedDeclaration::FunctionDeclaration(func_decl) => {
-                    todo!("needs monomorphization step here");
-                    check!(
-                        instantiate_function_application(ctx, func_decl, call_path, args,),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    )
-                }
-                a => {
-                    // TODO: Should this be `NotAnEnumOrFunction`?
-                    errors.push(CompileError::NotAnEnum {
-                        name: call_path.to_string(),
-                        span,
-                        actually: a.friendly_name().to_string(),
-                    });
-                    return err(warnings, errors);
-                }
+            (true, Some(_), None) => {
+                errors.push(CompileError::AmbiguousPath { span });
+                return err(warnings, errors);
             }
-
-        // If prefix is neither a module or enum, there's nothing to be found.
-        } else {
-            errors.push(CompileError::SymbolNotFound {
-                name: call_path.suffix.clone(),
-            });
-            return err(warnings, errors);
+            (true, Some(_), Some(_)) => {
+                errors.push(CompileError::AmbiguousPath { span });
+                return err(warnings, errors);
+            }
+            (false, Some(_), Some(_)) => {
+                errors.push(CompileError::AmbiguousPath { span });
+                return err(warnings, errors);
+            }
+            (false, None, None) => {
+                errors.push(CompileError::SymbolNotFound {
+                    name: call_path_binding.inner.suffix,
+                });
+                return err(warnings, errors);
+            }
         };
 
         ok(exp, warnings, errors)

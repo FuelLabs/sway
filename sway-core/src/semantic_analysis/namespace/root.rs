@@ -84,7 +84,7 @@ impl Root {
     }
 
     pub(crate) fn resolve_type(
-        &mut self,
+        &self,
         type_id: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,

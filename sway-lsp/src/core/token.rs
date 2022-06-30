@@ -371,14 +371,14 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             //TODO handle asm expressions
         }
         Expression::MethodApplication {
-            method_name_binding: method_name,
+            method_name_binding,
             arguments,
             contract_call_params,
             ..
         } => {
             // Don't collect applications of desugared operators due to mismatched ident lengths.
-            if !desugared_op(&method_name) {
-                let ident = method_name.easy_name();
+            if !desugared_op(&method_name_binding.inner) {
+                let ident = method_name_binding.inner.easy_name();
                 let token = Token::from_ident(&ident, TokenType::MethodApplication);
                 tokens.push(token);
             }
@@ -390,7 +390,7 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             //TODO handle methods from imported modules
             if let MethodName::FromType {
                 call_path_binding, ..
-            } = &method_name
+            } = &method_name_binding.inner
             {
                 handle_custom_type(&call_path_binding.inner.suffix.0, tokens);
             }
@@ -399,7 +399,7 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
                 let token = Token::from_ident(
                     &field.name,
                     TokenType::StructExpressionField(get_struct_field_details(
-                        &method_name.easy_name(),
+                        &method_name_binding.inner.easy_name(),
                     )),
                 );
                 tokens.push(token);
@@ -411,15 +411,18 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             //TODO handle field_to_access?
         }
         Expression::DelineatedPath {
-            call_path, args, ..
+            call_path_binding,
+            args,
+            ..
         } => {
-            for prefix in call_path.prefixes {
+            for prefix in call_path_binding.inner.prefixes {
                 //TODO find the correct token type for this!
                 let token = Token::from_ident(&prefix, TokenType::DelineatedPath);
                 tokens.push(token);
             }
 
-            let token = Token::from_ident(&call_path.suffix, TokenType::DelineatedPath);
+            let token =
+                Token::from_ident(&call_path_binding.inner.suffix, TokenType::DelineatedPath);
             tokens.push(token);
 
             for exp in args {

@@ -37,7 +37,7 @@ impl Engine {
         type_arguments: &mut [TypeArgument],
         enforce_type_arguments: EnforceTypeArguments,
         call_site_span: &Span,
-        namespace: &mut Root,
+        namespace: &Root,
         mod_path: &Path,
     ) -> CompileResult<()>
     where
@@ -476,7 +476,7 @@ pub(crate) fn monomorphize<T>(
     type_arguments: &mut [TypeArgument],
     enforce_type_arguments: EnforceTypeArguments,
     call_site_span: &Span,
-    namespace: &mut Root,
+    namespace: &Root,
     module_path: &Path,
 ) -> CompileResult<()>
 where
