@@ -64,6 +64,18 @@ impl Root {
         })
     }
 
+    pub(crate) fn resolve_type_with_self(
+        &mut self,
+        mut type_id: TypeId,
+        self_type: TypeId,
+        span: &Span,
+        enforce_type_arguments: EnforceTypeArguments,
+        mod_path: &Path,
+    ) -> CompileResult<TypeId> {
+        type_id.replace_self_type(self_type);
+        self.resolve_type(type_id, span, enforce_type_arguments, mod_path)
+    }
+
     pub(crate) fn resolve_type(
         &mut self,
         type_id: TypeId,
@@ -87,7 +99,7 @@ impl Root {
                         check!(
                             monomorphize(
                                 &mut decl,
-                                type_arguments,
+                                type_arguments.unwrap_or_default(),
                                 enforce_type_arguments,
                                 span,
                                 self,
@@ -103,7 +115,7 @@ impl Root {
                         check!(
                             monomorphize(
                                 &mut decl,
-                                type_arguments,
+                                type_arguments.unwrap_or_default(),
                                 enforce_type_arguments,
                                 span,
                                 self,
@@ -170,7 +182,8 @@ impl Root {
         &mut self,
         mod_path: &Path,
         mut type_id: TypeId,
-        method_path: &Path,
+        method_prefix: &Path,
+        method_name: &Ident,
         self_type: TypeId,
         args_buf: &VecDeque<TypedExpression>,
     ) -> CompileResult<TypedFunctionDeclaration> {
@@ -187,9 +200,6 @@ impl Root {
 
         // grab the local methods from the local module
         let local_methods = local_module.get_methods_for_type(type_id);
-
-        // split into the method name and method prefix
-        let (method_name, method_prefix) = method_path.split_last().expect("method path is empty");
 
         type_id.replace_self_type(self_type);
 

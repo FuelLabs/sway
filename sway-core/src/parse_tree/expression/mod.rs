@@ -1,7 +1,7 @@
 use crate::{
     parse_tree::{CallPath, Literal},
     type_engine::TypeArgument,
-    CodeBlock,
+    CodeBlock, TypeInfo,
 };
 use sway_types::{ident::Ident, Span, Spanned};
 
@@ -54,7 +54,7 @@ pub enum Expression {
         span: Span,
     },
     StructExpression {
-        struct_name: CallPath<Ident>,
+        struct_name: CallPath<(TypeInfo, Span)>,
         type_arguments: Vec<TypeArgument>,
         fields: Vec<StructExpressionField>,
         span: Span,

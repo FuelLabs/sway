@@ -67,7 +67,7 @@ pub enum TypeInfo {
     /// until the semantic analysis stage.
     Custom {
         name: Ident,
-        type_arguments: Vec<TypeArgument>,
+        type_arguments: Option<Vec<TypeArgument>>,
     },
     SelfType,
     Byte,
@@ -552,6 +552,63 @@ impl TypeInfo {
         }
     }
 
+    pub(crate) fn apply_type_arguments(
+        self,
+        type_arguments: Vec<TypeArgument>,
+        span: &Span,
+    ) -> CompileResult<TypeInfo> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        if type_arguments.is_empty() {
+            return ok(self, warnings, errors);
+        }
+        match self {
+            TypeInfo::Enum { .. } | TypeInfo::Struct { .. } => {
+                errors.push(CompileError::Internal(
+                    "did not expect to apply type arguments to this type",
+                    span.clone(),
+                ));
+                err(warnings, errors)
+            }
+            TypeInfo::Ref(type_id, _) => {
+                look_up_type_id(type_id).apply_type_arguments(type_arguments, span)
+            }
+            TypeInfo::Custom {
+                name,
+                type_arguments: other_type_arguments,
+            } => {
+                if other_type_arguments.is_none() {
+                    errors.push(CompileError::TypeArgumentsNotAllowed { span: span.clone() });
+                    err(warnings, errors)
+                } else {
+                    let type_info = TypeInfo::Custom {
+                        name,
+                        type_arguments: Some(type_arguments),
+                    };
+                    ok(type_info, warnings, errors)
+                }
+            }
+            TypeInfo::Unknown
+            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::Str(_)
+            | TypeInfo::UnsignedInteger(_)
+            | TypeInfo::Boolean
+            | TypeInfo::Tuple(_)
+            | TypeInfo::ContractCaller { .. }
+            | TypeInfo::SelfType
+            | TypeInfo::Byte
+            | TypeInfo::B256
+            | TypeInfo::Numeric
+            | TypeInfo::Contract
+            | TypeInfo::ErrorRecovery
+            | TypeInfo::Array(_, _)
+            | TypeInfo::Storage { .. } => {
+                errors.push(CompileError::TypeArgumentsNotAllowed { span: span.clone() });
+                err(warnings, errors)
+            }
+        }
+    }
+
     pub(crate) fn matches_type_parameter(&self, mapping: &TypeMapping) -> Option<TypeId> {
         use TypeInfo::*;
         match self {
@@ -948,10 +1005,14 @@ impl TypeInfo {
                 },
             ) => {
                 let l_types = l_type_args
+                    .as_ref()
+                    .unwrap_or(&vec![])
                     .iter()
                     .map(|x| look_up_type_id(x.type_id))
                     .collect::<Vec<_>>();
                 let r_types = r_type_args
+                    .as_ref()
+                    .unwrap_or(&vec![])
                     .iter()
                     .map(|x| look_up_type_id(x.type_id))
                     .collect::<Vec<_>>();
@@ -1137,6 +1198,29 @@ impl TypeInfo {
                 vec![],
                 vec![CompileError::NotAnEnum {
                     name: debug_string.into(),
+                    span: debug_span.clone(),
+                    actually: a.to_string(),
+                }],
+            ),
+        }
+    }
+
+    /// Given a `TypeInfo` `self`, expect that `self` is a `TypeInfo::Struct`,
+    /// and return its contents.
+    ///
+    /// Returns an error if `self` is not a `TypeInfo::Struct`.
+    pub(crate) fn expect_struct(
+        &self,
+        debug_span: &Span,
+    ) -> CompileResult<(&Ident, &Vec<TypedStructField>)> {
+        let warnings = vec![];
+        let errors = vec![];
+        match self {
+            TypeInfo::Struct { name, fields, .. } => ok((name, fields), warnings, errors),
+            TypeInfo::ErrorRecovery => err(warnings, errors),
+            a => err(
+                vec![],
+                vec![CompileError::NotAStruct {
                     span: debug_span.clone(),
                     actually: a.to_string(),
                 }],

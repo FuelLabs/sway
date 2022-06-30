@@ -854,7 +854,7 @@ fn generic_params_opt_to_type_parameters(
             .map(|ident| TypeParameter {
                 type_id: insert_type(TypeInfo::Custom {
                     name: ident.clone(),
-                    type_arguments: Vec::new(),
+                    type_arguments: None,
                 }),
                 name_ident: ident,
                 trait_constraints: Vec::new(),
@@ -1200,7 +1200,7 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             }
         }
         Expr::Struct { path, fields } => {
-            let (struct_name, type_arguments) = path_expr_to_call_path_type_args(ec, path)?;
+            let (struct_name, type_arguments) = path_expr_to_type_info_type_args(ec, path)?;
             Expression::StructExpression {
                 struct_name,
                 fields: {
@@ -1393,7 +1393,7 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             };
             let PathExprSegment {
                 fully_qualified,
-                name,
+                name: method_name,
                 generics_opt,
             } = suffix_path_expr;
             if let Some(tilde_token) = fully_qualified {
@@ -1402,11 +1402,6 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                 };
                 return Err(ec.error(error));
             }
-            let call_path = CallPath {
-                is_absolute,
-                prefixes,
-                suffix: name,
-            };
             let arguments = {
                 args.into_inner()
                     .into_iter()
@@ -1420,7 +1415,7 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         Some(type_info) => type_info,
                         None => TypeInfo::Custom {
                             name: type_name,
-                            type_arguments: Vec::new(),
+                            type_arguments: None,
                         },
                     };
                     let type_arguments = match generics_opt {
@@ -1429,11 +1424,15 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         }
                         None => Vec::new(),
                     };
+                    let call_path = CallPath {
+                        prefixes,
+                        suffix: (type_name, type_name_span),
+                        is_absolute,
+                    };
                     Expression::MethodApplication {
                         method_name: MethodName::FromType {
                             call_path,
-                            type_name,
-                            type_name_span,
+                            method_name,
                         },
                         contract_call_params: Vec::new(),
                         arguments,
@@ -1442,10 +1441,9 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                     }
                 }
                 None => {
-                    if call_path.prefixes.is_empty()
-                        && !call_path.is_absolute
-                        && Intrinsic::try_from_str(call_path.suffix.as_str())
-                            == Some(Intrinsic::SizeOf)
+                    if prefixes.is_empty()
+                        && !is_absolute
+                        && Intrinsic::try_from_str(method_name.as_str()) == Some(Intrinsic::SizeOf)
                     {
                         if !arguments.is_empty() {
                             let error = ConvertParseTreeError::SizeOfTooManyArgs { span };
@@ -1471,9 +1469,9 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                             },
                             span,
                         }
-                    } else if call_path.prefixes.is_empty()
-                        && !call_path.is_absolute
-                        && Intrinsic::try_from_str(call_path.suffix.as_str())
+                    } else if prefixes.is_empty()
+                        && !is_absolute
+                        && Intrinsic::try_from_str(method_name.as_str())
                             == Some(Intrinsic::GetStorageKey)
                     {
                         if !arguments.is_empty() {
@@ -1488,9 +1486,9 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                             kind: IntrinsicFunctionKind::GetStorageKey,
                             span,
                         }
-                    } else if call_path.prefixes.is_empty()
-                        && !call_path.is_absolute
-                        && Intrinsic::try_from_str(call_path.suffix.as_str())
+                    } else if prefixes.is_empty()
+                        && !is_absolute
+                        && Intrinsic::try_from_str(method_name.as_str())
                             == Some(Intrinsic::IsReferenceType)
                     {
                         if !arguments.is_empty() {
@@ -1518,9 +1516,9 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                             },
                             span,
                         }
-                    } else if call_path.prefixes.is_empty()
-                        && !call_path.is_absolute
-                        && Intrinsic::try_from_str(call_path.suffix.as_str())
+                    } else if prefixes.is_empty()
+                        && !is_absolute
+                        && Intrinsic::try_from_str(method_name.as_str())
                             == Some(Intrinsic::SizeOfVal)
                     {
                         let exp = match <[_; 1]>::try_from(arguments) {
@@ -1540,6 +1538,11 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                                 generic_args_to_type_arguments(ec, generic_args)?
                             }
                             None => Vec::new(),
+                        };
+                        let call_path = CallPath {
+                            is_absolute,
+                            prefixes,
+                            suffix: method_name,
                         };
                         if call_path.prefixes.is_empty() {
                             Expression::FunctionApplication {
@@ -2367,17 +2370,18 @@ fn literal_to_literal(
 /// Like [path_expr_to_call_path], but instead can potentially return type arguments.
 /// Use this when converting a call path that could potentially include type arguments, i.e. the
 /// turbofish.
-fn path_expr_to_call_path_type_args(
+#[allow(clippy::type_complexity)]
+fn path_expr_to_type_info_type_args(
     ec: &mut ErrorContext,
     path_expr: PathExpr,
-) -> Result<(CallPath<Ident>, Vec<TypeArgument>), ErrorEmitted> {
+) -> Result<(CallPath<(TypeInfo, Span)>, Vec<TypeArgument>), ErrorEmitted> {
     let PathExpr {
         root_opt,
         prefix,
         mut suffix,
     } = path_expr;
     let is_absolute = path_root_opt_to_bool(ec, root_opt)?;
-    let (call_path, type_arguments) = match suffix.pop() {
+    let (prefixes, type_info, type_info_span, type_arguments) = match suffix.pop() {
         Some((_double_colon_token, call_path_suffix)) => {
             let mut prefixes = vec![path_expr_segment_to_ident(ec, prefix)?];
             for (_double_colon_token, call_path_prefix) in suffix {
@@ -2388,28 +2392,37 @@ fn path_expr_to_call_path_type_args(
             }
             let (suffix, ty_args) =
                 path_expr_segment_to_ident_or_type_argument(ec, call_path_suffix)?;
-            (
-                CallPath {
-                    prefixes,
-                    suffix,
-                    is_absolute,
+            let type_info_span = suffix.span();
+            let type_info = match type_name_to_type_info_opt(&suffix) {
+                Some(type_info) => type_info,
+                None => TypeInfo::Custom {
+                    name: suffix,
+                    type_arguments: None,
                 },
-                ty_args,
-            )
+            };
+            (prefixes, type_info, type_info_span, ty_args)
         }
         None => {
             let (suffix, ty_args) = path_expr_segment_to_ident_or_type_argument(ec, prefix)?;
-            (
-                CallPath {
-                    prefixes: Default::default(),
-                    suffix,
-                    is_absolute,
+            let type_info_span = suffix.span();
+            let type_info = match type_name_to_type_info_opt(&suffix) {
+                Some(type_info) => type_info,
+                None => TypeInfo::Custom {
+                    name: suffix,
+                    type_arguments: None,
                 },
-                ty_args,
-            )
+            };
+            (vec![], type_info, type_info_span, ty_args)
         }
     };
-    Ok((call_path, type_arguments))
+    Ok((
+        CallPath {
+            prefixes,
+            suffix: (type_info, type_info_span),
+            is_absolute,
+        },
+        type_arguments,
+    ))
 }
 
 fn path_expr_to_call_path(
@@ -2831,7 +2844,7 @@ fn ty_to_type_parameter(ec: &mut ErrorContext, ty: Ty) -> Result<TypeParameter, 
     Ok(TypeParameter {
         type_id: insert_type(TypeInfo::Custom {
             name: name_ident.clone(),
-            type_arguments: Vec::new(),
+            type_arguments: None,
         }),
         name_ident,
         trait_constraints: Vec::new(),
@@ -3090,7 +3103,7 @@ fn path_type_to_type_info(
                 };
                 TypeInfo::Custom {
                     name,
-                    type_arguments,
+                    type_arguments: Some(type_arguments),
                 }
             }
         }

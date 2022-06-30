@@ -563,6 +563,8 @@ pub enum CompileError {
     },
     #[error("\"{name}\" does not take type arguments.")]
     DoesNotTakeTypeArguments { name: Ident, span: Span },
+    #[error("Type arguments are not allowed for this type.")]
+    TypeArgumentsNotAllowed { span: Span },
     #[error("\"{name}\" needs type arguments.")]
     NeedsTypeArguments { name: Ident, span: Span },
     #[error(
@@ -617,12 +619,6 @@ pub enum CompileError {
     },
     #[error("Module \"{name}\" could not be found.")]
     ModuleNotFound { span: Span, name: String },
-    #[error("\"{name}\" is a {actually}, not a struct. Fields can only be accessed on structs.")]
-    NotAStruct {
-        name: String,
-        span: Span,
-        actually: String,
-    },
     #[error("This is a {actually}, not a struct. Fields can only be accessed on structs.")]
     FieldAccessOnNonStruct { actually: String, span: Span },
     #[error("\"{name}\" is a {actually}, not a tuple. Elements can only be access on tuples.")]
@@ -637,6 +633,8 @@ pub enum CompileError {
         span: Span,
         actually: String,
     },
+    #[error("This is a {actually}, not a struct.")]
+    NotAStruct { span: Span, actually: String },
     #[error("This is a {actually}, not an enum.")]
     DeclIsNotAnEnum { actually: String, span: Span },
     #[error("This is a {actually}, not a struct.")]
@@ -1039,6 +1037,7 @@ impl Spanned for CompileError {
             MissingInterfaceSurfaceMethods { span, .. } => span.clone(),
             IncorrectNumberOfTypeArguments { span, .. } => span.clone(),
             DoesNotTakeTypeArguments { span, .. } => span.clone(),
+            TypeArgumentsNotAllowed { span } => span.clone(),
             NeedsTypeArguments { span, .. } => span.clone(),
             StructNotFound { span, .. } => span.clone(),
             DeclaredNonStructAsStruct { span, .. } => span.clone(),

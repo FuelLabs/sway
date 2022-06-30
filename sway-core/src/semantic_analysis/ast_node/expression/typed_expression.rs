@@ -319,7 +319,7 @@ impl TypedExpression {
         };
         let arguments = VecDeque::from(arguments);
         let method = check!(
-            resolve_method_name(ctx, &method_name, arguments.clone(), vec![], span.clone()),
+            resolve_method_name(ctx, &method_name, arguments.clone(), vec![]),
             return err(warnings, errors),
             warnings,
             errors
@@ -949,13 +949,15 @@ impl TypedExpression {
     #[allow(clippy::too_many_arguments)]
     fn type_check_struct_expression(
         mut ctx: TypeCheckContext,
-        call_path: CallPath<Ident>,
+        call_path: CallPath<(TypeInfo, Span)>,
         type_arguments: Vec<TypeArgument>,
         fields: Vec<StructExpressionField>,
         span: Span,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        let (type_info, type_info_span) = call_path.suffix.clone();
 
         // find the module that the symbol is in
         let module_path = ctx.namespace.find_module_path(&call_path.prefixes);
@@ -966,46 +968,49 @@ impl TypedExpression {
             errors
         );
 
-        // find the struct definition from the name
-        let unknown_decl = check!(
-            ctx.namespace
-                .root()
-                .resolve_symbol(&module_path, &call_path.suffix)
-                .cloned(),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        let mut struct_decl = check!(
-            unknown_decl.expect_struct().cloned(),
+        // create the type info object
+        let type_info = check!(
+            type_info.apply_type_arguments(type_arguments, &type_info_span),
             return err(warnings, errors),
             warnings,
             errors
         );
 
-        // monomorphize the struct definition
-        check!(
-            ctx.monomorphize(
-                &mut struct_decl,
-                type_arguments,
+        // resolve the type of the type info object
+        let self_type = ctx.self_type();
+        let type_id = check!(
+            ctx.namespace.root_mut().resolve_type_with_self(
+                insert_type(type_info),
+                self_type,
+                &type_info_span,
                 EnforceTypeArguments::No,
-                &call_path.span()
+                &module_path
             ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+
+        // extract the struct name and fields from the type info
+        let type_info = look_up_type_id(type_id);
+        let (struct_name, struct_fields) = check!(
+            type_info.expect_struct(&span),
             return err(warnings, errors),
             warnings,
             errors
         );
+        let mut struct_fields = struct_fields.clone();
 
         // match up the names with their type annotations from the declaration
         let mut typed_fields_buf = vec![];
-        for def_field in struct_decl.fields.iter_mut() {
+        for def_field in struct_fields.iter_mut() {
             let expr_field: crate::parse_tree::StructExpressionField =
                 match fields.iter().find(|x| x.name == def_field.name) {
                     Some(val) => val.clone(),
                     None => {
                         errors.push(CompileError::StructMissingField {
                             field_name: def_field.name.clone(),
-                            struct_name: struct_decl.name.clone(),
+                            struct_name: struct_name.clone(),
                             span: span.clone(),
                         });
                         typed_fields_buf.push(TypedStructExpressionField {
@@ -1043,20 +1048,20 @@ impl TypedExpression {
 
         // check that there are no extra fields
         for field in fields {
-            if !struct_decl.fields.iter().any(|x| x.name == field.name) {
+            if !struct_fields.iter().any(|x| x.name == field.name) {
                 errors.push(CompileError::StructDoesNotHaveField {
                     field_name: field.name.clone(),
-                    struct_name: struct_decl.name.clone(),
+                    struct_name: struct_name.clone(),
                     span: field.span,
                 });
             }
         }
         let exp = TypedExpression {
             expression: TypedExpressionVariant::StructExpression {
-                struct_name: call_path.suffix,
+                struct_name: struct_name.clone(),
                 fields: typed_fields_buf,
             },
-            return_type: struct_decl.create_type_id(),
+            return_type: type_id,
             is_constant: IsConstant::No,
             span,
         };
