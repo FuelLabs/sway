@@ -145,7 +145,7 @@ impl<V> StorageVec<V> {
         // reduces len by 1, effectively removing the last item in the vec
         store(__get_storage_key(), len - 1);
 
-        let key = sha256((len, __get_storage_key()));
+        let key = sha256((len - 1, __get_storage_key()));
         Option::Some::<V>(get::<V>(key))
     }
 
@@ -192,7 +192,7 @@ impl<V> StorageVec<V> {
         store(__get_storage_key(), len - 1);
 
         // returns the removed element
-        Result::Ok(removed_element)
+        Result::Ok::<V, StorageVecError>(removed_element)
     }
 
     /// Removes the element at the specified index and fills it with the last element
@@ -219,7 +219,7 @@ impl<V> StorageVec<V> {
         // decrements len by 1
         store(__get_storage_key(), len - 1);
 
-        Result::Ok(element_to_be_removed)
+        Result::Ok::<V, StorageVecError>(element_to_be_removed)
     }
 
     /// Inserts the value at the given index, moving the current index's value aswell as the following's
