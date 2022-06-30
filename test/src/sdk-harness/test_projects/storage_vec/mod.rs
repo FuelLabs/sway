@@ -33,4 +33,32 @@ mod success {
     
         assert_eq!(item, 50);
     }
+
+    #[tokio::test]
+    async fn can_remove() { 
+        let (instance, _id) = get_contract_instance().await;
+    
+        push(&instance, 50).await;
+        push(&instance, 100).await;
+        push(&instance, 150).await;
+        push(&instance, 200).await;
+        let item = remove(&instance, 2).await;
+    
+        assert_eq!(item, 150);
+    }
+
+    #[tokio::test]
+    async fn can_swap_remove() { 
+        let (instance, _id) = get_contract_instance().await;
+    
+        push(&instance, 50).await;
+        push(&instance, 100).await;
+        push(&instance, 150).await;
+        push(&instance, 200).await;
+        let item = swap_remove(&instance, 1).await;
+        let new_item_at_index = get(&instance, 1).await;
+    
+        // assert_eq!(item, 100);
+        assert_eq!(new_item_at_index, 200);
+    }
 }

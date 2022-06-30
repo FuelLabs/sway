@@ -39,4 +39,8 @@ pub mod wrappers {
     pub async fn remove(instance: &MyContract, index: u64) -> u8 {
         instance.vec_u8_remove(index).call().await.unwrap().value
     }
+
+    pub async fn swap_remove(instance: &MyContract, index: u64) -> u8 {
+        instance.vec_u8_swap_remove(index).call().await.unwrap().value
+    }
 }
