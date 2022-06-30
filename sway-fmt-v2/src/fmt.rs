@@ -98,7 +98,7 @@ pub const TEST: u16 = 10;"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert!(correct_sway_code == formatted_sway_code)
+        assert_eq!(correct_sway_code, formatted_sway_code)
     }
 
     #[test]
@@ -120,7 +120,7 @@ pub struct Foo<T, P> {
         let mut formatter = get_formatter(config, Shape::default());
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert!(correct_sway_code == formatted_sway_code)
+        assert_eq!(correct_sway_code, formatted_sway_code)
     }
     #[test]
     fn test_struct_single_line() {
@@ -139,7 +139,7 @@ pub struct Foo { bar: u64, baz: bool }"#;
         let mut formatter = get_formatter(config, Shape::default());
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert!(correct_sway_code == formatted_sway_code)
+        assert_eq!(correct_sway_code, formatted_sway_code)
     }
     #[test]
     fn test_enum_single_line() {
@@ -158,7 +158,7 @@ pub enum Foo { bar: u64, baz: bool }"#;
         let mut formatter = get_formatter(config, Shape::default());
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert!(correct_sway_code == formatted_sway_code)
+        assert_eq!(correct_sway_code, formatted_sway_code)
     }
     #[test]
     fn test_struct_multi_line() {
@@ -177,7 +177,7 @@ pub struct Foo {
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert!(correct_sway_code == formatted_sway_code)
+        assert_eq!(correct_sway_code, formatted_sway_code)
     }
 
     #[test]
@@ -202,7 +202,7 @@ enum Color {
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert!(correct_sway_code == formatted_sway_code)
+        assert_eq!(correct_sway_code, formatted_sway_code)
     }
     #[test]
     fn test_enum_with_variant_alignment() {
@@ -230,7 +230,7 @@ enum Color {
 
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert!(correct_sway_code == formatted_sway_code)
+        assert_eq!(correct_sway_code, formatted_sway_code)
     }
     #[test]
     fn test_item_abi_with_generics_and_attributes() {
@@ -252,7 +252,7 @@ abi StorageMapExample {
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert!(correct_sway_code == formatted_sway_code)
+        assert_eq!(correct_sway_code, formatted_sway_code)
     }
 
     #[test]
@@ -269,6 +269,6 @@ pub const TEST1: u16 = 10;"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert!(correct_sway_code == formatted_sway_code)
+        assert_eq!(correct_sway_code, formatted_sway_code)
     }
 }
