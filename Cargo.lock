@@ -1117,7 +1117,7 @@ dependencies = [
  "forc-pkg",
  "forc-util",
  "fs_extra",
- "fuel-asm 0.5.3",
+ "fuel-asm 0.6.0",
  "fuel-crypto",
  "fuel-gql-client",
  "fuel-tx",
@@ -3753,7 +3753,7 @@ dependencies = [
 name = "sway-types"
 version = "0.16.2"
 dependencies = [
- "fuel-asm 0.5.3",
+ "fuel-asm 0.6.0",
  "fuel-crypto",
  "fuel-tx",
  "lazy_static",
@@ -3857,7 +3857,7 @@ dependencies = [
  "forc",
  "forc-pkg",
  "forc-util",
- "fuel-asm 0.5.3",
+ "fuel-asm 0.6.0",
  "fuel-tx",
  "fuel-vm",
  "gag",
