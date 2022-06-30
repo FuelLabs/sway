@@ -222,7 +222,7 @@ fn format_use_statement_length(s: &str, max_length: usize, level: usize) -> Stri
 
         match token {
             "," => {
-                line.push_str(&format!("{} ", token));
+                line.push_str(token);
                 if *open_brackets == 1 {
                     is_line = true;
                 }
@@ -245,7 +245,7 @@ fn format_use_statement_length(s: &str, max_length: usize, level: usize) -> Stri
                 }
             }
             "as" => {
-                line.push_str(&format!(" {} ", token));
+                line.push_str(token);
             }
             _ => {
                 line.push_str(token);
