@@ -12,11 +12,11 @@ async fn setup() -> (Vec<u8>, Address, Wallet, u64, AssetId) {
     let predicate_code = std::fs::read("test_projects/predicate_data_struct/out/debug/predicate_data_struct.bin").unwrap();
     let predicate_address = (*Contract::root_from_code(&predicate_code)).into();
 
-    let wallet = launch_custom_provider_and_get_single_wallet(Config {
+    let wallet = launch_custom_provider_and_get_single_wallet(Some(Config {
         predicates: true,
         utxo_validation: true,
         ..Config::local_node()
-    })
+    }))
     .await;
 
     (
@@ -134,8 +134,7 @@ fn encode_struct(predicate_struct: Validation) -> Vec<u8> {
     let has_account = Token::Bool(predicate_struct.has_account);
     let total_complete = Token::U64(predicate_struct.total_complete);
     let token_struct: Vec<Token> = vec![has_account, total_complete];
-    let mut abi = ABIEncoder::new();
-    let predicate_data = abi.encode(&token_struct).unwrap();
+    let predicate_data = ABIEncoder::encode(&token_struct).unwrap();
     predicate_data
 }
 
