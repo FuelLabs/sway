@@ -23,9 +23,6 @@ fn main() -> bool {
     test_vector_new_string();
     test_vector_new_array();
     test_vector_with_capacity_u64();
-    test_vector_remove();
-    test_vector_insert();
-    test_vector_pop();
     true
 }
 
@@ -117,6 +114,117 @@ fn test_vector_new_u8() {
     match vector.get(5) {
         Option::Some(val) => revert(0), Option::None => (), 
     }
+
+    // Remove the first
+    let val = vector.remove(0);
+    assert(val == number0);
+    assert(vector.len() == 4);
+    assert(vector.capacity() == 16);
+
+    // Remove the last
+    let val = vector.remove(3);
+    assert(val == number4);
+    assert(vector.len() == 3);
+    assert(vector.capacity() == 16);
+
+    // Remove the middle
+    let val = vector.remove(1);
+    assert(val == number2);
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 16);
+
+    // Check what's left
+    match vector.get(0) {
+        Option::Some(val) => assert(val == number1), Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => assert(val == number3), Option::None => revert(0), 
+    }
+
+    // Renew a `Vec` instead of `vector.clear()` to test the change of capacity after `insert`
+    let mut vector = ~Vec::new();
+
+    // Insert to empty
+    vector.insert(0, number2);
+    assert(vector.len() == 1);
+    assert(vector.capacity() == 1);
+    match vector.get(0) {
+        Option::Some(val) => assert(val == number2), Option::None => revert(0), 
+    }
+
+    // Insert at the first
+    vector.insert(0, number0);
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 2);
+    match vector.get(0) {
+        Option::Some(val) => assert(val == number0), Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => assert(val == number2), Option::None => revert(0), 
+    }
+
+    // Insert at the middle
+    vector.insert(1, number1);
+    assert(vector.len() == 3);
+    assert(vector.capacity() == 4);
+    match vector.get(0) {
+        Option::Some(val) => assert(val == number0), Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => assert(val == number1), Option::None => revert(0), 
+    }
+
+    match vector.get(2) {
+        Option::Some(val) => assert(val == number2), Option::None => revert(0), 
+    }
+
+    // Insert at the last
+    vector.insert(3, number3);
+    assert(vector.len() == 4);
+    assert(vector.capacity() == 4);
+    match vector.get(0) {
+        Option::Some(val) => assert(val == number0), Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => assert(val == number1), Option::None => revert(0), 
+    }
+
+    match vector.get(2) {
+        Option::Some(val) => assert(val == number2), Option::None => revert(0), 
+    }
+
+    match vector.get(3) {
+        Option::Some(val) => assert(val == number3), Option::None => revert(0), 
+    }
+
+    // Test for `pop`
+    vector.clear();
+    vector.push(number0);
+    vector.push(number1);
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 4);
+
+    match vector.pop() {
+        Option::Some(val) => assert(val == number1), Option::None => revert(0), 
+    }
+    assert(vector.len() == 1);
+    assert(vector.capacity() == 4);
+
+    match vector.pop() {
+        Option::Some(val) => assert(val == number0), Option::None => revert(0), 
+    }
+    assert(vector.len() == 0);
+    assert(vector.capacity() == 4);
+    
+    match vector.pop() {
+        Option::Some(_) => revert(0), Option::None => {}, 
+    }
+    assert(vector.len() == 0);
+    assert(vector.capacity() == 4);
 }
 
 fn test_vector_new_b256() {
@@ -207,6 +315,117 @@ fn test_vector_new_b256() {
     match vector.get(5) {
         Option::Some(val) => revert(0), Option::None => (), 
     }
+
+    // Remove the first
+    let val = vector.remove(0);
+    assert(val == b0);
+    assert(vector.len() == 4);
+    assert(vector.capacity() == 16);
+
+    // Remove the last
+    let val = vector.remove(3);
+    assert(val == b4);
+    assert(vector.len() == 3);
+    assert(vector.capacity() == 16);
+
+    // Remove the middle
+    let val = vector.remove(1);
+    assert(val == b2);
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 16);
+
+    // Check what's left
+    match vector.get(0) {
+        Option::Some(val) => assert(val == b1), Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => assert(val == b3), Option::None => revert(0), 
+    }
+
+    // Renew a `Vec` instead of `vector.clear()` to test the change of capacity after `insert`
+    let mut vector = ~Vec::new();
+
+    // Insert to empty
+    vector.insert(0, b2);
+    assert(vector.len() == 1);
+    assert(vector.capacity() == 1);
+    match vector.get(0) {
+        Option::Some(val) => assert(val == b2), Option::None => revert(0), 
+    }
+
+    // Insert at the first
+    vector.insert(0, b0);
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 2);
+    match vector.get(0) {
+        Option::Some(val) => assert(val == b0), Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => assert(val == b2), Option::None => revert(0), 
+    }
+
+    // Insert at the middle
+    vector.insert(1, b1);
+    assert(vector.len() == 3);
+    assert(vector.capacity() == 4);
+    match vector.get(0) {
+        Option::Some(val) => assert(val == b0), Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => assert(val == b1), Option::None => revert(0), 
+    }
+
+    match vector.get(2) {
+        Option::Some(val) => assert(val == b2), Option::None => revert(0), 
+    }
+
+    // Insert at the last
+    vector.insert(3, b3);
+    assert(vector.len() == 4);
+    assert(vector.capacity() == 4);
+    match vector.get(0) {
+        Option::Some(val) => assert(val == b0), Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => assert(val == b1), Option::None => revert(0), 
+    }
+
+    match vector.get(2) {
+        Option::Some(val) => assert(val == b2), Option::None => revert(0), 
+    }
+
+    match vector.get(3) {
+        Option::Some(val) => assert(val == b3), Option::None => revert(0), 
+    }
+
+    // Test for `pop`
+    vector.clear();
+    vector.push(b0);
+    vector.push(b1);
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 4);
+
+    match vector.pop() {
+        Option::Some(val) => assert(val == b1), Option::None => revert(0), 
+    }
+    assert(vector.len() == 1);
+    assert(vector.capacity() == 4);
+
+    match vector.pop() {
+        Option::Some(val) => assert(val == b0), Option::None => revert(0), 
+    }
+    assert(vector.len() == 0);
+    assert(vector.capacity() == 4);
+    
+    match vector.pop() {
+        Option::Some(_) => revert(0), Option::None => {}, 
+    }
+    assert(vector.len() == 0);
+    assert(vector.capacity() == 4);
 }
 
 fn test_vector_new_struct() {
@@ -359,6 +578,192 @@ fn test_vector_new_struct() {
     match vector.get(5) {
         Option::Some(val) => revert(0), Option::None => (), 
     }
+
+    // Remove the first
+    let val = vector.remove(0);
+    assert(val.x == number0);
+    assert(val.y == b0);
+    assert(vector.len() == 4);
+    assert(vector.capacity() == 16);
+
+    // Remove the last
+    let val = vector.remove(3);
+    assert(val.x == number4);
+    assert(val.y == b4);
+    assert(vector.len() == 3);
+    assert(vector.capacity() == 16);
+
+    // Remove the middle
+    let val = vector.remove(1);
+    assert(val.x == number2);
+    assert(val.y == b2);
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 16);
+
+    // Check what's left
+    match vector.get(0) {
+        Option::Some(val) => {
+            assert(val.x == number1);
+            assert(val.y == b1);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => {
+            assert(val.x == number3);
+            assert(val.y == b3);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    // Renew a `Vec` instead of `vector.clear()` to test the change of capacity after `insert`
+    let mut vector = ~Vec::new();
+
+    // Insert to empty
+    vector.insert(0, SimpleStruct{
+        x: number2,
+        y: b2,
+    });
+    assert(vector.len() == 1);
+    assert(vector.capacity() == 1);
+    match vector.get(0) {
+        Option::Some(val) => {
+            assert(val.x == number2);
+            assert(val.y == b2);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    // Insert at the first
+    vector.insert(0, SimpleStruct{
+        x: number0,
+        y: b0,
+    });
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 2);
+    match vector.get(0) {
+        Option::Some(val) => {
+            assert(val.x == number0);
+            assert(val.y == b0);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => {
+            assert(val.x == number2);
+            assert(val.y == b2);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    // Insert at the middle
+    vector.insert(1, SimpleStruct{
+        x: number1,
+        y: b1,
+    });
+    assert(vector.len() == 3);
+    assert(vector.capacity() == 4);
+    match vector.get(0) {
+        Option::Some(val) => {
+            assert(val.x == number0);
+            assert(val.y == b0);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => {
+            assert(val.x == number1);
+            assert(val.y == b1);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    match vector.get(2) {
+        Option::Some(val) => {
+            assert(val.x == number2);
+            assert(val.y == b2);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    // Insert at the last
+    vector.insert(3, SimpleStruct{
+        x: number3,
+        y: b3,
+    });
+    assert(vector.len() == 4);
+    assert(vector.capacity() == 4);
+    match vector.get(0) {
+        Option::Some(val) => {
+            assert(val.x == number0);
+            assert(val.y == b0);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => {
+            assert(val.x == number1);
+            assert(val.y == b1);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    match vector.get(2) {
+        Option::Some(val) => {
+            assert(val.x == number2);
+            assert(val.y == b2);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    match vector.get(3) {
+        Option::Some(val) => {
+            assert(val.x == number3);
+            assert(val.y == b3);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    // Test for `pop`
+    vector.clear();
+    vector.push(SimpleStruct {
+        x: number0, y: b0
+    });
+    vector.push(SimpleStruct {
+        x: number1, y: b1
+    });
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 4);
+
+    match vector.pop() {
+        Option::Some(val) => {
+            assert(val.x == number1);
+            assert(val.y == b1);
+        }, 
+        Option::None => revert(0), 
+    }
+    assert(vector.len() == 1);
+    assert(vector.capacity() == 4);
+
+    match vector.pop() {
+        Option::Some(val) => {
+            assert(val.x == number0);
+            assert(val.y == b0);
+        }, 
+        Option::None => revert(0), 
+    }
+    assert(vector.len() == 0);
+    assert(vector.capacity() == 4);
+
+    match vector.pop() {
+        Option::Some(_) => revert(0), Option::None => {}, 
+    }
+    assert(vector.len() == 0);
+    assert(vector.capacity() == 4);
 }
 
 fn test_vector_new_enum() {
@@ -412,6 +817,215 @@ fn test_vector_new_enum() {
         },
         Option::None => revert(0), 
     }
+
+    vector.push(SimpleEnum::Y(b1));
+    vector.push(SimpleEnum::Y(b2));
+
+    // Remove the first
+    match vector.remove(0) {
+        SimpleEnum::Y(b) => assert(b == b0),
+        _ => revert(0),
+    }
+    assert(vector.len() == 4);
+    assert(vector.capacity() == 8);
+
+    // Remove the last
+    match vector.remove(3) {
+        SimpleEnum::Y(b) => assert(b == b2),
+        _ => revert(0),
+    }
+    assert(vector.len() == 3);
+    assert(vector.capacity() == 8);
+
+    // Remove the middle
+    match vector.remove(1) {
+        SimpleEnum::Z(t) => {
+            assert(t.0 == b1);
+            assert(t.1 == b2);
+        },
+        _ => revert(0),
+    }
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 8);
+
+    // Check what's left
+    match vector.get(0) {
+        Option::Some(val) => {
+            match val {
+                SimpleEnum::X => {
+                },
+                _ => revert(0), 
+            }
+        },
+        Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => {
+            match val {
+                SimpleEnum::Y(b) => assert(b == b1), _ => revert(0), 
+            }
+        },
+        Option::None => revert(0), 
+    }
+
+    // Renew a `Vec` instead of `vector.clear()` to test the change of capacity after `insert`
+    let mut vector = ~Vec::new();
+
+    // Insert to empty
+    vector.insert(0, SimpleEnum::X);
+    assert(vector.len() == 1);
+    assert(vector.capacity() == 1);
+    match vector.get(0) {
+        Option::Some(val) => {
+            match val {
+                SimpleEnum::X => {},
+                _ => revert(0),
+            }
+        }, 
+        Option::None => revert(0), 
+    }
+
+    // Insert at the first
+    vector.insert(0, SimpleEnum::Y(b0));
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 2);
+    match vector.get(0) {
+        Option::Some(val) => {
+            match val {
+                SimpleEnum::Y(b) => assert(b == b0),
+                _ => revert(0),
+            }
+        }, 
+        Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => {
+            match val {
+                SimpleEnum::X => {},
+                _ => revert(0),
+            }
+        }, 
+        Option::None => revert(0), 
+    }
+
+    // Insert at the middle
+    vector.insert(1, SimpleEnum::Z((b1, b2)));
+    assert(vector.len() == 3);
+    assert(vector.capacity() == 4);
+    match vector.get(0) {
+        Option::Some(val) => {
+            match val {
+                SimpleEnum::Y(b) => assert(b == b0),
+                _ => revert(0),
+            }
+        }, 
+        Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => {
+            match val {
+                SimpleEnum::Z(t) => {
+                    assert(t.0 == b1);
+                    assert(t.1 == b2);
+                },
+                _ => revert(0),
+            }
+        }, 
+        Option::None => revert(0), 
+    }
+
+    match vector.get(2) {
+        Option::Some(val) => {
+            match val {
+                SimpleEnum::X => {},
+                _ => revert(0),
+            }
+        }, 
+        Option::None => revert(0), 
+    }
+
+    // Insert at the last
+    vector.insert(3, SimpleEnum::X);
+    assert(vector.len() == 4);
+    assert(vector.capacity() == 4);
+    match vector.get(0) {
+        Option::Some(val) => {
+            match val {
+                SimpleEnum::Y(b) => assert(b == b0),
+                _ => revert(0),
+            }
+        }, 
+        Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => {
+            match val {
+                SimpleEnum::Z(t) => {
+                    assert(t.0 == b1);
+                    assert(t.1 == b2);
+                },
+                _ => revert(0),
+            }
+        }, 
+        Option::None => revert(0), 
+    }
+
+    match vector.get(2) {
+        Option::Some(val) => {
+            match val {
+                SimpleEnum::X => {},
+                _ => revert(0),
+            }
+        }, 
+        Option::None => revert(0), 
+    }
+
+    match vector.get(3) {
+        Option::Some(val) => {
+            match val {
+                SimpleEnum::X => {},
+                _ => revert(0),
+            }
+        }, 
+        Option::None => revert(0), 
+    }
+
+    // Test for `pop`
+    vector.clear();
+    vector.push(SimpleEnum::X);
+    vector.push(SimpleEnum::Y(b0));
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 4);
+
+    match vector.pop() {
+        Option::Some(val) => {
+            match val {
+                SimpleEnum::Y(b) => assert(b == b0),
+                _ => revert(0),
+            }
+        }, 
+        Option::None => revert(0), 
+    }
+
+    match vector.pop() {
+        Option::Some(val) => {
+            match val {
+                SimpleEnum::X => {},
+                _ => revert(0),
+            }
+        }, 
+        Option::None => revert(0), 
+    }
+
+    match vector.pop() {
+        Option::Some(_) => revert(0), Option::None => {}, 
+    }
+    assert(vector.len() == 0);
+    assert(vector.capacity() == 4);
 }
 
 fn test_vector_new_tuple() {
@@ -536,6 +1150,176 @@ fn test_vector_new_tuple() {
     match vector.get(5) {
         Option::Some(val) => revert(0), Option::None => (), 
     }
+
+    // Remove the first
+    let val = vector.remove(0);
+    assert(val.0 == number0);
+    assert(val.1 == b0);
+    assert(vector.len() == 4);
+    assert(vector.capacity() == 16);
+
+    // Remove the last
+    let val = vector.remove(3);
+    assert(val.0 == number4);
+    assert(val.1 == b4);
+    assert(vector.len() == 3);
+    assert(vector.capacity() == 16);
+
+    // Remove the middle
+    let val = vector.remove(1);
+    assert(val.0 == number2);
+    assert(val.1 == b2);
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 16);
+
+    // Check what's left
+    match vector.get(0) {
+        Option::Some(val) => {
+            assert(val.0 == number1);
+            assert(val.1 == b1);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => {
+            assert(val.0 == number3);
+            assert(val.1 == b3);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    // Renew a `Vec` instead of `vector.clear()` to test the change of capacity after `insert`
+    let mut vector = ~Vec::new();
+
+    // Insert to empty
+    vector.insert(0, (number2, b2));
+    assert(vector.len() == 1);
+    assert(vector.capacity() == 1);
+    match vector.get(0) {
+        Option::Some(val) => {
+            assert(val.0 == number2);
+            assert(val.1 == b2);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    // Insert at the first
+    vector.insert(0, (number0, b0));
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 2);
+    match vector.get(0) {
+        Option::Some(val) => {
+            assert(val.0 == number0);
+            assert(val.1 == b0);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => {
+            assert(val.0 == number2);
+            assert(val.1 == b2);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    // Insert at the middle
+    vector.insert(1, (number1, b1));
+    assert(vector.len() == 3);
+    assert(vector.capacity() == 4);
+    match vector.get(0) {
+        Option::Some(val) => {
+            assert(val.0 == number0);
+            assert(val.1 == b0);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => {
+            assert(val.0 == number1);
+            assert(val.1 == b1);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    match vector.get(2) {
+        Option::Some(val) => {
+            assert(val.0 == number2);
+            assert(val.1 == b2);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    // Insert at the last
+    vector.insert(3, (number3, b3));
+    assert(vector.len() == 4);
+    assert(vector.capacity() == 4);
+    match vector.get(0) {
+        Option::Some(val) => {
+            assert(val.0 == number0);
+            assert(val.1 == b0);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => {
+            assert(val.0 == number1);
+            assert(val.1 == b1);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    match vector.get(2) {
+        Option::Some(val) => {
+            assert(val.0 == number2);
+            assert(val.1 == b2);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    match vector.get(3) {
+        Option::Some(val) => {
+            assert(val.0 == number3);
+            assert(val.1 == b3);
+        }, 
+        Option::None => revert(0), 
+    }
+
+    // Test for `pop`
+    vector.clear();
+    vector.push((number0, b0));
+    vector.push((number1, b1));
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 4);
+
+    match vector.pop() {
+        Option::Some(val) => {
+            assert(val.0 == number1);
+            assert(val.1 == b1);
+        }, 
+        Option::None => revert(0), 
+    }
+    assert(vector.len() == 1);
+    assert(vector.capacity() == 4);
+
+    match vector.pop() {
+        Option::Some(val) => {
+            assert(val.0 == number0);
+            assert(val.1 == b0);
+        }, 
+        Option::None => revert(0), 
+    }
+    assert(vector.len() == 0);
+    assert(vector.capacity() == 4);
+    
+    match vector.pop() {
+        Option::Some(_) => revert(0), Option::None => {}, 
+    }
+    assert(vector.len() == 0);
+    assert(vector.capacity() == 4);
 }
 
 fn test_vector_new_string() {
@@ -586,6 +1370,8 @@ fn test_vector_new_array() {
     let a0 = [0, 1, 2];
     let a1 = [3, 4, 5];
     let a2 = [6, 7, 8];
+    let a3 = [9, 10, 11];
+    let a4 = [12, 13, 14];
 
     assert(vector.len() == 0);
     assert(vector.capacity() == 0);
@@ -626,6 +1412,196 @@ fn test_vector_new_array() {
         },
         Option::None => revert(0), 
     }
+
+    vector.push(a3);
+    vector.push(a4);
+
+    // Remove the first
+    let val = vector.remove(0);
+    assert(val[0] == a0[0]);
+    assert(val[1] == a0[1]);
+    assert(val[2] == a0[2]);
+    assert(vector.len() == 4);
+    assert(vector.capacity() == 8);
+
+    // Remove the last
+    let val = vector.remove(3);
+    assert(val[0] == a4[0]);
+    assert(val[1] == a4[1]);
+    assert(val[2] == a4[2]);
+    assert(vector.len() == 3);
+    assert(vector.capacity() == 8);
+
+    // Remove the middle
+    let val = vector.remove(1);
+    assert(val[0] == a2[0]);
+    assert(val[1] == a2[1]);
+    assert(val[2] == a2[2]);
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 8);
+
+    // Check what's left
+    match vector.get(0) {
+        Option::Some(val) => {
+            assert(val[0] == a1[0]);
+            assert(val[1] == a1[1]);
+            assert(val[2] == a1[2]);
+        },
+        Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => {
+            assert(val[0] == a3[0]);
+            assert(val[1] == a3[1]);
+            assert(val[2] == a3[2]);
+        },
+        Option::None => revert(0), 
+    }
+
+    // Renew a `Vec` instead of `vector.clear()` to test the change of capacity after `insert`
+    let mut vector = ~Vec::new();
+
+    // Insert to empty
+    vector.insert(0, a2);
+    assert(vector.len() == 1);
+    assert(vector.capacity() == 1);
+    match vector.get(0) {
+        Option::Some(val) => {
+            assert(val[0] == a2[0]);
+            assert(val[1] == a2[1]);
+            assert(val[2] == a2[2]);
+        },
+        Option::None => revert(0), 
+    }
+
+    // Insert at the first
+    vector.insert(0, a0);
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 2);
+    match vector.get(0) {
+        Option::Some(val) => {
+            assert(val[0] == a0[0]);
+            assert(val[1] == a0[1]);
+            assert(val[2] == a0[2]);
+        },
+        Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => {
+            assert(val[0] == a2[0]);
+            assert(val[1] == a2[1]);
+            assert(val[2] == a2[2]);
+        },
+        Option::None => revert(0), 
+    }
+
+    // Insert at the middle
+    vector.insert(1, a1);
+    assert(vector.len() == 3);
+    assert(vector.capacity() == 4);
+    match vector.get(0) {
+        Option::Some(val) => {
+            assert(val[0] == a0[0]);
+            assert(val[1] == a0[1]);
+            assert(val[2] == a0[2]);
+        },
+        Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => {
+            assert(val[0] == a1[0]);
+            assert(val[1] == a1[1]);
+            assert(val[2] == a1[2]);
+        },
+        Option::None => revert(0), 
+    }
+
+    match vector.get(2) {
+        Option::Some(val) => {
+            assert(val[0] == a2[0]);
+            assert(val[1] == a2[1]);
+            assert(val[2] == a2[2]);
+        },
+        Option::None => revert(0), 
+    }
+
+    // Insert at the last
+    vector.insert(3, a3);
+    assert(vector.len() == 4);
+    assert(vector.capacity() == 4);
+    match vector.get(0) {
+        Option::Some(val) => {
+            assert(val[0] == a0[0]);
+            assert(val[1] == a0[1]);
+            assert(val[2] == a0[2]);
+        },
+        Option::None => revert(0), 
+    }
+
+    match vector.get(1) {
+        Option::Some(val) => {
+            assert(val[0] == a1[0]);
+            assert(val[1] == a1[1]);
+            assert(val[2] == a1[2]);
+        },
+        Option::None => revert(0), 
+    }
+
+    match vector.get(2) {
+        Option::Some(val) => {
+            assert(val[0] == a2[0]);
+            assert(val[1] == a2[1]);
+            assert(val[2] == a2[2]);
+        },
+        Option::None => revert(0), 
+    }
+
+    match vector.get(3) {
+        Option::Some(val) => {
+            assert(val[0] == a3[0]);
+            assert(val[1] == a3[1]);
+            assert(val[2] == a3[2]);
+        },
+        Option::None => revert(0), 
+    }
+
+    // Test for `pop`
+    vector.clear();
+    vector.push(a0);
+    vector.push(a1);
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 4);
+
+    match vector.pop() {
+        Option::Some(val) => {
+            assert(val[0] == a1[0]);
+            assert(val[1] == a1[1]);
+            assert(val[2] == a1[2]);
+        },
+        Option::None => revert(0), 
+    }
+    assert(vector.len() == 1);
+    assert(vector.capacity() == 4);
+
+    match vector.pop() {
+        Option::Some(val) => {
+            assert(val[0] == a0[0]);
+            assert(val[1] == a0[1]);
+            assert(val[2] == a0[2]);
+        },
+        Option::None => revert(0), 
+    }
+    assert(vector.len() == 0);
+    assert(vector.capacity() == 4);
+   
+    match vector.pop() {
+        Option::Some(_) => revert(0), Option::None => {}, 
+    }
+    assert(vector.len() == 0);
+    assert(vector.capacity() == 4);
 }
 
 fn test_vector_with_capacity_u64() {
@@ -706,141 +1682,5 @@ fn test_vector_with_capacity_u64() {
     // Out of bounds access
     match vector.get(5) {
         Option::Some(val) => revert(0), Option::None => (), 
-    }
-}
-
-fn test_vector_remove() {
-    let mut vector: Vec<u8> = ~Vec::new::<u8>();
-
-    let number0 = 0u8;
-    let number1 = 1u8;
-    let number2 = 2u8;
-    let number3 = 3u8;
-    let number4 = 4u8;
-
-    assert(vector.len() == 0);
-    assert(vector.capacity() == 0);
-    assert(vector.is_empty());
-
-    vector.push(number0);
-    vector.push(number1);
-    vector.push(number2);
-    vector.push(number3);
-    vector.push(number4);
-
-    assert(vector.len() == 5);
-    assert(vector.capacity() == 8);
-
-    // remove the first
-    let val = vector.remove(0);
-    assert(val == number0);
-    assert(vector.len() == 4);
-    assert(vector.capacity() == 8);
-
-    // remove the last
-    let val = vector.remove(3);
-    assert(val == number4);
-    assert(vector.len() == 3);
-    assert(vector.capacity() == 8);
-
-    // remove the middle
-    let val = vector.remove(1);
-    assert(val == number2);
-    assert(vector.len() == 2);
-    assert(vector.capacity() == 8);
-
-    match vector.get(0) {
-        Option::Some(val) => assert(val == number1), Option::None => revert(0), 
-    }
-
-    match vector.get(1) {
-        Option::Some(val) => assert(val == number3), Option::None => revert(0), 
-    }
-}
-
-fn test_vector_pop() {
-    let mut vector: Vec<u8> = ~Vec::new::<u8>();
-
-    let number0 = 0u8;
-    let number1 = 1u8;
-
-    vector.push(number0);
-    vector.push(number1);
-
-    match vector.pop() {
-        Option::Some(val) => assert(val == number1), Option::None => revert(0), 
-    }
-
-    match vector.pop() {
-        Option::Some(val) => assert(val == number0), Option::None => revert(0), 
-    }
-    
-    match vector.pop() {
-        Option::Some(val) => revert(0), Option::None => {}, 
-    }
-}
-
-fn test_vector_insert() {
-    let mut vector: Vec<u8> = ~Vec::new::<u8>();
-
-    let number0 = 0u8;
-    let number1 = 1u8;
-    let number2 = 2u8;
-    let number3 = 3u8;
-
-    // insert to empty
-    vector.insert(0, number2);
-    assert(vector.len() == 1);
-    assert(vector.capacity() == 1);
-    match vector.get(0) {
-        Option::Some(val) => assert(val == number2), Option::None => revert(0), 
-    }
-
-    // insert at first
-    vector.insert(0, number0);
-    assert(vector.len() == 2);
-    assert(vector.capacity() == 2);
-    match vector.get(0) {
-        Option::Some(val) => assert(val == number0), Option::None => revert(0), 
-    }
-
-    match vector.get(1) {
-        Option::Some(val) => assert(val == number2), Option::None => revert(0), 
-    }
-
-    // insert at middle
-    vector.insert(1, number1);
-    assert(vector.len() == 3);
-    assert(vector.capacity() == 4);
-    match vector.get(0) {
-        Option::Some(val) => assert(val == number0), Option::None => revert(0), 
-    }
-
-    match vector.get(1) {
-        Option::Some(val) => assert(val == number1), Option::None => revert(0), 
-    }
-
-    match vector.get(2) {
-        Option::Some(val) => assert(val == number2), Option::None => revert(0), 
-    }
-
-    // insert at last
-    vector.insert(3, number3);
-    assert(vector.len() == 4);
-    assert(vector.capacity() == 4);
-    match vector.get(0) {
-        Option::Some(val) => assert(val == number0), Option::None => revert(0), 
-    }
-
-    match vector.get(1) {
-        Option::Some(val) => assert(val == number1), Option::None => revert(0), 
-    }
-
-    match vector.get(2) {
-        Option::Some(val) => assert(val == number2), Option::None => revert(0), 
-    }
-
-    match vector.get(3) {
-        Option::Some(val) => assert(val == number3), Option::None => revert(0), 
     }
 }
