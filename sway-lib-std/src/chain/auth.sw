@@ -51,7 +51,7 @@ fn get_coins_owner() -> Result<Identity, AuthError> {
     let inputs_count = tx_inputs_count();
 
     let mut candidate = Option::None::<Address>();
-    let mut i = 0u64;
+    let mut i = 0;
 
     while i < inputs_count {
         let input_type = tx_input_type(i);
