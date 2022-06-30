@@ -236,15 +236,9 @@ async fn can_get_tx_input_type() {
 #[tokio::test]
 async fn can_get_tx_input_coin_owner() {
     let (contract_instance, _, wallet) = get_contracts().await;
-
-    // Coin input
-    let result_ptr = contract_instance
-        .get_tx_input_pointer(1)
-        .call()
-        .await
-        .unwrap();
+    
     let result = contract_instance
-        .get_tx_input_coin_owner(result_ptr.value)
+        .get_tx_input_coin_owner(1)
         .call()
         .await
         .unwrap();
