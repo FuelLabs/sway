@@ -1117,7 +1117,7 @@ dependencies = [
  "forc-pkg",
  "forc-util",
  "fs_extra",
- "fuel-asm",
+ "fuel-asm 0.5.3",
  "fuel-crypto",
  "fuel-gql-client",
  "fuel-tx",
@@ -1272,6 +1272,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "fuel-asm"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf02de44ec38d5977d61896cd228b45c9596a38f940f964cacb2d683ada6a064"
+dependencies = [
+ "fuel-types",
+ "serde",
+]
+
+[[package]]
 name = "fuel-crypto"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1357,7 +1367,7 @@ version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43dbfcd95f2b6fb19e6272832b5d6ecf14f8283c3329994baa38a4faed65d437"
 dependencies = [
- "fuel-asm",
+ "fuel-asm 0.5.3",
  "fuel-crypto",
  "fuel-merkle 0.2.0",
  "fuel-types",
@@ -1382,7 +1392,7 @@ version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5700e457c2c6139a3b671014fa0a3bd57afb74de56abb118487b8d56ed21862"
 dependencies = [
- "fuel-asm",
+ "fuel-asm 0.5.3",
  "fuel-crypto",
  "fuel-merkle 0.1.1",
  "fuel-storage 0.1.0",
@@ -3644,7 +3654,7 @@ dependencies = [
  "derivative",
  "dirs 3.0.2",
  "either",
- "fuel-asm",
+ "fuel-asm 0.6.0",
  "fuel-crypto",
  "fuel-tx",
  "fuel-types",
@@ -3743,7 +3753,7 @@ dependencies = [
 name = "sway-types"
 version = "0.16.2"
 dependencies = [
- "fuel-asm",
+ "fuel-asm 0.5.3",
  "fuel-crypto",
  "fuel-tx",
  "lazy_static",
@@ -3847,7 +3857,7 @@ dependencies = [
  "forc",
  "forc-pkg",
  "forc-util",
- "fuel-asm",
+ "fuel-asm 0.5.3",
  "fuel-tx",
  "fuel-vm",
  "gag",
