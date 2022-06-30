@@ -1,5 +1,5 @@
 use crate::{
-    config::items::ItemBraceStyle,
+    config::{items::ItemBraceStyle, user_def::FieldAlignment},
     fmt::{Format, FormattedCode, Formatter},
     utils::{bracket::CurlyBrace, item_len::ItemLen},
     FormatterError,
@@ -7,7 +7,6 @@ use crate::{
 use std::fmt::Write;
 use sway_parse::{
     token::{Delimiter, PunctKind},
-    ty::Ty,
     ItemStruct,
 };
 use sway_types::Spanned;
@@ -18,14 +17,10 @@ impl Format for ItemStruct {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        // Get the unformatted
-
-        // Get struct_variant_align_threshold from config.
-        let struct_variant_align_threshold =
-            formatter.config.structures.struct_field_align_threshold;
-
+        // Bring configurations into scope.
+        //
         // Should small structs formatted into a single line.
-        let struct_lit_single_line = formatter.config.structures.struct_lit_single_line;
+        let struct_lit_single_line = formatter.config.structures.small_structures_single_line;
 
         // Get the width limit of a struct to be formatted into single line if struct_lit_single_line is true.
         let width_heuristics = formatter
@@ -33,16 +28,11 @@ impl Format for ItemStruct {
             .heuristics
             .heuristics_pref
             .to_width_heuristics(&formatter.config.whitespace);
-        let struct_lit_width = width_heuristics.struct_lit_width;
+        let struct_lit_width = width_heuristics.structure_lit_width;
 
         let multiline = !struct_lit_single_line || self.get_formatted_len() > struct_lit_width;
-        format_struct(
-            self,
-            formatted_code,
-            formatter,
-            multiline,
-            struct_variant_align_threshold,
-        )?;
+
+        format_struct(self, formatted_code, formatter, multiline)?;
         Ok(())
     }
 }
@@ -70,7 +60,6 @@ fn format_struct(
     formatted_code: &mut FormattedCode,
     formatter: &mut Formatter,
     multiline: bool,
-    struct_variant_align_threshold: usize,
 ) -> Result<(), FormatterError> {
     // If there is a visibility token add it to the formatted_code with a ` ` after it.
     if let Some(visibility) = &item_struct.visibility {
@@ -91,70 +80,103 @@ fn format_struct(
         generics.format(formatted_code, formatter)?;
     }
 
+    let fields = item_struct.fields.clone().into_inner();
+
     // Handle openning brace
+    ItemStruct::open_curly_brace(formatted_code, formatter)?;
     if multiline {
-        ItemStruct::open_curly_brace(formatted_code, formatter)?;
         formatted_code.push('\n');
+        // Determine alignment tactic
+        match formatter.config.structures.field_alignment {
+            FieldAlignment::AlignFields(struct_field_align_threshold) => {
+                let value_pairs = fields.value_separator_pairs;
+                // In first iteration we are going to be collecting the lengths of the struct fields.
+                let field_length: Vec<usize> = value_pairs
+                    .iter()
+                    .map(|field| field.0.name.as_str().len())
+                    .collect();
+
+                // Find the maximum length in the `field_length` vector that is still smaller than `struct_field_align_threshold`.
+                // `max_valid_field_length`: the length of the field that we are taking as a reference to align.
+                let mut max_valid_field_length = 0;
+                field_length.iter().for_each(|length| {
+                    if *length > max_valid_field_length && *length < struct_field_align_threshold {
+                        max_valid_field_length = *length;
+                    }
+                });
+
+                let mut value_pairs_iter = value_pairs.iter().enumerate().peekable();
+                for (field_index, field) in value_pairs_iter.clone() {
+                    formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
+
+                    let type_field = &field.0;
+                    // Add name
+                    formatted_code.push_str(type_field.name.as_str());
+
+                    // `current_field_length`: the length of the current field that we are trying to format.
+                    let current_field_length = field_length[field_index];
+                    if current_field_length < max_valid_field_length {
+                        // We need to add alignment between `:` and `ty`
+                        let mut required_alignment = max_valid_field_length - current_field_length;
+                        while required_alignment != 0 {
+                            formatted_code.push(' ');
+                            required_alignment -= 1;
+                        }
+                    }
+                    // Add `:`, `ty` & `CommaToken`
+                    write!(
+                        formatted_code,
+                        " {} ",
+                        type_field.colon_token.ident().as_str(),
+                    )?;
+                    type_field.ty.format(formatted_code, formatter)?;
+                    if value_pairs_iter.peek().is_some() {
+                        writeln!(formatted_code, "{}", field.1.span().as_str())?;
+                    } else if let Some(final_value) = &fields.final_value_opt {
+                        formatted_code.push_str(final_value.span().as_str());
+                    }
+                }
+            }
+            FieldAlignment::Off => {
+                let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
+                for field in value_pairs_iter.clone() {
+                    formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
+                    let item_field = &field.0;
+                    item_field.format(formatted_code, formatter)?;
+
+                    if value_pairs_iter.peek().is_some() {
+                        writeln!(formatted_code, "{}", field.1.span().as_str())?;
+                    }
+                }
+                if let Some(final_value) = &fields.final_value_opt {
+                    formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
+                    final_value.format(formatted_code, formatter)?;
+                    writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
+                }
+            }
+        }
     } else {
-        write!(formatted_code, " {} ", Delimiter::Brace.as_open_char())?;
-    }
-
-    let items = item_struct
-        .fields
-        .clone()
-        .into_inner()
-        .value_separator_pairs;
-
-    // In first iteration we are going to be collecting the lengths of the enum variants.
-    let variant_length: Vec<usize> = items
-        .iter()
-        .map(|variant| variant.0.name.as_str().len())
-        .collect();
-
-    // Find the maximum length in the variant_length vector that is still smaller than enum_variant_align_threshold.
-    let mut max_valid_variant_length = 0;
-
-    variant_length.iter().for_each(|length| {
-        if *length > max_valid_variant_length && *length < struct_variant_align_threshold {
-            max_valid_variant_length = *length;
-        }
-    });
-    for (item_index, item) in items.iter().enumerate() {
-        if multiline {
-            formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
-        }
-        let type_field = &item.0;
-        // Add name
-        formatted_code.push_str(type_field.name.as_str());
-        let current_variant_length = variant_length[item_index];
-        if current_variant_length < max_valid_variant_length {
-            // We need to add alignment between : and ty
-            // max_valid_variant_length: the length of the variant that we are taking as a reference to allign
-            // current_variant_length: the length of the current variant that we are trying to format
-            let required_alignment = max_valid_variant_length - current_variant_length;
-            // TODO: Improve handling this
-            formatted_code.push_str(&(0..required_alignment).map(|_| ' ').collect::<String>());
-        }
-        // Add `:` and ty
-        // TODO: We are currently converting ty to string directly but we will probably need to format ty before adding.
-        write!(
-            formatted_code,
-            "{} ",
-            type_field.colon_token.ident().as_str(),
-        )?;
-        // Format Ty
-        Ty::format(&type_field.ty, formatted_code, formatter)?;
-        // Add `, ` if this isn't the last field.
-        if !multiline && item_index != items.len() - 1 {
-            write!(formatted_code, "{} ", PunctKind::Comma.as_char())?;
-        } else if multiline {
-            writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
-        }
-    }
-    if !multiline {
-        // Push a ' '
+        // non-multiline formatting
         formatted_code.push(' ');
+        let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
+        for field in value_pairs_iter.clone() {
+            let type_field = &field.0;
+            type_field.format(formatted_code, formatter)?;
+
+            if value_pairs_iter.peek().is_some() {
+                write!(formatted_code, "{} ", field.1.span().as_str())?;
+            }
+        }
+        if let Some(final_value) = &fields.final_value_opt {
+            final_value.format(formatted_code, formatter)?;
+            formatted_code.push(' ');
+        } else {
+            formatted_code.pop();
+            formatted_code.pop();
+            formatted_code.push(' ');
+        }
     }
+
     // Handle closing brace
     ItemStruct::close_curly_brace(formatted_code, formatter)?;
     Ok(())
