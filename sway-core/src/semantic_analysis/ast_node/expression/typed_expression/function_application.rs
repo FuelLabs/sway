@@ -70,15 +70,20 @@ pub(crate) fn instantiate_function_application(
         .collect();
 
     let span = function_decl.span.clone();
-    let exp = instantiate_function_application_inner(
-        call_path,
-        HashMap::new(),
-        typed_call_arguments,
-        function_decl,
-        None,
-        IsConstant::No,
-        None,
-        span,
+    let exp = check!(
+        instantiate_function_application_inner(
+            call_path,
+            HashMap::new(),
+            typed_call_arguments,
+            function_decl,
+            None,
+            IsConstant::No,
+            None,
+            span,
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
     );
     ok(exp, warnings, errors)
 }
@@ -111,15 +116,20 @@ pub(crate) fn instantiate_function_application_simple(
         .map(|(param, arg)| (param.name.clone(), arg))
         .collect::<Vec<(_, _)>>();
 
-    let exp = instantiate_function_application_inner(
-        call_path,
-        contract_call_params,
-        args_and_names,
-        function_decl,
-        selector,
-        is_constant,
-        self_state_idx,
-        span,
+    let exp = check!(
+        instantiate_function_application_inner(
+            call_path,
+            contract_call_params,
+            args_and_names,
+            function_decl,
+            selector,
+            is_constant,
+            self_state_idx,
+            span,
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
     );
     ok(exp, warnings, errors)
 }
@@ -165,26 +175,35 @@ fn instantiate_function_application_inner(
     is_constant: IsConstant,
     self_state_idx: Option<StateIndex>,
     span: Span,
-) -> TypedExpression {
-    assert_eq!(
-        arguments.len(),
-        function_decl.parameters.len(),
-        "different number of function parameters and arguments"
-    );
+) -> CompileResult<TypedExpression> {
+    let warnings = vec![];
+    let mut errors = vec![];
 
-    TypedExpression {
-        expression: TypedExpressionVariant::FunctionApplication {
-            call_path,
-            contract_call_params,
-            arguments,
-            function_body: function_decl.body.clone(),
-            function_body_name_span: function_decl.name.span(),
-            function_body_purity: function_decl.purity,
-            self_state_idx,
-            selector,
-        },
-        return_type: function_decl.return_type,
-        is_constant,
-        span,
+    if arguments.len() != function_decl.parameters.len() {
+        errors.push(CompileError::Internal(
+            "expected same number of function parameters and arguments",
+            span,
+        ));
+        return err(warnings, errors);
     }
+
+    ok(
+        TypedExpression {
+            expression: TypedExpressionVariant::FunctionApplication {
+                call_path,
+                contract_call_params,
+                arguments,
+                function_body: function_decl.body.clone(),
+                function_body_name_span: function_decl.name.span(),
+                function_body_purity: function_decl.purity,
+                self_state_idx,
+                selector,
+            },
+            return_type: function_decl.return_type,
+            is_constant,
+            span,
+        },
+        warnings,
+        errors,
+    )
 }
