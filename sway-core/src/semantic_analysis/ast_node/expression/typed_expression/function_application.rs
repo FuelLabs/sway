@@ -8,7 +8,7 @@ use sway_types::{state::StateIndex, Spanned};
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
-    mut function_decl: TypedFunctionDeclaration,
+    function_decl: TypedFunctionDeclaration,
     call_path: CallPath<Ident>,
     arguments: Vec<Expression>,
 ) -> CompileResult<TypedExpression> {

@@ -315,12 +315,16 @@ impl TypedExpression {
             .to_var_name(),
             is_absolute: true,
         };
-        let method_name = MethodName::FromTrait {
-            call_path: call_path.clone(),
+        let method_name_binding = TypeBinding {
+            inner: MethodName::FromTrait {
+                call_path: call_path.clone(),
+            },
+            type_arguments: vec![],
+            span: call_path.span(),
         };
         let arguments = VecDeque::from(arguments);
         let method = check!(
-            resolve_method_name(ctx, &method_name, arguments.clone(), vec![]),
+            resolve_method_name(ctx, &method_name_binding, arguments.clone()),
             return err(warnings, errors),
             warnings,
             errors
@@ -450,17 +454,15 @@ impl TypedExpression {
                 field_to_access,
             } => Self::type_check_subfield_expression(ctx.by_ref(), *prefix, span, field_to_access),
             Expression::MethodApplication {
-                method_name,
+                method_name_binding,
                 contract_call_params,
                 arguments,
-                type_arguments,
                 span,
             } => type_check_method_application(
                 ctx.by_ref(),
-                method_name,
+                method_name_binding,
                 contract_call_params,
                 arguments,
-                type_arguments,
                 span,
             ),
             Expression::Tuple { fields, span } => {
@@ -955,35 +957,9 @@ impl TypedExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let (type_info, type_info_span) = call_path_binding.inner.suffix.clone();
-
-        // find the module that the symbol is in
-        let type_info_prefix = ctx
-            .namespace
-            .find_module_path(&call_path_binding.inner.prefixes);
-        check!(
-            ctx.namespace.root().check_submodule(&type_info_prefix),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
-        // create the type info object
-        let type_info = check!(
-            type_info.apply_type_arguments(call_path_binding.type_arguments, &type_info_span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
-        // resolve the type of the type info object
+        // type check the call path
         let type_id = check!(
-            ctx.resolve_type_with_self(
-                insert_type(type_info),
-                &span,
-                EnforceTypeArguments::No,
-                Some(&type_info_prefix)
-            ),
+            call_path_binding.type_check(&mut ctx),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors
@@ -1576,24 +1552,21 @@ impl TypedExpression {
             )
         } else {
             // Otherwise convert into a method call 'index(self, index)' via the std::ops::Index trait.
-            let method_name = MethodName::FromTrait {
-                call_path: CallPath {
-                    prefixes: vec![
-                        Ident::new_with_override("core", span.clone()),
-                        Ident::new_with_override("ops", span.clone()),
-                    ],
-                    suffix: Ident::new_with_override("index", span.clone()),
-                    is_absolute: true,
+            let method_name = TypeBinding {
+                inner: MethodName::FromTrait {
+                    call_path: CallPath {
+                        prefixes: vec![
+                            Ident::new_with_override("core", span.clone()),
+                            Ident::new_with_override("ops", span.clone()),
+                        ],
+                        suffix: Ident::new_with_override("index", span.clone()),
+                        is_absolute: true,
+                    },
                 },
+                type_arguments: vec![],
+                span: span.clone(),
             };
-            type_check_method_application(
-                ctx,
-                method_name,
-                vec![],
-                vec![prefix, index],
-                vec![],
-                span,
-            )
+            type_check_method_application(ctx, method_name, vec![], vec![prefix, index], span)
         }
     }
 

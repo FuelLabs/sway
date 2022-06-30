@@ -14,13 +14,11 @@ pub(crate) fn extract_visibility(visibility: &Visibility) -> String {
 pub(crate) fn extract_var_body(var_dec: &VariableDeclaration) -> VarBody {
     match &var_dec.body {
         Expression::FunctionApplication {
-            call_path_binding: name,
-            ..
-        } => VarBody::FunctionCall(name.suffix.as_str().into()),
+            call_path_binding, ..
+        } => VarBody::FunctionCall(call_path_binding.inner.suffix.as_str().into()),
         Expression::StructExpression {
-            call_path_binding: struct_name,
-            ..
-        } => VarBody::Type(struct_name.suffix.0.to_string()),
+            call_path_binding, ..
+        } => VarBody::Type(call_path_binding.inner.suffix.0.to_string()),
         Expression::Literal { value, .. } => match value {
             Literal::U8(_) => VarBody::Type("u8".into()),
             Literal::U16(_) => VarBody::Type("u16".into()),

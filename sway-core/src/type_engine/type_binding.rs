@@ -1,6 +1,13 @@
 use sway_types::{Span, Spanned};
 
-use super::TypeArgument;
+use crate::{
+    error::{err, ok},
+    semantic_analysis::TypeCheckContext,
+    type_engine::{insert_type, EnforceTypeArguments},
+    CallPath, CompileResult, TypeInfo,
+};
+
+use super::{TypeArgument, TypeId};
 
 /// A `TypeBinding` is the result of using turbofish to bind types to
 /// generic parameters.
@@ -71,6 +78,47 @@ pub struct TypeBinding<T> {
 impl<T> Spanned for TypeBinding<T> {
     fn span(&self) -> Span {
         self.span.clone()
+    }
+}
+
+impl TypeBinding<CallPath<(TypeInfo, Span)>> {
+    pub(crate) fn type_check(&self, ctx: &mut TypeCheckContext) -> CompileResult<TypeId> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        let (type_info, type_info_span) = self.inner.suffix.clone();
+
+        // find the module that the symbol is in
+        let type_info_prefix = ctx.namespace.find_module_path(&self.inner.prefixes);
+        check!(
+            ctx.namespace.root().check_submodule(&type_info_prefix),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        // create the type info object
+        let type_info = check!(
+            type_info.apply_type_arguments(self.type_arguments.clone(), &type_info_span),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        // resolve the type of the type info object
+        let type_id = check!(
+            ctx.resolve_type_with_self(
+                insert_type(type_info),
+                &type_info_span,
+                EnforceTypeArguments::No,
+                Some(&type_info_prefix)
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+
+        ok(type_id, warnings, errors)
     }
 }
 

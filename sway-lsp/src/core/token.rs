@@ -288,11 +288,11 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
     match exp {
         Expression::Literal { .. } => {}
         Expression::FunctionApplication {
-            call_path_binding: name,
+            call_path_binding,
             arguments,
             ..
         } => {
-            let ident = name.suffix;
+            let ident = call_path_binding.inner.suffix;
             let token = Token::from_ident(&ident, TokenType::FunctionApplication);
             tokens.push(token);
 
@@ -324,16 +324,16 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             }
         }
         Expression::StructExpression {
-            call_path_binding: struct_name,
+            call_path_binding,
             fields,
             ..
         } => {
-            handle_custom_type(&struct_name.suffix.0, tokens);
+            handle_custom_type(&call_path_binding.inner.suffix.0, tokens);
             for field in fields {
                 let token = Token::from_ident(
                     &field.name,
                     TokenType::StructExpressionField(get_struct_field_details(&Ident::new(
-                        struct_name.suffix.1.clone(),
+                        call_path_binding.inner.suffix.1.clone(),
                     ))),
                 );
                 tokens.push(token);
@@ -371,7 +371,7 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             //TODO handle asm expressions
         }
         Expression::MethodApplication {
-            method_name,
+            method_name_binding: method_name,
             arguments,
             contract_call_params,
             ..
@@ -388,8 +388,11 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             }
 
             //TODO handle methods from imported modules
-            if let MethodName::FromType { call_path, .. } = &method_name {
-                handle_custom_type(&call_path.suffix.0, tokens);
+            if let MethodName::FromType {
+                call_path_binding, ..
+            } = &method_name
+            {
+                handle_custom_type(&call_path_binding.inner.suffix.0, tokens);
             }
 
             for field in contract_call_params {
@@ -463,9 +466,21 @@ fn handle_while_loop(while_loop: WhileLoop, tokens: &mut Vec<Token>) {
 
 // Check if the given method is a `core::ops` application desugared from short-hand syntax like / + * - etc.
 fn desugared_op(method_name: &MethodName) -> bool {
-    if let MethodName::FromType { ref call_path, .. } = method_name {
-        let prefix0 = call_path.prefixes.get(0).map(|ident| ident.as_str());
-        let prefix1 = call_path.prefixes.get(1).map(|ident| ident.as_str());
+    if let MethodName::FromType {
+        ref call_path_binding,
+        ..
+    } = method_name
+    {
+        let prefix0 = call_path_binding
+            .inner
+            .prefixes
+            .get(0)
+            .map(|ident| ident.as_str());
+        let prefix1 = call_path_binding
+            .inner
+            .prefixes
+            .get(1)
+            .map(|ident| ident.as_str());
         if let (Some("core"), Some("ops")) = (prefix0, prefix1) {
             return true;
         }
