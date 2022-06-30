@@ -2,7 +2,6 @@
 library token;
 
 use ::address::Address;
-use ::constants::*;
 use ::contract_id::ContractId;
 use ::revert::revert;
 use ::tx::*;
