@@ -1,11 +1,4 @@
-use crate::{
-    constants::*,
-    error::*,
-    semantic_analysis::{CopyTypes, TypeMapping, TypedExpression},
-    type_engine::TypeId,
-    type_engine::*,
-    Ident, Visibility,
-};
+use crate::{semantic_analysis::*, type_engine::*, Ident, Visibility};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum VariableMutability {
@@ -55,11 +48,10 @@ impl From<VariableMutability> for bool {
 }
 #[derive(Clone, Debug, Eq)]
 pub struct TypedVariableDeclaration {
-    pub(crate) name: Ident,
-    pub(crate) body: TypedExpression,
+    pub name: Ident,
+    pub body: TypedExpression,
     pub(crate) is_mutable: VariableMutability,
-    pub(crate) type_ascription: TypeId,
-    pub(crate) const_decl_origin: bool,
+    pub type_ascription: TypeId,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -71,7 +63,6 @@ impl PartialEq for TypedVariableDeclaration {
             && self.body == other.body
             && self.is_mutable == other.is_mutable
             && look_up_type_id(self.type_ascription) == look_up_type_id(other.type_ascription)
-            && self.const_decl_origin == other.const_decl_origin
     }
 }
 
@@ -81,22 +72,4 @@ impl CopyTypes for TypedVariableDeclaration {
             .update_type(type_mapping, &self.body.span);
         self.body.copy_types(type_mapping)
     }
-}
-
-// there are probably more names we should check here, this is the only one that will result in an
-// actual issue right now, though
-pub fn check_if_name_is_invalid(name: &Ident) -> CompileResult<()> {
-    INVALID_NAMES
-        .iter()
-        .find_map(|x| {
-            if *x == name.as_str() {
-                Some(err(
-                    vec![],
-                    [CompileError::InvalidVariableName { name: name.clone() }].to_vec(),
-                ))
-            } else {
-                None
-            }
-        })
-        .unwrap_or_else(|| ok((), vec![], vec![]))
 }

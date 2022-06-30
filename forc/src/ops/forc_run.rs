@@ -1,5 +1,6 @@
 use crate::cli::{BuildCommand, RunCommand};
 use crate::ops::forc_build;
+use crate::utils::defaults::NODE_URL;
 use crate::utils::parameters::TxParameters;
 use crate::utils::SWAY_GIT_TAG;
 use anyhow::{anyhow, bail, Result};
@@ -19,7 +20,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
     let manifest = ManifestFile::from_dir(&path_dir, SWAY_GIT_TAG)?;
-    manifest.check_program_type(TreeType::Script)?;
+    manifest.check_program_type(vec![TreeType::Script])?;
 
     let input_data = &command.data.unwrap_or_else(|| "".into());
     let data = format_hex_data(input_data);
@@ -27,7 +28,6 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
 
     let build_command = BuildCommand {
         path: command.path,
-        use_orig_asm: command.use_orig_asm,
         print_finalized_asm: command.print_finalized_asm,
         print_intermediate_asm: command.print_intermediate_asm,
         print_ir: command.print_ir,
@@ -37,7 +37,11 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         silent_mode: command.silent_mode,
         output_directory: command.output_directory,
         minify_json_abi: command.minify_json_abi,
+        minify_json_storage_slots: command.minify_json_storage_slots,
         locked: command.locked,
+        build_profile: None,
+        release: false,
+        time_phases: command.time_phases,
     };
 
     let compiled = forc_build::build(build_command)?;
@@ -52,15 +56,16 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         TxParameters::new(command.byte_price, command.gas_limit, command.gas_price),
     );
 
+    let node_url = command.node_url.unwrap_or_else(|| match &manifest.network {
+        Some(network) => network.url.to_owned(),
+        None => NODE_URL.to_owned(),
+    });
+
     if command.dry_run {
         info!("{:?}", tx);
         Ok(vec![])
     } else {
-        let node_url = match &manifest.network {
-            Some(network) => &network.url,
-            _ => &command.node_url,
-        };
-        try_send_tx(node_url, &tx, command.pretty_print).await
+        try_send_tx(&node_url, &tx, command.pretty_print, command.simulate).await
     }
 }
 
@@ -68,11 +73,12 @@ async fn try_send_tx(
     node_url: &str,
     tx: &Transaction,
     pretty_print: bool,
+    simulate: bool,
 ) -> Result<Vec<fuel_tx::Receipt>> {
     let client = FuelClient::new(node_url)?;
 
     match client.health().await {
-        Ok(_) => send_tx(&client, tx, pretty_print).await,
+        Ok(_) => send_tx(&client, tx, pretty_print, simulate).await,
         Err(_) => Err(fuel_core_not_running(node_url)),
     }
 }
@@ -81,13 +87,24 @@ async fn send_tx(
     client: &FuelClient,
     tx: &Transaction,
     pretty_print: bool,
+    simulate: bool,
 ) -> Result<Vec<fuel_tx::Receipt>> {
     let id = format!("{:#x}", tx.id());
-    match client
-        .submit(tx)
-        .and_then(|_| client.receipts(id.as_str()))
-        .await
-    {
+    let outputs = {
+        if !simulate {
+            client
+                .submit(tx)
+                .and_then(|_| client.receipts(id.as_str()))
+                .await
+        } else {
+            client
+                .dry_run(tx)
+                .and_then(|_| client.receipts(id.as_str()))
+                .await
+        }
+    };
+
+    match outputs {
         Ok(logs) => {
             print_receipt_output(&logs, pretty_print)?;
             Ok(logs)

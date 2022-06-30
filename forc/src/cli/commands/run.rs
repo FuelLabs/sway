@@ -23,23 +23,28 @@ pub struct Command {
     pub dry_run: bool,
 
     /// URL of the Fuel Client Node
-    #[clap(env = "FUEL_NODE_URL", default_value = "http://127.0.0.1:4000")]
-    pub node_url: String,
+    #[clap(env = "FUEL_NODE_URL")]
+    pub node_url: Option<String>,
 
     /// Kill Fuel Node Client after running the code.
     /// This is only available if the node is started from `forc run`
     #[clap(short, long)]
     pub kill_node: bool,
 
-    /// Whether to compile to bytecode (false) or to print out the generated ASM (true).
+    /// Print the finalized ASM.
+    ///
+    /// This is the state of the ASM with registers allocated and optimisations applied.
     #[clap(long)]
     pub print_finalized_asm: bool,
 
-    /// Whether to compile to bytecode (false) or to print out the generated ASM (true).
+    /// Print the generated ASM.
+    ///
+    /// This is the state of the ASM prior to performing register allocation and other ASM
+    /// optimisations.
     #[clap(long)]
     pub print_intermediate_asm: bool,
 
-    /// Whether to compile to bytecode (false) or to print out the IR (true).
+    /// Print the generated Sway IR (Intermediate Representation).
     #[clap(long)]
     pub print_ir: bool,
 
@@ -54,6 +59,10 @@ pub struct Command {
     /// Silent mode. Don't output any warnings or errors to the command line.
     #[clap(long = "silent", short = 's')]
     pub silent_mode: bool,
+
+    /// Output the time elapsed over each part of the compilation process.
+    #[clap(long)]
+    pub time_phases: bool,
 
     /// Pretty-print the outputs from the node.
     #[clap(long = "pretty-print", short = 'r')]
@@ -74,6 +83,11 @@ pub struct Command {
     #[clap(long)]
     pub minify_json_abi: bool,
 
+    /// By default the JSON for initial storage slots is formatted for human readability. By using
+    /// this option JSON output will be "minified", i.e. all on one line without whitespace.
+    #[clap(long)]
+    pub minify_json_storage_slots: bool,
+
     /// Set the transaction byte price. Defaults to 0.
     #[clap(long)]
     pub byte_price: Option<u64>,
@@ -90,6 +104,12 @@ pub struct Command {
     /// needs to be updated, Forc will exit with an error
     #[clap(long)]
     pub locked: bool,
+
+    /// Execute the transaction and return the final mutated transaction along with receipts
+    /// (which includes whether the transaction reverted or not). The transaction is not inserted
+    /// in the node's view of the blockchain, (i.e. it does not affect the chain state).
+    #[clap(long)]
+    pub simulate: bool,
 }
 
 pub(crate) async fn exec(command: Command) -> Result<()> {

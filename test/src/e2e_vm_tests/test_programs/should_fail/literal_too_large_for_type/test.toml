@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: let x:u8 = 256;
+# nextln: $()Literal value is too large for type u8.

@@ -1,7 +1,4 @@
-use crate::{
-    parse_tree::{declaration::TypeParameter, Visibility},
-    type_engine::*,
-};
+use crate::{parse_tree::Visibility, type_engine::*};
 
 use sway_types::{ident::Ident, span::Span};
 
@@ -17,7 +14,7 @@ pub struct EnumDeclaration {
 #[derive(Debug, Clone)]
 pub struct EnumVariant {
     pub name: Ident,
-    pub(crate) r#type: TypeInfo,
+    pub(crate) type_info: TypeInfo,
     pub(crate) tag: usize,
     pub(crate) span: Span,
 }

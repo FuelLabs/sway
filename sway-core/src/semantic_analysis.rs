@@ -1,14 +1,13 @@
 //! Type checking for Sway.
 pub mod ast_node;
+mod module;
 pub mod namespace;
 mod node_dependencies;
-mod syntax_tree;
-pub(crate) mod type_check_arguments;
+mod program;
+mod type_check_context;
 pub(crate) use ast_node::*;
 pub use ast_node::{TypedConstantDeclaration, TypedDeclaration, TypedFunctionDeclaration};
+pub use module::{TypedModule, TypedSubmodule};
 pub use namespace::Namespace;
-pub use syntax_tree::TreeType;
-pub use syntax_tree::TypedParseTree;
-pub use type_check_arguments::*;
-
-const ERROR_RECOVERY_DECLARATION: TypedDeclaration = TypedDeclaration::ErrorRecovery;
+pub use program::{TypedProgram, TypedProgramKind};
+pub(crate) use type_check_context::TypeCheckContext;

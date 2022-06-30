@@ -1,20 +1,20 @@
 contract;
 
-use std::{assert::assert, chain::auth::*, context::{call_frames::contract_id, gas}, contract_id::ContractId, reentrancy::*, result::*, revert::revert};
+use std::{assert::assert, chain::auth::*, context::{call_frames::contract_id, gas}, contract_id::ContractId, reentrancy::*, result::*, revert::revert, identity::Identity};
 
 use reentrancy_attacker_abi::Attacker;
 use reentrancy_target_abi::Target;
 
 // Return the sender as a ContractId or panic:
-fn get_msg_sender_id_or_panic(result: Result<Sender, AuthError>) -> ContractId {
-    if let Result::Ok(s) = result {
-        if let Sender::ContractId(v) = s {
-            v
-        } else {
-            revert(0);
-        }
-    } else {
-        revert(0);
+fn get_msg_sender_id_or_panic(result: Result<Identity, AuthError>) -> ContractId {
+    match result {
+        Result::Ok(s) => {
+            match s {
+                Identity::ContractId(v) => v,
+                _ => revert(0),
+            }
+        },
+        _ => {revert(0);},
     }
 }
 
@@ -23,7 +23,7 @@ impl Target for Contract {
         if is_reentrant() {
             true
         } else {
-            let result: Result<Sender, AuthError> = msg_sender();
+            let result: Result<Identity, AuthError> = msg_sender();
             let id = get_msg_sender_id_or_panic(result);
             let id = id.value;
             let caller = abi(Attacker, id);
@@ -38,7 +38,7 @@ impl Target for Contract {
         // panic if reentrancy detected
         reentrancy_guard();
 
-        let result: Result<Sender, AuthError> = msg_sender();
+        let result: Result<Identity, AuthError> = msg_sender();
         let id = get_msg_sender_id_or_panic(result);
         let id = id.value;
         let caller = abi(Attacker, id);
@@ -51,7 +51,7 @@ impl Target for Contract {
         // panic if reentrancy detected
         reentrancy_guard();
 
-        let result: Result<Sender, AuthError> = msg_sender();
+        let result: Result<Identity, AuthError> = msg_sender();
         let id = get_msg_sender_id_or_panic(result);
         let id = id.value;
         let caller = abi(Attacker, id);

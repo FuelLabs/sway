@@ -1,3 +1,9 @@
 [[package]]
-name = 'excess_fn_arguments'
+name = 'core'
+source = 'path+from-root-8EECC8A749908BB3'
 dependencies = []
+
+[[package]]
+name = 'excess_fn_arguments'
+source = 'root'
+dependencies = ['core']

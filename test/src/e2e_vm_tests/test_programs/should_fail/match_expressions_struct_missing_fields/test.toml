@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: Point { x } => { x },
+# nextln: $()Pattern does not mention field: y

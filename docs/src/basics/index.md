@@ -8,7 +8,7 @@ Sway basics.
 - [Built-in Types](./built_in_types.md)
 - [Blockchain Types](./blockchain_types.md)
 - [Functions](./functions.md)
-- [Structs and Tuples](./structs_and_tuples.md)
+- [Structs, Tuples, and Enums](./structs_tuples_and_enums.md)
 - [Methods and Associated Functions](./methods_and_associated_functions.md)
 - [Control Flow](./control_flow.mdz)
 - [Comments and Logging](./comments_and_logging.md)

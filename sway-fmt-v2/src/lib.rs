@@ -4,11 +4,12 @@
 //! however the defualt formatter does not require the presence of one and any fields omitted will remain as default.
 
 #![allow(dead_code)]
-mod config;
+pub mod config;
 mod constants;
 mod error;
 mod fmt;
 mod items;
+mod utils;
 
 pub use crate::fmt::Formatter;
 pub use error::FormatterError;

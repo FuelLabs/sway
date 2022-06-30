@@ -5,10 +5,10 @@ pub(crate) fn default_manifest(project_name: &str, entry_type: &str) -> String {
 
     format!(
         r#"[project]
-name = "{project_name}"
 authors = ["{author}"]
 entry = "{entry_type}"
 license = "Apache-2.0"
+name = "{project_name}"
 
 [dependencies]
 "#
@@ -30,8 +30,7 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-fuels = "0.14"
-fuels-abigen-macro = "0.14"
+fuels = {{ version = "0.16", features = ["fuel-core-lib"] }}
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
 
 [[test]]
@@ -93,7 +92,6 @@ pub(crate) fn default_test_program(project_name: &str) -> String {
     format!(
         "{}{}{}{}{}",
         r#"use fuels::{prelude::*, tx::ContractId};
-use fuels_abigen_macro::abigen;
 
 // Load abi from json
 abigen!(MyContract, "out/debug/"#,
@@ -152,3 +150,5 @@ fn parse_default_tests_manifest() {
         toml::from_str::<forc_pkg::Manifest>(&default_tests_manifest("test_proj")).unwrap()
     )
 }
+
+pub const NODE_URL: &str = "http://127.0.0.1:4000";

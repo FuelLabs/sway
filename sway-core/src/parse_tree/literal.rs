@@ -1,8 +1,9 @@
-use crate::{type_engine::IntegerBits, types::ResolvedType, CompileError, TypeInfo};
+use crate::{error::*, type_engine::*};
 
 use sway_types::span;
 
 use std::{
+    fmt,
     hash::{Hash, Hasher},
     num::{IntErrorKind, ParseIntError},
 };
@@ -87,6 +88,27 @@ impl PartialEq for Literal {
     }
 }
 
+impl fmt::Display for Literal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Literal::U8(content) => content.to_string(),
+            Literal::U16(content) => content.to_string(),
+            Literal::U32(content) => content.to_string(),
+            Literal::U64(content) => content.to_string(),
+            Literal::Numeric(content) => content.to_string(),
+            Literal::String(content) => content.as_str().to_string(),
+            Literal::Boolean(content) => content.to_string(),
+            Literal::Byte(content) => content.to_string(),
+            Literal::B256(content) => content
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(", "),
+        };
+        write!(f, "{}", s)
+    }
+}
+
 impl Literal {
     #[allow(dead_code)]
     pub(crate) fn as_type(&self) -> ResolvedType {
@@ -103,6 +125,7 @@ impl Literal {
             B256(_) => ResolvedType::B256,
         }
     }
+
     /// Converts a literal to a big-endian representation. This is padded to words.
     pub(crate) fn to_bytes(&self) -> Vec<u8> {
         use Literal::*;
@@ -158,15 +181,15 @@ impl Literal {
     ) -> CompileError {
         match e.kind() {
             IntErrorKind::PosOverflow => CompileError::IntegerTooLarge {
-                ty: ty.friendly_type_str(),
+                ty: ty.to_string(),
                 span,
             },
             IntErrorKind::NegOverflow => CompileError::IntegerTooSmall {
-                ty: ty.friendly_type_str(),
+                ty: ty.to_string(),
                 span,
             },
             IntErrorKind::InvalidDigit => CompileError::IntegerContainsInvalidDigit {
-                ty: ty.friendly_type_str(),
+                ty: ty.to_string(),
                 span,
             },
             IntErrorKind::Zero | IntErrorKind::Empty | _ => {

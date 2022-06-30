@@ -40,7 +40,7 @@ impl Block {
     /// is optional and is used only when printing the IR.
     pub fn new(context: &mut Context, function: Function, label: Option<String>) -> Block {
         let label = function.get_unique_label(context, label);
-        let phi = Value::new_instruction(context, Instruction::Phi(Vec::new()), None);
+        let phi = Value::new_instruction(context, Instruction::Phi(Vec::new()), None, None);
         let content = BlockContent {
             label,
             function,
@@ -147,6 +147,11 @@ impl Block {
                 None
             }
         })
+    }
+
+    pub fn is_terminated_by_ret(&self, context: &Context) -> bool {
+        self.get_term_inst(context)
+            .map_or(false, |i| matches!(i, Instruction::Ret { .. }))
     }
 
     /// Replace a value within this block.

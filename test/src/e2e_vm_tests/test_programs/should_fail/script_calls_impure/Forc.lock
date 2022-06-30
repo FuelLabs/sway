@@ -1,3 +1,4 @@
 [[package]]
 name = 'script_calls_impure'
+source = 'root'
 dependencies = []

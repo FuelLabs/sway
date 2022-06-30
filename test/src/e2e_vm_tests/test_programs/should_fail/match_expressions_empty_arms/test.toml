@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: match foo {
+# check: $()Non-exhaustive match expression. Missing patterns `_`

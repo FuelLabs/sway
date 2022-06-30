@@ -1,0 +1,9 @@
+category = "fail"
+
+# Skip the first warning.
+# check: storage {
+
+# check: storage {
+# nextln: item: u64,
+# nextln: }
+# nextln: $()Declaring storage in a library is not allowed.

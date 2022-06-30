@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
+use crate::type_engine::{TypeArgument, TypeParameter};
 use crate::{
     error::*,
     parse_tree::*,
@@ -9,6 +10,7 @@ use crate::{
     WhileLoop,
 };
 
+use sway_types::Spanned;
 use sway_types::{ident::Ident, span::Span};
 
 // -------------------------------------------------------------------------------------------------
@@ -20,7 +22,7 @@ pub(crate) fn order_ast_nodes_by_dependency(nodes: Vec<AstNode>) -> CompileResul
         DependencyMap::from_iter(nodes.iter().filter_map(Dependencies::gather_from_decl_node));
 
     // Check here for recursive calls now that we have a nice map of the dependencies to help us.
-    let mut errors = find_recursive_calls(&decl_dependencies);
+    let mut errors = find_recursive_decls(&decl_dependencies);
     if !errors.is_empty() {
         // Because we're pulling these errors out of a HashMap they'll probably be in a funny
         // order.  Here we'll sort them by span start.
@@ -45,22 +47,27 @@ pub(crate) fn order_ast_nodes_by_dependency(nodes: Vec<AstNode>) -> CompileResul
 // -------------------------------------------------------------------------------------------------
 // Recursion detection.
 
-fn find_recursive_calls(decl_dependencies: &DependencyMap) -> Vec<CompileError> {
+fn find_recursive_decls(decl_dependencies: &DependencyMap) -> Vec<CompileError> {
     decl_dependencies
         .iter()
-        .filter_map(|(dep_sym, _)| find_recursive_call(decl_dependencies, dep_sym))
+        .filter_map(|(dep_sym, _)| find_recursive_decl(decl_dependencies, dep_sym))
         .collect()
 }
 
-fn find_recursive_call(
+fn find_recursive_decl(
     decl_dependencies: &DependencyMap,
-    fn_sym: &DependentSymbol,
+    dep_sym: &DependentSymbol,
 ) -> Option<CompileError> {
-    if let DependentSymbol::Fn(_, Some(fn_span)) = fn_sym {
-        let mut chain = Vec::new();
-        find_recursive_call_chain(decl_dependencies, fn_sym, fn_span, &mut chain)
-    } else {
-        None
+    match dep_sym {
+        DependentSymbol::Fn(_, Some(fn_span)) => {
+            let mut chain = Vec::new();
+            find_recursive_call_chain(decl_dependencies, dep_sym, fn_span, &mut chain)
+        }
+        DependentSymbol::Symbol(_) => {
+            let mut chain = Vec::new();
+            find_recursive_type_chain(decl_dependencies, dep_sym, &mut chain)
+        }
+        _otherwise => None,
     }
 }
 
@@ -98,6 +105,34 @@ fn find_recursive_call_chain(
     }
 }
 
+fn find_recursive_type_chain(
+    decl_dependencies: &DependencyMap,
+    dep_sym: &DependentSymbol,
+    chain: &mut Vec<Ident>,
+) -> Option<CompileError> {
+    if let DependentSymbol::Symbol(sym_ident) = dep_sym {
+        if chain.iter().any(|seen_sym| seen_sym == sym_ident) {
+            // See above about it only being an error if we're referring back to the start.
+            return if &chain[0] != sym_ident {
+                None
+            } else {
+                Some(build_recursive_type_error(sym_ident.clone(), &chain[1..]))
+            };
+        }
+        decl_dependencies.get(dep_sym).and_then(|deps_set| {
+            chain.push(sym_ident.clone());
+            let result = deps_set
+                .deps
+                .iter()
+                .find_map(|dep_sym| find_recursive_type_chain(decl_dependencies, dep_sym, chain));
+            chain.pop();
+            result
+        })
+    } else {
+        None
+    }
+}
+
 fn build_recursion_error(fn_sym: Ident, span: Span, chain: &[Ident]) -> CompileError {
     match chain.len() {
         // An empty chain indicates immediate recursion.
@@ -122,6 +157,34 @@ fn build_recursion_error(fn_sym: Ident, span: Span, chain: &[Ident]) -> CompileE
             CompileError::RecursiveCallChain {
                 fn_name: fn_sym,
                 call_chain: msg,
+                span,
+            }
+        }
+    }
+}
+
+fn build_recursive_type_error(name: Ident, chain: &[Ident]) -> CompileError {
+    let span = name.span();
+    match chain.len() {
+        // An empty chain indicates immediate recursion.
+        0 => CompileError::RecursiveType { name, span },
+        // Chain entries indicate mutual recursion.
+        1 => CompileError::RecursiveTypeChain {
+            name,
+            type_chain: chain[0].as_str().to_string(),
+            span,
+        },
+        n => {
+            let mut msg = chain[0].as_str().to_string();
+            for ident in &chain[1..(n - 1)] {
+                msg.push_str(", ");
+                msg.push_str(ident.as_str());
+            }
+            msg.push_str(" and ");
+            msg.push_str(chain[n - 1].as_str());
+            CompileError::RecursiveTypeChain {
+                name,
+                type_chain: msg,
                 span,
             }
         }
@@ -239,7 +302,7 @@ impl Dependencies {
                 ..
             }) => self
                 .gather_from_iter(fields.iter(), |deps, field| {
-                    deps.gather_from_typeinfo(&field.r#type)
+                    deps.gather_from_typeinfo(&field.type_info)
                 })
                 .gather_from_type_parameters(type_parameters),
             Declaration::EnumDeclaration(EnumDeclaration {
@@ -248,7 +311,7 @@ impl Dependencies {
                 ..
             }) => self
                 .gather_from_iter(variants.iter(), |deps, variant| {
-                    deps.gather_from_typeinfo(&variant.r#type)
+                    deps.gather_from_typeinfo(&variant.type_info)
                 })
                 .gather_from_type_parameters(type_parameters),
             Declaration::Reassignment(decl) => self.gather_from_expr(&decl.rhs),
@@ -273,7 +336,7 @@ impl Dependencies {
             Declaration::ImplTrait(ImplTrait {
                 trait_name,
                 type_implementing_for,
-                type_arguments,
+                type_parameters: type_arguments,
                 functions,
                 ..
             }) => self
@@ -307,8 +370,8 @@ impl Dependencies {
                     deps.gather_from_fn_decl(fn_decl)
                 }),
             Declaration::StorageDeclaration(StorageDeclaration { fields, .. }) => self
-                .gather_from_iter(fields.iter(), |deps, StorageField { r#type, .. }| {
-                    deps.gather_from_typeinfo(r#type)
+                .gather_from_iter(fields.iter(), |deps, StorageField { ref type_info, .. }| {
+                    deps.gather_from_typeinfo(type_info)
                 }),
         }
     }
@@ -375,9 +438,8 @@ impl Dependencies {
                 fields,
                 ..
             } => {
-                self.deps.insert(DependentSymbol::Symbol(
-                    struct_name.suffix.as_str().to_string(),
-                ));
+                self.deps
+                    .insert(DependentSymbol::Symbol(struct_name.suffix.clone()));
                 self.gather_from_iter(fields.iter(), |deps, field| {
                     deps.gather_from_expr(&field.value)
                 })
@@ -413,9 +475,9 @@ impl Dependencies {
             }
             Expression::TupleIndex { prefix, .. } => self.gather_from_expr(prefix),
             Expression::StorageAccess { .. } => self,
-            Expression::SizeOfVal { exp, .. } => self.gather_from_expr(exp),
-            Expression::BuiltinGetTypeProperty { .. } => self,
-            Expression::BuiltinGenerateUid { .. } => self,
+            Expression::IntrinsicFunction { arguments, .. } => {
+                self.gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg))
+            }
         }
     }
 
@@ -472,14 +534,13 @@ impl Dependencies {
             self.deps.insert(if is_fn_app {
                 DependentSymbol::Fn(call_path.suffix.clone(), None)
             } else {
-                DependentSymbol::Symbol(call_path.suffix.as_str().to_string())
+                DependentSymbol::Symbol(call_path.suffix.clone())
             });
         } else if use_prefix && call_path.prefixes.len() == 1 {
             // Here we can use the prefix (e.g., for 'Enum::Variant' -> 'Enum') as long is it's
             // only a single element.
-            self.deps.insert(DependentSymbol::Symbol(
-                call_path.prefixes[0].as_str().to_string(),
-            ));
+            self.deps
+                .insert(DependentSymbol::Symbol(call_path.prefixes[0].clone()));
         }
         self
     }
@@ -509,7 +570,7 @@ impl Dependencies {
                 name,
                 type_arguments,
             } => {
-                self.deps.insert(DependentSymbol::Symbol(name.to_string()));
+                self.deps.insert(DependentSymbol::Symbol(name.clone()));
                 self.gather_from_type_arguments(type_arguments)
             }
             TypeInfo::Tuple(elems) => self.gather_from_iter(elems.iter(), |deps, elem| {
@@ -518,11 +579,11 @@ impl Dependencies {
             TypeInfo::Array(type_id, _) => self.gather_from_typeinfo(&look_up_type_id(*type_id)),
             TypeInfo::Struct { fields, .. } => self
                 .gather_from_iter(fields.iter(), |deps, field| {
-                    deps.gather_from_typeinfo(&look_up_type_id(field.r#type))
+                    deps.gather_from_typeinfo(&look_up_type_id(field.type_id))
                 }),
             TypeInfo::Enum { variant_types, .. } => self
                 .gather_from_iter(variant_types.iter(), |deps, variant| {
-                    deps.gather_from_typeinfo(&look_up_type_id(variant.r#type))
+                    deps.gather_from_typeinfo(&look_up_type_id(variant.type_id))
                 }),
             _ => self,
         }
@@ -544,7 +605,7 @@ impl Dependencies {
 
 #[derive(Debug, Eq)]
 enum DependentSymbol {
-    Symbol(String),
+    Symbol(Ident),
     Fn(Ident, Option<Span>),
     Impl(Ident, String, String), // Trait or self, type implementing for, and method names concatenated.
 }
@@ -599,11 +660,11 @@ fn decl_name(decl: &Declaration) -> Option<DependentSymbol> {
             decl.name.clone(),
             Some(decl.span.clone()),
         )),
-        Declaration::ConstantDeclaration(decl) => dep_sym(decl.name.as_str().to_string()),
-        Declaration::StructDeclaration(decl) => dep_sym(decl.name.as_str().to_string()),
-        Declaration::EnumDeclaration(decl) => dep_sym(decl.name.as_str().to_string()),
-        Declaration::TraitDeclaration(decl) => dep_sym(decl.name.as_str().to_string()),
-        Declaration::AbiDeclaration(decl) => dep_sym(decl.name.as_str().to_string()),
+        Declaration::ConstantDeclaration(decl) => dep_sym(decl.name.clone()),
+        Declaration::StructDeclaration(decl) => dep_sym(decl.name.clone()),
+        Declaration::EnumDeclaration(decl) => dep_sym(decl.name.clone()),
+        Declaration::TraitDeclaration(decl) => dep_sym(decl.name.clone()),
+        Declaration::AbiDeclaration(decl) => dep_sym(decl.name.clone()),
 
         // These have the added complexity of converting CallPath and/or TypeInfo into a name.
         Declaration::ImplSelf(decl) => {
@@ -643,8 +704,8 @@ fn decl_name(decl: &Declaration) -> Option<DependentSymbol> {
     }
 }
 
-/// This is intentionally different from [[TypeInfo::friendly_type_str]] because it
-/// is used for keys and values in the tree.
+/// This is intentionally different from `Display` for [TypeInfo]
+/// because it is used for keys and values in the tree.
 fn type_info_name(type_info: &TypeInfo) -> String {
     match type_info {
         TypeInfo::Str(_) => "str",

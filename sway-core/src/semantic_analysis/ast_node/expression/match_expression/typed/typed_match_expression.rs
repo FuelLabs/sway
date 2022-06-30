@@ -6,8 +6,7 @@ use crate::{
         ast_node::expression::typed_expression::{
             instantiate_if_expression, instantiate_lazy_operator,
         },
-        namespace::Namespace,
-        IsConstant, TypeCheckArguments, TypedExpression, TypedExpressionVariant,
+        IsConstant, TypeCheckContext, TypedExpression, TypedExpressionVariant,
     },
     type_engine::{insert_type, TypeId},
     CompileError, CompileResult, LazyOp, Literal, MatchBranch, TypeInfo,
@@ -25,39 +24,21 @@ pub(crate) struct TypedMatchExpression {
 
 impl TypedMatchExpression {
     pub(crate) fn type_check(
-        arguments: TypeCheckArguments<'_, (TypedExpression, Vec<MatchBranch>)>,
+        ctx: TypeCheckContext,
+        typed_value: TypedExpression,
+        branches: Vec<MatchBranch>,
         span: Span,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let TypeCheckArguments {
-            checkee: (typed_value, branches),
-            namespace,
-            return_type_annotation,
-            self_type,
-            build_config,
-            dead_code_graph,
-            opts,
-            mode,
-            ..
-        } = arguments;
-
         // type check all of the branches
         let mut typed_branches = vec![];
+        let mut ctx =
+            ctx.with_help_text("all branches of a match statement must return the same type");
         for branch in branches.into_iter() {
             let typed_branch = check!(
-                TypedMatchBranch::type_check(TypeCheckArguments {
-                    checkee: (&typed_value, branch),
-                    namespace,
-                    return_type_annotation,
-                    help_text: "all branches of a match statement must return the same type",
-                    self_type,
-                    build_config,
-                    dead_code_graph,
-                    mode,
-                    opts,
-                }),
+                TypedMatchBranch::type_check(ctx.by_ref(), &typed_value, branch),
                 continue,
                 warnings,
                 errors
@@ -71,7 +52,7 @@ impl TypedMatchExpression {
 
         let exp = TypedMatchExpression {
             branches: typed_branches,
-            return_type_id: return_type_annotation,
+            return_type_id: ctx.type_annotation(),
             span,
         };
         ok(exp, warnings, errors)
@@ -79,8 +60,7 @@ impl TypedMatchExpression {
 
     pub(crate) fn convert_to_typed_if_expression(
         self,
-        namespace: &mut Namespace,
-        self_type: TypeId,
+        mut ctx: TypeCheckContext,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -99,13 +79,9 @@ impl TypedMatchExpression {
             let mut conditional: Option<TypedExpression> = None;
             for (left_req, right_req) in conditions.into_iter().rev() {
                 let joined_span = Span::join(left_req.span.clone(), right_req.span.clone());
+                let args = vec![left_req, right_req];
                 let new_condition = check!(
-                    TypedExpression::core_ops_eq(
-                        vec![left_req, right_req],
-                        joined_span,
-                        namespace,
-                        self_type
-                    ),
+                    TypedExpression::core_ops_eq(ctx.by_ref(), args, joined_span),
                     continue,
                     warnings,
                     errors
@@ -139,7 +115,7 @@ impl TypedMatchExpression {
                             Some(result), // TODO: this is a really bad hack and we should not do this
                             result_span,
                             self.return_type_id, // TODO: figure out if this argument matters or not
-                            self_type
+                            ctx.self_type()
                         ),
                         continue,
                         warnings,
@@ -160,7 +136,7 @@ impl TypedMatchExpression {
                             Some(prev_if_exp),
                             result_span,
                             self.return_type_id,
-                            self_type
+                            ctx.self_type()
                         ),
                         continue,
                         warnings,
@@ -175,7 +151,7 @@ impl TypedMatchExpression {
                             Some(prev_if_exp),
                             result_span,
                             self.return_type_id,
-                            self_type
+                            ctx.self_type()
                         ),
                         continue,
                         warnings,

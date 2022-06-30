@@ -1,0 +1,12 @@
+category = "fail"
+
+# check: $()Type F is recursive via G and E, which is unsupported at this time.
+# check: $()Type G is recursive via E and F, which is unsupported at this time.
+# check: $()Type E is recursive via F and G, which is unsupported at this time.
+# check: $()Type I is recursive via H, which is unsupported at this time.
+# check: $()Type H is recursive via I, which is unsupported at this time.
+# check: $()Type T is recursive via S, which is unsupported at this time.
+# check: $()Type S is recursive via T, which is unsupported at this time.
+# check: $()Type Y is recursive via Z and X, which is unsupported at this time.
+# check: $()Type Z is recursive via X and Y, which is unsupported at this time.
+# check: $()Type X is recursive via Y and Z, which is unsupported at this time.

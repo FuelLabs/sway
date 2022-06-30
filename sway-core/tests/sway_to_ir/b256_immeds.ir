@@ -1,36 +1,38 @@
 script {
-    fn main() -> bool {
+    fn main() -> bool, !1 {
         local ptr b256 a
 
         entry:
-        v0 = get_ptr ptr b256 a, ptr b256, 0, !1
-        v1 = const b256 0x0202020202020202020202020202020202020202020202020202020202020202, !2
-        store v1, ptr v0, !1
-        v2 = get_ptr ptr b256 a, ptr b256, 0, !3
-        v3 = load ptr v2, !3
-        v4 = const b256 0x0303030303030303030303030303030303030303030303030303030303030303, !4
-        v5 = call anon_0(v3, v4), !5
+        v0 = get_ptr ptr b256 a, ptr b256, 0, !2
+        v1 = const b256 0x0202020202020202020202020202020202020202020202020202020202020202, !3
+        store v1, ptr v0, !2
+        v2 = get_ptr ptr b256 a, ptr b256, 0, !4
+        v3 = load ptr v2, !4
+        v4 = const b256 0x0303030303030303030303030303030303030303030303030303030303030303, !5
+        v5 = call anon_0(v3, v4), !6
         ret bool v5
     }
 
-    fn anon_0(a !6: b256, b !7: b256) -> bool {
+    fn anon_0(a !7: b256, b !8: b256) -> bool, !9 {
         entry:
-        v0 = asm(lhs: a, rhs: b, sz, res) -> bool res, !8 {
-            addi   sz zero i32, !9
-            meq    res lhs rhs sz, !10
+        v0 = asm(lhs: a, rhs: b, sz, res) -> bool res, !10 {
+            addi   sz zero i32, !11
+            meq    res lhs rhs sz, !12
         }
         ret bool v0
     }
 }
 
 !0 = filepath "/path/to/b256_immeds.sw"
-!1 = span !0 33 108
-!2 = span !0 41 107
-!3 = span !0 117 118
-!4 = span !0 120 186
-!5 = span !0 191 340
-!6 = span !0 198 199
-!7 = span !0 207 208
-!8 = span !0 230 338
-!9 = span !0 269 285
-!10 = span !0 295 313
+!1 = span !0 9 189
+!2 = span !0 33 108
+!3 = span !0 41 107
+!4 = span !0 117 118
+!5 = span !0 120 186
+!6 = span !0 191 340
+!7 = span !0 198 199
+!8 = span !0 207 208
+!9 = span !0 194 197
+!10 = span !0 230 338
+!11 = span !0 269 285
+!12 = span !0 295 313

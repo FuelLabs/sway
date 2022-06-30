@@ -1,0 +1,7 @@
+category = "fail"
+
+# check: let b = foo::baz::ExampleStruct::<bool> { a_field: 5u64 };
+# nextln: $()Mismatched types.
+# nextln: $()expected: bool
+# nextln: $()found:    u64.
+# nextln: $()help: Struct field's type must match up with the type specified in its declaration.

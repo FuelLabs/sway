@@ -1,9 +1,9 @@
 use crate::{
     parse_tree::{CallPath, Literal},
-    type_engine::TypeInfo,
-    CodeBlock, TypeArgument,
+    type_engine::TypeArgument,
+    CodeBlock,
 };
-use sway_types::{ident::Ident, Span};
+use sway_types::{ident::Ident, Span, Spanned};
 
 mod asm;
 mod match_branch;
@@ -13,6 +13,7 @@ pub(crate) use asm::*;
 pub(crate) use match_branch::MatchBranch;
 pub use method_name::MethodName;
 pub use scrutinee::*;
+use sway_parse::intrinsics::Intrinsic;
 
 /// Represents a parsed, but not yet type checked, [Expression](https://en.wikipedia.org/wiki/Expression_(computer_science)).
 #[derive(Debug, Clone)]
@@ -136,56 +137,12 @@ pub enum Expression {
         field_names: Vec<Ident>,
         span: Span,
     },
-    SizeOfVal {
-        exp: Box<Expression>,
+    IntrinsicFunction {
+        kind: Intrinsic,
+        arguments: Vec<Expression>,
+        type_arguments: Vec<TypeArgument>,
         span: Span,
     },
-    BuiltinGetTypeProperty {
-        builtin: BuiltinProperty,
-        type_name: TypeInfo,
-        type_span: Span,
-        span: Span,
-    },
-    BuiltinGenerateUid {
-        span: Span,
-    },
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum BuiltinProperty {
-    SizeOfType,
-    IsRefType,
-}
-
-#[derive(Debug, Clone)]
-pub enum DelayedResolutionVariant {
-    StructField(DelayedStructFieldResolution),
-    EnumVariant(DelayedEnumVariantResolution),
-    TupleVariant(DelayedTupleVariantResolution),
-}
-
-/// During type checking, this gets replaced with struct field access.
-#[derive(Debug, Clone)]
-pub struct DelayedStructFieldResolution {
-    pub exp: Box<Expression>,
-    pub struct_name: Ident,
-    pub field: Ident,
-}
-
-/// During type checking, this gets replaced with an if let, maybe, although that's not yet been
-/// implemented.
-#[derive(Debug, Clone)]
-pub struct DelayedEnumVariantResolution {
-    pub exp: Box<Expression>,
-    pub call_path: CallPath,
-    pub arg_num: usize,
-}
-
-/// During type checking, this gets replaced with tuple arg access.
-#[derive(Debug, Clone)]
-pub struct DelayedTupleVariantResolution {
-    pub exp: Box<Expression>,
-    pub elem_num: usize,
 }
 
 #[derive(Clone, Debug, PartialEq, Hash)]
@@ -201,8 +158,8 @@ pub struct StructExpressionField {
     pub(crate) span: Span,
 }
 
-impl Expression {
-    pub(crate) fn span(&self) -> Span {
+impl Spanned for Expression {
+    fn span(&self) -> Span {
         use Expression::*;
         (match self {
             Literal { span, .. } => span,
@@ -223,9 +180,7 @@ impl Expression {
             AbiCast { span, .. } => span,
             ArrayIndex { span, .. } => span,
             StorageAccess { span, .. } => span,
-            SizeOfVal { span, .. } => span,
-            BuiltinGetTypeProperty { span, .. } => span,
-            BuiltinGenerateUid { span, .. } => span,
+            IntrinsicFunction { span, .. } => span,
         })
         .clone()
     }

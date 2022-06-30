@@ -1,0 +1,5 @@
+# The feature for this test, detecting infinite deps, was reverted. When that is re-implemented we
+# should re-enable this test.
+
+#category = "fail"
+category = "disabled"

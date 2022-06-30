@@ -1,0 +1,21 @@
+category = "fail"
+
+# check: Point { x: 3, y } => { y },
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    Point.
+
+# check: Point { x: 3, y: 4 } => { 24 },
+
+# check: Point { x: 3, y: 4 } => { 24 },
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    Point.
+
+# check: Data { value: 1u64 } => { false },
+# nextln: $()Mismatched types.
+# nextln: $()expected: bool
+# nextln: $()found:    u64.
+
+# check: Bar(x) => x,
+# nextln: $()Enum with name "Bar" could not be found in this scope. Perhaps you need to import it?

@@ -1,0 +1,4 @@
+[[package]]
+name = 'recursive_type_chain'
+source = 'root'
+dependencies = []

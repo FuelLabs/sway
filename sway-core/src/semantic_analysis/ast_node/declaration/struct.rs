@@ -1,21 +1,12 @@
-use crate::{
-    error::*,
-    namespace::Items,
-    parse_tree::*,
-    semantic_analysis::{ast_node::copy_types::TypeMapping, insert_type_parameters, CopyTypes},
-    type_engine::*,
-    CompileError, CompileResult, Ident, Namespace,
-};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
 use fuels_types::Property;
 use std::hash::{Hash, Hasher};
-use sway_types::Span;
-
-use super::{monomorphize_inner, CreateTypeId, EnforceTypeArguments, MonomorphizeHelper};
+use sway_types::{Ident, Span, Spanned};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedStructDeclaration {
-    pub(crate) name: Ident,
-    pub(crate) fields: Vec<TypedStructField>,
+    pub name: Ident,
+    pub fields: Vec<TypedStructField>,
     pub(crate) type_parameters: Vec<TypeParameter>,
     pub(crate) visibility: Visibility,
     pub(crate) span: Span,
@@ -38,6 +29,9 @@ impl CopyTypes for TypedStructDeclaration {
         self.fields
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
+        self.type_parameters
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
     }
 }
 
@@ -51,9 +45,13 @@ impl CreateTypeId for TypedStructDeclaration {
     }
 }
 
-impl MonomorphizeHelper for TypedStructDeclaration {
-    type Output = TypedStructDeclaration;
+impl Spanned for TypedStructDeclaration {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
 
+impl MonomorphizeHelper for TypedStructDeclaration {
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
@@ -61,76 +59,58 @@ impl MonomorphizeHelper for TypedStructDeclaration {
     fn name(&self) -> &Ident {
         &self.name
     }
-
-    fn span(&self) -> &Span {
-        &self.span
-    }
-
-    fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output {
-        monomorphize_inner(self, type_mapping, namespace)
-    }
 }
 
 impl TypedStructDeclaration {
     pub(crate) fn type_check(
+        ctx: TypeCheckContext,
         decl: StructDeclaration,
-        namespace: &mut Namespace,
-        self_type: TypeId,
-    ) -> CompileResult<TypedStructDeclaration> {
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        // create a namespace for the decl, used to create a scope for generics
-        let mut namespace = namespace.clone();
+        let StructDeclaration {
+            name,
+            fields,
+            type_parameters,
+            visibility,
+            span,
+        } = decl;
 
-        // insert the generics into the decl namespace and
-        // check to see if the type parameters shadow one another
-        for type_parameter in decl.type_parameters.iter() {
-            check!(
-                namespace.insert_symbol(type_parameter.name_ident.clone(), type_parameter.into()),
-                continue,
+        // create a namespace for the decl, used to create a scope for generics
+        let mut decl_namespace = ctx.namespace.clone();
+        let mut ctx = ctx.scoped(&mut decl_namespace);
+
+        // type check the type parameters
+        // insert them into the namespace
+        let mut new_type_parameters = vec![];
+        for type_parameter in type_parameters.into_iter() {
+            new_type_parameters.push(check!(
+                TypeParameter::type_check(ctx.by_ref(), type_parameter),
+                return err(warnings, errors),
                 warnings,
                 errors
-            );
+            ));
         }
 
-        // create the type parameters type mapping of custom types to generic types
-        let type_mapping = insert_type_parameters(&decl.type_parameters);
-        let fields = decl
-            .fields
-            .into_iter()
-            .map(|field| {
-                let StructField {
-                    name,
-                    r#type,
-                    span,
-                    type_span,
-                } = field;
-                let r#type = match r#type.matches_type_parameter(&type_mapping) {
-                    Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, type_span)),
-                    None => check!(
-                        namespace.resolve_type_with_self(
-                            r#type,
-                            self_type,
-                            &type_span,
-                            EnforceTypeArguments::No
-                        ),
-                        insert_type(TypeInfo::ErrorRecovery),
-                        warnings,
-                        errors,
-                    ),
-                };
-                TypedStructField { name, r#type, span }
-            })
-            .collect::<Vec<_>>();
+        // type check the fields
+        let mut new_fields = vec![];
+        for field in fields.into_iter() {
+            new_fields.push(check!(
+                TypedStructField::type_check(ctx.by_ref(), field),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
 
         // create the struct decl
         let decl = TypedStructDeclaration {
-            name: decl.name.clone(),
-            type_parameters: decl.type_parameters.clone(),
-            fields,
-            visibility: decl.visibility,
-            span: decl.span,
+            name,
+            type_parameters: new_type_parameters,
+            fields: new_fields,
+            visibility,
+            span,
         };
 
         ok(decl, warnings, errors)
@@ -164,8 +144,8 @@ impl TypedStructDeclaration {
 
 #[derive(Debug, Clone, Eq)]
 pub struct TypedStructField {
-    pub(crate) name: Ident,
-    pub(crate) r#type: TypeId,
+    pub name: Ident,
+    pub type_id: TypeId,
     pub(crate) span: Span,
 }
 
@@ -175,7 +155,7 @@ pub struct TypedStructField {
 impl Hash for TypedStructField {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.name.hash(state);
-        look_up_type_id(self.r#type).hash(state);
+        look_up_type_id(self.type_id).hash(state);
     }
 }
 
@@ -184,22 +164,53 @@ impl Hash for TypedStructField {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEq for TypedStructField {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && look_up_type_id(self.r#type) == look_up_type_id(other.r#type)
+        self.name == other.name && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
     }
 }
 
 impl CopyTypes for TypedStructField {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.r#type.update_type(type_mapping, &self.span);
+        self.type_id.update_type(type_mapping, &self.span);
+    }
+}
+
+impl ToJsonAbi for TypedStructField {
+    type Output = Property;
+
+    fn generate_json_abi(&self) -> Self::Output {
+        Property {
+            name: self.name.to_string(),
+            type_field: self.type_id.json_abi_str(),
+            components: self.type_id.generate_json_abi(),
+        }
+    }
+}
+
+impl ReplaceSelfType for TypedStructField {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.type_id.replace_self_type(self_type);
     }
 }
 
 impl TypedStructField {
-    pub fn generate_json_abi(&self) -> Property {
-        Property {
-            name: self.name.to_string(),
-            type_field: self.r#type.json_abi_str(),
-            components: self.r#type.generate_json_abi(),
-        }
+    pub(crate) fn type_check(mut ctx: TypeCheckContext, field: StructField) -> CompileResult<Self> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let r#type = check!(
+            ctx.resolve_type_with_self(
+                insert_type(field.type_info),
+                &field.type_span,
+                EnforceTypeArguments::Yes
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors,
+        );
+        let field = TypedStructField {
+            name: field.name,
+            type_id: r#type,
+            span: field.span,
+        };
+        ok(field, warnings, errors)
     }
 }

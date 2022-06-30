@@ -69,13 +69,16 @@ impl PunctKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
-pub struct Group {
+pub struct GenericGroup<T> {
     pub delimiter: Delimiter,
-    pub token_stream: TokenStream,
+    pub token_stream: T,
     pub span: Span,
 }
 
-impl Spanned for Group {
+pub type Group = GenericGroup<TokenStream>;
+pub type CommentedGroup = GenericGroup<CommentedTokenStream>;
+
+impl<T> Spanned for GenericGroup<T> {
     fn span(&self) -> Span {
         self.span.clone()
     }
@@ -96,30 +99,119 @@ impl Delimiter {
             Delimiter::Bracket => '[',
         }
     }
+    pub fn as_close_char(self) -> char {
+        match self {
+            Delimiter::Parenthesis => ')',
+            Delimiter::Brace => '}',
+            Delimiter::Bracket => ']',
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
-pub enum TokenTree {
+pub struct Comment {
+    pub span: Span,
+}
+
+impl Spanned for Comment {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
+
+/// Allows for generalizing over commented and uncommented token streams.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
+pub enum GenericTokenTree<T> {
     Punct(Punct),
     Ident(Ident),
-    Group(Group),
+    Group(GenericGroup<T>),
     Literal(Literal),
 }
 
-impl Spanned for TokenTree {
+pub type TokenTree = GenericTokenTree<TokenStream>;
+pub type CommentedTree = GenericTokenTree<CommentedTokenStream>;
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
+pub enum CommentedTokenTree {
+    Comment(Comment),
+    Tree(CommentedTree),
+}
+
+impl CommentedGroup {
+    pub fn strip_comments(self) -> Group {
+        Group {
+            delimiter: self.delimiter,
+            token_stream: self.token_stream.strip_comments(),
+            span: self.span,
+        }
+    }
+}
+
+impl<T> Spanned for GenericTokenTree<T> {
     fn span(&self) -> Span {
         match self {
-            TokenTree::Punct(punct) => punct.span(),
-            TokenTree::Ident(ident) => ident.span().clone(),
-            TokenTree::Group(group) => group.span(),
-            TokenTree::Literal(literal) => literal.span(),
+            Self::Punct(punct) => punct.span(),
+            Self::Ident(ident) => ident.span(),
+            Self::Group(group) => group.span(),
+            Self::Literal(literal) => literal.span(),
         }
+    }
+}
+
+impl Spanned for CommentedTokenTree {
+    fn span(&self) -> Span {
+        match self {
+            Self::Comment(cmt) => cmt.span(),
+            Self::Tree(tt) => tt.span(),
+        }
+    }
+}
+
+impl<T> From<Punct> for GenericTokenTree<T> {
+    fn from(punct: Punct) -> Self {
+        Self::Punct(punct)
+    }
+}
+
+impl<T> From<Ident> for GenericTokenTree<T> {
+    fn from(ident: Ident) -> Self {
+        Self::Ident(ident)
+    }
+}
+
+impl<T> From<GenericGroup<T>> for GenericTokenTree<T> {
+    fn from(group: GenericGroup<T>) -> Self {
+        Self::Group(group)
+    }
+}
+
+impl<T> From<Literal> for GenericTokenTree<T> {
+    fn from(lit: Literal) -> Self {
+        Self::Literal(lit)
+    }
+}
+
+impl From<Comment> for CommentedTokenTree {
+    fn from(comment: Comment) -> Self {
+        Self::Comment(comment)
+    }
+}
+
+impl From<CommentedTree> for CommentedTokenTree {
+    fn from(tree: CommentedTree) -> Self {
+        Self::Tree(tree)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct TokenStream {
     token_trees: Vec<TokenTree>,
+    full_span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
+pub struct CommentedTokenStream {
+    token_trees: Vec<CommentedTokenTree>,
     full_span: Span,
 }
 
@@ -181,11 +273,13 @@ pub enum LexErrorKind {
     InvalidEscapeCode { position: usize },
 }
 
-impl LexError {
-    pub fn span(&self) -> Span {
+impl Spanned for LexError {
+    fn span(&self) -> Span {
         self.span.clone()
     }
+}
 
+impl LexError {
     pub fn span_ref(&self) -> &Span {
         &self.span
     }
@@ -268,14 +362,23 @@ pub fn lex(
     end: usize,
     path: Option<Arc<PathBuf>>,
 ) -> Result<TokenStream, LexError> {
+    lex_commented(src, start, end, path).map(|stream| stream.strip_comments())
+}
+
+pub fn lex_commented(
+    src: &Arc<str>,
+    start: usize,
+    end: usize,
+    path: Option<Arc<PathBuf>>,
+) -> Result<CommentedTokenStream, LexError> {
     let mut char_indices = CharIndicesInner {
         src: &src[..end],
         position: start,
     }
     .peekable();
     let mut parent_token_trees = Vec::new();
-    let mut token_trees = Vec::new();
-    while let Some((index, character)) = char_indices.next() {
+    let mut token_trees: Vec<CommentedTokenTree> = Vec::new();
+    while let Some((mut index, mut character)) = char_indices.next() {
         if character.is_whitespace() {
             continue;
         }
@@ -283,8 +386,11 @@ pub fn lex(
             match char_indices.peek() {
                 Some((_, '/')) => {
                     let _ = char_indices.next();
-                    for (_, character) in char_indices.by_ref() {
+                    for (end, character) in char_indices.by_ref() {
                         if character == '\n' {
+                            let span = Span::new(src.clone(), index, end, path.clone()).unwrap();
+                            let comment = Comment { span };
+                            token_trees.push(comment.into());
                             break;
                         }
                     }
@@ -292,42 +398,33 @@ pub fn lex(
                 Some((_, '*')) => {
                     let _ = char_indices.next();
                     let mut unclosed_indices = vec![index];
+
+                    let unclosed_multiline_comment = |unclosed_indices: Vec<_>| {
+                        let span = Span::new(
+                            src.clone(),
+                            *unclosed_indices.last().unwrap(),
+                            src.len(),
+                            path.clone(),
+                        )
+                        .unwrap();
+                        LexError {
+                            kind: LexErrorKind::UnclosedMultilineComment { unclosed_indices },
+                            span,
+                        }
+                    };
+
                     loop {
                         match char_indices.next() {
-                            None => {
-                                let span = Span::new(
-                                    src.clone(),
-                                    *unclosed_indices.last().unwrap(),
-                                    src.len(),
-                                    path.clone(),
-                                )
-                                .unwrap();
-                                return Err(LexError {
-                                    kind: LexErrorKind::UnclosedMultilineComment {
-                                        unclosed_indices,
-                                    },
-                                    span,
-                                });
-                            }
+                            None => return Err(unclosed_multiline_comment(unclosed_indices)),
                             Some((_, '*')) => match char_indices.next() {
-                                None => {
-                                    let span = Span::new(
-                                        src.clone(),
-                                        *unclosed_indices.last().unwrap(),
-                                        src.len(),
-                                        path.clone(),
-                                    )
-                                    .unwrap();
-                                    return Err(LexError {
-                                        kind: LexErrorKind::UnclosedMultilineComment {
-                                            unclosed_indices,
-                                        },
-                                        span,
-                                    });
-                                }
-                                Some((_, '/')) => {
+                                None => return Err(unclosed_multiline_comment(unclosed_indices)),
+                                Some((end, '/')) => {
                                     let _ = char_indices.next();
-                                    unclosed_indices.pop();
+                                    let start = unclosed_indices.pop().unwrap();
+                                    let span =
+                                        Span::new(src.clone(), start, end, path.clone()).unwrap();
+                                    let comment = Comment { span };
+                                    token_trees.push(comment.into());
                                     if unclosed_indices.is_empty() {
                                         break;
                                     }
@@ -335,21 +432,7 @@ pub fn lex(
                                 Some((_, _)) => (),
                             },
                             Some((next_index, '/')) => match char_indices.next() {
-                                None => {
-                                    let span = Span::new(
-                                        src.clone(),
-                                        *unclosed_indices.last().unwrap(),
-                                        src.len(),
-                                        path.clone(),
-                                    )
-                                    .unwrap();
-                                    return Err(LexError {
-                                        kind: LexErrorKind::UnclosedMultilineComment {
-                                            unclosed_indices,
-                                        },
-                                        span,
-                                    });
-                                }
+                                None => return Err(unclosed_multiline_comment(unclosed_indices)),
                                 Some((_, '*')) => {
                                     unclosed_indices.push(next_index);
                                 }
@@ -371,7 +454,7 @@ pub fn lex(
                         spacing,
                         span,
                     };
-                    token_trees.push(TokenTree::Punct(punct));
+                    token_trees.push(CommentedTokenTree::Tree(punct.into()));
                 }
                 None => {
                     let span = Span::new(src.clone(), start, end, path.clone()).unwrap();
@@ -380,12 +463,22 @@ pub fn lex(
                         spacing: Spacing::Alone,
                         span,
                     };
-                    token_trees.push(TokenTree::Punct(punct));
+                    token_trees.push(CommentedTokenTree::Tree(punct.into()));
                 }
             }
             continue;
         }
         if character.is_xid_start() || character == '_' {
+            let is_raw_ident = character == 'r' && matches!(char_indices.peek(), Some((_, '#')));
+            if is_raw_ident {
+                char_indices.next();
+                if let Some((_, next_character)) = char_indices.peek() {
+                    character = *next_character;
+                    if let Some((next_index, _)) = char_indices.next() {
+                        index = next_index;
+                    }
+                }
+            }
             let is_single_underscore = character == '_'
                 && match char_indices.peek() {
                     Some((_, next_character)) => !next_character.is_xid_continue(),
@@ -399,8 +492,8 @@ pub fn lex(
                     let _ = char_indices.next();
                 }
                 let span = span_until(src, index, &mut char_indices, &path);
-                let ident = Ident::new(span);
-                token_trees.push(TokenTree::Ident(ident));
+                let ident = Ident::new_with_raw(span, is_raw_ident);
+                token_trees.push(CommentedTokenTree::Tree(ident.into()));
                 continue;
             }
         }
@@ -448,15 +541,15 @@ pub fn lex(
                     let start_index = open_index + open_delimiter.as_open_char().len_utf8();
                     let full_span =
                         Span::new(src.clone(), start_index, index, path.clone()).unwrap();
-                    let group = Group {
-                        token_stream: TokenStream {
+                    let group = CommentedGroup {
+                        token_stream: CommentedTokenStream {
                             token_trees: parent,
                             full_span,
                         },
                         delimiter: close_delimiter,
                         span: span_until(src, open_index, &mut char_indices, &path),
                     };
-                    token_trees.push(TokenTree::Group(group));
+                    token_trees.push(CommentedTokenTree::Tree(group.into()));
                 }
             }
             continue;
@@ -504,7 +597,7 @@ pub fn lex(
             }
             let span = span_until(src, index, &mut char_indices, &path);
             let literal = Literal::String(LitString { span, parsed });
-            token_trees.push(TokenTree::Literal(literal));
+            token_trees.push(CommentedTokenTree::Tree(literal.into()));
             continue;
         }
         if character == '\'' {
@@ -556,7 +649,7 @@ pub fn lex(
             }
             let span = span_until(src, index, &mut char_indices, &path);
             let literal = Literal::Char(LitChar { span, parsed });
-            token_trees.push(TokenTree::Literal(literal));
+            token_trees.push(CommentedTokenTree::Tree(literal.into()));
             continue;
         }
         if let Some(digit) = character.to_digit(10) {
@@ -736,7 +829,7 @@ pub fn lex(
                 parsed: big_uint,
                 ty_opt,
             });
-            token_trees.push(TokenTree::Literal(literal));
+            token_trees.push(CommentedTokenTree::Tree(literal.into()));
             continue;
         }
         if let Some(kind) = character.as_punct_kind() {
@@ -752,7 +845,7 @@ pub fn lex(
                 spacing,
                 span,
             };
-            token_trees.push(TokenTree::Punct(punct));
+            token_trees.push(CommentedTokenTree::Tree(punct.into()));
             continue;
         }
         return Err(LexError {
@@ -785,7 +878,7 @@ pub fn lex(
         });
     }
     let full_span = Span::new(src.clone(), start, end, path).unwrap();
-    let token_stream = TokenStream {
+    let token_stream = CommentedTokenStream {
         token_trees,
         full_span,
     };
@@ -962,5 +1055,93 @@ impl TokenStream {
 impl Spanned for TokenStream {
     fn span(&self) -> Span {
         self.full_span.clone()
+    }
+}
+
+impl CommentedTokenTree {
+    pub fn strip_comments(self) -> Option<TokenTree> {
+        let commented_tt = match self {
+            Self::Comment(_) => return None,
+            Self::Tree(commented_tt) => commented_tt,
+        };
+        let tt = match commented_tt {
+            CommentedTree::Punct(punct) => punct.into(),
+            CommentedTree::Ident(ident) => ident.into(),
+            CommentedTree::Group(group) => group.strip_comments().into(),
+            CommentedTree::Literal(lit) => lit.into(),
+        };
+        Some(tt)
+    }
+}
+
+impl CommentedTokenStream {
+    pub fn token_trees(&self) -> &[CommentedTokenTree] {
+        &self.token_trees
+    }
+
+    pub fn strip_comments(self) -> TokenStream {
+        let token_trees = self
+            .token_trees
+            .into_iter()
+            .filter_map(|tree| tree.strip_comments())
+            .collect();
+        TokenStream {
+            token_trees,
+            full_span: self.full_span,
+        }
+    }
+}
+
+impl Spanned for CommentedTokenStream {
+    fn span(&self) -> Span {
+        self.full_span.clone()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{lex_commented, CommentedTokenTree, CommentedTree};
+    use crate::priv_prelude::*;
+    use std::sync::Arc;
+
+    #[test]
+    fn lex_commented_token_stream() {
+        let input = r#"
+        // Single-line comment.
+        struct Foo {
+            /* multi-
+             * line-
+             * comment */
+            bar: i32,
+        }
+        "#;
+        let start = 0;
+        let end = input.len();
+        let path = None;
+        let stream = lex_commented(&Arc::from(input), start, end, path).unwrap();
+        let mut tts = stream.token_trees().iter();
+        assert_eq!(
+            tts.next().unwrap().span().as_str(),
+            "// Single-line comment."
+        );
+        assert_eq!(tts.next().unwrap().span().as_str(), "struct");
+        assert_eq!(tts.next().unwrap().span().as_str(), "Foo");
+        {
+            let group = match tts.next() {
+                Some(CommentedTokenTree::Tree(CommentedTree::Group(group))) => group,
+                _ => panic!("expected group"),
+            };
+            let mut tts = group.token_stream.token_trees().iter();
+            assert_eq!(
+                tts.next().unwrap().span().as_str(),
+                "/* multi-\n             * line-\n             * comment *",
+            );
+            assert_eq!(tts.next().unwrap().span().as_str(), "bar");
+            assert_eq!(tts.next().unwrap().span().as_str(), ":");
+            assert_eq!(tts.next().unwrap().span().as_str(), "i32");
+            assert_eq!(tts.next().unwrap().span().as_str(), ",");
+            assert!(tts.next().is_none());
+        }
+        assert!(tts.next().is_none());
     }
 }

@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: struct S
+# nextln: $()The name "S" shadows another symbol with the same name.

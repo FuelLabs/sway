@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: use ::bar::{* as all};
+# nextln: $()Expected `,`.

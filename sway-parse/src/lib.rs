@@ -9,15 +9,15 @@ pub mod intrinsics;
 mod item;
 pub mod keywords;
 mod literal;
+pub mod module;
 pub mod parse;
 pub mod parser;
 pub mod path;
 pub mod pattern;
 mod priv_prelude;
-pub mod program;
 pub mod punctuated;
 pub mod statement;
-mod token;
+pub mod token;
 pub mod ty;
 pub mod where_clause;
 
@@ -49,14 +49,14 @@ pub use crate::{
     },
     keywords::{DoubleColonToken, PubToken},
     literal::{LitInt, LitIntType, Literal},
+    module::{Module, ModuleKind},
     parse::Parse,
     parser::Parser,
     path::{PathExpr, PathExprSegment, PathType, PathTypeSegment, QualifiedPathRoot},
     pattern::{Pattern, PatternStructField},
-    program::{Program, ProgramKind},
     statement::{Statement, StatementLet},
-    token::lex,
     token::LexError,
+    token::{lex, lex_commented},
     ty::Ty,
     where_clause::{WhereBound, WhereClause},
 };
@@ -72,16 +72,16 @@ pub enum ParseFileError {
     Parse(Vec<ParseError>),
 }
 
-pub fn parse_file(src: Arc<str>, path: Option<Arc<PathBuf>>) -> Result<Program, ParseFileError> {
+pub fn parse_file(src: Arc<str>, path: Option<Arc<PathBuf>>) -> Result<Module, ParseFileError> {
     let token_stream = match lex(&src, 0, src.len(), path) {
         Ok(token_stream) => token_stream,
         Err(error) => return Err(ParseFileError::Lex(error)),
     };
     let mut errors = Vec::new();
     let parser = Parser::new(&token_stream, &mut errors);
-    let program = match parser.parse_to_end() {
-        Ok((program, _parser_consumed)) => program,
+    let module = match parser.parse_to_end() {
+        Ok((module, _parser_consumed)) => module,
         Err(_error_emitted) => return Err(ParseFileError::Parse(errors)),
     };
-    Ok(program)
+    Ok(module)
 }

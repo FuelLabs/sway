@@ -1,0 +1,9 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-2171B95500509358'
+dependencies = []
+
+[[package]]
+name = 'generic_inside_generic'
+source = 'root'
+dependencies = ['core']

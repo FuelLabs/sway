@@ -14,14 +14,14 @@ fn main() -> bool {
     Secret Key: SecretKey(3b940b5586823dfd02ae3b461bb4336b5ecbaefd6627aa922efc048fec0c881c)
     Public Key: 1d152307c6b72b0ed0418b0e70cd80e7f5295b8d86f5722d3f5213fbd2394f36b7ce9c3e45905178455900b44abb308f3ef480481a4b2ee3f70aca157fde396a
     Fuel Address (sha2-256): 6ba48099f6b75cae5a403863ace6ee8dc03f75e7aebc58b819667477358ae677
-    Ethereum pubkey hash (keccak256): e4eab8f844a8d11b205fd137a1b7ea5ede26f651909505d99cf8b5c0d4c8e9c1
+    EVM pubkey hash (keccak256): e4eab8f844a8d11b205fd137a1b7ea5ede26f651909505d99cf8b5c0d4c8e9c1
     Message Hash: 8ddb13a2ab58f413bd3121e1ddc8b83a328f3b830d19a7c471f0be652d23bb0e
     Signature: 82115ed208d8fe8dd522d88ca77812b34d270d6bb6326ff511297766a3af1166c07204f554a00e49a2ee69f0979dc4feef07f7dba8d779d388fb2a53bc9bcde4
    */
 
-    // Get the expected ethereum address
+    // Get the expected EVM address
     let pubkeyhash = 0xe4eab8f844a8d11b205fd137a1b7ea5ede26f651909505d99cf8b5c0d4c8e9c1;
-    let ethereum_address = ~EvmAddress::from(pubkeyhash);
+    let evm_address = ~EvmAddress::from(pubkeyhash);
 
     let msg_hash = 0x8ddb13a2ab58f413bd3121e1ddc8b83a328f3b830d19a7c471f0be652d23bb0e;
 
@@ -34,5 +34,5 @@ fn main() -> bool {
     let result: Result<EvmAddress, EcRecoverError> = ec_recover_evm_address(signature, msg_hash);
     let recovered_address = result.unwrap();
 
-    recovered_address == ethereum_address
+    recovered_address == evm_address
 }

@@ -1,10 +1,54 @@
 script;
-use storage_access_abi::{S, StorageAccess, T};
-use std::assert::assert;
+use storage_access_abi::*;
+use std::{assert::assert, hash::sha256, revert::revert};
 
 fn main() -> bool {
-    let contract_id = 0xbef38abd5d5a2025d357fe69904af063f69256167e38e44d15fb18ecb4f73a6d;
+    let contract_id = 0x1c7c76380ef43c048596b4cda60eff2763d7c081b70d8662a3e1d18a9ee1dc2b;
     let caller = abi(StorageAccess, contract_id);
+
+    // Test initializers
+    assert(caller.get_x() == 64);
+    assert(caller.get_y() == 0x0101010101010101010101010101010101010101010101010101010101010101);
+    assert(caller.get_boolean() == true);
+    assert(caller.get_int8() == 8);
+    assert(caller.get_int16() == 16);
+    assert(caller.get_int32() == 32);
+    let s = caller.get_s();
+    assert(s.x == 1);
+    assert(s.y == 2);
+    assert(s.z == 0x0000000000000000000000000000000000000000000000000000000000000003);
+    assert(s.t.x == 4);
+    assert(s.t.y == 5);
+    assert(s.t.z == 0x0000000000000000000000000000000000000000000000000000000000000006);
+    assert(s.t.boolean == true);
+    assert(s.t.int8 == 7);
+    assert(s.t.int16 == 8);
+    assert(s.t.int32 == 9);
+    let e = caller.get_e();
+    match e {
+        E::B(t) => {
+            assert(t.x == 1);
+            assert(t.y == 2);
+            assert(t.z == 0x0000000000000000000000000000000000000000000000000000000000000003);
+            assert(t.boolean == true);
+            assert(t.int8 == 4);
+            assert(t.int16 == 5);
+            assert(t.int32 == 6);
+        }
+        _ => {
+            revert(0)
+        }
+    }
+    let e2 = caller.get_e2();
+    match e2 {
+        E::A(val) => {
+            assert(val == 777);
+        }
+        _ => {
+            revert(0)
+        }
+    }
+    assert(sha256(caller.get_string()) == sha256("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"));
 
     // Test 1
     caller.set_x(1);
@@ -117,6 +161,56 @@ fn main() -> bool {
     assert(t.x == 11);
     assert(t.y == 12);
     assert(t.z == 0x0000000000000000000000000000000000000000000000000000000000000006);
+
+    // Test operations on `s.t.x`
+    caller.add_to_s_dot_t_dot_x(15);
+    assert(caller.get_s_dot_t_dot_x() == 26); // 11 + 15
+
+    caller.subtract_from_s_dot_t_dot_x(6);
+    assert(caller.get_s_dot_t_dot_x() == 20); // 26 - 6
+
+    caller.multiply_by_s_dot_t_dot_x(5);
+    assert(caller.get_s_dot_t_dot_x() == 100); // 20 * 5
+
+    caller.divide_s_dot_t_dot_x(2);
+    assert(caller.get_s_dot_t_dot_x() == 50); // 100 / 2
+
+    caller.shift_left_s_dot_t_dot_x(3);
+    assert(caller.get_s_dot_t_dot_x() == 400); // 50 << 3
+
+    caller.shift_right_s_dot_t_dot_x(2);
+    assert(caller.get_s_dot_t_dot_x() == 100); // 400 >> 2
+
+    // Test 13
+    caller.set_e(E::A(42));
+    let e = caller.get_e();
+    match e {
+        E::A(val) => assert(val == 42), _ => {
+            revert(0)
+        }
+    }
+
+    caller.set_e(E::B(t));
+    let e = caller.get_e();
+    match e {
+        E::B(val) => {
+            assert(val.x == t.x);
+            assert(val.y == t.y);
+            assert(val.z == t.z);
+            assert(val.boolean == t.boolean);
+            assert(val.int8 == t.int8);
+            assert(val.int16 == t.int16);
+            assert(val.int32 == t.int32);
+        }
+        _ => {
+            revert(0)
+        }
+    };
+
+    caller.set_string("fuelfuelfuelfuelfuelfuelfuelfuelfuelfuel");
+
+    // Can't compare strings right now so compare hashes instead
+    assert(sha256(caller.get_string()) == sha256("fuelfuelfuelfuelfuelfuelfuelfuelfuelfuel"));
 
     true
 }
