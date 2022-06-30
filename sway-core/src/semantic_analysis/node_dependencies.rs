@@ -437,13 +437,12 @@ impl Dependencies {
                 self.gather_from_expr(prefix).gather_from_expr(index)
             }
             Expression::StructExpression {
-                struct_name,
+                call_path_binding,
                 fields,
-                type_arguments,
                 ..
             } => self
-                .gather_from_typeinfo(&struct_name.suffix.0)
-                .gather_from_type_arguments(type_arguments)
+                .gather_from_typeinfo(&call_path_binding.inner.suffix.0)
+                .gather_from_type_arguments(&call_path_binding.type_arguments)
                 .gather_from_iter(fields.iter(), |deps, field| {
                     deps.gather_from_expr(&field.value)
                 }),

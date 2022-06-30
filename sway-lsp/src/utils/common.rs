@@ -17,9 +17,10 @@ pub(crate) fn extract_var_body(var_dec: &VariableDeclaration) -> VarBody {
             call_path_binding: name,
             ..
         } => VarBody::FunctionCall(name.suffix.as_str().into()),
-        Expression::StructExpression { struct_name, .. } => {
-            VarBody::Type(struct_name.suffix.0.to_string())
-        }
+        Expression::StructExpression {
+            call_path_binding: struct_name,
+            ..
+        } => VarBody::Type(struct_name.suffix.0.to_string()),
         Expression::Literal { value, .. } => match value {
             Literal::U8(_) => VarBody::Type("u8".into()),
             Literal::U16(_) => VarBody::Type("u16".into()),

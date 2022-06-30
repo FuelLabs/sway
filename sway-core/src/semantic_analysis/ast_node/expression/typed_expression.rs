@@ -440,17 +440,10 @@ impl TypedExpression {
                 Self::type_check_asm_expression(ctx.by_ref(), asm, span)
             }
             Expression::StructExpression {
-                span,
-                type_arguments,
-                struct_name,
-                fields,
-            } => Self::type_check_struct_expression(
-                ctx.by_ref(),
-                struct_name,
-                type_arguments,
+                call_path_binding,
                 fields,
                 span,
-            ),
+            } => Self::type_check_struct_expression(ctx.by_ref(), call_path_binding, fields, span),
             Expression::SubfieldExpression {
                 prefix,
                 span,
@@ -955,18 +948,19 @@ impl TypedExpression {
     #[allow(clippy::too_many_arguments)]
     fn type_check_struct_expression(
         mut ctx: TypeCheckContext,
-        call_path: CallPath<(TypeInfo, Span)>,
-        type_arguments: Vec<TypeArgument>,
+        call_path_binding: TypeBinding<CallPath<(TypeInfo, Span)>>,
         fields: Vec<StructExpressionField>,
         span: Span,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let (type_info, type_info_span) = call_path.suffix.clone();
+        let (type_info, type_info_span) = call_path_binding.inner.suffix.clone();
 
         // find the module that the symbol is in
-        let type_info_prefix = ctx.namespace.find_module_path(&call_path.prefixes);
+        let type_info_prefix = ctx
+            .namespace
+            .find_module_path(&call_path_binding.inner.prefixes);
         check!(
             ctx.namespace.root().check_submodule(&type_info_prefix),
             return err(warnings, errors),
@@ -976,7 +970,7 @@ impl TypedExpression {
 
         // create the type info object
         let type_info = check!(
-            type_info.apply_type_arguments(type_arguments, &type_info_span),
+            type_info.apply_type_arguments(call_path_binding.type_arguments, &type_info_span),
             return err(warnings, errors),
             warnings,
             errors

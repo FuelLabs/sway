@@ -1185,9 +1185,9 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             }
         }
         Expr::Struct { path, fields } => {
-            let (struct_name, type_arguments) = path_expr_to_type_info_type_args(ec, path)?;
+            let call_path_binding = path_expr_to_call_path_binding(ec, path)?;
             Expression::StructExpression {
-                struct_name,
+                call_path_binding,
                 fields: {
                     fields
                         .into_inner()
@@ -1197,7 +1197,6 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         })
                         .collect::<Result<_, _>>()?
                 },
-                type_arguments,
                 span,
             }
         }
@@ -1451,7 +1450,7 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                                 let call_path_binding = TypeBinding {
                                     inner: call_path.clone(),
                                     type_arguments,
-                                    span: call_path.span(),
+                                    span: call_path.span(), // TODO: change this span so that it includes the type arguments
                                 };
                                 Expression::FunctionApplication {
                                     call_path_binding,
@@ -2282,11 +2281,10 @@ fn literal_to_literal(
 /// Like [path_expr_to_call_path], but instead can potentially return type arguments.
 /// Use this when converting a call path that could potentially include type arguments, i.e. the
 /// turbofish.
-#[allow(clippy::type_complexity)]
-fn path_expr_to_type_info_type_args(
+fn path_expr_to_call_path_binding(
     ec: &mut ErrorContext,
     path_expr: PathExpr,
-) -> Result<(CallPath<(TypeInfo, Span)>, Vec<TypeArgument>), ErrorEmitted> {
+) -> Result<TypeBinding<CallPath<(TypeInfo, Span)>>, ErrorEmitted> {
     let PathExpr {
         root_opt,
         prefix,
@@ -2327,14 +2325,15 @@ fn path_expr_to_type_info_type_args(
             (vec![], type_info, type_info_span, ty_args)
         }
     };
-    Ok((
-        CallPath {
+    Ok(TypeBinding {
+        inner: CallPath {
             prefixes,
-            suffix: (type_info, type_info_span),
+            suffix: (type_info, type_info_span.clone()),
             is_absolute,
         },
         type_arguments,
-    ))
+        span: type_info_span, // TODO: change this span so that it includes the type arguments
+    })
 }
 
 fn path_expr_to_call_path(

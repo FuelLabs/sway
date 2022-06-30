@@ -324,7 +324,7 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             }
         }
         Expression::StructExpression {
-            struct_name,
+            call_path_binding: struct_name,
             fields,
             ..
         } => {
