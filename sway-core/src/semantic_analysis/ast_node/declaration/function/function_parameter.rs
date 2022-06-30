@@ -67,7 +67,6 @@ impl TypedFunctionParameter {
                 } else {
                     VariableMutability::Immutable
                 },
-                const_decl_origin: false,
                 type_ascription: type_id,
             }),
         );

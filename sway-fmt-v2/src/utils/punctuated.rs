@@ -3,7 +3,7 @@ use crate::{
     FormatterError,
 };
 use std::fmt::Write;
-use sway_parse::punctuated::Punctuated;
+use sway_parse::{punctuated::Punctuated, TypeField};
 use sway_types::Spanned;
 
 impl<T, P> Format for Punctuated<T, P>
@@ -32,6 +32,23 @@ where
             formatted_code.push_str(final_value.span().as_str());
         }
 
+        Ok(())
+    }
+}
+
+impl Format for TypeField {
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        _formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        write!(
+            formatted_code,
+            "{}{} {}",
+            self.name.span().as_str(),
+            self.colon_token.span().as_str(),
+            self.ty.span().as_str()
+        )?;
         Ok(())
     }
 }

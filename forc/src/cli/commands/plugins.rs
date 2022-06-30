@@ -1,7 +1,7 @@
 use crate::cli::PluginsCommand;
 use anyhow::{anyhow, Result};
 use clap::Parser;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tracing::info;
 
 /// Find all forc plugins available via `PATH`.
@@ -32,9 +32,9 @@ pub(crate) fn exec(command: PluginsCommand) -> Result<()> {
 
 /// Find a plugin's description
 ///
-/// Given a plugin name, returns the description included in the `-h` opt. Returns
-/// a generic description if a description cannot be found
-fn parse_description_for_plugin(plugin: &str) -> String {
+/// Given a cannonical plugin path, returns the description included in the `-h` opt.
+/// Returns a generic description if a description cannot be found
+fn parse_description_for_plugin(plugin: &Path) -> String {
     use std::process::Command;
     let default_description = "No description found for this plugin.";
     let proc = Command::new(plugin)
@@ -78,7 +78,7 @@ fn format_print_description(
             .to_string()
     };
 
-    let description = parse_description_for_plugin(&display);
+    let description = parse_description_for_plugin(&path);
 
     if describe {
         Ok(format!("  {} \t\t{}", display, description))
