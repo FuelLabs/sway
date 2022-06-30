@@ -577,7 +577,7 @@ impl TypeInfo {
                 name,
                 type_arguments: other_type_arguments,
             } => {
-                if other_type_arguments.is_none() {
+                if other_type_arguments.is_some() {
                     errors.push(CompileError::TypeArgumentsNotAllowed { span: span.clone() });
                     err(warnings, errors)
                 } else {
