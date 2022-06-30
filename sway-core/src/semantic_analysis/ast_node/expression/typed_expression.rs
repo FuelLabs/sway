@@ -837,7 +837,7 @@ impl TypedExpression {
         };
         let type_id = typed_value.return_type;
 
-        let _ = check!(
+        check!(
             look_up_type_id(type_id).expect_is_supported_in_match_expressions(&typed_value.span),
             return err(warnings, errors),
             warnings,
