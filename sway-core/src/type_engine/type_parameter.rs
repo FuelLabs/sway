@@ -1,4 +1,9 @@
-use crate::{error::*, semantic_analysis::*, type_engine::*};
+use crate::{
+    error::*,
+    semantic_analysis::*,
+    type_engine::*,
+    types::{JsonAbiString, ToJsonAbi},
+};
 
 use sway_types::{ident::Ident, span::Span, Spanned};
 
@@ -63,6 +68,22 @@ impl ReplaceSelfType for TypeParameter {
 impl fmt::Display for TypeParameter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}: {}", self.name_ident, self.type_id)
+    }
+}
+
+impl ToJsonAbi for TypeParameter {
+    type Output = Property;
+
+    fn generate_json_abi(&self) -> Self::Output {
+        Property {
+            name: self.name_ident.to_string(),
+            type_field: self.type_id.json_abi_str(),
+            components: self.type_id.generate_json_abi(),
+            type_arguments: self
+                .type_id
+                .get_type_parameters()
+                .and_then(|v| Some(v.iter().map(|param| param.generate_json_abi()).collect())),
+        }
     }
 }
 

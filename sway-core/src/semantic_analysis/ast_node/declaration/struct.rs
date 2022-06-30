@@ -182,6 +182,10 @@ impl ToJsonAbi for TypedStructField {
             name: self.name.to_string(),
             type_field: self.type_id.json_abi_str(),
             components: self.type_id.generate_json_abi(),
+            type_arguments: self
+                .type_id
+                .get_type_parameters()
+                .and_then(|v| Some(v.iter().map(|param| param.generate_json_abi()).collect())),
         }
     }
 }
