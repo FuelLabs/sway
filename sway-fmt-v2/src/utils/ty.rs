@@ -5,6 +5,7 @@ use sway_parse::{
     expr::Expr,
     keywords::{StrToken, UnderscoreToken},
     path::PathType,
+    token::Delimiter,
     ty::{Ty, TyArrayDescriptor, TyTupleDescriptor},
 };
 use sway_types::Spanned;
@@ -16,12 +17,12 @@ impl Format for Ty {
     ) -> Result<(), FormatterError> {
         match self {
             Self::Array(arr_descriptor) => {
-                formatted_code.push('[');
+                formatted_code.push(Delimiter::Bracket.as_open_char());
                 arr_descriptor
                     .clone()
                     .into_inner()
                     .format(formatted_code, formatter)?;
-                formatted_code.push(']');
+                formatted_code.push(Delimiter::Bracket.as_close_char());
                 Ok(())
             }
             Self::Infer { underscore_token } => format_infer(formatted_code, underscore_token),
@@ -69,13 +70,19 @@ fn format_path(
     Ok(())
 }
 
-/// Currently does not apply formatting, just pushes the str version of span
 fn format_str(
     formatted_code: &mut FormattedCode,
     str_token: StrToken,
-    _length: SquareBrackets<Box<Expr>>,
+    length: SquareBrackets<Box<Expr>>,
 ) -> Result<(), FormatterError> {
-    formatted_code.push_str(str_token.span().as_str());
+    write!(
+        formatted_code,
+        "{}{}{}{}",
+        str_token.span().as_str(),
+        Delimiter::Bracket.as_open_char(),
+        length.into_inner().span().as_str(),
+        Delimiter::Bracket.as_close_char()
+    )?;
     Ok(())
 }
 /// Currently does not apply formatting, just pushes the str version of span
