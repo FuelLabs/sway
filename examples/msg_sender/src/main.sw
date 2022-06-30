@@ -3,7 +3,7 @@ contract;
 use std::{
     address::Address,
     assert::assert,
-    chain::auth::{AuthError, msg_sender},
+    chain::auth::{AuthError,msg_sender},
     identity::Identity,
     result::*,
     revert::revert,
