@@ -1,7 +1,8 @@
 script;
 
-use std::{assert::assert, constants::ZERO_B256, contract_id::ContractId, logging::log};
+use std::{assert::assert, contract_id::ContractId, logging::log};
 
+const ETH_ID0 = ~ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000);
 fn contract_id_wrapper(b: b256) -> ContractId {
     ~ContractId::from(b)
 }
@@ -32,15 +33,12 @@ const EN1a = En1::Int(101);
 const EN1b = En1::Arr(ARR2);
 const EN1c = En1::NoVal;
 
-
+const ETH_ID0_VALUE = ETH_ID0.value;
 const TUP1_idx2 = TUP1.2;
 
 fn main() -> u64 {
-    let ETH_ID0 = ~ContractId::from(ZERO_B256);
-    let ETH_ID0_VALUE = ETH_ID0.value;
-
     // initialization through function applications.
-    let eth_id0 = ~ContractId::from(ZERO_B256);
+    let eth_id0 = ~ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000);
     let eth_id1 = ~ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
     assert(eth_id0 == ETH_ID0 && eth_id1 == ETH_ID1);
 
