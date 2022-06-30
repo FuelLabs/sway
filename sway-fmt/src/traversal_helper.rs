@@ -229,8 +229,7 @@ fn format_use_statement_length(s: &str, max_length: usize, level: usize) -> Stri
                 }
             }
             "{" => {
-                #[allow(clippy::format_push_string)]
-                line.push_str(&format!(" {} ", token));
+                line.push_str(token);
                 if *open_brackets == 0 {
                     is_line = true;
                 }
