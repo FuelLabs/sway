@@ -219,7 +219,7 @@ fn discover_test_configs() -> Result<Vec<TestDescription>, String> {
     Ok(configs)
 }
 
-const DIRECTIVE_RX: &str = r"#\s*(\w+):\s+(.*)";
+const DIRECTIVE_RX: &str = r"(?m)^\s*#\s*(\w+):\s+(.*)$";
 
 fn build_file_checker(content: &String) -> Result<filecheck::Checker, String> {
     let mut checker = filecheck::CheckerBuilder::new();
