@@ -23,6 +23,7 @@ pub(crate) fn instantiate_function_application(
         });
     }
 
+    // check that the number of parameters and the number of the arguments is the same
     check!(
         check_function_arguments_arity(arguments.len(), &function_decl, &call_path),
         return err(warnings, errors),
@@ -56,20 +57,15 @@ pub(crate) fn instantiate_function_application(
         .collect();
 
     let span = function_decl.span.clone();
-    let exp = check!(
-        instantiate_function_application_inner(
-            call_path,
-            HashMap::new(),
-            typed_arguments,
-            function_decl,
-            None,
-            IsConstant::No,
-            None,
-            span,
-        ),
-        return err(warnings, errors),
-        warnings,
-        errors
+    let exp = instantiate_function_application_inner(
+        call_path,
+        HashMap::new(),
+        typed_arguments,
+        function_decl,
+        None,
+        IsConstant::No,
+        None,
+        span,
     );
     ok(exp, warnings, errors)
 }
@@ -88,6 +84,7 @@ pub(crate) fn instantiate_function_application_simple(
     let mut warnings = vec![];
     let mut errors = vec![];
 
+    // check that the number of parameters and the number of the arguments is the same
     check!(
         check_function_arguments_arity(arguments.len(), &function_decl, &call_path),
         return err(warnings, errors),
@@ -102,25 +99,20 @@ pub(crate) fn instantiate_function_application_simple(
         .map(|(param, arg)| (param.name.clone(), arg))
         .collect::<Vec<(_, _)>>();
 
-    let exp = check!(
-        instantiate_function_application_inner(
-            call_path,
-            contract_call_params,
-            args_and_names,
-            function_decl,
-            selector,
-            is_constant,
-            self_state_idx,
-            span,
-        ),
-        return err(warnings, errors),
-        warnings,
-        errors
+    let exp = instantiate_function_application_inner(
+        call_path,
+        contract_call_params,
+        args_and_names,
+        function_decl,
+        selector,
+        is_constant,
+        self_state_idx,
+        span,
     );
     ok(exp, warnings, errors)
 }
 
-fn check_function_arguments_arity(
+pub(crate) fn check_function_arguments_arity(
     arguments_len: usize,
     function_decl: &TypedFunctionDeclaration,
     call_path: &CallPath,
@@ -151,7 +143,6 @@ fn check_function_arguments_arity(
 }
 
 #[allow(clippy::too_many_arguments)]
-#[allow(clippy::comparison_chain)]
 fn instantiate_function_application_inner(
     call_path: CallPath,
     contract_call_params: HashMap<String, TypedExpression, RandomState>,
@@ -161,35 +152,20 @@ fn instantiate_function_application_inner(
     is_constant: IsConstant,
     self_state_idx: Option<StateIndex>,
     span: Span,
-) -> CompileResult<TypedExpression> {
-    let warnings = vec![];
-    let mut errors = vec![];
-
-    if arguments.len() != function_decl.parameters.len() {
-        errors.push(CompileError::Internal(
-            "expected same number of function parameters and arguments",
-            span,
-        ));
-        return err(warnings, errors);
-    }
-
-    ok(
-        TypedExpression {
-            expression: TypedExpressionVariant::FunctionApplication {
-                call_path,
-                contract_call_params,
-                arguments,
-                function_body: function_decl.body.clone(),
-                function_body_name_span: function_decl.name.span(),
-                function_body_purity: function_decl.purity,
-                self_state_idx,
-                selector,
-            },
-            return_type: function_decl.return_type,
-            is_constant,
-            span,
+) -> TypedExpression {
+    TypedExpression {
+        expression: TypedExpressionVariant::FunctionApplication {
+            call_path,
+            contract_call_params,
+            arguments,
+            function_body: function_decl.body.clone(),
+            function_body_name_span: function_decl.name.span(),
+            function_body_purity: function_decl.purity,
+            self_state_idx,
+            selector,
         },
-        warnings,
-        errors,
-    )
+        return_type: function_decl.return_type,
+        is_constant,
+        span,
+    }
 }

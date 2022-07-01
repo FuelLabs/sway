@@ -239,6 +239,14 @@ pub(crate) fn type_check_method_application(
         None
     };
 
+    // check that the number of parameters and the number of the arguments is the same
+    check!(
+        check_function_arguments_arity(args_buf.len(), &method, &call_path),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
     // unify the types of the arguments with the types of the parameters from the function declaration
     for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
         let (mut new_warnings, new_errors) = ctx
