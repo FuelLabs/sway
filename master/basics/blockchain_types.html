@@ -185,27 +185,6 @@ let forty_two: b256 = my_contract_id.into();
                 revert(0);
             }
         };
-    }
-
-    fn different_executions(my_identity: Identity) {
-        let amount = 1;
-        let token_id = BASE_ASSET_ID;
-
-        match my_identity {
-            Identity::Address(identity) =&gt; {
-                transfer_to_output(amount, token_id, identity);
-            },
-            Identity::ContractId(identity) =&gt; {
-                force_transfer_to_contract(amount, token_id, identity);
-            },
-        };
-    }
-
-    #[storage(read)]fn access_control_with_identity() {
-        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
-        require(sender.unwrap() == storage.owner, MyError::UnauthorizedUser);
-    }
-}
 </code></pre>
 <pre><code class="language-sway">        match my_identity {
             Identity::Address(identity) =&gt; {
