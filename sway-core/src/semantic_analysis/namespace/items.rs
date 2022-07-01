@@ -63,8 +63,8 @@ impl Items {
         ok((), vec![], vec![])
     }
 
-    pub fn get_all_declared_symbols(&self) -> impl Iterator<Item = &TypedDeclaration> {
-        self.symbols().values()
+    pub fn get_all_declared_symbols(&self) -> impl Iterator<Item = &Ident> {
+        self.symbols().keys()
     }
 
     pub(crate) fn insert_symbol(
@@ -97,13 +97,10 @@ impl Items {
         ok((), warnings, errors)
     }
 
-    pub(crate) fn check_symbol(&self, name: &Ident) -> CompileResult<&TypedDeclaration> {
+    pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&TypedDeclaration, CompileError> {
         match self.symbols.get(name) {
-            Some(decl) => ok(decl, vec![], vec![]),
-            None => err(
-                vec![],
-                vec![CompileError::SymbolNotFound { name: name.clone() }],
-            ),
+            Some(decl) => Ok(decl),
+            None => Err(CompileError::SymbolNotFound { name: name.clone() }),
         }
     }
 
