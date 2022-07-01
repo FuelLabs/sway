@@ -86,8 +86,8 @@ pub struct CompileResult<T> {
     pub errors: Vec<CompileError>,
 }
 
-impl<T> From<Result<T, TypeError>> for CompileResult<T> {
-    fn from(o: Result<T, TypeError>) -> Self {
+impl<T> From<Result<T, CompileError>> for CompileResult<T> {
+    fn from(o: Result<T, CompileError>) -> Self {
         match o {
             Ok(o) => CompileResult {
                 value: Some(o),
@@ -97,7 +97,7 @@ impl<T> From<Result<T, TypeError>> for CompileResult<T> {
             Err(e) => CompileResult {
                 value: None,
                 warnings: vec![],
-                errors: vec![e.into()],
+                errors: vec![e],
             },
         }
     }
@@ -995,6 +995,24 @@ pub enum CompileError {
     NonConstantDeclValue { span: Span },
     #[error("Declaring storage in a {program_kind} is not allowed.")]
     StorageDeclarationInNonContract { program_kind: String, span: Span },
+    #[error("Unsupported argument type to intrinsic \"{name}\".")]
+    IntrinsicUnsupportedArgType { name: String, span: Span },
+    #[error("Call to \"{name}\" expects {expected} arguments")]
+    IntrinsicIncorrectNumArgs {
+        name: String,
+        expected: u64,
+        span: Span,
+    },
+    #[error("Call to \"{name}\" expects {expected} type arguments")]
+    IntrinsicIncorrectNumTArgs {
+        name: String,
+        expected: u64,
+        span: Span,
+    },
+    #[error("\"break\" used outside of a loop")]
+    BreakOutsideLoop { span: Span },
+    #[error("\"continue\" used outside of a loop")]
+    ContinueOutsideLoop { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1151,6 +1169,11 @@ impl Spanned for CompileError {
             TupleIndexOutOfBounds { span, .. } => span.clone(),
             NonConstantDeclValue { span } => span.clone(),
             StorageDeclarationInNonContract { span, .. } => span.clone(),
+            IntrinsicUnsupportedArgType { span, .. } => span.clone(),
+            IntrinsicIncorrectNumArgs { span, .. } => span.clone(),
+            IntrinsicIncorrectNumTArgs { span, .. } => span.clone(),
+            BreakOutsideLoop { span } => span.clone(),
+            ContinueOutsideLoop { span } => span.clone(),
         }
     }
 }

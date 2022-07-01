@@ -36,17 +36,25 @@ const EN1c = En1::NoVal;
 const ETH_ID0_VALUE = ETH_ID0.value;
 const TUP1_idx2 = TUP1.2;
 
+const INT1 = 1;
+
+const ZERO_B256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+const KEY = ZERO_B256;
+
 fn main() -> u64 {
+    const int1 = 1;
+    assert(int1 == INT1 && ZERO_B256 == KEY);
+
     // initialization through function applications.
-    let eth_id0 = ~ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000);
-    let eth_id1 = ~ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
+    const eth_id0 = ~ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000);
+    const eth_id1 = ~ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
     assert(eth_id0 == ETH_ID0 && eth_id1 == ETH_ID1);
 
     // tuples and arrays.
-    let t1 = (2, 1, 21);
+    const t1 = (2, 1, 21);
     assert(t1.0 == TUP1.0 && t1.1 == TUP1.1 && t1.2 == TUP1.2);
     assert(t1.0 == TUP2.0 && t1.1 == TUP2.1 && t1.2 == TUP2.2);
-    let a1 = [1, 2, 3];
+    const a1 = [1, 2, 3];
     assert(a1[0] == ARR1[0] && a1[1] == ARR1[1] && a1[2] == ARR1[2]);
     assert(a1[0] == ARR2[0] && a1[1] == ARR2[1] && a1[2] == ARR2[2]);
 

@@ -1,8 +1,8 @@
 use crate::{
     error::ok,
     semantic_analysis::{
-        EnforceTypeArguments, IsConstant, TypeCheckContext, TypedExpression,
-        TypedExpressionVariant, TypedVariableDeclaration, VariableMutability,
+        IsConstant, TypeCheckContext, TypedExpression, TypedExpressionVariant,
+        TypedVariableDeclaration, VariableMutability,
     },
     type_engine::*,
     CompileResult, FunctionParameter, Ident, TypedDeclaration,
@@ -67,7 +67,6 @@ impl TypedFunctionParameter {
                 } else {
                     VariableMutability::Immutable
                 },
-                const_decl_origin: false,
                 type_ascription: type_id,
             }),
         );

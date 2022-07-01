@@ -389,7 +389,7 @@ mod ir_builder {
                 }
 
             rule struct_const() -> IrAstConstValue
-                = "{" _ flds:(field_or_element_const() ++ comma()) "}" _ {
+                = "{" _ flds:(field_or_element_const() ** comma()) "}" _ {
                     IrAstConstValue::Struct(flds)
                 }
 
@@ -422,7 +422,7 @@ mod ir_builder {
                 }
 
             rule struct_ty() -> IrAstTy
-                = "{" _ tys:(ast_ty() ++ comma()) "}" _ {
+                = "{" _ tys:(ast_ty() ** comma()) "}" _ {
                     IrAstTy::Struct(tys)
                 }
 

@@ -16,6 +16,7 @@ use crate::{
     error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::DeterministicallyAborts,
 };
 
+use sway_parse::intrinsics::Intrinsic;
 use sway_types::{Ident, Span, Spanned};
 
 use std::{
@@ -519,9 +520,18 @@ impl TypedExpression {
                     .with_help_text("");
                 Self::type_check_storage_load(ctx, field_names, &expr_span)
             }
-            Expression::IntrinsicFunction { kind, span } => {
-                Self::type_check_intrinsic_function(ctx.by_ref(), kind, span)
-            }
+            Expression::IntrinsicFunction {
+                kind,
+                type_arguments,
+                arguments,
+                span,
+            } => Self::type_check_intrinsic_function(
+                ctx.by_ref(),
+                kind,
+                type_arguments,
+                arguments,
+                span,
+            ),
         };
         let mut typed_expression = match res.value {
             Some(r) => r,
@@ -826,7 +836,7 @@ impl TypedExpression {
         };
         let type_id = typed_value.return_type;
 
-        let _ = check!(
+        check!(
             look_up_type_id(type_id).expect_is_supported_in_match_expressions(&typed_value.span),
             return err(warnings, errors),
             warnings,
@@ -976,17 +986,21 @@ impl TypedExpression {
             warnings,
             errors
         );
-        let struct_decl = check!(
-            unknown_decl.expect_struct(),
+        let mut struct_decl = check!(
+            unknown_decl.expect_struct().cloned(),
             return err(warnings, errors),
             warnings,
             errors
-        )
-        .clone();
+        );
 
         // monomorphize the struct definition
-        let mut struct_decl = check!(
-            ctx.monomorphize(struct_decl, type_arguments, EnforceTypeArguments::No, None),
+        check!(
+            ctx.monomorphize(
+                &mut struct_decl,
+                type_arguments,
+                EnforceTypeArguments::No,
+                &call_path.span()
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -1597,13 +1611,21 @@ impl TypedExpression {
 
     fn type_check_intrinsic_function(
         ctx: TypeCheckContext,
-        kind: IntrinsicFunctionKind,
+        kind: Intrinsic,
+        type_arguments: Vec<TypeArgument>,
+        arguments: Vec<Expression>,
         span: Span,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let (intrinsic_function, return_type) = check!(
-            TypedIntrinsicFunctionKind::type_check(ctx, kind),
+            TypedIntrinsicFunctionKind::type_check(
+                ctx,
+                kind,
+                type_arguments,
+                arguments,
+                span.clone()
+            ),
             return err(warnings, errors),
             warnings,
             errors
