@@ -58,6 +58,7 @@ pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<Par
 
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
 fn parse_in_memory(src: Arc<str>) -> CompileResult<ParseProgram> {
+    println!("memory");
     let module = match sway_parse::parse_file(src, None) {
         Ok(module) => module,
         Err(error) => return err(vec![], parse_file_error_to_compile_errors(error)),
@@ -73,6 +74,7 @@ fn parse_in_memory(src: Arc<str>) -> CompileResult<ParseProgram> {
 /// When a `BuildConfig` is given, the module source may declare `dep`s that must be parsed from
 /// other files.
 fn parse_files(src: Arc<str>, config: &BuildConfig) -> CompileResult<ParseProgram> {
+    println!("files");
     let root_mod_path = config.canonical_root_module();
     parse_module_tree(src, root_mod_path).flat_map(|(kind, root)| {
         let program = ParseProgram { kind, root };
@@ -223,7 +225,9 @@ pub fn compile_to_ast(
     let parse_program = match parse_program_opt {
         Some(parse_program) => parse_program,
         None => {
+            println!("parse error");
             errors = dedup_unsorted(errors);
+            println!("errors: {:?}", errors);
             warnings = dedup_unsorted(warnings);
             return CompileAstResult::Failure { errors, warnings };
         }
@@ -239,6 +243,7 @@ pub fn compile_to_ast(
     let typed_program = match typed_program_result {
         Some(typed_program) => typed_program,
         None => {
+            println!("type error");
             errors = dedup_unsorted(errors);
             warnings = dedup_unsorted(warnings);
             return CompileAstResult::Failure { errors, warnings };
@@ -266,6 +271,7 @@ pub fn compile_to_ast(
     let typed_program_with_storage_slots = match typed_program_with_storage_slots_result {
         Some(typed_program_with_storage_slots) => typed_program_with_storage_slots,
         None => {
+            println!("type slot error");
             errors = dedup_unsorted(errors);
             warnings = dedup_unsorted(warnings);
             return CompileAstResult::Failure { errors, warnings };

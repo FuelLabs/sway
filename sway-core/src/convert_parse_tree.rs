@@ -2600,6 +2600,8 @@ fn statement_let_to_ast_nodes(
                 return Err(ec.error(error));
             }
             Pattern::Struct { .. } => {
+                println!("pattner: {:?}", pattern);
+                println!("expression: {:?}", expression);
                 let error = ConvertParseTreeError::StructPatternsNotSupportedHere { span };
                 return Err(ec.error(error));
             }

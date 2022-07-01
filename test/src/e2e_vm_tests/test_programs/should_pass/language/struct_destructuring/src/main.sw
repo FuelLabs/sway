@@ -14,5 +14,3 @@ fn main() -> u64 {
 struct Data { 
     value: u64,
 }
-
-
