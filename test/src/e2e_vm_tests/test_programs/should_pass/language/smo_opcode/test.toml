@@ -1,2 +1,2 @@
-category = "run"
+category = "disabled"
 expected_result = { action = "return", value = 1 }
