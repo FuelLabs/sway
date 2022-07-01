@@ -335,6 +335,12 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
                 Declaration::StorageDeclaration(storage_declaration),
             )]
         }
+        ItemKind::Break(_) => {
+            vec![AstNodeContent::Declaration(Declaration::Break)]
+        }
+        ItemKind::Continue(_) => {
+            vec![AstNodeContent::Declaration(Declaration::Continue)]
+        }
     };
     Ok(contents
         .into_iter()
@@ -578,7 +584,7 @@ fn item_fn_to_function_declaration(
         purity: get_attributed_purity(ec, attributes)?,
         name: item_fn.fn_signature.name,
         visibility: pub_token_opt_to_visibility(item_fn.fn_signature.visibility),
-        body: braced_code_block_contents_to_code_block(ec, item_fn.body)?,
+        body: braced_code_block_contents_to_code_block(ec, item_fn.body, false)?,
         parameters: fn_args_to_function_parameters(
             ec,
             item_fn.fn_signature.arguments.into_inner(),
@@ -906,6 +912,7 @@ fn type_field_to_enum_variant(
 fn braced_code_block_contents_to_code_block(
     ec: &mut ErrorContext,
     braced_code_block_contents: Braces<CodeBlockContents>,
+    is_while_loop_body: bool,
 ) -> Result<CodeBlock, ErrorEmitted> {
     let whole_block_span = braced_code_block_contents.span();
     let code_block_contents = braced_code_block_contents.into_inner();
@@ -916,7 +923,11 @@ fn braced_code_block_contents_to_code_block(
             contents.extend(ast_nodes);
         }
         if let Some(expr) = code_block_contents.final_expr_opt {
-            let final_ast_node = expr_to_ast_node(ec, *expr, true)?;
+            let final_ast_node = expr_to_ast_node(
+                ec,
+                *expr,
+                !is_while_loop_body, // end_of_non_while_loop_body_block
+            )?;
             contents.push(final_ast_node);
         }
         contents
@@ -1087,7 +1098,7 @@ fn path_type_to_call_path(
 fn expr_to_ast_node(
     ec: &mut ErrorContext,
     expr: Expr,
-    end_of_block: bool,
+    end_of_non_while_loop_body_block: bool,
 ) -> Result<AstNode, ErrorEmitted> {
     let span = expr.span();
     let ast_node = match expr {
@@ -1109,7 +1120,9 @@ fn expr_to_ast_node(
         } => AstNode {
             content: AstNodeContent::WhileLoop(WhileLoop {
                 condition: expr_to_expression(ec, *condition)?,
-                body: braced_code_block_contents_to_code_block(ec, block)?,
+                body: braced_code_block_contents_to_code_block(
+                    ec, block, true, // is_while_loop_body
+                )?,
             }),
             span,
         },
@@ -1150,7 +1163,7 @@ fn expr_to_ast_node(
         },
         expr => {
             let expression = expr_to_expression(ec, expr)?;
-            if end_of_block {
+            if end_of_non_while_loop_body_block {
                 AstNode {
                     content: AstNodeContent::ImplicitReturnExpression(expression),
                     span,
@@ -2050,7 +2063,7 @@ fn braced_code_block_contents_to_expression(
 ) -> Result<Expression, ErrorEmitted> {
     let span = braced_code_block_contents.span();
     Ok(Expression::CodeBlock {
-        contents: braced_code_block_contents_to_code_block(ec, braced_code_block_contents)?,
+        contents: braced_code_block_contents_to_code_block(ec, braced_code_block_contents, false)?,
         span,
     })
 }
@@ -2068,7 +2081,7 @@ fn if_expr_to_expression(
     } = if_expr;
     let then_block_span = then_block.span();
     let then_block = Expression::CodeBlock {
-        contents: braced_code_block_contents_to_code_block(ec, then_block)?,
+        contents: braced_code_block_contents_to_code_block(ec, then_block, false)?,
         span: then_block_span.clone(),
     };
     let else_block = match else_opt {
@@ -2454,7 +2467,7 @@ fn match_branch_to_match_branch(
             MatchBranchKind::Block { block, .. } => {
                 let span = block.span();
                 Expression::CodeBlock {
-                    contents: braced_code_block_contents_to_code_block(ec, block)?,
+                    contents: braced_code_block_contents_to_code_block(ec, block, false)?,
                     span,
                 }
             }

@@ -544,24 +544,6 @@ impl Op {
                     );
                     VirtualOp::XORI(r1, r2, imm)
                 }
-                "cimv" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::CIMV(r1, r2, r3)
-                }
-                "ctmv" => {
-                    let (r1, r2) = check!(
-                        two_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::CTMV(r1, r2)
-                }
                 "ji" => {
                     let imm = check!(
                         single_imm_24(args, immediate, whole_op_span),
@@ -840,15 +822,6 @@ impl Op {
                         errors
                     );
                     VirtualOp::RVRT(r1)
-                }
-                "sldc" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::SLDC(r1, r2, r3)
                 }
                 "srw" => {
                     let (r1, r2) = check!(
@@ -1376,8 +1349,6 @@ impl fmt::Display for Op {
                 SUBI(a, b, c) => format!("subi {} {} {}", a, b, c),
                 XOR(a, b, c) => format!("xor {} {} {}", a, b, c),
                 XORI(a, b, c) => format!("xori {} {} {}", a, b, c),
-                CIMV(a, b, c) => format!("cimv {} {} {}", a, b, c),
-                CTMV(a, b) => format!("ctmv {} {}", a, b),
                 JI(a) => format!("ji {}", a),
                 JNEI(a, b, c) => format!("jnei {} {} {}", a, b, c),
                 JNZI(a, b) => format!("jnzi {} {}", a, b),
@@ -1410,7 +1381,6 @@ impl fmt::Display for Op {
                 LOGD(a, b, c, d) => format!("logd {} {} {} {}", a, b, c, d),
                 MINT(a) => format!("mint {}", a),
                 RVRT(a) => format!("rvrt {}", a),
-                SLDC(a, b, c) => format!("sldc {} {} {}", a, b, c),
                 SRW(a, b) => format!("srw {} {}", a, b),
                 SRWQ(a, b) => format!("srwq {} {}", a, b),
                 SWW(a, b) => format!("sww {} {}", a, b),

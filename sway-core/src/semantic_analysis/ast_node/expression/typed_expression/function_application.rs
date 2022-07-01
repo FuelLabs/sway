@@ -37,6 +37,13 @@ pub(crate) fn instantiate_function_application(
         });
     }
 
+    check!(
+        check_function_arguments_arity(arguments.len(), &function_decl, &call_path),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
     // type check arguments in function application vs arguments in function
     // declaration. Use parameter type annotations as annotations for the
     // arguments
@@ -92,22 +99,69 @@ pub(crate) fn instantiate_function_application_simple(
     self_state_idx: Option<StateIndex>,
     span: Span,
 ) -> CompileResult<TypedExpression> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+
+    check!(
+        check_function_arguments_arity(arguments.len(), &function_decl, &call_path),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
     let args_and_names = function_decl
         .parameters
         .iter()
         .zip(arguments.into_iter())
         .map(|(param, arg)| (param.name.clone(), arg))
         .collect::<Vec<(_, _)>>();
-    instantiate_function_application_inner(
-        call_path,
-        contract_call_params,
-        args_and_names,
-        function_decl,
-        selector,
-        is_constant,
-        self_state_idx,
-        span,
-    )
+
+    let exp = check!(
+        instantiate_function_application_inner(
+            call_path,
+            contract_call_params,
+            args_and_names,
+            function_decl,
+            selector,
+            is_constant,
+            self_state_idx,
+            span,
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    ok(exp, warnings, errors)
+}
+
+fn check_function_arguments_arity(
+    arguments_len: usize,
+    function_decl: &TypedFunctionDeclaration,
+    call_path: &CallPath<Ident>,
+) -> CompileResult<()> {
+    let warnings = vec![];
+    let mut errors = vec![];
+    match arguments_len.cmp(&function_decl.parameters.len()) {
+        std::cmp::Ordering::Equal => ok((), warnings, errors),
+        std::cmp::Ordering::Less => {
+            errors.push(CompileError::TooFewArgumentsForFunction {
+                span: call_path.span(),
+                method_name: function_decl.name.clone(),
+                expected: function_decl.parameters.len(),
+                received: arguments_len,
+            });
+            err(warnings, errors)
+        }
+        std::cmp::Ordering::Greater => {
+            errors.push(CompileError::TooManyArgumentsForFunction {
+                span: call_path.span(),
+                method_name: function_decl.name.clone(),
+                expected: function_decl.parameters.len(),
+                received: arguments_len,
+            });
+            err(warnings, errors)
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -124,42 +178,32 @@ fn instantiate_function_application_inner(
 ) -> CompileResult<TypedExpression> {
     let warnings = vec![];
     let mut errors = vec![];
-    match arguments.len().cmp(&function_decl.parameters.len()) {
-        std::cmp::Ordering::Equal => {
-            let exp = TypedExpression {
-                expression: TypedExpressionVariant::FunctionApplication {
-                    call_path,
-                    contract_call_params,
-                    arguments,
-                    function_body: function_decl.body.clone(),
-                    function_body_name_span: function_decl.name.span(),
-                    function_body_purity: function_decl.purity,
-                    self_state_idx,
-                    selector,
-                },
-                return_type: function_decl.return_type,
-                is_constant,
-                span,
-            };
-            ok(exp, warnings, errors)
-        }
-        std::cmp::Ordering::Less => {
-            errors.push(CompileError::TooFewArgumentsForFunction {
-                span,
-                method_name: function_decl.name,
-                expected: function_decl.parameters.len(),
-                received: arguments.len(),
-            });
-            err(warnings, errors)
-        }
-        std::cmp::Ordering::Greater => {
-            errors.push(CompileError::TooManyArgumentsForFunction {
-                span,
-                method_name: function_decl.name,
-                expected: function_decl.parameters.len(),
-                received: arguments.len(),
-            });
-            err(warnings, errors)
-        }
+
+    if arguments.len() != function_decl.parameters.len() {
+        errors.push(CompileError::Internal(
+            "expected same number of function parameters and arguments",
+            span,
+        ));
+        return err(warnings, errors);
     }
+
+    ok(
+        TypedExpression {
+            expression: TypedExpressionVariant::FunctionApplication {
+                call_path,
+                contract_call_params,
+                arguments,
+                function_body: function_decl.body.clone(),
+                function_body_name_span: function_decl.name.span(),
+                function_body_purity: function_decl.purity,
+                self_state_idx,
+                selector,
+            },
+            return_type: function_decl.return_type,
+            is_constant,
+            span,
+        },
+        warnings,
+        errors,
+    )
 }

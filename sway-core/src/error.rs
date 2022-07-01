@@ -1007,6 +1007,10 @@ pub enum CompileError {
         expected: u64,
         span: Span,
     },
+    #[error("\"break\" used outside of a loop")]
+    BreakOutsideLoop { span: Span },
+    #[error("\"continue\" used outside of a loop")]
+    ContinueOutsideLoop { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1167,6 +1171,8 @@ impl Spanned for CompileError {
             IntrinsicUnsupportedArgType { span, .. } => span.clone(),
             IntrinsicIncorrectNumArgs { span, .. } => span.clone(),
             IntrinsicIncorrectNumTArgs { span, .. } => span.clone(),
+            BreakOutsideLoop { span } => span.clone(),
+            ContinueOutsideLoop { span } => span.clone(),
         }
     }
 }
