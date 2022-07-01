@@ -33,4 +33,6 @@ pub enum Declaration {
     AbiDeclaration(AbiDeclaration),
     ConstantDeclaration(ConstantDeclaration),
     StorageDeclaration(StorageDeclaration),
+    Break,
+    Continue,
 }
