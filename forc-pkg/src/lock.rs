@@ -257,7 +257,7 @@ where
     for pkg in removed {
         if pkg.name != proj_name {
             let name = name_or_git_unique_string(pkg);
-            let _ = println_red(&format!("  Removing {}", name));
+            println_red(&format!("  Removing {}", name));
         }
     }
 }
@@ -269,7 +269,7 @@ where
     for pkg in removed {
         if pkg.name != proj_name {
             let name = name_or_git_unique_string(pkg);
-            let _ = println_green(&format!("    Adding {}", name));
+            println_green(&format!("    Adding {}", name));
         }
     }
 }

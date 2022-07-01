@@ -38,9 +38,12 @@ const TUP1_idx2 = TUP1.2;
 
 const INT1 = 1;
 
+const ZERO_B256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+const KEY = ZERO_B256;
+
 fn main() -> u64 {
     const int1 = 1;
-    assert(int1 == INT1);
+    assert(int1 == INT1 && ZERO_B256 == KEY);
 
     // initialization through function applications.
     const eth_id0 = ~ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000);
