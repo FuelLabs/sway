@@ -1,0 +1,43 @@
+script {
+    fn main() -> (), !1 {
+        entry:
+        br while
+
+        while:
+        v0 = const bool true, !2
+        cbr v0, while_body, end_while
+
+        while_body:
+        br while0
+
+        end_while:
+        v1 = const unit ()
+        ret () v1
+
+        while0:
+        v2 = const bool true, !3
+        cbr v2, while_body1, end_while2
+
+        while_body1:
+        br while0
+
+        end_while2:
+        br while3
+
+        while3:
+        v3 = const bool true, !4
+        cbr v3, while_body4, end_while5
+
+        while_body4:
+        br while3
+
+        end_while5:
+        br while
+    }
+}
+
+!0 = filepath "/path/to/continue.sw"
+!1 = span !0 9 169
+!2 = span !0 31 35
+!3 = span !0 52 56
+!4 = span !0 105 109
