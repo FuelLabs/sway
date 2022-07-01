@@ -53,8 +53,6 @@ pub(crate) enum VirtualOp {
     SUBI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     XOR(VirtualRegister, VirtualRegister, VirtualRegister),
     XORI(VirtualRegister, VirtualRegister, VirtualImmediate12),
-    CIMV(VirtualRegister, VirtualRegister, VirtualRegister),
-    CTMV(VirtualRegister, VirtualRegister),
     JI(VirtualImmediate24),
     JNEI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     JNZI(VirtualRegister, VirtualImmediate18),
@@ -118,7 +116,6 @@ pub(crate) enum VirtualOp {
     ),
     MINT(VirtualRegister),
     RVRT(VirtualRegister),
-    SLDC(VirtualRegister, VirtualRegister, VirtualRegister),
     SRW(VirtualRegister, VirtualRegister),
     SRWQ(VirtualRegister, VirtualRegister),
     SWW(VirtualRegister, VirtualRegister),
@@ -181,8 +178,6 @@ impl VirtualOp {
             SUBI(r1, r2, _i) => vec![r1, r2],
             XOR(r1, r2, r3) => vec![r1, r2, r3],
             XORI(r1, r2, _i) => vec![r1, r2],
-            CIMV(r1, r2, r3) => vec![r1, r2, r3],
-            CTMV(r1, r2) => vec![r1, r2],
             JI(_im) => vec![],
             JNEI(r1, r2, _i) => vec![r1, r2],
             JNZI(r1, _i) => vec![r1],
@@ -215,7 +210,6 @@ impl VirtualOp {
             LOGD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             MINT(r1) => vec![r1],
             RVRT(r1) => vec![r1],
-            SLDC(r1, r2, r3) => vec![r1, r2, r3],
             SRW(r1, r2) => vec![r1, r2],
             SRWQ(r1, r2) => vec![r1, r2],
             SWW(r1, r2) => vec![r1, r2],
@@ -278,8 +272,6 @@ impl VirtualOp {
             SUBI(_r1, r2, _i) => vec![r2],
             XOR(_r1, r2, r3) => vec![r2, r3],
             XORI(_r1, r2, _i) => vec![r2],
-            CIMV(_r1, r2, r3) => vec![r2, r3],
-            CTMV(_r1, r2) => vec![r2],
             JI(_im) => vec![],
             JNEI(r1, r2, _i) => vec![r1, r2],
             JNZI(r1, _i) => vec![r1],
@@ -312,7 +304,6 @@ impl VirtualOp {
             LOGD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             MINT(r1) => vec![r1],
             RVRT(r1) => vec![r1],
-            SLDC(r1, r2, r3) => vec![r1, r2, r3],
             SRW(_r1, r2) => vec![r2],
             SRWQ(r1, r2) => vec![r1, r2],
             SWW(r1, r2) => vec![r1, r2],
@@ -375,8 +366,6 @@ impl VirtualOp {
             SUBI(r1, _r2, _i) => vec![r1],
             XOR(r1, _r2, _r3) => vec![r1],
             XORI(r1, _r2, _i) => vec![r1],
-            CIMV(r1, _r2, _r3) => vec![r1],
-            CTMV(r1, _r2) => vec![r1],
             JI(_im) => vec![],
             JNEI(_r1, _r2, _i) => vec![],
             JNZI(_r1, _i) => vec![],
@@ -409,7 +398,6 @@ impl VirtualOp {
             LOGD(_r1, _r2, _r3, _r4) => vec![],
             MINT(_r1) => vec![],
             RVRT(_r1) => vec![],
-            SLDC(_r1, _r2, _r3) => vec![],
             SRW(r1, _r2) => vec![r1],
             SRWQ(_r1, _r2) => vec![],
             SWW(_r1, _r2) => vec![],
@@ -644,15 +632,6 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r2),
                 i.clone(),
             ),
-            CIMV(r1, r2, r3) => Self::CIMV(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-                update_reg(reg_to_reg_map, r3),
-            ),
-            CTMV(r1, r2) => Self::CTMV(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-            ),
             JI(_) => self.clone(),
             JNEI(r1, r2, i) => Self::JNEI(
                 update_reg(reg_to_reg_map, r1),
@@ -761,11 +740,6 @@ impl VirtualOp {
             ),
             MINT(r1) => Self::MINT(update_reg(reg_to_reg_map, r1)),
             RVRT(reg1) => Self::RVRT(update_reg(reg_to_reg_map, reg1)),
-            SLDC(r1, r2, r3) => Self::SLDC(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-                update_reg(reg_to_reg_map, r3),
-            ),
             SRW(r1, r2) => Self::SRW(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
@@ -1052,14 +1026,6 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            CIMV(reg1, reg2, reg3) => AllocatedOpcode::CIMV(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                map_reg(&mapping, reg3),
-            ),
-            CTMV(reg1, reg2) => {
-                AllocatedOpcode::CTMV(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
-            }
             JI(imm) => AllocatedOpcode::JI(imm.clone()),
             JNEI(reg1, reg2, imm) => AllocatedOpcode::JNEI(
                 map_reg(&mapping, reg1),
@@ -1165,11 +1131,6 @@ impl VirtualOp {
             ),
             MINT(reg1) => AllocatedOpcode::MINT(map_reg(&mapping, reg1)),
             RVRT(reg1) => AllocatedOpcode::RVRT(map_reg(&mapping, reg1)),
-            SLDC(reg1, reg2, reg3) => AllocatedOpcode::SLDC(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                map_reg(&mapping, reg3),
-            ),
             SRW(reg1, reg2) => {
                 AllocatedOpcode::SRW(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
             }
