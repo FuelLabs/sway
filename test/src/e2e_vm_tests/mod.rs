@@ -219,34 +219,30 @@ fn discover_test_configs() -> Result<Vec<TestDescription>, String> {
     Ok(configs)
 }
 
-const DIRECTIVE_RX: &str = r"\b#\s*(\w+):\s+(.*)";
+const DIRECTIVE_RX: &str = r"#\s*(\w+):\s+(.*)";
+
+fn build_file_checker(content: &String) -> Result<filecheck::Checker, String> {
+    let mut checker = filecheck::CheckerBuilder::new();
+
+    // Parse the file and check for unknown FileCheck directives.
+    let re = Regex::new(DIRECTIVE_RX).unwrap();
+    for cap in re.captures_iter(&content) {
+        if let Ok(false) = checker.directive(&cap[0]) {
+            return Err(format!("Unknown FileCheck directive: {}", &cap[1]));
+        }
+    }
+
+    Ok(checker.finish())
+}
 
 fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
-    let (toml_content, checker) = std::fs::read_to_string(path)
-        .map_err(|e| e.to_string())
-        .and_then(|toml_content_str| {
-            let mut checker = filecheck::CheckerBuilder::new();
+    let toml_content_str = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
 
-            // Parse the file and check for unknown FileCheck directives.
-            let re = Regex::new(DIRECTIVE_RX).unwrap();
-            for cap in re.captures_iter(&toml_content_str) {
-                if let Ok(false) = checker.directive(&cap[0]) {
-                    return Err(format!("Unknown FileCheck directive: {}", &cap[1]));
-                }
-            }
+    let checker = build_file_checker(&toml_content_str)?;
 
-            // Then parse the file into TOML.
-            checker
-                .text(&toml_content_str)
-                .map_err(|e| e.to_string())
-                .and_then(|checker| {
-                    toml_content_str
-                        .parse::<toml::Value>()
-                        .map_err(|e| e.to_string())
-                        .map(|toml_content| (toml_content, checker.finish()))
-                })
-        })
-        .map_err(|e| format!("Failed to parse: {e}"))?;
+    let toml_content = toml_content_str
+        .parse::<toml::Value>()
+        .map_err(|e| e.to_string())?;
 
     if !toml_content.is_table() {
         return Err("Malformed test description.".to_owned());
