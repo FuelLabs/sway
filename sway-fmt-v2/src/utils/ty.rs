@@ -4,7 +4,6 @@ use sway_parse::{
     brackets::{Parens, SquareBrackets},
     expr::Expr,
     keywords::{StrToken, UnderscoreToken},
-    path::PathType,
     token::Delimiter,
     ty::{Ty, TyArrayDescriptor, TyTupleDescriptor},
 };
@@ -26,7 +25,7 @@ impl Format for Ty {
                 Ok(())
             }
             Self::Infer { underscore_token } => format_infer(formatted_code, underscore_token),
-            Self::Path(path_ty) => format_path(formatted_code, path_ty),
+            Self::Path(path_ty) => path_ty.format(formatted_code, formatter),
             Self::Str { str_token, length } => {
                 format_str(formatted_code, str_token.clone(), length.clone())
             }
@@ -59,15 +58,6 @@ impl Format for TyArrayDescriptor {
         )?;
         Ok(())
     }
-}
-
-/// Currently does not apply formatting, just pushes the str version of span
-fn format_path(
-    formatted_code: &mut FormattedCode,
-    path_type: &PathType,
-) -> Result<(), FormatterError> {
-    formatted_code.push_str(path_type.span().as_str());
-    Ok(())
 }
 
 fn format_str(

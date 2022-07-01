@@ -282,7 +282,10 @@ enum test_ty {
     40],
     String:         str[
     4
-    ]
+    ],
+    PathType     : root::
+example::
+    type,
 }"#;
         let correct_sway_code = r#"contract;
 
@@ -290,6 +293,7 @@ enum test_ty {
     Infer: _,
     Array: [u8; 40],
     String: str[4],
+    PathType: root::example::type,
 }"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
