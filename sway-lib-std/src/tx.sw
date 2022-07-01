@@ -171,10 +171,9 @@ pub fn tx_script_data<T>() -> T {
 /// Bytecode will be padded to next whole word.
 pub fn tx_script_bytecode<T>() -> T {
     let script_ptr = tx_script_start_offset();
-    let script_bytecode = asm(r1: script_ptr) {
+    asm(r1: script_ptr) {
         r1: T
-    };
-    script_bytecode
+    }
 }
 
 ////////////////////////////////////////
@@ -200,8 +199,7 @@ pub fn tx_input_type_from_pointer(ptr: u32) -> u8 {
 /// Get the type of an input at a given index
 pub fn tx_input_type(index: u64) -> u8 {
     let ptr = tx_input_pointer(index);
-    let input_type = tx_input_type_from_pointer(ptr);
-    input_type
+    tx_input_type_from_pointer(ptr);
 }
 
 /// Read 256 bits from memory at a given offset from a given pointer
@@ -224,8 +222,7 @@ pub fn b256_from_pointer_offset(pointer: u32, offset: u32) -> b256 {
 pub fn tx_input_coin_owner(index: u64) -> Address {
     let input_ptr = tx_input_pointer(index);
     // Need to skip over six words, so offset is 8*6=48
-    let owner_addr = ~Address::from(b256_from_pointer_offset(input_ptr, 48));
-    owner_addr
+    ~Address::from(b256_from_pointer_offset(input_ptr, 48));
 }
 
 ////////////////////////////////////////
@@ -251,8 +248,7 @@ pub fn tx_output_type_from_pointer(ptr: u32) -> u8 {
 /// Get the type of an output at a given index
 pub fn tx_output_type(index: u64) -> u8 {
     let ptr = tx_output_pointer(index);
-    let output_type = tx_output_type_from_pointer(ptr);
-    output_type
+    tx_output_type_from_pointer(ptr);
 }
 
 /// Get the amount of coins to send for an output given a pointer to the output.
