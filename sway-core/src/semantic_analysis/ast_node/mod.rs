@@ -291,7 +291,6 @@ impl TypedAstNode {
                                     name: name.clone(),
                                     body,
                                     is_mutable: is_mutable.into(),
-                                    const_decl_origin: false,
                                     type_ascription,
                                 });
                             ctx.namespace.insert_symbol(name, typed_var_decl.clone());
@@ -303,25 +302,16 @@ impl TypedAstNode {
                             value,
                             visibility,
                         }) => {
-                            let result = type_check_ascribed_expr(
-                                ctx.by_ref(),
-                                type_ascription.clone(),
-                                value,
-                            );
+                            let result =
+                                type_check_ascribed_expr(ctx.by_ref(), type_ascription, value);
                             is_screaming_snake_case(&name).ok(&mut warnings, &mut errors);
                             let value =
                                 check!(result, error_recovery_expr(name.span()), warnings, errors);
                             let typed_const_decl =
-                                TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                                TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
                                     name: name.clone(),
-                                    body: value,
-                                    is_mutable: if visibility.is_public() {
-                                        VariableMutability::ExportedConst
-                                    } else {
-                                        VariableMutability::Immutable
-                                    },
-                                    const_decl_origin: true,
-                                    type_ascription: insert_type(type_ascription),
+                                    value,
+                                    visibility,
                                 });
                             ctx.namespace.insert_symbol(name, typed_const_decl.clone());
                             typed_const_decl
@@ -335,7 +325,7 @@ impl TypedAstNode {
                             );
                             let name = enum_decl.name.clone();
                             let decl = TypedDeclaration::EnumDeclaration(enum_decl);
-                            let _ = check!(
+                            check!(
                                 ctx.namespace.insert_symbol(name, decl.clone()),
                                 return err(warnings, errors),
                                 warnings,
@@ -417,7 +407,7 @@ impl TypedAstNode {
                             let name = decl.name.clone();
                             let decl = TypedDeclaration::StructDeclaration(decl);
                             // insert the struct decl into namespace
-                            let _ = check!(
+                            check!(
                                 ctx.namespace.insert_symbol(name, decl.clone()),
                                 return err(warnings, errors),
                                 warnings,
@@ -473,7 +463,6 @@ impl TypedAstNode {
                                     span.clone(),
                                 ));
                             }
-
                             let decl = TypedStorageDeclaration::new(fields_buf, span);
                             // insert the storage declaration into the symbols
                             // if there already was one, return an error that duplicate storage
@@ -487,6 +476,8 @@ impl TypedAstNode {
                             );
                             TypedDeclaration::StorageDeclaration(decl)
                         }
+                        Declaration::Break => TypedDeclaration::Break,
+                        Declaration::Continue => TypedDeclaration::Continue,
                     })
                 }
                 AstNodeContent::Expression(expr) => {
@@ -804,7 +795,6 @@ fn type_check_trait_methods(
                         },
                         // TODO allow mutable function params?
                         is_mutable: VariableMutability::Immutable,
-                        const_decl_origin: false,
                         type_ascription: r#type,
                     }),
                 );

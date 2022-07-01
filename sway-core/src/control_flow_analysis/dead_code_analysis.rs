@@ -16,29 +16,33 @@ use crate::{
     type_engine::{resolve_type, TypeInfo},
     CompileError, CompileWarning, Ident, TreeType, Warning,
 };
+use std::collections::BTreeSet;
 use sway_types::{span::Span, Spanned};
 
 use crate::semantic_analysis::TypedStorageDeclaration;
 
-use petgraph::algo::has_path_connecting;
 use petgraph::prelude::NodeIndex;
+use petgraph::visit::Dfs;
 
 impl ControlFlowGraph {
     pub(crate) fn find_dead_code(&self) -> Vec<CompileWarning> {
-        // dead code is code that has no path to the entry point
-        let mut dead_nodes = vec![];
-        for destination in self.graph.node_indices() {
-            let mut is_connected = false;
-            for entry in &self.entry_points {
-                if has_path_connecting(&self.graph, *entry, destination, None) {
-                    is_connected = true;
-                    break;
-                }
-            }
-            if !is_connected {
-                dead_nodes.push(destination);
+        // Dead code is code that has no path to the entry point.
+        // Collect all connected nodes by traversing from the entries.
+        // The dead nodes are those we did not collect.
+        let mut connected = BTreeSet::new();
+        let mut dfs = Dfs::empty(&self.graph);
+        for &entry in &self.entry_points {
+            dfs.move_to(entry);
+            while let Some(node) = dfs.next(&self.graph) {
+                connected.insert(node);
             }
         }
+        let dead_nodes: Vec<_> = self
+            .graph
+            .node_indices()
+            .filter(|n| !connected.contains(n))
+            .collect();
+
         let dead_enum_variant_warnings = dead_nodes
             .iter()
             .filter_map(|x| match &self.graph[*x] {
@@ -415,6 +419,7 @@ fn connect_declaration(
             Ok(leaves.to_vec())
         }
         ErrorRecovery | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
+        Break | Continue => Ok(vec![]),
     }
 }
 
@@ -1029,44 +1034,32 @@ fn connect_expression(
 }
 
 fn connect_intrinsic_function(
-    kind: &TypedIntrinsicFunctionKind,
+    TypedIntrinsicFunctionKind {
+        kind, arguments, ..
+    }: &TypedIntrinsicFunctionKind,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
     exit_node: Option<NodeIndex>,
     tree_type: &TreeType,
 ) -> Result<Vec<NodeIndex>, CompileError> {
-    let result = match kind {
-        TypedIntrinsicFunctionKind::SizeOfVal { exp } => connect_expression(
+    let node = graph.add_node(kind.to_string().into());
+    for leaf in leaves {
+        graph.add_edge(*leaf, node, "".into());
+    }
+    let mut result = vec![node];
+    let _ = arguments.iter().try_fold(&mut result, |accum, exp| {
+        let mut res = connect_expression(
             &(*exp).expression,
             graph,
             leaves,
             exit_node,
-            "size_of",
+            "intrinsic",
             tree_type,
             exp.span.clone(),
-        )?,
-        TypedIntrinsicFunctionKind::SizeOfType { .. } => {
-            let node = graph.add_node("size of type".into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, node, "".into());
-            }
-            vec![node]
-        }
-        TypedIntrinsicFunctionKind::IsRefType { .. } => {
-            let node = graph.add_node("is ref type".into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, node, "".into());
-            }
-            vec![node]
-        }
-        TypedIntrinsicFunctionKind::GetStorageKey => {
-            let node = graph.add_node("Get storage key".into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, node, "".into());
-            }
-            vec![node]
-        }
-    };
+        )?;
+        accum.append(&mut res);
+        Ok::<_, CompileError>(accum)
+    })?;
     Ok(result)
 }
 

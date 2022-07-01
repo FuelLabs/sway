@@ -8,8 +8,8 @@ dep option;
 dep result;
 dep mem;
 dep alloc;
-dep constants;
 dep contract_id;
+dep constants;
 dep context;
 dep hash;
 dep r#storage;
@@ -26,6 +26,7 @@ dep reentrancy;
 dep vm/mod;
 dep flags;
 dep u128;
+dep u256;
 dep vec;
 
 use core::*;
