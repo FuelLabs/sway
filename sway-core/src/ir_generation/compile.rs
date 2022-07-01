@@ -63,14 +63,6 @@ fn compile_constants(
                     None
                 }
             }
-
-            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                name,
-                body,
-                const_decl_origin,
-                ..
-            }) if *const_decl_origin => Some((name, body)),
-
             _otherwise => None,
         };
 
@@ -137,7 +129,9 @@ fn compile_declarations(
             | TypedDeclaration::AbiDeclaration(_)
             | TypedDeclaration::GenericTypeForFunctionScope { .. }
             | TypedDeclaration::StorageDeclaration(_)
-            | TypedDeclaration::ErrorRecovery => (),
+            | TypedDeclaration::ErrorRecovery
+            | TypedDeclaration::Break
+            | TypedDeclaration::Continue => (),
         }
     }
     Ok(())
