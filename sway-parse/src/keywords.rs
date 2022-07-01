@@ -81,6 +81,8 @@ define_keyword!(RefToken, "ref");
 define_keyword!(DerefToken, "deref");
 define_keyword!(TrueToken, "true");
 define_keyword!(FalseToken, "false");
+define_keyword!(BreakToken, "break");
+define_keyword!(ContinueToken, "continue");
 
 macro_rules! define_token (
     ($ty_name:ident, $description:literal, [$($punct_kinds:ident),*], [$($not_followed_by:ident),*]) => {
@@ -165,6 +167,8 @@ pub(crate) const RESERVED_KEYWORDS: phf::Set<&'static str> = phf::phf_set! {
     "deref",
     "true",
     "false",
+    "break",
+    "continue",
 };
 
 define_token!(SemicolonToken, "a semicolon", [Semicolon], []);
