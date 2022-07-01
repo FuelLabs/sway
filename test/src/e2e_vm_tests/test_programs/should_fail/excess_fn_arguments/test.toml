@@ -1,5 +1,4 @@
-# This test should be a "fail" but it's currently passing.
-# See https://github.com/FuelLabs/sway/issues/2081
-category = "compile"
+category = "fail"
 
-# check: ... something about too many args ...
+# check: bar(true, 0, true)
+# nextln: $()Function "bar" expects 2 arguments but you provided 3.
