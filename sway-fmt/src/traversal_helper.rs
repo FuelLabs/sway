@@ -3,7 +3,7 @@ use crate::code_builder_helpers::clean_all_whitespace;
 use crate::constants::{ALREADY_FORMATTED_LINE_PATTERN, NEW_LINE_PATTERN};
 use std::iter::{Enumerate, Peekable};
 use std::slice::Iter;
-use std::str::Chars;
+use std::{fmt::Write, str::Chars};
 
 /// Performs the formatting of the `comments` section in your code.
 /// Takes in a function that provides the logic to handle the rest of the code.
@@ -222,7 +222,7 @@ fn format_use_statement_length(s: &str, max_length: usize, level: usize) -> Stri
 
         match token {
             "," => {
-                line.push_str(&format!("{} ", token));
+                let _ = write!(line, "{} ", token).map_err(|_| ());
                 if *open_brackets == 1 {
                     is_line = true;
                 }
@@ -245,7 +245,7 @@ fn format_use_statement_length(s: &str, max_length: usize, level: usize) -> Stri
                 }
             }
             "as" => {
-                line.push_str(&format!(" {} ", token));
+                let _ = write!(line, " {} ", token);
             }
             _ => {
                 line.push_str(token);

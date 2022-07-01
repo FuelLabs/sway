@@ -24,8 +24,8 @@ jnzi $r0 i23
 ji   i30
 addi $r1 $r2 i8               ; extract address
 addi $r0 $r3 i0               ; get offset reg for get_ptr
-lw   $r0 $r1 i0               ; load for store
-sw   $r3 $r0 i0               ; store value
+addi $r0 $r3 i0               ; get store offset
+mcpi $r0 $r1 i8               ; store value
 addi $r0 $r3 i0               ; get offset reg for get_ptr
 lw   $r0 $r0 i0               ; extract_value @ 0
 ji   i31
