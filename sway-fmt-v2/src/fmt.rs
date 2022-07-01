@@ -286,6 +286,10 @@ enum test_ty {
     PathType     : root::
 example::
     type,
+    TupleNil: (),
+    Tuple: (   u64, 
+        u32
+    ),
 }"#;
         let correct_sway_code = r#"contract;
 
@@ -294,6 +298,8 @@ enum test_ty {
     Array: [u8; 40],
     String: str[4],
     PathType: root::example::type,
+    TupleNil: (),
+    Tuple: (u64, u32),
 }"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =

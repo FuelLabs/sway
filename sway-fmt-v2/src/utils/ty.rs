@@ -1,7 +1,7 @@
 use crate::fmt::{Format, FormattedCode, Formatter, FormatterError};
 use std::fmt::Write;
 use sway_parse::{
-    brackets::{Parens, SquareBrackets},
+    brackets::SquareBrackets,
     expr::Expr,
     keywords::{StrToken, UnderscoreToken},
     token::Delimiter,
@@ -29,7 +29,15 @@ impl Format for Ty {
             Self::Str { str_token, length } => {
                 format_str(formatted_code, str_token.clone(), length.clone())
             }
-            Self::Tuple(tup_descriptor) => format_tuple(formatted_code, tup_descriptor.clone()),
+            Self::Tuple(tup_descriptor) => {
+                formatted_code.push(Delimiter::Parenthesis.as_open_char());
+                tup_descriptor
+                    .clone()
+                    .into_inner()
+                    .format(formatted_code, formatter)?;
+                formatted_code.push(Delimiter::Parenthesis.as_close_char());
+                Ok(())
+            }
         }
     }
 }
@@ -75,11 +83,23 @@ fn format_str(
     )?;
     Ok(())
 }
-/// Currently does not apply formatting, just pushes the str version of span
-fn format_tuple(
-    formatted_code: &mut FormattedCode,
-    tuple_descriptor: Parens<TyTupleDescriptor>,
-) -> Result<(), FormatterError> {
-    formatted_code.push_str(tuple_descriptor.span().as_str());
-    Ok(())
+
+impl Format for TyTupleDescriptor {
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        if let TyTupleDescriptor::Cons {
+            head,
+            comma_token,
+            tail,
+        } = self
+        {
+            head.format(formatted_code, formatter)?;
+            write!(formatted_code, "{} ", comma_token.ident().as_str())?;
+            tail.format(formatted_code, formatter)?;
+        }
+        Ok(())
+    }
 }
