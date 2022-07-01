@@ -50,25 +50,6 @@ pub(crate) fn type_check_method_application(
         errors
     );
 
-    // retrieve the call path
-    let call_path = match &method_name {
-        MethodName::FromType { call_path, .. } => call_path.clone(),
-        MethodName::FromModule { method_name } => CallPath {
-            prefixes: vec![],
-            suffix: method_name.clone(),
-            is_absolute: false,
-        },
-        MethodName::FromTrait { call_path } => call_path.clone(),
-    };
-
-    // check that the number of parameters and the number of the arguments is the same
-    check!(
-        check_function_arguments_arity(arguments.len(), &method, &call_path),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
     // check the function storage purity
     if !method.is_contract_call {
         // 'method.purity' is that of the callee, 'opts.purity' of the caller.
@@ -216,6 +197,17 @@ pub(crate) fn type_check_method_application(
         }
     }
 
+    // retrieve the call path
+    let call_path = match method_name {
+        MethodName::FromType { call_path, .. } => call_path,
+        MethodName::FromModule { method_name } => CallPath {
+            prefixes: vec![],
+            suffix: method_name,
+            is_absolute: false,
+        },
+        MethodName::FromTrait { call_path } => call_path,
+    };
+
     // build the function selector
     let selector = if method.is_contract_call {
         let contract_caller = args_buf.pop_front();
@@ -245,6 +237,14 @@ pub(crate) fn type_check_method_application(
     } else {
         None
     };
+
+    // check that the number of parameters and the number of the arguments is the same
+    check!(
+        check_function_arguments_arity(arguments.len(), &method, &call_path),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
     // unify the types of the arguments with the types of the parameters from the function declaration
     for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
