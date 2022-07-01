@@ -170,12 +170,12 @@ impl CurlyBrace for ItemStorage {
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add opening brace to the next line.
-                line.push_str(&format!("\n{}", open_brace));
+                write!(line, "\n{}", open_brace)?;
                 shape = shape.block_indent(extra_width);
             }
             _ => {
                 // Add opening brace to the same line
-                line.push_str(&format!(" {}", open_brace));
+                write!(line, " {}", open_brace)?;
                 shape = shape.block_indent(extra_width);
             }
         }
