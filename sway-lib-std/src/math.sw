@@ -83,3 +83,7 @@ impl Exponentiate for u8 {
         }
     }
 }
+
+pub trait Exponent {
+    pub fn exp(exponent: Self) -> Self;
+}

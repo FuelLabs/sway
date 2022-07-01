@@ -12,7 +12,7 @@ dep contract_id;
 dep constants;
 dep context;
 dep hash;
-dep r#storage;
+// dep r#storage;
 dep b512;
 dep address;
 dep identity;
@@ -28,5 +28,6 @@ dep flags;
 dep u128;
 dep u256;
 dep vec;
+dep ufp64;
 
 use core::*;

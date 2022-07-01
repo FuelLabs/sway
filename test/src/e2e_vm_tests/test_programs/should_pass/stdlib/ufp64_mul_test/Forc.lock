@@ -1,0 +1,14 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-385A344E7C14AAA7'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'path+from-root-385A344E7C14AAA7'
+dependencies = ['core']
+
+[[package]]
+name = 'ufp64_mul_test'
+source = 'root'
+dependencies = ['std']
