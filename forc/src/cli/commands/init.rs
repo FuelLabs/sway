@@ -5,6 +5,7 @@ use clap::Parser;
 /// Create a new Forc project in an existing directory.
 #[derive(Debug, Parser)]
 pub struct Command {
+    /// The directory in which the forc project will be initialized.
     #[clap(long)]
     pub path: Option<String>,
     /// The default program type, excluding all flags or adding this flag creates a basic contract program.
