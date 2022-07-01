@@ -14,7 +14,7 @@ use std::{
 #[derive(Debug, Clone, Hash, PartialEq)]
 pub enum AbiName {
     Deferred,
-    Known(CallPath<Ident>),
+    Known(CallPath),
 }
 
 impl fmt::Display for AbiName {

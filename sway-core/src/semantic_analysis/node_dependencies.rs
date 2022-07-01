@@ -373,6 +373,9 @@ impl Dependencies {
                 .gather_from_iter(fields.iter(), |deps, StorageField { ref type_info, .. }| {
                     deps.gather_from_typeinfo(type_info)
                 }),
+            // Nothing to do for `break` and `continue`
+            Declaration::Break => self,
+            Declaration::Continue => self,
         }
     }
 
@@ -530,7 +533,7 @@ impl Dependencies {
 
     fn gather_from_call_path(
         mut self,
-        call_path: &CallPath<Ident>,
+        call_path: &CallPath,
         use_prefix: bool,
         is_fn_app: bool,
     ) -> Self {
@@ -709,6 +712,9 @@ fn decl_name(decl: &Declaration) -> Option<DependentSymbol> {
         Declaration::Reassignment(_) => None,
         // Storage cannot be depended upon or exported
         Declaration::StorageDeclaration(_) => None,
+        // Nothing depends on a `break` and `continue`
+        Declaration::Break => None,
+        Declaration::Continue => None,
     }
 }
 

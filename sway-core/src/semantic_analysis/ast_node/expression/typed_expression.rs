@@ -639,7 +639,7 @@ impl TypedExpression {
 
     fn type_check_function_application(
         ctx: TypeCheckContext,
-        mut call_path_binding: TypeBinding<CallPath<Ident>>,
+        mut call_path_binding: TypeBinding<CallPath>,
         arguments: Vec<Expression>,
         _span: Span,
     ) -> CompileResult<TypedExpression> {
@@ -1177,7 +1177,7 @@ impl TypedExpression {
 
     fn type_check_delineated_path(
         ctx: TypeCheckContext,
-        call_path_binding: TypeBinding<CallPath<Ident>>,
+        call_path_binding: TypeBinding<CallPath>,
         span: Span,
         args: Vec<Expression>,
     ) -> CompileResult<TypedExpression> {
@@ -1292,7 +1292,7 @@ impl TypedExpression {
     #[allow(clippy::too_many_arguments)]
     fn type_check_abi_cast(
         mut ctx: TypeCheckContext,
-        abi_name: CallPath<Ident>,
+        abi_name: CallPath,
         address: Box<Expression>,
         span: Span,
     ) -> CompileResult<Self> {

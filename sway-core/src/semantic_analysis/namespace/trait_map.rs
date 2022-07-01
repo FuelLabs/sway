@@ -1,11 +1,9 @@
-use sway_types::Ident;
-
 use crate::{
     type_engine::{create_type_mapping, look_up_type_id, CopyTypes, TypeId},
     CallPath, TypeInfo, TypedFunctionDeclaration,
 };
 
-type TraitName = CallPath<Ident>;
+type TraitName = CallPath;
 
 // This cannot be a HashMap because of how TypeInfo's are handled.
 //

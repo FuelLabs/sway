@@ -4,11 +4,11 @@ use crate::{
     type_engine::{TypeInfo, TypeParameter},
 };
 
-use sway_types::{span::Span, Ident};
+use sway_types::span::Span;
 
 #[derive(Debug, Clone)]
 pub struct ImplTrait {
-    pub trait_name: CallPath<Ident>,
+    pub trait_name: CallPath,
     pub(crate) type_implementing_for: TypeInfo,
     pub(crate) type_implementing_for_span: Span,
     pub(crate) type_parameters: Vec<TypeParameter>,

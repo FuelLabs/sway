@@ -1,4 +1,4 @@
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Span, Spanned};
 
 use crate::{
     error::{err, ok},
@@ -125,7 +125,7 @@ impl TypeBinding<CallPath<(TypeInfo, Span)>> {
     }
 }
 
-impl TypeBinding<CallPath<Ident>> {
+impl TypeBinding<CallPath> {
     pub(crate) fn type_check_with_ident(
         &mut self,
         ctx: &TypeCheckContext,
@@ -192,102 +192,3 @@ impl TypeBinding<CallPath<Ident>> {
         ok(unknown_decl, warnings, errors)
     }
 }
-
-// impl TypeBinding<CallPath> {
-//     pub(crate) fn type_check_as_type_info(&self, ctx: &mut TypeCheckContext) -> CompileResult<TypeId> {
-//         let mut warnings = vec![];
-//         let mut errors = vec![];
-
-//         // find the module that the symbol is in
-//         let module_path = ctx.namespace.find_module_path(&self.inner.prefixes);
-//         check!(
-//             ctx.namespace.root().check_submodule(&module_path),
-//             return err(warnings, errors),
-//             warnings,
-//             errors
-//         );
-
-//         // create the type info object
-//         let type_id = insert_type(TypeInfo::Custom {
-//             name: self.inner.suffix.clone(),
-//             type_arguments: self.type_arguments.clone(),
-//         });
-
-//         // resolve the type of the type info object
-//         let self_type = ctx.self_type();
-//         let type_id = check!(
-//             ctx.namespace.root_mut().resolve_type_with_self(
-//                 type_id,
-//                 self_type,
-//                 &self.span(),
-//                 EnforceTypeArguments::No,
-//                 &module_path
-//             ),
-//             insert_type(TypeInfo::ErrorRecovery),
-//             warnings,
-//             errors
-//         );
-
-//         ok(type_id, warnings, errors)
-//     }
-
-//     pub(crate) fn type_check_as_decl(
-//         &mut self,
-//         ctx: &mut TypeCheckContext,
-//     ) -> CompileResult<TypedDeclaration> {
-//         let mut warnings = vec![];
-//         let mut errors = vec![];
-//         for type_argument in self.type_arguments.iter_mut() {
-//             type_argument.replace_self_type(ctx.self_type());
-//         }
-//         let mut unknown_decl = check!(
-//             ctx.namespace.resolve_call_path(&self.inner).cloned(),
-//             return err(warnings, errors),
-//             warnings,
-//             errors
-//         );
-//         match unknown_decl {
-//             TypedDeclaration::FunctionDeclaration(ref mut decl) => {
-//                 check!(
-//                     ctx.monomorphize(
-//                         decl,
-//                         &mut self.type_arguments,
-//                         EnforceTypeArguments::No,
-//                         &self.span
-//                     ),
-//                     return err(warnings, errors),
-//                     warnings,
-//                     errors
-//                 )
-//             }
-//             TypedDeclaration::EnumDeclaration(ref mut decl) => {
-//                 check!(
-//                     ctx.monomorphize(
-//                         decl,
-//                         &mut self.type_arguments,
-//                         EnforceTypeArguments::No,
-//                         &self.span
-//                     ),
-//                     return err(warnings, errors),
-//                     warnings,
-//                     errors
-//                 )
-//             }
-//             TypedDeclaration::StructDeclaration(ref mut decl) => {
-//                 check!(
-//                     ctx.monomorphize(
-//                         decl,
-//                         &mut self.type_arguments,
-//                         EnforceTypeArguments::No,
-//                         &self.span
-//                     ),
-//                     return err(warnings, errors),
-//                     warnings,
-//                     errors
-//                 )
-//             }
-//             _ => {}
-//         }
-//         ok(unknown_decl, warnings, errors)
-//     }
-// }

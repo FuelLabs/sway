@@ -441,7 +441,7 @@ pub enum CompileError {
          {what_it_is}."
     )]
     NotAFunction {
-        name: CallPath<Ident>,
+        name: CallPath,
         what_it_is: &'static str,
     },
     #[error("Unimplemented feature: {0}")]
@@ -780,7 +780,7 @@ pub enum CompileError {
     #[error("This enum variant represents the unit type, so it should not be instantiated with any value.")]
     UnnecessaryEnumInstantiator { span: Span },
     #[error("Cannot find trait \"{name}\" in this scope.")]
-    TraitNotFound { name: CallPath<Ident> },
+    TraitNotFound { name: CallPath },
     #[error("This expression is not valid on the left hand side of a reassignment.")]
     InvalidExpressionOnLhs { span: Span },
     #[error(
@@ -939,7 +939,7 @@ pub enum CompileError {
     AbiAsSupertrait { span: Span },
     #[error("The trait \"{supertrait_name}\" is not implemented for type \"{type_name}\"")]
     SupertraitImplMissing {
-        supertrait_name: CallPath<Ident>,
+        supertrait_name: CallPath,
         type_name: String,
         span: Span,
     },
@@ -947,7 +947,7 @@ pub enum CompileError {
         "Implementation of trait \"{supertrait_name}\" is required by this bound in \"{trait_name}\""
     )]
     SupertraitImplRequired {
-        supertrait_name: CallPath<Ident>,
+        supertrait_name: CallPath,
         trait_name: Ident,
         span: Span,
     },
@@ -1007,6 +1007,10 @@ pub enum CompileError {
         expected: u64,
         span: Span,
     },
+    #[error("\"break\" used outside of a loop")]
+    BreakOutsideLoop { span: Span },
+    #[error("\"continue\" used outside of a loop")]
+    ContinueOutsideLoop { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1167,6 +1171,8 @@ impl Spanned for CompileError {
             IntrinsicUnsupportedArgType { span, .. } => span.clone(),
             IntrinsicIncorrectNumArgs { span, .. } => span.clone(),
             IntrinsicIncorrectNumTArgs { span, .. } => span.clone(),
+            BreakOutsideLoop { span } => span.clone(),
+            ContinueOutsideLoop { span } => span.clone(),
         }
     }
 }

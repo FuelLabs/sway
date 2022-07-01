@@ -92,7 +92,7 @@ impl Namespace {
     /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
     pub(crate) fn resolve_call_path(
         &self,
-        call_path: &CallPath<Ident>,
+        call_path: &CallPath,
     ) -> CompileResult<&TypedDeclaration> {
         self.root.resolve_call_path(&self.mod_path, call_path)
     }
