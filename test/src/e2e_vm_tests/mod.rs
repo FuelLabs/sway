@@ -221,12 +221,12 @@ fn discover_test_configs() -> Result<Vec<TestDescription>, String> {
 
 const DIRECTIVE_RX: &str = r"(?m)^\s*#\s*(\w+):\s+(.*)$";
 
-fn build_file_checker(content: &String) -> Result<filecheck::Checker, String> {
+fn build_file_checker(content: &str) -> Result<filecheck::Checker, String> {
     let mut checker = filecheck::CheckerBuilder::new();
 
     // Parse the file and check for unknown FileCheck directives.
     let re = Regex::new(DIRECTIVE_RX).unwrap();
-    for cap in re.captures_iter(&content) {
+    for cap in re.captures_iter(content) {
         if let Ok(false) = checker.directive(&cap[0]) {
             return Err(format!("Unknown FileCheck directive: {}", &cap[1]));
         }
