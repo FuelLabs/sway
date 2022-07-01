@@ -38,6 +38,8 @@ pub enum TypedDeclaration {
     ErrorRecovery,
     StorageDeclaration(TypedStorageDeclaration),
     StorageReassignment(TypeCheckedStorageReassignment),
+    Break,
+    Continue,
 }
 
 impl CopyTypes for TypedDeclaration {
@@ -58,7 +60,7 @@ impl CopyTypes for TypedDeclaration {
             AbiDeclaration(..) => (),
             StorageDeclaration(..) => (),
             StorageReassignment(..) => (),
-            GenericTypeForFunctionScope { .. } | ErrorRecovery => (),
+            GenericTypeForFunctionScope { .. } | ErrorRecovery | Break | Continue => (),
         }
     }
 }
@@ -84,7 +86,7 @@ impl Spanned for TypedDeclaration {
             ImplTrait(TypedImplTrait { span, .. }) => span.clone(),
             StorageDeclaration(decl) => decl.span(),
             StorageReassignment(decl) => decl.span(),
-            ErrorRecovery | GenericTypeForFunctionScope { .. } => {
+            ErrorRecovery | GenericTypeForFunctionScope { .. } | Break | Continue => {
                 unreachable!("No span exists for these ast node types")
             }
         }
@@ -202,7 +204,9 @@ impl UnresolvedTypeCheck for TypedDeclaration {
             | EnumDeclaration(_)
             | ImplTrait { .. }
             | AbiDeclaration(_)
-            | GenericTypeForFunctionScope { .. } => vec![],
+            | GenericTypeForFunctionScope { .. }
+            | Break
+            | Continue => vec![],
         }
     }
 }
@@ -369,6 +373,8 @@ impl TypedDeclaration {
             ErrorRecovery => "error",
             StorageDeclaration(_) => "contract storage declaration",
             StorageReassignment(_) => "contract storage reassignment",
+            Break => "break",
+            Continue => "continue",
         }
     }
 
@@ -418,7 +424,9 @@ impl TypedDeclaration {
             | StorageDeclaration { .. }
             | StorageReassignment { .. }
             | AbiDeclaration(..)
-            | ErrorRecovery => Visibility::Public,
+            | ErrorRecovery
+            | Break
+            | Continue => Visibility::Public,
             VariableDeclaration(TypedVariableDeclaration { is_mutable, .. }) => {
                 is_mutable.visibility()
             }

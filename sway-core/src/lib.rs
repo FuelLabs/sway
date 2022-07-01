@@ -550,7 +550,10 @@ fn module_return_path_analysis(module: &TypedModule, errors: &mut Vec<CompileErr
         module_return_path_analysis(&submodule.module, errors);
     }
     let graph = ControlFlowGraph::construct_return_path_graph(&module.all_nodes);
-    errors.extend(graph.analyze_return_paths());
+    match graph {
+        Ok(graph) => errors.extend(graph.analyze_return_paths()),
+        Err(error) => errors.push(error),
+    }
 }
 
 #[test]
