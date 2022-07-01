@@ -291,7 +291,6 @@ impl TypedAstNode {
                                     name: name.clone(),
                                     body,
                                     is_mutable: is_mutable.into(),
-                                    const_decl_origin: false,
                                     type_ascription,
                                 });
                             ctx.namespace.insert_symbol(name, typed_var_decl.clone());
@@ -326,7 +325,7 @@ impl TypedAstNode {
                             );
                             let name = enum_decl.name.clone();
                             let decl = TypedDeclaration::EnumDeclaration(enum_decl);
-                            let _ = check!(
+                            check!(
                                 ctx.namespace.insert_symbol(name, decl.clone()),
                                 return err(warnings, errors),
                                 warnings,
@@ -408,7 +407,7 @@ impl TypedAstNode {
                             let name = decl.name.clone();
                             let decl = TypedDeclaration::StructDeclaration(decl);
                             // insert the struct decl into namespace
-                            let _ = check!(
+                            check!(
                                 ctx.namespace.insert_symbol(name, decl.clone()),
                                 return err(warnings, errors),
                                 warnings,
@@ -794,7 +793,6 @@ fn type_check_trait_methods(
                         },
                         // TODO allow mutable function params?
                         is_mutable: VariableMutability::Immutable,
-                        const_decl_origin: false,
                         type_ascription: r#type,
                     }),
                 );

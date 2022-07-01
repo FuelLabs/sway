@@ -68,7 +68,6 @@ impl TypedMatchBranch {
                 body: right_decl,
                 is_mutable: VariableMutability::Immutable,
                 type_ascription,
-                const_decl_origin: false,
             });
             ctx.namespace.insert_symbol(left_decl, var_decl.clone());
             code_block_contents.push(TypedAstNode {

@@ -1,14 +1,14 @@
 [[package]]
 name = 'core'
-source = 'path+from-root-5A0A8AEC06508E21'
+source = 'path+from-root-987CA0C143EB9BCC'
 dependencies = []
 
 [[package]]
-name = 'many_stack_variables'
+name = 'eq_intrinsic'
 source = 'root'
 dependencies = ['std']
 
 [[package]]
 name = 'std'
-source = 'path+from-root-5A0A8AEC06508E21'
+source = 'path+from-root-987CA0C143EB9BCC'
 dependencies = ['core']
