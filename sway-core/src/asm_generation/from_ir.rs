@@ -1377,10 +1377,6 @@ impl<'ir> AsmBuilder<'ir> {
             return ptr.map(|_| ());
         }
         let (ptr, _ptr_ty, _offset) = ptr.value.unwrap();
-        let load_size_in_words = size_bytes_in_words!(ir_type_size_in_bytes(
-            self.context,
-            ptr.get_type(self.context)
-        ));
         let instr_reg = self.reg_seqr.next();
         match self.ptr_map.get(&ptr) {
             None => unimplemented!("BUG? Uninitialised pointer."),
@@ -1394,8 +1390,7 @@ impl<'ir> AsmBuilder<'ir> {
                 }
                 Storage::Stack(word_offs) => {
                     let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
-                    // XXX Need to check for zero sized types?
-                    if load_size_in_words == 1 {
+                    if ptr.get_type(self.context).is_copy_type() {
                         // Value can fit in a register, so we load the value.
                         if word_offs > compiler_constants::TWELVE_BITS {
                             let offs_reg = self.reg_seqr.next();
@@ -1753,136 +1748,130 @@ impl<'ir> AsmBuilder<'ir> {
                 Storage::Data(_) => unreachable!("BUG! Trying to store to the data section."),
                 Storage::Stack(word_offs) => {
                     let word_offs = *word_offs;
-                    let store_size_in_words = size_bytes_in_words!(ir_type_size_in_bytes(
-                        self.context,
-                        ptr.get_type(self.context)
-                    ));
-                    match store_size_in_words {
-                        // We can have empty sized types which we can ignore.
-                        0 => (),
-                        1 => {
-                            let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
+                    let store_type = ptr.get_type(self.context);
+                    let store_size_in_words =
+                        size_bytes_in_words!(ir_type_size_in_bytes(self.context, store_type));
+                    if store_type.is_copy_type() {
+                        let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
 
-                            // A single word can be stored with SW.
-                            let stored_reg = if !is_aggregate_ptr {
-                                // stored_reg is a value.
-                                stored_reg
-                            } else {
-                                // stored_reg is a pointer, even though size is 1.  We need to load it.
-                                let tmp_reg = self.reg_seqr.next();
-                                self.bytecode.push(Op {
-                                    opcode: Either::Left(VirtualOp::LW(
-                                        tmp_reg.clone(),
-                                        stored_reg,
-                                        VirtualImmediate12 { value: 0 },
-                                    )),
-                                    comment: "load for store".into(),
-                                    owning_span: instr_val.get_span(self.context),
-                                });
-                                tmp_reg
-                            };
-                            if word_offs > compiler_constants::TWELVE_BITS {
-                                let offs_reg = self.reg_seqr.next();
-                                self.number_to_reg(
-                                    word_offs,
-                                    &offs_reg,
-                                    instr_val.get_span(self.context),
-                                );
-                                self.bytecode.push(Op {
-                                    opcode: Either::Left(VirtualOp::ADD(
-                                        base_reg.clone(),
-                                        base_reg,
-                                        offs_reg.clone(),
-                                    )),
-                                    comment: "store absolute offset".into(),
-                                    owning_span: instr_val.get_span(self.context),
-                                });
-                                self.bytecode.push(Op {
-                                    opcode: Either::Left(VirtualOp::SW(
-                                        offs_reg,
-                                        stored_reg,
-                                        VirtualImmediate12 { value: 0 },
-                                    )),
-                                    comment: "store value".into(),
-                                    owning_span: instr_val.get_span(self.context),
-                                });
-                            } else {
-                                self.bytecode.push(Op {
-                                    opcode: Either::Left(VirtualOp::SW(
-                                        base_reg,
-                                        stored_reg,
-                                        VirtualImmediate12 {
-                                            value: word_offs as u16,
-                                        },
-                                    )),
-                                    comment: "store value".into(),
-                                    owning_span: instr_val.get_span(self.context),
-                                });
-                            }
+                        // A single word can be stored with SW.
+                        let stored_reg = if !is_aggregate_ptr {
+                            // stored_reg is a value.
+                            stored_reg
+                        } else {
+                            // stored_reg is a pointer, even though size is 1.  We need to load it.
+                            let tmp_reg = self.reg_seqr.next();
+                            self.bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::LW(
+                                    tmp_reg.clone(),
+                                    stored_reg,
+                                    VirtualImmediate12 { value: 0 },
+                                )),
+                                comment: "load for store".into(),
+                                owning_span: instr_val.get_span(self.context),
+                            });
+                            tmp_reg
+                        };
+                        if word_offs > compiler_constants::TWELVE_BITS {
+                            let offs_reg = self.reg_seqr.next();
+                            self.number_to_reg(
+                                word_offs,
+                                &offs_reg,
+                                instr_val.get_span(self.context),
+                            );
+                            self.bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::ADD(
+                                    base_reg.clone(),
+                                    base_reg,
+                                    offs_reg.clone(),
+                                )),
+                                comment: "store absolute offset".into(),
+                                owning_span: instr_val.get_span(self.context),
+                            });
+                            self.bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::SW(
+                                    offs_reg,
+                                    stored_reg,
+                                    VirtualImmediate12 { value: 0 },
+                                )),
+                                comment: "store value".into(),
+                                owning_span: instr_val.get_span(self.context),
+                            });
+                        } else {
+                            self.bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::SW(
+                                    base_reg,
+                                    stored_reg,
+                                    VirtualImmediate12 {
+                                        value: word_offs as u16,
+                                    },
+                                )),
+                                comment: "store value".into(),
+                                owning_span: instr_val.get_span(self.context),
+                            });
                         }
-                        _ => {
-                            let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
+                    } else {
+                        let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
 
-                            // Bigger than 1 word needs a MCPI.  XXX Or MCP if it's huge.
-                            let dest_offs_reg = self.reg_seqr.next();
-                            if word_offs * 8 > compiler_constants::TWELVE_BITS {
-                                self.number_to_reg(
-                                    word_offs * 8,
-                                    &dest_offs_reg,
-                                    instr_val.get_span(self.context),
-                                );
-                                self.bytecode.push(Op {
-                                    opcode: either::Either::Left(VirtualOp::ADD(
-                                        dest_offs_reg.clone(),
-                                        base_reg,
-                                        dest_offs_reg.clone(),
-                                    )),
-                                    comment: "get store offset".into(),
-                                    owning_span: instr_val.get_span(self.context),
-                                });
-                            } else {
-                                self.bytecode.push(Op {
-                                    opcode: either::Either::Left(VirtualOp::ADDI(
-                                        dest_offs_reg.clone(),
-                                        base_reg,
-                                        VirtualImmediate12 {
-                                            value: (word_offs * 8) as u16,
-                                        },
-                                    )),
-                                    comment: "get store offset".into(),
-                                    owning_span: instr_val.get_span(self.context),
-                                });
-                            }
+                        // Bigger than 1 word needs a MCPI.  XXX Or MCP if it's huge.
+                        let dest_offs_reg = self.reg_seqr.next();
+                        if word_offs * 8 > compiler_constants::TWELVE_BITS {
+                            self.number_to_reg(
+                                word_offs * 8,
+                                &dest_offs_reg,
+                                instr_val.get_span(self.context),
+                            );
+                            self.bytecode.push(Op {
+                                opcode: either::Either::Left(VirtualOp::ADD(
+                                    dest_offs_reg.clone(),
+                                    base_reg,
+                                    dest_offs_reg.clone(),
+                                )),
+                                comment: "get store offset".into(),
+                                owning_span: instr_val.get_span(self.context),
+                            });
+                        } else {
+                            self.bytecode.push(Op {
+                                opcode: either::Either::Left(VirtualOp::ADDI(
+                                    dest_offs_reg.clone(),
+                                    base_reg,
+                                    VirtualImmediate12 {
+                                        value: (word_offs * 8) as u16,
+                                    },
+                                )),
+                                comment: "get store offset".into(),
+                                owning_span: instr_val.get_span(self.context),
+                            });
+                        }
 
-                            if store_size_in_words * 8 > compiler_constants::TWELVE_BITS {
-                                let size_reg = self.reg_seqr.next();
-                                self.number_to_reg(
-                                    store_size_in_words * 8,
-                                    &size_reg,
-                                    instr_val.get_span(self.context),
-                                );
-                                self.bytecode.push(Op {
-                                    opcode: Either::Left(VirtualOp::MCP(
-                                        dest_offs_reg,
-                                        stored_reg,
-                                        size_reg,
-                                    )),
-                                    comment: "store value".into(),
-                                    owning_span: instr_val.get_span(self.context),
-                                });
-                            } else {
-                                self.bytecode.push(Op {
-                                    opcode: Either::Left(VirtualOp::MCPI(
-                                        dest_offs_reg,
-                                        stored_reg,
-                                        VirtualImmediate12 {
-                                            value: (store_size_in_words * 8) as u16,
-                                        },
-                                    )),
-                                    comment: "store value".into(),
-                                    owning_span: instr_val.get_span(self.context),
-                                });
-                            }
+                        if store_size_in_words * 8 > compiler_constants::TWELVE_BITS {
+                            let size_reg = self.reg_seqr.next();
+                            self.number_to_reg(
+                                store_size_in_words * 8,
+                                &size_reg,
+                                instr_val.get_span(self.context),
+                            );
+                            self.bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::MCP(
+                                    dest_offs_reg,
+                                    stored_reg,
+                                    size_reg,
+                                )),
+                                comment: "store value".into(),
+                                owning_span: instr_val.get_span(self.context),
+                            });
+                        } else {
+                            self.bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::MCPI(
+                                    dest_offs_reg,
+                                    stored_reg,
+                                    VirtualImmediate12 {
+                                        value: (store_size_in_words * 8) as u16,
+                                    },
+                                )),
+                                comment: "store value".into(),
+                                owning_span: instr_val.get_span(self.context),
+                            });
                         }
                     }
                 }
