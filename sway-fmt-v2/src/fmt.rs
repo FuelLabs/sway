@@ -305,8 +305,8 @@ storage {
         let correct_sway_code = r#"contract;
 
 storage {
-    long_var_name: Type1,
-    var2         : Type2,
+    long_var_name : Type1,
+    var2          : Type2,
 }"#;
 
         let mut config = Config::default();

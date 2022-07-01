@@ -102,7 +102,7 @@ fn format_storage(
                     // we will probably need to format `ty` before adding.
                     write!(
                         formatted_code,
-                        "{} {}",
+                        " {} {}",
                         type_field.colon_token.ident().as_str(),
                         type_field.ty.span().as_str(),
                     )?;
