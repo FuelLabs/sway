@@ -52,7 +52,6 @@ pub struct TypedVariableDeclaration {
     pub body: TypedExpression,
     pub(crate) is_mutable: VariableMutability,
     pub type_ascription: TypeId,
-    pub(crate) const_decl_origin: bool,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -64,7 +63,6 @@ impl PartialEq for TypedVariableDeclaration {
             && self.body == other.body
             && self.is_mutable == other.is_mutable
             && look_up_type_id(self.type_ascription) == look_up_type_id(other.type_ascription)
-            && self.const_decl_origin == other.const_decl_origin
     }
 }
 

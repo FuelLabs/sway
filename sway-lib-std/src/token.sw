@@ -102,8 +102,7 @@ pub fn transfer_to_output(amount: u64, asset_id: ContractId, to: Address) {
         if tx_output_type(index) == OUTPUT_VARIABLE_TYPE && tx_output_amount(index) == 0 {
             output_index = index;
             output_found = true;
-            index = outputs_count; // break early and use the output we found
-            // use `break;` when it's implemented #587
+            break; // break early and use the output we found
         };
         index += 1;
     }
