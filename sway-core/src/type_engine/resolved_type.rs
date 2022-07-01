@@ -31,7 +31,7 @@ pub enum ResolvedType {
     /// The specific contract is identified via the `Ident` within.
     #[allow(dead_code)]
     ContractCaller {
-        abi_name: CallPath<Ident>,
+        abi_name: CallPath,
         #[derivative(PartialEq = "ignore", Hash = "ignore")]
         address: Box<TypedExpression>,
     },

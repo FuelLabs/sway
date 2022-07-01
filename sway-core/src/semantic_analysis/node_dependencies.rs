@@ -528,7 +528,7 @@ impl Dependencies {
 
     fn gather_from_call_path(
         mut self,
-        call_path: &CallPath<Ident>,
+        call_path: &CallPath,
         use_prefix: bool,
         is_fn_app: bool,
     ) -> Self {

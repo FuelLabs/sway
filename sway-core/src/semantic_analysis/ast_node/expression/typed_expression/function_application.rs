@@ -9,7 +9,7 @@ use sway_types::{state::StateIndex, Spanned};
 pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
     mut function_decl: TypedFunctionDeclaration,
-    call_path: CallPath<Ident>,
+    call_path: CallPath,
     type_arguments: Vec<TypeArgument>,
     arguments: Vec<Expression>,
 ) -> CompileResult<TypedExpression> {
@@ -90,7 +90,7 @@ pub(crate) fn instantiate_function_application(
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application_simple(
-    call_path: CallPath<Ident>,
+    call_path: CallPath,
     contract_call_params: HashMap<String, TypedExpression, RandomState>,
     arguments: VecDeque<TypedExpression>,
     function_decl: TypedFunctionDeclaration,
@@ -137,7 +137,7 @@ pub(crate) fn instantiate_function_application_simple(
 fn check_function_arguments_arity(
     arguments_len: usize,
     function_decl: &TypedFunctionDeclaration,
-    call_path: &CallPath<Ident>,
+    call_path: &CallPath,
 ) -> CompileResult<()> {
     let warnings = vec![];
     let mut errors = vec![];
@@ -167,7 +167,7 @@ fn check_function_arguments_arity(
 #[allow(clippy::too_many_arguments)]
 #[allow(clippy::comparison_chain)]
 fn instantiate_function_application_inner(
-    call_path: CallPath<Ident>,
+    call_path: CallPath,
     contract_call_params: HashMap<String, TypedExpression, RandomState>,
     arguments: Vec<(Ident, TypedExpression)>,
     function_decl: TypedFunctionDeclaration,

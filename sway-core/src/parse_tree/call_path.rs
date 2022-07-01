@@ -7,7 +7,7 @@ use sway_types::{span::Span, Spanned};
 /// in the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
 /// `c` can be any type `T`, but in practice `c` is either an `Ident` or a `TypeInfo`.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct CallPath<T> {
+pub struct CallPath<T = Ident> {
     pub prefixes: Vec<Ident>,
     pub suffix: T,
     // If `is_absolute` is true, then this call path is an absolute path from
@@ -15,7 +15,7 @@ pub struct CallPath<T> {
     pub(crate) is_absolute: bool,
 }
 
-impl std::convert::From<Ident> for CallPath<Ident> {
+impl std::convert::From<Ident> for CallPath {
     fn from(other: Ident) -> Self {
         CallPath {
             prefixes: vec![],
@@ -59,10 +59,10 @@ where
     }
 }
 
-impl CallPath<Ident> {
+impl CallPath {
     /// shifts the last prefix into the suffix and removes the old suffix
     /// noop if prefixes are empty
-    pub fn rshift(&self) -> CallPath<Ident> {
+    pub fn rshift(&self) -> CallPath {
         if self.prefixes.is_empty() {
             self.clone()
         } else {

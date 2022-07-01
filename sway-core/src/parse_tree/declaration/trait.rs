@@ -19,7 +19,7 @@ pub struct TraitDeclaration {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub(crate) struct Supertrait {
-    pub(crate) name: CallPath<Ident>,
+    pub(crate) name: CallPath,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

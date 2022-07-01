@@ -25,7 +25,7 @@ pub enum Scrutinee {
         span: Span,
     },
     EnumScrutinee {
-        call_path: CallPath<Ident>,
+        call_path: CallPath,
         value: Box<Scrutinee>,
         span: Span,
     },

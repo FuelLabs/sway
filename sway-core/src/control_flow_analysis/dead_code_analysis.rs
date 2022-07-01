@@ -467,7 +467,7 @@ fn connect_struct_declaration(
 /// Additionally, we insert the trait's methods into the method namespace in order to
 /// track which exact methods are dead code.
 fn connect_impl_trait(
-    trait_name: &CallPath<Ident>,
+    trait_name: &CallPath,
     graph: &mut ControlFlowGraph,
     methods: &[TypedFunctionDeclaration],
     entry_node: NodeIndex,

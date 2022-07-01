@@ -19,7 +19,7 @@ pub enum MethodName {
     /// in this case, the path defines where the fn symbol is defined
     /// used for things like core::ops::add(a, b).
     /// in this case, the first argument determines the type to look for
-    FromTrait { call_path: CallPath<Ident> },
+    FromTrait { call_path: CallPath },
 }
 
 impl MethodName {
