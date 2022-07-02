@@ -12,7 +12,7 @@ dep contract_id;
 dep constants;
 dep context;
 dep hash;
-// dep r#storage;
+dep r#storage;
 dep b512;
 dep address;
 dep identity;

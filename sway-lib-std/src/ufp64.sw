@@ -216,17 +216,6 @@ impl Exponentiate for UFP64 {
     }
 }
 
-// TODO: uncomment and change accordingly, when signed integers will be added
-// impl Logarithm for UFP64 {
-//     fn log(self, base: Self) -> Self {
-//         let nominator_log = self.value.log(base);
-//         let res = (nominator_log - ~u64::from(0, 64 * 2.log(base))) * ~u64::from(1, 0);
-//         UFP64 {
-//             value: res
-//         }
-//     }
-// }
-
 impl Exponent for UFP64 {
     pub fn exp(exponent: Self) -> Self {
         let one = ~UFP64::from_uint(1);
@@ -236,8 +225,6 @@ impl Exponent for UFP64 {
         let p5 = one / ~UFP64::from_uint(120);
         let p6 = one / ~UFP64::from_uint(720);
         let p7 = one / ~UFP64::from_uint(5040);
-
-        // log(p2);
 
         // common technique to counter loosing sugnifucant numbers in usual approximation
         let res_minus_1 = exponent + exponent * exponent * (p2 + exponent * (p3 + exponent * (p4 + exponent * (p5 + exponent * (p6 + exponent * p7)))));
