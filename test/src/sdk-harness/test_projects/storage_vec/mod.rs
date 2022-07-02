@@ -80,4 +80,43 @@ mod success {
         assert_eq!(150, get(&instance, 3).await);
         assert_eq!(200, get(&instance, 4).await);
     }
+
+    #[tokio::test]
+    async fn can_get_len() { 
+        let (instance, _id) = get_contract_instance().await;
+    
+        push(&instance, 50).await;
+        push(&instance, 100).await;
+        push(&instance, 150).await;
+        push(&instance, 200).await;
+
+        let len_vec = len(&instance).await;
+
+        assert_eq!(len_vec, 4);
+
+        push(&instance, 200).await;
+        let len_vec = len(&instance).await;
+
+        assert_eq!(len_vec, 5);
+    }
+
+    #[tokio::test]
+    async fn can_confirm_emptiness() { 
+        let (instance, _id) = get_contract_instance().await;
+    
+        push(&instance, 50).await;
+        push(&instance, 100).await;
+        push(&instance, 150).await;
+        push(&instance, 200).await;
+
+        let isempty = is_empty(&instance).await;
+
+        assert_eq!(isempty, false);
+
+        clear(&instance).await;
+
+        let isempty = is_empty(&instance).await;
+
+        assert_eq!(isempty, true);
+    }
 }

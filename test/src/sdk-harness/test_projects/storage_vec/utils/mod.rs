@@ -47,4 +47,16 @@ pub mod wrappers {
     pub async fn insert(instance: &MyContract, index: u64, value: u8) {
         instance.vec_u8_insert(index, value).call().await.unwrap();
     }
+
+    pub async fn len(instance: &MyContract) -> u64 {
+        instance.vec_u8_len().call().await.unwrap().value
+    }
+
+    pub async fn is_empty(instance: &MyContract) -> bool {
+        instance.vec_u8_is_empty().call().await.unwrap().value
+    }
+
+    pub async fn clear(instance: &MyContract) {
+        instance.vec_u8_clear().call().await.unwrap();
+    }
 }
