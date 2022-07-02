@@ -189,6 +189,7 @@ impl UFP64 {
         let ceil = self.ceil();
         let diff_self_floor = self - floor;
         let diff_ceil_self = ceil - self;
+        
         if diff_self_floor < diff_ceil_self {
             return floor;
         } else {
@@ -213,6 +214,7 @@ impl Exponentiate for UFP64 {
         let exponent_int = exponent.value >> denominator_power;
         let nominator_pow = ~U128::from(0, self.value).pow(~U128::from(0, exponent_int));
         let nominator = nominator_pow >> denominator_power*(exponent_int - 1);
+
         if nominator.upper != 0 {
             // panic on overflow
             revert(0);
