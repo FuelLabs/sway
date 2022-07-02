@@ -4,7 +4,6 @@ library ufp64;
 use core::num::*;
 use ::assert::assert;
 use ::math::*;
-use ::logging::*;
 use ::revert::revert;
 use ::u128::U128;
 
@@ -13,6 +12,7 @@ pub struct UFP64 {
 }
 
 impl UFP64 {
+    /// Convinience function to know the denominator
     pub fn denominator() -> u64 {
         1 << 32
     }
@@ -23,6 +23,7 @@ impl UFP64 {
         }
     }
 
+    /// Creates UFP64 from u64. Note that ~UFP64::from(1) is 1 / 2^32 and not 1.
     pub fn from(value: u64) -> UFP64 {
         UFP64 {
             value, 
@@ -78,7 +79,7 @@ impl core::ops::Subtract for UFP64 {
     /// Subtract a UFP64 from a UFP64. Panics of overflow.
     pub fn subtract(self, other: Self) -> Self {
         // If trying to subtract a larger number, panic.
-        assert(!(self.value < other.value));
+        assert(self.value >= other.value);
 
         UFP64 {
             value: self.value - other.value,
@@ -89,11 +90,11 @@ impl core::ops::Subtract for UFP64 {
 impl core::ops::Multiply for UFP64 {
     /// Multiply a UFP64 with a UFP64. Panics of overflow.
     pub fn multiply(self, other: Self) -> Self {
-        let s_value = ~U128::from(0, self.value);
-        let o_value = ~U128::from(0, other.value);
+        let self_u128 = ~U128::from(0, self.value);
+        let other_u128 = ~U128::from(0, other.value);
 
-        let s_mul_o = s_value * o_value;
-        let res_u128 = s_mul_o >> 32;
+        let self_multiply_other = self_u128 * other_u128;
+        let res_u128 = self_multiply_other >> 32;
         if res_u128.upper != 0 {
             // panic on overflow
             revert(0);
@@ -112,10 +113,16 @@ impl core::ops::Divide for UFP64 {
         assert(divisor != zero);
 
         let denominator = ~U128::from(0, ~Self::denominator());
+        // Conversion to U128 done to ensure no overflow happen
+        // and maximal precision is avaliable
+        // as it makes possible to multiply by the denominator in 
+        // all cases
         let self_u128 = ~U128::from(0, self.value);
         let divisor_u128 = ~U128::from(0, divisor.value);
 
+        // Multiply by denominator to ensure accuracy 
         let res_u128 = self_u128 * denominator / divisor_u128;
+
         if res_u128.upper != 0 {
             // panic on overflow
             revert(0);
@@ -127,6 +134,7 @@ impl core::ops::Divide for UFP64 {
 }
 
 impl UFP64 {
+    /// Creates UFP64 that correponds to a unsigned integer
     pub fn from_uint(uint: u64) -> UFP64 {
         UFP64 {
             value: ~Self::denominator() * uint,
@@ -135,6 +143,7 @@ impl UFP64 {
 }
 
 impl UFP64 {
+    /// Takes the reciprocal (inverse) of a number, `1/x`.
     pub fn recip(number: UFP64) -> Self {
         let one = ~UFP64::from_uint(1);
 
@@ -144,8 +153,14 @@ impl UFP64 {
 }
 
 impl UFP64 {
+    /// Returns the integer part of `self`.
+    /// This means that non-integer numbers are always truncated towards zero.
     pub fn trunc(self) -> Self {
         UFP64 {
+            // first move to the right (divide by the denominator)
+            // to get rid of fractional part, than move to the
+            // left (multiply by th denominator), to ensure 
+            // fixed-point structure
             value: (self.value >> 32) << 32,
         }
     }
@@ -158,12 +173,17 @@ impl UFP64 {
 
     pub fn fract(self) -> Self {
         UFP64 {
+            // first move to the left (multiply by the denominator)
+            // to get rid of integer part, than move to the
+            // right (divide by th denominator), to ensure 
+            // fixed-point structure
             value: (self.value << 32) >> 32,
         }
     }
 }
 
 impl UFP64 {
+    /// Returns the smallest integer greater than or equal to `self`.
     pub fn ceil(self) -> Self {
         if self.fract().value != 0 {
             let res = self.trunc() + ~UFP64::from_uint(1);
@@ -174,12 +194,14 @@ impl UFP64 {
 }
 
 impl UFP64 {
+    /// Returns the nearest integer to `self`. Round half-way cases away from
     pub fn round(self) -> Self {
         let floor = self.floor();
         let ceil = self.ceil();
         let diff_self_floor = self - floor;
         let diff_ceil_self = ceil - self;
 
+        // check if we are nearer to the fllor or to the ceiling
         if diff_self_floor < diff_ceil_self {
             return floor;
         } else {
@@ -189,8 +211,11 @@ impl UFP64 {
 }
 
 impl Root for UFP64 {
+    /// Sqaure root for UFP64
     fn sqrt(self) -> Self {
         let nominator_root = self.value.sqrt();
+        // Need to multiple over 2 ^ 16, as the sqare root of the denominator 
+        // is also taken and we need to ensure that the denominator is constant
         let nominator = nominator_root << 16;
         UFP64 {
             value: nominator,
@@ -199,10 +224,14 @@ impl Root for UFP64 {
 }
 
 impl Exponentiate for UFP64 {
+    /// Power function. x ^ exponent
     pub fn pow(self, exponent: Self) -> Self {
-        let denominator_power = 32;
-        let exponent_int = exponent.value >> denominator_power;
+        let exponent_int = exponent.value >> 32;
         let nominator_pow = ~U128::from(0, self.value).pow(~U128::from(0, exponent_int));
+        // As we need to ensure the fixed point structure 
+        // which means that the denominator is always 2 ^ 32
+        // we need to deleet the nominator by 2 ^ (32 * exponent - 1)
+        // - 1 is the formula is due to denominator need to stay 2 ^ 32
         let nominator = nominator_pow >> denominator_power * (exponent_int - 1);
 
         if nominator.upper != 0 {
@@ -216,6 +245,7 @@ impl Exponentiate for UFP64 {
 }
 
 impl Exponent for UFP64 {
+    /// Exponent function. e ^ x
     pub fn exp(exponent: Self) -> Self {
         let one = ~UFP64::from_uint(1);
 
