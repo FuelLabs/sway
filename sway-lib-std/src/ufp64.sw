@@ -23,6 +23,13 @@ impl UFP64 {
         }
     }
 
+
+    pub fn from(value: u64) -> UFP64 {
+        UFP64 {
+            value,
+        }
+    }
+
     /// The smallest value that can be represented by this type.
     pub fn min() -> UFP64 {
         UFP64 {
@@ -219,12 +226,12 @@ impl Exponentiate for UFP64 {
 impl Exponent for UFP64 {
     pub fn exp(exponent: Self) -> Self {
         let one = ~UFP64::from_uint(1);
-        let p2 = one / ~UFP64::from_uint(2);
-        let p3 = one / ~UFP64::from_uint(6);
-        let p4 = one / ~UFP64::from_uint(24);
-        let p5 = one / ~UFP64::from_uint(120);
-        let p6 = one / ~UFP64::from_uint(720);
-        let p7 = one / ~UFP64::from_uint(5040);
+        let p2 = ~UFP64::from(2147483648);
+        let p3 = ~UFP64::from(715827882);
+        let p4 = ~UFP64::from(178956970);
+        let p5 = ~UFP64::from(35791394);
+        let p6 = ~UFP64::from(5965232);
+        let p7 = ~UFP64::from(852176);
 
         // common technique to counter loosing sugnifucant numbers in usual approximation
         let res_minus_1 = exponent + exponent * exponent * (p2 + exponent * (p3 + exponent * (p4 + exponent * (p5 + exponent * (p6 + exponent * p7)))));
