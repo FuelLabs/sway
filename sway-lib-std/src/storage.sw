@@ -236,8 +236,8 @@ impl<V> StorageVec<V> {
         // for every element in the vec with an index larger than the input index,
         // move the element up one index.
         // performed in reverse to prevent data overwriting
-        let mut count = len;
-        while count > index {
+        let mut count = len-1;
+        while count >= index {
             let key = sha256((count + 1, __get_storage_key()));
             // shifts all the values up one index
             store::<V>(key, get::<V>(sha256((count, __get_storage_key()))));
