@@ -1,5 +1,5 @@
 library ufp64;
-//! A wrapper around u64 type for a library for Sway for mathematical functions operating with signed 32.32-bit fixed point numbers. 
+//! A wrapper around u64 type for a library for Sway for mathematical functions operating with signed 32.32-bit fixed point numbers.
 
 use core::num::*;
 use ::assert::assert;
@@ -9,7 +9,7 @@ use ::revert::revert;
 use ::u128::U128;
 
 pub struct UFP64 {
-    value: u64 
+    value: u64,
 }
 
 impl UFP64 {
@@ -23,10 +23,9 @@ impl UFP64 {
         }
     }
 
-
     pub fn from(value: u64) -> UFP64 {
         UFP64 {
-            value,
+            value, 
         }
     }
 
@@ -70,7 +69,7 @@ impl core::ops::Add for UFP64 {
     /// Add a UFP64 to a UFP64. Panics on overflow.
     pub fn add(self, other: Self) -> Self {
         UFP64 {
-            value: self.value + other.value
+            value: self.value + other.value,
         }
     }
 }
@@ -82,7 +81,7 @@ impl core::ops::Subtract for UFP64 {
         assert(!(self.value < other.value));
 
         UFP64 {
-            value: self.value - other.value
+            value: self.value - other.value,
         }
     }
 }
@@ -90,7 +89,6 @@ impl core::ops::Subtract for UFP64 {
 impl core::ops::Multiply for UFP64 {
     /// Multiply a UFP64 with a UFP64. Panics of overflow.
     pub fn multiply(self, other: Self) -> Self {
-
         let s_value = ~U128::from(0, self.value);
         let o_value = ~U128::from(0, other.value);
 
@@ -102,7 +100,7 @@ impl core::ops::Multiply for UFP64 {
         }
 
         UFP64 {
-            value: res_u128.lower
+            value: res_u128.lower,
         }
     }
 }
@@ -110,7 +108,7 @@ impl core::ops::Multiply for UFP64 {
 impl core::ops::Divide for UFP64 {
     /// Divide a UFP64 by a UFP64. Panics if divisor is zero.
     pub fn divide(self, divisor: Self) -> Self {
-    let zero = ~UFP64::zero();
+        let zero = ~UFP64::zero();
         assert(divisor != zero);
 
         let denominator = ~U128::from(0, ~Self::denominator());
@@ -123,15 +121,12 @@ impl core::ops::Divide for UFP64 {
             revert(0);
         }
         UFP64 {
-            value: res_u128.lower
+            value: res_u128.lower,
         }
     }
 }
 
-
-
 impl UFP64 {
-
     pub fn from_uint(uint: u64) -> UFP64 {
         UFP64 {
             value: ~Self::denominator() * uint,
@@ -140,39 +135,35 @@ impl UFP64 {
 }
 
 impl UFP64 {
-
     pub fn recip(number: UFP64) -> Self {
         let one = ~UFP64::from_uint(1);
-        
+
         let res = one / number;
         res
     }
 }
 
 impl UFP64 {
-
     pub fn trunc(self) -> Self {
         UFP64 {
-            value: (self.value >> 32) << 32
+            value: (self.value >> 32) << 32,
         }
     }
 }
 
 impl UFP64 {
-
     pub fn floor(self) -> Self {
         return self.trunc();
     }
 
     pub fn fract(self) -> Self {
         UFP64 {
-            value: (self.value << 32) >> 32
+            value: (self.value << 32) >> 32,
         }
     }
 }
 
 impl UFP64 {
-
     pub fn ceil(self) -> Self {
         if self.fract().value != 0 {
             let res = self.trunc() + ~UFP64::from_uint(1);
@@ -183,19 +174,18 @@ impl UFP64 {
 }
 
 impl UFP64 {
-
     pub fn round(self) -> Self {
         let floor = self.floor();
         let ceil = self.ceil();
         let diff_self_floor = self - floor;
         let diff_ceil_self = ceil - self;
-        
+
         if diff_self_floor < diff_ceil_self {
             return floor;
         } else {
             return ceil;
         }
-    }  
+    }
 }
 
 impl Root for UFP64 {
@@ -203,7 +193,7 @@ impl Root for UFP64 {
         let nominator_root = self.value.sqrt();
         let nominator = nominator_root << 16;
         UFP64 {
-            value: nominator
+            value: nominator,
         }
     }
 }
@@ -213,14 +203,14 @@ impl Exponentiate for UFP64 {
         let denominator_power = 32;
         let exponent_int = exponent.value >> denominator_power;
         let nominator_pow = ~U128::from(0, self.value).pow(~U128::from(0, exponent_int));
-        let nominator = nominator_pow >> denominator_power*(exponent_int - 1);
+        let nominator = nominator_pow >> denominator_power * (exponent_int - 1);
 
         if nominator.upper != 0 {
             // panic on overflow
             revert(0);
         }
         UFP64 {
-            value: nominator.lower
+            value: nominator.lower,
         }
     }
 }
