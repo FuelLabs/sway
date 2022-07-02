@@ -1,4 +1,4 @@
 category = "fail"
 
 # check: Point { .., x } => { x },
-# nextnl: $()Unexpected rest token, must be at the end of pattern.
+# nextln: $()Unexpected rest token, must be at the end of pattern.
