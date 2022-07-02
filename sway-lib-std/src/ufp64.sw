@@ -150,9 +150,7 @@ impl UFP64 {
         let res = one / number;
         res
     }
-}
 
-impl UFP64 {
     /// Returns the integer part of `self`.
     /// This means that non-integer numbers are always truncated towards zero.
     pub fn trunc(self) -> Self {
@@ -167,10 +165,12 @@ impl UFP64 {
 }
 
 impl UFP64 {
+    /// Returns the largest integer less than or equal to `self`.
     pub fn floor(self) -> Self {
         return self.trunc();
     }
 
+    /// Returns the fractional part of `self`.
     pub fn fract(self) -> Self {
         UFP64 {
             // first move to the left (multiply by the denominator)
