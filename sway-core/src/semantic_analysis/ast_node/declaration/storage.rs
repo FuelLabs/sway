@@ -207,12 +207,12 @@ impl TypedStorageField {
         let module = Module::new(&mut context, Kind::Contract);
         match &self.initializer {
             None => Ok(vec![]),
-            Some(initializer) => compile_constant_expression_to_constant(
-                &mut context,
-                module,
-                initializer,
-            )
-            .map(|constant| serialize_to_storage_slots(&constant, &context, ix, &constant.ty, &[])),
+            Some(initializer) => {
+                compile_constant_expression_to_constant(&mut context, module, None, initializer)
+                    .map(|constant| {
+                        serialize_to_storage_slots(&constant, &context, ix, &constant.ty, &[])
+                    })
+            }
         }
     }
 }

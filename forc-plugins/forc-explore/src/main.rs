@@ -78,7 +78,7 @@ async fn run(app: App) -> Result<()> {
         .ok_or_else(|| anyhow!("no releases to select from"))?;
     let version = release.name.as_str();
     let message = format!("Fuel Network Explorer {}", version);
-    let _ = println_green(&message);
+    println_green(&message);
 
     // Download and unpack the latest release if we don't have it yet.
     let is_downloaded = check_version_path(version);

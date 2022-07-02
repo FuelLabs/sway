@@ -59,7 +59,7 @@ impl Root {
                 Some(src_path) if mod_path != src_path => {
                     self.resolve_symbol(src_path, true_symbol)
                 }
-                _ => module.check_symbol(true_symbol),
+                _ => CompileResult::from(module.check_symbol(true_symbol)),
             }
         })
     }
@@ -83,12 +83,13 @@ impl Root {
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
-                    Some(TypedDeclaration::StructDeclaration(decl)) => {
-                        let new_decl = check!(
-                            decl.monomorphize(
+                    Some(TypedDeclaration::StructDeclaration(mut decl)) => {
+                        check!(
+                            monomorphize(
+                                &mut decl,
                                 type_arguments,
                                 enforce_type_arguments,
-                                Some(span),
+                                span,
                                 self,
                                 mod_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
                             ),
@@ -96,14 +97,15 @@ impl Root {
                             warnings,
                             errors
                         );
-                        new_decl.create_type_id()
+                        decl.create_type_id()
                     }
-                    Some(TypedDeclaration::EnumDeclaration(decl)) => {
-                        let new_decl = check!(
-                            decl.monomorphize(
+                    Some(TypedDeclaration::EnumDeclaration(mut decl)) => {
+                        check!(
+                            monomorphize(
+                                &mut decl,
                                 type_arguments,
                                 enforce_type_arguments,
-                                Some(span),
+                                span,
                                 self,
                                 mod_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
                             ),
@@ -111,7 +113,7 @@ impl Root {
                             warnings,
                             errors
                         );
-                        new_decl.create_type_id()
+                        decl.create_type_id()
                     }
                     Some(TypedDeclaration::GenericTypeForFunctionScope { name, type_id }) => {
                         insert_type(TypeInfo::Ref(type_id, name.span()))

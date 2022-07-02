@@ -13,6 +13,10 @@ pub struct U128 {
     lower: u64,
 }
 
+pub enum U128Error {
+    LossOfPrecision: (),
+}
+
 pub trait From {
     /// Function for creating U128 from its u64 components.
     pub fn from(upper: u64, lower: u64) -> Self;
@@ -25,7 +29,7 @@ pub trait From {
 impl From for U128 {
     pub fn from(upper: u64, lower: u64) -> U128 {
         U128 {
-            upper, lower, 
+            upper, lower,
         }
     }
 }
@@ -103,14 +107,15 @@ impl U128 {
         }
     }
 
-    /// Downcast to `u64`. Err if precision would be lost, Ok otherwise.
-    pub fn to_u64(self) -> Result<u64, ()> {
+    /// Safely downcast to `u64` without loss of precision.
+    /// Returns Err if the number > ~u64::max()
+    pub fn as_u64(self) -> Result<u64, U128Error> {
         match self.upper {
             0 => {
                 Result::Ok(self.lower)
             },
             _ => {
-                Result::Err(())
+                Result::Err(U128Error::LossOfPrecision)
             },
         }
     }
@@ -246,7 +251,7 @@ impl core::ops::Subtract for U128 {
         }
 
         U128 {
-            upper, lower, 
+            upper, lower,
         }
     }
 }
