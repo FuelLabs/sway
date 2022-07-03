@@ -820,6 +820,8 @@ fn test_vector_new_enum() {
 
     vector.push(SimpleEnum::Y(b1));
     vector.push(SimpleEnum::Y(b2));
+    assert(vector.len() == 5);
+    assert(vector.capacity() == 8);
 
     // Remove the first
     match vector.remove(0) {
@@ -1010,6 +1012,8 @@ fn test_vector_new_enum() {
         }, 
         Option::None => revert(0), 
     }
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 4);
 
     match vector.pop() {
         Option::Some(val) => {
@@ -1020,6 +1024,8 @@ fn test_vector_new_enum() {
         }, 
         Option::None => revert(0), 
     }
+    assert(vector.len() == 1);
+    assert(vector.capacity() == 4);
 
     match vector.pop() {
         Option::Some(_) => revert(0), Option::None => {}, 
@@ -1367,6 +1373,8 @@ fn test_vector_new_string() {
 
     vector.push(s3);
     vector.push(s4);
+    assert(vector.len() == 5);
+    assert(vector.capacity() == 8);
 
     // Remove the first
     let val = vector.remove(0);
@@ -1531,6 +1539,8 @@ fn test_vector_new_array() {
 
     vector.push(a3);
     vector.push(a4);
+    assert(vector.len() == 5);
+    assert(vector.capacity() == 8);
 
     // Remove the first
     let val = vector.remove(0);
