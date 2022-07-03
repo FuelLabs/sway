@@ -15,7 +15,7 @@ pub struct DebugFlags {
 pub fn generate_warnings_for_parsed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
     let warnings = tokens
         .iter()
-        .filter(|(k, v)| v.typed.is_none())
+        .filter(|(_, v)| v.typed.is_none())
         .map(|((ident, _), _)| warning_from_ident(ident))
         .collect();
 
@@ -25,7 +25,7 @@ pub fn generate_warnings_for_parsed_tokens(tokens: &TokenMap) -> Vec<Diagnostic>
 pub fn generate_warnings_for_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
     let warnings = tokens
         .iter()
-        .filter(|(k, v)| v.typed.is_some())
+        .filter(|(_, v)| v.typed.is_some())
         .map(|((ident, _), _)| warning_from_ident(ident))
         .collect();
 
@@ -72,7 +72,7 @@ fn ast_node_type(token_type: &TokenType) -> String {
         },
         None => match &token_type.parsed {
             AstToken::Expression(exp) => match exp {
-                Expression::Literal { value, .. } => literal_to_string(&value),
+                Expression::Literal { value, .. } => literal_to_string(value),
                 _ => "".to_string(),
             },
             _ => "".to_string(),

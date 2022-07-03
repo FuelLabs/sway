@@ -54,7 +54,7 @@ fn create_semantic_token(
     next_token_span: &Span,
     prev_token_span: Option<&Span>,
 ) -> SemanticToken {
-    let next_token_range = get_range_from_span(&next_token_span);
+    let next_token_range = get_range_from_span(next_token_span);
     let next_token_line_start = next_token_range.start.line;
 
     // TODO - improve with modifiers
@@ -64,7 +64,7 @@ fn create_semantic_token(
     let next_token_start_char = next_token_range.start.character;
 
     let (delta_line, delta_start) = if let Some(prev_token_span) = prev_token_span {
-        let prev_token_range = get_range_from_span(&prev_token_span);
+        let prev_token_range = get_range_from_span(prev_token_span);
         let prev_token_line_start = prev_token_range.start.line;
         let delta_start = if next_token_line_start == prev_token_line_start {
             next_token_start_char - prev_token_range.start.character
@@ -89,10 +89,8 @@ fn create_semantic_token(
 #[repr(u32)]
 enum TokenTypeIndex {
     Function = 1,
-    Namespace = 3,
     Parameter = 5,
     String = 6,
-    TypeParameter = 8,
     Variable = 9,
     Enum = 10,
     Struct = 11,
@@ -128,7 +126,7 @@ fn get_type_idx(ast_token: &AstToken) -> u32 {
             }
         }
         AstToken::FunctionDeclaration(_) => TokenTypeIndex::Function as u32,
-        AstToken::FunctionParameter(_) => TokenTypeIndex::TypeParameter as u32,
+        AstToken::FunctionParameter(_) => TokenTypeIndex::Parameter as u32,
         AstToken::TraitFn(_) => TokenTypeIndex::Function as u32,
         // currently we return `variable` type as default
         _ => TokenTypeIndex::Variable as u32,

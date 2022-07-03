@@ -80,10 +80,7 @@ impl Session {
                 let token_ranges = document
                     .get_all_references(token)
                     .iter()
-                    .map(|(ident, _)| {
-                        let range = get_range_from_span(&ident.span());
-                        range
-                    })
+                    .map(|(ident, _)| get_range_from_span(&ident.span()))
                     .collect();
 
                 return Some(token_ranges);

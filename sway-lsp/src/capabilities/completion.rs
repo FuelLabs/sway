@@ -34,7 +34,7 @@ pub fn to_completion_items(token_map: &TokenMap) -> Vec<CompletionItem> {
                 label: ident.as_str().to_string(),
                 kind: {
                     match &token.typed {
-                        Some(typed_token) => typed_to_completion_kind(&typed_token),
+                        Some(typed_token) => typed_to_completion_kind(typed_token),
                         None => parsed_to_completion_kind(&token.parsed),
                     }
                 },
@@ -63,7 +63,7 @@ pub fn parsed_to_completion_kind(ast_token: &AstToken) -> Option<CompletionItemK
             | Declaration::StorageDeclaration(_) => Some(CompletionItemKind::TEXT),
         },
         AstToken::Expression(exp) => match &exp {
-            Expression::Literal { value, .. } => Some(CompletionItemKind::VALUE),
+            Expression::Literal { .. } => Some(CompletionItemKind::VALUE),
             Expression::FunctionApplication { .. } => Some(CompletionItemKind::FUNCTION),
             Expression::VariableExpression { .. } => Some(CompletionItemKind::VARIABLE),
             Expression::StructExpression { .. } => Some(CompletionItemKind::STRUCT),
@@ -96,7 +96,7 @@ pub fn typed_to_completion_kind(typed_ast_token: &TypedAstToken) -> Option<Compl
             _ => None,
         },
         TypedAstToken::TypedExpression(exp) => match &exp.expression {
-            TypedExpressionVariant::Literal(lit) => Some(CompletionItemKind::VALUE),
+            TypedExpressionVariant::Literal(_) => Some(CompletionItemKind::VALUE),
             TypedExpressionVariant::FunctionApplication { .. } => {
                 Some(CompletionItemKind::FUNCTION)
             }

@@ -13,10 +13,10 @@ use sway_core::{
 
 pub fn traverse_node(node: &AstNode, tokens: &mut TokenMap) {
     match &node.content {
-        AstNodeContent::Declaration(declaration) => handle_declaration(&declaration, tokens),
-        AstNodeContent::Expression(expression) => handle_expression(&expression, tokens),
+        AstNodeContent::Declaration(declaration) => handle_declaration(declaration, tokens),
+        AstNodeContent::Expression(expression) => handle_expression(expression, tokens),
         AstNodeContent::ImplicitReturnExpression(expression) => {
-            handle_expression(&expression, tokens)
+            handle_expression(expression, tokens)
         }
         AstNodeContent::ReturnStatement(return_statement) => {
             handle_expression(&return_statement.expr, tokens)
@@ -46,7 +46,7 @@ fn handle_function_declation(func: &FunctionDeclaration, tokens: &mut TokenMap) 
     handle_custom_type(&func.return_type, tokens);
 }
 
-fn handle_custom_type(type_info: &TypeInfo, tokens: &mut TokenMap) {
+fn handle_custom_type(_type_info: &TypeInfo, _tokens: &mut TokenMap) {
     // TODO: Not obvious how to handle this now with the new types
 
     // if let TypeInfo::Custom { name, .. } = type_info {

@@ -45,10 +45,9 @@ impl TextDocument {
         match utils::common::ident_and_span_at_position(position, &self.token_map) {
             Some((ident, _)) => {
                 // Retrieve the TokenType from our HashMap
-                match self.token_map.get(&utils::token::to_ident_key(&ident)) {
-                    Some(token) => Some((ident.clone(), token)),
-                    None => None,
-                }
+                self.token_map
+                    .get(&utils::token::to_ident_key(&ident))
+                    .map(|token| (ident.clone(), token))
             }
             None => None,
         }

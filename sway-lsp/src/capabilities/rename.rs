@@ -14,11 +14,11 @@ pub fn rename(session: Arc<Session>, params: RenameParams) -> Option<WorkspaceEd
 
     match session.documents.get(url.path()) {
         Some(ref document) => {
-            if let Some((ident, token)) = document.get_token_at_position(position) {
+            if let Some((_, token)) = document.get_token_at_position(position) {
                 let mut edits = Vec::new();
 
                 // todo: currently only supports single file rename
-                for (ident, token) in document.get_all_references(token) {
+                for (ident, _) in document.get_all_references(token) {
                     let range = get_range_from_span(&ident.span());
                     edits.push(TextEdit::new(range, new_name.clone()));
                 }
