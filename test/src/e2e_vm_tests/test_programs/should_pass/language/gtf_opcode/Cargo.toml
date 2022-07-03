@@ -1,7 +1,7 @@
 [project]
 name = "gtf_opcode"
 version = "0.1.0"
-authors = ["Nicholas Furfaro"]
+authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 license = "Apache-2.0"
 
