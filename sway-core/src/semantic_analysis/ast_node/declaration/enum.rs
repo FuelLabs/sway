@@ -1,10 +1,10 @@
 use crate::{
     error::*,
-    namespace::*,
     parse_tree::*,
     semantic_analysis::*,
     type_engine::{
-        insert_type, look_up_type_id, CopyTypes, CreateTypeId, ReplaceSelfType, TypeId, TypeMapping,
+        insert_type, look_up_type_id, CopyTypes, CreateTypeId, EnforceTypeArguments,
+        MonomorphizeHelper, ReplaceSelfType, TypeId, TypeMapping, TypeParameter,
     },
     types::{JsonAbiString, ToJsonAbi},
     TypeInfo,
@@ -62,8 +62,6 @@ impl Spanned for TypedEnumDeclaration {
 }
 
 impl MonomorphizeHelper for TypedEnumDeclaration {
-    type Output = TypedEnumDeclaration;
-
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
@@ -71,18 +69,10 @@ impl MonomorphizeHelper for TypedEnumDeclaration {
     fn name(&self) -> &Ident {
         &self.name
     }
-
-    fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output {
-        monomorphize_inner(self, type_mapping, namespace)
-    }
 }
 
 impl TypedEnumDeclaration {
-    pub fn type_check(
-        decl: EnumDeclaration,
-        namespace: &mut Namespace,
-        self_type: TypeId,
-    ) -> CompileResult<TypedEnumDeclaration> {
+    pub fn type_check(ctx: TypeCheckContext, decl: EnumDeclaration) -> CompileResult<Self> {
         let mut errors = vec![];
         let mut warnings = vec![];
 
@@ -95,14 +85,15 @@ impl TypedEnumDeclaration {
         } = decl;
 
         // create a namespace for the decl, used to create a scope for generics
-        let mut namespace = namespace.clone();
+        let mut decl_namespace = ctx.namespace.clone();
+        let mut ctx = ctx.scoped(&mut decl_namespace);
 
         // type check the type parameters
         // insert them into the namespace
         let mut new_type_parameters = vec![];
         for type_parameter in type_parameters.into_iter() {
             new_type_parameters.push(check!(
-                TypeParameter::type_check(type_parameter, &mut namespace),
+                TypeParameter::type_check(ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -113,12 +104,7 @@ impl TypedEnumDeclaration {
         let mut variants_buf = vec![];
         for variant in variants {
             variants_buf.push(check!(
-                TypedEnumVariant::type_check(
-                    variant.clone(),
-                    &mut namespace,
-                    self_type,
-                    variant.span,
-                ),
+                TypedEnumVariant::type_check(ctx.by_ref(), variant.clone()),
                 continue,
                 warnings,
                 errors
@@ -216,18 +202,15 @@ impl ReplaceSelfType for TypedEnumVariant {
 
 impl TypedEnumVariant {
     pub(crate) fn type_check(
+        mut ctx: TypeCheckContext,
         variant: EnumVariant,
-        namespace: &mut Namespace,
-        self_type: TypeId,
-        span: Span,
-    ) -> CompileResult<TypedEnumVariant> {
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let enum_variant_type = check!(
-            namespace.resolve_type_with_self(
+            ctx.resolve_type_with_self(
                 insert_type(variant.type_info),
-                self_type,
-                &span,
+                &variant.span,
                 EnforceTypeArguments::Yes
             ),
             insert_type(TypeInfo::ErrorRecovery),

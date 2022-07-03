@@ -4,7 +4,7 @@
 We can try this command with the initial project created using `forc init`, with the counter template:
 
 ```sh
-forc init --template counter counter
+forc new --template counter counter
 cd counter
 forc build -o obj
 ```

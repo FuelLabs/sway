@@ -154,6 +154,15 @@ impl Block {
             .map_or(false, |i| matches!(i, Instruction::Ret { .. }))
     }
 
+    pub fn is_terminated_by_a_branch(&self, context: &Context) -> bool {
+        self.get_term_inst(context).map_or(false, |i| {
+            matches!(
+                i,
+                Instruction::Branch { .. } | Instruction::ConditionalBranch { .. }
+            )
+        })
+    }
+
     /// Replace a value within this block.
     ///
     /// For every instruction within the block, any reference to `old_val` is replaced with

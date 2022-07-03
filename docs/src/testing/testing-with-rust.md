@@ -1,9 +1,9 @@
 # Testing with Rust
 
-If you look again at the project structure when you create a [new Forc project](../introduction/forc_project.md) with `forc init`, you can see a directory called `tests/`:
+If you look again at the project structure when you create a [new Forc project](../introduction/forc_project.md) with `forc new`, you can see a directory called `tests/`:
 
 ```plaintext
-$ forc init my-fuel-project
+$ forc new my-fuel-project
 $ cd my-fuel-project
 $ tree .
 ├── Cargo.toml
@@ -16,7 +16,7 @@ $ tree .
 
 Note that this is also a Rust package, hence the existence of a `Cargo.toml` (Rust manifest file) in the project root directory. The `Cargo.toml` in the root directory contains necessary Rust dependencies to enable you to write Rust-based tests using our [Rust SDK](https://github.com/FuelLabs/fuels-rs), (`fuels-rs`).
 
-These tests can be run using `forc test` which will look for Rust tests under the `tests/` directory (created automatically with `forc init` and prepopulated with boilerplate code).
+These tests can be run using `forc test` which will look for Rust tests under the `tests/` directory (created automatically with `forc new` and prepopulated with boilerplate code).
 
 For example, let's write tests against the following contract, written in Sway. This can be done in the pregenerated `src/main.sw` or in a new file in `src`. In the case of the latter, update the `entry` field in `Forc.toml` to point at the new contract.
 

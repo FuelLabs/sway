@@ -475,6 +475,8 @@ impl ParseToEnd for CodeBlockContents {
                 || parser.peek::<ImplToken>().is_some()
                 || parser.peek2::<AbiToken, Ident>().is_some()
                 || parser.peek::<ConstToken>().is_some()
+                || parser.peek::<BreakToken>().is_some()
+                || parser.peek::<ContinueToken>().is_some()
                 || matches!(
                     parser.peek2::<StorageToken, Delimiter>(),
                     Some((_, Delimiter::Brace))
@@ -1056,14 +1058,14 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
         );
     }
     if parser.peek::<TrueToken>().is_some() {
-        let ident = parser.parse::<Ident>()?;
+        let ident = parser.parse::<TrueToken>()?;
         return Ok(Expr::Literal(Literal::Bool(LitBool {
             span: ident.span(),
             kind: LitBoolType::True,
         })));
     }
     if parser.peek::<FalseToken>().is_some() {
-        let ident = parser.parse::<Ident>()?;
+        let ident = parser.parse::<FalseToken>()?;
         return Ok(Expr::Literal(Literal::Bool(LitBool {
             span: ident.span(),
             kind: LitBoolType::False,

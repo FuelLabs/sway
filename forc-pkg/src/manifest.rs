@@ -1,7 +1,4 @@
-use crate::{
-    pkg::{manifest_file_missing, parsing_failed, wrong_program_type},
-    BuildConfig,
-};
+use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Result};
 use forc_util::{find_manifest_dir, println_yellow_err, validate_name};
 use serde::{Deserialize, Serialize};
@@ -13,6 +10,8 @@ use std::{
 
 use sway_core::{parse, TreeType};
 use sway_utils::constants;
+
+type PatchMap = BTreeMap<String, Dependency>;
 
 /// A [Manifest] that was deserialized from a file at a particular path.
 #[derive(Debug)]
@@ -30,7 +29,8 @@ pub struct Manifest {
     pub project: Project,
     pub network: Option<Network>,
     pub dependencies: Option<BTreeMap<String, Dependency>>,
-    pub build_profile: Option<BTreeMap<String, BuildConfig>>,
+    pub patch: Option<BTreeMap<String, PatchMap>>,
+    build_profile: Option<BTreeMap<String, BuildProfile>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -74,6 +74,17 @@ pub struct DependencyDetails {
     pub(crate) tag: Option<String>,
     pub(crate) package: Option<String>,
     pub(crate) rev: Option<String>,
+}
+
+/// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "kebab-case")]
+pub struct BuildProfile {
+    pub print_ir: bool,
+    pub print_finalized_asm: bool,
+    pub print_intermediate_asm: bool,
+    pub silent: bool,
+    pub time_phases: bool,
 }
 
 impl Dependency {
@@ -182,6 +193,13 @@ impl ManifestFile {
             Ok(())
         }
     }
+
+    /// Access the build profile associated with the given profile name.
+    pub fn build_profile(&self, profile_name: &str) -> Option<&BuildProfile> {
+        self.build_profile
+            .as_ref()
+            .and_then(|profiles| profiles.get(profile_name))
+    }
 }
 
 impl Manifest {
@@ -241,7 +259,7 @@ impl Manifest {
     }
 
     /// Produce an iterator yielding all listed build profiles.
-    pub fn build_profiles(&self) -> impl Iterator<Item = (&String, &BuildConfig)> {
+    pub fn build_profiles(&self) -> impl Iterator<Item = (&String, &BuildProfile)> {
         self.build_profile
             .as_ref()
             .into_iter()
@@ -256,6 +274,14 @@ impl Manifest {
         })
     }
 
+    /// Produce an iterator yielding all listed patches.
+    pub fn patches(&self) -> impl Iterator<Item = (&String, &PatchMap)> {
+        self.patch
+            .as_ref()
+            .into_iter()
+            .flat_map(|patches| patches.iter())
+    }
+
     /// Check for the `core` and `std` packages under `[dependencies]`. If both are missing, add
     /// `std` implicitly.
     ///
@@ -265,8 +291,7 @@ impl Manifest {
     /// Note: If only `core` is specified, we are unable to implicitly add `std` as we cannot
     /// guarantee that the user's `core` is compatible with the implicit `std`.
     fn implicitly_include_std_if_missing(&mut self, sway_git_tag: &str) {
-        const CORE: &str = "core";
-        const STD: &str = "std";
+        use crate::{CORE, STD};
         // Don't include `std` if:
         // - this *is* `core` or `std`.
         // - either `core` or `std` packages are already specified.
@@ -291,32 +316,13 @@ impl Manifest {
     /// If they are provided, use the provided `debug` or `release` so that they override the default `debug`
     /// and `release`.
     fn implicitly_include_default_build_profiles_if_missing(&mut self) {
-        const DEBUG: &str = "debug";
-        const RELEASE: &str = "release";
-
         let build_profiles = self.build_profile.get_or_insert_with(Default::default);
 
-        if build_profiles.get(DEBUG).is_none() {
-            build_profiles.insert(
-                DEBUG.to_string(),
-                BuildConfig {
-                    print_ir: false,
-                    print_finalized_asm: false,
-                    print_intermediate_asm: false,
-                    silent: false,
-                },
-            );
+        if build_profiles.get(BuildProfile::DEBUG).is_none() {
+            build_profiles.insert(BuildProfile::DEBUG.into(), BuildProfile::debug());
         }
-        if build_profiles.get(RELEASE).is_none() {
-            build_profiles.insert(
-                RELEASE.to_string(),
-                BuildConfig {
-                    print_ir: false,
-                    print_finalized_asm: false,
-                    print_intermediate_asm: false,
-                    silent: false,
-                },
-            );
+        if build_profiles.get(BuildProfile::RELEASE).is_none() {
+            build_profiles.insert(BuildProfile::RELEASE.into(), BuildProfile::release());
         }
     }
 
@@ -341,10 +347,42 @@ impl Manifest {
     }
 }
 
+impl BuildProfile {
+    pub const DEBUG: &'static str = "debug";
+    pub const RELEASE: &'static str = "release";
+    pub const DEFAULT: &'static str = Self::DEBUG;
+
+    pub fn debug() -> Self {
+        Self {
+            print_ir: false,
+            print_finalized_asm: false,
+            print_intermediate_asm: false,
+            silent: false,
+            time_phases: false,
+        }
+    }
+
+    pub fn release() -> Self {
+        Self {
+            print_ir: false,
+            print_finalized_asm: false,
+            print_intermediate_asm: false,
+            silent: false,
+            time_phases: false,
+        }
+    }
+}
+
 impl std::ops::Deref for ManifestFile {
     type Target = Manifest;
     fn deref(&self) -> &Self::Target {
         &self.manifest
+    }
+}
+
+impl Default for BuildProfile {
+    fn default() -> Self {
+        Self::debug()
     }
 }
 
