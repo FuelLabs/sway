@@ -185,7 +185,7 @@ impl<T> Vec<T> {
         // The spot to put the new value
         let index_ptr = buf_start + index * val_size;
 
-        // Shift everything over to make space. 
+        // Shift everything over to make space.
         let mut curr_ptr = buf_start + self.len * val_size;
         while curr_ptr > index_ptr {
             copy(curr_ptr, curr_ptr - val_size, val_size);
@@ -203,7 +203,7 @@ impl<T> Vec<T> {
     /// is empty.
     fn pop(mut self) -> Option<T> {
         if self.len == 0 {
-            return Option::None;        
+            return Option::None;
         }
         self.len -= 1;
         Option::Some(read(self.buf.ptr() + self.len * size_of::<T>()))
