@@ -131,8 +131,8 @@ pub fn tx_receipts_root() -> b256 {
     }
 }
 
-/// Get the transaction script start offset.
-pub fn tx_script_start_offset() -> u64 {
+/// Get the transaction script start pointer.
+pub fn tx_script_start_pointer() -> u64 {
     asm(r1, r2: TX_SCRIPT_START_OFFSET) {
         move r1 r2;
         r1: u64
@@ -143,8 +143,8 @@ pub fn tx_script_start_offset() -> u64 {
 // Script
 ////////////////////////////////////////
 
-/// Get the transaction script data start offset.
-pub fn tx_script_data_start_offset() -> u64 {
+/// Get the transaction script data start pointer.
+pub fn tx_script_data_start_pointer() -> u64 {
     asm(r1, r2: TX_SCRIPT_START_OFFSET, r3: TX_SCRIPT_LENGTH_OFFSET) {
         lw r3 r3 i0;
         add r1 r2 r3;
@@ -155,7 +155,7 @@ pub fn tx_script_data_start_offset() -> u64 {
 /// Get the script data, typed. Unsafe.
 pub fn tx_script_data<T>() -> T {
     // TODO some safety checks on the input data? We are going to assume it is the right type for now.
-    let ptr = tx_script_data_start_offset();
+    let ptr = tx_script_data_start_pointer();
     if is_reference_type::<T>() {
         asm(r1: ptr) {
             r1: T
@@ -172,7 +172,7 @@ pub fn tx_script_data<T>() -> T {
 /// Must be cast to a u64 array, with sufficient length to contain the bytecode.
 /// Bytecode will be padded to next whole word.
 pub fn tx_script_bytecode<T>() -> T {
-    let script_ptr = tx_script_start_offset();
+    let script_ptr = tx_script_start_pointer();
     asm(r1: script_ptr) {
         r1: T
     }
@@ -231,7 +231,7 @@ pub fn tx_input_coin_owner(index: u64) -> Address {
 // Inputs > Predicate
 ////////////////////////////////////////
 
-pub fn tx_predicate_data_start_offset() -> u64 {
+pub fn tx_predicate_data_start_pointer() -> u64 {
     // $is is word-aligned
     let is = instrs_start();
     let predicate_length_ptr = is - 16;
@@ -248,7 +248,7 @@ pub fn tx_predicate_data_start_offset() -> u64 {
 }
 
 pub fn get_predicate_data<T>() -> T {
-    let ptr = tx_predicate_data_start_offset();
+    let ptr = tx_predicate_data_start_pointer();
     read(ptr)
 }
 
