@@ -1,0 +1,14 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-025C6DF1C548A897'
+dependencies = []
+
+[[package]]
+name = 'predicate_data_struct'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-025C6DF1C548A897'
+dependencies = ['core']
