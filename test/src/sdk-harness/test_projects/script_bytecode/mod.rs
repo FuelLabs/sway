@@ -1,11 +1,9 @@
-use fuels::{prelude::*};
 use fuel_core::service::{Config, FuelService};
-use fuel_gql_client::client::FuelClient;
-use fuel_gql_client::fuel_tx::{Transaction, Receipt, Bytes32};
-use fuels_contract::script::Script;
 use fuel_crypto::Hasher;
-
-
+use fuel_gql_client::client::FuelClient;
+use fuel_gql_client::fuel_tx::{Bytes32, Receipt, Transaction};
+use fuels::prelude::*;
+use fuels_contract::script::Script;
 
 pub async fn run_compiled_script(binary_filepath: &str) -> Result<Vec<Receipt>, Error> {
     let script_binary = std::fs::read(binary_filepath)?;
@@ -30,12 +28,13 @@ pub async fn run_compiled_script(binary_filepath: &str) -> Result<Vec<Receipt>, 
     script.call(&client).await
 }
 
-
 #[tokio::test]
 async fn check_script_bytecode_hash() {
-
     // Calculate padded script hash (since memory is read in whole words, the bytecode will be padded)
-    let mut script_bytecode = std::fs::read("test_projects/script_bytecode/out/debug/script_bytecode.bin").unwrap().to_vec();
+    let mut script_bytecode =
+        std::fs::read("test_projects/script_bytecode/out/debug/script_bytecode.bin")
+            .unwrap()
+            .to_vec();
     let padding = script_bytecode.len() % 8;
     script_bytecode.append(&mut vec![0; padding]);
     let script_hash = Hasher::hash(&script_bytecode); // This is the hard that must be hard-coded in the predicate
@@ -43,8 +42,8 @@ async fn check_script_bytecode_hash() {
     // Run script and get the hash it returns
     let path_to_bin = "test_projects/script_bytecode/out/debug/script_bytecode.bin";
     let return_val = run_compiled_script(path_to_bin).await.unwrap();
-    let script_hash_from_vm = unsafe{Bytes32::from_slice_unchecked(return_val[0].data().unwrap())};
+    let script_hash_from_vm =
+        unsafe { Bytes32::from_slice_unchecked(return_val[0].data().unwrap()) };
 
     assert_eq!(script_hash_from_vm, script_hash);
-
 }
