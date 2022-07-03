@@ -4,6 +4,7 @@ mod harness;
 
 use forc_util::init_tracing_subscriber;
 use fuel_vm::prelude::*;
+use regex::Regex;
 
 use std::{
     collections::HashMap,
@@ -218,22 +219,30 @@ fn discover_test_configs() -> Result<Vec<TestDescription>, String> {
     Ok(configs)
 }
 
+const DIRECTIVE_RX: &str = r"(?m)^\s*#\s*(\w+):\s+(.*)$";
+
+fn build_file_checker(content: &str) -> Result<filecheck::Checker, String> {
+    let mut checker = filecheck::CheckerBuilder::new();
+
+    // Parse the file and check for unknown FileCheck directives.
+    let re = Regex::new(DIRECTIVE_RX).unwrap();
+    for cap in re.captures_iter(content) {
+        if let Ok(false) = checker.directive(&cap[0]) {
+            return Err(format!("Unknown FileCheck directive: {}", &cap[1]));
+        }
+    }
+
+    Ok(checker.finish())
+}
+
 fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
-    let (toml_content, checker) = std::fs::read_to_string(path)
-        .map_err(|e| e.to_string())
-        .and_then(|toml_content_str| {
-            // Parse the file for FileCheck directives and_then parse the file into TOML.
-            filecheck::CheckerBuilder::new()
-                .text(&toml_content_str)
-                .map_err(|e| e.to_string())
-                .and_then(|checker| {
-                    toml_content_str
-                        .parse::<toml::Value>()
-                        .map_err(|e| e.to_string())
-                        .map(|toml_content| (toml_content, checker.finish()))
-                })
-        })
-        .map_err(|e| format!("Failed to parse: {e}"))?;
+    let toml_content_str = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+
+    let checker = build_file_checker(&toml_content_str)?;
+
+    let toml_content = toml_content_str
+        .parse::<toml::Value>()
+        .map_err(|e| e.to_string())?;
 
     if !toml_content.is_table() {
         return Err("Malformed test description.".to_owned());
