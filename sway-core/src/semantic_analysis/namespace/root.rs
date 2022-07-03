@@ -59,7 +59,7 @@ impl Root {
                 Some(src_path) if mod_path != src_path => {
                     self.resolve_symbol(src_path, true_symbol)
                 }
-                _ => module.check_symbol(true_symbol),
+                _ => CompileResult::from(module.check_symbol(true_symbol)),
             }
         })
     }

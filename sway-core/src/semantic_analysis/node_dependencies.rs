@@ -373,6 +373,9 @@ impl Dependencies {
                 .gather_from_iter(fields.iter(), |deps, StorageField { ref type_info, .. }| {
                     deps.gather_from_typeinfo(type_info)
                 }),
+            // Nothing to do for `break` and `continue`
+            Declaration::Break => self,
+            Declaration::Continue => self,
         }
     }
 
@@ -475,10 +478,9 @@ impl Dependencies {
             }
             Expression::TupleIndex { prefix, .. } => self.gather_from_expr(prefix),
             Expression::StorageAccess { .. } => self,
-            Expression::IntrinsicFunction { kind, .. } => match kind {
-                IntrinsicFunctionKind::SizeOfVal { exp } => self.gather_from_expr(exp),
-                _ => self,
-            },
+            Expression::IntrinsicFunction { arguments, .. } => {
+                self.gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg))
+            }
         }
     }
 
@@ -702,6 +704,9 @@ fn decl_name(decl: &Declaration) -> Option<DependentSymbol> {
         Declaration::Reassignment(_) => None,
         // Storage cannot be depended upon or exported
         Declaration::StorageDeclaration(_) => None,
+        // Nothing depends on a `break` and `continue`
+        Declaration::Break => None,
+        Declaration::Continue => None,
     }
 }
 
