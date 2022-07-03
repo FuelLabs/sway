@@ -28,7 +28,7 @@ pub trait From {
 impl From for U128 {
     pub fn from(upper: u64, lower: u64) -> U128 {
         U128 {
-            upper, lower, 
+            upper, lower,
         }
     }
 }

@@ -29,7 +29,7 @@ pub trait From {
 impl From for U256 {
     pub fn from(a: u64, b: u64, c: u64, d: u64) -> U256 {
         U256 {
-            a, b, c, d, 
+            a, b, c, d,
         }
     }
 }
