@@ -1012,7 +1012,7 @@ fn test_vector_new_enum() {
         }, 
         Option::None => revert(0), 
     }
-    assert(vector.len() == 2);
+    assert(vector.len() == 1);
     assert(vector.capacity() == 4);
 
     match vector.pop() {
@@ -1024,7 +1024,7 @@ fn test_vector_new_enum() {
         }, 
         Option::None => revert(0), 
     }
-    assert(vector.len() == 1);
+    assert(vector.len() == 0);
     assert(vector.capacity() == 4);
 
     match vector.pop() {
