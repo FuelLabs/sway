@@ -48,6 +48,7 @@ const INPUT_CONTRACT = 1u8;
 const INPUT_MESSAGE = 2u8;
 
 // Output types
+const OUTPUT_COIN = 0u8;
 const OUTPUT_CONTRACT = 1u8;
 const OUTPUT_MESSAGE = 2u8;
 const OUTPUT_CHANGE = 3u8;
