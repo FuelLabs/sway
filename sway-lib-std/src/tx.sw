@@ -246,8 +246,7 @@ pub fn tx_predicate_data_start_pointer() -> u64 {
 }
 
 pub fn get_predicate_data<T>() -> T {
-    let ptr = tx_predicate_data_start_pointer();
-    read(ptr)
+    read(tx_predicate_data_start_pointer())
 }
 
 ////////////////////////////////////////
