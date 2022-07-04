@@ -63,7 +63,6 @@ impl TxContractTest for Contract {
     fn get_tx_script_start_offset() -> u64 {
         tx_script_start_offset()
     }
-
     fn get_tx_input_pointer(index: u64) -> u32 {
         tx_input_pointer(index)
     }
@@ -73,7 +72,6 @@ impl TxContractTest for Contract {
     fn get_tx_input_coin_owner(index: u64) -> Address {
         tx_input_coin_owner(index)
     }
-
     fn get_tx_output_pointer(index: u64) -> u32 {
         tx_output_pointer(index)
     }
