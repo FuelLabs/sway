@@ -189,7 +189,7 @@ async fn can_get_script_start_offset() {
         ConsensusParameters::DEFAULT.tx_offset() + TRANSACTION_SCRIPT_FIXED_SIZE;
 
     let result = contract_instance
-        .get_tx_script_start_offset()
+        .get_tx_script_start_pointer()
         .call()
         .await
         .unwrap();
