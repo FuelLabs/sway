@@ -1,7 +1,7 @@
 [project]
 name = "svec_u8"
 version = "0.1.0"
-authors = ["Swaystar"]
+authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 license = "Apache-2.0"
 
