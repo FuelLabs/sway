@@ -6,7 +6,7 @@ struct Foo {
 }
 
 impl Foo {
-    fn foo() -> b256 {
+    fn foo(self) -> b256 {
         __get_storage_key()
     }
 }

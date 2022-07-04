@@ -18,12 +18,11 @@ impl<T: Parse + Format> Format for Annotated<T> {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let attributes = &self.attribute_list;
-
-        for attr in attributes {
+        // format each `Attribute`
+        for attr in &self.attribute_list {
             attr.format(formatted_code, formatter)?;
         }
-
+        // format `ItemKind`
         self.value.format(formatted_code, formatter)
     }
 }
@@ -47,22 +46,9 @@ impl FormatDecl for AttributeDecl {
         line.push_str(attr.name.span().as_str());
         // `(`
         Self::open_parenthesis(line, formatter)?;
-        // format and add args `read, write`
+        // format and add args e.g. `read, write`
         if let Some(args) = attr.args {
-            let args = args.into_inner().value_separator_pairs;
-            let mut buf = args
-                .iter()
-                .map(|arg| format!("{}{}", arg.0.as_str(), arg.1.span().as_str()))
-                .collect::<Vec<String>>()
-                .join(" ");
-            if args.len() == 1 {
-                buf.pop(); // pop the ending comma
-                line.push_str(&buf);
-            } else {
-                buf.pop(); // pop the ending space
-                buf.pop(); // pop the ending comma
-                line.push_str(&buf);
-            }
+            args.into_inner().format(line, formatter)?;
         }
         // ')'
         Self::close_parenthesis(line, formatter)?;
@@ -77,7 +63,7 @@ impl SquareBracket for AttributeDecl {
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Bracket.as_open_char())?;
+        line.push(Delimiter::Bracket.as_open_char());
         Ok(())
     }
     fn close_square_bracket(
@@ -94,14 +80,14 @@ impl Parenthesis for AttributeDecl {
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Parenthesis.as_open_char())?;
+        line.push(Delimiter::Parenthesis.as_open_char());
         Ok(())
     }
     fn close_parenthesis(
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Parenthesis.as_close_char())?;
+        line.push(Delimiter::Parenthesis.as_close_char());
         Ok(())
     }
 }

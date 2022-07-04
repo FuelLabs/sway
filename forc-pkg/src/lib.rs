@@ -12,3 +12,6 @@ pub use lock::Lock;
 pub use manifest::{BuildProfile, Manifest, ManifestFile};
 #[doc(inline)]
 pub use pkg::*;
+
+const CORE: &str = "core";
+const STD: &str = "std";

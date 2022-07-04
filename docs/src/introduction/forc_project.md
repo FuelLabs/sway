@@ -1,9 +1,9 @@
 # A Forc Project
 
-To initialize a new project with Forc, use `forc init`:
+To initialize a new project with Forc, use `forc new`:
 
 ```sh
-forc init my-fuel-project
+forc new my-fuel-project
 ```
 
 Here is the project that Forc has initialized:

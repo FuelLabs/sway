@@ -50,7 +50,7 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
 fn get_coins_owner() -> Result<Identity, AuthError> {
     let inputs_count = tx_inputs_count();
     let mut candidate = Option::None::<Address>();
-    let mut i = 0u64;
+    let mut i = 0;
 
     // Note: `inputs_count` is guaranteed to be at least 1 for any valid tx.
     while i < inputs_count {
@@ -58,6 +58,17 @@ fn get_coins_owner() -> Result<Identity, AuthError> {
         match input_owner {
             Option::None => {
                 // input not InputCoin or InputMesssage, keep looping.
+        let input_type = tx_input_type(i);
+        if input_type != target_input_type {
+            // type != InputCoin
+            // Continue looping.
+            i += 1;
+        } else {
+            // type == InputCoin
+            let input_owner = Option::Some(tx_input_coin_owner(i));
+            if candidate.is_none() {
+                // This is the first input seen of the correct type.
+                candidate = input_owner;
                 i += 1;
             },
             Option::Some => {

@@ -1,0 +1,9 @@
+[[package]]
+name = 'const_nonconst_init'
+source = 'root'
+dependencies = ['core']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-E57A3612ABF8CF11'
+dependencies = []

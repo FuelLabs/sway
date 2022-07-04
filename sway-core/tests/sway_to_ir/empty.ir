@@ -1,7 +1,0 @@
-script {
-    fn main() -> () {
-        entry:
-        v0 = const unit ()
-        ret () v0
-    }
-}
