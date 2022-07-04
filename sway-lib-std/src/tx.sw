@@ -3,8 +3,10 @@
 library tx;
 
 use ::address::Address;
+use ::context::registers::instrs_start;
 use ::contract_id::ContractId;
 use ::intrinsics::is_reference_type;
+use ::mem::read;
 
 ////////////////////////////////////////
 // Transaction fields
@@ -223,6 +225,31 @@ pub fn tx_input_coin_owner(index: u64) -> Address {
     let input_ptr = tx_input_pointer(index);
     // Need to skip over six words, so offset is 8*6=48
     ~Address::from(b256_from_pointer_offset(input_ptr, 48))
+}
+
+////////////////////////////////////////
+// Inputs > Predicate
+////////////////////////////////////////
+
+pub fn tx_predicate_data_start_offset() -> u64 {
+    // $is is word-aligned
+    let is = instrs_start();
+    let predicate_length_ptr = is - 16;
+    let predicate_code_length = asm(r1, r2: predicate_length_ptr) {
+        lw r1 r2 i0;
+        r1: u64
+    };
+
+    let predicate_data_ptr = is + predicate_code_length;
+    // predicate_data_ptr % 8 is guaranteed to be either
+    //  0: if there are an even number of instructions (predicate_data_ptr is word-aligned already)
+    //  4: if there are an odd number of instructions
+    predicate_data_ptr + predicate_data_ptr % 8
+}
+
+pub fn get_predicate_data<T>() -> T {
+    let ptr = tx_predicate_data_start_offset();
+    read(ptr)
 }
 
 ////////////////////////////////////////
