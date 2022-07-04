@@ -159,7 +159,7 @@ impl<T> Vec<T> {
         // Shift everything down to fill in that spot.
         let end = buf_start + val_size * self.len;
         while ptr < end {
-            copy(ptr, ptr + val_size, val_size);
+            copy(ptr + val_size, ptr, val_size);
             ptr += val_size;
         }
 
@@ -188,7 +188,7 @@ impl<T> Vec<T> {
         // Shift everything over to make space.
         let mut curr_ptr = buf_start + self.len * val_size;
         while curr_ptr > index_ptr {
-            copy(curr_ptr, curr_ptr - val_size, val_size);
+            copy(curr_ptr - val_size, curr_ptr, val_size);
             curr_ptr -= val_size;
         }
 
