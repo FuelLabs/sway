@@ -95,9 +95,10 @@ impl ToJsonAbi for TypedFunctionDeclaration {
                     name: x.name.as_str().to_string(),
                     type_field: x.type_id.json_abi_str(),
                     components: x.type_id.generate_json_abi(),
-                    type_arguments: x.type_id.get_type_parameters().and_then(|v| {
-                        Some(v.iter().map(|param| param.generate_json_abi()).collect())
-                    }),
+                    type_arguments: x
+                        .type_id
+                        .get_type_parameters()
+                        .map(|v| v.iter().map(|param| param.generate_json_abi()).collect()),
                 })
                 .collect(),
             outputs: vec![Property {
@@ -107,7 +108,7 @@ impl ToJsonAbi for TypedFunctionDeclaration {
                 type_arguments: self
                     .return_type
                     .get_type_parameters()
-                    .and_then(|v| Some(v.iter().map(|param| param.generate_json_abi()).collect())),
+                    .map(|v| v.iter().map(|param| param.generate_json_abi()).collect()),
             }],
         }
     }
@@ -251,6 +252,7 @@ impl TypedFunctionDeclaration {
             warnings,
             errors
         );
+        dbg!(&data);
         hasher.update(data);
         let hash = hasher.finalize();
         ok(hash.to_vec(), warnings, errors)

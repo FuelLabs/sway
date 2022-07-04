@@ -82,7 +82,7 @@ impl ToJsonAbi for TypeParameter {
             type_arguments: self
                 .type_id
                 .get_type_parameters()
-                .and_then(|v| Some(v.iter().map(|param| param.generate_json_abi()).collect())),
+                .map(|v| v.iter().map(|param| param.generate_json_abi()).collect()),
         }
     }
 }
