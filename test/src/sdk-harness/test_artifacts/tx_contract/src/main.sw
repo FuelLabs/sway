@@ -19,7 +19,7 @@ abi TxContractTest {
 
     fn get_tx_input_pointer(index: u64) -> u32;
     fn get_tx_input_type(ptr: u32) -> u8;
-    fn get_tx_input_coin_owner(input_ptr: u32) -> Address;
+    fn get_tx_input_coin_owner(index: u64) -> Address;
 
     fn get_tx_output_pointer(index: u64) -> u32;
     fn get_tx_output_type(ptr: u32) -> u8;
@@ -68,17 +68,17 @@ impl TxContractTest for Contract {
         tx_input_pointer(index)
     }
     fn get_tx_input_type(ptr: u32) -> u8 {
-        tx_input_type(ptr)
+        tx_input_type_from_pointer(ptr)
     }
-    fn get_tx_input_coin_owner(input_ptr: u32) -> Address {
-        tx_input_coin_owner(input_ptr)
+    fn get_tx_input_coin_owner(index: u64) -> Address {
+        tx_input_coin_owner(index)
     }
 
     fn get_tx_output_pointer(index: u64) -> u32 {
         tx_output_pointer(index)
     }
     fn get_tx_output_type(ptr: u32) -> u8 {
-        tx_output_type(ptr)
+        tx_output_type_from_pointer(ptr)
     }
     fn get_tx_id() -> b256 {
         tx_id()

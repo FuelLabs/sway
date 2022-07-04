@@ -154,7 +154,7 @@ pub fn tx_script_data_start_offset() -> u32 {
 }
 
 /// Get the script data, typed. Unsafe.
-pub fn get_script_data<T>() -> T {
+pub fn tx_script_data<T>() -> T {
     // TODO some safety checks on the input data? We are going to assume it is the right type for now.
     let ptr = tx_script_data_start_offset();
     if is_reference_type::<T>() {
@@ -166,6 +166,16 @@ pub fn get_script_data<T>() -> T {
             lw r1 r1 i0;
             r1: T
         }
+    }
+}
+
+/// Get the script bytecode
+/// Must be cast to a u64 array, with sufficient length to contain the bytecode.
+/// Bytecode will be padded to next whole word.
+pub fn tx_script_bytecode<T>() -> T {
+    let script_ptr = tx_script_start_offset();
+    asm(r1: script_ptr) {
+        r1: T
     }
 }
 
@@ -182,19 +192,24 @@ pub fn tx_input_pointer(index: u64) -> u32 {
 }
 
 /// Get the type of an input given a pointer to the input.
-pub fn tx_input_type(ptr: u32) -> u8 {
+pub fn tx_input_type_from_pointer(ptr: u32) -> u8 {
     asm(r1, r2: ptr) {
         lw r1 r2 i0;
         r1: u8
     }
 }
 
-/// If the input's type is `InputCoin`, return the owner.
-/// Otherwise, undefined behavior.
-pub fn tx_input_coin_owner(input_ptr: u32) -> Address {
-    let owner_addr = ~Address::from(asm(buffer, ptr: input_ptr) {
-        // Need to skip over six words, so add 8*6=48
-        addi ptr ptr i48;
+/// Get the type of an input at a given index
+pub fn tx_input_type(index: u64) -> u8 {
+    let ptr = tx_input_pointer(index);
+    tx_input_type_from_pointer(ptr)
+}
+
+/// Read 256 bits from memory at a given offset from a given pointer
+pub fn b256_from_pointer_offset(pointer: u32, offset: u32) -> b256 {
+    asm(buffer, ptr: pointer, off: offset) {
+        // Need to skip over `off` bytes
+        add ptr ptr off;
         // Save old stack pointer
         move buffer sp;
         // Extend stack by 32 bytes
@@ -203,9 +218,14 @@ pub fn tx_input_coin_owner(input_ptr: u32) -> Address {
         mcpi buffer ptr i32;
         // `buffer` now points to the 32 bytes
         buffer: b256
-    });
-
-    owner_addr
+    }
+}
+/// If the input's type is `InputCoin`, return the owner.
+/// Otherwise, undefined behavior.
+pub fn tx_input_coin_owner(index: u64) -> Address {
+    let input_ptr = tx_input_pointer(index);
+    // Need to skip over six words, so offset is 8*6=48
+    ~Address::from(b256_from_pointer_offset(input_ptr, 48))
 }
 
 ////////////////////////////////////////
@@ -246,17 +266,24 @@ pub fn tx_output_pointer(index: u64) -> u32 {
 }
 
 /// Get the type of an output given a pointer to the output.
-pub fn tx_output_type(ptr: u32) -> u8 {
+pub fn tx_output_type_from_pointer(ptr: u32) -> u8 {
     asm(r1, r2: ptr) {
         lw r1 r2 i0;
         r1: u8
     }
 }
 
+/// Get the type of an output at a given index
+pub fn tx_output_type(index: u64) -> u8 {
+    let ptr = tx_output_pointer(index);
+    tx_output_type_from_pointer(ptr)
+}
+
 /// Get the amount of coins to send for an output given a pointer to the output.
 /// This method is only meaningful if the output type has the `amount` field.
 /// Specifically: OutputCoin, OutputWithdrawal, OutputChange, OutputVariable.
-pub fn tx_output_amount(ptr: u32) -> u64 {
+pub fn tx_output_amount(index: u64) -> u64 {
+    let ptr = tx_output_pointer(index);
     asm(r1, r2, r3: ptr) {
         addi r2 r3 i40;
         lw r1 r2 i0;
