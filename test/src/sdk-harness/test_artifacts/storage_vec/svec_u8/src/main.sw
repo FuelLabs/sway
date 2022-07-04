@@ -4,65 +4,65 @@ use std::{option::Option, result::Result, storage::StorageVec};
 
 abi MyContract {
     #[storage(read, write)]
-    fn vec_u8_push(value: u8);
+    fn u8_push(value: u8);
     #[storage(read)]
-    fn vec_u8_get(index: u64) -> u8;
+    fn u8_get(index: u64) -> u8;
     #[storage(read, write)]
-    fn vec_u8_pop() -> u8;
+    fn u8_pop() -> u8;
     #[storage(read, write)]
-    fn vec_u8_remove(index: u64) -> u8;
+    fn u8_remove(index: u64) -> u8;
     #[storage(read, write)]
-    fn vec_u8_swap_remove(index: u64) -> u8;
+    fn u8_swap_remove(index: u64) -> u8;
     #[storage(read, write)]
-    fn vec_u8_insert(index: u64, value: u8);
+    fn u8_insert(index: u64, value: u8);
     #[storage(read)]
-    fn vec_u8_len() -> u64;
+    fn u8_len() -> u64;
     #[storage(read)]
-    fn vec_u8_is_empty() -> bool;
+    fn u8_is_empty() -> bool;
     #[storage(write)]
-    fn vec_u8_clear();
+    fn u8_clear();
 }
 
 storage {
-    vec_u8: StorageVec<u8>,
+    my_vec: StorageVec<u8>,
 }
 
 impl MyContract for Contract {
     #[storage(read, write)]
-    fn vec_u8_push(value: u8) {
-        storage.vec_u8.push(value);
+    fn u8_push(value: u8) {
+        storage.my_vec.push(value);
     }
     #[storage(read)]
-    fn vec_u8_get(index: u64) -> u8 {
-        storage.vec_u8.get(index).unwrap()
+    fn u8_get(index: u64) -> u8 {
+        storage.my_vec.get(index).unwrap()
     }
     #[storage(read, write)]
-    fn vec_u8_pop() -> u8 {
-        let res: Option<u8> = storage.vec_u8.pop();
+    fn u8_pop() -> u8 {
+        let res: Option<u8> = storage.my_vec.pop();
         res.unwrap()
     }
     #[storage(read, write)]
-    fn vec_u8_remove(index: u64) -> u8 {
-        storage.vec_u8.remove(index)
+    fn u8_remove(index: u64) -> u8 {
+        storage.my_vec.remove(index)
     }
     #[storage(read, write)]
-    fn vec_u8_swap_remove(index: u64) -> u8 {
-        storage.vec_u8.swap_remove(index)
+    fn u8_swap_remove(index: u64) -> u8 {
+        storage.my_vec.swap_remove(index)
     }
     #[storage(read, write)]
-    fn vec_u8_insert(index: u64, value: u8) {
-        storage.vec_u8.insert(index, value);
+    fn u8_insert(index: u64, value: u8) {
+        storage.my_vec.insert(index, value);
     }
     #[storage(read)]
-    fn vec_u8_len() -> u64 {
-        storage.vec_u8.len()
+    fn u8_len() -> u64 {
+        storage.my_vec.len()
     }
     #[storage(read)]
-    fn vec_u8_is_empty() -> bool {
-        storage.vec_u8.is_empty()
+    fn u8_is_empty() -> bool {
+        storage.my_vec.is_empty()
     }
     #[storage(write)]
-    fn vec_u8_clear() {
-        storage.vec_u8.clear();
+    fn u8_clear() {
+        storage.my_vec.clear();
     }
 }
