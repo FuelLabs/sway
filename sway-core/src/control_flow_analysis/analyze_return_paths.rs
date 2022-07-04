@@ -261,7 +261,7 @@ fn connect_declaration(
             Ok(leaves.to_vec())
         }
         ErrorRecovery => Ok(leaves.to_vec()),
-        Break => {
+        Break { .. } => {
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
@@ -274,7 +274,7 @@ fn connect_declaration(
                 None => Err(CompileError::BreakOutsideLoop { span }),
             }
         }
-        Continue => {
+        Continue { .. } => {
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
