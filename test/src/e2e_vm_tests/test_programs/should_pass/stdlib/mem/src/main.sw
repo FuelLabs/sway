@@ -35,7 +35,7 @@ fn main() -> bool {
 
     // Copy the struct into a buffer
     let buf_ptr = alloc(16);
-    copy(buf_ptr, foo_ptr, 16);
+    copy(foo_ptr, buf_ptr, 16);
     assert(eq(buf_ptr, foo_ptr, 16));
     assert(asm(r1: buf_ptr, r2: foo_ptr, r3: foo_len) {
         meq r1 r1 r2 r3;
