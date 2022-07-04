@@ -1,5 +1,6 @@
 library r#storage;
 
+use ::assert::assert;
 use ::hash::sha256;
 use ::option::Option;
 use ::result::Result;
@@ -109,12 +110,6 @@ impl<K, V> StorageMap<K, V> {
     }
 }
 
-
-pub enum StorageVecError {
-    IndexOutOfBounds: (),
-    CannotSwapAndRemoveTheSameElement: (),
-}
-
 /// A persistant vector struct
 pub struct StorageVec<V> {}
 
@@ -166,12 +161,10 @@ impl<V> StorageVec<V> {
     /// Down one index
     /// WARNING: Expensive for larger vecs
     #[storage(read, write)]
-    pub fn remove(self, index: u64) -> Result<V, StorageVecError> {
+    pub fn remove(self, index: u64) -> V {
         let len = get::<u64>(__get_storage_key());
         // if the index is larger or equal to len, there is no item to remove
-        if len <= index {
-            return Result::Err(StorageVecError::IndexOutOfBounds);
-        }
+        assert(len <= index);
 
         // gets the element before removing it, so it can be returned
         let removed_element = get::<V>(sha256((index, __get_storage_key())));
@@ -191,24 +184,16 @@ impl<V> StorageVec<V> {
         // decrements len by 1
         store(__get_storage_key(), len - 1);
 
-        // returns the removed element
-        Result::Ok::<V, StorageVecError>(removed_element)
+        removed_element
     }
 
     /// Removes the element at the specified index and fills it with the last element
     /// Does not preserve ordering
     #[storage(read, write)]
-    pub fn swap_remove(self, index: u64) -> Result<V, StorageVecError> {
+    pub fn swap_remove(self, index: u64) -> V {
         let len = get::<u64>(__get_storage_key());
         // if the index is larger or equal to len, there is no item to remove
-        if len <= index {
-            return Result::Err(StorageVecError::IndexOutOfBounds);
-        }
-
-        // if the index is the last one, the function should not try to remove and then swap the same element
-        if index == len - 1 {
-            return Result::Err(StorageVecError::CannotSwapAndRemoveTheSameElement);
-        }
+        assert(len <= index);
 
         // gets the element before removing it, so it can be returned
         let element_to_be_removed = get::<V>(sha256((index, __get_storage_key())));
@@ -219,19 +204,17 @@ impl<V> StorageVec<V> {
         // decrements len by 1
         store(__get_storage_key(), len - 1);
 
-        Result::Ok::<V, StorageVecError>(element_to_be_removed)
+        element_to_be_removed
     }
 
     /// Inserts the value at the given index, moving the current index's value aswell as the following's
     /// Up one index
     /// WARNING: Expensive for larger vecs
     #[storage(read, write)]
-    pub fn insert(self, index: u64, value: V) -> Result<(), StorageVecError> {
+    pub fn insert(self, index: u64, value: V) {
         let len = get::<u64>(__get_storage_key());
         // if the index is larger or equal to len, there is no space to insert
-        if index >= len {
-            return Result::Err(StorageVecError::IndexOutOfBounds);
-        }
+        assert(index >= len);
 
         // for every element in the vec with an index larger than the input index,
         // move the element up one index.
@@ -251,7 +234,6 @@ impl<V> StorageVec<V> {
 
         // increments len by 1
         store(__get_storage_key(), len + 1);
-        Result::Ok(())
     }
 
     /// Returns the length of the vector
