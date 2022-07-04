@@ -250,7 +250,7 @@ impl core::ops::Subtract for U128 {
         }
 
         U128 {
-            upper, lower, 
+            upper, lower,
         }
     }
 }
