@@ -284,5 +284,5 @@ async fn can_get_tx_id() {
         .await
         .unwrap();
 
-    assert_eq!(result.value, [0u8; 32]);
+    assert_ne!(result.value, [0u8; 32]);
 }
