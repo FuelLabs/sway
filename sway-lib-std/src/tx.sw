@@ -216,8 +216,7 @@ pub fn tx_input_type_from_pointer(ptr: u32) -> u8 {
 /// return the owner as an Option::Some(owner).
 /// Otherwise, returns Option::None.
 pub fn tx_input_owner(index: u64) -> Option<Address> {
-    let input_ptr = tx_input_pointer(index);
-    let type = tx_input_type(input_ptr);
+    let type = tx_input_type(index);
     let owner_offset = match type {
         0u8 => {
             // Need to skip over six words, so add 8*6=48
@@ -232,8 +231,9 @@ pub fn tx_input_owner(index: u64) -> Option<Address> {
         },
     };
 
+    let ptr = tx_input_pointer(index);
     Option::Some(~Address::from(b256_from_pointer_offset(
-        input_ptr,
+        ptr,
         owner_offset
     )))
 }
