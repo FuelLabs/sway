@@ -62,7 +62,7 @@ fn get_coins_owner() -> Result<Identity, AuthError> {
             i += 1;
         } else {
             // type == InputCoin
-            let input_owner = Option::Some(tx_input_owner(i));
+            let input_owner = tx_input_owner(i);
             if candidate.is_none() {
                 // This is the first input seen of the correct type.
                 candidate = input_owner;
