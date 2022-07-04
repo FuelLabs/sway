@@ -490,6 +490,15 @@ impl Op {
                     );
                     VirtualOp::SLLI(r1, r2, imm)
                 }
+                "smo" => {
+                    let (r1, r2, r3, r4) = check!(
+                        four_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SMO(r1, r2, r3, r4)
+                }
                 "srl" => {
                     let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
@@ -1352,6 +1361,7 @@ impl fmt::Display for Op {
                 ORI(a, b, c) => format!("ori {} {} {}", a, b, c),
                 SLL(a, b, c) => format!("sll {} {} {}", a, b, c),
                 SLLI(a, b, c) => format!("slli {} {} {}", a, b, c),
+                SMO(a, b, c, d) => format!("smo {} {} {} {}", a, b, c, d),
                 SRL(a, b, c) => format!("srl {} {} {}", a, b, c),
                 SRLI(a, b, c) => format!("srli {} {} {}", a, b, c),
                 SUB(a, b, c) => format!("sub {} {} {}", a, b, c),
