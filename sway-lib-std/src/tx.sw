@@ -45,6 +45,19 @@ const TX_RECEIPTS_ROOT_OFFSET = 10320;
 const TX_SCRIPT_START_OFFSET = 10352;
 const TX_ID_OFFSET = 0;
 
+// Input types
+const INPUT_COIN = 0u8;
+const INPUT_CONTRACT = 1u8;
+const INPUT_MESSAGE = 2u8;
+
+// Output types
+const OUTPUT_COIN = 0u8;
+const OUTPUT_CONTRACT = 1u8;
+const OUTPUT_MESSAGE = 2u8;
+const OUTPUT_CHANGE = 3u8;
+const OUTPUT_VARIABLE = 4u8;
+const OUTPUT_CONTRACT_CREATED = 5u8;
+
 /// Get the transaction type.
 pub fn tx_type() -> u8 {
     asm(r1, r2: TX_TYPE_OFFSET) {
