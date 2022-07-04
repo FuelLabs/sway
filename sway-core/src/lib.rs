@@ -206,28 +206,11 @@ pub enum BytecodeCompilationResult {
 }
 
 pub fn parsed_to_ast(
-    parsed: CompileResult<ParseProgram>,
+    parse_program: ParseProgram,
     initial_namespace: namespace::Module,
 ) -> CompileAstResult {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
-
-    let CompileResult {
-        value: parse_program_opt,
-        warnings: new_warnings,
-        errors: new_errors,
-    } = parsed;
-
-    warnings.extend(new_warnings);
-    errors.extend(new_errors);
-    let parse_program = match parse_program_opt {
-        Some(parse_program) => parse_program,
-        None => {
-            errors = dedup_unsorted(errors);
-            warnings = dedup_unsorted(warnings);
-            return CompileAstResult::Failure { errors, warnings };
-        }
-    };
 
     let CompileResult {
         value: typed_program_result,
@@ -283,8 +266,49 @@ pub fn compile_to_ast(
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
 ) -> CompileAstResult {
-    let parsed = parse(input, build_config);
-    parsed_to_ast(parsed, initial_namespace)
+    let mut warnings = Vec::new();
+    let mut errors = Vec::new();
+
+    let CompileResult {
+        value: parse_program_opt,
+        warnings: new_warnings,
+        errors: new_errors,
+    } = parse(input, build_config);
+
+    warnings.extend(new_warnings);
+    errors.extend(new_errors);
+    let parse_program = match parse_program_opt {
+        Some(parse_program) => parse_program,
+        None => {
+            errors = dedup_unsorted(errors);
+            warnings = dedup_unsorted(warnings);
+            return CompileAstResult::Failure { errors, warnings };
+        }
+    };
+
+    match parsed_to_ast(parse_program, initial_namespace) {
+        CompileAstResult::Success {
+            typed_program,
+            warnings: new_warnings,
+        } => {
+            warnings.extend(new_warnings);
+            warnings = dedup_unsorted(warnings);
+            CompileAstResult::Success {
+                typed_program,
+                warnings,
+            }
+        }
+        CompileAstResult::Failure {
+            warnings: new_warnings,
+            errors: new_errors,
+        } => {
+            warnings.extend(new_warnings);
+            errors.extend(new_errors);
+            errors = dedup_unsorted(errors);
+            warnings = dedup_unsorted(warnings);
+            CompileAstResult::Failure { errors, warnings }
+        }
+    }
 }
 
 /// Given input Sway source code, compile to a [CompilationResult] which contains the asm in opcode
