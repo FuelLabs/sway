@@ -172,8 +172,7 @@ pub fn tx_script_data<T>() -> T {
 /// Must be cast to a u64 array, with sufficient length to contain the bytecode.
 /// Bytecode will be padded to next whole word.
 pub fn tx_script_bytecode<T>() -> T {
-    let script_ptr = tx_script_start_pointer();
-    read(script_ptr)
+    read(tx_script_start_pointer())
 }
 
 ////////////////////////////////////////
