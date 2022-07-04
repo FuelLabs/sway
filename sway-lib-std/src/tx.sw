@@ -215,7 +215,8 @@ pub fn tx_input_type_from_pointer(ptr: u32) -> u8 {
 /// If the input's type is `InputCoin` or `InputMessage`,
 /// return the owner as an Option::Some(owner).
 /// Otherwise, returns Option::None.
-pub fn tx_input_owner(input_ptr: u32) -> Option<Address> {
+pub fn tx_input_owner(index: u64) -> Option<Address> {
+    let input_ptr = tx_input_pointer(index);
     let type = tx_input_type(input_ptr);
     let owner_offset = match type {
         0u8 => {
@@ -231,22 +232,10 @@ pub fn tx_input_owner(input_ptr: u32) -> Option<Address> {
         },
     };
 
-    Option::Some(~Address::from(asm(
-        buffer,
-        ptr: input_ptr,
-        offset: owner_offset) {
-            // Need to skip over `offset` words
-            add ptr ptr offset;
-            // Save old stack pointer
-            move buffer sp;
-            // Extend stack by 32 bytes
-            cfei i32;
-            // Copy 32 bytes
-            mcpi buffer ptr i32;
-            // `buffer` now points to the 32 bytes
-            buffer: b256
-        }
-    ))
+    Option::Some(~Address::from(b256_from_pointer_offset(
+        input_ptr,
+        owner_offset
+    )))
 
 /// Get the type of an input at a given index
 pub fn tx_input_type(index: u64) -> u8 {
@@ -268,13 +257,6 @@ pub fn b256_from_pointer_offset(pointer: u32, offset: u32) -> b256 {
         // `buffer` now points to the 32 bytes
         buffer: b256
     }
-}
-/// If the input's type is `InputCoin`, return the owner.
-/// Otherwise, undefined behavior.
-pub fn tx_input_coin_owner(index: u64) -> Address {
-    let input_ptr = tx_input_pointer(index);
-    // Need to skip over six words, so offset is 8*6=48
-    ~Address::from(b256_from_pointer_offset(input_ptr, 48))
 }
 
 ////////////////////////////////////////
