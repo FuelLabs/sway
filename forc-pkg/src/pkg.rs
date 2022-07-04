@@ -1068,7 +1068,8 @@ fn fetch_deps(
         .collect();
     for (dep_name, dep) in deps {
         let name = dep.package().unwrap_or(&dep_name).to_string();
-        let source = dep_to_source_patched(&manifest_map[&parent_id], &name, &dep)?;
+        let source = dep_to_source_patched(&manifest_map[&parent_id], &name, &dep)
+            .context("Failed to source dependency")?;
 
         // If we haven't yet fetched this dependency, fetch it, pin it and add it to the graph.
         let dep_pkg = Pkg { name, source };
@@ -1389,9 +1390,10 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
         Dependency::Detailed(ref det) => match (&det.path, &det.version, &det.git) {
             (Some(relative_path), _, _) => {
                 let path = pkg_path.join(relative_path);
-                Source::Path(path.canonicalize().map_err(|err| {
-                    anyhow!("Cant apply patch from {}, cause: {}", relative_path, &err)
-                })?)
+                let canonical_path = path.canonicalize().map_err(|e| {
+                    anyhow!("Failed to canonicalize dependency path {:?}: {}", path, e)
+                })?;
+                Source::Path(canonical_path)
             }
             (_, _, Some(repo)) => {
                 let reference = match (&det.branch, &det.tag, &det.rev) {
@@ -1416,46 +1418,43 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
     Ok(source)
 }
 
-/// Converts the `Dependency` to a `Source` with any relevant patches applied.
+/// If a patch exists for the given dependency source within the given project manifest, this
+/// returns the patch.
+fn dep_source_patch<'manifest>(
+    manifest: &'manifest ManifestFile,
+    dep_name: &str,
+    dep_source: &Source,
+) -> Option<&'manifest Dependency> {
+    if let Source::Git(git) = dep_source {
+        if let Some(patches) = manifest.patch(git.repo.as_str()) {
+            if let Some(patch) = patches.get(dep_name) {
+                return Some(patch);
+            }
+        }
+    }
+    None
+}
+
+/// If a patch exists for the given dependency within the given manifest, this returns a new
+/// `Source` with the patch applied.
+///
+/// If no patch exists, this returns the original `Source`.
+fn apply_patch(manifest: &ManifestFile, dep_name: &str, dep_source: &Source) -> Result<Source> {
+    match dep_source_patch(manifest, dep_name, dep_source) {
+        Some(patch) => dep_to_source(manifest.dir(), patch),
+        None => Ok(dep_source.clone()),
+    }
+}
+
+/// Converts the `Dependency` to a `Source` with any relevant patches in the given manifest
+/// applied.
 fn dep_to_source_patched(
-    parent_manifest: &ManifestFile,
+    manifest: &ManifestFile,
     dep_name: &str,
     dep: &Dependency,
 ) -> Result<Source> {
-    let unpatched = dep_to_source(parent_manifest.dir(), dep)?;
-    apply_patch(dep_name, &unpatched, parent_manifest, parent_manifest.dir())
-}
-
-fn apply_patch(
-    dep_name: &str,
-    dep_source: &Source,
-    parent_manifest: &Manifest,
-    parent_path: &Path,
-) -> Result<Source> {
-    match dep_source {
-        // Check if the patch is for a git dependency.
-        Source::Git(git) => {
-            // Check if we got a patch for the git dependency.
-            if let Some(source_patches) = parent_manifest
-                .patch
-                .as_ref()
-                .and_then(|patches| patches.get(git.repo.as_str()))
-            {
-                if let Some(patch) = source_patches.get(dep_name) {
-                    Ok(dep_to_source(parent_path, patch)?)
-                } else {
-                    bail!(
-                        "Cannot find the patch for the {} for package {}",
-                        git.repo,
-                        dep_name
-                    )
-                }
-            } else {
-                Ok(dep_source.clone())
-            }
-        }
-        _ => Ok(dep_source.clone()),
-    }
+    let unpatched = dep_to_source(manifest.dir(), dep)?;
+    apply_patch(manifest, dep_name, &unpatched)
 }
 
 /// Given a `forc_pkg::BuildProfile`, produce the necessary `sway_core::BuildConfig` required for
