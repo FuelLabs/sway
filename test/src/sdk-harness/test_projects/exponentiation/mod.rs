@@ -1,7 +1,6 @@
 use fuels::prelude::*;
 use fuels::signers::LocalWallet;
 use fuels::tx::ContractId;
-use fuels_abigen_macro::abigen;
 
 abigen!(TestPowContract, "test_artifacts/pow/out/debug/pow-abi.json");
 

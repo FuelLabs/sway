@@ -3,7 +3,7 @@ contract;
 struct Empty {}
 
 impl Empty {
-    fn bar() -> b256 {
+    fn bar(self) -> b256 {
         __get_storage_key()
     }
 }
