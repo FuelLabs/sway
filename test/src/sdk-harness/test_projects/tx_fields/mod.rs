@@ -207,8 +207,9 @@ async fn can_get_tx_input_type() {
         .call()
         .await
         .unwrap();
+
     let result = contract_instance
-        .get_tx_input_type(result_ptr.value)
+        .get_tx_input_type_from_ptr(result_ptr.value)
         .call()
         .await
         .unwrap();
@@ -222,24 +223,25 @@ async fn can_get_tx_input_type() {
         .await
         .unwrap();
     let result = contract_instance
-        .get_tx_input_type(result_ptr.value)
+        .get_tx_input_type_from_ptr(result_ptr.value)
         .call()
         .await
         .unwrap();
     assert_eq!(result.value, input_type);
 }
 
-// TODO: Add tests for getting InputMessage owner, type
+// TODO: Add tests for getting InputMessage owner, type when InputMessages land.
 #[tokio::test]
 async fn can_get_tx_input_coin_owner() {
     let (contract_instance, _, wallet) = get_contracts().await;
 
-    let result = contract_instance
+    let owner_result = contract_instance
         .get_tx_input_coin_owner(1)
         .call()
         .await
         .unwrap();
-    assert_eq!(result.value, wallet.address());
+
+    assert_eq!(owner_result.value, wallet.address());
 }
 
 #[tokio::test]
