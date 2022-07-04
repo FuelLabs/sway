@@ -1,7 +1,7 @@
 use crate::{
     config::{items::ItemBraceStyle, user_def::FieldAlignment},
     fmt::{Format, FormattedCode, Formatter},
-    utils::{bracket::CurlyBrace, item_len::ItemLen},
+    utils::{bracket::CurlyBrace, item::ItemLen},
     FormatterError,
 };
 use std::fmt::Write;
@@ -30,7 +30,7 @@ impl Format for ItemEnum {
             .to_width_heuristics(&formatter.config.whitespace);
         let enum_lit_width = width_heuristics.structure_lit_width;
 
-        let multiline = !enum_lit_single_line || self.get_formatted_len() > enum_lit_width;
+        let multiline = !enum_lit_single_line || self.get_formatted_len()? > enum_lit_width;
 
         format_enum(self, formatted_code, formatter, multiline)?;
         Ok(())
@@ -181,10 +181,12 @@ fn format_enum(
 }
 
 impl ItemLen for ItemEnum {
-    fn get_formatted_len(&self) -> usize {
-        // TODO while determininig the length we may want to format to some degree and take length.
-        let str_item = &self.span().as_str().len();
-        *str_item as usize
+    fn get_formatted_len(&self) -> Result<usize, FormatterError> {
+        // Format to single line and return the length
+        let mut str_item = String::new();
+        let mut formatter = Formatter::default();
+        format_enum(self, &mut str_item, &mut formatter, false)?;
+        Ok(str_item.len() as usize)
     }
 }
 
