@@ -6,15 +6,11 @@ use crate::{
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
     find_file_name, git_checkouts_directory, kebab_to_snake_case, print_on_failure,
-    print_on_success, print_on_success_library, println_red, println_yellow_err,
+    print_on_success, print_on_success_library,
 };
 use fuel_tx::StorageSlot;
 use fuels_types::JsonABI;
-use petgraph::{
-    self,
-    visit::{EdgeRef, IntoNodeReferences},
-    Directed, Direction,
-};
+use petgraph::{self, visit::EdgeRef, Directed, Direction};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map, BTreeSet, HashMap, HashSet},
@@ -78,7 +74,7 @@ pub struct Pinned {
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub enum Source {
     /// Used to refer to the root project.
-    Root,
+    Root(PathBuf),
     /// A git repo with a `Forc.toml` manifest at its root.
     Git(SourceGit),
     /// A path to a directory with a `Forc.toml` manifest at its root.
@@ -210,16 +206,12 @@ pub struct SourcePinnedParseError;
 /// ```
 pub type DependencyName = String;
 
-pub struct PkgDiff {
-    pub added: Vec<(DependencyName, Pkg)>,
-    pub removed: Vec<(DependencyName, Pkg)>,
-}
-
 impl BuildPlan {
     /// Create a new build plan for the project by fetching and pinning dependenies.
     pub fn new(manifest: &ManifestFile, sway_git_tag: &str, offline: bool) -> Result<Self> {
-        let path = manifest.dir().to_path_buf();
-        let (graph, path_map) = fetch_deps(path, manifest, sway_git_tag, offline)?;
+        let mut graph = Graph::default();
+        let mut path_map = PathMap::default();
+        fetch_graph(manifest, offline, sway_git_tag, &mut graph, &mut path_map)?;
         let compilation_order = compilation_order(&graph)?;
         Ok(Self {
             graph,
@@ -228,57 +220,72 @@ impl BuildPlan {
         })
     }
 
-    /// Create a new build plan taking into account the state of both the Manifest and the existing lock file if there is one.
+    /// Create a new build plan taking into account the state of both the Manifest and the existing
+    /// lock file if there is one.
     ///
-    /// This will first attempt to load a build plan from the lock file and validate the resulting graph using the current state of the Manifest.
+    /// This will first attempt to load a build plan from the lock file and validate the resulting
+    /// graph using the current state of the Manifest.
     ///
-    /// This includes checking if the [dependencies] or [patch] tables have changed and checking the validity of the local path dependencies.
-    /// If any changes are detected, the graph is updated and any new packages that require fetching are fetched.
+    /// This includes checking if the [dependencies] or [patch] tables have changed and checking
+    /// the validity of the local path dependencies.  If any changes are detected, the graph is
+    /// updated and any new packages that require fetching are fetched.
     ///
-    /// The resulting build plan should always be in a valid state that is ready for building or checking.
+    /// The resulting build plan should always be in a valid state that is ready for building or
+    /// checking.
     pub fn load_from_manifest(
         manifest: &ManifestFile,
         locked: bool,
         offline: bool,
         sway_git_tag: &str,
     ) -> Result<Self> {
-        let lock_path = forc_util::lock_path(manifest.dir());
-        let from_lock = BuildPlan::from_lock_file(&lock_path, sway_git_tag);
-        let removed_deps = from_lock
-            .as_ref()
-            .map(|from_lock| from_lock.1.clone())
-            .unwrap_or_default();
-
-        let plan_result = from_lock.map(|from_lock| from_lock.0);
-        // Retrieve the old lock file state so we can produce a diff.
-        let old_lock = plan_result
-            .as_ref()
-            .ok()
-            .map(|plan| Lock::from_graph(plan.graph()))
-            .unwrap_or_default();
-
-        // Check if there are any errors coming from the BuildPlan generation from the lock file
-        // If there are errors we will need to create the BuildPlan from scratch, i.e fetch & pin everything
+        // Keep track of the cause for the new lock file if it turns out we need one.
         let mut new_lock_cause = None;
-        let mut plan = plan_result.or_else(|e| -> Result<BuildPlan> {
+
+        // First, attempt to load the lock.
+        let lock_path = forc_util::lock_path(manifest.dir());
+        let lock = Lock::from_path(&lock_path).unwrap_or_else(|e| {
             new_lock_cause = if e.to_string().contains("No such file or directory") {
                 Some(anyhow!("lock file did not exist"))
             } else {
                 Some(e)
             };
-            let plan = BuildPlan::new(manifest, sway_git_tag, offline)?;
-            Ok(plan)
-        })?;
+            Lock::default()
+        });
 
-        // If there are no issues with the BuildPlan generated from the lock file
-        // Check and apply the diff.
-        if new_lock_cause.is_none() {
-            let diff = plan.generate_diff(manifest)?;
-            if !diff.added.is_empty() || !diff.removed.is_empty() || !removed_deps.is_empty() {
-                new_lock_cause = Some(anyhow!("lock file did not match manifest `diff`"));
-                plan = plan.apply_pkg_diff(&diff, sway_git_tag, offline)?;
-            }
+        // Next, construct the package graph from the lock.
+        let mut graph = lock.to_graph().unwrap_or_else(|e| {
+            new_lock_cause = Some(anyhow!("Invalid lock: {}", e));
+            Graph::default()
+        });
+
+        // Since the lock file was last created there are many ways in which it might have been
+        // invalidated. E.g. a package's manifest `[dependencies]` table might have changed, a user
+        // might have edited the `Forc.lock` file when they shouldn't have, a path dependency no
+        // longer exists at its specified location, etc. We must first remove all invalid nodes
+        // before we can determine what we need to fetch.
+        let to_remove = validate_graph(&graph, manifest, sway_git_tag);
+        remove_deps(&mut graph, &manifest.project.name, &to_remove);
+
+        // We know that the remaining nodes have valid paths, otherwise they would have been
+        // removed. We can safely produce an initial `path_map`.
+        let mut path_map = graph_to_path_map(manifest.dir(), &graph, sway_git_tag)?;
+
+        // Attempt to fetch the remainder of the graph.
+        let added = fetch_graph(manifest, offline, sway_git_tag, &mut graph, &mut path_map)?;
+
+        // If we require any changes to the graph, update the new lock cause.
+        if !to_remove.is_empty() || !added.is_empty() {
+            new_lock_cause = Some(anyhow!("lock file did not match manifest"));
         }
+
+        // Determine the compilation order.
+        let compilation_order = compilation_order(&graph)?;
+
+        let plan = Self {
+            graph,
+            path_map,
+            compilation_order,
+        };
 
         if let Some(cause) = new_lock_cause {
             if locked {
@@ -291,183 +298,17 @@ impl BuildPlan {
             }
 
             info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
-            create_new_lock(&plan, &old_lock, manifest, &lock_path)?;
+            let new_lock = Lock::from_graph(plan.graph());
+            let lock_diff = new_lock.diff(&lock);
+            crate::lock::print_diff(&manifest.project.name, &lock_diff);
+            let string = toml::ser::to_string_pretty(&new_lock)
+                .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
+            fs::write(&lock_path, &string)
+                .map_err(|e| anyhow!("failed to write lock file: {}", e))?;
             info!("   Created new lock file at {}", lock_path.display());
         }
 
         Ok(plan)
-    }
-
-    /// Create a new build plan from an existing one. Needs the difference with the existing plan with the lock.
-    fn apply_pkg_diff(
-        &self,
-        pkg_diff: &PkgDiff,
-        sway_git_tag: &str,
-        offline_mode: bool,
-    ) -> Result<Self> {
-        self.validate(sway_git_tag)?;
-        let mut graph = self.graph.clone();
-        let mut path_map = self.path_map.clone();
-
-        let proj_node = *self
-            .compilation_order
-            .last()
-            .ok_or_else(|| anyhow!("Invalid Graph"))?;
-        let PkgDiff { added, removed } = pkg_diff;
-        remove_deps(&mut graph, &path_map, proj_node, removed);
-
-        let mut visited_map: HashMap<Pinned, NodeIx> = graph
-            .node_references()
-            .into_iter()
-            .map(|(node_index, pinned)| (pinned.clone(), node_index))
-            .collect();
-
-        add_deps(
-            &mut graph,
-            &mut path_map,
-            &self.compilation_order,
-            added,
-            sway_git_tag,
-            offline_mode,
-            &mut visited_map,
-        )?;
-        let compilation_order = compilation_order(&graph)?;
-        self.validate(sway_git_tag)?;
-        Ok(Self {
-            graph,
-            path_map,
-            compilation_order,
-        })
-    }
-
-    /// Attempt to load the build plan from the `Lock`.
-    /// Returns the best effort BuildPlan and the packages removed
-    /// from project's manifest file after the lock file is generated.
-    ///
-    /// The returned removed dependencies are already removed from the dependency graph.
-    fn from_lock(
-        proj_path: &Path,
-        lock: &Lock,
-        sway_git_tag: &str,
-    ) -> Result<(Self, Vec<DependencyName>)> {
-        let mut graph = lock.to_graph()?;
-        let tmp_compilation_order = compilation_order(&graph)?;
-        let (path_map, removed_deps) =
-            graph_to_path_map(proj_path, &graph, &tmp_compilation_order, sway_git_tag)?;
-        let removed_deps_vec: Vec<DependencyName> = removed_deps
-            .clone()
-            .into_iter()
-            .map(|dep| graph[dep].name.clone())
-            .collect();
-
-        // Remove the unresolveable path dependencies from the graph
-        apply_diff_after_lock(removed_deps, &mut graph)?;
-
-        // Since apply_diff_after_lock removes removed dependencies from the graph compilation order may change
-        let compilation_order = compilation_order(&graph)?;
-        Ok((
-            Self {
-                graph,
-                path_map,
-                compilation_order,
-            },
-            removed_deps_vec,
-        ))
-    }
-
-    /// Attempt to load the build plan from the `Forc.lock` file.
-    /// Returns the best effort BuildPlan and the packages removed  
-    /// from project's manifest file after the lock file is generated.
-    ///
-    /// The returned removed dependencies are already removed from the dependency graph.
-    fn from_lock_file(lock_path: &Path, sway_git_tag: &str) -> Result<(Self, Vec<DependencyName>)> {
-        let proj_path = lock_path.parent().unwrap();
-        let lock = Lock::from_path(lock_path)?;
-        Self::from_lock(proj_path, &lock, sway_git_tag)
-    }
-
-    /// Attempt to find the difference between the graph constructed from the lock file
-    /// and the graph that is described by the manifest file. The difference is used to
-    /// update BuildPlan.
-    pub fn generate_diff(&self, manifest: &Manifest) -> Result<PkgDiff> {
-        let mut added = vec![];
-        let mut removed = vec![];
-        // Retrieve project's graph node.
-        let proj_node = *self
-            .compilation_order
-            .last()
-            .ok_or_else(|| anyhow!("Invalid Graph"))?;
-
-        // Collect dependency `Source`s from graph.
-        let plan_dep_pkgs: BTreeSet<_> = self
-            .graph
-            .edges_directed(proj_node, Direction::Outgoing)
-            .map(|e| {
-                let dep_name = e.weight();
-                let dep_pkg = self.graph[e.target()].unpinned(&self.path_map);
-                (dep_name, dep_pkg)
-            })
-            .collect();
-
-        // Collect dependency `Source`s from manifest.
-        let proj_id = self.graph[proj_node].id();
-        let proj_path = &self.path_map[&proj_id];
-        let manifest_dep_pkgs = manifest
-            .deps()
-            .map(|(dep_name, dep)| {
-                // NOTE: Temporarily warn about `version` until we have support for registries.
-                if let Dependency::Detailed(det) = dep {
-                    if det.version.is_some() {
-                        println_yellow_err(&format!(
-                            "  WARNING! Dependency \"{}\" specifies the unused `version` field: \
-                                consider using `branch` or `tag` instead",
-                            dep_name
-                        ));
-                    }
-                }
-
-                let name = dep.package().unwrap_or(dep_name).to_string();
-                let source =
-                    apply_patch(&name, &dep_to_source(proj_path, dep)?, manifest, proj_path)?;
-                let dep_pkg = Pkg { name, source };
-                Ok((dep_name, dep_pkg))
-            })
-            .collect::<Result<BTreeSet<_>>>()?;
-
-        // Ensure both `pkg::Source` are equal. If not, produce added and removed.
-        if plan_dep_pkgs != manifest_dep_pkgs {
-            added = manifest_dep_pkgs
-                .difference(&plan_dep_pkgs)
-                .into_iter()
-                .map(|pkg| (pkg.0.clone(), pkg.1.clone()))
-                .collect();
-            removed = plan_dep_pkgs
-                .difference(&manifest_dep_pkgs)
-                .into_iter()
-                .map(|pkg| (pkg.0.clone(), pkg.1.clone()))
-                .collect();
-        }
-
-        Ok(PkgDiff { added, removed })
-    }
-
-    /// Ensure that the build plan is valid for the given manifest.
-    fn validate(&self, sway_git_tag: &str) -> Result<()> {
-        // Ensure the pkg names of all nodes match their associated manifests.
-        for node in self.graph.node_indices() {
-            let pkg = &self.graph[node];
-            let id = pkg.id();
-            let path = &self.path_map[&id];
-            let manifest = ManifestFile::from_dir(path, sway_git_tag)?;
-            if pkg.name != manifest.project.name {
-                bail!(
-                    "package name {:?} does not match the associated manifest project name {:?}",
-                    pkg.name,
-                    manifest.project.name,
-                );
-            }
-        }
-        Ok(())
     }
 
     /// View the build plan's compilation graph.
@@ -487,70 +328,196 @@ impl BuildPlan {
     }
 }
 
-/// Remove the given set of packages from `graph` along with any dependencies that are no
-/// longer required as a result.
-fn remove_deps(
-    graph: &mut Graph,
-    path_map: &PathMap,
-    proj_node: NodeIx,
-    to_remove: &[(DependencyName, Pkg)],
-) {
-    use petgraph::visit::Bfs;
+/// Given a graph and the known project name retrieved from the manifest, produce an iterator
+/// yielding any nodes from the graph that might potentially be the project node. There should only
+/// ever be one, and this is used during initial graph validation to ensure that's the case.
+fn potential_proj_nodes<'a>(g: &'a Graph, proj_name: &'a str) -> impl 'a + Iterator<Item = NodeIx> {
+    g.node_indices()
+        .filter(|&n| g.edges_directed(n, Direction::Incoming).next().is_none())
+        .filter(move |&n| g[n].name == proj_name)
+}
 
-    // Do a BFS from the root and remove all nodes that does not have any incoming edge or one of the removed dependencies.
-    let mut bfs = Bfs::new(&*graph, proj_node);
-    bfs.next(&*graph); // Skip the root node (aka project node).
-    while let Some(node) = bfs.next(&*graph) {
-        if graph
-            .edges_directed(node, Direction::Incoming)
-            .next()
-            .is_none()
-            || to_remove
-                .iter()
-                .any(|removed_dep| removed_dep.1 == graph[node].unpinned(path_map))
-        {
-            graph.remove_node(node);
-        }
+/// Given a graph, find the project node.
+///
+/// This should be the only node that satisfies the following conditions:
+///
+/// - The package name matches `proj_name`
+/// - The node has no incoming edges, i.e. is not a dependency of another node.
+fn find_proj_node(graph: &Graph, proj_name: &str) -> Result<NodeIx> {
+    let mut potentials = potential_proj_nodes(graph, proj_name);
+    let proj_node = potentials
+        .next()
+        .ok_or_else(|| anyhow!("graph contains no project node"))?;
+    match potentials.next() {
+        None => Ok(proj_node),
+        Some(_) => Err(anyhow!("graph contains more than one project node")),
     }
 }
 
-/// Add the given set of packages to `graph`. If a dependency of an newly added package is already
-/// pinned use that. Otherwise fetch and pin it.
-fn add_deps(
-    graph: &mut Graph,
-    path_map: &mut PathMap,
-    compilation_order: &[NodeIx],
-    to_add: &[(DependencyName, Pkg)],
+/// Validates the state of the graph against the given project manifest.
+///
+/// Returns the set of invalid nodes detected within the graph that should be removed.
+///
+/// Note that nodes whose parents are all invalid are *not* returned, as it is assumed they will be
+/// removed along with their invalid parents in `remove_deps` in a BFS from the project node.
+fn validate_graph(
+    graph: &Graph,
+    proj_manifest: &ManifestFile,
     sway_git_tag: &str,
-    offline_mode: bool,
-    visited_map: &mut HashMap<Pinned, NodeIx>,
-) -> Result<()> {
-    let proj_node = *compilation_order
-        .last()
-        .ok_or_else(|| anyhow!("Invalid Graph"))?;
-    let proj_id = graph[proj_node].id();
-    let proj_path = &path_map[&proj_id];
-    let fetch_ts = std::time::Instant::now();
-    let fetch_id = fetch_id(proj_path, fetch_ts);
-    let path_root = proj_id;
-    for (added_dep_name, added_package) in to_add {
-        let pinned_pkg = pin_pkg(fetch_id, proj_id, added_package, path_map, sway_git_tag)?;
-        let manifest = Manifest::from_dir(&path_map[&pinned_pkg.id()], sway_git_tag)?;
-        let added_package_node = graph.add_node(pinned_pkg.clone());
-        fetch_children(
-            fetch_id,
-            offline_mode,
-            added_package_node,
-            &manifest,
-            path_root,
-            sway_git_tag,
-            graph,
-            path_map,
-            visited_map,
-        )?;
-        graph.add_edge(proj_node, added_package_node, added_dep_name.to_string());
+) -> BTreeSet<NodeIx> {
+    // First, check the project node exists.
+    // If we we don't have exactly one potential project node, remove everything as we can't
+    // validate the graph without knowing the project node.
+    let proj_node = match find_proj_node(graph, &proj_manifest.project.name) {
+        Ok(node) => node,
+        Err(_) => return graph.node_indices().collect(),
+    };
+    // Collect all invalid dependency nodes.
+    validate_deps(graph, proj_node, proj_manifest, sway_git_tag)
+}
+
+/// Validate all dependency nodes in the `graph`, traversing from `node`.
+///
+/// Returns the set of invalid nodes.
+fn validate_deps(
+    graph: &Graph,
+    node: NodeIx,
+    node_manifest: &ManifestFile,
+    sway_git_tag: &str,
+) -> BTreeSet<NodeIx> {
+    let mut remove = BTreeSet::default();
+    for edge in graph.edges_directed(node, Direction::Outgoing) {
+        let dep_name = edge.weight();
+        let dep_node = edge.target();
+        match validate_dep(graph, node_manifest, dep_name, dep_node, sway_git_tag) {
+            Err(_) => {
+                remove.insert(dep_node);
+            }
+            Ok(dep_manifest) => {
+                remove.extend(validate_deps(graph, dep_node, &dep_manifest, sway_git_tag));
+                continue;
+            }
+        }
     }
-    Ok(())
+    remove
+}
+
+/// Check the validity of a node's dependency within the graph.
+///
+/// Returns the `ManifestFile` in the case that the dependency is valid.
+fn validate_dep(
+    graph: &Graph,
+    node_manifest: &ManifestFile,
+    dep_name: &str,
+    dep_node: NodeIx,
+    sway_git_tag: &str,
+) -> Result<ManifestFile> {
+    // Check the validity of the dependency path, including its path root.
+    let dep_path = dep_path(graph, node_manifest, dep_name, dep_node, sway_git_tag)
+        .ok_or_else(|| anyhow!("failed to construct path for dependency {:?}", dep_name))?;
+
+    // Ensure the manifest is accessible.
+    let dep_manifest = ManifestFile::from_dir(&dep_path, sway_git_tag)?;
+
+    // Ensure the name matches the manifest project name.
+    if graph[dep_node].name != dep_manifest.project.name {
+        bail!(
+            "dependency name {:?} must match the manifest project name {:?} \
+            unless `package = {:?}` is specified in the dependency declaration",
+            graph[dep_node].name,
+            dep_manifest.project.name,
+            dep_manifest.project.name,
+        );
+    }
+
+    // Check that the dependency's source matches the entry in the parent manifest.
+    let dep_entry = node_manifest
+        .dep(dep_name)
+        .ok_or_else(|| anyhow!("no entry in parent manifest"))?;
+    let dep_source = dep_to_source_patched(node_manifest, dep_name, dep_entry)?;
+    let dep_pkg = graph[dep_node].unpinned(&dep_path);
+    if dep_pkg.source != dep_source {
+        bail!("dependency node's source does not match manifest entry");
+    }
+
+    Ok(dep_manifest)
+}
+
+/// Returns the local path to the given dependency node if it exists, `None` otherwise.
+///
+/// Also returns `None` in the case that the dependency is a `Path` dependency and the path root is
+/// invalid.
+fn dep_path(
+    graph: &Graph,
+    node_manifest: &ManifestFile,
+    dep_name: &str,
+    dep_node: NodeIx,
+    sway_git_tag: &str,
+) -> Option<PathBuf> {
+    let dep = &graph[dep_node];
+    match &dep.source {
+        SourcePinned::Git(git) => {
+            let repo_path = git_commit_path(&dep.name, &git.source.repo, &git.commit_hash);
+            find_dir_within(&repo_path, &dep.name, sway_git_tag)
+        }
+        SourcePinned::Path(src) => {
+            if validate_path_root(graph, dep_node, src.path_root).is_err() {
+                return None;
+            }
+
+            // Check if the path is directly from the dependency.
+            if let Some(path) = node_manifest.dep_path(dep_name) {
+                if path.exists() {
+                    return Some(path);
+                }
+            }
+
+            // Otherwise, check if it comes from a patch.
+            for (_, patch_map) in node_manifest.patches() {
+                if let Some(Dependency::Detailed(details)) = patch_map.get(dep_name) {
+                    if let Some(ref rel_path) = details.path {
+                        let path = node_manifest.dir().join(rel_path);
+                        return path.canonicalize().ok().filter(|p| p.exists());
+                    }
+                }
+            }
+
+            None
+        }
+        SourcePinned::Registry(_reg) => unreachable!("registry dependencies not yet supported"),
+        SourcePinned::Root => unreachable!("a `Root` node cannot be a dependency"),
+    }
+}
+
+/// Remove the given set of packages from `graph` along with any dependencies that are no
+/// longer required as a result.
+fn remove_deps(graph: &mut Graph, proj_name: &str, to_remove: &BTreeSet<NodeIx>) {
+    use petgraph::visit::Bfs;
+
+    // Retrieve the project node.
+    let proj_node = match find_proj_node(graph, proj_name) {
+        Ok(node) => node,
+        Err(_) => {
+            // If it fails, invalidate everything.
+            graph.clear();
+            return;
+        }
+    };
+
+    // Remove all nodes that either have no parents, or are contained within the `to_remove` set.
+    // We do so in breadth-first-order to ensure we always remove all parents before children.
+    let mut bfs = Bfs::new(&*graph, proj_node);
+    // Skip the root node (aka project node).
+    bfs.next(&*graph);
+    while let Some(node) = bfs.next(&*graph) {
+        let no_parents = graph
+            .edges_directed(node, Direction::Incoming)
+            .next()
+            .is_none();
+        if no_parents || to_remove.contains(&node) {
+            graph.remove_node(node);
+        }
+    }
 }
 
 impl GitReference {
@@ -612,12 +579,11 @@ impl Pinned {
     }
 
     /// Retrieve the unpinned version of this source.
-    pub fn unpinned(&self, path_map: &PathMap) -> Pkg {
-        let id = self.id();
+    pub fn unpinned(&self, path: &Path) -> Pkg {
         let source = match &self.source {
-            SourcePinned::Root => Source::Root,
+            SourcePinned::Root => Source::Root(path.to_owned()),
             SourcePinned::Git(git) => Source::Git(git.source.clone()),
-            SourcePinned::Path(_) => Source::Path(path_map[&id].clone()),
+            SourcePinned::Path(_) => Source::Path(path.to_owned()),
             SourcePinned::Registry(reg) => Source::Registry(reg.source.clone()),
         };
         let name = self.name.clone();
@@ -851,57 +817,27 @@ pub fn compilation_order(graph: &Graph) -> Result<Vec<NodeIx>> {
     })
 }
 
-/// Applies the differences between the graph that is described by the lock file and the graph that
-/// is actually possible to build.
-///
-/// `deps_to_remove` : Indices of path dependencies that are removed from their parent's manifest file after the lock file is generated.
-///
-/// There might be some differences between the graph that is described by the lock file and
-/// the graph that can actually possible to build. This is happening in the case of a dependency
-/// (described by path) removal after the lock file is generated. Since dependency is removed
-/// graph_to_path_map cannot find the required path for the dependency entry in the lock file.
-/// This requires us to remove those removed nodes from the graph so that we can have a BuildPlan
-/// generated from lock file. After the BuildPlan is generated it can be used to apply diffs by
-/// apply_pkg_diff().
-fn apply_diff_after_lock(deps_to_remove: HashSet<NodeIx>, graph: &mut Graph) -> Result<()> {
-    for dep in deps_to_remove {
-        let dep_name = &graph[dep].name.clone();
-        println_red(&format!("  Removing {}", dep_name));
-        // Remove the deleted node
-        graph.remove_node(dep);
-    }
-    Ok(())
-}
-/// Search dependencies and patches for the details for a pinned dependency
-fn check_manifest_for_pinned(manifest: &ManifestFile, pinned_dep: &Pinned) -> bool {
-    manifest.dep(&pinned_dep.name).is_none()
-        && !manifest
-            .deps()
-            .filter_map(|dep| dep.1.package())
-            .any(|package| package == pinned_dep.name)
-        && manifest.patch(&pinned_dep.name).is_none()
-        && manifest
-            .patches()
-            .find_map(|patches| patches.1.get(&pinned_dep.name))
-            .is_none()
-}
-
-/// Given graph of pinned dependencies and the directory for the root node, produce a path map
+/// Given a graph of pinned packages and the directory for the root node, produce a path map
 /// containing the path to the local source for every node in the graph.
 ///
-/// Returns the generated path map and the nodes that should be removed from the graph (the nodes
-/// that are removed from their parent's manifest file).
-pub fn graph_to_path_map(
+/// NOTE: This function assumes that the paths are valid for each node in the graph. It is designed
+/// to be called after calls to `validate_graph_with_manifest` and `remove_deps`, following which
+/// there should be no more nodes with invalid paths remaining in the graph.
+fn graph_to_path_map(
     proj_manifest_dir: &Path,
     graph: &Graph,
-    compilation_order: &[NodeIx],
     sway_git_tag: &str,
-) -> Result<(PathMap, HashSet<NodeIx>)> {
+) -> Result<PathMap> {
     let mut path_map = PathMap::new();
-    let mut removed_deps = HashSet::new();
+
+    // If the graph is empty, the path map will be too.
+    if graph.node_count() == 0 {
+        return Ok(path_map);
+    }
 
     // We resolve all paths in reverse compilation order.
     // That is, we follow paths starting from the project root.
+    let compilation_order = compilation_order(graph)?;
     let mut path_resolve_order = compilation_order.iter().cloned().rev();
     // Add the project's package to the map.
     let proj_node = path_resolve_order
@@ -949,13 +885,6 @@ pub fn graph_to_path_map(
                 // Construct the path relative to the parent's path.
                 let parent_path = &path_map[&parent.id()];
                 let parent_manifest = ManifestFile::from_dir(parent_path, sway_git_tag)?;
-                // Check if parent's manifest file includes this dependency.
-                // If not this is a removed dependency and we should continue with the following dep
-                // Note that we need to check from package name as well since dependency name and package name is not the same thing
-                if check_manifest_for_pinned(&parent_manifest, dep) {
-                    removed_deps.insert(dep_node);
-                    continue;
-                }
                 let detailed = parent_manifest
                     .dependencies
                     .as_ref()
@@ -1003,7 +932,7 @@ pub fn graph_to_path_map(
         path_map.insert(dep.id(), dep_path.canonicalize()?);
     }
 
-    Ok((path_map, removed_deps))
+    Ok(path_map)
 }
 
 /// Given a `graph`, the node index of a path dependency within that `graph`, and the supposed
@@ -1015,115 +944,45 @@ pub(crate) fn validate_path_root(
     path_dep: NodeIx,
     path_root: PinnedId,
 ) -> Result<()> {
-    let mut node = path_dep;
-    let invalid_path_root = || {
-        anyhow!(
+    let path_root_node = find_path_root(graph, path_dep)?;
+    if graph[path_root_node].id() != path_root {
+        bail!(
             "invalid `path_root` for path dependency package {:?}",
             &graph[path_dep].name
         )
-    };
-    loop {
-        let parent = graph
-            .edges_directed(node, Direction::Incoming)
-            .next()
-            .map(|edge| edge.source())
-            .ok_or_else(invalid_path_root)?;
-        let parent_pkg = &graph[parent];
-        match &parent_pkg.source {
-            SourcePinned::Path(src) if src.path_root != path_root => bail!(invalid_path_root()),
-            SourcePinned::Git(_) | SourcePinned::Registry(_) | SourcePinned::Root => {
-                if parent_pkg.id() != path_root {
-                    bail!(invalid_path_root());
-                }
-                return Ok(());
-            }
-            _ => node = parent,
-        }
     }
+    Ok(())
 }
 
-/// Fetch all depedencies and produce the dependency graph along with a map from each node's unique
-/// ID to its local fetched path.
-///
-/// This will determine pinned versions and commits for remote dependencies during traversal.
-pub(crate) fn fetch_deps(
-    proj_manifest_dir: PathBuf,
-    proj_manifest: &Manifest,
-    sway_git_tag: &str,
-    offline_mode: bool,
-) -> Result<(Graph, PathMap)> {
-    let mut graph = Graph::new();
-    let mut path_map = PathMap::new();
-
-    // Add the project to the graph as the root node.
-    let name = proj_manifest.project.name.clone();
-    let path = proj_manifest_dir.canonicalize()?;
-    let source = SourcePinned::Root;
-    let pkg = Pinned { name, source };
-    let pkg_id = pkg.id();
-    path_map.insert(pkg_id, path);
-    let root = graph.add_node(pkg);
-
-    // The set of visited packages, starting with the root.
-    let mut visited = HashMap::new();
-    visited.insert(graph[root].clone(), root);
-
-    // Recursively fetch children and add them to the graph.
-    // TODO: Convert this recursion to use loop & stack to ensure deps can't cause stack overflow.
-    let fetch_ts = std::time::Instant::now();
-    let fetch_id = fetch_id(&path_map[&pkg_id], fetch_ts);
-    let manifest = Manifest::from_dir(&path_map[&pkg_id], sway_git_tag)?;
-    let path_root = pkg_id;
-    fetch_children(
-        fetch_id,
-        offline_mode,
-        root,
-        &manifest,
-        path_root,
-        sway_git_tag,
-        &mut graph,
-        &mut path_map,
-        &mut visited,
-    )?;
-
-    Ok((graph, path_map))
-}
-
-fn apply_patch(
-    name: &str,
-    source: &Source,
-    manifest: &Manifest,
-    parent_path: &Path,
-) -> Result<Source> {
-    match source {
-        // Check if the patch is for a git dependency.
-        Source::Git(git) => {
-            // Check if we got a patch for the git dependency.
-            if let Some(source_patches) = manifest
-                .patch
-                .as_ref()
-                .and_then(|patches| patches.get(git.repo.as_str()))
-            {
-                if let Some(patch) = source_patches.get(name) {
-                    Ok(dep_to_source(parent_path, patch)?)
-                } else {
-                    bail!(
-                        "Cannot find the patch for the {} for package {}",
-                        git.repo,
-                        name
-                    )
-                }
-            } else {
-                Ok(source.clone())
+/// Given any node in the graph, find the node that is the path root for that node.
+fn find_path_root(graph: &Graph, mut node: NodeIx) -> Result<NodeIx> {
+    loop {
+        let pkg = &graph[node];
+        match &pkg.source {
+            SourcePinned::Path(src) => {
+                let parent = graph
+                    .edges_directed(node, Direction::Incoming)
+                    .next()
+                    .map(|edge| edge.source())
+                    .ok_or_else(|| {
+                        anyhow!(
+                            "Failed to find path root: `path` dependency \"{}\" has no parent",
+                            src
+                        )
+                    })?;
+                node = parent;
+            }
+            SourcePinned::Git(_) | SourcePinned::Registry(_) | SourcePinned::Root => {
+                return Ok(node);
             }
         }
-        _ => Ok(source.clone()),
     }
 }
 
 /// Produce a unique ID for a particular fetch pass.
 ///
-/// This is used in the temporary git directory and allows for avoiding contention over the git repo directory.
+/// This is used in the temporary git directory and allows for avoiding contention over the git
+/// repo directory.
 pub fn fetch_id(path: &Path, timestamp: std::time::Instant) -> u64 {
     let mut hasher = hash_map::DefaultHasher::new();
     path.hash(&mut hasher);
@@ -1131,71 +990,149 @@ pub fn fetch_id(path: &Path, timestamp: std::time::Instant) -> u64 {
     hasher.finish()
 }
 
-/// Fetch children nodes of the given node and add unvisited nodes to the graph.
+/// Given an empty or partially completed package `graph`, complete the graph.
+///
+/// The given `graph` may be empty, partially complete, or fully complete. All existing nodes
+/// should already be confirmed to be valid nodes via `validate_graph`. All invalid nodes should
+/// have been removed prior to calling this.
+///
+/// Recursively traverses dependencies listed within each package's manifest, fetching and pinning
+/// each dependency if it does not already exist within the package graph.
+///
+/// The accompanying `path_map` should contain a path entry for every existing node within the
+/// `graph` and will `panic!` otherwise.
+///
+/// Upon success, returns the set of nodes that were added to the graph during traversal.
+fn fetch_graph(
+    proj_manifest: &ManifestFile,
+    offline: bool,
+    sway_git_tag: &str,
+    graph: &mut Graph,
+    path_map: &mut PathMap,
+) -> Result<HashSet<NodeIx>> {
+    // Retrieve the project node, or create one if it does not exist.
+    let proj_node = match find_proj_node(graph, &proj_manifest.project.name) {
+        Ok(proj_node) => proj_node,
+        Err(_) => {
+            let name = proj_manifest.project.name.clone();
+            let source = SourcePinned::Root;
+            let path = proj_manifest.dir().to_owned();
+            let pkg = Pinned { name, source };
+            let pkg_id = pkg.id();
+            path_map.insert(pkg_id, path);
+            graph.add_node(pkg)
+        }
+    };
+
+    // Traverse the rest of the graph from the root.
+    let proj_dir = proj_manifest.dir();
+    let fetch_ts = std::time::Instant::now();
+    let fetch_id = fetch_id(proj_dir, fetch_ts);
+    let path_root = graph[proj_node].id();
+    let mut fetched = graph
+        .node_indices()
+        .map(|n| {
+            let pinned = &graph[n];
+            let path = &path_map[&pinned.id()];
+            let pkg = pinned.unpinned(path);
+            (pkg, n)
+        })
+        .collect();
+    let mut visited = HashSet::default();
+    fetch_deps(
+        fetch_id,
+        offline,
+        proj_node,
+        proj_manifest,
+        path_root,
+        sway_git_tag,
+        graph,
+        path_map,
+        &mut fetched,
+        &mut visited,
+    )
+}
+
+/// Visit the unvisited dependencies of the given node and fetch missing nodes as necessary.
 #[allow(clippy::too_many_arguments)]
-fn fetch_children(
+fn fetch_deps(
     fetch_id: u64,
-    offline_mode: bool,
+    offline: bool,
     node: NodeIx,
-    manifest: &Manifest,
+    manifest: &ManifestFile,
     path_root: PinnedId,
     sway_git_tag: &str,
     graph: &mut Graph,
     path_map: &mut PathMap,
-    visited: &mut HashMap<Pinned, NodeIx>,
-) -> Result<()> {
-    let parent = &graph[node];
-    let parent_id = parent.id();
-    let parent_path = path_map[&parent_id].clone();
+    fetched: &mut HashMap<Pkg, NodeIx>,
+    visited: &mut HashSet<NodeIx>,
+) -> Result<HashSet<NodeIx>> {
+    let mut added = HashSet::default();
     for (dep_name, dep) in manifest.deps() {
         let name = dep.package().unwrap_or(dep_name).to_string();
-        let source = apply_patch(
-            &name,
-            &dep_to_source(&parent_path, dep)?,
-            manifest,
-            &parent_path,
-        )?;
-        if offline_mode && !matches!(source, Source::Path(_)) {
-            bail!("Unable to fetch pkg {:?} in offline mode", source);
-        }
-        let pkg = Pkg { name, source };
-        let pinned = pin_pkg(fetch_id, path_root, &pkg, path_map, sway_git_tag)?;
-        let pkg_id = pinned.id();
-        let path_root = match pkg.source {
-            Source::Root | Source::Git(_) | Source::Registry(_) => pkg_id,
-            Source::Path(_) => path_root,
+        let source = dep_to_source_patched(manifest, &name, dep)?;
+
+        // If we haven't yet fetched this dependency, fetch it, pin it and add it to the graph.
+        let dep_pkg = Pkg { name, source };
+        let dep_node = match fetched.entry(dep_pkg) {
+            hash_map::Entry::Occupied(entry) => *entry.get(),
+            hash_map::Entry::Vacant(entry) => {
+                let dep_pinned = pin_pkg(
+                    fetch_id,
+                    path_root,
+                    entry.key(),
+                    path_map,
+                    offline,
+                    sway_git_tag,
+                )?;
+                let dep_node = graph.add_node(dep_pinned);
+                added.insert(dep_node);
+                *entry.insert(dep_node)
+            }
         };
-        let manifest = Manifest::from_dir(&path_map[&pkg_id], sway_git_tag)?;
-        if pinned.name != manifest.project.name {
-            bail!(
-                "dependency name {:?} must match the manifest project name {:?} \
-                unless `package = {:?}` is specified in the dependency declaration",
-                pinned.name,
-                manifest.project.name,
-                manifest.project.name,
-            );
-        }
-        let dep_node = if let hash_map::Entry::Vacant(entry) = visited.entry(pinned.clone()) {
-            let node = graph.add_node(pinned);
-            entry.insert(node);
-            fetch_children(
-                fetch_id,
-                offline_mode,
-                node,
-                &manifest,
-                path_root,
-                sway_git_tag,
-                graph,
-                path_map,
-                visited,
-            )?;
-            node
-        } else {
-            visited[&pinned]
-        };
+
+        // Add the edge to the dependency.
         graph.add_edge(node, dep_node, dep_name.to_string());
+
+        // If we've visited this node during this traversal already, no need to traverse it again.
+        if !visited.insert(dep_node) {
+            continue;
+        }
+
+        // This shouldn't fail unless the dependency's package name differs from its manifest.
+        let dep_manifest = validate_dep(graph, manifest, dep_name, dep_node, sway_git_tag)
+            .map_err(|e| {
+                let parent = &graph[node];
+                anyhow!(
+                    "dependency of {:?} named {:?} is invalid: {}",
+                    parent.name,
+                    dep_name,
+                    e
+                )
+            })?;
+
+        let dep_pinned = &graph[dep_node];
+        let dep_pkg_id = dep_pinned.id();
+        let path_root = match dep_pinned.source {
+            SourcePinned::Root | SourcePinned::Git(_) | SourcePinned::Registry(_) => dep_pkg_id,
+            SourcePinned::Path(_) => path_root,
+        };
+
+        // Fetch the children.
+        added.extend(fetch_deps(
+            fetch_id,
+            offline,
+            dep_node,
+            &dep_manifest,
+            path_root,
+            sway_git_tag,
+            graph,
+            path_map,
+            fetched,
+            visited,
+        )?);
     }
-    Ok(())
+    Ok(added)
 }
 
 /// The name to use for a package's git repository under the user's forc directory.
@@ -1324,11 +1261,18 @@ fn pin_pkg(
     path_root: PinnedId,
     pkg: &Pkg,
     path_map: &mut PathMap,
+    offline: bool,
     sway_git_tag: &str,
 ) -> Result<Pinned> {
     let name = pkg.name.clone();
     let pinned = match &pkg.source {
-        Source::Root => unreachable!("Root package is \"pinned\" prior to fetching"),
+        Source::Root(path) => {
+            let source = SourcePinned::Root;
+            let pinned = Pinned { name, source };
+            let id = pinned.id();
+            path_map.insert(id, path.clone());
+            pinned
+        }
         Source::Path(path) => {
             let path_pinned = SourcePathPinned { path_root };
             let source = SourcePinned::Path(path_pinned);
@@ -1338,6 +1282,16 @@ fn pin_pkg(
             pinned
         }
         Source::Git(ref git_source) => {
+            // TODO: If the git source directly specifies a full commit hash, we should first check
+            // to see if we have a local copy. Otherwise we cannot know what commit we should pin
+            // to without fetching the repo into a temporary directory.
+            if offline {
+                bail!(
+                    "Unable to fetch pkg {:?} from {:?} in offline mode",
+                    name,
+                    git_source.repo
+                );
+            }
             let pinned_git = pin_git(fetch_id, &name, git_source.clone())?;
             let repo_path =
                 git_commit_path(&name, &pinned_git.source.repo, &pinned_git.commit_hash);
@@ -1345,11 +1299,12 @@ fn pin_pkg(
             let pinned = Pinned { name, source };
             let id = pinned.id();
             if let hash_map::Entry::Vacant(entry) = path_map.entry(id) {
-                // TODO: Here we assume that if the local path already exists, that it contains the full and
-                // correct source for that commit and hasn't been tampered with. This is probably fine for most
-                // cases as users should never be touching these directories, however we should add some code
-                // to validate this. E.g. can we recreate the git hash by hashing the directory or something
-                // along these lines using git?
+                // TODO: Here we assume that if the local path already exists, that it contains the
+                // full and correct source for that commit and hasn't been tampered with. This is
+                // probably fine for most cases as users should never be touching these
+                // directories, however we should add some code to validate this. E.g. can we
+                // recreate the git hash by hashing the directory or something along these lines
+                // using git?
                 if !repo_path.exists() {
                     info!("  Fetching {}", pinned_git.to_string());
                     fetch_git(fetch_id, &pinned.name, &pinned_git)?;
@@ -1367,6 +1322,9 @@ fn pin_pkg(
             pinned
         }
         Source::Registry(ref _source) => {
+            if offline {
+                bail!("Unable to fetch pkg {:?} in offline mode", name);
+            }
             // TODO: determine registry pkg git URL, fetch to determine latest available
             // semver-compatible version
             bail!("registry dependencies are not yet supported");
@@ -1458,6 +1416,48 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
         },
     };
     Ok(source)
+}
+
+/// Converts the `Dependency` to a `Source` with any relevant patches applied.
+fn dep_to_source_patched(
+    parent_manifest: &ManifestFile,
+    dep_name: &str,
+    dep: &Dependency,
+) -> Result<Source> {
+    let unpatched = dep_to_source(parent_manifest.dir(), dep)?;
+    apply_patch(dep_name, &unpatched, parent_manifest, parent_manifest.dir())
+}
+
+fn apply_patch(
+    dep_name: &str,
+    dep_source: &Source,
+    parent_manifest: &Manifest,
+    parent_path: &Path,
+) -> Result<Source> {
+    match dep_source {
+        // Check if the patch is for a git dependency.
+        Source::Git(git) => {
+            // Check if we got a patch for the git dependency.
+            if let Some(source_patches) = parent_manifest
+                .patch
+                .as_ref()
+                .and_then(|patches| patches.get(git.repo.as_str()))
+            {
+                if let Some(patch) = source_patches.get(dep_name) {
+                    Ok(dep_to_source(parent_path, patch)?)
+                } else {
+                    bail!(
+                        "Cannot find the patch for the {} for package {}",
+                        git.repo,
+                        dep_name
+                    )
+                }
+            } else {
+                Ok(dep_source.clone())
+            }
+        }
+        _ => Ok(dep_source.clone()),
+    }
 }
 
 /// Given a `forc_pkg::BuildProfile`, produce the necessary `sway_core::BuildConfig` required for
@@ -1883,19 +1883,4 @@ pub fn wrong_program_type(
 pub fn fuel_core_not_running(node_url: &str) -> anyhow::Error {
     let message = format!("could not get a response from node at the URL {}. Start a node with `fuel-core`. See https://github.com/FuelLabs/fuel-core#running for more information", node_url);
     Error::msg(message)
-}
-
-fn create_new_lock(
-    plan: &BuildPlan,
-    old_lock: &Lock,
-    manifest: &ManifestFile,
-    lock_path: &Path,
-) -> Result<()> {
-    let lock = Lock::from_graph(plan.graph());
-    let diff = lock.diff(old_lock);
-    super::lock::print_diff(&manifest.project.name, &diff);
-    let string = toml::ser::to_string_pretty(&lock)
-        .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
-    fs::write(&lock_path, &string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
-    Ok(())
 }
