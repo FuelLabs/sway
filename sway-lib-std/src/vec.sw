@@ -2,10 +2,8 @@ library vec;
 
 use ::alloc::{alloc, realloc};
 use ::intrinsics::size_of;
-use ::hash::sha256;
 use ::mem::{read, write};
 use ::option::Option;
-
 
 struct RawVec<T> {
     ptr: u64,

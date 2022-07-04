@@ -2,7 +2,7 @@ contract;
 
 use std::option::*;
 use std::result::*;
-use std::storage::{StorageVec, StorageVecError};
+use std::storage::StorageVec;
 
 abi MyContract {
     #[storage(read, write)]
@@ -36,8 +36,7 @@ impl MyContract for Contract {
     }
     #[storage(read)]
     fn vec_u8_get(index: u64) -> u8 {
-        let item: Option<u8> = storage.vec_u8.get(index);
-        item.unwrap()
+        storage.vec_u8.get(index).unwrap()
     }
     #[storage(read, write)]
     fn vec_u8_pop() -> u8 {
@@ -46,17 +45,15 @@ impl MyContract for Contract {
     }
     #[storage(read, write)]
     fn vec_u8_remove(index: u64) -> u8 {
-        let res: Result<u8, StorageVecError> = storage.vec_u8.remove(index);
-        res.unwrap()
+        storage.vec_u8.remove(index)
     }
     #[storage(read, write)]
     fn vec_u8_swap_remove(index: u64) -> u8 {
-        let res: Result<u8, StorageVecError> = storage.vec_u8.swap_remove(index);
-        res.unwrap()
+        storage.vec_u8.swap_remove(index)
     }
     #[storage(read, write)]
     fn vec_u8_insert(index: u64, value: u8) {
-        let _ = storage.vec_u8.insert(index, value);
+        storage.vec_u8.insert(index, value);
     }
     #[storage(read)]
     fn vec_u8_len() -> u64 {
