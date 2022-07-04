@@ -8,7 +8,7 @@ use sway_types::ident::Ident;
 
 use sway_core::{
     constants::TUPLE_NAME_PREFIX, AstNode, AstNodeContent, Declaration, Expression,
-    FunctionDeclaration, IntrinsicFunctionKind, TypeInfo, WhileLoop,
+    FunctionDeclaration, TypeInfo, WhileLoop,
 };
 
 pub fn traverse_node(node: &AstNode, tokens: &mut TokenMap) {
@@ -191,6 +191,8 @@ fn handle_declaration(declaration: &Declaration, tokens: &mut TokenMap) {
                 );
             }
         }
+        // TODO: collect these tokens as keywords once the compiler returns the span
+        Declaration::Break | Declaration::Continue => {}
     }
 }
 
@@ -375,20 +377,11 @@ fn handle_expression(expression: &Expression, tokens: &mut TokenMap) {
                 );
             }
         }
-        Expression::IntrinsicFunction { kind, .. } => {
-            handle_intrinsic_function(kind, tokens);
+        Expression::IntrinsicFunction { arguments, .. } => {
+            for argument in arguments {
+                handle_expression(argument, tokens);
+            }
         }
-    }
-}
-
-fn handle_intrinsic_function(kind: &IntrinsicFunctionKind, tokens: &mut TokenMap) {
-    match kind {
-        IntrinsicFunctionKind::SizeOfVal { exp } => {
-            handle_expression(exp, tokens);
-        }
-        IntrinsicFunctionKind::SizeOfType { .. } => {}
-        IntrinsicFunctionKind::IsRefType { .. } => {}
-        IntrinsicFunctionKind::GetStorageKey => {}
     }
 }
 
