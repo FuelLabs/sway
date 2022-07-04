@@ -205,10 +205,9 @@ pub enum BytecodeCompilationResult {
     },
 }
 
-pub fn compile_to_ast(
-    input: Arc<str>,
+pub fn parsed_to_ast(
+    parsed: CompileResult<ParseProgram>,
     initial_namespace: namespace::Module,
-    build_config: Option<&BuildConfig>,
 ) -> CompileAstResult {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
@@ -217,7 +216,8 @@ pub fn compile_to_ast(
         value: parse_program_opt,
         warnings: new_warnings,
         errors: new_errors,
-    } = parse(input, build_config);
+    } = parsed;
+
     warnings.extend(new_warnings);
     errors.extend(new_errors);
     let parse_program = match parse_program_opt {
@@ -276,6 +276,15 @@ pub fn compile_to_ast(
         typed_program: Box::new(typed_program_with_storage_slots),
         warnings,
     }
+}
+
+pub fn compile_to_ast(
+    input: Arc<str>,
+    initial_namespace: namespace::Module,
+    build_config: Option<&BuildConfig>,
+) -> CompileAstResult {
+    let parsed = parse(input, build_config);
+    parsed_to_ast(parsed, initial_namespace)
 }
 
 /// Given input Sway source code, compile to a [CompilationResult] which contains the asm in opcode
