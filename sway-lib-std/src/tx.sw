@@ -164,8 +164,7 @@ pub fn tx_script_data_start_pointer() -> u64 {
 /// Get the script data, typed. Unsafe.
 pub fn tx_script_data<T>() -> T {
     // TODO some safety checks on the input data? We are going to assume it is the right type for now.
-    let ptr = tx_script_data_start_pointer();
-    read(ptr)
+    read(tx_script_data_start_pointer())
 }
 
 /// Get the script bytecode
