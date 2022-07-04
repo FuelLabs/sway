@@ -6,7 +6,8 @@
       {
         "components": null,
         "name": "",
-        "type": "bool"
+        "type": "bool",
+        "typeArguments": null
       }
     ],
     "type": "function"

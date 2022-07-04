@@ -4,7 +4,8 @@
       {
         "components": null,
         "name": "mint_amount",
-        "type": "u64"
+        "type": "u64",
+        "typeArguments": null
       }
     ],
     "name": "mint",
@@ -12,7 +13,8 @@
       {
         "components": [],
         "name": "",
-        "type": "()"
+        "type": "()",
+        "typeArguments": null
       }
     ],
     "type": "function"
@@ -22,7 +24,8 @@
       {
         "components": null,
         "name": "burn_amount",
-        "type": "u64"
+        "type": "u64",
+        "typeArguments": null
       }
     ],
     "name": "burn",
@@ -30,7 +33,8 @@
       {
         "components": [],
         "name": "",
-        "type": "()"
+        "type": "()",
+        "typeArguments": null
       }
     ],
     "type": "function"
@@ -40,29 +44,34 @@
       {
         "components": null,
         "name": "coins",
-        "type": "u64"
+        "type": "u64",
+        "typeArguments": null
       },
       {
         "components": [
           {
             "components": null,
             "name": "value",
-            "type": "b256"
+            "type": "b256",
+            "typeArguments": null
           }
         ],
         "name": "asset_id",
-        "type": "struct ContractId"
+        "type": "struct ContractId",
+        "typeArguments": []
       },
       {
         "components": [
           {
             "components": null,
             "name": "value",
-            "type": "b256"
+            "type": "b256",
+            "typeArguments": null
           }
         ],
         "name": "c_id",
-        "type": "struct ContractId"
+        "type": "struct ContractId",
+        "typeArguments": []
       }
     ],
     "name": "force_transfer",
@@ -70,7 +79,8 @@
       {
         "components": [],
         "name": "",
-        "type": "()"
+        "type": "()",
+        "typeArguments": null
       }
     ],
     "type": "function"

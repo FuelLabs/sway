@@ -10,47 +10,56 @@
               {
                 "components": null,
                 "name": "__tuple_element",
-                "type": "b256"
+                "type": "b256",
+                "typeArguments": null
               },
               {
                 "components": null,
                 "name": "__tuple_element",
-                "type": "b256"
+                "type": "b256",
+                "typeArguments": null
               }
             ],
             "name": "first",
-            "type": "(b256, b256)"
+            "type": "(b256, b256)",
+            "typeArguments": null
           },
           {
             "components": [
               {
                 "components": null,
                 "name": "first",
-                "type": "u32"
+                "type": "u32",
+                "typeArguments": null
               },
               {
                 "components": [
                   {
                     "components": null,
                     "name": "first",
-                    "type": "b256"
+                    "type": "b256",
+                    "typeArguments": null
                   },
                   {
                     "components": null,
                     "name": "second",
-                    "type": "u32"
+                    "type": "u32",
+                    "typeArguments": null
                   }
                 ],
                 "name": "second",
-                "type": "enum LowerLevelEnum"
+                "type": "enum LowerLevelEnum",
+                "typeArguments": []
               }
             ],
             "name": "second",
-            "type": "struct ThenAStruct"
+            "type": "struct ThenAStruct",
+            "typeArguments": []
           }
         ],
         "name": "",
-        "type": "enum TopLevelEnum"
+        "type": "enum TopLevelEnum",
+        "typeArguments": []
       }
     ],
     "type": "function"

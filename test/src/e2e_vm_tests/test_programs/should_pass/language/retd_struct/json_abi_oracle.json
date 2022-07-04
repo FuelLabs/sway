@@ -8,16 +8,19 @@
           {
             "components": null,
             "name": "field_1",
-            "type": "u64"
+            "type": "u64",
+            "typeArguments": null
           },
           {
             "components": null,
             "name": "field_2",
-            "type": "b256"
+            "type": "b256",
+            "typeArguments": null
           }
         ],
         "name": "",
-        "type": "struct BiggerThanAWord"
+        "type": "struct BiggerThanAWord",
+        "typeArguments": []
       }
     ],
     "type": "function"

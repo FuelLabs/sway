@@ -8,21 +8,25 @@
           {
             "components": [],
             "name": "A",
-            "type": "()"
+            "type": "()",
+            "typeArguments": null
           },
           {
             "components": [],
             "name": "B",
-            "type": "()"
+            "type": "()",
+            "typeArguments": null
           },
           {
             "components": [],
             "name": "C",
-            "type": "()"
+            "type": "()",
+            "typeArguments": null
           }
         ],
         "name": "",
-        "type": "enum E"
+        "type": "enum E",
+        "typeArguments": []
       }
     ],
     "type": "function"
