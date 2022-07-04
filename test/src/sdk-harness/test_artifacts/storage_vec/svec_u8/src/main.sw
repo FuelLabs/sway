@@ -1,8 +1,6 @@
 contract;
 
-use std::option::*;
-use std::result::*;
-use std::storage::StorageVec;
+use std::{option::Option, result::Result, storage::StorageVec};
 
 abi MyContract {
     #[storage(read, write)]
