@@ -145,27 +145,14 @@ pub fn tx_script_start_pointer() -> u64 {
 
 /// Get the transaction script data start pointer.
 pub fn tx_script_data_start_pointer() -> u64 {
-    asm(r1, r2: TX_SCRIPT_START_OFFSET, r3: TX_SCRIPT_LENGTH_OFFSET) {
-        lw r3 r3 i0;
-        add r1 r2 r3;
-        r1: u64
-    }
+    tx_script_start_pointer() + tx_script_length()
 }
 
 /// Get the script data, typed. Unsafe.
 pub fn tx_script_data<T>() -> T {
     // TODO some safety checks on the input data? We are going to assume it is the right type for now.
     let ptr = tx_script_data_start_pointer();
-    if is_reference_type::<T>() {
-        asm(r1: ptr) {
-            r1: T
-        }
-    } else {
-        asm(r1: ptr) {
-            lw r1 r1 i0;
-            r1: T
-        }
-    }
+    read(ptr)
 }
 
 /// Get the script bytecode
@@ -173,9 +160,7 @@ pub fn tx_script_data<T>() -> T {
 /// Bytecode will be padded to next whole word.
 pub fn tx_script_bytecode<T>() -> T {
     let script_ptr = tx_script_start_pointer();
-    asm(r1: script_ptr) {
-        r1: T
-    }
+    read(script_ptr)
 }
 
 ////////////////////////////////////////
