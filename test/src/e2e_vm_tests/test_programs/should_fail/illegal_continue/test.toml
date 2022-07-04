@@ -1,0 +1,5 @@
+category = "fail"
+
+# check: $()fn main() {
+# nextln: $()continue;
+# nextln: $()"continue" used outside of a loop

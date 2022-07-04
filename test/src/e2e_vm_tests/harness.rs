@@ -4,7 +4,7 @@ use forc_pkg::Compiled;
 use fuel_tx::Transaction;
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
-use std::fs;
+use std::{fmt::Write, fs};
 
 pub(crate) fn deploy_contract(file_name: &str, locked: bool) -> ContractId {
     // build the contract
@@ -121,7 +121,7 @@ pub(crate) fn does_not_compile(file_name: &str, locked: bool) -> Result<String, 
         Err(e) => {
             // Capture the result of the compilation (i.e., any errors Forc produces) and append to
             // the stdout from the compiler.
-            output.push_str(&format!("\n{e}"));
+            write!(output, "\n{}", e).map_err(|_| ())?;
             Ok(output)
         }
     }
@@ -185,10 +185,9 @@ fn emit_json_abi(file_name: &str, compiled: &Compiled) -> Result<()> {
     let file = std::fs::File::create(format!(
         "{}/src/e2e_vm_tests/test_programs/{}/{}",
         manifest_dir, file_name, "json_abi_output.json"
-    ))
-    .map_err(|e| e)?;
+    ))?;
     let res = serde_json::to_writer_pretty(&file, &json_abi);
-    res.map_err(|e| e)?;
+    res?;
     Ok(())
 }
 
@@ -226,10 +225,9 @@ fn emit_json_storage_slots(file_name: &str, compiled: &Compiled) -> Result<()> {
     let file = std::fs::File::create(format!(
         "{}/src/e2e_vm_tests/test_programs/{}/{}",
         manifest_dir, file_name, "json_storage_slots_output.json"
-    ))
-    .map_err(|e| e)?;
+    ))?;
     let res = serde_json::to_writer_pretty(&file, &json_storage_slots);
-    res.map_err(|e| e)?;
+    res?;
     Ok(())
 }
 

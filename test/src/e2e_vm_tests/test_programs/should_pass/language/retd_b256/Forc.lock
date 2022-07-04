@@ -6,4 +6,9 @@ dependencies = []
 [[package]]
 name = 'retd_b256'
 source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-369A2B47EEBEB803'
 dependencies = ['core']
