@@ -8,7 +8,7 @@ mod concurrent_slab;
 pub mod constants;
 mod control_flow_analysis;
 mod convert_parse_tree;
-mod ir_generation;
+pub mod ir_generation;
 pub mod parse_tree;
 pub mod semantic_analysis;
 pub mod source_map;
@@ -16,6 +16,7 @@ mod style;
 pub mod type_engine;
 
 use crate::{error::*, source_map::SourceMap};
+pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
 pub use build_config::BuildConfig;
 use control_flow_analysis::ControlFlowGraph;
@@ -444,7 +445,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         tracing::info!("{}", ir);
     }
 
-    crate::asm_generation::from_ir::compile_ir_to_asm(&ir, build_config)
+    compile_ir_to_asm(&ir, Some(build_config))
 }
 
 fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
