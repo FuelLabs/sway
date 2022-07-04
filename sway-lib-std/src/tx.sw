@@ -43,6 +43,7 @@ const TX_OUTPUTS_COUNT_OFFSET = 10304;
 const TX_WITNESSES_COUNT_OFFSET = 10312;
 const TX_RECEIPTS_ROOT_OFFSET = 10320;
 const TX_SCRIPT_START_OFFSET = 10352;
+const TX_ID_OFFSET = 0;
 
 // Input types
 const INPUT_COIN = 0u8;
@@ -301,4 +302,9 @@ pub fn tx_output_amount(index: u64) -> u64 {
         lw r1 r2 i0;
         r1: u64
     }
+}
+
+/// Get the id of the current transaction.
+pub fn tx_id() -> b256 {
+    read(TX_ID_OFFSET)
 }
