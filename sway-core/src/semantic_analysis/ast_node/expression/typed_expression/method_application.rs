@@ -157,6 +157,25 @@ pub(crate) fn type_check_method_application(
         }
     };
 
+    // If this function is being called with method call syntax, a.b(c),
+    // then make sure the first parameter is self, else issue an error.
+    if !method.is_contract_call {
+        if let MethodName::FromModule { ref method_name } = method_name {
+            let is_first_param_self = method
+                .parameters
+                .get(0)
+                .map(|f| f.is_self())
+                .unwrap_or_default();
+            if !is_first_param_self {
+                errors.push(CompileError::AssociatedFunctionCalledAsMethod {
+                    fn_name: method_name.clone(),
+                    span,
+                });
+                return err(warnings, errors);
+            }
+        }
+    }
+
     // Validate mutability of self. Check that the variable that the method is called on is mutable
     // _if_ the method requires mutable self.
     if let (
