@@ -17,12 +17,12 @@ abi TxContractTest {
     fn get_tx_receipts_root() -> b256;
     fn get_tx_script_start_offset() -> u64;
 
-    fn get_tx_input_pointer(index: u64) -> u32;
-    fn get_tx_input_type(ptr: u32) -> u8;
+    fn get_tx_input_pointer(index: u64) -> u64;
+    fn get_tx_input_type(ptr: u64) -> u8;
     fn get_tx_input_coin_owner(index: u64) -> Address;
 
-    fn get_tx_output_pointer(index: u64) -> u32;
-    fn get_tx_output_type(ptr: u32) -> u8;
+    fn get_tx_output_pointer(index: u64) -> u64;
+    fn get_tx_output_type(ptr: u64) -> u8;
 }
 
 impl TxContractTest for Contract {
@@ -63,20 +63,20 @@ impl TxContractTest for Contract {
         tx_script_start_offset()
     }
 
-    fn get_tx_input_pointer(index: u64) -> u32 {
+    fn get_tx_input_pointer(index: u64) -> u64 {
         tx_input_pointer(index)
     }
-    fn get_tx_input_type(ptr: u32) -> u8 {
+    fn get_tx_input_type(ptr: u64) -> u8 {
         tx_input_type_from_pointer(ptr)
     }
     fn get_tx_input_coin_owner(index: u64) -> Address {
         tx_input_coin_owner(index)
     }
 
-    fn get_tx_output_pointer(index: u64) -> u32 {
+    fn get_tx_output_pointer(index: u64) -> u64 {
         tx_output_pointer(index)
     }
-    fn get_tx_output_type(ptr: u32) -> u8 {
+    fn get_tx_output_type(ptr: u64) -> u8 {
         tx_output_type_from_pointer(ptr)
     }
 }

@@ -132,10 +132,10 @@ pub fn tx_receipts_root() -> b256 {
 }
 
 /// Get the transaction script start offset.
-pub fn tx_script_start_offset() -> u32 {
+pub fn tx_script_start_offset() -> u64 {
     asm(r1, r2: TX_SCRIPT_START_OFFSET) {
         move r1 r2;
-        r1: u32
+        r1: u64
     }
 }
 
@@ -144,11 +144,11 @@ pub fn tx_script_start_offset() -> u32 {
 ////////////////////////////////////////
 
 /// Get the transaction script data start offset.
-pub fn tx_script_data_start_offset() -> u32 {
+pub fn tx_script_data_start_offset() -> u64 {
     asm(r1, r2: TX_SCRIPT_START_OFFSET, r3: TX_SCRIPT_LENGTH_OFFSET) {
         lw r3 r3 i0;
         add r1 r2 r3;
-        r1: u32
+        r1: u64
     }
 }
 
@@ -183,15 +183,15 @@ pub fn tx_script_bytecode<T>() -> T {
 ////////////////////////////////////////
 
 /// Get a pointer to an input given the index of the input.
-pub fn tx_input_pointer(index: u64) -> u32 {
+pub fn tx_input_pointer(index: u64) -> u64 {
     asm(r1, r2: index) {
         xis r1 r2;
-        r1: u32
+        r1: u64
     }
 }
 
 /// Get the type of an input given a pointer to the input.
-pub fn tx_input_type_from_pointer(ptr: u32) -> u8 {
+pub fn tx_input_type_from_pointer(ptr: u64) -> u8 {
     asm(r1, r2: ptr) {
         lw r1 r2 i0;
         r1: u8
@@ -205,7 +205,7 @@ pub fn tx_input_type(index: u64) -> u8 {
 }
 
 /// Read 256 bits from memory at a given offset from a given pointer
-pub fn b256_from_pointer_offset(pointer: u32, offset: u32) -> b256 {
+pub fn b256_from_pointer_offset(pointer: u64, offset: u64) -> b256 {
     asm(buffer, ptr: pointer, off: offset) {
         // Need to skip over `off` bytes
         add ptr ptr off;
@@ -257,15 +257,15 @@ pub fn get_predicate_data<T>() -> T {
 ////////////////////////////////////////
 
 /// Get a pointer to an output given the index of the output.
-pub fn tx_output_pointer(index: u64) -> u32 {
+pub fn tx_output_pointer(index: u64) -> u64 {
     asm(r1, r2: index) {
         xos r1 r2;
-        r1: u32
+        r1: u64
     }
 }
 
 /// Get the type of an output given a pointer to the output.
-pub fn tx_output_type_from_pointer(ptr: u32) -> u8 {
+pub fn tx_output_type_from_pointer(ptr: u64) -> u8 {
     asm(r1, r2: ptr) {
         lw r1 r2 i0;
         r1: u8
