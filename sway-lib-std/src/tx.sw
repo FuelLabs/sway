@@ -221,11 +221,11 @@ pub fn tx_input_owner(index: u64) -> Option<Address> {
     let owner_offset = match type {
         0u8 => {
             // Need to skip over six words, so add 8*6=48
-            48
+            48u32
         },
         2u8 => {
             // Need to skip over eighteen words, so add 8*18=144
-            144
+            144u32
         },
         _ => {
             return Option::None;
@@ -236,6 +236,7 @@ pub fn tx_input_owner(index: u64) -> Option<Address> {
         input_ptr,
         owner_offset
     )))
+}
 
 /// Get the type of an input at a given index
 pub fn tx_input_type(index: u64) -> u8 {
