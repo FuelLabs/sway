@@ -1,4 +1,5 @@
 mod e2e_vm_tests;
+mod ir_generation;
 
 fn main() {
     let mut locked = false;
@@ -21,5 +22,6 @@ fn main() {
         filter_regex = Some(regex);
     }
 
-    e2e_vm_tests::run(locked, filter_regex);
+    e2e_vm_tests::run(locked, filter_regex.as_ref());
+    ir_generation::run(filter_regex.as_ref());
 }
