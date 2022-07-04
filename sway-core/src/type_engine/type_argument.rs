@@ -1,10 +1,9 @@
 use crate::{type_engine::*, types::*};
-use fuels_types::Property;
 use std::{
     fmt,
     hash::{Hash, Hasher},
 };
-use sway_types::Span;
+use sway_types::{Property, Span};
 
 #[derive(Debug, Clone)]
 pub struct TypeArgument {

@@ -2,9 +2,8 @@ mod function_parameter;
 pub use function_parameter::*;
 
 use crate::{error::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*, types::*};
-use fuels_types::{Function, Property};
 use sha2::{Digest, Sha256};
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Function, Ident, Property, Span, Spanned};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedFunctionDeclaration {

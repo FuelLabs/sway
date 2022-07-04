@@ -1,7 +1,6 @@
 use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
-use fuels_types::Property;
 use std::hash::{Hash, Hasher};
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Property, Span, Spanned};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedStructDeclaration {
