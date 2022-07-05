@@ -9,7 +9,7 @@ use crate::{capabilities, core::token::traverse_node, utils};
 use forc_pkg::{self as pkg};
 use forc::utils::SWAY_GIT_TAG;
 use ropey::Rope;
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, path::PathBuf};
 use sway_core::{
     semantic_analysis::ast_node::TypedAstNode, CompileAstResult, CompileResult, ParseProgram,
     TreeType,
@@ -108,6 +108,8 @@ impl TextDocument {
             .unwrap();
         let (parsed_res, _ast_res) = pkg::check(&plan, silent_mode).unwrap();
 
+        //self.test_typed_parse(ast_res);
+
         match self.parse_tokens_from_text(parsed_res) {
             Ok((tokens, diagnostics)) => {
                 self.store_tokens(tokens);
@@ -115,8 +117,6 @@ impl TextDocument {
             }
             Err(diagnostics) => Err(DocumentError::FailedToParse(diagnostics)),
         }
-
-        //self.test_typed_parse(ast_res);
     }
 
     pub fn apply_change(&mut self, change: &TextDocumentContentChangeEvent) {
