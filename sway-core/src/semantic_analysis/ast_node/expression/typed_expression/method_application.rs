@@ -21,8 +21,9 @@ pub(crate) fn type_check_method_application(
 ) -> CompileResult<TypedExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
+
+    // type check the function arguments
     let mut args_buf = VecDeque::new();
-    let mut contract_call_params_map = HashMap::new();
     for arg in &arguments {
         let ctx = ctx
             .by_ref()
@@ -49,12 +50,7 @@ pub(crate) fn type_check_method_application(
         errors
     );
 
-    let contract_caller = if method.is_contract_call {
-        args_buf.pop_front()
-    } else {
-        None
-    };
-
+    // check the function storage purity
     if !method.is_contract_call {
         // 'method.purity' is that of the callee, 'opts.purity' of the caller.
         if !ctx.purity().can_call(method.purity) {
@@ -63,13 +59,16 @@ pub(crate) fn type_check_method_application(
                 span: method_name.easy_name().span(),
             });
         }
-
         if !contract_call_params.is_empty() {
             errors.push(CompileError::CallParamForNonContractCallMethod {
                 span: contract_call_params[0].name.span(),
             });
         }
-    } else {
+    }
+
+    // generate the map of the contract call params
+    let mut contract_call_params_map = HashMap::new();
+    if method.is_contract_call {
         for param_name in &[
             constants::CONTRACT_CALL_GAS_PARAMETER_NAME,
             constants::CONTRACT_CALL_COINS_PARAMETER_NAME,
@@ -158,25 +157,6 @@ pub(crate) fn type_check_method_application(
         }
     };
 
-    // type check all of the arguments against the parameters in the method declaration
-    for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
-        // if the return type cannot be cast into the annotation type then it is a type error
-        let (mut new_warnings, new_errors) = ctx
-            .by_ref()
-            .with_help_text("This argument's type is not castable to the declared parameter type.")
-            .with_type_annotation(param.type_id)
-            .unify_with_self(arg.return_type, &arg.span);
-        warnings.append(&mut new_warnings);
-        if !new_errors.is_empty() {
-            errors.push(CompileError::ArgumentParameterTypeMismatch {
-                span: arg.span.clone(),
-                provided: arg.return_type.to_string(),
-                should_be: param.type_id.to_string(),
-            });
-        }
-        // The annotation may result in a cast, which is handled in the type engine.
-    }
-
     // Validate mutability of self. Check that the variable that the method is called on is mutable
     // _if_ the method requires mutable self.
     if let (
@@ -217,110 +197,89 @@ pub(crate) fn type_check_method_application(
         }
     }
 
-    match method_name {
-        // something like a.b(c)
-        MethodName::FromModule { method_name } => {
-            let selector = if method.is_contract_call {
-                let contract_address = match contract_caller.map(|x| look_up_type_id(x.return_type))
-                {
-                    Some(TypeInfo::ContractCaller { address, .. }) => address,
-                    _ => {
-                        errors.push(CompileError::Internal(
-                            "Attempted to find contract address of non-contract-call.",
-                            span.clone(),
-                        ));
-                        None
-                    }
-                };
-                let contract_address = if let Some(addr) = contract_address {
-                    addr
-                } else {
-                    errors.push(CompileError::ContractAddressMustBeKnown {
-                        span: method_name.span(),
-                    });
-                    return err(warnings, errors);
-                };
-                let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
-                Some(ContractCallMetadata {
-                    func_selector,
-                    contract_address,
-                })
-            } else {
+    // retrieve the call path
+    let call_path = match method_name {
+        MethodName::FromType { call_path, .. } => call_path,
+        MethodName::FromModule { method_name } => CallPath {
+            prefixes: vec![],
+            suffix: method_name,
+            is_absolute: false,
+        },
+        MethodName::FromTrait { call_path } => call_path,
+    };
+
+    // build the function selector
+    let selector = if method.is_contract_call {
+        let contract_caller = args_buf.pop_front();
+        let contract_address = match contract_caller.map(|x| look_up_type_id(x.return_type)) {
+            Some(TypeInfo::ContractCaller { address, .. }) => address,
+            _ => {
+                errors.push(CompileError::Internal(
+                    "Attempted to find contract address of non-contract-call.",
+                    span.clone(),
+                ));
                 None
-            };
+            }
+        };
+        let contract_address = if let Some(addr) = contract_address {
+            addr
+        } else {
+            errors.push(CompileError::ContractAddressMustBeKnown {
+                span: call_path.span(),
+            });
+            return err(warnings, errors);
+        };
+        let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
+        Some(ContractCallMetadata {
+            func_selector,
+            contract_address,
+        })
+    } else {
+        None
+    };
 
-            let exp = check!(
-                instantiate_function_application_simple(
-                    CallPath {
-                        prefixes: vec![],
-                        suffix: method_name,
-                        is_absolute: false,
-                    },
-                    contract_call_params_map,
-                    args_buf,
-                    method,
-                    selector,
-                    IsConstant::No,
-                    self_state_idx,
-                    span,
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            ok(exp, warnings, errors)
-        }
+    // check that the number of parameters and the number of the arguments is the same
+    check!(
+        check_function_arguments_arity(args_buf.len(), &method, &call_path),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
-        // something like blah::blah::~Type::foo()
-        MethodName::FromType { call_path, .. } | MethodName::FromTrait { call_path } => {
-            let selector = if method.is_contract_call {
-                let contract_address = match contract_caller
-                    .map(|x| crate::type_engine::look_up_type_id(x.return_type))
-                {
-                    Some(TypeInfo::ContractCaller { address, .. }) => address,
-                    _ => {
-                        errors.push(CompileError::Internal(
-                            "Attempted to find contract address of non-contract-call.",
-                            span.clone(),
-                        ));
-                        None
-                    }
-                };
-                let contract_address = if let Some(addr) = contract_address {
-                    addr
-                } else {
-                    errors.push(CompileError::ContractAddressMustBeKnown {
-                        span: call_path.span(),
-                    });
-                    return err(warnings, errors);
-                };
-                let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
-                Some(ContractCallMetadata {
-                    func_selector,
-                    contract_address,
-                })
-            } else {
-                None
-            };
-
-            let exp = check!(
-                instantiate_function_application_simple(
-                    call_path,
-                    contract_call_params_map,
-                    args_buf,
-                    method,
-                    selector,
-                    IsConstant::No,
-                    self_state_idx,
-                    span,
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            ok(exp, warnings, errors)
+    // unify the types of the arguments with the types of the parameters from the function declaration
+    for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
+        let (mut new_warnings, new_errors) = ctx
+            .by_ref()
+            .with_help_text("This argument's type is not castable to the declared parameter type.")
+            .with_type_annotation(param.type_id)
+            .unify_with_self(arg.return_type, &arg.span);
+        warnings.append(&mut new_warnings);
+        if !new_errors.is_empty() {
+            errors.push(CompileError::ArgumentParameterTypeMismatch {
+                span: arg.span.clone(),
+                provided: arg.return_type.to_string(),
+                should_be: param.type_id.to_string(),
+            });
         }
     }
+
+    // build the function application
+    let exp = check!(
+        instantiate_function_application_simple(
+            call_path,
+            contract_call_params_map,
+            args_buf,
+            method,
+            selector,
+            IsConstant::No,
+            self_state_idx,
+            span,
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    ok(exp, warnings, errors)
 }
 
 pub(crate) fn resolve_method_name(

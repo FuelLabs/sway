@@ -38,7 +38,7 @@ struct TestDescription {
     checker: filecheck::Checker,
 }
 
-pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
+pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {
     init_tracing_subscriber();
 
     let configured_tests = discover_test_configs().unwrap_or_else(|e| {
@@ -62,7 +62,6 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
     } in configured_tests
     {
         if !filter_regex
-            .as_ref()
             .map(|regex| regex.is_match(&name))
             .unwrap_or(true)
         {
@@ -174,7 +173,7 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
 
     if number_of_tests_executed == 0 {
         tracing::info!(
-            "No tests were run. Regex filter \"{}\" filtered out all {} tests.",
+            "No E2E tests were run. Regex filter \"{}\" filtered out all {} tests.",
             filter_regex
                 .map(|regex| regex.to_string())
                 .unwrap_or_default(),
@@ -183,10 +182,9 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
     } else {
         tracing::info!("_________________________________\nTests passed.");
         tracing::info!(
-            "{} tests run ({} skipped, {} disabled)",
-            number_of_tests_executed,
-            total_number_of_tests - number_of_tests_executed - number_of_disabled_tests,
-            number_of_disabled_tests,
+            "Ran {number_of_tests_executed} \
+            out of {total_number_of_tests} E2E tests \
+            ({number_of_disabled_tests} disabled)."
         );
     }
 }
@@ -205,7 +203,7 @@ fn discover_test_configs() -> Result<Vec<TestDescription>, String> {
             for entry in std::fs::read_dir(path).unwrap() {
                 recursive_search(&entry.unwrap().path(), configs)?;
             }
-        } else if path.is_file() && path.file_name() == Some(std::ffi::OsStr::new("test.toml")) {
+        } else if path.is_file() && path.file_name().map(|f| f == "test.toml").unwrap_or(false) {
             configs.push(parse_test_toml(path).map_err(wrap_err)?);
         }
         Ok(())

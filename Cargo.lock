@@ -1152,7 +1152,7 @@ dependencies = [
  "anyhow",
  "clap 3.2.7",
  "forc-util",
- "prettydiff",
+ "prettydiff 0.5.1",
  "sway-core",
  "sway-fmt",
  "sway-utils",
@@ -1167,7 +1167,7 @@ dependencies = [
  "anyhow",
  "clap 3.2.7",
  "forc-util",
- "prettydiff",
+ "prettydiff 0.5.1",
  "sway-core",
  "sway-fmt-v2",
  "sway-utils",
@@ -2622,6 +2622,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "prettydiff"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b6176190f1637d46034820b82fbe758727ccb40da9c9fc2255d695eb05ea29c"
+dependencies = [
+ "ansi_term",
+ "prettytable-rs",
+ "structopt",
+]
+
+[[package]]
 name = "prettytable-rs"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3655,8 +3666,7 @@ dependencies = [
  "itertools",
  "lazy_static",
  "petgraph",
- "prettydiff",
- "regex",
+ "prettydiff 0.5.1",
  "serde",
  "sha2 0.9.9",
  "smallvec",
@@ -3851,9 +3861,12 @@ dependencies = [
  "fuel-tx",
  "fuel-vm",
  "gag",
+ "prettydiff 0.6.1",
  "rand 0.8.5",
  "regex",
  "serde_json",
+ "sway-core",
+ "sway-ir",
  "tokio",
  "toml",
  "tracing",

@@ -14,7 +14,7 @@ pub(crate) mod checks;
 pub(crate) mod compiler_constants;
 mod data_section;
 mod finalized_asm;
-pub(crate) mod from_ir;
+pub mod from_ir;
 mod instruction_set;
 mod jump_optimized_asm_set;
 mod register_allocated_asm_set;

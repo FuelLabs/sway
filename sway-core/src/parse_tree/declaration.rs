@@ -33,6 +33,6 @@ pub enum Declaration {
     AbiDeclaration(AbiDeclaration),
     ConstantDeclaration(ConstantDeclaration),
     StorageDeclaration(StorageDeclaration),
-    Break,
-    Continue,
+    Break { span: sway_types::Span },
+    Continue { span: sway_types::Span },
 }
