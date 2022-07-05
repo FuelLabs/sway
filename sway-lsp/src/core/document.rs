@@ -103,11 +103,14 @@ impl TextDocument {
         let offline = false;
         let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline, SWAY_GIT_TAG)
             .unwrap();
-        let (parsed_res, _ast_res) = pkg::check(&plan, silent_mode).unwrap();
+        let (parsed_res, ast_res) = pkg::check(&plan, silent_mode).unwrap();
 
-        // self.test_typed_parse(ast_res);
 
-        self.parse_tokens_from_text(parsed_res)
+        let r = self.parse_tokens_from_text(parsed_res);
+        
+        self.test_typed_parse(ast_res);
+
+        r
     }
 
     pub fn apply_change(&mut self, change: &TextDocumentContentChangeEvent) {

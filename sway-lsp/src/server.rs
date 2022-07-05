@@ -76,10 +76,10 @@ impl Backend {
         // This is useful for debugging the lsp parser.
         if self.config.parsed_tokens_as_warnings {
             if let Some(document) = self.session.documents.get(uri.path()) {
-                let diagnostics =
-                    debug::generate_warnings_for_parsed_tokens(document.get_token_map());
+                //let diagnostics =
+                //    debug::generate_warnings_for_parsed_tokens(document.get_token_map());
 
-                //let diagnostics = debug::generate_warnings_for_typed_tokens(&document.get_token_map());
+                let diagnostics = debug::generate_warnings_for_typed_tokens(&document.get_token_map());
                 self.client
                     .publish_diagnostics(uri, diagnostics, None)
                     .await;
