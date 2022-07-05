@@ -209,21 +209,31 @@ impl<T> Vec<T> {
         Option::Some(read(self.buf.ptr() + self.len * size_of::<T>()))
     }
 
-    /// Swaps two elements
-    /// a - The index of the first element
-    /// b - The index of the second element
-    /// Panics if `a >= self.len || b >= self.len` .
-    pub fn swap(mut self, a: u64, b: u64) {
-        assert(a < self.len);
-        assert(b < self.len);
+    /// Swaps two elements.
+    ///
+    /// # Arguments
+    ///
+    /// * element1_index - The index of the first element
+    /// * element2_index - The index of the second element
+    ///
+    /// # Reverts
+    ///
+    /// Reverts if `element1_index` or `element2_index` is greater than or equal to the length of vector.
+    pub fn swap(mut self, element1_index: u64, element2_index: u64) {
+        if element1_index == element2_index {
+            return;
+        }
+
+        assert(element1_index < self.len);
+        assert(element2_index < self.len);
 
         let val_size = size_of::<T>();
 
-        let a_ptr = self.buf.ptr() + a * val_size;
-        let b_ptr = self.buf.ptr() + b * val_size;
+        let element1_ptr = self.buf.ptr() + element1_index * val_size;
+        let element2_ptr = self.buf.ptr() + element2_index * val_size;
 
-        let a_val = read(a_ptr);
-        copy(b_ptr, a_ptr, val_size);
-        write(b_ptr, a_val);
+        let element1_val = read(element1_ptr);
+        copy(element2_ptr, element1_ptr, val_size);
+        write(element2_ptr, element1_val);
     }
 }
