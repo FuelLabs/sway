@@ -105,7 +105,8 @@ impl TextDocument {
             .unwrap();
         let (parsed_res, _ast_res) = pkg::check(&plan, silent_mode).unwrap();
 
-        //self.parse_typed_tokens_from_text(ast_res)
+        // self.test_typed_parse(ast_res);
+
         self.parse_tokens_from_text(parsed_res)
     }
 
