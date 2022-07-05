@@ -20,14 +20,19 @@ async fn get_evm_test_instance() -> (EvmTestContract, ContractId) {
 }
 
 #[tokio::test]
-async fn can_call_from() {
+async fn can_call_from_literal() {
     let (instance, _) = get_evm_test_instance().await;
     
     let raw_address = [6; 32]; // hardcoded in the contract to test calling `from()` with a literal
     let result = instance.evm_address_from_literal().call().await.unwrap();
     assert_eq!(result.value.value[0..12], [0; 12]);
     assert_eq!(result.value.value[12..32], raw_address[12..32]);
+}
 
+#[tokio::test]
+async fn can_call_from_argument() {
+    let (instance, _) = get_evm_test_instance().await;
+    
     let raw_address = [7; 32];
     let result = instance.evm_address_from_argument(raw_address.into()).call().await.unwrap();
     assert_eq!(result.value.value[0..12], [0; 12]);
