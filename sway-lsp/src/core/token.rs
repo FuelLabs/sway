@@ -281,6 +281,8 @@ fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
                 tokens.push(token);
             }
         }
+        Declaration::Break { .. } => {}
+        Declaration::Continue { .. } => {}
     };
 }
 

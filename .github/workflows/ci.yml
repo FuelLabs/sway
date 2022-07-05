@@ -8,21 +8,16 @@ on:
   release:
     types: [published]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
   REGISTRY: ghcr.io
 
 jobs:
-  cancel-previous-runs:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.9.1
-        with:
-          access_token: ${{ github.token }}
-
   build-sway-lib-core:
-    needs: cancel-previous-runs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -40,7 +35,6 @@ jobs:
         run: forc build --path sway-lib-core
 
   build-sway-lib-std:
-    needs: cancel-previous-runs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -58,7 +52,6 @@ jobs:
         run: forc build --path sway-lib-std
 
   build-sway-examples:
-    needs: cancel-previous-runs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -109,7 +102,6 @@ jobs:
           args: --bin examples-checker fmt --all-examples
 
   build-mdbook:
-    needs: cancel-previous-runs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -148,7 +140,6 @@ jobs:
           fi
 
   build-forc-test-project:
-    needs: cancel-previous-runs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -163,7 +154,7 @@ jobs:
           command: install
           args: --debug --path ./forc
       - name: Initialize test project
-        run: forc init test-proj
+        run: forc new test-proj
       - name: Update project forc manifest to use local sway-lib-std
         run: echo "std = { path = \"../sway-lib-std/\" }" >> test-proj/Forc.toml
       - name: Update project cargo manifest with workspace
@@ -177,7 +168,6 @@ jobs:
         run: cd test-proj && forc test
 
   cargo-build-workspace:
-    needs: cancel-previous-runs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -195,7 +185,6 @@ jobs:
           RUSTFLAGS: "-D warnings"
 
   cargo-clippy:
-    needs: cancel-previous-runs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -210,7 +199,6 @@ jobs:
           args: --all-features --all-targets -- -D warnings
 
   cargo-toml-fmt-check:
-    needs: cancel-previous-runs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -226,7 +214,6 @@ jobs:
         run: git ls-files | grep Cargo.toml$ | xargs --verbose -n 1 cargo-toml-lint
 
   cargo-fmt-check:
-    needs: cancel-previous-runs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -240,11 +227,10 @@ jobs:
           args: --all -- --check
 
   cargo-run-e2e-test:
-    needs: cancel-previous-runs
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.8.0
+        image: ghcr.io/fuellabs/fuel-core:v0.9.4
         ports:
           - 4000:4000
     steps:
@@ -262,11 +248,10 @@ jobs:
 
   # TODO: Remove this upon merging std tests with the rest of the E2E tests.
   cargo-test-lib-std:
-    needs: cancel-previous-runs
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.8.0
+        image: ghcr.io/fuellabs/fuel-core:v0.9.4
         ports:
           - 4000:4000
     steps:
@@ -285,7 +270,6 @@ jobs:
           args: --manifest-path ./test/src/sdk-harness/Cargo.toml -- --test-threads=1 --nocapture
 
   cargo-test-workspace:
-    needs: cancel-previous-runs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -301,7 +285,6 @@ jobs:
           args: --locked
 
   cargo-unused-deps-check:
-    needs: cancel-previous-runs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -549,7 +532,7 @@ jobs:
     name: Install and upload forc binaries to release
     runs-on: ${{ matrix.job.os }}
     if: github.event_name == 'release' && github.event.action == 'published'
-    needs: [cancel-previous-runs, publish]
+    needs: publish
     strategy:
       matrix:
         job:

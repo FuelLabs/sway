@@ -1,0 +1,14 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-5B109F800B9B533C'
+dependencies = []
+
+[[package]]
+name = 'script_bytecode'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-5B109F800B9B533C'
+dependencies = ['core']

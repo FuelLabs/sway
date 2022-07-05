@@ -7,6 +7,8 @@ mod exponentiation;
 mod hashing;
 mod logging;
 mod methods;
+mod predicate_data_simple;
+mod predicate_data_struct;
 mod reentrancy;
 mod registers;
 mod script_data;

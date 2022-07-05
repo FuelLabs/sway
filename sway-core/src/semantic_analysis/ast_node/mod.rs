@@ -476,6 +476,8 @@ impl TypedAstNode {
                             );
                             TypedDeclaration::StorageDeclaration(decl)
                         }
+                        Declaration::Break { span } => TypedDeclaration::Break { span },
+                        Declaration::Continue { span } => TypedDeclaration::Continue { span },
                     })
                 }
                 AstNodeContent::Expression(expr) => {
