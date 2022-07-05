@@ -15,9 +15,6 @@ fn main() -> u64 {
     go(true)
 }
 
-// regex: VAL=v\d+
-// regex: ID=[_a-zA-Z][_0-9a-zA-Z]*
-
 // check: cbr $ID, $(block0=$ID), $(block1=$ID)
 
 // check: $block0:

@@ -18,10 +18,6 @@ fn main() {
     new(true, false);
 }
 
-// regex: VAL=v\d+
-// regex: ID=[_a-zA-Z][_0-9a-zA-Z]*
-// regex: MD=!\d+
-
 // check: fn $ID(a $MD: bool, b $MD: bool) -> { bool, bool }
 
 // check: local ptr bool a_

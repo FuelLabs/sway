@@ -11,8 +11,6 @@ fn main() -> u64 {
     a.a
 }
 
-// regex: VAL=v\d+
-
 // check: local ptr bool a
 // check: local ptr u64 a_
 // check: local ptr { u64 } a__
