@@ -28,12 +28,14 @@ pub trait From {
 impl From for EvmAddress {
     fn from(bits: b256) -> EvmAddress {
         // An EVM address is only 20 bytes, so the first 12 are set to zero
-        asm(r1: bits) {
+        // Create a mutable local copy of `bits`
+        let mut local_bits = bits;
+        asm(r1: local_bits) {
             mcli r1 i12;
         };
 
         EvmAddress {
-            value: bits,
+            value: local_bits,
         }
     }
 }
