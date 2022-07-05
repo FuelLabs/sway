@@ -30,7 +30,7 @@ impl Format for ItemEnum {
             .to_width_heuristics(&formatter.config.whitespace);
         let enum_lit_width = width_heuristics.structure_lit_width;
 
-        let multiline = !enum_lit_single_line || self.get_formatted_len() > enum_lit_width;
+        let multiline = !enum_lit_single_line || self.get_formatted_len()? > enum_lit_width;
 
         format_enum(self, formatted_code, formatter, multiline)?;
         Ok(())
@@ -179,10 +179,10 @@ fn format_enum(
 }
 
 impl ItemLen for ItemEnum {
-    fn get_formatted_len(&self) -> usize {
+    fn get_formatted_len(&self) -> Result<usize, FormatterError> {
         // TODO while determininig the length we may want to format to some degree and take length.
         let str_item = &self.span().as_str().len();
-        *str_item as usize
+        Ok(*str_item as usize)
     }
 }
 

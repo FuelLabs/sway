@@ -2,8 +2,9 @@ library vec;
 
 use ::alloc::{alloc, realloc};
 use ::intrinsics::size_of;
-use ::mem::{read, write};
+use ::mem::{copy, read, write};
 use ::option::Option;
+use ::assert::assert;
 
 struct RawVec<T> {
     ptr: u64,
@@ -140,5 +141,71 @@ impl<T> Vec<T> {
     /// Returns `true` if the vector contains no elements.
     pub fn is_empty(self) -> bool {
         self.len == 0
+    }
+
+    /// Removes and returns the element at position `index` within the vector,
+    /// shifting all elements after it to the left.
+    /// Panics if `index >= self.len`
+    pub fn remove(mut self, index: u64) -> T {
+        assert(index < self.len);
+
+        let val_size = size_of::<T>();
+        let buf_start = self.buf.ptr();
+        let mut ptr = buf_start + val_size * index;
+
+        // Read from `ptr`
+        let ret = read(ptr);
+
+        // Shift everything down to fill in that spot.
+        let end = buf_start + val_size * self.len;
+        while ptr < end {
+            copy(ptr + val_size, ptr, val_size);
+            ptr += val_size;
+        }
+
+        // Decrease length.
+        self.len -= 1;
+        ret
+    }
+
+    /// Inserts an element at position `index` within the vector, shifting all
+    /// elements after it to the right.
+    /// Panics if `index > len`.
+    pub fn insert(mut self, index: u64, element: T) {
+        assert(index <= self.len);
+
+        // If there is insufficient capacity, grow the buffer.
+        if self.len == self.buf.cap {
+            self.buf.grow();
+        }
+
+        let val_size = size_of::<T>();
+        let buf_start = self.buf.ptr();
+
+        // The spot to put the new value
+        let index_ptr = buf_start + index * val_size;
+
+        // Shift everything over to make space.
+        let mut curr_ptr = buf_start + self.len * val_size;
+        while curr_ptr > index_ptr {
+            copy(curr_ptr - val_size, curr_ptr, val_size);
+            curr_ptr -= val_size;
+        }
+
+        // Write `element` at pointer `index`
+        write(index_ptr, element);
+
+        // Increment length.
+        self.len += 1;
+    }
+
+    /// Removes the last element from a vector and returns it, or [`None`] if it
+    /// is empty.
+    fn pop(mut self) -> Option<T> {
+        if self.len == 0 {
+            return Option::None;
+        }
+        self.len -= 1;
+        Option::Some(read(self.buf.ptr() + self.len * size_of::<T>()))
     }
 }

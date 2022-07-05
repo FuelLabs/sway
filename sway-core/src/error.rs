@@ -86,8 +86,8 @@ pub struct CompileResult<T> {
     pub errors: Vec<CompileError>,
 }
 
-impl<T> From<Result<T, TypeError>> for CompileResult<T> {
-    fn from(o: Result<T, TypeError>) -> Self {
+impl<T> From<Result<T, CompileError>> for CompileResult<T> {
+    fn from(o: Result<T, CompileError>) -> Self {
         match o {
             Ok(o) => CompileResult {
                 value: Some(o),
@@ -97,7 +97,7 @@ impl<T> From<Result<T, TypeError>> for CompileResult<T> {
             Err(e) => CompileResult {
                 value: None,
                 warnings: vec![],
-                errors: vec![e.into()],
+                errors: vec![e],
             },
         }
     }

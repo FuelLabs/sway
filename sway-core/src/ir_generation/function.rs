@@ -85,8 +85,8 @@ impl FnCompiler {
             ast_block.contents.clone().into_iter().position(|r| {
                 matches!(
                     r.content,
-                    TypedAstNodeContent::Declaration(TypedDeclaration::Break)
-                        | TypedAstNodeContent::Declaration(TypedDeclaration::Continue)
+                    TypedAstNodeContent::Declaration(TypedDeclaration::Break { .. })
+                        | TypedAstNodeContent::Declaration(TypedDeclaration::Continue { .. })
                 )
             });
 
@@ -1099,7 +1099,7 @@ impl FnCompiler {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
         let TypedConstantDeclaration { name, value, .. } = ast_const_decl;
-        let const_expr_val = compile_constant_expression(context, self.module, &value)?;
+        let const_expr_val = compile_constant_expression(context, self.module, None, &value)?;
         let local_name = self.lexical_map.insert(name.as_str().to_owned());
         let return_type = convert_resolved_typeid(context, &value.return_type, &value.span)?;
 

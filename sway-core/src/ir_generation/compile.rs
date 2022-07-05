@@ -5,7 +5,9 @@ use crate::{
 };
 
 use super::{
-    const_eval::compile_constant_expression, convert::convert_resolved_typeid, function::FnCompiler,
+    const_eval::{compile_const_decl, LookupEnv},
+    convert::convert_resolved_typeid,
+    function::FnCompiler,
 };
 
 use sway_ir::*;
@@ -20,7 +22,7 @@ pub(super) fn compile_script(
     let module = Module::new(context, Kind::Script);
 
     compile_constants(context, module, namespace, false)?;
-    compile_declarations(context, module, declarations)?;
+    compile_declarations(context, module, namespace, declarations)?;
     compile_function(context, module, main_function)?;
 
     Ok(module)
@@ -35,7 +37,7 @@ pub(super) fn compile_contract(
     let module = Module::new(context, Kind::Contract);
 
     compile_constants(context, module, namespace, false)?;
-    compile_declarations(context, module, declarations)?;
+    compile_declarations(context, module, namespace, declarations)?;
     for decl in abi_entries {
         compile_abi_method(context, module, decl)?;
     }
@@ -49,27 +51,17 @@ fn compile_constants(
     module_ns: &namespace::Module,
     public_only: bool,
 ) -> Result<(), CompileError> {
-    for decl in module_ns.get_all_declared_symbols() {
-        let decl_name_value = match decl {
-            TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
-                name,
-                value,
-                visibility,
-            }) => {
-                // XXX Do we really only add public constants?
-                if !public_only || matches!(visibility, Visibility::Public) {
-                    Some((name, value))
-                } else {
-                    None
-                }
-            }
-            _otherwise => None,
-        };
-
-        if let Some((name, value)) = decl_name_value {
-            let const_val = compile_constant_expression(context, module, value)?;
-            module.add_global_constant(context, name.as_str().to_owned(), const_val);
-        }
+    for decl_name in module_ns.get_all_declared_symbols() {
+        compile_const_decl(
+            &mut LookupEnv {
+                context,
+                module,
+                module_ns: Some(module_ns),
+                public_only,
+                lookup: compile_const_decl,
+            },
+            decl_name,
+        )?;
     }
 
     for submodule_ns in module_ns.submodules().values() {
@@ -92,14 +84,22 @@ fn compile_constants(
 fn compile_declarations(
     context: &mut Context,
     module: Module,
+    namespace: &namespace::Module,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<(), CompileError> {
     for declaration in declarations {
         match declaration {
             TypedDeclaration::ConstantDeclaration(decl) => {
-                // These are in the global scope for the module, so they can be added there.
-                let const_val = compile_constant_expression(context, module, &decl.value)?;
-                module.add_global_constant(context, decl.name.as_str().to_owned(), const_val);
+                compile_const_decl(
+                    &mut LookupEnv {
+                        context,
+                        module,
+                        module_ns: Some(namespace),
+                        public_only: false,
+                        lookup: compile_const_decl,
+                    },
+                    &decl.name,
+                )?;
             }
 
             TypedDeclaration::FunctionDeclaration(_decl) => {
@@ -130,8 +130,8 @@ fn compile_declarations(
             | TypedDeclaration::GenericTypeForFunctionScope { .. }
             | TypedDeclaration::StorageDeclaration(_)
             | TypedDeclaration::ErrorRecovery
-            | TypedDeclaration::Break
-            | TypedDeclaration::Continue => (),
+            | TypedDeclaration::Break { .. }
+            | TypedDeclaration::Continue { .. } => (),
         }
     }
     Ok(())
