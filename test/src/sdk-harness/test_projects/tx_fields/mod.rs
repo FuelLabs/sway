@@ -189,7 +189,7 @@ async fn can_get_script_start_offset() {
         ConsensusParameters::DEFAULT.tx_offset() + TRANSACTION_SCRIPT_FIXED_SIZE;
 
     let result = contract_instance
-        .get_tx_script_start_offset()
+        .get_tx_script_start_pointer()
         .call()
         .await
         .unwrap();
@@ -272,4 +272,19 @@ async fn can_get_tx_output_type() {
         .await
         .unwrap();
     assert_eq!(result.value, output_type);
+}
+
+#[tokio::test]
+async fn can_get_tx_id() {
+    let (contract_instance, _, _) = get_contracts().await;
+
+    let call_handler = contract_instance.get_tx_id();
+    let script = call_handler.get_script().await;
+    let tx_id = script.tx.id();
+
+    let result = contract_instance.get_tx_id().call().await.unwrap();
+
+    let byte_array: [u8; 32] = tx_id.into();
+
+    assert_eq!(result.value, byte_array);
 }

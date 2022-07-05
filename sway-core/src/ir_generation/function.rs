@@ -85,8 +85,8 @@ impl FnCompiler {
             ast_block.contents.clone().into_iter().position(|r| {
                 matches!(
                     r.content,
-                    TypedAstNodeContent::Declaration(TypedDeclaration::Break)
-                        | TypedAstNodeContent::Declaration(TypedDeclaration::Continue)
+                    TypedAstNodeContent::Declaration(TypedDeclaration::Break { .. })
+                        | TypedAstNodeContent::Declaration(TypedDeclaration::Continue { .. })
                 )
             });
 

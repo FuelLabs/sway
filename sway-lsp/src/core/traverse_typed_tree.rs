@@ -182,8 +182,8 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut TokenMap) {
             }
             handle_expression(&storage_reassignment.rhs, tokens);
         }
-        TypedDeclaration::Break => {}
-        TypedDeclaration::Continue => {}
+        TypedDeclaration::Break { .. } => {}
+        TypedDeclaration::Continue { .. } => {}
     }
 }
 
