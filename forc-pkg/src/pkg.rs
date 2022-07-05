@@ -24,7 +24,7 @@ use std::{
 };
 use sway_core::{
     semantic_analysis::namespace, source_map::SourceMap, types::*, BytecodeCompilationResult,
-    CompileAstResult, CompileError, TreeType,
+    CompileAstResult, CompileError, CompileResult, ParseProgram, TreeType,
 };
 use sway_types::JsonABI;
 use sway_utils::constants;
@@ -1721,7 +1721,7 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
 }
 
 /// Compile the entire forc package and return a CompileAstResult.
-pub fn check(plan: &BuildPlan, silent_mode: bool) -> anyhow::Result<CompileAstResult> {
+pub fn check(plan: &BuildPlan, silent_mode: bool) -> anyhow::Result<(CompileResult<ParseProgram>, CompileAstResult)> {
     let profile = BuildProfile {
         silent: silent_mode,
         ..BuildProfile::debug()
@@ -1730,19 +1730,27 @@ pub fn check(plan: &BuildPlan, silent_mode: bool) -> anyhow::Result<CompileAstRe
     let mut source_map = SourceMap::new();
     for (i, &node) in plan.compilation_order.iter().enumerate() {
         let dep_namespace = dependency_namespace(&namespace_map, &plan.graph, node);
-        let pkg = &plan.graph()[node];
+        let pkg = &plan.graph[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
-        let ast_res = compile_ast(manifest, &profile, dep_namespace)?;
-        if let CompileAstResult::Success { typed_program, .. } = &ast_res {
-            if let TreeType::Library { .. } = typed_program.kind.tree_type() {
-                namespace_map.insert(node, typed_program.root.namespace.clone());
-            }
-        }
-        source_map.insert_dependency(manifest.dir());
 
-        // We only need to return the final CompileAstResult
-        if i == plan.compilation_order.len() - 1 {
-            return Ok(ast_res);
+        let source = manifest.entry_string()?;
+        let sway_build_config =
+            sway_build_config(manifest.dir(), &manifest.entry_path(), &profile)?;
+        let parsed_result = sway_core::parse(source, Some(&sway_build_config));
+
+        if let Some(parse_program) = &parsed_result.value {
+            let ast_result = sway_core::parsed_to_ast(parse_program, dep_namespace);
+            if let CompileAstResult::Success { typed_program, .. } = &ast_result {
+                if let TreeType::Library { .. } = typed_program.kind.tree_type() {
+                    namespace_map.insert(node, typed_program.root.namespace.clone());
+                }
+            }
+            source_map.insert_dependency(manifest.dir());
+
+            // We only need to return the final CompileAstResult
+            if i == plan.compilation_order.len() - 1 {
+                return Ok((parsed_result, ast_result));
+            }
         }
     }
     bail!("unable to check sway program: build plan contains no packages")
