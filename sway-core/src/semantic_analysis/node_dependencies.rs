@@ -374,8 +374,8 @@ impl Dependencies {
                     deps.gather_from_typeinfo(type_info)
                 }),
             // Nothing to do for `break` and `continue`
-            Declaration::Break => self,
-            Declaration::Continue => self,
+            Declaration::Break { .. } => self,
+            Declaration::Continue { .. } => self,
         }
     }
 
@@ -705,8 +705,8 @@ fn decl_name(decl: &Declaration) -> Option<DependentSymbol> {
         // Storage cannot be depended upon or exported
         Declaration::StorageDeclaration(_) => None,
         // Nothing depends on a `break` and `continue`
-        Declaration::Break => None,
-        Declaration::Continue => None,
+        Declaration::Break { .. } => None,
+        Declaration::Continue { .. } => None,
     }
 }
 
