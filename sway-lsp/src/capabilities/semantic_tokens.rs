@@ -114,10 +114,10 @@ fn get_type_idx(ast_token: &AstToken) -> u32 {
         }
         AstToken::Expression(exp) => {
             match &exp {
-                Expression::Literal { value, .. } => match value {
-                    Literal::String(_) => TokenTypeIndex::String as u32,
-                    _ => TokenTypeIndex::Variable as u32,
-                },
+                Expression::Literal {
+                    value: Literal::String(_),
+                    ..
+                } => TokenTypeIndex::String as u32,
                 Expression::FunctionApplication { .. } => TokenTypeIndex::Function as u32,
                 Expression::VariableExpression { .. } => TokenTypeIndex::Variable as u32,
                 Expression::StructExpression { .. } => TokenTypeIndex::Struct as u32,

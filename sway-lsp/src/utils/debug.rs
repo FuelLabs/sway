@@ -71,10 +71,7 @@ fn ast_node_type(token_type: &TokenType) -> String {
             _ => "".to_string(),
         },
         None => match &token_type.parsed {
-            AstToken::Expression(exp) => match exp {
-                Expression::Literal { value, .. } => literal_to_string(value),
-                _ => "".to_string(),
-            },
+            AstToken::Expression(Expression::Literal { value, .. }) => literal_to_string(value),
             _ => "".to_string(),
         },
     }
