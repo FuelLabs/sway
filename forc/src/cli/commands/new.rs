@@ -3,7 +3,7 @@ use anyhow::{bail, Result};
 use clap::Parser;
 use std::path::Path;
 
-/// Create a new Forc project at <path>.
+/// Create a new Forc project at `path`.
 #[derive(Debug, Parser)]
 pub struct Command {
     /// The default program type. Excluding all flags or adding this flag creates a basic contract
