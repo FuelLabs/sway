@@ -336,10 +336,14 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
             )]
         }
         ItemKind::Break(_) => {
-            vec![AstNodeContent::Declaration(Declaration::Break)]
+            vec![AstNodeContent::Declaration(Declaration::Break {
+                span: span.clone(),
+            })]
         }
         ItemKind::Continue(_) => {
-            vec![AstNodeContent::Declaration(Declaration::Continue)]
+            vec![AstNodeContent::Declaration(Declaration::Continue {
+                span: span.clone(),
+            })]
         }
     };
     Ok(contents
