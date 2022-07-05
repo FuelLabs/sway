@@ -275,7 +275,7 @@ pub const TEST1: u16 = 10;"#;
     fn test_ty_formatting() {
         let sway_code_to_format = r#"contract;
 
-enum test_ty {
+enum TestTy {
     Infer:
     _,
     Array : [u8;
@@ -293,7 +293,7 @@ example::
 }"#;
         let correct_sway_code = r#"contract;
 
-enum test_ty {
+enum TestTy {
     Infer: _,
     Array: [u8; 40],
     String: str[4],
