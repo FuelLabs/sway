@@ -3,6 +3,7 @@
 mod auth;
 mod call_frames;
 mod context;
+mod evm;
 mod exponentiation;
 mod hashing;
 mod logging;
