@@ -23,6 +23,7 @@ fn main() -> bool {
     test_vector_new_string();
     test_vector_new_array();
     test_vector_with_capacity_u64();
+    test_vector_swap();
     true
 }
 
@@ -1808,5 +1809,29 @@ fn test_vector_with_capacity_u64() {
     // Out of bounds access
     match vector.get(5) {
         Option::Some(val) => revert(0), Option::None => (), 
+    }
+}
+
+fn test_vector_swap() {
+    let mut vector = ~Vec::new();
+
+    let number0 = 0u8;
+    let number1 = 1u8;
+    let number2 = 2u8;
+    let number3 = 3u8;
+
+    vector.push(number0);
+    vector.push(number1);
+    vector.push(number2);
+    vector.push(number3);
+
+    vector.swap(1, 3);
+
+    match vector.get(1) {
+        Option::Some(val) => assert(val == number3), Option::None => revert(0),
+    }
+
+    match vector.get(3) {
+        Option::Some(val) => assert(val == number1), Option::None => revert(0),
     }
 }

@@ -208,4 +208,22 @@ impl<T> Vec<T> {
         self.len -= 1;
         Option::Some(read(self.buf.ptr() + self.len * size_of::<T>()))
     }
+
+    /// Swaps two elements
+    /// a - The index of the first element
+    /// b - The index of the second element
+    /// Panics if `a >= self.len || b >= self.len` .
+    pub fn swap(mut self, a: u64, b: u64) {
+        assert(a < self.len);
+        assert(b < self.len);
+
+        let val_size = size_of::<T>();
+
+        let a_ptr = self.buf.ptr() + a * val_size;
+        let b_ptr = self.buf.ptr() + b * val_size;
+
+        let a_val = read(a_ptr);
+        copy(b_ptr, a_ptr, val_size);
+        write(b_ptr, a_val);
+    }
 }
