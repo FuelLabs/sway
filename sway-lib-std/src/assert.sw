@@ -3,7 +3,7 @@ library assert;
 use ::logging::log;
 use ::revert::revert;
 
-const FAILED_REQUIRE_SIGNAL = 42;
+pub const FAILED_REQUIRE_SIGNAL = 42;
 
 /// Assert that a value is true
 pub fn assert(a: bool) {

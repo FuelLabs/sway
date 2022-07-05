@@ -774,9 +774,7 @@ fn item_const_to_constant_declaration(
             None => TypeInfo::Unknown,
         },
         value: expr_to_expression(ec, item_const.expr)?,
-        //visibility: pub_token_opt_to_visibility(item_const.visibility),
-        // FIXME: you have to lie here or else the tests fail.
-        visibility: Visibility::Public,
+        visibility: pub_token_opt_to_visibility(item_const.visibility),
     })
 }
 

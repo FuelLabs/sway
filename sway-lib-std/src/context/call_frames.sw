@@ -10,8 +10,8 @@ use ::contract_id::ContractId;
 // Call Frame        :  saved registers offset         = 8*WORD_SIZE = 8*8 = 64
 // Reserved Registers:  previous frame pointer offset  = 6*WORD_SIZE = 6*8 = 48
 
-const SAVED_REGISTERS_OFFSET: u64 = 64;
-const PREV_FRAME_POINTER_OFFSET: u64 = 48;
+pub const SAVED_REGISTERS_OFFSET: u64 = 64;
+pub const PREV_FRAME_POINTER_OFFSET: u64 = 48;
 
 ///////////////////////////////////////////////////////////
 //  Accessing the current call frame
