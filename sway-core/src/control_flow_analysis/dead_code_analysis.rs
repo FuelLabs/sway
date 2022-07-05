@@ -419,7 +419,7 @@ fn connect_declaration(
             Ok(leaves.to_vec())
         }
         ErrorRecovery | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
-        Break | Continue => Ok(vec![]),
+        Break { .. } | Continue { .. } => Ok(vec![]),
     }
 }
 
