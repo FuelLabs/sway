@@ -204,11 +204,11 @@ pub fn tx_input_owner(index: u64) -> Option<Address> {
     let owner_offset = match type {
         0u8 => {
             // Need to skip over six words, so add 8*6=48
-            48u32
+            48
         },
         2u8 => {
             // Need to skip over eighteen words, so add 8*18=144
-            144u32
+            144
         },
         _ => {
             return Option::None;
