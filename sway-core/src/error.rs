@@ -515,6 +515,11 @@ pub enum CompileError {
         span: Span,
     },
     #[error(
+        "Cannot call associated function \"{fn_name}\" as a method. Use associated function \
+        syntax instead."
+    )]
+    AssociatedFunctionCalledAsMethod { fn_name: Ident, span: Span },
+    #[error(
         "Generic type \"{name}\" is not in scope. Perhaps you meant to specify type parameters in \
          the function signature? For example: \n`fn \
          {fn_name}<{comma_separated_generic_params}>({args}) -> ... `"
@@ -1048,6 +1053,7 @@ impl Spanned for CompileError {
             ReassignmentToNonVariable { span, .. } => span.clone(),
             AssignmentToNonMutable { name } => name.span(),
             MethodRequiresMutableSelf { span, .. } => span.clone(),
+            AssociatedFunctionCalledAsMethod { span, .. } => span.clone(),
             TypeParameterNotInTypeScope { span, .. } => span.clone(),
             MultipleImmediates(span) => span.clone(),
             MismatchedTypeInTrait { span, .. } => span.clone(),

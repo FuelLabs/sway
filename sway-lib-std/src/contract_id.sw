@@ -18,10 +18,7 @@ impl core::ops::Eq for ContractId {
 // TODO: make this a generic trait. tracked here: https://github.com/FuelLabs/sway-lib-std/issues/58
 pub trait From {
     fn from(b: b256) -> Self;
-} {
-    fn into(id: ContractId) -> b256 {
-        id.value
-    }
+    fn into(self) -> b256;
 }
 
 /// Functions for casting between the b256 and ContractId types.
@@ -30,5 +27,9 @@ impl From for ContractId {
         ContractId {
             value: bits,
         }
+    }
+
+    fn into(self) -> b256 {
+        self.value
     }
 }
