@@ -12,7 +12,6 @@ use ::tx::*;
 
 pub enum AuthError {
     InputsNotAllOwnedBySameAddress: (),
-    NoCoinOrMessageInputs: (),
 }
 
 /// Returns `true` if the caller is external (i.e. a script).
@@ -83,11 +82,6 @@ fn get_coins_owner() -> Result<Identity, AuthError> {
             };
         }
     }
-
-    // we want to return an error here rather than reverting
-    if candidate.is_none() {
-        return Result::Err(AuthError::NoCoinOrMessageInputs);
-    };
 
     // `candidate` must be `Option::Some` at this point, so can unwrap safely.
     Result::Ok(Identity::Address(candidate.unwrap()))
