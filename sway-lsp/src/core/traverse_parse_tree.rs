@@ -192,7 +192,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &mut TokenMap) {
             }
         }
         // TODO: collect these tokens as keywords once the compiler returns the span
-        Declaration::Break | Declaration::Continue => {}
+        Declaration::Break { .. } | Declaration::Continue { .. } => {}
     }
 }
 

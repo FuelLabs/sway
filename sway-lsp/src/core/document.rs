@@ -10,7 +10,7 @@ use ropey::Rope;
 use std::{collections::HashMap, path::PathBuf};
 use sway_core::{
     semantic_analysis::ast_node::TypedAstNode, CompileAstResult, CompileResult, ParseProgram,
-    TreeType, TypeInfo,
+    TypeInfo,
 };
 use sway_types::Ident;
 use tower_lsp::lsp_types::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
@@ -161,7 +161,7 @@ impl TextDocument {
     }
 
     fn parse_tokens_from_text(
-        &self,
+        &mut self,
         parsed_result: CompileResult<ParseProgram>,
     ) -> Result<Vec<Diagnostic>, DocumentError> {
         match parsed_result.value {
