@@ -1403,19 +1403,24 @@ impl<'ir> AsmBuilder<'ir> {
                         // Value can fit in a register, so we load the value.
                         if word_offs > compiler_constants::TWELVE_BITS {
                             let offs_reg = self.reg_seqr.next();
+                            self.number_to_reg(
+                                word_offs,
+                                &offs_reg,
+                                instr_val.get_span(self.context),
+                            );
                             self.bytecode.push(Op {
                                 opcode: Either::Left(VirtualOp::ADD(
-                                    base_reg.clone(),
+                                    offs_reg.clone(),
                                     base_reg,
                                     offs_reg.clone(),
                                 )),
-                                comment: "insert_value absolute offset".into(),
+                                comment: "absolute offset for load".into(),
                                 owning_span: instr_val.get_span(self.context),
                             });
                             self.bytecode.push(Op {
                                 opcode: Either::Left(VirtualOp::LW(
                                     instr_reg.clone(),
-                                    offs_reg,
+                                    offs_reg.clone(),
                                     VirtualImmediate12 { value: 0 },
                                 )),
                                 comment: "load value".into(),
@@ -1790,7 +1795,7 @@ impl<'ir> AsmBuilder<'ir> {
                             );
                             self.bytecode.push(Op {
                                 opcode: Either::Left(VirtualOp::ADD(
-                                    base_reg.clone(),
+                                    offs_reg.clone(),
                                     base_reg,
                                     offs_reg.clone(),
                                 )),
