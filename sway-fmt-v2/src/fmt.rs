@@ -272,6 +272,40 @@ pub const TEST1: u16 = 10;"#;
         assert_eq!(correct_sway_code, formatted_sway_code)
     }
     #[test]
+    fn test_ty_formatting() {
+        let sway_code_to_format = r#"contract;
+
+enum TestTy {
+    Infer:
+    _,
+    Array : [u8;
+    40],
+    String:         str[
+    4
+    ],
+    PathType     : root::
+example::
+    type,
+    TupleNil: (),
+    Tuple: (   u64, 
+        u32
+    ),
+}"#;
+        let correct_sway_code = r#"contract;
+
+enum TestTy {
+    Infer: _,
+    Array: [u8; 40],
+    String: str[4],
+    PathType: root::example::type,
+    TupleNil: (),
+    Tuple: (u64, u32),
+}"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+    }
     fn test_storage_without_alignment() {
         let sway_code_to_format = r#"contract;
 
