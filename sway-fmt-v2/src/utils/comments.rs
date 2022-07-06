@@ -1,15 +1,15 @@
-use anyhow::Result;
-use std::{cmp::Ordering, collections::BTreeMap, sync::Arc};
+use crate::fmt::{Formatter, FormatterError};
+use std::{cmp::Ordering, collections::BTreeMap, fmt::Write, sync::Arc};
 use sway_parse::token::{lex_commented, Comment, CommentedTokenTree, CommentedTree};
 
 /// Represents a span for the comments in a spesific file
 /// A stripped down version of sway-types::src::Span
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone, Default)]
 pub struct CommentSpan {
     // The byte position in the string of the start of the span.
-    start: usize,
+    pub start: usize,
     // The byte position in the string of the end of the span.
-    end: usize,
+    pub end: usize,
 }
 
 impl Ord for CommentSpan {
@@ -33,7 +33,7 @@ pub type CommentMap = BTreeMap<CommentSpan, Comment>;
 
 /// Get the CommentedTokenStream and collect the spans -> Comment mapping for the input source
 /// code.
-pub fn construct_comment_map(input: Arc<str>) -> Result<CommentMap> {
+pub fn construct_comment_map(input: Arc<str>) -> Result<CommentMap, FormatterError> {
     let mut comment_map = BTreeMap::new();
 
     // pass the input through lexer
@@ -66,6 +66,19 @@ fn get_comment_from_token_stream(
             }
         }
         _ => {}
+    }
+}
+
+pub trait FormatComment {
+    fn format(&self, line: &mut String, formatter: &mut Formatter) -> Result<(), FormatterError>;
+}
+
+// Currently we are not formatting the comment itself. We are simply pushing the comment to the
+// line when it is called.
+impl FormatComment for Comment {
+    fn format(&self, line: &mut String, _formatter: &mut Formatter) -> Result<(), FormatterError> {
+        write!(line, "{}", self.span.as_str())?;
+        Ok(())
     }
 }
 

@@ -1,8 +1,16 @@
 use crate::utils::{
-    indent_style::Shape, newline_style::apply_newline_style, program_type::insert_program_type,
+    comments::{construct_comment_map, CommentSpan, FormatComment},
+    indent_style::Shape,
+    newline_style::apply_newline_style,
+    program_type::insert_program_type,
 };
-use std::{path::Path, sync::Arc};
+use std::{
+    ops::Bound::{Excluded, Included},
+    path::Path,
+    sync::Arc,
+};
 use sway_core::BuildConfig;
+use sway_types::Spanned;
 
 pub use crate::{
     config::manifest::Config,
@@ -42,7 +50,7 @@ impl Formatter {
     ) -> Result<FormattedCode, FormatterError> {
         let path = build_config.map(|build_config| build_config.canonical_root_module());
         let src_len = src.len();
-        let module = sway_parse::parse_file(src, path)?;
+        let module = sway_parse::parse_file(src.clone(), path)?;
         // Get parsed items
         let items = module.items;
         // Get the program type (script, predicate, contract or library)
@@ -57,14 +65,34 @@ impl Formatter {
         // Insert program type to the formatted code.
         insert_program_type(&mut raw_formatted_code, program_type);
 
+        // Get the span-comment map
+        let comment_map = construct_comment_map(src)?;
+
+        // Start with default span where start and end is 0.
+        let mut previous_item_span = CommentSpan::default();
         // Insert parsed & formatted items into the formatted code.
         let mut iter = items.iter().peekable();
         while let Some(item) = iter.next() {
+            // get current item span
+            // TODO create a util for this in comments.rs
+            let current_item_span = CommentSpan {
+                start: item.span().start(),
+                end: item.span().end(),
+            };
+            // Check between previous item and current item for a comment
+            let comments =
+                comment_map.range((Included(&previous_item_span), Excluded(&current_item_span)));
+            // Format each  comment in between the previous formatted item and current item
+            for comment in comments {
+                comment.1.format(&mut raw_formatted_code, self)?;
+                raw_formatted_code.push('\n');
+            }
             // format Annotated<ItemKind>
             item.format(&mut raw_formatted_code, self)?;
             if iter.peek().is_some() {
                 raw_formatted_code.push('\n');
             }
+            previous_item_span = current_item_span;
         }
 
         let mut formatted_code = String::from(&raw_formatted_code);
