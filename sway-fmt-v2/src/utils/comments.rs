@@ -4,7 +4,7 @@ use sway_parse::token::{lex_commented, Comment, CommentedTokenTree};
 
 /// Represents a span for the comments in a spesific file
 /// A stripped down version of sway-types::src::Span
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct CommentSpan {
     // The byte position in the string of the start of the span.
     start: usize,
@@ -14,7 +14,12 @@ pub struct CommentSpan {
 
 impl Ord for CommentSpan {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.start.cmp(&other.start)
+        // If the starting position is the same encapsulatig span (i.e, wider one) should come
+        // first
+        match self.start.cmp(&other.start) {
+            Ordering::Equal => self.end.cmp(&other.end),
+            ord => ord,
+        }
     }
 }
 
@@ -53,6 +58,21 @@ pub fn construct_comment_map(input: Arc<str>) -> Result<CommentMap> {
 mod tests {
     use super::{construct_comment_map, CommentSpan};
     use std::{ops::Bound::Included, sync::Arc};
+
+    #[test]
+    fn test_comment_span_ordering() {
+        let first_span = CommentSpan { start: 2, end: 4 };
+        let second_span  = CommentSpan { start: 2, end: 6 };
+        let third_span  = CommentSpan { start: 4, end: 7 };
+
+        let mut vec = vec![second_span.clone(), third_span.clone(), first_span.clone()];
+        vec.sort();
+
+        assert_eq!(vec[0], first_span);
+        assert_eq!(vec[1], second_span);
+        assert_eq!(vec[2], third_span);
+
+    }
 
     #[test]
     fn test_comment_span_map() {
