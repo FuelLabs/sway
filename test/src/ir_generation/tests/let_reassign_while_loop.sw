@@ -8,9 +8,6 @@ fn main() -> bool {
     a
 }
 
-// regex: VAL=v\d+
-// regex: ID=[_a-zA-Z][_0-9a-zA-Z]*
-
 // check: br $(while=$ID)
 
 // check: $while:

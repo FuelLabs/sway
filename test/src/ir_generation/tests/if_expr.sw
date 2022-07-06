@@ -8,9 +8,6 @@ fn main() -> u64 {
     }
 }
 
-// regex: VAL=v\d+
-// regex: ID=[_a-zA-Z][_0-9a-zA-Z]*
-
 // check: cbr $VAL, $(bl0=$ID), $(bl1=$ID)
 
 // check: $bl0:
