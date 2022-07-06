@@ -81,8 +81,10 @@ impl Format for Traits {
         // prefix `PathType`
         self.prefix.format(formatted_code, formatter)?;
         // additional `PathType`s
+        //
+        // ` + PathType`
         for paths in self.suffixes.iter() {
-            write!(formatted_code, " {}", paths.0.span().as_str())?;
+            write!(formatted_code, " {} ", paths.0.span().as_str())?;
             paths.1.format(formatted_code, formatter)?;
         }
 
