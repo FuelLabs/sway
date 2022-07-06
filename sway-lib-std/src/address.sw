@@ -17,10 +17,7 @@ impl core::ops::Eq for Address {
 
 pub trait From {
     fn from(b: b256) -> Self;
-} {
-    fn into(addr: Address) -> b256 {
-        addr.value
-    }
+    fn into(self) -> b256;
 }
 
 /// Functions for casting between the b256 and Address types.
@@ -29,5 +26,9 @@ impl From for Address {
         Address {
             value: bits,
         }
+    }
+
+    fn into(self) -> b256 {
+        self.value
     }
 }
