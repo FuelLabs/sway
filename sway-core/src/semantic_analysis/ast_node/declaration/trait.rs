@@ -206,7 +206,8 @@ fn convert_trait_methods_to_dummy_funcs(
                                     *type_id,
                                     insert_type(TypeInfo::SelfType),
                                     type_span,
-                                    EnforceTypeArguments::Yes
+                                    EnforceTypeArguments::Yes,
+                                    None
                                 ),
                                 insert_type(TypeInfo::ErrorRecovery),
                                 warnings,
@@ -222,7 +223,8 @@ fn convert_trait_methods_to_dummy_funcs(
                         insert_type(return_type.clone()),
                         insert_type(TypeInfo::SelfType),
                         return_type_span,
-                        EnforceTypeArguments::Yes
+                        EnforceTypeArguments::Yes,
+                        None
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,

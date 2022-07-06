@@ -166,7 +166,8 @@ impl TypedFunctionDeclaration {
             ctx.resolve_type_with_self(
                 insert_type(return_type),
                 &return_type_span,
-                EnforceTypeArguments::Yes
+                EnforceTypeArguments::Yes,
+                None
             ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
