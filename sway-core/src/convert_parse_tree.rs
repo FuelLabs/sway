@@ -2567,14 +2567,6 @@ fn statement_let_to_ast_nodes(
                     span: span.clone(),
                 };
 
-                // from the possible type annotation, if the annotation was a (struct destructure)? annotation
-                // extract the internal types of the annotation
-                let destructure_tys_opt = match ty_opt {
-                    // TODO figure out how to do this with structs
-                    Some(Ty::Tuple(tys)) => Some(tys.into_inner().to_tys()),
-                    _ => None,
-                };
-
                 // for all of the fields of the struct destructuring on the LHS,
                 // recursively create variable declarations
                 for pattern_struct_field in fields.into_inner().into_iter() {
@@ -2596,18 +2588,12 @@ fn statement_let_to_ast_nodes(
                         },
                     };
 
-                    // from the possible type annotation, grab the type at the field name of the current element
-                    // we are processing
-                    let ty_opt = match &destructure_tys_opt {
-                        Some(tys) => tys.get(0).cloned(),
-                        None => None,
-                    };
                     // recursively create variable declarations for the subpatterns on the LHS
                     // and add them to the ast nodes
                     ast_nodes.extend(unfold(
                         ec,
                         recursive_pattern,
-                        ty_opt,
+                        None,
                         Expression::SubfieldExpression {
                             prefix: Box::new(new_expr.clone()),
                             span: span.clone(),
