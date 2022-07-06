@@ -2517,7 +2517,7 @@ fn statement_let_to_ast_nodes(
                 let error = ConvertParseTreeError::ConstructorPatternsNotSupportedHere { span };
                 return Err(ec.error(error));
             }
-            Pattern::Struct { path, fields } => {
+            Pattern::Struct { fields, .. } => {
                 let mut ast_nodes = Vec::new();
 
                 // Generate a deterministic name for the destructured struct
@@ -2584,14 +2584,14 @@ fn statement_let_to_ast_nodes(
                             pattern_opt,
                         } => {
                             let recursive_pattern = match pattern_opt {
-                                Some((colon_token, box_pattern)) => *box_pattern,
+                                Some((_colon_token, box_pattern)) => *box_pattern,
                                 None => {
                                     Pattern::Var { mutable: None, name: field_name.clone() }
                                 }
                             };
                             (field_name, recursive_pattern)
                         }
-                        PatternStructField::Rest { token } => {
+                        PatternStructField::Rest { .. } => {
                             continue;
                         },
                     };
