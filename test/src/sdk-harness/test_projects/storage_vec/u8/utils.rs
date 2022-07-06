@@ -46,12 +46,7 @@ pub mod wrappers {
     }
 
     pub async fn swap_remove(instance: &MyContract, index: u64) -> u8 {
-        instance
-            .u8_swap_remove(index)
-            .call()
-            .await
-            .unwrap()
-            .value
+        instance.u8_swap_remove(index).call().await.unwrap().value
     }
 
     pub async fn insert(instance: &MyContract, index: u64, value: u8) {
