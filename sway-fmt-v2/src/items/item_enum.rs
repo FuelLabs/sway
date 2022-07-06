@@ -30,7 +30,7 @@ impl Format for ItemEnum {
             .to_width_heuristics(&formatter.config.whitespace);
         let enum_lit_width = width_heuristics.structure_lit_width;
 
-        let multiline = !enum_lit_single_line || self.get_formatted_len() > enum_lit_width;
+        let multiline = !enum_lit_single_line || self.get_formatted_len()? > enum_lit_width;
 
         format_enum(self, formatted_code, formatter, multiline)?;
         Ok(())
@@ -120,14 +120,12 @@ fn format_enum(
                         }
                     }
                     // Add `:`, ty & `CommaToken`
-                    //
-                    // TODO(#2101): We are currently converting ty to string directly but we will probably need to format ty before adding.
                     write!(
                         formatted_code,
-                        " {} {}",
+                        " {} ",
                         type_field.colon_token.ident().as_str(),
-                        type_field.ty.span().as_str(),
                     )?;
+                    type_field.ty.format(formatted_code, formatter)?;
                     if value_pairs_iter.peek().is_some() {
                         writeln!(formatted_code, "{}", variant.1.span().as_str())?;
                     } else if let Some(final_value) = &variants.final_value_opt {
@@ -181,10 +179,10 @@ fn format_enum(
 }
 
 impl ItemLen for ItemEnum {
-    fn get_formatted_len(&self) -> usize {
+    fn get_formatted_len(&self) -> Result<usize, FormatterError> {
         // TODO while determininig the length we may want to format to some degree and take length.
         let str_item = &self.span().as_str().len();
-        *str_item as usize
+        Ok(*str_item as usize)
     }
 }
 

@@ -1,3 +1,4 @@
+use crate::fmt::FormatterError;
 pub trait ItemLen {
-    fn get_formatted_len(&self) -> usize;
+    fn get_formatted_len(&self) -> Result<usize, FormatterError>;
 }

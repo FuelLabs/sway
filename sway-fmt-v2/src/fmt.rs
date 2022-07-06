@@ -271,4 +271,103 @@ pub const TEST1: u16 = 10;"#;
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert_eq!(correct_sway_code, formatted_sway_code)
     }
+    #[test]
+    fn test_ty_formatting() {
+        let sway_code_to_format = r#"contract;
+
+enum TestTy {
+    Infer:
+    _,
+    Array : [u8;
+    40],
+    String:         str[
+    4
+    ],
+    PathType     : root::
+example::
+    type,
+    TupleNil: (),
+    Tuple: (   u64, 
+        u32
+    ),
+}"#;
+        let correct_sway_code = r#"contract;
+
+enum TestTy {
+    Infer: _,
+    Array: [u8; 40],
+    String: str[4],
+    PathType: root::example::type,
+    TupleNil: (),
+    Tuple: (u64, u32),
+}"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+    }
+    fn test_storage_without_alignment() {
+        let sway_code_to_format = r#"contract;
+
+storage{foo:Test,bar
+: 
+    Test
+, baz: u64 } 
+"#;
+        let correct_sway_code = r#"contract;
+
+storage {
+    foo: Test,
+    bar: Test,
+    baz: u64,
+}"#;
+
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code)
+    }
+    #[test]
+    fn test_storage_with_alignment() {
+        let sway_code_to_format = r#"contract;
+
+storage {
+ long_var_name: Type1,
+      var2: Type2,
+}
+"#;
+        let correct_sway_code = r#"contract;
+
+storage {
+    long_var_name : Type1,
+    var2          : Type2,
+}"#;
+
+        let mut config = Config::default();
+        config.structures.field_alignment = FieldAlignment::AlignFields(50);
+        let mut formatter = get_formatter(config, Shape::default());
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code)
+    }
+    #[test]
+    fn test_storage_single_line() {
+        let sway_code_to_format = r#"contract;
+
+storage {
+ long_var_name: Type1,
+      var2: Type2,
+}
+"#;
+        let correct_sway_code = r#"contract;
+
+storage { long_var_name: Type1, var2: Type2 }"#;
+        let mut config = Config::default();
+        config.structures.small_structures_single_line = true;
+        config.whitespace.max_width = 300;
+        let mut formatter = get_formatter(config, Shape::default());
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code)
+    }
 }

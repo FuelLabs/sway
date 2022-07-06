@@ -67,6 +67,7 @@ impl ToJsonAbi for TypeId {
                 name: "__array_element".to_string(),
                 type_field: type_id.json_abi_str(),
                 components: type_id.generate_json_abi(),
+                type_arguments: None,
             }]),
             TypeInfo::Enum { variant_types, .. } => Some(
                 variant_types
@@ -121,11 +122,11 @@ impl ReplaceSelfType for TypeId {
                     type_argument.replace_self_type(self_type);
                 }
             }
-            TypeInfo::Custom {
-                mut type_arguments, ..
-            } => {
-                for type_argument in type_arguments.iter_mut() {
-                    type_argument.replace_self_type(self_type);
+            TypeInfo::Custom { type_arguments, .. } => {
+                if let Some(mut type_arguments) = type_arguments {
+                    for type_argument in type_arguments.iter_mut() {
+                        type_argument.replace_self_type(self_type);
+                    }
                 }
             }
             TypeInfo::Array(mut type_id, _) => {
@@ -160,5 +161,17 @@ impl TypeId {
                 insert_type(ty)
             }
         };
+    }
+
+    pub(crate) fn get_type_parameters(&self) -> Option<Vec<TypeParameter>> {
+        match look_up_type_id(*self) {
+            TypeInfo::Enum {
+                type_parameters, ..
+            } => (!type_parameters.is_empty()).then(|| type_parameters),
+            TypeInfo::Struct {
+                type_parameters, ..
+            } => (!type_parameters.is_empty()).then(|| type_parameters),
+            _ => None,
+        }
     }
 }
