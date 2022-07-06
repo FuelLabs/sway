@@ -36,10 +36,6 @@ fn main() -> u64 {
     0
 }
 
-// regex: VAL=v\d+
-// regex: MD=!\d+
-// regex: ID=[_a-zA-Z][_0-9a-zA-Z]*
-
 // check: local ptr u64 a
 // check: local ptr b256 arg_for_get_b256
 // check: local mut ptr { u64, b256 } args_struct_for_get_s

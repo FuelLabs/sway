@@ -1,0 +1,14 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-626C5D02EBFA3B6A'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'path+from-root-626C5D02EBFA3B6A'
+dependencies = ['core']
+
+[[package]]
+name = 'vec_swap_param2_out_of_bounds'
+source = 'root'
+dependencies = ['std']
