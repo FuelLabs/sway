@@ -1,7 +1,8 @@
 [project]
-authors = ["Mattauer"]
+authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
 name = "struct_destructuring"
 
 [dependencies]
+core = { path = "../../../../../../../sway-lib-core" }

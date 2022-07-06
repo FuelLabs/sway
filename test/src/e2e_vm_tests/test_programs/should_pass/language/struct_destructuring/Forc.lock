@@ -1,14 +1,9 @@
 [[package]]
 name = 'core'
-source = 'path+from-root-141C3E521411A704'
+source = 'path+from-root-F93ECA3248F311E3'
 dependencies = []
-
-[[package]]
-name = 'std'
-source = 'git+https://github.com/fuellabs/sway?tag=v0.17.0#b81bcd9652d4fc9908d1971c9215a7cfdde39adc'
-dependencies = ['core']
 
 [[package]]
 name = 'struct_destructuring'
 source = 'root'
-dependencies = ['std']
+dependencies = ['core']
