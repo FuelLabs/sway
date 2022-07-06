@@ -9,7 +9,6 @@ use forc_util::{
     print_on_success, print_on_success_library, println_yellow_err,
 };
 use fuel_tx::StorageSlot;
-use fuels_types::JsonABI;
 use petgraph::{
     self,
     visit::{EdgeRef, IntoNodeReferences},
@@ -27,6 +26,7 @@ use sway_core::{
     semantic_analysis::namespace, source_map::SourceMap, types::*, BytecodeCompilationResult,
     CompileAstResult, CompileError, TreeType,
 };
+use sway_types::JsonABI;
 use sway_utils::constants;
 use tracing::info;
 use url::Url;
