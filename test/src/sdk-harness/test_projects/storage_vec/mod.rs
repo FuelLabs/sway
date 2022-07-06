@@ -84,6 +84,10 @@ mod success {
     async fn can_get_len() {
         let (instance, _id) = get_contract_instance().await;
 
+        let len_vec = len(&instance).await;
+
+        assert_eq!(len_vec, 0);
+
         push(&instance, 50).await;
         push(&instance, 100).await;
         push(&instance, 150).await;
@@ -99,9 +103,13 @@ mod success {
         assert_eq!(len_vec, 5);
     }
 
+    // Doubles as a test for is_empty
     #[tokio::test]
     async fn can_confirm_emptiness() {
         let (instance, _id) = get_contract_instance().await;
+
+        let isempty = is_empty(&instance).await;
+        assert_eq!(isempty, true);
 
         push(&instance, 50).await;
         push(&instance, 100).await;
@@ -109,13 +117,47 @@ mod success {
         push(&instance, 200).await;
 
         let isempty = is_empty(&instance).await;
-
         assert_eq!(isempty, false);
 
         clear(&instance).await;
 
         let isempty = is_empty(&instance).await;
-
         assert_eq!(isempty, true);
+    }
+}
+
+mod failure {
+    use super::*;
+
+    #[tokio::test]
+    #[should_panic(expected = "Revert(0)")]
+    async fn cant_pop() {
+        let (instance, _id) = get_contract_instance().await;
+
+        pop(&instance).await;
+    }
+
+    #[tokio::test]
+    #[should_panic(expected = "Revert(0)")]
+    async fn cant_remove() {
+        let (instance, _id) = get_contract_instance().await;
+
+        let _ = remove(&instance, 2).await;
+    }
+
+    #[tokio::test]
+    #[should_panic(expected = "Revert(0)")]
+    async fn cant_swap_remove() {
+        let (instance, _id) = get_contract_instance().await;
+
+        let _ = swap_remove(&instance, 2).await;
+    }
+
+    #[tokio::test]
+    #[should_panic(expected = "Revert(0)")]
+    async fn cant_insert() {
+        let (instance, _id) = get_contract_instance().await;
+
+        insert(&instance, 1, 250).await;
     }
 }
