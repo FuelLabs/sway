@@ -1404,7 +1404,7 @@ impl<'ir> AsmBuilder<'ir> {
                         if word_offs > compiler_constants::TWELVE_BITS {
                             let offs_reg = self.reg_seqr.next();
                             self.number_to_reg(
-                                word_offs,
+                                word_offs * 8, // Base reg for LW is in bytes
                                 &offs_reg,
                                 instr_val.get_span(self.context),
                             );
@@ -1789,7 +1789,7 @@ impl<'ir> AsmBuilder<'ir> {
                         if word_offs > compiler_constants::TWELVE_BITS {
                             let offs_reg = self.reg_seqr.next();
                             self.number_to_reg(
-                                word_offs,
+                                word_offs * 8, // Base reg for SW is in bytes
                                 &offs_reg,
                                 instr_val.get_span(self.context),
                             );
