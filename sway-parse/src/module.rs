@@ -60,10 +60,7 @@ impl Parse for ModuleKind {
         } else if let Some(predicate_token) = parser.take() {
             Ok(Self::Predicate { predicate_token })
         } else if let Some(library_token) = parser.take() {
-            println!("before parse");
             let name = parser.parse()?;
-            println!("name: {}", name);
-            println!("library_token {:?}", library_token);
             Ok(Self::Library {
                 library_token,
                 name,

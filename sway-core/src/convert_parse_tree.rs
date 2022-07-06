@@ -2518,10 +2518,6 @@ fn statement_let_to_ast_nodes(
                 return Err(ec.error(error));
             }
             Pattern::Struct { path, fields } => {
-                //println!("pattern: {:#?}", pattern);
-                //println!("expression: {:#?}", expression);
-                // let error = ConvertParseTreeError::StructPatternsNotSupportedHere { span };
-                // return Err(ec.error(error));
                 let mut ast_nodes = Vec::new();
 
                 // Generate a deterministic name for the destructured struct
@@ -2565,8 +2561,6 @@ fn statement_let_to_ast_nodes(
                     span: span.clone(),
                 });
 
-                println!("{:?}\n", ast_nodes.last());
-
                 // create a new variable expression that points to the new destructured struct name that we just created
                 let new_expr = Expression::VariableExpression {
                     name: destructure_name,
@@ -2584,13 +2578,11 @@ fn statement_let_to_ast_nodes(
                 // for all of the fields of the struct destructuring on the LHS,
                 // recursively create variable declarations
                 for pattern_struct_field in fields.into_inner().into_iter() {
-                    //println!("{:?}", pattern_struct_field);
                     let (field, recursive_pattern) = match pattern_struct_field {
                         PatternStructField::Field {
                             field_name,
                             pattern_opt,
                         } => {
-                            //println!("{:?}", field_name);
                             let recursive_pattern = match pattern_opt {
                                 Some((colon_token, box_pattern)) => *box_pattern,
                                 None => {
@@ -2600,7 +2592,6 @@ fn statement_let_to_ast_nodes(
                             (field_name, recursive_pattern)
                         }
                         PatternStructField::Rest { token } => {
-                            //println!("{:?}", token);
                             continue;
                         },
                     };
@@ -2625,11 +2616,9 @@ fn statement_let_to_ast_nodes(
                         span.clone(),
                     )?);
                 }
-                //println!("ast nodes: {:?}", ast_nodes);
                 ast_nodes
             }
             Pattern::Tuple(pat_tuple) => {
-                //println!("expression: {:#?}", expression);
                 let mut ast_nodes = Vec::new();
 
                 // Generate a deterministic name for the tuple.
@@ -2671,8 +2660,6 @@ fn statement_let_to_ast_nodes(
                     span: span.clone(),
                 });
 
-                println!("{:?}\n", ast_nodes.last());
-
                 // create a variable expression that points to the new tuple name that we just created
                 let new_expr = Expression::VariableExpression {
                     name: tuple_name,
@@ -2710,7 +2697,6 @@ fn statement_let_to_ast_nodes(
                         span.clone(),
                     )?);
                 }
-                //println!("ast nodes: {:?}", ast_nodes);
                 ast_nodes
             }
         };
