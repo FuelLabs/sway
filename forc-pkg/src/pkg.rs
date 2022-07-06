@@ -273,7 +273,7 @@ impl BuildPlan {
         // might have edited the `Forc.lock` file when they shouldn't have, a path dependency no
         // longer exists at its specified location, etc. We must first remove all invalid nodes
         // before we can determine what we need to fetch.
-        let to_remove = validate_graph(&graph, &manifest, sway_git_tag);
+        let to_remove = validate_graph(&graph, manifest, sway_git_tag);
         remove_deps(&mut graph, &manifest.project.name, &to_remove);
 
         // We know that the remaining nodes have valid paths, otherwise they would have been
@@ -891,7 +891,7 @@ fn graph_to_manifest_map(
             })
             .next()
             .ok_or_else(|| anyhow!("more than one root package detected in graph"))?;
-        let dep_path = dep_path(graph, &parent_manifest, dep_name, dep_node, sway_git_tag)
+        let dep_path = dep_path(graph, parent_manifest, dep_name, dep_node, sway_git_tag)
             .map_err(|e| {
                 anyhow!(
                     "failed to construct path for dependency {:?}: {}",
@@ -1675,7 +1675,7 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
         let dep_namespace = dependency_namespace(&namespace_map, &plan.graph, node);
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
-        let res = compile(pkg, &manifest, profile, dep_namespace, &mut source_map)?;
+        let res = compile(pkg, manifest, profile, dep_namespace, &mut source_map)?;
         let (compiled, maybe_namespace) = res;
         if let Some(namespace) = maybe_namespace {
             namespace_map.insert(node, namespace.into());
@@ -1709,7 +1709,7 @@ pub fn check(plan: &BuildPlan, silent_mode: bool) -> anyhow::Result<CompileAstRe
         let dep_namespace = dependency_namespace(&namespace_map, &plan.graph, node);
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
-        let ast_res = compile_ast(&manifest, &profile, dep_namespace)?;
+        let ast_res = compile_ast(manifest, &profile, dep_namespace)?;
         if let CompileAstResult::Success { typed_program, .. } = &ast_res {
             if let TreeType::Library { .. } = typed_program.kind.tree_type() {
                 namespace_map.insert(node, typed_program.root.namespace.clone());
