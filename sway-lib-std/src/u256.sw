@@ -19,11 +19,7 @@ pub enum U256Error {
 pub trait From {
     /// Function for creating a U256 from its u64 components.
     pub fn from(a: u64, b: u64, c: u64, d: u64) -> Self;
-} {
-    /// Function for extracting 4 u64s from a U256.
-    fn into(val: U256) -> (u64, u64, u64, u64) {
-        (val.a, val.b, val.c, val.d)
-    }
+    fn into(self) -> (u64, u64, u64, u64);
 }
 
 impl From for U256 {
@@ -31,6 +27,11 @@ impl From for U256 {
         U256 {
             a, b, c, d,
         }
+    }
+
+    /// Function for extracting 4 u64s from a U256.
+    fn into(self) -> (u64, u64, u64, u64) {
+        (self.a, self.b, self.c, self.d)
     }
 }
 

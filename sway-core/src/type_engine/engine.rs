@@ -38,7 +38,7 @@ impl Engine {
         enforce_type_arguments: EnforceTypeArguments,
         call_site_span: &Span,
         namespace: &mut Root,
-        module_path: &Path,
+        mod_path: &Path,
     ) -> CompileResult<()>
     where
         T: MonomorphizeHelper + CopyTypes,
@@ -94,7 +94,8 @@ impl Engine {
                             type_argument.type_id,
                             &type_argument.span,
                             enforce_type_arguments,
-                            module_path
+                            None,
+                            mod_path
                         ),
                         insert_type(TypeInfo::ErrorRecovery),
                         warnings,
