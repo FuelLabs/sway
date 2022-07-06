@@ -28,8 +28,6 @@ impl StorageAccess for Contract {
     }
 }
 
-// regex: VAL=v\d+
-
 // check: fn get_e<01665bf4>() -> { { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) } }
 
 // check: local mut ptr b256 key_for_0_0

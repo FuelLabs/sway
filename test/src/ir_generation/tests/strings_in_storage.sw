@@ -20,11 +20,6 @@ impl StorageAccess for Contract {
     }
 }
 
-// regex: VAL=v\d+
-// regex: MD=!\d+
-// regex: ID=[_a-zA-Z][_0-9a-zA-Z]*
-
-
 // check: fn set_s
 // check: local mut ptr b256 $(key=$ID)
 // check: local mut ptr [b256; 2] $(val_ary=$ID)

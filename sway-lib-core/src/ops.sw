@@ -459,16 +459,6 @@ trait OrdEq: Ord + Eq {
     }
 }
 
-trait OrdEq: Ord + Eq {
-} {
-    fn ge(self, other: Self) -> bool {
-        self.gt(other) || self.eq(other)
-    }
-    fn le(self, other: Self) -> bool {
-        self.lt(other) || self.eq(other)
-    }
-}
-
 impl OrdEq for u64 {
 }
 impl OrdEq for u32 {

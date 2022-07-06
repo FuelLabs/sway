@@ -18,22 +18,25 @@ impl core::ops::Eq for EvmAddress {
 
 pub trait From {
     fn from(b: b256) -> Self;
-} {
-    fn into(addr: EvmAddress) -> b256 {
-        addr.value
-    }
+    fn into(self) -> b256;
 }
 
 /// Functions for casting between the b256 and Address types.
 impl From for EvmAddress {
     fn from(bits: b256) -> EvmAddress {
         // An EVM address is only 20 bytes, so the first 12 are set to zero
-        asm(r1: bits) {
+        // Create a mutable local copy of `bits`
+        let mut local_bits = bits;
+        asm(r1: local_bits) {
             mcli r1 i12;
         };
 
         EvmAddress {
-            value: bits,
+            value: local_bits,
         }
+    }
+
+    fn into(self) -> b256 {
+        self.value
     }
 }

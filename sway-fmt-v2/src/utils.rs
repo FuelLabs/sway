@@ -4,5 +4,7 @@ pub(crate) mod generics;
 pub(crate) mod indent_style;
 pub(crate) mod item;
 pub(crate) mod newline_style;
+pub(crate) mod path;
 pub(crate) mod program_type;
 pub(crate) mod punctuated;
+pub(crate) mod ty;
