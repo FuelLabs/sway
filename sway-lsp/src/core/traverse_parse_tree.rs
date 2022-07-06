@@ -8,7 +8,7 @@ use sway_types::ident::Ident;
 
 use sway_core::{
     constants::{MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX},
-    AstNode, AstNodeContent, Declaration, Expression, FunctionDeclaration, TypeInfo, WhileLoop,
+    AstNode, AstNodeContent, Declaration, Expression, FunctionDeclaration, TypeInfo, WhileLoop, ReassignmentTarget,
 };
 
 pub fn traverse_node(node: &AstNode, tokens: &mut TokenMap) {
@@ -131,11 +131,19 @@ fn handle_declaration(declaration: &Declaration, tokens: &mut TokenMap) {
         Declaration::Reassignment(reassignment) => {
             handle_expression(&reassignment.rhs, tokens);
 
-            let lhs_ident = Ident::new(reassignment.lhs_span());
-            tokens.insert(
-                to_ident_key(&lhs_ident),
-                TokenType::from_parsed(AstToken::Reassignment(reassignment.clone())),
-            );
+            match &reassignment.lhs {
+                ReassignmentTarget::VariableExpression(exp) => {
+                    handle_expression(exp, tokens);
+                }
+                ReassignmentTarget::StorageField(idents) => {
+                    for ident in idents {
+                        tokens.insert(
+                            to_ident_key(ident),
+                            TokenType::from_parsed(AstToken::Reassignment(reassignment.clone())),
+                        );
+                    }
+                }
+            }
         }
         Declaration::ImplTrait(impl_trait) => {
             for ident in &impl_trait.trait_name.prefixes {

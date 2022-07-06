@@ -237,7 +237,7 @@ impl LanguageServer for Backend {
 #[cfg(test)]
 mod tests {
     use serde_json::json;
-    use std::{env, fs, io::Read};
+    use std::{env, fs, io::Read, path::PathBuf};
     use tower::{Service, ServiceExt};
 
     use super::*;
@@ -245,12 +245,25 @@ mod tests {
     use tower_lsp::jsonrpc::{self, Request, Response};
     use tower_lsp::LspService;
 
-    fn load_sway_example() -> (Url, String) {
-        let manifest_dir = env::current_dir()
+    fn e2e_test_dir() -> PathBuf {
+        env::current_dir()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("test/src/e2e_vm_tests/test_programs/should_pass/language")
+        .join("enum_if_let_large_type")
+    }
+
+    fn sway_example_dir() -> PathBuf {
+        env::current_dir()
             .unwrap()
             .parent()
             .unwrap()
-            .join("examples/fizzbuzz");
+            .join("examples/fizzbuzz")
+    }
+
+    fn load_sway_example() -> (Url, String) {
+        let manifest_dir = e2e_test_dir();//sway_example_dir();
         let src_path = manifest_dir.join("src/main.sw");
         let mut file = fs::File::open(&src_path).unwrap();
         let mut sway_program = String::new();

@@ -102,20 +102,28 @@ impl TextDocument {
     pub fn parse(&mut self) -> Result<Vec<Diagnostic>, DocumentError> {
         self.clear_token_map();
 
-        let manifest_dir = PathBuf::from(self.get_uri());
-        let manifest = pkg::ManifestFile::from_dir(&manifest_dir, SWAY_GIT_TAG).unwrap();
+        let manifest_dir = PathBuf::from(self.get_uri());        
         let silent_mode = true;
         let locked = false;
         let offline = false;
-        let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline, SWAY_GIT_TAG)
-            .unwrap();
-        let (parsed_res, ast_res) = pkg::check(&plan, silent_mode).unwrap();
 
-        let r = self.parse_tokens_from_text(parsed_res);
+        // TODO: match on any errors and report them back to the user in a future PR
+        if let Ok(manifest) = pkg::ManifestFile::from_dir(&manifest_dir, SWAY_GIT_TAG) {
+            if let Ok(plan) = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline, SWAY_GIT_TAG) {
+                if let Ok((parsed_res, ast_res)) = pkg::check(&plan, silent_mode) {
+                    let r = self.parse_tokens_from_text(parsed_res);
+                    for ((ident,_), t) in self.get_token_map() {
+                        if ident.as_str() == "product.number_sold" {
+                            eprintln!("token = {:#?}", t);
+                        } 
+                    }
+                    self.test_typed_parse(ast_res);
+                    return r
+                }
+            }
+        }
 
-        //self.test_typed_parse(ast_res);
-
-        r
+        Err(DocumentError::DocumentNotFound)        
     }
 
     pub fn apply_change(&mut self, change: &TextDocumentContentChangeEvent) {
@@ -148,7 +156,7 @@ impl TextDocument {
             if let Some(type_id) = utils::token::get_type_id(token) {
                 tracing::info!("type_id = {:#?}", type_id);
 
-                // Use the TypeId to look up the actual type (I think there is a method in the type_engine for this)
+                // Use the TypeId to look up the actual type
                 let type_info = sway_core::type_engine::look_up_type_id(type_id);
                 tracing::info!("type_info = {:#?}", type_info);
             }
