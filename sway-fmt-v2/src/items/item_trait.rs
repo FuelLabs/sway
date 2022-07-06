@@ -45,6 +45,7 @@ impl Format for ItemTrait {
             }
             Self::close_curly_brace(formatted_code, formatter)?;
         }
+        Self::close_curly_brace(formatted_code, formatter)?;
 
         Ok(())
     }
