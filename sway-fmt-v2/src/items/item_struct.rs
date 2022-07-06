@@ -30,7 +30,7 @@ impl Format for ItemStruct {
             .to_width_heuristics(&formatter.config.whitespace);
         let struct_lit_width = width_heuristics.structure_lit_width;
 
-        let multiline = !struct_lit_single_line || self.get_formatted_len()? > struct_lit_width;
+        let multiline = !struct_lit_single_line || self.len_chars()? > struct_lit_width;
 
         format_struct(self, formatted_code, formatter, multiline)?;
         Ok(())
@@ -186,7 +186,7 @@ fn format_struct(
 }
 
 impl ItemLenChars for ItemStruct {
-    fn get_formatted_len(&self) -> Result<usize, FormatterError> {
+    fn len_chars(&self) -> Result<usize, FormatterError> {
         // Format to single line and return the length
         let mut str_item = String::new();
         let mut formatter = Formatter::default();

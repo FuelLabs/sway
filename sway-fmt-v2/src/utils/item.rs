@@ -23,5 +23,5 @@ impl Format for Item {
     }
 }
 pub trait ItemLenChars {
-    fn get_formatted_len(&self) -> Result<usize, FormatterError>;
+    fn len_chars(&self) -> Result<usize, FormatterError>;
 }

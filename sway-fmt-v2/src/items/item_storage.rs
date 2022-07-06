@@ -29,14 +29,14 @@ impl Format for ItemStorage {
             .to_width_heuristics(&config_whitespace);
         let storage_width = width_heuristics.structure_lit_width;
 
-        let multiline = !storage_single_line || self.get_formatted_len()? > storage_width;
+        let multiline = !storage_single_line || self.len_chars()? > storage_width;
         format_storage(self, formatter, formatted_code, multiline)?;
         Ok(())
     }
 }
 
 impl ItemLenChars for ItemStorage {
-    fn get_formatted_len(&self) -> Result<usize, FormatterError> {
+    fn len_chars(&self) -> Result<usize, FormatterError> {
         // Format to single line and return the length
         let mut str_item = String::new();
         let mut formatter = Formatter::default();
