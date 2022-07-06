@@ -14,7 +14,7 @@ struct RawVec<T> {
 impl<T> RawVec<T> {
     /// Create a new `RawVec` with zero capacity.
     fn new() -> Self {
-        RawVec {
+        Self {
             ptr: alloc(0),
             cap: 0,
         }
@@ -24,7 +24,7 @@ impl<T> RawVec<T> {
     /// `[T; capacity]`. This is equivalent to calling `RawVec::new` when
     /// `capacity` is `0`.
     fn with_capacity(capacity: u64) -> Self {
-        RawVec {
+        Self {
             ptr: alloc(capacity * size_of::<T>()),
             cap: capacity,
         }
@@ -66,7 +66,7 @@ impl<T> Vec<T> {
     ///
     /// The vector will not allocate until elements are pushed onto it.
     pub fn new() -> Self {
-        Vec {
+        Self {
             buf: ~RawVec::new(),
             len: 0,
         }
@@ -80,7 +80,7 @@ impl<T> Vec<T> {
     /// It is important to note that although the returned vector has the
     /// *capacity* specified, the vector will have a zero *length*.
     pub fn with_capacity(capacity: u64) -> Self {
-        Vec {
+        Self {
             buf: ~RawVec::with_capacity(capacity),
             len: 0,
         }
