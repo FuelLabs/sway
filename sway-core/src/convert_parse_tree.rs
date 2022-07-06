@@ -2577,15 +2577,16 @@ fn statement_let_to_ast_nodes(
                         } => {
                             let recursive_pattern = match pattern_opt {
                                 Some((_colon_token, box_pattern)) => *box_pattern,
-                                None => {
-                                    Pattern::Var { mutable: None, name: field_name.clone() }
-                                }
+                                None => Pattern::Var {
+                                    mutable: None,
+                                    name: field_name.clone(),
+                                },
                             };
                             (field_name, recursive_pattern)
                         }
                         PatternStructField::Rest { .. } => {
                             continue;
-                        },
+                        }
                     };
 
                     // recursively create variable declarations for the subpatterns on the LHS
