@@ -35,6 +35,7 @@ type GraphIx = u32;
 type Node = Pinned;
 type Edge = DependencyName;
 pub type Graph = petgraph::stable_graph::StableGraph<Node, Edge, Directed, GraphIx>;
+pub type EdgeIx = petgraph::graph::EdgeIndex<GraphIx>;
 pub type NodeIx = petgraph::graph::NodeIndex<GraphIx>;
 pub type ManifestMap = HashMap<PinnedId, ManifestFile>;
 
@@ -273,8 +274,8 @@ impl BuildPlan {
         // might have edited the `Forc.lock` file when they shouldn't have, a path dependency no
         // longer exists at its specified location, etc. We must first remove all invalid nodes
         // before we can determine what we need to fetch.
-        let to_remove = validate_graph(&graph, manifest, sway_git_tag);
-        remove_deps(&mut graph, &manifest.project.name, &to_remove);
+        let invalid_deps = validate_graph(&graph, manifest, sway_git_tag);
+        remove_deps(&mut graph, &manifest.project.name, &invalid_deps);
 
         // We know that the remaining nodes have valid paths, otherwise they would have been
         // removed. We can safely produce an initial `path_map`.
@@ -371,21 +372,18 @@ fn find_proj_node(graph: &Graph, proj_name: &str) -> Result<NodeIx> {
 
 /// Validates the state of the graph against the given project manifest.
 ///
-/// Returns the set of invalid nodes detected within the graph that should be removed.
-///
-/// Note that nodes whose parents are all invalid are *not* returned, as it is assumed they will be
-/// removed along with their invalid parents in `remove_deps` in a BFS from the project node.
+/// Returns the set of invalid dependencies detected within the graph that should be removed.
 fn validate_graph(
     graph: &Graph,
     proj_manifest: &ManifestFile,
     sway_git_tag: &str,
-) -> BTreeSet<NodeIx> {
+) -> BTreeSet<EdgeIx> {
     // First, check the project node exists.
     // If we we don't have exactly one potential project node, remove everything as we can't
     // validate the graph without knowing the project node.
     let proj_node = match find_proj_node(graph, &proj_manifest.project.name) {
         Ok(node) => node,
-        Err(_) => return graph.node_indices().collect(),
+        Err(_) => return graph.edge_indices().collect(),
     };
     // Collect all invalid dependency nodes.
     validate_deps(graph, proj_node, proj_manifest, sway_git_tag)
@@ -399,14 +397,14 @@ fn validate_deps(
     node: NodeIx,
     node_manifest: &ManifestFile,
     sway_git_tag: &str,
-) -> BTreeSet<NodeIx> {
+) -> BTreeSet<EdgeIx> {
     let mut remove = BTreeSet::default();
     for edge in graph.edges_directed(node, Direction::Outgoing) {
         let dep_name = edge.weight();
         let dep_node = edge.target();
         match validate_dep(graph, node_manifest, dep_name, dep_node, sway_git_tag) {
             Err(_) => {
-                remove.insert(dep_node);
+                remove.insert(edge.id());
             }
             Ok(dep_manifest) => {
                 remove.extend(validate_deps(graph, dep_node, &dep_manifest, sway_git_tag));
@@ -527,9 +525,10 @@ fn dep_path(
     }
 }
 
-/// Remove the given set of packages from `graph` along with any dependencies that are no
-/// longer required as a result.
-fn remove_deps(graph: &mut Graph, proj_name: &str, to_remove: &BTreeSet<NodeIx>) {
+/// Remove the given set of dependency edges from the `graph`.
+///
+/// Also removes all nodes that are no longer connected to the project node as a result.
+fn remove_deps(graph: &mut Graph, proj_name: &str, edges_to_remove: &BTreeSet<EdgeIx>) {
     // Retrieve the project node.
     let proj_node = match find_proj_node(graph, proj_name) {
         Ok(node) => node,
@@ -540,20 +539,37 @@ fn remove_deps(graph: &mut Graph, proj_name: &str, to_remove: &BTreeSet<NodeIx>)
         }
     };
 
-    // Remove all nodes that either have no parents, or are contained within the `to_remove` set.
-    // We do so in breadth-first-order to ensure we always remove all parents before children.
-    let mut bfs = Bfs::new(&*graph, proj_node);
-    // Skip the root node (aka project node).
-    bfs.next(&*graph);
-    while let Some(node) = bfs.next(&*graph) {
-        let no_parents = graph
-            .edges_directed(node, Direction::Incoming)
-            .next()
-            .is_none();
-        if no_parents || to_remove.contains(&node) {
+    // Before removing edges, sort the nodes in order of dependency for the node removal pass.
+    let node_removal_order = match petgraph::algo::toposort(&*graph, None) {
+        Ok(nodes) => nodes,
+        Err(_) => {
+            // If toposort fails the given graph is cyclic, so invalidate everything.
+            graph.clear();
+            return;
+        }
+    };
+
+    // Remove the given set of dependency edges.
+    for &edge in edges_to_remove {
+        graph.remove_edge(edge);
+    }
+
+    // Remove all nodes that are no longer connected to the project node as a result.
+    // Skip iteration over the project node.
+    let mut nodes = node_removal_order.into_iter();
+    assert_eq!(nodes.next(), Some(proj_node));
+    for node in nodes {
+        if !has_parent(graph, node) {
             graph.remove_node(node);
         }
     }
+}
+
+fn has_parent(graph: &Graph, node: NodeIx) -> bool {
+    graph
+        .edges_directed(node, Direction::Incoming)
+        .next()
+        .is_some()
 }
 
 impl GitReference {
