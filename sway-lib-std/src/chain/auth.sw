@@ -37,7 +37,7 @@ pub fn caller_contract_id() -> ContractId {
 /// Returns a `Result::Ok(Identity)`, or `Result::Err(AuthError)` if an identity cannot be determined.
 pub fn msg_sender() -> Result<Identity, AuthError> {
     if caller_is_external() {
-        get_coins_owner()
+        coins_owner()
     } else {
         // Get caller's `ContractId`.
         Result::Ok(Identity::ContractId(caller_contract_id()))
@@ -46,23 +46,22 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
 
 /// Get the owner of the inputs (of type `InputCoin`) to a TransactionScript,
 /// if they all share the same owner.
-fn get_coins_owner() -> Result<Identity, AuthError> {
+fn coins_owner() -> Result<Identity, AuthError> {
     let target_input_type = 0u8;
     let inputs_count = tx_inputs_count();
 
     let mut candidate = Option::None::<Address>();
-    let mut i = 0u64;
+    let mut i = 0;
 
     while i < inputs_count {
-        let input_pointer = tx_input_pointer(i);
-        let input_type = tx_input_type(input_pointer);
+        let input_type = tx_input_type(i);
         if input_type != target_input_type {
             // type != InputCoin
             // Continue looping.
             i += 1;
         } else {
             // type == InputCoin
-            let input_owner = Option::Some(tx_input_coin_owner(input_pointer));
+            let input_owner = Option::Some(tx_input_coin_owner(i));
             if candidate.is_none() {
                 // This is the first input seen of the correct type.
                 candidate = input_owner;

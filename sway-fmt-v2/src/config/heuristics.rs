@@ -1,8 +1,8 @@
 //! Configuration options related to heuristics.
 use crate::constants::{
     DEFAULT_ARRAY_WIDTH, DEFAULT_ATTR_FN_LIKE_WIDTH, DEFAULT_CHAIN_WIDTH, DEFAULT_FN_CALL_WIDTH,
-    DEFAULT_MAX_LINE_WIDTH, DEFAULT_SINGLE_LINE_IF_ELSE_WIDTH, DEFAULT_STRUCT_LIT_WIDTH,
-    DEFAULT_STRUCT_VAR_WIDTH,
+    DEFAULT_MAX_LINE_WIDTH, DEFAULT_SINGLE_LINE_IF_ELSE_WIDTH, DEFAULT_STRUCTURE_LIT_WIDTH,
+    DEFAULT_STRUCTURE_VAR_WIDTH,
 };
 use serde::{Deserialize, Serialize};
 
@@ -131,9 +131,9 @@ impl WidthHeuristics {
             fn_call_width: (DEFAULT_FN_CALL_WIDTH as f32 * max_width_ratio).round() as usize,
             attr_fn_like_width: (DEFAULT_ATTR_FN_LIKE_WIDTH as f32 * max_width_ratio).round()
                 as usize,
-            structure_lit_width: (DEFAULT_STRUCT_LIT_WIDTH as f32 * max_width_ratio).round()
+            structure_lit_width: (DEFAULT_STRUCTURE_LIT_WIDTH as f32 * max_width_ratio).round()
                 as usize,
-            structure_field_width: (DEFAULT_STRUCT_VAR_WIDTH as f32 * max_width_ratio).round()
+            structure_field_width: (DEFAULT_STRUCTURE_VAR_WIDTH as f32 * max_width_ratio).round()
                 as usize,
             array_width: (DEFAULT_ARRAY_WIDTH as f32 * max_width_ratio).round() as usize,
             chain_width: (DEFAULT_CHAIN_WIDTH as f32 * max_width_ratio).round() as usize,
