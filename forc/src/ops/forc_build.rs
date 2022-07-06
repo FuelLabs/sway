@@ -58,7 +58,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
 
     let manifest = ManifestFile::from_dir(&this_dir, SWAY_GIT_TAG)?;
 
-    let plan = pkg::BuildPlan::load_from_manifest(&manifest, locked, offline, SWAY_GIT_TAG)?;
+    let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline, SWAY_GIT_TAG)?;
 
     // Retrieve the specified build profile
     let mut profile = manifest

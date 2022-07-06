@@ -212,8 +212,14 @@ pub struct SourcePinnedParseError;
 pub type DependencyName = String;
 
 impl BuildPlan {
-    /// Create a new build plan for the project by fetching and pinning dependenies.
-    pub fn new(manifest: &ManifestFile, sway_git_tag: &str, offline: bool) -> Result<Self> {
+    /// Create a new build plan for the project by fetching and pinning all dependenies.
+    ///
+    /// To account for an existing lock file, use `from_lock_and_manifest` instead.
+    pub fn from_manifest(
+        manifest: &ManifestFile,
+        sway_git_tag: &str,
+        offline: bool,
+    ) -> Result<Self> {
         let mut graph = Graph::default();
         let mut manifest_map = ManifestMap::default();
         fetch_graph(
@@ -238,12 +244,16 @@ impl BuildPlan {
     /// graph using the current state of the Manifest.
     ///
     /// This includes checking if the [dependencies] or [patch] tables have changed and checking
-    /// the validity of the local path dependencies.  If any changes are detected, the graph is
+    /// the validity of the local path dependencies. If any changes are detected, the graph is
     /// updated and any new packages that require fetching are fetched.
     ///
     /// The resulting build plan should always be in a valid state that is ready for building or
     /// checking.
-    pub fn load_from_manifest(
+    // TODO: Currently (if `--locked` isn't specified) this writes the updated lock directly. This
+    // probably should not be the role of the `BuildPlan::constructor` - instead, we should return
+    // the manifest alongside some lock diff type that can be used to optionally write the updated
+    // lock file and print the diff.
+    pub fn from_lock_and_manifest(
         manifest: &ManifestFile,
         locked: bool,
         offline: bool,

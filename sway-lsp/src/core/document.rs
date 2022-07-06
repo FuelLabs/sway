@@ -160,9 +160,13 @@ impl TextDocument {
         let silent_mode = true;
         let manifest =
             pkg::ManifestFile::from_dir(&manifest_dir, forc::utils::SWAY_GIT_TAG).unwrap();
-        let plan =
-            pkg::BuildPlan::load_from_manifest(&manifest, false, false, forc::utils::SWAY_GIT_TAG)
-                .unwrap();
+        let plan = pkg::BuildPlan::from_lock_and_manifest(
+            &manifest,
+            false,
+            false,
+            forc::utils::SWAY_GIT_TAG,
+        )
+        .unwrap();
         let res = pkg::check(&plan, silent_mode).unwrap();
 
         match res {
