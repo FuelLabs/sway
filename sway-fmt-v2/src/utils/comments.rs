@@ -86,7 +86,7 @@ mod tests {
         }
         "#;
         let map = construct_comment_map(Arc::from(input)).unwrap();
-        assert!(map.len() != 0);
+        assert!(!map.is_empty());
         let range_start_span = CommentSpan { start: 0, end: 32 };
         let range_end_span = CommentSpan { start: 33, end: 34 };
         let found_comment = map
