@@ -281,18 +281,13 @@ impl BuildPlan {
         let mut manifest_map = graph_to_manifest_map(manifest.clone(), &graph, sway_git_tag)?;
 
         // Attempt to fetch the remainder of the graph.
-        let added = fetch_graph(
+        let _added = fetch_graph(
             manifest,
             offline,
             sway_git_tag,
             &mut graph,
             &mut manifest_map,
         )?;
-
-        // If we require any changes to the graph, update the new lock cause.
-        if !to_remove.is_empty() || !added.is_empty() {
-            new_lock_cause = Some(anyhow!("lock file did not match manifest"));
-        }
 
         // Determine the compilation order.
         let compilation_order = compilation_order(&graph)?;
@@ -303,6 +298,14 @@ impl BuildPlan {
             compilation_order,
         };
 
+        // Construct the new lock and check the diff.
+        let new_lock = Lock::from_graph(plan.graph());
+        let lock_diff = new_lock.diff(&lock);
+        if !lock_diff.removed.is_empty() || !lock_diff.added.is_empty() {
+            new_lock_cause.get_or_insert(anyhow!("lock file did not match manifest"));
+        }
+
+        // If there was some change in the lock file, write the new one and share the cause.
         if let Some(cause) = new_lock_cause {
             if locked {
                 bail!(
@@ -312,10 +315,7 @@ impl BuildPlan {
                     cause,
                 );
             }
-
             info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
-            let new_lock = Lock::from_graph(plan.graph());
-            let lock_diff = new_lock.diff(&lock);
             crate::lock::print_diff(&manifest.project.name, &lock_diff);
             let string = toml::ser::to_string_pretty(&new_lock)
                 .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
