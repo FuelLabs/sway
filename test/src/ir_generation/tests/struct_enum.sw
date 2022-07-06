@@ -19,8 +19,6 @@ enum Fruit {
     Grapes: u64,
 }
 
-// regex: VAL=v\d+
-
 // check: local ptr { bool, { u64, ( () | () | u64 ) } } record
 
 // check: $(enum_undef=$VAL) = const { u64, ( () | () | u64 ) } { u64 undef, ( () | () | u64 ) undef }

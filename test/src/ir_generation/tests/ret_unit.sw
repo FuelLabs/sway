@@ -7,7 +7,6 @@ fn main() {
 }
 
 // ::check-ir::
-// regex: VAL=v\d+
 
 // check: script {
 // check: fn main() -> ()

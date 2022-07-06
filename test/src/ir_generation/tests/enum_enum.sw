@@ -17,7 +17,6 @@ fn main() {
 }
 
 // ::check-ir::
-// regex: VAL=v\d+
 
 // check: $(outer_undef=$VAL) = const { u64, ( () | { u64, ( () | bool | () ) } | () ) } { u64 undef, ( () | { u64, ( () | bool | () ) } | () ) undef }
 // check: $(outer_tag=$VAL) = const u64 1

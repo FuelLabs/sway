@@ -57,8 +57,7 @@ impl Format for QualifiedPathRoot {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        // Commenting this out since this will err until `Ty` formatting gets in
-        // self.ty.format(formatted_code, formatter)?;
+        self.ty.format(formatted_code, formatter)?;
         if let Some(as_trait) = &self.as_trait {
             write!(formatted_code, " {} ", as_trait.0.span().as_str())?;
             as_trait.1.format(formatted_code, formatter)?;

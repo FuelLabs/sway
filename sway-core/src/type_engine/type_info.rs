@@ -421,25 +421,64 @@ impl TypeInfo {
             }
             Byte => "byte".into(),
             B256 => "b256".into(),
-            Struct { fields, .. } => {
-                let names = fields
-                    .iter()
-                    .map(|field| {
-                        resolve_type(field.type_id, error_msg_span)
-                            .expect("unreachable?")
-                            .to_selector_name(error_msg_span)
-                    })
-                    .collect::<Vec<CompileResult<String>>>();
-                let mut buf = vec![];
-                for name in names {
-                    match name.value {
-                        Some(value) => buf.push(value),
-                        None => return name,
+            Struct {
+                fields,
+                type_parameters,
+                ..
+            } => {
+                let field_names = {
+                    let names = fields
+                        .iter()
+                        .map(|ty| {
+                            let ty = match resolve_type(ty.type_id, error_msg_span) {
+                                Err(e) => return err(vec![], vec![e.into()]),
+                                Ok(ty) => ty,
+                            };
+                            ty.to_selector_name(error_msg_span)
+                        })
+                        .collect::<Vec<CompileResult<String>>>();
+                    let mut buf = vec![];
+                    for name in names {
+                        match name.value {
+                            Some(value) => buf.push(value),
+                            None => return name,
+                        }
                     }
+                    buf
+                };
+
+                let type_arguments = {
+                    let type_arguments = type_parameters
+                        .iter()
+                        .map(|ty| {
+                            let ty = match resolve_type(ty.type_id, error_msg_span) {
+                                Err(e) => return err(vec![], vec![e.into()]),
+                                Ok(ty) => ty,
+                            };
+                            ty.to_selector_name(error_msg_span)
+                        })
+                        .collect::<Vec<CompileResult<String>>>();
+                    let mut buf = vec![];
+                    for arg in type_arguments {
+                        match arg.value {
+                            Some(value) => buf.push(value),
+                            None => return arg,
+                        }
+                    }
+                    buf
+                };
+
+                if type_arguments.is_empty() {
+                    format!("s({})", field_names.join(","))
+                } else {
+                    format!("s<{}>({})", type_arguments.join(","), field_names.join(","))
                 }
-                format!("s({})", buf.join(","))
             }
-            Enum { variant_types, .. } => {
+            Enum {
+                variant_types,
+                type_parameters,
+                ..
+            } => {
                 let variant_names = {
                     let names = variant_types
                         .iter()
@@ -461,7 +500,35 @@ impl TypeInfo {
                     buf
                 };
 
-                format!("e({})", variant_names.join(","))
+                let type_arguments = {
+                    let type_arguments = type_parameters
+                        .iter()
+                        .map(|ty| {
+                            let ty = match resolve_type(ty.type_id, error_msg_span) {
+                                Err(e) => return err(vec![], vec![e.into()]),
+                                Ok(ty) => ty,
+                            };
+                            ty.to_selector_name(error_msg_span)
+                        })
+                        .collect::<Vec<CompileResult<String>>>();
+                    let mut buf = vec![];
+                    for arg in type_arguments {
+                        match arg.value {
+                            Some(value) => buf.push(value),
+                            None => return arg,
+                        }
+                    }
+                    buf
+                };
+                if type_arguments.is_empty() {
+                    format!("e({})", variant_names.join(","))
+                } else {
+                    format!(
+                        "e<{}>({})",
+                        type_arguments.join(","),
+                        variant_names.join(",")
+                    )
+                }
             }
             Array(type_id, size) => {
                 let name = look_up_type_id(*type_id).to_selector_name(error_msg_span);

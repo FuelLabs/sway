@@ -12,4 +12,5 @@ pub(crate) mod pattern;
 pub(crate) mod program_type;
 pub(crate) mod punctuated;
 pub(crate) mod statement;
+pub(crate) mod ty;
 pub(crate) mod where_clause;

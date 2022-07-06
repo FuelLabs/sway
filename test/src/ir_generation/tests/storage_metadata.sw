@@ -42,8 +42,6 @@ impl Incrementor for Contract {
     }
 }
 
-// regex: MD=!\d+
-
 // check: fn initialize<557ac400>(initial_value $MD: u64) -> u64, $MD, $(write_md=$MD) {
 // check: fn increment<e543c666>(increment_by $MD: u64) -> u64, $MD, $(readwrite_md=$MD) {
 // check: fn get<75b70457>() -> u64, $MD, $(read_md=$MD) {

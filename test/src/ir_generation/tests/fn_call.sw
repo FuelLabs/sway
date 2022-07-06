@@ -9,10 +9,6 @@ fn main() -> u64 {
     a(1)
 }
 
-// regex: VAL=v\d+
-// regex: MD=!\d+
-// regex: ID=[_a-zA-Z][_0-9a-zA-Z]*
-
 // check: fn main() -> u64
 // check:     call
 // check:     call

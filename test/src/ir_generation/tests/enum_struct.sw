@@ -21,7 +21,6 @@ fn main() {
 }
 
 // ::check-ir::
-// regex: VAL=v\d+
 
 // check: $(enum_undef=$VAL) = const { u64, ( () | { b256, bool, u64 } | () ) } { u64 undef, ( () | { b256, bool, u64 } | () ) undef }
 // check: $(enum_tag=$VAL) = const u64 1
