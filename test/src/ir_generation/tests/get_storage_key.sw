@@ -27,10 +27,6 @@ impl GetStorageKeyTest for Contract {
     }
 }
 
-// regex: VAL=v\d+
-// regex: MD=!\d+
-// regex: ID=[_a-zA-Z][_0-9a-zA-Z]*
-
 // check: fn foo1<2994c98e>() -> b256
 // nextln: entry:
 // nextln: $(empty_struct_val=$VAL) = const {  } {  }

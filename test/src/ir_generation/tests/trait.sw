@@ -28,10 +28,6 @@ fn main() -> bool {
     foo.pred_or(bar)
 }
 
-// regex: VAL=v\d+
-// regex: MD=!\d+
-// regex: ID=[_a-zA-Z][_0-9a-zA-Z]*
-
 // check:  ptr { bool } bar
 // check:  ptr { bool } foo
 

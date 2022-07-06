@@ -13,9 +13,6 @@ fn main() {
 }
 
 
-// regex: VAL=v\d+
-// regex: ID=[_a-zA-Z][_0-9a-zA-Z]*
-
 // check: br $(while=$ID)
 
 // OUTER LOOP: while / while_body / end_while
