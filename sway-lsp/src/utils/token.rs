@@ -22,7 +22,9 @@ pub fn is_initial_declaration(token_type: &TokenType) -> bool {
 
 // Check if the given method is a `core::ops` application desugared from short-hand syntax like / + * - etc.
 pub(crate) fn desugared_op(method_name: &MethodName) -> bool {
-    if let MethodName::FromType { ref call_path, .. } = method_name {
+    if let MethodName::FromType { ref call_path, .. } | MethodName::FromTrait { ref call_path } =
+        method_name
+    {
         let prefix0 = call_path.prefixes.get(0).map(|ident| ident.as_str());
         let prefix1 = call_path.prefixes.get(1).map(|ident| ident.as_str());
         if let (Some("core"), Some("ops")) = (prefix0, prefix1) {

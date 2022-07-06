@@ -79,7 +79,7 @@ impl Backend {
                 let diagnostics =
                     debug::generate_warnings_for_parsed_tokens(document.get_token_map());
 
-                //let diagnostics = debug::generate_warnings_for_typed_tokens(&document.get_token_map());
+                // let diagnostics = debug::generate_warnings_for_typed_tokens(&document.get_token_map());
                 self.client
                     .publish_diagnostics(uri, diagnostics, None)
                     .await;
@@ -250,7 +250,7 @@ mod tests {
             .unwrap()
             .parent()
             .unwrap()
-            .join("examples/liquidity_pool");
+            .join("examples/fizzbuzz");
         let src_path = manifest_dir.join("src/main.sw");
         let mut file = fs::File::open(&src_path).unwrap();
         let mut sway_program = String::new();

@@ -61,7 +61,9 @@ impl TextDocument {
             .filter(|((_, _), token)| {
                 if token.typed.is_some() {
                     current_type_id == utils::token::get_type_id(token)
-                } else { false }
+                } else {
+                    false
+                }
             })
             .map(|((ident, _), token)| (ident, token))
             .collect()
@@ -109,11 +111,15 @@ impl TextDocument {
             .unwrap();
         let (parsed_res, ast_res) = pkg::check(&plan, silent_mode).unwrap();
 
-
         let r = self.parse_tokens_from_text(parsed_res);
-        
-        //self.test_typed_parse(ast_res);
 
+        //self.test_typed_parse(ast_res);
+        for ((ident, _), t) in self.get_token_map() {
+            if ident.as_str() == "modulo" {
+                eprintln!("WE GOT A MODULO!");
+                eprintln!("{:#?}", t);
+            }
+        }
         r
     }
 

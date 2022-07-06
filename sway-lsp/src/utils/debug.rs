@@ -25,9 +25,7 @@ pub fn generate_warnings_non_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> 
 pub fn generate_warnings_for_parsed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
     let warnings = tokens
         .iter()
-        .map(|((ident, _), token_type)| {
-            (ident, &token_type.parsed)
-        })
+        .map(|((ident, _), token_type)| (ident, &token_type.parsed))
         .map(|(ident, _)| warning_from_ident(ident))
         .collect();
 
