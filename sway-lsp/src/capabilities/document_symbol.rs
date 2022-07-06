@@ -1,6 +1,6 @@
 use crate::core::{
     session::Session,
-    token::{TokenMap, TokenType, AstToken, TypedAstToken},
+    token::{AstToken, TokenMap, TokenType, TypedAstToken},
 };
 use crate::utils::common::get_range_from_span;
 use std::sync::Arc;
@@ -12,7 +12,6 @@ use sway_core::{
 };
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{DocumentSymbolResponse, Location, SymbolInformation, SymbolKind, Url};
-
 
 pub fn document_symbol(session: Arc<Session>, url: Url) -> Option<DocumentSymbolResponse> {
     session

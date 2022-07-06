@@ -65,7 +65,7 @@ fn capabilities() -> ServerCapabilities {
             ..Default::default()
         }),
         document_formatting_provider: Some(OneOf::Left(true)),
-        ..ServerCapabilities::default() 
+        ..ServerCapabilities::default()
     }
 }
 
@@ -247,11 +247,11 @@ mod tests {
 
     fn e2e_test_dir() -> PathBuf {
         env::current_dir()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .join("test/src/e2e_vm_tests/test_programs/should_pass/language")
-        .join("enum_if_let_large_type")
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("test/src/e2e_vm_tests/test_programs/should_pass/language")
+            .join("is_reference_type")
     }
 
     fn sway_example_dir() -> PathBuf {
@@ -263,7 +263,7 @@ mod tests {
     }
 
     fn load_sway_example() -> (Url, String) {
-        let manifest_dir = e2e_test_dir();//sway_example_dir();
+        let manifest_dir = e2e_test_dir(); //sway_example_dir();
         let src_path = manifest_dir.join("src/main.sw");
         let mut file = fs::File::open(&src_path).unwrap();
         let mut sway_program = String::new();

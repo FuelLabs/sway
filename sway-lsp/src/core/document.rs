@@ -112,18 +112,18 @@ impl TextDocument {
             if let Ok(plan) = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline, SWAY_GIT_TAG) {
                 if let Ok((parsed_res, ast_res)) = pkg::check(&plan, silent_mode) {
                     let r = self.parse_tokens_from_text(parsed_res);
-                    for ((ident,_), t) in self.get_token_map() {
-                        if ident.as_str() == "product.number_sold" {
+                    for ((ident, _), t) in self.get_token_map() {
+                        if ident.as_str() == "not" {
                             eprintln!("token = {:#?}", t);
-                        } 
+                        }
                     }
                     self.test_typed_parse(ast_res);
-                    return r
+                    return r;
                 }
             }
         }
 
-        Err(DocumentError::DocumentNotFound)        
+        Err(DocumentError::DocumentNotFound)
     }
 
     pub fn apply_change(&mut self, change: &TextDocumentContentChangeEvent) {
