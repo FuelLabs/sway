@@ -386,7 +386,8 @@ fn validate_graph(
         Err(_) => return graph.edge_indices().collect(),
     };
     // Collect all invalid dependency nodes.
-    validate_deps(graph, proj_node, proj_manifest, sway_git_tag)
+    let mut visited = HashSet::new();
+    validate_deps(graph, proj_node, proj_manifest, sway_git_tag, &mut visited)
 }
 
 /// Validate all dependency nodes in the `graph`, traversing from `node`.
@@ -397,6 +398,7 @@ fn validate_deps(
     node: NodeIx,
     node_manifest: &ManifestFile,
     sway_git_tag: &str,
+    visited: &mut HashSet<NodeIx>,
 ) -> BTreeSet<EdgeIx> {
     let mut remove = BTreeSet::default();
     for edge in graph.edges_directed(node, Direction::Outgoing) {
@@ -407,7 +409,10 @@ fn validate_deps(
                 remove.insert(edge.id());
             }
             Ok(dep_manifest) => {
-                remove.extend(validate_deps(graph, dep_node, &dep_manifest, sway_git_tag));
+                if visited.insert(dep_node) {
+                    let rm = validate_deps(graph, dep_node, &dep_manifest, sway_git_tag, visited);
+                    remove.extend(rm);
+                }
                 continue;
             }
         }
