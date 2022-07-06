@@ -1067,7 +1067,7 @@ fn fetch_deps(
         };
 
         // Add the edge to the dependency.
-        graph.add_edge(node, dep_node, dep_name.to_string());
+        graph.update_edge(node, dep_node, dep_name.to_string());
 
         // If we've visited this node during this traversal already, no need to traverse it again.
         if !visited.insert(dep_node) {

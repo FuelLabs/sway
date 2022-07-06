@@ -159,7 +159,7 @@ impl Lock {
                     .cloned()
                     .ok_or_else(|| anyhow!("found dep {} without node entry in graph", dep_key))?;
                 let dep_name = dep_name.unwrap_or(&graph[dep_node].name).to_string();
-                graph.add_edge(node, dep_node, dep_name);
+                graph.update_edge(node, dep_node, dep_name);
             }
         }
 
