@@ -1789,10 +1789,7 @@ fn storage_field_to_storage_field(
     let storage_field = StorageField {
         name: storage_field.name,
         type_info: ty_to_type_info(ec, storage_field.ty)?,
-        initializer: storage_field
-            .initializer
-            .map(|initializer| expr_to_expression(ec, initializer.1))
-            .transpose()?,
+        initializer: expr_to_expression(ec, storage_field.initializer)?,
     };
     Ok(storage_field)
 }

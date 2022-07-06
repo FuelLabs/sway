@@ -449,15 +449,12 @@ impl TypedAstNode {
                                 );
 
                                 let mut ctx = ctx.by_ref().with_type_annotation(type_id);
-                                let initializer = match initializer {
-                                    Some(initializer) => Some(check!(
-                                        TypedExpression::type_check(ctx.by_ref(), initializer),
-                                        return err(warnings, errors),
-                                        warnings,
-                                        errors,
-                                    )),
-                                    None => None,
-                                };
+                                let initializer = check!(
+                                    TypedExpression::type_check(ctx.by_ref(), initializer),
+                                    return err(warnings, errors),
+                                    warnings,
+                                    errors,
+                                );
 
                                 fields_buf.push(TypedStorageField::new(
                                     name,
