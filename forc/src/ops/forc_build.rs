@@ -79,7 +79,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     profile.time_phases |= time_phases;
 
     // Build it!
-    let (compiled, source_map) = pkg::build(&plan, &profile, SWAY_GIT_TAG)?;
+    let (compiled, source_map) = pkg::build(&plan, &profile)?;
 
     if let Some(outfile) = binary_outfile {
         fs::write(&outfile, &compiled.bytecode)?;

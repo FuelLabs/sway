@@ -14,7 +14,7 @@ use sway_utils::constants;
 type PatchMap = BTreeMap<String, Dependency>;
 
 /// A [Manifest] that was deserialized from a file at a particular path.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ManifestFile {
     /// The deserialized `Forc.toml`.
     manifest: Manifest,
@@ -23,7 +23,7 @@ pub struct ManifestFile {
 }
 
 /// A direct mapping to a `Forc.toml`.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct Manifest {
     pub project: Project,
@@ -33,7 +33,7 @@ pub struct Manifest {
     build_profile: Option<BTreeMap<String, BuildProfile>>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct Project {
     pub authors: Option<Vec<String>>,
@@ -45,14 +45,14 @@ pub struct Project {
     pub implicit_std: Option<bool>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct Network {
     #[serde(default = "default_url")]
     pub url: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(untagged)]
 pub enum Dependency {
     /// In the simple format, only a version is specified, eg.
@@ -64,7 +64,7 @@ pub enum Dependency {
     Detailed(DependencyDetails),
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "kebab-case")]
 pub struct DependencyDetails {
     pub(crate) version: Option<String>,
@@ -77,7 +77,7 @@ pub struct DependencyDetails {
 }
 
 /// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct BuildProfile {
     pub print_ir: bool,
@@ -358,7 +358,7 @@ impl Manifest {
     pub fn dep_detailed(&self, dep_name: &str) -> Option<&DependencyDetails> {
         self.dep(dep_name).and_then(|dep| match dep {
             Dependency::Simple(_) => None,
-            Dependency::Detailed(detailed) => Some(detailed)
+            Dependency::Detailed(detailed) => Some(detailed),
         })
     }
 
