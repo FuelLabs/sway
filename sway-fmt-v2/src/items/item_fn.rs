@@ -30,14 +30,14 @@ impl CurlyBrace for ItemFn {
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        line.push(Delimiter::Brace.as_open_char());
+        write!(line, "{}", Delimiter::Brace.as_open_char())?;
         Ok(())
     }
     fn close_curly_brace(
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        line.push(Delimiter::Brace.as_close_char());
+        write!(line, "{}", Delimiter::Brace.as_close_char())?;
         Ok(())
     }
 }
@@ -76,31 +76,31 @@ impl Format for FnSignature {
                 mutable_self,
                 args_opt,
             } => {
-                // mut
+                // `mut `
                 if let Some(mut_token) = mutable_self {
                     write!(formatted_code, "{} ", mut_token.span().as_str())?;
                 }
-                // self
+                // `self`
                 formatted_code.push_str(self_token.span().as_str());
-                // args
+                // `args_opt`
                 if let Some(args) = args_opt {
                     // `, `
                     write!(formatted_code, "{} ", args.0.span().as_str())?;
+                    // `Punctuated<FnArg, CommaToken>`
                     args.1.format(formatted_code, formatter)?;
                 }
             }
         }
         // `)`
         Self::close_parenthesis(formatted_code, formatter)?;
-        // return_type_opt
+        // `return_type_opt`
         if let Some(return_type) = &self.return_type_opt {
-            // TODO: fix when `ty` formatting is done
             write!(
                 formatted_code,
-                " {} {}",
-                return_type.0.span().as_str(), // `->`
-                return_type.1.span().as_str()  // `Ty`
+                " {} ",
+                return_type.0.span().as_str() // `->`
             )?;
+            return_type.1.format(formatted_code, formatter)?; // `Ty`
         }
         // `WhereClause`
         if let Some(where_clause) = &self.where_clause_opt {
@@ -116,14 +116,14 @@ impl Parenthesis for FnSignature {
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        line.push(Delimiter::Parenthesis.as_open_char());
+        write!(line, "{}", Delimiter::Parenthesis.as_open_char())?;
         Ok(())
     }
     fn close_parenthesis(
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        line.push(Delimiter::Parenthesis.as_close_char());
+        write!(line, "{}", Delimiter::Parenthesis.as_close_char())?;
         Ok(())
     }
 }
@@ -153,12 +153,10 @@ impl Format for FnArg {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         self.pattern.format(formatted_code, formatter)?;
-        write!(
-            formatted_code,
-            "{} {}",
-            self.colon_token.span().as_str(),
-            self.ty.span().as_str() // Update once `Ty` formatting is merged
-        )?;
+        // `: `
+        write!(formatted_code, "{} ", self.colon_token.span().as_str())?;
+        // `Ty`
+        self.ty.format(formatted_code, formatter)?;
 
         Ok(())
     }
