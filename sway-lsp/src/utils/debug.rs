@@ -12,11 +12,23 @@ pub struct DebugFlags {
     pub parsed_tokens_as_warnings: bool,
 }
 
-pub fn generate_warnings_for_parsed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
+pub fn generate_warnings_non_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
     let warnings = tokens
         .iter()
         .filter(|(_, v)| v.typed.is_none())
         .map(|((ident, _), _)| warning_from_ident(ident))
+        .collect();
+
+    warnings
+}
+
+pub fn generate_warnings_for_parsed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
+    let warnings = tokens
+        .iter()
+        .map(|((ident, _), token_type)| {
+            (ident, &token_type.parsed)
+        })
+        .map(|(ident, _)| warning_from_ident(ident))
         .collect();
 
     warnings

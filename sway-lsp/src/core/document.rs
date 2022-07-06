@@ -108,7 +108,7 @@ impl TextDocument {
 
         let r = self.parse_tokens_from_text(parsed_res);
         
-        self.test_typed_parse(ast_res);
+        //self.test_typed_parse(ast_res);
 
         r
     }
