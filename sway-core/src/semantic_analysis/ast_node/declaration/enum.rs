@@ -211,7 +211,8 @@ impl TypedEnumVariant {
             ctx.resolve_type_with_self(
                 insert_type(variant.type_info),
                 &variant.span,
-                EnforceTypeArguments::Yes
+                EnforceTypeArguments::Yes,
+                None
             ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,

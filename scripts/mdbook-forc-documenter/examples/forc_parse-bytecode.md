@@ -1,5 +1,5 @@
 
-## EXAMPLE:
+## EXAMPLE
 
 We can try this command with the initial project created using `forc init`, with the counter template:
 
