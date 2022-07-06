@@ -407,7 +407,10 @@ fn construct_window<'a>(
     *start_ix -= std::cmp::min(calculated_start_ix, *start_ix);
     *end_ix -= std::cmp::min(calculated_start_ix, *end_ix);
     start.line = lines_to_start_of_snippet;
-    &input[calculated_start_ix..calculated_end_ix]
+
+    // The length of input must be at least as big as *end_ix. This is required by the
+    // annotate_snippets library
+    &input[calculated_start_ix..std::cmp::max(calculated_start_ix + *end_ix, calculated_end_ix)]
 }
 
 const LOG_FILTER: &str = "RUST_LOG";
