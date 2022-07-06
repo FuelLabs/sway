@@ -14,36 +14,45 @@ impl Format for ItemAbi {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        // Add enum token
-        write!(formatted_code, "{} ", self.abi_token.span().as_str())?;
-
-        // Add name of the abi
-        formatted_code.push_str(self.name.as_str());
+        // `abi name`
+        write!(
+            formatted_code,
+            "{} {}",
+            self.abi_token.span().as_str(),
+            self.name.as_str()
+        )?;
         Self::open_curly_brace(formatted_code, formatter)?;
 
-        // Add item fields
         // abi_items
         let mut abi_items_iter = self.abi_items.get().iter().peekable();
         while let Some(item) = abi_items_iter.next() {
             let attribute_list = item.0.attribute_list.clone();
             // add indent + format attribute if it exists
             if !attribute_list.is_empty() {
-                formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
+                write!(
+                    formatted_code,
+                    "{}",
+                    &formatter.shape.indent.to_string(formatter),
+                )?;
                 for attr in attribute_list {
                     attr.format(formatted_code, formatter)?;
                 }
             }
             // add indent + format item
-            formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
+            write!(
+                formatted_code,
+                "{}",
+                &formatter.shape.indent.to_string(formatter),
+            )?;
             writeln!(
                 formatted_code,
                 "{}{}",
-                item.0.value.span().as_str(), // FnSignature formatting (todo!)
+                item.0.value.span().as_str(), // TODO(PR #2173): FnSignature formatting
                 item.1.span().as_str()        // SemicolonToken
             )?;
 
             if abi_items_iter.peek().is_some() {
-                formatted_code.push('\n');
+                writeln!(formatted_code)?;
             }
         }
 
@@ -54,17 +63,26 @@ impl Format for ItemAbi {
                 let attribute_list = item.attribute_list.clone();
                 // add indent + format attribute if it exists
                 if !attribute_list.is_empty() {
-                    formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
+                    write!(
+                        formatted_code,
+                        "{}",
+                        &formatter.shape.indent.to_string(formatter),
+                    )?;
                     for attr in attribute_list {
                         attr.format(formatted_code, formatter)?;
                     }
                 }
 
                 // add indent + format item
-                formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
-                item.value.format(formatted_code, formatter)?; // ItemFn formatting (todo!)
+                write!(
+                    formatted_code,
+                    "{}",
+                    &formatter.shape.indent.to_string(formatter),
+                )?;
+                item.value.format(formatted_code, formatter)?; // TODO(PR #2173): ItemFn formatting
+
                 if iter.peek().is_some() {
-                    formatted_code.push('\n');
+                    writeln!(formatted_code)?;
                 }
             }
         }

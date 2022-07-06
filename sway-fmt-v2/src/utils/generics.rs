@@ -2,6 +2,7 @@ use crate::{
     fmt::{Format, FormattedCode, Formatter, FormatterError},
     utils::bracket::AngleBracket,
 };
+use std::fmt::Write;
 use sway_parse::{GenericArgs, GenericParams};
 use sway_types::Spanned;
 
@@ -34,7 +35,11 @@ impl AngleBracket for GenericParams {
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        line.push_str(self.parameters.open_angle_bracket_token.span().as_str());
+        write!(
+            line,
+            "{}",
+            self.parameters.open_angle_bracket_token.span().as_str()
+        )?;
         Ok(())
     }
     fn close_angle_bracket(
@@ -42,7 +47,11 @@ impl AngleBracket for GenericParams {
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        line.push_str(self.parameters.close_angle_bracket_token.span().as_str());
+        write!(
+            line,
+            "{}",
+            self.parameters.close_angle_bracket_token.span().as_str()
+        )?;
         Ok(())
     }
 }
@@ -73,7 +82,11 @@ impl AngleBracket for GenericArgs {
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        line.push_str(self.parameters.open_angle_bracket_token.span().as_str());
+        write!(
+            line,
+            "{}",
+            self.parameters.open_angle_bracket_token.span().as_str()
+        )?;
         Ok(())
     }
     fn close_angle_bracket(
@@ -81,7 +94,11 @@ impl AngleBracket for GenericArgs {
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        line.push_str(self.parameters.close_angle_bracket_token.span().as_str());
+        write!(
+            line,
+            "{}",
+            self.parameters.close_angle_bracket_token.span().as_str()
+        )?;
         Ok(())
     }
 }
