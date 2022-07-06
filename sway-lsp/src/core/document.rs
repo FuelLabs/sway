@@ -115,8 +115,8 @@ impl TextDocument {
 
         //self.test_typed_parse(ast_res);
         for ((ident, _), t) in self.get_token_map() {
-            if ident.as_str() == "modulo" {
-                eprintln!("WE GOT A MODULO!");
+            if ident.as_str().contains("__") {
+                eprintln!("WE GOT A STANGE MATCH NAME!");
                 eprintln!("{:#?}", t);
             }
         }

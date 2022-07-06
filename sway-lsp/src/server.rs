@@ -250,7 +250,7 @@ mod tests {
             .unwrap()
             .parent()
             .unwrap()
-            .join("examples/fizzbuzz");
+            .join("examples/match_statements");
         let src_path = manifest_dir.join("src/main.sw");
         let mut file = fs::File::open(&src_path).unwrap();
         let mut sway_program = String::new();
