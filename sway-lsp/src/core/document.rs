@@ -156,13 +156,15 @@ impl TextDocument {
 // private methods
 impl TextDocument {
     fn parse_typed_tokens_from_text(&self) -> Option<Vec<TypedAstNode>> {
+        use forc::utils::SWAY_GIT_TAG;
         let manifest_dir = PathBuf::from(self.get_uri());
         let silent_mode = true;
-        let manifest =
-            pkg::ManifestFile::from_dir(&manifest_dir, forc::utils::SWAY_GIT_TAG).unwrap();
-        let lock_path = forc_util::lock_path(manifest.dir());
-        let plan = pkg::BuildPlan::from_lock_file(&lock_path, forc::utils::SWAY_GIT_TAG).unwrap();
-        let res = pkg::check(&plan, silent_mode, forc::utils::SWAY_GIT_TAG).unwrap();
+        let manifest = pkg::ManifestFile::from_dir(&manifest_dir, SWAY_GIT_TAG).unwrap();
+        let locked = false;
+        let offline = false;
+        let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline, SWAY_GIT_TAG)
+            .unwrap();
+        let res = pkg::check(&plan, silent_mode).unwrap();
 
         match res {
             CompileAstResult::Failure { .. } => None,
