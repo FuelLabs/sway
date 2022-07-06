@@ -58,7 +58,11 @@ impl TextDocument {
 
         self.token_map
             .iter()
-            .filter(|((_, _), token)| current_type_id == utils::token::get_type_id(token))
+            .filter(|((_, _), token)| {
+                if token.typed.is_some() {
+                    current_type_id == utils::token::get_type_id(token)
+                } else { false }
+            })
             .map(|((ident, _), token)| (ident, token))
             .collect()
     }
