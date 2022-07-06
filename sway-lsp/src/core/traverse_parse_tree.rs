@@ -7,11 +7,8 @@ use crate::{
 use sway_types::ident::Ident;
 
 use sway_core::{
-    constants::{
-        TUPLE_NAME_PREFIX,
-        MATCH_RETURN_VAR_NAME_PREFIX
-    }, AstNode, AstNodeContent, Declaration, Expression,
-    FunctionDeclaration, TypeInfo, WhileLoop,
+    constants::{MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX},
+    AstNode, AstNodeContent, Declaration, Expression, FunctionDeclaration, TypeInfo, WhileLoop,
 };
 
 pub fn traverse_node(node: &AstNode, tokens: &mut TokenMap) {
@@ -74,7 +71,12 @@ fn handle_declaration(declaration: &Declaration, tokens: &mut TokenMap) {
         Declaration::VariableDeclaration(variable) => {
             // Don't collect tokens if the ident's name contains __tuple_ || __match_return_var_name_
             // The individual elements are handled in the subsequent VariableDeclaration's
-            if !variable.name.as_str().contains(TUPLE_NAME_PREFIX) && !variable.name.as_str().contains(MATCH_RETURN_VAR_NAME_PREFIX) {
+            if !variable.name.as_str().contains(TUPLE_NAME_PREFIX)
+                && !variable
+                    .name
+                    .as_str()
+                    .contains(MATCH_RETURN_VAR_NAME_PREFIX)
+            {
                 tokens.insert(
                     to_ident_key(&variable.name),
                     TokenType::from_parsed(AstToken::Declaration(declaration.clone())),
@@ -225,7 +227,9 @@ fn handle_expression(expression: &Expression, tokens: &mut TokenMap) {
             handle_expression(rhs, tokens);
         }
         Expression::VariableExpression { name, .. } => {
-            if !name.as_str().contains(TUPLE_NAME_PREFIX) && !name.as_str().contains(MATCH_RETURN_VAR_NAME_PREFIX) {
+            if !name.as_str().contains(TUPLE_NAME_PREFIX)
+                && !name.as_str().contains(MATCH_RETURN_VAR_NAME_PREFIX)
+            {
                 tokens.insert(
                     to_ident_key(name),
                     TokenType::from_parsed(AstToken::Expression(expression.clone())),

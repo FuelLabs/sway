@@ -65,7 +65,7 @@ fn capabilities() -> ServerCapabilities {
             ..Default::default()
         }),
         document_formatting_provider: Some(OneOf::Left(true)),
-        ..ServerCapabilities::default()
+        ..ServerCapabilities::default() 
     }
 }
 
@@ -250,7 +250,7 @@ mod tests {
             .unwrap()
             .parent()
             .unwrap()
-            .join("examples/match_statements");
+            .join("examples/fizzbuzz");
         let src_path = manifest_dir.join("src/main.sw");
         let mut file = fs::File::open(&src_path).unwrap();
         let mut sway_program = String::new();
