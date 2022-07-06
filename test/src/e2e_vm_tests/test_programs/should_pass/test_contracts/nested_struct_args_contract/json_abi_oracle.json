@@ -8,26 +8,31 @@
               {
                 "components": null,
                 "name": "foo",
-                "type": "u64"
+                "type": "u64",
+                "typeArguments": null
               }
             ],
             "name": "inn",
-            "type": "struct Inner"
+            "type": "struct Inner",
+            "typeArguments": null
           }
         ],
         "name": "input1",
-        "type": "struct StructOne"
+        "type": "struct StructOne",
+        "typeArguments": null
       },
       {
         "components": [
           {
             "components": null,
             "name": "foo",
-            "type": "u64"
+            "type": "u64",
+            "typeArguments": null
           }
         ],
         "name": "input2",
-        "type": "struct StructTwo"
+        "type": "struct StructTwo",
+        "typeArguments": null
       }
     ],
     "name": "foo",
@@ -35,7 +40,8 @@
       {
         "components": null,
         "name": "",
-        "type": "u64"
+        "type": "u64",
+        "typeArguments": null
       }
     ],
     "type": "function"

@@ -4,7 +4,8 @@
       {
         "components": null,
         "name": "storage_key",
-        "type": "b256"
+        "type": "b256",
+        "typeArguments": null
       }
     ],
     "name": "get_u64",
@@ -12,7 +13,8 @@
       {
         "components": null,
         "name": "",
-        "type": "u64"
+        "type": "u64",
+        "typeArguments": null
       }
     ],
     "type": "function"
@@ -22,12 +24,14 @@
       {
         "components": null,
         "name": "key",
-        "type": "b256"
+        "type": "b256",
+        "typeArguments": null
       },
       {
         "components": null,
         "name": "value",
-        "type": "u64"
+        "type": "u64",
+        "typeArguments": null
       }
     ],
     "name": "store_u64",
@@ -35,7 +39,8 @@
       {
         "components": [],
         "name": "",
-        "type": "()"
+        "type": "()",
+        "typeArguments": null
       }
     ],
     "type": "function"

@@ -1199,13 +1199,13 @@ dependencies = [
  "anyhow",
  "forc-util",
  "fuel-tx",
- "fuels-types",
  "git2",
  "petgraph",
  "semver 1.0.11",
  "serde",
  "serde_ignored",
  "sway-core",
+ "sway-types",
  "sway-utils",
  "toml",
  "tracing",
@@ -1395,18 +1395,6 @@ dependencies = [
  "sha3 0.9.1",
  "thiserror",
  "tracing",
-]
-
-[[package]]
-name = "fuels-types"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fdcf825c7e74d7af80f0d9b86edcaef481bd62644b976ba55bc48ad5d3d63a7"
-dependencies = [
- "anyhow",
- "serde",
- "strum",
- "strum_macros",
 ]
 
 [[package]]
@@ -3602,24 +3590,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "strum"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aaf86bbcfd1fa9670b7a129f64fc0c9fcbbfe4f1bc4210e9e98fe71ffc12cde2"
-
-[[package]]
-name = "strum_macros"
-version = "0.21.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d06aaeeee809dbc59eb4556183dd927df67db1540de5be8d3ec0b6636358a5ec"
-dependencies = [
- "heck 0.3.3",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "subtle"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3660,7 +3630,6 @@ dependencies = [
  "fuel-tx",
  "fuel-types",
  "fuel-vm",
- "fuels-types",
  "hex",
  "im",
  "itertools",

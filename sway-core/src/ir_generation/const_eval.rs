@@ -1,6 +1,5 @@
 use crate::{
     error::CompileError,
-    parse_tree::Visibility,
     semantic_analysis::{
         declaration::ProjectionKind, namespace, TypedAstNode, TypedAstNodeContent,
         TypedConstantDeclaration, TypedDeclaration, TypedExpression, TypedExpressionVariant,
@@ -47,15 +46,8 @@ pub fn compile_const_decl(
                 TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
                     name,
                     value,
-                    visibility,
-                }) => {
-                    // XXX Do we really only add public constants?
-                    if !env.public_only || matches!(visibility, Visibility::Public) {
-                        Some((name, value))
-                    } else {
-                        None
-                    }
-                }
+                    ..
+                }) => Some((name, value)),
                 _otherwise => None,
             };
             if let Some((name, value)) = decl_name_value {
