@@ -1,7 +1,7 @@
 library utils;
 
 dep data_structures;
-use data_structures::{Foo, Point, Line};
+use data_structures::{Foo, Line, Point};
 
 fn hardcoded_instantiation() -> Foo {
     // Instantiate `foo` as `Foo`

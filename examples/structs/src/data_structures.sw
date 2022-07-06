@@ -7,12 +7,12 @@ pub struct Foo {
 }
 
 // Struct types for destructuring
-struct Point {
+pub struct Point {
     x: u64,
     y: u64,
 }
 
-struct Line {
+pub struct Line {
     p1: Point,
     p2: Point,
 }
