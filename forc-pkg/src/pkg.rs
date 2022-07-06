@@ -387,7 +387,7 @@ fn validate_graph(
     proj_manifest: &ManifestFile,
     sway_git_tag: &str,
 ) -> BTreeSet<EdgeIx> {
-    // If we we don't have a project node, remove everything as we can't validate dependencies
+    // If we don't have a project node, remove everything as we can't validate dependencies
     // without knowing where to start.
     let proj_node = match find_proj_node(graph, &proj_manifest.project.name) {
         Ok(node) => node,
