@@ -124,15 +124,12 @@ fn format_struct(
                         }
                     }
                     // Add `:`, `ty` & `CommaToken`
-                    //
-                    // TODO(#2101): We are currently converting ty to string directly but
-                    // we will probably need to format `ty` before adding.
                     write!(
                         formatted_code,
-                        " {} {}",
+                        " {} ",
                         type_field.colon_token.ident().as_str(),
-                        type_field.ty.span().as_str(),
                     )?;
+                    type_field.ty.format(formatted_code, formatter)?;
                     if value_pairs_iter.peek().is_some() {
                         writeln!(formatted_code, "{}", field.1.span().as_str())?;
                     } else if let Some(final_value) = &fields.final_value_opt {
