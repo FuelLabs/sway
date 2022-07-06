@@ -1,7 +1,7 @@
 use crate::{
     config::{items::ItemBraceStyle, user_def::FieldAlignment},
     fmt::{Format, FormattedCode, Formatter},
-    utils::{bracket::CurlyBrace, item::ItemLen},
+    utils::{bracket::CurlyBrace, item::ItemLenChars},
     FormatterError,
 };
 use std::fmt::Write;
@@ -35,13 +35,13 @@ impl Format for ItemStorage {
     }
 }
 
-impl ItemLen for ItemStorage {
+impl ItemLenChars for ItemStorage {
     fn get_formatted_len(&self) -> Result<usize, FormatterError> {
         // Format to single line and return the length
         let mut str_item = String::new();
         let mut formatter = Formatter::default();
         format_storage(self, &mut formatter, &mut str_item, false)?;
-        Ok(str_item.len() as usize)
+        Ok(str_item.chars().count() as usize)
     }
 }
 
