@@ -14,7 +14,6 @@ struct SimpleStruct {
 
 fn main() -> bool {
     test_vector_swap_u8();
-    test_vector_swap_u128();
     test_vector_swap_b256();
     test_vector_swap_struct();
     test_vector_swap_enum();
@@ -31,82 +30,6 @@ fn test_vector_swap_u8() {
     let number0 = 0u8;
     let number1 = 1u8;
     let number2 = 2u8;
-
-    vector.push(number0);
-    vector.push(number1);
-    vector.push(number2);
-
-    assert(vector.len() == 3);
-    assert(vector.capacity() == 4);
-    assert(vector.is_empty() == false);
-
-    match vector.get(0) {
-        Option::Some(val) => {
-            assert(val == number0)
-        },
-        Option::None => {
-            revert(0)
-        },
-    }
-
-    match vector.get(1) {
-        Option::Some(val) => {
-            assert(val == number1)
-        },
-        Option::None => {
-            revert(0)
-        },
-    }
-
-    match vector.get(2) {
-        Option::Some(val) => {
-            assert(val == number2)
-        },
-        Option::None => {
-            revert(0)
-        },
-    }
-
-    vector.swap(0, 2);
-
-    assert(vector.len() == 3);
-    assert(vector.capacity() == 4);
-    assert(vector.is_empty() == false);
-
-    match vector.get(0) {
-        Option::Some(val) => {
-            assert(val == number2)
-        },
-        Option::None => {
-            revert(0)
-        },
-    }
-
-    match vector.get(1) {
-        Option::Some(val) => {
-            assert(val == number1)
-        },
-        Option::None => {
-            revert(0)
-        },
-    }
-
-    match vector.get(2) {
-        Option::Some(val) => {
-            assert(val == number0)
-        },
-        Option::None => {
-            revert(0)
-        },
-    }
-}
-
-fn test_vector_swap_u128() {
-    let mut vector = ~Vec::new();
-
-    let number0 = ~U128::from(0, 0);
-    let number1 = ~U128::from(0, 1);
-    let number2 = ~U128::from(0, 2);
 
     vector.push(number0);
     vector.push(number1);
