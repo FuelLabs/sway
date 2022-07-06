@@ -28,10 +28,6 @@ There are three ways to instantiate the struct.
 
 Furthermore, multiple variables can be extracted from a struct using the destructuring syntax.
 
-```sway
-{{#include ../../../examples/structs/src/struct_destructuring.sw}}
-```
-
 ### Struct Memory Layout
 
 > **Note** 
