@@ -8,11 +8,13 @@
           {
             "components": null,
             "name": "value",
-            "type": "b256"
+            "type": "b256",
+            "typeArguments": null
           }
         ],
         "name": "",
-        "type": "struct ContractId"
+        "type": "struct ContractId",
+        "typeArguments": null
       }
     ],
     "type": "function"
@@ -24,11 +26,13 @@
           {
             "components": null,
             "name": "value",
-            "type": "b256"
+            "type": "b256",
+            "typeArguments": null
           }
         ],
         "name": "asset_id",
-        "type": "struct ContractId"
+        "type": "struct ContractId",
+        "typeArguments": null
       }
     ],
     "name": "get_this_balance",
@@ -36,7 +40,8 @@
       {
         "components": null,
         "name": "",
-        "type": "u64"
+        "type": "u64",
+        "typeArguments": null
       }
     ],
     "type": "function"
@@ -48,22 +53,26 @@
           {
             "components": null,
             "name": "value",
-            "type": "b256"
+            "type": "b256",
+            "typeArguments": null
           }
         ],
         "name": "asset_id",
-        "type": "struct ContractId"
+        "type": "struct ContractId",
+        "typeArguments": null
       },
       {
         "components": [
           {
             "components": null,
             "name": "value",
-            "type": "b256"
+            "type": "b256",
+            "typeArguments": null
           }
         ],
         "name": "cid",
-        "type": "struct ContractId"
+        "type": "struct ContractId",
+        "typeArguments": null
       }
     ],
     "name": "get_balance_of_contract",
@@ -71,7 +80,8 @@
       {
         "components": null,
         "name": "",
-        "type": "u64"
+        "type": "u64",
+        "typeArguments": null
       }
     ],
     "type": "function"
@@ -83,7 +93,8 @@
       {
         "components": null,
         "name": "",
-        "type": "u64"
+        "type": "u64",
+        "typeArguments": null
       }
     ],
     "type": "function"
@@ -97,11 +108,13 @@
           {
             "components": null,
             "name": "value",
-            "type": "b256"
+            "type": "b256",
+            "typeArguments": null
           }
         ],
         "name": "",
-        "type": "struct ContractId"
+        "type": "struct ContractId",
+        "typeArguments": null
       }
     ],
     "type": "function"
@@ -113,7 +126,8 @@
       {
         "components": null,
         "name": "",
-        "type": "u64"
+        "type": "u64",
+        "typeArguments": null
       }
     ],
     "type": "function"
@@ -125,7 +139,8 @@
       {
         "components": null,
         "name": "",
-        "type": "u64"
+        "type": "u64",
+        "typeArguments": null
       }
     ],
     "type": "function"
