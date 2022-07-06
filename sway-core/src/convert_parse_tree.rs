@@ -2585,16 +2585,16 @@ fn statement_let_to_ast_nodes(
                 // recursively create variable declarations
                 for pattern_struct_field in fields.into_inner().into_iter() {
                     //println!("{:?}", pattern_struct_field);
-                    let (field, (_, recursive_pattern)) = match pattern_struct_field {
+                    let (field, recursive_pattern) = match pattern_struct_field {
                         PatternStructField::Field {
                             field_name,
                             pattern_opt,
                         } => {
                             //println!("{:?}", field_name);
                             let recursive_pattern = match pattern_opt {
-                                Some(x) => x,
+                                Some((colon_token, box_pattern)) => *box_pattern,
                                 None => {
-                                    continue;
+                                    Pattern::Var { mutable: None, name: field_name.clone() }
                                 }
                             };
                             (field_name, recursive_pattern)
@@ -2615,7 +2615,7 @@ fn statement_let_to_ast_nodes(
                     // and add them to the ast nodes
                     ast_nodes.extend(unfold(
                         ec,
-                        *recursive_pattern,
+                        recursive_pattern,
                         ty_opt,
                         Expression::SubfieldExpression {
                             prefix: Box::new(new_expr.clone()),
