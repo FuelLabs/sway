@@ -891,8 +891,8 @@ fn graph_to_manifest_map(
             })
             .next()
             .ok_or_else(|| anyhow!("more than one root package detected in graph"))?;
-        let dep_path = dep_path(graph, parent_manifest, dep_name, dep_node, sway_git_tag)
-            .map_err(|e| {
+        let dep_path =
+            dep_path(graph, parent_manifest, dep_name, dep_node, sway_git_tag).map_err(|e| {
                 anyhow!(
                     "failed to construct path for dependency {:?}: {}",
                     dep_name,
