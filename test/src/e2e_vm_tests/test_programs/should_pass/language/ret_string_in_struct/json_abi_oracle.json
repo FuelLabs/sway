@@ -14,7 +14,7 @@
         ],
         "name": "",
         "type": "struct Wrapper",
-        "typeArguments": []
+        "typeArguments": null
       }
     ],
     "type": "function"

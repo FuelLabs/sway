@@ -16,7 +16,7 @@
                 ],
                 "name": "id",
                 "type": "struct Id",
-                "typeArguments": []
+                "typeArguments": null
               }
             ],
             "name": "__array_element",
@@ -46,7 +46,7 @@
                 ],
                 "name": "id",
                 "type": "struct Id",
-                "typeArguments": []
+                "typeArguments": null
               }
             ],
             "name": "__array_element",

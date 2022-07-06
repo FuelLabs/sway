@@ -20,7 +20,7 @@
         ],
         "name": "",
         "type": "struct BiggerThanAWord",
-        "typeArguments": []
+        "typeArguments": null
       }
     ],
     "type": "function"

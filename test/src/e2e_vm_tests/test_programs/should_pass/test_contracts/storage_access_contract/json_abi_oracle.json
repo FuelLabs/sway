@@ -108,12 +108,12 @@
             ],
             "name": "t",
             "type": "struct T",
-            "typeArguments": []
+            "typeArguments": null
           }
         ],
         "name": "s",
         "type": "struct S",
-        "typeArguments": []
+        "typeArguments": null
       }
     ],
     "name": "set_s",
@@ -316,7 +316,7 @@
         ],
         "name": "t",
         "type": "struct T",
-        "typeArguments": []
+        "typeArguments": null
       }
     ],
     "name": "set_s_dot_t",
@@ -527,12 +527,12 @@
             ],
             "name": "B",
             "type": "struct T",
-            "typeArguments": []
+            "typeArguments": null
           }
         ],
         "name": "e",
         "type": "enum E",
-        "typeArguments": []
+        "typeArguments": null
       }
     ],
     "name": "set_e",
@@ -663,12 +663,12 @@
             ],
             "name": "t",
             "type": "struct T",
-            "typeArguments": []
+            "typeArguments": null
           }
         ],
         "name": "",
         "type": "struct S",
-        "typeArguments": []
+        "typeArguments": null
       }
     ],
     "type": "function"
@@ -815,7 +815,7 @@
         ],
         "name": "",
         "type": "struct T",
-        "typeArguments": []
+        "typeArguments": null
       }
     ],
     "type": "function"
@@ -970,12 +970,12 @@
             ],
             "name": "B",
             "type": "struct T",
-            "typeArguments": []
+            "typeArguments": null
           }
         ],
         "name": "",
         "type": "enum E",
-        "typeArguments": []
+        "typeArguments": null
       }
     ],
     "type": "function"
@@ -1039,12 +1039,12 @@
             ],
             "name": "B",
             "type": "struct T",
-            "typeArguments": []
+            "typeArguments": null
           }
         ],
         "name": "",
         "type": "enum E",
-        "typeArguments": []
+        "typeArguments": null
       }
     ],
     "type": "function"

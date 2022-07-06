@@ -143,7 +143,7 @@
         ],
         "name": "arg4",
         "type": "struct MyOtherStruct",
-        "typeArguments": []
+        "typeArguments": null
       }
     ],
     "name": "complex_function",

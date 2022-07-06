@@ -14,12 +14,12 @@
             ],
             "name": "inn",
             "type": "struct Inner",
-            "typeArguments": []
+            "typeArguments": null
           }
         ],
         "name": "input1",
         "type": "struct StructOne",
-        "typeArguments": []
+        "typeArguments": null
       },
       {
         "components": [
@@ -32,7 +32,7 @@
         ],
         "name": "input2",
         "type": "struct StructTwo",
-        "typeArguments": []
+        "typeArguments": null
       }
     ],
     "name": "foo",

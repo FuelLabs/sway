@@ -14,7 +14,7 @@
             ],
             "name": "__tuple_element",
             "type": "struct Person",
-            "typeArguments": []
+            "typeArguments": null
           },
           {
             "components": null,
@@ -54,7 +54,7 @@
             ],
             "name": "__tuple_element",
             "type": "enum Location",
-            "typeArguments": []
+            "typeArguments": null
           },
           {
             "components": null,

@@ -58,7 +58,7 @@
         ],
         "name": "asset_id",
         "type": "struct ContractId",
-        "typeArguments": []
+        "typeArguments": null
       },
       {
         "components": [
@@ -71,7 +71,7 @@
         ],
         "name": "c_id",
         "type": "struct ContractId",
-        "typeArguments": []
+        "typeArguments": null
       }
     ],
     "name": "force_transfer",
