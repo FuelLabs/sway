@@ -2954,7 +2954,7 @@ build-profile.</p>
 <p>Silent mode. Don't output any warnings or errors to the command line</p>
 <p><code>--time-phases</code> </p>
 <p>Output the time elapsed over each part of the compilation process</p>
-<h2 id="example-2"><a class="header" href="#example-2">EXAMPLE:</a></h2>
+<h2 id="example-2"><a class="header" href="#example-2">EXAMPLE</a></h2>
 <p>Compile the sway files of the current project.</p>
 <pre><code class="language-console">$ forc build
 Compiled script &quot;my-fuel-project&quot;.
@@ -3005,7 +3005,7 @@ used</p>
 <p>[possible values: zsh, bash, fish, powershell, elvish]</p>
 <p>For more info:
 https://fuellabs.github.io/sway/latest/forc/commands/forc_completions.html</p>
-<h2 id="discussion"><a class="header" href="#discussion">DISCUSSION:</a></h2>
+<h2 id="discussion"><a class="header" href="#discussion">DISCUSSION</a></h2>
 <p>Enable tab completion for Bash, Fish, Zsh, or PowerShell
 The script is output on <code>stdout</code>, allowing one to re-direct the
 output to the file of their choosing. Where you place the file
@@ -3014,7 +3014,7 @@ using. Your particular configuration may also determine where
 these scripts need to be placed.</p>
 <p>Here are some common set ups for the three supported shells under
 Unix and similar operating systems (such as GNU/Linux).</p>
-<p><strong>BASH:</strong></p>
+<h3 id="bash"><a class="header" href="#bash">BASH</a></h3>
 <p>Completion files are commonly stored in <code>/etc/bash_completion.d/</code> for
 system-wide commands, but can be stored in
 <code>~/.local/share/bash-completion/completions</code> for user-specific commands.
@@ -3024,13 +3024,13 @@ forc completions --shell=bash &gt;&gt; ~/.local/share/bash-completion/completion
 </code></pre>
 <p>This installs the completion script. You may have to log out and
 log back in to your shell session for the changes to take effect.</p>
-<p><strong>BASH (macOS/Homebrew):</strong></p>
+<h3 id="bash-macoshomebrew"><a class="header" href="#bash-macoshomebrew">BASH (macOS/Homebrew)</a></h3>
 <p>Homebrew stores bash completion files within the Homebrew directory.
 With the <code>bash-completion</code> brew formula installed, run the command:</p>
 <pre><code class="language-sh">mkdir -p $(brew --prefix)/etc/bash_completion.d
 forc completions --shell=bash &gt; $(brew --prefix)/etc/bash_completion.d/forc.bash-completion
 </code></pre>
-<p><strong>FISH:</strong></p>
+<h3 id="fish"><a class="header" href="#fish">FISH</a></h3>
 <p>Fish completion files are commonly stored in
 <code>$HOME/.config/fish/completions</code>. Run the command:</p>
 <pre><code class="language-sh">mkdir -p ~/.config/fish/completions
@@ -3038,7 +3038,7 @@ forc completions --shell=fish &gt; ~/.config/fish/completions/forc.fish
 </code></pre>
 <p>This installs the completion script. You may have to log out and
 log back in to your shell session for the changes to take effect.</p>
-<p><strong>ZSH:</strong></p>
+<h3 id="zsh"><a class="header" href="#zsh">ZSH</a></h3>
 <p>ZSH completions are commonly stored in any directory listed in
 your <code>$fpath</code> variable. To use these completions, you must either
 add the generated script to one of those directories, or add your
@@ -3061,13 +3061,13 @@ command:</p>
 <pre><code class="language-sh">exec zsh
 </code></pre>
 <p>for the new completions to take effect.</p>
-<p><strong>CUSTOM LOCATIONS:</strong></p>
+<h3 id="custom-locations"><a class="header" href="#custom-locations">CUSTOM LOCATIONS</a></h3>
 <p>Alternatively, you could save these files to the place of your
 choosing, such as a custom directory inside your $HOME. Doing so
 will require you to add the proper directives, such as <code>source</code>ing
 inside your login script. Consult your shells documentation for
 how to add such directives.</p>
-<p><strong>POWERSHELL:</strong></p>
+<h3 id="powershell"><a class="header" href="#powershell">POWERSHELL</a></h3>
 <p>The powershell completion scripts require PowerShell v5.0+ (which
 comes with Windows 10, but can be downloaded separately for windows 7
 or 8.1).</p>
@@ -3138,7 +3138,7 @@ build-profile.</p>
 <p><code>-u</code>, <code>--url</code> &lt;<em>URL</em>&gt;</p>
 <p>The node url to deploy, if not specified uses DEFAULT_NODE_URL. If url is specified
 overrides network url in manifest file (if there is one)</p>
-<h2 id="example-3"><a class="header" href="#example-3">EXAMPLE:</a></h2>
+<h2 id="example-3"><a class="header" href="#example-3">EXAMPLE</a></h2>
 <p>You can use <code>forc deploy</code>, which triggers a contract deployment transaction and sends it to a running node.</p>
 <p>Alternatively, you can deploy your Sway contract programmatically using <a href="https://github.com/FuelLabs/fuels-rs">fuels-rs</a>, our Rust SDK.</p>
 <p>You can find an example within our <a href="https://fuellabs.github.io/fuels-rs/latest/getting-started/basics.html#deploying-a-sway-contract">fuels-rs book</a>.</p>
@@ -3164,7 +3164,7 @@ basic contract program</p>
 <p>Create a package with a script target (src/main.sw)</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
 <p>Use verbose output</p>
-<h2 id="example-4"><a class="header" href="#example-4">EXAMPLE:</a></h2>
+<h2 id="example-4"><a class="header" href="#example-4">EXAMPLE</a></h2>
 <pre><code class="language-console">$ forc init my-fuel-project
 $ cd my-fuel-project
 $ tree
@@ -3202,7 +3202,7 @@ be used</p>
 <p><code>-s</code>, <code>--silent</code> </p>
 <p>Silent mode. Don't output any warnings or errors to the command line</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="forc-new"><a class="header" href="#forc-new">forc-new</a></h1>
-<p>Create a new Forc project at <path></p>
+<p>Create a new Forc project at <code>&lt;path&gt;</code></p>
 <h2 id="usage-8"><a class="header" href="#usage-8">USAGE:</a></h2>
 <p>forc new [OPTIONS] <PATH></p>
 <h2 id="args"><a class="header" href="#args">ARGS:</a></h2>
@@ -3223,7 +3223,8 @@ basic contract program</p>
 <p><code>--script</code> </p>
 <p>Adding this flag creates an empty script program</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
-<p>Use verbose output## EXAMPLE:</p>
+<p>Use verbose output</p>
+<h2 id="example-5"><a class="header" href="#example-5">EXAMPLE</a></h2>
 <pre><code class="language-console">$ forc new my-fuel-project
 $ cd my-fuel-project
 $ tree
@@ -3247,7 +3248,7 @@ $ tree
 <h2 id="options-9"><a class="header" href="#options-9">OPTIONS:</a></h2>
 <p><code>-h</code>, <code>--help</code> </p>
 <p>Print help information</p>
-<h2 id="example-5"><a class="header" href="#example-5">EXAMPLE:</a></h2>
+<h2 id="example-6"><a class="header" href="#example-6">EXAMPLE</a></h2>
 <p>We can try this command with the initial project created using <code>forc init</code>, with the counter template:</p>
 <pre><code class="language-sh">forc new --template counter counter
 cd counter
@@ -3371,7 +3372,7 @@ All trailing arguments following <code>--</code> are collected within this argum
 <p><code>cargo test --color always</code></p>
 <p><code>-h</code>, <code>--help</code> </p>
 <p>Print help information</p>
-<h2 id="example-6"><a class="header" href="#example-6">EXAMPLE:</a></h2>
+<h2 id="example-7"><a class="header" href="#example-7">EXAMPLE</a></h2>
 <p>You can write tests in Rust using our <a href="https://github.com/FuelLabs/fuels-rs">Rust SDK</a>. These tests can be run using <code>forc test</code>, which will look for Rust tests under the <code>tests/</code> directory (which is created automatically with <code>forc new</code>).</p>
 <p>You can find an example under the <a href="forc/commands/../../testing/testing-with-rust.html">Testing with Rust</a> section.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="forc-update"><a class="header" href="#forc-update">forc-update</a></h1>
@@ -3405,13 +3406,13 @@ will be used</p>
 <p>The name of the template that needs to be fetched and used from git repo provided</p>
 <p><code>-u</code>, <code>--url</code> &lt;<em>URL</em>&gt;</p>
 <p>The template url, should be a git repo [default: https://github.com/fuellabs/sway]</p>
-<h2 id="example-7"><a class="header" href="#example-7">EXAMPLE:</a></h2>
+<h2 id="example-8"><a class="header" href="#example-8">EXAMPLE</a></h2>
 <pre><code class="language-sh">forc template --url https://github.com/owner/template/ --project_name my_example_project
 </code></pre>
-<p>The command above fetches the HEAD of the <code>template</code> repo and searchs for <code>Forc.toml</code> at the root of the fetched repo. It will fetch the repo and preapare a new <code>Forc.toml</code> with new project name. Outputs everthing to <code>current_dir/project_name</code>.</p>
-<pre><code class="language-sh">forc template --url https://github.com/FuelLabs/sway/ --template_name counter --project_name my_example_project
+<p>The command above fetches the <code>HEAD</code> of the <code>template</code> repo and searches for <code>Forc.toml</code> at the root of the fetched repo. It will fetch the repo and prepare a new <code>Forc.toml</code> with the new project name. Outputs everything to <code>current_dir/project_name</code>.</p>
+<pre><code class="language-sh">forc template --url https://github.com/FuelLabs/sway --template_name counter --project_name my_example_project
 </code></pre>
-<p>The command above fetches the HEAD of the <code>sway</code> repo and searchs for <code>counter</code> example inside it (There is an example called <code>counter</code> under <code>sway/examples</code>). It will fetch the <code>counter</code> example and preapare a new <code>Forc.toml</code> with new project name. Outputs everthing to <code>current_dir/project_name</code>..</p>
+<p>The command above fetches the HEAD of the <code>sway</code> repo and searches for <code>counter</code> example inside it (there is an example called <code>counter</code> under <code>sway/examples</code>). It will fetch the <code>counter</code> example and prepare a new <code>Forc.toml</code> with the new project name. Outputs everything to <code>current_dir/project_name</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="plugins"><a class="header" href="#plugins">Plugins</a></h1>
 <p>Plugins can be used to extend <code>forc</code> with new commands that go beyond the native commands mentioned in the previous chapter. While the Fuel ecosystem provides a few commonly useful plugins (<code>forc-fmt</code>, <code>forc-lsp</code>, <code>forc-explore</code>), anyone can write their own!</p>
 <p>Let's install a plugin, <code>forc-explore</code>, and see what's underneath the plugin:</p>

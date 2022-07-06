@@ -149,7 +149,7 @@
 <p>[possible values: zsh, bash, fish, powershell, elvish]</p>
 <p>For more info:
 https://fuellabs.github.io/sway/latest/forc/commands/forc_completions.html</p>
-<h2 id="discussion"><a class="header" href="#discussion">DISCUSSION:</a></h2>
+<h2 id="discussion"><a class="header" href="#discussion">DISCUSSION</a></h2>
 <p>Enable tab completion for Bash, Fish, Zsh, or PowerShell
 The script is output on <code>stdout</code>, allowing one to re-direct the
 output to the file of their choosing. Where you place the file
@@ -158,7 +158,7 @@ using. Your particular configuration may also determine where
 these scripts need to be placed.</p>
 <p>Here are some common set ups for the three supported shells under
 Unix and similar operating systems (such as GNU/Linux).</p>
-<p><strong>BASH:</strong></p>
+<h3 id="bash"><a class="header" href="#bash">BASH</a></h3>
 <p>Completion files are commonly stored in <code>/etc/bash_completion.d/</code> for
 system-wide commands, but can be stored in
 <code>~/.local/share/bash-completion/completions</code> for user-specific commands.
@@ -168,13 +168,13 @@ forc completions --shell=bash &gt;&gt; ~/.local/share/bash-completion/completion
 </code></pre>
 <p>This installs the completion script. You may have to log out and
 log back in to your shell session for the changes to take effect.</p>
-<p><strong>BASH (macOS/Homebrew):</strong></p>
+<h3 id="bash-macoshomebrew"><a class="header" href="#bash-macoshomebrew">BASH (macOS/Homebrew)</a></h3>
 <p>Homebrew stores bash completion files within the Homebrew directory.
 With the <code>bash-completion</code> brew formula installed, run the command:</p>
 <pre><code class="language-sh">mkdir -p $(brew --prefix)/etc/bash_completion.d
 forc completions --shell=bash &gt; $(brew --prefix)/etc/bash_completion.d/forc.bash-completion
 </code></pre>
-<p><strong>FISH:</strong></p>
+<h3 id="fish"><a class="header" href="#fish">FISH</a></h3>
 <p>Fish completion files are commonly stored in
 <code>$HOME/.config/fish/completions</code>. Run the command:</p>
 <pre><code class="language-sh">mkdir -p ~/.config/fish/completions
@@ -182,7 +182,7 @@ forc completions --shell=fish &gt; ~/.config/fish/completions/forc.fish
 </code></pre>
 <p>This installs the completion script. You may have to log out and
 log back in to your shell session for the changes to take effect.</p>
-<p><strong>ZSH:</strong></p>
+<h3 id="zsh"><a class="header" href="#zsh">ZSH</a></h3>
 <p>ZSH completions are commonly stored in any directory listed in
 your <code>$fpath</code> variable. To use these completions, you must either
 add the generated script to one of those directories, or add your
@@ -205,13 +205,13 @@ command:</p>
 <pre><code class="language-sh">exec zsh
 </code></pre>
 <p>for the new completions to take effect.</p>
-<p><strong>CUSTOM LOCATIONS:</strong></p>
+<h3 id="custom-locations"><a class="header" href="#custom-locations">CUSTOM LOCATIONS</a></h3>
 <p>Alternatively, you could save these files to the place of your
 choosing, such as a custom directory inside your $HOME. Doing so
 will require you to add the proper directives, such as <code>source</code>ing
 inside your login script. Consult your shells documentation for
 how to add such directives.</p>
-<p><strong>POWERSHELL:</strong></p>
+<h3 id="powershell"><a class="header" href="#powershell">POWERSHELL</a></h3>
 <p>The powershell completion scripts require PowerShell v5.0+ (which
 comes with Windows 10, but can be downloaded separately for windows 7
 or 8.1).</p>

@@ -151,13 +151,13 @@
 <p>The name of the template that needs to be fetched and used from git repo provided</p>
 <p><code>-u</code>, <code>--url</code> &lt;<em>URL</em>&gt;</p>
 <p>The template url, should be a git repo [default: https://github.com/fuellabs/sway]</p>
-<h2 id="example"><a class="header" href="#example">EXAMPLE:</a></h2>
+<h2 id="example"><a class="header" href="#example">EXAMPLE</a></h2>
 <pre><code class="language-sh">forc template --url https://github.com/owner/template/ --project_name my_example_project
 </code></pre>
-<p>The command above fetches the HEAD of the <code>template</code> repo and searchs for <code>Forc.toml</code> at the root of the fetched repo. It will fetch the repo and preapare a new <code>Forc.toml</code> with new project name. Outputs everthing to <code>current_dir/project_name</code>.</p>
-<pre><code class="language-sh">forc template --url https://github.com/FuelLabs/sway/ --template_name counter --project_name my_example_project
+<p>The command above fetches the <code>HEAD</code> of the <code>template</code> repo and searches for <code>Forc.toml</code> at the root of the fetched repo. It will fetch the repo and prepare a new <code>Forc.toml</code> with the new project name. Outputs everything to <code>current_dir/project_name</code>.</p>
+<pre><code class="language-sh">forc template --url https://github.com/FuelLabs/sway --template_name counter --project_name my_example_project
 </code></pre>
-<p>The command above fetches the HEAD of the <code>sway</code> repo and searchs for <code>counter</code> example inside it (There is an example called <code>counter</code> under <code>sway/examples</code>). It will fetch the <code>counter</code> example and preapare a new <code>Forc.toml</code> with new project name. Outputs everthing to <code>current_dir/project_name</code>..</p>
+<p>The command above fetches the HEAD of the <code>sway</code> repo and searches for <code>counter</code> example inside it (there is an example called <code>counter</code> under <code>sway/examples</code>). It will fetch the <code>counter</code> example and prepare a new <code>Forc.toml</code> with the new project name. Outputs everything to <code>current_dir/project_name</code>.</p>
 
                     </main>
 
