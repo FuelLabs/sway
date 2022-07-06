@@ -220,12 +220,12 @@ impl<T> Vec<T> {
     ///
     /// Reverts if `element1_index` or `element2_index` is greater than or equal to the length of vector.
     pub fn swap(mut self, element1_index: u64, element2_index: u64) {
+        assert(element1_index < self.len);
+        assert(element2_index < self.len);
+
         if element1_index == element2_index {
             return;
         }
-
-        assert(element1_index < self.len);
-        assert(element2_index < self.len);
 
         let val_size = size_of::<T>();
 
