@@ -208,8 +208,7 @@ impl ManifestFile {
             .and_then(|profiles| profiles.get(profile_name))
     }
 
-    /// Given the name of a dependency, if that dependency is `path` dependency, returns the full
-    /// canonical `Path` to the dependency.
+    /// Given the name of a `path` dependency, returns the full canonical `Path` to the dependency.
     pub fn dep_path(&self, dep_name: &str) -> Option<PathBuf> {
         let dir = self.dir();
         let details = self.dep_detailed(dep_name)?;

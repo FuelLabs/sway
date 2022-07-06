@@ -250,7 +250,7 @@ impl BuildPlan {
     /// The resulting build plan should always be in a valid state that is ready for building or
     /// checking.
     // TODO: Currently (if `--locked` isn't specified) this writes the updated lock directly. This
-    // probably should not be the role of the `BuildPlan::constructor` - instead, we should return
+    // probably should not be the role of the `BuildPlan` constructor - instead, we should return
     // the manifest alongside some lock diff type that can be used to optionally write the updated
     // lock file and print the diff.
     pub fn from_lock_and_manifest(
@@ -288,7 +288,7 @@ impl BuildPlan {
         remove_deps(&mut graph, &manifest.project.name, &invalid_deps);
 
         // We know that the remaining nodes have valid paths, otherwise they would have been
-        // removed. We can safely produce an initial `path_map`.
+        // removed. We can safely produce an initial `manifest_map`.
         let mut manifest_map = graph_to_manifest_map(manifest.clone(), &graph, sway_git_tag)?;
 
         // Attempt to fetch the remainder of the graph.
@@ -316,7 +316,7 @@ impl BuildPlan {
             new_lock_cause.get_or_insert(anyhow!("lock file did not match manifest"));
         }
 
-        // If there was some change in the lock file, write the new one and share the cause.
+        // If there was some change in the lock file, write the new one and print the cause.
         if let Some(cause) = new_lock_cause {
             if locked {
                 bail!(
@@ -355,8 +355,7 @@ impl BuildPlan {
 }
 
 /// Given a graph and the known project name retrieved from the manifest, produce an iterator
-/// yielding any nodes from the graph that might potentially be the project node. There should only
-/// ever be one, and this is used during initial graph validation to ensure that's the case.
+/// yielding any nodes from the graph that might potentially be the project node.
 fn potential_proj_nodes<'a>(g: &'a Graph, proj_name: &'a str) -> impl 'a + Iterator<Item = NodeIx> {
     g.node_indices()
         .filter(|&n| g.edges_directed(n, Direction::Incoming).next().is_none())
@@ -380,17 +379,16 @@ fn find_proj_node(graph: &Graph, proj_name: &str) -> Result<NodeIx> {
     }
 }
 
-/// Validates the state of the graph against the given project manifest.
+/// Validates the state of the pinned package graph against the given project manifest.
 ///
-/// Returns the set of invalid dependencies detected within the graph that should be removed.
+/// Returns the set of invalid dependency edges.
 fn validate_graph(
     graph: &Graph,
     proj_manifest: &ManifestFile,
     sway_git_tag: &str,
 ) -> BTreeSet<EdgeIx> {
-    // First, check the project node exists.
-    // If we we don't have exactly one potential project node, remove everything as we can't
-    // validate the graph without knowing the project node.
+    // If we we don't have a project node, remove everything as we can't validate dependencies
+    // without knowing where to start.
     let proj_node = match find_proj_node(graph, &proj_manifest.project.name) {
         Ok(node) => node,
         Err(_) => return graph.edge_indices().collect(),
@@ -400,9 +398,9 @@ fn validate_graph(
     validate_deps(graph, proj_node, proj_manifest, sway_git_tag, &mut visited)
 }
 
-/// Validate all dependency nodes in the `graph`, traversing from `node`.
+/// Recursively validate all dependencies of the given `node`.
 ///
-/// Returns the set of invalid nodes.
+/// Returns the set of invalid dependency edges.
 fn validate_deps(
     graph: &Graph,
     node: NodeIx,
@@ -858,8 +856,8 @@ impl Default for GitReference {
 pub fn compilation_order(graph: &Graph) -> Result<Vec<NodeIx>> {
     let rev_pkg_graph = petgraph::visit::Reversed(&graph);
     petgraph::algo::toposort(rev_pkg_graph, None).map_err(|_| {
-        // Find strongly connected components
-        // If the vector has an element with length more than 1, it contains a cyclic path.
+        // Find the strongly connected components.
+        // If the vector has an element with length > 1, it contains a cyclic path.
         let scc = petgraph::algo::kosaraju_scc(&graph);
         let mut path = String::new();
         scc.iter()
@@ -884,12 +882,10 @@ pub fn compilation_order(graph: &Graph) -> Result<Vec<NodeIx>> {
     })
 }
 
-/// Given a graph of pinned packages and the directory for the root node, produce a path map
-/// containing the path to the local source for every node in the graph.
+/// Given a graph of pinned packages and the project manifest, produce a map containing the
+/// manifest of for every node in the graph.
 ///
-/// This function returns an `Err` if it is unable to resolve the path of one or more of the nodes.
-/// It is designed to be called after calls to `validate_graph_with_manifest` and `remove_deps`,
-/// following which there should be no more nodes with invalid paths remaining in the graph.
+/// Assumes the given `graph` only contains valid dependencies (see `validate_graph`).
 fn graph_to_manifest_map(
     proj_manifest: ManifestFile,
     graph: &Graph,
@@ -897,7 +893,7 @@ fn graph_to_manifest_map(
 ) -> Result<ManifestMap> {
     let mut manifest_map = ManifestMap::new();
 
-    // We'll traverse the graph from the project node.
+    // Traverse the graph from the project node.
     let proj_node = match find_proj_node(graph, &proj_manifest.project.name) {
         Ok(node) => node,
         Err(_) => return Ok(manifest_map),
@@ -942,11 +938,7 @@ fn graph_to_manifest_map(
 /// `path_root` of the path dependency, ensure that the `path_root` is valid.
 ///
 /// See the `path_root` field of the [SourcePathPinned] type for further details.
-pub(crate) fn validate_path_root(
-    graph: &Graph,
-    path_dep: NodeIx,
-    path_root: PinnedId,
-) -> Result<()> {
+fn validate_path_root(graph: &Graph, path_dep: NodeIx, path_root: PinnedId) -> Result<()> {
     let path_root_node = find_path_root(graph, path_dep)?;
     if graph[path_root_node].id() != path_root {
         bail!(
@@ -1097,7 +1089,7 @@ fn fetch_deps(
             }
         };
 
-        // Add the edge to the dependency.
+        // Ensure we have an edge to the dependency.
         graph.update_edge(node, dep_node, dep_name.to_string());
 
         // If we've visited this node during this traversal already, no need to traverse it again.
