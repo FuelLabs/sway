@@ -86,7 +86,7 @@ impl Format for CommaToken {
         formatted_code: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(formatted_code, "{}", self.span().as_str())?;
+        write!(formatted_code, "{} ", self.span().as_str())?;
         Ok(())
     }
 }
