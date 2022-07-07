@@ -5,6 +5,9 @@ use utils::{
     wrappers::{clear, get, insert, is_empty, len, pop, push, remove, swap_remove},
 };
 
+// TODO: Many of these tests have no preconditional assertions because options are not supported
+// by the SDK
+
 mod success {
     use super::*;
 
@@ -98,7 +101,6 @@ mod success {
         assert_eq!(len_vec, 5);
     }
 
-    // Doubles as a test for is_empty
     #[tokio::test]
     async fn can_confirm_emptiness() {
         let (instance, _id) = get_contract_instance().await;
