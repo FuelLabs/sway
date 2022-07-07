@@ -6,7 +6,8 @@
       {
         "components": null,
         "name": "",
-        "type": "str[3]"
+        "type": "str[3]",
+        "typeArguments": null
       }
     ],
     "type": "function"

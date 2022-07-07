@@ -24,10 +24,6 @@ fn main() -> u64 {
     }
 }
 
-// regex: VAL=v\d+
-// regex: MD=!\d+
-// regex: ID=[_a-zA-Z][_0-9a-zA-Z]*
-
 // check: local ptr { u64, ( { { string<17>, u64 }, u64, bool } ) } b_val
 
 // check: get_ptr ptr { u64, ( { { string<17>, u64 }, u64, bool } ) } b_val, ptr { u64, ( { { string<17>, u64 }, u64, bool } ) }, 0

@@ -17,7 +17,7 @@ pub(crate) fn extract_var_body(var_dec: &VariableDeclaration) -> VarBody {
             VarBody::FunctionCall(name.suffix.as_str().into())
         }
         Expression::StructExpression { struct_name, .. } => {
-            VarBody::Type(struct_name.suffix.as_str().into())
+            VarBody::Type(struct_name.suffix.0.to_string())
         }
         Expression::Literal { value, .. } => match value {
             Literal::U8(_) => VarBody::Type("u8".into()),

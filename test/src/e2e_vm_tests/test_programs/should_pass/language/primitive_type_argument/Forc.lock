@@ -1,14 +1,14 @@
 [[package]]
 name = 'core'
-source = 'path+from-root-6EDE444F0E13D974'
+source = 'path+from-root-D5DDAB0633863C0B'
 dependencies = []
 
 [[package]]
-name = 'std'
-source = 'path+from-root-6EDE444F0E13D974'
-dependencies = ['core']
-
-[[package]]
-name = 'unused_generic'
+name = 'primitive_type_argument'
 source = 'root'
 dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-D5DDAB0633863C0B'
+dependencies = ['core']

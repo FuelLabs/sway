@@ -261,8 +261,7 @@ impl Items {
                     full_span_for_error = Span::join(full_span_for_error, index_span.clone());
                 }
                 (actually, ProjectionKind::StructField { .. }) => {
-                    errors.push(CompileError::NotAStruct {
-                        name: full_name_for_error,
+                    errors.push(CompileError::FieldAccessOnNonStruct {
                         span: full_span_for_error,
                         actually: actually.to_string(),
                     });

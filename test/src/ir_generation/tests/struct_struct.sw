@@ -21,8 +21,6 @@ struct Entry {
     d: u64,
 }
 
-// regex: VAL=v\d+
-
 // check: local ptr { b256, { bool, u64 } } record
 
 // check: $(entry_undef=$VAL) = const { bool, u64 } { bool undef, u64 undef }
