@@ -165,8 +165,9 @@ jobs:
           [workspace]" >> test-proj/Cargo.toml
       - name: Build test project
         run: forc build --path test-proj
-      - name: Run test project's test suite
-        run: cd test-proj && cargo test
+      # TODO: Re-add this upon landing unit test support: #1832
+      # - name: Run test project's test suite
+      #   run: cd test-proj && forc test
 
   cargo-build-workspace:
     runs-on: ubuntu-latest
