@@ -164,7 +164,7 @@ impl<V> StorageVec<V> {
     pub fn remove(self, index: u64) -> V {
         let len = get::<u64>(__get_storage_key());
         // if the index is larger or equal to len, there is no item to remove
-        assert(index <= len);
+        assert(index < len);
 
         // gets the element before removing it, so it can be returned
         let removed_element = get::<V>(sha256((index, __get_storage_key())));
@@ -193,7 +193,7 @@ impl<V> StorageVec<V> {
     pub fn swap_remove(self, index: u64) -> V {
         let len = get::<u64>(__get_storage_key());
         // if the index is larger or equal to len, there is no item to remove
-        assert(index <= len);
+        assert(index < len);
 
         let hash_of_to_be_removed = sha256((index, __get_storage_key()));
         // gets the element before removing it, so it can be returned
@@ -214,7 +214,7 @@ impl<V> StorageVec<V> {
     #[storage(read, write)]
     pub fn insert(self, index: u64, value: V) {
         let len = get::<u64>(__get_storage_key());
-        // if the index is larger or equal to len, there is no space to insert
+        // if the index is larger than len, there is no space to insert
         assert(index <= len);
 
         // for every element in the vec with an index larger than the input index,

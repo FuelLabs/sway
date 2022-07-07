@@ -142,7 +142,7 @@ mod failure {
     async fn cant_remove() {
         let (instance, _id) = get_contract_instance().await;
 
-        let _ = remove(&instance, 2).await;
+        let _ = remove(&instance, 0).await;
     }
 
     #[tokio::test]
@@ -150,7 +150,7 @@ mod failure {
     async fn cant_swap_remove() {
         let (instance, _id) = get_contract_instance().await;
 
-        let _ = swap_remove(&instance, 2).await;
+        let _ = swap_remove(&instance, 0).await;
     }
 
     #[tokio::test]
