@@ -103,7 +103,7 @@ fn struct_destructuring() {
     Point {
         x: 3, y: 6,
     });
-    let (Point {
+    let(Point {
         x: x0, y: y0,
     },
     Point {
