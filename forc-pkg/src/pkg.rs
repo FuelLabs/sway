@@ -1721,39 +1721,48 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
 }
 
 /// Compile the entire forc package and return a CompileAstResult.
-pub fn check(plan: &BuildPlan, silent_mode: bool) -> anyhow::Result<(CompileResult<ParseProgram>, CompileAstResult)> {
-    let profile = BuildProfile {
-        silent: silent_mode,
-        ..BuildProfile::debug()
-    };
+pub fn check(
+    plan: &BuildPlan,
+    silent_mode: bool,
+) -> anyhow::Result<(CompileResult<ParseProgram>, CompileAstResult)> {
     let mut namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     for (i, &node) in plan.compilation_order.iter().enumerate() {
         let dep_namespace = dependency_namespace(&namespace_map, &plan.graph, node);
         let pkg = &plan.graph[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
+        let parsed_result = parse(manifest, silent_mode)?;
 
-        let source = manifest.entry_string()?;
-        let sway_build_config =
-            sway_build_config(manifest.dir(), &manifest.entry_path(), &profile)?;
-        let parsed_result = sway_core::parse(source, Some(&sway_build_config));
+        match &parsed_result.value {
+            Some(parse_program) => {
+                let ast_result = sway_core::parsed_to_ast(parse_program, dep_namespace);
+                if let CompileAstResult::Success { typed_program, .. } = &ast_result {
+                    if let TreeType::Library { .. } = typed_program.kind.tree_type() {
+                        namespace_map.insert(node, typed_program.root.namespace.clone());
+                    }
+                }
+                source_map.insert_dependency(manifest.dir());
 
-        if let Some(parse_program) = &parsed_result.value {
-            let ast_result = sway_core::parsed_to_ast(parse_program, dep_namespace);
-            if let CompileAstResult::Success { typed_program, .. } = &ast_result {
-                if let TreeType::Library { .. } = typed_program.kind.tree_type() {
-                    namespace_map.insert(node, typed_program.root.namespace.clone());
+                // We only need to return the final CompileAstResult
+                if i == plan.compilation_order.len() - 1 {
+                    return Ok((parsed_result, ast_result));
                 }
             }
-            source_map.insert_dependency(manifest.dir());
-
-            // We only need to return the final CompileAstResult
-            if i == plan.compilation_order.len() - 1 {
-                return Ok((parsed_result, ast_result));
-            }
+            None => bail!("unable to parse dependency"),
         }
     }
     bail!("unable to check sway program: build plan contains no packages")
+}
+
+/// Returns a parsed AST from the supplied [ManifestFile]
+pub fn parse(manifest: &ManifestFile, silent_mode: bool) -> anyhow::Result<CompileResult<ParseProgram>> {
+    let profile = BuildProfile {
+        silent: silent_mode,
+        ..BuildProfile::debug()
+    };
+    let source = manifest.entry_string()?;
+    let sway_build_config = sway_build_config(manifest.dir(), &manifest.entry_path(), &profile)?;
+    Ok(sway_core::parse(source, Some(&sway_build_config)))
 }
 
 /// Attempt to find a `Forc.toml` with the given project name within the given directory.

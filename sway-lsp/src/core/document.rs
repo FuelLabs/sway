@@ -6,8 +6,8 @@ use super::traverse_typed_tree;
 use super::typed_token_type::TokenMap;
 
 use crate::{capabilities, core::token::traverse_node, utils};
-use forc_pkg::{self as pkg};
 use forc::utils::SWAY_GIT_TAG;
+use forc_pkg::{self as pkg};
 use ropey::Rope;
 use std::{collections::HashMap, path::PathBuf};
 use sway_core::{
@@ -99,9 +99,8 @@ impl TextDocument {
         self.clear_hash_maps();
 
         let manifest_dir = PathBuf::from(self.get_uri());
+        let manifest = pkg::ManifestFile::from_dir(&manifest_dir, SWAY_GIT_TAG).unwrap();
         let silent_mode = true;
-        let manifest =
-            pkg::ManifestFile::from_dir(&manifest_dir, SWAY_GIT_TAG).unwrap();
         let locked = false;
         let offline = false;
         let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline, SWAY_GIT_TAG)
