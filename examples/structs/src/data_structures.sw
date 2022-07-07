@@ -16,3 +16,8 @@ pub struct Line {
     p1: Point,
     p2: Point,
 }
+
+pub struct TupleInStruct {
+    nested_tuple: (u64,
+    (u32, (bool, str[2]))), 
+}

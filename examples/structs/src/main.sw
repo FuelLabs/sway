@@ -1,7 +1,7 @@
 library utils;
 
 dep data_structures;
-use data_structures::{Foo, Line, Point};
+use data_structures::{Foo, Line, Point, TupleInStruct};
 
 fn hardcoded_instantiation() -> Foo {
     // Instantiate `foo` as `Foo`
@@ -77,7 +77,7 @@ fn struct_destructuring() {
         p1: point1,
         p2: point2,
     };
-    // Destructure the vaues from the nested structs into variables
+    // Destructure the values from the nested structs into variables
     let Line {
         p1: Point {
             x: x0, y: y0
@@ -87,4 +87,12 @@ fn struct_destructuring() {
         }
     }
     = line;
+    // You may also destructure tuples nested in structs and structs nested in tuples
+    let tuple_in_struct = TupleInStruct {
+        nested_tuple: (42u64, (42u32, (true, "ok") ) ),
+    };
+    let TupleInStruct { nested_tuple: (a, (b, (c, d) ) ) } = tuple_in_struct;
+
+    let struct_in_tuple = (Point { x: 2, y: 4, }, Point { x: 3, y: 6 });
+    let (Point { x: x0, y: y0 }, Point { x: x1, y: y1 }) = struct_in_tuple;
 }
