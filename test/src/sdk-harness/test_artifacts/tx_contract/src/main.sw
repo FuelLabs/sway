@@ -1,8 +1,8 @@
 contract;
 
 use std::address::Address;
-use std::tx::*;
 use std::option::Option;
+use std::tx::*;
 
 abi TxContractTest {
     fn get_tx_type() -> u8;

@@ -6,8 +6,8 @@ use ::address::Address;
 use ::context::registers::instrs_start;
 use ::contract_id::ContractId;
 use ::intrinsics::is_reference_type;
-use ::option::Option;
 use ::mem::read;
+use ::option::Option;
 
 ////////////////////////////////////////
 // Transaction fields
