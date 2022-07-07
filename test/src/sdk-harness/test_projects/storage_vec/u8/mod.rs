@@ -9,11 +9,6 @@ mod success {
     use super::*;
 
     #[tokio::test]
-    async fn can_get_contract_id() {
-        let (_instance, _id) = get_contract_instance().await;
-    }
-
-    #[tokio::test]
     async fn can_push() {
         let (instance, _id) = get_contract_instance().await;
 

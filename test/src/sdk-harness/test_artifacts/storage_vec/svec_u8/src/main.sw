@@ -38,8 +38,7 @@ impl MyContract for Contract {
     }
     #[storage(read, write)]
     fn u8_pop() -> u8 {
-        let res: Option<u8> = storage.my_vec.pop();
-        res.unwrap()
+        storage.my_vec.pop().unwrap()
     }
     #[storage(read, write)]
     fn u8_remove(index: u64) -> u8 {
