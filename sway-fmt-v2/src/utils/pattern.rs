@@ -62,14 +62,14 @@ impl Parenthesis for Pattern {
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        line.push(Delimiter::Parenthesis.as_open_char());
+        write!(line, "{}", Delimiter::Parenthesis.as_open_char())?;
         Ok(())
     }
     fn close_parenthesis(
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        line.push(Delimiter::Parenthesis.as_close_char());
+        write!(line, "{}", Delimiter::Parenthesis.as_close_char())?;
         Ok(())
     }
 }
@@ -78,14 +78,14 @@ impl CurlyBrace for Pattern {
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        line.push(Delimiter::Brace.as_open_char());
+        write!(line, "{}", Delimiter::Brace.as_open_char())?;
         Ok(())
     }
     fn close_curly_brace(
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        line.push(Delimiter::Brace.as_close_char());
+        write!(line, "{}", Delimiter::Brace.as_close_char())?;
         Ok(())
     }
 }

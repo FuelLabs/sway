@@ -18,7 +18,7 @@ impl Format for Statement {
             } => {
                 expr.format(formatted_code, formatter)?;
                 if let Some(semicolon) = semicolon_token_opt {
-                    formatted_code.push_str(semicolon.span().as_str())
+                    write!(formatted_code, "{}", semicolon.span().as_str())?;
                 }
             }
         }
@@ -43,12 +43,8 @@ impl Format for StatementLet {
         self.pattern.format(formatted_code, formatter)?;
         // `: Ty`
         if let Some(ty) = &self.ty_opt {
-            write!(
-                formatted_code,
-                "{} {}",
-                ty.0.span().as_str(),
-                ty.1.span().as_str(), // update this when `Ty` formatting is merged
-            )?;
+            write!(formatted_code, "{} ", ty.0.span().as_str())?;
+            ty.1.format(formatted_code, formatter)?;
         }
         // ` = `
         write!(formatted_code, " {} ", self.eq_token.span().as_str())?;
