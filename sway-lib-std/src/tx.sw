@@ -100,43 +100,6 @@ const GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT = 0x20B;
 const GTF_WITNESS_DATA_LENGTH = 0x301;
 const GTF_WITNESS_DATA = 0x302;
 
-////////////////////////////////////////
-// Transaction fields
-////////////////////////////////////////
-
-// The transaction starts at
-// TX_START = 32 + MAX_INPUTS*(32+8) + 8 = 32 + 255 * (40) + 8 = 10240
-//
-// Note that everything when serialized is padded to word length.
-//
-// type              = TX_START +  0*WORD_SIZE = 10240 +  0*8 = 10240
-// gasPrice          = TX_START +  1*WORD_SIZE = 10240 +  1*8 = 10248
-// gasLimit          = TX_START +  2*WORD_SIZE = 10240 +  2*8 = 10256
-// bytePrice         = TX_START +  3*WORD_SIZE = 10240 +  3*8 = 10264
-// maturity          = TX_START +  4*WORD_SIZE = 10240 +  4*8 = 10272
-// scriptLength      = TX_START +  5*WORD_SIZE = 10240 +  5*8 = 10280
-// scriptDataLength  = TX_START +  6*WORD_SIZE = 10240 +  6*8 = 10288
-// inputsCount       = TX_START +  7*WORD_SIZE = 10240 +  7*8 = 10296
-// outputsCount      = TX_START +  8*WORD_SIZE = 10240 +  8*8 = 10304
-// witnessesCount    = TX_START +  9*WORD_SIZE = 10240 +  9*8 = 10312
-// receiptsRoot      = TX_START + 10*WORD_SIZE = 10240 + 10*8 = 10320
-// SCRIPT_START      = TX_START + 11*WORD_SIZE = 10240 + 14*8 = 10352
-// SCRIPT_DATA_START = SCRIPT_START + SCRIPT_LENGTH
-
-const TX_TYPE_OFFSET = 10240;
-const TX_GAS_PRICE_OFFSET = 10248;
-const TX_GAS_LIMIT_OFFSET = 10256;
-const TX_BYTE_PRICE_OFFSET = 10264;
-const TX_MATURITY_OFFSET = 10272;
-const TX_SCRIPT_LENGTH_OFFSET = 10280;
-const TX_SCRIPT_DATA_LENGTH_OFFSET = 10288;
-const TX_INPUTS_COUNT_OFFSET = 10296;
-const TX_OUTPUTS_COUNT_OFFSET = 10304;
-const TX_WITNESSES_COUNT_OFFSET = 10312;
-const TX_RECEIPTS_ROOT_OFFSET = 10320;
-const TX_SCRIPT_START_OFFSET = 10352;
-const TX_ID_OFFSET = 0;
-
 // Input types
 pub const INPUT_COIN = 0u8;
 pub const INPUT_CONTRACT = 1u8;
