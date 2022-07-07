@@ -202,10 +202,12 @@ pub fn tx_input_type_from_pointer(ptr: u64) -> u8 {
 pub fn tx_input_owner(index: u64) -> Option<Address> {
     let type = tx_input_type(index);
     let owner_offset = match type {
+        // 0 is the `Coin` Input type
         0u8 => {
             // Need to skip over six words, so add 8*6=48
             48
         },
+        // 2 is the `Message` Input type
         2u8 => {
             // Need to skip over eighteen words, so add 8*18=144
             144
