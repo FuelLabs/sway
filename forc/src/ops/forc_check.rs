@@ -17,7 +17,7 @@ pub fn check(command: CheckCommand) -> Result<sway_core::CompileAstResult> {
         std::env::current_dir()?
     };
     let manifest = ManifestFile::from_dir(&this_dir, SWAY_GIT_TAG)?;
-    let plan = pkg::BuildPlan::load_from_manifest(&manifest, locked, offline, SWAY_GIT_TAG)?;
+    let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline, SWAY_GIT_TAG)?;
 
-    pkg::check(&plan, silent_mode, SWAY_GIT_TAG)
+    pkg::check(&plan, silent_mode)
 }

@@ -14,7 +14,7 @@ use sway_utils::constants;
 type PatchMap = BTreeMap<String, Dependency>;
 
 /// A [Manifest] that was deserialized from a file at a particular path.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ManifestFile {
     /// The deserialized `Forc.toml`.
     manifest: Manifest,
@@ -23,7 +23,7 @@ pub struct ManifestFile {
 }
 
 /// A direct mapping to a `Forc.toml`.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct Manifest {
     pub project: Project,
@@ -33,7 +33,7 @@ pub struct Manifest {
     build_profile: Option<BTreeMap<String, BuildProfile>>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct Project {
     pub authors: Option<Vec<String>>,
@@ -45,14 +45,14 @@ pub struct Project {
     pub implicit_std: Option<bool>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct Network {
     #[serde(default = "default_url")]
     pub url: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(untagged)]
 pub enum Dependency {
     /// In the simple format, only a version is specified, eg.
@@ -64,7 +64,7 @@ pub enum Dependency {
     Detailed(DependencyDetails),
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "kebab-case")]
 pub struct DependencyDetails {
     pub(crate) version: Option<String>,
@@ -77,7 +77,7 @@ pub struct DependencyDetails {
 }
 
 /// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct BuildProfile {
     pub print_ir: bool,
@@ -107,6 +107,7 @@ impl ManifestFile {
     /// implicitly. In this case, the `sway_git_tag` is used to specify the pinned commit at which
     /// we fetch `std`.
     pub fn from_file(path: PathBuf, sway_git_tag: &str) -> Result<Self> {
+        let path = path.canonicalize()?;
         let manifest = Manifest::from_file(&path, sway_git_tag)?;
         Ok(Self { manifest, path })
     }
@@ -144,11 +145,15 @@ impl ManifestFile {
     }
 
     /// The path to the `Forc.toml` from which this manifest was loaded.
+    ///
+    /// This will always be a canonical path.
     pub fn path(&self) -> &Path {
         &self.path
     }
 
     /// The path to the directory containing the `Forc.toml` from which this manfiest was loaded.
+    ///
+    /// This will always be a canonical path.
     pub fn dir(&self) -> &Path {
         self.path()
             .parent()
@@ -157,6 +162,8 @@ impl ManifestFile {
 
     /// Given the directory in which the file associated with this `Manifest` resides, produce the
     /// path to the entry file as specified in the manifest.
+    ///
+    /// This will always be a canonical path.
     pub fn entry_path(&self) -> PathBuf {
         self.dir()
             .join(constants::SRC_DIR)
@@ -199,6 +206,19 @@ impl ManifestFile {
         self.build_profile
             .as_ref()
             .and_then(|profiles| profiles.get(profile_name))
+    }
+
+    /// Given the name of a `path` dependency, returns the full canonical `Path` to the dependency.
+    pub fn dep_path(&self, dep_name: &str) -> Option<PathBuf> {
+        let dir = self.dir();
+        let details = self.dep_detailed(dep_name)?;
+        details.path.as_ref().and_then(|path_str| {
+            let path = Path::new(path_str);
+            match path.is_absolute() {
+                true => Some(path.to_owned()),
+                false => dir.join(path).canonicalize().ok(),
+            }
+        })
     }
 }
 
@@ -331,6 +351,21 @@ impl Manifest {
         self.dependencies
             .as_ref()
             .and_then(|deps| deps.get(dep_name))
+    }
+
+    /// Retrieve a reference to the dependency with the given name.
+    pub fn dep_detailed(&self, dep_name: &str) -> Option<&DependencyDetails> {
+        self.dep(dep_name).and_then(|dep| match dep {
+            Dependency::Simple(_) => None,
+            Dependency::Detailed(detailed) => Some(detailed),
+        })
+    }
+
+    /// Retrieve the listed patches for the given name.
+    pub fn patch(&self, patch_name: &str) -> Option<&PatchMap> {
+        self.patch
+            .as_ref()
+            .and_then(|patches| patches.get(patch_name))
     }
 
     /// Finds and returns the name of the dependency associated with a package of the specified
