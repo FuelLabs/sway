@@ -26,7 +26,8 @@ pub(crate) struct Command {
 }
 
 pub(crate) fn exec(_command: Command) -> Result<()> {
-    bail!(r#"
+    bail!(
+        r#"
 Sway unit testing is not yet implemented. Track progress at the following link:
 
 https://github.com/FuelLabs/sway/issues/1832
@@ -37,5 +38,6 @@ directly. The proposal to change the behaviour to support unit testing can be
 found at the following link:
 
 https://github.com/FuelLabs/sway/issues/1833
-    "#);
+    "#
+    );
 }
