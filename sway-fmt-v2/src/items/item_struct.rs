@@ -65,15 +65,13 @@ fn format_struct(
     if let Some(visibility) = &item_struct.visibility {
         write!(formatted_code, "{} ", visibility.span().as_str())?;
     }
-    // Add struct token
+    // Add struct token and name
     write!(
         formatted_code,
-        "{} ",
-        item_struct.struct_token.span().as_str()
+        "{} {}",
+        item_struct.struct_token.span().as_str(),
+        item_struct.name.as_str(),
     )?;
-
-    // Add struct name
-    formatted_code.push_str(item_struct.name.as_str());
 
     // Format `GenericParams`, if any
     if let Some(generics) = &item_struct.generics {
@@ -85,7 +83,7 @@ fn format_struct(
     // Handle openning brace
     ItemStruct::open_curly_brace(formatted_code, formatter)?;
     if multiline {
-        formatted_code.push('\n');
+        writeln!(formatted_code)?;
         // Determine alignment tactic
         match formatter.config.structures.field_alignment {
             FieldAlignment::AlignFields(struct_field_align_threshold) => {
@@ -107,11 +105,15 @@ fn format_struct(
 
                 let mut value_pairs_iter = value_pairs.iter().enumerate().peekable();
                 for (field_index, field) in value_pairs_iter.clone() {
-                    formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
+                    write!(
+                        formatted_code,
+                        "{}",
+                        &formatter.shape.indent.to_string(formatter)
+                    )?;
 
                     let type_field = &field.0;
                     // Add name
-                    formatted_code.push_str(type_field.name.as_str());
+                    write!(formatted_code, "{}", type_field.name.as_str())?;
 
                     // `current_field_length`: the length of the current field that we are trying to format.
                     let current_field_length = field_length[field_index];
@@ -119,7 +121,7 @@ fn format_struct(
                         // We need to add alignment between `:` and `ty`
                         let mut required_alignment = max_valid_field_length - current_field_length;
                         while required_alignment != 0 {
-                            formatted_code.push(' ');
+                            write!(formatted_code, " ")?;
                             required_alignment -= 1;
                         }
                     }
@@ -133,23 +135,31 @@ fn format_struct(
                     if value_pairs_iter.peek().is_some() {
                         writeln!(formatted_code, "{}", field.1.span().as_str())?;
                     } else if let Some(final_value) = &fields.final_value_opt {
-                        formatted_code.push_str(final_value.span().as_str());
+                        write!(formatted_code, "{}", final_value.span().as_str())?;
                     }
                 }
             }
             FieldAlignment::Off => {
                 let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
                 for field in value_pairs_iter.clone() {
-                    formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
-                    let item_field = &field.0;
-                    item_field.format(formatted_code, formatter)?;
+                    write!(
+                        formatted_code,
+                        "{}",
+                        &formatter.shape.indent.to_string(formatter)
+                    )?;
+                    // TypeField
+                    field.0.format(formatted_code, formatter)?;
 
                     if value_pairs_iter.peek().is_some() {
                         writeln!(formatted_code, "{}", field.1.span().as_str())?;
                     }
                 }
                 if let Some(final_value) = &fields.final_value_opt {
-                    formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
+                    write!(
+                        formatted_code,
+                        "{}",
+                        &formatter.shape.indent.to_string(formatter)
+                    )?;
                     final_value.format(formatted_code, formatter)?;
                     writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
                 }
@@ -157,11 +167,11 @@ fn format_struct(
         }
     } else {
         // non-multiline formatting
-        formatted_code.push(' ');
+        write!(formatted_code, " ")?;
         let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
         for field in value_pairs_iter.clone() {
-            let type_field = &field.0;
-            type_field.format(formatted_code, formatter)?;
+            // TypeField
+            field.0.format(formatted_code, formatter)?;
 
             if value_pairs_iter.peek().is_some() {
                 write!(formatted_code, "{} ", field.1.span().as_str())?;
@@ -169,11 +179,11 @@ fn format_struct(
         }
         if let Some(final_value) = &fields.final_value_opt {
             final_value.format(formatted_code, formatter)?;
-            formatted_code.push(' ');
+            write!(formatted_code, " ")?;
         } else {
             formatted_code.pop();
             formatted_code.pop();
-            formatted_code.push(' ');
+            write!(formatted_code, " ")?;
         }
     }
 
