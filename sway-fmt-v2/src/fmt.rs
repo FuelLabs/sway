@@ -49,13 +49,13 @@ impl Formatter {
         let program_type = module.kind;
 
         // Formatted code will be pushed here with raw newline stlye.
-        // Which means newlines are not converted into system-specific versions by `apply_newline_style`.
+        // Which means newlines are not converted into system-specific versions until `apply_newline_style()`.
         // Use the length of src as a hint of the memory size needed for `raw_formatted_code`,
         // which will reduce the number of reallocations
         let mut raw_formatted_code = String::with_capacity(src_len);
 
         // Insert program type to the formatted code.
-        insert_program_type(&mut raw_formatted_code, program_type);
+        insert_program_type(&mut raw_formatted_code, program_type)?;
 
         // Insert parsed & formatted items into the formatted code.
         let mut iter = items.iter().peekable();
@@ -68,12 +68,12 @@ impl Formatter {
         }
 
         let mut formatted_code = String::from(&raw_formatted_code);
+        // Replace newlines with specified `NewlineStyle`
         apply_newline_style(
-            // The user's setting for `NewlineStyle`
             self.config.whitespace.newline_style,
             &mut formatted_code,
             &raw_formatted_code,
-        );
+        )?;
         Ok(formatted_code)
     }
 }
