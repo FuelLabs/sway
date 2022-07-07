@@ -166,7 +166,7 @@ jobs:
       - name: Build test project
         run: forc build --path test-proj
       - name: Run test project's test suite
-        run: cd test-proj && forc test
+        run: cd test-proj && cargo test
 
   cargo-build-workspace:
     runs-on: ubuntu-latest
