@@ -16,12 +16,12 @@ impl Format for Ty {
     ) -> Result<(), FormatterError> {
         match self {
             Self::Array(arr_descriptor) => {
-                formatted_code.push(Delimiter::Bracket.as_open_char());
+                write!(formatted_code, "{}", Delimiter::Bracket.as_open_char())?;
                 arr_descriptor
                     .clone()
                     .into_inner()
                     .format(formatted_code, formatter)?;
-                formatted_code.push(Delimiter::Bracket.as_close_char());
+                write!(formatted_code, "{}", Delimiter::Bracket.as_close_char())?;
                 Ok(())
             }
             Self::Infer { underscore_token } => format_infer(formatted_code, underscore_token),
@@ -30,12 +30,12 @@ impl Format for Ty {
                 format_str(formatted_code, str_token.clone(), length.clone())
             }
             Self::Tuple(tup_descriptor) => {
-                formatted_code.push(Delimiter::Parenthesis.as_open_char());
+                write!(formatted_code, "{}", Delimiter::Parenthesis.as_open_char())?;
                 tup_descriptor
                     .clone()
                     .into_inner()
                     .format(formatted_code, formatter)?;
-                formatted_code.push(Delimiter::Parenthesis.as_close_char());
+                write!(formatted_code, "{}", Delimiter::Parenthesis.as_close_char())?;
                 Ok(())
             }
         }

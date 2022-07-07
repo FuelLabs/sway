@@ -29,7 +29,7 @@ where
 
         // add final value, if any
         if let Some(final_value) = &self.final_value_opt {
-            formatted_code.push_str(final_value.span().as_str());
+            write!(formatted_code, "{}", final_value.span().as_str())?;
         }
 
         Ok(())
