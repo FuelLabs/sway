@@ -15,10 +15,6 @@ fn main() -> u64 {
    }
 }
 
-// regex: VAL=v\d+
-// regex: MD=!\d+
-// regex: ID=[_a-zA-Z][_0-9a-zA-Z]*
-
 // check: local ptr u64 n
 // check: local ptr { u64, ( bool | u64 ) } thing
 

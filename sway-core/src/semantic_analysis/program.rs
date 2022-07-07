@@ -13,8 +13,7 @@ use crate::{
     types::ToJsonAbi,
 };
 use fuel_tx::StorageSlot;
-use fuels_types::JsonABI;
-use sway_types::{span::Span, Ident, Spanned};
+use sway_types::{span::Span, Ident, JsonABI, Spanned};
 
 #[derive(Clone, Debug)]
 pub struct TypedProgram {

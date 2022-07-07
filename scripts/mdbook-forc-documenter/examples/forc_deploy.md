@@ -1,5 +1,5 @@
 
-## EXAMPLE:
+## EXAMPLE
 
 You can use `forc deploy`, which triggers a contract deployment transaction and sends it to a running node.
 

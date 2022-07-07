@@ -29,7 +29,7 @@ where
 
         // add final value, if any
         if let Some(final_value) = &self.final_value_opt {
-            formatted_code.push_str(final_value.span().as_str());
+            write!(formatted_code, "{}", final_value.span().as_str())?;
         }
 
         Ok(())
@@ -40,15 +40,15 @@ impl Format for TypeField {
     fn format(
         &self,
         formatted_code: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         write!(
             formatted_code,
-            "{}{} {}",
+            "{}{} ",
             self.name.span().as_str(),
             self.colon_token.span().as_str(),
-            self.ty.span().as_str()
         )?;
+        self.ty.format(formatted_code, formatter)?;
         Ok(())
     }
 }

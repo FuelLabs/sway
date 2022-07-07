@@ -14,8 +14,6 @@ struct Record {
     b: u64,
 }
 
-// regex: VAL=v\d+
-
 // check: local mut ptr { u64, u64 } record
 
 // The first get_ptr when initialising record:

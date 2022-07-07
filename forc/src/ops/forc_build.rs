@@ -58,7 +58,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
 
     let manifest = ManifestFile::from_dir(&this_dir, SWAY_GIT_TAG)?;
 
-    let plan = pkg::BuildPlan::load_from_manifest(&manifest, locked, offline, SWAY_GIT_TAG)?;
+    let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline, SWAY_GIT_TAG)?;
 
     // Retrieve the specified build profile
     let mut profile = manifest
@@ -79,7 +79,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
     profile.time_phases |= time_phases;
 
     // Build it!
-    let (compiled, source_map) = pkg::build(&plan, &profile, SWAY_GIT_TAG)?;
+    let (compiled, source_map) = pkg::build(&plan, &profile)?;
 
     if let Some(outfile) = binary_outfile {
         fs::write(&outfile, &compiled.bytecode)?;

@@ -10,19 +10,23 @@
                   {
                     "components": null,
                     "name": "number",
-                    "type": "u64"
+                    "type": "u64",
+                    "typeArguments": null
                   }
                 ],
                 "name": "id",
-                "type": "struct Id"
+                "type": "struct Id",
+                "typeArguments": null
               }
             ],
             "name": "__array_element",
-            "type": "struct Wrapper"
+            "type": "struct Wrapper",
+            "typeArguments": null
           }
         ],
         "name": "param",
-        "type": "[struct Wrapper; 2]"
+        "type": "[struct Wrapper; 2]",
+        "typeArguments": null
       }
     ],
     "name": "return_array_of_structs",
@@ -36,19 +40,23 @@
                   {
                     "components": null,
                     "name": "number",
-                    "type": "u64"
+                    "type": "u64",
+                    "typeArguments": null
                   }
                 ],
                 "name": "id",
-                "type": "struct Id"
+                "type": "struct Id",
+                "typeArguments": null
               }
             ],
             "name": "__array_element",
-            "type": "struct Wrapper"
+            "type": "struct Wrapper",
+            "typeArguments": null
           }
         ],
         "name": "",
-        "type": "[struct Wrapper; 2]"
+        "type": "[struct Wrapper; 2]",
+        "typeArguments": null
       }
     ],
     "type": "function"

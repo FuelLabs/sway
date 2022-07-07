@@ -13,8 +13,6 @@ struct Record {
     b: u64,
 }
 
-// regex: VAL=v\d+
-
 // check: local ptr { u64, u64 } record
 
 // check: $(record_undef=$VAL) = const { u64, u64 } { u64 undef, u64 undef }
