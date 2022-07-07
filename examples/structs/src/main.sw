@@ -98,15 +98,15 @@ fn struct_destructuring() {
     = tuple_in_struct;
 
     let struct_in_tuple = (Point {
-        x: 2, y: 4,
+        x: 2, y: 4, 
     },
     Point {
-        x: 3, y: 6,
+        x: 3, y: 6, 
     });
     let(Point {
-        x: x0, y: y0,
+        x: x0, y: y0, 
     },
     Point {
-        x: x1, y: y1,
+        x: x1, y: y1, 
     }) = struct_in_tuple;
 }
