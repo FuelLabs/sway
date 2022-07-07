@@ -90,7 +90,7 @@ fn struct_destructuring() {
     // You may also destructure tuples nested in structs and structs nested in tuples
     let tuple_in_struct = TupleInStruct {
         nested_tuple: (42u64,
-        (42u32, (true, "ok"))),
+        (42u32, (true, "ok"))), 
     };
     let TupleInStruct {
         nested_tuple: (a, (b, (c, d)))
