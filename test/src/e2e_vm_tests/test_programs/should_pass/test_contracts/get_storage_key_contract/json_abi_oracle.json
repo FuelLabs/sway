@@ -6,7 +6,8 @@
       {
         "components": null,
         "name": "",
-        "type": "b256"
+        "type": "b256",
+        "typeArguments": null
       }
     ],
     "type": "function"
@@ -18,7 +19,8 @@
       {
         "components": null,
         "name": "",
-        "type": "b256"
+        "type": "b256",
+        "typeArguments": null
       }
     ],
     "type": "function"
@@ -30,7 +32,8 @@
       {
         "components": null,
         "name": "",
-        "type": "b256"
+        "type": "b256",
+        "typeArguments": null
       }
     ],
     "type": "function"
@@ -42,7 +45,8 @@
       {
         "components": null,
         "name": "",
-        "type": "b256"
+        "type": "b256",
+        "typeArguments": null
       }
     ],
     "type": "function"
@@ -56,26 +60,31 @@
           {
             "components": null,
             "name": "__tuple_element",
-            "type": "b256"
+            "type": "b256",
+            "typeArguments": null
           },
           {
             "components": null,
             "name": "__tuple_element",
-            "type": "b256"
+            "type": "b256",
+            "typeArguments": null
           },
           {
             "components": null,
             "name": "__tuple_element",
-            "type": "b256"
+            "type": "b256",
+            "typeArguments": null
           },
           {
             "components": null,
             "name": "__tuple_element",
-            "type": "b256"
+            "type": "b256",
+            "typeArguments": null
           }
         ],
         "name": "",
-        "type": "(b256, b256, b256, b256)"
+        "type": "(b256, b256, b256, b256)",
+        "typeArguments": null
       }
     ],
     "type": "function"

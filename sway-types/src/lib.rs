@@ -339,3 +339,36 @@ impl Context {
         }
     }
 }
+
+/// TODO: The types `Function` and `Property` below are copied from `fuels-types` except for the
+/// `typeArguments` field of `Property`. Switch back to using fuels-types
+/// directly when the `typeArguments` field is added there
+///
+/// Fuel ABI representation in JSON, originally specified here:
+///
+/// https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md
+///
+/// This type may be used by compilers (e.g. Sway) and related tooling to convert an ABI
+/// representation into native Rust structs and vice-versa.
+
+pub type JsonABI = Vec<Function>;
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Function {
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub inputs: Vec<Property>,
+    pub name: String,
+    pub outputs: Vec<Property>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Property {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub components: Option<Vec<Property>>, // Used for custom types
+    pub type_arguments: Option<Vec<Property>>, // Used for generic types. Not yet supported in fuels-rs.
+}

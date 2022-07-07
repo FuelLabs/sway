@@ -4,9 +4,6 @@ fn main() -> bool {
     (false && true) || true
 }
 
-// regex: VAL=v\d+
-// regex: ID=[_a-zA-Z][_0-9a-zA-Z]*
-
 // check: entry:
 // check: $(false_val=$VAL) = const bool false
 // check: cbr $false_val, $(bl0=$ID), $(bl1=$ID)
