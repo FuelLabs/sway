@@ -1733,29 +1733,37 @@ pub fn check(
         let manifest = &plan.manifest_map()[&pkg.id()];
         let parsed_result = parse(manifest, silent_mode)?;
 
-        match &parsed_result.value {
-            Some(parse_program) => {
-                let ast_result = sway_core::parsed_to_ast(parse_program, dep_namespace);
-                if let CompileAstResult::Success { typed_program, .. } = &ast_result {
-                    if let TreeType::Library { .. } = typed_program.kind.tree_type() {
-                        namespace_map.insert(node, typed_program.root.namespace.clone());
-                    }
-                }
-                source_map.insert_dependency(manifest.dir());
+        let parse_program = match &parsed_result.value {
+            None => bail!("unable to parse"),
+            Some(program) => program,
+        };
 
-                // We only need to return the final CompileAstResult
-                if i == plan.compilation_order.len() - 1 {
-                    return Ok((parsed_result, ast_result));
-                }
-            }
-            None => bail!("unable to parse dependency"),
+        let ast_result = sway_core::parsed_to_ast(parse_program, dep_namespace);
+
+        let typed_program = match &ast_result {
+            CompileAstResult::Failure { .. } => bail!("unable to type check"),
+            CompileAstResult::Success { typed_program, .. } => typed_program,
+        };
+
+        if let TreeType::Library { .. } = typed_program.kind.tree_type() {
+            namespace_map.insert(node, typed_program.root.namespace.clone());
+        }
+
+        source_map.insert_dependency(manifest.dir());
+
+        // We only need to return the final CompileAstResult
+        if i == plan.compilation_order.len() - 1 {
+            return Ok((parsed_result, ast_result));
         }
     }
     bail!("unable to check sway program: build plan contains no packages")
 }
 
 /// Returns a parsed AST from the supplied [ManifestFile]
-pub fn parse(manifest: &ManifestFile, silent_mode: bool) -> anyhow::Result<CompileResult<ParseProgram>> {
+pub fn parse(
+    manifest: &ManifestFile,
+    silent_mode: bool,
+) -> anyhow::Result<CompileResult<ParseProgram>> {
     let profile = BuildProfile {
         silent: silent_mode,
         ..BuildProfile::debug()
