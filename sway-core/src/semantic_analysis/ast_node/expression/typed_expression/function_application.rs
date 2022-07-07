@@ -37,6 +37,18 @@ pub(crate) fn instantiate_function_application(
         });
     }
 
+    // 'calling_context' is that of the callee, 'opts.calling_context' of the caller.
+    if !ctx
+        .calling_context()
+        .can_call(function_decl.calling_context)
+    {
+        errors.push(CompileError::CallingContextMismatch {
+            attrs: promote_calling_context(ctx.calling_context(), function_decl.calling_context)
+                .to_attribute_syntax(),
+            span: call_path.span(),
+        });
+    }
+
     // check that the number of parameters and the number of the arguments is the same
     check!(
         check_function_arguments_arity(arguments.len(), &function_decl, &call_path),
@@ -175,6 +187,7 @@ fn instantiate_function_application_inner(
             function_body: function_decl.body.clone(),
             function_body_name_span: function_decl.name.span(),
             function_body_purity: function_decl.purity,
+            function_body_calling_context: function_decl.calling_context,
             self_state_idx,
             selector,
         },

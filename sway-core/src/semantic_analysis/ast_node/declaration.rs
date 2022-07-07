@@ -460,6 +460,7 @@ impl CopyTypes for TypedConstantDeclaration {
 pub struct TypedTraitFn {
     pub name: Ident,
     pub(crate) purity: Purity,
+    pub(crate) context: CallingContext,
     pub(crate) parameters: Vec<TypedFunctionParameter>,
     pub return_type: TypeId,
     #[derivative(PartialEq = "ignore")]
@@ -481,6 +482,7 @@ impl TypedTraitFn {
     pub(crate) fn to_dummy_func(&self, mode: Mode) -> TypedFunctionDeclaration {
         TypedFunctionDeclaration {
             purity: self.purity,
+            calling_context: self.context,
             name: self.name.clone(),
             body: TypedCodeBlock { contents: vec![] },
             parameters: self.parameters.clone(),

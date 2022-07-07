@@ -1,4 +1,5 @@
 use crate::{
+    function::CallingContext,
     namespace::Path,
     parse_tree::declaration::Purity,
     semantic_analysis::{ast_node::Mode, Namespace},
@@ -46,6 +47,9 @@ pub struct TypeCheckContext<'ns> {
     /// Tracks the purity of the context, e.g. whether or not we should be allowed to write to
     /// storage.
     purity: Purity,
+    /// Tracks the calling context of the type check context, e.g. whether or not we should be
+    /// allowed to call into the context.
+    calling_context: CallingContext,
 }
 
 impl<'ns> TypeCheckContext<'ns> {
@@ -70,6 +74,7 @@ impl<'ns> TypeCheckContext<'ns> {
             self_type: insert_type(TypeInfo::Contract),
             mode: Mode::NonAbi,
             purity: Purity::default(),
+            calling_context: CallingContext::default(),
         }
     }
 
@@ -89,6 +94,7 @@ impl<'ns> TypeCheckContext<'ns> {
             mode: self.mode,
             help_text: self.help_text,
             purity: self.purity,
+            calling_context: self.calling_context,
         }
     }
 
@@ -101,6 +107,7 @@ impl<'ns> TypeCheckContext<'ns> {
             mode: self.mode,
             help_text: self.help_text,
             purity: self.purity,
+            calling_context: self.calling_context,
         }
     }
 
@@ -145,6 +152,14 @@ impl<'ns> TypeCheckContext<'ns> {
     }
 
     /// Map this `TypeCheckContext` instance to a new one with the given purity.
+    pub(crate) fn with_context(self, context: CallingContext) -> Self {
+        Self {
+            calling_context: context,
+            ..self
+        }
+    }
+
+    /// Map this `TypeCheckContext` instance to a new one with the given purity.
     pub(crate) fn with_self_type(self, self_type: TypeId) -> Self {
         Self { self_type, ..self }
     }
@@ -166,6 +181,10 @@ impl<'ns> TypeCheckContext<'ns> {
 
     pub(crate) fn purity(&self) -> Purity {
         self.purity
+    }
+
+    pub(crate) fn calling_context(&self) -> CallingContext {
+        self.calling_context
     }
 
     pub(crate) fn self_type(&self) -> TypeId {

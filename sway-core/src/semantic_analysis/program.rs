@@ -4,6 +4,7 @@ use super::{
 };
 use crate::{
     error::*,
+    function::CallingContext,
     parse_tree::{ParseProgram, Purity, TreeType},
     semantic_analysis::{
         namespace::{self, Namespace},
@@ -118,6 +119,9 @@ impl TypedProgram {
             if !matches!(kind, TreeType::Library { .. }) {
                 errors.extend(disallow_impure_functions(&declarations, &mains));
             }
+
+            // internal only functions are disallowed in non-contracts
+            errors.extend(disallow_internal_only_functions(&declarations, &mains));
 
             // `storage` declarations are not allowed in non-contracts
             let storage_decl = declarations
@@ -349,5 +353,33 @@ fn disallow_impure_functions(
                 None
             }
         })
+        .collect()
+}
+
+fn disallow_internal_only_functions(
+    declarations: &[TypedDeclaration],
+    mains: &[TypedFunctionDeclaration],
+) -> Vec<CompileError> {
+    let fn_decls = declarations
+        .iter()
+        .filter_map(|decl| match decl {
+            TypedDeclaration::FunctionDeclaration(decl) => Some(decl),
+            _ => None,
+        })
+        .chain(mains);
+    fn_decls
+        .filter_map(
+            |TypedFunctionDeclaration {
+                 calling_context: context,
+                 name,
+                 ..
+             }| {
+                if *context == CallingContext::InternalOnly {
+                    Some(CompileError::InternalOnlyInNonContract { span: name.span() })
+                } else {
+                    None
+                }
+            },
+        )
         .collect()
 }

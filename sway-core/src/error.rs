@@ -1,7 +1,7 @@
 //! Tools related to handling/recovering from Sway compile errors and reporting them to the user.
 
 use crate::{
-    constants::STORAGE_PURITY_ATTRIBUTE_NAME,
+    constants::{CALLING_CONTEXT_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME},
     convert_parse_tree::ConvertParseTreeError,
     style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case},
     type_engine::*,
@@ -894,6 +894,11 @@ pub enum CompileError {
         span: Span,
     },
     #[error(
+        "Calling context attribute mismatch. Try giving the surrounding function the same context by \
+        adding \"#[{CALLING_CONTEXT_ATTRIBUTE_NAME}({attrs})]\" to the function declaration."
+    )]
+    CallingContextMismatch { attrs: String, span: Span },
+    #[error(
         "Storage attribute access mismatch. Try giving the surrounding function more access by \
         adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\" to the function declaration."
     )]
@@ -932,6 +937,8 @@ pub enum CompileError {
         attrs: String,
         span: Span,
     },
+    #[error("Internal function inside of non-contract. This function is only accessible from contracts.")]
+    InternalOnlyInNonContract { span: Span },
     #[error("Literal value is too large for type {ty}.")]
     IntegerTooLarge { span: Span, ty: String },
     #[error("Literal value underflows type {ty}.")]
@@ -1140,6 +1147,7 @@ impl Spanned for CompileError {
             MatchStructPatternMissingFields { span, .. } => span.clone(),
             NotAnEnum { span, .. } => span.clone(),
             StorageAccessMismatch { span, .. } => span.clone(),
+            CallingContextMismatch { span, .. } => span.clone(),
             TraitDeclPureImplImpure { span, .. } => span.clone(),
             TraitImplPurityMismatch { span, .. } => span.clone(),
             DeclIsNotAnEnum { span, .. } => span.clone(),
@@ -1149,6 +1157,7 @@ impl Spanned for CompileError {
             DeclIsNotAnAbi { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
             ImpureInPureContext { span, .. } => span.clone(),
+            InternalOnlyInNonContract { span, .. } => span.clone(),
             IntegerTooLarge { span, .. } => span.clone(),
             IntegerTooSmall { span, .. } => span.clone(),
             IntegerContainsInvalidDigit { span, .. } => span.clone(),

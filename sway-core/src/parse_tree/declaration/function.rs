@@ -5,8 +5,12 @@ use sway_types::{ident::Ident, span::Span};
 mod purity;
 pub use purity::{promote_purity, Purity};
 
+mod calling_context;
+pub use calling_context::{promote_calling_context, CallingContext};
+
 #[derive(Debug, Clone)]
 pub struct FunctionDeclaration {
+    pub context: CallingContext,
     pub purity: Purity,
     pub name: Ident,
     pub visibility: Visibility,

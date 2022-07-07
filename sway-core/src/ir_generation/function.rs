@@ -246,6 +246,7 @@ impl FnCompiler {
                 function_body,
                 function_body_name_span,
                 function_body_purity,
+                function_body_calling_context: function_body_context,
                 self_state_idx,
                 selector,
             } => {
@@ -266,6 +267,7 @@ impl FnCompiler {
                         function_body,
                         function_body_name_span,
                         function_body_purity,
+                        function_body_context,
                         self_state_idx,
                         span_md_idx,
                     )
@@ -712,6 +714,7 @@ impl FnCompiler {
         callee_body: TypedCodeBlock,
         callee_span: Span,
         callee_purity: Purity,
+        callee_context: crate::function::CallingContext,
         self_state_idx: Option<StateIndex>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
@@ -770,6 +773,7 @@ impl FnCompiler {
                 visibility: Visibility::Private,
                 is_contract_call: false,
                 purity: callee_purity,
+                calling_context: callee_context,
             };
 
             let callee = compile_function(context, self.module, callee_fn_decl)?;

@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: fn main() {
+# nextln: $()Internal function inside of non-contract. This function is only accessible from contracts.

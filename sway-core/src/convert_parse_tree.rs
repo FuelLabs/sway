@@ -1,8 +1,12 @@
-use crate::type_engine::{TraitConstraint, TypeArgument, TypeParameter};
+use crate::{
+    function::CallingContext,
+    type_engine::{TraitConstraint, TypeArgument, TypeParameter},
+};
 
 use {
     crate::{
         constants::{
+            CALLING_CONTEXT_ATTRIBUTE_NAME, CALLING_CONTEXT_INTERNAL_ONLY_NAME,
             STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
         },
         error::{err, ok, CompileError, CompileResult, CompileWarning},
@@ -585,6 +589,7 @@ fn item_fn_to_function_declaration(
         None => item_fn.fn_signature.span(),
     };
     Ok(FunctionDeclaration {
+        context: get_attributed_context(ec, attributes)?,
         purity: get_attributed_purity(ec, attributes)?,
         name: item_fn.fn_signature.name,
         visibility: pub_token_opt_to_visibility(item_fn.fn_signature.visibility),
@@ -636,6 +641,25 @@ fn get_attributed_purity(
             Ok(purity)
         }
         _otherwise => Ok(Purity::Pure),
+    }
+}
+
+fn get_attributed_context(
+    ec: &mut ErrorContext,
+    attributes: &AttributesMap,
+) -> Result<CallingContext, ErrorEmitted> {
+    match attributes.get(CALLING_CONTEXT_ATTRIBUTE_NAME) {
+        Some(args) if !args.is_empty() => {
+            let arg = args[0];
+            match arg.as_str() {
+                CALLING_CONTEXT_INTERNAL_ONLY_NAME => Ok(CallingContext::InternalOnly),
+                _otherwise => Err(ec.error(ConvertParseTreeError::InvalidAttributeArgument {
+                    attribute: "context".to_owned(),
+                    span: arg.span(),
+                })),
+            }
+        }
+        _otherwise => Ok(CallingContext::Unspecified),
     }
 }
 
@@ -1031,6 +1055,7 @@ fn fn_signature_to_trait_fn(
     let trait_fn = TraitFn {
         name: fn_signature.name,
         purity: get_attributed_purity(ec, attributes)?,
+        context: get_attributed_context(ec, attributes)?,
         parameters: fn_args_to_function_parameters(ec, fn_signature.arguments.into_inner())?,
         return_type: match fn_signature.return_type_opt {
             Some((_right_arrow_token, ty)) => ty_to_type_info(ec, ty)?,

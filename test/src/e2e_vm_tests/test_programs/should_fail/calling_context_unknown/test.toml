@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: #[context(unknown)]
+# nextln: $()invalid argument for 'context' attribute

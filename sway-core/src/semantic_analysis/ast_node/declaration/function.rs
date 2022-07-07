@@ -20,6 +20,7 @@ pub struct TypedFunctionDeclaration {
     /// whether this function exists in another contract and requires a call to it or not
     pub(crate) is_contract_call: bool,
     pub(crate) purity: Purity,
+    pub(crate) calling_context: CallingContext,
 }
 
 impl From<&TypedFunctionDeclaration> for TypedAstNode {
@@ -128,6 +129,7 @@ impl TypedFunctionDeclaration {
             return_type_span,
             visibility,
             purity,
+            context,
             ..
         } = fn_decl;
         is_snake_case(&name).ok(&mut warnings, &mut errors);
@@ -135,7 +137,10 @@ impl TypedFunctionDeclaration {
         // create a namespace for the function
         let mut fn_namespace = ctx.namespace.clone();
 
-        let mut ctx = ctx.scoped(&mut fn_namespace).with_purity(purity);
+        let mut ctx = ctx
+            .scoped(&mut fn_namespace)
+            .with_purity(purity)
+            .with_context(context);
 
         // type check the type parameters
         // insert them into the namespace
@@ -225,6 +230,7 @@ impl TypedFunctionDeclaration {
             // if this is for a contract, then it is a contract call
             is_contract_call: ctx.mode() == Mode::ImplAbiFn,
             purity,
+            calling_context: context,
         };
 
         ok(function_decl, warnings, errors)
@@ -306,6 +312,7 @@ fn test_function_selector_behavior() {
     use crate::type_engine::IntegerBits;
     let decl = TypedFunctionDeclaration {
         purity: Default::default(),
+        calling_context: Default::default(),
         name: Ident::new_no_span("foo"),
         body: TypedCodeBlock { contents: vec![] },
         parameters: vec![],
@@ -326,6 +333,7 @@ fn test_function_selector_behavior() {
 
     let decl = TypedFunctionDeclaration {
         purity: Default::default(),
+        calling_context: Default::default(),
         name: Ident::new_with_override("bar", Span::dummy()),
         body: TypedCodeBlock { contents: vec![] },
         parameters: vec![

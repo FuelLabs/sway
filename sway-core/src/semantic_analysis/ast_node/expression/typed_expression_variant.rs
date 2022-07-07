@@ -23,6 +23,7 @@ pub enum TypedExpressionVariant {
         function_body: TypedCodeBlock,
         function_body_name_span: Span,
         function_body_purity: Purity,
+        function_body_calling_context: CallingContext,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
         self_state_idx: Option<StateIndex>,

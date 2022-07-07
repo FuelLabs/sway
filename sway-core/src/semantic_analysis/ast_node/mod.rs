@@ -701,12 +701,14 @@ fn type_check_interface_surface(
             |TraitFn {
                  name,
                  purity,
+                 context,
                  parameters,
                  return_type,
                  return_type_span,
              }| TypedTraitFn {
                 name,
                 purity,
+                context,
                 return_type_span: return_type_span.clone(),
                 parameters: parameters
                     .into_iter()
@@ -769,6 +771,7 @@ fn type_check_trait_methods(
         type_parameters,
         return_type_span,
         purity,
+        context,
         ..
     } in methods
     {
@@ -889,6 +892,7 @@ fn type_check_trait_methods(
         let ctx = ctx
             .by_ref()
             .with_purity(purity)
+            .with_context(context)
             .with_type_annotation(return_type)
             .with_help_text(
                 "Trait method body's return type does not match up with its return type \
@@ -914,6 +918,7 @@ fn type_check_trait_methods(
             return_type_span,
             is_contract_call: false,
             purity,
+            calling_context: context,
         });
     }
     ok(methods_buf, warnings, errors)
@@ -932,6 +937,7 @@ fn error_recovery_function_declaration(decl: FunctionDeclaration) -> TypedFuncti
     } = decl;
     TypedFunctionDeclaration {
         purity: Default::default(),
+        calling_context: Default::default(),
         name,
         body: TypedCodeBlock {
             contents: Default::default(),

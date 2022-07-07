@@ -188,6 +188,7 @@ fn convert_trait_methods_to_dummy_funcs(
                  ..
              }| TypedFunctionDeclaration {
                 purity: Default::default(),
+                calling_context: Default::default(),
                 name: name.clone(),
                 body: TypedCodeBlock { contents: vec![] },
                 parameters: parameters

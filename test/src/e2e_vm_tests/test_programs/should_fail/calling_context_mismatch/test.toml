@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: bar()
+# nextln: $()Calling context attribute mismatch. Try giving the surrounding function the same context by adding "#[context(internal_only)]" to the function declaration.

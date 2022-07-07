@@ -54,6 +54,16 @@ pub(crate) fn type_check_method_application(
                 span: method_name.easy_name().span(),
             });
         }
+
+        // 'method.calling_context' is that of the callee, 'opts.calling_context' of the caller.
+        if !ctx.calling_context().can_call(method.calling_context) {
+            errors.push(CompileError::CallingContextMismatch {
+                attrs: promote_calling_context(ctx.calling_context(), method.calling_context)
+                    .to_attribute_syntax(),
+                span: method_name.easy_name().span(),
+            });
+        }
+
         if !contract_call_params.is_empty() {
             errors.push(CompileError::CallParamForNonContractCallMethod {
                 span: contract_call_params[0].name.span(),

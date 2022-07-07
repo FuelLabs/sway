@@ -1,7 +1,7 @@
 use super::{FunctionDeclaration, FunctionParameter};
 
 use crate::{
-    function::Purity,
+    function::{CallingContext, Purity},
     parse_tree::{CallPath, Visibility},
     type_engine::TypeInfo,
 };
@@ -26,6 +26,7 @@ pub(crate) struct Supertrait {
 pub struct TraitFn {
     pub name: Ident,
     pub purity: Purity,
+    pub context: CallingContext,
     pub parameters: Vec<FunctionParameter>,
     pub return_type: TypeInfo,
     pub(crate) return_type_span: Span,
