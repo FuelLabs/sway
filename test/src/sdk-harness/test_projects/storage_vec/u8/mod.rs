@@ -121,8 +121,18 @@ mod success {
     }
 }
 
+// Some of these are meant to be tests for None returns but since the SDK doesnt support options;
+// the options are being unwrapped in the contract and tested as reverts instead
 mod failure {
     use super::*;
+
+    #[tokio::test]
+    #[should_panic(expected = "Revert(0)")]
+    async fn cant_get() {
+        let (instance, _id) = get_contract_instance().await;
+
+        get(&instance, 0).await;
+    }
 
     #[tokio::test]
     #[should_panic(expected = "Revert(0)")]
