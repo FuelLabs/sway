@@ -2580,10 +2580,9 @@ fn statement_let_to_ast_nodes(
                     _ => None,
                 };
                 for (index, pattern) in pat_tuple.into_inner().into_iter().enumerate() {
-                    let ty_opt = match &tuple_tys_opt {
-                        Some(tys) => tys.get(index).cloned(),
-                        None => None,
-                    };
+                    let ty_opt = tuple_tys_opt
+                        .as_ref()
+                        .and_then(|tys| tys.get(index).cloned());
                     ast_nodes.extend(unfold(
                         ec,
                         pattern,
