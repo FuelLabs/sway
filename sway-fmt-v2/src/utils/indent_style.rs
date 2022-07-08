@@ -145,11 +145,14 @@ impl Sub<usize> for Indent {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub struct Shape {
     pub width: usize,
-    // The current indentation of code.
+    /// The current indentation of code.
     pub indent: Indent,
-    // Indentation + any already emitted text on the first line of the current
-    // statement.
+    /// Indentation + any already emitted text on the first line of the current
+    /// statement.
     pub offset: usize,
+    /// Used in determining `SameLineWhere` formatting.
+    /// Default is false.
+    pub has_where_clause: bool,
 }
 
 impl Shape {
@@ -169,15 +172,16 @@ impl Shape {
     // |<------------>|  max width
     // |<---->|          indent
     //        |<--->|    width
-    pub fn legacy(width: usize, indent: Indent) -> Self {
+    pub fn legacy(&self, width: usize, indent: Indent) -> Self {
         Self {
             width,
             indent,
             offset: indent.alignment,
+            has_where_clause: self.has_where_clause,
         }
     }
 
-    pub fn indented(indent: Indent, formatter: &Formatter) -> Self {
+    pub fn indented(&self, indent: Indent, formatter: &Formatter) -> Self {
         Self {
             width: formatter
                 .config
@@ -186,6 +190,7 @@ impl Shape {
                 .saturating_sub(indent.width()),
             indent,
             offset: indent.alignment,
+            has_where_clause: self.has_where_clause,
         }
     }
 
@@ -206,6 +211,7 @@ impl Shape {
             width: self.width,
             indent: Indent::new(self.indent.block_indent, alignment),
             offset: alignment,
+            has_where_clause: self.has_where_clause,
         }
     }
 
@@ -215,12 +221,14 @@ impl Shape {
                 width: self.width,
                 indent: Indent::new(self.indent.block_indent + extra_width, 0),
                 offset: 0,
+                has_where_clause: self.has_where_clause,
             }
         } else {
             Self {
                 width: self.width,
                 indent: self.indent + extra_width,
                 offset: self.indent.alignment + extra_width,
+                has_where_clause: self.has_where_clause,
             }
         }
     }
@@ -259,6 +267,7 @@ impl Shape {
             width: self.width.checked_sub(width)?,
             indent: self.indent + width,
             offset: self.offset + width,
+            has_where_clause: self.has_where_clause,
         })
     }
 
@@ -301,6 +310,20 @@ impl Shape {
         Self {
             width: INFINITE_SHAPE_WIDTH,
             ..*self
+        }
+    }
+
+    /// Update the value of `has_where_clause`.
+    pub fn update_where_clause(&self) -> Self {
+        match self.has_where_clause {
+            true => Self {
+                has_where_clause: false,
+                ..*self
+            },
+            false => Self {
+                has_where_clause: true,
+                ..*self
+            },
         }
     }
 }
@@ -355,7 +378,7 @@ mod test {
         let formatter = Formatter::default();
         let max_width = formatter.config.whitespace.max_width;
         let indent = Indent::new(4, 8);
-        let shape = Shape::legacy(max_width, indent);
+        let shape = Shape::legacy(&formatter.shape, max_width, indent);
         let shape = shape.visual_indent(20);
 
         assert_eq!(max_width, shape.width);
@@ -369,7 +392,7 @@ mod test {
         let formatter = Formatter::default();
         let max_width = formatter.config.whitespace.max_width;
         let indent = Indent::new(4, 0);
-        let shape = Shape::legacy(max_width, indent);
+        let shape = Shape::legacy(&formatter.shape, max_width, indent);
         let shape = shape.block_indent(20);
 
         assert_eq!(max_width, shape.width);
@@ -383,7 +406,7 @@ mod test {
         let formatter = Formatter::default();
         let max_width = formatter.config.whitespace.max_width;
         let indent = Indent::new(4, 8);
-        let shape = Shape::legacy(max_width, indent);
+        let shape = Shape::legacy(&formatter.shape, max_width, indent);
         let shape = shape.block_indent(20);
 
         assert_eq!(max_width, shape.width);

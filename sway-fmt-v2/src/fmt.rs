@@ -366,11 +366,31 @@ storage { long_var_name: Type1, var2: Type2 }"#;
     fn test_item_fn() {
         let sway_code_to_format = r#"contract;
 
-pub fn hello( person: String ) -> String {let greeting = "hello";}"#;
+pub fn hello( person: String ) -> String {let greeting = 42;greeting.to_string()}"#;
         let correct_sway_code = r#"contract;
 
 pub fn hello(person: String) -> String {
-    let greeting = "hello";
+    let greeting = 42;
+    greeting.to_string()
+}"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code)
+    }
+    #[test]
+    fn test_same_line_where() {
+        let sway_code_to_format = r#"contract;
+
+pub fn hello( person: String ) -> String where T: Eq,{let greeting = 42;greeting.to_string()}"#;
+        let correct_sway_code = r#"contract;
+
+pub fn hello(person: String) -> String
+where
+    T: Eq,
+{
+    let greeting = 42;
+    greeting.to_string()
 }"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
