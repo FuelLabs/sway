@@ -50,7 +50,11 @@ fn hover_format(token: &TokenType, ident: &Ident) -> Hover {
     };
 
     let format_variable_hover = |is_mutable: bool, type_name: String| -> String {
-        format!("let{} {}: {}", is_mutable, token_name, type_name,)
+        let mutability = match is_mutable {
+            false => "",
+            true => " mut",
+        };
+        format!("let{} {}: {}", mutability, token_name, type_name,)
     };
 
     let value = match &token.typed {
