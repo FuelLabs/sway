@@ -119,10 +119,7 @@ fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeTy
             // constructor site is always `None`. If we introduce dep aliases in the future, this
             // is where we should use it.
             let dep_alias = None;
-            let dep_name = match dep_alias {
-                None => library_name.clone(),
-                Some(alias) => alias,
-            };
+            let dep_name = dep_alias.unwrap_or_else(|| library_name.clone());
             let submodule = ParseSubmodule {
                 library_name,
                 module,
