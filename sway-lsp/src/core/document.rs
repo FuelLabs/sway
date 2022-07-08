@@ -41,7 +41,7 @@ impl TextDocument {
     }
 
     /// Check if the code editor's cursor is currently over an of our collected tokens
-    pub fn get_token_at_position(&self, position: Position) -> Option<(Ident, &TokenType)> {
+    pub fn token_at_position(&self, position: Position) -> Option<(Ident, &TokenType)> {
         match utils::common::ident_and_span_at_position(position, &self.token_map) {
             Some((ident, _)) => {
                 // Retrieve the TokenType from our HashMap
@@ -53,14 +53,14 @@ impl TextDocument {
         }
     }
 
-    pub fn get_all_references(&self, token: &TokenType) -> Vec<(&Ident, &TokenType)> {
-        let current_type_id = utils::token::get_type_id(token);
+    pub fn all_references_of_token(&self, token: &TokenType) -> Vec<(&Ident, &TokenType)> {
+        let current_type_id = utils::token::type_id(token);
 
         self.token_map
             .iter()
             .filter(|((_, _), token)| {
                 if token.typed.is_some() {
-                    current_type_id == utils::token::get_type_id(token)
+                    current_type_id == utils::token::type_id(token)
                 } else {
                     false
                 }
@@ -69,9 +69,9 @@ impl TextDocument {
             .collect()
     }
 
-    pub fn get_declared_token_ident(&self, token: &TokenType) -> Option<Ident> {
+    pub fn declared_token_ident(&self, token: &TokenType) -> Option<Ident> {
         // Look up the tokens TypeId
-        match utils::token::get_type_id(token) {
+        match utils::token::type_id(token) {
             Some(type_id) => {
                 tracing::info!("type_id = {:#?}", type_id);
 
@@ -91,7 +91,7 @@ impl TextDocument {
         }
     }
 
-    pub fn get_token_map(&self) -> &TokenMap {
+    pub fn token_map(&self) -> &TokenMap {
         &self.token_map
     }
 
@@ -148,9 +148,9 @@ impl TextDocument {
         //let cursor_position = Position::new(25, 14); //Cursor's hovered over the position var decl in main()
         let cursor_position = Position::new(29, 18); //Cursor's hovered over the ~Particle in p = decl in main()
 
-        if let Some((_, token)) = self.get_token_at_position(cursor_position) {
+        if let Some((_, token)) = self.token_at_position(cursor_position) {
             // Look up the tokens TypeId
-            if let Some(type_id) = utils::token::get_type_id(token) {
+            if let Some(type_id) = utils::token::type_id(token) {
                 tracing::info!("type_id = {:#?}", type_id);
 
                 // Use the TypeId to look up the actual type

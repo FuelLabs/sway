@@ -1,5 +1,5 @@
 use crate::core::token::{AstToken, TokenMap, TokenType, TypedAstToken};
-use crate::utils::{common::get_range_from_span, token::get_type_id};
+use crate::utils::{common::get_range_from_span, token};
 use sway_core::{Expression, Literal};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
@@ -60,7 +60,7 @@ pub fn debug_print_ident_and_token(ident: &Ident, token: &TokenType) {
         line_num,
         ident.as_str(),
         ast_node_type(token),
-        get_type_id(token),
+        token::type_id(token),
     );
 }
 

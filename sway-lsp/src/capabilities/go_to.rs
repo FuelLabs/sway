@@ -11,7 +11,7 @@ pub fn go_to_definition(
     let url = params.text_document_position_params.text_document.uri;
     let position = params.text_document_position_params.position;
 
-    session.get_token_definition_response(url, position)
+    session.token_definition_response(url, position)
 }
 
 /// Pass in the Ident that represents the original definition location

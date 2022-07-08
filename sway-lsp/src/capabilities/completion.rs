@@ -21,7 +21,7 @@ pub fn get_completion(
     let url = params.text_document_position.text_document.uri;
 
     session
-        .get_completion_items(&url)
+        .completion_items(&url)
         .map(CompletionResponse::Array)
 }
 

@@ -37,7 +37,7 @@ pub(crate) fn to_ident_key(ident: &Ident) -> (Ident, Span) {
     (ident.clone(), ident.span())
 }
 
-pub fn get_type_id(token_type: &TokenType) -> Option<TypeId> {
+pub fn type_id(token_type: &TokenType) -> Option<TypeId> {
     match &token_type.typed {
         Some(typed_ast_token) => match typed_ast_token {
             TypedAstToken::TypedDeclaration(dec) => match dec {

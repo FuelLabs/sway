@@ -13,13 +13,13 @@ use tower_lsp::lsp_types::{
 };
 
 // https://github.com/microsoft/vscode-extension-samples/blob/5ae1f7787122812dcc84e37427ca90af5ee09f14/semantic-tokens-sample/vscode.proposed.d.ts#L71
-pub fn get_semantic_tokens_full(
+pub fn semantic_tokens_full(
     session: Arc<Session>,
     params: SemanticTokensParams,
 ) -> Option<SemanticTokensResult> {
     let url = params.text_document.uri;
 
-    match session.get_semantic_tokens(&url) {
+    match session.semantic_tokens(&url) {
         Some(semantic_tokens) => {
             if semantic_tokens.is_empty() {
                 return None;
@@ -39,8 +39,8 @@ pub fn to_semantic_tokens(token_map: &TokenMap) -> Vec<SemanticToken> {
 
     let mut prev_token_span = None;
     for ((_, span), token) in token_map.iter() {
-        let token_type_idx = get_type_idx(&token.parsed);
-        let semantic_token = create_semantic_token(token_type_idx, span, prev_token_span);
+        let token_type_idx = type_idx(&token.parsed);
+        let semantic_token = semantic_token(token_type_idx, span, prev_token_span);
 
         semantic_tokens.push(semantic_token);
         prev_token_span = Some(span);
@@ -49,7 +49,7 @@ pub fn to_semantic_tokens(token_map: &TokenMap) -> Vec<SemanticToken> {
     semantic_tokens
 }
 
-fn create_semantic_token(
+fn semantic_token(
     token_type_idx: u32,
     next_token_span: &Span,
     prev_token_span: Option<&Span>,
@@ -97,7 +97,7 @@ enum TokenTypeIndex {
     Interface = 12,
 }
 
-fn get_type_idx(ast_token: &AstToken) -> u32 {
+fn type_idx(ast_token: &AstToken) -> u32 {
     match ast_token {
         AstToken::Declaration(dec) => {
             match dec {
@@ -133,7 +133,7 @@ fn get_type_idx(ast_token: &AstToken) -> u32 {
     }
 }
 
-pub fn get_semantic_tokens() -> Option<SemanticTokensServerCapabilities> {
+pub fn semantic_tokens() -> Option<SemanticTokensServerCapabilities> {
     let token_types = vec![
         SemanticTokenType::CLASS,          // 0
         SemanticTokenType::FUNCTION,       // 1

@@ -74,11 +74,11 @@ impl Session {
     }
 
     // Token
-    pub fn get_token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
+    pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
         if let Some(document) = self.documents.get(url.path()) {
-            if let Some((_, token)) = document.get_token_at_position(position) {
+            if let Some((_, token)) = document.token_at_position(position) {
                 let token_ranges = document
-                    .get_all_references(token)
+                    .all_references_of_token(token)
                     .iter()
                     .map(|(ident, _)| get_range_from_span(&ident.span()))
                     .collect();
@@ -90,7 +90,7 @@ impl Session {
         None
     }
 
-    pub fn get_token_definition_response(
+    pub fn token_definition_response(
         &self,
         url: Url,
         position: Position,
@@ -98,8 +98,8 @@ impl Session {
         let key = url.path();
 
         if let Some(document) = self.documents.get(key) {
-            if let Some((_, token)) = document.get_token_at_position(position) {
-                if let Some(decl_ident) = document.get_declared_token_ident(token) {
+            if let Some((_, token)) = document.token_at_position(position) {
+                if let Some(decl_ident) = document.declared_token_ident(token) {
                     return Some(capabilities::go_to::to_definition_response(
                         url,
                         &decl_ident,
@@ -111,30 +111,30 @@ impl Session {
         None
     }
 
-    pub fn get_completion_items(&self, url: &Url) -> Option<Vec<CompletionItem>> {
+    pub fn completion_items(&self, url: &Url) -> Option<Vec<CompletionItem>> {
         if let Some(document) = self.documents.get(url.path()) {
             return Some(capabilities::completion::to_completion_items(
-                document.get_token_map(),
+                document.token_map(),
             ));
         }
 
         None
     }
 
-    pub fn get_semantic_tokens(&self, url: &Url) -> Option<Vec<SemanticToken>> {
+    pub fn semantic_tokens(&self, url: &Url) -> Option<Vec<SemanticToken>> {
         if let Some(document) = self.documents.get(url.path()) {
             return Some(capabilities::semantic_tokens::to_semantic_tokens(
-                document.get_token_map(),
+                document.token_map(),
             ));
         }
 
         None
     }
 
-    pub fn get_symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
+    pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
         if let Some(document) = self.documents.get(url.path()) {
             return Some(capabilities::document_symbol::to_symbol_information(
-                document.get_token_map(),
+                document.token_map(),
                 url.clone(),
             ));
         }

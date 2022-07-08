@@ -16,18 +16,16 @@ use tower_lsp::lsp_types::{Hover, HoverContents, HoverParams, MarkupContent, Mar
 use sway_core::{semantic_analysis::ast_node::TypedDeclaration, Declaration, Visibility};
 use sway_types::{Ident, Spanned};
 
-pub fn get_hover_data(session: Arc<Session>, params: HoverParams) -> Option<Hover> {
+pub fn hover_data(session: Arc<Session>, params: HoverParams) -> Option<Hover> {
     let position = params.text_document_position_params.position;
     let url = &params.text_document_position_params.text_document.uri;
 
     match session.documents.get(url.path()) {
         Some(ref document) => {
-            if let Some((_, token)) = document.get_token_at_position(position) {
-                if let Some(decl_ident) = document.get_declared_token_ident(token) {
-                    if let Some(decl_token) =
-                        document.get_token_map().get(&to_ident_key(&decl_ident))
-                    {
-                        let hover = get_hover_format(decl_token, &decl_ident);
+            if let Some((_, token)) = document.token_at_position(position) {
+                if let Some(decl_ident) = document.declared_token_ident(token) {
+                    if let Some(decl_token) = document.token_map().get(&to_ident_key(&decl_ident)) {
+                        let hover = hover_format(decl_token, &decl_ident);
                         return Some(hover);
                     }
                 }
@@ -38,7 +36,7 @@ pub fn get_hover_data(session: Arc<Session>, params: HoverParams) -> Option<Hove
     }
 }
 
-fn get_hover_format(token: &TokenType, ident: &Ident) -> Hover {
+fn hover_format(token: &TokenType, ident: &Ident) -> Hover {
     let token_name: String = ident.as_str().into();
     let range = get_range_from_span(&ident.span());
 

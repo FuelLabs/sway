@@ -15,7 +15,7 @@ use tower_lsp::lsp_types::{DocumentSymbolResponse, Location, SymbolInformation, 
 
 pub fn document_symbol(session: Arc<Session>, url: Url) -> Option<DocumentSymbolResponse> {
     session
-        .get_symbol_information(&url)
+        .symbol_information(&url)
         .map(DocumentSymbolResponse::Flat)
 }
 
@@ -23,7 +23,7 @@ pub fn to_symbol_information(token_map: &TokenMap, url: Url) -> Vec<SymbolInform
     let mut symbols: Vec<SymbolInformation> = vec![];
 
     for ((ident, _), token) in token_map {
-        let symbol = create_symbol_info(ident, token, url.clone());
+        let symbol = symbol_info(ident, token, url.clone());
         symbols.push(symbol)
     }
 
@@ -32,7 +32,7 @@ pub fn to_symbol_information(token_map: &TokenMap, url: Url) -> Vec<SymbolInform
 
 #[allow(warnings)]
 // TODO: the "deprecated: None" field is deprecated according to this library
-fn create_symbol_info(ident: &Ident, token: &TokenType, url: Url) -> SymbolInformation {
+fn symbol_info(ident: &Ident, token: &TokenType, url: Url) -> SymbolInformation {
     let range = get_range_from_span(&ident.span());
     SymbolInformation {
         name: ident.as_str().to_string(),
