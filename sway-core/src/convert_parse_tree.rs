@@ -1411,13 +1411,12 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             match method_type_opt {
                 Some(type_name) => {
                     let type_name_span = type_name.span();
-                    let type_name = match type_name_to_type_info_opt(&type_name) {
-                        Some(type_info) => type_info,
-                        None => TypeInfo::Custom {
+                    let type_name = type_name_to_type_info_opt(&type_name).unwrap_or({
+                        TypeInfo::Custom {
                             name: type_name,
                             type_arguments: None,
-                        },
-                    };
+                        }
+                    });
                     let type_arguments = match generics_opt {
                         Some((_double_colon_token, generic_args)) => {
                             generic_args_to_type_arguments(ec, generic_args)?
@@ -2312,25 +2311,19 @@ fn path_expr_to_type_info_type_args(
             let (suffix, ty_args) =
                 path_expr_segment_to_ident_or_type_argument(ec, call_path_suffix)?;
             let type_info_span = suffix.span();
-            let type_info = match type_name_to_type_info_opt(&suffix) {
-                Some(type_info) => type_info,
-                None => TypeInfo::Custom {
-                    name: suffix,
-                    type_arguments: None,
-                },
-            };
+            let type_info = type_name_to_type_info_opt(&suffix).unwrap_or(TypeInfo::Custom {
+                name: suffix,
+                type_arguments: None,
+            });
             (prefixes, type_info, type_info_span, ty_args)
         }
         None => {
             let (suffix, ty_args) = path_expr_segment_to_ident_or_type_argument(ec, prefix)?;
             let type_info_span = suffix.span();
-            let type_info = match type_name_to_type_info_opt(&suffix) {
-                Some(type_info) => type_info,
-                None => TypeInfo::Custom {
-                    name: suffix,
-                    type_arguments: None,
-                },
-            };
+            let type_info = type_name_to_type_info_opt(&suffix).unwrap_or(TypeInfo::Custom {
+                name: suffix,
+                type_arguments: None,
+            });
             (vec![], type_info, type_info_span, ty_args)
         }
     };

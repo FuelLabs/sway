@@ -266,10 +266,8 @@ impl TypedAstNode {
                             body,
                             is_mutable,
                         }) => {
-                            let type_ascription_span = match type_ascription_span {
-                                Some(type_ascription_span) => type_ascription_span,
-                                None => name.span(),
-                            };
+                            let type_ascription_span =
+                                type_ascription_span.unwrap_or_else(|| name.span());
                             let type_ascription = check!(
                                 ctx.resolve_type_with_self(
                                     insert_type(type_ascription),

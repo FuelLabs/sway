@@ -271,7 +271,7 @@ impl TypedFunctionDeclaration {
         );
         // 4 bytes truncation via copying into a 4 byte buffer
         let mut buf = [0u8; 4];
-        buf.copy_from_slice(&hash[0..4]);
+        buf.copy_from_slice(&hash[..4]);
         ok(buf, warnings, errors)
     }
 
