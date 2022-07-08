@@ -530,7 +530,7 @@ abi TestContract {
 }
 
 storage {
-    counter: u64,
+    counter: u64 = 0,
 }
 
 impl TestContract for Contract {
@@ -558,7 +558,7 @@ use std::{
     hash::sha256,
     identity::Identity,
     logging::log,
-    result::*,
+    result::Result,
     revert::revert,
     storage::StorageMap,
 };
@@ -608,7 +608,8 @@ const MINTER: b256 = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7e
 // Contract storage persists across transactions.
 storage {
     balances: StorageMap&lt;Address,
-    u64&gt;, 
+    u64&gt; = StorageMap {
+    },
 }
 
 ////////////////////////////////////////
@@ -704,7 +705,7 @@ use std::{
     context::{call_frames::msg_asset_id, msg_amount},
     contract_id::ContractId,
     identity::Identity,
-    result::*,
+    result::Result,
     revert::revert,
     token::transfer_to_output,
 };
@@ -712,7 +713,7 @@ use std::{
 const OWNER_ADDRESS: b256 = 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861;
 
 storage {
-    balance: u64,
+    balance: u64 = 0,
 }
 
 abi Wallet {
@@ -1873,24 +1874,41 @@ fn main() {
 <p>Put in conventional programming terms, contract storage is like saving data to a hard drive. That data is saved even after the program which saved it exits. That data is persistent. Using memory is like declaring a variable in a program: it exists for the duration of the program and is non-persistent.</p>
 <p>Some basic use cases of storage include declaring an owner address for a contract and saving balances in a wallet.</p>
 <h2 id="storage-accesses-via-the-storage-keyword"><a class="header" href="#storage-accesses-via-the-storage-keyword">Storage Accesses Via the <code>storage</code> Keyword</a></h2>
-<p>Declaring variables in storage requires a <code>storage</code> declaration that contains a list of all your variables and their types as follows:</p>
-<pre><code class="language-sway">storage {
-    var1: Type1,
-    var2: Type2,
-    ...
+<p>Declaring variables in storage requires a <code>storage</code> declaration that contains a list of all your variables, their types, and their initial values as follows:</p>
+<pre><code class="language-sway">struct Type1 {
+    x: u64,
+    y: u64,
+}
+
+struct Type2 {
+    w: b256,
+    z: bool,
+}
+
+storage {
+    var1: Type1 = Type1 {
+        x: 0,
+        y: 0,
+    },
+    var2: Type2 = Type2 {
+        w: 0x0000000000000000000000000000000000000000000000000000000000000000,
+        z: false,
+    },
 }
 </code></pre>
 <p>To write into a storage variable, you need to use the <code>storage</code> keyword as follows:</p>
-<pre><code class="language-sway">storage.var1 = v;
+<pre><code class="language-sway">    #[storage(write)]fn store_something() {
+        storage.var1.x = 42;
+        storage.var1.y = 77;
+        storage.var2.w = 0x1111111111111111111111111111111111111111111111111111111111111111;
+        storage.var2.z = true;
+    }
 </code></pre>
 <p>To read a storage variable, you also need to use the <code>storage</code> keyword as follows:</p>
-<pre><code class="language-sway">let v = storage.var1;
+<pre><code class="language-sway">    #[storage(read)]fn get_something() -&gt; (u64, u64, b256, bool) {
+        (storage.var1.x, storage.var1.y, storage.var2.w, storage.var2.z)
+    }
 </code></pre>
-<p>Notes:</p>
-<ul>
-<li>The only types currently supported by the syntax above are integers, Booleans, and structs.</li>
-<li>Storage, in general, is still work-in-progress and so, its use model may change in the future.</li>
-</ul>
 <h2 id="storage-maps"><a class="header" href="#storage-maps">Storage Maps</a></h2>
 <p>Generic storage maps are available in the standard library as <code>StorageMap&lt;K, V&gt;</code> which have to be defined inside a <code>storage</code> block and allow you to call <code>insert()</code> and <code>get()</code> to insert values at specific keys and get those values respectively. For example:</p>
 <pre><code class="language-sway">contract;
@@ -1904,8 +1922,11 @@ struct Data {
 
 storage {
     map1: StorageMap&lt;u64,
-    u64&gt;, map2: StorageMap&lt;(b256,
-    bool), Data&gt;, 
+    u64&gt; = StorageMap {
+    },
+    map2: StorageMap&lt;(b256,
+    bool), Data&gt; = StorageMap {
+    },
 }
 
 abi StorageMapExample {
@@ -2529,7 +2550,7 @@ abi TestContract {
 }
 
 storage {
-    counter: u64,
+    counter: u64 = 0,
 }
 
 impl TestContract for Contract {
