@@ -1,6 +1,6 @@
 use crate::fmt::*;
 use std::fmt::Write;
-use sway_parse::{token::Delimiter, Pattern};
+use sway_parse::{token::Delimiter, Pattern, PatternStructField};
 use sway_types::Spanned;
 
 use super::bracket::{CurlyBrace, Parenthesis};
@@ -86,6 +86,31 @@ impl CurlyBrace for Pattern {
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         write!(line, "{}", Delimiter::Brace.as_close_char())?;
+        Ok(())
+    }
+}
+
+impl Format for PatternStructField {
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        match self {
+            Self::Rest { token } => {
+                write!(formatted_code, "{}", token.span().as_str())?;
+            }
+            Self::Field {
+                field_name,
+                pattern_opt,
+            } => {
+                write!(formatted_code, "{}", field_name.span().as_str())?;
+                if let Some(pattern) = pattern_opt {
+                    write!(formatted_code, "{}", pattern.0.span().as_str())?;
+                    pattern.1.format(formatted_code, formatter)?;
+                }
+            }
+        }
         Ok(())
     }
 }
