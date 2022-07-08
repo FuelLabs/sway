@@ -98,10 +98,9 @@ impl Items {
     }
 
     pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&TypedDeclaration, CompileError> {
-        match self.symbols.get(name) {
-            Some(decl) => Ok(decl),
-            None => Err(CompileError::SymbolNotFound { name: name.clone() }),
-        }
+        self.symbols
+            .get(name)
+            .ok_or_else(|| CompileError::SymbolNotFound { name: name.clone() })
     }
 
     pub(crate) fn insert_trait_implementation(

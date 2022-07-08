@@ -9,7 +9,7 @@ abi OwnershipExample {
 }
 
 storage {
-    owner: Option<Identity>,
+    owner: Option<Identity> = Option::None,
 }
 
 impl OwnershipExample for Contract {
