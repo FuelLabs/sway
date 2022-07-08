@@ -69,19 +69,6 @@ fn get_comment_from_token_stream(
     }
 }
 
-pub trait FormatComment {
-    fn format(&self, line: &mut String, formatter: &mut Formatter) -> Result<(), FormatterError>;
-}
-
-// Currently we are not formatting the comment itself. We are simply pushing the comment to the
-// line when it is called.
-impl FormatComment for Comment {
-    fn format(&self, line: &mut String, _formatter: &mut Formatter) -> Result<(), FormatterError> {
-        write!(line, "{}", self.span.as_str())?;
-        Ok(())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::{construct_comment_map, CommentSpan};
