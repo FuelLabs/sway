@@ -148,6 +148,22 @@ pub struct Foo {
     bar: u64,
     baz: bool,
 }
+
+// Struct types for destructuring
+pub struct Point {
+    x: u64,
+    y: u64,
+}
+
+pub struct Line {
+    p1: Point,
+    p2: Point,
+}
+
+pub struct TupleInStruct {
+    nested_tuple: (u64,
+    (u32, (bool, str[2]))), 
+}
 </code></pre>
 <p>In order to instantiate the struct we use <em>struct instantiation syntax</em>, which is very similar to the declaration syntax except with expressions in place of types.</p>
 <p>There are three ways to instantiate the struct.</p>
@@ -159,7 +175,7 @@ pub struct Foo {
 <pre><code class="language-sway">library utils;
 
 dep data_structures;
-use data_structures::Foo;
+use data_structures::{Foo, Line, Point, TupleInStruct};
 
 fn hardcoded_instantiation() -&gt; Foo {
     // Instantiate `foo` as `Foo`
@@ -209,12 +225,72 @@ fn shorthand_instantiation() -&gt; Foo {
     // Return the struct
     foo
 }
+
+fn struct_destructuring() {
+    let point1 = Point {
+        x: 0,
+        y: 0,
+    };
+    // Destructure the values from the struct into variables
+    let Point {
+        x, y
+    }
+    = point1;
+
+    let point2 = Point {
+        x: 1,
+        y: 1,
+    };
+    // If you do not care about specific struct fields then use &quot;..&quot; at the end of your variable list
+    let Point {
+        x, ..
+    }
+    = point2;
+
+    let line = Line {
+        p1: point1,
+        p2: point2,
+    };
+    // Destructure the values from the nested structs into variables
+    let Line {
+        p1: Point {
+            x: x0, y: y0
+        },
+        p2: Point {
+            x: x1, y: y1
+        }
+    }
+    = line;
+    // You may also destructure tuples nested in structs and structs nested in tuples
+    let tuple_in_struct = TupleInStruct {
+        nested_tuple: (42u64,
+        (42u32, (true, &quot;ok&quot;))), 
+    };
+    let TupleInStruct {
+        nested_tuple: (a, (b, (c, d)))
+    }
+    = tuple_in_struct;
+
+    let struct_in_tuple = (Point {
+        x: 2, y: 4, 
+    },
+    Point {
+        x: 3, y: 6, 
+    });
+    let(Point {
+        x: x0, y: y0, 
+    },
+    Point {
+        x: x1, y: y1, 
+    }) = struct_in_tuple;
+}
 </code></pre>
 <blockquote>
 <p><strong>Note</strong>
 You can mix and match all 3 ways to instantiate the struct at the same time.
 Moreover, the order of the fields does not matter when instantiating however we encourage declaring the fields in alphabetical order and instantiating them in the same alphabetical order</p>
 </blockquote>
+<p>Furthermore, multiple variables can be extracted from a struct using the destructuring syntax.</p>
 <h3 id="struct-memory-layout"><a class="header" href="#struct-memory-layout">Struct Memory Layout</a></h3>
 <blockquote>
 <p><strong>Note</strong> 
