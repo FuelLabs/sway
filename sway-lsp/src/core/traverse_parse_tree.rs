@@ -10,6 +10,7 @@ use sway_core::{
     AstNode, AstNodeContent, Declaration, Expression, FunctionDeclaration, ReassignmentTarget,
     TypeInfo, WhileLoop,
 };
+use sway_types::Ident;
 
 pub fn traverse_node(node: &AstNode, tokens: &mut TokenMap) {
     match &node.content {
@@ -216,7 +217,7 @@ fn handle_expression(expression: &Expression, tokens: &mut TokenMap) {
             name, arguments, ..
         } => {
             // Don't collect applications of desugared operators due to mismatched ident lengths.
-            if !desugared_op(name) {
+            if !desugared_op(&name.prefixes) {
                 for ident in &name.prefixes {
                     tokens.insert(
                         to_ident_key(ident),
@@ -272,9 +273,11 @@ fn handle_expression(expression: &Expression, tokens: &mut TokenMap) {
                 );
             }
             tokens.insert(
-                to_ident_key(&struct_name.suffix),
+                to_ident_key(&Ident::new(struct_name.suffix.1.clone())),
                 TokenType::from_parsed(AstToken::Expression(expression.clone())),
             );
+
+            // handle_custom_type(&struct_name.suffix.0, tokens);
 
             for field in fields {
                 tokens.insert(
@@ -319,16 +322,18 @@ fn handle_expression(expression: &Expression, tokens: &mut TokenMap) {
             contract_call_params,
             ..
         } => {
-            if let MethodName::FromType { ref call_path, .. }
-            | MethodName::FromTrait { ref call_path } = method_name
-            {
-                // Don't collect applications of desugared operators due to mismatched ident lengths.
-                if !desugared_op(call_path) {
-                    tokens.insert(
-                        to_ident_key(&method_name.easy_name()),
-                        TokenType::from_parsed(AstToken::Expression(expression.clone())),
-                    );
-                }
+            let prefixes = match &method_name {
+                MethodName::FromType { call_path, .. } => call_path.prefixes.clone(),
+                MethodName::FromTrait { call_path, .. } => call_path.prefixes.clone(),
+                _ => vec![],
+            };
+
+            // Don't collect applications of desugared operators due to mismatched ident lengths.
+            if !desugared_op(&prefixes) {
+                tokens.insert(
+                    to_ident_key(&method_name.easy_name()),
+                    TokenType::from_parsed(AstToken::Expression(expression.clone())),
+                );
             }
 
             for exp in arguments {

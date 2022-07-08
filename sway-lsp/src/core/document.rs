@@ -102,14 +102,16 @@ impl TextDocument {
     pub fn parse(&mut self) -> Result<Vec<Diagnostic>, DocumentError> {
         self.clear_token_map();
 
-        let manifest_dir = PathBuf::from(self.get_uri());        
+        let manifest_dir = PathBuf::from(self.get_uri());
         let silent_mode = true;
         let locked = false;
         let offline = false;
 
         // TODO: match on any errors and report them back to the user in a future PR
         if let Ok(manifest) = pkg::ManifestFile::from_dir(&manifest_dir, SWAY_GIT_TAG) {
-            if let Ok(plan) = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline, SWAY_GIT_TAG) {
+            if let Ok(plan) =
+                pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline, SWAY_GIT_TAG)
+            {
                 if let Ok((parsed_res, ast_res)) = pkg::check(&plan, silent_mode) {
                     let r = self.parse_tokens_from_text(parsed_res);
                     // for ((ident, _), t) in self.get_token_map() {

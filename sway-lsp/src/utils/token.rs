@@ -1,6 +1,6 @@
 use crate::core::token::{AstToken, TokenType, TypedAstToken};
 use sway_core::semantic_analysis::ast_node::TypedDeclaration;
-use sway_core::{parse_tree::CallPath, type_engine::TypeId};
+use sway_core::type_engine::TypeId;
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 pub fn is_initial_declaration(token_type: &TokenType) -> bool {
@@ -21,9 +21,9 @@ pub fn is_initial_declaration(token_type: &TokenType) -> bool {
 }
 
 // Check if the given method is a `core::ops` application desugared from short-hand syntax like / + * - etc.
-pub(crate) fn desugared_op(call_path: &CallPath) -> bool {
-    let prefix0 = call_path.prefixes.get(0).map(|ident| ident.as_str());
-    let prefix1 = call_path.prefixes.get(1).map(|ident| ident.as_str());
+pub(crate) fn desugared_op(prefixes: &[Ident]) -> bool {
+    let prefix0 = prefixes.get(0).map(|ident| ident.as_str());
+    let prefix1 = prefixes.get(1).map(|ident| ident.as_str());
     if let (Some("core"), Some("ops")) = (prefix0, prefix1) {
         return true;
     }
