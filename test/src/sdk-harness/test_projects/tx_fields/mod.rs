@@ -254,7 +254,7 @@ async fn can_get_tx_output_type() {
     // Contract output
     let output_type = 1;
     let result_ptr = contract_instance
-        .get_tx_output_pointer(1)
+        .get_tx_output_pointer(0)
         .call()
         .await
         .unwrap();
@@ -268,7 +268,7 @@ async fn can_get_tx_output_type() {
     // Change output
     let output_type = 3;
     let result_ptr = contract_instance
-        .get_tx_output_pointer(0)
+        .get_tx_output_pointer(1)
         .call()
         .await
         .unwrap();
