@@ -11,12 +11,15 @@ abigen!(
 );
 
 async fn get_contracts() -> (TxContractTest, ContractId, Wallet) {
-    let wallet = launch_provider_and_get_single_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await;
 
     let contract_id = Contract::deploy(
         "test_artifacts/tx_contract/out/debug/tx_contract.bin",
         &wallet,
         TxParameters::default(),
+        StorageConfiguration::with_storage_path(Some(
+            "test_artifacts/tx_contract/out/debug/tx_contract-storage_slots.json".to_string(),
+        )),
     )
     .await
     .unwrap();
