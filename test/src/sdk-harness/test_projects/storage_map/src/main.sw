@@ -285,7 +285,6 @@ impl StorageMapTest for Contract {
         storage.map18.insert(key, value);
     }
     #[storage(read)]fn get_from_str_to_u64_map(key: str[33]) -> u64 {
-        let mut x:u64;
         storage.map18.get(key)
     }
 
