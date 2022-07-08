@@ -49,22 +49,7 @@ fn handle_function_declation(func: &FunctionDeclaration, tokens: &mut TokenMap) 
 
 fn handle_custom_type(_type_info: &TypeInfo, _tokens: &mut TokenMap) {
     // TODO: Not obvious how to handle this now with the new types
-
-    // if let TypeInfo::Custom { name, .. } = type_info {
-    //     //Iterate through the tokens and find the first token that has the same name as the custom type.
-    //     //Extract the token type of the found token, this should help determine if the custom type
-    //     //is a struct or an enum.
-    //     let found_token = tokens.iter().find(|token| token.name == name.as_str());
-    //     if let Some(token_type) = found_token.map(|token| &token.token_type) {
-    //         if let TokenType::StructDeclaration(_) = token_type {
-    //             let token = Token::from_ident(name, TokenType::Struct);
-    //             tokens.push(token);
-    //         } else if let TokenType::EnumDeclaration(_) = token_type {
-    //             let token = Token::from_ident(name, TokenType::EnumApplication);
-    //             tokens.push(token);
-    //         }
-    //     }
-    // }
+    // I've opened an issue to track this here https://github.com/FuelLabs/sway/issues/2274
 }
 
 fn handle_declaration(declaration: &Declaration, tokens: &mut TokenMap) {
