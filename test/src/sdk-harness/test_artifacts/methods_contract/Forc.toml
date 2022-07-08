@@ -5,5 +5,5 @@ license = "Apache-2.0"
 name = "methods_contract"
 
 [dependencies]
-std = { path = "../../../../../sway-lib-std" }
 methods_abi = { path = "../methods_abi" }
+std = { path = "../../../../../sway-lib-std" }

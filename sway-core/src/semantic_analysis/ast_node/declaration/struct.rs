@@ -184,7 +184,7 @@ impl ToJsonAbi for TypedStructField {
             type_arguments: self
                 .type_id
                 .get_type_parameters()
-                .map(|v| v.iter().map(|param| param.generate_json_abi()).collect()),
+                .map(|v| v.iter().map(TypeParameter::generate_json_abi).collect()),
         }
     }
 }

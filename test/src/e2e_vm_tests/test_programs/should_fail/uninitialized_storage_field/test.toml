@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: x: u64,
+# nextln: $()Expected `=`
