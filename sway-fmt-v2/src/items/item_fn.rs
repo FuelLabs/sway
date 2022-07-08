@@ -138,10 +138,10 @@ impl Format for FnSignature {
         }
         // `WhereClause`
         if let Some(where_clause) = &self.where_clause_opt {
+            where_clause.format(formatted_code, formatter)?;
             let mut shape = formatter.shape;
             shape = shape.update_where_clause();
             formatter.shape = shape;
-            where_clause.format(formatted_code, formatter)?;
         }
         Ok(())
     }

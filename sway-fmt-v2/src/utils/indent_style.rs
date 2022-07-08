@@ -215,7 +215,7 @@ impl Shape {
         }
     }
 
-    pub fn block_indent(&self, extra_width: usize) -> Self {
+    pub fn block_indent(&mut self, extra_width: usize) -> Self {
         if self.indent.alignment == 0 {
             Self {
                 width: self.width,
@@ -233,7 +233,7 @@ impl Shape {
         }
     }
 
-    pub fn block_left(&self, width: usize) -> Option<Self> {
+    pub fn block_left(&mut self, width: usize) -> Option<Self> {
         self.block_indent(width).sub_width(width)
     }
 
@@ -314,7 +314,7 @@ impl Shape {
     }
 
     /// Update the value of `has_where_clause`.
-    pub fn update_where_clause(&self) -> Self {
+    pub fn update_where_clause(&mut self) -> Self {
         match self.has_where_clause {
             true => Self {
                 has_where_clause: false,
@@ -392,7 +392,7 @@ mod test {
         let formatter = Formatter::default();
         let max_width = formatter.config.whitespace.max_width;
         let indent = Indent::new(4, 0);
-        let shape = Shape::legacy(&formatter.shape, max_width, indent);
+        let mut shape = Shape::legacy(&formatter.shape, max_width, indent);
         let shape = shape.block_indent(20);
 
         assert_eq!(max_width, shape.width);
@@ -406,7 +406,7 @@ mod test {
         let formatter = Formatter::default();
         let max_width = formatter.config.whitespace.max_width;
         let indent = Indent::new(4, 8);
-        let shape = Shape::legacy(&formatter.shape, max_width, indent);
+        let mut shape = Shape::legacy(&formatter.shape, max_width, indent);
         let shape = shape.block_indent(20);
 
         assert_eq!(max_width, shape.width);
