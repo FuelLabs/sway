@@ -2531,25 +2531,26 @@ fn statement_let_to_ast_nodes(
                 let error = ConvertParseTreeError::ConstructorPatternsNotSupportedHere { span };
                 return Err(ec.error(error));
             }
-            Pattern::Struct { .. } => {
-                let error = ConvertParseTreeError::StructPatternsNotSupportedHere { span };
-                return Err(ec.error(error));
-            }
-            Pattern::Tuple(pat_tuple) => {
+            Pattern::Struct { fields, .. } => {
                 let mut ast_nodes = Vec::new();
 
-                // Generate a deterministic name for the tuple. Because the parser is single
-                // threaded, the name generated below will be stable.
+                // Generate a deterministic name for the destructured struct
+                // Because the parser is single threaded, the name generated below will be stable.
                 static COUNTER: AtomicUsize = AtomicUsize::new(0);
-                let tuple_name = format!(
+                let destructured_name = format!(
                     "{}{}",
-                    crate::constants::TUPLE_NAME_PREFIX,
+                    crate::constants::DESTRUCTURE_PREFIX,
                     COUNTER.load(Ordering::SeqCst)
                 );
                 COUNTER.fetch_add(1, Ordering::SeqCst);
-                let name =
-                    Ident::new_with_override(Box::leak(tuple_name.into_boxed_str()), span.clone());
+                let destructure_name = Ident::new_with_override(
+                    Box::leak(destructured_name.into_boxed_str()),
+                    span.clone(),
+                );
 
+                // Parse the type ascription and the type ascription span.
+                // In the event that the user did not provide a type ascription,
+                // it is set to TypeInfo::Unknown and the span to None.
                 let (type_ascription, type_ascription_span) = match &ty_opt {
                     Some(ty) => {
                         let type_ascription_span = ty.span();
@@ -2558,8 +2559,10 @@ fn statement_let_to_ast_nodes(
                     }
                     None => (TypeInfo::Unknown, None),
                 };
+
+                // Save the destructure to the new name as a new variable declaration
                 let save_body_first = VariableDeclaration {
-                    name: name.clone(),
+                    name: destructure_name.clone(),
                     type_ascription,
                     type_ascription_span,
                     body: expression,
@@ -2571,19 +2574,117 @@ fn statement_let_to_ast_nodes(
                     )),
                     span: span.clone(),
                 });
+
+                // create a new variable expression that points to the new destructured struct name that we just created
                 let new_expr = Expression::VariableExpression {
-                    name,
+                    name: destructure_name,
                     span: span.clone(),
                 };
+
+                // for all of the fields of the struct destructuring on the LHS,
+                // recursively create variable declarations
+                for pattern_struct_field in fields.into_inner().into_iter() {
+                    let (field, recursive_pattern) = match pattern_struct_field {
+                        PatternStructField::Field {
+                            field_name,
+                            pattern_opt,
+                        } => {
+                            let recursive_pattern = match pattern_opt {
+                                Some((_colon_token, box_pattern)) => *box_pattern,
+                                None => Pattern::Var {
+                                    mutable: None,
+                                    name: field_name.clone(),
+                                },
+                            };
+                            (field_name, recursive_pattern)
+                        }
+                        PatternStructField::Rest { .. } => {
+                            continue;
+                        }
+                    };
+
+                    // recursively create variable declarations for the subpatterns on the LHS
+                    // and add them to the ast nodes
+                    ast_nodes.extend(unfold(
+                        ec,
+                        recursive_pattern,
+                        None,
+                        Expression::SubfieldExpression {
+                            prefix: Box::new(new_expr.clone()),
+                            span: span.clone(),
+                            field_to_access: field,
+                        },
+                        span.clone(),
+                    )?);
+                }
+                ast_nodes
+            }
+            Pattern::Tuple(pat_tuple) => {
+                let mut ast_nodes = Vec::new();
+
+                // Generate a deterministic name for the tuple.
+                // Because the parser is single threaded, the name generated below will be stable.
+                static COUNTER: AtomicUsize = AtomicUsize::new(0);
+                let tuple_name = format!(
+                    "{}{}",
+                    crate::constants::TUPLE_NAME_PREFIX,
+                    COUNTER.load(Ordering::SeqCst)
+                );
+                COUNTER.fetch_add(1, Ordering::SeqCst);
+                let tuple_name =
+                    Ident::new_with_override(Box::leak(tuple_name.into_boxed_str()), span.clone());
+
+                // Parse the type ascription and the type ascription span.
+                // In the event that the user did not provide a type ascription,
+                // it is set to TypeInfo::Unknown and the span to None.
+                let (type_ascription, type_ascription_span) = match &ty_opt {
+                    Some(ty) => {
+                        let type_ascription_span = ty.span();
+                        let type_ascription = ty_to_type_info(ec, ty.clone())?;
+                        (type_ascription, Some(type_ascription_span))
+                    }
+                    None => (TypeInfo::Unknown, None),
+                };
+
+                // Save the tuple to the new name as a new variable declaration.
+                let save_body_first = VariableDeclaration {
+                    name: tuple_name.clone(),
+                    type_ascription,
+                    type_ascription_span,
+                    body: expression,
+                    is_mutable: false,
+                };
+                ast_nodes.push(AstNode {
+                    content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
+                        save_body_first,
+                    )),
+                    span: span.clone(),
+                });
+
+                // create a variable expression that points to the new tuple name that we just created
+                let new_expr = Expression::VariableExpression {
+                    name: tuple_name,
+                    span: span.clone(),
+                };
+
+                // from the possible type annotation, if the annotation was a tuple annotation,
+                // extract the internal types of the annotation
                 let tuple_tys_opt = match ty_opt {
                     Some(Ty::Tuple(tys)) => Some(tys.into_inner().to_tys()),
                     _ => None,
                 };
+
+                // for all of the elements in the tuple destructuring on the LHS,
+                // recursively create variable declarations
                 for (index, pattern) in pat_tuple.into_inner().into_iter().enumerate() {
+                    // from the possible type annotation, grab the type at the index of the current element
+                    // we are processing
                     let ty_opt = match &tuple_tys_opt {
                         Some(tys) => tys.get(index).cloned(),
                         None => None,
                     };
+                    // recursively create variable declarations for the subpatterns on the LHS
+                    // and add them to the ast nodes
                     ast_nodes.extend(unfold(
                         ec,
                         pattern,
