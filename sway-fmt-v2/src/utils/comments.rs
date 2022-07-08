@@ -1,5 +1,5 @@
-use crate::fmt::{Formatter, FormatterError};
-use std::{cmp::Ordering, collections::BTreeMap, fmt::Write, sync::Arc};
+use crate::fmt::FormatterError;
+use std::{cmp::Ordering, collections::BTreeMap, sync::Arc};
 use sway_parse::token::{lex_commented, Comment, CommentedTokenTree, CommentedTree};
 
 /// Represents a span for the comments in a spesific file
@@ -33,7 +33,7 @@ pub type CommentMap = BTreeMap<CommentSpan, Comment>;
 
 /// Get the CommentedTokenStream and collect the spans -> Comment mapping for the input source
 /// code.
-pub fn construct_comment_map(input: Arc<str>) -> Result<CommentMap, FormatterError> {
+pub fn comment_map_from_src(input: Arc<str>) -> Result<CommentMap, FormatterError> {
     let mut comment_map = BTreeMap::new();
 
     // pass the input through lexer
@@ -41,14 +41,14 @@ pub fn construct_comment_map(input: Arc<str>) -> Result<CommentMap, FormatterErr
     let tts = commented_token_stream.token_trees().iter();
 
     for comment in tts {
-        get_comment_from_token_stream(comment, &mut comment_map);
+        collect_comments_from_token_stream(comment, &mut comment_map);
     }
     Ok(comment_map)
 }
 
-/// Get `Comment` from the token stream and insert it with its span to the `CommentMap`.
+/// Collects `Comment`s from the token stream and insert it with its span to the `CommentMap`.
 /// Handles both the standalone and in-block comments.
-fn get_comment_from_token_stream(
+fn collect_comments_from_token_stream(
     commented_token_tree: &CommentedTokenTree,
     comment_map: &mut CommentMap,
 ) {
@@ -62,7 +62,7 @@ fn get_comment_from_token_stream(
         }
         CommentedTokenTree::Tree(CommentedTree::Group(group)) => {
             for item in group.token_stream.token_trees().iter() {
-                get_comment_from_token_stream(item, comment_map);
+                collect_comments_from_token_stream(item, comment_map);
             }
         }
         _ => {}
@@ -71,7 +71,7 @@ fn get_comment_from_token_stream(
 
 #[cfg(test)]
 mod tests {
-    use super::{construct_comment_map, CommentSpan};
+    use super::{comment_map_from_src, CommentSpan};
     use std::{ops::Bound::Included, sync::Arc};
 
     #[test]
@@ -100,7 +100,7 @@ mod tests {
             bar: i32,
         }
         "#;
-        let map = construct_comment_map(Arc::from(input)).unwrap();
+        let map = comment_map_from_src(Arc::from(input)).unwrap();
         assert!(!map.is_empty());
         let range_start_span = CommentSpan { start: 0, end: 32 };
         let range_end_span = CommentSpan { start: 33, end: 34 };
@@ -122,7 +122,7 @@ mod tests {
             bar: i32,
         }
         "#;
-        let map = construct_comment_map(Arc::from(input)).unwrap();
+        let map = comment_map_from_src(Arc::from(input)).unwrap();
         assert!(!map.is_empty());
         let range_start_span = CommentSpan { start: 40, end: 54 };
         let range_end_span = CommentSpan {
@@ -147,7 +147,7 @@ mod tests {
             bar: i32,
         }
         "#;
-        let map = construct_comment_map(Arc::from(input)).unwrap();
+        let map = comment_map_from_src(Arc::from(input)).unwrap();
         assert!(!map.is_empty());
         let range_start_span = CommentSpan {
             start: 110,
