@@ -8,7 +8,7 @@ use std::{
     hash::sha256,
     identity::Identity,
     logging::log,
-    result::*,
+    result::Result,
     revert::revert,
     storage::StorageMap,
 };
@@ -58,7 +58,8 @@ const MINTER: b256 = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7e
 // Contract storage persists across transactions.
 storage {
     balances: StorageMap<Address,
-    u64>, 
+    u64> = StorageMap {
+    },
 }
 
 ////////////////////////////////////////
