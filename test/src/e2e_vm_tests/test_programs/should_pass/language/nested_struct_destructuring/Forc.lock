@@ -1,0 +1,9 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-F93ECA3248F311E3'
+dependencies = []
+
+[[package]]
+name = 'struct_destructuring'
+source = 'root'
+dependencies = ['core']
