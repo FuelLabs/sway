@@ -254,7 +254,7 @@ mod tests {
             .join("is_reference_type")
     }
 
-    fn sway_example_dir() -> PathBuf {
+    fn _sway_example_dir() -> PathBuf {
         env::current_dir()
             .unwrap()
             .parent()
