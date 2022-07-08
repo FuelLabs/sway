@@ -28,7 +28,7 @@ impl TypedProgram {
     /// The given `initial_namespace` acts as an initial state for each module within this program.
     /// It should contain a submodule for each library package dependency.
     pub fn type_check(
-        parsed: ParseProgram,
+        parsed: &ParseProgram,
         initial_namespace: namespace::Module,
     ) -> CompileResult<Self> {
         let mut namespace = Namespace::init_root(initial_namespace);
@@ -37,7 +37,7 @@ impl TypedProgram {
         let mod_span = root.tree.span.clone();
         let mod_res = TypedModule::type_check(ctx, root);
         mod_res.flat_map(|root| {
-            let kind_res = Self::validate_root(&root, kind, mod_span);
+            let kind_res = Self::validate_root(&root, kind.clone(), mod_span);
             kind_res.map(|kind| Self {
                 kind,
                 root,

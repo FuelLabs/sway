@@ -26,6 +26,8 @@ There are three ways to instantiate the struct.
 > You can mix and match all 3 ways to instantiate the struct at the same time.
 > Moreover, the order of the fields does not matter when instantiating however we encourage declaring the fields in alphabetical order and instantiating them in the same alphabetical order
 
+Furthermore, multiple variables can be extracted from a struct using the destructuring syntax.
+
 ### Struct Memory Layout
 
 > **Note** 
