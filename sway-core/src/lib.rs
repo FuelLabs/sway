@@ -207,7 +207,7 @@ pub enum BytecodeCompilationResult {
 }
 
 pub fn parsed_to_ast(
-    parse_program: ParseProgram,
+    parse_program: &ParseProgram,
     initial_namespace: namespace::Module,
 ) -> CompileAstResult {
     let mut warnings = Vec::new();
@@ -287,7 +287,7 @@ pub fn compile_to_ast(
         }
     };
 
-    match parsed_to_ast(parse_program, initial_namespace) {
+    match parsed_to_ast(&parse_program, initial_namespace) {
         CompileAstResult::Success {
             typed_program,
             warnings: new_warnings,
