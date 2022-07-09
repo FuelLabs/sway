@@ -10,12 +10,15 @@ pub mod setup {
 
     pub async fn get_contract_instance() -> (MyContract, ContractId) {
         // Launch a local network and deploy the contract
-        let wallet = launch_provider_and_get_single_wallet().await;
+        let wallet = launch_provider_and_get_wallet().await;
 
         let id = Contract::deploy(
             "test_artifacts/storage_vec/svec_u8/out/debug/svec_u8.bin",
             &wallet,
             TxParameters::default(),
+            StorageConfiguration::with_storage_path(Some(
+                "test_artifacts/storage_vec/svec_u8/out/debug/svec_u8-storage_slots.json".to_string(),
+            )),
         )
         .await
         .unwrap();
