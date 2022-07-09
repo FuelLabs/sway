@@ -321,7 +321,7 @@ async fn can_send_message() {
 
     let amount = 33u64;
     let asset_id_array: [u8; 32] = fuelcoin_id.into();
-    let recipient = wallet[1].address();
+    let recipient = wallets[1].address();
 
     fuelcoin_instance.mint_coins(amount).call().await.unwrap();
 
@@ -335,7 +335,7 @@ async fn can_send_message() {
         .unwrap();
 
     // TODO: how to check message here?
-    
+
     assert_eq!(
         recipient
             .get_spendable_coins(&AssetId::from(asset_id_array), 1)
