@@ -337,7 +337,7 @@ async fn can_send_message() {
     // TODO: how to check message here?
 
     assert_eq!(
-        recipient
+        wallets[1]
             .get_spendable_coins(&AssetId::from(asset_id_array), 1)
             .await
             .unwrap()[0]
