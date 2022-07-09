@@ -115,6 +115,10 @@ pub struct StorageVec<V> {}
 
 impl<V> StorageVec<V> {
     /// Appends the value to the end of the vector
+    /// 
+    /// # Arguments
+    /// 
+    /// * `value` - The item being added to the end of the vector
     #[storage(read, write)]
     pub fn push(self, value: V) {
         // The length of the vec is stored in the __get_storage_key() slot
@@ -128,7 +132,7 @@ impl<V> StorageVec<V> {
         store(__get_storage_key(), len + 1);
     }
 
-    /// Removes the last element of the vector
+    /// Removes the last element of the vector and returns it, None if empty
     #[storage(read, write)]
     pub fn pop(self) -> Option<V> {
         let len = get::<u64>(__get_storage_key());
@@ -144,7 +148,11 @@ impl<V> StorageVec<V> {
         Option::Some::<V>(get::<V>(key))
     }
 
-    /// Gets the value in the given index
+    /// Gets the value in the given index, None if index is out of bounds
+    /// 
+    /// # Arguments
+    /// 
+    /// * `index` - The index of the vec to retrieve the item from
     #[storage(read)]
     pub fn get(self, index: u64) -> Option<V> {
         let len = get::<u64>(__get_storage_key());
@@ -157,9 +165,20 @@ impl<V> StorageVec<V> {
         Option::Some::<V>(get::<V>(key))
     }
 
-    /// Removes the value in the given index and moves all the values in the following indexes
-    /// Down one index
-    /// WARNING: Expensive for larger vecs
+    /// Removes the element in the given index and moves all the element in the following indexes
+    /// Down one index. Also returns the element
+    ///
+    /// # WARNING 
+    ///
+    /// Expensive for larger vecs
+    ///
+    /// # Arguments
+    /// 
+    /// * `index` - The index of the vec to remove the item from
+    ///
+    /// # Reverts
+    /// 
+    /// Reverts if index is larger or equal to length of the vec
     #[storage(read, write)]
     pub fn remove(self, index: u64) -> V {
         let len = get::<u64>(__get_storage_key());
@@ -188,7 +207,15 @@ impl<V> StorageVec<V> {
     }
 
     /// Removes the element at the specified index and fills it with the last element
-    /// Does not preserve ordering
+    /// Does not preserve ordering. Also returns the element
+    ///
+    /// # Arguments
+    /// 
+    /// * `index` - The index of the vec to remove the item from
+    ///
+    /// # Reverts
+    /// 
+    /// Reverts if index is larger or equal to length of the vec
     #[storage(read, write)]
     pub fn swap_remove(self, index: u64) -> V {
         let len = get::<u64>(__get_storage_key());
@@ -210,7 +237,19 @@ impl<V> StorageVec<V> {
 
     /// Inserts the value at the given index, moving the current index's value aswell as the following's
     /// Up one index
-    /// WARNING: Expensive for larger vecs
+    ///
+    /// # WARNING 
+    ///
+    /// Expensive for larger vecs
+    ///
+    /// # Arguments
+    /// 
+    /// * `index` - The index of the vec to insert the item into
+    /// * `value` - The value to insert into the vec
+    ///
+    /// # Reverts
+    /// 
+    /// Reverts if index is larger than length of the vec
     #[storage(read, write)]
     pub fn insert(self, index: u64, value: V) {
         let len = get::<u64>(__get_storage_key());
