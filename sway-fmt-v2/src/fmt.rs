@@ -303,9 +303,9 @@ enum TestTy {
     fn test_storage_without_alignment() {
         let sway_code_to_format = r#"contract;
 
-storage{foo:Test,bar
+storage{foo:Test=Test{},bar
 : 
-    Test
+    Test=Test{}
 , baz: u64 } 
 "#;
         let correct_sway_code = r#"contract;
@@ -326,8 +326,8 @@ storage {
         let sway_code_to_format = r#"contract;
 
 storage {
- long_var_name: Type1,
-      var2: Type2,
+ long_var_name: Type1=Type1{},
+      var2: Type2=Type2{},
 }
 "#;
         let correct_sway_code = r#"contract;
@@ -348,8 +348,8 @@ storage {
         let sway_code_to_format = r#"contract;
 
 storage {
- long_var_name: Type1,
-      var2: Type2,
+ long_var_name: Type1=Type1{},
+      var2: Type2=Type2{},
 }
 "#;
         let correct_sway_code = r#"contract;

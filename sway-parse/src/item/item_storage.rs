@@ -17,7 +17,8 @@ pub struct StorageField {
     pub name: Ident,
     pub colon_token: ColonToken,
     pub ty: Ty,
-    pub initializer: Option<(EqToken, Expr)>,
+    pub eq_token: EqToken,
+    pub initializer: Expr,
 }
 
 impl Parse for StorageField {
@@ -25,17 +26,13 @@ impl Parse for StorageField {
         let name = parser.parse()?;
         let colon_token = parser.parse()?;
         let ty = parser.parse()?;
-        let initializer = match parser.take() {
-            Some(eq_token) => {
-                let expr = parser.parse()?;
-                Some((eq_token, expr))
-            }
-            None => None,
-        };
+        let eq_token = parser.parse()?;
+        let initializer = parser.parse()?;
         Ok(StorageField {
             name,
             colon_token,
             ty,
+            eq_token,
             initializer,
         })
     }

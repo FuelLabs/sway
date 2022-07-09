@@ -10,16 +10,16 @@ use std::{
     address::Address,
     assert::require,
     chain::auth::{AuthError, msg_sender},
-    constants::BASE_ASSET_ID,
+    constants::{BASE_ASSET_ID, ZERO_B256},
     contract_id::ContractId,
-    identity::*,
-    result::*,
+    identity::Identity,
+    result::Result,
     revert::revert,
     token::{force_transfer_to_contract, transfer_to_output}
 };
 
 storage {
-    owner: Identity,
+    owner: Identity = Identity::ContractId(~ContractId::from(ZERO_B256)),
 }
 
 impl IdentityExample for Contract {

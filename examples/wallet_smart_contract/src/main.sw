@@ -8,7 +8,7 @@ use std::{
     context::{call_frames::msg_asset_id, msg_amount},
     contract_id::ContractId,
     identity::Identity,
-    result::*,
+    result::Result,
     revert::revert,
     token::transfer_to_output,
 };
@@ -16,7 +16,7 @@ use std::{
 const OWNER_ADDRESS: b256 = 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861;
 
 storage {
-    balance: u64,
+    balance: u64 = 0,
 }
 
 abi Wallet {

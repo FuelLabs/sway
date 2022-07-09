@@ -18,8 +18,8 @@ abi StorageAccess {
 }
 
 storage {
-    e1: E,
-    e2: E,
+    e1: E = E::B(0),
+    e2: E = E::B(0),
 }
 
 impl StorageAccess for Contract {

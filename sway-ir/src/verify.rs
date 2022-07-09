@@ -625,10 +625,7 @@ impl<'a> InstructionVerifier<'a> {
     }
 
     fn is_local_pointer(&self, ptr: &Pointer) -> bool {
-        self.cur_function
-            .local_storage
-            .values()
-            .any(|local_ptr| local_ptr == ptr)
+        self.cur_function.local_storage.values().any(|x| x == ptr)
     }
 
     // This is a really common operation above... calling `Value::get_type()` and then failing when

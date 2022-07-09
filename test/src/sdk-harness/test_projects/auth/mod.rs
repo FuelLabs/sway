@@ -50,12 +50,17 @@ async fn get_contracts() -> (
     ContractId,
     LocalWallet,
 ) {
-    let wallet = launch_provider_and_get_single_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await;
 
     let id_1 = Contract::deploy(
         "test_artifacts/auth_testing_contract/out/debug/auth_testing_contract.bin",
         &wallet,
         TxParameters::default(),
+        StorageConfiguration::with_storage_path(
+            Some(
+                "test_artifacts/auth_testing_contract/out/debug/auth_testing_contract-storage_slots.json".to_string(),
+                )
+        )
     )
     .await
     .unwrap();
@@ -64,6 +69,10 @@ async fn get_contracts() -> (
         "test_artifacts/auth_caller_contract/out/debug/auth_caller_contract.bin",
         &wallet,
         TxParameters::default(),
+        StorageConfiguration::with_storage_path(Some(
+            "test_artifacts/auth_caller_contract/out/debug/auth_caller_contract-storage_slots.json"
+                .to_string(),
+        )),
     )
     .await
     .unwrap();

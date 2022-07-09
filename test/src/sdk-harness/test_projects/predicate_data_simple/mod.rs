@@ -1,28 +1,33 @@
 use fuel_core::service::Config;
 use fuel_vm::consts::*;
 use fuel_vm::prelude::Opcode;
+use fuels::contract::abi_encoder::ABIEncoder;
 use fuels::contract::script::Script;
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
-use fuels::contract::abi_encoder::ABIEncoder;
 use fuels::tx::{Address, AssetId, Contract, Input, Output, Transaction, UtxoId};
 use std::str::FromStr;
 
 async fn setup() -> (Vec<u8>, Address, Wallet, u64, AssetId) {
-    let predicate_code = std::fs::read("test_projects/predicate_data_simple/out/debug/predicate_data_simple.bin").unwrap();
+    let predicate_code =
+        std::fs::read("test_projects/predicate_data_simple/out/debug/predicate_data_simple.bin")
+            .unwrap();
     let predicate_address = (*Contract::root_from_code(&predicate_code)).into();
 
-    let wallet = launch_custom_provider_and_get_single_wallet(Some(Config {
-        predicates: true,
-        utxo_validation: true,
-        ..Config::local_node()
-    }))
+    let wallets = launch_custom_provider_and_get_wallets(
+        WalletsConfig::default(),
+        Some(Config {
+            predicates: true,
+            utxo_validation: true,
+            ..Config::local_node()
+        }),
+    )
     .await;
 
     (
         predicate_code,
         predicate_address,
-        wallet,
+        wallets[0].clone(),
         1000,
         AssetId::default(),
     )
@@ -167,7 +172,7 @@ async fn invalid_predicate_data_simple() {
     let arg = Token::U32(1001_u32);
     let args: Vec<Token> = vec![arg];
     let predicate_data = ABIEncoder::encode(&args).unwrap();
-    
+
     let receiver_address =
         Address::from_str("0xde97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c")
             .unwrap();
