@@ -304,6 +304,48 @@ async fn can_perform_generic_transfer_to_contract() {
     assert_eq!(result.value, amount)
 }
 
+#[tokio::test]
+async fn can_send_message() {
+    let num_wallets = 2;
+    let coins_per_wallet = 1;
+    let amount_per_coin = 1_000_000;
+
+    let config = WalletsConfig::new(
+        Some(num_wallets),
+        Some(coins_per_wallet),
+        Some(amount_per_coin),
+    );
+
+    let wallets = launch_custom_provider_and_get_wallets(config, None).await;
+    let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallets[0].clone()).await;
+
+    let amount = 33u64;
+    let asset_id_array: [u8; 32] = fuelcoin_id.into();
+    let recipient = wallet[1].address();
+
+    fuelcoin_instance.mint_coins(amount).call().await.unwrap();
+
+    // TODO: how to check message, balance here?
+
+    fuelcoin_instance
+        .send_message(recipient.value, 0, 1, amount)
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
+
+    // TODO: how to check message here?
+    
+    assert_eq!(
+        recipient
+            .get_spendable_coins(&AssetId::from(asset_id_array), 1)
+            .await
+            .unwrap()[0]
+            .amount,
+        amount.into()
+    );
+}
+
 async fn get_fuelcoin_instance(wallet: Wallet) -> (TestFuelCoinContract, ContractId) {
     let fuelcoin_id = Contract::deploy(
         "test_projects/token_ops/out/debug/token_ops.bin",

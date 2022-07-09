@@ -113,3 +113,10 @@ pub fn transfer_to_output(amount: u64, asset_id: ContractId, to: Address) {
         };
     }
 }
+
+/// Sends message to `recipient` of length `msg_len` through `output` and amount of `coins`
+pub fn send_message(recipient: b256, msg_len: u64, output: u64, coins: u64) {
+    asm(recipient, msg_len, output, coins) {
+        smo recipient msg_len coins output;
+    }
+}
