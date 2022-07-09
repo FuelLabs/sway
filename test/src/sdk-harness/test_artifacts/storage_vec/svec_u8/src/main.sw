@@ -24,7 +24,7 @@ abi MyContract {
 }
 
 storage {
-    my_vec: StorageVec<u8>,
+    my_vec: StorageVec<u8> = StorageVec {},
 }
 
 impl MyContract for Contract {
