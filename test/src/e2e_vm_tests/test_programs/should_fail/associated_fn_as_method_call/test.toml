@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: bar.associated()
+# nextln: $()Cannot call associated function "associated" as a method. Use associated function syntax instead.

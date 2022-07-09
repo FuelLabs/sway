@@ -9,7 +9,7 @@ abigen!(
 
 #[tokio::test]
 async fn can_mint() {
-    let wallet = launch_provider_and_get_single_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await;
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallet).await;
 
     let target = fuelcoin_id.clone();
@@ -34,7 +34,7 @@ async fn can_mint() {
 
 #[tokio::test]
 async fn can_burn() {
-    let wallet = launch_provider_and_get_single_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await;
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallet).await;
 
     let target = fuelcoin_id.clone();
@@ -60,7 +60,7 @@ async fn can_burn() {
 
 #[tokio::test]
 async fn can_force_transfer() {
-    let wallet = launch_provider_and_get_single_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await;
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallet.clone()).await;
     let balance_id = get_balance_contract_id(wallet).await;
 
@@ -122,7 +122,7 @@ async fn can_force_transfer() {
 
 #[tokio::test]
 async fn can_mint_and_send_to_contract() {
-    let wallet = launch_provider_and_get_single_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await;
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallet.clone()).await;
     let balance_id = get_balance_contract_id(wallet).await;
     let amount = 55u64;
@@ -150,7 +150,7 @@ async fn can_mint_and_send_to_contract() {
 
 #[tokio::test]
 async fn can_mint_and_send_to_address() {
-    let wallet = launch_provider_and_get_single_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await;
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallet.clone()).await;
     let amount = 55u64;
 
@@ -178,7 +178,7 @@ async fn can_mint_and_send_to_address() {
 
 #[tokio::test]
 async fn can_perform_generic_mint_to_with_address() {
-    let wallet = launch_provider_and_get_single_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await;
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallet.clone()).await;
 
     let amount = 55u64;
@@ -214,7 +214,7 @@ async fn can_perform_generic_mint_to_with_contract_id() {
         Some(amount_per_coin),
     );
 
-    let wallets = launch_provider_and_get_wallets(config).await;
+    let wallets = launch_custom_provider_and_get_wallets(config, None).await;
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallets[0].clone()).await;
     let balance_id = get_balance_contract_id(wallets[0].clone()).await;
     let amount = 55u64;
@@ -240,7 +240,7 @@ async fn can_perform_generic_mint_to_with_contract_id() {
 
 #[tokio::test]
 async fn can_perform_generic_transfer_to_address() {
-    let wallet = launch_provider_and_get_single_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await;
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallet.clone()).await;
 
     let amount = 33u64;
@@ -277,7 +277,7 @@ async fn can_perform_generic_transfer_to_contract() {
         Some(coins_per_wallet),
         Some(amount_per_coin),
     );
-    let wallets = launch_provider_and_get_wallets(config).await;
+    let wallets = launch_custom_provider_and_get_wallets(config, None).await;
 
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallets[0].clone()).await;
     let balance_id = get_balance_contract_id(wallets[0].clone()).await;
@@ -309,6 +309,9 @@ async fn get_fuelcoin_instance(wallet: Wallet) -> (TestFuelCoinContract, Contrac
         "test_projects/token_ops/out/debug/token_ops.bin",
         &wallet,
         TxParameters::default(),
+        StorageConfiguration::with_storage_path(Some(
+            "test_artifacts/token_ops/out/debug/token_ops-storage_slots.json".to_string(),
+        )),
     )
     .await
     .unwrap();
@@ -323,6 +326,9 @@ async fn get_balance_contract_id(wallet: Wallet) -> ContractId {
         "test_artifacts/balance_contract/out/debug/balance_contract.bin",
         &wallet,
         TxParameters::default(),
+        StorageConfiguration::with_storage_path(Some(
+            "test_artifacts/token_ops/out/debug/token_ops-storage_slots.json".to_string(),
+        )),
     )
     .await
     .unwrap();

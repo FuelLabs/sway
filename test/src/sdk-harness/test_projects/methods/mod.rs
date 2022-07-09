@@ -8,7 +8,7 @@ abigen!(
 
 #[tokio::test]
 async fn run_methods_test() {
-    let wallet = launch_provider_and_get_single_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await;
     let instance = get_methods_instance(wallet).await;
 
     let result = instance.test_function().call().await.unwrap();
@@ -20,6 +20,10 @@ async fn get_methods_instance(wallet: Wallet) -> MethodsContract {
         "test_artifacts/methods_contract/out/debug/methods_contract.bin",
         &wallet,
         TxParameters::default(),
+        StorageConfiguration::with_storage_path(Some(
+            "test_artifacts/methods_contract/out/debug/methods_contract-storage_slots.json"
+                .to_string(),
+        )),
     )
     .await
     .unwrap();

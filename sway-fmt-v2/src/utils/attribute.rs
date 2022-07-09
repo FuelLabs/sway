@@ -38,12 +38,12 @@ impl FormatDecl for AttributeDecl {
         // For now the default implementation will be `Horizontal`.
         //
         // `#`
-        line.push_str(self.hash_token.span().as_str());
+        write!(line, "{}", self.hash_token.span().as_str())?;
         // `[`
         Self::open_square_bracket(line, formatter)?;
         let attr = self.attribute.clone().into_inner();
         // name e.g. `storage`
-        line.push_str(attr.name.span().as_str());
+        write!(line, "{}", attr.name.span().as_str())?;
         // `(`
         Self::open_parenthesis(line, formatter)?;
         // format and add args e.g. `read, write`
@@ -63,7 +63,7 @@ impl SquareBracket for AttributeDecl {
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        line.push(Delimiter::Bracket.as_open_char());
+        write!(line, "{}", Delimiter::Bracket.as_open_char())?;
         Ok(())
     }
     fn close_square_bracket(
@@ -80,14 +80,14 @@ impl Parenthesis for AttributeDecl {
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        line.push(Delimiter::Parenthesis.as_open_char());
+        write!(line, "{}", Delimiter::Parenthesis.as_open_char())?;
         Ok(())
     }
     fn close_parenthesis(
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        line.push(Delimiter::Parenthesis.as_close_char());
+        write!(line, "{}", Delimiter::Parenthesis.as_close_char())?;
         Ok(())
     }
 }

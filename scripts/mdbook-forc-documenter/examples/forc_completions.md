@@ -1,5 +1,5 @@
 
-## DISCUSSION:
+## DISCUSSION
 
 Enable tab completion for Bash, Fish, Zsh, or PowerShell
 The script is output on `stdout`, allowing one to re-direct the
@@ -11,7 +11,7 @@ these scripts need to be placed.
 Here are some common set ups for the three supported shells under
 Unix and similar operating systems (such as GNU/Linux).
 
-**BASH:**
+### BASH
 
 Completion files are commonly stored in `/etc/bash_completion.d/` for
 system-wide commands, but can be stored in
@@ -26,7 +26,7 @@ forc completions --shell=bash >> ~/.local/share/bash-completion/completions/forc
 This installs the completion script. You may have to log out and
 log back in to your shell session for the changes to take effect.
 
-**BASH (macOS/Homebrew):**
+### BASH (macOS/Homebrew)
 
 Homebrew stores bash completion files within the Homebrew directory.
 With the `bash-completion` brew formula installed, run the command:
@@ -36,7 +36,7 @@ mkdir -p $(brew --prefix)/etc/bash_completion.d
 forc completions --shell=bash > $(brew --prefix)/etc/bash_completion.d/forc.bash-completion
 ```
 
-**FISH:**
+### FISH
 
 Fish completion files are commonly stored in
 `$HOME/.config/fish/completions`. Run the command:
@@ -49,7 +49,7 @@ forc completions --shell=fish > ~/.config/fish/completions/forc.fish
 This installs the completion script. You may have to log out and
 log back in to your shell session for the changes to take effect.
 
-**ZSH:**
+### ZSH
 
 ZSH completions are commonly stored in any directory listed in
 your `$fpath` variable. To use these completions, you must either
@@ -87,7 +87,7 @@ exec zsh
 
 for the new completions to take effect.
 
-**CUSTOM LOCATIONS:**
+### CUSTOM LOCATIONS
 
 Alternatively, you could save these files to the place of your
 choosing, such as a custom directory inside your $HOME. Doing so
@@ -95,7 +95,7 @@ will require you to add the proper directives, such as `source`ing
 inside your login script. Consult your shells documentation for
 how to add such directives.
 
-**POWERSHELL:**
+### POWERSHELL
 
 The powershell completion scripts require PowerShell v5.0+ (which
 comes with Windows 10, but can be downloaded separately for windows 7

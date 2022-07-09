@@ -126,7 +126,8 @@ impl TypedIntrinsicFunctionKind {
                     ctx.resolve_type_with_self(
                         insert_type(resolve_type(targ.type_id, &targ.span).unwrap()),
                         &targ.span,
-                        EnforceTypeArguments::Yes
+                        EnforceTypeArguments::Yes,
+                        None
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
@@ -158,7 +159,8 @@ impl TypedIntrinsicFunctionKind {
                     ctx.resolve_type_with_self(
                         insert_type(resolve_type(targ.type_id, &targ.span).unwrap()),
                         &targ.span,
-                        EnforceTypeArguments::Yes
+                        EnforceTypeArguments::Yes,
+                        None
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,

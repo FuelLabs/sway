@@ -1,6 +1,5 @@
-use sway_parse::{Item, ItemKind::*};
-
 use crate::fmt::{Format, FormattedCode, Formatter, FormatterError};
+use sway_parse::{Item, ItemKind::*};
 
 impl Format for Item {
     fn format(
@@ -18,6 +17,11 @@ impl Format for Item {
             Abi(item_abi) => item_abi.format(formatted_code, formatter),
             Const(item_const) => item_const.format(formatted_code, formatter),
             Storage(item_storage) => item_storage.format(formatted_code, formatter),
+            Break(_item_break) => todo!(),
+            Continue(_item_continue) => todo!(),
         }
     }
+}
+pub trait ItemLenChars {
+    fn len_chars(&self) -> Result<usize, FormatterError>;
 }

@@ -1,5 +1,4 @@
 use super::*;
-
 use crate::{
     parse_tree::{CallPath, Visibility},
     semantic_analysis::{
@@ -10,19 +9,15 @@ use crate::{
             TypedStructDeclaration, TypedStructExpressionField, TypedTraitDeclaration,
             TypedVariableDeclaration, TypedWhileLoop, VariableMutability,
         },
-        TypeCheckedStorageReassignment, TypedAstNode, TypedAstNodeContent, TypedImplTrait,
-        TypedIntrinsicFunctionKind,
+        TypeCheckedStorageReassignment, TypedAsmRegisterDeclaration, TypedAstNode,
+        TypedAstNodeContent, TypedImplTrait, TypedIntrinsicFunctionKind, TypedStorageDeclaration,
     },
     type_engine::{resolve_type, TypeInfo},
     CompileError, CompileWarning, Ident, TreeType, Warning,
 };
+use petgraph::{prelude::NodeIndex, visit::Dfs};
 use std::collections::BTreeSet;
 use sway_types::{span::Span, Spanned};
-
-use crate::semantic_analysis::TypedStorageDeclaration;
-
-use petgraph::prelude::NodeIndex;
-use petgraph::visit::Dfs;
 
 impl ControlFlowGraph {
     pub(crate) fn find_dead_code(&self) -> Vec<CompileWarning> {
@@ -100,7 +95,7 @@ impl ControlFlowGraph {
             .filter(|CompileWarning { span, .. }| {
                 // if any other warnings contain a span which completely covers this one, filter
                 // out this one.
-                all_warnings.iter().any(
+                !all_warnings.iter().any(
                     |CompileWarning {
                          span: other_span, ..
                      }| {
@@ -189,6 +184,16 @@ impl ControlFlowGraph {
                     ControlFlowGraphNode::ProgramNode(TypedAstNode {
                         content:
                             TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait { .. }),
+                        ..
+                    }) => true,
+                    ControlFlowGraphNode::ProgramNode(TypedAstNode {
+                        content:
+                            TypedAstNodeContent::Declaration(TypedDeclaration::ConstantDeclaration(
+                                TypedConstantDeclaration {
+                                    visibility: Visibility::Public,
+                                    ..
+                                },
+                            )),
                         ..
                     }) => true,
                     _ => false,
@@ -419,6 +424,7 @@ fn connect_declaration(
             Ok(leaves.to_vec())
         }
         ErrorRecovery | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
+        Break { .. } | Continue { .. } => Ok(vec![]),
     }
 }
 
@@ -886,12 +892,35 @@ fn connect_expression(
             graph.add_edge(this_ix, field_ix, "".into());
             Ok(vec![this_ix])
         }
-        AsmExpression { .. } => {
-            let asm_node = graph.add_node("Inline asm".into());
+        AsmExpression { registers, .. } => {
+            let asm_node_entry = graph.add_node("Inline asm entry".into());
+            let asm_node_exit = graph.add_node("Inline asm exit".into());
             for leaf in leaves {
-                graph.add_edge(*leaf, asm_node, "".into());
+                graph.add_edge(*leaf, asm_node_entry, "".into());
             }
-            Ok(vec![asm_node])
+
+            let mut current_leaf = vec![asm_node_entry];
+            for TypedAsmRegisterDeclaration { initializer, .. } in registers {
+                current_leaf = match initializer {
+                    Some(initializer) => connect_expression(
+                        &initializer.expression,
+                        graph,
+                        &current_leaf,
+                        exit_node,
+                        "asm block argument initialization",
+                        tree_type,
+                        initializer.clone().span,
+                    )?,
+                    None => current_leaf,
+                }
+            }
+
+            // connect the final field to the exit
+            for leaf in current_leaf {
+                graph.add_edge(leaf, asm_node_exit, "".into());
+            }
+
+            Ok(vec![asm_node_exit])
         }
         Tuple { fields } => {
             let entry = graph.add_node("tuple entry".into());
@@ -1189,6 +1218,12 @@ fn construct_dead_code_warning_from_node(node: &TypedAstNode) -> Option<CompileW
         } if methods.is_empty() => return None,
         TypedAstNode {
             content: TypedAstNodeContent::Declaration(TypedDeclaration::AbiDeclaration { .. }),
+            ..
+        } => return None,
+        // We handle storage fields individually. There is no need to emit any warnings for the
+        // storage declaration itself.
+        TypedAstNode {
+            content: TypedAstNodeContent::Declaration(TypedDeclaration::StorageDeclaration { .. }),
             ..
         } => return None,
         TypedAstNode {

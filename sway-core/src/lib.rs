@@ -8,7 +8,7 @@ mod concurrent_slab;
 pub mod constants;
 mod control_flow_analysis;
 mod convert_parse_tree;
-mod ir_generation;
+pub mod ir_generation;
 pub mod parse_tree;
 pub mod semantic_analysis;
 pub mod source_map;
@@ -16,6 +16,7 @@ mod style;
 pub mod type_engine;
 
 use crate::{error::*, source_map::SourceMap};
+pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
 pub use build_config::BuildConfig;
 use control_flow_analysis::ControlFlowGraph;
@@ -118,10 +119,7 @@ fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeTy
             // constructor site is always `None`. If we introduce dep aliases in the future, this
             // is where we should use it.
             let dep_alias = None;
-            let dep_name = match dep_alias {
-                None => library_name.clone(),
-                Some(alias) => alias,
-            };
+            let dep_name = dep_alias.unwrap_or_else(|| library_name.clone());
             let submodule = ParseSubmodule {
                 library_name,
                 module,
@@ -205,29 +203,12 @@ pub enum BytecodeCompilationResult {
     },
 }
 
-pub fn compile_to_ast(
-    input: Arc<str>,
+pub fn parsed_to_ast(
+    parse_program: &ParseProgram,
     initial_namespace: namespace::Module,
-    build_config: Option<&BuildConfig>,
 ) -> CompileAstResult {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
-
-    let CompileResult {
-        value: parse_program_opt,
-        warnings: new_warnings,
-        errors: new_errors,
-    } = parse(input, build_config);
-    warnings.extend(new_warnings);
-    errors.extend(new_errors);
-    let parse_program = match parse_program_opt {
-        Some(parse_program) => parse_program,
-        None => {
-            errors = dedup_unsorted(errors);
-            warnings = dedup_unsorted(warnings);
-            return CompileAstResult::Failure { errors, warnings };
-        }
-    };
 
     let CompileResult {
         value: typed_program_result,
@@ -275,6 +256,56 @@ pub fn compile_to_ast(
     CompileAstResult::Success {
         typed_program: Box::new(typed_program_with_storage_slots),
         warnings,
+    }
+}
+
+pub fn compile_to_ast(
+    input: Arc<str>,
+    initial_namespace: namespace::Module,
+    build_config: Option<&BuildConfig>,
+) -> CompileAstResult {
+    let mut warnings = Vec::new();
+    let mut errors = Vec::new();
+
+    let CompileResult {
+        value: parse_program_opt,
+        warnings: new_warnings,
+        errors: new_errors,
+    } = parse(input, build_config);
+
+    warnings.extend(new_warnings);
+    errors.extend(new_errors);
+    let parse_program = match parse_program_opt {
+        Some(parse_program) => parse_program,
+        None => {
+            errors = dedup_unsorted(errors);
+            warnings = dedup_unsorted(warnings);
+            return CompileAstResult::Failure { errors, warnings };
+        }
+    };
+
+    match parsed_to_ast(&parse_program, initial_namespace) {
+        CompileAstResult::Success {
+            typed_program,
+            warnings: new_warnings,
+        } => {
+            warnings.extend(new_warnings);
+            warnings = dedup_unsorted(warnings);
+            CompileAstResult::Success {
+                typed_program,
+                warnings,
+            }
+        }
+        CompileAstResult::Failure {
+            warnings: new_warnings,
+            errors: new_errors,
+        } => {
+            warnings.extend(new_warnings);
+            errors.extend(new_errors);
+            errors = dedup_unsorted(errors);
+            warnings = dedup_unsorted(warnings);
+            CompileAstResult::Failure { errors, warnings }
+        }
     }
 }
 
@@ -411,7 +442,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         tracing::info!("{}", ir);
     }
 
-    crate::asm_generation::from_ir::compile_ir_to_asm(&ir, build_config)
+    compile_ir_to_asm(&ir, Some(build_config))
 }
 
 fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
@@ -550,7 +581,10 @@ fn module_return_path_analysis(module: &TypedModule, errors: &mut Vec<CompileErr
         module_return_path_analysis(&submodule.module, errors);
     }
     let graph = ControlFlowGraph::construct_return_path_graph(&module.all_nodes);
-    errors.extend(graph.analyze_return_paths());
+    match graph {
+        Ok(graph) => errors.extend(graph.analyze_return_paths()),
+        Err(error) => errors.push(error),
+    }
 }
 
 #[test]

@@ -63,8 +63,8 @@ impl Items {
         ok((), vec![], vec![])
     }
 
-    pub fn get_all_declared_symbols(&self) -> impl Iterator<Item = &TypedDeclaration> {
-        self.symbols().values()
+    pub fn get_all_declared_symbols(&self) -> impl Iterator<Item = &Ident> {
+        self.symbols().keys()
     }
 
     pub(crate) fn insert_symbol(
@@ -97,14 +97,10 @@ impl Items {
         ok((), warnings, errors)
     }
 
-    pub(crate) fn check_symbol(&self, name: &Ident) -> CompileResult<&TypedDeclaration> {
-        match self.symbols.get(name) {
-            Some(decl) => ok(decl, vec![], vec![]),
-            None => err(
-                vec![],
-                vec![CompileError::SymbolNotFound { name: name.clone() }],
-            ),
-        }
+    pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&TypedDeclaration, CompileError> {
+        self.symbols
+            .get(name)
+            .ok_or_else(|| CompileError::SymbolNotFound { name: name.clone() })
     }
 
     pub(crate) fn insert_trait_implementation(
@@ -264,8 +260,7 @@ impl Items {
                     full_span_for_error = Span::join(full_span_for_error, index_span.clone());
                 }
                 (actually, ProjectionKind::StructField { .. }) => {
-                    errors.push(CompileError::NotAStruct {
-                        name: full_name_for_error,
+                    errors.push(CompileError::FieldAccessOnNonStruct {
                         span: full_span_for_error,
                         actually: actually.to_string(),
                     });

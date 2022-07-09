@@ -121,12 +121,15 @@ fn hash_struct(arr: [u8; 80], algorithm: Hash) -> [u8; 32] {
 }
 
 async fn get_hashing_instance() -> (HashingTestContract, ContractId) {
-    let wallet = launch_provider_and_get_single_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await;
 
     let id = Contract::deploy(
         "test_projects/hashing/out/debug/hashing.bin",
         &wallet,
         TxParameters::default(),
+        StorageConfiguration::with_storage_path(Some(
+            "test_artifacts/hashing/out/debug/hashing-storage_slots.json".to_string(),
+        )),
     )
     .await
     .unwrap();

@@ -2,6 +2,7 @@ use crate::priv_prelude::*;
 
 pub mod item_abi;
 pub mod item_const;
+pub mod item_control_flow;
 pub mod item_enum;
 pub mod item_fn;
 pub mod item_impl;
@@ -33,6 +34,8 @@ pub enum ItemKind {
     Abi(ItemAbi),
     Const(ItemConst),
     Storage(ItemStorage),
+    Break(ItemBreak),
+    Continue(ItemContinue),
 }
 
 impl Spanned for ItemKind {
@@ -47,6 +50,8 @@ impl Spanned for ItemKind {
             ItemKind::Abi(item_abi) => item_abi.span(),
             ItemKind::Const(item_const) => item_const.span(),
             ItemKind::Storage(item_storage) => item_storage.span(),
+            ItemKind::Break(item_break) => item_break.span(),
+            ItemKind::Continue(item_continue) => item_continue.span(),
         }
     }
 }
@@ -92,6 +97,14 @@ impl Parse for ItemKind {
         if parser.peek::<StorageToken>().is_some() {
             let item_storage = parser.parse()?;
             return Ok(ItemKind::Storage(item_storage));
+        }
+        if parser.peek::<BreakToken>().is_some() {
+            let item_break = parser.parse()?;
+            return Ok(ItemKind::Break(item_break));
+        }
+        if parser.peek::<ContinueToken>().is_some() {
+            let item_break = parser.parse()?;
+            return Ok(ItemKind::Continue(item_break));
         }
         Err(parser.emit_error(ParseErrorKind::ExpectedAnItem))
     }
@@ -283,7 +296,6 @@ mod tests {
         match Item::parse(&mut parser) {
             Ok(item) => item,
             Err(_) => {
-                //println!("Tokens: {:?}", token_stream);
                 panic!("Parse error: {:?}", errors);
             }
         }

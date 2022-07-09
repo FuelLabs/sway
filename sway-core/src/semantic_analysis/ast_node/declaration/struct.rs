@@ -1,7 +1,6 @@
 use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
-use fuels_types::Property;
 use std::hash::{Hash, Hasher};
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Property, Span, Spanned};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedStructDeclaration {
@@ -182,6 +181,10 @@ impl ToJsonAbi for TypedStructField {
             name: self.name.to_string(),
             type_field: self.type_id.json_abi_str(),
             components: self.type_id.generate_json_abi(),
+            type_arguments: self
+                .type_id
+                .get_type_parameters()
+                .map(|v| v.iter().map(TypeParameter::generate_json_abi).collect()),
         }
     }
 }
@@ -200,7 +203,8 @@ impl TypedStructField {
             ctx.resolve_type_with_self(
                 insert_type(field.type_info),
                 &field.type_span,
-                EnforceTypeArguments::Yes
+                EnforceTypeArguments::Yes,
+                None
             ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,

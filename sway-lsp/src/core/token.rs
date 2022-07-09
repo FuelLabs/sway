@@ -281,6 +281,8 @@ fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
                 tokens.push(token);
             }
         }
+        Declaration::Break { .. } => {}
+        Declaration::Continue { .. } => {}
     };
 }
 
@@ -326,14 +328,13 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             fields,
             ..
         } => {
-            let ident = struct_name.suffix;
-            let token = Token::from_ident(&ident, TokenType::Struct);
-            tokens.push(token);
-
+            handle_custom_type(&struct_name.suffix.0, tokens);
             for field in fields {
                 let token = Token::from_ident(
                     &field.name,
-                    TokenType::StructExpressionField(get_struct_field_details(&ident)),
+                    TokenType::StructExpressionField(get_struct_field_details(&Ident::new(
+                        struct_name.suffix.1.clone(),
+                    ))),
                 );
                 tokens.push(token);
                 handle_expression(field.value, tokens);
@@ -387,8 +388,8 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             }
 
             //TODO handle methods from imported modules
-            if let MethodName::FromType { type_name, .. } = &method_name {
-                handle_custom_type(type_name, tokens);
+            if let MethodName::FromType { call_path, .. } = &method_name {
+                handle_custom_type(&call_path.suffix.0, tokens);
             }
 
             for field in contract_call_params {

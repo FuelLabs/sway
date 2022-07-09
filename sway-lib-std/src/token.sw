@@ -87,8 +87,6 @@ pub fn force_transfer_to_contract(amount: u64, asset_id: ContractId, to: Contrac
 /// Transfer `amount` coins of type `asset_id` and send them to
 /// the address `to`.
 pub fn transfer_to_output(amount: u64, asset_id: ContractId, to: Address) {
-    const OUTPUT_VARIABLE_TYPE: u8 = 4;
-
     // maintain a manual index as we only have `while` loops in sway atm:
     let mut index = 0;
     let mut output_index = 0;
@@ -99,12 +97,10 @@ pub fn transfer_to_output(amount: u64, asset_id: ContractId, to: Address) {
     // variable output with a value of zero is by definition unused.
     let outputs_count = tx_outputs_count();
     while index < outputs_count {
-        let output_pointer = tx_output_pointer(index);
-        if tx_output_type(output_pointer) == OUTPUT_VARIABLE_TYPE && tx_output_amount(output_pointer) == 0 {
+        if tx_output_type(index) == OUTPUT_VARIABLE && tx_output_amount(index) == 0 {
             output_index = index;
             output_found = true;
-            index = outputs_count; // break early and use the output we found
-            // use `break;` when it's implemented #587
+            break; // break early and use the output we found
         };
         index += 1;
     }

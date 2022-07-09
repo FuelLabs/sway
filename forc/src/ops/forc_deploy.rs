@@ -72,10 +72,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         _ => DEFAULT_NODE_URL,
     };
 
-    let node_url = match url {
-        Some(url_str) => url_str,
-        None => node_url.to_string(),
-    };
+    let node_url = url.unwrap_or_else(|| node_url.to_string());
 
     let client = FuelClient::new(node_url)?;
 

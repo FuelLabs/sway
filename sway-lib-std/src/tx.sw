@@ -3,8 +3,11 @@
 library tx;
 
 use ::address::Address;
+use ::context::registers::instrs_start;
 use ::contract_id::ContractId;
 use ::intrinsics::is_reference_type;
+use ::mem::read;
+use ::option::Option;
 
 ////////////////////////////////////////
 // Transaction fields
@@ -41,6 +44,20 @@ const TX_OUTPUTS_COUNT_OFFSET = 10304;
 const TX_WITNESSES_COUNT_OFFSET = 10312;
 const TX_RECEIPTS_ROOT_OFFSET = 10320;
 const TX_SCRIPT_START_OFFSET = 10352;
+const TX_ID_OFFSET = 0;
+
+// Input types
+pub const INPUT_COIN = 0u8;
+pub const INPUT_CONTRACT = 1u8;
+pub const INPUT_MESSAGE = 2u8;
+
+// Output types
+pub const OUTPUT_COIN = 0u8;
+pub const OUTPUT_CONTRACT = 1u8;
+pub const OUTPUT_MESSAGE = 2u8;
+pub const OUTPUT_CHANGE = 3u8;
+pub const OUTPUT_VARIABLE = 4u8;
+pub const OUTPUT_CONTRACT_CREATED = 5u8;
 
 /// Get the transaction type.
 pub fn tx_type() -> u8 {
@@ -129,11 +146,11 @@ pub fn tx_receipts_root() -> b256 {
     }
 }
 
-/// Get the transaction script start offset.
-pub fn tx_script_start_offset() -> u32 {
+/// Get the transaction script start pointer.
+pub fn tx_script_start_pointer() -> u64 {
     asm(r1, r2: TX_SCRIPT_START_OFFSET) {
         move r1 r2;
-        r1: u32
+        r1: u64
     }
 }
 
@@ -141,29 +158,22 @@ pub fn tx_script_start_offset() -> u32 {
 // Script
 ////////////////////////////////////////
 
-/// Get the transaction script data start offset.
-pub fn tx_script_data_start_offset() -> u32 {
-    asm(r1, r2: TX_SCRIPT_START_OFFSET, r3: TX_SCRIPT_LENGTH_OFFSET) {
-        lw r3 r3 i0;
-        add r1 r2 r3;
-        r1: u32
-    }
+/// Get the transaction script data start pointer.
+pub fn tx_script_data_start_pointer() -> u64 {
+    tx_script_start_pointer() + tx_script_length()
 }
 
 /// Get the script data, typed. Unsafe.
-pub fn get_script_data<T>() -> T {
+pub fn tx_script_data<T>() -> T {
     // TODO some safety checks on the input data? We are going to assume it is the right type for now.
-    let ptr = tx_script_data_start_offset();
-    if is_reference_type::<T>() {
-        asm(r1: ptr) {
-            r1: T
-        }
-    } else {
-        asm(r1: ptr) {
-            lw r1 r1 i0;
-            r1: T
-        }
-    }
+    read(tx_script_data_start_pointer())
+}
+
+/// Get the script bytecode
+/// Must be cast to a u64 array, with sufficient length to contain the bytecode.
+/// Bytecode will be padded to next whole word.
+pub fn tx_script_bytecode<T>() -> T {
+    read(tx_script_start_pointer())
 }
 
 ////////////////////////////////////////
@@ -171,27 +181,60 @@ pub fn get_script_data<T>() -> T {
 ////////////////////////////////////////
 
 /// Get a pointer to an input given the index of the input.
-pub fn tx_input_pointer(index: u64) -> u32 {
+pub fn tx_input_pointer(index: u64) -> u64 {
     asm(r1, r2: index) {
         xis r1 r2;
-        r1: u32
+        r1: u64
     }
 }
 
 /// Get the type of an input given a pointer to the input.
-pub fn tx_input_type(ptr: u32) -> u8 {
+pub fn tx_input_type_from_pointer(ptr: u64) -> u8 {
     asm(r1, r2: ptr) {
         lw r1 r2 i0;
         r1: u8
     }
 }
 
-/// If the input's type is `InputCoin`, return the owner.
-/// Otherwise, undefined behavior.
-pub fn tx_input_coin_owner(input_ptr: u32) -> Address {
-    let owner_addr = ~Address::from(asm(buffer, ptr: input_ptr) {
-        // Need to skip over six words, so add 8*6=48
-        addi ptr ptr i48;
+/// If the input's type is `InputCoin` or `InputMessage`,
+/// return the owner as an Option::Some(owner).
+/// Otherwise, returns Option::None.
+pub fn tx_input_owner(index: u64) -> Option<Address> {
+    let type = tx_input_type(index);
+    let owner_offset = match type {
+        // 0 is the `Coin` Input type
+        0u8 => {
+            // Need to skip over six words, so add 8*6=48
+            48
+        },
+        // 2 is the `Message` Input type
+        2u8 => {
+            // Need to skip over eighteen words, so add 8*18=144
+            144
+        },
+        _ => {
+            return Option::None;
+        },
+    };
+
+    let ptr = tx_input_pointer(index);
+    Option::Some(~Address::from(b256_from_pointer_offset(
+        ptr,
+        owner_offset
+    )))
+}
+
+/// Get the type of an input at a given index
+pub fn tx_input_type(index: u64) -> u8 {
+    let ptr = tx_input_pointer(index);
+    tx_input_type_from_pointer(ptr)
+}
+
+/// Read 256 bits from memory at a given offset from a given pointer
+pub fn b256_from_pointer_offset(pointer: u64, offset: u64) -> b256 {
+    asm(buffer, ptr: pointer, off: offset) {
+        // Need to skip over `off` bytes
+        add ptr ptr off;
         // Save old stack pointer
         move buffer sp;
         // Extend stack by 32 bytes
@@ -200,9 +243,31 @@ pub fn tx_input_coin_owner(input_ptr: u32) -> Address {
         mcpi buffer ptr i32;
         // `buffer` now points to the 32 bytes
         buffer: b256
-    });
+    }
+}
 
-    owner_addr
+////////////////////////////////////////
+// Inputs > Predicate
+////////////////////////////////////////
+
+pub fn tx_predicate_data_start_pointer() -> u64 {
+    // $is is word-aligned
+    let is = instrs_start();
+    let predicate_length_ptr = is - 16;
+    let predicate_code_length = asm(r1, r2: predicate_length_ptr) {
+        lw r1 r2 i0;
+        r1: u64
+    };
+
+    let predicate_data_ptr = is + predicate_code_length;
+    // predicate_data_ptr % 8 is guaranteed to be either
+    //  0: if there are an even number of instructions (predicate_data_ptr is word-aligned already)
+    //  4: if there are an odd number of instructions
+    predicate_data_ptr + predicate_data_ptr % 8
+}
+
+pub fn get_predicate_data<T>() -> T {
+    read(tx_predicate_data_start_pointer())
 }
 
 ////////////////////////////////////////
@@ -210,28 +275,40 @@ pub fn tx_input_coin_owner(input_ptr: u32) -> Address {
 ////////////////////////////////////////
 
 /// Get a pointer to an output given the index of the output.
-pub fn tx_output_pointer(index: u64) -> u32 {
+pub fn tx_output_pointer(index: u64) -> u64 {
     asm(r1, r2: index) {
         xos r1 r2;
-        r1: u32
+        r1: u64
     }
 }
 
 /// Get the type of an output given a pointer to the output.
-pub fn tx_output_type(ptr: u32) -> u8 {
+pub fn tx_output_type_from_pointer(ptr: u64) -> u8 {
     asm(r1, r2: ptr) {
         lw r1 r2 i0;
         r1: u8
     }
 }
 
+/// Get the type of an output at a given index
+pub fn tx_output_type(index: u64) -> u8 {
+    let ptr = tx_output_pointer(index);
+    tx_output_type_from_pointer(ptr)
+}
+
 /// Get the amount of coins to send for an output given a pointer to the output.
 /// This method is only meaningful if the output type has the `amount` field.
 /// Specifically: OutputCoin, OutputWithdrawal, OutputChange, OutputVariable.
-pub fn tx_output_amount(ptr: u32) -> u64 {
+pub fn tx_output_amount(index: u64) -> u64 {
+    let ptr = tx_output_pointer(index);
     asm(r1, r2, r3: ptr) {
         addi r2 r3 i40;
         lw r1 r2 i0;
         r1: u64
     }
+}
+
+/// Get the id of the current transaction.
+pub fn tx_id() -> b256 {
+    read(TX_ID_OFFSET)
 }

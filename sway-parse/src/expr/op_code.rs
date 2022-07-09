@@ -163,6 +163,12 @@ define_op_codes!(
     (Ori, OriOpcode, "ori", (ret: reg, lhs: reg, rhs: imm)),
     (Sll, SllOpcode, "sll", (ret: reg, lhs: reg, rhs: reg)),
     (Slli, SlliOpcode, "slli", (ret: reg, lhs: reg, rhs: imm)),
+    (
+        Smo,
+        SmoOpcode,
+        "smo",
+        (addr: reg, len: reg, output: reg, coins: reg)
+    ),
     (Srl, SrlOpcode, "srl", (ret: reg, lhs: reg, rhs: reg)),
     (Srli, SrliOpcode, "srli", (ret: reg, lhs: reg, rhs: imm)),
     (Sub, SubOpcode, "sub", (ret: reg, lhs: reg, rhs: reg)),

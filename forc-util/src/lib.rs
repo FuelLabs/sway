@@ -148,9 +148,9 @@ pub fn print_on_success(
     }
 
     if warnings.is_empty() {
-        let _ = println_green_err(&format!("  Compiled {} {:?}.", type_str, proj_name));
+        println_green_err(&format!("  Compiled {} {:?}.", type_str, proj_name));
     } else {
-        let _ = println_yellow_err(&format!(
+        println_yellow_err(&format!(
             "  Compiled {} {:?} with {} {}.",
             type_str,
             proj_name,
@@ -170,9 +170,9 @@ pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: &[
     }
 
     if warnings.is_empty() {
-        let _ = println_green_err(&format!("  Compiled library {:?}.", proj_name));
+        println_green_err(&format!("  Compiled library {:?}.", proj_name));
     } else {
-        let _ = println_yellow_err(&format!(
+        println_yellow_err(&format!(
             "  Compiled library {:?} with {} {}.",
             proj_name,
             warnings.len(),
@@ -383,23 +383,25 @@ fn construct_window<'a>(
     let mut lines_to_start_of_snippet = 0;
     let mut calculated_start_ix = None;
     let mut calculated_end_ix = None;
-    for (ix, character) in input.chars().enumerate() {
+    let mut pos = 0;
+    for character in input.chars() {
         if character == '\n' {
             current_line += 1
         }
 
         if current_line + NUM_LINES_BUFFER >= start.line && calculated_start_ix.is_none() {
-            calculated_start_ix = Some(ix);
+            calculated_start_ix = Some(pos);
             lines_to_start_of_snippet = current_line;
         }
 
         if current_line >= end.line + NUM_LINES_BUFFER && calculated_end_ix.is_none() {
-            calculated_end_ix = Some(ix);
+            calculated_end_ix = Some(pos);
         }
 
         if calculated_start_ix.is_some() && calculated_end_ix.is_some() {
             break;
         }
+        pos += character.len_utf8();
     }
     let calculated_start_ix = calculated_start_ix.unwrap_or(0);
     let calculated_end_ix = calculated_end_ix.unwrap_or(input.len());
