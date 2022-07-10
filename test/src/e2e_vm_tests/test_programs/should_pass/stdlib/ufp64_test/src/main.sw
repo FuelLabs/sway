@@ -4,7 +4,6 @@ use std::assert::assert;
 use std::result::*;
 use std::u128::*;
 use std::ufp64::*;
-use std::logging::*;
 
 fn main() -> bool {
     // arithmetic

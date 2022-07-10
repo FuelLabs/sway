@@ -4,13 +4,11 @@ use std::assert::assert;
 use std::result::*;
 use std::u128::*;
 use std::ufp64::*;
-use std::logging::*;
 
 fn main() -> bool {
     let one = ~UFP64::from_uint(1);
     let ufp64_1000 = ~UFP64::from_uint(1);
     let mut res = one.pow(ufp64_1000);
-    log(one.value);
     assert(one == res);
 
     let two = ~UFP64::from_uint(2);
