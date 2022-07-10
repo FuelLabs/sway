@@ -6,7 +6,8 @@
       {
         "components": [],
         "name": "",
-        "type": "()"
+        "type": "()",
+        "typeArguments": null
       }
     ],
     "type": "function"

@@ -6,7 +6,8 @@
       {
         "components": null,
         "name": "",
-        "type": "u32"
+        "type": "u32",
+        "typeArguments": null
       }
     ],
     "type": "function"

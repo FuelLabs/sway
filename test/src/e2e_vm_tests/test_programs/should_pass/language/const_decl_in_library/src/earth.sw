@@ -1,3 +1,3 @@
 library earth;
 
-const MAN = 5;
+pub const MAN = 5;

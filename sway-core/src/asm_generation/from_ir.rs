@@ -30,7 +30,10 @@ use sway_types::{span::Span, Spanned};
 
 use either::Either;
 
-pub fn compile_ir_to_asm(ir: &Context, build_config: &BuildConfig) -> CompileResult<FinalizedAsm> {
+pub fn compile_ir_to_asm(
+    ir: &Context,
+    build_config: Option<&BuildConfig>,
+) -> CompileResult<FinalizedAsm> {
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
 
@@ -62,7 +65,10 @@ pub fn compile_ir_to_asm(ir: &Context, build_config: &BuildConfig) -> CompileRes
         Kind::Library | Kind::Predicate => todo!("libraries and predicates coming soon!"),
     };
 
-    if build_config.print_intermediate_asm {
+    if build_config
+        .map(|cfg| cfg.print_intermediate_asm)
+        .unwrap_or(false)
+    {
         tracing::info!("{}", asm);
     }
 
@@ -71,7 +77,10 @@ pub fn compile_ir_to_asm(ir: &Context, build_config: &BuildConfig) -> CompileRes
         .allocate_registers(&mut reg_seqr)
         .optimize();
 
-    if build_config.print_finalized_asm {
+    if build_config
+        .map(|cfg| cfg.print_finalized_asm)
+        .unwrap_or(false)
+    {
         tracing::info!("{}", finalized_asm);
     }
 
@@ -1394,19 +1403,24 @@ impl<'ir> AsmBuilder<'ir> {
                         // Value can fit in a register, so we load the value.
                         if word_offs > compiler_constants::TWELVE_BITS {
                             let offs_reg = self.reg_seqr.next();
+                            self.number_to_reg(
+                                word_offs * 8, // Base reg for LW is in bytes
+                                &offs_reg,
+                                instr_val.get_span(self.context),
+                            );
                             self.bytecode.push(Op {
                                 opcode: Either::Left(VirtualOp::ADD(
-                                    base_reg.clone(),
+                                    offs_reg.clone(),
                                     base_reg,
                                     offs_reg.clone(),
                                 )),
-                                comment: "insert_value absolute offset".into(),
+                                comment: "absolute offset for load".into(),
                                 owning_span: instr_val.get_span(self.context),
                             });
                             self.bytecode.push(Op {
                                 opcode: Either::Left(VirtualOp::LW(
                                     instr_reg.clone(),
-                                    offs_reg,
+                                    offs_reg.clone(),
                                     VirtualImmediate12 { value: 0 },
                                 )),
                                 comment: "load value".into(),
@@ -1775,13 +1789,13 @@ impl<'ir> AsmBuilder<'ir> {
                         if word_offs > compiler_constants::TWELVE_BITS {
                             let offs_reg = self.reg_seqr.next();
                             self.number_to_reg(
-                                word_offs,
+                                word_offs * 8, // Base reg for SW is in bytes
                                 &offs_reg,
                                 instr_val.get_span(self.context),
                             );
                             self.bytecode.push(Op {
                                 opcode: Either::Left(VirtualOp::ADD(
-                                    base_reg.clone(),
+                                    offs_reg.clone(),
                                     base_reg,
                                     offs_reg.clone(),
                                 )),
@@ -2463,15 +2477,7 @@ mod tests {
         let expected = String::from_utf8_lossy(&expected_bytes);
 
         let ir = parse(&input).expect("parsed ir");
-        let asm_result = compile_ir_to_asm(
-            &ir,
-            &BuildConfig {
-                canonical_root_module: std::sync::Arc::new("".into()),
-                print_intermediate_asm: false,
-                print_finalized_asm: false,
-                print_ir: true,
-            },
-        );
+        let asm_result = compile_ir_to_asm(&ir, None);
 
         let mut warnings = Vec::new();
         let mut errors = Vec::new();

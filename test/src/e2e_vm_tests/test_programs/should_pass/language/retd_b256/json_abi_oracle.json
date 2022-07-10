@@ -6,7 +6,8 @@
       {
         "components": null,
         "name": "",
-        "type": "b256"
+        "type": "b256",
+        "typeArguments": null
       }
     ],
     "type": "function"

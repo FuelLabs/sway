@@ -1,4 +1,5 @@
-## EXAMPLE:
+
+## EXAMPLE
 
 ```console
 $ forc new my-fuel-project
