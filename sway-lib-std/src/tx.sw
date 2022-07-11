@@ -226,19 +226,19 @@ pub fn tx_script_bytecode<T>(index: u64) -> T {
     read(tx_script_start_pointer(index))
 }
 
-///////////////////// Needs update!    //////////////////////////////  ------- *
 ////////////////////////////////////////
 // Inputs
 ////////////////////////////////////////
 
 /// Get a pointer to an input given the index of the input.
 pub fn tx_input_pointer(index: u64) -> u64 {
-    asm(r1, r2: index) {
-        xis r1 r2;
-        r1: u64
+    asm(res, i: index) {
+        gtf res i i13;
+        res: u64
     }
 }
 
+///////////////////// Needs update!    //////////////////////////////  ------- *
 /// Get the type of an input given a pointer to the input.
 pub fn tx_input_type_from_pointer(ptr: u64) -> u8 {
     asm(r1, r2: ptr) {
