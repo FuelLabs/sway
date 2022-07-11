@@ -161,15 +161,15 @@ pub fn tx_script_data_length(index: u64) -> u64 {
     }
 }
 
-///////////////////// Needs update!    //////////////////////////////  ------- *
 /// Get the transaction inputs count.
-pub fn tx_inputs_count() -> u64 {
-    asm(r1, r2: TX_INPUTS_COUNT_OFFSET) {
-        lw r1 r2 i0;
-        r1: u64
+pub fn tx_inputs_count(index: u64) -> u64 {
+    asm(res, i: index) {
+        gtf res i i7;
+        res: u64
     }
 }
 
+///////////////////// Needs update!    //////////////////////////////  ------- *
 /// Get the transaction outputs count.
 pub fn tx_outputs_count() -> u64 {
     asm(r1, r2: TX_OUTPUTS_COUNT_OFFSET) {
