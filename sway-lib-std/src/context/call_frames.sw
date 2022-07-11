@@ -5,7 +5,7 @@ library call_frames;
 
 use ::contract_id::ContractId;
 use ::mem::read;
-use ::context::call_context::registers::frame_ptr;
+use ::context::registers::frame_ptr;
 
 // Note that everything when serialized is padded to word length.
 //

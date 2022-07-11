@@ -1,10 +1,11 @@
 //! Functionality for accessing context-specific information about the current contract or message.
 library context;
-dep call_context/mod;
+dep context/call_frames;
+dep context/registers;
 
 use ::contract_id::ContractId;
-use ::context::call_context::call_frames::*;
-use ::context::call_context::registers::balance;
+use ::context::call_frames::*;
+use ::context::registers::balance;
 
 /// Get the balance of coin `asset_id` for the current contract.
 pub fn this_balance(asset_id: ContractId) -> u64 {
