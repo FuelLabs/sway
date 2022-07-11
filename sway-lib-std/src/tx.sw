@@ -148,10 +148,10 @@ pub fn tx_byte_price() -> u64 {
 }
 
 /// Get the transaction maturity.
-pub fn tx_maturity() -> u32 {
-    asm(r1, r2: TX_MATURITY_OFFSET) {
-        lw r1 r2 i0;
-        r1: u32
+pub fn tx_maturity(index: u64) -> u32 {
+    asm(res, i: index) {
+        gtf res i i4;
+        res: u64
     }
 }
 
