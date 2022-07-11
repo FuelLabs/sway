@@ -306,7 +306,7 @@ pub fn tx_predicate_data_start_pointer(index: u64) -> u64 {
 }
 
 ///////////////////// Needs update!    //////////////////////////////  ------- *
-pub fn get_predicate_data<T>() -> T {
+pub fn predicate_data<T>() -> T {
     read(tx_predicate_data_start_pointer())
 }
 
