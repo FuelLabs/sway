@@ -238,15 +238,15 @@ pub fn tx_input_pointer(index: u64) -> u64 {
     }
 }
 
-///////////////////// Needs update!    //////////////////////////////  ------- *
 /// Get the type of an input given a pointer to the input.
-pub fn tx_input_type_from_pointer(ptr: u64) -> u8 {
-    asm(r1, r2: ptr) {
-        lw r1 r2 i0;
-        r1: u8
+pub fn tx_input_type(index: u64) -> u8 {
+    asm(res, i: index) {
+        gtf res i i257;
+        res: u64
     }
 }
 
+///////////////////// Needs update!    //////////////////////////////  ------- *
 /// If the input's type is `InputCoin` or `InputMessage`,
 /// return the owner as an Option::Some(owner).
 /// Otherwise, returns Option::None.
