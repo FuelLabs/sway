@@ -397,8 +397,29 @@ pub fn tx_output_amount(index: u64) -> Option<u64> {
         },
     }
 }
-///////////////////// Needs update!    //////////////////////////////  ------- *
+
 /// Get the id of the current transaction.
-pub fn tx_id() -> b256 {
-    read(TX_ID_OFFSET)
+pub fn tx_id(index: u64) -> Option<b256> {
+    let type = tx_output_type(index);
+    match type {
+        // 0 is the `Coin` Input type
+        0u8 => {
+            // GTF_INPUT_COIN_TX_ID
+            Option::Some(read(asm(res, i: index) {
+                gtf res i i258;
+                res: u64
+            }))
+        },
+        // 1 is the `Contract` Input type
+        1u8 => {
+            // GTF_INPUT_CONTRACT_TX_ID
+            Option::Some(read(asm(res, i: index) {
+                gtf res i i270;
+                res: u64
+            }))
+        },
+        _ => {
+           Option::None
+        },
+    }
 }
