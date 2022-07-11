@@ -1,10 +1,25 @@
 library u256;
 
 use core::num::*;
-use core::ops::{lsh_with_carry, rsh_with_carry};
+// use core::ops::{lsh_with_carry, rsh_with_carry};
 use ::result::Result;
 use ::u128::U128;
 use ::assert::assert;
+
+fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
+    let right_shift_amount = 64 - shift_amount;
+    let carry = word >> right_shift_amount;
+    let shifted = word << shift_amount;
+    (shifted, carry)
+}
+
+/// Right shift a u64 and preserve the overflow amount if any
+fn rsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
+    let left_shift_amount = 64 - shift_amount;
+    let carry = word << left_shift_amount;
+    let shifted = word >> shift_amount;
+    (shifted, carry)
+}
 
 /// The 256-bit unsigned integer type.
 /// Represented as four 64-bit components: `(a, b, c, d)`, where `value = (a << 192) + (b << 128) + (c << 64) + d`.
