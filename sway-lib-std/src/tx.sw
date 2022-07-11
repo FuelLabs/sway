@@ -298,9 +298,16 @@ pub fn b256_from_pointer_offset(pointer: u64, offset: u64) -> b256 {
 // Inputs > Predicate
 ////////////////////////////////////////
 
-pub fn tx_predicate_data_start_pointer(index: u64) -> u64 {
+pub fn tx_message_predicate_data_start_pointer(index: u64) -> u64 {
     asm(res, i: index) {
         gtf res i i288;
+        res: u64
+    }
+}
+
+pub fn tx_coin_predicate_data_start_pointer(index: u64) -> u64 {
+    asm(res, i: index) {
+        gtf res i i269;
         res: u64
     }
 }
