@@ -298,41 +298,28 @@ pub fn b256_from_pointer_offset(pointer: u64, offset: u64) -> b256 {
 // Inputs > Predicate
 ////////////////////////////////////////
 
-pub fn tx_message_predicate_data_start_pointer(index: u64) -> u64 {
-    asm(res, i: index) {
-        gtf res i i288;
-        res: u64
-    }
-}
-
-pub fn tx_coin_predicate_data_start_pointer(index: u64) -> u64 {
-    asm(res, i: index) {
-        gtf res i i269;
-        res: u64
-    }
-}
-
 pub fn predicate_data<T>(index: u64) -> T {
     let type = tx_input_type(index);
     let ptr = match type {
         // TODO: try using consts in match arms
         // 0 is the `Coin` Input type
         0u8 => {
-            read(tx_coin_predicate_data_start_pointer())
+            Option::Some(read(asm(res, i: index) {
+                gtf res i i288;
+                res: u64
+            }), 0)
         },
         // 2 is the `Message` Input type
         2u8 => {
-            read(tx_message_predicate_data_start_pointer())
+            Option::Some(read(asm(res, i: index) {
+                gtf res i i269;
+                res: u64
+            }), 0)
         },
         _ => {
             return Option::None;
         },
     };
-
-    Option::Some(~Address::from(b256_from_pointer_offset(
-        owner_ptr,
-        0
-    )))
 }
 
 ////////////////////////////////////////
