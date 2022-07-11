@@ -4,6 +4,7 @@ dep intrinsics;
 dep revert;
 dep logging;
 dep assert;
+dep message;
 dep option;
 dep result;
 dep mem;
