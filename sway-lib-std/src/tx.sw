@@ -177,15 +177,15 @@ pub fn tx_outputs_count(index: u64) -> u64 {
     }
 }
 
-///////////////////// Needs update!    //////////////////////////////  ------- *
 /// Get the transaction witnesses count.
-pub fn tx_witnesses_count() -> u64 {
-    asm(r1, r2: TX_WITNESSES_COUNT_OFFSET) {
-        lw r1 r2 i0;
-        r1: u64
+pub fn tx_witnesses_count(index: u64) -> u64 {
+    asm(res, i: index) {
+        gtf res i i9;
+        res: u64
     }
 }
 
+///////////////////// Needs update!    //////////////////////////////  ------- *
 /// Get the transaction receipts root.
 pub fn tx_receipts_root() -> b256 {
     asm(r1: TX_RECEIPTS_ROOT_OFFSET) {
