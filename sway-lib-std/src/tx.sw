@@ -185,14 +185,15 @@ pub fn tx_witnesses_count(index: u64) -> u64 {
     }
 }
 
-///////////////////// Needs update!    //////////////////////////////  ------- *
 /// Get the transaction receipts root.
-pub fn tx_receipts_root() -> b256 {
-    asm(r1: TX_RECEIPTS_ROOT_OFFSET) {
-        r1: b256
-    }
+pub fn tx_receipts_root(index: u64) -> b256 {
+    b256_from_pointer_offset(asm(res, i: index) {
+        gtf res i i10;
+        res: u64
+    }, 0)
 }
 
+///////////////////// Needs update!    //////////////////////////////  ------- *
 /// Get the transaction script start pointer.
 pub fn tx_script_start_pointer() -> u64 {
     asm(r1, r2: TX_SCRIPT_START_OFFSET) {
