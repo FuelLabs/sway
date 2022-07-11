@@ -113,11 +113,13 @@ pub const OUTPUT_CHANGE = 3u8;
 pub const OUTPUT_VARIABLE = 4u8;
 pub const OUTPUT_CONTRACT_CREATED = 5u8;
 
+///////////////////// Needs update!    //////////////////////////////  ------- *
+
 /// Get the transaction type.
-pub fn tx_type() -> u8 {
-    asm(r1, r2: TX_TYPE_OFFSET) {
-        lw r1 r2 i0;
-        r1: u8
+pub fn tx_type(index: u64) -> u8 {
+    asm(res, i: index) {
+        gtf res i i1;
+        res: u8
     }
 }
 
