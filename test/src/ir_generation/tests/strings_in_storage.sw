@@ -7,7 +7,7 @@ abi StorageAccess {
 }
 
 storage {
-    s: str[40],
+    s: str[40] = "0000000000000000000000000000000000000000",
 }
 
 impl StorageAccess for Contract {

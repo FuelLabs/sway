@@ -179,8 +179,8 @@ fn main() {
     ";
 
     storage {
-        foo: u64,
-        bar: i32,
+        foo: u64 = 0,
+        bar: i32 = 0,
     }
     storage.foo;
 }
@@ -203,7 +203,7 @@ fn main(){
                ;
 
 storage {
-            foo: u64, bar:i32,  
+            foo: u64 = 0, bar:i32 = 0,  
             }
             storage.foo ;    
 }
