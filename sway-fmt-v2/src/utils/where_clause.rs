@@ -15,7 +15,6 @@ impl Format for WhereClause {
             &formatter.shape.indent.to_string(formatter),
             self.where_token.span().as_str(),
         )?;
-        // indent right
         formatter.shape = formatter
             .shape
             .block_indent(formatter.config.whitespace.tab_spaces);
@@ -52,7 +51,7 @@ impl Format for WhereBound {
             formatted_code,
             "{}{}{} {}",
             &formatter.shape.indent.to_string(formatter), // `Indent`
-            self.ty_name.as_str(),                        // `Ident`
+            self.ty_name.span().as_str(),                 // `Ident`
             self.colon_token.span().as_str(),             // `ColonToken`
             self.bounds.span().as_str()                   //  TODO: `Traits`
         )?;

@@ -31,4 +31,9 @@ where
         inner[*index] = new_value;
         None
     }
+
+    pub fn clear(&self) {
+        let mut inner = self.inner.write().unwrap();
+        *inner = Vec::new();
+    }
 }

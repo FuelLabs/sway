@@ -6,10 +6,14 @@ use super::traverse_typed_tree;
 use super::typed_token_type::TokenMap;
 
 use crate::{capabilities, core::token::traverse_node, utils};
+use forc::utils::SWAY_GIT_TAG;
 use forc_pkg::{self as pkg};
 use ropey::Rope;
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
-use sway_core::{parse, semantic_analysis::ast_node::TypedAstNode, CompileAstResult, TreeType};
+use std::{collections::HashMap, path::PathBuf};
+use sway_core::{
+    semantic_analysis::ast_node::TypedAstNode, CompileAstResult, CompileResult, ParseProgram,
+    TreeType,
+};
 use tower_lsp::lsp_types::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
 
 #[derive(Debug)]
@@ -94,9 +98,18 @@ impl TextDocument {
         self.clear_tokens();
         self.clear_hash_maps();
 
-        //self.test_typed_parse();
+        let manifest_dir = PathBuf::from(self.get_uri());
+        let manifest = pkg::ManifestFile::from_dir(&manifest_dir, SWAY_GIT_TAG).unwrap();
+        let silent_mode = true;
+        let locked = false;
+        let offline = false;
+        let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline, SWAY_GIT_TAG)
+            .unwrap();
+        let (parsed_res, _ast_res) = pkg::check(&plan, silent_mode).unwrap();
 
-        match self.parse_tokens_from_text() {
+        //self.test_typed_parse(ast_res);
+
+        match self.parse_tokens_from_text(parsed_res) {
             Ok((tokens, diagnostics)) => {
                 self.store_tokens(tokens);
                 Ok(diagnostics)
@@ -116,8 +129,8 @@ impl TextDocument {
         self.content.to_string()
     }
 
-    pub fn test_typed_parse(&mut self) {
-        if let Some(all_nodes) = self.parse_typed_tokens_from_text() {
+    pub fn test_typed_parse(&mut self, ast_res: CompileAstResult) {
+        if let Some(all_nodes) = self.parse_typed_tokens_from_text(ast_res) {
             for node in &all_nodes {
                 traverse_typed_tree::traverse_node(node, &mut self.token_map);
             }
@@ -155,26 +168,17 @@ impl TextDocument {
 
 // private methods
 impl TextDocument {
-    fn parse_typed_tokens_from_text(&self) -> Option<Vec<TypedAstNode>> {
-        use forc::utils::SWAY_GIT_TAG;
-        let manifest_dir = PathBuf::from(self.get_uri());
-        let silent_mode = true;
-        let manifest = pkg::ManifestFile::from_dir(&manifest_dir, SWAY_GIT_TAG).unwrap();
-        let locked = false;
-        let offline = false;
-        let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline, SWAY_GIT_TAG)
-            .unwrap();
-        let res = pkg::check(&plan, silent_mode).unwrap();
-
-        match res {
+    fn parse_typed_tokens_from_text(&self, ast_res: CompileAstResult) -> Option<Vec<TypedAstNode>> {
+        match ast_res {
             CompileAstResult::Failure { .. } => None,
             CompileAstResult::Success { typed_program, .. } => Some(typed_program.root.all_nodes),
         }
     }
 
-    fn parse_tokens_from_text(&self) -> Result<(Vec<Token>, Vec<Diagnostic>), Vec<Diagnostic>> {
-        let text = Arc::from(self.get_text());
-        let parsed_result = parse(text, None);
+    fn parse_tokens_from_text(
+        &self,
+        parsed_result: CompileResult<ParseProgram>,
+    ) -> Result<(Vec<Token>, Vec<Diagnostic>), Vec<Diagnostic>> {
         match parsed_result.value {
             None => Err(capabilities::diagnostic::get_diagnostics(
                 parsed_result.warnings,

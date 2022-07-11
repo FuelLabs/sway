@@ -9,8 +9,8 @@ impl Empty {
 }
 
 storage {
-    e1: Empty,
-    e2: Empty,
+    e1: Empty = Empty { },
+    e2: Empty = Empty { },
 }
 
 abi GetStorageKeyTest {

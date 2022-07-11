@@ -303,9 +303,9 @@ enum TestTy {
     fn test_storage_without_alignment() {
         let sway_code_to_format = r#"contract;
 
-storage{foo:Test,bar
+storage{foo:Test=Test{},bar
 : 
-    Test
+    Test=Test{}
 , baz: u64 } 
 "#;
         let correct_sway_code = r#"contract;
@@ -326,8 +326,8 @@ storage {
         let sway_code_to_format = r#"contract;
 
 storage {
- long_var_name: Type1,
-      var2: Type2,
+ long_var_name: Type1=Type1{},
+      var2: Type2=Type2{},
 }
 "#;
         let correct_sway_code = r#"contract;
@@ -348,8 +348,8 @@ storage {
         let sway_code_to_format = r#"contract;
 
 storage {
- long_var_name: Type1,
-      var2: Type2,
+ long_var_name: Type1=Type1{},
+      var2: Type2=Type2{},
 }
 "#;
         let correct_sway_code = r#"contract;
@@ -363,20 +363,34 @@ storage { long_var_name: Type1, var2: Type2 }"#;
         assert_eq!(correct_sway_code, formatted_sway_code)
     }
     #[test]
-    fn test_traits_and_super_traits() {
+    fn test_item_fn() {
         let sway_code_to_format = r#"contract;
 
-trait Person {fn name(&self) -> String;}
-
-trait Student: Person {fn university(&self) -> String;}"#;
+pub fn hello( person: String ) -> String {let greeting = 42;greeting.to_string()}"#;
         let correct_sway_code = r#"contract;
 
-trait Person {
-    fn name(&self) -> String;
-}
+pub fn hello(person: String) -> String {
+    let greeting = 42;
+    greeting.to_string()
+}"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code)
+    }
+    #[test]
+    fn test_same_line_where() {
+        let sway_code_to_format = r#"contract;
 
-trait Student: Person {
-    fn university(&self) -> String;
+pub fn hello( person: String ) -> String where T: Eq,{let greeting = 42;greeting.to_string()}"#;
+        let correct_sway_code = r#"contract;
+
+pub fn hello(person: String) -> String
+where
+    T: Eq,
+{
+    let greeting = 42;
+    greeting.to_string()
 }"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
