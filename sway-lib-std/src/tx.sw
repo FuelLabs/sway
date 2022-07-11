@@ -215,9 +215,9 @@ pub fn tx_script_data_start_pointer(index: u64) -> u64 {
 
 ///////////////////// Needs update!    //////////////////////////////  ------- *
 /// Get the script data, typed. Unsafe.
-pub fn tx_script_data<T>() -> T {
+pub fn tx_script_data<T>(index: u64) -> T {
     // TODO some safety checks on the input data? We are going to assume it is the right type for now.
-    read(tx_script_data_start_pointer())
+    read(tx_script_data_start_pointer(index))
 }
 
 /// Get the script bytecode
