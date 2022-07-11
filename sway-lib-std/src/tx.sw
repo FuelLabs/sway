@@ -357,8 +357,10 @@ pub fn tx_output_type_from_pointer(ptr: u64) -> u8 {
 
 /// Get the type of an output at a given index
 pub fn tx_output_type(index: u64) -> u8 {
-    let ptr = tx_output_pointer(index);
-    tx_output_type_from_pointer(ptr)
+    asm(res, i: index) {
+        gtf res i i513;
+        res: u8
+    }
 }
 
 /// Get the amount of coins to send for an output given a pointer to the output.
