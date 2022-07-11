@@ -436,7 +436,9 @@ pub fn compile_to_bytecode(
     source_map: &mut SourceMap,
 ) -> BytecodeCompilationResult {
     let asm_res = compile_to_asm(input, initial_namespace, build_config);
-    asm_to_bytecode(asm_res, source_map)
+    let result = asm_to_bytecode(asm_res, source_map);
+    clear_lazy_statics();
+    result
 }
 
 /// Given a [CompilationResult] containing the assembly (opcodes), compile to a
@@ -472,6 +474,10 @@ pub fn asm_to_bytecode(
             BytecodeCompilationResult::Library { warnings }
         }
     }
+}
+
+pub fn clear_lazy_statics() {
+    type_engine::clear_type_engine();
 }
 
 /// Given a [TypedProgram], which is type-checked Sway source, construct a graph to analyze

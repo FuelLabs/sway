@@ -1445,6 +1445,7 @@ pub fn compile(
                 TreeType::Contract | TreeType::Predicate | TreeType::Script => {
                     let asm_res = sway_core::ast_to_asm(ast_res, &sway_build_config);
                     let bc_res = sway_core::asm_to_bytecode(asm_res, source_map);
+                    sway_core::clear_lazy_statics();
                     match bc_res {
                         BytecodeCompilationResult::Success { bytes, warnings } => {
                             print_on_success(silent_mode, &pkg.name, &warnings, &tree_type);

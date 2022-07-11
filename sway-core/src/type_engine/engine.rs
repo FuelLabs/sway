@@ -366,6 +366,10 @@ impl Engine {
             ty => Ok(ty),
         }
     }
+
+    pub fn clear(&self) {
+        self.slab.clear();
+    }
 }
 
 pub fn insert_type(ty: TypeInfo) -> TypeId {
@@ -401,6 +405,10 @@ pub(crate) fn unify(
 
 pub fn resolve_type(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
     TYPE_ENGINE.resolve_type(id, error_span)
+}
+
+pub fn clear_type_engine() {
+    TYPE_ENGINE.clear();
 }
 
 fn numeric_cast_compat(new_size: IntegerBits, old_size: IntegerBits) -> NumericCastCompatResult {
