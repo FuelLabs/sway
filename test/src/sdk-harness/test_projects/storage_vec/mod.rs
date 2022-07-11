@@ -1,1 +1,9 @@
 mod u8;
+mod u16;
+mod u32;
+mod u64;
+mod b256;
+mod bool;
+mod str;
+mod r#struct;
+mod r#enum;
