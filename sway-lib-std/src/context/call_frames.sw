@@ -4,6 +4,7 @@
 library call_frames;
 
 use ::contract_id::ContractId;
+use ::mem::read;
 
 // Note that everything when serialized is padded to word length.
 //
@@ -43,19 +44,15 @@ pub fn code_size() -> u64 {
 }
 
 /// Get the first parameter from the current call frame.
-pub fn first_param() -> u64 {
-    asm(size, ptr, offset: 584) {
-        add size fp offset;
-        size: u64
-    }
+/// Where 584 is the current offset in bytes from the start of the call frame.
+pub fn first_param<T>() -> T {
+    read(fp + 584)
 }
 
 /// Get the second parameter from the current call frame.
-pub fn second_param() -> u64 {
-    asm(size, ptr, offset: 592) {
-        add size fp offset;
-        size: u64
-    }
+/// Where 592 is the current offset in bytes from the start of the call frame.
+pub fn second_param<T>() -> T {
+    read(fp + 592)
 }
 
 ///////////////////////////////////////////////////////////
