@@ -190,7 +190,7 @@ impl ManifestFile {
     /// Given the current directory and expected program type, determines whether the correct program type is present.
     pub fn check_program_type(&self, expected_types: Vec<TreeType>) -> Result<()> {
         let parsed_type = self.program_type()?;
-        if !expected_types.iter().any(|t| t == &parsed_type) {
+        if !expected_types.contains(&parsed_type) {
             bail!(wrong_program_type(
                 &self.project.name,
                 expected_types,

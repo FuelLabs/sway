@@ -119,10 +119,7 @@ fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeTy
             // constructor site is always `None`. If we introduce dep aliases in the future, this
             // is where we should use it.
             let dep_alias = None;
-            let dep_name = match dep_alias {
-                None => library_name.clone(),
-                Some(alias) => alias,
-            };
+            let dep_name = dep_alias.unwrap_or_else(|| library_name.clone());
             let submodule = ParseSubmodule {
                 library_name,
                 module,
@@ -207,7 +204,7 @@ pub enum BytecodeCompilationResult {
 }
 
 pub fn parsed_to_ast(
-    parse_program: ParseProgram,
+    parse_program: &ParseProgram,
     initial_namespace: namespace::Module,
 ) -> CompileAstResult {
     let mut warnings = Vec::new();
@@ -287,7 +284,7 @@ pub fn compile_to_ast(
         }
     };
 
-    match parsed_to_ast(parse_program, initial_namespace) {
+    match parsed_to_ast(&parse_program, initial_namespace) {
         CompileAstResult::Success {
             typed_program,
             warnings: new_warnings,
@@ -487,7 +484,9 @@ pub fn compile_to_bytecode(
     source_map: &mut SourceMap,
 ) -> BytecodeCompilationResult {
     let asm_res = compile_to_asm(input, initial_namespace, build_config);
-    asm_to_bytecode(asm_res, source_map)
+    let result = asm_to_bytecode(asm_res, source_map);
+    clear_lazy_statics();
+    result
 }
 
 /// Given a [CompilationResult] containing the assembly (opcodes), compile to a
@@ -523,6 +522,10 @@ pub fn asm_to_bytecode(
             BytecodeCompilationResult::Library { warnings }
         }
     }
+}
+
+pub fn clear_lazy_statics() {
+    type_engine::clear_type_engine();
 }
 
 /// Given a [TypedProgram], which is type-checked Sway source, construct a graph to analyze
