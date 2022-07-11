@@ -8,32 +8,22 @@ Some basic use cases of storage include declaring an owner address for a contrac
 
 ## Storage Accesses Via the `storage` Keyword
 
-Declaring variables in storage requires a `storage` declaration that contains a list of all your variables and their types as follows:
+Declaring variables in storage requires a `storage` declaration that contains a list of all your variables, their types, and their initial values as follows:
 
 ```sway
-storage {
-    var1: Type1,
-    var2: Type2,
-    ...
-}
+{{#include ../../../examples/storage_variables/src/main.sw:storage_declaration}}
 ```
-
 To write into a storage variable, you need to use the `storage` keyword as follows:
 
 ```sway
-storage.var1 = v;
+{{#include ../../../examples/storage_variables/src/main.sw:storage_write}}
 ```
 
 To read a storage variable, you also need to use the `storage` keyword as follows:
 
 ```sway
-let v = storage.var1;
+{{#include ../../../examples/storage_variables/src/main.sw:storage_read}}
 ```
-
-Notes:
-
-* The only types currently supported by the syntax above are integers, Booleans, and structs.
-* Storage, in general, is still work-in-progress and so, its use model may change in the future.
 
 ## Storage Maps
 

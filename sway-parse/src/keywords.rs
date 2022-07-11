@@ -91,7 +91,7 @@ macro_rules! define_token (
             span: Span,
         }
 
-        impl Spanned for  $ty_name {
+        impl Spanned for $ty_name {
             fn span(&self) -> Span {
                 self.span.clone()
             }

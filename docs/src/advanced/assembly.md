@@ -45,6 +45,6 @@ An important note is that the `ji` and `jnei` opcodes are not available within a
 
 For examples of assembly in action, check out the [Sway standard library](https://github.com/FuelLabs/sway/tree/master/sway-lib-std).
 
-For a complete list of all instructions supported in the FuelVM: [Instructions](https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/opcodes.md).
+For a complete list of all instructions supported in the FuelVM: [Instructions](https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/instruction_set.md).
 
 And to learn more about the FuelVM semantics: [Semantics](https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#semantics).

@@ -169,7 +169,7 @@ impl TypedStorageDeclaration {
 pub struct TypedStorageField {
     pub name: Ident,
     pub type_id: TypeId,
-    pub initializer: Option<TypedExpression>,
+    pub initializer: TypedExpression,
     pub(crate) span: Span,
 }
 
@@ -185,12 +185,7 @@ impl PartialEq for TypedStorageField {
 }
 
 impl TypedStorageField {
-    pub fn new(
-        name: Ident,
-        r#type: TypeId,
-        initializer: Option<TypedExpression>,
-        span: Span,
-    ) -> Self {
+    pub fn new(name: Ident, r#type: TypeId, initializer: TypedExpression, span: Span) -> Self {
         TypedStorageField {
             name,
             type_id: r#type,
@@ -205,14 +200,7 @@ impl TypedStorageField {
     ) -> Result<Vec<StorageSlot>, CompileError> {
         let mut context = Context::default();
         let module = Module::new(&mut context, Kind::Contract);
-        match &self.initializer {
-            None => Ok(vec![]),
-            Some(initializer) => {
-                compile_constant_expression_to_constant(&mut context, module, None, initializer)
-                    .map(|constant| {
-                        serialize_to_storage_slots(&constant, &context, ix, &constant.ty, &[])
-                    })
-            }
-        }
+        compile_constant_expression_to_constant(&mut context, module, None, &self.initializer)
+            .map(|constant| serialize_to_storage_slots(&constant, &context, ix, &constant.ty, &[]))
     }
 }

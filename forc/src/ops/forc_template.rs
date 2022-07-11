@@ -17,10 +17,10 @@ use url::Url;
 pub fn init(command: TemplateCommand) -> Result<()> {
     validate_name(&command.project_name, "project name")?;
     // The name used for the temporary local repo directory used for fetching the template.
-    let local_repo_name = match command.template_name.clone() {
-        Some(temp_name) => temp_name,
-        None => format!("{}-template-source", command.project_name),
-    };
+    let local_repo_name = command
+        .template_name
+        .clone()
+        .unwrap_or_else(|| format!("{}-template-source", command.project_name));
 
     let source = SourceGit {
         repo: Url::parse(&command.url)?,
