@@ -279,12 +279,6 @@ pub fn tx_input_owner(index: u64) -> Option<Address> {
 }
 
 ///////////////////// Needs update!    //////////////////////////////  ------- *
-/// Get the type of an input at a given index
-pub fn tx_input_type(index: u64) -> u8 {
-    let ptr = tx_input_pointer(index);
-    tx_input_type_from_pointer(ptr)
-}
-
 /// Read 256 bits from memory at a given offset from a given pointer
 pub fn b256_from_pointer_offset(pointer: u64, offset: u64) -> b256 {
     asm(buffer, ptr: pointer, off: offset) {
