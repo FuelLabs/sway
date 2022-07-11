@@ -74,6 +74,10 @@ impl Formatter {
             &mut formatted_code,
             &raw_formatted_code,
         )?;
+        if formatted_code.ends_with('\n') {
+            formatted_code.pop();
+        }
+
         Ok(formatted_code)
     }
 }
@@ -366,12 +370,18 @@ storage { long_var_name: Type1, var2: Type2 }"#;
     fn test_item_fn() {
         let sway_code_to_format = r#"contract;
 
-pub fn hello( person: String ) -> String {let greeting = 42;greeting.to_string()}"#;
+pub fn hello( person: String ) -> String {let greeting = 42;greeting.to_string()}
+fn goodbye() -> usize {let farewell: usize = 5; farewell }"#;
         let correct_sway_code = r#"contract;
 
 pub fn hello(person: String) -> String {
     let greeting = 42;
     greeting.to_string()
+}
+
+fn goodbye() -> usize {
+    let farewell: usize = 5;
+    farewell
 }"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
@@ -391,6 +401,51 @@ where
 {
     let greeting = 42;
     greeting.to_string()
+}"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code)
+    }
+    #[test]
+    fn test_trait_and_super_trait() {
+        let sway_code_to_format = r#"library traits;
+
+trait Person {
+    fn name(self) -> String;
+
+    fn age(self) -> usize;
+}
+
+trait Student: Person {
+    fn university(self) -> String;
+}
+
+trait Programmer {
+    fn fav_language(self) -> String;
+}
+
+trait CompSciStudent: Programmer + Student {
+    fn git_username(self) -> String;
+}"#;
+        let correct_sway_code = r#"library traits;
+
+trait Person {
+    fn name(self) -> String;
+
+    fn age(self) -> usize;
+}
+
+trait Student: Person {
+    fn university(self) -> String;
+}
+
+trait Programmer {
+    fn fav_language(self) -> String;
+}
+
+trait CompSciStudent: Programmer + Student {
+    fn git_username(self) -> String;
 }"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
