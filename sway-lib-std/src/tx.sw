@@ -129,15 +129,15 @@ pub fn tx_script_gas_price(index: u64) -> u64 {
     }
 }
 
-///////////////////// Needs update!    //////////////////////////////  ------- *
-
-/// Get the transaction gas limit.
-pub fn tx_gas_limit() -> u64 {
-    asm(r1, r2: TX_GAS_LIMIT_OFFSET) {
-        lw r1 r2 i0;
-        r1: u64
+/// Get the transaction-script gas limit.
+pub fn tx_script_gas_limit(index: u64) -> u64 {
+    asm(res, i: index) {
+        gtf res i i3;
+        res: u64
     }
 }
+
+///////////////////// Needs update!    //////////////////////////////  ------- *
 
 /// Get the transaction byte price.
 pub fn tx_byte_price() -> u64 {
