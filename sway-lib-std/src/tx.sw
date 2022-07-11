@@ -346,7 +346,7 @@ pub fn tx_output_pointer(index: u64) -> u64 {
         res: u64
     }
 }
-///////////////////// Needs update!    //////////////////////////////  ------- *
+
 /// Get the type of an output at a given index
 pub fn tx_output_type(index: u64) -> u8 {
     asm(res, i: index) {
@@ -357,16 +357,47 @@ pub fn tx_output_type(index: u64) -> u8 {
 
 /// Get the amount of coins to send for an output given a pointer to the output.
 /// This method is only meaningful if the output type has the `amount` field.
-/// Specifically: OutputCoin, OutputWithdrawal, OutputChange, OutputVariable.
-pub fn tx_output_amount(index: u64) -> u64 {
-    let ptr = tx_output_pointer(index);
-    asm(r1, r2, r3: ptr) {
-        addi r2 r3 i40;
-        lw r1 r2 i0;
-        r1: u64
+/// Specifically: OutputCoin, OutputMessage, OutputChange, OutputVariable.
+pub fn tx_output_amount(index: u64) -> Option<u64> {
+    let type = tx_output_type(index);
+    match type {
+        // TODO: try using consts in match arms
+        // 0 is the `Coin` Output type
+        0u8 => {
+            Option::Some(asm(res, i: index) {
+                gtf res i i515;
+                res: u64
+            })
+        },
+        // 2 is the `Message` Output type
+        2u8 => {
+            Option::Some(asm(res, i: index) {
+                gtf res i i521;
+                res: u64
+            })
+        },
+        // 3 is the `Change` Output type
+        // reusing the immediate for Message output type as there's no immediate for OutputChange
+        3u8 => {
+            Option::Some(asm(res, i: index) {
+                gtf res i i521;
+                res: u64
+            })
+        },
+        // 4 is the `Variable` Output type
+        // reusing the immediate for Message output type as there's no immediate for OutputVariable
+        4u8 => {
+            Option::Some(asm(res, i: index) {
+                gtf res i i521;
+                res: u64
+            })
+        },
+        _ => {
+            Option::None
+        },
     }
 }
-
+///////////////////// Needs update!    //////////////////////////////  ------- *
 /// Get the id of the current transaction.
 pub fn tx_id() -> b256 {
     read(TX_ID_OFFSET)
