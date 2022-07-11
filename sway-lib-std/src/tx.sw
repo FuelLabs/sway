@@ -193,7 +193,10 @@ pub fn tx_receipts_root(index: u64) -> b256 {
     }, 0)
 }
 
-///////////////////// Needs update!    //////////////////////////////  ------- *
+////////////////////////////////////////
+// Script
+////////////////////////////////////////
+
 /// Get the transaction script start pointer.
 pub fn tx_script_start_pointer(index: u64) -> u64 {
     asm(res, i: index) {
@@ -202,15 +205,15 @@ pub fn tx_script_start_pointer(index: u64) -> u64 {
     }
 }
 
-////////////////////////////////////////
-// Script
-////////////////////////////////////////
-
 /// Get the transaction script data start pointer.
-pub fn tx_script_data_start_pointer() -> u64 {
-    tx_script_start_pointer() + tx_script_length()
+pub fn tx_script_data_start_pointer(index: u64) -> u64 {
+    asm(res, i: index) {
+        gtf res i i12;
+        res: u64
+    }
 }
 
+///////////////////// Needs update!    //////////////////////////////  ------- *
 /// Get the script data, typed. Unsafe.
 pub fn tx_script_data<T>() -> T {
     // TODO some safety checks on the input data? We are going to assume it is the right type for now.
