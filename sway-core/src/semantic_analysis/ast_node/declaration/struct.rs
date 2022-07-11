@@ -7,7 +7,7 @@ pub struct TypedStructDeclaration {
     pub name: Ident,
     pub fields: Vec<TypedStructField>,
     pub(crate) type_parameters: Vec<TypeParameter>,
-    pub(crate) visibility: Visibility,
+    pub visibility: Visibility,
     pub(crate) span: Span,
 }
 
