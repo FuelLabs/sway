@@ -137,16 +137,6 @@ pub fn tx_script_gas_limit(index: u64) -> u64 {
     }
 }
 
-///////////////////// Needs update!    //////////////////////////////  ------- *
-
-/// Get the transaction byte price.
-pub fn tx_byte_price() -> u64 {
-    asm(r1, r2: TX_BYTE_PRICE_OFFSET) {
-        lw r1 r2 i0;
-        r1: u64
-    }
-}
-
 /// Get the transaction maturity.
 pub fn tx_maturity(index: u64) -> u32 {
     asm(res, i: index) {
@@ -155,6 +145,7 @@ pub fn tx_maturity(index: u64) -> u32 {
     }
 }
 
+///////////////////// Needs update!    //////////////////////////////  ------- *
 /// Get the transaction script length.
 pub fn tx_script_length() -> u64 {
     asm(r1, r2: TX_SCRIPT_LENGTH_OFFSET) {
