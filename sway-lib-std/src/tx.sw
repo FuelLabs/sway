@@ -113,8 +113,6 @@ pub const OUTPUT_CHANGE = 3u8;
 pub const OUTPUT_VARIABLE = 4u8;
 pub const OUTPUT_CONTRACT_CREATED = 5u8;
 
-///////////////////// Needs update!    //////////////////////////////  ------- *
-
 /// Get the transaction type.
 pub fn tx_type(index: u64) -> u8 {
     asm(res, i: index) {
@@ -123,13 +121,15 @@ pub fn tx_type(index: u64) -> u8 {
     }
 }
 
-/// Get the transaction gas price.
-pub fn tx_gas_price() -> u64 {
-    asm(r1, r2: TX_GAS_PRICE_OFFSET) {
-        lw r1 r2 i0;
-        r1: u64
+/// Get the transaction-script gas price.
+pub fn tx_script_gas_price(index: u64) -> u64 {
+    asm(res, i: index) {
+        gtf res i i2;
+        res: u64
     }
 }
+
+///////////////////// Needs update!    //////////////////////////////  ------- *
 
 /// Get the transaction gas limit.
 pub fn tx_gas_limit() -> u64 {
