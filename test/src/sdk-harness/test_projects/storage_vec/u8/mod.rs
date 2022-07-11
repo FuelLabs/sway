@@ -56,10 +56,16 @@ mod success {
     async fn can_remove() {
         let (instance, _id) = get_contract_instance().await;
 
+        let len_vec = len(&instance).await;
+        assert_eq!(len_vec, 0);
+
         push(&instance, 50).await;
         push(&instance, 100).await;
         push(&instance, 150).await;
         push(&instance, 200).await;
+
+        let len_vec = len(&instance).await;
+        assert_eq!(len_vec, 4);
 
         assert_eq!(50, get(&instance, 0).await);
         assert_eq!(100, get(&instance, 1).await);
@@ -72,16 +78,25 @@ mod success {
         assert_eq!(50, get(&instance, 0).await);
         assert_eq!(100, get(&instance, 1).await);
         assert_eq!(200, get(&instance, 2).await);
+
+        let len_vec = len(&instance).await;
+        assert_eq!(len_vec, 3);
     }
 
     #[tokio::test]
     async fn can_swap_remove() {
         let (instance, _id) = get_contract_instance().await;
 
+        let len_vec = len(&instance).await;
+        assert_eq!(len_vec, 0);
+
         push(&instance, 50).await;
         push(&instance, 100).await;
         push(&instance, 150).await;
         push(&instance, 200).await;
+
+        let len_vec = len(&instance).await;
+        assert_eq!(len_vec, 4);
 
         assert_eq!(50, get(&instance, 0).await);
         assert_eq!(100, get(&instance, 1).await);
@@ -94,16 +109,25 @@ mod success {
         assert_eq!(50, get(&instance, 0).await);
         assert_eq!(200, get(&instance, 1).await);
         assert_eq!(150, get(&instance, 2).await);
+
+        let len_vec = len(&instance).await;
+        assert_eq!(len_vec, 3);
     }
 
     #[tokio::test]
     async fn can_insert() {
         let (instance, _id) = get_contract_instance().await;
 
+        let len_vec = len(&instance).await;
+        assert_eq!(len_vec, 0);
+
         push(&instance, 50).await;
         push(&instance, 100).await;
         push(&instance, 150).await;
         push(&instance, 200).await;
+
+        let len_vec = len(&instance).await;
+        assert_eq!(len_vec, 4);
 
         assert_eq!(50, get(&instance, 0).await);
         assert_eq!(100, get(&instance, 1).await);
@@ -117,6 +141,9 @@ mod success {
         assert_eq!(100, get(&instance, 2).await);
         assert_eq!(150, get(&instance, 3).await);
         assert_eq!(200, get(&instance, 4).await);
+
+        let len_vec = len(&instance).await;
+        assert_eq!(len_vec, 5);
     }
 
     #[tokio::test]
@@ -124,7 +151,6 @@ mod success {
         let (instance, _id) = get_contract_instance().await;
 
         let len_vec = len(&instance).await;
-
         assert_eq!(len_vec, 0);
 
         push(&instance, 50).await;
@@ -133,7 +159,6 @@ mod success {
         push(&instance, 200).await;
 
         let len_vec = len(&instance).await;
-
         assert_eq!(len_vec, 4);
 
         push(&instance, 200).await;
