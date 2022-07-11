@@ -347,14 +347,6 @@ pub fn tx_output_pointer(index: u64) -> u64 {
     }
 }
 ///////////////////// Needs update!    //////////////////////////////  ------- *
-/// Get the type of an output given a pointer to the output.
-pub fn tx_output_type_from_pointer(ptr: u64) -> u8 {
-    asm(r1, r2: ptr) {
-        lw r1 r2 i0;
-        r1: u8
-    }
-}
-
 /// Get the type of an output at a given index
 pub fn tx_output_type(index: u64) -> u8 {
     asm(res, i: index) {
