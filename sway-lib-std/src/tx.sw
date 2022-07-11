@@ -195,10 +195,10 @@ pub fn tx_receipts_root(index: u64) -> b256 {
 
 ///////////////////// Needs update!    //////////////////////////////  ------- *
 /// Get the transaction script start pointer.
-pub fn tx_script_start_pointer() -> u64 {
-    asm(r1, r2: TX_SCRIPT_START_OFFSET) {
-        move r1 r2;
-        r1: u64
+pub fn tx_script_start_pointer(index: u64) -> u64 {
+    asm(res, i: index) {
+        gtf res i i11;
+        res: u64
     }
 }
 
