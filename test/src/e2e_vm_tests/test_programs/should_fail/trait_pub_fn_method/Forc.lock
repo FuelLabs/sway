@@ -1,0 +1,4 @@
+[[package]]
+name = 'trait_pub_fn_method'
+source = 'root'
+dependencies = []
