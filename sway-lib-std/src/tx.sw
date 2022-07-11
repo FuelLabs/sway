@@ -305,15 +305,33 @@ pub fn tx_predicate_data_start_pointer(index: u64) -> u64 {
     }
 }
 
-///////////////////// Needs update!    //////////////////////////////  ------- *
-pub fn predicate_data<T>() -> T {
-    read(tx_predicate_data_start_pointer())
+pub fn predicate_data<T>(index: u64) -> T {
+    let type = tx_input_type(index);
+    let ptr = match type {
+        // TODO: try using consts in match arms
+        // 0 is the `Coin` Input type
+        0u8 => {
+            read(tx_coin_predicate_data_start_pointer())
+        },
+        // 2 is the `Message` Input type
+        2u8 => {
+            read(tx_message_predicate_data_start_pointer())
+        },
+        _ => {
+            return Option::None;
+        },
+    };
+
+    Option::Some(~Address::from(b256_from_pointer_offset(
+        owner_ptr,
+        0
+    )))
 }
 
 ////////////////////////////////////////
 // Outputs
 ////////////////////////////////////////
-
+///////////////////// Needs update!    //////////////////////////////  ------- *
 /// Get a pointer to an output given the index of the output.
 pub fn tx_output_pointer(index: u64) -> u64 {
     asm(r1, r2: index) {
