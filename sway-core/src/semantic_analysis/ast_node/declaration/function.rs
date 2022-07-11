@@ -1,12 +1,9 @@
 mod function_parameter;
 pub use function_parameter::*;
 
-use crate::{
-    error::*, namespace::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*, types::*,
-};
-use fuels_types::{Function, Property};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*, types::*};
 use sha2::{Digest, Sha256};
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Function, Ident, Property, Span, Spanned};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedFunctionDeclaration {
@@ -74,24 +71,12 @@ impl Spanned for TypedFunctionDeclaration {
 }
 
 impl MonomorphizeHelper for TypedFunctionDeclaration {
-    type Output = TypedFunctionDeclaration;
-
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
 
     fn name(&self) -> &Ident {
         &self.name
-    }
-
-    fn monomorphize_inner(
-        self,
-        type_mapping: &TypeMapping,
-        _namespace: &mut Items,
-    ) -> Self::Output {
-        let mut new_decl = self;
-        new_decl.copy_types(type_mapping);
-        new_decl
     }
 }
 
@@ -109,12 +94,20 @@ impl ToJsonAbi for TypedFunctionDeclaration {
                     name: x.name.as_str().to_string(),
                     type_field: x.type_id.json_abi_str(),
                     components: x.type_id.generate_json_abi(),
+                    type_arguments: x
+                        .type_id
+                        .get_type_parameters()
+                        .map(|v| v.iter().map(TypeParameter::generate_json_abi).collect()),
                 })
                 .collect(),
             outputs: vec![Property {
                 name: "".to_string(),
                 type_field: self.return_type.json_abi_str(),
                 components: self.return_type.generate_json_abi(),
+                type_arguments: self
+                    .return_type
+                    .get_type_parameters()
+                    .map(|v| v.iter().map(TypeParameter::generate_json_abi).collect()),
             }],
         }
     }
@@ -173,7 +166,8 @@ impl TypedFunctionDeclaration {
             ctx.resolve_type_with_self(
                 insert_type(return_type),
                 &return_type_span,
-                EnforceTypeArguments::Yes
+                EnforceTypeArguments::Yes,
+                None
             ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
@@ -277,7 +271,7 @@ impl TypedFunctionDeclaration {
         );
         // 4 bytes truncation via copying into a 4 byte buffer
         let mut buf = [0u8; 4];
-        buf.copy_from_slice(&hash[0..4]);
+        buf.copy_from_slice(&hash[..4]);
         ok(buf, warnings, errors)
     }
 

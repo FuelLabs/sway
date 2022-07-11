@@ -159,14 +159,7 @@ impl Lock {
                     .cloned()
                     .ok_or_else(|| anyhow!("found dep {} without node entry in graph", dep_key))?;
                 let dep_name = dep_name.unwrap_or(&graph[dep_node].name).to_string();
-                graph.add_edge(node, dep_node, dep_name);
-            }
-        }
-
-        // Validate the `path_root` of each of the path nodes.
-        for n in graph.node_indices() {
-            if let pkg::SourcePinned::Path(ref src) = graph[n].source {
-                pkg::validate_path_root(&graph, n, src.path_root)?;
+                graph.update_edge(node, dep_node, dep_name);
             }
         }
 
@@ -257,7 +250,7 @@ where
     for pkg in removed {
         if pkg.name != proj_name {
             let name = name_or_git_unique_string(pkg);
-            let _ = println_red(&format!("  Removing {}", name));
+            println_red(&format!("  Removing {}", name));
         }
     }
 }
@@ -269,7 +262,7 @@ where
     for pkg in removed {
         if pkg.name != proj_name {
             let name = name_or_git_unique_string(pkg);
-            let _ = println_green(&format!("    Adding {}", name));
+            println_green(&format!("    Adding {}", name));
         }
     }
 }

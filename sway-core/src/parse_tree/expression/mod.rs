@@ -1,20 +1,19 @@
 use crate::{
     parse_tree::{CallPath, Literal},
     type_engine::TypeArgument,
-    CodeBlock,
+    CodeBlock, TypeInfo,
 };
 use sway_types::{ident::Ident, Span, Spanned};
 
 mod asm;
-mod intrinsic_function;
 mod match_branch;
 mod method_name;
 mod scrutinee;
 pub(crate) use asm::*;
-pub use intrinsic_function::*;
 pub(crate) use match_branch::MatchBranch;
 pub use method_name::MethodName;
 pub use scrutinee::*;
+use sway_parse::intrinsics::Intrinsic;
 
 /// Represents a parsed, but not yet type checked, [Expression](https://en.wikipedia.org/wiki/Expression_(computer_science)).
 #[derive(Debug, Clone)]
@@ -54,7 +53,7 @@ pub enum Expression {
         span: Span,
     },
     StructExpression {
-        struct_name: CallPath,
+        struct_name: CallPath<(TypeInfo, Span)>,
         type_arguments: Vec<TypeArgument>,
         fields: Vec<StructExpressionField>,
         span: Span,
@@ -139,7 +138,9 @@ pub enum Expression {
         span: Span,
     },
     IntrinsicFunction {
-        kind: IntrinsicFunctionKind,
+        kind: Intrinsic,
+        arguments: Vec<Expression>,
+        type_arguments: Vec<TypeArgument>,
         span: Span,
     },
 }

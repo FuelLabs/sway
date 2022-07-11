@@ -4,7 +4,8 @@
       {
         "components": null,
         "name": "initial_value",
-        "type": "u64"
+        "type": "u64",
+        "typeArguments": null
       }
     ],
     "name": "initialize",
@@ -12,7 +13,8 @@
       {
         "components": null,
         "name": "",
-        "type": "u64"
+        "type": "u64",
+        "typeArguments": null
       }
     ],
     "type": "function"
@@ -22,7 +24,8 @@
       {
         "components": null,
         "name": "increment_by",
-        "type": "u64"
+        "type": "u64",
+        "typeArguments": null
       }
     ],
     "name": "increment",
@@ -30,7 +33,8 @@
       {
         "components": null,
         "name": "",
-        "type": "u64"
+        "type": "u64",
+        "typeArguments": null
       }
     ],
     "type": "function"
@@ -42,7 +46,8 @@
       {
         "components": null,
         "name": "",
-        "type": "u64"
+        "type": "u64",
+        "typeArguments": null
       }
     ],
     "type": "function"

@@ -1,14 +1,14 @@
 use crate::{
+    namespace::Path,
     parse_tree::declaration::Purity,
-    semantic_analysis::{
-        ast_node::Mode,
-        declaration::{EnforceTypeArguments, MonomorphizeHelper},
-        Namespace,
+    semantic_analysis::{ast_node::Mode, Namespace},
+    type_engine::{
+        insert_type, monomorphize, unify_with_self, CopyTypes, EnforceTypeArguments,
+        MonomorphizeHelper, TypeArgument, TypeId, TypeInfo,
     },
-    type_engine::{insert_type, unify_with_self, TypeArgument, TypeId, TypeInfo},
     CompileResult, CompileWarning, TypeError,
 };
-use sway_types::{span::Span, Ident, Spanned};
+use sway_types::{span::Span, Ident};
 
 /// Contextual state tracked and accumulated throughout type-checking.
 pub struct TypeCheckContext<'ns> {
@@ -174,24 +174,24 @@ impl<'ns> TypeCheckContext<'ns> {
 
     // Provide some convenience functions around the inner context.
 
-    /// Short-hand for calling the `monomorphize` method on `Namespace` with the context's known
-    /// `self_type`.
+    /// Short-hand for calling the `monomorphize` function in the type engine
     pub(crate) fn monomorphize<T>(
         &mut self,
-        decl: T,
-        type_args: Vec<TypeArgument>,
-        enforce_type_args: EnforceTypeArguments,
-        call_site_span: Option<&Span>,
-    ) -> CompileResult<T>
+        value: &mut T,
+        type_arguments: Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        call_site_span: &Span,
+    ) -> CompileResult<()>
     where
-        T: MonomorphizeHelper<Output = T> + Spanned,
+        T: MonomorphizeHelper + CopyTypes,
     {
-        self.namespace.monomorphize(
-            decl,
-            type_args,
-            enforce_type_args,
-            Some(self.self_type),
+        monomorphize(
+            value,
+            type_arguments,
+            enforce_type_arguments,
             call_site_span,
+            &mut self.namespace.root,
+            &self.namespace.mod_path,
         )
     }
 
@@ -202,9 +202,26 @@ impl<'ns> TypeCheckContext<'ns> {
         type_id: TypeId,
         span: &Span,
         enforce_type_args: EnforceTypeArguments,
+        type_info_prefix: Option<&Path>,
+    ) -> CompileResult<TypeId> {
+        self.namespace.resolve_type_with_self(
+            type_id,
+            self.self_type,
+            span,
+            enforce_type_args,
+            type_info_prefix,
+        )
+    }
+
+    /// Short-hand for calling [Namespace::resolve_type_without_self]
+    pub(crate) fn resolve_type_without_self(
+        &mut self,
+        type_id: TypeId,
+        span: &Span,
+        type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         self.namespace
-            .resolve_type_with_self(type_id, self.self_type, span, enforce_type_args)
+            .resolve_type_without_self(type_id, span, type_info_prefix)
     }
 
     /// Short-hand around `type_engine::unify_with_self`, where the `TypeCheckContext` provides the

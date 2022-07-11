@@ -8,7 +8,7 @@ use std::{
     context::{call_frames::msg_asset_id, msg_amount},
     contract_id::ContractId,
     identity::Identity,
-    result::*,
+    result::Result,
     revert::revert,
     token::transfer_to_output,
 };
@@ -16,7 +16,7 @@ use std::{
 const OWNER_ADDRESS: b256 = 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861;
 
 storage {
-    balance: u64,
+    balance: u64 = 0,
 }
 
 abi Wallet {
@@ -26,8 +26,8 @@ abi Wallet {
 
 impl Wallet for Contract {
     #[storage(read, write)]fn receive_funds() {
-        if msg_asset_id() == ~ContractId::from(BASE_ASSET_ID) {
-            // If we received `NATIVE_ASSET_ID` then keep track of the balance.
+        if msg_asset_id() == BASE_ASSET_ID {
+            // If we received `BASE_ASSET_ID` then keep track of the balance.
             // Otherwise, we're receiving other native assets and don't care
             // about our balance of tokens.
             storage.balance = storage.balance + msg_amount();
@@ -54,6 +54,6 @@ impl Wallet for Contract {
         // Note: `transfer_to_output()` is not a call and thus not an
         // interaction. Regardless, this code conforms to
         // checks-effects-interactions to avoid re-entrancy.
-        transfer_to_output(amount_to_send, ~ContractId::from(BASE_ASSET_ID), recipient_address);
+        transfer_to_output(amount_to_send, BASE_ASSET_ID, recipient_address);
     }
 }

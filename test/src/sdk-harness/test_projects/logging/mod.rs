@@ -1,7 +1,7 @@
 use fuel_core::service::{Config, FuelService};
 use fuel_gql_client::client::FuelClient;
 use fuels::contract::script::Script;
-use fuels::tx::{default_parameters::MAX_GAS_PER_TX, Transaction};
+use fuels::tx::{ConsensusParameters, Transaction};
 use hex;
 
 #[tokio::test]
@@ -12,7 +12,7 @@ async fn run_valid() {
 
     let tx = Transaction::Script {
         gas_price: 0,
-        gas_limit: MAX_GAS_PER_TX,
+        gas_limit: ConsensusParameters::DEFAULT.max_gas_per_tx,
         maturity: 0,
         byte_price: 0,
         receipts_root: Default::default(),

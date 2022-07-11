@@ -11,6 +11,7 @@ use std::{
 pub struct Ident {
     name_override_opt: Option<&'static str>,
     span: Span,
+    is_raw_ident: bool,
 }
 
 // custom implementation of Hash so that namespacing isn't reliant on the span itself, which will
@@ -55,10 +56,11 @@ impl fmt::Display for Ident {
 
 impl Ident {
     pub fn as_str(&self) -> &str {
-        match self.name_override_opt {
-            Some(name_override) => name_override,
-            None => self.span.as_str(),
-        }
+        self.name_override_opt.unwrap_or_else(|| self.span.as_str())
+    }
+
+    pub fn is_raw_ident(&self) -> bool {
+        self.is_raw_ident
     }
 
     pub fn new(span: Span) -> Ident {
@@ -66,6 +68,16 @@ impl Ident {
         Ident {
             name_override_opt: None,
             span,
+            is_raw_ident: false,
+        }
+    }
+
+    pub fn new_with_raw(span: Span, is_raw_ident: bool) -> Ident {
+        let span = span.trim();
+        Ident {
+            name_override_opt: None,
+            span,
+            is_raw_ident,
         }
     }
 
@@ -73,6 +85,7 @@ impl Ident {
         Ident {
             name_override_opt: Some(name_override),
             span,
+            is_raw_ident: false,
         }
     }
 
@@ -80,6 +93,7 @@ impl Ident {
         Ident {
             name_override_opt: Some(name),
             span: Span::dummy(),
+            is_raw_ident: false,
         }
     }
 }

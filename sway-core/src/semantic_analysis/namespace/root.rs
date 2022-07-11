@@ -59,9 +59,28 @@ impl Root {
                 Some(src_path) if mod_path != src_path => {
                     self.resolve_symbol(src_path, true_symbol)
                 }
-                _ => module.check_symbol(true_symbol),
+                _ => CompileResult::from(module.check_symbol(true_symbol)),
             }
         })
+    }
+
+    pub(crate) fn resolve_type_with_self(
+        &mut self,
+        mut type_id: TypeId,
+        self_type: TypeId,
+        span: &Span,
+        enforce_type_arguments: EnforceTypeArguments,
+        type_info_prefix: Option<&Path>,
+        mod_path: &Path,
+    ) -> CompileResult<TypeId> {
+        type_id.replace_self_type(self_type);
+        self.resolve_type(
+            type_id,
+            span,
+            enforce_type_arguments,
+            type_info_prefix,
+            mod_path,
+        )
     }
 
     pub(crate) fn resolve_type(
@@ -69,49 +88,53 @@ impl Root {
         type_id: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
+        type_info_prefix: Option<&Path>,
         mod_path: &Path,
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let module_path = type_info_prefix.unwrap_or(mod_path);
         let type_id = match look_up_type_id(type_id) {
             TypeInfo::Custom {
                 ref name,
                 type_arguments,
             } => {
                 match self
-                    .resolve_symbol(mod_path, name)
+                    .resolve_symbol(module_path, name)
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
-                    Some(TypedDeclaration::StructDeclaration(decl)) => {
-                        let new_decl = check!(
-                            decl.monomorphize(
-                                type_arguments,
+                    Some(TypedDeclaration::StructDeclaration(mut decl)) => {
+                        check!(
+                            monomorphize(
+                                &mut decl,
+                                type_arguments.unwrap_or_default(),
                                 enforce_type_arguments,
-                                Some(span),
+                                span,
                                 self,
-                                mod_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
+                                mod_path
                             ),
                             return err(warnings, errors),
                             warnings,
                             errors
                         );
-                        new_decl.create_type_id()
+                        decl.create_type_id()
                     }
-                    Some(TypedDeclaration::EnumDeclaration(decl)) => {
-                        let new_decl = check!(
-                            decl.monomorphize(
-                                type_arguments,
+                    Some(TypedDeclaration::EnumDeclaration(mut decl)) => {
+                        check!(
+                            monomorphize(
+                                &mut decl,
+                                type_arguments.unwrap_or_default(),
                                 enforce_type_arguments,
-                                Some(span),
+                                span,
                                 self,
-                                mod_path // NOTE: Once `TypeInfo::Custom` takes a `CallPath`, this will need to change
+                                mod_path
                             ),
                             return err(warnings, errors),
                             warnings,
                             errors
                         );
-                        new_decl.create_type_id()
+                        decl.create_type_id()
                     }
                     Some(TypedDeclaration::GenericTypeForFunctionScope { name, type_id }) => {
                         insert_type(TypeInfo::Ref(type_id, name.span()))
@@ -128,7 +151,7 @@ impl Root {
             TypeInfo::Ref(id, _) => id,
             TypeInfo::Array(type_id, n) => {
                 let new_type_id = check!(
-                    self.resolve_type(type_id, span, enforce_type_arguments, mod_path),
+                    self.resolve_type(type_id, span, enforce_type_arguments, None, mod_path),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
                     errors
@@ -142,6 +165,7 @@ impl Root {
                             type_argument.type_id,
                             span,
                             enforce_type_arguments,
+                            None,
                             mod_path
                         ),
                         insert_type(TypeInfo::ErrorRecovery),
@@ -168,7 +192,8 @@ impl Root {
         &mut self,
         mod_path: &Path,
         mut type_id: TypeId,
-        method_path: &Path,
+        method_prefix: &Path,
+        method_name: &Ident,
         self_type: TypeId,
         args_buf: &VecDeque<TypedExpression>,
     ) -> CompileResult<TypedFunctionDeclaration> {
@@ -186,9 +211,6 @@ impl Root {
         // grab the local methods from the local module
         let local_methods = local_module.get_methods_for_type(type_id);
 
-        // split into the method name and method prefix
-        let (method_name, method_prefix) = method_path.split_last().expect("method path is empty");
-
         type_id.replace_self_type(self_type);
 
         // resolve the type
@@ -197,6 +219,7 @@ impl Root {
                 type_id,
                 &method_name.span(),
                 EnforceTypeArguments::No,
+                None,
                 method_prefix
             ),
             insert_type(TypeInfo::ErrorRecovery),

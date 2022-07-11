@@ -1,7 +1,6 @@
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
-use fuels::tx::{default_parameters::MAX_GAS_PER_TX, ContractId};
-use fuels_abigen_macro::abigen;
+use fuels::tx::{ConsensusParameters, ContractId};
 
 abigen!(
     AttackerContract,
@@ -15,14 +14,19 @@ abigen!(
 
 #[tokio::test]
 async fn can_detect_reentrancy() {
-    let wallet = launch_provider_and_get_single_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await;
     let (attacker_instance, _) = get_attacker_instance(wallet.clone()).await;
     let (_, target_id) = get_target_instance(wallet).await;
 
     let result = attacker_instance
         .launch_attack(target_id)
         .set_contracts(&[target_id])
-        .tx_params(TxParameters::new(Some(0), Some(MAX_GAS_PER_TX), None, None))
+        .tx_params(TxParameters::new(
+            Some(0),
+            Some(ConsensusParameters::DEFAULT.max_gas_per_tx),
+            None,
+            None,
+        ))
         .call()
         .await
         .unwrap();
@@ -33,7 +37,7 @@ async fn can_detect_reentrancy() {
 #[tokio::test]
 #[should_panic(expected = "Revert(0)")]
 async fn can_block_reentrancy() {
-    let wallet = launch_provider_and_get_single_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await;
     let (attacker_instance, _) = get_attacker_instance(wallet.clone()).await;
     let (_, target_id) = get_target_instance(wallet).await;
 
@@ -48,7 +52,7 @@ async fn can_block_reentrancy() {
 #[tokio::test]
 #[should_panic(expected = "Revert(0)")]
 async fn can_block_cross_function_reentrancy() {
-    let wallet = launch_provider_and_get_single_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await;
     let (attacker_instance, _) = get_attacker_instance(wallet.clone()).await;
     let (_, target_id) = get_target_instance(wallet).await;
 
@@ -62,7 +66,7 @@ async fn can_block_cross_function_reentrancy() {
 
 #[tokio::test]
 async fn can_call_guarded_function() {
-    let wallet = launch_provider_and_get_single_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await;
     let (attacker_instance, _) = get_attacker_instance(wallet.clone()).await;
     let (_, target_id) = get_target_instance(wallet).await;
 
@@ -81,6 +85,11 @@ async fn get_attacker_instance(wallet: Wallet) -> (AttackerContract, ContractId)
         "test_artifacts/reentrancy_attacker_contract/out/debug/reentrancy_attacker_contract.bin",
         &wallet,
         TxParameters::default(),
+        StorageConfiguration::with_storage_path(
+            Some(
+                "test_artifacts/reentrancy_attacker_contract/out/debug/reentrancy_attacker_contract-storage_slots.json".to_string(),
+                )
+        )
     )
     .await
     .unwrap();
@@ -95,6 +104,11 @@ async fn get_target_instance(wallet: Wallet) -> (TargetContract, ContractId) {
         "test_artifacts/reentrancy_target_contract/out/debug/reentrancy_target_contract.bin",
         &wallet,
         TxParameters::default(),
+        StorageConfiguration::with_storage_path(
+            Some(
+                "test_artifacts/reentrancy_target_contract/out/debug/reentrancy_target_contract-storage_slots.json".to_string(),
+                )
+        )
     )
     .await
     .unwrap();

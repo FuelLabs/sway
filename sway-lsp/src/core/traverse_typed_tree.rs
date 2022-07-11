@@ -182,6 +182,8 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &mut TokenMap) {
             }
             handle_expression(&storage_reassignment.rhs, tokens);
         }
+        TypedDeclaration::Break { .. } => {}
+        TypedDeclaration::Continue { .. } => {}
     }
 }
 
@@ -332,14 +334,12 @@ fn handle_expression(expression: &TypedExpression, tokens: &mut TokenMap) {
     }
 }
 
-fn handle_intrinsic_function(kind: &TypedIntrinsicFunctionKind, tokens: &mut TokenMap) {
-    match kind {
-        TypedIntrinsicFunctionKind::SizeOfVal { exp } => {
-            handle_expression(exp, tokens);
-        }
-        TypedIntrinsicFunctionKind::SizeOfType { .. } => {}
-        TypedIntrinsicFunctionKind::IsRefType { .. } => {}
-        TypedIntrinsicFunctionKind::GetStorageKey => {}
+fn handle_intrinsic_function(
+    TypedIntrinsicFunctionKind { arguments, .. }: &TypedIntrinsicFunctionKind,
+    tokens: &mut TokenMap,
+) {
+    for arg in arguments {
+        handle_expression(arg, tokens);
     }
 }
 

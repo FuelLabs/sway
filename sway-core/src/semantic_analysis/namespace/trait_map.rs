@@ -38,7 +38,7 @@ pub(crate) struct TraitMap {
 impl TraitMap {
     pub(crate) fn insert(
         &mut self,
-        trait_name: CallPath,
+        trait_name: TraitName,
         incoming_type_id: TypeId,
         methods: Vec<TypedFunctionDeclaration>,
     ) {
@@ -63,7 +63,7 @@ impl TraitMap {
     pub(crate) fn get_call_path_and_type_info(
         &self,
         incoming_type_id: TypeId,
-    ) -> Vec<((CallPath, TypeId), Vec<TypedFunctionDeclaration>)> {
+    ) -> Vec<((TraitName, TypeId), Vec<TypedFunctionDeclaration>)> {
         let mut ret = vec![];
         for ((call_path, map_type_id), methods) in self.trait_map.iter() {
             if look_up_type_id(incoming_type_id).is_subset_of(&look_up_type_id(*map_type_id)) {

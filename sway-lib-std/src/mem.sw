@@ -15,7 +15,7 @@ pub fn addr_of<T>(val: T) -> u64 {
 }
 
 /// Copies `size` bytes from `src` to `dst`.
-pub fn copy(dst: u64, src: u64, size: u64) {
+pub fn copy(src: u64, dst: u64, size: u64) {
     asm(dst: dst, src: src, size: size) {
         mcp dst src size;
     };
@@ -46,7 +46,7 @@ pub fn read<T>(ptr: u64) -> T {
 /// Writes the given value to the address.
 pub fn write<T>(ptr: u64, val: T) {
     if is_reference_type::<T>() {
-        copy(ptr, addr_of(val), size_of_val(val));
+        copy(addr_of(val), ptr, size_of_val(val));
     } else {
         asm(ptr: ptr, val: val) {
             sw ptr val i0;

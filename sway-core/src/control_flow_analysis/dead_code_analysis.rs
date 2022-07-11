@@ -1,5 +1,4 @@
 use super::*;
-
 use crate::{
     parse_tree::{CallPath, Visibility},
     semantic_analysis::{
@@ -10,35 +9,35 @@ use crate::{
             TypedStructDeclaration, TypedStructExpressionField, TypedTraitDeclaration,
             TypedVariableDeclaration, TypedWhileLoop, VariableMutability,
         },
-        TypeCheckedStorageReassignment, TypedAstNode, TypedAstNodeContent, TypedImplTrait,
-        TypedIntrinsicFunctionKind,
+        TypeCheckedStorageReassignment, TypedAsmRegisterDeclaration, TypedAstNode,
+        TypedAstNodeContent, TypedImplTrait, TypedIntrinsicFunctionKind, TypedStorageDeclaration,
     },
     type_engine::{resolve_type, TypeInfo},
     CompileError, CompileWarning, Ident, TreeType, Warning,
 };
+use petgraph::{prelude::NodeIndex, visit::Dfs};
+use std::collections::BTreeSet;
 use sway_types::{span::Span, Spanned};
-
-use crate::semantic_analysis::TypedStorageDeclaration;
-
-use petgraph::algo::has_path_connecting;
-use petgraph::prelude::NodeIndex;
 
 impl ControlFlowGraph {
     pub(crate) fn find_dead_code(&self) -> Vec<CompileWarning> {
-        // dead code is code that has no path to the entry point
-        let mut dead_nodes = vec![];
-        for destination in self.graph.node_indices() {
-            let mut is_connected = false;
-            for entry in &self.entry_points {
-                if has_path_connecting(&self.graph, *entry, destination, None) {
-                    is_connected = true;
-                    break;
-                }
-            }
-            if !is_connected {
-                dead_nodes.push(destination);
+        // Dead code is code that has no path to the entry point.
+        // Collect all connected nodes by traversing from the entries.
+        // The dead nodes are those we did not collect.
+        let mut connected = BTreeSet::new();
+        let mut dfs = Dfs::empty(&self.graph);
+        for &entry in &self.entry_points {
+            dfs.move_to(entry);
+            while let Some(node) = dfs.next(&self.graph) {
+                connected.insert(node);
             }
         }
+        let dead_nodes: Vec<_> = self
+            .graph
+            .node_indices()
+            .filter(|n| !connected.contains(n))
+            .collect();
+
         let dead_enum_variant_warnings = dead_nodes
             .iter()
             .filter_map(|x| match &self.graph[*x] {
@@ -96,7 +95,7 @@ impl ControlFlowGraph {
             .filter(|CompileWarning { span, .. }| {
                 // if any other warnings contain a span which completely covers this one, filter
                 // out this one.
-                all_warnings.iter().any(
+                !all_warnings.iter().any(
                     |CompileWarning {
                          span: other_span, ..
                      }| {
@@ -185,6 +184,16 @@ impl ControlFlowGraph {
                     ControlFlowGraphNode::ProgramNode(TypedAstNode {
                         content:
                             TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait { .. }),
+                        ..
+                    }) => true,
+                    ControlFlowGraphNode::ProgramNode(TypedAstNode {
+                        content:
+                            TypedAstNodeContent::Declaration(TypedDeclaration::ConstantDeclaration(
+                                TypedConstantDeclaration {
+                                    visibility: Visibility::Public,
+                                    ..
+                                },
+                            )),
                         ..
                     }) => true,
                     _ => false,
@@ -415,6 +424,7 @@ fn connect_declaration(
             Ok(leaves.to_vec())
         }
         ErrorRecovery | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
+        Break { .. } | Continue { .. } => Ok(vec![]),
     }
 }
 
@@ -882,12 +892,35 @@ fn connect_expression(
             graph.add_edge(this_ix, field_ix, "".into());
             Ok(vec![this_ix])
         }
-        AsmExpression { .. } => {
-            let asm_node = graph.add_node("Inline asm".into());
+        AsmExpression { registers, .. } => {
+            let asm_node_entry = graph.add_node("Inline asm entry".into());
+            let asm_node_exit = graph.add_node("Inline asm exit".into());
             for leaf in leaves {
-                graph.add_edge(*leaf, asm_node, "".into());
+                graph.add_edge(*leaf, asm_node_entry, "".into());
             }
-            Ok(vec![asm_node])
+
+            let mut current_leaf = vec![asm_node_entry];
+            for TypedAsmRegisterDeclaration { initializer, .. } in registers {
+                current_leaf = match initializer {
+                    Some(initializer) => connect_expression(
+                        &initializer.expression,
+                        graph,
+                        &current_leaf,
+                        exit_node,
+                        "asm block argument initialization",
+                        tree_type,
+                        initializer.clone().span,
+                    )?,
+                    None => current_leaf,
+                }
+            }
+
+            // connect the final field to the exit
+            for leaf in current_leaf {
+                graph.add_edge(leaf, asm_node_exit, "".into());
+            }
+
+            Ok(vec![asm_node_exit])
         }
         Tuple { fields } => {
             let entry = graph.add_node("tuple entry".into());
@@ -1029,44 +1062,32 @@ fn connect_expression(
 }
 
 fn connect_intrinsic_function(
-    kind: &TypedIntrinsicFunctionKind,
+    TypedIntrinsicFunctionKind {
+        kind, arguments, ..
+    }: &TypedIntrinsicFunctionKind,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
     exit_node: Option<NodeIndex>,
     tree_type: &TreeType,
 ) -> Result<Vec<NodeIndex>, CompileError> {
-    let result = match kind {
-        TypedIntrinsicFunctionKind::SizeOfVal { exp } => connect_expression(
+    let node = graph.add_node(kind.to_string().into());
+    for leaf in leaves {
+        graph.add_edge(*leaf, node, "".into());
+    }
+    let mut result = vec![node];
+    let _ = arguments.iter().try_fold(&mut result, |accum, exp| {
+        let mut res = connect_expression(
             &(*exp).expression,
             graph,
             leaves,
             exit_node,
-            "size_of",
+            "intrinsic",
             tree_type,
             exp.span.clone(),
-        )?,
-        TypedIntrinsicFunctionKind::SizeOfType { .. } => {
-            let node = graph.add_node("size of type".into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, node, "".into());
-            }
-            vec![node]
-        }
-        TypedIntrinsicFunctionKind::IsRefType { .. } => {
-            let node = graph.add_node("is ref type".into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, node, "".into());
-            }
-            vec![node]
-        }
-        TypedIntrinsicFunctionKind::GetStorageKey => {
-            let node = graph.add_node("Get storage key".into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, node, "".into());
-            }
-            vec![node]
-        }
-    };
+        )?;
+        accum.append(&mut res);
+        Ok::<_, CompileError>(accum)
+    })?;
     Ok(result)
 }
 
@@ -1197,6 +1218,12 @@ fn construct_dead_code_warning_from_node(node: &TypedAstNode) -> Option<CompileW
         } if methods.is_empty() => return None,
         TypedAstNode {
             content: TypedAstNodeContent::Declaration(TypedDeclaration::AbiDeclaration { .. }),
+            ..
+        } => return None,
+        // We handle storage fields individually. There is no need to emit any warnings for the
+        // storage declaration itself.
+        TypedAstNode {
+            content: TypedAstNodeContent::Declaration(TypedDeclaration::StorageDeclaration { .. }),
             ..
         } => return None,
         TypedAstNode {

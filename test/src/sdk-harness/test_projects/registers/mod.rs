@@ -1,6 +1,5 @@
 use fuel_vm::consts::VM_MAX_RAM;
 use fuels::prelude::*;
-use fuels_abigen_macro::abigen;
 
 abigen!(
     TestRegistersContract,
@@ -12,11 +11,14 @@ abigen!(
 //    -  Ability to return any type of Contract.
 //    -  Return a result
 async fn deploy_test_registers_instance() -> TestRegistersContract {
-    let wallet = launch_provider_and_get_single_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await;
     let id = Contract::deploy(
         "test_projects/registers/out/debug/registers.bin",
         &wallet,
         TxParameters::default(),
+        StorageConfiguration::with_storage_path(Some(
+            "test_artifacts/registers/out/debug/registers-storage_slots.json".to_string(),
+        )),
     )
     .await
     .unwrap();

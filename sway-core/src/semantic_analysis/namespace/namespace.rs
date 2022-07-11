@@ -1,15 +1,11 @@
 use crate::{
-    semantic_analysis::{
-        ast_node::TypedExpression,
-        declaration::{EnforceTypeArguments, Monomorphize, MonomorphizeHelper},
-    },
-    type_engine::*,
-    CallPath, CompileResult, Ident, TypedDeclaration, TypedFunctionDeclaration,
+    semantic_analysis::ast_node::TypedExpression, type_engine::*, CallPath, CompileResult, Ident,
+    TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use super::{module::Module, root::Root, submodule_namespace::SubmoduleNamespace, Path, PathBuf};
 
-use sway_types::{span::Span, Spanned};
+use sway_types::span::Span;
 
 use std::collections::VecDeque;
 
@@ -67,6 +63,11 @@ impl Namespace {
         &self.root
     }
 
+    /// A mutable reference to the root of the project namespace.
+    pub fn root_mut(&mut self) -> &mut Root {
+        &mut self.root
+    }
+
     /// Access to the current [Module], i.e. the module at the inner `mod_path`.
     ///
     /// Note that the [Namespace] will automatically dereference to this [Module] when attempting
@@ -99,14 +100,20 @@ impl Namespace {
     /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
     pub(crate) fn resolve_type_with_self(
         &mut self,
-        mut type_id: TypeId,
+        type_id: TypeId,
         self_type: TypeId,
         span: &Span,
-        enforce_type_args: EnforceTypeArguments,
+        enforce_type_arguments: EnforceTypeArguments,
+        type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
-        type_id.replace_self_type(self_type);
-        self.root
-            .resolve_type(type_id, span, enforce_type_args, &self.mod_path)
+        self.root.resolve_type_with_self(
+            type_id,
+            self_type,
+            span,
+            enforce_type_arguments,
+            type_info_prefix,
+            &self.mod_path,
+        )
     }
 
     /// Short-hand for calling [Root::resolve_type_without_self] on `root` and with the `mod_path`.
@@ -114,33 +121,13 @@ impl Namespace {
         &mut self,
         type_id: TypeId,
         span: &Span,
+        type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
-        self.root
-            .resolve_type(type_id, span, EnforceTypeArguments::Yes, &self.mod_path)
-    }
-
-    /// Short-hand for calling `monomorphize` from the `Monomorphize` trait, on `root` with the `mod_path`.
-    pub(crate) fn monomorphize<T>(
-        &mut self,
-        decl: T,
-        mut type_arguments: Vec<TypeArgument>,
-        enforce_type_arguments: EnforceTypeArguments,
-        self_type: Option<TypeId>,
-        call_site_span: Option<&Span>,
-    ) -> CompileResult<T>
-    where
-        T: MonomorphizeHelper<Output = T> + Spanned,
-    {
-        if let Some(self_type) = self_type {
-            for type_argument in type_arguments.iter_mut() {
-                type_argument.replace_self_type(self_type);
-            }
-        }
-        decl.monomorphize(
-            type_arguments,
-            enforce_type_arguments,
-            call_site_span,
-            &mut self.root,
+        self.root.resolve_type(
+            type_id,
+            span,
+            EnforceTypeArguments::Yes,
+            type_info_prefix,
             &self.mod_path,
         )
     }
@@ -149,12 +136,19 @@ impl Namespace {
     pub(crate) fn find_method_for_type(
         &mut self,
         r#type: TypeId,
-        method_path: &Path,
+        method_prefix: &Path,
+        method_name: &Ident,
         self_type: TypeId,
         args_buf: &VecDeque<TypedExpression>,
     ) -> CompileResult<TypedFunctionDeclaration> {
-        self.root
-            .find_method_for_type(&self.mod_path, r#type, method_path, self_type, args_buf)
+        self.root.find_method_for_type(
+            &self.mod_path,
+            r#type,
+            method_prefix,
+            method_name,
+            self_type,
+            args_buf,
+        )
     }
 
     /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.

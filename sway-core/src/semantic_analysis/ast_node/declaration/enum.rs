@@ -1,18 +1,16 @@
 use crate::{
     error::*,
-    namespace::*,
     parse_tree::*,
     semantic_analysis::*,
     type_engine::{
-        insert_type, look_up_type_id, CopyTypes, CreateTypeId, ReplaceSelfType, TypeId,
-        TypeMapping, TypeParameter,
+        insert_type, look_up_type_id, CopyTypes, CreateTypeId, EnforceTypeArguments,
+        MonomorphizeHelper, ReplaceSelfType, TypeId, TypeMapping, TypeParameter,
     },
     types::{JsonAbiString, ToJsonAbi},
     TypeInfo,
 };
-use fuels_types::Property;
 use std::hash::{Hash, Hasher};
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Property, Span, Spanned};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedEnumDeclaration {
@@ -63,18 +61,12 @@ impl Spanned for TypedEnumDeclaration {
 }
 
 impl MonomorphizeHelper for TypedEnumDeclaration {
-    type Output = TypedEnumDeclaration;
-
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
 
     fn name(&self) -> &Ident {
         &self.name
-    }
-
-    fn monomorphize_inner(self, type_mapping: &TypeMapping, namespace: &mut Items) -> Self::Output {
-        monomorphize_inner(self, type_mapping, namespace)
     }
 }
 
@@ -197,6 +189,10 @@ impl ToJsonAbi for TypedEnumVariant {
             name: self.name.to_string(),
             type_field: self.type_id.json_abi_str(),
             components: self.type_id.generate_json_abi(),
+            type_arguments: self
+                .type_id
+                .get_type_parameters()
+                .map(|v| v.iter().map(TypeParameter::generate_json_abi).collect()),
         }
     }
 }
@@ -218,7 +214,8 @@ impl TypedEnumVariant {
             ctx.resolve_type_with_self(
                 insert_type(variant.type_info),
                 &variant.span,
-                EnforceTypeArguments::Yes
+                EnforceTypeArguments::Yes,
+                None
             ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,

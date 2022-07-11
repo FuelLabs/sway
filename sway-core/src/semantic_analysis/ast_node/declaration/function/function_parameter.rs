@@ -1,8 +1,8 @@
 use crate::{
     error::ok,
     semantic_analysis::{
-        EnforceTypeArguments, IsConstant, TypeCheckContext, TypedExpression,
-        TypedExpressionVariant, TypedVariableDeclaration, VariableMutability,
+        IsConstant, TypeCheckContext, TypedExpression, TypedExpressionVariant,
+        TypedVariableDeclaration, VariableMutability,
     },
     type_engine::*,
     CompileResult, FunctionParameter, Ident, TypedDeclaration,
@@ -36,6 +36,10 @@ impl CopyTypes for TypedFunctionParameter {
 }
 
 impl TypedFunctionParameter {
+    pub fn is_self(&self) -> bool {
+        self.name.as_str() == "self"
+    }
+
     pub(crate) fn type_check(
         mut ctx: TypeCheckContext,
         parameter: FunctionParameter,
@@ -46,7 +50,8 @@ impl TypedFunctionParameter {
             ctx.resolve_type_with_self(
                 parameter.type_id,
                 &parameter.type_span,
-                EnforceTypeArguments::Yes
+                EnforceTypeArguments::Yes,
+                None
             ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
@@ -67,7 +72,6 @@ impl TypedFunctionParameter {
                 } else {
                     VariableMutability::Immutable
                 },
-                const_decl_origin: false,
                 type_ascription: type_id,
             }),
         );

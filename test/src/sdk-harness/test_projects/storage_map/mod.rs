@@ -1,5 +1,4 @@
 use fuels::prelude::*;
-use fuels_abigen_macro::abigen;
 
 abigen!(
     TestStorageMapContract,
@@ -7,11 +6,14 @@ abigen!(
 );
 
 async fn test_storage_map_instance() -> TestStorageMapContract {
-    let wallet = launch_provider_and_get_single_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await;
     let id = Contract::deploy(
         "test_projects/storage_map/out/debug/storage_map.bin",
         &wallet,
         TxParameters::default(),
+        StorageConfiguration::with_storage_path(Some(
+            "test_artifacts/storage_map/out/debug/storage_map-storage_slots.json".to_string(),
+        )),
     )
     .await
     .unwrap();
