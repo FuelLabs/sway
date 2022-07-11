@@ -25,7 +25,6 @@ impl Format for ItemFn {
     }
 }
 
-// For now this just pushes the char
 impl CurlyBrace for ItemFn {
     fn open_curly_brace(
         line: &mut FormattedCode,
