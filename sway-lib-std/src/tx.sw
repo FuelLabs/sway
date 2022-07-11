@@ -338,15 +338,15 @@ pub fn predicate_data<T>(index: u64) -> T {
 ////////////////////////////////////////
 // Outputs
 ////////////////////////////////////////
-///////////////////// Needs update!    //////////////////////////////  ------- *
+
 /// Get a pointer to an output given the index of the output.
 pub fn tx_output_pointer(index: u64) -> u64 {
-    asm(r1, r2: index) {
-        xos r1 r2;
-        r1: u64
+    asm(res, i: index) {
+        gtf res i i14;
+        res: u64
     }
 }
-
+///////////////////// Needs update!    //////////////////////////////  ------- *
 /// Get the type of an output given a pointer to the output.
 pub fn tx_output_type_from_pointer(ptr: u64) -> u8 {
     asm(r1, r2: ptr) {
