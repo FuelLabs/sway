@@ -226,7 +226,7 @@ impl CurlyBrace for ItemEnum {
         line: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        line.push(Delimiter::Brace.as_close_char());
+        write!(line, "{}", Delimiter::Brace.as_close_char())?;
         // If shape is becoming left-most aligned or - indent just have the defualt shape
         formatter.shape = formatter
             .shape
