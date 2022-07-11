@@ -114,81 +114,81 @@ pub const OUTPUT_VARIABLE = 4u8;
 pub const OUTPUT_CONTRACT_CREATED = 5u8;
 
 /// Get the transaction type.
-pub fn tx_type(index: u64) -> u8 {
-    asm(res, i: index) {
-        gtf res i i1;
+pub fn tx_type() -> u8 {
+    asm(res) {
+        gtf res zero i1;
         res: u8
     }
 }
 
 /// Get the transaction-script gas price.
-pub fn tx_script_gas_price(index: u64) -> u64 {
-    asm(res, i: index) {
-        gtf res i i2;
+pub fn tx_script_gas_price() -> u64 {
+    asm(res) {
+        gtf res zero i2;
         res: u64
     }
 }
 
 /// Get the transaction-script gas limit.
-pub fn tx_script_gas_limit(index: u64) -> u64 {
-    asm(res, i: index) {
-        gtf res i i3;
+pub fn tx_script_gas_limit() -> u64 {
+    asm(res) {
+        gtf res zero i3;
         res: u64
     }
 }
 
 /// Get the transaction maturity.
-pub fn tx_maturity(index: u64) -> u32 {
-    asm(res, i: index) {
-        gtf res i i4;
+pub fn tx_maturity() -> u32 {
+    asm(res) {
+        gtf res zero i4;
         res: u64
     }
 }
 
 /// Get the transaction script length.
-pub fn tx_script_length(index: u64) -> u64 {
-    asm(res, i: index) {
-        gtf res i i5;
+pub fn tx_script_length() -> u64 {
+    asm(res) {
+        gtf res zero i5;
         res: u64
     }
 }
 
 /// Get the transaction script data length.
-pub fn tx_script_data_length(index: u64) -> u64 {
-    asm(res, i: index) {
-        gtf res i i6;
+pub fn tx_script_data_length() -> u64 {
+    asm(res) {
+        gtf res zero i6;
         res: u64
     }
 }
 
 /// Get the transaction inputs count.
-pub fn tx_inputs_count(index: u64) -> u64 {
-    asm(res, i: index) {
-        gtf res i i7;
+pub fn tx_inputs_count() -> u64 {
+    asm(res) {
+        gtf res zero i7;
         res: u64
     }
 }
 
 /// Get the transaction outputs count.
-pub fn tx_outputs_count(index: u64) -> u64 {
-    asm(res, i: index) {
-        gtf res i i8;
+pub fn tx_outputs_count() -> u64 {
+    asm(res) {
+        gtf res zero i8;
         res: u64
     }
 }
 
 /// Get the transaction witnesses count.
-pub fn tx_witnesses_count(index: u64) -> u64 {
-    asm(res, i: index) {
-        gtf res i i9;
+pub fn tx_witnesses_count() -> u64 {
+    asm(res) {
+        gtf res zero i9;
         res: u64
     }
 }
 
 /// Get the transaction receipts root.
-pub fn tx_receipts_root(index: u64) -> b256 {
-    b256_from_pointer_offset(asm(res, i: index) {
-        gtf res i i10;
+pub fn tx_receipts_root() -> b256 {
+    b256_from_pointer_offset(asm(res) {
+        gtf res zero i10;
         res: u64
     }, 0)
 }
@@ -198,32 +198,32 @@ pub fn tx_receipts_root(index: u64) -> b256 {
 ////////////////////////////////////////
 
 /// Get the transaction script start pointer.
-pub fn tx_script_start_pointer(index: u64) -> u64 {
-    asm(res, i: index) {
-        gtf res i i11;
+pub fn tx_script_start_pointer() -> u64 {
+    asm(res) {
+        gtf res zero i11;
         res: u64
     }
 }
 
 /// Get the transaction script data start pointer.
-pub fn tx_script_data_start_pointer(index: u64) -> u64 {
-    asm(res, i: index) {
-        gtf res i i12;
+pub fn tx_script_data_start_pointer() -> u64 {
+    asm(res) {
+        gtf res zero i12;
         res: u64
     }
 }
 
 /// Get the script data, typed. Unsafe.
-pub fn tx_script_data<T>(index: u64) -> T {
+pub fn tx_script_data<T>() -> T {
     // TODO some safety checks on the input data? We are going to assume it is the right type for now.
-    read(tx_script_data_start_pointer(index))
+    read(tx_script_data_start_pointer())
 }
 
 /// Get the script bytecode
 /// Must be cast to a u64 array, with sufficient length to contain the bytecode.
 /// Bytecode will be padded to next whole word.
-pub fn tx_script_bytecode<T>(index: u64) -> T {
-    read(tx_script_start_pointer(index))
+pub fn tx_script_bytecode<T>() -> T {
+    read(tx_script_start_pointer())
 }
 
 ////////////////////////////////////////
