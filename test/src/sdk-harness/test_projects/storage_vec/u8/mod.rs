@@ -61,15 +61,17 @@ mod success {
         push(&instance, 150).await;
         push(&instance, 200).await;
 
-        let old_item_at_index = get(&instance, 2).await;
-        assert_eq!(150, old_item_at_index);
+        assert_eq!(50, get(&instance, 0).await);
+        assert_eq!(100, get(&instance, 1).await);
+        assert_eq!(150, get(&instance, 2).await);
+        assert_eq!(200, get(&instance, 3).await);
 
         let item = remove(&instance, 2).await;
-
         assert_eq!(item, 150);
 
-        let new_item_at_index = get(&instance, 2).await;
-        assert_eq!(new_item_at_index, 200);
+        assert_eq!(50, get(&instance, 0).await);
+        assert_eq!(100, get(&instance, 1).await);
+        assert_eq!(200, get(&instance, 2).await);
     }
 
     #[tokio::test]
@@ -81,14 +83,17 @@ mod success {
         push(&instance, 150).await;
         push(&instance, 200).await;
 
-        let old_item_at_index = get(&instance, 1).await;
-        assert_eq!(old_item_at_index, 100);
+        assert_eq!(50, get(&instance, 0).await);
+        assert_eq!(100, get(&instance, 1).await);
+        assert_eq!(150, get(&instance, 2).await);
+        assert_eq!(200, get(&instance, 3).await);
 
         let item = swap_remove(&instance, 1).await;
-        let new_item_at_index = get(&instance, 1).await;
-
         assert_eq!(item, 100);
-        assert_eq!(new_item_at_index, 200);
+
+        assert_eq!(50, get(&instance, 0).await);
+        assert_eq!(200, get(&instance, 1).await);
+        assert_eq!(150, get(&instance, 2).await);
     }
 
     #[tokio::test]
@@ -100,14 +105,15 @@ mod success {
         push(&instance, 150).await;
         push(&instance, 200).await;
 
-        let old_item_at_index = get(&instance, 1).await;
-        assert_eq!(100, old_item_at_index);
+        assert_eq!(50, get(&instance, 0).await);
+        assert_eq!(100, get(&instance, 1).await);
+        assert_eq!(150, get(&instance, 2).await);
+        assert_eq!(200, get(&instance, 3).await);
 
         insert(&instance, 1, 250).await;
 
-        let new_item_at_index = get(&instance, 1).await;
-        assert_eq!(new_item_at_index, 250);
-
+        assert_eq!(50, get(&instance, 0).await);
+        assert_eq!(250, get(&instance, 1).await);
         assert_eq!(100, get(&instance, 2).await);
         assert_eq!(150, get(&instance, 3).await);
         assert_eq!(200, get(&instance, 4).await);
