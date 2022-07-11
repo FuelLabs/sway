@@ -278,7 +278,6 @@ pub fn tx_input_owner(index: u64) -> Option<Address> {
     )))
 }
 
-///////////////////// Needs update!    //////////////////////////////  ------- *
 /// Read 256 bits from memory at a given offset from a given pointer
 pub fn b256_from_pointer_offset(pointer: u64, offset: u64) -> b256 {
     asm(buffer, ptr: pointer, off: offset) {
@@ -299,22 +298,14 @@ pub fn b256_from_pointer_offset(pointer: u64, offset: u64) -> b256 {
 // Inputs > Predicate
 ////////////////////////////////////////
 
-pub fn tx_predicate_data_start_pointer() -> u64 {
-    // $is is word-aligned
-    let is = instrs_start();
-    let predicate_length_ptr = is - 16;
-    let predicate_code_length = asm(r1, r2: predicate_length_ptr) {
-        lw r1 r2 i0;
-        r1: u64
-    };
-
-    let predicate_data_ptr = is + predicate_code_length;
-    // predicate_data_ptr % 8 is guaranteed to be either
-    //  0: if there are an even number of instructions (predicate_data_ptr is word-aligned already)
-    //  4: if there are an odd number of instructions
-    predicate_data_ptr + predicate_data_ptr % 8
+pub fn tx_predicate_data_start_pointer(index: u64) -> u64 {
+    asm(res, i: index) {
+        gtf res i i288;
+        res: u64
+    }
 }
 
+///////////////////// Needs update!    //////////////////////////////  ------- *
 pub fn get_predicate_data<T>() -> T {
     read(tx_predicate_data_start_pointer())
 }
