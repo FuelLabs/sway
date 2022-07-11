@@ -213,7 +213,6 @@ pub fn tx_script_data_start_pointer(index: u64) -> u64 {
     }
 }
 
-///////////////////// Needs update!    //////////////////////////////  ------- *
 /// Get the script data, typed. Unsafe.
 pub fn tx_script_data<T>(index: u64) -> T {
     // TODO some safety checks on the input data? We are going to assume it is the right type for now.
@@ -223,10 +222,11 @@ pub fn tx_script_data<T>(index: u64) -> T {
 /// Get the script bytecode
 /// Must be cast to a u64 array, with sufficient length to contain the bytecode.
 /// Bytecode will be padded to next whole word.
-pub fn tx_script_bytecode<T>() -> T {
-    read(tx_script_start_pointer())
+pub fn tx_script_bytecode<T>(index: u64) -> T {
+    read(tx_script_start_pointer(index))
 }
 
+///////////////////// Needs update!    //////////////////////////////  ------- *
 ////////////////////////////////////////
 // Inputs
 ////////////////////////////////////////
