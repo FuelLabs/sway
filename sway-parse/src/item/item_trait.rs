@@ -42,8 +42,34 @@ impl Parse for ItemTrait {
             }
             None => None,
         };
-        let trait_items = parser.parse()?;
-        let trait_defs_opt = Braces::try_parse(parser)?;
+
+        let trait_items: Braces<Vec<(Annotated<FnSignature>, _)>> = parser.parse()?;
+        for item in trait_items.get().iter() {
+            let (fn_sig, _) = item;
+            if let Some(token) = &fn_sig.value.visibility {
+                return Err(parser.emit_error_with_span(
+                    ParseErrorKind::UnnecessaryVisibilityQualifier {
+                        visibility: token.ident(),
+                    },
+                    token.span(),
+                ));
+            }
+        }
+
+        let trait_defs_opt: Option<Braces<Vec<Annotated<ItemFn>>>> = Braces::try_parse(parser)?;
+        if let Some(trait_defs) = &trait_defs_opt {
+            for item in trait_defs.get().iter() {
+                if let Some(token) = &item.value.fn_signature.visibility {
+                    return Err(parser.emit_error_with_span(
+                        ParseErrorKind::UnnecessaryVisibilityQualifier {
+                            visibility: token.ident(),
+                        },
+                        token.span(),
+                    ));
+                }
+            }
+        }
+
         Ok(ItemTrait {
             visibility,
             trait_token,
