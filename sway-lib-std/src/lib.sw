@@ -8,6 +8,7 @@ dep option;
 dep result;
 dep mem;
 dep alloc;
+dep contract_call;
 dep contract_id;
 dep constants;
 dep context;
