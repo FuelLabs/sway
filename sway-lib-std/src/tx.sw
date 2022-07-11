@@ -145,7 +145,6 @@ pub fn tx_maturity(index: u64) -> u32 {
     }
 }
 
-///////////////////// Needs update!    //////////////////////////////  ------- *
 /// Get the transaction script length.
 pub fn tx_script_length(index: u64) -> u64 {
     asm(res, i: index) {
@@ -155,13 +154,14 @@ pub fn tx_script_length(index: u64) -> u64 {
 }
 
 /// Get the transaction script data length.
-pub fn tx_script_data_length() -> u64 {
-    asm(r1, r2: TX_SCRIPT_DATA_LENGTH_OFFSET) {
-        lw r1 r2 i0;
-        r1: u64
+pub fn tx_script_data_length(index: u64) -> u64 {
+    asm(res, i: index) {
+        gtf res i i6;
+        res: u64
     }
 }
 
+///////////////////// Needs update!    //////////////////////////////  ------- *
 /// Get the transaction inputs count.
 pub fn tx_inputs_count() -> u64 {
     asm(r1, r2: TX_INPUTS_COUNT_OFFSET) {
