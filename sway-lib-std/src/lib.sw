@@ -10,7 +10,7 @@ dep mem;
 dep alloc;
 dep contract_id;
 dep constants;
-dep context;
+dep context/mod;
 dep hash;
 dep r#storage;
 dep b512;
