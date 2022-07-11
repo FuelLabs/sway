@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: pub fn f(self) -> bool;
+# nextln: $()Unnecessary visibility qualifier, `pub` is implied here.
