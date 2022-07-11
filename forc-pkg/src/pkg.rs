@@ -1655,6 +1655,7 @@ pub fn compile(
                         "compile asm to bytecode",
                         sway_core::asm_to_bytecode(asm_res, source_map)
                     );
+                    sway_core::clear_lazy_statics();
                     match bc_res {
                         BytecodeCompilationResult::Success { bytes, warnings } => {
                             print_on_success(silent_mode, &pkg.name, &warnings, &tree_type);
