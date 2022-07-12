@@ -102,9 +102,10 @@ where
         collected_spans.push(opening_brace_span);
         // Add T's collected CommentSpan
         collected_spans.append(&mut self.clone().into_inner().collect_spans());
-        // Add closing brace's CommentSpan
         let mut closing_brace_span = CommentSpan::from_span(self.span());
         closing_brace_span.start = closing_brace_span.end - 1;
+        // Add closing brace's CommentSpan
+        collected_spans.push(closing_brace_span);
         collected_spans
     }
 }
@@ -189,30 +190,44 @@ fn add_comments(
     Ok(())
 }
 
-/// Returns a list of comments between given spans
+/// Returns a list of comments between given spans. For each comment returns the offset from the last item
 fn get_comments_between_spans(
     from: &CommentSpan,
     to: &CommentSpan,
     comment_map: &CommentMap,
-) -> Vec<Comment> {
+) -> Vec<(Comment, usize)> {
     comment_map
         .range((Included(from), Excluded(to)))
-        .map(|comment_tuple| comment_tuple.1.clone())
+        .map(|comment_tuple| {
+            (
+                comment_tuple.1.clone(),
+                comment_tuple.1.span.start() - from.end,
+            )
+        })
         .collect()
 }
 
 /// Inserts after given span and returns the offset.
 fn insert_after_span(
     from: &CommentSpan,
-    comments_to_insert: Vec<Comment>,
+    comments_to_insert: Vec<(Comment, usize)>,
     offset: usize,
     formatted_code: &mut FormattedCode,
 ) -> Result<usize, FormatterError> {
     let mut src_rope = Rope::from_str(formatted_code);
     // prepare the comment str
-    let mut comment_str = String::from(comments_to_insert[0].span.as_str());
+    let mut comment_str = format!(
+        "{}{}",
+        &(0..comments_to_insert[0].1)
+            .map(|_| ' ')
+            .collect::<String>(),
+        comments_to_insert[0].0.span.as_str()
+    );
     for comment in comments_to_insert.iter().skip(1) {
-        write!(comment_str, "\n{}", comment.span.as_str())?;
+        let whitespaces = (0..(comment.1 - comment_str.len() - 1))
+            .map(|_| ' ')
+            .collect::<String>();
+        write!(comment_str, "\n{}{}", whitespaces, comment.0.span.as_str())?;
     }
     src_rope.insert(from.end + offset, &comment_str);
     formatted_code.clear();
