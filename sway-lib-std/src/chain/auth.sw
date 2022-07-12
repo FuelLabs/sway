@@ -37,7 +37,7 @@ pub fn caller_contract_id() -> ContractId {
 /// Returns a `Result::Ok(Identity)`, or `Result::Err(AuthError)` if an identity cannot be determined.
 pub fn msg_sender() -> Result<Identity, AuthError> {
     if caller_is_external() {
-        coins_owner()
+        inputs_owner()
     } else {
         // Get caller's `ContractId`.
         Result::Ok(Identity::ContractId(caller_contract_id()))
@@ -46,7 +46,7 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
 
 /// Get the owner of the inputs (of type `InputCoin` or `InputMessage`) to a
 /// TransactionScript if they all share the same owner.
-fn coins_owner() -> Result<Identity, AuthError> {
+fn inputs_owner() -> Result<Identity, AuthError> {
     let inputs_count = tx_inputs_count();
     let mut candidate = Option::None::<Address>();
     let mut i = 0;
