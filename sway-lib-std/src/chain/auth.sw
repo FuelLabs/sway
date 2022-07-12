@@ -75,8 +75,6 @@ fn coins_owner() -> Result<Identity, AuthError> {
                     i += 1;
                 } else {
                     // Owners don't match. Return Err.
-                    // TODO: Use break keyword when possible
-                    i = inputs_count;
                     return Result::Err(AuthError::InputsNotAllOwnedBySameAddress);
                 };
             };
