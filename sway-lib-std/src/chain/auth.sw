@@ -8,7 +8,7 @@ use ::contract_id::ContractId;
 use ::identity::Identity;
 use ::option::*;
 use ::result::Result;
-use ::tx::*;
+use ::tx::{tx_inputs_count, tx_input_type, tx_input_owner, INPUT_COIN, INPUT_MESSAGE};
 
 pub enum AuthError {
     InputsNotAllOwnedBySameAddress: (),
@@ -44,10 +44,9 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
     }
 }
 
-/// Get the owner of the inputs (of type `InputCoin`) to a TransactionScript,
-/// if they all share the same owner.
+/// Get the owner of the inputs (of type `InputCoin` or `InputMessage`) to a
+/// TransactionScript if they all share the same owner.
 fn coins_owner() -> Result<Identity, AuthError> {
-    let target_input_type = 0u8;
     let inputs_count = tx_inputs_count();
     let mut candidate = Option::None::<Address>();
     let mut i = 0;
@@ -55,9 +54,8 @@ fn coins_owner() -> Result<Identity, AuthError> {
     // Note: `inputs_count` is guaranteed to be at least 1 for any valid tx.
     while i < inputs_count {
         let input_type = tx_input_type(i);
-        if input_type != target_input_type {
-            // type != InputCoin
-            // Continue looping.
+        if input_type != INPUT_COIN && input_type != INPUT_MESSAGE {
+            // type != InputCoin or InputMessage, continue looping.
             i += 1;
         } else {
             // type == InputCoin
