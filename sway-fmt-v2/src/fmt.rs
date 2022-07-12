@@ -1,5 +1,6 @@
 use crate::utils::{
-    indent_style::Shape, newline_style::apply_newline_style, program_type::insert_program_type,
+    comments::handle_comments, indent_style::Shape, newline_style::apply_newline_style,
+    program_type::insert_program_type,
 };
 use std::{path::Path, sync::Arc};
 use sway_core::BuildConfig;
@@ -42,7 +43,7 @@ impl Formatter {
     ) -> Result<FormattedCode, FormatterError> {
         let path = build_config.map(|build_config| build_config.canonical_root_module());
         let src_len = src.len();
-        let module = sway_parse::parse_file(src, path)?;
+        let module = sway_parse::parse_file(src.clone(), path.clone())?;
         // Get parsed items
         let items = module.items;
         // Get the program type (script, predicate, contract or library)
@@ -68,6 +69,13 @@ impl Formatter {
         }
 
         let mut formatted_code = String::from(&raw_formatted_code);
+        // Add comments
+        handle_comments(
+            src,
+            Arc::from(formatted_code.clone()),
+            path,
+            &mut formatted_code,
+        )?;
         // Replace newlines with specified `NewlineStyle`
         apply_newline_style(
             self.config.whitespace.newline_style,

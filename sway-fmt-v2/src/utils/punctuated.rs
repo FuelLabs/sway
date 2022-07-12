@@ -1,10 +1,27 @@
 use crate::{
     fmt::{Format, FormattedCode, Formatter},
+    utils::comments::{CommentSpan, CommentVisitor},
     FormatterError,
 };
 use std::fmt::Write;
 use sway_parse::{keywords::CommaToken, punctuated::Punctuated, StorageField, TypeField};
 use sway_types::{Ident, Spanned};
+
+impl<T, P> CommentVisitor for Punctuated<T, P>
+where
+    T: Spanned,
+    P: Spanned,
+{
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_spans = Vec::new();
+        let value_pairs = &self.value_separator_pairs;
+        for pair in value_pairs.iter() {
+            collected_spans.push(CommentSpan::from_span(pair.0.span()));
+            collected_spans.push(CommentSpan::from_span(pair.1.span()));
+        }
+        collected_spans
+    }
+}
 
 impl<T, P> Format for Punctuated<T, P>
 where

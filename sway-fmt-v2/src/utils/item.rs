@@ -1,5 +1,26 @@
-use crate::fmt::{Format, FormattedCode, Formatter, FormatterError};
+use crate::{
+    fmt::{Format, FormattedCode, Formatter, FormatterError},
+    utils::comments::{CommentSpan, CommentVisitor},
+};
 use sway_parse::{Item, ItemKind::*};
+
+impl CommentVisitor for Item {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        match &self.value {
+            Use(_) => todo!(),
+            Struct(item_struct) => item_struct.collect_spans(),
+            Enum(_) => todo!(),
+            Fn(_) => todo!(),
+            Trait(_) => todo!(),
+            Impl(_) => todo!(),
+            Abi(_) => todo!(),
+            Const(_) => todo!(),
+            Storage(_) => todo!(),
+            Break(_) => todo!(),
+            Continue(_) => todo!(),
+        }
+    }
+}
 
 impl Format for Item {
     fn format(

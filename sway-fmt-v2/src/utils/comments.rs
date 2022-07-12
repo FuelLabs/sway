@@ -1,7 +1,18 @@
-use crate::fmt::FormatterError;
-use std::{cmp::Ordering, collections::BTreeMap, sync::Arc};
-use sway_parse::token::{lex_commented, Comment, CommentedTokenTree, CommentedTree};
-
+use crate::fmt::{FormattedCode, FormatterError};
+use ropey::Rope;
+use std::{
+    cmp::Ordering,
+    collections::BTreeMap,
+    fmt::Write,
+    ops::Bound::{Excluded, Included},
+    path::PathBuf,
+    sync::Arc,
+};
+use sway_parse::{
+    token::{lex_commented, Comment, CommentedTokenTree, CommentedTree},
+    Braces, Module,
+};
+use sway_types::{Span, Spanned};
 /// Represents a span for the comments in a spesific file
 /// A stripped down version of sway-types::src::Span
 #[derive(PartialEq, Eq, Debug, Clone, Default)]
@@ -10,6 +21,16 @@ pub struct CommentSpan {
     pub start: usize,
     // The byte position in the string of the end of the span.
     pub end: usize,
+}
+
+impl CommentSpan {
+    /// Takes `start` and `end` from `sway::types::Span` and constructs a `CommentSpan`
+    pub fn from_span(span: Span) -> CommentSpan {
+        CommentSpan {
+            start: span.start(),
+            end: span.end(),
+        }
+    }
 }
 
 impl Ord for CommentSpan {
@@ -67,6 +88,142 @@ fn collect_comments_from_token_stream(
         }
         _ => {}
     }
+}
+
+impl<T> CommentVisitor for Braces<T>
+where
+    T: CommentVisitor + Clone,
+{
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_spans = Vec::new();
+        let mut opening_brace_span = CommentSpan::from_span(self.span());
+        opening_brace_span.end = opening_brace_span.start + 1;
+        // Add opening brace's CommentSpan
+        collected_spans.push(opening_brace_span);
+        // Add T's collected CommentSpan
+        collected_spans.append(&mut self.clone().into_inner().collect_spans());
+        // Add closing brace's CommentSpan
+        let mut closing_brace_span = CommentSpan::from_span(self.span());
+        closing_brace_span.start = closing_brace_span.end - 1;
+        collected_spans
+    }
+}
+
+/// Handles comments by first creating the CommentMap which is used for fast seaching comments.
+/// Traverses items for finding a comment in unformatted input and placing it in correct place in formatted output.
+pub fn handle_comments(
+    unformatted_input: Arc<str>,
+    formatted_input: Arc<str>,
+    path: Option<Arc<PathBuf>>,
+    formatted_code: &mut FormattedCode,
+) -> Result<(), FormatterError> {
+    // Collect Span -> Comment mapping from unformatted input
+    let comment_map = comment_map_from_src(unformatted_input.clone())?;
+
+    // Parse unformatted code so that we can get the spans of items in their original places.
+    // This is required since we collected the spans in from unformatted source file.
+    let unformatted_module = sway_parse::parse_file(unformatted_input, path.clone())?;
+    // After the formatting items should be the same but their spans will be changed since we applied formatting to them.
+    let formatted_module = sway_parse::parse_file(formatted_input, path)?;
+    // Actually insert the comments
+    add_comments(
+        comment_map,
+        &unformatted_module,
+        &formatted_module,
+        formatted_code,
+    )?;
+    Ok(())
+}
+
+/// Adds the comments from comment_map to correct places in the formatted code. This requires us
+/// both the unformatted and formatted code's AST as they will have different spans for their
+/// nodes. While traversing the unformatted AST, `add_comments` searches for comments. If there is a comment found
+/// simply find the corresponding node from the formatted ast to retrieve the correct span to place
+/// the comment.
+fn add_comments(
+    comment_map: CommentMap,
+    unformatted_module: &Module,
+    formatted_module: &Module,
+    formatted_code: &mut FormattedCode,
+) -> Result<(), FormatterError> {
+    let unformatted_items = &unformatted_module.items;
+    let formatted_items = &formatted_module.items;
+
+    for (unformatted_item, formatted_item) in unformatted_items.iter().zip(formatted_items.iter()) {
+        // Search comments for possible places inside the item.
+        let unformatted_item_spans = unformatted_item.collect_spans();
+        let formatted_item_spans = formatted_item.collect_spans();
+
+        // We will definetly have a span in the collected span since for a source code to be parsed as an item there should be some tokens present.
+        let mut previous_unformatted_span = unformatted_item_spans
+            .first()
+            .ok_or(FormatterError::CommentError)?;
+        let mut previous_formatted_span = formatted_item_spans
+            .first()
+            .ok_or(FormatterError::CommentError)?;
+        // Since we are adding comments into formatted code, in the next iteration the spans we find for the formatted code needs to be offsetted
+        // as the total length of comments we added in previous iterations.
+        let mut offset = 0;
+        // Iterate over the possible spans to check for a comment
+        for (unformatted_cur_span, formatted_cur_span) in unformatted_item_spans
+            .iter()
+            .zip(formatted_item_spans.iter())
+        {
+            let comments_found = get_comments_between_spans(
+                previous_unformatted_span,
+                unformatted_cur_span,
+                &comment_map,
+            );
+            if !comments_found.is_empty() {
+                offset += insert_after_span(
+                    previous_formatted_span,
+                    comments_found,
+                    offset,
+                    formatted_code,
+                )?;
+            }
+            previous_unformatted_span = unformatted_cur_span;
+            previous_formatted_span = formatted_cur_span;
+        }
+    }
+    Ok(())
+}
+
+/// Returns a list of comments between given spans
+fn get_comments_between_spans(
+    from: &CommentSpan,
+    to: &CommentSpan,
+    comment_map: &CommentMap,
+) -> Vec<Comment> {
+    comment_map
+        .range((Included(from), Excluded(to)))
+        .map(|comment_tuple| comment_tuple.1.clone())
+        .collect()
+}
+
+/// Inserts after given span and returns the offset.
+fn insert_after_span(
+    from: &CommentSpan,
+    comments_to_insert: Vec<Comment>,
+    offset: usize,
+    formatted_code: &mut FormattedCode,
+) -> Result<usize, FormatterError> {
+    let mut src_rope = Rope::from_str(formatted_code);
+    // prepare the comment str
+    let mut comment_str = String::from(comments_to_insert[0].span.as_str());
+    for comment in comments_to_insert.iter().skip(1) {
+        write!(comment_str, "\n{}", comment.span.as_str())?;
+    }
+    src_rope.insert(from.end + offset, &comment_str);
+    formatted_code.clear();
+    formatted_code.push_str(&src_rope.to_string());
+    Ok(comment_str.chars().count())
+}
+
+/// While searching for a comment we need the possible places a comment can be placed in a structure
+/// `collect_spans` collects all field's spans so that we can check in between them.
+pub trait CommentVisitor {
+    fn collect_spans(&self) -> Vec<CommentSpan>;
 }
 
 #[cfg(test)]
