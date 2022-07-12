@@ -1587,9 +1587,6 @@ pub fn compile(
     namespace: namespace::Module,
     source_map: &mut SourceMap,
 ) -> Result<(Compiled, Option<namespace::Root>)> {
-    //TODO remove once type engine isn't global anymore.
-    sway_core::clear_lazy_statics();
-
     // Time the given expression and print the result if `build_config.time_phases` is true.
     macro_rules! time_expr {
         ($description:expr, $expression:expr) => {{
@@ -1690,6 +1687,9 @@ pub fn compile(
 ///
 /// Also returns the resulting `sway_core::SourceMap` which may be useful for debugging purposes.
 pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compiled, SourceMap)> {
+    //TODO remove once type engine isn't global anymore.
+    sway_core::clear_lazy_statics();
+
     let mut namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     let mut json_abi = vec![];
