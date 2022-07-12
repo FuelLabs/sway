@@ -5,7 +5,16 @@ use forc_util::validate_name;
 use std::fs;
 use std::path::{Path, PathBuf};
 use sway_utils::constants;
-use tracing::info;
+use tracing::{debug, info};
+
+// Upgrade RUST_LOG level if --verbose is passed
+fn verbose_trace(v: bool, s: &str) {
+    if v {
+        info!("{}", s);
+    } else {
+        debug!("{}", s);
+    }
+}
 
 fn print_welcome_message() {
     let read_the_docs = format!(
@@ -53,12 +62,13 @@ pub fn init(command: InitCommand) -> Result<()> {
         );
     }
 
-    if command.verbose {
-        info!(
-            "\nUsing project directory at {}",
+    verbose_trace(
+        command.verbose,
+        &format!(
+            "Using project directory at {}",
             project_dir.canonicalize()?.display()
-        );
-    }
+        ),
+    );
 
     let project_name = match command.name {
         Some(name) => name,
@@ -142,27 +152,30 @@ pub fn init(command: InitCommand) -> Result<()> {
     let harness_path = Path::new(&project_dir).join("tests").join("harness.rs");
     fs::write(&harness_path, defaults::default_test_program(&project_name))?;
 
-    if command.verbose {
-        info!(
+    verbose_trace(
+        command.verbose,
+        &format!(
             "\nCreated test harness at {}",
             harness_path.canonicalize()?.display()
-        );
-    }
+        ),
+    );
 
     // Ignore default `out` and `target` directories created by forc and cargo.
     let gitignore_path = Path::new(&project_dir).join(".gitignore");
     fs::write(&gitignore_path, defaults::default_gitignore())?;
 
-    if command.verbose {
-        info!(
+    verbose_trace(
+        command.verbose,
+        &format!(
             "\nCreated .gitignore at {}",
             gitignore_path.canonicalize()?.display()
-        );
-    }
+        ),
+    );
 
-    if command.verbose {
-        info!("\nSuccessfully created {program_type}: {project_name}",);
-    }
+    verbose_trace(
+        command.verbose,
+        &format!("\nSuccessfully created {program_type}: {project_name}"),
+    );
 
     print_welcome_message();
 
