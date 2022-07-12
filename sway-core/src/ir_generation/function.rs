@@ -9,7 +9,9 @@ use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     constants,
     error::CompileError,
-    ir_generation::const_eval::compile_constant_expression,
+    ir_generation::const_eval::{
+        compile_constant_expression, compile_constant_expression_to_constant,
+    },
     parse_tree::{AsmOp, AsmRegister, LazyOp, Literal, Purity, Visibility},
     semantic_analysis::*,
     type_engine::{insert_type, resolve_type, TypeId, TypeInfo},
@@ -419,6 +421,51 @@ impl FnCompiler {
                     Predicate::Equal,
                     lhs_value,
                     rhs_value,
+                    None,
+                ))
+            }
+            Intrinsic::Gtf => {
+                // The index is just a Value
+                let index = self.compile_expression(context, arguments[0].clone())?;
+
+                // The tx field ID has to be a compile-time constant because it becomes an
+                // immediate
+                let tx_field_id_constant = compile_constant_expression_to_constant(
+                    context,
+                    self.module,
+                    None,
+                    &arguments[1],
+                )?;
+                let tx_field_id = match tx_field_id_constant.value {
+                    ConstantValue::Uint(n) => n,
+                    _ => {
+                        return Err(CompileError::Internal(
+                            "Transaction field ID for gtf intrinsic is not an integer. \
+                            This should have been in caught in type checking",
+                            span,
+                        ))
+                    }
+                };
+
+                let targ = type_arguments[0].clone();
+                let ir_type = convert_resolved_typeid(context, &targ.type_id, &targ.span)?;
+
+                let reg = self
+                    .current_block
+                    .ins(context)
+                    .gtf(index, tx_field_id, None);
+
+                // This is very very very hacky. I need to find a better way.
+                // The idea here is to convert the `u64` coming out of `gtf` into type T where T is
+                // whatever type indicated in the angle brackets of `__gtf`.
+                Ok(self.current_block.ins(context).asm_block(
+                    vec![AsmArg {
+                        name: Ident::new(crate::span::Span::new(" ".into(), 0, 0, None).unwrap()),
+                        initializer: Some(reg),
+                    }],
+                    vec![],
+                    ir_type,
+                    None,
                     None,
                 ))
             }

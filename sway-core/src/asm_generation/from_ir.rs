@@ -525,6 +525,9 @@ impl<'ir> AsmBuilder<'ir> {
                     ptr_ty,
                     offset,
                 } => self.compile_get_pointer(instr_val, base_ptr, ptr_ty, *offset),
+                Instruction::Gtf { index, tx_field_id } => {
+                    self.compile_gtf(instr_val, index, *tx_field_id)
+                }
                 Instruction::InsertElement {
                     array,
                     ty,
@@ -1166,6 +1169,22 @@ impl<'ir> AsmBuilder<'ir> {
                 }
             },
         }
+    }
+
+    fn compile_gtf(&mut self, instr_val: &Value, index: &Value, tx_field_id: u64) {
+        let instr_reg = self.reg_seqr.next();
+        let index_reg = self.value_to_register(index);
+        self.bytecode.push(Op {
+            opcode: either::Either::Left(VirtualOp::GTF(
+                instr_reg,
+                index_reg,
+                VirtualImmediate12 {
+                    value: tx_field_id as u16,
+                },
+            )),
+            comment: "gtf instruction".into(),
+            owning_span: instr_val.get_span(self.context),
+        });
     }
 
     fn compile_insert_element(

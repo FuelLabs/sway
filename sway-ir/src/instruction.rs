@@ -62,6 +62,10 @@ pub enum Instruction {
     },
     /// Generate a unique integer value
     GetStorageKey,
+    Gtf {
+        index: Value,
+        tx_field_id: u64,
+    },
     /// Return a pointer as a value.
     GetPointer {
         base_ptr: Pointer,
@@ -163,6 +167,7 @@ impl Instruction {
             Instruction::ExtractElement { ty, .. } => ty.get_elem_type(context),
             Instruction::ExtractValue { ty, indices, .. } => ty.get_field_type(context, indices),
             Instruction::GetStorageKey => Some(Type::B256),
+            Instruction::Gtf { .. } => Some(Type::Uint(64)),
             Instruction::InsertElement { array, .. } => array.get_type(context),
             Instruction::InsertValue { aggregate, .. } => aggregate.get_type(context),
             Instruction::IntToPtr(_, ty) => Some(*ty),
@@ -293,6 +298,7 @@ impl Instruction {
             }
             Instruction::ExtractValue { aggregate, .. } => replace(aggregate),
             Instruction::GetStorageKey => (),
+            Instruction::Gtf { index, .. } => replace(index),
             Instruction::IntToPtr(value, _) => replace(value),
             Instruction::Load(_) => (),
             Instruction::Nop => (),
@@ -607,6 +613,17 @@ impl<'a> InstructionInserter<'a> {
             .instructions
             .push(get_storage_key_val);
         get_storage_key_val
+    }
+
+    pub fn gtf(self, index: Value, tx_field_id: u64, span_md_idx: Option<MetadataIndex>) -> Value {
+        let gtf_val = Value::new_instruction(
+            self.context,
+            Instruction::Gtf { index, tx_field_id },
+            span_md_idx,
+            None,
+        );
+        self.context.blocks[self.block.0].instructions.push(gtf_val);
+        gtf_val
     }
 
     pub fn get_ptr(

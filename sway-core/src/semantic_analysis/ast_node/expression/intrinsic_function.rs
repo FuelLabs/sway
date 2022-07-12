@@ -244,6 +244,97 @@ impl TypedIntrinsicFunctionKind {
                     insert_type(TypeInfo::Boolean),
                 )
             }
+            Intrinsic::Gtf => {
+                if arguments.len() != 2 {
+                    errors.push(CompileError::IntrinsicIncorrectNumArgs {
+                        name: kind.to_string(),
+                        expected: 2,
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
+
+                if type_arguments.len() != 1 {
+                    errors.push(CompileError::IntrinsicIncorrectNumTArgs {
+                        name: kind.to_string(),
+                        expected: 1,
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
+
+                // Type check the first argument which is the index
+                let mut ctx = ctx
+                    .by_ref()
+                    .with_type_annotation(insert_type(TypeInfo::Unknown));
+                let index = check!(
+                    TypedExpression::type_check(ctx.by_ref(), arguments[0].clone()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
+                // Type check the second argument which is the tx field ID
+                let mut ctx = ctx
+                    .by_ref()
+                    .with_type_annotation(insert_type(TypeInfo::Unknown));
+                let tx_field_id = check!(
+                    TypedExpression::type_check(ctx.by_ref(), arguments[1].clone()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
+                // Make sure that the index argument is an unsigned integer
+                if !matches!(
+                    resolve_type(index.return_type, &index.span).unwrap(),
+                    TypeInfo::UnsignedInteger(_)
+                ) {
+                    errors.push(CompileError::IntrinsicUnsupportedArgType {
+                        name: kind.to_string(),
+                        span: index.span.clone(),
+                    });
+                }
+
+                // Make sure that the tx field ID is an unsigned integer
+                // TODO should we also check that type is *not* a u8? There are some tx field IDs
+                // that don't really fit in a u8
+                if !matches!(
+                    resolve_type(tx_field_id.return_type, &tx_field_id.span).unwrap(),
+                    TypeInfo::UnsignedInteger(_)
+                ) {
+                    errors.push(CompileError::IntrinsicUnsupportedArgType {
+                        name: kind.to_string(),
+                        span: tx_field_id.span.clone(),
+                    });
+                }
+
+                let targ = type_arguments[0].clone();
+                let type_id = check!(
+                    ctx.resolve_type_with_self(
+                        insert_type(resolve_type(targ.type_id, &targ.span).unwrap()),
+                        &targ.span,
+                        EnforceTypeArguments::Yes,
+                        None
+                    ),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors,
+                );
+
+                (
+                    TypedIntrinsicFunctionKind {
+                        kind,
+                        arguments: vec![index, tx_field_id],
+                        type_arguments: vec![TypeArgument {
+                            type_id,
+                            span: targ.span,
+                        }],
+                        span,
+                    },
+                    type_id,
+                )
+            }
         };
         ok((intrinsic_function, return_type), warnings, errors)
     }
