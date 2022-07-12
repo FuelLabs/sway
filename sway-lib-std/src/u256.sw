@@ -43,7 +43,7 @@ pub trait From {
 impl From for U256 {
     fn from(a: u64, b: u64, c: u64, d: u64) -> U256 {
         U256 {
-            a, b, c, d,
+            a, b, c, d, 
         }
     }
 
@@ -372,7 +372,7 @@ impl core::ops::Ord for U256 {
     }
 
     pub fn lt(self, other: Self) -> bool {
-        self.a < other.a || self.a == other.a && self.b < other.b ||  self.a == other.a && self.b == other.b  && self.c < other.c ||  self.a == other.a && self.b == other.b  && self.c == other.c && self.d < other.d
+        self.a < other.a || self.a == other.a && self.b < other.b || self.a == other.a && self.b == other.b && self.c < other.c || self.a == other.a && self.b == other.b && self.c == other.c && self.d < other.d
     }
 }
 
@@ -424,7 +424,7 @@ impl core::ops::Shiftable for U256 {
         let mut w4 = 0;
 
         let w = shift_amount / 64; // num of whole words to shift in addition to b
-        let b = shift_amount % 64 ; // num of bits to shift within each word
+        let b = shift_amount % 64; // num of bits to shift within each word
 
         // TODO: Use generalized looping version when vec lands !
         if w == 0 {
@@ -464,7 +464,6 @@ impl core::ops::Shiftable for U256 {
         let w = shift_amount / 64; // num of whole words to shift in addition to b
         let b = shift_amount % 64; // num of bits to shift within each word
 
-        // TODO: Use generalized looping version when vec lands !
         if w == 0 {
             let(shifted_3, carry_3) = rsh_with_carry(word_3, b);
             w4 = (word_4 >> b) + carry_3;
@@ -485,8 +484,6 @@ impl core::ops::Shiftable for U256 {
             w3 = shifted_1;
         } else if w == 3 {
             w4 = word_1 >> b;
-        } else {
-            ();
         };
 
         ~U256::from(w1, w2, w3, w4)
@@ -500,7 +497,7 @@ impl core::ops::Add for U256 {
         let(other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
 
         let mut overflow = 0;
-        let mut local_res = ~U128::from(0, word_4) +  ~U128::from(0, other_word_4);
+        let mut local_res = ~U128::from(0, word_4) + ~U128::from(0, other_word_4);
         let result_d = local_res.lower;
         overflow = local_res.upper;
 
@@ -622,5 +619,4 @@ impl core::ops::Divide for U256 {
 
         quotient
     }
-
 }
