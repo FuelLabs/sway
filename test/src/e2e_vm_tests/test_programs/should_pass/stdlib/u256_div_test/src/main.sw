@@ -1,8 +1,8 @@
 script;
 
 use std::assert::assert;
-use std::result::*;
-use std::u256::*;
+use std::u256::U256;
+use core::num::*;
 
 fn main() -> bool {
     let zero = ~U256::from(0, 0, 0, 0);

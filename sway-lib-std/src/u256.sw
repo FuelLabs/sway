@@ -173,7 +173,6 @@ impl core::ops::Shiftable for U256 {
         let w = shift_amount / 64; // num of whole words to shift in addition to b
         let b = shift_amount % 64; // num of bits to shift within each word
 
-        // TODO: Use generalized looping version when vec lands !
         if w == 0 {
             let(shifted_2, carry_2) = lsh_with_carry(word_2, b);
             w1 = (word_1 << b) + carry_2;
@@ -306,7 +305,7 @@ impl core::ops::Subtract for U256 {
 }
 
 impl core::ops::Multiply for U256 {
-    /// Multiply a U256 with a U256. Panics of overflow.
+    /// Multiply a U256 with a U256. Panics on overflow.
     fn multiply(self, other: Self) -> Self {
         let zero = ~U256::from(0, 0, 0, 0);
         let one = ~U256::from(0, 0, 0, 1);
