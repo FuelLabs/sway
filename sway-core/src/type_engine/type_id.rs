@@ -67,7 +67,9 @@ impl ToJsonAbi for TypeId {
                 name: "__array_element".to_string(),
                 type_field: type_id.json_abi_str(),
                 components: type_id.generate_json_abi(),
-                type_arguments: None,
+                type_arguments: type_id
+                    .get_type_parameters()
+                    .map(|v| v.iter().map(TypeParameter::generate_json_abi).collect()),
             }]),
             TypeInfo::Enum { variant_types, .. } => Some(
                 variant_types
