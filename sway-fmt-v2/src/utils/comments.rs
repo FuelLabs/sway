@@ -17,7 +17,7 @@ impl Ord for CommentSpan {
         // If the starting position is the same encapsulatig span (i.e, wider one) should come
         // first
         match self.start.cmp(&other.start) {
-            Ordering::Equal => self.end.cmp(&other.end),
+            Ordering::Equal => other.end.cmp(&self.end),
             ord => ord,
         }
     }
@@ -76,8 +76,8 @@ mod tests {
 
     #[test]
     fn test_comment_span_ordering() {
-        let first_span = CommentSpan { start: 2, end: 4 };
-        let second_span = CommentSpan { start: 2, end: 6 };
+        let first_span = CommentSpan { start: 2, end: 6 };
+        let second_span = CommentSpan { start: 2, end: 4 };
         let third_span = CommentSpan { start: 4, end: 7 };
 
         let mut vec = vec![second_span.clone(), third_span.clone(), first_span.clone()];
