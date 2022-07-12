@@ -41,14 +41,38 @@ async fn can_get_code_size() {
 async fn can_get_first_param() {
     let (instance, _id) = get_call_frames_instance().await;
     let result = instance.get_first_param().call().await.unwrap();
-    assert!(is_within_range(result.value));
+    // The hash of "get_first_param" is 0x35fd8826
+    // The first four bytes converted to decimal is 905807910
+    assert_eq!(result.value, 905807910);
 }
 
 #[tokio::test]
+#[ignore]
 async fn can_get_second_param() {
     let (instance, _id) = get_call_frames_instance().await;
     let result = instance.get_second_param().call().await.unwrap();
-    assert!(is_within_range(result.value));
+    assert_eq!(result.value, 0);
+}
+
+#[tokio::test]
+async fn can_get_second_param_u64() {
+    let (instance, _id) = get_call_frames_instance().await;
+    let result = instance.get_second_param_u64(101).call().await.unwrap();
+    assert_eq!(result.value, 101);
+}
+
+#[tokio::test]
+async fn can_get_second_param_bool() {
+    let (instance, _id) = get_call_frames_instance().await;
+    let result = instance.get_second_param_bool(true).call().await.unwrap();
+    assert_eq!(result.value, true);
+}
+
+#[tokio::test]
+async fn can_get_second_param_multiple_params() {
+    let (instance, _id) = get_call_frames_instance().await;
+    let result = instance.get_second_param_multiple_params(true, 42).call().await.unwrap();
+    assert_eq!(result.value, (true, 42));
 }
 
 fn is_within_range(n: u64) -> bool {

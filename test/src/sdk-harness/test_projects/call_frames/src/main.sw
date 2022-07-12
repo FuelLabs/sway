@@ -3,6 +3,8 @@ contract;
 use std::contract_id::ContractId;
 use call_frames_test_abi::CallFramesTest;
 use std::context::call_frames::*;
+use std::mem::*;
+use std::revert::revert;
 
 impl CallFramesTest for Contract {
     fn get_id() -> ContractId {
@@ -23,5 +25,18 @@ impl CallFramesTest for Contract {
 
     fn get_second_param() -> u64 {
         second_param()
+    }
+
+    fn get_second_param_u64(arg0: u64) -> u64 {
+        second_param()
+    }
+
+    fn get_second_param_bool(arg0: bool) -> bool {
+        second_param()
+    }
+
+    fn get_second_param_multiple_params(arg0: bool, arg1: u64) -> (bool, u64) {
+        let (val0, val1) = read::<(bool, u64)>(second_param());
+        (val0, val1)
     }
 }
