@@ -50,7 +50,7 @@ impl From<VariableMutability> for bool {
 pub struct TypedVariableDeclaration {
     pub name: Ident,
     pub body: TypedExpression,
-    pub(crate) is_mutable: VariableMutability,
+    pub is_mutable: VariableMutability,
     pub type_ascription: TypeId,
 }
 
