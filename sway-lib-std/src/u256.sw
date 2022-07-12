@@ -1,7 +1,6 @@
 library u256;
 
 use core::num::*;
-// use core::ops::{lsh_with_carry, rsh_with_carry};
 use ::result::Result;
 use ::u128::U128;
 use ::assert::assert;
