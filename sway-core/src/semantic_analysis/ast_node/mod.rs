@@ -266,10 +266,8 @@ impl TypedAstNode {
                             body,
                             is_mutable,
                         }) => {
-                            let type_ascription_span = match type_ascription_span {
-                                Some(type_ascription_span) => type_ascription_span,
-                                None => name.span(),
-                            };
+                            let type_ascription_span =
+                                type_ascription_span.unwrap_or_else(|| name.span());
                             let type_ascription = check!(
                                 ctx.resolve_type_with_self(
                                     insert_type(type_ascription),
@@ -449,15 +447,12 @@ impl TypedAstNode {
                                 );
 
                                 let mut ctx = ctx.by_ref().with_type_annotation(type_id);
-                                let initializer = match initializer {
-                                    Some(initializer) => Some(check!(
-                                        TypedExpression::type_check(ctx.by_ref(), initializer),
-                                        return err(warnings, errors),
-                                        warnings,
-                                        errors,
-                                    )),
-                                    None => None,
-                                };
+                                let initializer = check!(
+                                    TypedExpression::type_check(ctx.by_ref(), initializer),
+                                    return err(warnings, errors),
+                                    warnings,
+                                    errors,
+                                );
 
                                 fields_buf.push(TypedStorageField::new(
                                     name,

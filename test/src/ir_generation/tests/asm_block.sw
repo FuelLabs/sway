@@ -16,7 +16,6 @@ fn main() -> u64 {
 }
 
 // ::check-ir::
-// regex: VAL=v\d+
 
 // check:  $(res=$VAL) = asm(r1) -> u64 r1
 // nextln:     bhei   r1

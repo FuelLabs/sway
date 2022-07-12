@@ -296,7 +296,6 @@ mod tests {
         match Item::parse(&mut parser) {
             Ok(item) => item,
             Err(_) => {
-                //println!("Tokens: {:?}", token_stream);
                 panic!("Parse error: {:?}", errors);
             }
         }

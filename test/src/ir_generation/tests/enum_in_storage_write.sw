@@ -18,8 +18,8 @@ abi StorageAccess {
 }
 
 storage {
-    e1: E,
-    e2: E,
+    e1: E = E::B(0),
+    e2: E = E::B(0),
 }
 
 impl StorageAccess for Contract {
@@ -28,9 +28,6 @@ impl StorageAccess for Contract {
         storage.e2 = E::B(u);
     }
 }
-
-// regex: VAL=v\d+
-// regex: MD=!\d+
 
 // check: fn set_e<c1c7877c>(s $MD: { u64, u64, u64, u64, u64 }, u $MD: u64) -> ()
 

@@ -6,7 +6,7 @@ abi TestContract {
 }
 
 storage {
-    counter: u64,
+    counter: u64 = 0,
 }
 
 impl TestContract for Contract {

@@ -36,6 +36,10 @@ impl CopyTypes for TypedFunctionParameter {
 }
 
 impl TypedFunctionParameter {
+    pub fn is_self(&self) -> bool {
+        self.name.as_str() == "self"
+    }
+
     pub(crate) fn type_check(
         mut ctx: TypeCheckContext,
         parameter: FunctionParameter,

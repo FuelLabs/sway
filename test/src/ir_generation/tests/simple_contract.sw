@@ -28,10 +28,6 @@ impl Test for Contract {
     }
 }
 
-// regex: VAL=v\d+
-// regex: MD=!\d+
-// regex: ID=[_a-zA-Z][_0-9a-zA-Z]*
-
 // check: contract {
 // check: fn get_u64<9890aef4>($ID $MD: u64) -> u64
 // check: fn get_b256<42123b96>($ID $MD: b256) -> b256

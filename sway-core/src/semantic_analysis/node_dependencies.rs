@@ -78,7 +78,7 @@ fn find_recursive_call_chain(
     chain: &mut Vec<Ident>,
 ) -> Option<CompileError> {
     if let DependentSymbol::Fn(fn_sym_ident, _) = fn_sym {
-        if chain.iter().any(|seen_sym| seen_sym == fn_sym_ident) {
+        if chain.contains(fn_sym_ident) {
             // We've found a recursive loop, but it's possible this function is not actually in the
             // loop, but is instead just calling into the loop.  Only if this function is at the
             // start of the chain do we need to report it.
@@ -111,7 +111,7 @@ fn find_recursive_type_chain(
     chain: &mut Vec<Ident>,
 ) -> Option<CompileError> {
     if let DependentSymbol::Symbol(sym_ident) = dep_sym {
-        if chain.iter().any(|seen_sym| seen_sym == sym_ident) {
+        if chain.contains(sym_ident) {
             // See above about it only being an error if we're referring back to the start.
             return if &chain[0] != sym_ident {
                 None

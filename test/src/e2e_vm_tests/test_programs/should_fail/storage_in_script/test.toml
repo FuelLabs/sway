@@ -4,6 +4,6 @@ category = "fail"
 # check: storage {
 
 # check: storage {
-# nextln: item: u64,
+# nextln: item: u64 = 0,
 # nextln: }
 # nextln: $()Declaring storage in a script is not allowed.

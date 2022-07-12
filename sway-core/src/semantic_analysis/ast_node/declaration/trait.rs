@@ -27,7 +27,7 @@ pub struct TypedTraitDeclaration {
     #[derivative(Eq(bound = ""))]
     pub(crate) methods: Vec<FunctionDeclaration>,
     pub(crate) supertraits: Vec<Supertrait>,
-    pub(crate) visibility: Visibility,
+    pub visibility: Visibility,
 }
 
 impl CopyTypes for TypedTraitDeclaration {
