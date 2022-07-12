@@ -179,20 +179,26 @@ impl TestContract for Contract {
 <p>Our <code>tests/harness.rs</code> file could look like:</p>
 <!--TODO add test here once examples are tested-->
 <pre><code class="language-rust ignore">use fuels::{prelude::*, tx::ContractId};
-use fuels_abigen_macro::abigen;
 
 // Load abi from json
-abigen!(MyContract, &quot;out/debug/my-fuel-project-abi.json&quot;);
+abigen!(TestContract, &quot;out/debug/my-fuel-project-abi.json&quot;);
 
-async fn get_contract_instance() -&gt; (MyContract, ContractId) {
+async fn get_contract_instance() -&gt; (TestContract, ContractId) {
     // Launch a local network and deploy the contract
-    let wallet = launch_provider_and_get_single_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await;
 
-    let id = Contract::deploy(&quot;./out/debug/my-fuel-project.bin&quot;, &amp;wallet, TxParameters::default())
-        .await
-        .unwrap();
+    let id = Contract::deploy(
+        &quot;./out/debug/my-fuel-project.bin&quot;,
+        &amp;wallet,
+        TxParameters::default(),
+        StorageConfiguration::with_storage_path(Some(
+            &quot;./out/debug/my-fuel-project-storage_slots.json&quot;.to_string(),
+        )),
+    )
+    .await
+    .unwrap();
 
-    let instance = MyContract::new(id.to_string(), wallet);
+    let instance = TestContract::new(id.to_string(), wallet);
 
     (instance, id)
 }

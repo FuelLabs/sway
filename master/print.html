@@ -428,7 +428,7 @@ fn main() {
 <p>A canonical formatter is provided with <code>forc-fmt</code>. <a href="introduction/./installation.html">Installation instructions</a>. It can be run manually with</p>
 <pre><code class="language-sh">forc fmt
 </code></pre>
-<p>The <a href="introduction/(https://marketplace.visualstudio.com/items?itemName=FuelLabs.sway-vscode-plugin)">Visual Studio Code plugin</a> will automatically format Sway files with <code>forc-fmt</code> on save.</p>
+<p>The <a href="https://marketplace.visualstudio.com/items?itemName=FuelLabs.sway-vscode-plugin">Visual Studio Code plugin</a> will automatically format Sway files with <code>forc-fmt</code> on save.</p>
 <h2 id="fuel-core-fuel-core"><a class="header" href="#fuel-core-fuel-core">Fuel Core (<code>fuel-core</code>)</a></h2>
 <p>While not directly part of the Sway toolchain, an implementation of the Fuel protocol, <a href="https://github.com/FuelLabs/fuel-core">Fuel Core</a>, is provided. <a href="https://github.com/FuelLabs/fuels-rs">The Rust SDK</a> will automatically start and stop an instance of the node during tests, so there is no need to manually run a node unless using Forc directly without the SDK.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="a-forc-project"><a class="header" href="#a-forc-project">A Forc Project</a></h1>
@@ -499,7 +499,7 @@ test can_get_contract_id ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
 </code></pre>
-<p>The <code>forc test</code> command tests the contract using the Rust SDK test harness that lives under <code>tests/</code>. The default test harness <code>harness.rs</code> contains boilerplate code to get you started but doesn't actually call any contract methods. For additional information on testing contracts using the Rust SDK, refer to the <a href="introduction/../../testing/testing-with-rust.html">Testing with Rust</a> section.</p>
+<p>The <code>forc test</code> command tests the contract using the Rust SDK test harness that lives under <code>tests/</code>. The default test harness <code>harness.rs</code> contains boilerplate code to get you started but doesn't actually call any contract methods. For additional information on testing contracts using the Rust SDK, refer to the <a href="introduction/../testing/testing-with-rust.html">Testing with Rust</a> section.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="standard-library"><a class="header" href="#standard-library">Standard Library</a></h1>
 <p>Similar to Rust, Sway comes with its own standard library.</p>
 <p>The Sway Standard Library is the foundation of portable Sway software, a set of minimal shared abstractions for the broader Sway ecosystem. It offers core types, like <code>Result&lt;T, E&gt;</code> and <code>Option&lt;T&gt;</code>, library-defined operations on language primitives, native asset management, blockchain contextual operations, access control, storage management, and support for types from other VMs, among many other things.</p>
@@ -1677,20 +1677,34 @@ fn main() -&gt; u64 {
 </code></pre>
 <p>You need the <code>while</code> keyword, some condition (<code>value &lt; 10</code> in this case) which will be evaluated each iteration, and a block of code inside the curly braces (<code>{...}</code>) to execute each iteration.</p>
 <h3 id="break-and-continue"><a class="header" href="#break-and-continue"><code>break</code> and <code>continue</code></a></h3>
-<p>There are no <code>break</code> or <code>continue</code> keywords yet, but <a href="https://github.com/FuelLabs/sway/issues/587">they're coming</a>.</p>
-<p>For now, the way to break out of a <code>while</code> loop early is to manually invalidate the condition. In this case, that just means setting <code>counter</code> to be <code>&gt;= 10</code>.</p>
-<p>Building on the previous example, here's what that might look like:</p>
-<pre><code class="language-sway">let mut counter = 0;
-let mut break_early = false;
-while counter &lt; 10 {
-    if break_early == true {
-        // here we ensure the condition will evaluate to false, breaking the loop
-        counter = 10
-    } else {
-        // calling some other function to set the bool value
-        break_early = get_bool_value();
-        counter = counter + 1;
+<p><code>break</code> and <code>continue</code> keywords are available to use inside the body of a <code>while</code> loop. The purpose of the <code>break</code> statement is to break out of a loop early:</p>
+<pre><code class="language-sway">fn break_example() -&gt; u64 {
+    let mut counter = 1;
+    let mut sum = 0;
+    let num = 10;
+    while true {
+        if counter &gt; num {
+            break;
+        }
+        sum += counter;
+        counter += 1;
     }
+    sum // 1 + 2 + .. + 10 = 55
+}
+</code></pre>
+<p>The purpose of the <code>continue</code> statement is to skip a portion of a loop in an iteration and jump directly into the next iteration:</p>
+<pre><code class="language-sway">fn continue_example() -&gt; u64 {
+    let mut counter = 0;
+    let mut sum = 0;
+    let num = 10;
+    while counter &lt; num {
+        counter += 1;
+        if counter % 2 == 0 {
+            continue;
+        }
+        sum += counter;
+    }
+    sum // 1 + 3 + .. + 9 = 25
 }
 </code></pre>
 <h3 id="nested-loops"><a class="header" href="#nested-loops">Nested loops</a></h3>
@@ -2132,7 +2146,7 @@ use std::{
     assert::assert,
     chain::auth::{AuthError, msg_sender},
     identity::Identity,
-    result::*,
+    result::Result,
     revert::revert,
 };
 
@@ -2174,7 +2188,7 @@ impl MyOwnedContract for Contract {
     }
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="calling-contracts"><a class="header" href="#calling-contracts">Calling Contracts</a></h1>
-<p>Smart contracts can be <em>called</em> by other contracts or scripts. In the FuelVM, this is done primarily with the <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/opcodes.md#call-call-contract"><code>call</code></a> instruction.</p>
+<p>Smart contracts can be <em>called</em> by other contracts or scripts. In the FuelVM, this is done primarily with the <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/instruction_set.md#call-call-contract"><code>call</code></a> instruction.</p>
 <p>Sway provides a nice way to manage callable interfaces with its <code>abi</code> system. The Fuel ABI specification can be found <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md">here</a>.</p>
 <h2 id="example-1"><a class="header" href="#example-1">Example</a></h2>
 <p>Here is an example of a contract calling another contract in Sway. A script can call a contract in the same way.</p>
@@ -2569,20 +2583,26 @@ impl TestContract for Contract {
 <p>Our <code>tests/harness.rs</code> file could look like:</p>
 <!--TODO add test here once examples are tested-->
 <pre><code class="language-rust ignore">use fuels::{prelude::*, tx::ContractId};
-use fuels_abigen_macro::abigen;
 
 // Load abi from json
-abigen!(MyContract, &quot;out/debug/my-fuel-project-abi.json&quot;);
+abigen!(TestContract, &quot;out/debug/my-fuel-project-abi.json&quot;);
 
-async fn get_contract_instance() -&gt; (MyContract, ContractId) {
+async fn get_contract_instance() -&gt; (TestContract, ContractId) {
     // Launch a local network and deploy the contract
-    let wallet = launch_provider_and_get_single_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await;
 
-    let id = Contract::deploy(&quot;./out/debug/my-fuel-project.bin&quot;, &amp;wallet, TxParameters::default())
-        .await
-        .unwrap();
+    let id = Contract::deploy(
+        &quot;./out/debug/my-fuel-project.bin&quot;,
+        &amp;wallet,
+        TxParameters::default(),
+        StorageConfiguration::with_storage_path(Some(
+            &quot;./out/debug/my-fuel-project-storage_slots.json&quot;.to_string(),
+        )),
+    )
+    .await
+    .unwrap();
 
-    let instance = MyContract::new(id.to_string(), wallet);
+    let instance = TestContract::new(id.to_string(), wallet);
 
     (instance, id)
 }
