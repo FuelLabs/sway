@@ -3,8 +3,7 @@ contract;
 use std::contract_id::ContractId;
 use call_frames_test_abi::CallFramesTest;
 use std::context::call_frames::*;
-use std::mem::*;
-use std::revert::revert;
+use std::mem::read;
 
 impl CallFramesTest for Contract {
     fn get_id() -> ContractId {

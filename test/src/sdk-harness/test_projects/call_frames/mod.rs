@@ -47,14 +47,6 @@ async fn can_get_first_param() {
 }
 
 #[tokio::test]
-#[ignore]
-async fn can_get_second_param() {
-    let (instance, _id) = get_call_frames_instance().await;
-    let result = instance.get_second_param().call().await.unwrap();
-    assert_eq!(result.value, 0);
-}
-
-#[tokio::test]
 async fn can_get_second_param_u64() {
     let (instance, _id) = get_call_frames_instance().await;
     let result = instance.get_second_param_u64(101).call().await.unwrap();
