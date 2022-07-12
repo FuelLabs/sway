@@ -22,10 +22,6 @@ impl CallFramesTest for Contract {
         first_param()
     }
 
-    fn get_second_param() -> u64 {
-        second_param()
-    }
-
     fn get_second_param_u64(arg0: u64) -> u64 {
         second_param()
     }
