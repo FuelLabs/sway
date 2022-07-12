@@ -1587,6 +1587,9 @@ pub fn compile(
     namespace: namespace::Module,
     source_map: &mut SourceMap,
 ) -> Result<(Compiled, Option<namespace::Root>)> {
+    //TODO remove once type engine isn't global anymore.
+    sway_core::clear_lazy_statics();
+
     // Time the given expression and print the result if `build_config.time_phases` is true.
     macro_rules! time_expr {
         ($description:expr, $expression:expr) => {{
@@ -1655,7 +1658,6 @@ pub fn compile(
                         "compile asm to bytecode",
                         sway_core::asm_to_bytecode(asm_res, source_map)
                     );
-                    sway_core::clear_lazy_statics();
                     match bc_res {
                         BytecodeCompilationResult::Success { bytes, warnings } => {
                             print_on_success(silent_mode, &pkg.name, &warnings, &tree_type);
@@ -1725,6 +1727,8 @@ pub fn check(
     plan: &BuildPlan,
     silent_mode: bool,
 ) -> anyhow::Result<(CompileResult<ParseProgram>, CompileAstResult)> {
+    //TODO remove once type engine isn't global anymore.
+    sway_core::clear_lazy_statics();
     let mut namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     for (i, &node) in plan.compilation_order.iter().enumerate() {
