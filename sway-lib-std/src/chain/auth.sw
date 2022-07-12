@@ -58,14 +58,14 @@ fn inputs_owner() -> Result<Identity, AuthError> {
             // type != InputCoin or InputMessage, continue looping.
             i += 1;
         } else {
-            // type == InputCoin
+            // type == InputCoin or InputMessage
             let input_owner = tx_input_owner(i);
             if candidate.is_none() {
                 // This is the first input seen of the correct type.
                 candidate = input_owner;
                 i += 1;
             } else {
-                // Compare current coin owner to candidate.
+                // Compare current input owner to candidate.
                 // `candidate` and `input_owner` must be `Option::Some`
                 // at this point, so we can unwrap safely.
                 if input_owner.unwrap() == candidate.unwrap() {
