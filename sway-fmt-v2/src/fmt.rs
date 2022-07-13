@@ -405,39 +405,4 @@ where
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert_eq!(correct_sway_code, formatted_sway_code)
     }
-    #[test]
-    fn test_comments() {
-        let sway_code_to_format = r#"contract;
-
-struct Foo { // Here I am 0
-
-
-
-
-    // Here I am 1
-    barasdd: u64,       // Here i am 2
-                        // -----------------------
-                        // ---this is comment-----
-                        // -----------------------
-    
-    
-    
-    baz: bool, // Here i am 3
-}"#;
-
-        let correct_sway_code = r#"contract;
-
-struct Foo { // Here I am 0
-    // Here I am 1
-    barasdd: u64,       // Here i am 2
-                        // -----------------------
-                        // ---this is comment-----
-                        // -----------------------
-    baz: bool, // Here i am 3
-}"#;
-        let mut formatter = Formatter::default();
-        let formatted_sway_code =
-            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert_eq!(correct_sway_code, formatted_sway_code)
-    }
 }
