@@ -1,10 +1,11 @@
 library r#storage;
 
 use ::assert::assert;
+use ::context::registers::stack_ptr;
 use ::hash::sha256;
 use ::option::Option;
 use ::result::Result;
-use ::context::registers::stack_ptr;
+
 
 /// Store a stack variable in storage.
 #[storage(write)]pub fn store<T>(key: b256, value: T) {
