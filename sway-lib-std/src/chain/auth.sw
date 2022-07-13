@@ -6,7 +6,7 @@ use ::assert::assert;
 use ::b512::B512;
 use ::contract_id::ContractId;
 use ::identity::Identity;
-use ::option::*;
+use ::option::Option;
 use ::result::Result;
 use ::tx::{tx_inputs_count, tx_input_type, tx_input_owner, INPUT_COIN, INPUT_MESSAGE};
 
