@@ -27,7 +27,7 @@ impl CallFramesTest for Contract {
     }
 
     fn get_second_param_bool(arg0: bool) -> bool {
-        second_param()
+        read(second_param())
     }
 
     fn get_second_param_multiple_params(arg0: bool, arg1: u64) -> (bool, u64) {

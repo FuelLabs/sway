@@ -1,6 +1,9 @@
 use fuel_vm::consts::VM_MAX_RAM;
 use fuels::{prelude::*, tx::ContractId};
 
+//use hex_literal::hex;
+use sha2::{Sha256, Digest};
+
 abigen!(
     CallFramesTestContract,
     "test_projects/call_frames/out/debug/call_frames-abi.json"
@@ -41,9 +44,16 @@ async fn can_get_code_size() {
 async fn can_get_first_param() {
     let (instance, _id) = get_call_frames_instance().await;
     let result = instance.get_first_param().call().await.unwrap();
-    // The hash of "get_first_param" is 0x35fd8826
-    // The first four bytes converted to decimal is 905807910
-    assert_eq!(result.value, 905807910);
+    // Hash the function name with Sha256
+    let mut hasher = Sha256::new();
+    let function_name = "get_first_param()";
+    hasher.update(function_name);
+    let function_name_hash = hasher.finalize();
+    // Grab the first 4 bytes of the hash per https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md#function-selector-encoding
+    let function_name_hash = &function_name_hash[0..4];
+    // Convert the bytes to decimal value
+    let selector = function_name_hash[3] as u64 + 256 * (function_name_hash[2] as u64 + 256 * (function_name_hash[1] as u64 + 256 * function_name_hash[0] as u64));
+    assert_eq!(result.value, selector);
 }
 
 #[tokio::test]
