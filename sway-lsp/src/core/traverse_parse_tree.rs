@@ -199,18 +199,20 @@ fn handle_expression(expression: &Expression, tokens: &mut TokenMap) {
     match expression {
         Expression::Literal { .. } => {}
         Expression::FunctionApplication {
-            name, arguments, ..
+            call_path_binding,
+            arguments,
+            ..
         } => {
             // Don't collect applications of desugared operators due to mismatched ident lengths.
-            if !desugared_op(&name.prefixes) {
-                for ident in &name.prefixes {
+            if !desugared_op(&call_path_binding.inner.prefixes) {
+                for ident in &call_path_binding.inner.prefixes {
                     tokens.insert(
                         to_ident_key(ident),
                         TokenType::from_parsed(AstToken::Expression(expression.clone())),
                     );
                 }
                 tokens.insert(
-                    to_ident_key(&name.suffix),
+                    to_ident_key(&call_path_binding.inner.suffix),
                     TokenType::from_parsed(AstToken::Expression(expression.clone())),
                 );
             }
@@ -247,18 +249,18 @@ fn handle_expression(expression: &Expression, tokens: &mut TokenMap) {
             }
         }
         Expression::StructExpression {
-            struct_name,
+            call_path_binding,
             fields,
             ..
         } => {
-            for ident in &struct_name.prefixes {
+            for ident in &call_path_binding.inner.prefixes {
                 tokens.insert(
                     to_ident_key(ident),
                     TokenType::from_parsed(AstToken::Expression(expression.clone())),
                 );
             }
             tokens.insert(
-                to_ident_key(&Ident::new(struct_name.suffix.1.clone())),
+                to_ident_key(&Ident::new(call_path_binding.inner.suffix.1.clone())),
                 TokenType::from_parsed(AstToken::Expression(expression.clone())),
             );
 
@@ -302,13 +304,15 @@ fn handle_expression(expression: &Expression, tokens: &mut TokenMap) {
             //TODO handle asm expressions
         }
         Expression::MethodApplication {
-            method_name,
+            method_name_binding,
             arguments,
             contract_call_params,
             ..
         } => {
-            let prefixes = match &method_name {
-                MethodName::FromType { call_path, .. } => call_path.prefixes.clone(),
+            let prefixes = match &method_name_binding.inner {
+                MethodName::FromType {
+                    call_path_binding, ..
+                } => call_path_binding.inner.prefixes.clone(),
                 MethodName::FromTrait { call_path, .. } => call_path.prefixes.clone(),
                 _ => vec![],
             };
@@ -316,7 +320,7 @@ fn handle_expression(expression: &Expression, tokens: &mut TokenMap) {
             // Don't collect applications of desugared operators due to mismatched ident lengths.
             if !desugared_op(&prefixes) {
                 tokens.insert(
-                    to_ident_key(&method_name.easy_name()),
+                    to_ident_key(&method_name_binding.inner.easy_name()),
                     TokenType::from_parsed(AstToken::Expression(expression.clone())),
                 );
             }
@@ -345,16 +349,18 @@ fn handle_expression(expression: &Expression, tokens: &mut TokenMap) {
             handle_expression(prefix, tokens);
         }
         Expression::DelineatedPath {
-            call_path, args, ..
+            call_path_binding,
+            args,
+            ..
         } => {
-            for ident in &call_path.prefixes {
+            for ident in &call_path_binding.inner.prefixes {
                 tokens.insert(
                     to_ident_key(ident),
                     TokenType::from_parsed(AstToken::Expression(expression.clone())),
                 );
             }
             tokens.insert(
-                to_ident_key(&call_path.suffix),
+                to_ident_key(&call_path_binding.inner.suffix),
                 TokenType::from_parsed(AstToken::Expression(expression.clone())),
             );
 
