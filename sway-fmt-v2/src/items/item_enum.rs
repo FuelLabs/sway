@@ -1,7 +1,7 @@
 use crate::{
     config::{items::ItemBraceStyle, user_def::FieldAlignment},
     fmt::{Format, FormattedCode, Formatter},
-    utils::{bracket::CurlyBrace, item::ItemLenChars},
+    utils::{bracket::CurlyBrace, item::ItemLenChars, comments::{CommentVisitor, CommentSpan}},
     FormatterError,
 };
 use std::fmt::Write;
@@ -233,5 +233,25 @@ impl CurlyBrace for ItemEnum {
             .shrink_left(formatter.config.whitespace.tab_spaces)
             .unwrap_or_default();
         Ok(())
+    }
+}
+impl CommentVisitor for ItemEnum {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_spans = Vec::new();
+        // Add visibility token's span if it exists
+        if let Some(visibility) = &self.visibility {
+            collected_spans.push(CommentSpan::from_span(visibility.span()));
+        }
+        // Add enum_token's span
+        collected_spans.push(CommentSpan::from_span(self.enum_token.span()));
+        // Add name's span
+        collected_spans.push(CommentSpan::from_span(self.name.span()));
+        // Add generics' span if it exist
+        if let Some(generics) = &self.generics {
+            collected_spans.push(CommentSpan::from_span(generics.parameters.span()))
+        }
+        // Collect fields' spans.
+        collected_spans.append(&mut self.fields.collect_spans());
+        collected_spans
     }
 }
