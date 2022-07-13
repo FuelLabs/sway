@@ -14,6 +14,10 @@ use ::context::registers::frame_ptr;
 
 const SAVED_REGISTERS_OFFSET: u64 = 64;
 const PREV_FRAME_POINTER_OFFSET: u64 = 48;
+/// Where 584 is the current offset in bytes from the start of the call frame.
+const FIRST_PARAMETER_OFFSET: u64 = 584;
+/// Where 592 is the current offset in bytes from the start of the call frame.
+const SECOND_PARAMETER_OFFSET: u64 = 592;
 
 ///////////////////////////////////////////////////////////
 //  Accessing the current call frame
@@ -45,15 +49,13 @@ pub fn code_size() -> u64 {
 }
 
 /// Get the first parameter from the current call frame.
-/// Where 584 is the current offset in bytes from the start of the call frame.
 pub fn first_param<T>() -> T {
-    read(frame_ptr() + 584)
+    read(frame_ptr() + FIRST_PARAMETER_OFFSET)
 }
 
 /// Get the second parameter from the current call frame.
-/// Where 592 is the current offset in bytes from the start of the call frame.
 pub fn second_param<T>() -> T {
-    read(frame_ptr() + 592)
+    read(frame_ptr() + SECOND_PARAMETER_OFFSET)
 }
 
 ///////////////////////////////////////////////////////////
