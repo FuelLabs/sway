@@ -56,9 +56,6 @@ mod success {
     async fn can_remove() {
         let (instance, _id) = get_contract_instance().await;
 
-        let len_vec = len(&instance).await;
-        assert_eq!(len_vec, 0);
-
         push(&instance, true).await;
         push(&instance, false).await;
         push(&instance, true).await;
@@ -87,9 +84,6 @@ mod success {
     async fn can_swap_remove() {
         let (instance, _id) = get_contract_instance().await;
 
-        let len_vec = len(&instance).await;
-        assert_eq!(len_vec, 0);
-
         push(&instance, true).await;
         push(&instance, false).await;
         push(&instance, true).await;
@@ -117,9 +111,6 @@ mod success {
     #[tokio::test]
     async fn can_insert() {
         let (instance, _id) = get_contract_instance().await;
-
-        let len_vec = len(&instance).await;
-        assert_eq!(len_vec, 0);
 
         push(&instance, true).await;
         push(&instance, false).await;
