@@ -71,6 +71,17 @@ async fn can_get_second_param_bool() {
 }
 
 #[tokio::test]
+async fn can_get_second_param_struct() {
+    let (instance, _id) = get_call_frames_instance().await;
+    let expected = TestStruct {
+        value_0: 42,
+        value_1: true,
+    };
+    let result = instance.get_second_param_struct(expected.clone()).call().await.unwrap();
+    assert_eq!(result.value, expected);
+}
+
+#[tokio::test]
 async fn can_get_second_param_multiple_params() {
     let (instance, _id) = get_call_frames_instance().await;
     let result = instance.get_second_param_multiple_params(true, 42).call().await.unwrap();

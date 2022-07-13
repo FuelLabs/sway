@@ -1,7 +1,7 @@
 contract;
 
 use std::contract_id::ContractId;
-use call_frames_test_abi::CallFramesTest;
+use call_frames_test_abi::{CallFramesTest, TestStruct};
 use std::context::call_frames::*;
 use std::mem::read;
 
@@ -27,7 +27,11 @@ impl CallFramesTest for Contract {
     }
 
     fn get_second_param_bool(arg0: bool) -> bool {
-        read(second_param())
+        second_param()
+    }
+
+    fn get_second_param_struct(arg0: TestStruct) -> TestStruct {
+        second_param()
     }
 
     fn get_second_param_multiple_params(arg0: bool, arg1: u64) -> (bool, u64) {
