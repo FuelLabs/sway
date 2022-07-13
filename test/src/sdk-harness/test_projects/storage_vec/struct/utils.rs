@@ -17,7 +17,8 @@ pub mod setup {
             &wallet,
             TxParameters::default(),
             StorageConfiguration::with_storage_path(Some(
-                "test_artifacts/storage_vec/svec_struct/out/debug/svec_struct-storage_slots.json".to_string(),
+                "test_artifacts/storage_vec/svec_struct/out/debug/svec_struct-storage_slots.json"
+                    .to_string(),
             )),
         )
         .await
@@ -49,7 +50,12 @@ pub mod wrappers {
     }
 
     pub async fn swap_remove(instance: &MyContract, index: u64) -> TestStruct {
-        instance.struct_swap_remove(index).call().await.unwrap().value
+        instance
+            .struct_swap_remove(index)
+            .call()
+            .await
+            .unwrap()
+            .value
     }
 
     pub async fn insert(instance: &MyContract, index: u64, value: TestStruct) {

@@ -6,30 +6,14 @@ use utils::{
     TestStruct,
 };
 
-
 // TODO: Replace many of the get calls with direct storage values
 // once the SDK supports that
 
-const STRUCT1: TestStruct = TestStruct {
-    a: true,
-    b: 1,
-};
-const STRUCT2: TestStruct = TestStruct {
-    a: false,
-    b: 2,
-};
-const STRUCT3: TestStruct = TestStruct {
-    a: true,
-    b: 3,
-};
-const STRUCT4: TestStruct = TestStruct {
-    a: false,
-    b: 4,
-};
-const STRUCT5: TestStruct = TestStruct {
-    a: true,
-    b: 5,
-};
+const STRUCT1: TestStruct = TestStruct { a: true, b: 1 };
+const STRUCT2: TestStruct = TestStruct { a: false, b: 2 };
+const STRUCT3: TestStruct = TestStruct { a: true, b: 3 };
+const STRUCT4: TestStruct = TestStruct { a: false, b: 4 };
+const STRUCT5: TestStruct = TestStruct { a: true, b: 5 };
 
 mod success {
     use super::*;

@@ -17,7 +17,8 @@ pub mod setup {
             &wallet,
             TxParameters::default(),
             StorageConfiguration::with_storage_path(Some(
-                "test_artifacts/storage_vec/svec_str/out/debug/svec_str-storage_slots.json".to_string(),
+                "test_artifacts/storage_vec/svec_str/out/debug/svec_str-storage_slots.json"
+                    .to_string(),
             )),
         )
         .await
