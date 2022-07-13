@@ -19,6 +19,9 @@ where
             collected_spans.push(CommentSpan::from_span(pair.0.span()));
             collected_spans.push(CommentSpan::from_span(pair.1.span()));
         }
+        if let Some(final_value) = &self.final_value_opt {
+            collected_spans.push(CommentSpan::from_span(final_value.span()));
+        }
         collected_spans
     }
 }
