@@ -17,7 +17,7 @@ const PREV_FRAME_POINTER_OFFSET: u64 = 48;
 /// Where 584 is the current offset in bytes from the start of the call frame.
 const FIRST_PARAMETER_OFFSET: u64 = 584;
 /// Where 592 (584 + 8) is the current offset in bytes from the start of the call frame.
-const SECOND_PARAMETER_OFFSET: u64 = FIRST_PARAMETER_OFFSET + 8;
+const SECOND_PARAMETER_OFFSET: u64 = 592;
 
 ///////////////////////////////////////////////////////////
 //  Accessing the current call frame
@@ -54,7 +54,7 @@ pub fn first_param() -> u64 {
 }
 
 /// Get the second parameter from the current call frame.
-pub fn second_param<T>() -> T {
+pub fn second_param() -> u64 {
     read(frame_ptr() + SECOND_PARAMETER_OFFSET)
 }
 
