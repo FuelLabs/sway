@@ -7,6 +7,8 @@ pub enum FormatterError {
     ParseFileError(#[from] sway_parse::ParseFileError),
     #[error("Error formatting a message into a stream: {0}")]
     FormatError(#[from] std::fmt::Error),
+    #[error("Error while lexing file: {0}")]
+    LexError(#[from] sway_parse::LexError),
 }
 
 #[derive(Debug, Error)]

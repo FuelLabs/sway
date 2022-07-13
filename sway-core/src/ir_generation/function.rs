@@ -430,6 +430,11 @@ impl FnCompiler {
         context: &mut Context,
         ast_expr: TypedExpression,
     ) -> Result<Value, CompileError> {
+        // Nothing to do if the current block already has a terminator
+        if self.current_block.is_terminated(context) {
+            return Ok(Constant::get_unit(context, None));
+        }
+
         let ret_value = self.compile_expression(context, ast_expr.clone())?;
         match ret_value.get_type(context) {
             None => Err(CompileError::Internal(
