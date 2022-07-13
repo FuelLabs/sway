@@ -16,7 +16,7 @@ where
         let mut collected_spans = Vec::new();
         let value_pairs = &self.value_separator_pairs;
         for pair in value_pairs.iter() {
-            collected_spans.push(CommentSpan::from_span(pair.0.span()));
+            //collected_spans.push(CommentSpan::from_span(pair.0.span()));
             collected_spans.push(CommentSpan::from_span(pair.1.span()));
         }
         if let Some(final_value) = &self.final_value_opt {

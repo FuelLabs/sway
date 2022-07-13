@@ -1,7 +1,11 @@
 use crate::{
     config::{items::ItemBraceStyle, user_def::FieldAlignment},
     fmt::{Format, FormattedCode, Formatter},
-    utils::{bracket::CurlyBrace, item::ItemLenChars, comments::{CommentVisitor, CommentSpan}},
+    utils::{
+        bracket::CurlyBrace,
+        comments::{CommentSpan, CommentVisitor},
+        item::ItemLenChars,
+    },
     FormatterError,
 };
 use std::fmt::Write;
