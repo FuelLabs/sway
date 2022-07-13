@@ -1098,7 +1098,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.18.0"
+version = "0.18.1"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -1132,7 +1132,7 @@ dependencies = [
 
 [[package]]
 name = "forc-explore"
-version = "0.18.0"
+version = "0.18.1"
 dependencies = [
  "anyhow",
  "clap 3.2.8",
@@ -1147,7 +1147,7 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.18.0"
+version = "0.18.1"
 dependencies = [
  "anyhow",
  "clap 3.2.8",
@@ -1162,7 +1162,7 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt-v2"
-version = "0.18.0"
+version = "0.18.1"
 dependencies = [
  "anyhow",
  "clap 3.2.8",
@@ -1177,14 +1177,14 @@ dependencies = [
 
 [[package]]
 name = "forc-gm"
-version = "0.18.0"
+version = "0.18.1"
 dependencies = [
  "clap 3.2.8",
 ]
 
 [[package]]
 name = "forc-lsp"
-version = "0.18.0"
+version = "0.18.1"
 dependencies = [
  "anyhow",
  "clap 3.2.8",
@@ -1194,7 +1194,7 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.18.0"
+version = "0.18.1"
 dependencies = [
  "anyhow",
  "forc-util",
@@ -1215,7 +1215,7 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.18.0"
+version = "0.18.1"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -2098,9 +2098,9 @@ dependencies = [
 
 [[package]]
 name = "lsp-types"
-version = "0.92.1"
+version = "0.93.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c79d4897790e8fd2550afa6d6125821edb5716e60e0e285046e070f0f6a06e0e"
+checksum = "70c74e2173b2b31f8655d33724b4b45ac13f439386f66290f539c22b144c2212"
 dependencies = [
  "bitflags",
  "serde",
@@ -3615,7 +3615,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.18.0"
+version = "0.18.1"
 dependencies = [
  "clap 3.2.8",
  "derivative",
@@ -3646,7 +3646,7 @@ dependencies = [
 
 [[package]]
 name = "sway-fmt"
-version = "0.18.0"
+version = "0.18.1"
 dependencies = [
  "ropey",
  "sway-core",
@@ -3655,7 +3655,7 @@ dependencies = [
 
 [[package]]
 name = "sway-fmt-v2"
-version = "0.18.0"
+version = "0.18.1"
 dependencies = [
  "anyhow",
  "forc-util",
@@ -3671,7 +3671,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.18.0"
+version = "0.18.1"
 dependencies = [
  "filecheck",
  "generational-arena",
@@ -3682,7 +3682,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.18.0"
+version = "0.18.1"
 dependencies = [
  "async-trait",
  "dashmap",
@@ -3704,7 +3704,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.18.0"
+version = "0.18.1"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -3717,7 +3717,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.18.0"
+version = "0.18.1"
 dependencies = [
  "fuel-asm 0.6.0",
  "fuel-crypto",
@@ -3728,7 +3728,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.18.0"
+version = "0.18.1"
 
 [[package]]
 name = "syn"
@@ -4109,9 +4109,9 @@ checksum = "343bc9466d3fe6b0f960ef45960509f84480bf4fd96f92901afe7ff3df9d3a62"
 
 [[package]]
 name = "tower-lsp"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "835e69c995865ed116986d68f74044393c21606c65e25e570031e6e793f21a7b"
+checksum = "43e094780b4447366c59f79acfd65b1375ecaa84e61dddbde1421aa506334024"
 dependencies = [
  "async-trait",
  "auto_impl",
