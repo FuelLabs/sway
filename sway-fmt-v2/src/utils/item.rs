@@ -7,17 +7,8 @@ use sway_parse::{Item, ItemKind::*};
 impl CommentVisitor for Item {
     fn collect_spans(&self) -> Vec<CommentSpan> {
         match &self.value {
-            Use(_) => todo!(),
             Struct(item_struct) => item_struct.collect_spans(),
-            Enum(_) => todo!(),
-            Fn(_) => todo!(),
-            Trait(_) => todo!(),
-            Impl(_) => todo!(),
-            Abi(_) => todo!(),
-            Const(_) => todo!(),
-            Storage(_) => todo!(),
-            Break(_) => todo!(),
-            Continue(_) => todo!(),
+            _ => Vec::new(),
         }
     }
 }
