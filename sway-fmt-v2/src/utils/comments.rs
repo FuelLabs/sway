@@ -137,10 +137,9 @@ pub fn handle_comments(
 }
 
 /// Adds the comments from comment_map to correct places in the formatted code. This requires us
-/// both the unformatted and formatted code's AST as they will have different spans for their
-/// nodes. While traversing the unformatted AST, `add_comments` searches for comments. If there is a comment found
-/// simply find the corresponding node from the formatted ast to retrieve the correct span to place
-/// the comment.
+/// both the unformatted and formatted code's items as they will have different spans for their
+/// nodes. While traversing the unformatted items, `add_comments` searches for comments. If there is a comment found
+/// place the comment.
 fn add_comments(
     comment_map: CommentMap,
     unformatted_module: &Module,
@@ -150,6 +149,9 @@ fn add_comments(
     let unformatted_items = &unformatted_module.items;
     let formatted_items = &formatted_module.items;
 
+    // Since we are adding comments into formatted code, in the next iteration the spans we find for the formatted code needs to be offsetted
+    // as the total length of comments we added in previous iterations.
+    let mut offset = 0;
     for (unformatted_item, formatted_item) in unformatted_items.iter().zip(formatted_items.iter()) {
         // Search comments for possible places inside the item.
         let unformatted_item_spans = unformatted_item.collect_spans();
@@ -167,9 +169,6 @@ fn add_comments(
             .first()
             .ok_or(FormatterError::CommentError)?;
 
-        // Since we are adding comments into formatted code, in the next iteration the spans we find for the formatted code needs to be offsetted
-        // as the total length of comments we added in previous iterations.
-        let mut offset = 0;
         // Iterate over the possible spans to check for a comment
         for (unformatted_cur_span, formatted_cur_span) in unformatted_item_spans
             .iter()
