@@ -411,23 +411,10 @@ where
     fn test_trait_and_super_trait() {
         let sway_code_to_format = r#"library traits;
 
-trait Person {
-    fn name(self) -> String;
-
-    fn age(self) -> usize;
-}
-
-trait Student: Person {
-    fn university(self) -> String;
-}
-
-trait Programmer {
-    fn fav_language(self) -> String;
-}
-
-trait CompSciStudent: Programmer + Student {
-    fn git_username(self) -> String;
-}"#;
+trait Person{ fn name( self )->String;fn age( self )->usize; }
+trait Student: Person {fn university(self) -> String;}
+trait Programmer {fn fav_language(self) -> String;}
+trait CompSciStudent: Programmer + Student {fn git_username(self) -> String;}"#;
         let correct_sway_code = r#"library traits;
 
 trait Person {
