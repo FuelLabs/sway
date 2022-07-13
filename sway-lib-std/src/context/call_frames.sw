@@ -54,7 +54,7 @@ pub fn first_param() -> u64 {
 }
 
 /// Get the second parameter from the current call frame.
-pub fn second_param() -> u64 {
+pub fn second_param<T>() -> T {
     read(frame_ptr() + SECOND_PARAMETER_OFFSET)
 }
 
