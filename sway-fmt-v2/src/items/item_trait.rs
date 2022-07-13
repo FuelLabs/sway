@@ -16,17 +16,16 @@ impl Format for ItemTrait {
         // `trait name`
         write!(
             formatted_code,
-            "{} {} ",
+            "{} {}",
             self.trait_token.span().as_str(),
             self.name.span().as_str()
         )?;
         // `: super_trait + super_trait`
         if let Some(super_traits) = &self.super_traits {
-            formatted_code.pop(); // pop the ending space if there is a `super_trait`
             write!(formatted_code, "{} ", super_traits.0.span().as_str())?;
             super_traits.1.format(formatted_code, formatter)?;
-            write!(formatted_code, " ")?; // replace ending space
         }
+        write!(formatted_code, " ")?;
         Self::open_curly_brace(formatted_code, formatter)?;
         for trait_items in self.trait_items.clone().into_inner() {
             write!(
