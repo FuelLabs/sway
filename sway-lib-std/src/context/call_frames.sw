@@ -49,7 +49,7 @@ pub fn code_size() -> u64 {
 }
 
 /// Get the first parameter from the current call frame.
-pub fn first_param<T>() -> T {
+pub fn first_param() -> u64 {
     read(frame_ptr() + FIRST_PARAMETER_OFFSET)
 }
 
