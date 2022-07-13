@@ -16,8 +16,8 @@ const SAVED_REGISTERS_OFFSET: u64 = 64;
 const PREV_FRAME_POINTER_OFFSET: u64 = 48;
 /// Where 584 is the current offset in bytes from the start of the call frame.
 const FIRST_PARAMETER_OFFSET: u64 = 584;
-/// Where 592 is the current offset in bytes from the start of the call frame.
-const SECOND_PARAMETER_OFFSET: u64 = 592;
+/// Where 592 (584 + 8) is the current offset in bytes from the start of the call frame.
+const SECOND_PARAMETER_OFFSET: u64 = FIRST_PARAMETER_OFFSET + 8;
 
 ///////////////////////////////////////////////////////////
 //  Accessing the current call frame
