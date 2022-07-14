@@ -1,7 +1,6 @@
 use fuel_vm::consts::VM_MAX_RAM;
 use fuels::{prelude::*, tx::ContractId};
 
-//use hex_literal::hex;
 use sha2::{Sha256, Digest};
 
 abigen!(
