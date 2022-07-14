@@ -403,9 +403,12 @@ impl Dependencies {
                 self.gather_from_call_path(&(name.clone()).into(), false, false)
             }
             Expression::FunctionApplication {
-                name, arguments, ..
+                call_path_binding,
+                arguments,
+                ..
             } => self
-                .gather_from_call_path(name, false, true)
+                .gather_from_call_path(&call_path_binding.inner, false, true)
+                .gather_from_type_arguments(&call_path_binding.type_arguments)
                 .gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg)),
             Expression::LazyOperator { lhs, rhs, .. } => {
                 self.gather_from_expr(lhs).gather_from_expr(rhs)
@@ -437,24 +440,26 @@ impl Dependencies {
                 self.gather_from_expr(prefix).gather_from_expr(index)
             }
             Expression::StructExpression {
-                struct_name,
+                call_path_binding,
                 fields,
-                type_arguments,
                 ..
             } => self
-                .gather_from_typeinfo(&struct_name.suffix.0)
-                .gather_from_type_arguments(type_arguments)
+                .gather_from_typeinfo(&call_path_binding.inner.suffix.0)
+                .gather_from_type_arguments(&call_path_binding.type_arguments)
                 .gather_from_iter(fields.iter(), |deps, field| {
                     deps.gather_from_expr(&field.value)
                 }),
             Expression::SubfieldExpression { prefix, .. } => self.gather_from_expr(prefix),
             Expression::DelineatedPath {
-                call_path, args, ..
+                call_path_binding,
+                args,
+                ..
             } => {
                 // It's either a module path which we can ignore, or an enum variant path, in which
                 // case we're interested in the enum name and initialiser args, ignoring the
                 // variant name.
-                self.gather_from_call_path(call_path, true, false)
+                self.gather_from_call_path(&call_path_binding.inner, true, false)
+                    .gather_from_type_arguments(&call_path_binding.type_arguments)
                     .gather_from_iter(args.iter(), |deps, arg| deps.gather_from_expr(arg))
             }
             Expression::MethodApplication { arguments, .. } => {

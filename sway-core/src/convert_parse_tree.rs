@@ -1,4 +1,4 @@
-use crate::type_engine::{TraitConstraint, TypeArgument, TypeParameter};
+use crate::type_engine::{TraitConstraint, TypeArgument, TypeBinding, TypeParameter};
 
 use {
     crate::{
@@ -1200,9 +1200,9 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             }
         }
         Expr::Struct { path, fields } => {
-            let (struct_name, type_arguments) = path_expr_to_type_info_type_args(ec, path)?;
+            let call_path_binding = path_expr_to_call_path_binding(ec, path)?;
             Expression::StructExpression {
-                struct_name,
+                call_path_binding,
                 fields: {
                     fields
                         .into_inner()
@@ -1212,7 +1212,6 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         })
                         .collect::<Result<_, _>>()?
                 },
-                type_arguments,
                 span,
             }
         }
@@ -1344,7 +1343,13 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                 mut suffix,
             } = path_expr;
             let is_absolute = path_root_opt_to_bool(ec, root_opt)?;
-            let (prefixes, method_type_opt, suffix_path_expr) = match suffix.pop() {
+            let (
+                prefixes,
+                method_type_opt,
+                parent_type_arguments,
+                parent_type_arguments_span,
+                suffix_path_expr,
+            ) = match suffix.pop() {
                 Some((_double_colon_token, call_path_suffix)) => match suffix.pop() {
                     Some((_double_colon_token, maybe_method_segment)) => {
                         let PathExprSegment {
@@ -1352,22 +1357,36 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                             name,
                             generics_opt,
                         } = maybe_method_segment;
-                        if let Some((_double_colon_token, generic_args)) = generics_opt {
-                            let error = ConvertParseTreeError::GenericsNotSupportedHere {
-                                span: generic_args.span(),
-                            };
-                            return Err(ec.error(error));
-                        }
+                        let (parent_type_arguments, parent_type_arguments_span) = match generics_opt
+                        {
+                            Some((_double_colon_token, generic_args)) => (
+                                generic_args_to_type_arguments(ec, generic_args.clone())?,
+                                Some(generic_args.span()),
+                            ),
+                            None => (Vec::new(), None),
+                        };
                         let mut prefixes = vec![path_expr_segment_to_ident(ec, prefix)?];
                         for (_double_colon_token, call_path_prefix) in suffix {
                             let ident = path_expr_segment_to_ident(ec, call_path_prefix)?;
                             prefixes.push(ident);
                         }
                         if fully_qualified.is_some() {
-                            (prefixes, Some(name), call_path_suffix)
+                            (
+                                prefixes,
+                                Some(name),
+                                parent_type_arguments,
+                                parent_type_arguments_span,
+                                call_path_suffix,
+                            )
                         } else {
                             prefixes.push(name);
-                            (prefixes, None, call_path_suffix)
+                            (
+                                prefixes,
+                                None,
+                                parent_type_arguments,
+                                parent_type_arguments_span,
+                                call_path_suffix,
+                            )
                         }
                     }
                     None => {
@@ -1376,20 +1395,34 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                             name,
                             generics_opt,
                         } = prefix;
-                        if let Some((_double_colon_token, generic_args)) = generics_opt {
-                            let error = ConvertParseTreeError::GenericsNotSupportedHere {
-                                span: generic_args.span(),
-                            };
-                            return Err(ec.error(error));
-                        }
+                        let (parent_type_arguments, parent_type_arguments_span) = match generics_opt
+                        {
+                            Some((_double_colon_token, generic_args)) => (
+                                generic_args_to_type_arguments(ec, generic_args.clone())?,
+                                Some(generic_args.span()),
+                            ),
+                            None => (Vec::new(), None),
+                        };
                         if fully_qualified.is_some() {
-                            (Vec::new(), Some(name), call_path_suffix)
+                            (
+                                Vec::new(),
+                                Some(name),
+                                parent_type_arguments,
+                                parent_type_arguments_span,
+                                call_path_suffix,
+                            )
                         } else {
-                            (vec![name], None, call_path_suffix)
+                            (
+                                vec![name],
+                                None,
+                                parent_type_arguments,
+                                parent_type_arguments_span,
+                                call_path_suffix,
+                            )
                         }
                     }
                 },
-                None => (Vec::new(), None, prefix),
+                None => (Vec::new(), None, vec![], None, prefix),
             };
             let PathExprSegment {
                 fully_qualified,
@@ -1410,48 +1443,80 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             };
             match method_type_opt {
                 Some(type_name) => {
-                    let type_name_span = type_name.span();
-                    let type_name = type_name_to_type_info_opt(&type_name).unwrap_or({
-                        TypeInfo::Custom {
+                    let type_info_span = type_name.span();
+                    let type_info = match type_name_to_type_info_opt(&type_name) {
+                        Some(type_info) => type_info,
+                        None => TypeInfo::Custom {
                             name: type_name,
                             type_arguments: None,
-                        }
-                    });
-                    let type_arguments = match generics_opt {
-                        Some((_double_colon_token, generic_args)) => {
-                            generic_args_to_type_arguments(ec, generic_args)?
-                        }
-                        None => Vec::new(),
+                        },
                     };
-                    let call_path = CallPath {
-                        prefixes,
-                        suffix: (type_name, type_name_span),
-                        is_absolute,
+                    let call_path_binding = TypeBinding {
+                        inner: CallPath {
+                            prefixes,
+                            suffix: (type_info, type_info_span.clone()),
+                            is_absolute,
+                        },
+                        type_arguments: parent_type_arguments,
+                        span: parent_type_arguments_span
+                            .map(|parent_type_arguments_span| {
+                                Span::join(type_info_span.clone(), parent_type_arguments_span)
+                            })
+                            .unwrap_or_else(|| type_info_span.clone()),
+                    };
+                    let (method_type_arguments, method_type_arguments_span) = match generics_opt {
+                        Some((_double_colon_token, generic_args)) => (
+                            generic_args_to_type_arguments(ec, generic_args.clone())?,
+                            Some(generic_args.span()),
+                        ),
+                        None => (Vec::new(), None),
+                    };
+                    let method_name_binding = TypeBinding {
+                        inner: MethodName::FromType {
+                            call_path_binding,
+                            method_name: method_name.clone(),
+                        },
+                        type_arguments: method_type_arguments,
+                        span: method_type_arguments_span
+                            .map(|method_type_arguments_span| {
+                                Span::join(method_name.span(), method_type_arguments_span)
+                            })
+                            .unwrap_or_else(|| method_name.span()),
                     };
                     Expression::MethodApplication {
-                        method_name: MethodName::FromType {
-                            call_path,
-                            method_name,
-                        },
+                        method_name_binding,
                         contract_call_params: Vec::new(),
                         arguments,
-                        type_arguments,
                         span,
                     }
                 }
                 None => {
-                    let type_arguments = match generics_opt {
-                        Some((_double_colon_token, generic_args)) => {
-                            generic_args_to_type_arguments(ec, generic_args)?
-                        }
-                        None => Vec::new(),
+                    if !parent_type_arguments.is_empty() {
+                        let error = ConvertParseTreeError::GenericsNotSupportedHere {
+                            span: parent_type_arguments_span.unwrap(),
+                        };
+                        return Err(ec.error(error));
+                    }
+                    let (type_arguments, type_arguments_span) = match generics_opt {
+                        Some((_double_colon_token, generic_args)) => (
+                            generic_args_to_type_arguments(ec, generic_args.clone())?,
+                            Some(generic_args.span()),
+                        ),
+                        None => (Vec::new(), None),
                     };
                     match Intrinsic::try_from_str(method_name.as_str()) {
                         Some(intrinsic) if prefixes.is_empty() && !is_absolute => {
                             Expression::IntrinsicFunction {
-                                kind: intrinsic,
+                                kind_binding: TypeBinding {
+                                    inner: intrinsic,
+                                    type_arguments,
+                                    span: type_arguments_span
+                                        .map(|type_arguments_span| {
+                                            Span::join(span.clone(), type_arguments_span)
+                                        })
+                                        .unwrap_or_else(|| span.clone()),
+                                },
                                 arguments,
-                                type_arguments,
                                 span,
                             }
                         }
@@ -1461,18 +1526,21 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                                 suffix: method_name,
                                 is_absolute,
                             };
+                            let call_path_binding = TypeBinding {
+                                inner: call_path.clone(),
+                                type_arguments,
+                                span: call_path.span(), // TODO: change this span so that it includes the type arguments
+                            };
                             if call_path.prefixes.is_empty() {
                                 Expression::FunctionApplication {
-                                    name: call_path,
+                                    call_path_binding,
                                     arguments,
-                                    type_arguments,
                                     span,
                                 }
                             } else {
                                 Expression::DelineatedPath {
-                                    call_path,
+                                    call_path_binding,
                                     args: arguments,
-                                    type_arguments,
                                     span,
                                 }
                             }
@@ -1492,9 +1560,15 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             args,
             contract_args_opt,
             ..
-        } => Expression::MethodApplication {
-            method_name: MethodName::FromModule { method_name: name },
-            contract_call_params: match contract_args_opt {
+        } => {
+            let method_name_binding = TypeBinding {
+                inner: MethodName::FromModule {
+                    method_name: name.clone(),
+                },
+                type_arguments: vec![],
+                span: name.span(),
+            };
+            let contract_call_params = match contract_args_opt {
                 None => Vec::new(),
                 Some(contract_args) => contract_args
                     .into_inner()
@@ -1503,16 +1577,18 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         expr_struct_field_to_struct_expression_field(ec, expr_struct_field)
                     })
                     .collect::<Result<_, _>>()?,
-            },
-            arguments: {
-                iter::once(*target)
-                    .chain(args.into_inner().into_iter())
-                    .map(|expr| expr_to_expression(ec, expr))
-                    .collect::<Result<_, _>>()?
-            },
-            type_arguments: Vec::new(),
-            span,
-        },
+            };
+            let arguments = iter::once(*target)
+                .chain(args.into_inner().into_iter())
+                .map(|expr| expr_to_expression(ec, expr))
+                .collect::<Result<_, _>>()?;
+            Expression::MethodApplication {
+                method_name_binding,
+                contract_call_params,
+                arguments,
+                span,
+            }
+        }
         Expr::FieldProjection { target, name, .. } => {
             let mut idents = vec![&name];
             let mut base = &*target;
@@ -1741,17 +1817,21 @@ fn unary_op_call(
     span: Span,
     arg: Expr,
 ) -> Result<Expression, ErrorEmitted> {
-    Ok(Expression::FunctionApplication {
-        name: CallPath {
+    let call_path_binding = TypeBinding {
+        inner: CallPath {
             prefixes: vec![
                 Ident::new_with_override("core", op_span.clone()),
                 Ident::new_with_override("ops", op_span.clone()),
             ],
-            suffix: Ident::new_with_override(name, op_span),
+            suffix: Ident::new_with_override(name, op_span.clone()),
             is_absolute: false,
         },
+        type_arguments: vec![],
+        span: op_span,
+    };
+    Ok(Expression::FunctionApplication {
+        call_path_binding,
         arguments: vec![expr_to_expression(ec, arg)?],
-        type_arguments: Vec::new(),
         span,
     })
 }
@@ -1763,20 +1843,24 @@ fn binary_op_call(
     lhs: Expression,
     rhs: Expression,
 ) -> Result<Expression, ErrorEmitted> {
-    Ok(Expression::MethodApplication {
-        method_name: MethodName::FromTrait {
+    let method_name_binding = TypeBinding {
+        inner: MethodName::FromTrait {
             call_path: CallPath {
                 prefixes: vec![
                     Ident::new_with_override("core", op_span.clone()),
                     Ident::new_with_override("ops", op_span.clone()),
                 ],
-                suffix: Ident::new_with_override(name, op_span),
+                suffix: Ident::new_with_override(name, op_span.clone()),
                 is_absolute: true,
             },
         },
+        type_arguments: vec![],
+        span: op_span,
+    };
+    Ok(Expression::MethodApplication {
+        method_name_binding,
         contract_call_params: Vec::new(),
         arguments: vec![lhs, rhs],
-        type_arguments: Vec::new(),
         span,
     })
 }
@@ -2011,6 +2095,7 @@ fn path_expr_segment_to_ident_or_type_argument(
     };
     Ok((name, type_args))
 }
+
 fn path_expr_segment_to_ident(
     ec: &mut ErrorContext,
     path_expr_segment: PathExprSegment,
@@ -2045,11 +2130,15 @@ fn path_expr_to_expression(
         Expression::VariableExpression { name, span }
     } else {
         let call_path = path_expr_to_call_path(ec, path_expr)?;
+        let call_path_binding = TypeBinding {
+            inner: call_path.clone(),
+            type_arguments: vec![],
+            span: call_path.span(),
+        };
         Expression::DelineatedPath {
-            call_path,
+            call_path_binding,
             args: Vec::new(),
             span,
-            type_arguments: Vec::new(),
         }
     };
     Ok(expression)
@@ -2285,11 +2374,10 @@ fn literal_to_literal(
 /// Like [path_expr_to_call_path], but instead can potentially return type arguments.
 /// Use this when converting a call path that could potentially include type arguments, i.e. the
 /// turbofish.
-#[allow(clippy::type_complexity)]
-fn path_expr_to_type_info_type_args(
+fn path_expr_to_call_path_binding(
     ec: &mut ErrorContext,
     path_expr: PathExpr,
-) -> Result<(CallPath<(TypeInfo, Span)>, Vec<TypeArgument>), ErrorEmitted> {
+) -> Result<TypeBinding<CallPath<(TypeInfo, Span)>>, ErrorEmitted> {
     let PathExpr {
         root_opt,
         prefix,
@@ -2317,21 +2405,25 @@ fn path_expr_to_type_info_type_args(
         None => {
             let (suffix, ty_args) = path_expr_segment_to_ident_or_type_argument(ec, prefix)?;
             let type_info_span = suffix.span();
-            let type_info = type_name_to_type_info_opt(&suffix).unwrap_or(TypeInfo::Custom {
-                name: suffix,
-                type_arguments: None,
-            });
+            let type_info = match type_name_to_type_info_opt(&suffix) {
+                Some(type_info) => type_info,
+                None => TypeInfo::Custom {
+                    name: suffix,
+                    type_arguments: None,
+                },
+            };
             (vec![], type_info, type_info_span, ty_args)
         }
     };
-    Ok((
-        CallPath {
+    Ok(TypeBinding {
+        inner: CallPath {
             prefixes,
-            suffix: (type_info, type_info_span),
+            suffix: (type_info, type_info_span.clone()),
             is_absolute,
         },
         type_arguments,
-    ))
+        span: type_info_span, // TODO: change this span so that it includes the type arguments
+    })
 }
 
 fn path_expr_to_call_path(

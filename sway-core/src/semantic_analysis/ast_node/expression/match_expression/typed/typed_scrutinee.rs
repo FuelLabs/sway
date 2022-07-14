@@ -80,7 +80,7 @@ impl TypedScrutinee {
                 check!(
                     ctx.monomorphize(
                         &mut struct_decl,
-                        vec!(),
+                        &mut [],
                         EnforceTypeArguments::No,
                         &struct_name.span()
                     ),
@@ -179,7 +179,7 @@ impl TypedScrutinee {
                 check!(
                     ctx.monomorphize(
                         &mut enum_decl,
-                        vec!(),
+                        &mut [],
                         EnforceTypeArguments::No,
                         &enum_name.span()
                     ),
