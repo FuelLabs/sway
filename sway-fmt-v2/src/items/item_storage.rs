@@ -152,11 +152,11 @@ fn format_storage(
             // storage_field
             write!(
                 formatted_code,
-                "{}{} {}",
+                "{}{} ",
                 field.0.name.span().as_str(),
                 field.0.colon_token.span().as_str(),
-                field.0.ty.span().as_str(),
             )?;
+            field.0.ty.format(formatted_code, formatter)?;
 
             if value_pairs_iter.peek().is_some() {
                 write!(formatted_code, "{} ", field.1.span().as_str())?;
