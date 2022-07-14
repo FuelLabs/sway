@@ -6,6 +6,7 @@ library call_frames;
 use ::contract_id::ContractId;
 use ::mem::read;
 use ::context::registers::frame_ptr;
+use ::intrinsics::is_reference_type;
 
 // Note that everything when serialized is padded to word length.
 //
@@ -55,7 +56,12 @@ pub fn first_param() -> u64 {
 
 /// Get the second parameter from the current call frame.
 pub fn second_param<T>() -> T {
-    read::<T>(frame_ptr() + SECOND_PARAMETER_OFFSET)
+    if !is_reference_type::<T>() {
+        read::<T>(frame_ptr() + SECOND_PARAMETER_OFFSET)
+    }
+    else {
+        read::<T>(read::<u64>(frame_ptr() + SECOND_PARAMETER_OFFSET))
+    }
 }
 
 ///////////////////////////////////////////////////////////
