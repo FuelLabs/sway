@@ -1,4 +1,7 @@
-use crate::fmt::*;
+use crate::{
+    fmt::*,
+    utils::comments::{CommentSpan, CommentVisitor},
+};
 use std::fmt::Write;
 use sway_parse::{token::Delimiter, Pattern, PatternStructField};
 use sway_types::Spanned;
@@ -112,5 +115,81 @@ impl Format for PatternStructField {
             }
         }
         Ok(())
+    }
+}
+
+impl CommentVisitor for Pattern {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_spans = Vec::new();
+        match self {
+            Pattern::Wildcard { underscore_token } => {
+                collected_spans.push(CommentSpan::from_span(underscore_token.span()));
+            }
+            Pattern::Var { mutable, name } => {
+                // Add mutable if it exists
+                if let Some(mutable) = mutable {
+                    collected_spans.push(CommentSpan::from_span(mutable.span()));
+                }
+                // Add name
+                collected_spans.push(CommentSpan::from_span(name.span()));
+            }
+            Pattern::Literal(literal) => {
+                collected_spans.push(CommentSpan::from_span(literal.span()));
+            }
+            Pattern::Constant(constant) => {
+                // TODO: Should we look for a comment inside the path expression? if so we will need to implement CommentVisitor for PathExpr
+                // For now we are assuming there will be no comments inside the PathExpr so the following comment will be omitted
+                // root::parent/* i am a comment*/::child
+                // I am not sure if this is something the language will allow.
+                collected_spans.push(CommentSpan::from_span(constant.span()));
+                todo!();
+            }
+            Pattern::Constructor { path, args } => {
+                // TODO: Should we look for a comment inside the path expression? if so we will need to implement CommentVisitor for PathExpr
+                // For now we are assuming there will be no comments inside the PathExpr so the following comment will be omitted
+                // root::parent/* i am a comment*/::child
+                // I am not sure if this is something the language will allow.
+                collected_spans.push(CommentSpan::from_span(path.span()));
+                collected_spans.append(&mut args.collect_spans());
+            }
+            Pattern::Struct { path, fields } => {
+                // TODO: Should we look for a comment inside the path expression? if so we will need to implement CommentVisitor for PathExpr
+                // For now we are assuming there will be no comments inside the PathExpr so the following comment will be omitted
+                // root::parent/* i am a comment*/::child
+                // I am not sure if this is something the language will allow.
+                collected_spans.push(CommentSpan::from_span(path.span()));
+                collected_spans.append(&mut fields.collect_spans());
+            }
+            Pattern::Tuple(tuple) => {
+                collected_spans.append(&mut tuple.collect_spans());
+            }
+        }
+        collected_spans
+    }
+}
+
+impl CommentVisitor for PatternStructField {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_spans = Vec::new();
+        match self {
+            PatternStructField::Rest { token } => {
+                collected_spans.push(CommentSpan::from_span(token.span()));
+            }
+            PatternStructField::Field {
+                field_name,
+                pattern_opt,
+            } => {
+                // Add field name CommentSpan
+                collected_spans.push(CommentSpan::from_span(field_name.span()));
+                // Add patern CommentSpan's if it exists
+                if let Some(pattern) = pattern_opt {
+                    // Add ColonToken's CommentSpan
+                    collected_spans.push(CommentSpan::from_span(pattern.0.span()));
+                    // Add patterns CommentSpan
+                    collected_spans.append(&mut pattern.1.collect_spans());
+                }
+            }
+        }
+        collected_spans
     }
 }

@@ -9,18 +9,18 @@ use sway_types::{Ident, Spanned};
 
 impl<T, P> CommentVisitor for Punctuated<T, P>
 where
-    T: Spanned,
-    P: Spanned,
+    T: CommentVisitor + Clone,
+    P: CommentVisitor + Clone,
 {
     fn collect_spans(&self) -> Vec<CommentSpan> {
         let mut collected_spans = Vec::new();
         let value_pairs = &self.value_separator_pairs;
         for pair in value_pairs.iter() {
-            //collected_spans.push(CommentSpan::from_span(pair.0.span()));
-            collected_spans.push(CommentSpan::from_span(pair.1.span()));
+            collected_spans.append(&mut pair.0.collect_spans());
+            collected_spans.append(&mut pair.1.collect_spans());
         }
         if let Some(final_value) = &self.final_value_opt {
-            collected_spans.push(CommentSpan::from_span(final_value.span()));
+            collected_spans.append(&mut final_value.collect_spans());
         }
         collected_spans
     }

@@ -1,7 +1,10 @@
 use crate::{
     config::items::ItemBraceStyle,
     fmt::{Format, FormattedCode, Formatter, FormatterError},
-    utils::bracket::{CurlyBrace, Parenthesis},
+    utils::{
+        bracket::{CurlyBrace, Parenthesis},
+        comments::{CommentSpan, CommentVisitor},
+    },
 };
 use std::fmt::Write;
 use sway_parse::{token::Delimiter, CodeBlockContents, FnArg, FnArgs, FnSignature, ItemFn};
@@ -202,5 +205,70 @@ impl Format for FnArg {
         self.ty.format(formatted_code, formatter)?;
 
         Ok(())
+    }
+}
+
+impl CommentVisitor for FnSignature {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_spans = Vec::new();
+        // Add visibility token if it exists
+        if let Some(visibility) = &self.visibility {
+            collected_spans.push(CommentSpan::from_span(visibility.span()));
+        }
+        // Add fn_token
+        collected_spans.push(CommentSpan::from_span(self.fn_token.span()));
+        // Add name
+        collected_spans.push(CommentSpan::from_span(self.name.span()));
+        // Add generics if it exists
+        if let Some(generics) = &self.generics {
+            collected_spans.push(CommentSpan::from_span(generics.parameters.span()));
+        }
+        // Add spans for parameters
+        collected_spans.append(&mut self.arguments.collect_spans());
+        // Add return type if it exists
+        if let Some((right_arrow_token, ty)) = &self.return_type_opt {
+            collected_spans.push(CommentSpan::from_span(right_arrow_token.span()));
+            collected_spans.push(CommentSpan::from_span(ty.span()));
+        }
+        // TODO add where, I will add where for all items at once.
+        collected_spans
+    }
+}
+
+impl CommentVisitor for FnArgs {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_spans = Vec::new();
+        match &self {
+            FnArgs::Static(arg_static) => {
+                collected_spans.append(&mut arg_static.collect_spans());
+            }
+            FnArgs::NonStatic {
+                self_token,
+                mutable_self,
+                args_opt,
+            } => {
+                collected_spans.push(CommentSpan::from_span(self_token.span()));
+                if let Some(mutable) = mutable_self {
+                    collected_spans.push(CommentSpan::from_span(mutable.span()));
+                }
+                if let Some(args) = args_opt {
+                    collected_spans.push(CommentSpan::from_span(args.0.span()));
+                    collected_spans.append(&mut args.1.collect_spans());
+                }
+            }
+        };
+        collected_spans
+    }
+}
+
+impl CommentVisitor for FnArg {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_spans = Vec::new();
+        collected_spans.append(&mut self.pattern.collect_spans());
+        // Add ColonToken
+        collected_spans.push(CommentSpan::from_span(self.colon_token.span()));
+        // Add ty
+        collected_spans.push(CommentSpan::from_span(self.ty.span()));
+        collected_spans
     }
 }

@@ -9,8 +9,10 @@ use std::{
     sync::Arc,
 };
 use sway_parse::{
+    brackets::Parens,
+    keywords::CommaToken,
     token::{lex_commented, Comment, CommentedTokenTree, CommentedTree},
-    Braces, Module,
+    Braces, Module, TypeField,
 };
 use sway_types::{Span, Spanned};
 /// Represents a span for the comments in a spesific file
@@ -110,6 +112,37 @@ where
     }
 }
 
+impl<T> CommentVisitor for Parens<T>
+where
+    T: CommentVisitor + Clone,
+{
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_spans = Vec::new();
+        let mut opening_paren_span = CommentSpan::from_span(self.span());
+        opening_paren_span.end = opening_paren_span.start + 1;
+        // Add opening paren's span
+        collected_spans.push(opening_paren_span);
+        // Add T's collected CommentSpan
+        collected_spans.append(&mut self.clone().into_inner().collect_spans());
+        let mut closing_paren_span = CommentSpan::from_span(self.span());
+        closing_paren_span.start = closing_paren_span.end - 1;
+        // Add closing paren's CommentSpan
+        collected_spans.push(closing_paren_span);
+        collected_spans
+    }
+}
+
+impl CommentVisitor for CommaToken {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        vec![(CommentSpan::from_span(self.span()))]
+    }
+}
+
+impl CommentVisitor for TypeField {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        vec![(CommentSpan::from_span(self.span()))]
+    }
+}
 /// Handles comments by first creating the CommentMap which is used for fast seaching comments.
 /// Traverses items for finding a comment in unformatted input and placing it in correct place in formatted output.
 pub fn handle_comments(
