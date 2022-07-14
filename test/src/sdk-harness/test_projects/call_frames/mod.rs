@@ -95,9 +95,11 @@ async fn can_get_second_param_multiple_params2() {
         value_0: 42,
         value_1: true,
     };
-    let expected_b256 = "0x1111111111111111111111111111111111111111111111111111111111111111";
-    let result = instance.get_second_param_multiple_params2(300, expected_struct.clone(), expected_b256).call().await.unwrap();
-    assert_eq!(result.value, (300, expected_struct, expected_b256));
+    let expected_struct2 = TestStruct2 {
+        value: 100,
+    };
+    let result = instance.get_second_param_multiple_params2(300, expected_struct.clone(), expected_struct2.clone()).call().await.unwrap();
+    assert_eq!(result.value, (300, expected_struct, expected_struct2));
 }
 
 fn is_within_range(n: u64) -> bool {
