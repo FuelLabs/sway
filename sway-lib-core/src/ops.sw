@@ -595,7 +595,7 @@ impl Shiftable for b256 {
             w1 = shifted_1;
         } else if w.eq(1) {
             let(shifted_2, carry_2) = rsh_with_carry(word_2, b);
-            w4 = word_4.rsh(b).add(carry_2);
+            w4 = word_3.rsh(b).add(carry_2);
             let(shifted_1, carry_1) = rsh_with_carry(word_1, b);
             w3 = shifted_2.add(carry_1);
             w2 = shifted_1;

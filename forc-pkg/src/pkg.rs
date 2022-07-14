@@ -1687,6 +1687,9 @@ pub fn compile(
 ///
 /// Also returns the resulting `sway_core::SourceMap` which may be useful for debugging purposes.
 pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compiled, SourceMap)> {
+    //TODO remove once type engine isn't global anymore.
+    sway_core::clear_lazy_statics();
+
     let mut namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     let mut json_abi = vec![];
@@ -1724,6 +1727,8 @@ pub fn check(
     plan: &BuildPlan,
     silent_mode: bool,
 ) -> anyhow::Result<(CompileResult<ParseProgram>, CompileAstResult)> {
+    //TODO remove once type engine isn't global anymore.
+    sway_core::clear_lazy_statics();
     let mut namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     for (i, &node) in plan.compilation_order.iter().enumerate() {

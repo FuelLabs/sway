@@ -2,10 +2,12 @@ use super::document::{DocumentError, TextDocument};
 use crate::{
     capabilities::{self, formatting::get_format_text_edits},
     sway_config::SwayConfig,
+    utils::common::get_range_from_span,
 };
 use dashmap::DashMap;
 use serde_json::Value;
 use std::sync::{Arc, LockResult, RwLock};
+use sway_types::Spanned;
 use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, GotoDefinitionResponse, Position, Range, SemanticToken,
     SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
@@ -72,24 +74,23 @@ impl Session {
     }
 
     // Token
-    pub fn get_token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
+    pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
         if let Some(document) = self.documents.get(url.path()) {
-            if let Some(token) = document.get_token_at_position(position) {
-                let result = document
-                    .get_all_tokens_by_single_name(&token.name)
-                    .unwrap()
+            if let Some((_, token)) = document.token_at_position(position) {
+                let token_ranges = document
+                    .all_references_of_token(token)
                     .iter()
-                    .map(|token| token.range)
+                    .map(|(ident, _)| get_range_from_span(&ident.span()))
                     .collect();
 
-                return Some(result);
+                return Some(token_ranges);
             }
         }
 
         None
     }
 
-    pub fn get_token_definition_response(
+    pub fn token_definition_response(
         &self,
         url: Url,
         position: Position,
@@ -97,21 +98,12 @@ impl Session {
         let key = url.path();
 
         if let Some(document) = self.documents.get(key) {
-            if let Some(token) = document.get_token_at_position(position) {
-                if token.is_initial_declaration() {
-                    return Some(capabilities::go_to::to_definition_response(url, token));
-                } else {
-                    for document_ref in &self.documents {
-                        if let Some(declared_token) = document_ref.get_declared_token(&token.name) {
-                            return match Url::from_file_path(document_ref.key()) {
-                                Ok(url) => Some(capabilities::go_to::to_definition_response(
-                                    url,
-                                    declared_token,
-                                )),
-                                Err(_) => None,
-                            };
-                        }
-                    }
+            if let Some((_, token)) = document.token_at_position(position) {
+                if let Some(decl_ident) = document.declared_token_ident(token) {
+                    return Some(capabilities::go_to::to_definition_response(
+                        url,
+                        &decl_ident,
+                    ));
                 }
             }
         }
@@ -119,30 +111,30 @@ impl Session {
         None
     }
 
-    pub fn get_completion_items(&self, url: &Url) -> Option<Vec<CompletionItem>> {
+    pub fn completion_items(&self, url: &Url) -> Option<Vec<CompletionItem>> {
         if let Some(document) = self.documents.get(url.path()) {
             return Some(capabilities::completion::to_completion_items(
-                document.get_tokens(),
+                document.token_map(),
             ));
         }
 
         None
     }
 
-    pub fn get_semantic_tokens(&self, url: &Url) -> Option<Vec<SemanticToken>> {
+    pub fn semantic_tokens(&self, url: &Url) -> Option<Vec<SemanticToken>> {
         if let Some(document) = self.documents.get(url.path()) {
-            return Some(capabilities::semantic_tokens::to_semantic_tokes(
-                document.get_tokens(),
+            return Some(capabilities::semantic_tokens::to_semantic_tokens(
+                document.token_map(),
             ));
         }
 
         None
     }
 
-    pub fn get_symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
+    pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
         if let Some(document) = self.documents.get(url.path()) {
             return Some(capabilities::document_symbol::to_symbol_information(
-                document.get_tokens(),
+                document.token_map(),
                 url.clone(),
             ));
         }
