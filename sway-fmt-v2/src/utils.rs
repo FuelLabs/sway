@@ -1,5 +1,6 @@
 pub(crate) mod attribute;
 pub(crate) mod bracket;
+pub(crate) mod comments;
 pub(crate) mod expr;
 pub(crate) mod generics;
 pub(crate) mod indent_style;

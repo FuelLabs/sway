@@ -57,7 +57,7 @@ fn capabilities() -> ServerCapabilities {
         text_document_sync: Some(TextDocumentSyncCapability::Kind(
             TextDocumentSyncKind::INCREMENTAL,
         )),
-        semantic_tokens_provider: capabilities::semantic_tokens::get_semantic_tokens(),
+        semantic_tokens_provider: capabilities::semantic_tokens::semantic_tokens(),
         document_symbol_provider: Some(OneOf::Left(true)),
         completion_provider: Some(CompletionOptions {
             resolve_provider: Some(false),
@@ -76,8 +76,9 @@ impl Backend {
         // This is useful for debugging the lsp parser.
         if self.config.parsed_tokens_as_warnings {
             if let Some(document) = self.session.documents.get(uri.path()) {
-                let diagnostics = debug::generate_warnings_for_parsed_tokens(document.get_tokens());
-                //let diagnostics = debug::generate_warnings_for_typed_tokens(&document.get_token_map());
+                let diagnostics = debug::generate_warnings_for_parsed_tokens(document.token_map());
+
+                // let diagnostics = debug::generate_warnings_for_typed_tokens(&document.get_token_map());
                 self.client
                     .publish_diagnostics(uri, diagnostics, None)
                     .await;
@@ -149,7 +150,7 @@ impl LanguageServer for Backend {
     }
 
     async fn hover(&self, params: HoverParams) -> jsonrpc::Result<Option<Hover>> {
-        Ok(capabilities::hover::get_hover_data(
+        Ok(capabilities::hover::hover_data(
             self.session.clone(),
             params,
         ))
@@ -181,7 +182,7 @@ impl LanguageServer for Backend {
         &self,
         params: SemanticTokensParams,
     ) -> jsonrpc::Result<Option<SemanticTokensResult>> {
-        Ok(capabilities::semantic_tokens::get_semantic_tokens_full(
+        Ok(capabilities::semantic_tokens::semantic_tokens_full(
             self.session.clone(),
             params,
         ))
@@ -235,7 +236,7 @@ impl LanguageServer for Backend {
 #[cfg(test)]
 mod tests {
     use serde_json::json;
-    use std::{env, fs, io::Read};
+    use std::{env, fs, io::Read, path::PathBuf};
     use tower::{Service, ServiceExt};
 
     use super::*;
@@ -243,12 +244,25 @@ mod tests {
     use tower_lsp::jsonrpc::{self, Request, Response};
     use tower_lsp::LspService;
 
-    fn load_sway_example() -> (Url, String) {
-        let manifest_dir = env::current_dir()
+    fn e2e_test_dir() -> PathBuf {
+        env::current_dir()
             .unwrap()
             .parent()
             .unwrap()
-            .join("examples/liquidity_pool");
+            .join("test/src/e2e_vm_tests/test_programs/should_pass/language")
+            .join("is_reference_type")
+    }
+
+    fn _sway_example_dir() -> PathBuf {
+        env::current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("examples/fizzbuzz")
+    }
+
+    fn load_sway_example() -> (Url, String) {
+        let manifest_dir = e2e_test_dir(); //sway_example_dir();
         let src_path = manifest_dir.join("src/main.sw");
         let mut file = fs::File::open(&src_path).unwrap();
         let mut sway_program = String::new();
