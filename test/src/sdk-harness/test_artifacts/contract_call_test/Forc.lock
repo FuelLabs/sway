@@ -1,14 +1,14 @@
 [[package]]
-name = 'call_frames_test_abi'
+name = 'contract_call_test'
 source = 'root'
 dependencies = ['std']
 
 [[package]]
 name = 'core'
-source = 'path+from-root-5E1AE3B7DA5CAD9F'
+source = 'path+from-root-41704653D3ECF2BB'
 dependencies = []
 
 [[package]]
 name = 'std'
-source = 'path+from-root-5E1AE3B7DA5CAD9F'
+source = 'path+from-root-41704653D3ECF2BB'
 dependencies = ['core']
