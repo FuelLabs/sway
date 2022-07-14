@@ -16,4 +16,5 @@ abi CallFramesTest {
     fn get_second_param_bool(arg0: bool) -> bool;
     fn get_second_param_struct(arg0: TestStruct) -> TestStruct;
     fn get_second_param_multiple_params(arg0: bool, arg1: u64) -> (bool, u64);
+    fn get_second_param_multiple_params2(arg0: u64, arg1: TestStruct, arg2: b256) -> (u64, TestStruct, b256);
 }

@@ -88,6 +88,18 @@ async fn can_get_second_param_multiple_params() {
     assert_eq!(result.value, (true, 42));
 }
 
+#[tokio::test]
+async fn can_get_second_param_multiple_params2() {
+    let (instance, _id) = get_call_frames_instance().await;
+    let expected_struct = TestStruct {
+        value_0: 42,
+        value_1: true,
+    };
+    let expected_b256 = "0x1111111111111111111111111111111111111111111111111111111111111111";
+    let result = instance.get_second_param_multiple_params2(300, expected_struct.clone(), expected_b256).call().await.unwrap();
+    assert_eq!(result.value, (300, expected_struct, expected_b256));
+}
+
 fn is_within_range(n: u64) -> bool {
     if n <= 0 || n > VM_MAX_RAM {
         false
