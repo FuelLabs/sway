@@ -33,6 +33,10 @@ impl CommentSpan {
             end: span.end(),
         }
     }
+
+    pub fn len(&self) -> usize {
+        self.end - self.start
+    }
 }
 
 impl Ord for CommentSpan {

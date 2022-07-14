@@ -16,8 +16,20 @@ where
         let mut collected_spans = Vec::new();
         let value_pairs = &self.value_separator_pairs;
         for pair in value_pairs.iter() {
-            collected_spans.append(&mut pair.0.collect_spans());
-            collected_spans.append(&mut pair.1.collect_spans());
+            // Since we do not want to have comments between T and P we are extending the CommentSpans coming from T with spans coming from P
+            // Since formatter can insert a trailing comma after a field, comments next to a field can be falsely inserted between the comma and the field
+            // So we shouldn't allow inserting comments (or searching for one) between T and P as in Punctuated scenerio this can/will result in formattings that breaks the build process
+            let mut comment_spans = pair
+                .0
+                .collect_spans()
+                .iter_mut()
+                .zip(pair.1.collect_spans())
+                .map(|comment_map| {
+                    comment_map.0.end += comment_map.1.len();
+                    comment_map.0.clone()
+                })
+                .collect();
+            collected_spans.append(&mut comment_spans)
         }
         if let Some(final_value) = &self.final_value_opt {
             collected_spans.append(&mut final_value.collect_spans());
