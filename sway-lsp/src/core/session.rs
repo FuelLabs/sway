@@ -1,5 +1,10 @@
-use super::document::{DocumentError, TextDocument};
+
 use crate::{
+    core::{
+        document::{DocumentError, TextDocument},
+        token::{TokenMap, TokenType},
+        {traverse_parse_tree, traverse_typed_tree},
+    },
     capabilities::{self, formatting::get_format_text_edits},
     sway_config::SwayConfig,
     utils::common::get_range_from_span,
@@ -19,6 +24,7 @@ pub type Documents = DashMap<String, TextDocument>;
 pub struct Session {
     pub documents: Documents,
     pub config: RwLock<SwayConfig>,
+    token_map: TokenMap,
 }
 
 impl Session {
@@ -26,6 +32,7 @@ impl Session {
         Session {
             documents: DashMap::new(),
             config: RwLock::new(SwayConfig::default()),
+            token_map: HashMap::new(),
         }
     }
 
