@@ -150,7 +150,13 @@ fn format_storage(
         let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
         for field in value_pairs_iter.clone() {
             // storage_field
-            field.0.format(formatted_code, formatter)?;
+            write!(
+                formatted_code,
+                "{}{} {}",
+                field.0.name.span().as_str(),
+                field.0.colon_token.span().as_str(),
+                field.0.ty.span().as_str(),
+            )?;
 
             if value_pairs_iter.peek().is_some() {
                 write!(formatted_code, "{} ", field.1.span().as_str())?;
