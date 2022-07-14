@@ -18,8 +18,8 @@ impl Format for WhereClause {
         formatter.shape = formatter
             .shape
             .block_indent(formatter.config.whitespace.tab_spaces);
-        // We need to add the `WhereBound` formatting to punctuated so that we
-        // can replace the formatting here with:
+        // We should add a multiline field to `Shape`
+        // so we can reduce this code block to:
         //
         // ```rust,ignore
         // self.bounds.format(formatted_code, formatter)?;
