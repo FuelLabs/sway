@@ -469,8 +469,23 @@ impl<'a> InstructionVerifier<'a> {
         }
     }
 
-    fn verify_int_to_ptr(&self, _value: &Value, _ty: &Type) -> Result<(), IrError> {
-        // TODO
+    fn verify_int_to_ptr(&self, value: &Value, ty: &Type) -> Result<(), IrError> {
+        // We want the source vaule to be an integer and the destination type to be a reference
+        // type.
+        let val_ty = value
+            .get_type(self.context)
+            .ok_or(IrError::VerifyIntToPtrUnknownSourceType)?;
+        if !matches!(val_ty, Type::Uint(64)) {
+            return Err(IrError::VerifyIntToPtrFromNonIntegerType(
+                val_ty.as_string(self.context),
+            ));
+        }
+        if ty.is_copy_type() {
+            return Err(IrError::VerifyIntToPtrToCopyType(
+                val_ty.as_string(self.context),
+            ));
+        }
+
         Ok(())
     }
 

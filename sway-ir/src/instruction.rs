@@ -82,6 +82,7 @@ pub enum Instruction {
         value: Value,
         indices: Vec<u64>,
     },
+    /// Re-interpret an integer value as pointer of some type
     IntToPtr(Value, Type),
     /// Read a value from a memory pointer.
     Load(Value),
@@ -94,29 +95,17 @@ pub enum Instruction {
     /// Return from a function.
     Ret(Value, Type),
     /// Read a quad word from a storage slot. Type of `load_val` must be a B256 ptr.
-    StateLoadQuadWord {
-        load_val: Value,
-        key: Value,
-    },
+    StateLoadQuadWord { load_val: Value, key: Value },
     /// Read a single word from a storage slot.
     StateLoadWord(Value),
     /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
     /// Uint(256) ptr.
-    StateStoreQuadWord {
-        stored_val: Value,
-        key: Value,
-    },
+    StateStoreQuadWord { stored_val: Value, key: Value },
     /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
     /// Uint(64) value.
-    StateStoreWord {
-        stored_val: Value,
-        key: Value,
-    },
+    StateStoreWord { stored_val: Value, key: Value },
     /// Write a value to a memory pointer.
-    Store {
-        dst_val: Value,
-        stored_val: Value,
-    },
+    Store { dst_val: Value, stored_val: Value },
 }
 
 #[derive(Debug, Clone, Copy)]
