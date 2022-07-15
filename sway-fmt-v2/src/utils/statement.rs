@@ -1,4 +1,7 @@
-use crate::fmt::*;
+use crate::{
+    fmt::*,
+    utils::comments::{CommentSpan, CommentVisitor},
+};
 use std::fmt::Write;
 use sway_parse::{Statement, StatementLet};
 use sway_types::Spanned;
@@ -54,5 +57,40 @@ impl Format for StatementLet {
         writeln!(formatted_code, "{}", self.semicolon_token.span().as_str())?;
 
         Ok(())
+    }
+}
+
+impl CommentVisitor for Statement {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        match self {
+            Statement::Let(statement_let) => statement_let.collect_spans(),
+            Statement::Item(item) => item.collect_spans(),
+            Statement::Expr {
+                expr,
+                semicolon_token_opt,
+            } => todo!(),
+        }
+    }
+}
+
+impl CommentVisitor for StatementLet {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_spans = Vec::new();
+        // Add let token's CommentSpan
+        collected_spans.push(CommentSpan::from_span(self.let_token.span()));
+        // Add pattern's CommentSpan
+        collected_spans.append(&mut self.pattern.collect_spans());
+        // Add ty's CommentSpan if it exists
+        if let Some(ty) = &self.ty_opt {
+            collected_spans.push(CommentSpan::from_span(ty.0.span()));
+            // TODO: determine if we are allowing comments between `:` and ty
+            collected_spans.push(CommentSpan::from_span(ty.1.span()));
+        }
+        // Add eq token's CommentSpan
+        collected_spans.push(CommentSpan::from_span(self.eq_token.span()));
+        // Add Expr's CommentSpan
+        // collected_spans.append(&mut self.expr.collect_spans());
+        collected_spans.push(CommentSpan::from_span(self.semicolon_token.span()));
+        collected_spans
     }
 }
