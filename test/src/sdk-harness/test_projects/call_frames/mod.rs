@@ -43,34 +43,39 @@ async fn can_get_code_size() {
 async fn can_get_first_param() {
     let (instance, _id) = get_call_frames_instance().await;
     let result = instance.get_first_param().call().await.unwrap();
-    // Hash the function name with Sha256
-    let mut hasher = Sha256::new();
-    let function_name = "get_first_param()";
-    hasher.update(function_name);
-    let function_name_hash = hasher.finalize();
-    // Grab the first 4 bytes of the hash per https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md#function-selector-encoding
-    let function_name_hash = &function_name_hash[0..4];
-    // Convert the bytes to decimal value
-    let selector = function_name_hash[3] as u64 + 256 * (function_name_hash[2] as u64 + 256 * (function_name_hash[1] as u64 + 256 * function_name_hash[0] as u64));
-    assert_eq!(result.value, selector);
+    assert_eq!(result.value, encode_function_name("get_first_param()") as u64);
 }
 
 #[tokio::test]
-async fn can_get_second_param_u64() {
+async fn can_get_selector() {
+    let (instance, _id) = get_call_frames_instance().await;
+    let result = instance.get_selector().call().await.unwrap();
+    assert_eq!(result.value, encode_function_name("get_selector()"));
+}
+
+#[tokio::test]
+async fn can_get_selector_with_arguments() {
+    let (instance, _id) = get_call_frames_instance().await;
+    let result = instance.get_selector_with_arguments(100).call().await.unwrap();
+    assert_eq!(result.value, encode_function_name("get_selector_with_arguments(100)"));
+}
+
+#[tokio::test]
+async fn can_get_arguments_u64() {
     let (instance, _id) = get_call_frames_instance().await;
     let result = instance.get_arguments_u64(101).call().await.unwrap();
     assert_eq!(result.value, 101);
 }
 
 #[tokio::test]
-async fn can_get_second_param_bool() {
+async fn can_get_arguments_bool() {
     let (instance, _id) = get_call_frames_instance().await;
     let result = instance.get_arguments_bool(true).call().await.unwrap();
     assert_eq!(result.value, true);
 }
 
 #[tokio::test]
-async fn can_get_second_param_struct() {
+async fn can_get_arguments_struct() {
     let (instance, _id) = get_call_frames_instance().await;
     let expected = TestStruct {
         value_0: 42,
@@ -81,14 +86,14 @@ async fn can_get_second_param_struct() {
 }
 
 #[tokio::test]
-async fn can_get_second_param_multiple_params() {
+async fn can_get_arguments_multiple_params() {
     let (instance, _id) = get_call_frames_instance().await;
     let result = instance.get_arguments_multiple_params(true, 42).call().await.unwrap();
     assert_eq!(result.value, (true, 42));
 }
 
 #[tokio::test]
-async fn can_get_second_param_multiple_params2() {
+async fn can_get_arguments_multiple_params2() {
     let (instance, _id) = get_call_frames_instance().await;
     let expected_struct = TestStruct {
         value_0: 42,
@@ -107,4 +112,15 @@ fn is_within_range(n: u64) -> bool {
     } else {
         true
     }
+}
+
+fn encode_function_name(function_name: &str) -> u32 {
+    // Hash the function name with Sha256
+    let mut hasher = Sha256::new();
+    hasher.update(function_name);
+    let function_name_hash = hasher.finalize();
+    // Grab the first 4 bytes of the hash per https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md#function-selector-encoding
+    let function_name_hash = &function_name_hash[0..4];
+    // Convert the bytes to decimal value
+    function_name_hash[3] as u32 + 256 * (function_name_hash[2] as u32 + 256 * (function_name_hash[1] as u32 + 256 * function_name_hash[0] as u32))
 }
