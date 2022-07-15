@@ -1,6 +1,6 @@
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
-use fuels::tx::{ConsensusParameters, ContractId};
+use fuels::tx::ContractId;
 
 abigen!(
     AttackerContract,
@@ -21,12 +21,6 @@ async fn can_detect_reentrancy() {
     let result = attacker_instance
         .launch_attack(target_id)
         .set_contracts(&[target_id])
-        .tx_params(TxParameters::new(
-            Some(0),
-            Some(ConsensusParameters::DEFAULT.max_gas_per_tx),
-            None,
-            None,
-        ))
         .call()
         .await
         .unwrap();

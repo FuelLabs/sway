@@ -96,15 +96,17 @@ impl Format for StorageField {
     fn format(
         &self,
         formatted_code: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         write!(
             formatted_code,
-            "{}{} {}",
+            "{}{} ",
             self.name.span().as_str(),
             self.colon_token.span().as_str(),
-            self.ty.span().as_str()
         )?;
+        self.ty.format(formatted_code, formatter)?;
+        write!(formatted_code, " {} ", self.eq_token.span().as_str())?;
+        self.initializer.format(formatted_code, formatter)?;
         Ok(())
     }
 }

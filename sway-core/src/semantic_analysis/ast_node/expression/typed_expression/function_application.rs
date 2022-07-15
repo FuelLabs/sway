@@ -8,26 +8,12 @@ use sway_types::{state::StateIndex, Spanned};
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
-    mut function_decl: TypedFunctionDeclaration,
+    function_decl: TypedFunctionDeclaration,
     call_path: CallPath,
-    type_arguments: Vec<TypeArgument>,
     arguments: Vec<Expression>,
 ) -> CompileResult<TypedExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
-
-    // monomorphize the function declaration
-    check!(
-        ctx.monomorphize(
-            &mut function_decl,
-            type_arguments,
-            EnforceTypeArguments::No,
-            &call_path.span()
-        ),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
 
     // 'purity' is that of the callee, 'opts.purity' of the caller.
     if !ctx.purity().can_call(function_decl.purity) {
@@ -48,7 +34,7 @@ pub(crate) fn instantiate_function_application(
     // type check arguments in function application vs arguments in function
     // declaration. Use parameter type annotations as annotations for the
     // arguments
-    let typed_call_arguments = arguments
+    let typed_arguments = arguments
         .into_iter()
         .zip(function_decl.parameters.iter())
         .map(|(arg, param)| {
@@ -74,7 +60,7 @@ pub(crate) fn instantiate_function_application(
     let exp = instantiate_function_application_inner(
         call_path,
         HashMap::new(),
-        typed_call_arguments,
+        typed_arguments,
         function_decl,
         None,
         IsConstant::No,
