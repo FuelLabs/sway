@@ -54,8 +54,18 @@ pub fn first_param() -> u64 {
     read(frame_ptr() + FIRST_PARAMETER_OFFSET)
 }
 
-/// Get the second parameter from the current call frame.
-pub fn second_param<T>() -> T {
+/// Get the raw second param as a u64 from the current call frame
+pub fn second_param() -> u64 {
+    read(frame_ptr() + SECOND_PARAMETER_OFFSET)
+}
+
+/// Get the function selector which happens to be the first parameter
+pub fn selector() -> u32 {
+    first_param()
+}
+
+/// Get the actual arguments contained in second parameter from the current call frame.
+pub fn arguments<T>() -> T {
     if !is_reference_type::<T>() {
         read::<T>(frame_ptr() + SECOND_PARAMETER_OFFSET)
     }
