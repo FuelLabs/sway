@@ -6,6 +6,7 @@ mod replace_self_type;
 mod resolved_type;
 mod trait_constraint;
 mod type_argument;
+mod type_binding;
 mod type_id;
 mod type_info;
 mod type_mapping;
@@ -20,6 +21,7 @@ pub(crate) use replace_self_type::*;
 pub(crate) use resolved_type::*;
 pub(crate) use trait_constraint::*;
 pub(crate) use type_argument::*;
+pub(crate) use type_binding::*;
 pub use type_id::*;
 pub use type_info::*;
 pub(crate) use type_mapping::*;
@@ -27,8 +29,8 @@ pub(crate) use type_parameter::*;
 pub(crate) use unresolved_type_check::*;
 
 use crate::error::*;
-use fuels_types::Property;
 use std::fmt::Debug;
+use sway_types::Property;
 
 #[test]
 fn generic_enum_resolution() {

@@ -16,7 +16,7 @@ pub(crate) use impl_trait::*;
 pub use r#enum::*;
 pub use r#struct::*;
 pub use r#trait::*;
-pub(crate) use reassignment::*;
+pub use reassignment::*;
 pub use storage::*;
 pub use variable::*;
 
@@ -33,6 +33,6 @@ pub enum Declaration {
     AbiDeclaration(AbiDeclaration),
     ConstantDeclaration(ConstantDeclaration),
     StorageDeclaration(StorageDeclaration),
-    Break,
-    Continue,
+    Break { span: sway_types::Span },
+    Continue { span: sway_types::Span },
 }

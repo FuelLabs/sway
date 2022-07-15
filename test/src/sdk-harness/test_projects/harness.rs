@@ -3,6 +3,7 @@
 mod auth;
 mod call_frames;
 mod context;
+mod evm;
 mod exponentiation;
 mod hashing;
 mod logging;
@@ -14,5 +15,6 @@ mod registers;
 mod script_data;
 mod storage;
 mod storage_map;
+mod storage_vec;
 mod token_ops;
 mod tx_fields;

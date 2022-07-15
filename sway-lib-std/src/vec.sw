@@ -14,7 +14,7 @@ struct RawVec<T> {
 impl<T> RawVec<T> {
     /// Create a new `RawVec` with zero capacity.
     fn new() -> Self {
-        RawVec {
+        Self {
             ptr: alloc(0),
             cap: 0,
         }
@@ -24,7 +24,7 @@ impl<T> RawVec<T> {
     /// `[T; capacity]`. This is equivalent to calling `RawVec::new` when
     /// `capacity` is `0`.
     fn with_capacity(capacity: u64) -> Self {
-        RawVec {
+        Self {
             ptr: alloc(capacity * size_of::<T>()),
             cap: capacity,
         }
@@ -66,7 +66,7 @@ impl<T> Vec<T> {
     ///
     /// The vector will not allocate until elements are pushed onto it.
     pub fn new() -> Self {
-        Vec {
+        Self {
             buf: ~RawVec::new(),
             len: 0,
         }
@@ -80,7 +80,7 @@ impl<T> Vec<T> {
     /// It is important to note that although the returned vector has the
     /// *capacity* specified, the vector will have a zero *length*.
     pub fn with_capacity(capacity: u64) -> Self {
-        Vec {
+        Self {
             buf: ~RawVec::with_capacity(capacity),
             len: 0,
         }
@@ -159,7 +159,7 @@ impl<T> Vec<T> {
         // Shift everything down to fill in that spot.
         let end = buf_start + val_size * self.len;
         while ptr < end {
-            copy(ptr, ptr + val_size, val_size);
+            copy(ptr + val_size, ptr, val_size);
             ptr += val_size;
         }
 
@@ -188,7 +188,7 @@ impl<T> Vec<T> {
         // Shift everything over to make space.
         let mut curr_ptr = buf_start + self.len * val_size;
         while curr_ptr > index_ptr {
-            copy(curr_ptr, curr_ptr - val_size, val_size);
+            copy(curr_ptr - val_size, curr_ptr, val_size);
             curr_ptr -= val_size;
         }
 
@@ -207,5 +207,33 @@ impl<T> Vec<T> {
         }
         self.len -= 1;
         Option::Some(read(self.buf.ptr() + self.len * size_of::<T>()))
+    }
+
+    /// Swaps two elements.
+    ///
+    /// # Arguments
+    ///
+    /// * element1_index - The index of the first element
+    /// * element2_index - The index of the second element
+    ///
+    /// # Reverts
+    ///
+    /// Reverts if `element1_index` or `element2_index` is greater than or equal to the length of vector.
+    pub fn swap(mut self, element1_index: u64, element2_index: u64) {
+        assert(element1_index < self.len);
+        assert(element2_index < self.len);
+
+        if element1_index == element2_index {
+            return;
+        }
+
+        let val_size = size_of::<T>();
+
+        let element1_ptr = self.buf.ptr() + element1_index * val_size;
+        let element2_ptr = self.buf.ptr() + element2_index * val_size;
+
+        let element1_val = read(element1_ptr);
+        copy(element2_ptr, element1_ptr, val_size);
+        write(element2_ptr, element1_val);
     }
 }

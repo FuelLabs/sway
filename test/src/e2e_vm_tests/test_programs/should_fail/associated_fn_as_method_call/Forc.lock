@@ -1,0 +1,4 @@
+[[package]]
+name = 'associated_fn_as_method_call'
+source = 'root'
+dependencies = []

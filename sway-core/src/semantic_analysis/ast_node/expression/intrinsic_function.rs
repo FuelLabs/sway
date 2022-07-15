@@ -69,13 +69,17 @@ impl UnresolvedTypeCheck for TypedIntrinsicFunctionKind {
 impl TypedIntrinsicFunctionKind {
     pub(crate) fn type_check(
         mut ctx: TypeCheckContext,
-        kind: Intrinsic,
-        type_arguments: Vec<TypeArgument>,
+        kind_binding: TypeBinding<Intrinsic>,
         arguments: Vec<Expression>,
         span: Span,
     ) -> CompileResult<(Self, TypeId)> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let TypeBinding {
+            inner: kind,
+            type_arguments,
+            ..
+        } = kind_binding;
         let (intrinsic_function, return_type) = match kind {
             Intrinsic::SizeOfVal => {
                 if arguments.len() != 1 {
@@ -126,7 +130,8 @@ impl TypedIntrinsicFunctionKind {
                     ctx.resolve_type_with_self(
                         insert_type(resolve_type(targ.type_id, &targ.span).unwrap()),
                         &targ.span,
-                        EnforceTypeArguments::Yes
+                        EnforceTypeArguments::Yes,
+                        None
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
@@ -158,7 +163,8 @@ impl TypedIntrinsicFunctionKind {
                     ctx.resolve_type_with_self(
                         insert_type(resolve_type(targ.type_id, &targ.span).unwrap()),
                         &targ.span,
-                        EnforceTypeArguments::Yes
+                        EnforceTypeArguments::Yes,
+                        None
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,

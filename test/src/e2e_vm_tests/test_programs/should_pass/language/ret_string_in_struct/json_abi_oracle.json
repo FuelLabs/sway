@@ -8,11 +8,13 @@
           {
             "components": null,
             "name": "name",
-            "type": "str[9]"
+            "type": "str[9]",
+            "typeArguments": null
           }
         ],
         "name": "",
-        "type": "struct Wrapper"
+        "type": "struct Wrapper",
+        "typeArguments": null
       }
     ],
     "type": "function"

@@ -18,11 +18,8 @@ pub enum U128Error {
 
 pub trait From {
     /// Function for creating U128 from its u64 components.
-    pub fn from(upper: u64, lower: u64) -> Self;
-} {
-    fn into(val: U128) -> (u64, u64) {
-        (val.upper, val.lower)
-    }
+    fn from(upper: u64, lower: u64) -> Self;
+    fn into(self) -> (u64, u64);
 }
 
 impl From for U128 {
@@ -30,6 +27,10 @@ impl From for U128 {
         U128 {
             upper, lower,
         }
+    }
+
+    fn into(self) -> (u64, u64) {
+        (self.upper, self.lower)
     }
 }
 

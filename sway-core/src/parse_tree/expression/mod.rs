@@ -1,7 +1,7 @@
 use crate::{
     parse_tree::{CallPath, Literal},
-    type_engine::TypeArgument,
-    CodeBlock,
+    type_engine::TypeBinding,
+    CodeBlock, TypeInfo,
 };
 use sway_types::{ident::Ident, Span, Spanned};
 
@@ -23,9 +23,8 @@ pub enum Expression {
         span: Span,
     },
     FunctionApplication {
-        name: CallPath,
+        call_path_binding: TypeBinding<CallPath>,
         arguments: Vec<Expression>,
-        type_arguments: Vec<TypeArgument>,
         span: Span,
     },
     LazyOperator {
@@ -53,8 +52,7 @@ pub enum Expression {
         span: Span,
     },
     StructExpression {
-        struct_name: CallPath,
-        type_arguments: Vec<TypeArgument>,
+        call_path_binding: TypeBinding<CallPath<(TypeInfo, Span)>>,
         fields: Vec<StructExpressionField>,
         span: Span,
     },
@@ -79,10 +77,9 @@ pub enum Expression {
         asm: AsmExpression,
     },
     MethodApplication {
-        method_name: MethodName,
+        method_name_binding: TypeBinding<MethodName>,
         contract_call_params: Vec<StructExpressionField>,
         arguments: Vec<Expression>,
-        type_arguments: Vec<TypeArgument>,
         span: Span,
     },
     /// A _subfield expression_ is anything of the form:
@@ -117,10 +114,9 @@ pub enum Expression {
     /// MyEnum::Variant1
     /// ```
     DelineatedPath {
-        call_path: CallPath,
+        call_path_binding: TypeBinding<CallPath>,
         args: Vec<Expression>,
         span: Span,
-        type_arguments: Vec<TypeArgument>,
     },
     /// A cast of a hash to an ABI for calling a contract.
     AbiCast {
@@ -138,9 +134,8 @@ pub enum Expression {
         span: Span,
     },
     IntrinsicFunction {
-        kind: Intrinsic,
+        kind_binding: TypeBinding<Intrinsic>,
         arguments: Vec<Expression>,
-        type_arguments: Vec<TypeArgument>,
         span: Span,
     },
 }

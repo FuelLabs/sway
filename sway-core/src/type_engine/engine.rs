@@ -34,11 +34,11 @@ impl Engine {
     fn monomorphize<T>(
         &self,
         value: &mut T,
-        mut type_arguments: Vec<TypeArgument>,
+        type_arguments: &mut [TypeArgument],
         enforce_type_arguments: EnforceTypeArguments,
         call_site_span: &Span,
-        namespace: &mut Root,
-        module_path: &Path,
+        namespace: &Root,
+        mod_path: &Path,
     ) -> CompileResult<()>
     where
         T: MonomorphizeHelper + CopyTypes,
@@ -94,7 +94,8 @@ impl Engine {
                             type_argument.type_id,
                             &type_argument.span,
                             enforce_type_arguments,
-                            module_path
+                            None,
+                            mod_path
                         ),
                         insert_type(TypeInfo::ErrorRecovery),
                         warnings,
@@ -456,6 +457,10 @@ impl Engine {
             ty => Ok(ty),
         }
     }
+
+    pub fn clear(&self) {
+        self.slab.clear();
+    }
 }
 
 pub fn insert_type(ty: TypeInfo) -> TypeId {
@@ -472,10 +477,10 @@ pub(crate) fn look_up_type_id_raw(id: TypeId) -> TypeInfo {
 
 pub(crate) fn monomorphize<T>(
     value: &mut T,
-    type_arguments: Vec<TypeArgument>,
+    type_arguments: &mut [TypeArgument],
     enforce_type_arguments: EnforceTypeArguments,
     call_site_span: &Span,
-    namespace: &mut Root,
+    namespace: &Root,
     module_path: &Path,
 ) -> CompileResult<()>
 where
@@ -512,6 +517,10 @@ pub(crate) fn unify(
 
 pub fn resolve_type(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
     TYPE_ENGINE.resolve_type(id, error_span)
+}
+
+pub fn clear_type_engine() {
+    TYPE_ENGINE.clear();
 }
 
 fn numeric_cast_compat(new_size: IntegerBits, old_size: IntegerBits) -> NumericCastCompatResult {

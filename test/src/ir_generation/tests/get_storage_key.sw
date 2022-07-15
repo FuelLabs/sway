@@ -9,8 +9,8 @@ impl Empty {
 }
 
 storage {
-    e1: Empty,
-    e2: Empty,
+    e1: Empty = Empty { },
+    e2: Empty = Empty { },
 }
 
 abi GetStorageKeyTest {
@@ -26,10 +26,6 @@ impl GetStorageKeyTest for Contract {
         storage.e2.bar()
     }
 }
-
-// regex: VAL=v\d+
-// regex: MD=!\d+
-// regex: ID=[_a-zA-Z][_0-9a-zA-Z]*
 
 // check: fn foo1<2994c98e>() -> b256
 // nextln: entry:

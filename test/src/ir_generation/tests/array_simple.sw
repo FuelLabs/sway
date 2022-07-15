@@ -6,7 +6,6 @@ fn main() -> bool {
 }
 
 // ::check-ir::
-// regex: VAL=v\d+
 
 // check: local ptr [bool; 3] a
 

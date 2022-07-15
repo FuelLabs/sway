@@ -12,8 +12,6 @@ fn main() -> E {
 
 // Since all variants are unit the tagged union has no value, it's just a tag.
 
-// regex: VAL=v\d+
-
 // check: fn main() -> { u64 }
 // nextln: entry:
 // nextln: $(enum_undef=$VAL) = const { u64 } { u64 undef }
