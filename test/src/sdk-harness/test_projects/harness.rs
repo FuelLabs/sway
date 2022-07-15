@@ -8,6 +8,7 @@ mod exponentiation;
 mod hashing;
 mod logging;
 mod methods;
+mod option_field_order;
 mod predicate_data_simple;
 mod predicate_data_struct;
 mod reentrancy;
