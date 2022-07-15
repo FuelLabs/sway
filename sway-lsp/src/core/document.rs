@@ -10,9 +10,7 @@ use ropey::Rope;
 use std::{collections::HashMap, path::PathBuf};
 use sway_core::{
     semantic_analysis::ast_node::TypedAstNode, CompileAstResult, CompileResult, ParseProgram,
-    TypeInfo,
 };
-use sway_types::Ident;
 use tower_lsp::lsp_types::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
 
 #[derive(Debug)]
@@ -23,7 +21,6 @@ pub struct TextDocument {
     version: i32,
     uri: String,
     content: Rope,
-    token_map: TokenMap,
 }
 
 impl TextDocument {
@@ -34,65 +31,9 @@ impl TextDocument {
                 version: 1,
                 uri: path.into(),
                 content: Rope::from_str(&content),
-                token_map: HashMap::new(),
             }),
             Err(_) => Err(DocumentError::DocumentNotFound),
         }
-    }
-
-    /// Check if the code editor's cursor is currently over an of our collected tokens
-    pub fn token_at_position(&self, position: Position) -> Option<(Ident, &TokenType)> {
-        match utils::common::ident_and_span_at_position(position, &self.token_map) {
-            Some((ident, _)) => {
-                // Retrieve the TokenType from our HashMap
-                self.token_map
-                    .get(&utils::token::to_ident_key(&ident))
-                    .map(|token| (ident.clone(), token))
-            }
-            None => None,
-        }
-    }
-
-    pub fn all_references_of_token(&self, token: &TokenType) -> Vec<(&Ident, &TokenType)> {
-        let current_type_id = utils::token::type_id(token);
-
-        self.token_map
-            .iter()
-            .filter(|((_, _), token)| {
-                if token.typed.is_some() {
-                    current_type_id == utils::token::type_id(token)
-                } else {
-                    false
-                }
-            })
-            .map(|((ident, _), token)| (ident, token))
-            .collect()
-    }
-
-    pub fn declared_token_ident(&self, token: &TokenType) -> Option<Ident> {
-        // Look up the tokens TypeId
-        match utils::token::type_id(token) {
-            Some(type_id) => {
-                tracing::info!("type_id = {:#?}", type_id);
-
-                // Use the TypeId to look up the actual type
-                let type_info = sway_core::type_engine::look_up_type_id(type_id);
-                tracing::info!("type_info = {:#?}", type_info);
-
-                match type_info {
-                    TypeInfo::UnknownGeneric { name }
-                    | TypeInfo::Enum { name, .. }
-                    | TypeInfo::Struct { name, .. }
-                    | TypeInfo::Custom { name, .. } => Some(name),
-                    _ => None,
-                }
-            }
-            None => None,
-        }
-    }
-
-    pub fn token_map(&self) -> &TokenMap {
-        &self.token_map
     }
 
     pub fn get_uri(&self) -> &str {
@@ -167,41 +108,9 @@ impl TextDocument {
 
 // private methods
 impl TextDocument {
-    fn parse_typed_tokens_from_text(&self, ast_res: CompileAstResult) -> Option<Vec<TypedAstNode>> {
-        match ast_res {
-            CompileAstResult::Failure { .. } => None,
-            CompileAstResult::Success { typed_program, .. } => Some(typed_program.root.all_nodes),
-        }
-    }
+    
 
-    fn parse_tokens_from_text(
-        &mut self,
-        parsed_result: CompileResult<ParseProgram>,
-    ) -> Result<Vec<Diagnostic>, DocumentError> {
-        match parsed_result.value {
-            None => {
-                let diagnostics = capabilities::diagnostic::get_diagnostics(
-                    parsed_result.warnings,
-                    parsed_result.errors,
-                );
-                Err(DocumentError::FailedToParse(diagnostics))
-            }
-            Some(parse_program) => {
-                for node in &parse_program.root.tree.root_nodes {
-                    traverse_parse_tree::traverse_node(node, &mut self.token_map);
-                }
-
-                Ok(capabilities::diagnostic::get_diagnostics(
-                    parsed_result.warnings,
-                    parsed_result.errors,
-                ))
-            }
-        }
-    }
-
-    fn clear_token_map(&mut self) {
-        self.token_map = HashMap::new();
-    }
+    
 
     fn build_edit<'change>(
         &self,
