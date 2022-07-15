@@ -22,23 +22,31 @@ impl CallFramesTest for Contract {
         first_param()
     }
 
-    fn get_second_param_u64(arg0: u64) -> u64 {
-        second_param()
+    fn get_selector() -> u32 {
+        selector()
     }
 
-    fn get_second_param_bool(arg0: bool) -> bool {
-        second_param()
+    fn get_selector_with_arguments(arg0: u64) -> u32 {
+        selector()
     }
 
-    fn get_second_param_struct(arg0: TestStruct) -> TestStruct {
-        second_param::<TestStruct>()
+    fn get_arguments_u64(arg0: u64) -> u64 {
+        arguments()
     }
 
-    fn get_second_param_multiple_params(arg0: bool, arg1: u64) -> (bool, u64) {
-        second_param::<(bool, u64)>()
+    fn get_arguments_bool(arg0: bool) -> bool {
+        arguments()
     }
 
-    fn get_second_param_multiple_params2(arg0: u64, arg1: TestStruct, arg2: TestStruct2) -> (u64, TestStruct, TestStruct2) {
-        second_param::<(u64, TestStruct, TestStruct2)>()
+    fn get_arguments_struct(arg0: TestStruct) -> TestStruct {
+        arguments::<TestStruct>()
+    }
+
+    fn get_arguments_multiple_params(arg0: bool, arg1: u64) -> (bool, u64) {
+        arguments::<(bool, u64)>()
+    }
+
+    fn get_arguments_multiple_params2(arg0: u64, arg1: TestStruct, arg2: TestStruct2) -> (u64, TestStruct, TestStruct2) {
+        arguments::<(u64, TestStruct, TestStruct2)>()
     }
 }

@@ -58,14 +58,14 @@ async fn can_get_first_param() {
 #[tokio::test]
 async fn can_get_second_param_u64() {
     let (instance, _id) = get_call_frames_instance().await;
-    let result = instance.get_second_param_u64(101).call().await.unwrap();
+    let result = instance.get_arguments_u64(101).call().await.unwrap();
     assert_eq!(result.value, 101);
 }
 
 #[tokio::test]
 async fn can_get_second_param_bool() {
     let (instance, _id) = get_call_frames_instance().await;
-    let result = instance.get_second_param_bool(true).call().await.unwrap();
+    let result = instance.get_arguments_bool(true).call().await.unwrap();
     assert_eq!(result.value, true);
 }
 
@@ -76,14 +76,14 @@ async fn can_get_second_param_struct() {
         value_0: 42,
         value_1: true,
     };
-    let result = instance.get_second_param_struct(expected.clone()).call().await.unwrap();
+    let result = instance.get_arguments_struct(expected.clone()).call().await.unwrap();
     assert_eq!(result.value, expected);
 }
 
 #[tokio::test]
 async fn can_get_second_param_multiple_params() {
     let (instance, _id) = get_call_frames_instance().await;
-    let result = instance.get_second_param_multiple_params(true, 42).call().await.unwrap();
+    let result = instance.get_arguments_multiple_params(true, 42).call().await.unwrap();
     assert_eq!(result.value, (true, 42));
 }
 
@@ -97,7 +97,7 @@ async fn can_get_second_param_multiple_params2() {
     let expected_struct2 = TestStruct2 {
         value: 100,
     };
-    let result = instance.get_second_param_multiple_params2(300, expected_struct.clone(), expected_struct2.clone()).call().await.unwrap();
+    let result = instance.get_arguments_multiple_params2(300, expected_struct.clone(), expected_struct2.clone()).call().await.unwrap();
     assert_eq!(result.value, (300, expected_struct, expected_struct2));
 }
 
