@@ -1,17 +1,16 @@
-
 use crate::{
+    capabilities::{self, formatting::get_format_text_edits},
     core::{
         document::{DocumentError, TextDocument},
         token::{TokenMap, TokenType},
         {traverse_parse_tree, traverse_typed_tree},
     },
-    capabilities::{self, formatting::get_format_text_edits},
     sway_config::SwayConfig,
     utils,
 };
+use dashmap::DashMap;
 use forc::utils::SWAY_GIT_TAG;
 use forc_pkg::{self as pkg};
-use dashmap::DashMap;
 use serde_json::Value;
 use std::{
     collections::HashMap,
@@ -49,8 +48,8 @@ impl Session {
     }
 
     /// Check if the code editor's cursor is currently over an of our collected tokens
-    pub fn token_at_position(&self, position: Position) -> Option<(Ident, &TokenType)> {
-        match utils::common::ident_and_span_at_position(position, &self.token_map) {
+    pub fn token_at_position(&self, uri: &Url, position: Position) -> Option<(Ident, &TokenType)> {
+        match utils::common::ident_and_span_at_position(uri, position, &self.token_map) {
             Some((ident, _)) => {
                 // Retrieve the TokenType from our HashMap
                 self.token_map
@@ -141,8 +140,7 @@ impl Session {
             if let Ok(plan) =
                 pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline, SWAY_GIT_TAG)
             {
-                //TODO, pkg::check should return the warnings and errors
-                //we can then use them directly to convert them to a Vec<Diagnostic> 
+                //we can then use them directly to convert them to a Vec<Diagnostic>
                 if let Ok((parsed_res, ast_res)) = pkg::check(&plan, silent_mode) {
                     // First, populate our token_map with un-typed ast nodes
                     let r = self.parse_ast_to_tokens(parsed_res);
@@ -153,33 +151,7 @@ impl Session {
                 }
             }
         }
-
-        // First, populate our token_map with un-typed ast nodes
-        if let Some(document) = self.documents.get(uri.path()) {
-            let text = Arc::from(document.get_text());
-            match self.parse_ast_to_tokens(text) {
-                Ok(diagnostics) => self.diagnostics = diagnostics,
-                Err(error) => {
-                    tracing::warn!("{:#?}", error);
-                }
-            }
-        }
-
-        // Next, populate our token_map with typed ast nodes
-        match self.parse_ast_to_typed_tokens() {
-            Ok(diagnostics) => self.diagnostics = diagnostics,
-            Err(error) => {
-                match &error {
-                    ServerError::FailedToParse(diagnostics) => {
-                        self.diagnostics = diagnostics.clone();
-                    }
-                    _ => tracing::warn!("{:#?}", error), // change this to client.log instead of tracing
-                }
-                if let ServerError::FailedToParse(diagnostics) = error {
-                    self.diagnostics = diagnostics;
-                }
-            }
-        }
+        Err(DocumentError::FailedToParse(vec![]))
     }
 
     fn parse_ast_to_tokens(
@@ -207,22 +179,62 @@ impl Session {
         }
     }
 
-    fn parse_ast_to_typed_tokens(&self, ast_res: CompileAstResult) -> Option<Vec<TypedAstNode>> {
+    fn parse_ast_to_typed_tokens(
+        &mut self,
+        ast_res: CompileAstResult,
+    ) -> Result<Vec<Diagnostic>, DocumentError> {
         match ast_res {
-            CompileAstResult::Failure { .. } => None,
-            CompileAstResult::Success { typed_program, .. } => Some(typed_program.root.all_nodes),
+            CompileAstResult::Failure { warnings, errors } => {
+                let diagnostics = capabilities::diagnostic::get_diagnostics(warnings, errors);
+                Err(DocumentError::FailedToParse(diagnostics))
+            }
+            CompileAstResult::Success {
+                typed_program,
+                warnings,
+            } => {
+                for node in &typed_program.root.all_nodes {
+                    traverse_typed_tree::traverse_node(node, &mut self.token_map);
+                }
+
+                Ok(capabilities::diagnostic::get_diagnostics(warnings, vec![]))
+            }
         }
     }
 
-    pub fn parse_document(&self, path: &str) -> Result<Vec<Diagnostic>, DocumentError> {
-        match self.documents.get_mut(path) {
-            Some(ref mut document) => document.parse(),
-            _ => Err(DocumentError::DocumentNotFound),
+    pub fn test_typed_parse(&mut self, ast_res: CompileAstResult, uri: &Url) {
+        for ((ident, _span), token) in &self.token_map {
+            utils::debug::debug_print_ident_and_token(ident, token);
+        }
+
+        //let cursor_position = Position::new(25, 14); //Cursor's hovered over the position var decl in main()
+        let cursor_position = Position::new(29, 18); //Cursor's hovered over the ~Particle in p = decl in main()
+
+        if let Some((_, token)) = self.token_at_position(uri, cursor_position) {
+            // Look up the tokens TypeId
+            if let Some(type_id) = utils::token::type_id(token) {
+                tracing::info!("type_id = {:#?}", type_id);
+
+                // Use the TypeId to look up the actual type
+                let type_info = sway_core::type_engine::look_up_type_id(type_id);
+                tracing::info!("type_info = {:#?}", type_info);
+            }
+
+            // Find the ident / span on the returned type
+
+            // Contruct a go_to LSP request from the declerations span
         }
     }
 
     pub fn contains_sway_file(&self, url: &Url) -> bool {
         self.documents.contains_key(url.path())
+    }
+
+    pub fn handle_open_file(&self, uri: &Url) {
+        if !self.contains_sway_file(&uri) {
+            if let Ok(text_document) = TextDocument::build_from_path(uri.path()) {
+                let _ = self.store_document(text_document);
+            }
+        }
     }
 
     pub fn update_text_document(&self, url: &Url, changes: Vec<TextDocumentContentChangeEvent>) {
@@ -235,7 +247,7 @@ impl Session {
 
     // Token
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
-        if let Some((_, token)) = self.token_at_position(position) {
+        if let Some((_, token)) = self.token_at_position(url, position) {
             let token_ranges = self
                 .all_references_of_token(token)
                 .iter()
@@ -253,7 +265,7 @@ impl Session {
         position: Position,
     ) -> Option<GotoDefinitionResponse> {
         let key = url.path();
-        if let Some((_, token)) = self.token_at_position(position) {
+        if let Some((_, token)) = self.token_at_position(&url, position) {
             if let Some(decl_ident) = self.declared_token_ident(token) {
                 return Some(capabilities::go_to::to_definition_response(
                     url,
@@ -266,13 +278,13 @@ impl Session {
 
     pub fn completion_items(&self, url: &Url) -> Option<Vec<CompletionItem>> {
         Some(capabilities::completion::to_completion_items(
-                self.token_map(),
+            self.token_map(),
         ))
     }
 
     pub fn semantic_tokens(&self, url: &Url) -> Option<Vec<SemanticToken>> {
         Some(capabilities::semantic_tokens::to_semantic_tokens(
-                self.token_map(),
+            self.token_map(),
         ))
     }
 

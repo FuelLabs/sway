@@ -1,7 +1,7 @@
 use crate::core::token::TokenMap;
 use sway_core::Visibility;
 use sway_types::{Ident, Span};
-use tower_lsp::lsp_types::{Position, Range};
+use tower_lsp::lsp_types::{Position, Range, Url};
 
 pub(crate) fn extract_visibility(visibility: &Visibility) -> String {
     match visibility {
@@ -11,9 +11,11 @@ pub(crate) fn extract_visibility(visibility: &Visibility) -> String {
 }
 
 pub(crate) fn ident_and_span_at_position(
+    uri: &Url,
     cursor_position: Position,
     tokens: &TokenMap,
 ) -> Option<(Ident, Span)> {
+    //TODO only get tokens that match the URL passed in
     for (ident, span) in tokens.keys() {
         let range = get_range_from_span(span);
         if cursor_position >= range.start && cursor_position <= range.end {

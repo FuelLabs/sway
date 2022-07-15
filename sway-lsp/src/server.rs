@@ -42,8 +42,6 @@ impl Backend {
                     // store the document
                     let text_document = TextDocument::build_from_path(path)?;
                     self.session.store_document(text_document)?;
-                    // parse the document for tokens
-                    let _ = self.session.parse_document(path);
                 }
             }
         }
@@ -75,14 +73,14 @@ impl Backend {
         // and instead show the parsed tokens as warnings.
         // This is useful for debugging the lsp parser.
         if self.config.parsed_tokens_as_warnings {
-            if let Some(document) = self.session.documents.get(uri.path()) {
-                let diagnostics = debug::generate_warnings_for_parsed_tokens(document.token_map());
+            //TODO this should also take the URI and only generate warning for tokens in the map
+            //that also match that file
+            let diagnostics = debug::generate_warnings_for_parsed_tokens(self.session.token_map());
 
-                // let diagnostics = debug::generate_warnings_for_typed_tokens(&document.get_token_map());
-                self.client
-                    .publish_diagnostics(uri, diagnostics, None)
-                    .await;
-            }
+            // let diagnostics = debug::generate_warnings_for_typed_tokens(&document.get_token_map());
+            self.client
+                .publish_diagnostics(uri, diagnostics, None)
+                .await;
         } else {
             // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
             // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
@@ -128,20 +126,30 @@ impl LanguageServer for Backend {
     // Document Handlers
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let uri = params.text_document.uri.clone();
-        let diagnostics = capabilities::text_sync::handle_open_file(self.session.clone(), &params);
-        self.publish_diagnostics(uri, diagnostics).await;
+        self.session.handle_open_file(&uri);
+
+        match self.session.parse_project(uri) {
+            Ok(diagnostics) => self.publish_diagnostics(uri, diagnostics).await,
+            Err(_) => (), // report an error to the output window
+        }
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = params.text_document.uri.clone();
-        let diagnostics = capabilities::text_sync::handle_change_file(self.session.clone(), params);
-        self.publish_diagnostics(uri, diagnostics).await;
+        self.session
+            .update_text_document(&uri, params.content_changes);
+        match self.session.parse_project(uri) {
+            Ok(diagnostics) => self.publish_diagnostics(uri, diagnostics).await,
+            Err(_) => (), // report an error to the output window
+        }
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
         let uri = params.text_document.uri.clone();
-        let diagnostics = capabilities::text_sync::handle_save_file(self.session.clone(), &params);
-        self.publish_diagnostics(uri, diagnostics).await;
+        match self.session.parse_project(uri) {
+            Ok(diagnostics) => self.publish_diagnostics(uri, diagnostics).await,
+            Err(_) => (), // report an error to the output window
+        }
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {

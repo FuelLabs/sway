@@ -8,4 +8,3 @@ pub mod highlight;
 pub mod hover;
 pub mod rename;
 pub mod semantic_tokens;
-pub mod text_sync;
