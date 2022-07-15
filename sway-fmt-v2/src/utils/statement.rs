@@ -68,28 +68,33 @@ impl CommentVisitor for Statement {
             Statement::Expr {
                 expr,
                 semicolon_token_opt,
-            } => todo!(),
+            } => {
+                let mut collected_spans = expr.collect_spans();
+                if let Some(semicolon_token) = semicolon_token_opt {
+                    collected_spans.push(CommentSpan::from_span(semicolon_token.span()));
+                }
+                collected_spans
+            }
         }
     }
 }
 
 impl CommentVisitor for StatementLet {
     fn collect_spans(&self) -> Vec<CommentSpan> {
-        let mut collected_spans = Vec::new();
         // Add let token's CommentSpan
-        collected_spans.push(CommentSpan::from_span(self.let_token.span()));
+        let mut collected_spans = vec![CommentSpan::from_span(self.let_token.span())];
         // Add pattern's CommentSpan
         collected_spans.append(&mut self.pattern.collect_spans());
         // Add ty's CommentSpan if it exists
         if let Some(ty) = &self.ty_opt {
             collected_spans.push(CommentSpan::from_span(ty.0.span()));
             // TODO: determine if we are allowing comments between `:` and ty
-            collected_spans.push(CommentSpan::from_span(ty.1.span()));
+            collected_spans.append(&mut ty.1.collect_spans());
         }
         // Add eq token's CommentSpan
         collected_spans.push(CommentSpan::from_span(self.eq_token.span()));
         // Add Expr's CommentSpan
-        // collected_spans.append(&mut self.expr.collect_spans());
+        collected_spans.append(&mut self.expr.collect_spans());
         collected_spans.push(CommentSpan::from_span(self.semicolon_token.span()));
         collected_spans
     }

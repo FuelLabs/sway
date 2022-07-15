@@ -9,6 +9,7 @@ impl CommentVisitor for Item {
         match &self.value {
             Struct(item_struct) => item_struct.collect_spans(),
             Enum(item_enum) => item_enum.collect_spans(),
+            Fn(item_fn) => item_fn.collect_spans(),
             _ => Vec::new(),
         }
     }

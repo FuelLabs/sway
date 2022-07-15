@@ -1,4 +1,7 @@
-use crate::fmt::{Format, FormattedCode, Formatter, FormatterError};
+use crate::{
+    fmt::{Format, FormattedCode, Formatter, FormatterError},
+    utils::comments::{CommentSpan, CommentVisitor},
+};
 use std::fmt::Write;
 use sway_parse::{
     brackets::SquareBrackets,
@@ -58,6 +61,7 @@ impl Format for TyArrayDescriptor {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         self.ty.format(formatted_code, formatter)?;
+        // TODO: once expr formatting is completly implemented switch this to use the actual formatting rather than the raw str coming from span
         write!(
             formatted_code,
             "{} {}",
@@ -101,5 +105,54 @@ impl Format for TyTupleDescriptor {
             tail.format(formatted_code, formatter)?;
         }
         Ok(())
+    }
+}
+
+impl CommentVisitor for Ty {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        match self {
+            Ty::Path(path) => path.collect_spans(),
+            Ty::Tuple(tuple) => tuple.collect_spans(),
+            Ty::Array(array) => array.collect_spans(),
+            Ty::Str { str_token, length } => {
+                let mut collected_spans = vec![CommentSpan::from_span(str_token.span())];
+                collected_spans.append(&mut length.collect_spans());
+                collected_spans
+            }
+            Ty::Infer { underscore_token } => vec![CommentSpan::from_span(underscore_token.span())],
+        }
+    }
+}
+
+impl CommentVisitor for TyTupleDescriptor {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_spans = Vec::new();
+        if let TyTupleDescriptor::Cons {
+            head,
+            comma_token,
+            tail,
+        } = self
+        {
+            // Collect head's CommentSpans
+            collected_spans.append(&mut head.collect_spans());
+            // Add comma_token's CommentSpan
+            collected_spans.push(CommentSpan::from_span(comma_token.span()));
+            // Collect tail's CommentSpans
+            collected_spans.append(&mut tail.collect_spans());
+        }
+        collected_spans
+    }
+}
+
+impl CommentVisitor for TyArrayDescriptor {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_spans = Vec::new();
+        // Collect ty's CommentSpans
+        collected_spans.append(&mut self.ty.collect_spans());
+        // Add semicolon token's CommentSpan
+        collected_spans.push(CommentSpan::from_span(self.semicolon_token.span()));
+        // Collect length's CommentSpans
+        collected_spans.append(&mut self.length.collect_spans());
+        collected_spans
     }
 }

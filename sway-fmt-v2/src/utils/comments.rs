@@ -9,7 +9,7 @@ use std::{
     sync::Arc,
 };
 use sway_parse::{
-    brackets::Parens,
+    brackets::{Parens, SquareBrackets},
     keywords::CommaToken,
     token::{lex_commented, Comment, CommentedTokenTree, CommentedTree},
     Braces, Module, TypeField,
@@ -136,6 +136,38 @@ where
     }
 }
 
+impl<T> CommentVisitor for SquareBrackets<T>
+where
+    T: CommentVisitor + Clone,
+{
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_spans = Vec::new();
+        let mut opening_bracket_span = CommentSpan::from_span(self.span());
+        opening_bracket_span.end = opening_bracket_span.start + 1;
+        // Add opening bracket's span
+        collected_spans.push(opening_bracket_span);
+        // Add T's collected CommentSpan
+        collected_spans.append(&mut self.clone().into_inner().collect_spans());
+        let mut closing_bracket_span = CommentSpan::from_span(self.span());
+        closing_bracket_span.start = closing_bracket_span.end - 1;
+        // Add closing bracket's CommentSpan
+        collected_spans.push(closing_bracket_span);
+        collected_spans
+    }
+}
+
+impl<T> CommentVisitor for Vec<T>
+where
+    T: CommentVisitor,
+{
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_spans = Vec::new();
+        for t in self {
+            collected_spans.append(&mut t.collect_spans());
+        }
+        collected_spans
+    }
+}
 impl CommentVisitor for CommaToken {
     fn collect_spans(&self) -> Vec<CommentSpan> {
         vec![(CommentSpan::from_span(self.span()))]
@@ -157,7 +189,6 @@ pub fn handle_comments(
 ) -> Result<(), FormatterError> {
     // Collect Span -> Comment mapping from unformatted input
     let comment_map = comment_map_from_src(unformatted_input.clone())?;
-
     // Parse unformatted code so that we can get the spans of items in their original places.
     // This is required since we collected the spans in from unformatted source file.
     let unformatted_module = sway_parse::parse_file(unformatted_input, path.clone())?;
@@ -262,13 +293,18 @@ fn insert_after_span(
         &(0..comments_to_insert[0].1)
             .map(|_| ' ')
             .collect::<String>(),
-        comments_to_insert[0].0.span.as_str()
+        format_comment(&comments_to_insert[0].0)
     );
     for comment in comments_to_insert.iter().skip(1) {
         let whitespaces = (0..(comment.1 - comment_str.len() - 1))
             .map(|_| ' ')
             .collect::<String>();
-        write!(comment_str, "\n{}{}", whitespaces, comment.0.span.as_str())?;
+        write!(
+            comment_str,
+            "\n{}{}",
+            whitespaces,
+            &format_comment(&comment.0)
+        )?;
     }
     src_rope.insert(from.end + offset, &comment_str);
     formatted_code.clear();
@@ -276,6 +312,15 @@ fn insert_after_span(
     Ok(comment_str.chars().count())
 }
 
+/// Applies formatting to the comment.
+/// Currently just checks if it is a multiline comment, if that is the case it adds a trailing `/` to the end.
+fn format_comment(comment: &Comment) -> String {
+    if comment.span().str().starts_with("/*") {
+        format!("{}/", comment.span().str())
+    } else {
+        String::from(comment.span().str())
+    }
+}
 /// While searching for a comment we need the possible places a comment can be placed in a structure
 /// `collect_spans` collects all field's spans so that we can check in between them.
 pub trait CommentVisitor {

@@ -208,6 +208,30 @@ impl Format for FnArg {
     }
 }
 
+impl CommentVisitor for ItemFn {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_spans = Vec::new();
+        collected_spans.append(&mut self.fn_signature.collect_spans());
+        collected_spans.append(&mut self.body.collect_spans());
+        collected_spans
+    }
+}
+
+impl CommentVisitor for CodeBlockContents {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_span = Vec::new();
+        // Collect statements' CommentSpans
+        for statement in self.statements.iter() {
+            collected_span.append(&mut statement.collect_spans());
+        }
+        // Collect expr's CommentSpans if it exists
+        if let Some(expr) = &self.final_expr_opt {
+            collected_span.append(&mut expr.collect_spans());
+        }
+        collected_span
+    }
+}
+
 impl CommentVisitor for FnSignature {
     fn collect_spans(&self) -> Vec<CommentSpan> {
         let mut collected_spans = Vec::new();

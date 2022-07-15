@@ -137,26 +137,14 @@ impl CommentVisitor for Pattern {
                 collected_spans.append(&mut literal.collect_spans());
             }
             Pattern::Constant(constant) => {
-                // TODO: Should we look for a comment inside the path expression? if so we will need to implement CommentVisitor for PathExpr
-                // For now we are assuming there will be no comments inside the PathExpr so the following comment will be omitted
-                // root::parent/* i am a comment*/::child
-                // I am not sure if this is something the language will allow.
-                collected_spans.push(CommentSpan::from_span(constant.span()));
+                collected_spans.append(&mut constant.collect_spans());
             }
             Pattern::Constructor { path, args } => {
-                // TODO: Should we look for a comment inside the path expression? if so we will need to implement CommentVisitor for PathExpr
-                // For now we are assuming there will be no comments inside the PathExpr so the following comment will be omitted
-                // root::parent/* i am a comment*/::child
-                // I am not sure if this is something the language will allow.
-                collected_spans.push(CommentSpan::from_span(path.span()));
+                collected_spans.append(&mut path.collect_spans());
                 collected_spans.append(&mut args.collect_spans());
             }
             Pattern::Struct { path, fields } => {
-                // TODO: Should we look for a comment inside the path expression? if so we will need to implement CommentVisitor for PathExpr
-                // For now we are assuming there will be no comments inside the PathExpr so the following comment will be omitted
-                // root::parent/* i am a comment*/::child
-                // I am not sure if this is something the language will allow.
-                collected_spans.push(CommentSpan::from_span(path.span()));
+                collected_spans.append(&mut path.collect_spans());
                 collected_spans.append(&mut fields.collect_spans());
             }
             Pattern::Tuple(tuple) => {

@@ -440,6 +440,10 @@ pub enum Bazz { // Here is a comment
              //    \ \__\   \ \_______\ \_______\ \_______\       \ \_______\ \__\ \__\ \_______\____\_\  \
              //     \|__|    \|_______|\|_______|\|_______|        \|_______|\|__|\|__|\|_______|\_________\
              //                                                                                  \|_________|
+}
+
+fn hello_world( baz: /* this is a comment */ u64) {
+
 }"#;
         let correct_sway_code = r#"contract;
 
@@ -466,11 +470,14 @@ pub enum Bazz { // Here is a comment
              //    \ \__\   \ \_______\ \_______\ \_______\       \ \_______\ \__\ \__\ \_______\____\_\  \
              //     \|__|    \|_______|\|_______|\|_______|        \|_______|\|__|\|__|\|_______|\_________\
              //                                                                                  \|_________|
+}
+fn hello_world(baz: /* this is a comment */ u64) {
 }"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        println!("{}", formatted_sway_code);
+        println!("{}\n\n\n", formatted_sway_code);
+        println!("\n\n\n{}", correct_sway_code);
         assert_eq!(correct_sway_code, formatted_sway_code)
     }
 }
