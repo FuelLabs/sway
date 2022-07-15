@@ -318,7 +318,7 @@ fn format_comment(comment: &Comment) -> String {
     if comment.span().str().starts_with("/*") {
         format!("{}/", comment.span().str())
     } else {
-        String::from(comment.span().str())
+        comment.span().str()
     }
 }
 /// While searching for a comment we need the possible places a comment can be placed in a structure
