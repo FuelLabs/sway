@@ -1,10 +1,9 @@
 script;
 
-use std::assert::assert;
+use std::{assert::assert, tx::tx_input_pointer};
 
 fn main() -> bool {
-    const TX_POINTER = 42;
-    asm(r1, r2: TX_POINTER ) {
+    asm(r1, r2: tx_input_pointer() ) {
         gtf r1 r2 i1;
         r1: u64
     };
