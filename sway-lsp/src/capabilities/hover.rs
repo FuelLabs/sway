@@ -9,12 +9,11 @@ use crate::{
         token::to_ident_key,
     },
 };
-use std::sync::Arc;
 use sway_core::{semantic_analysis::ast_node::TypedDeclaration, Declaration, Visibility};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Hover, HoverContents, HoverParams, MarkupContent, MarkupKind};
 
-pub fn hover_data(session: Arc<Session>, params: HoverParams) -> Option<Hover> {
+pub fn hover_data(session: &Session, params: HoverParams) -> Option<Hover> {
     let position = params.text_document_position_params.position;
     let url = &params.text_document_position_params.text_document.uri;
     if let Some((_, token)) = session.token_at_position(url, position) {

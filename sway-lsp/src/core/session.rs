@@ -12,19 +12,13 @@ use dashmap::DashMap;
 use forc::utils::SWAY_GIT_TAG;
 use forc_pkg::{self as pkg};
 use serde_json::Value;
-use std::{
-    collections::HashMap,
-    path::PathBuf,
-    sync::{Arc, LockResult, RwLock},
-};
-use sway_core::{
-    semantic_analysis::ast_node::TypedAstNode, CompileAstResult, CompileResult, ParseProgram,
-    TypeInfo,
-};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
+
+use sway_core::{CompileAstResult, CompileResult, ParseProgram, TypeInfo};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{
-    CompletionItem, Diagnostic, GotoDefinitionResponse, Position, Range, SemanticToken,
-    SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
+    CompletionItem, Diagnostic, GotoDefinitionParams, GotoDefinitionResponse, Location, Position,
+    Range, SemanticToken, SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
 };
 
 pub type Documents = DashMap<String, TextDocument>;
@@ -32,7 +26,7 @@ pub type Documents = DashMap<String, TextDocument>;
 #[derive(Debug)]
 pub struct Session {
     pub documents: Documents,
-    pub config: RwLock<SwayConfig>,
+    pub config: SwayConfig,
     pub token_map: TokenMap,
     pub manifest: Option<pkg::ManifestFile>,
 }
@@ -41,7 +35,7 @@ impl Session {
     pub fn new() -> Self {
         Session {
             documents: DashMap::new(),
-            config: RwLock::new(SwayConfig::default()),
+            config: SwayConfig::default(),
             token_map: HashMap::new(),
             manifest: None,
         }
@@ -103,10 +97,8 @@ impl Session {
     }
 
     // update sway config
-    pub fn update_config(&self, options: Value) {
-        if let LockResult::Ok(mut config) = self.config.write() {
-            *config = SwayConfig::with_options(options);
-        }
+    pub fn update_config(&mut self, options: Value) {
+        self.config = SwayConfig::with_options(options);
     }
 
     // Document
@@ -127,7 +119,7 @@ impl Session {
         }
     }
 
-    pub fn parse_project(&mut self, uri: Url) -> Result<Vec<Diagnostic>, DocumentError> {
+    pub fn parse_project(&mut self, uri: &Url) -> Result<Vec<Diagnostic>, DocumentError> {
         self.token_map.clear();
 
         let manifest_dir = PathBuf::from(uri.path());
@@ -147,7 +139,7 @@ impl Session {
                     // Next, populate our token_map with typed ast nodes
                     let rr = self.parse_ast_to_typed_tokens(ast_res);
                     //self.test_typed_parse(ast_res);
-                    return r;
+                    return rr;
                 }
             }
         }
@@ -261,16 +253,16 @@ impl Session {
 
     pub fn token_definition_response(
         &self,
-        url: Url,
-        position: Position,
+        params: GotoDefinitionParams,
     ) -> Option<GotoDefinitionResponse> {
+        let url = params.text_document_position_params.text_document.uri;
+        let position = params.text_document_position_params.position;
+
         let key = url.path();
         if let Some((_, token)) = self.token_at_position(&url, position) {
             if let Some(decl_ident) = self.declared_token_ident(token) {
-                return Some(capabilities::go_to::to_definition_response(
-                    url,
-                    &decl_ident,
-                ));
+                let range = utils::common::get_range_from_span(&decl_ident.span());
+                return Some(GotoDefinitionResponse::Scalar(Location::new(url, range)));
             }
         }
         None
@@ -297,13 +289,8 @@ impl Session {
 
     pub fn format_text(&self, url: &Url) -> Option<Vec<TextEdit>> {
         if let Some(document) = self.documents.get(url.path()) {
-            match self.config.read() {
-                std::sync::LockResult::Ok(config) => {
-                    let config: SwayConfig = *config;
-                    get_format_text_edits(Arc::from(document.get_text()), config.into())
-                }
-                _ => None,
-            }
+            let config: SwayConfig = self.config;
+            get_format_text_edits(Arc::from(document.get_text()), config.into())
         } else {
             None
         }

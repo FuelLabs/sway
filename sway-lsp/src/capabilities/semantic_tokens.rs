@@ -3,22 +3,16 @@ use crate::core::{
     token::{AstToken, TokenMap},
 };
 use crate::utils::common::get_range_from_span;
-use std::sync::Arc;
 use sway_core::{Declaration, Expression, Literal};
 use sway_types::Span;
 use tower_lsp::lsp_types::{
     SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens,
-    SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions, SemanticTokensParams,
-    SemanticTokensResult, SemanticTokensServerCapabilities,
+    SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions, SemanticTokensResult,
+    SemanticTokensServerCapabilities, Url,
 };
 
 // https://github.com/microsoft/vscode-extension-samples/blob/5ae1f7787122812dcc84e37427ca90af5ee09f14/semantic-tokens-sample/vscode.proposed.d.ts#L71
-pub fn semantic_tokens_full(
-    session: Arc<Session>,
-    params: SemanticTokensParams,
-) -> Option<SemanticTokensResult> {
-    let url = params.text_document.uri;
-
+pub fn semantic_tokens_full(session: &Session, url: &Url) -> Option<SemanticTokensResult> {
     match session.semantic_tokens(&url) {
         Some(semantic_tokens) => {
             if semantic_tokens.is_empty() {

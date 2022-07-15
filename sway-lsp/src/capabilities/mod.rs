@@ -1,9 +1,7 @@
 pub mod completion;
 pub mod diagnostic;
 pub mod document_symbol;
-pub mod file_sync;
 pub mod formatting;
-pub mod go_to;
 pub mod highlight;
 pub mod hover;
 pub mod rename;

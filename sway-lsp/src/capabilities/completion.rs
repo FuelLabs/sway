@@ -1,29 +1,12 @@
-use crate::core::{
-    session::Session,
-    token::{AstToken, TokenMap, TypedAstToken},
-};
+use crate::core::token::{AstToken, TokenMap, TypedAstToken};
 use crate::utils::token::is_initial_declaration;
-use std::sync::Arc;
 use sway_core::{
     semantic_analysis::ast_node::{
         expression::typed_expression_variant::TypedExpressionVariant, TypedDeclaration,
     },
     Declaration, Expression,
 };
-use tower_lsp::lsp_types::{
-    CompletionItem, CompletionItemKind, CompletionParams, CompletionResponse,
-};
-
-pub fn get_completion(
-    session: Arc<Session>,
-    params: CompletionParams,
-) -> Option<CompletionResponse> {
-    let url = params.text_document_position.text_document.uri;
-
-    session
-        .completion_items(&url)
-        .map(CompletionResponse::Array)
-}
+use tower_lsp::lsp_types::{CompletionItem, CompletionItemKind};
 
 pub fn to_completion_items(token_map: &TokenMap) -> Vec<CompletionItem> {
     let mut completion_items = vec![];

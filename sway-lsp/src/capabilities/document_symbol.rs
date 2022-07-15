@@ -13,12 +13,6 @@ use sway_core::{
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{DocumentSymbolResponse, Location, SymbolInformation, SymbolKind, Url};
 
-pub fn document_symbol(session: Arc<Session>, url: Url) -> Option<DocumentSymbolResponse> {
-    session
-        .symbol_information(&url)
-        .map(DocumentSymbolResponse::Flat)
-}
-
 pub fn to_symbol_information(token_map: &TokenMap, url: Url) -> Vec<SymbolInformation> {
     let mut symbols: Vec<SymbolInformation> = vec![];
 

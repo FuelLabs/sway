@@ -2,24 +2,25 @@ use crate::capabilities;
 use crate::core::{
     document::{DocumentError, TextDocument},
     session::Session,
+    token::TokenMap,
 };
 use crate::utils::debug::{self, DebugFlags};
 use forc_util::find_manifest_dir;
-use std::sync::Arc;
 use sway_utils::helpers::get_sway_files;
+use tokio::sync::Mutex;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, Client, LanguageServer};
 
 #[derive(Debug)]
 pub struct Backend {
     pub client: Client,
-    session: Arc<Session>,
+    session: Mutex<Session>,
     config: DebugFlags,
 }
 
 impl Backend {
     pub fn new(client: Client, config: DebugFlags) -> Self {
-        let session = Arc::new(Session::new());
+        let session = Mutex::new(Session::new());
         Backend {
             client,
             session,
@@ -31,17 +32,19 @@ impl Backend {
         self.client.log_message(MessageType::INFO, message).await;
     }
 
-    fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
+    async fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
         let curr_dir = std::env::current_dir().unwrap();
 
         if let Some(path) = find_manifest_dir(&curr_dir) {
             let files = get_sway_files(path);
 
+            let session = self.session.lock().await;
+
             for file_path in files {
                 if let Some(path) = file_path.to_str() {
                     // store the document
                     let text_document = TextDocument::build_from_path(path)?;
-                    self.session.store_document(text_document)?;
+                    session.store_document(text_document)?;
                 }
             }
         }
@@ -68,24 +71,29 @@ fn capabilities() -> ServerCapabilities {
 }
 
 impl Backend {
-    async fn publish_diagnostics(&self, uri: Url, diagnostics: Vec<Diagnostic>) {
+    async fn publish_diagnostics(
+        &self,
+        uri: &Url,
+        diagnostics: Vec<Diagnostic>,
+        token_map: &TokenMap,
+    ) {
         // If parsed_tokens_as_warnings is true, take over the normal error and warning display behavior
         // and instead show the parsed tokens as warnings.
         // This is useful for debugging the lsp parser.
         if self.config.parsed_tokens_as_warnings {
             //TODO this should also take the URI and only generate warning for tokens in the map
             //that also match that file
-            let diagnostics = debug::generate_warnings_for_parsed_tokens(self.session.token_map());
+            let diagnostics = debug::generate_warnings_for_parsed_tokens(token_map);
 
-            // let diagnostics = debug::generate_warnings_for_typed_tokens(&document.get_token_map());
+            // let diagnostics = debug::generate_warnings_for_typed_tokens(token_map);
             self.client
-                .publish_diagnostics(uri, diagnostics, None)
+                .publish_diagnostics(uri.clone(), diagnostics, None)
                 .await;
         } else {
             // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
             // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
             self.client
-                .publish_diagnostics(uri, diagnostics, None)
+                .publish_diagnostics(uri.clone(), diagnostics, None)
                 .await;
         }
     }
@@ -95,7 +103,8 @@ impl Backend {
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
         if let Some(options) = params.initialization_options {
-            self.session.update_config(options);
+            let mut session = self.session.lock().await;
+            session.update_config(options);
         }
 
         self.client
@@ -103,7 +112,7 @@ impl LanguageServer for Backend {
             .await;
 
         // iterate over the project dir, parse all sway files
-        let _ = self.parse_and_store_sway_files();
+        let _ = self.parse_and_store_sway_files().await;
 
         Ok(InitializeResult {
             server_info: None,
@@ -125,43 +134,56 @@ impl LanguageServer for Backend {
 
     // Document Handlers
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
+        let mut session = self.session.lock().await;
         let uri = params.text_document.uri.clone();
-        self.session.handle_open_file(&uri);
+        session.handle_open_file(&uri);
 
-        match self.session.parse_project(uri) {
-            Ok(diagnostics) => self.publish_diagnostics(uri, diagnostics).await,
+        match session.parse_project(&uri) {
+            Ok(diagnostics) => {
+                self.publish_diagnostics(&uri, diagnostics, &session.token_map)
+                    .await
+            }
             Err(_) => (), // report an error to the output window
         }
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
+        let mut session = self.session.lock().await;
         let uri = params.text_document.uri.clone();
-        self.session
-            .update_text_document(&uri, params.content_changes);
-        match self.session.parse_project(uri) {
-            Ok(diagnostics) => self.publish_diagnostics(uri, diagnostics).await,
+        session.update_text_document(&uri, params.content_changes);
+        match session.parse_project(&uri) {
+            Ok(diagnostics) => {
+                self.publish_diagnostics(&uri, diagnostics, &session.token_map)
+                    .await
+            }
             Err(_) => (), // report an error to the output window
         }
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
+        let mut session = self.session.lock().await;
         let uri = params.text_document.uri.clone();
-        match self.session.parse_project(uri) {
-            Ok(diagnostics) => self.publish_diagnostics(uri, diagnostics).await,
+        match session.parse_project(&uri) {
+            Ok(diagnostics) => {
+                self.publish_diagnostics(&uri, diagnostics, &session.token_map)
+                    .await
+            }
             Err(_) => (), // report an error to the output window
         }
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
-        let events = params.changes;
-        capabilities::file_sync::handle_watched_files(self.session.clone(), events);
+        for event in params.changes {
+            if event.typ == FileChangeType::DELETED {
+                let session = self.session.lock().await;
+                let _ = session.remove_document(&event.uri);
+            }
+        }
     }
 
     async fn hover(&self, params: HoverParams) -> jsonrpc::Result<Option<Hover>> {
-        Ok(capabilities::hover::hover_data(
-            self.session.clone(),
-            params,
-        ))
+        let session = self.session.lock().await;
+        Ok(capabilities::hover::hover_data(&session, params))
     }
 
     async fn completion(
@@ -170,29 +192,31 @@ impl LanguageServer for Backend {
     ) -> jsonrpc::Result<Option<CompletionResponse>> {
         // TODO
         // here we would also need to provide a list of builtin methods not just the ones from the document
-        Ok(capabilities::completion::get_completion(
-            self.session.clone(),
-            params,
-        ))
+        let session = self.session.lock().await;
+        let url = params.text_document_position.text_document.uri;
+        Ok(session
+            .completion_items(&url)
+            .map(CompletionResponse::Array))
     }
 
     async fn document_symbol(
         &self,
         params: DocumentSymbolParams,
     ) -> jsonrpc::Result<Option<DocumentSymbolResponse>> {
-        Ok(capabilities::document_symbol::document_symbol(
-            self.session.clone(),
-            params.text_document.uri,
-        ))
+        let session = self.session.lock().await;
+        Ok(session
+            .symbol_information(&params.text_document.uri)
+            .map(DocumentSymbolResponse::Flat))
     }
 
     async fn semantic_tokens_full(
         &self,
         params: SemanticTokensParams,
     ) -> jsonrpc::Result<Option<SemanticTokensResult>> {
+        let session = self.session.lock().await;
+        let url = params.text_document.uri;
         Ok(capabilities::semantic_tokens::semantic_tokens_full(
-            self.session.clone(),
-            params,
+            &session, &url,
         ))
     }
 
@@ -200,44 +224,38 @@ impl LanguageServer for Backend {
         &self,
         params: DocumentHighlightParams,
     ) -> jsonrpc::Result<Option<Vec<DocumentHighlight>>> {
-        Ok(capabilities::highlight::get_highlights(
-            self.session.clone(),
-            params,
-        ))
+        let session = self.session.lock().await;
+        Ok(capabilities::highlight::get_highlights(&session, params))
     }
 
     async fn goto_definition(
         &self,
         params: GotoDefinitionParams,
     ) -> jsonrpc::Result<Option<GotoDefinitionResponse>> {
-        Ok(capabilities::go_to::go_to_definition(
-            self.session.clone(),
-            params,
-        ))
+        let session = self.session.lock().await;
+        Ok(session.token_definition_response(params))
     }
 
     async fn formatting(
         &self,
         params: DocumentFormattingParams,
     ) -> jsonrpc::Result<Option<Vec<TextEdit>>> {
-        Ok(capabilities::formatting::format_document(
-            self.session.clone(),
-            params,
-        ))
+        let session = self.session.lock().await;
+        let uri = params.text_document.uri.clone();
+        Ok(session.format_text(&uri))
     }
 
     async fn rename(&self, params: RenameParams) -> jsonrpc::Result<Option<WorkspaceEdit>> {
-        Ok(capabilities::rename::rename(self.session.clone(), params))
+        let session = self.session.lock().await;
+        Ok(capabilities::rename::rename(&session, params))
     }
 
     async fn prepare_rename(
         &self,
         params: TextDocumentPositionParams,
     ) -> jsonrpc::Result<Option<PrepareRenameResponse>> {
-        Ok(capabilities::rename::prepare_rename(
-            self.session.clone(),
-            params,
-        ))
+        let session = self.session.lock().await;
+        Ok(capabilities::rename::prepare_rename(&session, params))
     }
 }
 

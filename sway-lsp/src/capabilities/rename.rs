@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{
     PrepareRenameResponse, RenameParams, TextDocumentPositionParams, TextEdit, WorkspaceEdit,
@@ -7,7 +7,7 @@ use tower_lsp::lsp_types::{
 use crate::core::{session::Session, token::AstToken};
 use crate::utils::common::get_range_from_span;
 
-pub fn rename(session: Arc<Session>, params: RenameParams) -> Option<WorkspaceEdit> {
+pub fn rename(session: &Session, params: RenameParams) -> Option<WorkspaceEdit> {
     let new_name = params.new_name;
     let url = params.text_document_position.text_document.uri;
     let position = params.text_document_position.position;
@@ -31,7 +31,7 @@ pub fn rename(session: Arc<Session>, params: RenameParams) -> Option<WorkspaceEd
 }
 
 pub fn prepare_rename(
-    session: Arc<Session>,
+    session: &Session,
     params: TextDocumentPositionParams,
 ) -> Option<PrepareRenameResponse> {
     let url = params.text_document.uri;
