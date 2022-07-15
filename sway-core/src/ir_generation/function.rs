@@ -447,27 +447,30 @@ impl FnCompiler {
                     }
                 };
 
-                let targ = type_arguments[0].clone();
-                let ir_type = convert_resolved_typeid(context, &targ.type_id, &targ.span)?;
+                // Get the target type from the type argument provided
+                let target_type = type_arguments[0].clone();
+                let target_ir_type =
+                    convert_resolved_typeid(context, &target_type.type_id, &target_type.span)?;
 
-                let reg = self
+                let span_md_idx = MetadataIndex::from_span(context, &span);
+
+                // The `gtf` instruction
+                let gtf_reg = self
                     .current_block
                     .ins(context)
-                    .gtf(index, tx_field_id, None);
+                    .gtf(index, tx_field_id, span_md_idx);
 
-                // This is very very very hacky. I need to find a better way.
-                // The idea here is to convert the `u64` coming out of `gtf` into type T where T is
-                // whatever type indicated in the angle brackets of `__gtf`.
-                Ok(self.current_block.ins(context).asm_block(
-                    vec![AsmArg {
-                        name: Ident::new(crate::span::Span::new(" ".into(), 0, 0, None).unwrap()),
-                        initializer: Some(reg),
-                    }],
-                    vec![],
-                    ir_type,
-                    None,
-                    None,
-                ))
+                // Reinterpret the result of th `gtf` instruction (which is always `u64`) as type
+                // `T`. This requires an `int_to_ptr` instruction if `T` is a reference type.
+                if target_ir_type.is_copy_type() {
+                    Ok(gtf_reg)
+                } else {
+                    Ok(self.current_block.ins(context).int_to_ptr(
+                        gtf_reg,
+                        target_ir_type,
+                        span_md_idx,
+                    ))
+                }
             }
         }
     }
