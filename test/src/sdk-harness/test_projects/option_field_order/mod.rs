@@ -8,7 +8,7 @@ abigen!(
 #[tokio::test]
 async fn default_is_none() {
     let instance = setup().await;
-    assert_eq!(true, instance.is_none().call().await.unwrap().value);
+    assert!(instance.is_none().call().await.unwrap().value);
 }
 
 async fn setup() -> MyContract {
