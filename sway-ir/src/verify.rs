@@ -141,6 +141,7 @@ impl<'a> InstructionVerifier<'a> {
                         value,
                         indices,
                     } => self.verify_insert_value(aggregate, ty, value, indices)?,
+                    Instruction::IntToPtr(value, ty) => self.verify_int_to_ptr(value, ty)?,
                     Instruction::Load(ptr) => self.verify_load(ptr)?,
                     Instruction::Nop => (),
                     Instruction::Phi(pairs) => self.verify_phi(&pairs[..])?,
@@ -466,6 +467,11 @@ impl<'a> InstructionVerifier<'a> {
             }
             _otherwise => Err(IrError::VerifyAccessValueOnNonStruct),
         }
+    }
+
+    fn verify_int_to_ptr(&self, _value: &Value, _ty: &Type) -> Result<(), IrError> {
+        // TODO
+        Ok(())
     }
 
     fn verify_load(&self, src_val: &Value) -> Result<(), IrError> {

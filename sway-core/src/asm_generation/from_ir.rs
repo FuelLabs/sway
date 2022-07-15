@@ -537,6 +537,7 @@ impl<'ir> AsmBuilder<'ir> {
                     indices,
                     ..
                 } => self.compile_insert_value(instr_val, aggregate, value, indices),
+                Instruction::IntToPtr(val, _) => self.compile_int_to_ptr(instr_val, val),
                 Instruction::Load(src_val) => check!(
                     self.compile_load(instr_val, src_val),
                     return err(warnings, errors),
@@ -1378,6 +1379,16 @@ impl<'ir> AsmBuilder<'ir> {
         // We set the 'instruction' register to the base register, so that cascading inserts will
         // work.
         self.reg_map.insert(*instr_val, base_reg);
+    }
+
+    fn compile_int_to_ptr(&mut self, instr_val: &Value, int_to_ptr_val: &Value) {
+        let val_reg = self.value_to_register(int_to_ptr_val);
+        let instr_reg = self.reg_seqr.next();
+        self.bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::MOVE(instr_reg, val_reg)),
+            comment: "move register into abi function".to_owned(),
+            owning_span: instr_val.get_span(self.context),
+        });
     }
 
     fn compile_load(&mut self, instr_val: &Value, src_val: &Value) -> CompileResult<()> {

@@ -82,6 +82,7 @@ pub enum Instruction {
         value: Value,
         indices: Vec<u64>,
     },
+    IntToPtr(Value, Type),
     /// Read a value from a memory pointer.
     Load(Value),
     /// No-op, handy as a placeholder instruction.
@@ -93,17 +94,29 @@ pub enum Instruction {
     /// Return from a function.
     Ret(Value, Type),
     /// Read a quad word from a storage slot. Type of `load_val` must be a B256 ptr.
-    StateLoadQuadWord { load_val: Value, key: Value },
+    StateLoadQuadWord {
+        load_val: Value,
+        key: Value,
+    },
     /// Read a single word from a storage slot.
     StateLoadWord(Value),
     /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
     /// Uint(256) ptr.
-    StateStoreQuadWord { stored_val: Value, key: Value },
+    StateStoreQuadWord {
+        stored_val: Value,
+        key: Value,
+    },
     /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
     /// Uint(64) value.
-    StateStoreWord { stored_val: Value, key: Value },
+    StateStoreWord {
+        stored_val: Value,
+        key: Value,
+    },
     /// Write a value to a memory pointer.
-    Store { dst_val: Value, stored_val: Value },
+    Store {
+        dst_val: Value,
+        stored_val: Value,
+    },
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -163,6 +176,7 @@ impl Instruction {
             Instruction::GetStorageKey => Some(Type::B256),
             Instruction::InsertElement { array, .. } => array.get_type(context),
             Instruction::InsertValue { aggregate, .. } => aggregate.get_type(context),
+            Instruction::IntToPtr(_, ty) => Some(*ty),
             Instruction::Load(ptr_val) => {
                 if let ValueDatum::Instruction(ins) = &context.values[ptr_val.0].value {
                     ins.get_type(context)
@@ -290,6 +304,7 @@ impl Instruction {
             }
             Instruction::ExtractValue { aggregate, .. } => replace(aggregate),
             Instruction::GetStorageKey => (),
+            Instruction::IntToPtr(value, _) => replace(value),
             Instruction::Load(_) => (),
             Instruction::Nop => (),
             Instruction::Phi(pairs) => pairs.iter_mut().for_each(|(_, val)| replace(val)),
@@ -416,6 +431,19 @@ impl<'a> InstructionInserter<'a> {
             .instructions
             .push(bitcast_val);
         bitcast_val
+    }
+
+    pub fn int_to_ptr(self, value: Value, ty: Type, span_md_idx: Option<MetadataIndex>) -> Value {
+        let int_to_ptr_val = Value::new_instruction(
+            self.context,
+            Instruction::IntToPtr(value, ty),
+            span_md_idx,
+            None,
+        );
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(int_to_ptr_val);
+        int_to_ptr_val
     }
 
     pub fn branch(
