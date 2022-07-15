@@ -134,7 +134,7 @@ impl CommentVisitor for Pattern {
                 collected_spans.push(CommentSpan::from_span(name.span()));
             }
             Pattern::Literal(literal) => {
-                collected_spans.push(CommentSpan::from_span(literal.span()));
+                collected_spans.append(&mut literal.collect_spans());
             }
             Pattern::Constant(constant) => {
                 // TODO: Should we look for a comment inside the path expression? if so we will need to implement CommentVisitor for PathExpr
@@ -142,7 +142,6 @@ impl CommentVisitor for Pattern {
                 // root::parent/* i am a comment*/::child
                 // I am not sure if this is something the language will allow.
                 collected_spans.push(CommentSpan::from_span(constant.span()));
-                todo!();
             }
             Pattern::Constructor { path, args } => {
                 // TODO: Should we look for a comment inside the path expression? if so we will need to implement CommentVisitor for PathExpr
