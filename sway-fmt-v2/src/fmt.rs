@@ -345,8 +345,10 @@ storage {
         let correct_sway_code = r#"contract;
 
 storage {
-    long_var_name : Type1,
-    var2          : Type2,
+    long_var_name : Type1 = Type1 {
+    },
+    var2          : Type2 = Type2 {
+    },
 }"#;
 
         let mut formatter = Formatter::default();
@@ -366,10 +368,12 @@ storage {
 "#;
         let correct_sway_code = r#"contract;
 
-storage { long_var_name: Type1, var2: Type2 }"#;
+storage { long_var_name: Type1 = Type1 {
+    }, var2: Type2 = Type2 {
+    } }"#;
         let mut formatter = Formatter::default();
         formatter.config.structures.small_structures_single_line = true;
-        formatter.config.whitespace.max_width = 300;
+        formatter.config.whitespace.max_width = 700;
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert_eq!(correct_sway_code, formatted_sway_code)
