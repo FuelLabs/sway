@@ -756,7 +756,7 @@ pub enum CompileError {
     },
     #[error("This op does not take an immediate value.")]
     UnnecessaryImmediate { span: Span },
-    #[error("This reference is ambiguous, and could refer to either a module or an enum of the same name. Try qualifying the name with a path.")]
+    #[error("This reference is ambiguous, and could refer to a module, enum, or function of the same name. Try qualifying the name with a path.")]
     AmbiguousPath { span: Span },
     #[error("This value is not valid within a \"str\" type.")]
     InvalidStrType { raw: String, span: Span },

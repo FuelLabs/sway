@@ -15,5 +15,6 @@ mod registers;
 mod script_data;
 mod storage;
 mod storage_map;
+mod storage_vec;
 mod token_ops;
 mod tx_fields;

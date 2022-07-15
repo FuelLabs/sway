@@ -189,6 +189,7 @@ fn format_struct(
 
     // Handle closing brace
     ItemStruct::close_curly_brace(formatted_code, formatter)?;
+    writeln!(formatted_code)?;
     Ok(())
 }
 
