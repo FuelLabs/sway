@@ -38,7 +38,7 @@ impl Backend {
         if let Some(path) = find_manifest_dir(&curr_dir) {
             let files = get_sway_files(path);
 
-            let session = self.session.lock().await;
+            let mut session = self.session.lock().await;
 
             for file_path in files {
                 if let Some(path) = file_path.to_str() {
@@ -175,7 +175,7 @@ impl LanguageServer for Backend {
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
         for event in params.changes {
             if event.typ == FileChangeType::DELETED {
-                let session = self.session.lock().await;
+                let mut session = self.session.lock().await;
                 let _ = session.remove_document(&event.uri);
             }
         }

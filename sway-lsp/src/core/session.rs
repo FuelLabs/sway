@@ -8,7 +8,6 @@ use crate::{
     sway_config::SwayConfig,
     utils,
 };
-use dashmap::DashMap;
 use forc::utils::SWAY_GIT_TAG;
 use forc_pkg::{self as pkg};
 use serde_json::Value;
@@ -21,7 +20,7 @@ use tower_lsp::lsp_types::{
     Range, SemanticToken, SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
 };
 
-pub type Documents = DashMap<String, TextDocument>;
+pub type Documents = HashMap<String, TextDocument>;
 
 #[derive(Debug)]
 pub struct Session {
@@ -34,7 +33,7 @@ pub struct Session {
 impl Session {
     pub fn new() -> Self {
         Session {
-            documents: DashMap::new(),
+            documents: HashMap::new(),
             config: SwayConfig::default(),
             token_map: HashMap::new(),
             manifest: None,
@@ -102,7 +101,7 @@ impl Session {
     }
 
     // Document
-    pub fn store_document(&self, text_document: TextDocument) -> Result<(), DocumentError> {
+    pub fn store_document(&mut self, text_document: TextDocument) -> Result<(), DocumentError> {
         match self
             .documents
             .insert(text_document.get_uri().into(), text_document)
@@ -112,9 +111,9 @@ impl Session {
         }
     }
 
-    pub fn remove_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
+    pub fn remove_document(&mut self, url: &Url) -> Result<TextDocument, DocumentError> {
         match self.documents.remove(url.path()) {
-            Some((_, text_document)) => Ok(text_document),
+            Some(text_document) => Ok(text_document),
             None => Err(DocumentError::DocumentNotFound),
         }
     }
@@ -221,7 +220,7 @@ impl Session {
         self.documents.contains_key(url.path())
     }
 
-    pub fn handle_open_file(&self, uri: &Url) {
+    pub fn handle_open_file(&mut self, uri: &Url) {
         if !self.contains_sway_file(&uri) {
             if let Ok(text_document) = TextDocument::build_from_path(uri.path()) {
                 let _ = self.store_document(text_document);
@@ -229,7 +228,11 @@ impl Session {
         }
     }
 
-    pub fn update_text_document(&self, url: &Url, changes: Vec<TextDocumentContentChangeEvent>) {
+    pub fn update_text_document(
+        &mut self,
+        url: &Url,
+        changes: Vec<TextDocumentContentChangeEvent>,
+    ) {
         if let Some(ref mut document) = self.documents.get_mut(url.path()) {
             changes.iter().for_each(|change| {
                 document.apply_change(change);
@@ -258,7 +261,6 @@ impl Session {
         let url = params.text_document_position_params.text_document.uri;
         let position = params.text_document_position_params.position;
 
-        let key = url.path();
         if let Some((_, token)) = self.token_at_position(&url, position) {
             if let Some(decl_ident) = self.declared_token_ident(token) {
                 let range = utils::common::get_range_from_span(&decl_ident.span());
