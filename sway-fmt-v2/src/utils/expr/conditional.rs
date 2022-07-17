@@ -1,6 +1,6 @@
 use crate::{fmt::*, utils::bracket::CurlyBrace};
 use std::{fmt::Write, ops::ControlFlow};
-use sway_parse::{IfCondition, IfExpr};
+use sway_parse::{IfCondition, IfExpr, MatchBranch};
 use sway_types::Spanned;
 
 impl Format for IfExpr {
@@ -19,7 +19,7 @@ impl Format for IfExpr {
         Self::close_curly_brace(formatted_code, formatter)?;
         if let Some(else_opt) = &self.else_opt {
             write!(formatted_code, "{} ", else_opt.0.span().as_str())?;
-            match else_opt.1 {
+            match &else_opt.1 {
                 ControlFlow::Continue(if_expr) => if_expr.format(formatted_code, formatter)?,
                 ControlFlow::Break(code_block_contents) => {
                     Self::open_curly_brace(formatted_code, formatter)?;
@@ -74,6 +74,31 @@ impl Format for IfCondition {
             }
         }
 
+        Ok(())
+    }
+}
+
+impl Format for MatchBranch {
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        Ok(())
+    }
+}
+
+impl CurlyBrace for MatchBranch {
+    fn open_curly_brace(
+        line: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        Ok(())
+    }
+    fn close_curly_brace(
+        line: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         Ok(())
     }
 }

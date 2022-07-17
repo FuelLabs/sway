@@ -4,7 +4,7 @@ use crate::{
     utils::bracket::{CurlyBrace, Parenthesis},
 };
 use std::fmt::Write;
-use sway_parse::{token::Delimiter, CodeBlockContents, FnArg, FnArgs, FnSignature, ItemFn};
+use sway_parse::{token::Delimiter, FnArg, FnArgs, FnSignature, ItemFn};
 use sway_types::Spanned;
 
 impl Format for ItemFn {
@@ -160,29 +160,6 @@ impl Parenthesis for FnSignature {
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         write!(line, "{}", Delimiter::Parenthesis.as_close_char())?;
-        Ok(())
-    }
-}
-
-impl Format for CodeBlockContents {
-    fn format(
-        &self,
-        formatted_code: &mut FormattedCode,
-        formatter: &mut Formatter,
-    ) -> Result<(), FormatterError> {
-        for statement in self.statements.iter() {
-            statement.format(formatted_code, formatter)?;
-        }
-        if let Some(final_expr) = &self.final_expr_opt {
-            write!(
-                formatted_code,
-                "{}",
-                formatter.shape.indent.to_string(formatter)
-            )?;
-            final_expr.format(formatted_code, formatter)?;
-            writeln!(formatted_code)?;
-        }
-
         Ok(())
     }
 }

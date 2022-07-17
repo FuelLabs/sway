@@ -6,10 +6,11 @@ use sway_parse::{
 };
 use sway_types::Spanned;
 
-use super::bracket::{CurlyBrace, Parenthesis};
+use super::bracket::{CurlyBrace, Parenthesis, SquareBracket};
 
 pub(crate) mod abi_cast;
 pub(crate) mod asm_block;
+pub(crate) mod code_block;
 pub(crate) mod collections;
 pub(crate) mod conditional;
 pub(crate) mod struct_field;
@@ -388,6 +389,36 @@ impl Format for Expr {
             }
         }
 
+        Ok(())
+    }
+}
+
+impl Parenthesis for Expr {
+    fn open_parenthesis(
+        line: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        Ok(())
+    }
+    fn close_parenthesis(
+        line: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        Ok(())
+    }
+}
+
+impl SquareBracket for Expr {
+    fn open_square_bracket(
+        line: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        Ok(())
+    }
+    fn close_square_bracket(
+        line: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         Ok(())
     }
 }
