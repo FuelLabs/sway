@@ -191,7 +191,7 @@ pub fn handle_comments(
     let comment_map = comment_map_from_src(unformatted_input.clone())?;
     // Parse unformatted code so that we can get the spans of items in their original places.
     // This is required since we collected the spans in from unformatted source file.
-    let unformatted_module = sway_parse::parse_file(unformatted_input, path.clone())?;
+    let unformatted_module = sway_parse::parse_file(unformatted_input.clone(), path.clone())?;
     // After the formatting items should be the same but their spans will be changed since we applied formatting to them.
     let formatted_module = sway_parse::parse_file(formatted_input, path)?;
     // Actually insert the comments
@@ -200,6 +200,7 @@ pub fn handle_comments(
         &unformatted_module,
         &formatted_module,
         formatted_code,
+        unformatted_input,
     )?;
     Ok(())
 }
@@ -207,12 +208,13 @@ pub fn handle_comments(
 /// Adds the comments from comment_map to correct places in the formatted code. This requires us
 /// both the unformatted and formatted code's items as they will have different spans for their
 /// nodes. While traversing the unformatted items, `add_comments` searches for comments. If there is a comment found
-/// place the comment.
+/// places the comment.
 fn add_comments(
     comment_map: CommentMap,
     unformatted_module: &Module,
     formatted_module: &Module,
     formatted_code: &mut FormattedCode,
+    unformatted_code: Arc<str>,
 ) -> Result<(), FormatterError> {
     let unformatted_items = &unformatted_module.items;
     let formatted_items = &formatted_module.items;
@@ -246,6 +248,7 @@ fn add_comments(
                 previous_unformatted_span,
                 unformatted_cur_span,
                 &comment_map,
+                &unformatted_code,
             );
             if !comments_found.is_empty() {
                 offset += insert_after_span(
@@ -262,27 +265,45 @@ fn add_comments(
     Ok(())
 }
 
-/// Returns a list of comments between given spans. For each comment returns the offset from the last item
+// A CommentWithContext is the Comment and the offset before it. The offset can be between the (from) item we searched for this comment or from the last comment inside range
+type CommentWithContext = (Comment, String);
+
+/// Returns a list of comments between given spans. For each comment returns the Context
+/// Context of a comment is basically the offset (the characters between the last item/comment) to the current comment
 fn get_comments_between_spans(
     from: &CommentSpan,
     to: &CommentSpan,
     comment_map: &CommentMap,
-) -> Vec<(Comment, usize)> {
-    comment_map
+    unformatted_code: &Arc<str>,
+) -> Vec<CommentWithContext> {
+    let mut comments_with_context = Vec::new();
+    for (index, comment_tuple) in comment_map
         .range((Included(from), Excluded(to)))
-        .map(|comment_tuple| {
-            (
+        .enumerate()
+    {
+        if comments_with_context.is_empty() {
+            // This is the first comment in the current range the context should be collected between from's end and comment's beginning
+            comments_with_context.push((
                 comment_tuple.1.clone(),
-                comment_tuple.1.span.start() - from.end,
-            )
-        })
-        .collect()
+                unformatted_code[from.end..comment_tuple.0.start].to_string(),
+            ));
+        } else {
+            // There is a comment before this one, so we should get the context starting from the last comment's end to the beginning of the current comment
+            comments_with_context.push((
+                comment_tuple.1.clone(),
+                unformatted_code
+                    [comments_with_context[index - 1].0.span.end()..comment_tuple.0.start]
+                    .to_string(),
+            ));
+        }
+    }
+    comments_with_context
 }
 
-/// Inserts after given span and returns the offset.
+/// Inserts after given span and returns the offset. While inserting comments this also inserts Context of the comments so that the alignment whitespaces/newlines are intact
 fn insert_after_span(
     from: &CommentSpan,
-    comments_to_insert: Vec<(Comment, usize)>,
+    comments_to_insert: Vec<CommentWithContext>,
     offset: usize,
     formatted_code: &mut FormattedCode,
 ) -> Result<usize, FormatterError> {
@@ -290,21 +311,11 @@ fn insert_after_span(
     // prepare the comment str
     let mut comment_str = format!(
         "{}{}",
-        &(0..comments_to_insert[0].1)
-            .map(|_| ' ')
-            .collect::<String>(),
+        comments_to_insert[0].1,
         format_comment(&comments_to_insert[0].0)
     );
     for comment in comments_to_insert.iter().skip(1) {
-        let whitespaces = (0..(comment.1 - comment_str.len() - 1))
-            .map(|_| ' ')
-            .collect::<String>();
-        write!(
-            comment_str,
-            "\n{}{}",
-            whitespaces,
-            &format_comment(&comment.0)
-        )?;
+        write!(comment_str, "{}{}", comment.1, &format_comment(&comment.0))?;
     }
     src_rope.insert(from.end + offset, &comment_str);
     formatted_code.clear();

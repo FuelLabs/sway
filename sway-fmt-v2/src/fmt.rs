@@ -501,6 +501,9 @@ trait CompSciStudent: Programmer + Student {
         let sway_code_to_format = r#"contract;
 
 pub struct Foo { // Here is a comment
+
+
+
     // Trying some ASCII art
     baz:u64,
 
@@ -533,6 +536,9 @@ fn hello_world( baz: /* this is a comment */ u64) { // This is a comment inside 
         let correct_sway_code = r#"contract;
 
 pub struct Foo { // Here is a comment
+
+
+
     // Trying some ASCII art
     baz: u64,
     bazzz: u64,//  ________ ___  ___  _______   ___               ___       ________  ________  ________
