@@ -1,8 +1,6 @@
 script;
 
 use std::assert::assert;
-use std::result::*;
-use std::u128::*;
 use std::ufp64::*;
 
 fn main() -> bool {
@@ -30,7 +28,7 @@ fn main() -> bool {
     let mut value = UFP64 {
             value: 1 << 32 + 3,
         };
-    res = value.recip();
+    res = ~UFP64::recip(value);
     assert(UFP64 {
             value: 536870912,
         } == res);
