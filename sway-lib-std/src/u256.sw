@@ -1,10 +1,10 @@
 library u256;
 
 use core::num::*;
+use core::ops::{lsh_with_carry, rsh_with_carry};
 use ::result::Result;
 use ::u128::U128;
 use ::assert::assert;
-use core::ops::{lsh_with_carry, rsh_with_carry};
 
 /// The 256-bit unsigned integer type.
 /// Represented as four 64-bit components: `(a, b, c, d)`, where `value = (a << 192) + (b << 128) + (c << 64) + d`.
@@ -139,8 +139,8 @@ impl core::ops::Ord for U256 {
 }
 
 impl core::ops::BitwiseAnd for U256 {
-    pub fn binary_and(val: self, other: Self) -> Self {
-        let(value_word_1, value_word_2, value_word_3, value_word_4) = val.decompose();
+    pub fn binary_and(self, other: Self) -> Self {
+        let(value_word_1, value_word_2, value_word_3, value_word_4) = self.decompose();
         let(other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
         let word_1 = value_word_1 & other_word_1;
         let word_2 = value_word_2 & other_word_2;
@@ -151,8 +151,8 @@ impl core::ops::BitwiseAnd for U256 {
 }
 
 impl core::ops::BitwiseOr for U256 {
-    pub fn binary_or(val: self, other: Self) -> Self {
-        let(value_word_1, value_word_2, value_word_3, value_word_4) = val.decompose();
+    pub fn binary_or(self, other: Self) -> Self {
+        let(value_word_1, value_word_2, value_word_3, value_word_4) = self.decompose();
         let(other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
         let word_1 = value_word_1 | other_word_1;
         let word_2 = value_word_2 | other_word_2;
@@ -163,8 +163,8 @@ impl core::ops::BitwiseOr for U256 {
 }
 
 impl core::ops::BitwiseXor for U256 {
-    pub fn binary_xor(val: self, other: Self) -> Self {
-        let(value_word_1, value_word_2, value_word_3, value_word_4) = val.decompose();
+    pub fn binary_xor(self, other: Self) -> Self {
+        let(value_word_1, value_word_2, value_word_3, value_word_4) = self.decompose();
         let(other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
         let word_1 = value_word_1 ^ other_word_1;
         let word_2 = value_word_2 ^ other_word_2;
