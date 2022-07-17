@@ -16,7 +16,6 @@ pub(crate) mod collections;
 pub(crate) mod conditional;
 pub(crate) mod struct_field;
 
-// TODO:
 impl Format for Expr {
     fn format(
         &self,
