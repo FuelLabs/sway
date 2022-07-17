@@ -219,11 +219,14 @@ fn add_comments(
     let unformatted_items = &unformatted_module.items;
     let formatted_items = &formatted_module.items;
 
+    // Once CommentVisitor for ModuleKind is implemented start search from there
+    let mut prev_unformatted_item_last_span = CommentSpan { start: 0, end: 0 };
+    let mut prev_formatted_item_last_span = CommentSpan { start: 0, end: 0 };
+
     // Since we are adding comments into formatted code, in the next iteration the spans we find for the formatted code needs to be offsetted
     // as the total length of comments we added in previous iterations.
     let mut offset = 0;
     for (unformatted_item, formatted_item) in unformatted_items.iter().zip(formatted_items.iter()) {
-        // Search comments for possible places inside the item.
         let unformatted_item_spans = unformatted_item.collect_spans();
         let formatted_item_spans = formatted_item.collect_spans();
 
@@ -231,6 +234,32 @@ fn add_comments(
         if unformatted_item_spans.first().is_none() || formatted_item_spans.first().is_none() {
             return Ok(());
         }
+        // Search comment between the last item and this one
+
+        // Get first span of the current item from unformatted code
+        let curr_unformatted_item_first_span = unformatted_item_spans
+            .first()
+            .ok_or(FormatterError::CommentError)?;
+        // Search for comments
+
+        let comments_found = get_comments_between_spans(
+            &prev_unformatted_item_last_span,
+            curr_unformatted_item_first_span,
+            &comment_map,
+            &unformatted_code,
+        );
+        // If there are some comments in between given spans insert them into the formatted code and increment offset with the length of the inserted comment(s)
+        if !comments_found.is_empty() {
+            offset += insert_after_span(
+                &prev_formatted_item_last_span,
+                comments_found,
+                offset,
+                formatted_code,
+            )?;
+        }
+
+        // Search comments for possible places inside the item.
+
         // We will definetly have a span in the collected span since for a source code to be parsed as an item there should be some tokens present.
         let mut previous_unformatted_span = unformatted_item_spans
             .first()
@@ -261,6 +290,14 @@ fn add_comments(
             previous_unformatted_span = unformatted_cur_span;
             previous_formatted_span = formatted_cur_span;
         }
+        prev_unformatted_item_last_span = unformatted_item_spans
+            .last()
+            .ok_or(FormatterError::CommentError)?
+            .clone();
+        prev_formatted_item_last_span = formatted_item_spans
+            .last()
+            .ok_or(FormatterError::CommentError)?
+            .clone();
     }
     Ok(())
 }
@@ -320,7 +357,7 @@ fn insert_after_span(
     src_rope.insert(from.end + offset, &comment_str);
     formatted_code.clear();
     formatted_code.push_str(&src_rope.to_string());
-    Ok(comment_str.chars().count())
+    Ok(comment_str.len())
 }
 
 /// Applies formatting to the comment.

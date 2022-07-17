@@ -499,7 +499,7 @@ trait CompSciStudent: Programmer + Student {
     #[test]
     fn test_comments() {
         let sway_code_to_format = r#"contract;
-
+// This is some other comment, for this one to be placed correclty we need to have ModuleKind visitor implemented
 pub struct Foo { // Here is a comment
 
 
@@ -519,6 +519,10 @@ pub struct Foo { // Here is a comment
              //     \|__|    \|_______|\|_______|\|_______|        \|_______|\|__|\|__|\|_______|\_________\
              //                                                                                  \|_________|
 }
+// This is a comment
+
+
+
 pub enum Bazz { // Here is a comment
     // Trying some ASCII art
     baz: (),
@@ -530,10 +534,28 @@ pub enum Bazz { // Here is a comment
               //--D--
               //-----
 }
-
+// This is a comment before a fn
+// This is another comment before a fn
 fn hello_world( baz: /* this is a comment */ u64) { // This is a comment inside the block
+    if baz < 10 {
+        // Baz is smaller than 10
+
+        // return 0 because of blah blah
+        return 0; // 0 is an interesting number
+    }else if bax < 20 {
+        // Baz is between 10 and 20
+
+        // return 1 because of blah blah
+        return 1; // 1 is an interesting number
+    }else {
+        // Baz is bigger than 20
+
+        // return 2 because of blah blah
+        return 2; // 2 is the perfect number to return
+    }
 }"#;
         let correct_sway_code = r#"contract;
+// This is some other comment, for this one to be placed correclty we need to have ModuleKind visitor implementedcontract;
 
 pub struct Foo { // Here is a comment
 
@@ -550,6 +572,7 @@ pub struct Foo { // Here is a comment
              //     \|__|    \|_______|\|_______|\|_______|        \|_______|\|__|\|__|\|_______|\_________\
              //                                                                                  \|_________|
 }
+// This is a comment
 pub enum Bazz { // Here is a comment
     // Trying some ASCII art
     baz: (),
@@ -557,7 +580,24 @@ pub enum Bazz { // Here is a comment
               //--D--
               //-----
 }
+// This is a comment before a fn
 fn hello_world(baz: /* this is a comment */ u64) { // This is a comment inside the block
+    if baz < 10 {
+        // Baz is smaller than 10
+
+        // return 0 because of blah blah
+        return 0; // 0 is an interesting number
+    }else if bax < 20 {
+        // Baz is between 10 and 20
+
+        // return 1 because of blah blah
+        return 1; // 1 is an interesting number
+    }else {
+        // Baz is bigger than 20
+
+        // return 2 because of blah blah
+        return 2; // 2 is the perfect number to return
+    }
 }"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
