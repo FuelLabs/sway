@@ -293,7 +293,9 @@ impl fmt::Display for TypeInfo {
             }
             .into(),
             Boolean => "bool".into(),
-            Custom { name, .. } => format!("unresolved {}", name.as_str()),
+            Custom { name, .. } => {
+                format!("unresolved {}", name.as_str())
+            }
             Ref(id, _sp) => format!("T{} ({})", id, (*id)),
             Tuple(fields) => {
                 let field_strs = fields
@@ -349,7 +351,25 @@ impl JsonAbiString for TypeInfo {
             }
             .into(),
             Boolean => "bool".into(),
-            Custom { name, .. } => format!("unresolved {}", name.as_str()),
+            Custom {
+                name,
+                type_arguments,
+            } => {
+                //                format!("unresolved {}", name.as_str())
+                let type_arguments = match type_arguments {
+                    Some(type_arguments) => type_arguments
+                        .iter()
+                        .map(|ty| ty.type_id.json_abi_str())
+                        .collect::<Vec<String>>(),
+                    None => vec![],
+                };
+
+                if type_arguments.is_empty() {
+                    format!("{}", name)
+                } else {
+                    format!("{}<{}>", name, type_arguments.join(","))
+                }
+            }
             Ref(id, _sp) => format!("T{} ({})", id, (*id).json_abi_str()),
             Tuple(fields) => {
                 let field_strs = fields
@@ -367,9 +387,7 @@ impl JsonAbiString for TypeInfo {
             Enum { name, .. } => {
                 format!("enum {}", name)
             }
-            Struct { name, .. } => {
-                format!("struct {}", name)
-            }
+            Struct { name, .. } => format!("struct {}", name),
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {}", abi_name)
             }

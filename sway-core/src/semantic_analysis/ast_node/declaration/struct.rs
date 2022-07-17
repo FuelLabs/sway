@@ -145,6 +145,7 @@ impl TypedStructDeclaration {
 pub struct TypedStructField {
     pub name: Ident,
     pub type_id: TypeId,
+    pub original_type_info: TypeInfo,
     pub(crate) span: Span,
 }
 
@@ -181,6 +182,7 @@ impl ToJsonAbi for TypedStructField {
             name: self.name.to_string(),
             type_field: self.type_id.json_abi_str(),
             components: self.type_id.generate_json_abi(),
+            original_type_field: Some(self.original_type_info.json_abi_str()),
             type_arguments: self
                 .type_id
                 .get_type_parameters()
@@ -199,9 +201,10 @@ impl TypedStructField {
     pub(crate) fn type_check(mut ctx: TypeCheckContext, field: StructField) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        dbg!(&field);
         let r#type = check!(
             ctx.resolve_type_with_self(
-                insert_type(field.type_info),
+                insert_type(field.type_info.clone()),
                 &field.type_span,
                 EnforceTypeArguments::Yes,
                 None
@@ -213,6 +216,7 @@ impl TypedStructField {
         let field = TypedStructField {
             name: field.name,
             type_id: r#type,
+            original_type_info: field.type_info,
             span: field.span,
         };
         ok(field, warnings, errors)

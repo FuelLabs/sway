@@ -150,6 +150,7 @@ pub struct TypedEnumVariant {
     pub name: Ident,
     pub type_id: TypeId,
     pub(crate) tag: usize,
+    pub original_type_info: TypeInfo,
     pub(crate) span: Span,
 }
 
@@ -189,6 +190,7 @@ impl ToJsonAbi for TypedEnumVariant {
             name: self.name.to_string(),
             type_field: self.type_id.json_abi_str(),
             components: self.type_id.generate_json_abi(),
+            original_type_field: Some(self.original_type_info.json_abi_str()),
             type_arguments: self
                 .type_id
                 .get_type_parameters()
@@ -212,7 +214,7 @@ impl TypedEnumVariant {
         let mut errors = vec![];
         let enum_variant_type = check!(
             ctx.resolve_type_with_self(
-                insert_type(variant.type_info),
+                insert_type(variant.type_info.clone()),
                 &variant.span,
                 EnforceTypeArguments::Yes,
                 None
@@ -226,6 +228,7 @@ impl TypedEnumVariant {
                 name: variant.name.clone(),
                 type_id: enum_variant_type,
                 tag: variant.tag,
+                original_type_info: variant.type_info,
                 span: variant.span,
             },
             vec![],

@@ -141,6 +141,7 @@ impl TypedStorageDeclaration {
                  }| TypedStructField {
                     name: name.clone(),
                     type_id: *r#type,
+                    original_type_info: look_up_type_id(*r#type),
                     span: span.clone(),
                 },
             )

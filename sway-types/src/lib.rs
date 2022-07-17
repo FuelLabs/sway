@@ -370,5 +370,7 @@ pub struct Property {
     #[serde(rename = "type")]
     pub type_field: String,
     pub components: Option<Vec<Property>>, // Used for custom types
+    #[serde(rename = "appliedType")]
+    pub original_type_field: Option<String>,
     pub type_arguments: Option<Vec<Property>>, // Used for generic types. Not yet supported in fuels-rs.
 }
