@@ -1,3 +1,8 @@
+use crate::{config::items::ItemBraceStyle, fmt::*, utils::bracket::CurlyBrace};
+use std::fmt::Write;
+use sway_parse::{token::Delimiter, ExprStructField};
+use sway_types::Spanned;
+
 impl Format for ExprStructField {
     fn format(
         &self,

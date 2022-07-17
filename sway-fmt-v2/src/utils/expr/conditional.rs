@@ -1,3 +1,8 @@
+use crate::{fmt::*, utils::bracket::CurlyBrace};
+use std::{fmt::Write, ops::ControlFlow};
+use sway_parse::{IfCondition, IfExpr};
+use sway_types::Spanned;
+
 impl Format for IfExpr {
     fn format(
         &self,
@@ -27,6 +32,21 @@ impl Format for IfExpr {
             }
         }
 
+        Ok(())
+    }
+}
+
+impl CurlyBrace for IfExpr {
+    fn open_curly_brace(
+        line: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        Ok(())
+    }
+    fn close_curly_brace(
+        line: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
         Ok(())
     }
 }
