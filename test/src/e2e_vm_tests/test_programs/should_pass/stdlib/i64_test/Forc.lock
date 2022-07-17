@@ -1,0 +1,14 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-65D447ACE1F6E7E8'
+dependencies = []
+
+[[package]]
+name = 'i64_test'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-65D447ACE1F6E7E8'
+dependencies = ['core']

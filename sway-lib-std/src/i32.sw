@@ -2,42 +2,45 @@ library i32;
 
 use core::num::*;
 use ::assert::assert;
-use ::flags::*;
-use ::result::Result;
 
-/// The 128-bit unsigned integer type.
-/// Represented as two 64-bit components: `(upper, lower)`, where `value = (upper << 64) + lower`.
+/// The 8-bit signed integer type.
+/// Represented as an underlying u32 value.
 pub struct i32 {
-    non_negative: bool,
-    module: u16,
+    underlying: u32,
 }
 
 pub trait From {
-    /// Function for creating i32 from its u16 and bool components.
-    pub fn from(non_negative: bool, module: u16) -> Self;
+    /// Function for creating i32 from its u32 and bool components.
+    fn from(value: u32) -> Self;
 }
 
 impl From for i32 {
-    pub fn from(non_negative: bool, module: u16) -> i32 {
+    fn from(value: u32) -> i32 {
         i32 {
-            non_negative, module,
+            underlying: value,
         }
     }
 }
 
 impl core::ops::Eq for i32 {
     pub fn eq(self, other: i32) -> bool {
-        self.non_negative == other.non_negative && self.module == other.module
+        self.underlying == other.underlying
     }
 }
 
 impl core::ops::Ord for i32 {
     pub fn gt(self, other: Self) -> bool {
-        self.module < other.module && !self.non_negative && !other.non_negative || self.module > other.module && self.non_negative && other.non_negative || self.non_negative && !other.non_negative
+        self.underlying > other.underlying
     }
 
     pub fn lt(self, other: Self) -> bool {
-        self.module > other.module && !self.non_negative && !other.non_negative || self.module < other.module && self.non_negative && other.non_negative || !self.non_negative && other.non_negative
+        self.underlying < other.underlying
+    }
+}
+
+impl i32 {
+    pub fn indent() -> u32 {
+        2147483648u32
     }
 }
 
@@ -45,108 +48,93 @@ impl i32 {
     /// Initializes a new, zeroed i32.
     pub fn new() -> i32 {
         i32 {
-            non_negative: true,
-            module: 0,
+            underlying: ~i32::indent(),
         }
     }
 
     /// The smallest value that can be represented by this integer type.
     pub fn min() -> i32 {
         i32 {
-            non_negative: false,
-            module: ~u16::max(),
+            underlying: ~u32::min(),
         }
     }
 
     /// The largest value that can be represented by this type,
-    /// 2<sup>128</sup> - 1.
     pub fn max() -> i32 {
         i32 {
-            non_negative: true,
-            module: ~u16::max(),
+            underlying: ~u32::max(),
         }
     }
 
     /// The size of this type in bits.
     pub fn bits() -> u32 {
-        16
+        32
     }
-}
 
-impl core::ops::BitwiseAnd for i32 {
-    pub fn binary_and(self, other: Self) -> Self {
-        ~i32::from(self.non_negative & other.non_negative, self.module & other.module)
+    pub fn neg_from(value: u32) -> i32 {
+        i32 {
+            underlying: ~i32::indent() - value,
+        }
     }
-}
 
-impl core::ops::BitwiseOr for i32 {
-    pub fn binary_or(self, other: Self) -> Self {
-        ~i32::from(self.non_negative | other.non_negative, self.module | other.module)
+    fn from_uint(value: u32) -> i32 {
+        let underlying: u32 = value + ~i32::indent(); // as the minimal value of i32 is 2147483648 (1 << 31) we should add ~i32::indent() (1 << 31) 
+        i32 {
+            underlying
+        }
     }
 }
 
 impl core::ops::Add for i32 {
     /// Add a i32 to a i32. Panics on overflow.
     pub fn add(self, other: Self) -> Self {
-        let res = ~i32::new();
-
-        if self.non_negative && other.non_negative {
-            res = ~i32::from(true, self.module + other.module);
-        } else if !self.non_negative && !other.non_negative {
-            res = ~i32::from(false, self.module + other.module);
-        } else if !self.non_negative && other.non_negative {
-            if self.module > other.module {
-                res = ~i32::from(false, self.module - other.module);
-            } else { 
-                res = ~i32::from(true, other.module - self.module);
-            }
-        } else if self.non_negative && !other.non_negative {
-            if self.module > other.module {
-                res = ~i32::from(true, self.module - other.module);
-            } else {
-                res = ~i32::from(false, other.module - self.module);
-            }
-        }
-        return res;
+        ~i32::from(self.underlying - ~i32::indent() + other.underlying) // subtract 1 << 31 to avoid double move
     }
 }
 
 impl core::ops::Subtract for i32 {
     /// Subtract a i32 from a i32. Panics of overflow.
     pub fn subtract(self, other: Self) -> Self {
-        let res = ~i32::new();
-
-        if self.non_negative && other.non_negative {
-            if self.module > other.module {
-                res = ~i32::from(true, self.module - other.module);
-            } else {
-                res = ~i32::from(false, other.module - self.module);
-            }
-        } else if !self.non_negative && !other.non_negative {
-            if self.module > other.module {
-                res = ~i32::from(false, self.module + other.module);
-            } else {
-                res = ~i32::from(true, other.module - self.module);
-            }
-        } else if !self.non_negative && other.non_negative {
-            res = ~i32::from(false, other.module + self.module);
-        } else if self.non_negative && !other.non_negative {
-            res = ~i32::from(true, other.module + self.module);
+        let mut res = ~i32::new();
+        if self > other {
+            res = ~i32::from(self.underlying - other.underlying + ~i32::indent()); // add 1 << 31 to avoid loosing the move
+        } else {
+            res = ~i32::from(~i32::indent() - (other.underlying - self.underlying)); // subtract from 1 << 31 as we are getting a negative value
         }
-        return res;
+        res
     }
 }
 
 impl core::ops::Multiply for i32 {
     /// Multiply a i32 with a i32. Panics of overflow.
     pub fn multiply(self, other: Self) -> Self {
-        ~i32::from(self.non_negative & other.non_negative, self.module * other.module)
+        let mut res = ~i32::new();
+        if self.underlying >= ~i32::indent() && other.underlying >= ~i32::indent() {
+            res = ~i32::from((self.underlying - ~i32::indent()) * (other.underlying -~i32::indent()) + ~i32::indent());
+        } else if self.underlying < ~i32::indent() && other.underlying < ~i32::indent() {
+            res = ~i32::from((~i32::indent() - self.underlying) * (~i32::indent() - other.underlying) + ~i32::indent());
+        } else if self.underlying >= ~i32::indent() && other.underlying < ~i32::indent() {
+            res = ~i32::from(~i32::indent() - (self.underlying - ~i32::indent()) * (~i32::indent() - other.underlying));
+        } else if self.underlying < ~i32::indent() && other.underlying >= ~i32::indent() {
+            res = ~i32::from(~i32::indent() - (other.underlying - ~i32::indent()) * (~i32::indent() - self.underlying));
+        }
+        res
     }
 }
 
 impl core::ops::Divide for i32 {
     /// Divide a i32 by a i32. Panics if divisor is zero.
     pub fn divide(self, divisor: Self) -> Self {
-        ~i32::from(self.non_negative & other.non_negative, self.module / other.module)
+        let mut res = ~i32::new();
+        if self.underlying >= ~i32::indent() && divisor.underlying >= ~i32::indent() {
+            res = ~i32::from((self.underlying - ~i32::indent()) / (divisor.underlying -~i32::indent()) + ~i32::indent());
+        } else if self.underlying < ~i32::indent() && divisor.underlying < ~i32::indent() {
+            res = ~i32::from((~i32::indent() - self.underlying) / (~i32::indent() - divisor.underlying) + ~i32::indent());
+        } else if self.underlying >= ~i32::indent() && divisor.underlying < ~i32::indent() {
+            res = ~i32::from(~i32::indent() - (self.underlying - ~i32::indent()) / (~i32::indent() - divisor.underlying));
+        } else if self.underlying < ~i32::indent() && divisor.underlying >= ~i32::indent() {
+            res = ~i32::from(~i32::indent() - (divisor.underlying - ~i32::indent()) / (~i32::indent() - self.underlying));
+        }
+        res
     }
 }

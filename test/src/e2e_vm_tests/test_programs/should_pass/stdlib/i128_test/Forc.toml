@@ -1,7 +1,0 @@
-[project]
-authors = ["Rostyslav Tyshko"]
-entry = "main.sw"
-license = "Apache-2.0"
-name = "i128_test"
-
-[dependencies]

@@ -28,9 +28,9 @@ dep flags;
 dep u128;
 dep u256;
 dep vec;
+dep i8;
 dep i16;
 dep i32;
 dep i64;
-dep i128;
 
 use core::*;
