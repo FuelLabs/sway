@@ -1,6 +1,6 @@
 use crate::{fmt::*, utils::bracket::CurlyBrace};
 use std::{fmt::Write, ops::ControlFlow};
-use sway_parse::{IfCondition, IfExpr, MatchBranch};
+use sway_parse::{IfCondition, IfExpr, MatchBranch, MatchBranchKind};
 use sway_types::Spanned;
 
 impl Format for IfExpr {
@@ -84,11 +84,65 @@ impl Format for MatchBranch {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        self.pattern.format(formatted_code, formatter)?;
+        write!(
+            formatted_code,
+            " {} ",
+            self.fat_right_arrow_token.span().as_str()
+        )?;
+        self.kind.format(formatted_code, formatter)?;
+
         Ok(())
     }
 }
 
 impl CurlyBrace for MatchBranch {
+    fn open_curly_brace(
+        line: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        Ok(())
+    }
+    fn close_curly_brace(
+        line: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        Ok(())
+    }
+}
+
+impl Format for MatchBranchKind {
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        match self {
+            Self::Block {
+                block,
+                comma_token_opt,
+            } => {
+                Self::open_curly_brace(formatted_code, formatter)?;
+                block
+                    .clone()
+                    .into_inner()
+                    .format(formatted_code, formatter)?;
+                Self::close_curly_brace(formatted_code, formatter)?;
+                if let Some(comma_token) = comma_token_opt {
+                    write!(formatted_code, "{}", comma_token.span().as_str())?;
+                }
+            }
+            Self::Expr { expr, comma_token } => {
+                expr.format(formatted_code, formatter)?;
+                write!(formatted_code, "{}", comma_token.span().as_str())?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl CurlyBrace for MatchBranchKind {
     fn open_curly_brace(
         line: &mut FormattedCode,
         formatter: &mut Formatter,
