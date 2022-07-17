@@ -28,6 +28,9 @@ dep flags;
 dep u128;
 dep u256;
 dep vec;
-dep signed_integers;
+dep i16;
+dep i32;
+dep i64;
+dep i128;
 
 use core::*;
