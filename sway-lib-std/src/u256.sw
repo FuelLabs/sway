@@ -114,11 +114,41 @@ impl U256 {
 
 impl core::ops::Ord for U256 {
     pub fn gt(self, other: Self) -> bool {
-        self.a > other.a || self.a == other.a && self.b > other.b || self.a == other.a && self.b == other.b && self.c > other.c || self.a == other.a && self.b == other.b && self.c == other.c && self.d > other.d
+        if self.a > other.a {
+            return true
+        } else if self.a == other.a {
+            if self.b > other.b {
+                return true
+            } else if self.b == other.b {
+                if self.c > other.c {
+                    return true
+                } else if self.c == other.c {
+                    if self.d > other.d {
+                        return true
+                    }
+                }
+            }  
+        }
+        false
     }
 
     pub fn lt(self, other: Self) -> bool {
-        self.a < other.a || self.a == other.a && self.b < other.b || self.a == other.a && self.b == other.b && self.c < other.c || self.a == other.a && self.b == other.b && self.c == other.c && self.d < other.d
+        if self.a < other.a {
+            return true
+        } else if self.a == other.a {
+            if self.b < other.b {
+                return true
+            } else if self.b == other.b {
+                if self.c < other.c {
+                    return true
+                } else if self.c == other.c {
+                    if self.d < other.d {
+                        return true
+                    }
+                }
+            }  
+        }
+        false
     }
 }
 
