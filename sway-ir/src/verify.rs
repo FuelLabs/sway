@@ -470,7 +470,7 @@ impl<'a> InstructionVerifier<'a> {
     }
 
     fn verify_int_to_ptr(&self, value: &Value, ty: &Type) -> Result<(), IrError> {
-        // We want the source vaule to be an integer and the destination type to be a reference
+        // We want the source value to be an integer and the destination type to be a reference
         // type.
         let val_ty = value
             .get_type(self.context)
