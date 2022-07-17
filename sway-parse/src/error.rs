@@ -68,6 +68,8 @@ pub enum ParseErrorKind {
     UnexpectedRestPattern,
     #[error("Identifiers cannot be a reserved keyword.")]
     ReservedKeywordIdentifier,
+    #[error("Unnecessary visibility qualifier, `{}` is implied here.", visibility)]
+    UnnecessaryVisibilityQualifier { visibility: Ident },
 }
 
 #[derive(Debug, Error, Clone, PartialEq, Hash)]

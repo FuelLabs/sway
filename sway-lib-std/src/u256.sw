@@ -18,7 +18,7 @@ pub enum U256Error {
 
 pub trait From {
     /// Function for creating a U256 from its u64 components.
-    pub fn from(a: u64, b: u64, c: u64, d: u64) -> Self;
+    fn from(a: u64, b: u64, c: u64, d: u64) -> Self;
     fn into(self) -> (u64, u64, u64, u64);
 }
 

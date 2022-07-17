@@ -106,7 +106,20 @@
             ],
             "name": "__array_element",
             "type": "struct MyStruct",
-            "typeArguments": null
+            "typeArguments": [
+              {
+                "components": null,
+                "name": "T",
+                "type": "u64",
+                "typeArguments": null
+              },
+              {
+                "components": null,
+                "name": "U",
+                "type": "bool",
+                "typeArguments": null
+              }
+            ]
           }
         ],
         "name": "arg2",
@@ -152,6 +165,112 @@
         "components": null,
         "name": "",
         "type": "str[6]",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "components": [
+              {
+                "components": null,
+                "name": "__array_element",
+                "type": "u8",
+                "typeArguments": null
+              }
+            ],
+            "name": "tim",
+            "type": "[u8; 3]",
+            "typeArguments": null
+          },
+          {
+            "components": [
+              {
+                "components": [
+                  {
+                    "components": null,
+                    "name": "bim",
+                    "type": "u8",
+                    "typeArguments": null
+                  },
+                  {
+                    "components": [
+                      {
+                        "components": null,
+                        "name": "Foo",
+                        "type": "u64",
+                        "typeArguments": null
+                      },
+                      {
+                        "components": null,
+                        "name": "Bar",
+                        "type": "bool",
+                        "typeArguments": null
+                      }
+                    ],
+                    "name": "bam",
+                    "type": "enum MyEnum",
+                    "typeArguments": [
+                      {
+                        "components": null,
+                        "name": "V",
+                        "type": "u64",
+                        "typeArguments": null
+                      }
+                    ]
+                  }
+                ],
+                "name": "__array_element",
+                "type": "struct MyStruct",
+                "typeArguments": [
+                  {
+                    "components": null,
+                    "name": "T",
+                    "type": "u8",
+                    "typeArguments": null
+                  },
+                  {
+                    "components": null,
+                    "name": "U",
+                    "type": "u16",
+                    "typeArguments": null
+                  }
+                ]
+              }
+            ],
+            "name": "tam",
+            "type": "[struct MyStruct; 5]",
+            "typeArguments": null
+          }
+        ],
+        "name": "arg",
+        "type": "struct MyArrayStruct",
+        "typeArguments": [
+          {
+            "components": null,
+            "name": "V",
+            "type": "u8",
+            "typeArguments": null
+          },
+          {
+            "components": null,
+            "name": "W",
+            "type": "u16",
+            "typeArguments": null
+          }
+        ]
+      }
+    ],
+    "name": "take_generic_array",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64",
         "typeArguments": null
       }
     ],

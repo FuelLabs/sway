@@ -74,19 +74,19 @@ impl Formatter {
             &mut formatted_code,
             &raw_formatted_code,
         )?;
+        if formatted_code.ends_with('\n') {
+            formatted_code.pop();
+        }
+
         Ok(formatted_code)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Config, Formatter};
-    use crate::{config::user_def::FieldAlignment, utils::indent_style::Shape};
+    use super::Formatter;
+    use crate::config::user_def::FieldAlignment;
     use std::sync::Arc;
-
-    fn get_formatter(config: Config, shape: Shape) -> Formatter {
-        Formatter { config, shape }
-    }
 
     #[test]
     fn test_const() {
@@ -115,9 +115,9 @@ pub struct Foo<T, P> {
     barbazfoo : u64,
     baz       : bool,
 }"#;
-        let mut config = Config::default();
-        config.structures.field_alignment = FieldAlignment::AlignFields(40);
-        let mut formatter = get_formatter(config, Shape::default());
+
+        let mut formatter = Formatter::default();
+        formatter.config.structures.field_alignment = FieldAlignment::AlignFields(40);
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert_eq!(correct_sway_code, formatted_sway_code)
@@ -133,10 +133,9 @@ pub struct Foo {
         let correct_sway_code = r#"contract;
 
 pub struct Foo { bar: u64, baz: bool }"#;
-        let mut config = Config::default();
-        config.structures.small_structures_single_line = true;
-        config.whitespace.max_width = 300;
-        let mut formatter = get_formatter(config, Shape::default());
+        let mut formatter = Formatter::default();
+        formatter.config.structures.small_structures_single_line = true;
+        formatter.config.whitespace.max_width = 300;
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert_eq!(correct_sway_code, formatted_sway_code)
@@ -152,10 +151,9 @@ pub enum Foo {
         let correct_sway_code = r#"contract;
 
 pub enum Foo { bar: u64, baz: bool }"#;
-        let mut config = Config::default();
-        config.structures.small_structures_single_line = true;
-        config.whitespace.max_width = 300;
-        let mut formatter = get_formatter(config, Shape::default());
+        let mut formatter = Formatter::default();
+        formatter.config.structures.small_structures_single_line = true;
+        formatter.config.whitespace.max_width = 300;
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert_eq!(correct_sway_code, formatted_sway_code)
@@ -343,9 +341,8 @@ storage {
     var2          : Type2,
 }"#;
 
-        let mut config = Config::default();
-        config.structures.field_alignment = FieldAlignment::AlignFields(50);
-        let mut formatter = get_formatter(config, Shape::default());
+        let mut formatter = Formatter::default();
+        formatter.config.structures.field_alignment = FieldAlignment::AlignFields(50);
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert_eq!(correct_sway_code, formatted_sway_code)
@@ -362,10 +359,128 @@ storage {
         let correct_sway_code = r#"contract;
 
 storage { long_var_name: Type1, var2: Type2 }"#;
-        let mut config = Config::default();
-        config.structures.small_structures_single_line = true;
-        config.whitespace.max_width = 300;
-        let mut formatter = get_formatter(config, Shape::default());
+        let mut formatter = Formatter::default();
+        formatter.config.structures.small_structures_single_line = true;
+        formatter.config.whitespace.max_width = 300;
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code)
+    }
+    #[test]
+    fn test_storage_initializer() {
+        let sway_code_to_format = r#"contract;
+
+struct Type1 {
+    x: u64,
+    y: u64,
+}
+
+struct Type2 {
+    w: b256,
+    z: bool,
+}
+
+storage {
+    var1: Type1 = Type1 {x: 0,y: 0, },
+    var2: Type2 = Type2 { w: 0x0000000000000000000000000000000000000000000000000000000000000000,z: false,
+    },
+}"#;
+        let correct_sway_code = r#"contract;
+
+struct Type1 {
+    x: u64,
+    y: u64,
+}
+
+struct Type2 {
+    w: b256,
+    z: bool,
+}
+
+storage {
+    var1: Type1 = Type1 {
+        x: 0,
+        y: 0,
+    },
+    var2: Type2 = Type2 {
+        w: 0x0000000000000000000000000000000000000000000000000000000000000000,
+        z: false,
+    },
+}"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code)
+    }
+    #[test]
+    fn test_item_fn() {
+        let sway_code_to_format = r#"contract;
+
+pub fn hello( person: String ) -> String {let greeting = 42;greeting.to_string()}
+fn goodbye() -> usize {let farewell: usize = 5; farewell }"#;
+        let correct_sway_code = r#"contract;
+
+pub fn hello(person: String) -> String {
+    let greeting = 42;
+    greeting.to_string()
+}
+
+fn goodbye() -> usize {
+    let farewell: usize = 5;
+    farewell
+}"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code)
+    }
+    #[test]
+    fn test_same_line_where() {
+        let sway_code_to_format = r#"contract;
+
+pub fn hello( person: String ) -> String where T: Eq,{let greeting = 42;greeting.to_string()}"#;
+        let correct_sway_code = r#"contract;
+
+pub fn hello(person: String) -> String
+where
+    T: Eq,
+{
+    let greeting = 42;
+    greeting.to_string()
+}"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code)
+    }
+    #[test]
+    fn test_trait_and_super_trait() {
+        let sway_code_to_format = r#"library traits;
+
+trait Person{ fn name( self )->String;fn age( self )->usize; }
+trait Student:Person {fn university(self) -> String;}
+trait Programmer {fn fav_language(self) -> String;}
+trait CompSciStudent: Programmer+Student {fn git_username(self) -> String;}"#;
+        let correct_sway_code = r#"library traits;
+
+trait Person {
+    fn name(self) -> String;
+
+    fn age(self) -> usize;
+}
+
+trait Student: Person {
+    fn university(self) -> String;
+}
+
+trait Programmer {
+    fn fav_language(self) -> String;
+}
+
+trait CompSciStudent: Programmer + Student {
+    fn git_username(self) -> String;
+}"#;
+        let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert_eq!(correct_sway_code, formatted_sway_code)

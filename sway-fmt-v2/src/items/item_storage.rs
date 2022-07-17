@@ -150,7 +150,13 @@ fn format_storage(
         let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
         for field in value_pairs_iter.clone() {
             // storage_field
-            field.0.format(formatted_code, formatter)?;
+            write!(
+                formatted_code,
+                "{}{} ",
+                field.0.name.span().as_str(),
+                field.0.colon_token.span().as_str(),
+            )?;
+            field.0.ty.format(formatted_code, formatter)?;
 
             if value_pairs_iter.peek().is_some() {
                 write!(formatted_code, "{} ", field.1.span().as_str())?;
@@ -200,7 +206,7 @@ impl CurlyBrace for ItemStorage {
         line: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        line.push(Delimiter::Brace.as_close_char());
+        write!(line, "{}", Delimiter::Brace.as_close_char())?;
         // shrink_left would return error if the current indentation level is becoming < 0, in that
         // case we should use the Shape::default() which has 0 indentation level.
         formatter.shape = formatter
