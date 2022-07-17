@@ -8,11 +8,13 @@
           {
             "components": null,
             "name": "__array_element",
-            "type": "u32"
+            "type": "u32",
+            "typeArguments": null
           }
         ],
         "name": "",
-        "type": "[u32; 1]"
+        "type": "[u32; 1]",
+        "typeArguments": null
       }
     ],
     "type": "function"

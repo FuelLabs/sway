@@ -15,10 +15,6 @@ fn main() {
     a.f();
 }
 
-// regex: VAL=v\d+
-// regex: MD=!\d+
-// regex: ID=[_a-zA-Z][_0-9a-zA-Z]*
-
 // check: local mut ptr { u64 } a
 
 // check: get_ptr mut ptr { u64 } a, ptr { u64 }, 0

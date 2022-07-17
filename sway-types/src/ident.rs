@@ -56,10 +56,7 @@ impl fmt::Display for Ident {
 
 impl Ident {
     pub fn as_str(&self) -> &str {
-        match self.name_override_opt {
-            Some(name_override) => name_override,
-            None => self.span.as_str(),
-        }
+        self.name_override_opt.unwrap_or_else(|| self.span.as_str())
     }
 
     pub fn is_raw_ident(&self) -> bool {

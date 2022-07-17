@@ -7,7 +7,7 @@ abi StorageAccess {
 }
 
 storage {
-    s: str[40],
+    s: str[40] = "0000000000000000000000000000000000000000",
 }
 
 impl StorageAccess for Contract {
@@ -19,11 +19,6 @@ impl StorageAccess for Contract {
         storage.s
     }
 }
-
-// regex: VAL=v\d+
-// regex: MD=!\d+
-// regex: ID=[_a-zA-Z][_0-9a-zA-Z]*
-
 
 // check: fn set_s
 // check: local mut ptr b256 $(key=$ID)

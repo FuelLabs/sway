@@ -14,8 +14,6 @@ impl MyContract for Contract {
     }
 }
 
-// regex: MD=!\d+
-
 // check: fn small_string<80da70e2>(s $MD: string<7>) -> string<7>
 // check: entry:
 // check: ret string<7> s

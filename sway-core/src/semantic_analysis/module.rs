@@ -19,7 +19,7 @@ impl TypedModule {
     /// Type-check the given parsed module to produce a typed module.
     ///
     /// Recursively type-checks submodules first.
-    pub fn type_check(mut ctx: TypeCheckContext, parsed: ParseModule) -> CompileResult<Self> {
+    pub fn type_check(mut ctx: TypeCheckContext, parsed: &ParseModule) -> CompileResult<Self> {
         let ParseModule { submodules, tree } = parsed;
 
         // Type-check submodules first in order of declaration.
@@ -28,14 +28,15 @@ impl TypedModule {
             let submodule_res = TypedSubmodule::type_check(ctx.by_ref(), name.clone(), submodule);
             submodules_res = submodules_res.flat_map(|mut submodules| {
                 submodule_res.map(|submodule| {
-                    submodules.push((name, submodule));
+                    submodules.push((name.clone(), submodule));
                     submodules
                 })
             });
         }
 
         // TODO: Ordering should be solved across all modules prior to the beginning of type-check.
-        let ordered_nodes_res = node_dependencies::order_ast_nodes_by_dependency(tree.root_nodes);
+        let ordered_nodes_res =
+            node_dependencies::order_ast_nodes_by_dependency(tree.root_nodes.clone());
 
         let typed_nodes_res = ordered_nodes_res
             .flat_map(|ordered_nodes| Self::type_check_nodes(ctx.by_ref(), ordered_nodes));
@@ -78,7 +79,7 @@ impl TypedSubmodule {
     pub fn type_check(
         parent_ctx: TypeCheckContext,
         dep_name: DepName,
-        submodule: ParseSubmodule,
+        submodule: &ParseSubmodule,
     ) -> CompileResult<Self> {
         let ParseSubmodule {
             library_name,
@@ -87,7 +88,7 @@ impl TypedSubmodule {
         parent_ctx.enter_submodule(dep_name, |submod_ctx| {
             let module_res = TypedModule::type_check(submod_ctx, module);
             module_res.map(|module| TypedSubmodule {
-                library_name,
+                library_name: library_name.clone(),
                 module,
             })
         })

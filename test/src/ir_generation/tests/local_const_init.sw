@@ -13,8 +13,6 @@ fn main() -> u64 {
   X.s
 }
 
-// regex: VAL=v\d+
-
 // check:        local ptr { u64 } X
 
 // check: $(x_ptr=$VAL) = get_ptr ptr { u64 } X, ptr { u64 }, 0

@@ -1,0 +1,4 @@
+[[package]]
+name = 'abi_with_generic_types'
+source = 'root'
+dependencies = []

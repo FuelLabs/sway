@@ -30,7 +30,7 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-fuels = {{ version = "0.16", features = ["fuel-core-lib"] }}
+fuels = {{ version = "0.17", features = ["fuel-core-lib"] }}
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
 
 [[test]]
@@ -90,7 +90,7 @@ fn main() -> bool {
 // to provide further information for writing tests/working with sway
 pub(crate) fn default_test_program(project_name: &str) -> String {
     format!(
-        "{}{}{}{}{}",
+        "{}{}{}{}{}{}{}",
         r#"use fuels::{prelude::*, tx::ContractId};
 
 // Load abi from json
@@ -100,13 +100,27 @@ abigen!(MyContract, "out/debug/"#,
 
 async fn get_contract_instance() -> (MyContract, ContractId) {
     // Launch a local network and deploy the contract
-    let wallet = launch_provider_and_get_single_wallet().await;
+    let mut wallets = launch_custom_provider_and_get_wallets(
+        WalletsConfig::new_single(Some(1), Some(1000000)),
+        None,
+    )
+    .await;
+    let wallet = wallets.pop().unwrap();
 
-    let id = Contract::deploy("./out/debug/"#,
+    let id = Contract::deploy(
+        "./out/debug/"#,
         project_name,
-        r#".bin", &wallet, TxParameters::default())
-        .await
-        .unwrap();
+        r#".bin",
+        &wallet,
+        TxParameters::default(),
+        StorageConfiguration::with_storage_path(Some(
+            "./out/debug/"#,
+        project_name,
+        r#"-storage_slots.json".to_string(),
+        )),
+    )
+    .await
+    .unwrap();
 
     let instance = MyContract::new(id.to_string(), wallet);
 

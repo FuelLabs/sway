@@ -43,10 +43,35 @@ pub(super) fn run(filter_regex: Option<&regex::Regex>) {
                 _otherwise => input.len(),
             };
 
+            // This is slightly convoluted.  We want to build the checker from the text, but also
+            // provide some builtin regexes for VAL, ID and MD.  If the checker is empty after
+            // parsing the test source then it has no checks which is invalid (and below we
+            // helpfully print out the IR so some checks can be authored).  But if we add the
+            // regexes first then it can't be empty and there's no other simple way to tell.
+            // Ideally we'd be able get it from the result of `CheckerBuilder::text()` or to get a
+            // count of the found directives (and check they're greater than 3).
+            //
+            // So instead it builds a temporary checker, tests if it's empty and sets it to None if
+            // so.  Otherwise it's discarded and we build another one with the regexes provided.
+            use std::ops::Not;
             let ir_checker = filecheck::CheckerBuilder::new()
                 .text(&input[ir_checks_begin_offs..ir_checks_end_offs])
                 .unwrap()
-                .finish();
+                .finish()
+                .is_empty()
+                .not()
+                .then(|| {
+                    filecheck::CheckerBuilder::new()
+                        .text(
+                            "regex: VAL=\\bv\\d+\\b\n\
+                             regex: ID=[_[:alpha:]][_0-9[:alpha:]]*\n\
+                             regex: MD=!\\d+\n",
+                        )
+                        .unwrap()
+                        .text(&input[ir_checks_begin_offs..ir_checks_end_offs])
+                        .unwrap()
+                        .finish()
+                });
 
             let asm_checker = asm_checks_begin_offs.map(|begin_offs| {
                 let end_offs = if ir_checks_begin_offs > begin_offs {
@@ -94,7 +119,7 @@ pub(super) fn run(filter_regex: Option<&regex::Regex>) {
             });
             let ir_output = sway_ir::printer::to_string(&ir);
 
-            if ir_checker.is_empty() {
+            if ir_checker.is_none() {
                 panic!(
                     "IR test for {test_file_name} is missing mandatory FileCheck directives.\n\n\
                     Here's the IR output:\n{ir_output}",
@@ -102,7 +127,10 @@ pub(super) fn run(filter_regex: Option<&regex::Regex>) {
             }
 
             // Do IR checks.
-            match ir_checker.explain(&ir_output, filecheck::NO_VARIABLES) {
+            match ir_checker
+                .unwrap()
+                .explain(&ir_output, filecheck::NO_VARIABLES)
+            {
                 Ok((success, report)) if !success => {
                     panic!("IR filecheck failed:\n{report}");
                 }

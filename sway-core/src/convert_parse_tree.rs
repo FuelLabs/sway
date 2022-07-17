@@ -1,4 +1,4 @@
-use crate::type_engine::{TraitConstraint, TypeArgument, TypeParameter};
+use crate::type_engine::{TraitConstraint, TypeArgument, TypeBinding, TypeParameter};
 
 use {
     crate::{
@@ -774,9 +774,7 @@ fn item_const_to_constant_declaration(
             None => TypeInfo::Unknown,
         },
         value: expr_to_expression(ec, item_const.expr)?,
-        //visibility: pub_token_opt_to_visibility(item_const.visibility),
-        // FIXME: you have to lie here or else the tests fail.
-        visibility: Visibility::Public,
+        visibility: pub_token_opt_to_visibility(item_const.visibility),
     })
 }
 
@@ -849,7 +847,7 @@ fn generic_params_opt_to_type_parameters(
             .map(|ident| TypeParameter {
                 type_id: insert_type(TypeInfo::Custom {
                     name: ident.clone(),
-                    type_arguments: Vec::new(),
+                    type_arguments: None,
                 }),
                 name_ident: ident,
                 trait_constraints: Vec::new(),
@@ -1202,9 +1200,9 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             }
         }
         Expr::Struct { path, fields } => {
-            let (struct_name, type_arguments) = path_expr_to_call_path_type_args(ec, path)?;
+            let call_path_binding = path_expr_to_call_path_binding(ec, path)?;
             Expression::StructExpression {
-                struct_name,
+                call_path_binding,
                 fields: {
                     fields
                         .into_inner()
@@ -1214,7 +1212,6 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         })
                         .collect::<Result<_, _>>()?
                 },
-                type_arguments,
                 span,
             }
         }
@@ -1346,7 +1343,13 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                 mut suffix,
             } = path_expr;
             let is_absolute = path_root_opt_to_bool(ec, root_opt)?;
-            let (prefixes, method_type_opt, suffix_path_expr) = match suffix.pop() {
+            let (
+                prefixes,
+                method_type_opt,
+                parent_type_arguments,
+                parent_type_arguments_span,
+                suffix_path_expr,
+            ) = match suffix.pop() {
                 Some((_double_colon_token, call_path_suffix)) => match suffix.pop() {
                     Some((_double_colon_token, maybe_method_segment)) => {
                         let PathExprSegment {
@@ -1354,22 +1357,36 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                             name,
                             generics_opt,
                         } = maybe_method_segment;
-                        if let Some((_double_colon_token, generic_args)) = generics_opt {
-                            let error = ConvertParseTreeError::GenericsNotSupportedHere {
-                                span: generic_args.span(),
-                            };
-                            return Err(ec.error(error));
-                        }
+                        let (parent_type_arguments, parent_type_arguments_span) = match generics_opt
+                        {
+                            Some((_double_colon_token, generic_args)) => (
+                                generic_args_to_type_arguments(ec, generic_args.clone())?,
+                                Some(generic_args.span()),
+                            ),
+                            None => (Vec::new(), None),
+                        };
                         let mut prefixes = vec![path_expr_segment_to_ident(ec, prefix)?];
                         for (_double_colon_token, call_path_prefix) in suffix {
                             let ident = path_expr_segment_to_ident(ec, call_path_prefix)?;
                             prefixes.push(ident);
                         }
                         if fully_qualified.is_some() {
-                            (prefixes, Some(name), call_path_suffix)
+                            (
+                                prefixes,
+                                Some(name),
+                                parent_type_arguments,
+                                parent_type_arguments_span,
+                                call_path_suffix,
+                            )
                         } else {
                             prefixes.push(name);
-                            (prefixes, None, call_path_suffix)
+                            (
+                                prefixes,
+                                None,
+                                parent_type_arguments,
+                                parent_type_arguments_span,
+                                call_path_suffix,
+                            )
                         }
                     }
                     None => {
@@ -1378,24 +1395,38 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                             name,
                             generics_opt,
                         } = prefix;
-                        if let Some((_double_colon_token, generic_args)) = generics_opt {
-                            let error = ConvertParseTreeError::GenericsNotSupportedHere {
-                                span: generic_args.span(),
-                            };
-                            return Err(ec.error(error));
-                        }
+                        let (parent_type_arguments, parent_type_arguments_span) = match generics_opt
+                        {
+                            Some((_double_colon_token, generic_args)) => (
+                                generic_args_to_type_arguments(ec, generic_args.clone())?,
+                                Some(generic_args.span()),
+                            ),
+                            None => (Vec::new(), None),
+                        };
                         if fully_qualified.is_some() {
-                            (Vec::new(), Some(name), call_path_suffix)
+                            (
+                                Vec::new(),
+                                Some(name),
+                                parent_type_arguments,
+                                parent_type_arguments_span,
+                                call_path_suffix,
+                            )
                         } else {
-                            (vec![name], None, call_path_suffix)
+                            (
+                                vec![name],
+                                None,
+                                parent_type_arguments,
+                                parent_type_arguments_span,
+                                call_path_suffix,
+                            )
                         }
                     }
                 },
-                None => (Vec::new(), None, prefix),
+                None => (Vec::new(), None, vec![], None, prefix),
             };
             let PathExprSegment {
                 fully_qualified,
-                name,
+                name: method_name,
                 generics_opt,
             } = suffix_path_expr;
             if let Some(tilde_token) = fully_qualified {
@@ -1404,11 +1435,6 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                 };
                 return Err(ec.error(error));
             }
-            let call_path = CallPath {
-                is_absolute,
-                prefixes,
-                suffix: name,
-            };
             let arguments = {
                 args.into_inner()
                     .into_iter()
@@ -1417,63 +1443,104 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             };
             match method_type_opt {
                 Some(type_name) => {
-                    let type_name_span = type_name.span();
-                    let type_name = match type_name_to_type_info_opt(&type_name) {
+                    let type_info_span = type_name.span();
+                    let type_info = match type_name_to_type_info_opt(&type_name) {
                         Some(type_info) => type_info,
                         None => TypeInfo::Custom {
                             name: type_name,
-                            type_arguments: Vec::new(),
+                            type_arguments: None,
                         },
                     };
-                    let type_arguments = match generics_opt {
-                        Some((_double_colon_token, generic_args)) => {
-                            generic_args_to_type_arguments(ec, generic_args)?
-                        }
-                        None => Vec::new(),
+                    let call_path_binding = TypeBinding {
+                        inner: CallPath {
+                            prefixes,
+                            suffix: (type_info, type_info_span.clone()),
+                            is_absolute,
+                        },
+                        type_arguments: parent_type_arguments,
+                        span: parent_type_arguments_span
+                            .map(|parent_type_arguments_span| {
+                                Span::join(type_info_span.clone(), parent_type_arguments_span)
+                            })
+                            .unwrap_or_else(|| type_info_span.clone()),
+                    };
+                    let (method_type_arguments, method_type_arguments_span) = match generics_opt {
+                        Some((_double_colon_token, generic_args)) => (
+                            generic_args_to_type_arguments(ec, generic_args.clone())?,
+                            Some(generic_args.span()),
+                        ),
+                        None => (Vec::new(), None),
+                    };
+                    let method_name_binding = TypeBinding {
+                        inner: MethodName::FromType {
+                            call_path_binding,
+                            method_name: method_name.clone(),
+                        },
+                        type_arguments: method_type_arguments,
+                        span: method_type_arguments_span
+                            .map(|method_type_arguments_span| {
+                                Span::join(method_name.span(), method_type_arguments_span)
+                            })
+                            .unwrap_or_else(|| method_name.span()),
                     };
                     Expression::MethodApplication {
-                        method_name: MethodName::FromType {
-                            call_path,
-                            type_name,
-                            type_name_span,
-                        },
+                        method_name_binding,
                         contract_call_params: Vec::new(),
                         arguments,
-                        type_arguments,
                         span,
                     }
                 }
                 None => {
-                    let type_arguments = match generics_opt {
-                        Some((_double_colon_token, generic_args)) => {
-                            generic_args_to_type_arguments(ec, generic_args)?
-                        }
-                        None => Vec::new(),
+                    if !parent_type_arguments.is_empty() {
+                        let error = ConvertParseTreeError::GenericsNotSupportedHere {
+                            span: parent_type_arguments_span.unwrap(),
+                        };
+                        return Err(ec.error(error));
+                    }
+                    let (type_arguments, type_arguments_span) = match generics_opt {
+                        Some((_double_colon_token, generic_args)) => (
+                            generic_args_to_type_arguments(ec, generic_args.clone())?,
+                            Some(generic_args.span()),
+                        ),
+                        None => (Vec::new(), None),
                     };
-                    match Intrinsic::try_from_str(call_path.suffix.as_str()) {
-                        Some(intrinsic)
-                            if call_path.prefixes.is_empty() && !call_path.is_absolute =>
-                        {
+                    match Intrinsic::try_from_str(method_name.as_str()) {
+                        Some(intrinsic) if prefixes.is_empty() && !is_absolute => {
                             Expression::IntrinsicFunction {
-                                kind: intrinsic,
+                                kind_binding: TypeBinding {
+                                    inner: intrinsic,
+                                    type_arguments,
+                                    span: type_arguments_span
+                                        .map(|type_arguments_span| {
+                                            Span::join(span.clone(), type_arguments_span)
+                                        })
+                                        .unwrap_or_else(|| span.clone()),
+                                },
                                 arguments,
-                                type_arguments,
                                 span,
                             }
                         }
                         _ => {
+                            let call_path = CallPath {
+                                prefixes,
+                                suffix: method_name,
+                                is_absolute,
+                            };
+                            let call_path_binding = TypeBinding {
+                                inner: call_path.clone(),
+                                type_arguments,
+                                span: call_path.span(), // TODO: change this span so that it includes the type arguments
+                            };
                             if call_path.prefixes.is_empty() {
                                 Expression::FunctionApplication {
-                                    name: call_path,
+                                    call_path_binding,
                                     arguments,
-                                    type_arguments,
                                     span,
                                 }
                             } else {
                                 Expression::DelineatedPath {
-                                    call_path,
+                                    call_path_binding,
                                     args: arguments,
-                                    type_arguments,
                                     span,
                                 }
                             }
@@ -1493,9 +1560,15 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             args,
             contract_args_opt,
             ..
-        } => Expression::MethodApplication {
-            method_name: MethodName::FromModule { method_name: name },
-            contract_call_params: match contract_args_opt {
+        } => {
+            let method_name_binding = TypeBinding {
+                inner: MethodName::FromModule {
+                    method_name: name.clone(),
+                },
+                type_arguments: vec![],
+                span: name.span(),
+            };
+            let contract_call_params = match contract_args_opt {
                 None => Vec::new(),
                 Some(contract_args) => contract_args
                     .into_inner()
@@ -1504,16 +1577,18 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                         expr_struct_field_to_struct_expression_field(ec, expr_struct_field)
                     })
                     .collect::<Result<_, _>>()?,
-            },
-            arguments: {
-                iter::once(*target)
-                    .chain(args.into_inner().into_iter())
-                    .map(|expr| expr_to_expression(ec, expr))
-                    .collect::<Result<_, _>>()?
-            },
-            type_arguments: Vec::new(),
-            span,
-        },
+            };
+            let arguments = iter::once(*target)
+                .chain(args.into_inner().into_iter())
+                .map(|expr| expr_to_expression(ec, expr))
+                .collect::<Result<_, _>>()?;
+            Expression::MethodApplication {
+                method_name_binding,
+                contract_call_params,
+                arguments,
+                span,
+            }
+        }
         Expr::FieldProjection { target, name, .. } => {
             let mut idents = vec![&name];
             let mut base = &*target;
@@ -1742,17 +1817,21 @@ fn unary_op_call(
     span: Span,
     arg: Expr,
 ) -> Result<Expression, ErrorEmitted> {
-    Ok(Expression::FunctionApplication {
-        name: CallPath {
+    let call_path_binding = TypeBinding {
+        inner: CallPath {
             prefixes: vec![
                 Ident::new_with_override("core", op_span.clone()),
                 Ident::new_with_override("ops", op_span.clone()),
             ],
-            suffix: Ident::new_with_override(name, op_span),
+            suffix: Ident::new_with_override(name, op_span.clone()),
             is_absolute: false,
         },
+        type_arguments: vec![],
+        span: op_span,
+    };
+    Ok(Expression::FunctionApplication {
+        call_path_binding,
         arguments: vec![expr_to_expression(ec, arg)?],
-        type_arguments: Vec::new(),
         span,
     })
 }
@@ -1764,20 +1843,24 @@ fn binary_op_call(
     lhs: Expression,
     rhs: Expression,
 ) -> Result<Expression, ErrorEmitted> {
-    Ok(Expression::MethodApplication {
-        method_name: MethodName::FromTrait {
+    let method_name_binding = TypeBinding {
+        inner: MethodName::FromTrait {
             call_path: CallPath {
                 prefixes: vec![
                     Ident::new_with_override("core", op_span.clone()),
                     Ident::new_with_override("ops", op_span.clone()),
                 ],
-                suffix: Ident::new_with_override(name, op_span),
+                suffix: Ident::new_with_override(name, op_span.clone()),
                 is_absolute: true,
             },
         },
+        type_arguments: vec![],
+        span: op_span,
+    };
+    Ok(Expression::MethodApplication {
+        method_name_binding,
         contract_call_params: Vec::new(),
         arguments: vec![lhs, rhs],
-        type_arguments: Vec::new(),
         span,
     })
 }
@@ -1789,10 +1872,7 @@ fn storage_field_to_storage_field(
     let storage_field = StorageField {
         name: storage_field.name,
         type_info: ty_to_type_info(ec, storage_field.ty)?,
-        initializer: storage_field
-            .initializer
-            .map(|initializer| expr_to_expression(ec, initializer.1))
-            .transpose()?,
+        initializer: expr_to_expression(ec, storage_field.initializer)?,
     };
     Ok(storage_field)
 }
@@ -2015,6 +2095,7 @@ fn path_expr_segment_to_ident_or_type_argument(
     };
     Ok((name, type_args))
 }
+
 fn path_expr_segment_to_ident(
     ec: &mut ErrorContext,
     path_expr_segment: PathExprSegment,
@@ -2049,11 +2130,15 @@ fn path_expr_to_expression(
         Expression::VariableExpression { name, span }
     } else {
         let call_path = path_expr_to_call_path(ec, path_expr)?;
+        let call_path_binding = TypeBinding {
+            inner: call_path.clone(),
+            type_arguments: vec![],
+            span: call_path.span(),
+        };
         Expression::DelineatedPath {
-            call_path,
+            call_path_binding,
             args: Vec::new(),
             span,
-            type_arguments: Vec::new(),
         }
     };
     Ok(expression)
@@ -2289,17 +2374,17 @@ fn literal_to_literal(
 /// Like [path_expr_to_call_path], but instead can potentially return type arguments.
 /// Use this when converting a call path that could potentially include type arguments, i.e. the
 /// turbofish.
-fn path_expr_to_call_path_type_args(
+fn path_expr_to_call_path_binding(
     ec: &mut ErrorContext,
     path_expr: PathExpr,
-) -> Result<(CallPath, Vec<TypeArgument>), ErrorEmitted> {
+) -> Result<TypeBinding<CallPath<(TypeInfo, Span)>>, ErrorEmitted> {
     let PathExpr {
         root_opt,
         prefix,
         mut suffix,
     } = path_expr;
     let is_absolute = path_root_opt_to_bool(ec, root_opt)?;
-    let (call_path, type_arguments) = match suffix.pop() {
+    let (prefixes, type_info, type_info_span, type_arguments) = match suffix.pop() {
         Some((_double_colon_token, call_path_suffix)) => {
             let mut prefixes = vec![path_expr_segment_to_ident(ec, prefix)?];
             for (_double_colon_token, call_path_prefix) in suffix {
@@ -2310,28 +2395,35 @@ fn path_expr_to_call_path_type_args(
             }
             let (suffix, ty_args) =
                 path_expr_segment_to_ident_or_type_argument(ec, call_path_suffix)?;
-            (
-                CallPath {
-                    prefixes,
-                    suffix,
-                    is_absolute,
-                },
-                ty_args,
-            )
+            let type_info_span = suffix.span();
+            let type_info = type_name_to_type_info_opt(&suffix).unwrap_or(TypeInfo::Custom {
+                name: suffix,
+                type_arguments: None,
+            });
+            (prefixes, type_info, type_info_span, ty_args)
         }
         None => {
             let (suffix, ty_args) = path_expr_segment_to_ident_or_type_argument(ec, prefix)?;
-            (
-                CallPath {
-                    prefixes: Default::default(),
-                    suffix,
-                    is_absolute,
+            let type_info_span = suffix.span();
+            let type_info = match type_name_to_type_info_opt(&suffix) {
+                Some(type_info) => type_info,
+                None => TypeInfo::Custom {
+                    name: suffix,
+                    type_arguments: None,
                 },
-                ty_args,
-            )
+            };
+            (vec![], type_info, type_info_span, ty_args)
         }
     };
-    Ok((call_path, type_arguments))
+    Ok(TypeBinding {
+        inner: CallPath {
+            prefixes,
+            suffix: (type_info, type_info_span.clone()),
+            is_absolute,
+        },
+        type_arguments,
+        span: type_info_span, // TODO: change this span so that it includes the type arguments
+    })
 }
 
 fn path_expr_to_call_path(
@@ -2521,25 +2613,26 @@ fn statement_let_to_ast_nodes(
                 let error = ConvertParseTreeError::ConstructorPatternsNotSupportedHere { span };
                 return Err(ec.error(error));
             }
-            Pattern::Struct { .. } => {
-                let error = ConvertParseTreeError::StructPatternsNotSupportedHere { span };
-                return Err(ec.error(error));
-            }
-            Pattern::Tuple(pat_tuple) => {
+            Pattern::Struct { fields, .. } => {
                 let mut ast_nodes = Vec::new();
 
-                // Generate a deterministic name for the tuple. Because the parser is single
-                // threaded, the name generated below will be stable.
+                // Generate a deterministic name for the destructured struct
+                // Because the parser is single threaded, the name generated below will be stable.
                 static COUNTER: AtomicUsize = AtomicUsize::new(0);
-                let tuple_name = format!(
+                let destructured_name = format!(
                     "{}{}",
-                    crate::constants::TUPLE_NAME_PREFIX,
+                    crate::constants::DESTRUCTURE_PREFIX,
                     COUNTER.load(Ordering::SeqCst)
                 );
                 COUNTER.fetch_add(1, Ordering::SeqCst);
-                let name =
-                    Ident::new_with_override(Box::leak(tuple_name.into_boxed_str()), span.clone());
+                let destructure_name = Ident::new_with_override(
+                    Box::leak(destructured_name.into_boxed_str()),
+                    span.clone(),
+                );
 
+                // Parse the type ascription and the type ascription span.
+                // In the event that the user did not provide a type ascription,
+                // it is set to TypeInfo::Unknown and the span to None.
                 let (type_ascription, type_ascription_span) = match &ty_opt {
                     Some(ty) => {
                         let type_ascription_span = ty.span();
@@ -2548,8 +2641,10 @@ fn statement_let_to_ast_nodes(
                     }
                     None => (TypeInfo::Unknown, None),
                 };
+
+                // Save the destructure to the new name as a new variable declaration
                 let save_body_first = VariableDeclaration {
-                    name: name.clone(),
+                    name: destructure_name.clone(),
                     type_ascription,
                     type_ascription_span,
                     body: expression,
@@ -2561,19 +2656,117 @@ fn statement_let_to_ast_nodes(
                     )),
                     span: span.clone(),
                 });
+
+                // create a new variable expression that points to the new destructured struct name that we just created
                 let new_expr = Expression::VariableExpression {
-                    name,
+                    name: destructure_name,
                     span: span.clone(),
                 };
+
+                // for all of the fields of the struct destructuring on the LHS,
+                // recursively create variable declarations
+                for pattern_struct_field in fields.into_inner().into_iter() {
+                    let (field, recursive_pattern) = match pattern_struct_field {
+                        PatternStructField::Field {
+                            field_name,
+                            pattern_opt,
+                        } => {
+                            let recursive_pattern = match pattern_opt {
+                                Some((_colon_token, box_pattern)) => *box_pattern,
+                                None => Pattern::Var {
+                                    mutable: None,
+                                    name: field_name.clone(),
+                                },
+                            };
+                            (field_name, recursive_pattern)
+                        }
+                        PatternStructField::Rest { .. } => {
+                            continue;
+                        }
+                    };
+
+                    // recursively create variable declarations for the subpatterns on the LHS
+                    // and add them to the ast nodes
+                    ast_nodes.extend(unfold(
+                        ec,
+                        recursive_pattern,
+                        None,
+                        Expression::SubfieldExpression {
+                            prefix: Box::new(new_expr.clone()),
+                            span: span.clone(),
+                            field_to_access: field,
+                        },
+                        span.clone(),
+                    )?);
+                }
+                ast_nodes
+            }
+            Pattern::Tuple(pat_tuple) => {
+                let mut ast_nodes = Vec::new();
+
+                // Generate a deterministic name for the tuple.
+                // Because the parser is single threaded, the name generated below will be stable.
+                static COUNTER: AtomicUsize = AtomicUsize::new(0);
+                let tuple_name = format!(
+                    "{}{}",
+                    crate::constants::TUPLE_NAME_PREFIX,
+                    COUNTER.load(Ordering::SeqCst)
+                );
+                COUNTER.fetch_add(1, Ordering::SeqCst);
+                let tuple_name =
+                    Ident::new_with_override(Box::leak(tuple_name.into_boxed_str()), span.clone());
+
+                // Parse the type ascription and the type ascription span.
+                // In the event that the user did not provide a type ascription,
+                // it is set to TypeInfo::Unknown and the span to None.
+                let (type_ascription, type_ascription_span) = match &ty_opt {
+                    Some(ty) => {
+                        let type_ascription_span = ty.span();
+                        let type_ascription = ty_to_type_info(ec, ty.clone())?;
+                        (type_ascription, Some(type_ascription_span))
+                    }
+                    None => (TypeInfo::Unknown, None),
+                };
+
+                // Save the tuple to the new name as a new variable declaration.
+                let save_body_first = VariableDeclaration {
+                    name: tuple_name.clone(),
+                    type_ascription,
+                    type_ascription_span,
+                    body: expression,
+                    is_mutable: false,
+                };
+                ast_nodes.push(AstNode {
+                    content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
+                        save_body_first,
+                    )),
+                    span: span.clone(),
+                });
+
+                // create a variable expression that points to the new tuple name that we just created
+                let new_expr = Expression::VariableExpression {
+                    name: tuple_name,
+                    span: span.clone(),
+                };
+
+                // from the possible type annotation, if the annotation was a tuple annotation,
+                // extract the internal types of the annotation
                 let tuple_tys_opt = match ty_opt {
                     Some(Ty::Tuple(tys)) => Some(tys.into_inner().to_tys()),
                     _ => None,
                 };
+
+                // for all of the elements in the tuple destructuring on the LHS,
+                // recursively create variable declarations
                 for (index, pattern) in pat_tuple.into_inner().into_iter().enumerate() {
-                    let ty_opt = match &tuple_tys_opt {
-                        Some(tys) => tys.get(index).cloned(),
-                        None => None,
-                    };
+                    // from the possible type annotation, grab the type at the index of the current element
+                    // we are processing
+                    let ty_opt = tuple_tys_opt
+                        .as_ref()
+                        .and_then(|tys| tys.get(index).cloned());
+
+                    // recursively create variable declarations for the subpatterns on the LHS
+                    // and add them to the ast nodes
                     ast_nodes.extend(unfold(
                         ec,
                         pattern,
@@ -2753,7 +2946,7 @@ fn ty_to_type_parameter(ec: &mut ErrorContext, ty: Ty) -> Result<TypeParameter, 
     Ok(TypeParameter {
         type_id: insert_type(TypeInfo::Custom {
             name: name_ident.clone(),
-            type_arguments: Vec::new(),
+            type_arguments: None,
         }),
         name_ident,
         trait_constraints: Vec::new(),
@@ -3012,7 +3205,7 @@ fn path_type_to_type_info(
                 };
                 TypeInfo::Custom {
                     name,
-                    type_arguments,
+                    type_arguments: Some(type_arguments),
                 }
             }
         }

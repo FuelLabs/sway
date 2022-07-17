@@ -215,60 +215,6 @@ impl UnresolvedTypeCheck for TypedDeclaration {
 }
 
 impl TypedDeclaration {
-    /// Attempt to retrieve the declaration as an enum declaration.
-    ///
-    /// Returns `None` if `self` is not an `TypedEnumDeclaration`.
-    pub(crate) fn as_enum(&self) -> Option<&TypedEnumDeclaration> {
-        match self {
-            TypedDeclaration::EnumDeclaration(decl) => Some(decl),
-            _ => None,
-        }
-    }
-
-    /// Attempt to retrieve the declaration as a struct declaration.
-    ///
-    /// Returns `None` if `self` is not a `TypedStructDeclaration`.
-    #[allow(dead_code)]
-    pub(crate) fn as_struct(&self) -> Option<&TypedStructDeclaration> {
-        match self {
-            TypedDeclaration::StructDeclaration(decl) => Some(decl),
-            _ => None,
-        }
-    }
-
-    /// Attempt to retrieve the declaration as a function declaration.
-    ///
-    /// Returns `None` if `self` is not a `TypedFunctionDeclaration`.
-    #[allow(dead_code)]
-    pub(crate) fn as_function(&self) -> Option<&TypedFunctionDeclaration> {
-        match self {
-            TypedDeclaration::FunctionDeclaration(decl) => Some(decl),
-            _ => None,
-        }
-    }
-
-    /// Attempt to retrieve the declaration as a variable declaration.
-    ///
-    /// Returns `None` if `self` is not a `TypedVariableDeclaration`.
-    #[allow(dead_code)]
-    pub(crate) fn as_variable(&self) -> Option<&TypedVariableDeclaration> {
-        match self {
-            TypedDeclaration::VariableDeclaration(decl) => Some(decl),
-            _ => None,
-        }
-    }
-
-    /// Attempt to retrieve the declaration as an Abi declaration.
-    ///
-    /// Returns `None` if `self` is not a `TypedAbiDeclaration`.
-    #[allow(dead_code)]
-    pub(crate) fn as_abi(&self) -> Option<&TypedAbiDeclaration> {
-        match self {
-            TypedDeclaration::AbiDeclaration(decl) => Some(decl),
-            _ => None,
-        }
-    }
-
     /// Retrieves the declaration as an enum declaration.
     ///
     /// Returns an error if `self` is not a `TypedEnumDeclaration`.

@@ -7,6 +7,7 @@ use ::context::registers::instrs_start;
 use ::contract_id::ContractId;
 use ::intrinsics::is_reference_type;
 use ::mem::read;
+use ::option::Option;
 
 ////////////////////////////////////////
 // Transaction fields
@@ -46,17 +47,17 @@ const TX_SCRIPT_START_OFFSET = 10352;
 const TX_ID_OFFSET = 0;
 
 // Input types
-const INPUT_COIN = 0u8;
-const INPUT_CONTRACT = 1u8;
-const INPUT_MESSAGE = 2u8;
+pub const INPUT_COIN = 0u8;
+pub const INPUT_CONTRACT = 1u8;
+pub const INPUT_MESSAGE = 2u8;
 
 // Output types
-const OUTPUT_COIN = 0u8;
-const OUTPUT_CONTRACT = 1u8;
-const OUTPUT_MESSAGE = 2u8;
-const OUTPUT_CHANGE = 3u8;
-const OUTPUT_VARIABLE = 4u8;
-const OUTPUT_CONTRACT_CREATED = 5u8;
+pub const OUTPUT_COIN = 0u8;
+pub const OUTPUT_CONTRACT = 1u8;
+pub const OUTPUT_MESSAGE = 2u8;
+pub const OUTPUT_CHANGE = 3u8;
+pub const OUTPUT_VARIABLE = 4u8;
+pub const OUTPUT_CONTRACT_CREATED = 5u8;
 
 /// Get the transaction type.
 pub fn tx_type() -> u8 {
@@ -195,6 +196,34 @@ pub fn tx_input_type_from_pointer(ptr: u64) -> u8 {
     }
 }
 
+/// If the input's type is `InputCoin` or `InputMessage`,
+/// return the owner as an Option::Some(owner).
+/// Otherwise, returns Option::None.
+pub fn tx_input_owner(index: u64) -> Option<Address> {
+    let type = tx_input_type(index);
+    let owner_offset = match type {
+        // 0 is the `Coin` Input type
+        0u8 => {
+            // Need to skip over six words, so add 8*6=48
+            48
+        },
+        // 2 is the `Message` Input type
+        2u8 => {
+            // Need to skip over eighteen words, so add 8*18=144
+            144
+        },
+        _ => {
+            return Option::None;
+        },
+    };
+
+    let ptr = tx_input_pointer(index);
+    Option::Some(~Address::from(b256_from_pointer_offset(
+        ptr,
+        owner_offset
+    )))
+}
+
 /// Get the type of an input at a given index
 pub fn tx_input_type(index: u64) -> u8 {
     let ptr = tx_input_pointer(index);
@@ -215,13 +244,6 @@ pub fn b256_from_pointer_offset(pointer: u64, offset: u64) -> b256 {
         // `buffer` now points to the 32 bytes
         buffer: b256
     }
-}
-/// If the input's type is `InputCoin`, return the owner.
-/// Otherwise, undefined behavior.
-pub fn tx_input_coin_owner(index: u64) -> Address {
-    let input_ptr = tx_input_pointer(index);
-    // Need to skip over six words, so offset is 8*6=48
-    ~Address::from(b256_from_pointer_offset(input_ptr, 48))
 }
 
 ////////////////////////////////////////

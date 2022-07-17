@@ -14,7 +14,6 @@ fn cmp(a: b256, b: b256) -> bool {
 }
 
 // ::check-ir::
-// regex: VAL=v\d+
 
 // check: local ptr b256 a
 // check: $(ptr=$VAL) = get_ptr ptr b256 a, ptr b256, 0

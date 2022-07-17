@@ -9,8 +9,11 @@ struct Data {
 
 storage {
     map1: StorageMap<u64,
-    u64>, map2: StorageMap<(b256,
-    bool), Data>, 
+    u64> = StorageMap {
+    },
+    map2: StorageMap<(b256,
+    bool), Data> = StorageMap {
+    },
 }
 
 abi StorageMapExample {

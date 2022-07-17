@@ -98,10 +98,9 @@ impl Items {
     }
 
     pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&TypedDeclaration, CompileError> {
-        match self.symbols.get(name) {
-            Some(decl) => Ok(decl),
-            None => Err(CompileError::SymbolNotFound { name: name.clone() }),
-        }
+        self.symbols
+            .get(name)
+            .ok_or_else(|| CompileError::SymbolNotFound { name: name.clone() })
     }
 
     pub(crate) fn insert_trait_implementation(
@@ -261,8 +260,7 @@ impl Items {
                     full_span_for_error = Span::join(full_span_for_error, index_span.clone());
                 }
                 (actually, ProjectionKind::StructField { .. }) => {
-                    errors.push(CompileError::NotAStruct {
-                        name: full_name_for_error,
+                    errors.push(CompileError::FieldAccessOnNonStruct {
                         span: full_span_for_error,
                         actually: actually.to_string(),
                     });

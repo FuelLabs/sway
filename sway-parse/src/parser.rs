@@ -189,10 +189,9 @@ impl<'a> Peeker<'a> {
         punct_kinds: &[PunctKind],
         not_followed_by: &[PunctKind],
     ) -> Result<Span, Self> {
-        let (last_punct_kind, first_punct_kinds) = match punct_kinds.split_last() {
-            Some((last_punct_kind, first_punct_kinds)) => (last_punct_kind, first_punct_kinds),
-            None => panic!("peek_punct_kinds called with empty slice"),
-        };
+        let (last_punct_kind, first_punct_kinds) = punct_kinds
+            .split_last()
+            .unwrap_or_else(|| panic!("peek_punct_kinds called with empty slice"));
         if self.token_trees.len() < punct_kinds.len() {
             return Err(self);
         }

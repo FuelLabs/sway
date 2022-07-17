@@ -5,7 +5,7 @@ use crate::{
     convert_parse_tree::ConvertParseTreeError,
     style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case},
     type_engine::*,
-    VariableDeclaration,
+    CallPath, VariableDeclaration,
 };
 use sway_types::{ident::Ident, span::Span, Spanned};
 
@@ -441,7 +441,7 @@ pub enum CompileError {
          {what_it_is}."
     )]
     NotAFunction {
-        name: crate::parse_tree::CallPath,
+        name: CallPath,
         what_it_is: &'static str,
     },
     #[error("Unimplemented feature: {0}")]
@@ -515,6 +515,11 @@ pub enum CompileError {
         span: Span,
     },
     #[error(
+        "Cannot call associated function \"{fn_name}\" as a method. Use associated function \
+        syntax instead."
+    )]
+    AssociatedFunctionCalledAsMethod { fn_name: Ident, span: Span },
+    #[error(
         "Generic type \"{name}\" is not in scope. Perhaps you meant to specify type parameters in \
          the function signature? For example: \n`fn \
          {fn_name}<{comma_separated_generic_params}>({args}) -> ... `"
@@ -563,6 +568,8 @@ pub enum CompileError {
     },
     #[error("\"{name}\" does not take type arguments.")]
     DoesNotTakeTypeArguments { name: Ident, span: Span },
+    #[error("Type arguments are not allowed for this type.")]
+    TypeArgumentsNotAllowed { span: Span },
     #[error("\"{name}\" needs type arguments.")]
     NeedsTypeArguments { name: Ident, span: Span },
     #[error(
@@ -617,12 +624,6 @@ pub enum CompileError {
     },
     #[error("Module \"{name}\" could not be found.")]
     ModuleNotFound { span: Span, name: String },
-    #[error("\"{name}\" is a {actually}, not a struct. Fields can only be accessed on structs.")]
-    NotAStruct {
-        name: String,
-        span: Span,
-        actually: String,
-    },
     #[error("This is a {actually}, not a struct. Fields can only be accessed on structs.")]
     FieldAccessOnNonStruct { actually: String, span: Span },
     #[error("\"{name}\" is a {actually}, not a tuple. Elements can only be access on tuples.")]
@@ -637,6 +638,8 @@ pub enum CompileError {
         span: Span,
         actually: String,
     },
+    #[error("This is a {actually}, not a struct.")]
+    NotAStruct { span: Span, actually: String },
     #[error("This is a {actually}, not an enum.")]
     DeclIsNotAnEnum { actually: String, span: Span },
     #[error("This is a {actually}, not a struct.")]
@@ -753,7 +756,7 @@ pub enum CompileError {
     },
     #[error("This op does not take an immediate value.")]
     UnnecessaryImmediate { span: Span },
-    #[error("This reference is ambiguous, and could refer to either a module or an enum of the same name. Try qualifying the name with a path.")]
+    #[error("This reference is ambiguous, and could refer to a module, enum, or function of the same name. Try qualifying the name with a path.")]
     AmbiguousPath { span: Span },
     #[error("This value is not valid within a \"str\" type.")]
     InvalidStrType { raw: String, span: Span },
@@ -782,7 +785,7 @@ pub enum CompileError {
     #[error("This enum variant represents the unit type, so it should not be instantiated with any value.")]
     UnnecessaryEnumInstantiator { span: Span },
     #[error("Cannot find trait \"{name}\" in this scope.")]
-    TraitNotFound { name: crate::parse_tree::CallPath },
+    TraitNotFound { name: CallPath },
     #[error("This expression is not valid on the left hand side of a reassignment.")]
     InvalidExpressionOnLhs { span: Span },
     #[error(
@@ -941,7 +944,7 @@ pub enum CompileError {
     AbiAsSupertrait { span: Span },
     #[error("The trait \"{supertrait_name}\" is not implemented for type \"{type_name}\"")]
     SupertraitImplMissing {
-        supertrait_name: crate::parse_tree::CallPath,
+        supertrait_name: CallPath,
         type_name: String,
         span: Span,
     },
@@ -949,7 +952,7 @@ pub enum CompileError {
         "Implementation of trait \"{supertrait_name}\" is required by this bound in \"{trait_name}\""
     )]
     SupertraitImplRequired {
-        supertrait_name: crate::parse_tree::CallPath,
+        supertrait_name: CallPath,
         trait_name: Ident,
         span: Span,
     },
@@ -1048,6 +1051,7 @@ impl Spanned for CompileError {
             ReassignmentToNonVariable { span, .. } => span.clone(),
             AssignmentToNonMutable { name } => name.span(),
             MethodRequiresMutableSelf { span, .. } => span.clone(),
+            AssociatedFunctionCalledAsMethod { span, .. } => span.clone(),
             TypeParameterNotInTypeScope { span, .. } => span.clone(),
             MultipleImmediates(span) => span.clone(),
             MismatchedTypeInTrait { span, .. } => span.clone(),
@@ -1057,6 +1061,7 @@ impl Spanned for CompileError {
             MissingInterfaceSurfaceMethods { span, .. } => span.clone(),
             IncorrectNumberOfTypeArguments { span, .. } => span.clone(),
             DoesNotTakeTypeArguments { span, .. } => span.clone(),
+            TypeArgumentsNotAllowed { span } => span.clone(),
             NeedsTypeArguments { span, .. } => span.clone(),
             StructNotFound { span, .. } => span.clone(),
             DeclaredNonStructAsStruct { span, .. } => span.clone(),

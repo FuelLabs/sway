@@ -14,9 +14,6 @@ fn f(a: str[10], b: str[10]) -> u64 {
 // really just snapshotting the current situation, but string support in the compiler needs to
 // improve.
 
-// regex: VAL=v\d+
-// regex: ID=[_a-zA-Z][_0-9a-zA-Z]*
-
 // check: local ptr string<10> s
 
 // check: $(s_ptr=$VAL) = get_ptr ptr string<10> s, ptr string<10>, 0

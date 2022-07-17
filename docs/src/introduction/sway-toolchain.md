@@ -22,7 +22,7 @@ A canonical formatter is provided with `forc-fmt`. [Installation instructions](.
 forc fmt
 ```
 
-The [Visual Studio Code plugin]((https://marketplace.visualstudio.com/items?itemName=FuelLabs.sway-vscode-plugin)) will automatically format Sway files with `forc-fmt` on save.
+The [Visual Studio Code plugin](https://marketplace.visualstudio.com/items?itemName=FuelLabs.sway-vscode-plugin) will automatically format Sway files with `forc-fmt` on save.
 
 ## Fuel Core (`fuel-core`)
 

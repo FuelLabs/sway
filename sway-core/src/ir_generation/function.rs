@@ -430,6 +430,11 @@ impl FnCompiler {
         context: &mut Context,
         ast_expr: TypedExpression,
     ) -> Result<Value, CompileError> {
+        // Nothing to do if the current block already has a terminator
+        if self.current_block.is_terminated(context) {
+            return Ok(Constant::get_unit(context, None));
+        }
+
         let ret_value = self.compile_expression(context, ast_expr.clone())?;
         match ret_value.get_type(context) {
             None => Err(CompileError::Internal(
@@ -459,7 +464,7 @@ impl FnCompiler {
         let lhs_val = self.compile_expression(context, ast_lhs)?;
         let rhs_block = self.function.create_block(context, None);
         let final_block = self.function.create_block(context, None);
-        if !self.current_block.is_terminated_by_a_branch(context) {
+        if !self.current_block.is_terminated(context) {
             let cond_builder = self.current_block.ins(context);
             match ast_op {
                 LazyOp::And => cond_builder.conditional_branch(
@@ -482,7 +487,7 @@ impl FnCompiler {
         self.current_block = rhs_block;
         let rhs_val = self.compile_expression(context, ast_rhs)?;
 
-        if !self.current_block.is_terminated_by_a_branch(context) {
+        if !self.current_block.is_terminated(context) {
             self.current_block
                 .ins(context)
                 .branch(final_block, Some(rhs_val), span_md_idx);
@@ -821,7 +826,7 @@ impl FnCompiler {
         // can jump to the true and false blocks after we've created them.
         let cond_span_md_idx = MetadataIndex::from_span(context, &ast_condition.span);
         let cond_value = self.compile_expression(context, ast_condition)?;
-        let entry_block = self.current_block;
+        let cond_block = self.current_block;
 
         // To keep the blocks in a nice order we create them only as we populate them.  It's
         // possible when compiling other expressions for the 'current' block to change, and it
@@ -840,8 +845,6 @@ impl FnCompiler {
         self.current_block = true_block_begin;
         let true_value = self.compile_expression(context, ast_then)?;
         let true_block_end = self.current_block;
-        let then_returns = true_block_end.is_terminated_by_ret(context);
-        let then_branches = true_block_end.is_terminated_by_a_branch(context);
 
         let false_block_begin = self.function.create_block(context, None);
         self.current_block = false_block_begin;
@@ -850,11 +853,9 @@ impl FnCompiler {
             Some(expr) => self.compile_expression(context, *expr)?,
         };
         let false_block_end = self.current_block;
-        let else_returns = false_block_end.is_terminated_by_ret(context);
-        let else_branches = false_block_end.is_terminated_by_a_branch(context);
 
-        if !entry_block.is_terminated_by_a_branch(context) {
-            entry_block.ins(context).conditional_branch(
+        if !cond_block.is_terminated(context) {
+            cond_block.ins(context).conditional_branch(
                 cond_value,
                 true_block_begin,
                 false_block_begin,
@@ -863,28 +864,26 @@ impl FnCompiler {
             );
         }
 
-        if then_returns && else_returns {
+        // If both the blocks are already terminated (by break, continue or return) then we don't
+        // need a merge block and can finish here.
+        if true_block_end.is_terminated(context) && false_block_end.is_terminated(context) {
             return Ok(Constant::get_unit(context, None));
         }
 
         let merge_block = self.function.create_block(context, None);
-        if !then_returns && !then_branches {
+        if !true_block_end.is_terminated(context) {
             true_block_end
                 .ins(context)
                 .branch(merge_block, Some(true_value), None);
         }
-        if !else_returns && !else_branches {
+        if !false_block_end.is_terminated(context) {
             false_block_end
                 .ins(context)
                 .branch(merge_block, Some(false_value), None);
         }
 
         self.current_block = merge_block;
-        if !then_returns || !else_returns {
-            Ok(merge_block.get_phi(context))
-        } else {
-            Ok(Constant::get_unit(context, None))
-        }
+        Ok(merge_block.get_phi(context))
     }
 
     fn compile_unsafe_downcast(
@@ -948,7 +947,7 @@ impl FnCompiler {
         // Jump to the while cond block.
         let cond_block = self.function.create_block(context, Some("while".into()));
 
-        if !self.current_block.is_terminated_by_a_branch(context) {
+        if !self.current_block.is_terminated(context) {
             self.current_block
                 .ins(context)
                 .branch(cond_block, None, None);
@@ -978,7 +977,7 @@ impl FnCompiler {
         // the body block
         self.current_block = body_block;
         self.compile_code_block(context, ast_while_loop.body)?;
-        if !self.current_block.is_terminated_by_a_branch(context) {
+        if !self.current_block.is_terminated(context) {
             self.current_block
                 .ins(context)
                 .branch(cond_block, None, None);
@@ -991,7 +990,7 @@ impl FnCompiler {
         // Add the conditional which jumps into the body or out to the final block.
         self.current_block = cond_block;
         let cond_value = self.compile_expression(context, ast_while_loop.condition)?;
-        if !self.current_block.is_terminated_by_a_branch(context) {
+        if !self.current_block.is_terminated(context) {
             self.current_block.ins(context).conditional_branch(
                 cond_value,
                 body_block,
