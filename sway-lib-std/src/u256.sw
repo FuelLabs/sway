@@ -383,8 +383,7 @@ impl core::ops::BitwiseAnd for U256 {
         let word_2 = value_word_2 & other_word_2;
         let word_3 = value_word_3 & other_word_3;
         let word_4 = value_word_4 & other_word_4;
-        let rebuilt = ~U256::from(word_1, word_2, word_3, word_4);
-        rebuilt
+        ~U256::from(word_1, word_2, word_3, word_4)
     }
 }
 
@@ -396,8 +395,7 @@ impl core::ops::BitwiseOr for U256 {
         let word_2 = value_word_2 | other_word_2;
         let word_3 = value_word_3 | other_word_3;
         let word_4 = value_word_4 | other_word_4;
-        let rebuilt = ~U256::from(word_1, word_2, word_3, word_4);
-        rebuilt
+        ~U256::from(word_1, word_2, word_3, word_4)
     }
 }
 
@@ -409,8 +407,7 @@ impl core::ops::BitwiseXor for U256 {
         let word_2 = value_word_2 ^ other_word_2;
         let word_3 = value_word_3 ^ other_word_3;
         let word_4 = value_word_4 ^ other_word_4;
-        let rebuilt = ~U256::from(word_1, word_2, word_3, word_4);
-        rebuilt
+        ~U256::from(word_1, word_2, word_3, word_4)
     }
 }
 
@@ -445,9 +442,7 @@ impl core::ops::Shiftable for U256 {
             w2 = shifted_4;
         } else if w == 3 {
             w1 = word_4 << b;
-        } else {
-            ();
-        };
+        }
 
         ~U256::from(w1, w2, w3, w4)
     }
@@ -509,10 +504,8 @@ impl core::ops::Add for U256 {
 
         local_res = ~U128::from(0, word_1) + ~U128::from(0, other_word_1) + ~U128::from(0, overflow);
         let result_a = local_res.lower;
-        if local_res.upper != 0 {
-            // panic on overflow
-            revert(0);
-        };
+        // panic on overflow
+        assert(local_res.upper == 0);
         ~U256::from(result_a, result_b, result_c, result_d)
     }
 }
@@ -563,17 +556,17 @@ impl core::ops::Multiply for U256 {
         let one = ~U256::from(0, 0, 0, 1);
 
         let mut total = zero;
-        // The algorithm loops <from number of bits - 1> to <zero>.
-        // Need to add 1 here to invalidate the while loop once i == 0 since we
-        // don't have a break keyword.
-        let mut i = 256 - 1 + 1;
 
-        while i > 0 {
-            // Workaround for not having break keyword
-            let shift = i - 1;
+        let mut i = 256 - 1;
+
+        while i >= 0 {
             total <<= 1;
-            if (other & (one << shift)) != zero {
+            if (other & (one << i)) != zero {
                 total = total + self;
+            }
+
+            if i == 0 {
+                break;
             }
 
             i -= 1;
@@ -593,23 +586,23 @@ impl core::ops::Divide for U256 {
 
         let mut quotient = ~U256::from(0, 0, 0, 0);
         let mut remainder = ~U256::from(0, 0, 0, 0);
-        // The algorithm loops <from number of bits - 1> to <zero>.
-        // Need to add 1 here to invalidate the while loop once i == 0 since we
-        // don't have a break keyword.
-        let mut i = 256 - 1 + 1;
 
-        while i > 0 {
-            // Workaround for not having break keyword
-            let shift = i - 1;
+        let mut i = 256 - 1;
+
+        while i >= 0 {
             quotient <<= 1;
             remainder <<= 1;
 
-            let m = self & (one << shift);
-            remainder = remainder | ((self & (one << shift)) >> shift);
+            let m = self & (one << i);
+            remainder = remainder | ((self & (one << i)) >> i);
             // TODO use >= once OrdEq can be implemented.
             if remainder > divisor || remainder == divisor {
                 remainder -= divisor;
                 quotient = quotient | one;
+            }
+
+            if i == 0 {
+                break;
             }
 
             i -= 1;
