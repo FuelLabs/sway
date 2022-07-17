@@ -1,7 +1,7 @@
 use crate::fmt::*;
 use std::fmt::Write;
 use sway_parse::{
-    expr::ReassignmentOp, token::PunctKind, AbiCastArgs, Assignable, CodeBlockContents, Expr,
+    expr::ReassignmentOp, token::PunctKind, AbiCastArgs, CodeBlockContents, Expr,
     ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, MatchBranch,
 };
 use sway_types::Spanned;
@@ -10,6 +10,7 @@ use super::bracket::{CurlyBrace, Parenthesis, SquareBracket};
 
 pub(crate) mod abi_cast;
 pub(crate) mod asm_block;
+pub(crate) mod assignable;
 pub(crate) mod code_block;
 pub(crate) mod collections;
 pub(crate) mod conditional;
@@ -179,7 +180,7 @@ impl Format for Expr {
             Self::TupleFieldProjection {
                 target,
                 dot_token,
-                field,
+                field: _,
                 field_span,
             } => {
                 target.format(formatted_code, formatter)?;
@@ -369,21 +370,7 @@ impl Format for Expr {
                 reassignment_op,
                 expr,
             } => {
-                match assignable {
-                    Assignable::Var(name) => {}
-                    Assignable::Index { target, arg } => {}
-                    Assignable::FieldProjection {
-                        target,
-                        dot_token,
-                        name,
-                    } => {}
-                    Assignable::TupleFieldProjection {
-                        target,
-                        dot_token,
-                        field,
-                        field_span,
-                    } => {}
-                }
+                assignable.format(formatted_code, formatter)?;
                 reassignment_op.format(formatted_code, formatter)?;
                 expr.format(formatted_code, formatter)?;
             }
