@@ -165,7 +165,6 @@ impl Instruction {
             Instruction::GetStorageKey => Some(Type::B256),
             Instruction::InsertElement { array, .. } => array.get_type(context),
             Instruction::InsertValue { aggregate, .. } => aggregate.get_type(context),
-            Instruction::IntToPtr(_, ty) => Some(*ty),
             Instruction::Load(ptr_val) => {
                 if let ValueDatum::Instruction(ins) = &context.values[ptr_val.0].value {
                     ins.get_type(context)
@@ -183,6 +182,9 @@ impl Instruction {
 
             // These can be recursed to via Load, so we return the pointer type.
             Instruction::GetPointer { ptr_ty, .. } => Some(*ptr_ty),
+
+            // Used to re-interpret an integer as a pointer to some type so return the pointer type.
+            Instruction::IntToPtr(_, ty) => Some(*ty),
 
             // These are all terminators which don't return, essentially.  No type.
             Instruction::Branch(_) => None,
