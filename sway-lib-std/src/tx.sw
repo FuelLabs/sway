@@ -3,6 +3,7 @@
 library tx;
 
 use ::address::Address;
+use ::inputs::{tx_input_type, input_coin_tx_id, input_contract_tx_id};
 use ::mem::read;
 use ::option::Option;
 
@@ -317,19 +318,11 @@ pub fn tx_id(index: u64) -> Option<b256> {
     match type {
         // 0 is the `Coin` Input type
         0u8 => {
-            // GTF_INPUT_COIN_TX_ID = 0x102
-            Option::Some(read(asm(res, i: index) {
-                gtf res i i258;
-                res: u64
-            }))
+            Option::Some(input_coin_tx_id(index))
         },
         // 1 is the `Contract` Input type
         1u8 => {
-            // GTF_INPUT_CONTRACT_TX_ID = 0x10E
-            Option::Some(read(asm(res, i: index) {
-                gtf res i i270;
-                res: u64
-            }))
+            Option::Some(input_coin_tx_id(index))
         },
         _ => {
            Option::None

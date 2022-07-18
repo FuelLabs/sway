@@ -66,6 +66,14 @@ pub fn input_coin_tx_id(index: u64) -> b256 {
     })
 }
 
+/**
+// GTF_INPUT_CONTRACT_TX_ID = 0x10E
+            read(asm(res, i: index) {
+                gtf res i i270;
+                res: u64
+            }))
+*/
+
 /// Get the transaction inputs count.
 pub fn tx_inputs_count() -> u64 {
     // GTF_SCRIPT_INPUTS_COUNT = 0x007
