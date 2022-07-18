@@ -81,9 +81,9 @@ impl Backend {
         // and instead show the parsed tokens as warnings.
         // This is useful for debugging the lsp parser.
         if self.config.parsed_tokens_as_warnings {
-            let diagnostics = debug::generate_warnings_for_parsed_tokens(token_map);
+            //let diagnostics = debug::generate_warnings_for_parsed_tokens(token_map);
 
-            // let diagnostics = debug::generate_warnings_for_typed_tokens(token_map);
+            let diagnostics = debug::generate_warnings_for_typed_tokens(token_map);
             self.client
                 .publish_diagnostics(uri.clone(), diagnostics, None)
                 .await;
@@ -139,6 +139,8 @@ impl LanguageServer for Backend {
         match session.parse_project(&uri) {
             Ok(diagnostics) => {
                 let tokens = session.tokens_for_file(&uri);
+                eprintln!("URI = {:#?}", &uri.path());
+                eprintln!("tokens len = {:#?}", &tokens.len());
                 self.publish_diagnostics(&uri, diagnostics, &tokens).await
             }
             Err(_) => (), // report an error to the output window
@@ -277,16 +279,16 @@ mod tests {
             .join("is_reference_type")
     }
 
-    fn _sway_example_dir() -> PathBuf {
+    fn sway_example_dir() -> PathBuf {
         env::current_dir()
             .unwrap()
             .parent()
             .unwrap()
-            .join("examples/fizzbuzz")
+            .join("examples/structs")
     }
 
     fn load_sway_example() -> (Url, String) {
-        let manifest_dir = e2e_test_dir(); //sway_example_dir();
+        let manifest_dir = sway_example_dir(); //e2e_test_dir();
         let src_path = manifest_dir.join("src/main.sw");
         let mut file = fs::File::open(&src_path).unwrap();
         let mut sway_program = String::new();

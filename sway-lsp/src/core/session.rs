@@ -76,6 +76,7 @@ impl Session {
             .iter()
             .filter(|((_, span), _)| match span.path() {
                 Some(path) => {
+                    eprintln!("path = {:#?}", path);
                     if path.to_str() == Some(uri.path()) {
                         true
                     } else {
@@ -203,8 +204,15 @@ impl Session {
                 warnings,
             } => {
                 for node in &typed_program.root.all_nodes {
+                    eprintln!("node span path = {:#?}", node.span);
+
                     traverse_typed_tree::traverse_node(node, &mut self.token_map);
                 }
+
+                for ((_,span), _) in &self.token_map {
+                    //eprintln!("span path = {:#?}", span.path());
+                }
+                
 
                 Ok(capabilities::diagnostic::get_diagnostics(warnings, vec![]))
             }
