@@ -51,7 +51,7 @@ fn read_from_input(path_str: &Option<String>) -> std::io::Result<String> {
 fn write_to_output<S: Into<String>>(ir_str: S, path_str: &Option<String>) -> std::io::Result<()> {
     match path_str {
         None => {
-            tracing::info!("{}", ir_str.into());
+            println!("{}", ir_str.into());
             Ok(())
         }
         Some(path_str) => {

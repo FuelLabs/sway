@@ -3676,7 +3676,6 @@ dependencies = [
  "generational-arena",
  "peg",
  "sway-types",
- "tracing",
 ]
 
 [[package]]
