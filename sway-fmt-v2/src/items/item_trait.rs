@@ -1,4 +1,11 @@
-use crate::{config::items::ItemBraceStyle, fmt::*, utils::bracket::CurlyBrace};
+use crate::{
+    config::items::ItemBraceStyle,
+    fmt::*,
+    utils::{
+        bracket::CurlyBrace,
+        comments::{CommentSpan, CommentVisitor},
+    },
+};
 use std::fmt::Write;
 use sway_parse::{token::Delimiter, ItemTrait, Traits};
 use sway_types::Spanned;
@@ -111,5 +118,32 @@ impl Format for Traits {
         }
 
         Ok(())
+    }
+}
+
+impl CommentVisitor for ItemTrait {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_spans = Vec::new();
+        if let Some(visibility) = &self.visibility {
+            collected_spans.push(CommentSpan::from_span(visibility.span()));
+        }
+        collected_spans.push(CommentSpan::from_span(self.trait_token.span()));
+        collected_spans.push(CommentSpan::from_span(self.name.span()));
+        if let Some(super_traits) = &self.super_traits {
+            collected_spans.append(&mut super_traits.collect_spans());
+        }
+        collected_spans.append(&mut self.trait_items.collect_spans());
+        if let Some(trait_defs) = &self.trait_defs_opt {
+            collected_spans.append(&mut trait_defs.collect_spans());
+        }
+        collected_spans
+    }
+}
+
+impl CommentVisitor for Traits {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_spans = self.prefix.collect_spans();
+        collected_spans.append(&mut self.suffixes.collect_spans());
+        collected_spans
     }
 }

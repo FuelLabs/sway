@@ -9,9 +9,7 @@ use crate::{
     FormatterError,
 };
 use std::fmt::Write;
-use sway_parse::{
-    attribute::Annotated, keywords::SemicolonToken, token::Delimiter, FnSignature, ItemAbi,
-};
+use sway_parse::{token::Delimiter, ItemAbi};
 use sway_types::Spanned;
 
 impl Format for ItemAbi {
@@ -145,14 +143,6 @@ impl CommentVisitor for ItemAbi {
         if let Some(abi_defs) = &self.abi_defs_opt {
             collected_spans.append(&mut abi_defs.collect_spans());
         }
-        collected_spans
-    }
-}
-
-impl CommentVisitor for (Annotated<FnSignature>, SemicolonToken) {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
-        let mut collected_spans = self.0.collect_spans();
-        collected_spans.push(CommentSpan::from_span(self.1.span()));
         collected_spans
     }
 }

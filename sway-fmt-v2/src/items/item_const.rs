@@ -55,9 +55,8 @@ impl CommentVisitor for ItemConst {
         collected_spans.push(CommentSpan::from_span(self.const_token.span()));
         collected_spans.push(CommentSpan::from_span(self.name.span()));
         if let Some(ty) = &self.ty_opt {
-            collected_spans.push(CommentSpan::from_span(ty.0.span()));
+            collected_spans.append(&mut ty.collect_spans());
             // TODO: determine if we allow comments in between `:` and ty
-            collected_spans.append(&mut ty.1.collect_spans());
         }
         collected_spans.push(CommentSpan::from_span(self.eq_token.span()));
         collected_spans.append(&mut self.expr.collect_spans());

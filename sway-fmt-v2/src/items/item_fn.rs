@@ -241,9 +241,8 @@ impl CommentVisitor for FnSignature {
             collected_spans.push(CommentSpan::from_span(generics.parameters.span()));
         }
         collected_spans.append(&mut self.arguments.collect_spans());
-        if let Some((right_arrow_token, ty)) = &self.return_type_opt {
-            collected_spans.push(CommentSpan::from_span(right_arrow_token.span()));
-            collected_spans.push(CommentSpan::from_span(ty.span()));
+        if let Some(return_type) = &self.return_type_opt {
+            collected_spans.append(&mut return_type.collect_spans());
         }
         // TODO add where, I will add where for all items at once.
         collected_spans
@@ -267,8 +266,7 @@ impl CommentVisitor for FnArgs {
                     collected_spans.push(CommentSpan::from_span(mutable.span()));
                 }
                 if let Some(args) = args_opt {
-                    collected_spans.push(CommentSpan::from_span(args.0.span()));
-                    collected_spans.append(&mut args.1.collect_spans());
+                    collected_spans.append(&mut args.collect_spans());
                 }
             }
         };

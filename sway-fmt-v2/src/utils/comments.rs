@@ -11,7 +11,7 @@ use std::{
 use sway_parse::{
     attribute::Annotated,
     brackets::{Parens, SquareBrackets},
-    keywords::CommaToken,
+    keywords::{AddToken, ColonToken, CommaToken, RightArrowToken, SemicolonToken},
     token::{lex_commented, Comment, CommentedTokenTree, CommentedTree},
     Braces, Module, Parse, TypeField,
 };
@@ -157,6 +157,17 @@ where
     }
 }
 
+impl<T, P> CommentVisitor for (T, P)
+where
+    T: CommentVisitor,
+    P: CommentVisitor,
+{
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_spans = self.0.collect_spans();
+        collected_spans.append(&mut self.1.collect_spans());
+        collected_spans
+    }
+}
 impl<T> CommentVisitor for Vec<T>
 where
     T: CommentVisitor,
@@ -193,7 +204,34 @@ impl CommentVisitor for CommaToken {
 
 impl CommentVisitor for TypeField {
     fn collect_spans(&self) -> Vec<CommentSpan> {
-        vec![(CommentSpan::from_span(self.span()))]
+        let mut collected_spans = vec![CommentSpan::from_span(self.name.span())];
+        collected_spans.push(CommentSpan::from_span(self.colon_token.span()));
+        collected_spans.append(&mut self.ty.collect_spans());
+        collected_spans
+    }
+}
+
+impl CommentVisitor for AddToken {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        vec![CommentSpan::from_span(self.span())]
+    }
+}
+
+impl CommentVisitor for SemicolonToken {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        vec![CommentSpan::from_span(self.span())]
+    }
+}
+
+impl CommentVisitor for ColonToken {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        vec![CommentSpan::from_span(self.span())]
+    }
+}
+
+impl CommentVisitor for RightArrowToken {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        vec![CommentSpan::from_span(self.span())]
     }
 }
 /// Handles comments by first creating the CommentMap which is used for fast seaching comments.

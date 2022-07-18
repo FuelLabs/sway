@@ -650,9 +650,8 @@ impl CommentVisitor for AsmRegisterDeclaration {
     fn collect_spans(&self) -> Vec<CommentSpan> {
         let mut collected_spans = vec![CommentSpan::from_span(self.register.span())];
         if let Some(value) = &self.value_opt {
-            collected_spans.push(CommentSpan::from_span(value.0.span()));
+            collected_spans.append(&mut value.collect_spans());
             // TODO: determine if we are allowing comments between `:` and expr
-            collected_spans.append(&mut value.1.collect_spans());
         }
         collected_spans
     }
@@ -662,9 +661,8 @@ impl CommentVisitor for AsmBlockContents {
     fn collect_spans(&self) -> Vec<CommentSpan> {
         let mut collected_spans = Vec::new();
         for instruction in &self.instructions {
-            collected_spans.append(&mut instruction.0.collect_spans());
+            collected_spans.append(&mut instruction.collect_spans());
             // TODO: probably we shouldn't allow for comments in between the instruction and comma since it may/will result in build failure after formatting
-            collected_spans.push(CommentSpan::from_span(instruction.1.span()));
         }
         collected_spans
     }
@@ -681,9 +679,8 @@ impl CommentVisitor for AsmFinalExpr {
     fn collect_spans(&self) -> Vec<CommentSpan> {
         let mut collected_spans = vec![CommentSpan::from_span(self.register.span())];
         if let Some(ty) = &self.ty_opt {
-            collected_spans.push(CommentSpan::from_span(ty.0.span()));
+            collected_spans.append(&mut ty.collect_spans());
             // TODO: determine if we are allowing comments between `:` and ty
-            collected_spans.append(&mut ty.1.collect_spans());
         }
         collected_spans
     }

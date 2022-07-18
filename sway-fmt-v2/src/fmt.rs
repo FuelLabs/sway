@@ -553,7 +553,12 @@ storage {
     long_var_name: Type1=Type1{},
     // Testing another comment
          var2: Type2=Type2{} // This is the last comment,
-   }"#;
+   }
+// This is the programmer trait
+trait Programmer {
+    // Returns fav languages of this Programmer.
+    fn fav_language(self) -> String;
+}"#;
         let correct_sway_code = r#"contract;
 // This is some other comment, for this one to be placed correclty we need to have ModuleKind visitor implementedcontract;
 
@@ -601,7 +606,13 @@ storage {
     // Testing another comment
     var2: Type2 = Type2 {
     }, // This is the last comment,
+}
+// This is the programmer trait
+trait Programmer {
+    // Returns fav languages of this Programmer.
+    fn fav_language(self) -> String;
 }"#;
+
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();

@@ -13,6 +13,7 @@ impl CommentVisitor for Item {
             Abi(item_abi) => item_abi.collect_spans(),
             Const(item_const) => item_const.collect_spans(),
             Storage(item_storage) => item_storage.collect_spans(),
+            Trait(item_trait) => item_trait.collect_spans(),
             _ => Vec::new(),
         }
     }
