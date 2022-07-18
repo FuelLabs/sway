@@ -537,6 +537,14 @@ pub enum Bazz { // Here is a comment
 // This is a comment before a fn
 // This is another comment before a fn
 fn hello_world( baz: /* this is a comment */ u64) { // This is a comment inside the block
+}
+// This is a storage map
+abi StorageMapExample {
+    // insert_into_map is blah blah
+    #[storage(write)] // this is some other comment
+    fn insert_into_map1(key: u64, value: u64); // this is the last comment inside the StorageMapExample
+
+    fn hello(key: u64, value: u64);
 }"#;
         let correct_sway_code = r#"contract;
 // This is some other comment, for this one to be placed correclty we need to have ModuleKind visitor implementedcontract;
@@ -567,6 +575,15 @@ pub enum Bazz { // Here is a comment
 // This is a comment before a fn
 // This is another comment before a fn
 fn hello_world(baz: /* this is a comment */ u64) { // This is a comment inside the block
+}
+// This is a storage map
+
+abi StorageMapExample {
+    // insert_into_map is blah blah
+    #[storage(write)] // this is some other comment
+    fn insert_into_map1(key: u64, value: u64); // this is the last comment inside the StorageMapExample
+
+    fn hello(key: u64, value: u64);
 }"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =

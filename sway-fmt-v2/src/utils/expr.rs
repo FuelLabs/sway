@@ -271,7 +271,8 @@ impl CommentVisitor for Expr {
     }
 }
 
-pub fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
+/// Collects various expr field's CommentSpans.
+fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
     match expr {
         Expr::Path(path) => path.collect_spans(),
         Expr::Literal(literal) => literal.collect_spans(),
