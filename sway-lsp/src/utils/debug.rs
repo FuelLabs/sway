@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::core::token::{AstToken, TokenMap, TokenType, TypedAstToken};
 use crate::utils::{common::get_range_from_span, token};
 use sway_core::{Expression, Literal};

@@ -13,7 +13,7 @@ use tower_lsp::lsp_types::{
 
 // https://github.com/microsoft/vscode-extension-samples/blob/5ae1f7787122812dcc84e37427ca90af5ee09f14/semantic-tokens-sample/vscode.proposed.d.ts#L71
 pub fn semantic_tokens_full(session: &Session, url: &Url) -> Option<SemanticTokensResult> {
-    match session.semantic_tokens(&url) {
+    match session.semantic_tokens(url) {
         Some(semantic_tokens) => {
             if semantic_tokens.is_empty() {
                 return None;

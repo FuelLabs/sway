@@ -75,13 +75,7 @@ impl Session {
         self.token_map
             .iter()
             .filter(|((_, span), _)| match span.path() {
-                Some(path) => {
-                    if path.to_str() == Some(uri.path()) {
-                        true
-                    } else {
-                        false
-                    }
-                }
+                Some(path) => path.to_str() == Some(uri.path()),
                 None => false,
             })
             .map(|(key, value)| (key.clone(), value.clone()))
@@ -153,11 +147,11 @@ impl Session {
                 //we can then use them directly to convert them to a Vec<Diagnostic>
                 if let Ok((parsed_res, ast_res)) = pkg::check(&plan, silent_mode) {
                     // First, populate our token_map with un-typed ast nodes
-                    let r = self.parse_ast_to_tokens(parsed_res);
+                    let _ = self.parse_ast_to_tokens(parsed_res);
                     // Next, populate our token_map with typed ast nodes
-                    let rr = self.parse_ast_to_typed_tokens(ast_res);
+                    let res = self.parse_ast_to_typed_tokens(ast_res);
                     //self.test_typed_parse(ast_res);
-                    return rr;
+                    return res;
                 }
             }
         }
@@ -217,13 +211,13 @@ impl Session {
                         traverse_typed_tree::traverse_node(node, &mut self.token_map);
                     }
                 }
-                
+
                 Ok(capabilities::diagnostic::get_diagnostics(warnings, vec![]))
             }
         }
     }
 
-    pub fn test_typed_parse(&mut self, ast_res: CompileAstResult, uri: &Url) {
+    pub fn _test_typed_parse(&mut self, _ast_res: CompileAstResult, uri: &Url) {
         for ((ident, _span), token) in &self.token_map {
             utils::debug::debug_print_ident_and_token(ident, token);
         }
@@ -252,7 +246,7 @@ impl Session {
     }
 
     pub fn handle_open_file(&mut self, uri: &Url) {
-        if !self.contains_sway_file(&uri) {
+        if !self.contains_sway_file(uri) {
             if let Ok(text_document) = TextDocument::build_from_path(uri.path()) {
                 let _ = self.store_document(text_document);
             }
@@ -301,21 +295,21 @@ impl Session {
         None
     }
 
-    pub fn completion_items(&self, url: &Url) -> Option<Vec<CompletionItem>> {
+    pub fn completion_items(&self) -> Option<Vec<CompletionItem>> {
         Some(capabilities::completion::to_completion_items(
             self.token_map(),
         ))
     }
 
     pub fn semantic_tokens(&self, url: &Url) -> Option<Vec<SemanticToken>> {
-        Some(capabilities::semantic_tokens::to_semantic_tokens(
-            self.token_map(),
-        ))
+        let tokens = self.tokens_for_file(url);
+        Some(capabilities::semantic_tokens::to_semantic_tokens(&tokens))
     }
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
+        let tokens = self.tokens_for_file(url);
         Some(capabilities::document_symbol::to_symbol_information(
-            self.token_map(),
+            &tokens,
             url.clone(),
         ))
     }

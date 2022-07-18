@@ -32,6 +32,10 @@ impl Backend {
         self.client.log_message(MessageType::INFO, message).await;
     }
 
+    async fn log_error_message(&self, message: &str) {
+        self.client.log_message(MessageType::ERROR, message).await;
+    }
+
     async fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
         let curr_dir = std::env::current_dir().unwrap();
 
@@ -139,11 +143,10 @@ impl LanguageServer for Backend {
         match session.parse_project(&uri) {
             Ok(diagnostics) => {
                 let tokens = session.tokens_for_file(&uri);
-                eprintln!("URI = {:#?}", &uri.path());
-                eprintln!("tokens len = {:#?}", &tokens.len());
+                tracing::info!("PARSED PrOJECT!");
                 self.publish_diagnostics(&uri, diagnostics, &tokens).await
             }
-            Err(_) => (), // report an error to the output window
+            Err(_) => self.log_error_message("Unable to Parse Project!").await,
         }
     }
 
@@ -156,7 +159,7 @@ impl LanguageServer for Backend {
                 let tokens = session.tokens_for_file(&uri);
                 self.publish_diagnostics(&uri, diagnostics, &tokens).await
             }
-            Err(_) => (), // report an error to the output window
+            Err(_) => self.log_error_message("Unable to Parse Project!").await,
         }
     }
 
@@ -168,7 +171,7 @@ impl LanguageServer for Backend {
                 let tokens = session.tokens_for_file(&uri);
                 self.publish_diagnostics(&uri, diagnostics, &tokens).await
             }
-            Err(_) => (), // report an error to the output window
+            Err(_) => self.log_error_message("Unable to Parse Project!").await,
         }
     }
 
@@ -188,15 +191,12 @@ impl LanguageServer for Backend {
 
     async fn completion(
         &self,
-        params: CompletionParams,
+        _params: CompletionParams,
     ) -> jsonrpc::Result<Option<CompletionResponse>> {
         // TODO
         // here we would also need to provide a list of builtin methods not just the ones from the document
         let session = self.session.lock().await;
-        let url = params.text_document_position.text_document.uri;
-        Ok(session
-            .completion_items(&url)
-            .map(CompletionResponse::Array))
+        Ok(session.completion_items().map(CompletionResponse::Array))
     }
 
     async fn document_symbol(
@@ -284,7 +284,7 @@ mod tests {
             .unwrap()
             .parent()
             .unwrap()
-            .join("examples/structs")
+            .join("examples/subcurrency")
     }
 
     fn load_sway_example() -> (Url, String) {
