@@ -9,11 +9,11 @@ use std::{
     sync::Arc,
 };
 use sway_parse::{
-    attribute::{Annotated, Attribute},
+    attribute::Annotated,
     brackets::{Parens, SquareBrackets},
     keywords::CommaToken,
     token::{lex_commented, Comment, CommentedTokenTree, CommentedTree},
-    AttributeDecl, Braces, Module, Parse, TypeField,
+    Braces, Module, Parse, TypeField,
 };
 use sway_types::{Ident, Span, Spanned};
 /// Represents a span for the comments in a spesific file
@@ -179,22 +179,7 @@ where
         collected_spans
     }
 }
-impl CommentVisitor for AttributeDecl {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
-        let mut collected_spans = vec![CommentSpan::from_span(self.hash_token.span())];
-        collected_spans.append(&mut self.attribute.collect_spans());
-        collected_spans
-    }
-}
-impl CommentVisitor for Attribute {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
-        let mut collected_spans = vec![CommentSpan::from_span(self.name.span())];
-        if let Some(args) = &self.args {
-            collected_spans.append(&mut args.collect_spans());
-        }
-        collected_spans
-    }
-}
+
 impl CommentVisitor for Ident {
     fn collect_spans(&self) -> Vec<CommentSpan> {
         vec![CommentSpan::from_span(self.span())]

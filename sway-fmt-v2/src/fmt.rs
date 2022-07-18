@@ -545,7 +545,8 @@ abi StorageMapExample {
     fn insert_into_map1(key: u64, value: u64); // this is the last comment inside the StorageMapExample
 
     fn hello(key: u64, value: u64);
-}"#;
+}
+pub const /* TEST: blah blah tests */ TEST: u16 = 10;"#;
         let correct_sway_code = r#"contract;
 // This is some other comment, for this one to be placed correclty we need to have ModuleKind visitor implementedcontract;
 
@@ -584,7 +585,8 @@ abi StorageMapExample {
     fn insert_into_map1(key: u64, value: u64); // this is the last comment inside the StorageMapExample
 
     fn hello(key: u64, value: u64);
-}"#;
+}
+pub const /* TEST: blah blah tests */ TEST: u16 = 10;"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();

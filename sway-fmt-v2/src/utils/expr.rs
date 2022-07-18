@@ -308,9 +308,7 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             branches,
         } => {
             let mut collected_spans = vec![CommentSpan::from_span(match_token.span())];
-            // Collect value's CommentSpans
             collected_spans.append(&mut value.collect_spans());
-            // Collect branches' CommentSpans
             collected_spans.append(&mut branches.collect_spans());
             collected_spans
         }
@@ -320,25 +318,19 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             block,
         } => {
             let mut collected_spans = vec![CommentSpan::from_span(while_token.span())];
-            // Collect condition's CommentSpans
             collected_spans.append(&mut condition.collect_spans());
-            // Colelct block's CommentSpans
             collected_spans.append(&mut block.collect_spans());
             collected_spans
         }
         Expr::FuncApp { func, args } => {
             let mut collected_spans = Vec::new();
-            // Collect func's CommentSpans
             collected_spans.append(&mut func.collect_spans());
-            // Collect args' CommentSpans
             collected_spans.append(&mut args.collect_spans());
             collected_spans
         }
         Expr::Index { target, arg } => {
             let mut collected_spans = Vec::new();
-            // Collect target's CommentSpans
             collected_spans.append(&mut target.collect_spans());
-            // Collect arg's CommentSpans
             collected_spans.append(&mut arg.collect_spans());
             collected_spans
         }
@@ -350,17 +342,12 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             args,
         } => {
             let mut collected_spans = Vec::new();
-            // Collect target's CommentSpans
             collected_spans.append(&mut target.collect_spans());
-            // Add dot_token's CommentSpan
             collected_spans.push(CommentSpan::from_span(dot_token.span()));
-            // Add name's CommentSpan
             collected_spans.push(CommentSpan::from_span(name.span()));
-            // Collect contract args if it exists
             if let Some(contract_args) = contract_args_opt {
                 collected_spans.append(&mut contract_args.collect_spans());
             }
-            // Collect args CommentSpans
             collected_spans.append(&mut args.collect_spans());
             collected_spans
         }
@@ -370,11 +357,8 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             name,
         } => {
             let mut collected_spans = Vec::new();
-            // Collect target's CommentSpans
             collected_spans.append(&mut target.collect_spans());
-            // Add dot_token's CommentSpan
             collected_spans.push(CommentSpan::from_span(dot_token.span()));
-            // Add name's CommentSpan
             collected_spans.push(CommentSpan::from_span(name.span()));
             collected_spans
         }
@@ -385,11 +369,8 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             field_span,
         } => {
             let mut collected_spans = Vec::new();
-            // Collect target CommentSpans
             collected_spans.append(&mut target.collect_spans());
-            // Add dot_token's CommentSpan
             collected_spans.push(CommentSpan::from_span(dot_token.span()));
-            // Add field's CommentSpan
             collected_spans.push(CommentSpan::from_span(field_span.clone()));
             collected_spans
         }
@@ -603,11 +584,8 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
 
 impl CommentVisitor for AbiCastArgs {
     fn collect_spans(&self) -> Vec<CommentSpan> {
-        // Add name's CommentSpan
         let mut collected_spans = vec![CommentSpan::from_span(self.name.span())];
-        // Add comma_token's CommentSpan
         collected_spans.push(CommentSpan::from_span(self.comma_token.span()));
-        // Add address CommentSpan
         collected_spans.append(&mut self.address.collect_spans());
         collected_spans
     }
@@ -615,9 +593,7 @@ impl CommentVisitor for AbiCastArgs {
 
 impl CommentVisitor for ExprStructField {
     fn collect_spans(&self) -> Vec<CommentSpan> {
-        // Add field name's CommentSpan
         let mut collected_spans = vec![CommentSpan::from_span(self.field_name.span())];
-        // Add expr's CommentSpan if it exists
         if let Some(expr) = &self.expr_opt {
             collected_spans.push(CommentSpan::from_span(expr.0.span()));
             // TODO: determine if we are allowing comments between `:` and expr
@@ -636,11 +612,8 @@ impl CommentVisitor for ExprTupleDescriptor {
             tail,
         } = self
         {
-            // Collect head's CommentSpans
             collected_spans.append(&mut head.collect_spans());
-            // Add comma_token's CommentSpan
             collected_spans.push(CommentSpan::from_span(comma_token.span()));
-            // Collect tail's CommentSpans
             collected_spans.append(&mut tail.collect_spans());
         }
         collected_spans
@@ -656,11 +629,8 @@ impl CommentVisitor for ExprArrayDescriptor {
             length,
         } = self
         {
-            // Collect value's CommentSpans
             collected_spans.append(&mut value.collect_spans());
-            // Add semicolon_token's CommentSpan
             collected_spans.push(CommentSpan::from_span(semicolon_token.span()));
-            // Collect length's CommentSpans
             collected_spans.append(&mut length.collect_spans());
         }
         collected_spans
@@ -669,11 +639,8 @@ impl CommentVisitor for ExprArrayDescriptor {
 
 impl CommentVisitor for AsmBlock {
     fn collect_spans(&self) -> Vec<CommentSpan> {
-        // Add asm_token's CommentSpan
         let mut collected_spans = vec![CommentSpan::from_span(self.asm_token.span())];
-        // Collect registers' CommentSpans
         collected_spans.append(&mut self.registers.collect_spans());
-        // Collect contents' CommentSpans
         collected_spans.append(&mut self.contents.collect_spans());
         collected_spans
     }
@@ -681,9 +648,7 @@ impl CommentVisitor for AsmBlock {
 
 impl CommentVisitor for AsmRegisterDeclaration {
     fn collect_spans(&self) -> Vec<CommentSpan> {
-        // Add register's CommentSpan
         let mut collected_spans = vec![CommentSpan::from_span(self.register.span())];
-        // Add value's CommentSpan if it exists
         if let Some(value) = &self.value_opt {
             collected_spans.push(CommentSpan::from_span(value.0.span()));
             // TODO: determine if we are allowing comments between `:` and expr
@@ -697,9 +662,7 @@ impl CommentVisitor for AsmBlockContents {
     fn collect_spans(&self) -> Vec<CommentSpan> {
         let mut collected_spans = Vec::new();
         for instruction in &self.instructions {
-            // Add instruction's CommentSpan
             collected_spans.append(&mut instruction.0.collect_spans());
-            // Add SemicolonToken's CommentSpan
             // TODO: probably we shouldn't allow for comments in between the instruction and comma since it may/will result in build failure after formatting
             collected_spans.push(CommentSpan::from_span(instruction.1.span()));
         }
@@ -716,9 +679,7 @@ impl CommentVisitor for Instruction {
 
 impl CommentVisitor for AsmFinalExpr {
     fn collect_spans(&self) -> Vec<CommentSpan> {
-        // Add register's CommentSpan
         let mut collected_spans = vec![CommentSpan::from_span(self.register.span())];
-        // Add ty's CommentSpan if it exists
         if let Some(ty) = &self.ty_opt {
             collected_spans.push(CommentSpan::from_span(ty.0.span()));
             // TODO: determine if we are allowing comments between `:` and ty
@@ -730,17 +691,11 @@ impl CommentVisitor for AsmFinalExpr {
 
 impl CommentVisitor for IfExpr {
     fn collect_spans(&self) -> Vec<CommentSpan> {
-        // Add if_token's CommentSpan
         let mut collected_spans = vec![CommentSpan::from_span(self.if_token.span())];
-        // Collect condition's CommentSpan
         collected_spans.append(&mut self.condition.collect_spans());
-        // Collect then block
         collected_spans.append(&mut self.then_block.collect_spans());
-        // Collect else if it exists
         if let Some(else_block) = &self.else_opt {
-            // Add ElseToken's CommentSpan
             collected_spans.push(CommentSpan::from_span(else_block.0.span()));
-            // Collect else & else if blocks' CommentSpans
             let mut else_body_spans = match &else_block.1 {
                 std::ops::ControlFlow::Continue(if_expr) => if_expr.collect_spans(),
                 std::ops::ControlFlow::Break(else_body) => else_body.collect_spans(),
@@ -774,11 +729,8 @@ impl CommentVisitor for IfCondition {
 impl CommentVisitor for MatchBranch {
     fn collect_spans(&self) -> Vec<CommentSpan> {
         let mut collected_spans = Vec::new();
-        // Collect Pattern's CommentSpans
         collected_spans.append(&mut self.pattern.collect_spans());
-        // Add fat_right_arrow_token's CommentSpan
         collected_spans.push(CommentSpan::from_span(self.fat_right_arrow_token.span()));
-        // Collect kind's CommentSpans
         collected_spans.append(&mut self.kind.collect_spans());
         collected_spans
     }

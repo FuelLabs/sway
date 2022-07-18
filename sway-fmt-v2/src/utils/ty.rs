@@ -133,11 +133,8 @@ impl CommentVisitor for TyTupleDescriptor {
             tail,
         } = self
         {
-            // Collect head's CommentSpans
             collected_spans.append(&mut head.collect_spans());
-            // Add comma_token's CommentSpan
             collected_spans.push(CommentSpan::from_span(comma_token.span()));
-            // Collect tail's CommentSpans
             collected_spans.append(&mut tail.collect_spans());
         }
         collected_spans
@@ -147,11 +144,8 @@ impl CommentVisitor for TyTupleDescriptor {
 impl CommentVisitor for TyArrayDescriptor {
     fn collect_spans(&self) -> Vec<CommentSpan> {
         let mut collected_spans = Vec::new();
-        // Collect ty's CommentSpans
         collected_spans.append(&mut self.ty.collect_spans());
-        // Add semicolon token's CommentSpan
         collected_spans.push(CommentSpan::from_span(self.semicolon_token.span()));
-        // Collect length's CommentSpans
         collected_spans.append(&mut self.length.collect_spans());
         collected_spans
     }

@@ -1,5 +1,6 @@
 use crate::{
     fmt::{Format, FormattedCode, Formatter},
+    utils::comments::{CommentSpan, CommentVisitor},
     FormatterError,
 };
 use std::fmt::Write;
@@ -42,5 +43,25 @@ impl Format for ItemConst {
         )?;
 
         Ok(())
+    }
+}
+
+impl CommentVisitor for ItemConst {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_spans = Vec::new();
+        if let Some(visibility) = &self.visibility {
+            collected_spans.push(CommentSpan::from_span(visibility.span()));
+        }
+        collected_spans.push(CommentSpan::from_span(self.const_token.span()));
+        collected_spans.push(CommentSpan::from_span(self.name.span()));
+        if let Some(ty) = &self.ty_opt {
+            collected_spans.push(CommentSpan::from_span(ty.0.span()));
+            // TODO: determine if we allow comments in between `:` and ty
+            collected_spans.append(&mut ty.1.collect_spans());
+        }
+        collected_spans.push(CommentSpan::from_span(self.eq_token.span()));
+        collected_spans.append(&mut self.expr.collect_spans());
+        collected_spans.push(CommentSpan::from_span(self.semicolon_token.span()));
+        collected_spans
     }
 }

@@ -219,11 +219,9 @@ impl CommentVisitor for ItemFn {
 impl CommentVisitor for CodeBlockContents {
     fn collect_spans(&self) -> Vec<CommentSpan> {
         let mut collected_span = Vec::new();
-        // Collect statements' CommentSpans
         for statement in self.statements.iter() {
             collected_span.append(&mut statement.collect_spans());
         }
-        // Collect expr's CommentSpans if it exists
         if let Some(expr) = &self.final_expr_opt {
             collected_span.append(&mut expr.collect_spans());
         }
@@ -234,21 +232,15 @@ impl CommentVisitor for CodeBlockContents {
 impl CommentVisitor for FnSignature {
     fn collect_spans(&self) -> Vec<CommentSpan> {
         let mut collected_spans = Vec::new();
-        // Add visibility token if it exists
         if let Some(visibility) = &self.visibility {
             collected_spans.push(CommentSpan::from_span(visibility.span()));
         }
-        // Add fn_token
         collected_spans.push(CommentSpan::from_span(self.fn_token.span()));
-        // Add name
         collected_spans.push(CommentSpan::from_span(self.name.span()));
-        // Add generics if it exists
         if let Some(generics) = &self.generics {
             collected_spans.push(CommentSpan::from_span(generics.parameters.span()));
         }
-        // Add spans for parameters
         collected_spans.append(&mut self.arguments.collect_spans());
-        // Add return type if it exists
         if let Some((right_arrow_token, ty)) = &self.return_type_opt {
             collected_spans.push(CommentSpan::from_span(right_arrow_token.span()));
             collected_spans.push(CommentSpan::from_span(ty.span()));
@@ -288,9 +280,7 @@ impl CommentVisitor for FnArg {
     fn collect_spans(&self) -> Vec<CommentSpan> {
         let mut collected_spans = Vec::new();
         collected_spans.append(&mut self.pattern.collect_spans());
-        // Add ColonToken
         collected_spans.push(CommentSpan::from_span(self.colon_token.span()));
-        // Add ty
         collected_spans.push(CommentSpan::from_span(self.ty.span()));
         collected_spans
     }

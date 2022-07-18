@@ -4,13 +4,16 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_parse::{
-    attribute::{Annotated, AttributeDecl},
+    attribute::{Annotated, Attribute, AttributeDecl},
     token::Delimiter,
     Parse,
 };
 use sway_types::Spanned;
 
-use super::bracket::{Parenthesis, SquareBracket};
+use super::{
+    bracket::{Parenthesis, SquareBracket},
+    comments::{CommentSpan, CommentVisitor},
+};
 
 impl<T: Parse + Format> Format for Annotated<T> {
     fn format(
@@ -89,5 +92,21 @@ impl Parenthesis for AttributeDecl {
     ) -> Result<(), FormatterError> {
         write!(line, "{}", Delimiter::Parenthesis.as_close_char())?;
         Ok(())
+    }
+}
+impl CommentVisitor for AttributeDecl {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_spans = vec![CommentSpan::from_span(self.hash_token.span())];
+        collected_spans.append(&mut self.attribute.collect_spans());
+        collected_spans
+    }
+}
+impl CommentVisitor for Attribute {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_spans = vec![CommentSpan::from_span(self.name.span())];
+        if let Some(args) = &self.args {
+            collected_spans.append(&mut args.collect_spans());
+        }
+        collected_spans
     }
 }

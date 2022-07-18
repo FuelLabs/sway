@@ -11,6 +11,7 @@ impl CommentVisitor for Item {
             Enum(item_enum) => item_enum.collect_spans(),
             Fn(item_fn) => item_fn.collect_spans(),
             Abi(item_abi) => item_abi.collect_spans(),
+            Const(item_const) => item_const.collect_spans(),
             _ => Vec::new(),
         }
     }
