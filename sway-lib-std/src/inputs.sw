@@ -50,57 +50,33 @@ pub const INPUT_MESSAGE = 2u8;
 
 /// Get the type of an input given a pointer to the input.
 pub fn tx_input_type(index: u64) -> u8 {
-    // GTF_INPUT_TYPE = 0x101
-    asm(res, i: index) {
-        gtf res i i257;
-        res: u64
-    }
+    __gtf::<u8>(index, GTF_INPUT_TYPE)
 }
 
 /// Get the tx id of the input coin at `index`.
 pub fn input_coin_tx_id(index: u64) -> b256 {
-    // GTF_INPUT_COIN_TX_ID = 0x102
-    read<b256>(asm(res, i: index) {
-        gtf res i i258;
-        res: u64
-    })
+    __gtf::<b256>(index, GTF_INPUT_COIN_TX_ID)
 }
 
 /// Get output index of coin at `index`.
 pub fn input_coin_output_index(index: u64) -> u64 {
-    // GTF_INPUT_COIN_OUTPUT_INDEX = 0x103
-    asm(res, i: index) {
-        gtf res i i259;
-        res: u64
-    }
+    __gtf::<u64>(index, GTF_INPUT_COIN_OUTPUT_INDEX)
 }
 
 /// Get amount field from coin at `index`.
 pub fn input_coin_amount(index: u64) -> u64 {
-    // GTF_INPUT_COIN_AMOUNT = 0x105
-    asm(res, i: index) -> u64 {
-        gtf res i i261;
-        res: u64
-    }
+    __gtf::<u64>(index, GTF_INPUT_COIN_AMOUNT)
 }
 
 
 /// Get the owner of the input coin at `index`.
 pub fn input_coin_owner(index: u64) -> Address {
-    // GTF_INPUT_COIN_OWNER = 0x104
-    ~Address::from(read<b256>(asm(res, i: index) {
-        gtf res i i260;
-        res: u64
-    }))
+    ~Address::from(__gtf::<b256>(index, GTF_INPUT_COIN_OWNER))
 }
 
 /// Get predicate data from InputCoin at `index`.
 pub fn input_coin_predicate_data(index: u64) -> T {
-    // GTF_INPUT_COIN_PREDICATE_DATA = 0x10D
-    read<T>(asm(res, i: index) {
-        gtf res i i288;
-        res: u64
-    })
+    read::<T>(__gtf::<u64>(index, GTF_INPUT_COIN_PREDICATE_DATA))
 }
 
 /// Get predicate data for input at `index`
@@ -124,31 +100,14 @@ pub fn predicate_data<T>(index: u64) -> Option<T> {
     };
 }
 
-
-/**
-// GTF_INPUT_CONTRACT_TX_ID = 0x10E
-            read(asm(res, i: index) {
-                gtf res i i270;
-                res: u64
-            }))
-*/
-
 /// Get the transaction inputs count.
 pub fn tx_inputs_count() -> u64 {
-    // GTF_SCRIPT_INPUTS_COUNT = 0x007
-    asm(res) {
-        gtf res zero i7;
-        res: u64
-    }
+    __gtf::<u64>(0, GTF_SCRIPT_INPUTS_COUNT)
 }
 
-/// Get a pointer to an input given the index of the input.
+/// Get a pointer to the input at `index`.
 pub fn tx_input_pointer(index: u64) -> u64 {
-    // GTF_SCRIPT_INPUT_AT_INDEX = 0x00D
-    asm(res, i: index) {
-        gtf res i i13;
-        res: u64
-    }
+    __gtf::<u64>(index, GTF_SCRIPT_INPUT_AT_INDEX)
 }
 
 /// If the input's type is `InputCoin` or `InputMessage`,
@@ -171,6 +130,7 @@ pub fn tx_input_owner(index: u64) -> Option<Address> {
     }
 }
 
+// @review is this needed, or can we just use `read()`?
 /// Read 256 bits from memory at a given offset from a given pointer
 pub fn b256_from_pointer_offset(pointer: u64, offset: u64) -> b256 {
     asm(buffer, ptr: pointer, off: offset) {
@@ -187,20 +147,12 @@ pub fn b256_from_pointer_offset(pointer: u64, offset: u64) -> b256 {
     }
 }
 
-/// Get the owner of the input message at `index`.
+/// Get the owner address of the input message at `index`.
 pub fn input_message_owner(index: u64) -> Address {
-    // GTF_INPUT_MESSAGE_OWNER = 0x119
-    ~Address::from(read<b256>(asm(res, i: index) {
-        gtf res i i281;
-        res: u64
-    }))
+    ~Address::from(__gtf::<b256>(index, GTF_INPUT_MESSAGE_OWNER))
 }
 
 /// Get predicate data from message at `index`.
 pub fn input_message_predicate_data(index: u64) -> T {
-    // GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x120
-    read<T>(asm(res, i: index) {
-        gtf res i i269;
-        res: u64
-    })
+    read<T>(__gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA))
 }
