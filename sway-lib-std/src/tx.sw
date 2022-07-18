@@ -214,36 +214,6 @@ pub fn tx_script_bytecode<T>() -> T {
 }
 
 ////////////////////////////////////////
-// Inputs > Predicate
-////////////////////////////////////////
-
-pub fn predicate_data<T>(index: u64) -> T {
-    let type = tx_input_type(index);
-    let ptr = match type {
-        // TODO: try using consts in match arms
-        // 0 is the `Coin` Input type
-        0u8 => {
-            // GTF_INPUT_COIN_PREDICATE_DATA = 0x10D
-            Option::Some(read(asm(res, i: index) {
-                gtf res i i288;
-                res: u64
-            }), 0)
-        },
-        // 2 is the `Message` Input type
-        2u8 => {
-            // GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x120
-            Option::Some(read(asm(res, i: index) {
-                gtf res i i269;
-                res: u64
-            }), 0)
-        },
-        _ => {
-            return Option::None;
-        },
-    };
-}
-
-////////////////////////////////////////
 // Outputs
 ////////////////////////////////////////
 

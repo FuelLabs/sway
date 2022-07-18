@@ -57,7 +57,7 @@ pub fn tx_input_type(index: u64) -> u8 {
     }
 }
 
-// Get the tx id of the input coin at `index`.
+/// Get the tx id of the input coin at `index`.
 pub fn input_coin_tx_id(index: u64) -> b256 {
     // GTF_INPUT_COIN_TX_ID = 0x102
     read<b256>(asm(res, i: index) {
@@ -66,7 +66,7 @@ pub fn input_coin_tx_id(index: u64) -> b256 {
     })
 }
 
-// Get the owner of the input coin at `index`.
+/// Get the owner of the input coin at `index`.
 pub fn input_coin_owner(index: u64) -> Address {
     // GTF_INPUT_COIN_OWNER = 0x104
     ~Address::from(read<b256>(asm(res, i: index) {
@@ -74,6 +74,37 @@ pub fn input_coin_owner(index: u64) -> Address {
         res: u64
     }))
 }
+
+/// Get predicate data for input at `index`
+/// If the input's type is `InputCoin` or `InputMessage`,
+/// return the data as an Option::Some(T).
+/// Otherwise, returns Option::None.
+pub fn predicate_data<T>(index: u64) -> Option<T> {
+    let type = tx_input_type(index);
+    let ptr = match type {
+        // TODO: try using consts in match arms
+        // 0 is the `Coin` Input type
+        0u8 => {
+            // GTF_INPUT_COIN_PREDICATE_DATA = 0x10D
+            Option::Some(read(asm(res, i: index) {
+                gtf res i i288;
+                res: u64
+            }), 0)
+        },
+        // 2 is the `Message` Input type
+        2u8 => {
+            // GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x120
+            Option::Some(read(asm(res, i: index) {
+                gtf res i i269;
+                res: u64
+            }), 0)
+        },
+        _ => {
+            return Option::None;
+        },
+    };
+}
+
 
 /**
 // GTF_INPUT_CONTRACT_TX_ID = 0x10E
@@ -137,7 +168,7 @@ pub fn b256_from_pointer_offset(pointer: u64, offset: u64) -> b256 {
     }
 }
 
-// Get the owner of the input message at `index`.
+/// Get the owner of the input message at `index`.
 pub fn input_message_owner(index: u64) -> Address {
     // GTF_INPUT_MESSAGE_OWNER = 0x119
     ~Address::from(read<b256>(asm(res, i: index) {
