@@ -66,6 +66,15 @@ pub fn input_coin_tx_id(index: u64) -> b256 {
     })
 }
 
+// Get the owner of the input coin at `index`.
+pub fn input_coin_owner(index: u64) -> Address {
+    // GTF_INPUT_COIN_OWNER = 0x104
+    ~Address::from(read<b256>(asm(res, i: index) {
+        gtf res i i260;
+        res: u64
+    }))
+}
+
 /**
 // GTF_INPUT_CONTRACT_TX_ID = 0x10E
             read(asm(res, i: index) {
@@ -97,33 +106,19 @@ pub fn tx_input_pointer(index: u64) -> u64 {
 /// Otherwise, returns Option::None.
 pub fn tx_input_owner(index: u64) -> Option<Address> {
     let type = tx_input_type(index);
-    let owner_ptr = match type {
-        // TODO: try using consts in match arms
+    match type {
         // 0 is the `Coin` Input type
         0u8 => {
-            // GTF_INPUT_COIN_OWNER = 0x104
-            asm(res, i: index) {
-                gtf res i i260;
-                res: u64
-            }
+            return Option::Some(input_coin_owner(index))
         },
         // 2 is the `Message` Input type
         2u8 => {
-            // GTF_INPUT_MESSAGE_OWNER = 0x119
-            asm(res, i: index) {
-                gtf res i i281;
-                res: u64
-            }
+            return Option::Some(input_message_owner(index))
         },
         _ => {
             return Option::None;
         },
-    };
-
-    Option::Some(~Address::from(b256_from_pointer_offset(
-        owner_ptr,
-        0
-    )))
+    }
 }
 
 /// Read 256 bits from memory at a given offset from a given pointer
@@ -140,4 +135,13 @@ pub fn b256_from_pointer_offset(pointer: u64, offset: u64) -> b256 {
         // `buffer` now points to the 32 bytes
         buffer: b256
     }
+}
+
+// Get the owner of the input message at `index`.
+pub fn input_message_owner(index: u64) -> Address {
+    // GTF_INPUT_MESSAGE_OWNER = 0x119
+    ~Address::from(read<b256>(asm(res, i: index) {
+        gtf res i i281;
+        res: u64
+    }))
 }
