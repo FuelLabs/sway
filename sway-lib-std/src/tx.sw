@@ -26,8 +26,7 @@ const GTF_SCRIPT_SCRIPT = 0x00B;
 const GTF_SCRIPT_SCRIPT_DATA = 0x00C;
 const GTF_SCRIPT_INPUT_AT_INDEX = 0x00D;
 const GTF_SCRIPT_OUTPUT_AT_INDEX = 0x00E
-
-// const GTF_SCRIPT_WITNESS_AT_INDEX = 0x00F;
+const GTF_SCRIPT_WITNESS_AT_INDEX = 0x00F;
 
 // const GTF_CREATE_GAS_PRICE = 0x010;
 // const GTF_CREATE_GAS_LIMIT = 0x011;
@@ -90,8 +89,8 @@ const GTF_OUTPUT_MESSAGE_AMOUNT = 0x209;
 // const GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID = 0x20A;
 // const GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT = 0x20B;
 
-// const GTF_WITNESS_DATA_LENGTH = 0x301;
-// const GTF_WITNESS_DATA = 0x302;
+const GTF_WITNESS_DATA_LENGTH = 0x301;
+const GTF_WITNESS_DATA = 0x302;
 
 // Input types
 pub const INPUT_COIN = 0u8;
@@ -188,6 +187,36 @@ pub fn tx_witnesses_count() -> u64 {
         res: u64
     }
 }
+
+// Get witness at index `index`
+pub fn script_witness(index: u64) -> b256 {
+    // GTF_SCRIPT_WITNESS_AT_INDEX = 0x00F
+    read(asm(res, i: index) {
+        gtf res i i15;
+        res: u64
+    })
+}
+
+// Get the length of the witness data at `index`
+pub fn witness_data_length(index: u64) -> u64 {
+    asm(res, i: index) {
+        gtf res i i769;
+        res: u64
+    }
+}
+
+// @todo figure out return type
+// Get the witness data at `index`.
+pub fn witness_data<T>(index: u64) -> T {
+    // GTF_WITNESS_DATA = 0x302
+    read(asm(res, i: index) {
+        gtf res i i770;
+        res: u64
+    })
+}
+
+// const GTF_WITNESS_DATA_LENGTH = 0x301;
+// const GTF_WITNESS_DATA = 0x302;
 
 /// Get the transaction receipts root.
 pub fn tx_receipts_root() -> b256 {
