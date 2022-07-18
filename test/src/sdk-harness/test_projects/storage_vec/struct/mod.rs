@@ -2,7 +2,7 @@ mod utils;
 
 use utils::{
     setup::get_contract_instance,
-    wrappers::{clear, get, insert, is_empty, len, pop, push, remove, swap_remove},
+    wrappers::{clear, get, insert, is_empty, len, pop, push, remove, swap_remove, set},
     TestStruct,
 };
 
@@ -119,7 +119,11 @@ mod success {
     async fn can_insert() {
         let (instance, _id) = get_contract_instance().await;
 
-        push(&instance, STRUCT1).await;
+        insert(&instance, 0, STRUCT1).await;
+
+        let len_vec = len(&instance).await;
+        assert_eq!(len_vec, 1);
+
         push(&instance, STRUCT2).await;
         push(&instance, STRUCT3).await;
         push(&instance, STRUCT4).await;
@@ -205,6 +209,31 @@ mod success {
 
         let isempty = is_empty(&instance).await;
         assert_eq!(isempty, true);
+    }
+
+    #[tokio::test]
+    async fn can_set() {
+        let (instance, _id) = get_contract_instance().await;
+
+        push(&instance, STRUCT1).await;
+        push(&instance, STRUCT2).await;
+        push(&instance, STRUCT3).await;
+        push(&instance, STRUCT4).await;
+
+        assert_eq!(STRUCT1, get(&instance, 0).await);
+        assert_eq!(STRUCT2, get(&instance, 1).await);
+        assert_eq!(STRUCT3, get(&instance, 2).await);
+        assert_eq!(STRUCT4, get(&instance, 3).await);
+
+        set(&instance, 0, STRUCT4).await;
+        set(&instance, 1, STRUCT3).await;
+        set(&instance, 2, STRUCT2).await;
+        set(&instance, 3, STRUCT1).await;
+
+        assert_eq!(STRUCT4, get(&instance, 0).await);
+        assert_eq!(STRUCT3, get(&instance, 1).await);
+        assert_eq!(STRUCT2, get(&instance, 2).await);
+        assert_eq!(STRUCT1, get(&instance, 3).await);
     }
 }
 

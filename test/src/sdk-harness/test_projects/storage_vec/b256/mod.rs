@@ -2,7 +2,7 @@ mod utils;
 
 use utils::{
     setup::get_contract_instance,
-    wrappers::{clear, get, insert, is_empty, len, pop, push, remove, swap_remove},
+    wrappers::{clear, get, insert, is_empty, len, pop, push, remove, swap_remove, set},
 };
 
 // TODO: Replace many of the get calls with direct storage values
@@ -118,7 +118,11 @@ mod success {
     async fn can_insert() {
         let (instance, _id) = get_contract_instance().await;
 
-        push(&instance, BYTES1).await;
+        insert(&instance, 0, BYTES1).await;
+
+        let len_vec = len(&instance).await;
+        assert_eq!(len_vec, 1);
+
         push(&instance, BYTES2).await;
         push(&instance, BYTES3).await;
         push(&instance, BYTES4).await;
@@ -204,6 +208,31 @@ mod success {
 
         let isempty = is_empty(&instance).await;
         assert_eq!(isempty, true);
+    }
+
+    #[tokio::test]
+    async fn can_set() {
+        let (instance, _id) = get_contract_instance().await;
+
+        push(&instance, BYTES1).await;
+        push(&instance, BYTES2).await;
+        push(&instance, BYTES3).await;
+        push(&instance, BYTES4).await;
+
+        assert_eq!(BYTES1, get(&instance, 0).await);
+        assert_eq!(BYTES2, get(&instance, 1).await);
+        assert_eq!(BYTES3, get(&instance, 2).await);
+        assert_eq!(BYTES4, get(&instance, 3).await);
+
+        set(&instance, 0, BYTES4).await;
+        set(&instance, 1, BYTES3).await;
+        set(&instance, 2, BYTES2).await;
+        set(&instance, 3, BYTES1).await;
+
+        assert_eq!(BYTES4, get(&instance, 0).await);
+        assert_eq!(BYTES3, get(&instance, 1).await);
+        assert_eq!(BYTES2, get(&instance, 2).await);
+        assert_eq!(BYTES1, get(&instance, 3).await);
     }
 }
 
