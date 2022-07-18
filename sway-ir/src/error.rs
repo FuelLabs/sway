@@ -53,6 +53,8 @@ pub enum IrError {
     VerifyUntypedValuePassedToFunction,
 }
 
+impl std::error::Error for IrError {}
+
 use std::fmt;
 
 impl fmt::Display for IrError {
