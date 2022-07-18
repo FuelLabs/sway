@@ -81,8 +81,6 @@ impl Backend {
         // and instead show the parsed tokens as warnings.
         // This is useful for debugging the lsp parser.
         if self.config.parsed_tokens_as_warnings {
-            //TODO this should also take the URI and only generate warning for tokens in the map
-            //that also match that file
             let diagnostics = debug::generate_warnings_for_parsed_tokens(token_map);
 
             // let diagnostics = debug::generate_warnings_for_typed_tokens(token_map);
@@ -140,8 +138,8 @@ impl LanguageServer for Backend {
 
         match session.parse_project(&uri) {
             Ok(diagnostics) => {
-                self.publish_diagnostics(&uri, diagnostics, &session.token_map)
-                    .await
+                let tokens = session.tokens_for_file(&uri);
+                self.publish_diagnostics(&uri, diagnostics, &tokens).await
             }
             Err(_) => (), // report an error to the output window
         }
@@ -153,8 +151,8 @@ impl LanguageServer for Backend {
         session.update_text_document(&uri, params.content_changes);
         match session.parse_project(&uri) {
             Ok(diagnostics) => {
-                self.publish_diagnostics(&uri, diagnostics, &session.token_map)
-                    .await
+                let tokens = session.tokens_for_file(&uri);
+                self.publish_diagnostics(&uri, diagnostics, &tokens).await
             }
             Err(_) => (), // report an error to the output window
         }
@@ -165,8 +163,8 @@ impl LanguageServer for Backend {
         let uri = params.text_document.uri.clone();
         match session.parse_project(&uri) {
             Ok(diagnostics) => {
-                self.publish_diagnostics(&uri, diagnostics, &session.token_map)
-                    .await
+                let tokens = session.tokens_for_file(&uri);
+                self.publish_diagnostics(&uri, diagnostics, &tokens).await
             }
             Err(_) => (), // report an error to the output window
         }

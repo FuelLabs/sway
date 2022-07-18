@@ -12,7 +12,7 @@ pub struct DebugFlags {
     pub parsed_tokens_as_warnings: bool,
 }
 
-pub fn generate_warnings_non_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
+pub(crate) fn generate_warnings_non_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
     let warnings = tokens
         .iter()
         .filter(|(_, v)| v.typed.is_none())
@@ -22,7 +22,7 @@ pub fn generate_warnings_non_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> 
     warnings
 }
 
-pub fn generate_warnings_for_parsed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
+pub(crate) fn generate_warnings_for_parsed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
     let warnings = tokens
         .iter()
         .map(|((ident, _), token_type)| (ident, &token_type.parsed))
@@ -32,7 +32,7 @@ pub fn generate_warnings_for_parsed_tokens(tokens: &TokenMap) -> Vec<Diagnostic>
     warnings
 }
 
-pub fn generate_warnings_for_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
+pub(crate) fn generate_warnings_for_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
     let warnings = tokens
         .iter()
         .filter(|(_, v)| v.typed.is_some())
@@ -51,7 +51,7 @@ fn warning_from_ident(ident: &Ident) -> Diagnostic {
     }
 }
 
-pub fn debug_print_ident_and_token(ident: &Ident, token: &TokenType) {
+pub(crate) fn debug_print_ident_and_token(ident: &Ident, token: &TokenType) {
     let pos = ident.span().start_pos().line_col();
     let line_num = pos.0 as u32;
 

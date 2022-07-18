@@ -42,7 +42,8 @@ impl Session {
 
     /// Check if the code editor's cursor is currently over an of our collected tokens
     pub fn token_at_position(&self, uri: &Url, position: Position) -> Option<(Ident, &TokenType)> {
-        match utils::common::ident_and_span_at_position(uri, position, &self.token_map) {
+        let tokens = self.tokens_for_file(uri);
+        match utils::common::ident_and_span_at_position(position, &tokens) {
             Some((ident, _)) => {
                 // Retrieve the TokenType from our HashMap
                 self.token_map
@@ -66,6 +67,24 @@ impl Session {
                 }
             })
             .map(|((ident, _), token)| (ident, token))
+            .collect()
+    }
+
+    /// Return a TokenMap with tokens belonging to the provided file path
+    pub fn tokens_for_file(&self, uri: &Url) -> TokenMap {
+        self.token_map
+            .iter()
+            .filter(|((_, span), _)| match span.path() {
+                Some(path) => {
+                    if path.to_str() == Some(uri.path()) {
+                        true
+                    } else {
+                        false
+                    }
+                }
+                None => false,
+            })
+            .map(|(key, value)| (key.clone(), value.clone()))
             .collect()
     }
 
