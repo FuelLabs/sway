@@ -126,11 +126,9 @@ impl CommentVisitor for Pattern {
                 collected_spans.push(CommentSpan::from_span(underscore_token.span()));
             }
             Pattern::Var { mutable, name } => {
-                // Add mutable if it exists
                 if let Some(mutable) = mutable {
                     collected_spans.push(CommentSpan::from_span(mutable.span()));
                 }
-                // Add name
                 collected_spans.push(CommentSpan::from_span(name.span()));
             }
             Pattern::Literal(literal) => {
@@ -166,13 +164,9 @@ impl CommentVisitor for PatternStructField {
                 field_name,
                 pattern_opt,
             } => {
-                // Add field name CommentSpan
                 collected_spans.push(CommentSpan::from_span(field_name.span()));
-                // Add patern CommentSpan's if it exists
                 if let Some(pattern) = pattern_opt {
-                    // Add ColonToken's CommentSpan
                     collected_spans.push(CommentSpan::from_span(pattern.0.span()));
-                    // Add patterns CommentSpan
                     collected_spans.append(&mut pattern.1.collect_spans());
                 }
             }

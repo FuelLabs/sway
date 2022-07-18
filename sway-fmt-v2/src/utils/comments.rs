@@ -246,7 +246,6 @@ fn add_comments(
     for (unformatted_item, formatted_item) in unformatted_items.iter().zip(formatted_items.iter()) {
         let unformatted_item_spans = unformatted_item.collect_spans();
         let formatted_item_spans = formatted_item.collect_spans();
-
         // TODO: Remove this once every item implements CommentVisitor. This is added to turn tests green
         if unformatted_item_spans.first().is_none() || formatted_item_spans.first().is_none() {
             return Ok(());

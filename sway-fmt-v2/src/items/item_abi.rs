@@ -139,13 +139,9 @@ impl CurlyBrace for ItemAbi {
 
 impl CommentVisitor for ItemAbi {
     fn collect_spans(&self) -> Vec<CommentSpan> {
-        // Add abi_token's CommentSpan
         let mut collected_spans = vec![CommentSpan::from_span(self.abi_token.span())];
-        // Add name's CommentSpan
         collected_spans.push(CommentSpan::from_span(self.name.span()));
-        // Collect abi_items
         collected_spans.append(&mut self.abi_items.collect_spans());
-        // Collect abi_defs if it exists
         if let Some(abi_defs) = &self.abi_defs_opt {
             collected_spans.append(&mut abi_defs.collect_spans());
         }

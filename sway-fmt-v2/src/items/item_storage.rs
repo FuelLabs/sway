@@ -1,13 +1,17 @@
 use crate::{
     config::{items::ItemBraceStyle, user_def::FieldAlignment},
     fmt::{Format, FormattedCode, Formatter},
-    utils::{bracket::CurlyBrace, item::ItemLenChars},
+    utils::{
+        bracket::CurlyBrace,
+        comments::{CommentSpan, CommentVisitor},
+        item::ItemLenChars,
+    },
     FormatterError,
 };
 use std::fmt::Write;
 use sway_parse::{
     token::{Delimiter, PunctKind},
-    ItemStorage,
+    ItemStorage, StorageField,
 };
 use sway_types::Spanned;
 
@@ -223,5 +227,24 @@ impl CurlyBrace for ItemStorage {
             .shrink_left(formatter.config.whitespace.tab_spaces)
             .unwrap_or_default();
         Ok(())
+    }
+}
+
+impl CommentVisitor for ItemStorage {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_spans = vec![CommentSpan::from_span(self.storage_token.span())];
+        collected_spans.append(&mut self.fields.collect_spans());
+        collected_spans
+    }
+}
+
+impl CommentVisitor for StorageField {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        let mut collected_spans = vec![CommentSpan::from_span(self.name.span())];
+        collected_spans.push(CommentSpan::from_span(self.colon_token.span()));
+        collected_spans.append(&mut self.ty.collect_spans());
+        collected_spans.push(CommentSpan::from_span(self.eq_token.span()));
+        collected_spans.append(&mut self.initializer.collect_spans());
+        collected_spans
     }
 }
