@@ -1,37 +1,39 @@
 use std::{
     collections::HashMap,
-    io::{BufReader, BufWriter, Error, ErrorKind, Read, Write},
+    io::{BufReader, BufWriter, Read, Write},
 };
 
+use anyhow::anyhow;
 use sway_ir::{error::IrError, function::Function, optimize, Context};
 
 // -------------------------------------------------------------------------------------------------
+// Right now there are 2 passes - inline and constcombine.  If we are to add more, then this code
+// should be a bit more data driven, rather than comparing pass names to magic strings in `main()`,
+// `perform_xxx()` and `ConfigBuilder`.
 
-fn main() -> std::io::Result<()> {
-    fn to_err<S: std::fmt::Display>(err: S) -> Error {
-        Error::new(ErrorKind::Other, err.to_string())
-    }
-
+fn main() -> Result<(), anyhow::Error> {
     // Build the config from the command line.
-    let config = ConfigBuilder::build(std::env::args()).map_err(&to_err)?;
+    let config = ConfigBuilder::build(std::env::args())?;
 
     // Read the input file, or standard in.
     let input_str = read_from_input(&config.input_path)?;
 
     // Parse it. XXX Improve this error message too.
-    let mut ir = sway_ir::parser::parse(&input_str).map_err(&to_err)?;
+    let mut ir = sway_ir::parser::parse(&input_str)?;
 
     // Perform optimisation passes in order.
     for pass in config.passes {
         match pass.name.as_ref() {
-            "inline" => perform_inline(&mut ir).map_err(&to_err)?,
-            "constcombine" => perform_combine_constants(&mut ir).map_err(&to_err)?,
+            "inline" => perform_inline(&mut ir)?,
+            "constcombine" => perform_combine_constants(&mut ir)?,
             _otherwise => unreachable!("Unknown pass name: {}", pass.name),
         };
     }
 
     // Write the output file or standard out.
-    write_to_output(ir, &config.output_path)
+    write_to_output(ir, &config.output_path)?;
+
+    Ok(())
 }
 
 fn read_from_input(path_str: &Option<String>) -> std::io::Result<String> {
@@ -128,7 +130,7 @@ struct ConfigBuilder<I: Iterator<Item = String>> {
 }
 
 impl<I: Iterator<Item = String>> ConfigBuilder<I> {
-    fn build(mut rest: I) -> Result<Config, String> {
+    fn build(mut rest: I) -> Result<Config, anyhow::Error> {
         rest.next(); // Skip the first arg which is the binary name.
         let next = rest.next();
         ConfigBuilder {
@@ -139,7 +141,7 @@ impl<I: Iterator<Item = String>> ConfigBuilder<I> {
         .build_root()
     }
 
-    fn build_root(mut self) -> Result<Config, String> {
+    fn build_root(mut self) -> Result<Config, anyhow::Error> {
         match self.next {
             None => Ok(self.cfg),
             Some(opt) => {
@@ -151,15 +153,29 @@ impl<I: Iterator<Item = String>> ConfigBuilder<I> {
                     "inline" => self.build_inline_pass(),
                     "constcombine" => self.build_const_combine_pass(),
 
-                    _otherwise => Err(format!("Unrecognised option '{}'.", opt)),
+                    _otherwise => {
+                        if matches!(opt.chars().next(), Some('-')) {
+                            Err(anyhow!("Unrecognised option '{opt}'."))
+                        } else {
+                            Err(anyhow!(
+                                r#"Unrecognised pass name '{opt}'.
+
+Valid pass names are:
+
+  constcombine - constant folding.
+  inline       - inline function calls.
+"#
+                            ))
+                        }
+                    }
                 }
             }
         }
     }
 
-    fn build_input(mut self) -> Result<Config, String> {
+    fn build_input(mut self) -> Result<Config, anyhow::Error> {
         match self.next {
-            None => Err("-i option requires an argument.".to_owned()),
+            None => Err(anyhow!("-i option requires an argument.")),
             Some(path) => {
                 self.cfg.input_path = Some(path);
                 self.next = self.rest.next();
@@ -168,9 +184,9 @@ impl<I: Iterator<Item = String>> ConfigBuilder<I> {
         }
     }
 
-    fn build_output(mut self) -> Result<Config, String> {
+    fn build_output(mut self) -> Result<Config, anyhow::Error> {
         match self.next {
-            None => Err("-o option requires an argument.".to_owned()),
+            None => Err(anyhow!("-o option requires an argument.")),
             Some(path) => {
                 self.cfg.output_path = Some(path);
                 self.next = self.rest.next();
@@ -179,7 +195,7 @@ impl<I: Iterator<Item = String>> ConfigBuilder<I> {
         }
     }
 
-    fn build_inline_pass(mut self) -> Result<Config, String> {
+    fn build_inline_pass(mut self) -> Result<Config, anyhow::Error> {
         // No args yet.  Eventually we should allow specifying which functions are to be inlined
         // or which functions are to have all embedded calls inlined.
         self.cfg.passes.push("inline".into());
@@ -187,7 +203,7 @@ impl<I: Iterator<Item = String>> ConfigBuilder<I> {
         self.build_root()
     }
 
-    fn build_const_combine_pass(mut self) -> Result<Config, String> {
+    fn build_const_combine_pass(mut self) -> Result<Config, anyhow::Error> {
         // No args yet.  Eventually we should allow specifying which functions should have consts
         // combined.
         self.cfg.passes.push("constcombine".into());
