@@ -10,7 +10,7 @@ const GTF_INPUT_TYPE = 0x101;
 const GTF_INPUT_COIN_TX_ID = 0x102;
 const GTF_INPUT_COIN_OUTPUT_INDEX = 0x103;
 const GTF_INPUT_COIN_OWNER = 0x104;
-// const GTF_INPUT_COIN_AMOUNT = 0x105;
+const GTF_INPUT_COIN_AMOUNT = 0x105;
 // const GTF_INPUT_COIN_ASSET_ID = 0x106;
 // const GTF_INPUT_COIN_TX_POINTER = 0x107;
 // const GTF_INPUT_COIN_WITNESS_INDEX = 0x108;
@@ -74,6 +74,16 @@ pub fn input_coin_output_index(index: u64) -> u64 {
         res: u64
     }
 }
+
+/// Get amount field from coin at `index`.
+pub fn input_coin_amount(index: u64) -> u64 {
+    // GTF_INPUT_COIN_AMOUNT = 0x105
+    asm(res, i: index) -> u64 {
+        gtf res i i261;
+        res: u64
+    }
+}
+
 
 /// Get the owner of the input coin at `index`.
 pub fn input_coin_owner(index: u64) -> Address {
