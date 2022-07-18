@@ -143,6 +143,7 @@ mod ir_builder {
                 / op_get_ptr()
                 / op_insert_element()
                 / op_insert_value()
+                / op_int_to_ptr()
                 / op_load()
                 / op_nop()
                 / op_phi()
@@ -233,6 +234,11 @@ mod ir_builder {
             rule op_insert_value() -> IrAstOperation
                 = "insert_value" _ aval:id() comma() ty:ast_ty() comma() ival:id() comma() idcs:(decimal() ++ comma()) {
                     IrAstOperation::InsertValue(aval, ty, ival, idcs)
+                }
+
+            rule op_int_to_ptr() -> IrAstOperation
+                = "int_to_ptr" _ val:id() "to" _ ty:ast_ty() {
+                    IrAstOperation::IntToPtr(val, ty)
                 }
 
             rule op_load() -> IrAstOperation
@@ -579,6 +585,7 @@ mod ir_builder {
         GetPtr(String, IrAstTy, u64),
         InsertElement(String, IrAstTy, String, String),
         InsertValue(String, IrAstTy, String, Vec<u64>),
+        IntToPtr(String, IrAstTy),
         Load(String),
         Nop,
         Phi(Vec<(String, String)>),
@@ -1024,6 +1031,14 @@ mod ir_builder {
                         ir_ty,
                         *val_map.get(&ival).unwrap(),
                         idcs,
+                        opt_ins_span_md_idx,
+                    )
+                }
+                IrAstOperation::IntToPtr(val, ty) => {
+                    let to_ty = ty.to_ir_type(context);
+                    block.ins(context).int_to_ptr(
+                        *val_map.get(&val).unwrap(),
+                        to_ty,
                         opt_ins_span_md_idx,
                     )
                 }

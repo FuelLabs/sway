@@ -141,6 +141,7 @@ impl<'a> InstructionVerifier<'a> {
                         value,
                         indices,
                     } => self.verify_insert_value(aggregate, ty, value, indices)?,
+                    Instruction::IntToPtr(value, ty) => self.verify_int_to_ptr(value, ty)?,
                     Instruction::Load(ptr) => self.verify_load(ptr)?,
                     Instruction::Nop => (),
                     Instruction::Phi(pairs) => self.verify_phi(&pairs[..])?,
@@ -466,6 +467,26 @@ impl<'a> InstructionVerifier<'a> {
             }
             _otherwise => Err(IrError::VerifyAccessValueOnNonStruct),
         }
+    }
+
+    fn verify_int_to_ptr(&self, value: &Value, ty: &Type) -> Result<(), IrError> {
+        // We want the source value to be an integer and the destination type to be a reference
+        // type.
+        let val_ty = value
+            .get_type(self.context)
+            .ok_or(IrError::VerifyIntToPtrUnknownSourceType)?;
+        if !matches!(val_ty, Type::Uint(64)) {
+            return Err(IrError::VerifyIntToPtrFromNonIntegerType(
+                val_ty.as_string(self.context),
+            ));
+        }
+        if ty.is_copy_type() {
+            return Err(IrError::VerifyIntToPtrToCopyType(
+                val_ty.as_string(self.context),
+            ));
+        }
+
+        Ok(())
     }
 
     fn verify_load(&self, src_val: &Value) -> Result<(), IrError> {
