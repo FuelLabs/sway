@@ -8,7 +8,7 @@ const GTF_INPUT_TYPE = 0x101;
 
 // Input coins
 const GTF_INPUT_COIN_TX_ID = 0x102;
-// const GTF_INPUT_COIN_OUTPUT_INDEX = 0x103;
+const GTF_INPUT_COIN_OUTPUT_INDEX = 0x103;
 const GTF_INPUT_COIN_OWNER = 0x104;
 // const GTF_INPUT_COIN_AMOUNT = 0x105;
 // const GTF_INPUT_COIN_ASSET_ID = 0x106;
@@ -64,6 +64,15 @@ pub fn input_coin_tx_id(index: u64) -> b256 {
         gtf res i i258;
         res: u64
     })
+}
+
+/// Get output index of coin at `index`.
+pub fn input_coin_output_index(index: u64) -> u64 {
+    // GTF_INPUT_COIN_OUTPUT_INDEX = 0x103
+    asm(res, i: index) {
+        gtf res i i259;
+        res: u64
+    }
 }
 
 /// Get the owner of the input coin at `index`.
