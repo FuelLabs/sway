@@ -500,6 +500,16 @@ fn instruction_to_doc<'a>(
                         Some(_) => Doc::text(md_namer.meta_as_string(context, span_md_idx, true)),
                     }),
                 )),
+            Instruction::IntToPtr(value, ty) => maybe_constant_to_doc(
+                context, md_namer, namer, value,
+            )
+            .append(Doc::text_line(format!(
+                "{} = int_to_ptr {} to {}{}",
+                namer.name(context, ins_value),
+                namer.name(context, value),
+                ty.as_string(context),
+                md_namer.meta_as_string(context, span_md_idx, true)
+            ))),
             Instruction::Load(src_value) => Doc::text_line(format!(
                 "{} = load ptr {}{}",
                 namer.name(context, ins_value),
