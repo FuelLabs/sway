@@ -145,7 +145,7 @@ impl Session {
                 pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline, SWAY_GIT_TAG)
             {
                 //we can then use them directly to convert them to a Vec<Diagnostic>
-                if let Ok((parsed_res, ast_res)) = pkg::check(&plan, silent_mode) {
+                if let Ok((parsed_res, _ast_res)) = pkg::check(&plan, silent_mode) {
                     // First, populate our token_map with un-typed ast nodes
                     let res = self.parse_ast_to_tokens(parsed_res);
                     // Next, populate our token_map with typed ast nodes
@@ -189,7 +189,7 @@ impl Session {
         }
     }
 
-    fn parse_ast_to_typed_tokens(
+    fn _parse_ast_to_typed_tokens(
         &mut self,
         ast_res: CompileAstResult,
     ) -> Result<Vec<Diagnostic>, DocumentError> {
