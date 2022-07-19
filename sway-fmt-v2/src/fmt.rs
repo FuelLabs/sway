@@ -560,7 +560,7 @@ trait Programmer {
     fn fav_language(self) -> String;
 }"#;
         let correct_sway_code = r#"contract;
-// This is some other comment, for this one to be placed correclty we need to have ModuleKind visitor implementedcontract;
+// This is some other comment, for this one to be placed correclty we need to have ModuleKind visitor implemented
 
 pub struct Foo { // Here is a comment
 

@@ -11,7 +11,10 @@ use std::{
 use sway_parse::{
     attribute::Annotated,
     brackets::{Parens, SquareBrackets},
-    keywords::{AddToken, ColonToken, CommaToken, ForToken, RightArrowToken, SemicolonToken},
+    keywords::{
+        AddToken, ColonToken, CommaToken, ForToken, ForwardSlashToken, RightArrowToken,
+        SemicolonToken,
+    },
     token::{lex_commented, Comment, CommentedTokenTree, CommentedTree},
     Braces, Module, Parse, TypeField,
 };
@@ -240,6 +243,12 @@ impl CommentVisitor for ForToken {
         vec![CommentSpan::from_span(self.span())]
     }
 }
+
+impl CommentVisitor for ForwardSlashToken {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        vec![CommentSpan::from_span(self.span())]
+    }
+}
 /// Handles comments by first creating the CommentMap which is used for fast seaching comments.
 /// Traverses items for finding a comment in unformatted input and placing it in correct place in formatted output.
 pub fn handle_comments(
@@ -265,7 +274,6 @@ pub fn handle_comments(
     )?;
     Ok(())
 }
-
 /// Adds the comments from comment_map to correct places in the formatted code. This requires us
 /// both the unformatted and formatted code's items as they will have different spans for their
 /// nodes. While traversing the unformatted items, `add_comments` searches for comments. If there is a comment found
@@ -277,87 +285,41 @@ fn add_comments(
     formatted_code: &mut FormattedCode,
     unformatted_code: Arc<str>,
 ) -> Result<(), FormatterError> {
-    let unformatted_items = &unformatted_module.items;
-    let formatted_items = &formatted_module.items;
-
-    // Once CommentVisitor for ModuleKind is implemented start search from there
-    let mut prev_unformatted_item_last_span = CommentSpan { start: 0, end: 0 };
-    let mut prev_formatted_item_last_span = CommentSpan { start: 0, end: 0 };
+    let unformatted_comment_spans = unformatted_module.collect_spans();
+    let formatted_comment_spans = formatted_module.collect_spans();
 
     // Since we are adding comments into formatted code, in the next iteration the spans we find for the formatted code needs to be offsetted
     // as the total length of comments we added in previous iterations.
     let mut offset = 0;
-    for (unformatted_item, formatted_item) in unformatted_items.iter().zip(formatted_items.iter()) {
-        let unformatted_item_spans = unformatted_item.collect_spans();
-        let formatted_item_spans = formatted_item.collect_spans();
-        // TODO: Remove this once every item implements CommentVisitor. This is added to turn tests green
-        if unformatted_item_spans.first().is_none() || formatted_item_spans.first().is_none() {
-            return Ok(());
-        }
-        // Search comment between the last item and this one
 
-        // Get first span of the current item from unformatted code
-        let curr_unformatted_item_first_span = unformatted_item_spans
-            .first()
-            .ok_or(FormatterError::CommentError)?;
-        // Search for comments
-
+    // We will definetly have a span in the collected span since for a source code to be parsed there should be some tokens present.
+    let mut previous_unformatted_comment_span = unformatted_comment_spans
+        .first()
+        .ok_or(FormatterError::CommentError)?;
+    let mut previous_formatted_comment_span = formatted_comment_spans
+        .first()
+        .ok_or(FormatterError::CommentError)?;
+    for (unformatted_comment_span, formatted_comment_span) in unformatted_comment_spans
+        .iter()
+        .skip(1)
+        .zip(formatted_comment_spans.iter().skip(1))
+    {
         let comments_found = get_comments_between_spans(
-            &prev_unformatted_item_last_span,
-            curr_unformatted_item_first_span,
+            previous_unformatted_comment_span,
+            unformatted_comment_span,
             &comment_map,
             &unformatted_code,
         );
-        // If there are some comments in between given spans insert them into the formatted code and increment offset with the length of the inserted comment(s)
         if !comments_found.is_empty() {
             offset += insert_after_span(
-                &prev_formatted_item_last_span,
+                previous_formatted_comment_span,
                 comments_found,
                 offset,
                 formatted_code,
             )?;
         }
-
-        // Search comments for possible places inside the item.
-
-        // We will definetly have a span in the collected span since for a source code to be parsed as an item there should be some tokens present.
-        let mut previous_unformatted_span = unformatted_item_spans
-            .first()
-            .ok_or(FormatterError::CommentError)?;
-        let mut previous_formatted_span = formatted_item_spans
-            .first()
-            .ok_or(FormatterError::CommentError)?;
-
-        // Iterate over the possible spans to check for a comment
-        for (unformatted_cur_span, formatted_cur_span) in unformatted_item_spans
-            .iter()
-            .zip(formatted_item_spans.iter())
-        {
-            let comments_found = get_comments_between_spans(
-                previous_unformatted_span,
-                unformatted_cur_span,
-                &comment_map,
-                &unformatted_code,
-            );
-            if !comments_found.is_empty() {
-                offset += insert_after_span(
-                    previous_formatted_span,
-                    comments_found,
-                    offset,
-                    formatted_code,
-                )?;
-            }
-            previous_unformatted_span = unformatted_cur_span;
-            previous_formatted_span = formatted_cur_span;
-        }
-        prev_unformatted_item_last_span = unformatted_item_spans
-            .last()
-            .ok_or(FormatterError::CommentError)?
-            .clone();
-        prev_formatted_item_last_span = formatted_item_spans
-            .last()
-            .ok_or(FormatterError::CommentError)?
-            .clone();
+        previous_unformatted_comment_span = unformatted_comment_span;
+        previous_formatted_comment_span = formatted_comment_span;
     }
     Ok(())
 }
@@ -384,6 +346,7 @@ fn get_comments_between_spans(
                 comment_tuple.1.clone(),
                 unformatted_code[from.end..comment_tuple.0.start].to_string(),
             ));
+            println!("this");
         } else {
             // There is a comment before this one, so we should get the context starting from the last comment's end to the beginning of the current comment
             comments_with_context.push((
@@ -394,6 +357,10 @@ fn get_comments_between_spans(
             ));
         }
     }
+    println!(
+        " found {:?} between {:?} and {:?} \n\n",
+        comments_with_context, from, to
+    );
     comments_with_context
 }
 
