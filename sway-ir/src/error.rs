@@ -54,6 +54,8 @@ pub enum IrError {
     VerifyInvalidGtfIndexType,
 }
 
+impl std::error::Error for IrError {}
+
 use std::fmt;
 
 impl fmt::Display for IrError {

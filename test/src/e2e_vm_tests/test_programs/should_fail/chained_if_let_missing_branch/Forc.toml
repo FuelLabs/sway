@@ -4,3 +4,6 @@ entry = "main.sw"
 license = "Apache-2.0"
 name = "chained_if_let_missing_branch"
 implicit-std = false
+
+[dependencies]
+std = { path = "../../../../../..//sway-lib-std" }

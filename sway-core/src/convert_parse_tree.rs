@@ -2215,7 +2215,15 @@ fn if_expr_to_expression(
                         scrutinee: Scrutinee::CatchAll {
                             span: else_block_span.clone(),
                         },
-                        result: then_block,
+                        // If there's no else in an `if-let` expression,
+                        // then the else is equivalent to an empty block.
+                        result: Expression::CodeBlock {
+                            contents: CodeBlock {
+                                contents: vec![],
+                                whole_block_span: else_block_span.clone(),
+                            },
+                            span: else_block_span.clone(),
+                        },
                         span: else_block_span,
                     }
                 }
