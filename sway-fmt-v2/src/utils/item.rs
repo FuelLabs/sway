@@ -15,7 +15,9 @@ impl CommentVisitor for Item {
             Storage(item_storage) => item_storage.collect_spans(),
             Trait(item_trait) => item_trait.collect_spans(),
             Impl(item_impl) => item_impl.collect_spans(),
-            _ => Vec::new(),
+            Use(item_use) => item_use.collect_spans(),
+            Break(_) => todo!(),
+            Continue(_) => todo!(),
         }
     }
 }
