@@ -1182,7 +1182,7 @@ impl<'ir> AsmBuilder<'ir> {
                     value: tx_field_id as u16,
                 },
             )),
-            comment: "gtf instruction".into(),
+            comment: "get transaction field".into(),
             owning_span: instr_val.get_span(self.context),
         });
     }
