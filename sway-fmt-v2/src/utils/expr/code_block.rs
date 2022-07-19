@@ -1,6 +1,6 @@
 use crate::{fmt::*, utils::bracket::CurlyBrace};
 use std::fmt::Write;
-use sway_parse::CodeBlockContents;
+use sway_parse::{token::Delimiter, CodeBlockContents};
 
 impl Format for CodeBlockContents {
     fn format(
@@ -28,14 +28,16 @@ impl Format for CodeBlockContents {
 impl CurlyBrace for CodeBlockContents {
     fn open_curly_brace(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(line, "{}", Delimiter::Brace.as_open_char())?;
         Ok(())
     }
     fn close_curly_brace(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(line, "{}", Delimiter::Brace.as_close_char())?;
         Ok(())
     }
 }

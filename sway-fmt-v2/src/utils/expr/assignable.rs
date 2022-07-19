@@ -1,6 +1,6 @@
 use crate::{fmt::*, utils::bracket::SquareBracket};
 use std::fmt::Write;
-use sway_parse::{Assignable, Expr};
+use sway_parse::{expr::ReassignmentOp, Assignable, Expr};
 use sway_types::Spanned;
 
 impl Format for Assignable {
@@ -41,6 +41,17 @@ impl Format for Assignable {
                 )?;
             }
         }
+        Ok(())
+    }
+}
+
+impl Format for ReassignmentOp {
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        _formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        write!(formatted_code, "{}", self.span.as_str())?;
         Ok(())
     }
 }

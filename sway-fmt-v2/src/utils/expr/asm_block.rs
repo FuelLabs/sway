@@ -3,7 +3,10 @@ use crate::{
     utils::bracket::{Parenthesis, SquareBracket},
 };
 use std::fmt::Write;
-use sway_parse::expr::asm::{AsmBlock, AsmBlockContents, AsmFinalExpr, AsmRegisterDeclaration};
+use sway_parse::{
+    expr::asm::{AsmBlock, AsmBlockContents, AsmFinalExpr, AsmRegisterDeclaration},
+    token::Delimiter,
+};
 use sway_types::Spanned;
 
 impl Format for AsmBlock {
@@ -33,14 +36,16 @@ impl Format for AsmBlock {
 impl Parenthesis for AsmBlock {
     fn open_parenthesis(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(line, "{}", Delimiter::Parenthesis.as_open_char())?;
         Ok(())
     }
     fn close_parenthesis(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(line, "{}", Delimiter::Parenthesis.as_close_char())?;
         Ok(())
     }
 }
@@ -48,14 +53,16 @@ impl Parenthesis for AsmBlock {
 impl SquareBracket for AsmBlock {
     fn open_square_bracket(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(line, "{}", Delimiter::Bracket.as_open_char())?;
         Ok(())
     }
     fn close_square_bracket(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(line, "{}", Delimiter::Bracket.as_close_char())?;
         Ok(())
     }
 }
@@ -89,6 +96,9 @@ impl Format for AsmBlockContents {
                 pair.0.span().as_str(),
                 pair.1.span().as_str()
             )?;
+        }
+        if let Some(final_expr) = &self.final_expr_opt {
+            final_expr.format(formatted_code, formatter)?;
         }
 
         Ok(())

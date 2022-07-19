@@ -3,7 +3,7 @@ use crate::{
     utils::bracket::{Parenthesis, SquareBracket},
 };
 use std::fmt::Write;
-use sway_parse::{ExprArrayDescriptor, ExprTupleDescriptor};
+use sway_parse::{token::Delimiter, ExprArrayDescriptor, ExprTupleDescriptor};
 use sway_types::Spanned;
 
 // TODO: add long and multiline formatting
@@ -32,14 +32,16 @@ impl Format for ExprTupleDescriptor {
 impl Parenthesis for ExprTupleDescriptor {
     fn open_parenthesis(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(line, "{}", Delimiter::Parenthesis.as_open_char())?;
         Ok(())
     }
     fn close_parenthesis(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(line, "{}", Delimiter::Parenthesis.as_close_char())?;
         Ok(())
     }
 }
@@ -71,14 +73,16 @@ impl Format for ExprArrayDescriptor {
 impl SquareBracket for ExprArrayDescriptor {
     fn open_square_bracket(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(line, "{}", Delimiter::Bracket.as_open_char())?;
         Ok(())
     }
     fn close_square_bracket(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(line, "{}", Delimiter::Bracket.as_close_char())?;
         Ok(())
     }
 }

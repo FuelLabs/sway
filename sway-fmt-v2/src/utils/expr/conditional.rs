@@ -1,6 +1,6 @@
 use crate::{fmt::*, utils::bracket::CurlyBrace};
 use std::{fmt::Write, ops::ControlFlow};
-use sway_parse::{IfCondition, IfExpr, MatchBranch, MatchBranchKind};
+use sway_parse::{token::Delimiter, IfCondition, IfExpr, MatchBranch, MatchBranchKind};
 use sway_types::Spanned;
 
 impl Format for IfExpr {
@@ -39,14 +39,16 @@ impl Format for IfExpr {
 impl CurlyBrace for IfExpr {
     fn open_curly_brace(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(line, "{}", Delimiter::Brace.as_open_char())?;
         Ok(())
     }
     fn close_curly_brace(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(line, "{}", Delimiter::Brace.as_close_char())?;
         Ok(())
     }
 }
@@ -99,14 +101,16 @@ impl Format for MatchBranch {
 impl CurlyBrace for MatchBranch {
     fn open_curly_brace(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(line, "{}", Delimiter::Brace.as_open_char())?;
         Ok(())
     }
     fn close_curly_brace(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(line, "{}", Delimiter::Brace.as_close_char())?;
         Ok(())
     }
 }
@@ -145,14 +149,16 @@ impl Format for MatchBranchKind {
 impl CurlyBrace for MatchBranchKind {
     fn open_curly_brace(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(line, "{}", Delimiter::Brace.as_open_char())?;
         Ok(())
     }
     fn close_curly_brace(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(line, "{}", Delimiter::Brace.as_close_char())?;
         Ok(())
     }
 }

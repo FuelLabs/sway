@@ -1,8 +1,9 @@
 use crate::fmt::*;
 use std::fmt::Write;
 use sway_parse::{
-    expr::ReassignmentOp, token::PunctKind, AbiCastArgs, CodeBlockContents, Expr,
-    ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, MatchBranch,
+    token::{Delimiter, PunctKind},
+    AbiCastArgs, CodeBlockContents, Expr, ExprArrayDescriptor, ExprStructField,
+    ExprTupleDescriptor, MatchBranch,
 };
 use sway_types::Spanned;
 
@@ -382,14 +383,16 @@ impl Format for Expr {
 impl Parenthesis for Expr {
     fn open_parenthesis(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(line, "{}", Delimiter::Parenthesis.as_open_char())?;
         Ok(())
     }
     fn close_parenthesis(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(line, "{}", Delimiter::Parenthesis.as_close_char())?;
         Ok(())
     }
 }
@@ -397,24 +400,16 @@ impl Parenthesis for Expr {
 impl SquareBracket for Expr {
     fn open_square_bracket(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(line, "{}", Delimiter::Bracket.as_open_char())?;
         Ok(())
     }
     fn close_square_bracket(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        Ok(())
-    }
-}
-
-impl Format for ReassignmentOp {
-    fn format(
-        &self,
-        formatted_code: &mut FormattedCode,
-        formatter: &mut Formatter,
-    ) -> Result<(), FormatterError> {
+        write!(line, "{}", Delimiter::Bracket.as_close_char())?;
         Ok(())
     }
 }
