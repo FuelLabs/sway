@@ -35,6 +35,9 @@ pub enum IrError {
     VerifyGetNonExistentPointer,
     VerifyInsertElementOfIncorrectType,
     VerifyInsertValueOfIncorrectType,
+    VerifyIntToPtrFromNonIntegerType(String),
+    VerifyIntToPtrToCopyType(String),
+    VerifyIntToPtrUnknownSourceType,
     VerifyLoadFromNonPointer,
     VerifyLoadNonExistentPointer,
     VerifyMismatchedReturnTypes(String),
@@ -49,6 +52,8 @@ pub enum IrError {
     VerifyStoreToNonPointer,
     VerifyUntypedValuePassedToFunction,
 }
+
+impl std::error::Error for IrError {}
 
 use std::fmt;
 
@@ -194,6 +199,18 @@ impl fmt::Display for IrError {
                     "Verification failed: Attempt to insert value of incorrect type into a struct."
                 )
             }
+            IrError::VerifyIntToPtrFromNonIntegerType(ty) => write!(
+                f,
+                "Verification failed: int_to_ptr cannot be from a {ty}."
+            ),
+            IrError::VerifyIntToPtrToCopyType(ty) => write!(
+                f,
+                "Verification failed: int_to_ptr cannot be to a {ty}."
+            ),
+            IrError::VerifyIntToPtrUnknownSourceType => write!(
+                f,
+                "Verification failed: int_to_ptr unable to determine source type."
+            ),
             IrError::VerifyLoadFromNonPointer => {
                 write!(f, "Verification failed: Load must be from a pointer.")
             }

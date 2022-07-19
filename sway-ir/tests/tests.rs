@@ -25,7 +25,7 @@ fn run_tests<F: Fn(&mut sway_ir::Context) -> bool>(sub_dir: &str, opt_fn: F) {
         let mut ir = match sway_ir::parser::parse(&input) {
             Ok(ir) => ir,
             Err(parse_err) => {
-                tracing::error!("{parse_err}");
+                println!("{parse_err}");
                 panic!()
             }
         };
@@ -36,8 +36,8 @@ fn run_tests<F: Fn(&mut sway_ir::Context) -> bool>(sub_dir: &str, opt_fn: F) {
 
         match chkr.explain(&output, filecheck::NO_VARIABLES) {
             Ok((success, report)) if !success => {
-                tracing::error!("--- FILECHECK FAILED FOR {}", path.display());
-                tracing::error!("{report}");
+                println!("--- FILECHECK FAILED FOR {}", path.display());
+                println!("{report}");
                 panic!()
             }
             Err(e) => {

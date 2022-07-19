@@ -82,6 +82,8 @@ pub enum Instruction {
         value: Value,
         indices: Vec<u64>,
     },
+    /// Re-interpret an integer value as pointer of some type
+    IntToPtr(Value, Type),
     /// Read a value from a memory pointer.
     Load(Value),
     /// No-op, handy as a placeholder instruction.
@@ -180,6 +182,9 @@ impl Instruction {
 
             // These can be recursed to via Load, so we return the pointer type.
             Instruction::GetPointer { ptr_ty, .. } => Some(*ptr_ty),
+
+            // Used to re-interpret an integer as a pointer to some type so return the pointer type.
+            Instruction::IntToPtr(_, ty) => Some(*ty),
 
             // These are all terminators which don't return, essentially.  No type.
             Instruction::Branch(_) => None,
@@ -290,6 +295,7 @@ impl Instruction {
             }
             Instruction::ExtractValue { aggregate, .. } => replace(aggregate),
             Instruction::GetStorageKey => (),
+            Instruction::IntToPtr(value, _) => replace(value),
             Instruction::Load(_) => (),
             Instruction::Nop => (),
             Instruction::Phi(pairs) => pairs.iter_mut().for_each(|(_, val)| replace(val)),
@@ -416,6 +422,19 @@ impl<'a> InstructionInserter<'a> {
             .instructions
             .push(bitcast_val);
         bitcast_val
+    }
+
+    pub fn int_to_ptr(self, value: Value, ty: Type, span_md_idx: Option<MetadataIndex>) -> Value {
+        let int_to_ptr_val = Value::new_instruction(
+            self.context,
+            Instruction::IntToPtr(value, ty),
+            span_md_idx,
+            None,
+        );
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(int_to_ptr_val);
+        int_to_ptr_val
     }
 
     pub fn branch(
