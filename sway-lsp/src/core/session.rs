@@ -147,9 +147,9 @@ impl Session {
                 //we can then use them directly to convert them to a Vec<Diagnostic>
                 if let Ok((parsed_res, ast_res)) = pkg::check(&plan, silent_mode) {
                     // First, populate our token_map with un-typed ast nodes
-                    let _ = self.parse_ast_to_tokens(parsed_res);
+                    let res = self.parse_ast_to_tokens(parsed_res);
                     // Next, populate our token_map with typed ast nodes
-                    let res = self.parse_ast_to_typed_tokens(ast_res);
+                    //let res = self.parse_ast_to_typed_tokens(ast_res);
                     //self.test_typed_parse(ast_res);
                     return res;
                 }
