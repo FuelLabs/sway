@@ -168,7 +168,7 @@ fn const_eval_typed_expr(
         TypedExpressionVariant::Literal(l) => Some(convert_literal_to_constant(l)),
         TypedExpressionVariant::FunctionApplication {
             arguments,
-            function_body,
+            function_decl,
             ..
         } => {
             let actuals_const = arguments
@@ -188,13 +188,13 @@ fn const_eval_typed_expr(
             }
 
             // TODO: Handle more than one statement in the block.
-            if function_body.contents.len() > 1 {
+            if function_decl.body.contents.len() > 1 {
                 return None;
             }
-            let res = function_body
-                .contents
-                .last()
-                .and_then(|first_expr| const_eval_typed_ast_node(lookup, known_consts, first_expr));
+            let res =
+                function_decl.body.contents.last().and_then(|first_expr| {
+                    const_eval_typed_ast_node(lookup, known_consts, first_expr)
+                });
             for (name, _) in arguments {
                 known_consts.pop(name);
             }
