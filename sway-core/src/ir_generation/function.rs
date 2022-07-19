@@ -9,10 +9,12 @@ use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     constants,
     error::CompileError,
-    ir_generation::const_eval::compile_constant_expression,
-    parse_tree::{AsmOp, AsmRegister, LazyOp, Literal, Purity, Visibility},
+    ir_generation::const_eval::{
+        compile_constant_expression, compile_constant_expression_to_constant,
+    },
+    parse_tree::{AsmOp, AsmRegister, LazyOp, Literal},
     semantic_analysis::*,
-    type_engine::{insert_type, resolve_type, TypeId, TypeInfo},
+    type_engine::{resolve_type, TypeId, TypeInfo},
 };
 use sway_ir::{Context, *};
 use sway_parse::intrinsics::Intrinsic;
@@ -22,7 +24,7 @@ use sway_types::{
     state::StateIndex,
 };
 
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 pub(super) struct FnCompiler {
     module: Module,
@@ -243,9 +245,7 @@ impl FnCompiler {
                 call_path: name,
                 contract_call_params,
                 arguments,
-                function_body,
-                function_body_name_span,
-                function_body_purity,
+                function_decl,
                 self_state_idx,
                 selector,
             } => {
@@ -263,9 +263,7 @@ impl FnCompiler {
                     self.compile_fn_call(
                         context,
                         arguments,
-                        function_body,
-                        function_body_name_span,
-                        function_body_purity,
+                        function_decl,
                         self_state_idx,
                         span_md_idx,
                     )
@@ -421,6 +419,54 @@ impl FnCompiler {
                     rhs_value,
                     None,
                 ))
+            }
+            Intrinsic::Gtf => {
+                // The index is just a Value
+                let index = self.compile_expression(context, arguments[0].clone())?;
+
+                // The tx field ID has to be a compile-time constant because it becomes an
+                // immediate
+                let tx_field_id_constant = compile_constant_expression_to_constant(
+                    context,
+                    self.module,
+                    None,
+                    &arguments[1],
+                )?;
+                let tx_field_id = match tx_field_id_constant.value {
+                    ConstantValue::Uint(n) => n,
+                    _ => {
+                        return Err(CompileError::Internal(
+                            "Transaction field ID for gtf intrinsic is not an integer. \
+                            This should have been in caught in type checking",
+                            span,
+                        ))
+                    }
+                };
+
+                // Get the target type from the type argument provided
+                let target_type = type_arguments[0].clone();
+                let target_ir_type =
+                    convert_resolved_typeid(context, &target_type.type_id, &target_type.span)?;
+
+                let span_md_idx = MetadataIndex::from_span(context, &span);
+
+                // The `gtf` instruction
+                let gtf_reg = self
+                    .current_block
+                    .ins(context)
+                    .gtf(index, tx_field_id, span_md_idx);
+
+                // Reinterpret the result of th `gtf` instruction (which is always `u64`) as type
+                // `T`. This requires an `int_to_ptr` instruction if `T` is a reference type.
+                if target_ir_type.is_copy_type() {
+                    Ok(gtf_reg)
+                } else {
+                    Ok(self.current_block.ins(context).int_to_ptr(
+                        gtf_reg,
+                        target_ir_type,
+                        span_md_idx,
+                    ))
+                }
             }
         }
     }
@@ -714,9 +760,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         ast_args: Vec<(Ident, TypedExpression)>,
-        callee_body: TypedCodeBlock,
-        callee_span: Span,
-        callee_purity: Purity,
+        callee: TypedFunctionDeclaration,
         self_state_idx: Option<StateIndex>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
@@ -734,48 +778,11 @@ impl FnCompiler {
         // standard library to an actual module.
 
         {
-            // Firstly create the single-use callee by fudging an AST declaration.
-            let callee_name = context.get_unique_name();
-            let callee_name_len = callee_name.len();
-            let callee_ident = Ident::new(
-                crate::span::Span::new(Arc::from(callee_name), 0, callee_name_len, None).unwrap(),
-            );
+            let callee_name = format!("{}_{}", callee.name, context.get_unique_id());
 
-            // TODO: `is_mutable` below is set to `false` regardless of the actual mutability of
-            // each arg. This is hacky but not too important at the moment. Mutability is only
-            // relevant (currently) during type checking and so this just works. Long term, we need
-            // to propagate mutability for arguments in IR and make sure that the verifier takes it
-            // into account.
-            let parameters = ast_args
-                .iter()
-                .map(|(name, expr)| TypedFunctionParameter {
-                    name: name.clone(),
-                    is_mutable: false,
-                    type_id: expr.return_type,
-                    type_span: crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
-                })
-                .collect();
-
-            // We're going to have to reverse engineer the return type.
-            let return_type = Self::get_codeblock_return_type(&callee_body).unwrap_or_else(||
-                    // This code block is missing a return or implicit return.  The only time I've
-                    // seen it happen (whether it's 'valid' or not) is in std::storage::store(),
-                    // which has a single asm block which also returns nothing.  In this case, it
-                    // actually is Unit.
-                    insert_type(TypeInfo::Tuple(Vec::new())));
-
-            let callee_fn_decl = TypedFunctionDeclaration {
-                name: callee_ident,
-                body: callee_body,
-                parameters,
-                span: callee_span,
-                return_type,
-                type_parameters: Vec::new(),
-                return_type_span: crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
-                visibility: Visibility::Private,
-                is_contract_call: false,
-                purity: callee_purity,
-            };
+            let mut callee_fn_decl = callee;
+            callee_fn_decl.type_parameters.clear();
+            callee_fn_decl.name = Ident::new(Span::from_string(callee_name));
 
             let callee = compile_function(context, self.module, callee_fn_decl)?;
 
@@ -796,22 +803,6 @@ impl FnCompiler {
                 span_md_idx,
                 state_idx_md_idx,
             ))
-        }
-    }
-
-    fn get_codeblock_return_type(codeblock: &TypedCodeBlock) -> Option<TypeId> {
-        if codeblock.contents.is_empty() {
-            Some(insert_type(TypeInfo::Tuple(Vec::new())))
-        } else {
-            codeblock.contents.iter().find_map(|node| {
-                match node.gather_return_statements().first() {
-                    Some(TypedReturnStatement { expr }) => Some(expr.return_type),
-                    None => match &node.content {
-                        TypedAstNodeContent::ImplicitReturnExpression(te) => Some(te.return_type),
-                        _otherwise => None,
-                    },
-                }
-            })
         }
     }
 

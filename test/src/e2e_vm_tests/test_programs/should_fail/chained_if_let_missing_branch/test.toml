@@ -1,3 +1,6 @@
 category = "fail"
 
-# check: $()Variable "num" does not exist in this scope.
+# check: $()Mismatched types
+# nextln: $()expected: u64
+# nextln: $()found:    ()
+

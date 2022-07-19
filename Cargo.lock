@@ -3673,11 +3673,11 @@ dependencies = [
 name = "sway-ir"
 version = "0.18.1"
 dependencies = [
+ "anyhow",
  "filecheck",
  "generational-arena",
  "peg",
  "sway-types",
- "tracing",
 ]
 
 [[package]]
