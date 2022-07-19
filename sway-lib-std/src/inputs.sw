@@ -130,23 +130,6 @@ pub fn tx_input_owner(index: u64) -> Option<Address> {
     }
 }
 
-// @review is this needed, or can we just use `read()`?
-/// Read 256 bits from memory at a given offset from a given pointer
-pub fn b256_from_pointer_offset(pointer: u64, offset: u64) -> b256 {
-    asm(buffer, ptr: pointer, off: offset) {
-        // Need to skip over `off` bytes
-        add ptr ptr off;
-        // Save old stack pointer
-        move buffer sp;
-        // Extend stack by 32 bytes
-        cfei i32;
-        // Copy 32 bytes
-        mcpi buffer ptr i32;
-        // `buffer` now points to the 32 bytes
-        buffer: b256
-    }
-}
-
 /// Get the owner address of the input message at `index`.
 pub fn input_message_owner(index: u64) -> Address {
     ~Address::from(__gtf::<b256>(index, GTF_INPUT_MESSAGE_OWNER))

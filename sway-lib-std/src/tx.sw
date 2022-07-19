@@ -172,7 +172,7 @@ pub fn witness_data<T>(index: u64) -> T {
 /// Get the transaction receipts root.
 pub fn tx_receipts_root() -> b256 {
     // GTF_SCRIPT_RECEIPTS_ROOT = 0x00A
-    b256_from_pointer_offset(asm(res) {
+    read::<b256>(asm(res) {
         gtf res zero i10;
         res: u64
     }, 0)
@@ -203,14 +203,14 @@ pub fn tx_script_data_start_pointer() -> u64 {
 /// Get the script data, typed. Unsafe.
 pub fn tx_script_data<T>() -> T {
     // TODO some safety checks on the input data? We are going to assume it is the right type for now.
-    read(tx_script_data_start_pointer())
+    read::<T>(tx_script_data_start_pointer())
 }
 
 /// Get the script bytecode
 /// Must be cast to a u64 array, with sufficient length to contain the bytecode.
 /// Bytecode will be padded to next whole word.
 pub fn tx_script_bytecode<T>() -> T {
-    read(tx_script_start_pointer())
+    read::<T>(tx_script_start_pointer())
 }
 
 ////////////////////////////////////////
@@ -288,11 +288,27 @@ pub fn tx_id(index: u64) -> Option<b256> {
     match type {
         // 0 is the `Coin` Input type
         0u8 => {
+<<<<<<< HEAD
             Option::Some(input_coin_tx_id(index))
         },
         // 1 is the `Contract` Input type
         1u8 => {
             Option::Some(input_coin_tx_id(index))
+=======
+            // GTF_INPUT_COIN_TX_ID = 0x102
+            Option::Some(read::<b256>(asm(res, i: index) {
+                gtf res i i258;
+                res: u64
+            }))
+        },
+        // 1 is the `Contract` Input type
+        1u8 => {
+            // GTF_INPUT_CONTRACT_TX_ID = 0x10E
+            Option::Some(read::<b256>(asm(res, i: index) {
+                gtf res i i270;
+                res: u64
+            }))
+>>>>>>> refactor-tx-with-gtf
         },
         _ => {
            Option::None
