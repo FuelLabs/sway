@@ -192,7 +192,7 @@ pub fn tx_witnesses_count() -> u64 {
 /// Get the transaction receipts root.
 pub fn tx_receipts_root() -> b256 {
     // GTF_SCRIPT_RECEIPTS_ROOT = 0x00A
-    b256_from_pointer_offset(asm(res) {
+    read::<b256>(asm(res) {
         gtf res zero i10;
         res: u64
     }, 0)
@@ -283,26 +283,10 @@ pub fn tx_input_owner(index: u64) -> Option<Address> {
         },
     };
 
-    Option::Some(~Address::from(b256_from_pointer_offset(
+    Option::Some(~Address::from(read::<b256>(
         owner_ptr,
         0
     )))
-}
-
-/// Read 256 bits from memory at a given offset from a given pointer
-pub fn b256_from_pointer_offset(pointer: u64, offset: u64) -> b256 {
-    asm(buffer, ptr: pointer, off: offset) {
-        // Need to skip over `off` bytes
-        add ptr ptr off;
-        // Save old stack pointer
-        move buffer sp;
-        // Extend stack by 32 bytes
-        cfei i32;
-        // Copy 32 bytes
-        mcpi buffer ptr i32;
-        // `buffer` now points to the 32 bytes
-        buffer: b256
-    }
 }
 
 ////////////////////////////////////////
