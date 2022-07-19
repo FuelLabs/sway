@@ -11,7 +11,7 @@ use std::{
 use sway_parse::{
     attribute::Annotated,
     brackets::{Parens, SquareBrackets},
-    keywords::{AddToken, ColonToken, CommaToken, RightArrowToken, SemicolonToken},
+    keywords::{AddToken, ColonToken, CommaToken, ForToken, RightArrowToken, SemicolonToken},
     token::{lex_commented, Comment, CommentedTokenTree, CommentedTree},
     Braces, Module, Parse, TypeField,
 };
@@ -230,6 +230,12 @@ impl CommentVisitor for ColonToken {
 }
 
 impl CommentVisitor for RightArrowToken {
+    fn collect_spans(&self) -> Vec<CommentSpan> {
+        vec![CommentSpan::from_span(self.span())]
+    }
+}
+
+impl CommentVisitor for ForToken {
     fn collect_spans(&self) -> Vec<CommentSpan> {
         vec![CommentSpan::from_span(self.span())]
     }

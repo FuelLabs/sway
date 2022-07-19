@@ -14,6 +14,7 @@ impl CommentVisitor for Item {
             Const(item_const) => item_const.collect_spans(),
             Storage(item_storage) => item_storage.collect_spans(),
             Trait(item_trait) => item_trait.collect_spans(),
+            Impl(item_impl) => item_impl.collect_spans(),
             _ => Vec::new(),
         }
     }
