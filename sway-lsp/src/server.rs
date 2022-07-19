@@ -269,7 +269,7 @@ mod tests {
     use tower_lsp::jsonrpc::{self, Request, Response};
     use tower_lsp::LspService;
 
-    fn e2e_test_dir() -> PathBuf {
+    fn _e2e_test_dir() -> PathBuf {
         env::current_dir()
             .unwrap()
             .parent()
