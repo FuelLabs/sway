@@ -285,10 +285,10 @@ impl TypedIntrinsicFunctionKind {
                     errors
                 );
 
-                // Make sure that the index argument is an unsigned integer
+                // Make sure that the index argument is a `u64`
                 if !matches!(
                     resolve_type(index.return_type, &index.span).unwrap(),
-                    TypeInfo::UnsignedInteger(_)
+                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
                 ) {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
@@ -296,12 +296,10 @@ impl TypedIntrinsicFunctionKind {
                     });
                 }
 
-                // Make sure that the tx field ID is an unsigned integer
-                // TODO should we also check that type is *not* a u8? There are some tx field IDs
-                // that don't really fit in a u8
+                // Make sure that the tx field ID is a `u64` 
                 if !matches!(
                     resolve_type(tx_field_id.return_type, &tx_field_id.span).unwrap(),
-                    TypeInfo::UnsignedInteger(_)
+                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
                 ) {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
