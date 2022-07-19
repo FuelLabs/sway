@@ -15,7 +15,7 @@ use crate::{
     block::BlockContent,
     function::FunctionContent,
     irtype::AggregateContent,
-    metadata::{MetadataIndex, Metadatum, StorageOperation},
+    metadata::{MetadataIndex, Metadatum},
     module::ModuleContent,
     module::ModuleIterator,
     pointer::PointerContent,
@@ -36,11 +36,11 @@ pub struct Context {
     pub aggregates: Arena<AggregateContent>,
     pub asm_blocks: Arena<AsmBlockContent>,
 
-    // The metadata indices for locations need a fast lookup, hence the metadata_reverse_map.
-    // Using a HashMap might be overkill as most projects have only a handful of source files.
+    // Each metadatum goes in the arena.  Sometimes we need to do a reverse lookup for metadatum to
+    // metadata index, hence the HashMap.  Not _all_ metadata are in the reverse map, it's up to
+    // the user to determine which is needed there.
     pub metadata: Arena<Metadatum>,
-    pub metadata_reverse_map: HashMap<*const std::path::PathBuf, MetadataIndex>,
-    pub(crate) metadata_storage_indices: HashMap<StorageOperation, MetadataIndex>,
+    pub metadata_reverse_map: HashMap<Metadatum, MetadataIndex>,
 
     next_unique_sym_tag: u64,
 }
