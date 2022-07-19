@@ -9,7 +9,9 @@ use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     constants,
     error::CompileError,
-    ir_generation::const_eval::compile_constant_expression,
+    ir_generation::const_eval::{
+        compile_constant_expression, compile_constant_expression_to_constant,
+    },
     parse_tree::{AsmOp, AsmRegister, LazyOp, Literal},
     semantic_analysis::*,
     type_engine::{resolve_type, TypeId, TypeInfo},
@@ -417,6 +419,54 @@ impl FnCompiler {
                     rhs_value,
                     None,
                 ))
+            }
+            Intrinsic::Gtf => {
+                // The index is just a Value
+                let index = self.compile_expression(context, arguments[0].clone())?;
+
+                // The tx field ID has to be a compile-time constant because it becomes an
+                // immediate
+                let tx_field_id_constant = compile_constant_expression_to_constant(
+                    context,
+                    self.module,
+                    None,
+                    &arguments[1],
+                )?;
+                let tx_field_id = match tx_field_id_constant.value {
+                    ConstantValue::Uint(n) => n,
+                    _ => {
+                        return Err(CompileError::Internal(
+                            "Transaction field ID for gtf intrinsic is not an integer. \
+                            This should have been in caught in type checking",
+                            span,
+                        ))
+                    }
+                };
+
+                // Get the target type from the type argument provided
+                let target_type = type_arguments[0].clone();
+                let target_ir_type =
+                    convert_resolved_typeid(context, &target_type.type_id, &target_type.span)?;
+
+                let span_md_idx = MetadataIndex::from_span(context, &span);
+
+                // The `gtf` instruction
+                let gtf_reg = self
+                    .current_block
+                    .ins(context)
+                    .gtf(index, tx_field_id, span_md_idx);
+
+                // Reinterpret the result of th `gtf` instruction (which is always `u64`) as type
+                // `T`. This requires an `int_to_ptr` instruction if `T` is a reference type.
+                if target_ir_type.is_copy_type() {
+                    Ok(gtf_reg)
+                } else {
+                    Ok(self.current_block.ins(context).int_to_ptr(
+                        gtf_reg,
+                        target_ir_type,
+                        span_md_idx,
+                    ))
+                }
             }
         }
     }

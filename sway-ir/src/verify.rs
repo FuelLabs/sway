@@ -129,6 +129,9 @@ impl<'a> InstructionVerifier<'a> {
                         ptr_ty,
                         offset,
                     } => self.verify_get_ptr(base_ptr, ptr_ty, offset)?,
+                    Instruction::Gtf { index, tx_field_id } => {
+                        self.verify_gtf(index, tx_field_id)?
+                    }
                     Instruction::InsertElement {
                         array,
                         ty,
@@ -412,6 +415,15 @@ impl<'a> InstructionVerifier<'a> {
         // We should perhaps verify that the offset and the casted type fit within the base type.
         if !self.is_local_pointer(base_ptr) {
             Err(IrError::VerifyGetNonExistentPointer)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn verify_gtf(&self, index: &Value, _tx_field_id: &u64) -> Result<(), IrError> {
+        // We should perhaps verify that _tx_field_id fits in a twelve bit immediate
+        if !matches!(index.get_type(self.context), Some(Type::Uint(_))) {
+            Err(IrError::VerifyInvalidGtfIndexType)
         } else {
             Ok(())
         }
