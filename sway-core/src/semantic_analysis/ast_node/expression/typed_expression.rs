@@ -70,7 +70,7 @@ impl UnresolvedTypeCheck for TypedExpression {
         match &self.expression {
             FunctionApplication {
                 arguments,
-                function_body,
+                function_decl,
                 ..
             } => {
                 res.append(
@@ -81,7 +81,8 @@ impl UnresolvedTypeCheck for TypedExpression {
                         .collect::<Vec<_>>(),
                 );
                 res.append(
-                    &mut function_body
+                    &mut function_decl
+                        .body
                         .contents
                         .iter()
                         .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
@@ -219,11 +220,11 @@ impl DeterministicallyAborts for TypedExpression {
         use TypedExpressionVariant::*;
         match &self.expression {
             FunctionApplication {
-                function_body,
+                function_decl,
                 arguments,
                 ..
             } => {
-                function_body.deterministically_aborts()
+                function_decl.body.deterministically_aborts()
                     || arguments.iter().any(|(_, x)| x.deterministically_aborts())
             }
             Tuple { fields, .. } => fields.iter().any(|x| x.deterministically_aborts()),

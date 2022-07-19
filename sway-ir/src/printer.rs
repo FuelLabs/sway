@@ -438,6 +438,16 @@ fn instruction_to_doc<'a>(
                 md_namer.meta_as_string(context, span_md_idx, true),
                 md_namer.meta_as_string(context, state_idx_md_idx, true),
             )),
+            Instruction::Gtf { index, tx_field_id } => maybe_constant_to_doc(
+                context, md_namer, namer, index,
+            )
+            .append(Doc::text_line(format!(
+                "{} = gtf {}, {}{}",
+                namer.name(context, ins_value),
+                namer.name(context, index),
+                tx_field_id,
+                md_namer.meta_as_string(context, span_md_idx, true),
+            ))),
             Instruction::GetPointer {
                 base_ptr,
                 ptr_ty,

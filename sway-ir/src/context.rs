@@ -55,7 +55,12 @@ impl Context {
     ///
     /// The name will be in the form `"anon_N"`, where `N` is an incrementing decimal.
     pub fn get_unique_name(&mut self) -> String {
-        let sym = format!("anon_{}", self.next_unique_sym_tag);
+        format!("anon_{}", self.get_unique_id())
+    }
+
+    /// Get a globally unique symbol id.
+    pub fn get_unique_id(&mut self) -> u64 {
+        let sym = self.next_unique_sym_tag;
         self.next_unique_sym_tag += 1;
         sym
     }

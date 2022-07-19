@@ -51,7 +51,10 @@ pub enum IrError {
     VerifyStoreNonExistentPointer,
     VerifyStoreToNonPointer,
     VerifyUntypedValuePassedToFunction,
+    VerifyInvalidGtfIndexType,
 }
+
+impl std::error::Error for IrError {}
 
 use std::fmt;
 
@@ -264,6 +267,10 @@ impl fmt::Display for IrError {
             IrError::VerifyUntypedValuePassedToFunction => write!(
                 f,
                 "Verification failed: An untyped/void value has been passed to a function call."
+            ),
+            IrError::VerifyInvalidGtfIndexType => write!(
+                f,
+                "Verification failed: An non-integer value has been passed to a 'gtf' instruction."
             ),
         }
     }
