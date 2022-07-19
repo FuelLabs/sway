@@ -228,7 +228,7 @@ mod ir_builder {
                 }
 
             rule op_gtf() -> IrAstOperation
-                = "gtf" _ index:id() comma() tx_field_id:(decimal())  {
+                = "gtf" _ index:id() comma() tx_field_id:decimal()  {
                     IrAstOperation::Gtf(index, tx_field_id)
                 }
 
