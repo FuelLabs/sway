@@ -223,14 +223,14 @@ pub fn tx_script_data_start_pointer() -> u64 {
 /// Get the script data, typed. Unsafe.
 pub fn tx_script_data<T>() -> T {
     // TODO some safety checks on the input data? We are going to assume it is the right type for now.
-    read(tx_script_data_start_pointer())
+    read::<T>(tx_script_data_start_pointer())
 }
 
 /// Get the script bytecode
 /// Must be cast to a u64 array, with sufficient length to contain the bytecode.
 /// Bytecode will be padded to next whole word.
 pub fn tx_script_bytecode<T>() -> T {
-    read(tx_script_start_pointer())
+    read::<T>(tx_script_start_pointer())
 }
 
 ////////////////////////////////////////
@@ -316,7 +316,7 @@ pub fn predicate_data<T>(index: u64) -> T {
         // 0 is the `Coin` Input type
         0u8 => {
             // GTF_INPUT_COIN_PREDICATE_DATA = 0x10D
-            Option::Some(read(asm(res, i: index) {
+            Option::Some(read::<T>(asm(res, i: index) {
                 gtf res i i288;
                 res: u64
             }), 0)
@@ -324,7 +324,7 @@ pub fn predicate_data<T>(index: u64) -> T {
         // 2 is the `Message` Input type
         2u8 => {
             // GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x120
-            Option::Some(read(asm(res, i: index) {
+            Option::Some(read::<T>(asm(res, i: index) {
                 gtf res i i269;
                 res: u64
             }), 0)
@@ -411,7 +411,7 @@ pub fn tx_id(index: u64) -> Option<b256> {
         // 0 is the `Coin` Input type
         0u8 => {
             // GTF_INPUT_COIN_TX_ID = 0x102
-            Option::Some(read(asm(res, i: index) {
+            Option::Some(read::<b256>(asm(res, i: index) {
                 gtf res i i258;
                 res: u64
             }))
@@ -419,7 +419,7 @@ pub fn tx_id(index: u64) -> Option<b256> {
         // 1 is the `Contract` Input type
         1u8 => {
             // GTF_INPUT_CONTRACT_TX_ID = 0x10E
-            Option::Some(read(asm(res, i: index) {
+            Option::Some(read::<b256>(asm(res, i: index) {
                 gtf res i i270;
                 res: u64
             }))
