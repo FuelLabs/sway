@@ -179,7 +179,7 @@ fn handle_expression(expression: &TypedExpression, tokens: &mut TokenMap) {
             call_path,
             contract_call_params,
             arguments,
-            function_body,
+            function_decl,
             ..
         } => {
             for ident in &call_path.prefixes {
@@ -203,7 +203,7 @@ fn handle_expression(expression: &TypedExpression, tokens: &mut TokenMap) {
                 handle_expression(exp, tokens);
             }
 
-            for node in &function_body.contents {
+            for node in &function_decl.body.contents {
                 traverse_node(node, tokens);
             }
         }

@@ -9,8 +9,8 @@ repository = "https://github.com/FuelLabs/sway"
 description = "Sway intermediate representation."
 
 [dependencies]
+anyhow = "1.0"
 filecheck = "0.5"
 generational-arena = "0.2"
 peg = "0.7"
 sway-types = { version = "0.18.1", path = "../sway-types" }
-tracing = "0.1"

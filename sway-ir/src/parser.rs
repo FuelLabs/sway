@@ -141,6 +141,7 @@ mod ir_builder {
                 / op_extract_value()
                 / op_get_storage_key()
                 / op_get_ptr()
+                / op_gtf()
                 / op_insert_element()
                 / op_insert_value()
                 / op_int_to_ptr()
@@ -224,6 +225,11 @@ mod ir_builder {
                 = "get_ptr" _ mut_ptr() ty:ast_ty() name:id()
                     comma() ptr() ty:ast_ty() comma() offset:(decimal())  {
                     IrAstOperation::GetPtr(name, ty, offset)
+                }
+
+            rule op_gtf() -> IrAstOperation
+                = "gtf" _ index:id() comma() tx_field_id:decimal()  {
+                    IrAstOperation::Gtf(index, tx_field_id)
                 }
 
             rule op_insert_element() -> IrAstOperation
@@ -583,6 +589,7 @@ mod ir_builder {
         ExtractValue(String, IrAstTy, Vec<u64>),
         GetStorageKey(),
         GetPtr(String, IrAstTy, u64),
+        Gtf(String, u64),
         InsertElement(String, IrAstTy, String, String),
         InsertValue(String, IrAstTy, String, Vec<u64>),
         IntToPtr(String, IrAstTy),
@@ -1014,6 +1021,11 @@ mod ir_builder {
                         opt_ins_span_md_idx,
                     )
                 }
+                IrAstOperation::Gtf(index, tx_field_id) => block.ins(context).gtf(
+                    *val_map.get(&index).unwrap(),
+                    tx_field_id,
+                    opt_ins_span_md_idx,
+                ),
                 IrAstOperation::InsertElement(aval, ty, val, idx) => {
                     let ir_ty = ty.to_ir_aggregate_type(context);
                     block.ins(context).insert_element(
