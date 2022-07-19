@@ -296,7 +296,7 @@ impl TypedIntrinsicFunctionKind {
                     });
                 }
 
-                // Make sure that the tx field ID is a `u64` 
+                // Make sure that the tx field ID is a `u64`
                 if !matches!(
                     resolve_type(tx_field_id.return_type, &tx_field_id.span).unwrap(),
                     TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
