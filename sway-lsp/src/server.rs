@@ -265,9 +265,8 @@ mod tests {
             .unwrap()
             .parent()
             .unwrap()
-            .join("test/src/e2e_vm_tests/test_programs/should_pass/language_server")
-//            .join("test/src/e2e_vm_tests/test_programs/should_pass/language")
-            .join("particle")
+            .join("test/src/e2e_vm_tests/test_programs/should_pass/language")
+            .join("nested_structs")
     }
 
     fn sway_example_dir() -> PathBuf {
