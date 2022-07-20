@@ -2,7 +2,6 @@ contract;
 
 use methods_abi::MethodsContract;
 
-use std::result::*;
 use std::identity::*;
 use std::chain::auth::*;
 use std::option::*;
