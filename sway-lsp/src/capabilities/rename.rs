@@ -16,7 +16,7 @@ pub fn rename(session: &Session, params: RenameParams) -> Option<WorkspaceEdit> 
         let mut edits = Vec::new();
 
         // todo: currently only supports single file rename
-        for (ident, _) in session.all_references_of_token(token) {
+        for (ident, _) in session.all_references_of_token(&token) {
             let range = get_range_from_span(&ident.span());
             edits.push(TextEdit::new(range, new_name.clone()));
         }

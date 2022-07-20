@@ -6,21 +6,21 @@ use crate::core::{
 };
 use crate::utils::debug::{self, DebugFlags};
 use forc_util::find_manifest_dir;
+use std::sync::Arc;
 use sway_utils::helpers::get_sway_files;
-use tokio::sync::RwLock;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, Client, LanguageServer};
 
 #[derive(Debug)]
 pub struct Backend {
     pub client: Client,
-    session: RwLock<Session>,
+    session: Arc<Session>,
     config: DebugFlags,
 }
 
 impl Backend {
     pub fn new(client: Client, config: DebugFlags) -> Self {
-        let session = RwLock::new(Session::new());
+        let session = Arc::new(Session::new());
         Backend {
             client,
             session,
@@ -41,14 +41,11 @@ impl Backend {
 
         if let Some(path) = find_manifest_dir(&curr_dir) {
             let files = get_sway_files(path);
-
-            let mut session = self.session.write().await;
-
             for file_path in files {
                 if let Some(path) = file_path.to_str() {
                     // store the document
                     let text_document = TextDocument::build_from_path(path)?;
-                    session.store_document(text_document)?;
+                    self.session.store_document(text_document)?;
                 }
             }
         }
@@ -105,8 +102,7 @@ impl Backend {
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
         if let Some(options) = params.initialization_options {
-            let mut session = self.session.write().await;
-            session.update_config(options);
+            self.session.update_config(options);
         }
 
         self.client
@@ -136,13 +132,12 @@ impl LanguageServer for Backend {
 
     // Document Handlers
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        let mut session = self.session.write().await;
         let uri = params.text_document.uri.clone();
-        session.handle_open_file(&uri);
+        self.session.handle_open_file(&uri);
 
-        match session.parse_project(&uri) {
+        match self.session.parse_project(&uri) {
             Ok(diagnostics) => {
-                let tokens = session.tokens_for_file(&uri);
+                let tokens = self.session.tokens_for_file(&uri);
                 self.publish_diagnostics(&uri, diagnostics, &tokens).await
             }
             Err(_) => self.log_error_message("Unable to Parse Project!").await,
@@ -150,12 +145,12 @@ impl LanguageServer for Backend {
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        let mut session = self.session.write().await;
         let uri = params.text_document.uri.clone();
-        session.update_text_document(&uri, params.content_changes);
-        match session.parse_project(&uri) {
+        self.session
+            .update_text_document(&uri, params.content_changes);
+        match self.session.parse_project(&uri) {
             Ok(diagnostics) => {
-                let tokens = session.tokens_for_file(&uri);
+                let tokens = self.session.tokens_for_file(&uri);
                 self.publish_diagnostics(&uri, diagnostics, &tokens).await
             }
             Err(_) => self.log_error_message("Unable to Parse Project!").await,
@@ -163,11 +158,10 @@ impl LanguageServer for Backend {
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        let mut session = self.session.write().await;
         let uri = params.text_document.uri.clone();
-        match session.parse_project(&uri) {
+        match self.session.parse_project(&uri) {
             Ok(diagnostics) => {
-                let tokens = session.tokens_for_file(&uri);
+                let tokens = self.session.tokens_for_file(&uri);
                 self.publish_diagnostics(&uri, diagnostics, &tokens).await
             }
             Err(_) => self.log_error_message("Unable to Parse Project!").await,
@@ -177,15 +171,13 @@ impl LanguageServer for Backend {
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
         for event in params.changes {
             if event.typ == FileChangeType::DELETED {
-                let mut session = self.session.write().await;
-                let _ = session.remove_document(&event.uri);
+                let _ = self.session.remove_document(&event.uri);
             }
         }
     }
 
     async fn hover(&self, params: HoverParams) -> jsonrpc::Result<Option<Hover>> {
-        let session = self.session.read().await;
-        Ok(capabilities::hover::hover_data(&session, params))
+        Ok(capabilities::hover::hover_data(&self.session, params))
     }
 
     async fn completion(
@@ -194,16 +186,18 @@ impl LanguageServer for Backend {
     ) -> jsonrpc::Result<Option<CompletionResponse>> {
         // TODO
         // here we would also need to provide a list of builtin methods not just the ones from the document
-        let session = self.session.read().await;
-        Ok(session.completion_items().map(CompletionResponse::Array))
+        Ok(self
+            .session
+            .completion_items()
+            .map(CompletionResponse::Array))
     }
 
     async fn document_symbol(
         &self,
         params: DocumentSymbolParams,
     ) -> jsonrpc::Result<Option<DocumentSymbolResponse>> {
-        let session = self.session.read().await;
-        Ok(session
+        Ok(self
+            .session
             .symbol_information(&params.text_document.uri)
             .map(DocumentSymbolResponse::Flat))
     }
@@ -212,10 +206,10 @@ impl LanguageServer for Backend {
         &self,
         params: SemanticTokensParams,
     ) -> jsonrpc::Result<Option<SemanticTokensResult>> {
-        let session = self.session.read().await;
         let url = params.text_document.uri;
         Ok(capabilities::semantic_tokens::semantic_tokens_full(
-            &session, &url,
+            &self.session,
+            &url,
         ))
     }
 
@@ -223,38 +217,35 @@ impl LanguageServer for Backend {
         &self,
         params: DocumentHighlightParams,
     ) -> jsonrpc::Result<Option<Vec<DocumentHighlight>>> {
-        let session = self.session.read().await;
-        Ok(capabilities::highlight::get_highlights(&session, params))
+        Ok(capabilities::highlight::get_highlights(
+            &self.session,
+            params,
+        ))
     }
 
     async fn goto_definition(
         &self,
         params: GotoDefinitionParams,
     ) -> jsonrpc::Result<Option<GotoDefinitionResponse>> {
-        let session = self.session.read().await;
-        Ok(session.token_definition_response(params))
+        Ok(self.session.token_definition_response(params))
     }
 
     async fn formatting(
         &self,
         params: DocumentFormattingParams,
     ) -> jsonrpc::Result<Option<Vec<TextEdit>>> {
-        let session = self.session.read().await;
-        let uri = params.text_document.uri.clone();
-        Ok(session.format_text(&uri))
+        Ok(self.session.format_text(&params.text_document.uri))
     }
 
     async fn rename(&self, params: RenameParams) -> jsonrpc::Result<Option<WorkspaceEdit>> {
-        let session = self.session.read().await;
-        Ok(capabilities::rename::rename(&session, params))
+        Ok(capabilities::rename::rename(&self.session, params))
     }
 
     async fn prepare_rename(
         &self,
         params: TextDocumentPositionParams,
     ) -> jsonrpc::Result<Option<PrepareRenameResponse>> {
-        let session = self.session.read().await;
-        Ok(capabilities::rename::prepare_rename(&session, params))
+        Ok(capabilities::rename::prepare_rename(&self.session, params))
     }
 }
 

@@ -32,12 +32,13 @@ pub fn to_semantic_tokens(token_map: &TokenMap) -> Vec<SemanticToken> {
     let mut semantic_tokens: Vec<SemanticToken> = Vec::new();
 
     let mut prev_token_span = None;
-    for ((_, span), token) in token_map.iter() {
+    for item in token_map.iter() {
+        let ((_, span), token) = item.pair();
         let token_type_idx = type_idx(&token.parsed);
         let semantic_token = semantic_token(token_type_idx, span, prev_token_span);
 
         semantic_tokens.push(semantic_token);
-        prev_token_span = Some(span);
+        prev_token_span = Some(span.clone());
     }
 
     semantic_tokens
@@ -46,7 +47,7 @@ pub fn to_semantic_tokens(token_map: &TokenMap) -> Vec<SemanticToken> {
 fn semantic_token(
     token_type_idx: u32,
     next_token_span: &Span,
-    prev_token_span: Option<&Span>,
+    prev_token_span: Option<Span>,
 ) -> SemanticToken {
     let next_token_range = get_range_from_span(next_token_span);
     let next_token_line_start = next_token_range.start.line;
@@ -58,7 +59,7 @@ fn semantic_token(
     let next_token_start_char = next_token_range.start.character;
 
     let (delta_line, delta_start) = if let Some(prev_token_span) = prev_token_span {
-        let prev_token_range = get_range_from_span(prev_token_span);
+        let prev_token_range = get_range_from_span(&prev_token_span);
         let prev_token_line_start = prev_token_range.start.line;
         let delta_start = if next_token_line_start == prev_token_line_start {
             next_token_start_char - prev_token_range.start.character

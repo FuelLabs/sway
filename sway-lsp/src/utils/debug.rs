@@ -16,8 +16,14 @@ pub struct DebugFlags {
 pub(crate) fn generate_warnings_non_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
     let warnings = tokens
         .iter()
-        .filter(|(_, v)| v.typed.is_none())
-        .map(|((ident, _), _)| warning_from_ident(ident))
+        .filter(|item| {
+            let ((_, _), token) = item.pair();
+            token.typed.is_none()
+        })
+        .map(|item| {
+            let (ident, _) = item.key();
+            warning_from_ident(ident)
+        })
         .collect();
 
     warnings
@@ -26,8 +32,10 @@ pub(crate) fn generate_warnings_non_typed_tokens(tokens: &TokenMap) -> Vec<Diagn
 pub(crate) fn generate_warnings_for_parsed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
     let warnings = tokens
         .iter()
-        .map(|((ident, _), token_type)| (ident, &token_type.parsed))
-        .map(|(ident, _)| warning_from_ident(ident))
+        .map(|item| {
+            let (ident, _) = item.key();
+            warning_from_ident(ident)
+        })
         .collect();
 
     warnings
@@ -36,8 +44,14 @@ pub(crate) fn generate_warnings_for_parsed_tokens(tokens: &TokenMap) -> Vec<Diag
 pub(crate) fn generate_warnings_for_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
     let warnings = tokens
         .iter()
-        .filter(|(_, v)| v.typed.is_some())
-        .map(|((ident, _), _)| warning_from_ident(ident))
+        .filter(|item| {
+            let ((_, _), token) = item.pair();
+            token.typed.is_some()
+        })
+        .map(|item| {
+            let (ident, _) = item.key();
+            warning_from_ident(ident)
+        })
         .collect();
 
     warnings

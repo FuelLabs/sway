@@ -12,7 +12,8 @@ use tower_lsp::lsp_types::{Location, SymbolInformation, SymbolKind, Url};
 pub fn to_symbol_information(token_map: &TokenMap, url: Url) -> Vec<SymbolInformation> {
     let mut symbols: Vec<SymbolInformation> = vec![];
 
-    for ((ident, _), token) in token_map {
+    for item in token_map.iter() {
+        let ((ident, _), token) = item.pair();
         let symbol = symbol_info(ident, token, url.clone());
         symbols.push(symbol)
     }

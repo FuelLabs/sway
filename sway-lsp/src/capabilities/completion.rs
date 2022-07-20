@@ -11,7 +11,8 @@ use tower_lsp::lsp_types::{CompletionItem, CompletionItemKind};
 pub fn to_completion_items(token_map: &TokenMap) -> Vec<CompletionItem> {
     let mut completion_items = vec![];
 
-    for ((ident, _), token) in token_map {
+    for item in token_map.iter() {
+        let ((ident, _), token) = item.pair();
         if is_initial_declaration(token) {
             let item = CompletionItem {
                 label: ident.as_str().to_string(),

@@ -17,9 +17,13 @@ pub fn hover_data(session: &Session, params: HoverParams) -> Option<Hover> {
     let position = params.text_document_position_params.position;
     let url = &params.text_document_position_params.text_document.uri;
     if let Some((_, token)) = session.token_at_position(url, position) {
-        if let Some(decl_ident) = session.declared_token_ident(token) {
-            if let Some(decl_token) = session.token_map().get(&to_ident_key(&decl_ident)) {
-                let hover = hover_format(decl_token, &decl_ident);
+        if let Some(decl_ident) = session.declared_token_ident(&token) {
+            if let Some(decl_token) = session
+                .token_map()
+                .get(&to_ident_key(&decl_ident))
+                .map(|item| item.value().clone())
+            {
+                let hover = hover_format(&decl_token, &decl_ident);
                 return Some(hover);
             }
         }
