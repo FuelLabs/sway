@@ -11,11 +11,11 @@ fn main() {
 // check: script {
 // check: fn main() -> ()
 // check: entry:
-// check: call anon_0()
+// check: call f_0()
 // check: $(ret_v=$VAL) = const unit ()
 // check: ret () $ret_v
 
-// check: fn anon_0() -> ()
+// check: fn f_0() -> ()
 
 // ::check-asm::
 // check: ret  $$zero

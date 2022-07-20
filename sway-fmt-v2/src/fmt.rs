@@ -367,6 +367,52 @@ storage { long_var_name: Type1, var2: Type2 }"#;
         assert_eq!(correct_sway_code, formatted_sway_code)
     }
     #[test]
+    fn test_storage_initializer() {
+        let sway_code_to_format = r#"contract;
+
+struct Type1 {
+    x: u64,
+    y: u64,
+}
+
+struct Type2 {
+    w: b256,
+    z: bool,
+}
+
+storage {
+    var1: Type1 = Type1 {x: 0,y: 0, },
+    var2: Type2 = Type2 { w: 0x0000000000000000000000000000000000000000000000000000000000000000,z: false,
+    },
+}"#;
+        let correct_sway_code = r#"contract;
+
+struct Type1 {
+    x: u64,
+    y: u64,
+}
+
+struct Type2 {
+    w: b256,
+    z: bool,
+}
+
+storage {
+    var1: Type1 = Type1 {
+        x: 0,
+        y: 0,
+    },
+    var2: Type2 = Type2 {
+        w: 0x0000000000000000000000000000000000000000000000000000000000000000,
+        z: false,
+    },
+}"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code)
+    }
+    #[test]
     fn test_item_fn() {
         let sway_code_to_format = r#"contract;
 
