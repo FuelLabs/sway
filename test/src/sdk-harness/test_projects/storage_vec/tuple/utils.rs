@@ -50,7 +50,12 @@ pub mod wrappers {
     }
 
     pub async fn swap_remove(instance: &MyContract, index: u64) -> (u8, u8, u8) {
-        instance.tuple_swap_remove(index).call().await.unwrap().value
+        instance
+            .tuple_swap_remove(index)
+            .call()
+            .await
+            .unwrap()
+            .value
     }
 
     pub async fn set(instance: &MyContract, index: u64, value: (u8, u8, u8)) {

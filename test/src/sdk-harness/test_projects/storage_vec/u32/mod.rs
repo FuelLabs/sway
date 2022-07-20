@@ -2,7 +2,7 @@ mod utils;
 
 use utils::{
     setup::get_contract_instance,
-    wrappers::{clear, get, insert, is_empty, len, pop, push, remove, swap_remove, set},
+    wrappers::{clear, get, insert, is_empty, len, pop, push, remove, set, swap_remove},
 };
 
 // TODO: Replace many of the get calls with direct storage values
@@ -111,10 +111,10 @@ mod success {
     #[tokio::test]
     async fn can_insert() {
         let (instance, _id) = get_contract_instance().await;
-        
+
         let len_vec = len(&instance).await;
         assert_eq!(len_vec, 0);
-        
+
         insert(&instance, 0, 50).await;
 
         let len_vec = len(&instance).await;

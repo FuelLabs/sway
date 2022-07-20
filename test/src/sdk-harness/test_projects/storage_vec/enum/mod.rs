@@ -2,7 +2,7 @@ mod utils;
 
 use utils::{
     setup::get_contract_instance,
-    wrappers::{clear, get, insert, is_empty, len, pop, push, remove, swap_remove, set},
+    wrappers::{clear, get, insert, is_empty, len, pop, push, remove, set, swap_remove},
     TestEnum,
 };
 
@@ -121,7 +121,7 @@ mod success {
 
         let len_vec = len(&instance).await;
         assert_eq!(len_vec, 0);
-        
+
         insert(&instance, 0, ENUM1).await;
 
         let len_vec = len(&instance).await;

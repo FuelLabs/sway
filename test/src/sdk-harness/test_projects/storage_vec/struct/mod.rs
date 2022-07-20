@@ -2,7 +2,7 @@ mod utils;
 
 use utils::{
     setup::get_contract_instance,
-    wrappers::{clear, get, insert, is_empty, len, pop, push, remove, swap_remove, set},
+    wrappers::{clear, get, insert, is_empty, len, pop, push, remove, set, swap_remove},
     TestStruct,
 };
 
