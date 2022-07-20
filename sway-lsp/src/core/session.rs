@@ -163,6 +163,21 @@ impl Session {
                     // Next, populate our token_map with typed ast nodes
                     //let res = self.parse_ast_to_typed_tokens(ast_res);
                     //self.test_typed_parse(ast_res);
+                    for ((ident, span), token) in self.token_map() {
+                        eprintln!("ident = {:?}", ident);
+                        eprintln!("");
+
+                        eprintln!("token = {:#?}", token);
+
+                        eprintln!("");
+                        eprintln!("");
+                        eprintln!("");
+
+                        eprintln!("------------------");
+
+                        eprintln!("");
+
+                    } 
                     return res;
                 }
             }

@@ -55,6 +55,10 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&parameter.name)) {
                     token.typed = Some(TypedAstToken::TypedFunctionParameter(parameter.clone()));
                 }
+
+                if let Some(token) = tokens.get_mut(&to_ident_key(&Ident::new(parameter.type_span.clone()))) {
+                    token.typed = Some(TypedAstToken::TypedFunctionParameter(parameter.clone()));
+                }
             }
         }
         TypedDeclaration::TraitDeclaration(trait_decl) => {

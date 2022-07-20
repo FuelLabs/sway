@@ -43,6 +43,11 @@ fn handle_function_declation(func: &FunctionDeclaration, tokens: &TokenMap) {
             to_ident_key(&parameter.name),
             TokenType::from_parsed(AstToken::FunctionParameter(parameter.clone())),
         );
+
+        tokens.insert(
+            to_ident_key(&Ident::new(parameter.type_span.clone())),
+            TokenType::from_parsed(AstToken::FunctionParameter(parameter.clone())),
+        );
     }
 
     handle_custom_type(&func.return_type, tokens);
@@ -170,6 +175,11 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                 for param in &trait_fn.parameters {
                     tokens.insert(
                         to_ident_key(&param.name),
+                        TokenType::from_parsed(AstToken::FunctionParameter(param.clone())),
+                    );
+
+                    tokens.insert(
+                        to_ident_key(&Ident::new(param.type_span.clone())),
                         TokenType::from_parsed(AstToken::FunctionParameter(param.clone())),
                     );
                 }
