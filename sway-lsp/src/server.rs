@@ -265,9 +265,9 @@ mod tests {
             .unwrap()
             .parent()
             .unwrap()
-            .join("test/src/e2e_vm_tests/test_programs/should_pass/lsp")
+            .join("test/src/e2e_vm_tests/test_programs/should_pass/language_server")
 //            .join("test/src/e2e_vm_tests/test_programs/should_pass/language")
-            .join("test_project")
+            .join("particle")
     }
 
     fn sway_example_dir() -> PathBuf {
