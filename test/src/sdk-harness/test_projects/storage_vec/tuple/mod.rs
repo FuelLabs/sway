@@ -8,6 +8,12 @@ use utils::{
 // TODO: Replace many of the get calls with direct storage values
 // once the SDK supports that
 
+const TUP1: (u8, u8, u8) = (1, 1, 1);
+const TUP2: (u8, u8, u8) = (2, 2, 2);
+const TUP3: (u8, u8, u8) = (3, 3, 3);
+const TUP4: (u8, u8, u8) = (4, 4, 4);
+const TUP5: (u8, u8, u8) = (5, 5, 5);
+
 mod success {
     use super::*;
 
@@ -15,10 +21,10 @@ mod success {
     async fn can_get() {
         let (instance, _id) = get_contract_instance().await;
 
-        push(&instance, 50).await;
+        push(&instance, TUP1).await;
         let item = get(&instance, 0).await;
 
-        assert_eq!(item, 50);
+        assert_eq!(item, TUP1);
     }
 
     #[tokio::test]
@@ -28,10 +34,10 @@ mod success {
         let len_before_push = len(&instance).await;
         assert_eq!(len_before_push, 0);
 
-        push(&instance, 50).await;
+        push(&instance, TUP1).await;
         let item = get(&instance, 0).await;
 
-        assert_eq!(item, 50);
+        assert_eq!(item, TUP1);
 
         let len_after_push = len(&instance).await;
         assert_eq!(len_after_push, 1);
@@ -41,12 +47,12 @@ mod success {
     async fn can_pop() {
         let (instance, _id) = get_contract_instance().await;
 
-        push(&instance, 50).await;
+        push(&instance, TUP1).await;
         let len_before_pop = len(&instance).await;
         assert_eq!(len_before_pop, 1);
 
         let item = pop(&instance).await;
-        assert_eq!(item, 50);
+        assert_eq!(item, TUP1);
 
         let len_after_pop = len(&instance).await;
         assert_eq!(len_after_pop, 0);
@@ -56,25 +62,25 @@ mod success {
     async fn can_remove() {
         let (instance, _id) = get_contract_instance().await;
 
-        push(&instance, 50).await;
-        push(&instance, 100).await;
-        push(&instance, 150).await;
-        push(&instance, 200).await;
+        push(&instance, TUP1).await;
+        push(&instance, TUP2).await;
+        push(&instance, TUP3).await;
+        push(&instance, TUP4).await;
 
         let len_vec = len(&instance).await;
         assert_eq!(len_vec, 4);
 
-        assert_eq!(50, get(&instance, 0).await);
-        assert_eq!(100, get(&instance, 1).await);
-        assert_eq!(150, get(&instance, 2).await);
-        assert_eq!(200, get(&instance, 3).await);
+        assert_eq!(TUP1, get(&instance, 0).await);
+        assert_eq!(TUP2, get(&instance, 1).await);
+        assert_eq!(TUP3, get(&instance, 2).await);
+        assert_eq!(TUP4, get(&instance, 3).await);
 
         let item = remove(&instance, 2).await;
-        assert_eq!(item, 150);
+        assert_eq!(item, TUP3);
 
-        assert_eq!(50, get(&instance, 0).await);
-        assert_eq!(100, get(&instance, 1).await);
-        assert_eq!(200, get(&instance, 2).await);
+        assert_eq!(TUP1, get(&instance, 0).await);
+        assert_eq!(TUP2, get(&instance, 1).await);
+        assert_eq!(TUP4, get(&instance, 2).await);
 
         let len_vec = len(&instance).await;
         assert_eq!(len_vec, 3);
@@ -84,25 +90,25 @@ mod success {
     async fn can_swap_remove() {
         let (instance, _id) = get_contract_instance().await;
 
-        push(&instance, 50).await;
-        push(&instance, 100).await;
-        push(&instance, 150).await;
-        push(&instance, 200).await;
+        push(&instance, TUP1).await;
+        push(&instance, TUP2).await;
+        push(&instance, TUP3).await;
+        push(&instance, TUP4).await;
 
         let len_vec = len(&instance).await;
         assert_eq!(len_vec, 4);
 
-        assert_eq!(50, get(&instance, 0).await);
-        assert_eq!(100, get(&instance, 1).await);
-        assert_eq!(150, get(&instance, 2).await);
-        assert_eq!(200, get(&instance, 3).await);
+        assert_eq!(TUP1, get(&instance, 0).await);
+        assert_eq!(TUP2, get(&instance, 1).await);
+        assert_eq!(TUP3, get(&instance, 2).await);
+        assert_eq!(TUP4, get(&instance, 3).await);
 
         let item = swap_remove(&instance, 1).await;
-        assert_eq!(item, 100);
+        assert_eq!(item, TUP2);
 
-        assert_eq!(50, get(&instance, 0).await);
-        assert_eq!(200, get(&instance, 1).await);
-        assert_eq!(150, get(&instance, 2).await);
+        assert_eq!(TUP1, get(&instance, 0).await);
+        assert_eq!(TUP4, get(&instance, 1).await);
+        assert_eq!(TUP3, get(&instance, 2).await);
 
         let len_vec = len(&instance).await;
         assert_eq!(len_vec, 3);
@@ -114,31 +120,31 @@ mod success {
 
         let len_vec = len(&instance).await;
         assert_eq!(len_vec, 0);
-        
-        insert(&instance, 0, 50).await;
+
+        insert(&instance, 0, TUP1).await;
 
         let len_vec = len(&instance).await;
         assert_eq!(len_vec, 1);
 
-        push(&instance, 100).await;
-        push(&instance, 150).await;
-        push(&instance, 200).await;
+        push(&instance, TUP2).await;
+        push(&instance, TUP3).await;
+        push(&instance, TUP4).await;
 
         let len_vec = len(&instance).await;
         assert_eq!(len_vec, 4);
 
-        assert_eq!(50, get(&instance, 0).await);
-        assert_eq!(100, get(&instance, 1).await);
-        assert_eq!(150, get(&instance, 2).await);
-        assert_eq!(200, get(&instance, 3).await);
+        assert_eq!(TUP1, get(&instance, 0).await);
+        assert_eq!(TUP2, get(&instance, 1).await);
+        assert_eq!(TUP3, get(&instance, 2).await);
+        assert_eq!(TUP4, get(&instance, 3).await);
 
-        insert(&instance, 1, 250).await;
+        insert(&instance, 1, TUP5).await;
 
-        assert_eq!(50, get(&instance, 0).await);
-        assert_eq!(250, get(&instance, 1).await);
-        assert_eq!(100, get(&instance, 2).await);
-        assert_eq!(150, get(&instance, 3).await);
-        assert_eq!(200, get(&instance, 4).await);
+        assert_eq!(TUP1, get(&instance, 0).await);
+        assert_eq!(TUP5, get(&instance, 1).await);
+        assert_eq!(TUP2, get(&instance, 2).await);
+        assert_eq!(TUP3, get(&instance, 3).await);
+        assert_eq!(TUP4, get(&instance, 4).await);
 
         let len_vec = len(&instance).await;
         assert_eq!(len_vec, 5);
@@ -151,15 +157,15 @@ mod success {
         let len_vec = len(&instance).await;
         assert_eq!(len_vec, 0);
 
-        push(&instance, 50).await;
-        push(&instance, 100).await;
-        push(&instance, 150).await;
-        push(&instance, 200).await;
+        push(&instance, TUP1).await;
+        push(&instance, TUP2).await;
+        push(&instance, TUP3).await;
+        push(&instance, TUP4).await;
 
         let len_vec = len(&instance).await;
         assert_eq!(len_vec, 4);
 
-        push(&instance, 200).await;
+        push(&instance, TUP4).await;
         let len_vec = len(&instance).await;
 
         assert_eq!(len_vec, 5);
@@ -172,10 +178,10 @@ mod success {
         let isempty = is_empty(&instance).await;
         assert_eq!(isempty, true);
 
-        push(&instance, 50).await;
-        push(&instance, 100).await;
-        push(&instance, 150).await;
-        push(&instance, 200).await;
+        push(&instance, TUP1).await;
+        push(&instance, TUP2).await;
+        push(&instance, TUP3).await;
+        push(&instance, TUP4).await;
 
         let isempty = is_empty(&instance).await;
         assert_eq!(isempty, false);
@@ -193,10 +199,10 @@ mod success {
         let isempty = is_empty(&instance).await;
         assert_eq!(isempty, true);
 
-        push(&instance, 50).await;
-        push(&instance, 100).await;
-        push(&instance, 150).await;
-        push(&instance, 200).await;
+        push(&instance, TUP1).await;
+        push(&instance, TUP2).await;
+        push(&instance, TUP3).await;
+        push(&instance, TUP4).await;
 
         let isempty = is_empty(&instance).await;
         assert_eq!(isempty, false);
@@ -211,25 +217,25 @@ mod success {
     async fn can_set() {
         let (instance, _id) = get_contract_instance().await;
 
-        push(&instance, 50).await;
-        push(&instance, 100).await;
-        push(&instance, 150).await;
-        push(&instance, 200).await;
+        push(&instance, TUP1).await;
+        push(&instance, TUP2).await;
+        push(&instance, TUP3).await;
+        push(&instance, TUP4).await;
 
-        assert_eq!(50, get(&instance, 0).await);
-        assert_eq!(100, get(&instance, 1).await);
-        assert_eq!(150, get(&instance, 2).await);
-        assert_eq!(200, get(&instance, 3).await);
+        assert_eq!(TUP1, get(&instance, 0).await);
+        assert_eq!(TUP2, get(&instance, 1).await);
+        assert_eq!(TUP3, get(&instance, 2).await);
+        assert_eq!(TUP4, get(&instance, 3).await);
 
-        set(&instance, 0, 200).await;
-        set(&instance, 1, 150).await;
-        set(&instance, 2, 100).await;
-        set(&instance, 3, 50).await;
+        set(&instance, 0, TUP4).await;
+        set(&instance, 1, TUP3).await;
+        set(&instance, 2, TUP2).await;
+        set(&instance, 3, TUP1).await;
 
-        assert_eq!(200, get(&instance, 0).await);
-        assert_eq!(150, get(&instance, 1).await);
-        assert_eq!(100, get(&instance, 2).await);
-        assert_eq!(50, get(&instance, 3).await);
+        assert_eq!(TUP4, get(&instance, 0).await);
+        assert_eq!(TUP3, get(&instance, 1).await);
+        assert_eq!(TUP2, get(&instance, 2).await);
+        assert_eq!(TUP1, get(&instance, 3).await);
     }
 }
 
@@ -275,7 +281,7 @@ mod failure {
     async fn cant_insert() {
         let (instance, _id) = get_contract_instance().await;
 
-        insert(&instance, 1, 250).await;
+        insert(&instance, 1, TUP5).await;
     }
 
     #[tokio::test]
@@ -283,6 +289,6 @@ mod failure {
     async fn cant_set() {
         let (instance, _id) = get_contract_instance().await;
 
-        set(&instance, 1, 250).await;
+        set(&instance, 1, TUP5).await;
     }
 }

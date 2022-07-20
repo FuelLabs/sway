@@ -119,6 +119,9 @@ mod success {
     async fn can_insert() {
         let (instance, _id) = get_contract_instance().await;
 
+        let len_vec = len(&instance).await;
+        assert_eq!(len_vec, 0);
+
         insert(&instance, 0, STRUCT1).await;
 
         let len_vec = len(&instance).await;
@@ -280,5 +283,13 @@ mod failure {
         let (instance, _id) = get_contract_instance().await;
 
         insert(&instance, 1, STRUCT5).await;
+    }
+
+    #[tokio::test]
+    #[should_panic(expected = "Revert(0)")]
+    async fn cant_set() {
+        let (instance, _id) = get_contract_instance().await;
+
+        set(&instance, 1, STRUCT5).await;
     }
 }

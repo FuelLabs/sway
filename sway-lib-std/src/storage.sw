@@ -245,20 +245,15 @@ impl<V> StorageVec<V> {
     ///
     /// # Reverts
     /// 
-    /// Reverts if index is larger than the length of the vec
+    /// Reverts if index is larger than or equal to the length of the vec
     #[storage(read, write)]
     pub fn set(self, index: u64, value: V) {
         let len = get::<u64>(__get_storage_key());  
-        // if the index is higher than len, cannot set an element.
-        assert(index <= len);
+        // if the index is higher than or equal len, there is no element to set
+        assert(index < len);
 
         let key = sha256((index, __get_storage_key()));
         store::<V>(key, value);
-
-        // if the index is equal to len (ie, higher than the highest current index), increase the len
-        if index == len {
-            store(__get_storage_key(), len + 1);
-        }
     }
 
     /// Inserts the value at the given index, moving the current index's value aswell as the following's
