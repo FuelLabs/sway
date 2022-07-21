@@ -4,7 +4,7 @@ use sway_types::Spanned;
 
 use crate::FormatterError;
 
-use super::comments::{CommentSpan, CommentVisitor};
+use super::comments::{ByteSpan, CommentVisitor};
 
 /// Insert the program type without applying a formatting to it.
 ///
@@ -44,24 +44,24 @@ pub(crate) fn insert_program_type(
 }
 
 impl CommentVisitor for ModuleKind {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         match self {
             ModuleKind::Script { script_token } => {
-                vec![CommentSpan::from_span(script_token.span())]
+                vec![ByteSpan::from_span(script_token.span())]
             }
             ModuleKind::Contract { contract_token } => {
-                vec![CommentSpan::from_span(contract_token.span())]
+                vec![ByteSpan::from_span(contract_token.span())]
             }
             ModuleKind::Predicate { predicate_token } => {
-                vec![CommentSpan::from_span(predicate_token.span())]
+                vec![ByteSpan::from_span(predicate_token.span())]
             }
             ModuleKind::Library {
                 library_token,
                 name,
             } => {
                 vec![
-                    CommentSpan::from_span(library_token.span()),
-                    CommentSpan::from_span(name.span()),
+                    ByteSpan::from_span(library_token.span()),
+                    ByteSpan::from_span(name.span()),
                 ]
             }
         }
@@ -69,9 +69,9 @@ impl CommentVisitor for ModuleKind {
 }
 
 impl CommentVisitor for Module {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = self.kind.collect_spans();
-        collected_spans.push(CommentSpan::from_span(self.semicolon_token.span()));
+        collected_spans.push(ByteSpan::from_span(self.semicolon_token.span()));
         collected_spans.append(&mut self.dependencies.collect_spans());
         collected_spans.append(&mut self.items.collect_spans());
         collected_spans
@@ -79,16 +79,16 @@ impl CommentVisitor for Module {
 }
 
 impl CommentVisitor for Dependency {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
-        let mut collected_spans = vec![CommentSpan::from_span(self.dep_token.span())];
+    fn collect_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = vec![ByteSpan::from_span(self.dep_token.span())];
         collected_spans.append(&mut self.path.collect_spans());
-        collected_spans.push(CommentSpan::from_span(self.semicolon_token.span()));
+        collected_spans.push(ByteSpan::from_span(self.semicolon_token.span()));
         collected_spans
     }
 }
 
 impl CommentVisitor for DependencyPath {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = self.prefix.collect_spans();
         collected_spans.append(&mut self.suffixes.collect_spans());
         collected_spans

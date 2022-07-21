@@ -3,7 +3,7 @@ use crate::{
     fmt::{Format, FormattedCode, Formatter, FormatterError},
     utils::{
         bracket::{CurlyBrace, Parenthesis},
-        comments::{CommentSpan, CommentVisitor},
+        comments::{ByteSpan, CommentVisitor},
     },
 };
 use std::fmt::Write;
@@ -208,7 +208,7 @@ impl Format for FnArg {
 }
 
 impl CommentVisitor for ItemFn {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         collected_spans.append(&mut self.fn_signature.collect_spans());
         collected_spans.append(&mut self.body.collect_spans());
@@ -217,7 +217,7 @@ impl CommentVisitor for ItemFn {
 }
 
 impl CommentVisitor for CodeBlockContents {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_span = Vec::new();
         for statement in self.statements.iter() {
             collected_span.append(&mut statement.collect_spans());
@@ -230,15 +230,15 @@ impl CommentVisitor for CodeBlockContents {
 }
 
 impl CommentVisitor for FnSignature {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         if let Some(visibility) = &self.visibility {
-            collected_spans.push(CommentSpan::from_span(visibility.span()));
+            collected_spans.push(ByteSpan::from_span(visibility.span()));
         }
-        collected_spans.push(CommentSpan::from_span(self.fn_token.span()));
-        collected_spans.push(CommentSpan::from_span(self.name.span()));
+        collected_spans.push(ByteSpan::from_span(self.fn_token.span()));
+        collected_spans.push(ByteSpan::from_span(self.name.span()));
         if let Some(generics) = &self.generics {
-            collected_spans.push(CommentSpan::from_span(generics.parameters.span()));
+            collected_spans.push(ByteSpan::from_span(generics.parameters.span()));
         }
         collected_spans.append(&mut self.arguments.collect_spans());
         if let Some(return_type) = &self.return_type_opt {
@@ -250,7 +250,7 @@ impl CommentVisitor for FnSignature {
 }
 
 impl CommentVisitor for FnArgs {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         match &self {
             FnArgs::Static(arg_static) => {
@@ -261,9 +261,9 @@ impl CommentVisitor for FnArgs {
                 mutable_self,
                 args_opt,
             } => {
-                collected_spans.push(CommentSpan::from_span(self_token.span()));
+                collected_spans.push(ByteSpan::from_span(self_token.span()));
                 if let Some(mutable) = mutable_self {
-                    collected_spans.push(CommentSpan::from_span(mutable.span()));
+                    collected_spans.push(ByteSpan::from_span(mutable.span()));
                 }
                 if let Some(args) = args_opt {
                     collected_spans.append(&mut args.collect_spans());
@@ -275,11 +275,11 @@ impl CommentVisitor for FnArgs {
 }
 
 impl CommentVisitor for FnArg {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         collected_spans.append(&mut self.pattern.collect_spans());
-        collected_spans.push(CommentSpan::from_span(self.colon_token.span()));
-        collected_spans.push(CommentSpan::from_span(self.ty.span()));
+        collected_spans.push(ByteSpan::from_span(self.colon_token.span()));
+        collected_spans.push(ByteSpan::from_span(self.ty.span()));
         collected_spans
     }
 }

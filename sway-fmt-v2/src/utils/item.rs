@@ -1,11 +1,11 @@
 use crate::{
     fmt::{Format, FormattedCode, Formatter, FormatterError},
-    utils::comments::{CommentSpan, CommentVisitor},
+    utils::comments::{ByteSpan, CommentVisitor},
 };
 use sway_parse::{Item, ItemKind::*};
 
 impl CommentVisitor for Item {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         match &self.value {
             Struct(item_struct) => item_struct.collect_spans(),
             Enum(item_enum) => item_enum.collect_spans(),

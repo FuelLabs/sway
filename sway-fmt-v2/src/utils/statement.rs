@@ -1,6 +1,6 @@
 use crate::{
     fmt::*,
-    utils::comments::{CommentSpan, CommentVisitor},
+    utils::comments::{ByteSpan, CommentVisitor},
 };
 use std::fmt::Write;
 use sway_parse::{Statement, StatementLet};
@@ -61,7 +61,7 @@ impl Format for StatementLet {
 }
 
 impl CommentVisitor for Statement {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         match self {
             Statement::Let(statement_let) => statement_let.collect_spans(),
             Statement::Item(item) => item.collect_spans(),
@@ -71,7 +71,7 @@ impl CommentVisitor for Statement {
             } => {
                 let mut collected_spans = expr.collect_spans();
                 if let Some(semicolon_token) = semicolon_token_opt {
-                    collected_spans.push(CommentSpan::from_span(semicolon_token.span()));
+                    collected_spans.push(ByteSpan::from_span(semicolon_token.span()));
                 }
                 collected_spans
             }
@@ -80,22 +80,22 @@ impl CommentVisitor for Statement {
 }
 
 impl CommentVisitor for StatementLet {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
-        // Add let token's CommentSpan
-        let mut collected_spans = vec![CommentSpan::from_span(self.let_token.span())];
-        // Add pattern's CommentSpan
+    fn collect_spans(&self) -> Vec<ByteSpan> {
+        // Add let token's ByteSpan
+        let mut collected_spans = vec![ByteSpan::from_span(self.let_token.span())];
+        // Add pattern's ByteSpan
         collected_spans.append(&mut self.pattern.collect_spans());
-        // Add ty's CommentSpan if it exists
+        // Add ty's ByteSpan if it exists
         if let Some(ty) = &self.ty_opt {
-            collected_spans.push(CommentSpan::from_span(ty.0.span()));
+            collected_spans.push(ByteSpan::from_span(ty.0.span()));
             // TODO: determine if we are allowing comments between `:` and ty
             collected_spans.append(&mut ty.1.collect_spans());
         }
-        // Add eq token's CommentSpan
-        collected_spans.push(CommentSpan::from_span(self.eq_token.span()));
-        // Add Expr's CommentSpan
+        // Add eq token's ByteSpan
+        collected_spans.push(ByteSpan::from_span(self.eq_token.span()));
+        // Add Expr's ByteSpan
         collected_spans.append(&mut self.expr.collect_spans());
-        collected_spans.push(CommentSpan::from_span(self.semicolon_token.span()));
+        collected_spans.push(ByteSpan::from_span(self.semicolon_token.span()));
         collected_spans
     }
 }

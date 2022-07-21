@@ -1,6 +1,6 @@
 use crate::{
     fmt::*,
-    utils::comments::{CommentSpan, CommentVisitor},
+    utils::comments::{ByteSpan, CommentVisitor},
 };
 use std::fmt::Write;
 use sway_parse::Literal;
@@ -23,12 +23,12 @@ impl Format for Literal {
 }
 
 impl CommentVisitor for Literal {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         match self {
-            Literal::String(str_lit) => vec![CommentSpan::from_span(str_lit.span.clone())],
-            Literal::Char(chr_lit) => vec![CommentSpan::from_span(chr_lit.span.clone())],
-            Literal::Int(int_lit) => vec![CommentSpan::from_span(int_lit.span.clone())],
-            Literal::Bool(bool_lit) => vec![CommentSpan::from_span(bool_lit.span.clone())],
+            Literal::String(str_lit) => vec![ByteSpan::from_span(str_lit.span.clone())],
+            Literal::Char(chr_lit) => vec![ByteSpan::from_span(chr_lit.span.clone())],
+            Literal::Int(int_lit) => vec![ByteSpan::from_span(int_lit.span.clone())],
+            Literal::Bool(bool_lit) => vec![ByteSpan::from_span(bool_lit.span.clone())],
         }
     }
 }

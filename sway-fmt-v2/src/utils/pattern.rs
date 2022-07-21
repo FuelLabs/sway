@@ -1,6 +1,6 @@
 use crate::{
     fmt::*,
-    utils::comments::{CommentSpan, CommentVisitor},
+    utils::comments::{ByteSpan, CommentVisitor},
 };
 use std::fmt::Write;
 use sway_parse::{token::Delimiter, Pattern, PatternStructField};
@@ -119,17 +119,17 @@ impl Format for PatternStructField {
 }
 
 impl CommentVisitor for Pattern {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         match self {
             Pattern::Wildcard { underscore_token } => {
-                collected_spans.push(CommentSpan::from_span(underscore_token.span()));
+                collected_spans.push(ByteSpan::from_span(underscore_token.span()));
             }
             Pattern::Var { mutable, name } => {
                 if let Some(mutable) = mutable {
-                    collected_spans.push(CommentSpan::from_span(mutable.span()));
+                    collected_spans.push(ByteSpan::from_span(mutable.span()));
                 }
-                collected_spans.push(CommentSpan::from_span(name.span()));
+                collected_spans.push(ByteSpan::from_span(name.span()));
             }
             Pattern::Literal(literal) => {
                 collected_spans.append(&mut literal.collect_spans());
@@ -154,19 +154,19 @@ impl CommentVisitor for Pattern {
 }
 
 impl CommentVisitor for PatternStructField {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         match self {
             PatternStructField::Rest { token } => {
-                collected_spans.push(CommentSpan::from_span(token.span()));
+                collected_spans.push(ByteSpan::from_span(token.span()));
             }
             PatternStructField::Field {
                 field_name,
                 pattern_opt,
             } => {
-                collected_spans.push(CommentSpan::from_span(field_name.span()));
+                collected_spans.push(ByteSpan::from_span(field_name.span()));
                 if let Some(pattern) = pattern_opt {
-                    collected_spans.push(CommentSpan::from_span(pattern.0.span()));
+                    collected_spans.push(ByteSpan::from_span(pattern.0.span()));
                     collected_spans.append(&mut pattern.1.collect_spans());
                 }
             }

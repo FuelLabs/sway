@@ -1,7 +1,7 @@
 use crate::{
     config::items::ItemBraceStyle,
     fmt::*,
-    utils::comments::{CommentSpan, CommentVisitor},
+    utils::comments::{ByteSpan, CommentVisitor},
 };
 use std::{fmt::Write, vec};
 use sway_parse::{
@@ -260,24 +260,24 @@ impl CurlyBrace for ExprStructField {
 
 // TODO: Find a better way of handling Boxed version
 impl CommentVisitor for Box<Expr> {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         visit_expr(self)
     }
 }
 
 impl CommentVisitor for Expr {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         visit_expr(self)
     }
 }
 
-/// Collects various expr field's CommentSpans.
-fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
+/// Collects various expr field's ByteSpans.
+fn visit_expr(expr: &Expr) -> Vec<ByteSpan> {
     match expr {
         Expr::Path(path) => path.collect_spans(),
         Expr::Literal(literal) => literal.collect_spans(),
         Expr::AbiCast { abi_token, args } => {
-            let mut collected_spans = vec![CommentSpan::from_span(abi_token.span())];
+            let mut collected_spans = vec![ByteSpan::from_span(abi_token.span())];
             collected_spans.append(&mut args.collect_spans());
             collected_spans
         }
@@ -295,7 +295,7 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             return_token,
             expr_opt,
         } => {
-            let mut collected_spans = vec![CommentSpan::from_span(return_token.span())];
+            let mut collected_spans = vec![ByteSpan::from_span(return_token.span())];
             if let Some(expr) = expr_opt {
                 collected_spans.append(&mut expr.collect_spans());
             }
@@ -307,7 +307,7 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             value,
             branches,
         } => {
-            let mut collected_spans = vec![CommentSpan::from_span(match_token.span())];
+            let mut collected_spans = vec![ByteSpan::from_span(match_token.span())];
             collected_spans.append(&mut value.collect_spans());
             collected_spans.append(&mut branches.collect_spans());
             collected_spans
@@ -317,7 +317,7 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             condition,
             block,
         } => {
-            let mut collected_spans = vec![CommentSpan::from_span(while_token.span())];
+            let mut collected_spans = vec![ByteSpan::from_span(while_token.span())];
             collected_spans.append(&mut condition.collect_spans());
             collected_spans.append(&mut block.collect_spans());
             collected_spans
@@ -343,8 +343,8 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
         } => {
             let mut collected_spans = Vec::new();
             collected_spans.append(&mut target.collect_spans());
-            collected_spans.push(CommentSpan::from_span(dot_token.span()));
-            collected_spans.push(CommentSpan::from_span(name.span()));
+            collected_spans.push(ByteSpan::from_span(dot_token.span()));
+            collected_spans.push(ByteSpan::from_span(name.span()));
             if let Some(contract_args) = contract_args_opt {
                 collected_spans.append(&mut contract_args.collect_spans());
             }
@@ -358,8 +358,8 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
         } => {
             let mut collected_spans = Vec::new();
             collected_spans.append(&mut target.collect_spans());
-            collected_spans.push(CommentSpan::from_span(dot_token.span()));
-            collected_spans.push(CommentSpan::from_span(name.span()));
+            collected_spans.push(ByteSpan::from_span(dot_token.span()));
+            collected_spans.push(ByteSpan::from_span(name.span()));
             collected_spans
         }
         Expr::TupleFieldProjection {
@@ -370,22 +370,22 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
         } => {
             let mut collected_spans = Vec::new();
             collected_spans.append(&mut target.collect_spans());
-            collected_spans.push(CommentSpan::from_span(dot_token.span()));
-            collected_spans.push(CommentSpan::from_span(field_span.clone()));
+            collected_spans.push(ByteSpan::from_span(dot_token.span()));
+            collected_spans.push(ByteSpan::from_span(field_span.clone()));
             collected_spans
         }
         Expr::Ref { ref_token, expr } => {
-            let mut collected_spans = vec![CommentSpan::from_span(ref_token.span())];
+            let mut collected_spans = vec![ByteSpan::from_span(ref_token.span())];
             collected_spans.append(&mut expr.collect_spans());
             collected_spans
         }
         Expr::Deref { deref_token, expr } => {
-            let mut collected_spans = vec![CommentSpan::from_span(deref_token.span())];
+            let mut collected_spans = vec![ByteSpan::from_span(deref_token.span())];
             collected_spans.append(&mut expr.collect_spans());
             collected_spans
         }
         Expr::Not { bang_token, expr } => {
-            let mut collected_spans = vec![CommentSpan::from_span(bang_token.span())];
+            let mut collected_spans = vec![ByteSpan::from_span(bang_token.span())];
             collected_spans.append(&mut expr.collect_spans());
             collected_spans
         }
@@ -395,7 +395,7 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             rhs,
         } => {
             let mut collected_spans = lhs.collect_spans();
-            collected_spans.push(CommentSpan::from_span(star_token.span()));
+            collected_spans.push(ByteSpan::from_span(star_token.span()));
             collected_spans.append(&mut rhs.collect_spans());
             collected_spans
         }
@@ -405,7 +405,7 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             rhs,
         } => {
             let mut collected_spans = lhs.collect_spans();
-            collected_spans.push(CommentSpan::from_span(forward_slash_token.span()));
+            collected_spans.push(ByteSpan::from_span(forward_slash_token.span()));
             collected_spans.append(&mut rhs.collect_spans());
             collected_spans
         }
@@ -415,7 +415,7 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             rhs,
         } => {
             let mut collected_spans = lhs.collect_spans();
-            collected_spans.push(CommentSpan::from_span(percent_token.span()));
+            collected_spans.push(ByteSpan::from_span(percent_token.span()));
             collected_spans.append(&mut rhs.collect_spans());
             collected_spans
         }
@@ -425,7 +425,7 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             rhs,
         } => {
             let mut collected_spans = lhs.collect_spans();
-            collected_spans.push(CommentSpan::from_span(add_token.span()));
+            collected_spans.push(ByteSpan::from_span(add_token.span()));
             collected_spans.append(&mut rhs.collect_spans());
             collected_spans
         }
@@ -435,7 +435,7 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             rhs,
         } => {
             let mut collected_spans = lhs.collect_spans();
-            collected_spans.push(CommentSpan::from_span(sub_token.span()));
+            collected_spans.push(ByteSpan::from_span(sub_token.span()));
             collected_spans.append(&mut rhs.collect_spans());
             collected_spans
         }
@@ -445,7 +445,7 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             rhs,
         } => {
             let mut collected_spans = lhs.collect_spans();
-            collected_spans.push(CommentSpan::from_span(shl_token.span()));
+            collected_spans.push(ByteSpan::from_span(shl_token.span()));
             collected_spans.append(&mut rhs.collect_spans());
             collected_spans
         }
@@ -455,7 +455,7 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             rhs,
         } => {
             let mut collected_spans = lhs.collect_spans();
-            collected_spans.push(CommentSpan::from_span(shr_token.span()));
+            collected_spans.push(ByteSpan::from_span(shr_token.span()));
             collected_spans.append(&mut rhs.collect_spans());
             collected_spans
         }
@@ -465,7 +465,7 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             rhs,
         } => {
             let mut collected_spans = lhs.collect_spans();
-            collected_spans.push(CommentSpan::from_span(ampersand_token.span()));
+            collected_spans.push(ByteSpan::from_span(ampersand_token.span()));
             collected_spans.append(&mut rhs.collect_spans());
             collected_spans
         }
@@ -475,7 +475,7 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             rhs,
         } => {
             let mut collected_spans = lhs.collect_spans();
-            collected_spans.push(CommentSpan::from_span(caret_token.span()));
+            collected_spans.push(ByteSpan::from_span(caret_token.span()));
             collected_spans.append(&mut rhs.collect_spans());
             collected_spans
         }
@@ -485,7 +485,7 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             rhs,
         } => {
             let mut collected_spans = lhs.collect_spans();
-            collected_spans.push(CommentSpan::from_span(pipe_token.span()));
+            collected_spans.push(ByteSpan::from_span(pipe_token.span()));
             collected_spans.append(&mut rhs.collect_spans());
             collected_spans
         }
@@ -495,7 +495,7 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             rhs,
         } => {
             let mut collected_spans = lhs.collect_spans();
-            collected_spans.push(CommentSpan::from_span(double_eq_token.span()));
+            collected_spans.push(ByteSpan::from_span(double_eq_token.span()));
             collected_spans.append(&mut rhs.collect_spans());
             collected_spans
         }
@@ -505,7 +505,7 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             rhs,
         } => {
             let mut collected_spans = lhs.collect_spans();
-            collected_spans.push(CommentSpan::from_span(bang_eq_token.span()));
+            collected_spans.push(ByteSpan::from_span(bang_eq_token.span()));
             collected_spans.append(&mut rhs.collect_spans());
             collected_spans
         }
@@ -515,7 +515,7 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             rhs,
         } => {
             let mut collected_spans = lhs.collect_spans();
-            collected_spans.push(CommentSpan::from_span(less_than_token.span()));
+            collected_spans.push(ByteSpan::from_span(less_than_token.span()));
             collected_spans.append(&mut rhs.collect_spans());
             collected_spans
         }
@@ -525,7 +525,7 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             rhs,
         } => {
             let mut collected_spans = lhs.collect_spans();
-            collected_spans.push(CommentSpan::from_span(greater_than_token.span()));
+            collected_spans.push(ByteSpan::from_span(greater_than_token.span()));
             collected_spans.append(&mut rhs.collect_spans());
             collected_spans
         }
@@ -535,7 +535,7 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             rhs,
         } => {
             let mut collected_spans = lhs.collect_spans();
-            collected_spans.push(CommentSpan::from_span(less_than_eq_token.span()));
+            collected_spans.push(ByteSpan::from_span(less_than_eq_token.span()));
             collected_spans.append(&mut rhs.collect_spans());
             collected_spans
         }
@@ -545,7 +545,7 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             rhs,
         } => {
             let mut collected_spans = lhs.collect_spans();
-            collected_spans.push(CommentSpan::from_span(greater_than_eq_token.span()));
+            collected_spans.push(ByteSpan::from_span(greater_than_eq_token.span()));
             collected_spans.append(&mut rhs.collect_spans());
             collected_spans
         }
@@ -555,7 +555,7 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             rhs,
         } => {
             let mut collected_spans = lhs.collect_spans();
-            collected_spans.push(CommentSpan::from_span(double_ampersand_token.span()));
+            collected_spans.push(ByteSpan::from_span(double_ampersand_token.span()));
             collected_spans.append(&mut rhs.collect_spans());
             collected_spans
         }
@@ -565,7 +565,7 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             rhs,
         } => {
             let mut collected_spans = lhs.collect_spans();
-            collected_spans.push(CommentSpan::from_span(double_pipe_token.span()));
+            collected_spans.push(ByteSpan::from_span(double_pipe_token.span()));
             collected_spans.append(&mut rhs.collect_spans());
             collected_spans
         }
@@ -575,7 +575,7 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
             expr,
         } => {
             let mut collected_spans = assignable.collect_spans();
-            collected_spans.push(CommentSpan::from_span(reassignment_op.span.clone()));
+            collected_spans.push(ByteSpan::from_span(reassignment_op.span.clone()));
             collected_spans.append(&mut expr.collect_spans());
             collected_spans
         }
@@ -583,19 +583,19 @@ fn visit_expr(expr: &Expr) -> Vec<CommentSpan> {
 }
 
 impl CommentVisitor for AbiCastArgs {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
-        let mut collected_spans = vec![CommentSpan::from_span(self.name.span())];
-        collected_spans.push(CommentSpan::from_span(self.comma_token.span()));
+    fn collect_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = vec![ByteSpan::from_span(self.name.span())];
+        collected_spans.push(ByteSpan::from_span(self.comma_token.span()));
         collected_spans.append(&mut self.address.collect_spans());
         collected_spans
     }
 }
 
 impl CommentVisitor for ExprStructField {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
-        let mut collected_spans = vec![CommentSpan::from_span(self.field_name.span())];
+    fn collect_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = vec![ByteSpan::from_span(self.field_name.span())];
         if let Some(expr) = &self.expr_opt {
-            collected_spans.push(CommentSpan::from_span(expr.0.span()));
+            collected_spans.push(ByteSpan::from_span(expr.0.span()));
             // TODO: determine if we are allowing comments between `:` and expr
             collected_spans.append(&mut expr.1.collect_spans());
         }
@@ -604,7 +604,7 @@ impl CommentVisitor for ExprStructField {
 }
 
 impl CommentVisitor for ExprTupleDescriptor {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         if let ExprTupleDescriptor::Cons {
             head,
@@ -613,7 +613,7 @@ impl CommentVisitor for ExprTupleDescriptor {
         } = self
         {
             collected_spans.append(&mut head.collect_spans());
-            collected_spans.push(CommentSpan::from_span(comma_token.span()));
+            collected_spans.push(ByteSpan::from_span(comma_token.span()));
             collected_spans.append(&mut tail.collect_spans());
         }
         collected_spans
@@ -621,7 +621,7 @@ impl CommentVisitor for ExprTupleDescriptor {
 }
 
 impl CommentVisitor for ExprArrayDescriptor {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         if let ExprArrayDescriptor::Repeat {
             value,
@@ -630,7 +630,7 @@ impl CommentVisitor for ExprArrayDescriptor {
         } = self
         {
             collected_spans.append(&mut value.collect_spans());
-            collected_spans.push(CommentSpan::from_span(semicolon_token.span()));
+            collected_spans.push(ByteSpan::from_span(semicolon_token.span()));
             collected_spans.append(&mut length.collect_spans());
         }
         collected_spans
@@ -638,8 +638,8 @@ impl CommentVisitor for ExprArrayDescriptor {
 }
 
 impl CommentVisitor for AsmBlock {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
-        let mut collected_spans = vec![CommentSpan::from_span(self.asm_token.span())];
+    fn collect_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = vec![ByteSpan::from_span(self.asm_token.span())];
         collected_spans.append(&mut self.registers.collect_spans());
         collected_spans.append(&mut self.contents.collect_spans());
         collected_spans
@@ -647,8 +647,8 @@ impl CommentVisitor for AsmBlock {
 }
 
 impl CommentVisitor for AsmRegisterDeclaration {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
-        let mut collected_spans = vec![CommentSpan::from_span(self.register.span())];
+    fn collect_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = vec![ByteSpan::from_span(self.register.span())];
         if let Some(value) = &self.value_opt {
             collected_spans.append(&mut value.collect_spans());
             // TODO: determine if we are allowing comments between `:` and expr
@@ -658,7 +658,7 @@ impl CommentVisitor for AsmRegisterDeclaration {
 }
 
 impl CommentVisitor for AsmBlockContents {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         for instruction in &self.instructions {
             collected_spans.append(&mut instruction.collect_spans());
@@ -669,15 +669,15 @@ impl CommentVisitor for AsmBlockContents {
 }
 
 impl CommentVisitor for Instruction {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         // Visit instructions as a whole unit, meaning we cannot insert comments inside an instruction.
-        vec![CommentSpan::from_span(self.span())]
+        vec![ByteSpan::from_span(self.span())]
     }
 }
 
 impl CommentVisitor for AsmFinalExpr {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
-        let mut collected_spans = vec![CommentSpan::from_span(self.register.span())];
+    fn collect_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = vec![ByteSpan::from_span(self.register.span())];
         if let Some(ty) = &self.ty_opt {
             collected_spans.append(&mut ty.collect_spans());
             // TODO: determine if we are allowing comments between `:` and ty
@@ -687,12 +687,12 @@ impl CommentVisitor for AsmFinalExpr {
 }
 
 impl CommentVisitor for IfExpr {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
-        let mut collected_spans = vec![CommentSpan::from_span(self.if_token.span())];
+    fn collect_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = vec![ByteSpan::from_span(self.if_token.span())];
         collected_spans.append(&mut self.condition.collect_spans());
         collected_spans.append(&mut self.then_block.collect_spans());
         if let Some(else_block) = &self.else_opt {
-            collected_spans.push(CommentSpan::from_span(else_block.0.span()));
+            collected_spans.push(ByteSpan::from_span(else_block.0.span()));
             let mut else_body_spans = match &else_block.1 {
                 std::ops::ControlFlow::Continue(if_expr) => if_expr.collect_spans(),
                 std::ops::ControlFlow::Break(else_body) => else_body.collect_spans(),
@@ -704,7 +704,7 @@ impl CommentVisitor for IfExpr {
 }
 
 impl CommentVisitor for IfCondition {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         match self {
             IfCondition::Expr(expr) => expr.collect_spans(),
             IfCondition::Let {
@@ -713,9 +713,9 @@ impl CommentVisitor for IfCondition {
                 eq_token,
                 rhs,
             } => {
-                let mut collected_spans = vec![CommentSpan::from_span(let_token.span())];
+                let mut collected_spans = vec![ByteSpan::from_span(let_token.span())];
                 collected_spans.append(&mut lhs.collect_spans());
-                collected_spans.push(CommentSpan::from_span(eq_token.span()));
+                collected_spans.push(ByteSpan::from_span(eq_token.span()));
                 collected_spans.append(&mut rhs.collect_spans());
                 collected_spans
             }
@@ -724,17 +724,17 @@ impl CommentVisitor for IfCondition {
 }
 
 impl CommentVisitor for MatchBranch {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         collected_spans.append(&mut self.pattern.collect_spans());
-        collected_spans.push(CommentSpan::from_span(self.fat_right_arrow_token.span()));
+        collected_spans.push(ByteSpan::from_span(self.fat_right_arrow_token.span()));
         collected_spans.append(&mut self.kind.collect_spans());
         collected_spans
     }
 }
 
 impl CommentVisitor for MatchBranchKind {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         match self {
             MatchBranchKind::Block {
@@ -744,13 +744,13 @@ impl CommentVisitor for MatchBranchKind {
                 collected_spans.append(&mut block.collect_spans());
                 // TODO: determine if we allow comments between block and comma_token
                 if let Some(comma_token) = comma_token_opt {
-                    collected_spans.push(CommentSpan::from_span(comma_token.span()));
+                    collected_spans.push(ByteSpan::from_span(comma_token.span()));
                 }
             }
             MatchBranchKind::Expr { expr, comma_token } => {
                 collected_spans.append(&mut expr.collect_spans());
                 // TODO: determine if we allow comments between expr and comma_token
-                collected_spans.push(CommentSpan::from_span(comma_token.span()));
+                collected_spans.push(ByteSpan::from_span(comma_token.span()));
             }
         };
         collected_spans
@@ -758,10 +758,10 @@ impl CommentVisitor for MatchBranchKind {
 }
 
 impl CommentVisitor for Assignable {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         match self {
-            Assignable::Var(var) => collected_spans.push(CommentSpan::from_span(var.span())),
+            Assignable::Var(var) => collected_spans.push(ByteSpan::from_span(var.span())),
             Assignable::Index { target, arg } => {
                 collected_spans.append(&mut target.collect_spans());
                 collected_spans.append(&mut arg.collect_spans());
@@ -772,8 +772,8 @@ impl CommentVisitor for Assignable {
                 name,
             } => {
                 collected_spans.append(&mut target.collect_spans());
-                collected_spans.push(CommentSpan::from_span(dot_token.span()));
-                collected_spans.push(CommentSpan::from_span(name.span()));
+                collected_spans.push(ByteSpan::from_span(dot_token.span()));
+                collected_spans.push(ByteSpan::from_span(name.span()));
             }
             Assignable::TupleFieldProjection {
                 target,
@@ -782,8 +782,8 @@ impl CommentVisitor for Assignable {
                 field_span,
             } => {
                 collected_spans.append(&mut target.collect_spans());
-                collected_spans.push(CommentSpan::from_span(dot_token.span()));
-                collected_spans.push(CommentSpan::from_span(field_span.clone()));
+                collected_spans.push(ByteSpan::from_span(dot_token.span()));
+                collected_spans.push(ByteSpan::from_span(field_span.clone()));
             }
         };
         collected_spans

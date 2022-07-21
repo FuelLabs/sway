@@ -1,6 +1,6 @@
 use crate::{
     fmt::*,
-    utils::comments::{CommentSpan, CommentVisitor},
+    utils::comments::{ByteSpan, CommentVisitor},
 };
 use std::{fmt::Write, vec};
 use sway_parse::{PathExpr, PathExprSegment, PathType, PathTypeSegment, QualifiedPathRoot};
@@ -137,19 +137,19 @@ impl Format for PathTypeSegment {
 }
 
 impl CommentVisitor for PathExpr {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         // TODO: Should we look for a comment inside the path expression? if so we will need to implement CommentVisitor for PathExpr
         // For now we are assuming there will be no comments inside the PathExpr so the following comment will be omitted
         // root::parent/* i am a comment*/::child
         // I am not sure if this is something the language will allow.
-        vec![CommentSpan::from_span(self.span())]
+        vec![ByteSpan::from_span(self.span())]
     }
 }
 
 impl CommentVisitor for PathType {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
+    fn collect_spans(&self) -> Vec<ByteSpan> {
         // TODO: Should we look for a comment inside the path type? if so we will need to implement CommentVisitor for PathType
         // For now we are assuming there will be no comments inside the PathType so we are visiting it as a single unit.
-        vec![CommentSpan::from_span(self.span())]
+        vec![ByteSpan::from_span(self.span())]
     }
 }

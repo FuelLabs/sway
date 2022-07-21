@@ -1,6 +1,6 @@
 use crate::{
     fmt::{Format, FormattedCode, Formatter},
-    utils::comments::{CommentSpan, CommentVisitor},
+    utils::comments::{ByteSpan, CommentVisitor},
     FormatterError,
 };
 use sway_parse::ItemImpl;
@@ -16,10 +16,10 @@ impl Format for ItemImpl {
     }
 }
 impl CommentVisitor for ItemImpl {
-    fn collect_spans(&self) -> Vec<CommentSpan> {
-        let mut collected_spans = vec![CommentSpan::from_span(self.impl_token.span())];
+    fn collect_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = vec![ByteSpan::from_span(self.impl_token.span())];
         if let Some(generic) = &self.generic_params_opt {
-            collected_spans.push(CommentSpan::from_span(generic.parameters.span()));
+            collected_spans.push(ByteSpan::from_span(generic.parameters.span()));
         }
         if let Some(trait_tuple) = &self.trait_opt {
             collected_spans.append(&mut trait_tuple.collect_spans());
