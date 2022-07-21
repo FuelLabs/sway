@@ -47,21 +47,21 @@ impl CommentVisitor for ModuleKind {
     fn collect_spans(&self) -> Vec<ByteSpan> {
         match self {
             ModuleKind::Script { script_token } => {
-                vec![ByteSpan::from_span(script_token.span())]
+                vec![ByteSpan::from(script_token.span())]
             }
             ModuleKind::Contract { contract_token } => {
-                vec![ByteSpan::from_span(contract_token.span())]
+                vec![ByteSpan::from(contract_token.span())]
             }
             ModuleKind::Predicate { predicate_token } => {
-                vec![ByteSpan::from_span(predicate_token.span())]
+                vec![ByteSpan::from(predicate_token.span())]
             }
             ModuleKind::Library {
                 library_token,
                 name,
             } => {
                 vec![
-                    ByteSpan::from_span(library_token.span()),
-                    ByteSpan::from_span(name.span()),
+                    ByteSpan::from(library_token.span()),
+                    ByteSpan::from(name.span()),
                 ]
             }
         }
@@ -71,7 +71,7 @@ impl CommentVisitor for ModuleKind {
 impl CommentVisitor for Module {
     fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = self.kind.collect_spans();
-        collected_spans.push(ByteSpan::from_span(self.semicolon_token.span()));
+        collected_spans.push(ByteSpan::from(self.semicolon_token.span()));
         collected_spans.append(&mut self.dependencies.collect_spans());
         collected_spans.append(&mut self.items.collect_spans());
         collected_spans
@@ -80,9 +80,9 @@ impl CommentVisitor for Module {
 
 impl CommentVisitor for Dependency {
     fn collect_spans(&self) -> Vec<ByteSpan> {
-        let mut collected_spans = vec![ByteSpan::from_span(self.dep_token.span())];
+        let mut collected_spans = vec![ByteSpan::from(self.dep_token.span())];
         collected_spans.append(&mut self.path.collect_spans());
-        collected_spans.push(ByteSpan::from_span(self.semicolon_token.span()));
+        collected_spans.push(ByteSpan::from(self.semicolon_token.span()));
         collected_spans
     }
 }

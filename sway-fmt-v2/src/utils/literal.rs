@@ -25,10 +25,10 @@ impl Format for Literal {
 impl CommentVisitor for Literal {
     fn collect_spans(&self) -> Vec<ByteSpan> {
         match self {
-            Literal::String(str_lit) => vec![ByteSpan::from_span(str_lit.span.clone())],
-            Literal::Char(chr_lit) => vec![ByteSpan::from_span(chr_lit.span.clone())],
-            Literal::Int(int_lit) => vec![ByteSpan::from_span(int_lit.span.clone())],
-            Literal::Bool(bool_lit) => vec![ByteSpan::from_span(bool_lit.span.clone())],
+            Literal::String(str_lit) => vec![ByteSpan::from(str_lit.span.clone())],
+            Literal::Char(chr_lit) => vec![ByteSpan::from(chr_lit.span.clone())],
+            Literal::Int(int_lit) => vec![ByteSpan::from(int_lit.span.clone())],
+            Literal::Bool(bool_lit) => vec![ByteSpan::from(bool_lit.span.clone())],
         }
     }
 }

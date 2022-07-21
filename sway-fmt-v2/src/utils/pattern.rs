@@ -123,13 +123,13 @@ impl CommentVisitor for Pattern {
         let mut collected_spans = Vec::new();
         match self {
             Pattern::Wildcard { underscore_token } => {
-                collected_spans.push(ByteSpan::from_span(underscore_token.span()));
+                collected_spans.push(ByteSpan::from(underscore_token.span()));
             }
             Pattern::Var { mutable, name } => {
                 if let Some(mutable) = mutable {
-                    collected_spans.push(ByteSpan::from_span(mutable.span()));
+                    collected_spans.push(ByteSpan::from(mutable.span()));
                 }
-                collected_spans.push(ByteSpan::from_span(name.span()));
+                collected_spans.push(ByteSpan::from(name.span()));
             }
             Pattern::Literal(literal) => {
                 collected_spans.append(&mut literal.collect_spans());
@@ -158,15 +158,15 @@ impl CommentVisitor for PatternStructField {
         let mut collected_spans = Vec::new();
         match self {
             PatternStructField::Rest { token } => {
-                collected_spans.push(ByteSpan::from_span(token.span()));
+                collected_spans.push(ByteSpan::from(token.span()));
             }
             PatternStructField::Field {
                 field_name,
                 pattern_opt,
             } => {
-                collected_spans.push(ByteSpan::from_span(field_name.span()));
+                collected_spans.push(ByteSpan::from(field_name.span()));
                 if let Some(pattern) = pattern_opt {
-                    collected_spans.push(ByteSpan::from_span(pattern.0.span()));
+                    collected_spans.push(ByteSpan::from(pattern.0.span()));
                     collected_spans.append(&mut pattern.1.collect_spans());
                 }
             }

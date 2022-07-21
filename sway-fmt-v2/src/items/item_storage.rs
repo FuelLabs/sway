@@ -232,7 +232,7 @@ impl CurlyBrace for ItemStorage {
 
 impl CommentVisitor for ItemStorage {
     fn collect_spans(&self) -> Vec<ByteSpan> {
-        let mut collected_spans = vec![ByteSpan::from_span(self.storage_token.span())];
+        let mut collected_spans = vec![ByteSpan::from(self.storage_token.span())];
         collected_spans.append(&mut self.fields.collect_spans());
         collected_spans
     }
@@ -240,10 +240,10 @@ impl CommentVisitor for ItemStorage {
 
 impl CommentVisitor for StorageField {
     fn collect_spans(&self) -> Vec<ByteSpan> {
-        let mut collected_spans = vec![ByteSpan::from_span(self.name.span())];
-        collected_spans.push(ByteSpan::from_span(self.colon_token.span()));
+        let mut collected_spans = vec![ByteSpan::from(self.name.span())];
+        collected_spans.push(ByteSpan::from(self.colon_token.span()));
         collected_spans.append(&mut self.ty.collect_spans());
-        collected_spans.push(ByteSpan::from_span(self.eq_token.span()));
+        collected_spans.push(ByteSpan::from(self.eq_token.span()));
         collected_spans.append(&mut self.initializer.collect_spans());
         collected_spans
     }

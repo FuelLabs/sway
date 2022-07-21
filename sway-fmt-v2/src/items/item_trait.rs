@@ -125,10 +125,10 @@ impl CommentVisitor for ItemTrait {
     fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         if let Some(visibility) = &self.visibility {
-            collected_spans.push(ByteSpan::from_span(visibility.span()));
+            collected_spans.push(ByteSpan::from(visibility.span()));
         }
-        collected_spans.push(ByteSpan::from_span(self.trait_token.span()));
-        collected_spans.push(ByteSpan::from_span(self.name.span()));
+        collected_spans.push(ByteSpan::from(self.trait_token.span()));
+        collected_spans.push(ByteSpan::from(self.name.span()));
         if let Some(super_traits) = &self.super_traits {
             collected_spans.append(&mut super_traits.collect_spans());
         }

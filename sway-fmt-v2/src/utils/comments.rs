@@ -29,15 +29,17 @@ pub struct ByteSpan {
     pub end: usize,
 }
 
-impl ByteSpan {
+impl From<Span> for ByteSpan {
     /// Takes `start` and `end` from `sway::types::Span` and constructs a `ByteSpan`
-    pub fn from_span(span: Span) -> ByteSpan {
+    fn from(span: Span) -> Self {
         ByteSpan {
             start: span.start(),
             end: span.end(),
         }
     }
+}
 
+impl ByteSpan {
     pub fn len(&self) -> usize {
         self.end - self.start
     }
@@ -106,13 +108,13 @@ where
 {
     fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
-        let mut opening_brace_span = ByteSpan::from_span(self.span());
+        let mut opening_brace_span = ByteSpan::from(self.span());
         opening_brace_span.end = opening_brace_span.start + 1;
         // Add opening brace's ByteSpan
         collected_spans.push(opening_brace_span);
         // Add T's collected ByteSpan
         collected_spans.append(&mut self.clone().into_inner().collect_spans());
-        let mut closing_brace_span = ByteSpan::from_span(self.span());
+        let mut closing_brace_span = ByteSpan::from(self.span());
         closing_brace_span.start = closing_brace_span.end - 1;
         // Add closing brace's ByteSpan
         collected_spans.push(closing_brace_span);
@@ -126,13 +128,13 @@ where
 {
     fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
-        let mut opening_paren_span = ByteSpan::from_span(self.span());
+        let mut opening_paren_span = ByteSpan::from(self.span());
         opening_paren_span.end = opening_paren_span.start + 1;
         // Add opening paren's span
         collected_spans.push(opening_paren_span);
         // Add T's collected ByteSpan
         collected_spans.append(&mut self.clone().into_inner().collect_spans());
-        let mut closing_paren_span = ByteSpan::from_span(self.span());
+        let mut closing_paren_span = ByteSpan::from(self.span());
         closing_paren_span.start = closing_paren_span.end - 1;
         // Add closing paren's ByteSpan
         collected_spans.push(closing_paren_span);
@@ -146,13 +148,13 @@ where
 {
     fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
-        let mut opening_bracket_span = ByteSpan::from_span(self.span());
+        let mut opening_bracket_span = ByteSpan::from(self.span());
         opening_bracket_span.end = opening_bracket_span.start + 1;
         // Add opening bracket's span
         collected_spans.push(opening_bracket_span);
         // Add T's collected ByteSpan
         collected_spans.append(&mut self.clone().into_inner().collect_spans());
-        let mut closing_bracket_span = ByteSpan::from_span(self.span());
+        let mut closing_bracket_span = ByteSpan::from(self.span());
         closing_bracket_span.start = closing_bracket_span.end - 1;
         // Add closing bracket's ByteSpan
         collected_spans.push(closing_bracket_span);
@@ -196,19 +198,19 @@ where
 
 impl CommentVisitor for Ident {
     fn collect_spans(&self) -> Vec<ByteSpan> {
-        vec![ByteSpan::from_span(self.span())]
+        vec![ByteSpan::from(self.span())]
     }
 }
 impl CommentVisitor for CommaToken {
     fn collect_spans(&self) -> Vec<ByteSpan> {
-        vec![(ByteSpan::from_span(self.span()))]
+        vec![(ByteSpan::from(self.span()))]
     }
 }
 
 impl CommentVisitor for TypeField {
     fn collect_spans(&self) -> Vec<ByteSpan> {
-        let mut collected_spans = vec![ByteSpan::from_span(self.name.span())];
-        collected_spans.push(ByteSpan::from_span(self.colon_token.span()));
+        let mut collected_spans = vec![ByteSpan::from(self.name.span())];
+        collected_spans.push(ByteSpan::from(self.colon_token.span()));
         collected_spans.append(&mut self.ty.collect_spans());
         collected_spans
     }
@@ -216,37 +218,37 @@ impl CommentVisitor for TypeField {
 
 impl CommentVisitor for AddToken {
     fn collect_spans(&self) -> Vec<ByteSpan> {
-        vec![ByteSpan::from_span(self.span())]
+        vec![ByteSpan::from(self.span())]
     }
 }
 
 impl CommentVisitor for SemicolonToken {
     fn collect_spans(&self) -> Vec<ByteSpan> {
-        vec![ByteSpan::from_span(self.span())]
+        vec![ByteSpan::from(self.span())]
     }
 }
 
 impl CommentVisitor for ColonToken {
     fn collect_spans(&self) -> Vec<ByteSpan> {
-        vec![ByteSpan::from_span(self.span())]
+        vec![ByteSpan::from(self.span())]
     }
 }
 
 impl CommentVisitor for RightArrowToken {
     fn collect_spans(&self) -> Vec<ByteSpan> {
-        vec![ByteSpan::from_span(self.span())]
+        vec![ByteSpan::from(self.span())]
     }
 }
 
 impl CommentVisitor for ForToken {
     fn collect_spans(&self) -> Vec<ByteSpan> {
-        vec![ByteSpan::from_span(self.span())]
+        vec![ByteSpan::from(self.span())]
     }
 }
 
 impl CommentVisitor for ForwardSlashToken {
     fn collect_spans(&self) -> Vec<ByteSpan> {
-        vec![ByteSpan::from_span(self.span())]
+        vec![ByteSpan::from(self.span())]
     }
 }
 /// Handles comments by first creating the CommentMap which is used for fast seaching comments.

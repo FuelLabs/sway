@@ -115,11 +115,11 @@ impl CommentVisitor for Ty {
             Ty::Tuple(tuple) => tuple.collect_spans(),
             Ty::Array(array) => array.collect_spans(),
             Ty::Str { str_token, length } => {
-                let mut collected_spans = vec![ByteSpan::from_span(str_token.span())];
+                let mut collected_spans = vec![ByteSpan::from(str_token.span())];
                 collected_spans.append(&mut length.collect_spans());
                 collected_spans
             }
-            Ty::Infer { underscore_token } => vec![ByteSpan::from_span(underscore_token.span())],
+            Ty::Infer { underscore_token } => vec![ByteSpan::from(underscore_token.span())],
         }
     }
 }
@@ -134,7 +134,7 @@ impl CommentVisitor for TyTupleDescriptor {
         } = self
         {
             collected_spans.append(&mut head.collect_spans());
-            collected_spans.push(ByteSpan::from_span(comma_token.span()));
+            collected_spans.push(ByteSpan::from(comma_token.span()));
             collected_spans.append(&mut tail.collect_spans());
         }
         collected_spans
@@ -145,7 +145,7 @@ impl CommentVisitor for TyArrayDescriptor {
     fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         collected_spans.append(&mut self.ty.collect_spans());
-        collected_spans.push(ByteSpan::from_span(self.semicolon_token.span()));
+        collected_spans.push(ByteSpan::from(self.semicolon_token.span()));
         collected_spans.append(&mut self.length.collect_spans());
         collected_spans
     }

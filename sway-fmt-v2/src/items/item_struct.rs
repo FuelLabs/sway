@@ -249,12 +249,12 @@ impl CommentVisitor for ItemStruct {
     fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         if let Some(visibility) = &self.visibility {
-            collected_spans.push(ByteSpan::from_span(visibility.span()));
+            collected_spans.push(ByteSpan::from(visibility.span()));
         }
-        collected_spans.push(ByteSpan::from_span(self.struct_token.span()));
-        collected_spans.push(ByteSpan::from_span(self.name.span()));
+        collected_spans.push(ByteSpan::from(self.struct_token.span()));
+        collected_spans.push(ByteSpan::from(self.name.span()));
         if let Some(generics) = &self.generics {
-            collected_spans.push(ByteSpan::from_span(generics.parameters.span()))
+            collected_spans.push(ByteSpan::from(generics.parameters.span()))
         }
         collected_spans.append(&mut self.fields.collect_spans());
         collected_spans

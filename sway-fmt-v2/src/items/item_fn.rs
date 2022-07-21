@@ -233,12 +233,12 @@ impl CommentVisitor for FnSignature {
     fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         if let Some(visibility) = &self.visibility {
-            collected_spans.push(ByteSpan::from_span(visibility.span()));
+            collected_spans.push(ByteSpan::from(visibility.span()));
         }
-        collected_spans.push(ByteSpan::from_span(self.fn_token.span()));
-        collected_spans.push(ByteSpan::from_span(self.name.span()));
+        collected_spans.push(ByteSpan::from(self.fn_token.span()));
+        collected_spans.push(ByteSpan::from(self.name.span()));
         if let Some(generics) = &self.generics {
-            collected_spans.push(ByteSpan::from_span(generics.parameters.span()));
+            collected_spans.push(ByteSpan::from(generics.parameters.span()));
         }
         collected_spans.append(&mut self.arguments.collect_spans());
         if let Some(return_type) = &self.return_type_opt {
@@ -261,9 +261,9 @@ impl CommentVisitor for FnArgs {
                 mutable_self,
                 args_opt,
             } => {
-                collected_spans.push(ByteSpan::from_span(self_token.span()));
+                collected_spans.push(ByteSpan::from(self_token.span()));
                 if let Some(mutable) = mutable_self {
-                    collected_spans.push(ByteSpan::from_span(mutable.span()));
+                    collected_spans.push(ByteSpan::from(mutable.span()));
                 }
                 if let Some(args) = args_opt {
                     collected_spans.append(&mut args.collect_spans());
@@ -278,8 +278,8 @@ impl CommentVisitor for FnArg {
     fn collect_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         collected_spans.append(&mut self.pattern.collect_spans());
-        collected_spans.push(ByteSpan::from_span(self.colon_token.span()));
-        collected_spans.push(ByteSpan::from_span(self.ty.span()));
+        collected_spans.push(ByteSpan::from(self.colon_token.span()));
+        collected_spans.push(ByteSpan::from(self.ty.span()));
         collected_spans
     }
 }
