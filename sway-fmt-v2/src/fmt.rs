@@ -498,9 +498,9 @@ trait CompSciStudent: Programmer + Student {
     }
 
     #[test]
-    fn test_comments() {
+    fn test_struct_comments() {
         let sway_code_to_format = r#"contract;
-// This is some other comment, for this one to be placed correclty we need to have ModuleKind visitor implemented
+// This is a comment, for this one to be placed correctly we need to have Module visitor implemented
 pub struct Foo { // Here is a comment
 
 
@@ -521,48 +521,10 @@ pub struct Foo { // Here is a comment
              //                                                                                  \|_________|
 }
 // This is a comment
-
-
-
-pub enum Bazz { // Here is a comment
-    // Trying some ASCII art
-    baz: (),
-
-
-
-
-    bazzz: (),//-----
-              //--D--
-              //-----
-}
-// This is a comment before a fn
-// This is another comment before a fn
-fn hello_world( baz: /* this is a comment */ u64) { // This is a comment inside the block
-}
-// This is a storage map
-abi StorageMapExample {
-    // insert_into_map is blah blah
-    #[storage(write)] // this is some other comment
-    fn insert_into_map1(key: u64, value: u64); // this is the last comment inside the StorageMapExample
-
-    fn hello(key: u64, value: u64);
-}
-pub const /* TEST: blah blah tests */ TEST: u16 = 10; // This is a comment next to a const
-
-storage {
-    // Testig a comment inside storage
-    long_var_name: Type1=Type1{},
-    // Testing another comment
-         var2: Type2=Type2{} // This is the last comment,
-   }
-// This is the programmer trait
-trait Programmer {
-    // Returns fav languages of this Programmer.
-    fn fav_language(self) -> String;
-}"#;
+"#;
         let correct_sway_code = r#"contract;
-// This is some other comment, for this one to be placed correclty we need to have ModuleKind visitor implemented
 
+// This is a comment, for this one to be placed correctly we need to have Module visitor implemented
 pub struct Foo { // Here is a comment
 
 
@@ -578,36 +540,135 @@ pub struct Foo { // Here is a comment
              //     \|__|    \|_______|\|_______|\|_______|        \|_______|\|__|\|__|\|_______|\_________\
              //                                                                                  \|_________|
 }
-// This is a comment
+// This is a comment"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code)
+    }
+
+    #[test]
+    fn test_enum_comments() {
+        let sway_code_to_format = r#"contract;
+pub enum Bazz { // Here is a comment
+    // Trying some ASCII art
+    baz: (),
+
+
+
+
+
+    bazzz: (),//-----
+              //--D--
+              //-----
+}
+"#;
+        let correct_sway_code = r#"contract;
+
 pub enum Bazz { // Here is a comment
     // Trying some ASCII art
     baz: (),
     bazzz: (),//-----
               //--D--
               //-----
+}"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+    }
+
+    #[test]
+    fn test_fn_comments() {
+        let sway_code_to_format = r#"contract;
+// This is a comment before a fn
+// This is another comment before a fn
+fn hello_world( baz: /* this is a comment */ u64) { // This is a comment inside the block
 }
+"#;
+        let correct_sway_code = r#"contract;
+
 // This is a comment before a fn
 // This is another comment before a fn
 fn hello_world(baz: /* this is a comment */ u64) { // This is a comment inside the block
-}
-// This is a storage map
+}"#;
 
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+    }
+
+    #[test]
+    fn test_abi_comments() {
+        let sway_code_to_format = r#"contract;
+// This is an abi
 abi StorageMapExample {
     // insert_into_map is blah blah
     #[storage(write)] // this is some other comment
-    fn insert_into_map1(key: u64, value: u64); // this is the last comment inside the StorageMapExample
+    fn insert_into_map(key: u64, value: u64); // this is the last comment inside the StorageMapExample
+}"#;
+        let correct_sway_code = r#"contract;
 
-    fn hello(key: u64, value: u64);
-}
-pub const /* TEST: blah blah tests */ TEST: u16 = 10; // This is a comment next to a const
+// This is an abi
+abi StorageMapExample {
+    // insert_into_map is blah blah
+    #[storage(write)] // this is some other comment
+    fn insert_into_map(key: u64, value: u64); // this is the last comment inside the StorageMapExample
+}"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+    }
+
+    #[test]
+    fn test_const_comments() {
+        let sway_code_to_format = r#"contract;
+pub const /* TEST: blah blah tests */ TEST: u16 = 10; // This is a comment next to a const"#;
+        let correct_sway_code = r#"contract;
+
+pub const /* TEST: blah blah tests */ TEST: u16 = 10;"#; // Comment next to const is not picked up by the lexer see: #2356
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+    }
+    #[test]
+    fn test_storage_comments() {
+        let sway_code_to_format = r#"contract;
 storage {
-    // Testig a comment inside storage
+    // Testing a comment inside storage
+    long_var_name: Type1=Type1{},
+    // Testing another comment
+    var2: Type2 = Type2{} // This is the last comment
+}"#;
+        let correct_sway_code = r#"contract;
+
+storage {
+    // Testing a comment inside storage
     long_var_name: Type1 = Type1 {
     },
     // Testing another comment
     var2: Type2 = Type2 {
-    }, // This is the last comment,
-}
+    }, // This is the last comment
+}"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+    }
+
+    #[test]
+    fn test_trait_comments() {
+        let sway_code_to_format = r#"contract;
+// This is the programmer trait
+trait Programmer {
+    // Returns fav languages of this Programmer.
+    fn fav_language(self) -> String;
+}"#;
+        let correct_sway_code = r#"contract;
+
 // This is the programmer trait
 trait Programmer {
     // Returns fav languages of this Programmer.
@@ -617,8 +678,6 @@ trait Programmer {
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        println!("{formatted_sway_code}");
-        println!("{correct_sway_code}");
         assert_eq!(correct_sway_code, formatted_sway_code)
     }
 }

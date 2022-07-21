@@ -267,17 +267,23 @@ pub fn handle_comments(
     // Actually find & insert the comments
     add_comments(
         comment_map,
-        &unformatted_module,
+        unformatted_module,
         &formatted_module,
         formatted_code,
         unformatted_input,
     )?;
     Ok(())
 }
+
 /// Adds the comments from comment_map to correct places in the formatted code. This requires us
-/// both the unformatted and formatted code's items as they will have different spans for their
-/// nodes. While traversing the unformatted items, `add_comments` searches for comments. If there is a comment found
-/// places the comment.
+/// both the unformatted and formatted code's modules as they will have different spans for their
+/// visitable positions. While traversing the unformatted module, `add_comments` searches for comments. If there is a comment found
+/// places the comment to the correct place at formatted_code.
+///
+/// This requires both the unformatted_code itself and the parsed version of it, because
+/// unformatted_code is used for context lookups and unformatted_module is required for actual
+/// traversal. When `add_comments` is called we have already parsed the unformatted_code so there is no need
+/// to parse it again.
 fn add_comments(
     comment_map: CommentMap,
     unformatted_module: &Module,
@@ -285,8 +291,18 @@ fn add_comments(
     formatted_code: &mut FormattedCode,
     unformatted_code: Arc<str>,
 ) -> Result<(), FormatterError> {
-    let unformatted_comment_spans = unformatted_module.collect_spans();
-    let formatted_comment_spans = formatted_module.collect_spans();
+    let mut unformatted_comment_spans = unformatted_module.collect_spans();
+    let mut formatted_comment_spans = formatted_module.collect_spans();
+    // Adding end of file to both spans so that the last comment(s) after an item would also be
+    // found & included
+    unformatted_comment_spans.push(ByteSpan {
+        start: unformatted_code.len(),
+        end: unformatted_code.len(),
+    });
+    formatted_comment_spans.push(ByteSpan {
+        start: formatted_code.len(),
+        end: formatted_code.len(),
+    });
 
     // Since we are adding comments into formatted code, in the next iteration the spans we find for the formatted code needs to be offsetted
     // as the total length of comments we added in previous iterations.
@@ -335,25 +351,22 @@ fn get_comments_between_spans(
     comment_map: &CommentMap,
     unformatted_code: &Arc<str>,
 ) -> Vec<CommentWithContext> {
-    let mut comments_with_context = Vec::new();
+    let mut comments_with_context: Vec<CommentWithContext> = Vec::new();
     for (index, (comment_span, comment)) in comment_map
         .range((Included(from), Excluded(to)))
         .enumerate()
     {
-        if comments_with_context.is_empty() {
+        let starting_position_for_context = if index == 0 {
             // This is the first comment in the current range the context should be collected between from's end and comment's beginning
-            comments_with_context.push((
-                comment.clone(),
-                unformatted_code[from.end..comment_span.start].to_string(),
-            ));
+            from.end
         } else {
             // There is a comment before this one, so we should get the context starting from the last comment's end to the beginning of the current comment
-            comments_with_context.push((
-                comment.clone(),
-                unformatted_code[comments_with_context[index - 1].0.span.end()..comment_span.start]
-                    .to_string(),
-            ));
-        }
+            comments_with_context[index - 1].0.span.end()
+        };
+        comments_with_context.push((
+            comment.clone(),
+            unformatted_code[starting_position_for_context..comment_span.start].to_string(),
+        ));
     }
     comments_with_context
 }
@@ -365,19 +378,28 @@ fn insert_after_span(
     offset: usize,
     formatted_code: &mut FormattedCode,
 ) -> Result<usize, FormatterError> {
-    let mut iter = comments_to_insert.iter();
-    if let Some(first) = iter.next() {
-        let mut comment_str = format!("{}{}", first.1, format_comment(&first.0));
-        for comment in iter {
-            write!(comment_str, "{}{}", comment.1, &format_comment(&comment.0))?;
-        }
-        let mut src_rope = Rope::from_str(formatted_code);
-        src_rope.insert(from.end + offset, &comment_str);
-        formatted_code.clear();
-        formatted_code.push_str(&src_rope.to_string());
-        return Ok(comment_str.len());
+    let iter = comments_to_insert.iter();
+    let mut offset = offset;
+    let mut comment_str = String::new();
+    for comment_with_context in iter {
+        let (comment_value, comment_context) = comment_with_context;
+        write!(
+            comment_str,
+            "{}{}",
+            comment_context,
+            &format_comment(comment_value)
+        )?;
     }
-    Ok(0)
+    let mut src_rope = Rope::from_str(formatted_code);
+    // If the position we are going to be inserting from + 1 is a \n we are moving that \n after
+    // this comment so if that is the case we are inserting after the \n
+    if formatted_code.chars().nth(from.end + offset + 1) == Some('\n') {
+        offset += 1;
+    }
+    src_rope.insert(from.end + offset, &comment_str);
+    formatted_code.clear();
+    formatted_code.push_str(&src_rope.to_string());
+    Ok(comment_str.len())
 }
 
 /// Applies formatting to the comment.
