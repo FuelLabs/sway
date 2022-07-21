@@ -403,7 +403,7 @@ pub fn lex_commented(
                         let span = Span::new(
                             src.clone(),
                             *unclosed_indices.last().unwrap(),
-                            src.len(),
+                            src.len() - 1,
                             path.clone(),
                         )
                         .unwrap();
@@ -562,7 +562,8 @@ pub fn lex_commented(
                     None => {
                         return Err(LexError {
                             kind: LexErrorKind::UnclosedStringLiteral { position: index },
-                            span: Span::new(src.clone(), index, src.len(), path.clone()).unwrap(),
+                            span: Span::new(src.clone(), index, src.len() - 1, path.clone())
+                                .unwrap(),
                         });
                     }
                 };
