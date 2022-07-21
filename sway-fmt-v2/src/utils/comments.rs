@@ -255,18 +255,16 @@ impl CommentVisitor for ForwardSlashToken {
 /// Traverses items for finding a comment in unformatted input and placing it in correct place in formatted output.
 pub fn handle_comments(
     unformatted_input: Arc<str>,
+    unformatted_module: &Module,
     formatted_input: Arc<str>,
     path: Option<Arc<PathBuf>>,
     formatted_code: &mut FormattedCode,
 ) -> Result<(), FormatterError> {
     // Collect Span -> Comment mapping from unformatted input
     let comment_map = comment_map_from_src(unformatted_input.clone())?;
-    // Parse unformatted code so that we can get the spans of items in their original places.
-    // This is required since we collected the spans in from unformatted source file.
-    let unformatted_module = sway_parse::parse_file(unformatted_input.clone(), path.clone())?;
-    // After the formatting items should be the same but their spans will be changed since we applied formatting to them.
+    // After the formatting existing items should be the same (type of the item) but their spans will be changed since we applied formatting to them.
     let formatted_module = sway_parse::parse_file(formatted_input, path)?;
-    // Actually insert the comments
+    // Actually find & insert the comments
     add_comments(
         comment_map,
         &unformatted_module,

@@ -15,7 +15,7 @@ use super::comments::{ByteSpan, CommentVisitor};
 ///     - Library
 pub(crate) fn insert_program_type(
     formatted_code: &mut String,
-    module_kind: ModuleKind,
+    module_kind: &ModuleKind,
 ) -> Result<(), FormatterError> {
     match module_kind {
         ModuleKind::Script { script_token } => {

@@ -45,9 +45,9 @@ impl Formatter {
         let src_len = src.len();
         let module = sway_parse::parse_file(src.clone(), path.clone())?;
         // Get parsed items
-        let items = module.items;
+        let items = &module.items;
         // Get the program type (script, predicate, contract or library)
-        let program_type = module.kind;
+        let program_type = &module.kind;
 
         // Formatted code will be pushed here with raw newline stlye.
         // Which means newlines are not converted into system-specific versions until `apply_newline_style()`.
@@ -72,6 +72,7 @@ impl Formatter {
         // Add comments
         handle_comments(
             src,
+            &module,
             Arc::from(formatted_code.clone()),
             path,
             &mut formatted_code,
