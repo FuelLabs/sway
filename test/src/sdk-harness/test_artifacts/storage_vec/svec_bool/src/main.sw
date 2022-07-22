@@ -14,6 +14,8 @@ abi MyContract {
     #[storage(read, write)]
     fn bool_swap_remove(index: u64) -> bool;
     #[storage(read, write)]
+    fn bool_set(index: u64, value: bool);
+    #[storage(read, write)]
     fn bool_insert(index: u64, value: bool);
     #[storage(read)]
     fn bool_len() -> u64;
@@ -47,6 +49,10 @@ impl MyContract for Contract {
     #[storage(read, write)]
     fn bool_swap_remove(index: u64) -> bool {
         storage.my_vec.swap_remove(index)
+    }
+    #[storage(read, write)]
+    fn bool_set(index: u64, value: bool) {
+        storage.my_vec.set(index, value);
     }
     #[storage(read, write)]
     fn bool_insert(index: u64, value: bool) {
