@@ -1198,6 +1198,7 @@ version = "0.18.1"
 dependencies = [
  "anyhow",
  "forc-util",
+ "fs_extra",
  "fuel-tx",
  "git2",
  "petgraph",

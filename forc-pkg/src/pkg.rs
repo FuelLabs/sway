@@ -590,7 +590,7 @@ impl GitReference {
     pub fn resolve(&self, repo: &git2::Repository) -> Result<git2::Oid> {
         // Find the commit associated with this tag.
         fn resolve_tag(repo: &git2::Repository, tag: &str) -> Result<git2::Oid> {
-            let refname = format!("refs/remotes/origin/tags/{}", tag);
+            let refname = format!("refs/tags/{}", tag);
             let id = repo.refname_to_id(&refname)?;
             let obj = repo.find_object(id, None)?;
             let obj = obj.peel(git2::ObjectType::Commit)?;
@@ -1215,7 +1215,7 @@ where
     if tags {
         fetch_opts.download_tags(git2::AutotagOption::All);
     }
-    repo.remote_anonymous(source.repo.as_str())?
+    repo.remote("origin", source.repo.as_str())?
         .fetch(&refspecs, Some(&mut fetch_opts), None)
         .with_context(|| format!("failed to fetch `{}`", &source.repo))?;
 
@@ -1283,16 +1283,26 @@ fn pin_pkg(
             // TODO: If the git source directly specifies a full commit hash, we should first check
             // to see if we have a local copy. Otherwise we cannot know what commit we should pin
             // to without fetching the repo into a temporary directory.
-            if offline {
-                bail!(
-                    "Unable to fetch pkg {:?} from {:?} in offline mode",
-                    name,
-                    git_source.repo
-                );
-            }
-            let pinned_git = pin_git(fetch_id, &name, git_source.clone())?;
-            let repo_path =
-                git_commit_path(&name, &pinned_git.source.repo, &pinned_git.commit_hash);
+            let (pinned_git, repo_path) = if offline {
+                let (local_path, commit_hash) = search_git_source_locally(&name, git_source)?
+                    .ok_or_else(|| {
+                        anyhow!(
+                            "Unable to fetch pkg {:?} from  {:?} in offline mode",
+                            name,
+                            git_source.repo
+                        )
+                    })?;
+                let pinned_git = SourceGitPinned {
+                    source: git_source.clone(),
+                    commit_hash,
+                };
+                (pinned_git, local_path)
+            } else {
+                let pinned_git = pin_git(fetch_id, &name, git_source.clone())?;
+                let repo_path =
+                    git_commit_path(&name, &pinned_git.source.repo, &pinned_git.commit_hash);
+                (pinned_git, repo_path)
+            };
             let source = SourcePinned::Git(pinned_git.clone());
             let pinned = Pinned { name, source };
             let id = pinned.id();
@@ -1364,15 +1374,63 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
             let _ = std::fs::remove_dir_all(&path);
         }
         std::fs::create_dir_all(&path)?;
-
+        let repo_path = repo.path();
         // Checkout HEAD to the target directory.
         let mut checkout = git2::build::CheckoutBuilder::new();
         checkout.force().target_dir(&path);
         repo.checkout_head(Some(&mut checkout))?;
+
+        // Copy current_dir to target
+        let copy_options = fs_extra::dir::CopyOptions::new();
+        println!("copying from {:?} to {:?}", repo_path, path);
+        fs_extra::copy_items(&[repo_path], &path, &copy_options)?;
         Ok(())
     })?;
 
     Ok(path)
+}
+
+fn search_git_source_locally(
+    name: &str,
+    source_git: &SourceGit,
+) -> Result<Option<(PathBuf, String)>> {
+    // In the checkouts dir iterate over dirs whose name starts with `name`
+    let checkouts_dir = git_checkouts_directory();
+    for entry in fs::read_dir(checkouts_dir)? {
+        let entry = entry?;
+        let folder_name = entry.file_name().into_string();
+        if let Ok(folder_name) = folder_name {
+            if folder_name.starts_with(name) {
+                // Get the first sub_dir, there will be only 1 dirs in the given path.
+                if let Some(sub_dir) = fs::read_dir(entry.path())?.next() {
+                    let sub_dir_path = sub_dir?.path();
+                    if let Some(commit_hash) =
+                        handle_local_git_source(sub_dir_path.clone(), source_git)?
+                    {
+                        return Ok(Some((sub_dir_path, commit_hash)));
+                    }
+                }
+            }
+        }
+    }
+    Ok(None)
+}
+
+fn handle_local_git_source(path: PathBuf, source_git: &SourceGit) -> Result<Option<String>> {
+    let repo = git2::Repository::open(path)?;
+    let oid = source_git.reference.resolve(&repo)?;
+    match &source_git.reference {
+        GitReference::Branch(_branch) => todo!(),
+        _ => {
+            let current_head = repo.revparse_single("HEAD")?.id();
+            if oid == current_head {
+                // We found the corresponding repo
+                Ok(Some(oid.to_string()))
+            } else {
+                Ok(None)
+            }
+        }
+    }
 }
 
 /// Given the path to a package and a `Dependency` parsed from one of its forc dependencies,
