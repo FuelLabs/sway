@@ -403,9 +403,9 @@ fn insert_after_span(
 }
 
 /// Applies formatting to the comment.
-/// Currently does not apply any formatting and directly returns the raw comment str 
+/// Currently does not apply any formatting and directly returns the raw comment str
 fn format_comment(comment: &Comment) -> String {
-        comment.span().str()
+    comment.span().str()
 }
 /// While searching for a comment we need the possible places a comment can be placed in a structure
 /// `leaf_spans` collects all field's spans so that we can check in between them.
