@@ -1398,39 +1398,35 @@ fn search_git_source_locally(
     let checkouts_dir = git_checkouts_directory();
     for entry in fs::read_dir(checkouts_dir)? {
         let entry = entry?;
-        let folder_name = entry.file_name().into_string();
-        if let Ok(folder_name) = folder_name {
-            if folder_name.starts_with(name) {
-                // Get the first sub_dir, there will be only 1 dirs in the given path.
-                if let Some(sub_dir) = fs::read_dir(entry.path())?.next() {
-                    let sub_dir_path = sub_dir?.path();
-                    if let Some(commit_hash) =
-                        handle_local_git_source(sub_dir_path.clone(), source_git)?
-                    {
-                        return Ok(Some((sub_dir_path, commit_hash)));
+        let folder_name = entry
+            .file_name()
+            .into_string()
+            .map_err(|_| anyhow!("invalid folder name"))?;
+        if folder_name.starts_with(name) {
+            // Get the first sub dir, there will be only 1 dir in the given path.
+            // If we cannot find a sub dir in the entry's path, it is deleted by the user.
+            let repo_dir = fs::read_dir(entry.path())?
+                .next()
+                .ok_or_else(|| anyhow!("Cannot find local repo at checkouts"))?;
+            let repo_dir_path = repo_dir?.path();
+            match &source_git.reference {
+                GitReference::Branch(_branch) => {
+                    todo!();
+                }
+                _ => {
+                    // For non-branch references we need to find HEAD == commit hash
+                    let repo = git2::Repository::open(&repo_dir_path)?;
+                    let oid = source_git.reference.resolve(&repo)?;
+                    let current_head = repo.revparse_single("HEAD")?.id();
+                    if oid == current_head {
+                        // We have the matching repo locally
+                        return Ok(Some((repo_dir_path, oid.to_string())));
                     }
                 }
             }
         }
     }
     Ok(None)
-}
-
-fn handle_local_git_source(path: PathBuf, source_git: &SourceGit) -> Result<Option<String>> {
-    let repo = git2::Repository::open(path)?;
-    let oid = source_git.reference.resolve(&repo)?;
-    match &source_git.reference {
-        GitReference::Branch(_branch) => todo!(),
-        _ => {
-            let current_head = repo.revparse_single("HEAD")?.id();
-            if oid == current_head {
-                // We found the corresponding repo
-                Ok(Some(oid.to_string()))
-            } else {
-                Ok(None)
-            }
-        }
-    }
 }
 
 /// Given the path to a package and a `Dependency` parsed from one of its forc dependencies,
