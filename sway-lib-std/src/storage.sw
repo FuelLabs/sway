@@ -236,6 +236,26 @@ impl<V> StorageVec<V> {
         element_to_be_removed
     }
 
+    /// Sets/mutates the value at the given index
+    ///
+    /// # Arguments
+    /// 
+    /// * `index` - The index of the vec to set the value at
+    /// * `value` - The value to be set
+    ///
+    /// # Reverts
+    /// 
+    /// Reverts if index is larger than or equal to the length of the vec
+    #[storage(read, write)]
+    pub fn set(self, index: u64, value: V) {
+        let len = get::<u64>(__get_storage_key());  
+        // if the index is higher than or equal len, there is no element to set
+        assert(index < len);
+
+        let key = sha256((index, __get_storage_key()));
+        store::<V>(key, value);
+    }
+
     /// Inserts the value at the given index, moving the current index's value aswell as the following's
     /// Up one index
     ///
@@ -257,10 +277,21 @@ impl<V> StorageVec<V> {
         // if the index is larger than len, there is no space to insert
         assert(index <= len);
 
+        // if len is 0, index must also be 0 due to above check
+        if len == index {
+            let key = sha256((index, __get_storage_key()));
+            store::<V>(key, value);
+
+            // increments len by 1
+            store(__get_storage_key(), len + 1);
+
+            return;
+        }
+
         // for every element in the vec with an index larger than the input index,
         // move the element up one index.
         // performed in reverse to prevent data overwriting
-        let mut count = len-1;
+        let mut count = len - 1;
         while count >= index {
             let key = sha256((count + 1, __get_storage_key()));
             // shifts all the values up one index
