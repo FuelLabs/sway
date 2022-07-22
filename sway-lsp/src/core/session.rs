@@ -41,7 +41,7 @@ impl Session {
         }
     }
 
-    /// Check if the code editor's cursor is currently over an of our collected tokens
+    /// Check if the code editor's cursor is currently over one of our collected tokens.
     pub fn token_at_position(&self, uri: &Url, position: Position) -> Option<(Ident, TokenType)> {
         let tokens = self.tokens_for_file(uri);
         match utils::common::ident_and_span_at_position(position, &tokens) {
@@ -99,11 +99,8 @@ impl Session {
         // Look up the tokens TypeId
         match utils::token::type_id(token) {
             Some(type_id) => {
-                tracing::info!("type_id = {:#?}", type_id);
-
                 // Use the TypeId to look up the actual type
                 let type_info = sway_core::type_engine::look_up_type_id(type_id);
-                tracing::info!("type_info = {:#?}", type_info);
 
                 match type_info {
                     TypeInfo::UnknownGeneric { name }
