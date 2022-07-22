@@ -1396,63 +1396,110 @@ fn search_git_source_locally(
 ) -> Result<Option<(PathBuf, String)>> {
     // In the checkouts dir iterate over dirs whose name starts with `name`
     let checkouts_dir = git_checkouts_directory();
-    let mut current_newest_repo = (String::new(), checkouts_dir.clone(), 0);
+    match &source_git.reference {
+        GitReference::Branch(branch) => {
+            // Collect repos from this branch with their HEAD time
+            let mut repos_from_branch =
+                collect_local_repos_with_branch(checkouts_dir, name, branch)?;
+            // Sort the repos by their HEAD commit times
+            repos_from_branch.sort_by(|a, b| a.1 .1.cmp(&b.1 .1));
+            if let Some(newest_branch_repo) = repos_from_branch.get(0) {
+                let (repo_path, (commit_hash, _)) = newest_branch_repo;
+                Ok(Some((repo_path.clone(), commit_hash.clone())))
+            } else {
+                // No error occured during the process but there is no match
+                Ok(None)
+            }
+        }
+        _ => find_exact_local_repo_with_reference(checkouts_dir, name, &source_git.reference),
+    }
+}
+
+/// Represents the Head's commit hash and time (in seconds) from epoch
+type HeadWithTime = (String, i64);
+
+/// Search and collect repos from checkouts_dir that are from given branch and for the given package
+fn collect_local_repos_with_branch(
+    checkouts_dir: PathBuf,
+    package_name: &str,
+    branch_name: &str,
+) -> Result<Vec<(PathBuf, HeadWithTime)>> {
+    let mut list_of_repos = Vec::new();
     for entry in fs::read_dir(checkouts_dir)? {
         let entry = entry?;
         let folder_name = entry
             .file_name()
             .into_string()
             .map_err(|_| anyhow!("invalid folder name"))?;
-        if folder_name.starts_with(name) {
-            // If we cannot find a sub dir in the entry's path, it is deleted by the user.
+        if folder_name.starts_with(package_name) {
+            // Search if the dir we are looking starts with the name of our package
             for repo_dir in fs::read_dir(entry.path())? {
+                // Iterate over all dirs inside the `name-***` directory and try to open repo from
+                // each dirs inside this one
                 let repo_dir = repo_dir
                     .map_err(|e| anyhow!("Cannot find local repo at checkouts dir {}", e))?;
                 let repo_dir_path = repo_dir.path();
                 let repo = git2::Repository::open(&repo_dir_path)?;
+                // Get current head of the repo
                 let current_head = repo.revparse_single("HEAD")?;
-                match &source_git.reference {
-                    GitReference::Branch(branch) => {
-                        // We need to check if the current repo is more recent than the
-                        // current_newest_repo found so far
-                        let branch_ref = format!("refs/remotes/origin/{}", branch);
-                        let reference = repo.refname_to_id(&branch_ref);
-                        if let Ok(reference) = reference {
-                            if current_head.id() == reference {
-                                let head_commit = current_head.as_commit().ok_or_else(|| {
-                                    anyhow!(
-                                        "Cannot get commit from {}",
-                                        current_head.id().to_string()
-                                    )
-                                })?;
-                                let head_time = head_commit.time().seconds();
-                                if current_newest_repo.2 < head_time {
-                                    current_newest_repo = (
-                                        current_head.id().to_string(),
-                                        repo_dir_path.clone(),
-                                        head_time,
-                                    );
-                                }
-                            }
-                        }
-                    }
-                    _ => {
-                        // For non-branch references we need to find HEAD == commit hash
-                        let oid = source_git.reference.resolve(&repo)?;
-                        if oid == current_head.id() {
-                            // We have the matching repo locally
-                            return Ok(Some((repo_dir_path, oid.to_string())));
-                        }
-                    }
+                // Check if the repo's HEAD commit to verify it is from desired branch
+                if check_repo_branch(branch_name, &repo)? {
+                    let head_commit = current_head.as_commit().ok_or_else(|| {
+                        anyhow!("Cannot get commit from {}", current_head.id().to_string())
+                    })?;
+                    // Get commit time for HEAD in seconds
+                    let head_time = head_commit.time().seconds();
+                    list_of_repos.push((repo_dir_path, (current_head.id().to_string(), head_time)));
                 }
             }
         }
     }
-    if current_newest_repo.2 == 0 {
-        Ok(None)
-    } else {
-        Ok(Some((current_newest_repo.1, current_newest_repo.0)))
+    Ok(list_of_repos)
+}
+
+fn find_exact_local_repo_with_reference(
+    checkouts_dir: PathBuf,
+    package_name: &str,
+    git_reference: &GitReference,
+) -> Result<Option<(PathBuf, String)>> {
+    for entry in fs::read_dir(checkouts_dir)? {
+        let entry = entry?;
+        let folder_name = entry
+            .file_name()
+            .into_string()
+            .map_err(|_| anyhow!("invalid folder name"))?;
+        if folder_name.starts_with(package_name) {
+            // Search if the dir we are looking starts with the name of our package
+            for repo_dir in fs::read_dir(entry.path())? {
+                // Iterate over all dirs inside the `name-***` directory and try to open repo from
+                // each dirs inside this one
+                let repo_dir = repo_dir
+                    .map_err(|e| anyhow!("Cannot find local repo at checkouts dir {}", e))?;
+                let repo_dir_path = repo_dir.path();
+                let repo = git2::Repository::open(&repo_dir_path)?;
+                // Get current head of the repo
+                let current_head = repo.revparse_single("HEAD")?;
+                let oid = git_reference.resolve(&repo)?;
+                if oid == current_head.id() {
+                    return Ok(Some((repo_dir_path, oid.to_string())));
+                }
+            }
+        }
     }
+    Ok(None)
+}
+
+/// Returns if the given repo is from the given branch
+fn check_repo_branch(branch: &str, repo: &git2::Repository) -> Result<bool> {
+    let branch_ref = format!("refs/remotes/origin/{}", branch);
+    let current_head = repo.revparse_single("HEAD")?;
+    let reference = repo.refname_to_id(&branch_ref);
+    if let Ok(reference) = reference {
+        if current_head.id() == reference {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 /// Given the path to a package and a `Dependency` parsed from one of its forc dependencies,
