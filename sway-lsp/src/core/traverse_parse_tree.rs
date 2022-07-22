@@ -208,7 +208,12 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
 
 fn handle_expression(expression: &Expression, tokens: &TokenMap) {
     match expression {
-        Expression::Literal { .. } => {}
+        Expression::Literal { span, .. } => {
+            tokens.insert(
+                to_ident_key(&Ident::new(span.clone())),
+                TokenType::from_parsed(AstToken::Expression(expression.clone())),
+            );
+        }
         Expression::FunctionApplication {
             call_path_binding,
             arguments,

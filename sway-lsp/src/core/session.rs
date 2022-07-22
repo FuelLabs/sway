@@ -161,23 +161,24 @@ impl Session {
                     // First, populate our token_map with un-typed ast nodes
                     let res = self.parse_ast_to_tokens(parsed_res);
                     // Next, populate our token_map with typed ast nodes
-                    //let res = self.parse_ast_to_typed_tokens(ast_res);
+                    //let main_fn_span =
+                    let res = self.parse_ast_to_typed_tokens(ast_res);
                     //self.test_typed_parse(ast_res);
-                    for ((ident, span), token) in self.token_map() {
-                        eprintln!("ident = {:?}", ident);
-                        eprintln!("");
+                    // for ((ident, span), token) in self.token_map() {
+                    //     eprintln!("ident = {:?}", ident);
+                    //     eprintln!("");
 
-                        eprintln!("token = {:#?}", token);
+                    //     eprintln!("token = {:#?}", token);
 
-                        eprintln!("");
-                        eprintln!("");
-                        eprintln!("");
+                    //     eprintln!("");
+                    //     eprintln!("");
+                    //     eprintln!("");
 
-                        eprintln!("------------------");
+                    //     eprintln!("------------------");
 
-                        eprintln!("");
+                    //     eprintln!("");
 
-                    } 
+                    // }
                     return res;
                 }
             }
