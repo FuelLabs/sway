@@ -3,7 +3,7 @@ use crate::{
     fmt::{Format, FormattedCode, Formatter},
     utils::{
         bracket::CurlyBrace,
-        comments::{ByteSpan, CommentVisitor},
+        comments::{ByteSpan, LeafSpans},
         item::ItemLenChars,
     },
     FormatterError,
@@ -230,21 +230,21 @@ impl CurlyBrace for ItemStorage {
     }
 }
 
-impl CommentVisitor for ItemStorage {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+impl LeafSpans for ItemStorage {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = vec![ByteSpan::from(self.storage_token.span())];
-        collected_spans.append(&mut self.fields.collect_spans());
+        collected_spans.append(&mut self.fields.leaf_spans());
         collected_spans
     }
 }
 
-impl CommentVisitor for StorageField {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+impl LeafSpans for StorageField {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = vec![ByteSpan::from(self.name.span())];
         collected_spans.push(ByteSpan::from(self.colon_token.span()));
-        collected_spans.append(&mut self.ty.collect_spans());
+        collected_spans.append(&mut self.ty.leaf_spans());
         collected_spans.push(ByteSpan::from(self.eq_token.span()));
-        collected_spans.append(&mut self.initializer.collect_spans());
+        collected_spans.append(&mut self.initializer.leaf_spans());
         collected_spans
     }
 }

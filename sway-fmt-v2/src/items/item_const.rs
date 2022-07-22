@@ -1,6 +1,6 @@
 use crate::{
     fmt::{Format, FormattedCode, Formatter},
-    utils::comments::{ByteSpan, CommentVisitor},
+    utils::comments::{ByteSpan, LeafSpans},
     FormatterError,
 };
 use std::fmt::Write;
@@ -46,8 +46,8 @@ impl Format for ItemConst {
     }
 }
 
-impl CommentVisitor for ItemConst {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+impl LeafSpans for ItemConst {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         if let Some(visibility) = &self.visibility {
             collected_spans.push(ByteSpan::from(visibility.span()));
@@ -55,11 +55,11 @@ impl CommentVisitor for ItemConst {
         collected_spans.push(ByteSpan::from(self.const_token.span()));
         collected_spans.push(ByteSpan::from(self.name.span()));
         if let Some(ty) = &self.ty_opt {
-            collected_spans.append(&mut ty.collect_spans());
+            collected_spans.append(&mut ty.leaf_spans());
             // TODO: determine if we allow comments in between `:` and ty
         }
         collected_spans.push(ByteSpan::from(self.eq_token.span()));
-        collected_spans.append(&mut self.expr.collect_spans());
+        collected_spans.append(&mut self.expr.leaf_spans());
         collected_spans.push(ByteSpan::from(self.semicolon_token.span()));
         collected_spans
     }

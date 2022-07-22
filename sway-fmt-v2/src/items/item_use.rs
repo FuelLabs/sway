@@ -2,7 +2,7 @@ use std::vec;
 
 use crate::{
     fmt::{Format, FormattedCode, Formatter},
-    utils::comments::{ByteSpan, CommentVisitor},
+    utils::comments::{ByteSpan, LeafSpans},
     FormatterError,
 };
 use sway_parse::{ItemUse, UseTree};
@@ -18,8 +18,8 @@ impl Format for ItemUse {
     }
 }
 
-impl CommentVisitor for ItemUse {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+impl LeafSpans for ItemUse {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         if let Some(visibility) = &self.visibility {
             collected_spans.push(ByteSpan::from(visibility.span()));
@@ -28,16 +28,16 @@ impl CommentVisitor for ItemUse {
         if let Some(root_import) = &self.root_import {
             collected_spans.push(ByteSpan::from(root_import.span()));
         }
-        collected_spans.append(&mut self.tree.collect_spans());
+        collected_spans.append(&mut self.tree.leaf_spans());
         collected_spans.push(ByteSpan::from(self.semicolon_token.span()));
         collected_spans
     }
 }
 
-impl CommentVisitor for UseTree {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+impl LeafSpans for UseTree {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         match self {
-            UseTree::Group { imports } => imports.collect_spans(),
+            UseTree::Group { imports } => imports.leaf_spans(),
             UseTree::Name { name } => vec![ByteSpan::from(name.span())],
             UseTree::Rename {
                 name,
@@ -56,7 +56,7 @@ impl CommentVisitor for UseTree {
             } => {
                 let mut collected_spans = vec![ByteSpan::from(prefix.span())];
                 collected_spans.push(ByteSpan::from(double_colon_token.span()));
-                collected_spans.append(&mut suffix.collect_spans());
+                collected_spans.append(&mut suffix.leaf_spans());
                 collected_spans
             }
         }

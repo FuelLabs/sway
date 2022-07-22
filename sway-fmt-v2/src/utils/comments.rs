@@ -102,18 +102,18 @@ fn collect_comments_from_token_stream(
     }
 }
 
-impl<T> CommentVisitor for Braces<T>
+impl<T> LeafSpans for Braces<T>
 where
-    T: CommentVisitor + Clone,
+    T: LeafSpans + Clone,
 {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         let mut opening_brace_span = ByteSpan::from(self.span());
         opening_brace_span.end = opening_brace_span.start + 1;
         // Add opening brace's ByteSpan
         collected_spans.push(opening_brace_span);
         // Add T's collected ByteSpan
-        collected_spans.append(&mut self.clone().into_inner().collect_spans());
+        collected_spans.append(&mut self.clone().into_inner().leaf_spans());
         let mut closing_brace_span = ByteSpan::from(self.span());
         closing_brace_span.start = closing_brace_span.end - 1;
         // Add closing brace's ByteSpan
@@ -122,18 +122,18 @@ where
     }
 }
 
-impl<T> CommentVisitor for Parens<T>
+impl<T> LeafSpans for Parens<T>
 where
-    T: CommentVisitor + Clone,
+    T: LeafSpans + Clone,
 {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         let mut opening_paren_span = ByteSpan::from(self.span());
         opening_paren_span.end = opening_paren_span.start + 1;
         // Add opening paren's span
         collected_spans.push(opening_paren_span);
         // Add T's collected ByteSpan
-        collected_spans.append(&mut self.clone().into_inner().collect_spans());
+        collected_spans.append(&mut self.clone().into_inner().leaf_spans());
         let mut closing_paren_span = ByteSpan::from(self.span());
         closing_paren_span.start = closing_paren_span.end - 1;
         // Add closing paren's ByteSpan
@@ -142,18 +142,18 @@ where
     }
 }
 
-impl<T> CommentVisitor for SquareBrackets<T>
+impl<T> LeafSpans for SquareBrackets<T>
 where
-    T: CommentVisitor + Clone,
+    T: LeafSpans + Clone,
 {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         let mut opening_bracket_span = ByteSpan::from(self.span());
         opening_bracket_span.end = opening_bracket_span.start + 1;
         // Add opening bracket's span
         collected_spans.push(opening_bracket_span);
         // Add T's collected ByteSpan
-        collected_spans.append(&mut self.clone().into_inner().collect_spans());
+        collected_spans.append(&mut self.clone().into_inner().leaf_spans());
         let mut closing_bracket_span = ByteSpan::from(self.span());
         closing_bracket_span.start = closing_bracket_span.end - 1;
         // Add closing bracket's ByteSpan
@@ -162,92 +162,92 @@ where
     }
 }
 
-impl<T, P> CommentVisitor for (T, P)
+impl<T, P> LeafSpans for (T, P)
 where
-    T: CommentVisitor,
-    P: CommentVisitor,
+    T: LeafSpans,
+    P: LeafSpans,
 {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
-        let mut collected_spans = self.0.collect_spans();
-        collected_spans.append(&mut self.1.collect_spans());
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = self.0.leaf_spans();
+        collected_spans.append(&mut self.1.leaf_spans());
         collected_spans
     }
 }
-impl<T> CommentVisitor for Vec<T>
+impl<T> LeafSpans for Vec<T>
 where
-    T: CommentVisitor,
+    T: LeafSpans,
 {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         for t in self {
-            collected_spans.append(&mut t.collect_spans());
+            collected_spans.append(&mut t.leaf_spans());
         }
         collected_spans
     }
 }
-impl<T> CommentVisitor for Annotated<T>
+impl<T> LeafSpans for Annotated<T>
 where
-    T: CommentVisitor + Parse,
+    T: LeafSpans + Parse,
 {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
-        let mut collected_spans = self.attribute_list.collect_spans();
-        collected_spans.append(&mut self.value.collect_spans());
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = self.attribute_list.leaf_spans();
+        collected_spans.append(&mut self.value.leaf_spans());
         collected_spans
     }
 }
 
-impl CommentVisitor for Ident {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+impl LeafSpans for Ident {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         vec![ByteSpan::from(self.span())]
     }
 }
-impl CommentVisitor for CommaToken {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+impl LeafSpans for CommaToken {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         vec![(ByteSpan::from(self.span()))]
     }
 }
 
-impl CommentVisitor for TypeField {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+impl LeafSpans for TypeField {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = vec![ByteSpan::from(self.name.span())];
         collected_spans.push(ByteSpan::from(self.colon_token.span()));
-        collected_spans.append(&mut self.ty.collect_spans());
+        collected_spans.append(&mut self.ty.leaf_spans());
         collected_spans
     }
 }
 
-impl CommentVisitor for AddToken {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+impl LeafSpans for AddToken {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         vec![ByteSpan::from(self.span())]
     }
 }
 
-impl CommentVisitor for SemicolonToken {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+impl LeafSpans for SemicolonToken {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         vec![ByteSpan::from(self.span())]
     }
 }
 
-impl CommentVisitor for ColonToken {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+impl LeafSpans for ColonToken {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         vec![ByteSpan::from(self.span())]
     }
 }
 
-impl CommentVisitor for RightArrowToken {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+impl LeafSpans for RightArrowToken {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         vec![ByteSpan::from(self.span())]
     }
 }
 
-impl CommentVisitor for ForToken {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+impl LeafSpans for ForToken {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         vec![ByteSpan::from(self.span())]
     }
 }
 
-impl CommentVisitor for ForwardSlashToken {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+impl LeafSpans for ForwardSlashToken {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         vec![ByteSpan::from(self.span())]
     }
 }
@@ -291,8 +291,8 @@ fn add_comments(
     formatted_code: &mut FormattedCode,
     unformatted_code: Arc<str>,
 ) -> Result<(), FormatterError> {
-    let mut unformatted_comment_spans = unformatted_module.collect_spans();
-    let mut formatted_comment_spans = formatted_module.collect_spans();
+    let mut unformatted_comment_spans = unformatted_module.leaf_spans();
+    let mut formatted_comment_spans = formatted_module.leaf_spans();
     // Adding end of file to both spans so that the last comment(s) after an item would also be
     // found & included
     unformatted_comment_spans.push(ByteSpan {
@@ -403,18 +403,14 @@ fn insert_after_span(
 }
 
 /// Applies formatting to the comment.
-/// Currently just checks if it is a multiline comment, if that is the case it adds a trailing `/` to the end.
+/// Currently does not apply any formatting and directly returns the raw comment str 
 fn format_comment(comment: &Comment) -> String {
-    if comment.span().str().starts_with("/*") {
-        format!("{}/", comment.span().str())
-    } else {
         comment.span().str()
-    }
 }
 /// While searching for a comment we need the possible places a comment can be placed in a structure
-/// `collect_spans` collects all field's spans so that we can check in between them.
-pub trait CommentVisitor {
-    fn collect_spans(&self) -> Vec<ByteSpan>;
+/// `leaf_spans` collects all field's spans so that we can check in between them.
+pub trait LeafSpans {
+    fn leaf_spans(&self) -> Vec<ByteSpan>;
 }
 
 #[cfg(test)]

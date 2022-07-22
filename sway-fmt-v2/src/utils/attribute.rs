@@ -12,7 +12,7 @@ use sway_types::Spanned;
 
 use super::{
     bracket::{Parenthesis, SquareBracket},
-    comments::{ByteSpan, CommentVisitor},
+    comments::{ByteSpan, LeafSpans},
 };
 
 impl<T: Parse + Format> Format for Annotated<T> {
@@ -94,18 +94,18 @@ impl Parenthesis for AttributeDecl {
         Ok(())
     }
 }
-impl CommentVisitor for AttributeDecl {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+impl LeafSpans for AttributeDecl {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = vec![ByteSpan::from(self.hash_token.span())];
-        collected_spans.append(&mut self.attribute.collect_spans());
+        collected_spans.append(&mut self.attribute.leaf_spans());
         collected_spans
     }
 }
-impl CommentVisitor for Attribute {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+impl LeafSpans for Attribute {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = vec![ByteSpan::from(self.name.span())];
         if let Some(args) = &self.args {
-            collected_spans.append(&mut args.collect_spans());
+            collected_spans.append(&mut args.leaf_spans());
         }
         collected_spans
     }

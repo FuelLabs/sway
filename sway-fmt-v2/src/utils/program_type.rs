@@ -4,7 +4,7 @@ use sway_types::Spanned;
 
 use crate::FormatterError;
 
-use super::comments::{ByteSpan, CommentVisitor};
+use super::comments::{ByteSpan, LeafSpans};
 
 /// Insert the program type without applying a formatting to it.
 ///
@@ -43,8 +43,8 @@ pub(crate) fn insert_program_type(
     Ok(())
 }
 
-impl CommentVisitor for ModuleKind {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+impl LeafSpans for ModuleKind {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         match self {
             ModuleKind::Script { script_token } => {
                 vec![ByteSpan::from(script_token.span())]
@@ -68,29 +68,29 @@ impl CommentVisitor for ModuleKind {
     }
 }
 
-impl CommentVisitor for Module {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
-        let mut collected_spans = self.kind.collect_spans();
+impl LeafSpans for Module {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = self.kind.leaf_spans();
         collected_spans.push(ByteSpan::from(self.semicolon_token.span()));
-        collected_spans.append(&mut self.dependencies.collect_spans());
-        collected_spans.append(&mut self.items.collect_spans());
+        collected_spans.append(&mut self.dependencies.leaf_spans());
+        collected_spans.append(&mut self.items.leaf_spans());
         collected_spans
     }
 }
 
-impl CommentVisitor for Dependency {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+impl LeafSpans for Dependency {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = vec![ByteSpan::from(self.dep_token.span())];
-        collected_spans.append(&mut self.path.collect_spans());
+        collected_spans.append(&mut self.path.leaf_spans());
         collected_spans.push(ByteSpan::from(self.semicolon_token.span()));
         collected_spans
     }
 }
 
-impl CommentVisitor for DependencyPath {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
-        let mut collected_spans = self.prefix.collect_spans();
-        collected_spans.append(&mut self.suffixes.collect_spans());
+impl LeafSpans for DependencyPath {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = self.prefix.leaf_spans();
+        collected_spans.append(&mut self.suffixes.leaf_spans());
         collected_spans
     }
 }

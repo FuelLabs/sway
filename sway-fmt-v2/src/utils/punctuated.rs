@@ -1,28 +1,28 @@
 use crate::{
     fmt::{Format, FormattedCode, Formatter},
-    utils::comments::{ByteSpan, CommentVisitor},
+    utils::comments::{ByteSpan, LeafSpans},
     FormatterError,
 };
 use std::fmt::Write;
 use sway_parse::{keywords::CommaToken, punctuated::Punctuated, StorageField, TypeField};
 use sway_types::{Ident, Spanned};
 
-impl<T, P> CommentVisitor for Punctuated<T, P>
+impl<T, P> LeafSpans for Punctuated<T, P>
 where
-    T: CommentVisitor + Clone,
-    P: CommentVisitor + Clone,
+    T: LeafSpans + Clone,
+    P: LeafSpans + Clone,
 {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         let value_pairs = &self.value_separator_pairs;
         for pair in value_pairs.iter() {
-            let p_comment_spans = pair.1.collect_spans();
+            let p_comment_spans = pair.1.leaf_spans();
             // Since we do not want to have comments between T and P we are extending the ByteSpans coming from T with spans coming from P
             // Since formatter can insert a trailing comma after a field, comments next to a field can be falsely inserted between the comma and the field
             // So we shouldn't allow inserting comments (or searching for one) between T and P as in Punctuated scenerio this can/will result in formattings that breaks the build process
             let mut comment_spans = pair
                 .0
-                .collect_spans()
+                .leaf_spans()
                 .iter_mut()
                 .map(|comment_map| {
                     // Since the length of P' ByteSpan is same for each pair we are using the first one's length for all of the pairs.
@@ -35,7 +35,7 @@ where
             collected_spans.append(&mut comment_spans)
         }
         if let Some(final_value) = &self.final_value_opt {
-            collected_spans.append(&mut final_value.collect_spans());
+            collected_spans.append(&mut final_value.leaf_spans());
         }
         collected_spans
     }

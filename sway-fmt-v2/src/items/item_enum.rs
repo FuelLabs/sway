@@ -3,7 +3,7 @@ use crate::{
     fmt::{Format, FormattedCode, Formatter},
     utils::{
         bracket::CurlyBrace,
-        comments::{ByteSpan, CommentVisitor},
+        comments::{ByteSpan, LeafSpans},
         item::ItemLenChars,
     },
     FormatterError,
@@ -239,8 +239,8 @@ impl CurlyBrace for ItemEnum {
         Ok(())
     }
 }
-impl CommentVisitor for ItemEnum {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+impl LeafSpans for ItemEnum {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         if let Some(visibility) = &self.visibility {
             collected_spans.push(ByteSpan::from(visibility.span()));
@@ -250,7 +250,7 @@ impl CommentVisitor for ItemEnum {
         if let Some(generics) = &self.generics {
             collected_spans.push(ByteSpan::from(generics.parameters.span()))
         }
-        collected_spans.append(&mut self.fields.collect_spans());
+        collected_spans.append(&mut self.fields.leaf_spans());
         collected_spans
     }
 }

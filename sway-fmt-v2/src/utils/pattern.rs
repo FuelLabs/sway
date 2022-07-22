@@ -1,6 +1,6 @@
 use crate::{
     fmt::*,
-    utils::comments::{ByteSpan, CommentVisitor},
+    utils::comments::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
 use sway_parse::{token::Delimiter, Pattern, PatternStructField};
@@ -118,8 +118,8 @@ impl Format for PatternStructField {
     }
 }
 
-impl CommentVisitor for Pattern {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+impl LeafSpans for Pattern {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         match self {
             Pattern::Wildcard { underscore_token } => {
@@ -132,29 +132,29 @@ impl CommentVisitor for Pattern {
                 collected_spans.push(ByteSpan::from(name.span()));
             }
             Pattern::Literal(literal) => {
-                collected_spans.append(&mut literal.collect_spans());
+                collected_spans.append(&mut literal.leaf_spans());
             }
             Pattern::Constant(constant) => {
-                collected_spans.append(&mut constant.collect_spans());
+                collected_spans.append(&mut constant.leaf_spans());
             }
             Pattern::Constructor { path, args } => {
-                collected_spans.append(&mut path.collect_spans());
-                collected_spans.append(&mut args.collect_spans());
+                collected_spans.append(&mut path.leaf_spans());
+                collected_spans.append(&mut args.leaf_spans());
             }
             Pattern::Struct { path, fields } => {
-                collected_spans.append(&mut path.collect_spans());
-                collected_spans.append(&mut fields.collect_spans());
+                collected_spans.append(&mut path.leaf_spans());
+                collected_spans.append(&mut fields.leaf_spans());
             }
             Pattern::Tuple(tuple) => {
-                collected_spans.append(&mut tuple.collect_spans());
+                collected_spans.append(&mut tuple.leaf_spans());
             }
         }
         collected_spans
     }
 }
 
-impl CommentVisitor for PatternStructField {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+impl LeafSpans for PatternStructField {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         match self {
             PatternStructField::Rest { token } => {
@@ -167,7 +167,7 @@ impl CommentVisitor for PatternStructField {
                 collected_spans.push(ByteSpan::from(field_name.span()));
                 if let Some(pattern) = pattern_opt {
                     collected_spans.push(ByteSpan::from(pattern.0.span()));
-                    collected_spans.append(&mut pattern.1.collect_spans());
+                    collected_spans.append(&mut pattern.1.leaf_spans());
                 }
             }
         }

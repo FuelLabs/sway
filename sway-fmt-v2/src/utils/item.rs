@@ -1,21 +1,21 @@
 use crate::{
     fmt::{Format, FormattedCode, Formatter, FormatterError},
-    utils::comments::{ByteSpan, CommentVisitor},
+    utils::comments::{ByteSpan, LeafSpans},
 };
 use sway_parse::{Item, ItemKind::*};
 
-impl CommentVisitor for Item {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+impl LeafSpans for Item {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         match &self.value {
-            Struct(item_struct) => item_struct.collect_spans(),
-            Enum(item_enum) => item_enum.collect_spans(),
-            Fn(item_fn) => item_fn.collect_spans(),
-            Abi(item_abi) => item_abi.collect_spans(),
-            Const(item_const) => item_const.collect_spans(),
-            Storage(item_storage) => item_storage.collect_spans(),
-            Trait(item_trait) => item_trait.collect_spans(),
-            Impl(item_impl) => item_impl.collect_spans(),
-            Use(item_use) => item_use.collect_spans(),
+            Struct(item_struct) => item_struct.leaf_spans(),
+            Enum(item_enum) => item_enum.leaf_spans(),
+            Fn(item_fn) => item_fn.leaf_spans(),
+            Abi(item_abi) => item_abi.leaf_spans(),
+            Const(item_const) => item_const.leaf_spans(),
+            Storage(item_storage) => item_storage.leaf_spans(),
+            Trait(item_trait) => item_trait.leaf_spans(),
+            Impl(item_impl) => item_impl.leaf_spans(),
+            Use(item_use) => item_use.leaf_spans(),
             Break(_) => todo!(),
             Continue(_) => todo!(),
         }

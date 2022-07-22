@@ -4,7 +4,7 @@ use crate::{
     utils::{
         attribute::FormatDecl,
         bracket::CurlyBrace,
-        comments::{ByteSpan, CommentVisitor},
+        comments::{ByteSpan, LeafSpans},
     },
     FormatterError,
 };
@@ -135,13 +135,13 @@ impl CurlyBrace for ItemAbi {
     }
 }
 
-impl CommentVisitor for ItemAbi {
-    fn collect_spans(&self) -> Vec<ByteSpan> {
+impl LeafSpans for ItemAbi {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = vec![ByteSpan::from(self.abi_token.span())];
         collected_spans.push(ByteSpan::from(self.name.span()));
-        collected_spans.append(&mut self.abi_items.collect_spans());
+        collected_spans.append(&mut self.abi_items.leaf_spans());
         if let Some(abi_defs) = &self.abi_defs_opt {
-            collected_spans.append(&mut abi_defs.collect_spans());
+            collected_spans.append(&mut abi_defs.leaf_spans());
         }
         collected_spans
     }
