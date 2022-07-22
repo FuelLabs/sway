@@ -418,9 +418,9 @@ pub fn lex_commented(
                             None => return Err(unclosed_multiline_comment(unclosed_indices)),
                             Some((_, '*')) => match char_indices.next() {
                                 None => return Err(unclosed_multiline_comment(unclosed_indices)),
-                                Some((end, '/')) => {
-                                    let _ = char_indices.next();
+                                Some((slash_ix, '/')) => {
                                     let start = unclosed_indices.pop().unwrap();
+                                    let end = slash_ix + '/'.len_utf8();
                                     let span =
                                         Span::new(src.clone(), start, end, path.clone()).unwrap();
                                     let comment = Comment { span };
@@ -1135,7 +1135,7 @@ mod tests {
             let mut tts = group.token_stream.token_trees().iter();
             assert_eq!(
                 tts.next().unwrap().span().as_str(),
-                "/* multi-\n             * line-\n             * comment *",
+                "/* multi-\n             * line-\n             * comment */",
             );
             assert_eq!(tts.next().unwrap().span().as_str(), "bar");
             assert_eq!(tts.next().unwrap().span().as_str(), ":");
