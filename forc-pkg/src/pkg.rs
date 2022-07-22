@@ -1396,6 +1396,7 @@ fn search_git_source_locally(
 ) -> Result<Option<(PathBuf, String)>> {
     // In the checkouts dir iterate over dirs whose name starts with `name`
     let checkouts_dir = git_checkouts_directory();
+    let mut current_newest_repo = (String::new(), checkouts_dir.clone(), 0);
     for entry in fs::read_dir(checkouts_dir)? {
         let entry = entry?;
         let folder_name = entry
@@ -1403,30 +1404,55 @@ fn search_git_source_locally(
             .into_string()
             .map_err(|_| anyhow!("invalid folder name"))?;
         if folder_name.starts_with(name) {
-            // Get the first sub dir, there will be only 1 dir in the given path.
             // If we cannot find a sub dir in the entry's path, it is deleted by the user.
-            let repo_dir = fs::read_dir(entry.path())?
-                .next()
-                .ok_or_else(|| anyhow!("Cannot find local repo at checkouts"))?;
-            let repo_dir_path = repo_dir?.path();
-            match &source_git.reference {
-                GitReference::Branch(_branch) => {
-                    todo!();
-                }
-                _ => {
-                    // For non-branch references we need to find HEAD == commit hash
-                    let repo = git2::Repository::open(&repo_dir_path)?;
-                    let oid = source_git.reference.resolve(&repo)?;
-                    let current_head = repo.revparse_single("HEAD")?.id();
-                    if oid == current_head {
-                        // We have the matching repo locally
-                        return Ok(Some((repo_dir_path, oid.to_string())));
+            for repo_dir in fs::read_dir(entry.path())? {
+                let repo_dir = repo_dir
+                    .map_err(|e| anyhow!("Cannot find local repo at checkouts dir {}", e))?;
+                let repo_dir_path = repo_dir.path();
+                let repo = git2::Repository::open(&repo_dir_path)?;
+                let current_head = repo.revparse_single("HEAD")?;
+                match &source_git.reference {
+                    GitReference::Branch(branch) => {
+                        // We need to check if the current repo is more recent than the
+                        // current_newest_repo found so far
+                        let branch_ref = format!("refs/remotes/origin/{}", branch);
+                        let reference = repo.refname_to_id(&branch_ref);
+                        if let Ok(reference) = reference {
+                            if current_head.id() == reference {
+                                let head_commit = current_head.as_commit().ok_or_else(|| {
+                                    anyhow!(
+                                        "Cannot get commit from {}",
+                                        current_head.id().to_string()
+                                    )
+                                })?;
+                                let head_time = head_commit.time().seconds();
+                                if current_newest_repo.2 < head_time {
+                                    current_newest_repo = (
+                                        current_head.id().to_string(),
+                                        repo_dir_path.clone(),
+                                        head_time,
+                                    );
+                                }
+                            }
+                        }
+                    }
+                    _ => {
+                        // For non-branch references we need to find HEAD == commit hash
+                        let oid = source_git.reference.resolve(&repo)?;
+                        if oid == current_head.id() {
+                            // We have the matching repo locally
+                            return Ok(Some((repo_dir_path, oid.to_string())));
+                        }
                     }
                 }
             }
         }
     }
-    Ok(None)
+    if current_newest_repo.2 == 0 {
+        Ok(None)
+    } else {
+        Ok(Some((current_newest_repo.1, current_newest_repo.0)))
+    }
 }
 
 /// Given the path to a package and a `Dependency` parsed from one of its forc dependencies,
