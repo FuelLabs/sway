@@ -14,7 +14,8 @@ pub(crate) fn ident_and_span_at_position(
     cursor_position: Position,
     tokens: &TokenMap,
 ) -> Option<(Ident, Span)> {
-    for (ident, span) in tokens.keys() {
+    for item in tokens.iter() {
+        let (ident, span) = item.key();
         let range = get_range_from_span(span);
         if cursor_position >= range.start && cursor_position <= range.end {
             return Some((ident.clone(), span.clone()));
