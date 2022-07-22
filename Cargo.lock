@@ -2133,8 +2133,7 @@ checksum = "a3e378b66a060d48947b590737b30a1be76706c8dd7b8ba0f2fe3989c68a853f"
 [[package]]
 name = "mdbook"
 version = "0.4.20"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13cdad8057b09a519c6c63e6d7c93ea854f5d7fbfe284df864d5e1140d215a2d"
+source = "git+https://github.com/mitchmindtree/mdBook?branch=nightly-borrowcheck-err-workaround#13035baeae417e41ce98f49c072220de0e6e4075"
 dependencies = [
  "anyhow",
  "chrono",
