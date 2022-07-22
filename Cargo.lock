@@ -2132,9 +2132,8 @@ checksum = "a3e378b66a060d48947b590737b30a1be76706c8dd7b8ba0f2fe3989c68a853f"
 
 [[package]]
 name = "mdbook"
-version = "0.4.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe2468f3c25ca56d4e9e309b94a1a61626aa2a66a68d0649477f6a9fb14de972"
+version = "0.4.20"
+source = "git+https://github.com/mitchmindtree/mdBook?branch=nightly-borrowcheck-err-workaround#13035baeae417e41ce98f49c072220de0e6e4075"
 dependencies = [
  "anyhow",
  "chrono",
@@ -3672,11 +3671,11 @@ dependencies = [
 name = "sway-ir"
 version = "0.18.1"
 dependencies = [
+ "anyhow",
  "filecheck",
  "generational-arena",
  "peg",
  "sway-types",
- "tracing",
 ]
 
 [[package]]

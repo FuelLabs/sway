@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()Initialization of struct "Data" is missing field "value"
+# check: $()Struct "Data" does not have field "val"

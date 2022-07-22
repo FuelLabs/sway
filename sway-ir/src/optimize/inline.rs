@@ -305,6 +305,11 @@ fn inline_instruction(
             } => new_block
                 .ins(context)
                 .get_ptr(map_ptr(base_ptr), ptr_ty, offset, span_md_idx),
+            Instruction::Gtf { index, tx_field_id } => {
+                new_block
+                    .ins(context)
+                    .gtf(map_value(index), tx_field_id, span_md_idx)
+            }
             Instruction::InsertElement {
                 array,
                 ty,
