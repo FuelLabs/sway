@@ -19,6 +19,8 @@ abi MyContract {
     #[storage(read, write)]
     fn enum_swap_remove(index: u64) -> TestEnum;
     #[storage(read, write)]
+    fn enum_set(index: u64, value: TestEnum);
+    #[storage(read, write)]
     fn enum_insert(index: u64, value: TestEnum);
     #[storage(read)]
     fn enum_len() -> u64;
@@ -52,6 +54,10 @@ impl MyContract for Contract {
     #[storage(read, write)]
     fn enum_swap_remove(index: u64) -> TestEnum {
         storage.my_vec.swap_remove(index)
+    }
+    #[storage(read, write)]
+    fn enum_set(index: u64, value: TestEnum) {
+        storage.my_vec.set(index, value);
     }
     #[storage(read, write)]
     fn enum_insert(index: u64, value: TestEnum) {

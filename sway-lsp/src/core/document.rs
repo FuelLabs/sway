@@ -1,18 +1,5 @@
 #![allow(dead_code)]
-
-use super::token::{TokenMap, TokenType};
-use super::{traverse_parse_tree, traverse_typed_tree};
-
-use crate::{capabilities, utils};
-use forc::utils::SWAY_GIT_TAG;
-use forc_pkg::{self as pkg};
 use ropey::Rope;
-use std::{collections::HashMap, path::PathBuf};
-use sway_core::{
-    semantic_analysis::ast_node::TypedAstNode, CompileAstResult, CompileResult, ParseProgram,
-    TypeInfo,
-};
-use sway_types::Ident;
 use tower_lsp::lsp_types::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
 
 #[derive(Debug)]
@@ -23,7 +10,6 @@ pub struct TextDocument {
     version: i32,
     uri: String,
     content: Rope,
-    token_map: TokenMap,
 }
 
 impl TextDocument {
@@ -34,93 +20,13 @@ impl TextDocument {
                 version: 1,
                 uri: path.into(),
                 content: Rope::from_str(&content),
-                token_map: HashMap::new(),
             }),
             Err(_) => Err(DocumentError::DocumentNotFound),
         }
     }
 
-    /// Check if the code editor's cursor is currently over an of our collected tokens
-    pub fn token_at_position(&self, position: Position) -> Option<(Ident, &TokenType)> {
-        match utils::common::ident_and_span_at_position(position, &self.token_map) {
-            Some((ident, _)) => {
-                // Retrieve the TokenType from our HashMap
-                self.token_map
-                    .get(&utils::token::to_ident_key(&ident))
-                    .map(|token| (ident.clone(), token))
-            }
-            None => None,
-        }
-    }
-
-    pub fn all_references_of_token(&self, token: &TokenType) -> Vec<(&Ident, &TokenType)> {
-        let current_type_id = utils::token::type_id(token);
-
-        self.token_map
-            .iter()
-            .filter(|((_, _), token)| {
-                if token.typed.is_some() {
-                    current_type_id == utils::token::type_id(token)
-                } else {
-                    false
-                }
-            })
-            .map(|((ident, _), token)| (ident, token))
-            .collect()
-    }
-
-    pub fn declared_token_ident(&self, token: &TokenType) -> Option<Ident> {
-        // Look up the tokens TypeId
-        match utils::token::type_id(token) {
-            Some(type_id) => {
-                tracing::info!("type_id = {:#?}", type_id);
-
-                // Use the TypeId to look up the actual type
-                let type_info = sway_core::type_engine::look_up_type_id(type_id);
-                tracing::info!("type_info = {:#?}", type_info);
-
-                match type_info {
-                    TypeInfo::UnknownGeneric { name }
-                    | TypeInfo::Enum { name, .. }
-                    | TypeInfo::Struct { name, .. }
-                    | TypeInfo::Custom { name, .. } => Some(name),
-                    _ => None,
-                }
-            }
-            None => None,
-        }
-    }
-
-    pub fn token_map(&self) -> &TokenMap {
-        &self.token_map
-    }
-
     pub fn get_uri(&self) -> &str {
         &self.uri
-    }
-
-    pub fn parse(&mut self) -> Result<Vec<Diagnostic>, DocumentError> {
-        self.clear_token_map();
-
-        let manifest_dir = PathBuf::from(self.get_uri());
-        let silent_mode = true;
-        let locked = false;
-        let offline = false;
-
-        // TODO: match on any errors and report them back to the user in a future PR
-        if let Ok(manifest) = pkg::ManifestFile::from_dir(&manifest_dir, SWAY_GIT_TAG) {
-            if let Ok(plan) =
-                pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline, SWAY_GIT_TAG)
-            {
-                if let Ok((parsed_res, _ast_res)) = pkg::check(&plan, silent_mode) {
-                    let r = self.parse_tokens_from_text(parsed_res);
-                    //self.test_typed_parse(ast_res);
-                    return r;
-                }
-            }
-        }
-
-        Err(DocumentError::FailedToParse(vec![]))
     }
 
     pub fn apply_change(&mut self, change: &TextDocumentContentChangeEvent) {
@@ -133,76 +39,10 @@ impl TextDocument {
     pub fn get_text(&self) -> String {
         self.content.to_string()
     }
-
-    pub fn test_typed_parse(&mut self, ast_res: CompileAstResult) {
-        if let Some(all_nodes) = self.parse_typed_tokens_from_text(ast_res) {
-            for node in &all_nodes {
-                traverse_typed_tree::traverse_node(node, &mut self.token_map);
-            }
-        }
-
-        for ((ident, _span), token) in &self.token_map {
-            utils::debug::debug_print_ident_and_token(ident, token);
-        }
-
-        //let cursor_position = Position::new(25, 14); //Cursor's hovered over the position var decl in main()
-        let cursor_position = Position::new(29, 18); //Cursor's hovered over the ~Particle in p = decl in main()
-
-        if let Some((_, token)) = self.token_at_position(cursor_position) {
-            // Look up the tokens TypeId
-            if let Some(type_id) = utils::token::type_id(token) {
-                tracing::info!("type_id = {:#?}", type_id);
-
-                // Use the TypeId to look up the actual type
-                let type_info = sway_core::type_engine::look_up_type_id(type_id);
-                tracing::info!("type_info = {:#?}", type_info);
-            }
-
-            // Find the ident / span on the returned type
-
-            // Contruct a go_to LSP request from the declerations span
-        }
-    }
 }
 
 // private methods
 impl TextDocument {
-    fn parse_typed_tokens_from_text(&self, ast_res: CompileAstResult) -> Option<Vec<TypedAstNode>> {
-        match ast_res {
-            CompileAstResult::Failure { .. } => None,
-            CompileAstResult::Success { typed_program, .. } => Some(typed_program.root.all_nodes),
-        }
-    }
-
-    fn parse_tokens_from_text(
-        &mut self,
-        parsed_result: CompileResult<ParseProgram>,
-    ) -> Result<Vec<Diagnostic>, DocumentError> {
-        match parsed_result.value {
-            None => {
-                let diagnostics = capabilities::diagnostic::get_diagnostics(
-                    parsed_result.warnings,
-                    parsed_result.errors,
-                );
-                Err(DocumentError::FailedToParse(diagnostics))
-            }
-            Some(parse_program) => {
-                for node in &parse_program.root.tree.root_nodes {
-                    traverse_parse_tree::traverse_node(node, &mut self.token_map);
-                }
-
-                Ok(capabilities::diagnostic::get_diagnostics(
-                    parsed_result.warnings,
-                    parsed_result.errors,
-                ))
-            }
-        }
-    }
-
-    fn clear_token_map(&mut self) {
-        self.token_map = HashMap::new();
-    }
-
     fn build_edit<'change>(
         &self,
         change: &'change TextDocumentContentChangeEvent,
