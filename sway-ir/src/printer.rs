@@ -300,6 +300,13 @@ fn instruction_to_doc<'a>(
             Instruction::AsmBlock(asm, args) => {
                 asm_block_to_doc(context, md_namer, namer, ins_value, asm, args, span_md_idx)
             }
+            Instruction::AddrOf(value) => maybe_constant_to_doc(context, md_namer, namer, value)
+                .append(Doc::text_line(format!(
+                    "{} = addr_of {}{}",
+                    namer.name(context, ins_value),
+                    namer.name(context, value),
+                    md_namer.meta_as_string(context, span_md_idx, true)
+                ))),
             Instruction::BitCast(value, ty) => maybe_constant_to_doc(
                 context, md_namer, namer, value,
             )

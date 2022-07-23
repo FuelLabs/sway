@@ -333,6 +333,42 @@ impl TypedIntrinsicFunctionKind {
                     type_id,
                 )
             }
+            Intrinsic::AddrOf => {
+                if arguments.len() != 1 {
+                    errors.push(CompileError::IntrinsicIncorrectNumArgs {
+                        name: kind.to_string(),
+                        expected: 1,
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
+                let ctx = ctx
+                    .with_help_text("")
+                    .with_type_annotation(insert_type(TypeInfo::Unknown));
+                let exp = check!(
+                    TypedExpression::type_check(ctx, arguments[0].clone()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let copy_ty = resolve_type(exp.return_type, &span).unwrap().is_copy_type();
+                if copy_ty {
+                    errors.push(CompileError::IntrinsicUnsupportedArgType {
+                        name: kind.to_string(),
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
+
+                let intrinsic_function = TypedIntrinsicFunctionKind {
+                    kind,
+                    arguments: vec![exp],
+                    type_arguments: vec![],
+                    span,
+                };
+                let return_type = insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour));
+                (intrinsic_function, return_type)
+            }
         };
         ok((intrinsic_function, return_type), warnings, errors)
     }

@@ -468,6 +468,11 @@ impl FnCompiler {
                     ))
                 }
             }
+            Intrinsic::AddrOf => {
+                let exp = arguments[0].clone();
+                let value = self.compile_expression(context, exp)?;
+                Ok(self.current_block.ins(context).addrof(value, None))
+            }
         }
     }
 

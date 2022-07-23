@@ -8,6 +8,7 @@ pub enum Intrinsic {
     SizeOfVal,
     Eq,
     Gtf,
+    AddrOf,
 }
 
 impl fmt::Display for Intrinsic {
@@ -19,6 +20,7 @@ impl fmt::Display for Intrinsic {
             Intrinsic::SizeOfVal => "size_of_val",
             Intrinsic::Eq => "eq",
             Intrinsic::Gtf => "gtf",
+            Intrinsic::AddrOf => "addr_of",
         };
         write!(f, "{}", s)
     }
@@ -34,6 +36,7 @@ impl Intrinsic {
             "__size_of_val" => SizeOfVal,
             "__eq" => Eq,
             "__gtf" => Gtf,
+            "__addr_of" => AddrOf,
             _ => return None,
         })
     }
