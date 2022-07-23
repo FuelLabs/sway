@@ -3,7 +3,7 @@ library i32;
 use core::num::*;
 use ::assert::assert;
 
-/// The 8-bit signed integer type.
+/// The 32-bit signed integer type.
 /// Represented as an underlying u32 value.
 pub struct i32 {
     underlying: u32,
@@ -125,15 +125,16 @@ impl core::ops::Multiply for i32 {
 impl core::ops::Divide for i32 {
     /// Divide a i32 by a i32. Panics if divisor is zero.
     pub fn divide(self, divisor: Self) -> Self {
+        assert(divisor != ~i32::new());
         let mut res = ~i32::new();
-        if self.underlying >= ~i32::indent() && divisor.underlying >= ~i32::indent() {
+        if self.underlying >= ~i32::indent() && divisor.underlying > ~i32::indent() {
             res = ~i32::from((self.underlying - ~i32::indent()) / (divisor.underlying -~i32::indent()) + ~i32::indent());
         } else if self.underlying < ~i32::indent() && divisor.underlying < ~i32::indent() {
             res = ~i32::from((~i32::indent() - self.underlying) / (~i32::indent() - divisor.underlying) + ~i32::indent());
         } else if self.underlying >= ~i32::indent() && divisor.underlying < ~i32::indent() {
             res = ~i32::from(~i32::indent() - (self.underlying - ~i32::indent()) / (~i32::indent() - divisor.underlying));
-        } else if self.underlying < ~i32::indent() && divisor.underlying >= ~i32::indent() {
-            res = ~i32::from(~i32::indent() - (divisor.underlying - ~i32::indent()) / (~i32::indent() - self.underlying));
+        } else if self.underlying < ~i32::indent() && divisor.underlying > ~i32::indent() {
+            res = ~i32::from(~i32::indent() - (~i32::indent() - self.underlying) / (divisor.underlying - ~i32::indent()));
         }
         res
     }

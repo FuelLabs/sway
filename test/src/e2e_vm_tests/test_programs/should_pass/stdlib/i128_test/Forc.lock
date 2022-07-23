@@ -1,0 +1,14 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-5340E4F7C2F2C9E9'
+dependencies = []
+
+[[package]]
+name = 'i128_test'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-5340E4F7C2F2C9E9'
+dependencies = ['core']

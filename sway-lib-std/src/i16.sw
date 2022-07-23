@@ -3,7 +3,7 @@ library i16;
 use core::num::*;
 use ::assert::assert;
 
-/// The 8-bit signed integer type.
+/// The 16-bit signed integer type.
 /// Represented as an underlying u16 value.
 pub struct i16 {
     underlying: u16,
@@ -125,15 +125,16 @@ impl core::ops::Multiply for i16 {
 impl core::ops::Divide for i16 {
     /// Divide a i16 by a i16. Panics if divisor is zero.
     pub fn divide(self, divisor: Self) -> Self {
+        assert(divisor != ~i16::new());
         let mut res = ~i16::new();
-        if self.underlying >= ~i16::indent() && divisor.underlying >= ~i16::indent() {
+        if self.underlying >= ~i16::indent() && divisor.underlying > ~i16::indent() {
             res = ~i16::from((self.underlying - ~i16::indent()) / (divisor.underlying -~i16::indent()) + ~i16::indent());
         } else if self.underlying < ~i16::indent() && divisor.underlying < ~i16::indent() {
             res = ~i16::from((~i16::indent() - self.underlying) / (~i16::indent() - divisor.underlying) + ~i16::indent());
         } else if self.underlying >= ~i16::indent() && divisor.underlying < ~i16::indent() {
             res = ~i16::from(~i16::indent() - (self.underlying - ~i16::indent()) / (~i16::indent() - divisor.underlying));
-        } else if self.underlying < ~i16::indent() && divisor.underlying >= ~i16::indent() {
-            res = ~i16::from(~i16::indent() - (divisor.underlying - ~i16::indent()) / (~i16::indent() - self.underlying));
+        } else if self.underlying < ~i16::indent() && divisor.underlying > ~i16::indent() {
+            res = ~i16::from(~i16::indent() - (~i16::indent() - self.underlying) / (divisor.underlying - ~i16::indent()));
         }
         res
     }

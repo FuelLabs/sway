@@ -3,7 +3,7 @@ library i64;
 use core::num::*;
 use ::assert::assert;
 
-/// The 8-bit signed integer type.
+/// The 64-bit signed integer type.
 /// Represented as an underlying u64 value.
 pub struct i64 {
     underlying: u64,
@@ -125,15 +125,16 @@ impl core::ops::Multiply for i64 {
 impl core::ops::Divide for i64 {
     /// Divide a i64 by a i64. Panics if divisor is zero.
     pub fn divide(self, divisor: Self) -> Self {
+        assert(divisor != ~i64::new());
         let mut res = ~i64::new();
-        if self.underlying >= ~i64::indent() && divisor.underlying >= ~i64::indent() {
+        if self.underlying >= ~i64::indent() && divisor.underlying > ~i64::indent() {
             res = ~i64::from((self.underlying - ~i64::indent()) / (divisor.underlying -~i64::indent()) + ~i64::indent());
         } else if self.underlying < ~i64::indent() && divisor.underlying < ~i64::indent() {
             res = ~i64::from((~i64::indent() - self.underlying) / (~i64::indent() - divisor.underlying) + ~i64::indent());
         } else if self.underlying >= ~i64::indent() && divisor.underlying < ~i64::indent() {
             res = ~i64::from(~i64::indent() - (self.underlying - ~i64::indent()) / (~i64::indent() - divisor.underlying));
-        } else if self.underlying < ~i64::indent() && divisor.underlying >= ~i64::indent() {
-            res = ~i64::from(~i64::indent() - (divisor.underlying - ~i64::indent()) / (~i64::indent() - self.underlying));
+        } else if self.underlying < ~i64::indent() && divisor.underlying > ~i64::indent() {
+            res = ~i64::from(~i64::indent() - (~i64::indent() - self.underlying) / (divisor.underlying - ~i64::indent()));
         }
         res
     }

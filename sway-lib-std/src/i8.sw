@@ -125,15 +125,16 @@ impl core::ops::Multiply for i8 {
 impl core::ops::Divide for i8 {
     /// Divide a i8 by a i8. Panics if divisor is zero.
     pub fn divide(self, divisor: Self) -> Self {
+        assert(divisor != ~i8::new());
         let mut res = ~i8::new();
-        if self.underlying >= ~i8::indent() && divisor.underlying >= ~i8::indent() {
+        if self.underlying >= ~i8::indent() && divisor.underlying > ~i8::indent() {
             res = ~i8::from((self.underlying - ~i8::indent()) / (divisor.underlying -~i8::indent()) + ~i8::indent());
         } else if self.underlying < ~i8::indent() && divisor.underlying < ~i8::indent() {
             res = ~i8::from((~i8::indent() - self.underlying) / (~i8::indent() - divisor.underlying) + ~i8::indent());
         } else if self.underlying >= ~i8::indent() && divisor.underlying < ~i8::indent() {
             res = ~i8::from(~i8::indent() - (self.underlying - ~i8::indent()) / (~i8::indent() - divisor.underlying));
-        } else if self.underlying < ~i8::indent() && divisor.underlying >= ~i8::indent() {
-            res = ~i8::from(~i8::indent() - (divisor.underlying - ~i8::indent()) / (~i8::indent() - self.underlying));
+        } else if self.underlying < ~i8::indent() && divisor.underlying > ~i8::indent() {
+            res = ~i8::from(~i8::indent() - (~i8::indent() - self.underlying) / (divisor.underlying - ~i8::indent()));
         }
         res
     }
