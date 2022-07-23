@@ -62,6 +62,10 @@ pub enum Instruction {
     },
     /// Generate a unique integer value
     GetStorageKey,
+    Gtf {
+        index: Value,
+        tx_field_id: u64,
+    },
     /// Return a pointer as a value.
     GetPointer {
         base_ptr: Pointer,
@@ -82,6 +86,8 @@ pub enum Instruction {
         value: Value,
         indices: Vec<u64>,
     },
+    /// Re-interpret an integer value as pointer of some type
+    IntToPtr(Value, Type),
     /// Read a value from a memory pointer.
     Load(Value),
     /// No-op, handy as a placeholder instruction.
@@ -93,17 +99,29 @@ pub enum Instruction {
     /// Return from a function.
     Ret(Value, Type),
     /// Read a quad word from a storage slot. Type of `load_val` must be a B256 ptr.
-    StateLoadQuadWord { load_val: Value, key: Value },
+    StateLoadQuadWord {
+        load_val: Value,
+        key: Value,
+    },
     /// Read a single word from a storage slot.
     StateLoadWord(Value),
     /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
     /// Uint(256) ptr.
-    StateStoreQuadWord { stored_val: Value, key: Value },
+    StateStoreQuadWord {
+        stored_val: Value,
+        key: Value,
+    },
     /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
     /// Uint(64) value.
-    StateStoreWord { stored_val: Value, key: Value },
+    StateStoreWord {
+        stored_val: Value,
+        key: Value,
+    },
     /// Write a value to a memory pointer.
-    Store { dst_val: Value, stored_val: Value },
+    Store {
+        dst_val: Value,
+        stored_val: Value,
+    },
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -161,6 +179,7 @@ impl Instruction {
             Instruction::ExtractElement { ty, .. } => ty.get_elem_type(context),
             Instruction::ExtractValue { ty, indices, .. } => ty.get_field_type(context, indices),
             Instruction::GetStorageKey => Some(Type::B256),
+            Instruction::Gtf { .. } => Some(Type::Uint(64)),
             Instruction::InsertElement { array, .. } => array.get_type(context),
             Instruction::InsertValue { aggregate, .. } => aggregate.get_type(context),
             Instruction::Load(ptr_val) => {
@@ -180,6 +199,9 @@ impl Instruction {
 
             // These can be recursed to via Load, so we return the pointer type.
             Instruction::GetPointer { ptr_ty, .. } => Some(*ptr_ty),
+
+            // Used to re-interpret an integer as a pointer to some type so return the pointer type.
+            Instruction::IntToPtr(_, ty) => Some(*ty),
 
             // These are all terminators which don't return, essentially.  No type.
             Instruction::Branch(_) => None,
@@ -290,6 +312,8 @@ impl Instruction {
             }
             Instruction::ExtractValue { aggregate, .. } => replace(aggregate),
             Instruction::GetStorageKey => (),
+            Instruction::Gtf { index, .. } => replace(index),
+            Instruction::IntToPtr(value, _) => replace(value),
             Instruction::Load(_) => (),
             Instruction::Nop => (),
             Instruction::Phi(pairs) => pairs.iter_mut().for_each(|(_, val)| replace(val)),
@@ -416,6 +440,19 @@ impl<'a> InstructionInserter<'a> {
             .instructions
             .push(bitcast_val);
         bitcast_val
+    }
+
+    pub fn int_to_ptr(self, value: Value, ty: Type, span_md_idx: Option<MetadataIndex>) -> Value {
+        let int_to_ptr_val = Value::new_instruction(
+            self.context,
+            Instruction::IntToPtr(value, ty),
+            span_md_idx,
+            None,
+        );
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(int_to_ptr_val);
+        int_to_ptr_val
     }
 
     pub fn branch(
@@ -590,6 +627,17 @@ impl<'a> InstructionInserter<'a> {
             .instructions
             .push(get_storage_key_val);
         get_storage_key_val
+    }
+
+    pub fn gtf(self, index: Value, tx_field_id: u64, span_md_idx: Option<MetadataIndex>) -> Value {
+        let gtf_val = Value::new_instruction(
+            self.context,
+            Instruction::Gtf { index, tx_field_id },
+            span_md_idx,
+            None,
+        );
+        self.context.blocks[self.block.0].instructions.push(gtf_val);
+        gtf_val
     }
 
     pub fn get_ptr(

@@ -1,17 +1,16 @@
-use std::collections::HashMap;
+use dashmap::DashMap;
 use sway_core::semantic_analysis::ast_node::{
     expression::typed_expression::TypedExpression, TypeCheckedStorageReassignDescriptor,
     TypedDeclaration, TypedEnumVariant, TypedFunctionDeclaration, TypedFunctionParameter,
     TypedReassignment, TypedStorageField, TypedStructField, TypedTraitFn,
 };
-use sway_types::{Ident, Span};
-
 use sway_core::{
     Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter, Reassignment,
     StorageField, StructField, TraitFn,
 };
+use sway_types::{Ident, Span};
 
-pub type TokenMap = HashMap<(Ident, Span), TokenType>;
+pub type TokenMap = DashMap<(Ident, Span), TokenType>;
 
 #[derive(Debug, Clone)]
 pub struct TokenType {

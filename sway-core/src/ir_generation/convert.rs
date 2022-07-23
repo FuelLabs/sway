@@ -9,8 +9,6 @@ use super::types::{create_enum_aggregate, create_tuple_aggregate};
 use sway_ir::{Aggregate, Constant, Context, MetadataIndex, Type, Value};
 use sway_types::span::Span;
 
-use std::sync::Arc;
-
 pub(super) fn convert_literal_to_value(
     context: &mut Context,
     ast_literal: &Literal,
@@ -72,7 +70,7 @@ pub(super) fn convert_resolved_typeid_no_span(
     ast_type: &TypeId,
 ) -> Result<Type, CompileError> {
     let msg = "unknown source location";
-    let span = crate::span::Span::new(Arc::from(msg), 0, msg.len(), None).unwrap();
+    let span = crate::span::Span::from_string(msg.to_string());
     convert_resolved_typeid(context, ast_type, &span)
 }
 

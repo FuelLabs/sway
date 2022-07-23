@@ -19,7 +19,8 @@ async fn setup() -> MyContract {
         &wallet,
         TxParameters::default(),
         StorageConfiguration::with_storage_path(Some(
-            "test_projects/option_field_order/out/debug/option_field_order-storage_slots.json".to_string(),
+            "test_projects/option_field_order/out/debug/option_field_order-storage_slots.json"
+                .to_string(),
         )),
     )
     .await
