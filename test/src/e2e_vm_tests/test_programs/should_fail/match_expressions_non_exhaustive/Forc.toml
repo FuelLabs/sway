@@ -6,4 +6,4 @@ entry = "main.sw"
 implicit-std = false
 
 [dependencies]
-core = { path = "../../../../../../../sway-lib-core" }
+core = { path = "../../../../../../sway-lib-core" }

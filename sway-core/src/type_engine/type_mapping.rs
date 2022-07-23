@@ -1,5 +1,3 @@
-use crate::TypeParameter;
-
 use super::*;
 
 pub(crate) type TypeMapping = Vec<(TypeId, TypeId)>;
@@ -36,10 +34,15 @@ pub(crate) fn create_type_mapping(superset_type: TypeId, subset_type: TypeId) ->
             TypeInfo::Custom { type_arguments, .. },
         ) => {
             let type_parameters = type_parameters
+                .unwrap_or_default()
                 .iter()
                 .map(|x| x.type_id)
                 .collect::<Vec<_>>();
-            let type_arguments = type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>();
+            let type_arguments = type_arguments
+                .unwrap_or_default()
+                .iter()
+                .map(|x| x.type_id)
+                .collect::<Vec<_>>();
             insert_type_parameters_with_type_arguments(type_parameters, type_arguments)
         }
         (

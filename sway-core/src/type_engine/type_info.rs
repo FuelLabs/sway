@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::{semantic_analysis::*, types::*, CallPath, Ident, TypeArgument, TypeParameter};
+use crate::{semantic_analysis::*, types::*, CallPath, Ident};
 
 use sway_types::{span::Span, Spanned};
 
@@ -67,7 +67,7 @@ pub enum TypeInfo {
     /// until the semantic analysis stage.
     Custom {
         name: Ident,
-        type_arguments: Vec<TypeArgument>,
+        type_arguments: Option<Vec<TypeArgument>>,
     },
     SelfType,
     Byte,
@@ -421,25 +421,64 @@ impl TypeInfo {
             }
             Byte => "byte".into(),
             B256 => "b256".into(),
-            Struct { fields, .. } => {
-                let names = fields
-                    .iter()
-                    .map(|field| {
-                        resolve_type(field.type_id, error_msg_span)
-                            .expect("unreachable?")
-                            .to_selector_name(error_msg_span)
-                    })
-                    .collect::<Vec<CompileResult<String>>>();
-                let mut buf = vec![];
-                for name in names {
-                    match name.value {
-                        Some(value) => buf.push(value),
-                        None => return name,
+            Struct {
+                fields,
+                type_parameters,
+                ..
+            } => {
+                let field_names = {
+                    let names = fields
+                        .iter()
+                        .map(|ty| {
+                            let ty = match resolve_type(ty.type_id, error_msg_span) {
+                                Err(e) => return err(vec![], vec![e.into()]),
+                                Ok(ty) => ty,
+                            };
+                            ty.to_selector_name(error_msg_span)
+                        })
+                        .collect::<Vec<CompileResult<String>>>();
+                    let mut buf = vec![];
+                    for name in names {
+                        match name.value {
+                            Some(value) => buf.push(value),
+                            None => return name,
+                        }
                     }
+                    buf
+                };
+
+                let type_arguments = {
+                    let type_arguments = type_parameters
+                        .iter()
+                        .map(|ty| {
+                            let ty = match resolve_type(ty.type_id, error_msg_span) {
+                                Err(e) => return err(vec![], vec![e.into()]),
+                                Ok(ty) => ty,
+                            };
+                            ty.to_selector_name(error_msg_span)
+                        })
+                        .collect::<Vec<CompileResult<String>>>();
+                    let mut buf = vec![];
+                    for arg in type_arguments {
+                        match arg.value {
+                            Some(value) => buf.push(value),
+                            None => return arg,
+                        }
+                    }
+                    buf
+                };
+
+                if type_arguments.is_empty() {
+                    format!("s({})", field_names.join(","))
+                } else {
+                    format!("s<{}>({})", type_arguments.join(","), field_names.join(","))
                 }
-                format!("s({})", buf.join(","))
             }
-            Enum { variant_types, .. } => {
+            Enum {
+                variant_types,
+                type_parameters,
+                ..
+            } => {
                 let variant_names = {
                     let names = variant_types
                         .iter()
@@ -461,7 +500,35 @@ impl TypeInfo {
                     buf
                 };
 
-                format!("e({})", variant_names.join(","))
+                let type_arguments = {
+                    let type_arguments = type_parameters
+                        .iter()
+                        .map(|ty| {
+                            let ty = match resolve_type(ty.type_id, error_msg_span) {
+                                Err(e) => return err(vec![], vec![e.into()]),
+                                Ok(ty) => ty,
+                            };
+                            ty.to_selector_name(error_msg_span)
+                        })
+                        .collect::<Vec<CompileResult<String>>>();
+                    let mut buf = vec![];
+                    for arg in type_arguments {
+                        match arg.value {
+                            Some(value) => buf.push(value),
+                            None => return arg,
+                        }
+                    }
+                    buf
+                };
+                if type_arguments.is_empty() {
+                    format!("e({})", variant_names.join(","))
+                } else {
+                    format!(
+                        "e<{}>({})",
+                        type_arguments.join(","),
+                        variant_names.join(",")
+                    )
+                }
             }
             Array(type_id, size) => {
                 let name = look_up_type_id(*type_id).to_selector_name(error_msg_span);
@@ -549,6 +616,63 @@ impl TypeInfo {
         match self {
             TypeInfo::Tuple(fields) => fields.is_empty(),
             _ => false,
+        }
+    }
+
+    pub(crate) fn apply_type_arguments(
+        self,
+        type_arguments: Vec<TypeArgument>,
+        span: &Span,
+    ) -> CompileResult<TypeInfo> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        if type_arguments.is_empty() {
+            return ok(self, warnings, errors);
+        }
+        match self {
+            TypeInfo::Enum { .. } | TypeInfo::Struct { .. } => {
+                errors.push(CompileError::Internal(
+                    "did not expect to apply type arguments to this type",
+                    span.clone(),
+                ));
+                err(warnings, errors)
+            }
+            TypeInfo::Ref(type_id, _) => {
+                look_up_type_id(type_id).apply_type_arguments(type_arguments, span)
+            }
+            TypeInfo::Custom {
+                name,
+                type_arguments: other_type_arguments,
+            } => {
+                if other_type_arguments.is_some() {
+                    errors.push(CompileError::TypeArgumentsNotAllowed { span: span.clone() });
+                    err(warnings, errors)
+                } else {
+                    let type_info = TypeInfo::Custom {
+                        name,
+                        type_arguments: Some(type_arguments),
+                    };
+                    ok(type_info, warnings, errors)
+                }
+            }
+            TypeInfo::Unknown
+            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::Str(_)
+            | TypeInfo::UnsignedInteger(_)
+            | TypeInfo::Boolean
+            | TypeInfo::Tuple(_)
+            | TypeInfo::ContractCaller { .. }
+            | TypeInfo::SelfType
+            | TypeInfo::Byte
+            | TypeInfo::B256
+            | TypeInfo::Numeric
+            | TypeInfo::Contract
+            | TypeInfo::ErrorRecovery
+            | TypeInfo::Array(_, _)
+            | TypeInfo::Storage { .. } => {
+                errors.push(CompileError::TypeArgumentsNotAllowed { span: span.clone() });
+                err(warnings, errors)
+            }
         }
     }
 
@@ -948,10 +1072,14 @@ impl TypeInfo {
                 },
             ) => {
                 let l_types = l_type_args
+                    .as_ref()
+                    .unwrap_or(&vec![])
                     .iter()
                     .map(|x| look_up_type_id(x.type_id))
                     .collect::<Vec<_>>();
                 let r_types = r_type_args
+                    .as_ref()
+                    .unwrap_or(&vec![])
                     .iter()
                     .map(|x| look_up_type_id(x.type_id))
                     .collect::<Vec<_>>();
@@ -1137,6 +1265,29 @@ impl TypeInfo {
                 vec![],
                 vec![CompileError::NotAnEnum {
                     name: debug_string.into(),
+                    span: debug_span.clone(),
+                    actually: a.to_string(),
+                }],
+            ),
+        }
+    }
+
+    /// Given a `TypeInfo` `self`, expect that `self` is a `TypeInfo::Struct`,
+    /// and return its contents.
+    ///
+    /// Returns an error if `self` is not a `TypeInfo::Struct`.
+    pub(crate) fn expect_struct(
+        &self,
+        debug_span: &Span,
+    ) -> CompileResult<(&Ident, &Vec<TypedStructField>)> {
+        let warnings = vec![];
+        let errors = vec![];
+        match self {
+            TypeInfo::Struct { name, fields, .. } => ok((name, fields), warnings, errors),
+            TypeInfo::ErrorRecovery => err(warnings, errors),
+            a => err(
+                vec![],
+                vec![CompileError::NotAStruct {
                     span: debug_span.clone(),
                     actually: a.to_string(),
                 }],

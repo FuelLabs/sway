@@ -6,34 +6,17 @@ use sway_types::{Ident, Spanned};
 /// [TypedExpression].
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_enum(
+    ctx: TypeCheckContext,
     enum_decl: TypedEnumDeclaration,
-    enum_field_name: Ident,
+    enum_variant_name: Ident,
     args: Vec<Expression>,
-    type_arguments: Vec<TypeArgument>,
-    namespace: &mut Namespace,
-    self_type: TypeId,
-    opts: TCOpts,
 ) -> CompileResult<TypedExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    // monomorphize the enum definition with the type arguments
-    let enum_decl = check!(
-        namespace.monomorphize(
-            enum_decl,
-            type_arguments,
-            EnforceTypeArguments::No,
-            Some(self_type),
-            Some(&enum_field_name.span())
-        ),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
     let enum_variant = check!(
         enum_decl
-            .expect_variant_from_name(&enum_field_name)
+            .expect_variant_from_name(&enum_variant_name)
             .cloned(),
         return err(warnings, errors),
         warnings,
@@ -52,25 +35,20 @@ pub(crate) fn instantiate_enum(
                     contents: None,
                     enum_decl,
                     variant_name: enum_variant.name,
-                    instantiation_span: enum_field_name.span(),
+                    instantiation_span: enum_variant_name.span(),
                 },
                 is_constant: IsConstant::No,
-                span: enum_field_name.span(),
+                span: enum_variant_name.span(),
             },
             warnings,
             errors,
         ),
         ([single_expr], _) => {
+            let ctx = ctx
+                .with_help_text("Enum instantiator must match its declared variant type.")
+                .with_type_annotation(enum_variant.type_id);
             let typed_expr = check!(
-                TypedExpression::type_check(TypeCheckArguments {
-                    checkee: single_expr.clone(),
-                    namespace,
-                    return_type_annotation: enum_variant.type_id,
-                    help_text: "Enum instantiator must match its declared variant type.",
-                    self_type,
-                    mode: Mode::NonAbi,
-                    opts,
-                }),
+                TypedExpression::type_check(ctx, single_expr.clone()),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -87,10 +65,10 @@ pub(crate) fn instantiate_enum(
                         contents: Some(Box::new(typed_expr)),
                         enum_decl,
                         variant_name: enum_variant.name,
-                        instantiation_span: enum_field_name.span(),
+                        instantiation_span: enum_variant_name.span(),
                     },
                     is_constant: IsConstant::No,
-                    span: enum_field_name.span(),
+                    span: enum_variant_name.span(),
                 },
                 warnings,
                 errors,
@@ -98,19 +76,19 @@ pub(crate) fn instantiate_enum(
         }
         ([], _) => {
             errors.push(CompileError::MissingEnumInstantiator {
-                span: enum_field_name.span(),
+                span: enum_variant_name.span(),
             });
             err(warnings, errors)
         }
         (_too_many_expressions, ty) if ty.is_unit() => {
             errors.push(CompileError::UnnecessaryEnumInstantiator {
-                span: enum_field_name.span(),
+                span: enum_variant_name.span(),
             });
             err(warnings, errors)
         }
         (_too_many_expressions, ty) => {
             errors.push(CompileError::MoreThanOneEnumInstantiator {
-                span: enum_field_name.span(),
+                span: enum_variant_name.span(),
                 ty: ty.to_string(),
             });
             err(warnings, errors)

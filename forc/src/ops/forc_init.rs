@@ -1,73 +1,11 @@
 use crate::cli::InitCommand;
-use crate::utils::{
-    defaults,
-    program_type::{ProgramType, ProgramType::*},
-};
-use anyhow::Result;
-use forc_util::{println_green, validate_name};
-use serde::Deserialize;
+use crate::utils::{defaults, program_type::ProgramType::*};
+use anyhow::{Context, Result};
+use forc_util::validate_name;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use sway_utils::constants;
 use tracing::info;
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "lowercase")]
-enum FileType {
-    File,
-    Dir,
-}
-
-// Dead fields required for deserialization.
-#[allow(dead_code)]
-#[derive(serde::Deserialize, Debug)]
-struct Links {
-    git: String,
-    html: String,
-    #[serde(rename = "self")]
-    cur: String,
-}
-
-// Dead fields required for deserialization.
-#[allow(dead_code)]
-#[derive(serde::Deserialize, Debug)]
-struct ContentResponse {
-    #[serde(rename = "_links")]
-    links: Links,
-    download_url: Option<String>,
-    git_url: String,
-    html_url: String,
-    name: String,
-    path: String,
-    sha: String,
-    size: u64,
-    #[serde(rename = "type")]
-    file_type: FileType,
-    url: String,
-}
-
-#[allow(dead_code)]
-#[derive(serde::Deserialize)]
-struct GithubRepoResponse {
-    sha: String,
-    url: String,
-    // We only care about the tree here
-    tree: Vec<GithubTree>,
-    truncated: bool,
-}
-
-#[allow(dead_code)]
-#[derive(serde::Deserialize)]
-struct GithubTree {
-    mode: String,
-    // We only care about the "path" which are files / directory names
-    path: String,
-    sha: String,
-    size: Option<usize>,
-    #[serde(rename = "type")]
-    data_type: String,
-    url: String,
-}
 
 fn print_welcome_message() {
     let read_the_docs = format!(
@@ -97,7 +35,40 @@ fn print_welcome_message() {
 }
 
 pub fn init(command: InitCommand) -> Result<()> {
-    let project_name = command.project_name;
+    let project_dir = match &command.path {
+        Some(p) => PathBuf::from(p),
+        None => {
+            std::env::current_dir().context("Failed to get current directory for forc init.")?
+        }
+    };
+
+    if !project_dir.is_dir() {
+        anyhow::bail!("'{}' is not a valid directory.", project_dir.display());
+    }
+
+    if project_dir.join(constants::MANIFEST_FILE_NAME).exists() {
+        anyhow::bail!(
+            "'{}' already includes a Forc.toml file.",
+            project_dir.display()
+        );
+    }
+
+    if command.verbose {
+        info!(
+            "\nUsing project directory at {}",
+            project_dir.canonicalize()?.display()
+        );
+    }
+
+    let project_name = match command.name {
+        Some(name) => name,
+        None => project_dir
+            .file_stem()
+            .context("Failed to infer project name from directory name.")?
+            .to_string_lossy()
+            .into_owned(),
+    };
+
     validate_name(&project_name, "project name")?;
 
     let program_type = match (
@@ -112,62 +83,55 @@ pub fn init(command: InitCommand) -> Result<()> {
         (false, false, false, true) => Library,
         _ => anyhow::bail!(
             "Multiple types detected, please specify only one program type: \
-                \n Possible Types:\n - contract\n - script\n - predicate\n - library"
+        \n Possible Types:\n - contract\n - script\n - predicate\n - library"
         ),
     };
 
-    init_new_project(project_name, program_type)
-}
-
-pub(crate) fn init_new_project(project_name: String, program_type: ProgramType) -> Result<()> {
-    let neat_name: String = project_name.split('/').last().unwrap().to_string();
-
     // Make a new directory for the project
-    fs::create_dir_all(Path::new(&project_name).join("src"))?;
+    fs::create_dir_all(Path::new(&project_dir).join("src"))?;
 
     // Make directory for tests
-    fs::create_dir_all(Path::new(&project_name).join("tests"))?;
+    fs::create_dir_all(Path::new(&project_dir).join("tests"))?;
 
     // Insert default manifest file
     match program_type {
         Library => fs::write(
-            Path::new(&project_name).join(constants::MANIFEST_FILE_NAME),
-            defaults::default_manifest(&neat_name, constants::LIB_ENTRY),
+            Path::new(&project_dir).join(constants::MANIFEST_FILE_NAME),
+            defaults::default_manifest(&project_name, constants::LIB_ENTRY),
         )?,
         _ => fs::write(
-            Path::new(&project_name).join(constants::MANIFEST_FILE_NAME),
-            defaults::default_manifest(&neat_name, constants::MAIN_ENTRY),
+            Path::new(&project_dir).join(constants::MANIFEST_FILE_NAME),
+            defaults::default_manifest(&project_name, constants::MAIN_ENTRY),
         )?,
     }
 
     // Insert default test manifest file
     fs::write(
-        Path::new(&project_name).join(constants::TEST_MANIFEST_FILE_NAME),
-        defaults::default_tests_manifest(&neat_name),
+        Path::new(&project_dir).join(constants::TEST_MANIFEST_FILE_NAME),
+        defaults::default_tests_manifest(&project_name),
     )?;
 
-    // Insert src based on program_type
     match program_type {
         Contract => fs::write(
-            Path::new(&project_name)
+            Path::new(&project_dir)
                 .join("src")
                 .join(constants::MAIN_ENTRY),
             defaults::default_contract(),
         )?,
         Script => fs::write(
-            Path::new(&project_name)
+            Path::new(&project_dir)
                 .join("src")
                 .join(constants::MAIN_ENTRY),
             defaults::default_script(),
         )?,
         Library => fs::write(
-            Path::new(&project_name)
+            Path::new(&project_dir)
                 .join("src")
                 .join(constants::LIB_ENTRY),
             defaults::default_library(&project_name),
         )?,
         Predicate => fs::write(
-            Path::new(&project_name)
+            Path::new(&project_dir)
                 .join("src")
                 .join(constants::MAIN_ENTRY),
             defaults::default_predicate(),
@@ -175,20 +139,30 @@ pub(crate) fn init_new_project(project_name: String, program_type: ProgramType) 
     }
 
     // Insert default test function
-    fs::write(
-        Path::new(&project_name).join("tests").join("harness.rs"),
-        defaults::default_test_program(&project_name),
-    )?;
+    let harness_path = Path::new(&project_dir).join("tests").join("harness.rs");
+    fs::write(&harness_path, defaults::default_test_program(&project_name))?;
+
+    if command.verbose {
+        info!(
+            "\nCreated test harness at {}",
+            harness_path.canonicalize()?.display()
+        );
+    }
 
     // Ignore default `out` and `target` directories created by forc and cargo.
-    fs::write(
-        Path::new(&project_name).join(".gitignore"),
-        defaults::default_gitignore(),
-    )?;
+    let gitignore_path = Path::new(&project_dir).join(".gitignore");
+    fs::write(&gitignore_path, defaults::default_gitignore())?;
 
-    println_green(&format!(
-        "Successfully created {program_type}: {project_name}",
-    ));
+    if command.verbose {
+        info!(
+            "\nCreated .gitignore at {}",
+            gitignore_path.canonicalize()?.display()
+        );
+    }
+
+    if command.verbose {
+        info!("\nSuccessfully created {program_type}: {project_name}",);
+    }
 
     print_welcome_message();
 

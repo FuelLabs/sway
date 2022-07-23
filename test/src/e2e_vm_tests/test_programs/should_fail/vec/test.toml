@@ -1,0 +1,10 @@
+category = "fail"
+
+# check: vector.push(false);
+# nextln: $()This parameter was declared as type u8, but argument of type bool was provided.
+
+# check: vector.push("this should break it 1");
+# nextln: $()This parameter was declared as type u8, but argument of type str[22] was provided.
+
+# check: vector.push("this should break it 2");
+# nextln: $()This parameter was declared as type u8, but argument of type str[22] was provided.

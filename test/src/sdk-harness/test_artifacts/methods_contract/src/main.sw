@@ -2,11 +2,10 @@ contract;
 
 use methods_abi::MethodsContract;
 
-use std::result::*;
 use std::identity::*;
 use std::chain::auth::*;
 use std::option::*;
-use std::assert::*;
+use std::revert::*;
 
 fn bogus() -> Identity {
     let sender = msg_sender();
@@ -18,16 +17,17 @@ fn bogus2() -> Identity {
 }
 
 struct MyStruct {
-    int_option: Option<u64>
+    int_option: Option<u64>,
 }
 
 storage {
-    stored_struct: MyStruct,
+    stored_struct: MyStruct = MyStruct {
+        int_option: Option::None,
+    },
 }
 
 impl MethodsContract for Contract {
-    #[storage(read, write)]
-    fn test_function() -> bool {
+    #[storage(read, write)]fn test_function() -> bool {
         let identity = bogus();
         let identity2 = bogus2();
         storage.stored_struct = MyStruct {

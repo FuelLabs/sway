@@ -129,6 +129,9 @@ impl<'a> InstructionVerifier<'a> {
                         ptr_ty,
                         offset,
                     } => self.verify_get_ptr(base_ptr, ptr_ty, offset)?,
+                    Instruction::Gtf { index, tx_field_id } => {
+                        self.verify_gtf(index, tx_field_id)?
+                    }
                     Instruction::InsertElement {
                         array,
                         ty,
@@ -141,6 +144,7 @@ impl<'a> InstructionVerifier<'a> {
                         value,
                         indices,
                     } => self.verify_insert_value(aggregate, ty, value, indices)?,
+                    Instruction::IntToPtr(value, ty) => self.verify_int_to_ptr(value, ty)?,
                     Instruction::Load(ptr) => self.verify_load(ptr)?,
                     Instruction::Nop => (),
                     Instruction::Phi(pairs) => self.verify_phi(&pairs[..])?,
@@ -173,10 +177,9 @@ impl<'a> InstructionVerifier<'a> {
 
     fn verify_bitcast(&self, value: &Value, ty: &Type) -> Result<(), IrError> {
         // The to and from types must be copy-types, excluding short strings, and the same size.
-        let val_ty = match value.get_type(self.context) {
-            None => return Err(IrError::VerifyBitcastUnknownSourceType),
-            Some(ty) => ty,
-        };
+        let val_ty = value
+            .get_type(self.context)
+            .ok_or(IrError::VerifyBitcastUnknownSourceType)?;
         if !val_ty.is_copy_type() {
             return Err(IrError::VerifyBitcastFromNonCopyType(
                 val_ty.as_string(self.context),
@@ -305,6 +308,7 @@ impl<'a> InstructionVerifier<'a> {
                         Ok(())
                     }
                 }
+                (Type::Bool, Type::Bool) => Ok(()),
                 _otherwise => Err(IrError::VerifyCmpBadTypes(
                     lhs_ty.as_string(self.context),
                     rhs_ty.as_string(self.context),
@@ -416,6 +420,15 @@ impl<'a> InstructionVerifier<'a> {
         }
     }
 
+    fn verify_gtf(&self, index: &Value, _tx_field_id: &u64) -> Result<(), IrError> {
+        // We should perhaps verify that _tx_field_id fits in a twelve bit immediate
+        if !matches!(index.get_type(self.context), Some(Type::Uint(_))) {
+            Err(IrError::VerifyInvalidGtfIndexType)
+        } else {
+            Ok(())
+        }
+    }
+
     fn verify_insert_element(
         &self,
         array: &Value,
@@ -466,6 +479,26 @@ impl<'a> InstructionVerifier<'a> {
             }
             _otherwise => Err(IrError::VerifyAccessValueOnNonStruct),
         }
+    }
+
+    fn verify_int_to_ptr(&self, value: &Value, ty: &Type) -> Result<(), IrError> {
+        // We want the source value to be an integer and the destination type to be a reference
+        // type.
+        let val_ty = value
+            .get_type(self.context)
+            .ok_or(IrError::VerifyIntToPtrUnknownSourceType)?;
+        if !matches!(val_ty, Type::Uint(64)) {
+            return Err(IrError::VerifyIntToPtrFromNonIntegerType(
+                val_ty.as_string(self.context),
+            ));
+        }
+        if ty.is_copy_type() {
+            return Err(IrError::VerifyIntToPtrToCopyType(
+                val_ty.as_string(self.context),
+            ));
+        }
+
+        Ok(())
     }
 
     fn verify_load(&self, src_val: &Value) -> Result<(), IrError> {
@@ -625,10 +658,7 @@ impl<'a> InstructionVerifier<'a> {
     }
 
     fn is_local_pointer(&self, ptr: &Pointer) -> bool {
-        self.cur_function
-            .local_storage
-            .values()
-            .any(|local_ptr| local_ptr == ptr)
+        self.cur_function.local_storage.values().any(|x| x == ptr)
     }
 
     // This is a really common operation above... calling `Value::get_type()` and then failing when

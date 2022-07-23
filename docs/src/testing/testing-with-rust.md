@@ -1,9 +1,9 @@
 # Testing with Rust
 
-If you look again at the project structure when you create a [new Forc project](../introduction/forc_project.md) with `forc init`, you can see a directory called `tests/`:
+If you look again at the project structure when you create a [new Forc project](../introduction/forc_project.md) with `forc new`, you can see a directory called `tests/`:
 
 ```plaintext
-$ forc init my-fuel-project
+$ forc new my-fuel-project
 $ cd my-fuel-project
 $ tree .
 ├── Cargo.toml
@@ -16,7 +16,7 @@ $ tree .
 
 Note that this is also a Rust package, hence the existence of a `Cargo.toml` (Rust manifest file) in the project root directory. The `Cargo.toml` in the root directory contains necessary Rust dependencies to enable you to write Rust-based tests using our [Rust SDK](https://github.com/FuelLabs/fuels-rs), (`fuels-rs`).
 
-These tests can be run using `forc test` which will look for Rust tests under the `tests/` directory (created automatically with `forc init` and prepopulated with boilerplate code).
+These tests can be run using `forc test` which will look for Rust tests under the `tests/` directory (created automatically with `forc new` and prepopulated with boilerplate code).
 
 For example, let's write tests against the following contract, written in Sway. This can be done in the pregenerated `src/main.sw` or in a new file in `src`. In the case of the latter, update the `entry` field in `Forc.toml` to point at the new contract.
 
@@ -30,20 +30,26 @@ Our `tests/harness.rs` file could look like:
 
 ```rust,ignore
 use fuels::{prelude::*, tx::ContractId};
-use fuels_abigen_macro::abigen;
 
 // Load abi from json
-abigen!(MyContract, "out/debug/my-fuel-project-abi.json");
+abigen!(TestContract, "out/debug/my-fuel-project-abi.json");
 
-async fn get_contract_instance() -> (MyContract, ContractId) {
+async fn get_contract_instance() -> (TestContract, ContractId) {
     // Launch a local network and deploy the contract
-    let wallet = launch_provider_and_get_single_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await;
 
-    let id = Contract::deploy("./out/debug/my-fuel-project.bin", &wallet, TxParameters::default())
-        .await
-        .unwrap();
+    let id = Contract::deploy(
+        "./out/debug/my-fuel-project.bin",
+        &wallet,
+        TxParameters::default(),
+        StorageConfiguration::with_storage_path(Some(
+            "./out/debug/my-fuel-project-storage_slots.json".to_string(),
+        )),
+    )
+    .await
+    .unwrap();
 
-    let instance = MyContract::new(id.to_string(), wallet);
+    let instance = TestContract::new(id.to_string(), wallet);
 
     (instance, id)
 }

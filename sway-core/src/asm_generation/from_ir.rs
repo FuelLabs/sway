@@ -30,7 +30,10 @@ use sway_types::{span::Span, Spanned};
 
 use either::Either;
 
-pub fn compile_ir_to_asm(ir: &Context, build_config: &BuildConfig) -> CompileResult<FinalizedAsm> {
+pub fn compile_ir_to_asm(
+    ir: &Context,
+    build_config: Option<&BuildConfig>,
+) -> CompileResult<FinalizedAsm> {
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
 
@@ -62,7 +65,10 @@ pub fn compile_ir_to_asm(ir: &Context, build_config: &BuildConfig) -> CompileRes
         Kind::Library | Kind::Predicate => todo!("libraries and predicates coming soon!"),
     };
 
-    if build_config.print_intermediate_asm {
+    if build_config
+        .map(|cfg| cfg.print_intermediate_asm)
+        .unwrap_or(false)
+    {
         tracing::info!("{}", asm);
     }
 
@@ -71,7 +77,10 @@ pub fn compile_ir_to_asm(ir: &Context, build_config: &BuildConfig) -> CompileRes
         .allocate_registers(&mut reg_seqr)
         .optimize();
 
-    if build_config.print_finalized_asm {
+    if build_config
+        .map(|cfg| cfg.print_finalized_asm)
+        .unwrap_or(false)
+    {
         tracing::info!("{}", finalized_asm);
     }
 
@@ -516,6 +525,9 @@ impl<'ir> AsmBuilder<'ir> {
                     ptr_ty,
                     offset,
                 } => self.compile_get_pointer(instr_val, base_ptr, ptr_ty, *offset),
+                Instruction::Gtf { index, tx_field_id } => {
+                    self.compile_gtf(instr_val, index, *tx_field_id)
+                }
                 Instruction::InsertElement {
                     array,
                     ty,
@@ -528,6 +540,7 @@ impl<'ir> AsmBuilder<'ir> {
                     indices,
                     ..
                 } => self.compile_insert_value(instr_val, aggregate, value, indices),
+                Instruction::IntToPtr(val, _) => self.compile_int_to_ptr(instr_val, val),
                 Instruction::Load(src_val) => check!(
                     self.compile_load(instr_val, src_val),
                     return err(warnings, errors),
@@ -1158,6 +1171,22 @@ impl<'ir> AsmBuilder<'ir> {
         }
     }
 
+    fn compile_gtf(&mut self, instr_val: &Value, index: &Value, tx_field_id: u64) {
+        let instr_reg = self.reg_seqr.next();
+        let index_reg = self.value_to_register(index);
+        self.bytecode.push(Op {
+            opcode: either::Either::Left(VirtualOp::GTF(
+                instr_reg,
+                index_reg,
+                VirtualImmediate12 {
+                    value: tx_field_id as u16,
+                },
+            )),
+            comment: "get transaction field".into(),
+            owning_span: instr_val.get_span(self.context),
+        });
+    }
+
     fn compile_insert_element(
         &mut self,
         instr_val: &Value,
@@ -1371,16 +1400,17 @@ impl<'ir> AsmBuilder<'ir> {
         self.reg_map.insert(*instr_val, base_reg);
     }
 
+    fn compile_int_to_ptr(&mut self, instr_val: &Value, int_to_ptr_val: &Value) {
+        let val_reg = self.value_to_register(int_to_ptr_val);
+        self.reg_map.insert(*instr_val, val_reg);
+    }
+
     fn compile_load(&mut self, instr_val: &Value, src_val: &Value) -> CompileResult<()> {
         let ptr = self.resolve_ptr(src_val);
         if ptr.value.is_none() {
             return ptr.map(|_| ());
         }
         let (ptr, _ptr_ty, _offset) = ptr.value.unwrap();
-        let load_size_in_words = size_bytes_in_words!(ir_type_size_in_bytes(
-            self.context,
-            ptr.get_type(self.context)
-        ));
         let instr_reg = self.reg_seqr.next();
         match self.ptr_map.get(&ptr) {
             None => unimplemented!("BUG? Uninitialised pointer."),
@@ -1394,24 +1424,28 @@ impl<'ir> AsmBuilder<'ir> {
                 }
                 Storage::Stack(word_offs) => {
                     let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
-                    // XXX Need to check for zero sized types?
-                    if load_size_in_words == 1 {
+                    if ptr.get_type(self.context).is_copy_type() {
                         // Value can fit in a register, so we load the value.
                         if word_offs > compiler_constants::TWELVE_BITS {
                             let offs_reg = self.reg_seqr.next();
+                            self.number_to_reg(
+                                word_offs * 8, // Base reg for LW is in bytes
+                                &offs_reg,
+                                instr_val.get_span(self.context),
+                            );
                             self.bytecode.push(Op {
                                 opcode: Either::Left(VirtualOp::ADD(
-                                    base_reg.clone(),
+                                    offs_reg.clone(),
                                     base_reg,
                                     offs_reg.clone(),
                                 )),
-                                comment: "insert_value absolute offset".into(),
+                                comment: "absolute offset for load".into(),
                                 owning_span: instr_val.get_span(self.context),
                             });
                             self.bytecode.push(Op {
                                 opcode: Either::Left(VirtualOp::LW(
                                     instr_reg.clone(),
-                                    offs_reg,
+                                    offs_reg.clone(),
                                     VirtualImmediate12 { value: 0 },
                                 )),
                                 comment: "load value".into(),
@@ -1753,136 +1787,130 @@ impl<'ir> AsmBuilder<'ir> {
                 Storage::Data(_) => unreachable!("BUG! Trying to store to the data section."),
                 Storage::Stack(word_offs) => {
                     let word_offs = *word_offs;
-                    let store_size_in_words = size_bytes_in_words!(ir_type_size_in_bytes(
-                        self.context,
-                        ptr.get_type(self.context)
-                    ));
-                    match store_size_in_words {
-                        // We can have empty sized types which we can ignore.
-                        0 => (),
-                        1 => {
-                            let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
+                    let store_type = ptr.get_type(self.context);
+                    let store_size_in_words =
+                        size_bytes_in_words!(ir_type_size_in_bytes(self.context, store_type));
+                    if store_type.is_copy_type() {
+                        let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
 
-                            // A single word can be stored with SW.
-                            let stored_reg = if !is_aggregate_ptr {
-                                // stored_reg is a value.
-                                stored_reg
-                            } else {
-                                // stored_reg is a pointer, even though size is 1.  We need to load it.
-                                let tmp_reg = self.reg_seqr.next();
-                                self.bytecode.push(Op {
-                                    opcode: Either::Left(VirtualOp::LW(
-                                        tmp_reg.clone(),
-                                        stored_reg,
-                                        VirtualImmediate12 { value: 0 },
-                                    )),
-                                    comment: "load for store".into(),
-                                    owning_span: instr_val.get_span(self.context),
-                                });
-                                tmp_reg
-                            };
-                            if word_offs > compiler_constants::TWELVE_BITS {
-                                let offs_reg = self.reg_seqr.next();
-                                self.number_to_reg(
-                                    word_offs,
-                                    &offs_reg,
-                                    instr_val.get_span(self.context),
-                                );
-                                self.bytecode.push(Op {
-                                    opcode: Either::Left(VirtualOp::ADD(
-                                        base_reg.clone(),
-                                        base_reg,
-                                        offs_reg.clone(),
-                                    )),
-                                    comment: "store absolute offset".into(),
-                                    owning_span: instr_val.get_span(self.context),
-                                });
-                                self.bytecode.push(Op {
-                                    opcode: Either::Left(VirtualOp::SW(
-                                        offs_reg,
-                                        stored_reg,
-                                        VirtualImmediate12 { value: 0 },
-                                    )),
-                                    comment: "store value".into(),
-                                    owning_span: instr_val.get_span(self.context),
-                                });
-                            } else {
-                                self.bytecode.push(Op {
-                                    opcode: Either::Left(VirtualOp::SW(
-                                        base_reg,
-                                        stored_reg,
-                                        VirtualImmediate12 {
-                                            value: word_offs as u16,
-                                        },
-                                    )),
-                                    comment: "store value".into(),
-                                    owning_span: instr_val.get_span(self.context),
-                                });
-                            }
+                        // A single word can be stored with SW.
+                        let stored_reg = if !is_aggregate_ptr {
+                            // stored_reg is a value.
+                            stored_reg
+                        } else {
+                            // stored_reg is a pointer, even though size is 1.  We need to load it.
+                            let tmp_reg = self.reg_seqr.next();
+                            self.bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::LW(
+                                    tmp_reg.clone(),
+                                    stored_reg,
+                                    VirtualImmediate12 { value: 0 },
+                                )),
+                                comment: "load for store".into(),
+                                owning_span: instr_val.get_span(self.context),
+                            });
+                            tmp_reg
+                        };
+                        if word_offs > compiler_constants::TWELVE_BITS {
+                            let offs_reg = self.reg_seqr.next();
+                            self.number_to_reg(
+                                word_offs * 8, // Base reg for SW is in bytes
+                                &offs_reg,
+                                instr_val.get_span(self.context),
+                            );
+                            self.bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::ADD(
+                                    offs_reg.clone(),
+                                    base_reg,
+                                    offs_reg.clone(),
+                                )),
+                                comment: "store absolute offset".into(),
+                                owning_span: instr_val.get_span(self.context),
+                            });
+                            self.bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::SW(
+                                    offs_reg,
+                                    stored_reg,
+                                    VirtualImmediate12 { value: 0 },
+                                )),
+                                comment: "store value".into(),
+                                owning_span: instr_val.get_span(self.context),
+                            });
+                        } else {
+                            self.bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::SW(
+                                    base_reg,
+                                    stored_reg,
+                                    VirtualImmediate12 {
+                                        value: word_offs as u16,
+                                    },
+                                )),
+                                comment: "store value".into(),
+                                owning_span: instr_val.get_span(self.context),
+                            });
                         }
-                        _ => {
-                            let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
+                    } else {
+                        let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
 
-                            // Bigger than 1 word needs a MCPI.  XXX Or MCP if it's huge.
-                            let dest_offs_reg = self.reg_seqr.next();
-                            if word_offs * 8 > compiler_constants::TWELVE_BITS {
-                                self.number_to_reg(
-                                    word_offs * 8,
-                                    &dest_offs_reg,
-                                    instr_val.get_span(self.context),
-                                );
-                                self.bytecode.push(Op {
-                                    opcode: either::Either::Left(VirtualOp::ADD(
-                                        dest_offs_reg.clone(),
-                                        base_reg,
-                                        dest_offs_reg.clone(),
-                                    )),
-                                    comment: "get store offset".into(),
-                                    owning_span: instr_val.get_span(self.context),
-                                });
-                            } else {
-                                self.bytecode.push(Op {
-                                    opcode: either::Either::Left(VirtualOp::ADDI(
-                                        dest_offs_reg.clone(),
-                                        base_reg,
-                                        VirtualImmediate12 {
-                                            value: (word_offs * 8) as u16,
-                                        },
-                                    )),
-                                    comment: "get store offset".into(),
-                                    owning_span: instr_val.get_span(self.context),
-                                });
-                            }
+                        // Bigger than 1 word needs a MCPI.  XXX Or MCP if it's huge.
+                        let dest_offs_reg = self.reg_seqr.next();
+                        if word_offs * 8 > compiler_constants::TWELVE_BITS {
+                            self.number_to_reg(
+                                word_offs * 8,
+                                &dest_offs_reg,
+                                instr_val.get_span(self.context),
+                            );
+                            self.bytecode.push(Op {
+                                opcode: either::Either::Left(VirtualOp::ADD(
+                                    dest_offs_reg.clone(),
+                                    base_reg,
+                                    dest_offs_reg.clone(),
+                                )),
+                                comment: "get store offset".into(),
+                                owning_span: instr_val.get_span(self.context),
+                            });
+                        } else {
+                            self.bytecode.push(Op {
+                                opcode: either::Either::Left(VirtualOp::ADDI(
+                                    dest_offs_reg.clone(),
+                                    base_reg,
+                                    VirtualImmediate12 {
+                                        value: (word_offs * 8) as u16,
+                                    },
+                                )),
+                                comment: "get store offset".into(),
+                                owning_span: instr_val.get_span(self.context),
+                            });
+                        }
 
-                            if store_size_in_words * 8 > compiler_constants::TWELVE_BITS {
-                                let size_reg = self.reg_seqr.next();
-                                self.number_to_reg(
-                                    store_size_in_words * 8,
-                                    &size_reg,
-                                    instr_val.get_span(self.context),
-                                );
-                                self.bytecode.push(Op {
-                                    opcode: Either::Left(VirtualOp::MCP(
-                                        dest_offs_reg,
-                                        stored_reg,
-                                        size_reg,
-                                    )),
-                                    comment: "store value".into(),
-                                    owning_span: instr_val.get_span(self.context),
-                                });
-                            } else {
-                                self.bytecode.push(Op {
-                                    opcode: Either::Left(VirtualOp::MCPI(
-                                        dest_offs_reg,
-                                        stored_reg,
-                                        VirtualImmediate12 {
-                                            value: (store_size_in_words * 8) as u16,
-                                        },
-                                    )),
-                                    comment: "store value".into(),
-                                    owning_span: instr_val.get_span(self.context),
-                                });
-                            }
+                        if store_size_in_words * 8 > compiler_constants::TWELVE_BITS {
+                            let size_reg = self.reg_seqr.next();
+                            self.number_to_reg(
+                                store_size_in_words * 8,
+                                &size_reg,
+                                instr_val.get_span(self.context),
+                            );
+                            self.bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::MCP(
+                                    dest_offs_reg,
+                                    stored_reg,
+                                    size_reg,
+                                )),
+                                comment: "store value".into(),
+                                owning_span: instr_val.get_span(self.context),
+                            });
+                        } else {
+                            self.bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::MCPI(
+                                    dest_offs_reg,
+                                    stored_reg,
+                                    VirtualImmediate12 {
+                                        value: (store_size_in_words * 8) as u16,
+                                    },
+                                )),
+                                comment: "store value".into(),
+                                owning_span: instr_val.get_span(self.context),
+                            });
                         }
                     }
                 }
@@ -2474,15 +2502,7 @@ mod tests {
         let expected = String::from_utf8_lossy(&expected_bytes);
 
         let ir = parse(&input).expect("parsed ir");
-        let asm_result = compile_ir_to_asm(
-            &ir,
-            &BuildConfig {
-                canonical_root_module: std::sync::Arc::new("".into()),
-                print_intermediate_asm: false,
-                print_finalized_asm: false,
-                print_ir: true,
-            },
-        );
+        let asm_result = compile_ir_to_asm(&ir, None);
 
         let mut warnings = Vec::new();
         let mut errors = Vec::new();

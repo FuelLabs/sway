@@ -1,28 +1,37 @@
+use super::{
+    compile::compile_function,
+    convert::*,
+    lexical_map::LexicalMap,
+    storage::{add_to_b256, get_storage_key},
+    types::*,
+};
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     constants,
     error::CompileError,
-    parse_tree::{AsmOp, AsmRegister, LazyOp, Literal, Purity, Visibility},
+    ir_generation::const_eval::{
+        compile_constant_expression, compile_constant_expression_to_constant,
+    },
+    parse_tree::{AsmOp, AsmRegister, LazyOp, Literal},
     semantic_analysis::*,
-    type_engine::{insert_type, resolve_type, TypeId, TypeInfo},
+    type_engine::{resolve_type, TypeId, TypeInfo},
 };
-
-use super::{compile::compile_function, convert::*, lexical_map::LexicalMap, types::*};
-
-use fuel_crypto::Hasher;
-use sway_ir::*;
+use sway_ir::{Context, *};
+use sway_parse::intrinsics::Intrinsic;
 use sway_types::{
     ident::Ident,
     span::{Span, Spanned},
     state::StateIndex,
 };
 
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 pub(super) struct FnCompiler {
     module: Module,
     pub(super) function: Function,
     pub(super) current_block: Block,
+    pub(super) block_to_break_to: Option<Block>,
+    pub(super) block_to_continue_to: Option<Block>,
     lexical_map: LexicalMap,
 }
 
@@ -42,6 +51,8 @@ impl FnCompiler {
             module,
             function,
             current_block: function.get_entry_block(context),
+            block_to_break_to: None,
+            block_to_continue_to: None,
             lexical_map,
         }
     }
@@ -72,9 +83,25 @@ impl FnCompiler {
         ast_block: TypedCodeBlock,
     ) -> Result<Value, CompileError> {
         self.lexical_map.enter_scope();
+        let index_of_first_break_or_continue =
+            ast_block.contents.clone().into_iter().position(|r| {
+                matches!(
+                    r.content,
+                    TypedAstNodeContent::Declaration(TypedDeclaration::Break { .. })
+                        | TypedAstNodeContent::Declaration(TypedDeclaration::Continue { .. })
+                )
+            });
+
+        // Filter out all ast nodes *after* a `break` statement. Those nodes are essentially dead.
         let value = ast_block
             .contents
             .into_iter()
+            .enumerate()
+            .filter(|(i, _)| match &index_of_first_break_or_continue {
+                Some(index) => i <= index,
+                None => true,
+            })
+            .map(|(_, ast_node)| ast_node)
             .map(|ast_node| {
                 let span_md_idx = MetadataIndex::from_span(context, &ast_node.span);
                 match ast_node.content {
@@ -149,6 +176,31 @@ impl FnCompiler {
                                 span: ast_node.span,
                             })
                         }
+                        TypedDeclaration::Break { .. } => match self.block_to_break_to {
+                            // If `self.block_to_break_to` is not None, then it has been set inside
+                            // a loop and the use of `break` here is legal, so create a branch
+                            // instruction. Error out otherwise.
+                            Some(block_to_break_to) => Ok(self.current_block.ins(context).branch(
+                                block_to_break_to,
+                                None,
+                                None,
+                            )),
+                            None => Err(CompileError::BreakOutsideLoop {
+                                span: ast_node.span,
+                            }),
+                        },
+                        TypedDeclaration::Continue { .. } => match self.block_to_continue_to {
+                            // If `self.block_to_continue_to` is not None, then it has been set inside
+                            // a loop and the use of `continue` here is legal, so create a branch
+                            // instruction. Error out otherwise.
+                            Some(block_to_continue_to) => Ok(self
+                                .current_block
+                                .ins(context)
+                                .branch(block_to_continue_to, None, None)),
+                            None => Err(CompileError::ContinueOutsideLoop {
+                                span: ast_node.span,
+                            }),
+                        },
                         TypedDeclaration::StorageDeclaration(_) => {
                             Err(CompileError::UnexpectedDeclaration {
                                 decl_type: "storage",
@@ -193,9 +245,7 @@ impl FnCompiler {
                 call_path: name,
                 contract_call_params,
                 arguments,
-                function_body,
-                function_body_name_span,
-                function_body_purity,
+                function_decl,
                 self_state_idx,
                 selector,
             } => {
@@ -213,9 +263,7 @@ impl FnCompiler {
                     self.compile_fn_call(
                         context,
                         arguments,
-                        function_body,
-                        function_body_name_span,
-                        function_body_purity,
+                        function_decl,
                         self_state_idx,
                         span_md_idx,
                     )
@@ -315,14 +363,22 @@ impl FnCompiler {
     fn compile_intrinsic_function(
         &mut self,
         context: &mut Context,
-        kind: TypedIntrinsicFunctionKind,
+        TypedIntrinsicFunctionKind {
+            kind,
+            arguments,
+            type_arguments,
+            span: _,
+        }: TypedIntrinsicFunctionKind,
         span: Span,
     ) -> Result<Value, CompileError> {
+        // We safely index into arguments and type_arguments arrays below
+        // because the type-checker ensures that the arguments are all there.
         match kind {
-            TypedIntrinsicFunctionKind::SizeOfVal { exp } => {
+            Intrinsic::SizeOfVal => {
+                let exp = arguments[0].clone();
                 // Compile the expression in case of side-effects but ignore its value.
                 let ir_type = convert_resolved_typeid(context, &exp.return_type, &exp.span)?;
-                self.compile_expression(context, *exp)?;
+                self.compile_expression(context, exp)?;
                 Ok(Constant::get_uint(
                     context,
                     64,
@@ -330,8 +386,9 @@ impl FnCompiler {
                     None,
                 ))
             }
-            TypedIntrinsicFunctionKind::SizeOfType { type_id, type_span } => {
-                let ir_type = convert_resolved_typeid(context, &type_id, &type_span)?;
+            Intrinsic::SizeOfType => {
+                let targ = type_arguments[0].clone();
+                let ir_type = convert_resolved_typeid(context, &targ.type_id, &targ.span)?;
                 Ok(Constant::get_uint(
                     context,
                     64,
@@ -339,16 +396,77 @@ impl FnCompiler {
                     None,
                 ))
             }
-            TypedIntrinsicFunctionKind::IsRefType { type_id, type_span } => {
-                let ir_type = convert_resolved_typeid(context, &type_id, &type_span)?;
+            Intrinsic::IsReferenceType => {
+                let targ = type_arguments[0].clone();
+                let ir_type = convert_resolved_typeid(context, &targ.type_id, &targ.span)?;
                 Ok(Constant::get_bool(context, !ir_type.is_copy_type(), None))
             }
-            TypedIntrinsicFunctionKind::GetStorageKey => {
+            Intrinsic::GetStorageKey => {
                 let span_md_idx = MetadataIndex::from_span(context, &span);
                 Ok(self
                     .current_block
                     .ins(context)
                     .get_storage_key(span_md_idx, None))
+            }
+            Intrinsic::Eq => {
+                let lhs = arguments[0].clone();
+                let rhs = arguments[1].clone();
+                let lhs_value = self.compile_expression(context, lhs)?;
+                let rhs_value = self.compile_expression(context, rhs)?;
+                Ok(self.current_block.ins(context).cmp(
+                    Predicate::Equal,
+                    lhs_value,
+                    rhs_value,
+                    None,
+                ))
+            }
+            Intrinsic::Gtf => {
+                // The index is just a Value
+                let index = self.compile_expression(context, arguments[0].clone())?;
+
+                // The tx field ID has to be a compile-time constant because it becomes an
+                // immediate
+                let tx_field_id_constant = compile_constant_expression_to_constant(
+                    context,
+                    self.module,
+                    None,
+                    &arguments[1],
+                )?;
+                let tx_field_id = match tx_field_id_constant.value {
+                    ConstantValue::Uint(n) => n,
+                    _ => {
+                        return Err(CompileError::Internal(
+                            "Transaction field ID for gtf intrinsic is not an integer. \
+                            This should have been in caught in type checking",
+                            span,
+                        ))
+                    }
+                };
+
+                // Get the target type from the type argument provided
+                let target_type = type_arguments[0].clone();
+                let target_ir_type =
+                    convert_resolved_typeid(context, &target_type.type_id, &target_type.span)?;
+
+                let span_md_idx = MetadataIndex::from_span(context, &span);
+
+                // The `gtf` instruction
+                let gtf_reg = self
+                    .current_block
+                    .ins(context)
+                    .gtf(index, tx_field_id, span_md_idx);
+
+                // Reinterpret the result of th `gtf` instruction (which is always `u64`) as type
+                // `T`. This requires an `int_to_ptr` instruction if `T` is a reference type.
+                if target_ir_type.is_copy_type() {
+                    Ok(gtf_reg)
+                } else {
+                    Ok(self.current_block.ins(context).int_to_ptr(
+                        gtf_reg,
+                        target_ir_type,
+                        span_md_idx,
+                    ))
+                }
             }
         }
     }
@@ -358,6 +476,11 @@ impl FnCompiler {
         context: &mut Context,
         ast_expr: TypedExpression,
     ) -> Result<Value, CompileError> {
+        // Nothing to do if the current block already has a terminator
+        if self.current_block.is_terminated(context) {
+            return Ok(Constant::get_unit(context, None));
+        }
+
         let ret_value = self.compile_expression(context, ast_expr.clone())?;
         match ret_value.get_type(context) {
             None => Err(CompileError::Internal(
@@ -387,29 +510,34 @@ impl FnCompiler {
         let lhs_val = self.compile_expression(context, ast_lhs)?;
         let rhs_block = self.function.create_block(context, None);
         let final_block = self.function.create_block(context, None);
-        let cond_builder = self.current_block.ins(context);
-        match ast_op {
-            LazyOp::And => cond_builder.conditional_branch(
-                lhs_val,
-                rhs_block,
-                final_block,
-                Some(lhs_val),
-                span_md_idx,
-            ),
-            LazyOp::Or => cond_builder.conditional_branch(
-                lhs_val,
-                final_block,
-                rhs_block,
-                Some(lhs_val),
-                span_md_idx,
-            ),
-        };
+        if !self.current_block.is_terminated(context) {
+            let cond_builder = self.current_block.ins(context);
+            match ast_op {
+                LazyOp::And => cond_builder.conditional_branch(
+                    lhs_val,
+                    rhs_block,
+                    final_block,
+                    Some(lhs_val),
+                    span_md_idx,
+                ),
+                LazyOp::Or => cond_builder.conditional_branch(
+                    lhs_val,
+                    final_block,
+                    rhs_block,
+                    Some(lhs_val),
+                    span_md_idx,
+                ),
+            };
+        }
 
         self.current_block = rhs_block;
         let rhs_val = self.compile_expression(context, ast_rhs)?;
-        self.current_block
-            .ins(context)
-            .branch(final_block, Some(rhs_val), span_md_idx);
+
+        if !self.current_block.is_terminated(context) {
+            self.current_block
+                .ins(context)
+                .branch(final_block, Some(rhs_val), span_md_idx);
+        }
 
         self.current_block = final_block;
         Ok(final_block.get_phi(context))
@@ -632,9 +760,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         ast_args: Vec<(Ident, TypedExpression)>,
-        callee_body: TypedCodeBlock,
-        callee_span: Span,
-        callee_purity: Purity,
+        callee: TypedFunctionDeclaration,
         self_state_idx: Option<StateIndex>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
@@ -652,48 +778,11 @@ impl FnCompiler {
         // standard library to an actual module.
 
         {
-            // Firstly create the single-use callee by fudging an AST declaration.
-            let callee_name = context.get_unique_name();
-            let callee_name_len = callee_name.len();
-            let callee_ident = Ident::new(
-                crate::span::Span::new(Arc::from(callee_name), 0, callee_name_len, None).unwrap(),
-            );
+            let callee_name = format!("{}_{}", callee.name, context.get_unique_id());
 
-            // TODO: `is_mutable` below is set to `false` regardless of the actual mutability of
-            // each arg. This is hacky but not too important at the moment. Mutability is only
-            // relevant (currently) during type checking and so this just works. Long term, we need
-            // to propagate mutability for arguments in IR and make sure that the verifier takes it
-            // into account.
-            let parameters = ast_args
-                .iter()
-                .map(|(name, expr)| TypedFunctionParameter {
-                    name: name.clone(),
-                    is_mutable: false,
-                    type_id: expr.return_type,
-                    type_span: crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
-                })
-                .collect();
-
-            // We're going to have to reverse engineer the return type.
-            let return_type = Self::get_codeblock_return_type(&callee_body).unwrap_or_else(||
-                    // This code block is missing a return or implicit return.  The only time I've
-                    // seen it happen (whether it's 'valid' or not) is in std::storage::store(),
-                    // which has a single asm block which also returns nothing.  In this case, it
-                    // actually is Unit.
-                    insert_type(TypeInfo::Tuple(Vec::new())));
-
-            let callee_fn_decl = TypedFunctionDeclaration {
-                name: callee_ident,
-                body: callee_body,
-                parameters,
-                span: callee_span,
-                return_type,
-                type_parameters: Vec::new(),
-                return_type_span: crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
-                visibility: Visibility::Private,
-                is_contract_call: false,
-                purity: callee_purity,
-            };
+            let mut callee_fn_decl = callee;
+            callee_fn_decl.type_parameters.clear();
+            callee_fn_decl.name = Ident::new(Span::from_string(callee_name));
 
             let callee = compile_function(context, self.module, callee_fn_decl)?;
 
@@ -717,22 +806,6 @@ impl FnCompiler {
         }
     }
 
-    fn get_codeblock_return_type(codeblock: &TypedCodeBlock) -> Option<TypeId> {
-        if codeblock.contents.is_empty() {
-            Some(insert_type(TypeInfo::Tuple(Vec::new())))
-        } else {
-            codeblock.contents.iter().find_map(|node| {
-                match node.gather_return_statements().first() {
-                    Some(TypedReturnStatement { expr }) => Some(expr.return_type),
-                    None => match &node.content {
-                        TypedAstNodeContent::ImplicitReturnExpression(te) => Some(te.return_type),
-                        _otherwise => None,
-                    },
-                }
-            })
-        }
-    }
-
     fn compile_if(
         &mut self,
         context: &mut Context,
@@ -744,7 +817,7 @@ impl FnCompiler {
         // can jump to the true and false blocks after we've created them.
         let cond_span_md_idx = MetadataIndex::from_span(context, &ast_condition.span);
         let cond_value = self.compile_expression(context, ast_condition)?;
-        let entry_block = self.current_block;
+        let cond_block = self.current_block;
 
         // To keep the blocks in a nice order we create them only as we populate them.  It's
         // possible when compiling other expressions for the 'current' block to change, and it
@@ -763,7 +836,6 @@ impl FnCompiler {
         self.current_block = true_block_begin;
         let true_value = self.compile_expression(context, ast_then)?;
         let true_block_end = self.current_block;
-        let then_returns = true_block_end.is_terminated_by_ret(context);
 
         let false_block_begin = self.function.create_block(context, None);
         self.current_block = false_block_begin;
@@ -772,38 +844,37 @@ impl FnCompiler {
             Some(expr) => self.compile_expression(context, *expr)?,
         };
         let false_block_end = self.current_block;
-        let else_returns = false_block_end.is_terminated_by_ret(context);
 
-        entry_block.ins(context).conditional_branch(
-            cond_value,
-            true_block_begin,
-            false_block_begin,
-            None,
-            cond_span_md_idx,
-        );
+        if !cond_block.is_terminated(context) {
+            cond_block.ins(context).conditional_branch(
+                cond_value,
+                true_block_begin,
+                false_block_begin,
+                None,
+                cond_span_md_idx,
+            );
+        }
 
-        if then_returns && else_returns {
+        // If both the blocks are already terminated (by break, continue or return) then we don't
+        // need a merge block and can finish here.
+        if true_block_end.is_terminated(context) && false_block_end.is_terminated(context) {
             return Ok(Constant::get_unit(context, None));
         }
 
         let merge_block = self.function.create_block(context, None);
-        if !then_returns {
+        if !true_block_end.is_terminated(context) {
             true_block_end
                 .ins(context)
                 .branch(merge_block, Some(true_value), None);
         }
-        if !else_returns {
+        if !false_block_end.is_terminated(context) {
             false_block_end
                 .ins(context)
                 .branch(merge_block, Some(false_value), None);
         }
 
         self.current_block = merge_block;
-        if !then_returns || !else_returns {
-            Ok(merge_block.get_phi(context))
-        } else {
-            Ok(Constant::get_unit(context, None))
-        }
+        Ok(merge_block.get_phi(context))
     }
 
     fn compile_unsafe_downcast(
@@ -866,35 +937,59 @@ impl FnCompiler {
 
         // Jump to the while cond block.
         let cond_block = self.function.create_block(context, Some("while".into()));
-        self.current_block
-            .ins(context)
-            .branch(cond_block, None, None);
+
+        if !self.current_block.is_terminated(context) {
+            self.current_block
+                .ins(context)
+                .branch(cond_block, None, None);
+        }
 
         // Fill in the body block now, jump unconditionally to the cond block at its end.
         let body_block = self
             .function
             .create_block(context, Some("while_body".into()));
-        self.current_block = body_block;
-        self.compile_code_block(context, ast_while_loop.body)?;
-        self.current_block
-            .ins(context)
-            .branch(cond_block, None, None);
 
         // Create the final block after we're finished with the body.
         let final_block = self
             .function
             .create_block(context, Some("end_while".into()));
 
+        // Keep track of the previous blocks we have to jump to in case of a break or a continue.
+        // This should be `None` if we're not in a loop already or the previous break or continue
+        // destinations for the outer loop that contains the current loop.
+        let prev_block_to_break_to = self.block_to_break_to;
+        let prev_block_to_continue_to = self.block_to_continue_to;
+
+        // Keep track of the current blocks to jump to in case of a break or continue.
+        self.block_to_break_to = Some(final_block);
+        self.block_to_continue_to = Some(cond_block);
+
+        // Compile the body and a branch to the condition block if no branch is already present in
+        // the body block
+        self.current_block = body_block;
+        self.compile_code_block(context, ast_while_loop.body)?;
+        if !self.current_block.is_terminated(context) {
+            self.current_block
+                .ins(context)
+                .branch(cond_block, None, None);
+        }
+
+        // Restore the blocks to jump to now that we're done with the current loop
+        self.block_to_break_to = prev_block_to_break_to;
+        self.block_to_continue_to = prev_block_to_continue_to;
+
         // Add the conditional which jumps into the body or out to the final block.
         self.current_block = cond_block;
         let cond_value = self.compile_expression(context, ast_while_loop.condition)?;
-        self.current_block.ins(context).conditional_branch(
-            cond_value,
-            body_block,
-            final_block,
-            None,
-            None,
-        );
+        if !self.current_block.is_terminated(context) {
+            self.current_block.ins(context).conditional_branch(
+                cond_value,
+                body_block,
+                final_block,
+                None,
+                None,
+            );
+        }
 
         self.current_block = final_block;
         Ok(Constant::get_unit(context, span_md_idx))
@@ -994,29 +1089,33 @@ impl FnCompiler {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
         let TypedConstantDeclaration { name, value, .. } = ast_const_decl;
+        let const_expr_val = compile_constant_expression(context, self.module, None, &value)?;
+        let local_name = self.lexical_map.insert(name.as_str().to_owned());
+        let return_type = convert_resolved_typeid(context, &value.return_type, &value.span)?;
 
-        if let TypedExpressionVariant::Literal(literal) = &value.expression {
-            let initialiser = convert_literal_to_constant(literal);
-            let return_type = convert_resolved_typeid(context, &value.return_type, &value.span)?;
-            let name = name.as_str().to_owned();
-            self.function
-                .new_local_ptr(context, name.clone(), return_type, false, Some(initialiser))
-                .map_err(|ir_error| {
-                    CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
-                })?;
+        // We compile consts the same as vars are compiled. This is because ASM generation
+        // cannot handle
+        //    1. initializing aggregates
+        //    2. get_ptr()
+        // into the data section.
+        let ptr = self
+            .function
+            .new_local_ptr(context, local_name, return_type, false, None)
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
 
-            // We still insert this into the symbol table, as itself... can they be shadowed?
-            // (Hrmm, name resolution in the variable expression code could be smarter about var
-            // decls vs const decls, for now they're essentially the same...)
-            self.lexical_map.insert(name);
-
-            Ok(Constant::get_unit(context, span_md_idx))
-        } else {
-            Err(CompileError::Internal(
-                "Unsupported constant declaration type, expecting a literal.",
-                name.span(),
-            ))
+        // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
+        // otherwise use a store.
+        let ptr_ty = *ptr.get_type(context);
+        if ir_type_size_in_bytes(context, &ptr_ty) > 0 {
+            let ptr_val = self
+                .current_block
+                .ins(context)
+                .get_ptr(ptr, ptr_ty, 0, span_md_idx);
+            self.current_block
+                .ins(context)
+                .store(ptr_val, const_expr_val, span_md_idx);
         }
+        Ok(const_expr_val)
     }
 
     fn compile_reassignment(
@@ -1609,16 +1708,7 @@ impl FnCompiler {
                 Ok(struct_val)
             }
             _ => {
-                // Calculate the storage location hash for the given field
-                let mut storage_slot_to_hash = format!(
-                    "{}{}",
-                    sway_utils::constants::STORAGE_DOMAIN_SEPARATOR,
-                    ix.to_usize()
-                );
-                for ix in &indices {
-                    storage_slot_to_hash = format!("{}_{}", storage_slot_to_hash, ix);
-                }
-                let hashed_storage_slot = Hasher::hash(storage_slot_to_hash);
+                let storage_key = get_storage_key(ix, &indices);
 
                 // New name for the key
                 let mut key_name = format!("{}{}", "key_for_", ix.to_usize());
@@ -1638,7 +1728,7 @@ impl FnCompiler {
                 // Const value for the key from the hash
                 let const_key = convert_literal_to_value(
                     context,
-                    &Literal::B256(hashed_storage_slot.into()),
+                    &Literal::B256(storage_key.into()),
                     span_md_idx,
                 );
 
@@ -1684,7 +1774,7 @@ impl FnCompiler {
                         &indices,
                         &mut key_ptr_val,
                         &key_ptr,
-                        &hashed_storage_slot,
+                        &storage_key,
                         r#type,
                         rhs,
                         span_md_idx,
@@ -1804,7 +1894,7 @@ impl FnCompiler {
         indices: &[u64],
         key_ptr_val: &mut Value,
         key_ptr: &Pointer,
-        hashed_storage_slot: &fuel_types::Bytes32,
+        storage_key: &fuel_types::Bytes32,
         r#type: &Type,
         rhs: &Option<Value>,
         span_md_idx: Option<MetadataIndex>,
@@ -1862,7 +1952,7 @@ impl FnCompiler {
                 // Const value for the key from the initial hash + array_index
                 let const_key = convert_literal_to_value(
                     context,
-                    &Literal::B256(*add_to_b256(*hashed_storage_slot, array_index)),
+                    &Literal::B256(*add_to_b256(*storage_key, array_index)),
                     span_md_idx,
                 );
 

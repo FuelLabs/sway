@@ -1,9 +1,27 @@
-#[derive(Eq, PartialEq)]
+use std::fmt;
+
+#[derive(Eq, PartialEq, Debug, Clone)]
 pub enum Intrinsic {
     GetStorageKey,
     IsReferenceType,
-    SizeOf,
+    SizeOfType,
     SizeOfVal,
+    Eq,
+    Gtf,
+}
+
+impl fmt::Display for Intrinsic {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s = match self {
+            Intrinsic::GetStorageKey => "get_storage_key",
+            Intrinsic::IsReferenceType => "is_reference_type",
+            Intrinsic::SizeOfType => "size_of",
+            Intrinsic::SizeOfVal => "size_of_val",
+            Intrinsic::Eq => "eq",
+            Intrinsic::Gtf => "gtf",
+        };
+        write!(f, "{}", s)
+    }
 }
 
 impl Intrinsic {
@@ -12,8 +30,10 @@ impl Intrinsic {
         Some(match raw {
             "__get_storage_key" => GetStorageKey,
             "__is_reference_type" => IsReferenceType,
-            "__size_of" => SizeOf,
+            "__size_of" => SizeOfType,
             "__size_of_val" => SizeOfVal,
+            "__eq" => Eq,
+            "__gtf" => Gtf,
             _ => return None,
         })
     }

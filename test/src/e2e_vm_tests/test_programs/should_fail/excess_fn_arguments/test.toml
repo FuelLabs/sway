@@ -1,1 +1,4 @@
 category = "fail"
+
+# check: bar(true, 0, true)
+# nextln: $()Function "bar" expects 2 arguments but you provided 3.

@@ -1,1 +1,6 @@
 category = "fail"
+
+# check: $()Mismatched types
+# nextln: $()expected: u64
+# nextln: $()found:    ()
+

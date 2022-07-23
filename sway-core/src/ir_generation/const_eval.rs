@@ -1,12 +1,13 @@
 use crate::{
     error::CompileError,
     semantic_analysis::{
-        declaration::ProjectionKind, TypedAstNode, TypedAstNodeContent, TypedExpression,
-        TypedExpressionVariant, TypedStructExpressionField,
+        declaration::ProjectionKind, namespace, TypedAstNode, TypedAstNodeContent,
+        TypedConstantDeclaration, TypedDeclaration, TypedExpression, TypedExpressionVariant,
+        TypedStructExpressionField,
     },
 };
 
-use super::types::*;
+use super::{convert::convert_literal_to_constant, types::*};
 
 use sway_ir::{
     constant::{Constant, ConstantValue},
@@ -20,12 +21,80 @@ use sway_types::{ident::Ident, span::Spanned};
 
 use std::collections::HashMap;
 
+pub struct LookupEnv<'a> {
+    pub context: &'a mut Context,
+    pub module: Module,
+    pub module_ns: Option<&'a namespace::Module>,
+    pub public_only: bool,
+    pub lookup: fn(&mut LookupEnv, &Ident) -> Result<Option<Value>, CompileError>,
+}
+
+pub fn compile_const_decl(
+    env: &mut LookupEnv,
+    name: &Ident,
+) -> Result<Option<Value>, CompileError> {
+    // Check if it's a processed global constant.
+    match (
+        env.module.get_global_constant(env.context, name.as_str()),
+        env.module_ns,
+    ) {
+        (Some(const_val), _) => Ok(Some(const_val)),
+        (None, Some(module_ns)) => {
+            // See if we it's a global const and whether we can compile it *now*.
+            let decl = module_ns.check_symbol(name)?;
+            let decl_name_value = match decl {
+                TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
+                    name,
+                    value,
+                    ..
+                }) => Some((name, value)),
+                _otherwise => None,
+            };
+            if let Some((name, value)) = decl_name_value {
+                let const_val =
+                    compile_constant_expression(env.context, env.module, env.module_ns, value)?;
+                env.module
+                    .add_global_constant(env.context, name.as_str().to_owned(), const_val);
+                Ok(Some(const_val))
+            } else {
+                Ok(None)
+            }
+        }
+        _ => Ok(None),
+    }
+}
+
 pub(super) fn compile_constant_expression(
     context: &mut Context,
     module: Module,
+    module_ns: Option<&namespace::Module>,
     const_expr: &TypedExpression,
 ) -> Result<Value, CompileError> {
     let span_id_idx = MetadataIndex::from_span(context, &const_expr.span);
+
+    let constant_evaluated =
+        compile_constant_expression_to_constant(context, module, module_ns, const_expr)?;
+    Ok(Value::new_constant(
+        context,
+        constant_evaluated,
+        span_id_idx,
+    ))
+}
+
+pub(crate) fn compile_constant_expression_to_constant(
+    context: &mut Context,
+    module: Module,
+    module_ns: Option<&namespace::Module>,
+    const_expr: &TypedExpression,
+) -> Result<Constant, CompileError> {
+    let lookup = &mut LookupEnv {
+        context,
+        module,
+        module_ns,
+        public_only: false,
+        lookup: compile_const_decl,
+    };
+
     let err = match &const_expr.expression {
         // Special case functions because the span in `const_expr` is to the inlined function
         // definition, rather than the actual call site.
@@ -39,8 +108,8 @@ pub(super) fn compile_constant_expression(
         }),
     };
     let mut known_consts = MappedStack::<Ident, Constant>::new();
-    const_eval_typed_expr(context, module, &mut known_consts, const_expr)
-        .map_or(err, |c| Ok(Value::new_constant(context, c, span_id_idx)))
+
+    const_eval_typed_expr(lookup, &mut known_consts, const_expr).map_or(err, Ok)
 }
 
 // A HashMap that can hold multiple values and
@@ -91,22 +160,21 @@ impl<K: std::cmp::Eq + std::hash::Hash, V> Default for MappedStack<K, V> {
 /// Given an environment mapping names to constants,
 /// attempt to evaluate a typed expression to a constant.
 fn const_eval_typed_expr(
-    context: &mut Context,
-    module: Module,
+    lookup: &mut LookupEnv,
     known_consts: &mut MappedStack<Ident, Constant>,
     expr: &TypedExpression,
 ) -> Option<Constant> {
     match &expr.expression {
-        TypedExpressionVariant::Literal(l) => Some(super::convert::convert_literal_to_constant(l)),
+        TypedExpressionVariant::Literal(l) => Some(convert_literal_to_constant(l)),
         TypedExpressionVariant::FunctionApplication {
             arguments,
-            function_body,
+            function_decl,
             ..
         } => {
             let actuals_const = arguments
                 .iter()
                 .filter_map(|(name, sub_expr)| {
-                    const_eval_typed_expr(context, module, known_consts, sub_expr)
+                    const_eval_typed_expr(lookup, known_consts, sub_expr)
                         .map(|sub_const| (name, sub_const))
                 })
                 .collect::<Vec<_>>();
@@ -120,12 +188,13 @@ fn const_eval_typed_expr(
             }
 
             // TODO: Handle more than one statement in the block.
-            if function_body.contents.len() > 1 {
+            if function_decl.body.contents.len() > 1 {
                 return None;
             }
-            let res = function_body.contents.last().and_then(|first_expr| {
-                const_eval_typed_ast_node(context, module, known_consts, first_expr)
-            });
+            let res =
+                function_decl.body.contents.last().and_then(|first_expr| {
+                    const_eval_typed_ast_node(lookup, known_consts, first_expr)
+                });
             for (name, _) in arguments {
                 known_consts.pop(name);
             }
@@ -137,19 +206,19 @@ fn const_eval_typed_expr(
             None => {
                 // 2. Check if name is a global constant.
                 use sway_ir::value::ValueDatum::Constant;
-                module
-                    .get_global_constant(context, name.as_str())
-                    .and_then(|v| match &context.values[(v.0)].value {
+                (lookup.lookup)(lookup, name).ok().flatten().and_then(|v| {
+                    match &lookup.context.values[(v.0)].value {
                         Constant(cv) => Some(cv.clone()),
                         _ => None,
-                    })
+                    }
+                })
             }
         },
         TypedExpressionVariant::StructExpression { fields, .. } => {
             let (field_typs, field_vals): (Vec<_>, Vec<_>) = fields
                 .iter()
                 .filter_map(|TypedStructExpressionField { name: _, value, .. }| {
-                    const_eval_typed_expr(context, module, known_consts, value)
+                    const_eval_typed_expr(lookup, known_consts, value)
                         .map(|cv| (value.return_type, cv))
                 })
                 .unzip();
@@ -157,14 +226,14 @@ fn const_eval_typed_expr(
                 // We couldn't evaluate all fields to a constant.
                 return None;
             }
-            let aggregate = get_aggregate_for_types(context, &field_typs).unwrap();
+            let aggregate = get_aggregate_for_types(lookup.context, &field_typs).unwrap();
             Some(Constant::new_struct(&aggregate, field_vals))
         }
         TypedExpressionVariant::Tuple { fields } => {
             let (field_typs, field_vals): (Vec<_>, Vec<_>) = fields
                 .iter()
                 .filter_map(|value| {
-                    const_eval_typed_expr(context, module, known_consts, value)
+                    const_eval_typed_expr(lookup, known_consts, value)
                         .map(|cv| (value.return_type, cv))
                 })
                 .unzip();
@@ -172,14 +241,14 @@ fn const_eval_typed_expr(
                 // We couldn't evaluate all fields to a constant.
                 return None;
             }
-            let aggregate = create_tuple_aggregate(context, field_typs).unwrap();
+            let aggregate = create_tuple_aggregate(lookup.context, field_typs).unwrap();
             Some(Constant::new_struct(&aggregate, field_vals))
         }
         TypedExpressionVariant::Array { contents } => {
             let (element_typs, element_vals): (Vec<_>, Vec<_>) = contents
                 .iter()
                 .filter_map(|value| {
-                    const_eval_typed_expr(context, module, known_consts, value)
+                    const_eval_typed_expr(lookup, known_consts, value)
                         .map(|cv| (value.return_type, cv))
                 })
                 .unzip();
@@ -197,7 +266,7 @@ fn const_eval_typed_expr(
                 return None;
             }
             let aggregate = create_array_aggregate(
-                context,
+                lookup.context,
                 element_type_id,
                 element_typs.len().try_into().unwrap(),
             )
@@ -210,11 +279,12 @@ fn const_eval_typed_expr(
             contents,
             ..
         } => {
-            let aggregate = create_enum_aggregate(context, enum_decl.variants.clone()).unwrap();
+            let aggregate =
+                create_enum_aggregate(lookup.context, enum_decl.variants.clone()).unwrap();
             let tag_value = Constant::new_uint(64, *tag as u64);
             let mut fields: Vec<Constant> = vec![tag_value];
             contents.iter().for_each(|subexpr| {
-                const_eval_typed_expr(context, module, known_consts, &*subexpr)
+                const_eval_typed_expr(lookup, known_consts, &*subexpr)
                     .into_iter()
                     .for_each(|enum_val| {
                         fields.push(enum_val);
@@ -226,7 +296,7 @@ fn const_eval_typed_expr(
             prefix,
             field_to_access,
             resolved_type_of_parent,
-        } => match const_eval_typed_expr(context, module, known_consts, &*prefix) {
+        } => match const_eval_typed_expr(lookup, known_consts, &*prefix) {
             Some(Constant {
                 value: ConstantValue::Struct(fields),
                 ..
@@ -246,7 +316,7 @@ fn const_eval_typed_expr(
             prefix,
             elem_to_access_num,
             ..
-        } => match const_eval_typed_expr(context, module, known_consts, &*prefix) {
+        } => match const_eval_typed_expr(lookup, known_consts, &*prefix) {
             Some(Constant {
                 value: ConstantValue::Struct(fields),
                 ..
@@ -269,21 +339,20 @@ fn const_eval_typed_expr(
 }
 
 fn const_eval_typed_ast_node(
-    context: &mut Context,
-    module: Module,
+    lookup: &mut LookupEnv,
     known_consts: &mut MappedStack<Ident, Constant>,
     expr: &TypedAstNode,
 ) -> Option<Constant> {
     match &expr.content {
         TypedAstNodeContent::ReturnStatement(trs) => {
-            const_eval_typed_expr(context, module, known_consts, &trs.expr)
+            const_eval_typed_expr(lookup, known_consts, &trs.expr)
         }
         TypedAstNodeContent::Declaration(_) => {
             // TODO: add the binding to known_consts (if it's a const) and proceed.
             None
         }
         TypedAstNodeContent::Expression(e) | TypedAstNodeContent::ImplicitReturnExpression(e) => {
-            const_eval_typed_expr(context, module, known_consts, e)
+            const_eval_typed_expr(lookup, known_consts, e)
         }
         TypedAstNodeContent::WhileLoop(_) | TypedAstNodeContent::SideEffect => None,
     }

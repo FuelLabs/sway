@@ -1,18 +1,18 @@
 library std;
 
 dep intrinsics;
-dep revert;
 dep logging;
+dep revert;
 dep assert;
 dep option;
 dep result;
 dep mem;
 dep alloc;
-dep constants;
 dep contract_id;
+dep constants;
 dep context;
 dep hash;
-dep storage;
+dep r#storage;
 dep b512;
 dep address;
 dep identity;
@@ -26,6 +26,7 @@ dep reentrancy;
 dep vm/mod;
 dep flags;
 dep u128;
+dep u256;
 dep vec;
 dep fixed_point;
 

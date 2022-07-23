@@ -7,9 +7,6 @@ pub const LANGUAGE_NAME: &str = "Sway";
 /// The size, in bytes, of a single word in the FuelVM.
 pub const VM_WORD_SIZE: u64 = 8;
 
-// Keywords
-pub const INVALID_NAMES: &[&str] = &["storage"];
-
 pub const CONTRACT_CALL_GAS_PARAMETER_NAME: &str = "gas";
 
 pub const CONTRACT_CALL_COINS_PARAMETER_NAME: &str = "coins";
@@ -23,6 +20,9 @@ pub const DEFAULT_ENTRY_POINT_FN_NAME: &str = "main";
 
 /// The default prefix for the compiler generated names of tuples
 pub const TUPLE_NAME_PREFIX: &str = "__tuple_";
+
+// The default prefix for the compiler generated names of struct fields
+pub const DESTRUCTURE_PREFIX: &str = "__destructure_";
 
 /// The default prefix for the compiler generated names of match
 pub const MATCH_RETURN_VAR_NAME_PREFIX: &str = "__match_return_var_name_";

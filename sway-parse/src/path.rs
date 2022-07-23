@@ -90,10 +90,24 @@ impl Parse for PathExpr {
     }
 }
 
+fn parse_ident(parser: &mut Parser) -> ParseResult<Ident> {
+    if parser.peek::<StorageToken>().is_some() {
+        let token = parser.parse::<StorageToken>()?;
+        let ident: Ident = Ident::from(token);
+        Ok(ident)
+    } else if parser.peek::<SelfToken>().is_some() {
+        let token = parser.parse::<SelfToken>()?;
+        let ident: Ident = Ident::from(token);
+        Ok(ident)
+    } else {
+        parser.parse::<Ident>()
+    }
+}
+
 impl Parse for PathExprSegment {
     fn parse(parser: &mut Parser) -> ParseResult<PathExprSegment> {
         let fully_qualified = parser.take();
-        let name = parser.parse()?;
+        let name = parse_ident(parser)?;
         let generics_opt = if parser
             .peek2::<DoubleColonToken, OpenAngleBracketToken>()
             .is_some()
@@ -198,7 +212,7 @@ impl Parse for PathType {
 impl Parse for PathTypeSegment {
     fn parse(parser: &mut Parser) -> ParseResult<PathTypeSegment> {
         let fully_qualified = parser.take();
-        let name = parser.parse()?;
+        let name = parse_ident(parser)?;
         let generics_opt = if parser.peek::<OpenAngleBracketToken>().is_some() {
             let generics = parser.parse()?;
             Some((None, generics))

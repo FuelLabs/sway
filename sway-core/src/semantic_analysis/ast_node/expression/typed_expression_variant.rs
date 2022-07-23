@@ -20,9 +20,7 @@ pub enum TypedExpressionVariant {
         #[derivative(Eq(bound = ""))]
         contract_call_params: HashMap<String, TypedExpression>,
         arguments: Vec<(Ident, TypedExpression)>,
-        function_body: TypedCodeBlock,
-        function_body_name_span: Span,
-        function_body_purity: Purity,
+        function_decl: TypedFunctionDeclaration,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
         self_state_idx: Option<StateIndex>,
@@ -124,17 +122,19 @@ impl PartialEq for TypedExpressionVariant {
                 Self::FunctionApplication {
                     call_path: l_name,
                     arguments: l_arguments,
-                    function_body: l_function_body,
+                    function_decl: l_function_decl,
                     ..
                 },
                 Self::FunctionApplication {
                     call_path: r_name,
                     arguments: r_arguments,
-                    function_body: r_function_body,
+                    function_decl: r_function_decl,
                     ..
                 },
             ) => {
-                l_name == r_name && l_arguments == r_arguments && l_function_body == r_function_body
+                l_name == r_name
+                    && l_arguments == r_arguments
+                    && l_function_decl.body == r_function_decl.body
             }
             (
                 Self::LazyOperator {
@@ -319,13 +319,13 @@ impl CopyTypes for TypedExpressionVariant {
             Literal(..) => (),
             FunctionApplication {
                 arguments,
-                function_body,
+                function_decl,
                 ..
             } => {
                 arguments
                     .iter_mut()
                     .for_each(|(_ident, expr)| expr.copy_types(type_mapping));
-                function_body.copy_types(type_mapping);
+                function_decl.copy_types(type_mapping);
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).copy_types(type_mapping);

@@ -7,8 +7,6 @@ mod reassignment;
 mod storage;
 mod r#struct;
 mod r#trait;
-mod type_argument;
-mod type_parameter;
 mod variable;
 
 pub(crate) use abi::*;
@@ -18,10 +16,8 @@ pub(crate) use impl_trait::*;
 pub use r#enum::*;
 pub use r#struct::*;
 pub use r#trait::*;
-pub(crate) use reassignment::*;
+pub use reassignment::*;
 pub use storage::*;
-pub(crate) use type_argument::*;
-pub(crate) use type_parameter::*;
 pub use variable::*;
 
 #[derive(Debug, Clone)]
@@ -37,4 +33,6 @@ pub enum Declaration {
     AbiDeclaration(AbiDeclaration),
     ConstantDeclaration(ConstantDeclaration),
     StorageDeclaration(StorageDeclaration),
+    Break { span: sway_types::Span },
+    Continue { span: sway_types::Span },
 }

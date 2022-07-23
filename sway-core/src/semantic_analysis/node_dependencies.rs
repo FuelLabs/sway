@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
+use crate::type_engine::{TypeArgument, TypeParameter};
 use crate::{
     error::*,
     parse_tree::*,
@@ -77,7 +78,7 @@ fn find_recursive_call_chain(
     chain: &mut Vec<Ident>,
 ) -> Option<CompileError> {
     if let DependentSymbol::Fn(fn_sym_ident, _) = fn_sym {
-        if chain.iter().any(|seen_sym| seen_sym == fn_sym_ident) {
+        if chain.contains(fn_sym_ident) {
             // We've found a recursive loop, but it's possible this function is not actually in the
             // loop, but is instead just calling into the loop.  Only if this function is at the
             // start of the chain do we need to report it.
@@ -110,7 +111,7 @@ fn find_recursive_type_chain(
     chain: &mut Vec<Ident>,
 ) -> Option<CompileError> {
     if let DependentSymbol::Symbol(sym_ident) = dep_sym {
-        if chain.iter().any(|seen_sym| seen_sym == sym_ident) {
+        if chain.contains(sym_ident) {
             // See above about it only being an error if we're referring back to the start.
             return if &chain[0] != sym_ident {
                 None
@@ -372,6 +373,9 @@ impl Dependencies {
                 .gather_from_iter(fields.iter(), |deps, StorageField { ref type_info, .. }| {
                     deps.gather_from_typeinfo(type_info)
                 }),
+            // Nothing to do for `break` and `continue`
+            Declaration::Break { .. } => self,
+            Declaration::Continue { .. } => self,
         }
     }
 
@@ -391,7 +395,7 @@ impl Dependencies {
         .gather_from_type_parameters(type_parameters)
     }
 
-    fn gather_from_expr(mut self, expr: &Expression) -> Self {
+    fn gather_from_expr(self, expr: &Expression) -> Self {
         match expr {
             Expression::VariableExpression { name, .. } => {
                 // in the case of ABI variables, we actually want to check if the ABI needs to be
@@ -399,9 +403,12 @@ impl Dependencies {
                 self.gather_from_call_path(&(name.clone()).into(), false, false)
             }
             Expression::FunctionApplication {
-                name, arguments, ..
+                call_path_binding,
+                arguments,
+                ..
             } => self
-                .gather_from_call_path(name, false, true)
+                .gather_from_call_path(&call_path_binding.inner, false, true)
+                .gather_from_type_arguments(&call_path_binding.type_arguments)
                 .gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg)),
             Expression::LazyOperator { lhs, rhs, .. } => {
                 self.gather_from_expr(lhs).gather_from_expr(rhs)
@@ -433,24 +440,26 @@ impl Dependencies {
                 self.gather_from_expr(prefix).gather_from_expr(index)
             }
             Expression::StructExpression {
-                struct_name,
+                call_path_binding,
                 fields,
                 ..
-            } => {
-                self.deps
-                    .insert(DependentSymbol::Symbol(struct_name.suffix.clone()));
-                self.gather_from_iter(fields.iter(), |deps, field| {
+            } => self
+                .gather_from_typeinfo(&call_path_binding.inner.suffix.0)
+                .gather_from_type_arguments(&call_path_binding.type_arguments)
+                .gather_from_iter(fields.iter(), |deps, field| {
                     deps.gather_from_expr(&field.value)
-                })
-            }
+                }),
             Expression::SubfieldExpression { prefix, .. } => self.gather_from_expr(prefix),
             Expression::DelineatedPath {
-                call_path, args, ..
+                call_path_binding,
+                args,
+                ..
             } => {
                 // It's either a module path which we can ignore, or an enum variant path, in which
                 // case we're interested in the enum name and initialiser args, ignoring the
                 // variant name.
-                self.gather_from_call_path(call_path, true, false)
+                self.gather_from_call_path(&call_path_binding.inner, true, false)
+                    .gather_from_type_arguments(&call_path_binding.type_arguments)
                     .gather_from_iter(args.iter(), |deps, arg| deps.gather_from_expr(arg))
             }
             Expression::MethodApplication { arguments, .. } => {
@@ -474,10 +483,9 @@ impl Dependencies {
             }
             Expression::TupleIndex { prefix, .. } => self.gather_from_expr(prefix),
             Expression::StorageAccess { .. } => self,
-            Expression::IntrinsicFunction { kind, .. } => match kind {
-                IntrinsicFunctionKind::SizeOfVal { exp } => self.gather_from_expr(exp),
-                _ => self,
-            },
+            Expression::IntrinsicFunction { arguments, .. } => {
+                self.gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg))
+            }
         }
     }
 
@@ -571,7 +579,10 @@ impl Dependencies {
                 type_arguments,
             } => {
                 self.deps.insert(DependentSymbol::Symbol(name.clone()));
-                self.gather_from_type_arguments(type_arguments)
+                match type_arguments {
+                    Some(type_arguments) => self.gather_from_type_arguments(type_arguments),
+                    None => self,
+                }
             }
             TypeInfo::Tuple(elems) => self.gather_from_iter(elems.iter(), |deps, elem| {
                 deps.gather_from_typeinfo(&look_up_type_id(elem.type_id))
@@ -701,6 +712,9 @@ fn decl_name(decl: &Declaration) -> Option<DependentSymbol> {
         Declaration::Reassignment(_) => None,
         // Storage cannot be depended upon or exported
         Declaration::StorageDeclaration(_) => None,
+        // Nothing depends on a `break` and `continue`
+        Declaration::Break { .. } => None,
+        Declaration::Continue { .. } => None,
     }
 }
 

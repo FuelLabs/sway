@@ -4,13 +4,14 @@ mod harness;
 
 use forc_util::init_tracing_subscriber;
 use fuel_vm::prelude::*;
+use regex::Regex;
 
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
 };
 
-#[derive(Debug)]
+#[derive(PartialEq)]
 enum TestCategory {
     Compiles,
     FailsToCompile,
@@ -27,16 +28,17 @@ enum TestResult {
     Revert(u64),
 }
 
-#[derive(Debug)]
 struct TestDescription {
     name: String,
     category: TestCategory,
     expected_result: Option<TestResult>,
     contract_paths: Vec<String>,
     validate_abi: bool,
+    validate_storage_slots: bool,
+    checker: filecheck::Checker,
 }
 
-pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
+pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {
     init_tracing_subscriber();
 
     let configured_tests = discover_test_configs().unwrap_or_else(|e| {
@@ -55,10 +57,11 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
         expected_result,
         contract_paths,
         validate_abi,
+        validate_storage_slots,
+        checker,
     } in configured_tests
     {
         if !filter_regex
-            .as_ref()
             .map(|regex| regex.is_match(&name))
             .unwrap_or(true)
         {
@@ -78,20 +81,45 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
                     ),
                 };
 
-                assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(&name, locked), res);
+                let result = crate::e2e_vm_tests::harness::runs_in_vm(&name, locked);
+                assert_eq!(result.0, res);
                 if validate_abi {
-                    assert!(crate::e2e_vm_tests::harness::test_json_abi(&name).is_ok());
+                    assert!(crate::e2e_vm_tests::harness::test_json_abi(&name, &result.1).is_ok());
                 }
                 number_of_tests_executed += 1;
             }
 
             TestCategory::Compiles => {
-                assert!(crate::e2e_vm_tests::harness::compile_to_bytes(&name, locked).is_ok());
+                let result = crate::e2e_vm_tests::harness::compile_to_bytes(&name, locked);
+                assert!(result.is_ok());
+                let compiled = result.unwrap();
+                if validate_abi {
+                    assert!(crate::e2e_vm_tests::harness::test_json_abi(&name, &compiled).is_ok());
+                }
+                if validate_storage_slots {
+                    assert!(crate::e2e_vm_tests::harness::test_json_storage_slots(
+                        &name, &compiled
+                    )
+                    .is_ok());
+                }
                 number_of_tests_executed += 1;
             }
 
             TestCategory::FailsToCompile => {
-                crate::e2e_vm_tests::harness::does_not_compile(&name, locked);
+                match crate::e2e_vm_tests::harness::does_not_compile(&name, locked) {
+                    Ok(output) => match checker.explain(&output, filecheck::NO_VARIABLES) {
+                        Ok((success, report)) if !success => {
+                            panic!("For {name}:\nFilecheck failed:\n{report}");
+                        }
+                        Err(e) => {
+                            panic!("For {name}:\nFilecheck directive error: {e}");
+                        }
+                        _ => (),
+                    },
+                    Err(_) => {
+                        panic!("For {name}:\nFailing test did not fail.");
+                    }
+                }
                 number_of_tests_executed += 1;
             }
 
@@ -145,7 +173,7 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
 
     if number_of_tests_executed == 0 {
         tracing::info!(
-            "No tests were run. Regex filter \"{}\" filtered out all {} tests.",
+            "No E2E tests were run. Regex filter \"{}\" filtered out all {} tests.",
             filter_regex
                 .map(|regex| regex.to_string())
                 .unwrap_or_default(),
@@ -154,10 +182,9 @@ pub fn run(locked: bool, filter_regex: Option<regex::Regex>) {
     } else {
         tracing::info!("_________________________________\nTests passed.");
         tracing::info!(
-            "{} tests run ({} skipped, {} disabled)",
-            number_of_tests_executed,
-            total_number_of_tests - number_of_tests_executed - number_of_disabled_tests,
-            number_of_disabled_tests,
+            "Ran {number_of_tests_executed} \
+            out of {total_number_of_tests} E2E tests \
+            ({number_of_disabled_tests} disabled)."
         );
     }
 }
@@ -176,7 +203,7 @@ fn discover_test_configs() -> Result<Vec<TestDescription>, String> {
             for entry in std::fs::read_dir(path).unwrap() {
                 recursive_search(&entry.unwrap().path(), configs)?;
             }
-        } else if path.is_file() && path.file_name() == Some(std::ffi::OsStr::new("test.toml")) {
+        } else if path.is_file() && path.file_name().map(|f| f == "test.toml").unwrap_or(false) {
             configs.push(parse_test_toml(path).map_err(wrap_err)?);
         }
         Ok(())
@@ -190,15 +217,30 @@ fn discover_test_configs() -> Result<Vec<TestDescription>, String> {
     Ok(configs)
 }
 
+const DIRECTIVE_RX: &str = r"(?m)^\s*#\s*(\w+):\s+(.*)$";
+
+fn build_file_checker(content: &str) -> Result<filecheck::Checker, String> {
+    let mut checker = filecheck::CheckerBuilder::new();
+
+    // Parse the file and check for unknown FileCheck directives.
+    let re = Regex::new(DIRECTIVE_RX).unwrap();
+    for cap in re.captures_iter(content) {
+        if let Ok(false) = checker.directive(&cap[0]) {
+            return Err(format!("Unknown FileCheck directive: {}", &cap[1]));
+        }
+    }
+
+    Ok(checker.finish())
+}
+
 fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
-    let toml_content = std::fs::read_to_string(path)
-        .map_err(|e| e.to_string())
-        .and_then(|toml_content_str| {
-            toml_content_str
-                .parse::<toml::Value>()
-                .map_err(|e| e.to_string())
-        })
-        .map_err(|e| format!("Failed to parse: {e}"))?;
+    let toml_content_str = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+
+    let checker = build_file_checker(&toml_content_str)?;
+
+    let toml_content = toml_content_str
+        .parse::<toml::Value>()
+        .map_err(|e| e.to_string())?;
 
     if !toml_content.is_table() {
         return Err("Malformed test description.".to_owned());
@@ -218,6 +260,11 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
             )),
             Some(other) => Err(format!("Unknown category '{}'.", other,)),
         })?;
+
+    // Abort early if we find a FailsToCompile test without any Checker directives.
+    if category == TestCategory::FailsToCompile && checker.is_empty() {
+        return Err("'fail' tests must contain some FileCheck verification directives.".to_owned());
+    }
 
     let expected_result = match &category {
         TestCategory::Runs | TestCategory::RunsWithContract => {
@@ -247,6 +294,11 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
         .map(|v| v.as_bool().unwrap_or(false))
         .unwrap_or(false);
 
+    let validate_storage_slots = toml_content
+        .get("validate_storage_slots")
+        .map(|v| v.as_bool().unwrap_or(false))
+        .unwrap_or(false);
+
     // We need to adjust the path to start relative to `test_programs`.
     let name = path
         .iter()
@@ -268,6 +320,8 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
         expected_result,
         contract_paths,
         validate_abi,
+        validate_storage_slots,
+        checker,
     })
 }
 

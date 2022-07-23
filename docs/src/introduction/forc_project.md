@@ -1,9 +1,9 @@
 # A Forc Project
 
-To initialize a new project with Forc, use `forc init`:
+To initialize a new project with Forc, use `forc new`:
 
 ```sh
-forc init my-fuel-project
+forc new my-fuel-project
 ```
 
 Here is the project that Forc has initialized:
@@ -87,4 +87,4 @@ test can_get_contract_id ... ok
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
 ```
 
-The `forc test` command tests the contract using the Rust SDK test harness that lives under `tests/`. The default test harness `harness.rs` contains boilerplate code to get you started but doesn't actually call any contract methods. For additional information on testing contracts using the Rust SDK, refer to the [Testing with Rust](../../testing/testing-with-rust.md) section.
+The `forc test` command tests the contract using the Rust SDK test harness that lives under `tests/`. The default test harness `harness.rs` contains boilerplate code to get you started but doesn't actually call any contract methods. For additional information on testing contracts using the Rust SDK, refer to the [Testing with Rust](../testing/testing-with-rust.md) section.

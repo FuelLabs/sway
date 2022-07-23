@@ -149,6 +149,16 @@ impl Block {
         })
     }
 
+    /// Return whether this block is already terminated.  Checks if the final instruction, if it
+    /// exists, is a terminator.
+    pub fn is_terminated(&self, context: &Context) -> bool {
+        context.blocks[self.0]
+            .instructions
+            .last()
+            .map_or(false, |val| val.is_terminator(context))
+    }
+
+    /// Return whether this block is already terminated specifically by a Ret instruction.
     pub fn is_terminated_by_ret(&self, context: &Context) -> bool {
         self.get_term_inst(context)
             .map_or(false, |i| matches!(i, Instruction::Ret { .. }))

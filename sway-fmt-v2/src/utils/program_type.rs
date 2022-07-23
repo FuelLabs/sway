@@ -1,5 +1,8 @@
-use sway_parse::ModuleKind;
+use std::fmt::Write;
+use sway_parse::{token::PunctKind, ModuleKind};
 use sway_types::Spanned;
+
+use crate::FormatterError;
 
 /// Insert the program type without applying a formatting to it.
 ///
@@ -8,23 +11,32 @@ use sway_types::Spanned;
 ///     - Contract
 ///     - Predicate
 ///     - Library
-pub(crate) fn insert_program_type(push_to: &mut String, module_kind: ModuleKind) {
+pub(crate) fn insert_program_type(
+    formatted_code: &mut String,
+    module_kind: ModuleKind,
+) -> Result<(), FormatterError> {
     match module_kind {
-        ModuleKind::Script { script_token } => push_to.push_str(script_token.span().as_str()),
-        ModuleKind::Contract { contract_token } => push_to.push_str(contract_token.span().as_str()),
+        ModuleKind::Script { script_token } => {
+            write!(formatted_code, "{}", script_token.span().as_str())?
+        }
+
+        ModuleKind::Contract { contract_token } => {
+            write!(formatted_code, "{}", contract_token.span().as_str())?
+        }
         ModuleKind::Predicate { predicate_token } => {
-            push_to.push_str(predicate_token.span().as_str())
+            write!(formatted_code, "{}", predicate_token.span().as_str())?
         }
         ModuleKind::Library {
             library_token,
             name,
-        } => {
-            push_to.push_str(library_token.span().as_str());
-            push_to.push(' ');
-            push_to.push_str(name.as_str());
-        }
+        } => write!(
+            formatted_code,
+            "{} {}",
+            library_token.span().as_str(),
+            name.as_str()
+        )?,
     };
-    push_to.push(';');
-    push_to.push('\n');
-    push_to.push('\n');
+    writeln!(formatted_code, "{}\n", PunctKind::Semicolon.as_char())?;
+
+    Ok(())
 }

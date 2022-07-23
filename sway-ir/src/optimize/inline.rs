@@ -305,6 +305,11 @@ fn inline_instruction(
             } => new_block
                 .ins(context)
                 .get_ptr(map_ptr(base_ptr), ptr_ty, offset, span_md_idx),
+            Instruction::Gtf { index, tx_field_id } => {
+                new_block
+                    .ins(context)
+                    .gtf(map_value(index), tx_field_id, span_md_idx)
+            }
             Instruction::InsertElement {
                 array,
                 ty,
@@ -329,6 +334,11 @@ fn inline_instruction(
                 indices,
                 span_md_idx,
             ),
+            Instruction::IntToPtr(value, ty) => {
+                new_block
+                    .ins(context)
+                    .int_to_ptr(map_value(value), ty, span_md_idx)
+            }
             Instruction::Load(src_val) => {
                 new_block.ins(context).load(map_value(src_val), span_md_idx)
             }

@@ -6,18 +6,18 @@ struct Foo {
 }
 
 impl Foo {
-    fn foo() -> b256 {
+    fn foo(self) -> b256 {
         __get_storage_key()
     }
 }
 
 storage {
-    x: u64,
-    f1: Foo,
-    f2: Foo,
-    y: u64,
-    f3: Foo,
-    f4: Foo,
+    x: u64 = 0,
+    f1: Foo = Foo { },
+    f2: Foo = Foo { },
+    y: u64 = 0,
+    f3: Foo = Foo { },
+    f4: Foo = Foo { },
 }
 
 fn calls_foo() -> (b256, b256, b256, b256) {

@@ -27,7 +27,7 @@ while true; do
   fi
 done
 
-test_dirs="${base_dir}/test_artifacts/* ${base_dir}/test_projects/*"
+test_dirs="${base_dir}/test_artifacts/* ${base_dir}/test_projects/* ${base_dir}/test_artifacts/*/*"
 
 for test_dir in $test_dirs; do
   if [[ -f "${test_dir}/Forc.toml" ]]; then

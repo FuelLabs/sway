@@ -2,7 +2,6 @@ mod abi;
 mod r#enum;
 mod function;
 mod impl_trait;
-mod monomorphize;
 mod storage;
 mod r#struct;
 mod r#trait;
@@ -11,7 +10,6 @@ mod variable;
 pub use abi::*;
 pub use function::*;
 pub use impl_trait::*;
-pub(crate) use monomorphize::*;
 pub use r#enum::*;
 pub use r#struct::*;
 pub use r#trait::*;
@@ -40,6 +38,8 @@ pub enum TypedDeclaration {
     ErrorRecovery,
     StorageDeclaration(TypedStorageDeclaration),
     StorageReassignment(TypeCheckedStorageReassignment),
+    Break { span: Span },
+    Continue { span: Span },
 }
 
 impl CopyTypes for TypedDeclaration {
@@ -57,10 +57,13 @@ impl CopyTypes for TypedDeclaration {
             Reassignment(ref mut reassignment) => reassignment.copy_types(type_mapping),
             ImplTrait(impl_trait) => impl_trait.copy_types(type_mapping),
             // generics in an ABI is unsupported by design
-            AbiDeclaration(..) => (),
-            StorageDeclaration(..) => (),
-            StorageReassignment(..) => (),
-            GenericTypeForFunctionScope { .. } | ErrorRecovery => (),
+            AbiDeclaration(..)
+            | StorageDeclaration(..)
+            | StorageReassignment(..)
+            | GenericTypeForFunctionScope { .. }
+            | ErrorRecovery
+            | Break { .. }
+            | Continue { .. } => (),
         }
     }
 }
@@ -86,7 +89,7 @@ impl Spanned for TypedDeclaration {
             ImplTrait(TypedImplTrait { span, .. }) => span.clone(),
             StorageDeclaration(decl) => decl.span(),
             StorageReassignment(decl) => decl.span(),
-            ErrorRecovery | GenericTypeForFunctionScope { .. } => {
+            ErrorRecovery | GenericTypeForFunctionScope { .. } | Break { .. } | Continue { .. } => {
                 unreachable!("No span exists for these ast node types")
             }
         }
@@ -178,6 +181,14 @@ impl UnresolvedTypeCheck for TypedDeclaration {
                         .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
                         .collect(),
                 );
+                body.append(
+                    &mut decl
+                        .parameters
+                        .iter()
+                        .map(|x| &x.type_id)
+                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .collect(),
+                );
                 body
             }
             ConstantDeclaration(TypedConstantDeclaration { value, .. }) => {
@@ -196,66 +207,14 @@ impl UnresolvedTypeCheck for TypedDeclaration {
             | EnumDeclaration(_)
             | ImplTrait { .. }
             | AbiDeclaration(_)
-            | GenericTypeForFunctionScope { .. } => vec![],
+            | GenericTypeForFunctionScope { .. }
+            | Break { .. }
+            | Continue { .. } => vec![],
         }
     }
 }
 
 impl TypedDeclaration {
-    /// Attempt to retrieve the declaration as an enum declaration.
-    ///
-    /// Returns `None` if `self` is not an `TypedEnumDeclaration`.
-    pub(crate) fn as_enum(&self) -> Option<&TypedEnumDeclaration> {
-        match self {
-            TypedDeclaration::EnumDeclaration(decl) => Some(decl),
-            _ => None,
-        }
-    }
-
-    /// Attempt to retrieve the declaration as a struct declaration.
-    ///
-    /// Returns `None` if `self` is not a `TypedStructDeclaration`.
-    #[allow(dead_code)]
-    pub(crate) fn as_struct(&self) -> Option<&TypedStructDeclaration> {
-        match self {
-            TypedDeclaration::StructDeclaration(decl) => Some(decl),
-            _ => None,
-        }
-    }
-
-    /// Attempt to retrieve the declaration as a function declaration.
-    ///
-    /// Returns `None` if `self` is not a `TypedFunctionDeclaration`.
-    #[allow(dead_code)]
-    pub(crate) fn as_function(&self) -> Option<&TypedFunctionDeclaration> {
-        match self {
-            TypedDeclaration::FunctionDeclaration(decl) => Some(decl),
-            _ => None,
-        }
-    }
-
-    /// Attempt to retrieve the declaration as a variable declaration.
-    ///
-    /// Returns `None` if `self` is not a `TypedVariableDeclaration`.
-    #[allow(dead_code)]
-    pub(crate) fn as_variable(&self) -> Option<&TypedVariableDeclaration> {
-        match self {
-            TypedDeclaration::VariableDeclaration(decl) => Some(decl),
-            _ => None,
-        }
-    }
-
-    /// Attempt to retrieve the declaration as an Abi declaration.
-    ///
-    /// Returns `None` if `self` is not a `TypedAbiDeclaration`.
-    #[allow(dead_code)]
-    pub(crate) fn as_abi(&self) -> Option<&TypedAbiDeclaration> {
-        match self {
-            TypedDeclaration::AbiDeclaration(decl) => Some(decl),
-            _ => None,
-        }
-    }
-
     /// Retrieves the declaration as an enum declaration.
     ///
     /// Returns an error if `self` is not a `TypedEnumDeclaration`.
@@ -363,6 +322,8 @@ impl TypedDeclaration {
             ErrorRecovery => "error",
             StorageDeclaration(_) => "contract storage declaration",
             StorageReassignment(_) => "contract storage reassignment",
+            Break { .. } => "break",
+            Continue { .. } => "continue",
         }
     }
 
@@ -412,7 +373,9 @@ impl TypedDeclaration {
             | StorageDeclaration { .. }
             | StorageReassignment { .. }
             | AbiDeclaration(..)
-            | ErrorRecovery => Visibility::Public,
+            | ErrorRecovery
+            | Break { .. }
+            | Continue { .. } => Visibility::Public,
             VariableDeclaration(TypedVariableDeclaration { is_mutable, .. }) => {
                 is_mutable.visibility()
             }

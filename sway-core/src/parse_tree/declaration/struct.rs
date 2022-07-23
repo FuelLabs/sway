@@ -1,6 +1,6 @@
 use crate::{
-    parse_tree::{declaration::TypeParameter, Visibility},
-    type_engine::TypeInfo,
+    parse_tree::Visibility,
+    type_engine::{TypeInfo, TypeParameter},
 };
 
 use sway_types::{ident::Ident, span::Span};
