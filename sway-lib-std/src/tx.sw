@@ -23,8 +23,8 @@ const GTF_SCRIPT_RECEIPTS_ROOT = 0x00A;
 const GTF_SCRIPT_SCRIPT = 0x00B;
 const GTF_SCRIPT_SCRIPT_DATA = 0x00C;
 const GTF_SCRIPT_INPUT_AT_INDEX = 0x00D;
-const GTF_SCRIPT_OUTPUT_AT_INDEX = 0x00E
-const GTF_SCRIPT_WITNESS_AT_INDEX = 0x00F;
+const GTF_SCRIPT_OUTPUT_AT_INDEX = 0x00E;
+// const GTF_SCRIPT_WITNESS_AT_INDEX = 0x00F;
 
 // const GTF_CREATE_GAS_PRICE = 0x010;
 // const GTF_CREATE_GAS_LIMIT = 0x011;
@@ -288,27 +288,11 @@ pub fn tx_id(index: u64) -> Option<b256> {
     match type {
         // 0 is the `Coin` Input type
         0u8 => {
-<<<<<<< HEAD
             Option::Some(input_coin_tx_id(index))
         },
         // 1 is the `Contract` Input type
         1u8 => {
             Option::Some(input_coin_tx_id(index))
-=======
-            // GTF_INPUT_COIN_TX_ID = 0x102
-            Option::Some(read::<b256>(asm(res, i: index) {
-                gtf res i i258;
-                res: u64
-            }))
-        },
-        // 1 is the `Contract` Input type
-        1u8 => {
-            // GTF_INPUT_CONTRACT_TX_ID = 0x10E
-            Option::Some(read::<b256>(asm(res, i: index) {
-                gtf res i i270;
-                res: u64
-            }))
->>>>>>> refactor-tx-with-gtf
         },
         _ => {
            Option::None
