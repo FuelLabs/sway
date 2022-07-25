@@ -82,9 +82,9 @@ impl Backend {
         // and instead show the parsed tokens as warnings.
         // This is useful for debugging the lsp parser.
         if self.config.parsed_tokens_as_warnings {
-            let diagnostics = debug::generate_warnings_for_parsed_tokens(token_map);
+            //let diagnostics = debug::generate_warnings_for_parsed_tokens(token_map);
 
-            //let diagnostics = debug::generate_warnings_for_typed_tokens(token_map);
+            let diagnostics = debug::generate_warnings_for_typed_tokens(token_map);
             self.client
                 .publish_diagnostics(uri.clone(), diagnostics, None)
                 .await;

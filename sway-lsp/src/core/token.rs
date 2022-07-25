@@ -11,16 +11,16 @@ use sway_core::{
 };
 use sway_types::{Ident, Span};
 
-pub type TokenMap = DashMap<(Ident, Span), TokenType>;
+pub type TokenMap = DashMap<(Ident, Span), Token>;
 
 #[derive(Debug, Clone)]
-pub struct TokenType {
+pub struct Token {
     pub parsed: AstToken,
     pub typed: Option<TypedAstToken>,
     pub type_id: Option<TypeId>,
 }
 
-impl TokenType {
+impl Token {
     pub fn from_parsed(token: AstToken) -> Self {
         Self {
             parsed: token,
