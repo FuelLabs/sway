@@ -9,7 +9,7 @@ use crate::{
     semantic_analysis::TypeCheckContext,
     type_engine::*,
     types::DeterministicallyAborts,
-    CompileError, CompileResult, Expression,
+    CompileError, CompileResult, Expression, Hint,
 };
 
 use super::TypedExpression;
@@ -219,6 +219,7 @@ impl TypedIntrinsicFunctionKind {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span: lhs.span,
+                        hint: Hint::empty(),
                     });
                     return err(warnings, errors);
                 }
@@ -293,6 +294,7 @@ impl TypedIntrinsicFunctionKind {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span: index.span.clone(),
+                        hint: Hint::empty(),
                     });
                 }
 
@@ -304,6 +306,7 @@ impl TypedIntrinsicFunctionKind {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span: tx_field_id.span.clone(),
+                        hint: Hint::empty(),
                     });
                 }
 
@@ -356,6 +359,9 @@ impl TypedIntrinsicFunctionKind {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,
+                        hint: Hint::new(
+                            "Only a reference type can be used as argument here".to_string(),
+                        ),
                     });
                     return err(warnings, errors);
                 }

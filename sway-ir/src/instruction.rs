@@ -433,7 +433,7 @@ impl<'a> InstructionInserter<'a> {
         asm_val
     }
 
-    pub fn addrof(self, value: Value, span_md_idx: Option<MetadataIndex>) -> Value {
+    pub fn addr_of(self, value: Value, span_md_idx: Option<MetadataIndex>) -> Value {
         let addrof_val =
             Value::new_instruction(self.context, Instruction::AddrOf(value), span_md_idx, None);
         self.context.blocks[self.block.0]

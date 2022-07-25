@@ -9,7 +9,11 @@ use crate::{
 };
 use sway_types::{ident::Ident, span::Span, Spanned};
 
-use std::{fmt, path::PathBuf, sync::Arc};
+use std::{
+    fmt::{self, Display},
+    path::PathBuf,
+    sync::Arc,
+};
 use thiserror::Error;
 
 macro_rules! check {
@@ -184,6 +188,26 @@ where
             warnings,
             errors,
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Hash)]
+pub struct Hint {
+    msg: Option<String>,
+}
+
+impl Hint {
+    pub fn empty() -> Hint {
+        Hint { msg: None }
+    }
+    pub fn new(msg: String) -> Hint {
+        Hint { msg: Some(msg) }
+    }
+}
+
+impl Display for Hint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Hint: {}", &self.msg.as_ref().unwrap_or(&"".to_string()))
     }
 }
 
@@ -998,8 +1022,12 @@ pub enum CompileError {
     NonConstantDeclValue { span: Span },
     #[error("Declaring storage in a {program_kind} is not allowed.")]
     StorageDeclarationInNonContract { program_kind: String, span: Span },
-    #[error("Unsupported argument type to intrinsic \"{name}\".")]
-    IntrinsicUnsupportedArgType { name: String, span: Span },
+    #[error("Unsupported argument type to intrinsic \"{name}\". {hint}")]
+    IntrinsicUnsupportedArgType {
+        name: String,
+        span: Span,
+        hint: Hint,
+    },
     #[error("Call to \"{name}\" expects {expected} arguments")]
     IntrinsicIncorrectNumArgs {
         name: String,

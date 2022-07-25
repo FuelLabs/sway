@@ -222,7 +222,7 @@ fn inline_instruction(
                     .ins(context)
                     .asm_block_from_asm(asm, new_args, span_md_idx)
             }
-            Instruction::AddrOf(arg) => new_block.ins(context).addrof(map_value(arg), span_md_idx),
+            Instruction::AddrOf(arg) => new_block.ins(context).addr_of(map_value(arg), span_md_idx),
             Instruction::BitCast(value, ty) => {
                 new_block
                     .ins(context)
