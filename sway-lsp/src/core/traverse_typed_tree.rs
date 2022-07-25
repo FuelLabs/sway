@@ -56,7 +56,7 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                     token.typed = Some(TypedAstToken::TypedFunctionParameter(parameter.clone()));
                 }
 
-                if let Some(token) =
+                if let Some(mut token) =
                     tokens.get_mut(&to_ident_key(&Ident::new(parameter.type_span.clone())))
                 {
                     token.typed = Some(TypedAstToken::TypedFunctionParameter(parameter.clone()));
@@ -181,7 +181,8 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
 fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
     match &expression.expression {
         TypedExpressionVariant::Literal { .. } => {
-            if let Some(token) = tokens.get_mut(&to_ident_key(&Ident::new(expression.span.clone())))
+            if let Some(mut token) =
+                tokens.get_mut(&to_ident_key(&Ident::new(expression.span.clone())))
             {
                 token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
             }

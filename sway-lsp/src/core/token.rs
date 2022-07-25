@@ -1,9 +1,4 @@
 use dashmap::DashMap;
-use sway_core::semantic_analysis::ast_node::{
-    expression::typed_expression::TypedExpression, TypeCheckedStorageReassignDescriptor,
-    TypedDeclaration, TypedEnumVariant, TypedFunctionDeclaration, TypedFunctionParameter,
-    TypedReassignment, TypedStorageField, TypedStructField, TypedTraitFn,
-};
 use sway_core::{
     semantic_analysis::ast_node::{
         expression::typed_expression::TypedExpression, TypeCheckedStorageReassignDescriptor,
