@@ -255,6 +255,7 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
         TypedExpressionVariant::StructExpression { fields, span, .. } => {
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(span.clone()))) {
                 token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
+                token.type_def = Some(TypeDefinition::TypeId(expression.return_type.clone()));
             }
 
             for field in fields {

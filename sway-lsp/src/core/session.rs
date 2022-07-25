@@ -203,6 +203,8 @@ impl Session {
                 Err(DocumentError::FailedToParse(diagnostics))
             }
             Some(parse_program) => {
+                //eprintln!("{:#?}", &parse_program.root.tree.root_nodes);
+
                 for node in &parse_program.root.tree.root_nodes {
                     traverse_parse_tree::traverse_node(node, &self.token_map);
                 }
@@ -318,13 +320,26 @@ impl Session {
         let url = params.text_document_position_params.text_document.uri;
         let position = params.text_document_position_params.position;
 
-        if let Some((_, token)) = self.token_at_position(&url, position) {
-            if let Some(decl_ident) = self.declared_token_ident(&token) {
-                let range = utils::common::get_range_from_span(&decl_ident.span());
-                return Some(GotoDefinitionResponse::Scalar(Location::new(url, range)));
+        match self.token_at_position(&url, position) {
+            Some((_, token)) => {
+                match self.declared_token_ident(&token) { 
+                    Some(decl_ident) => {
+                        let range = utils::common::get_range_from_span(&decl_ident.span());
+                        match decl_ident.span().path() {
+                            Some(path) => {
+                                match Url::from_file_path(path.as_ref()) {
+                                    Ok(url) => Some(GotoDefinitionResponse::Scalar(Location::new(url, range))),
+                                    Err(_) => None,
+                                }
+                            }
+                            None => None,
+                        }
+                    },
+                    None => None,
+                }
             }
+            None => None, 
         }
-        None
     }
 
     pub fn completion_items(&self) -> Option<Vec<CompletionItem>> {
