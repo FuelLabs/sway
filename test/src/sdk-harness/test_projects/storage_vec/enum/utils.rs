@@ -53,6 +53,10 @@ pub mod wrappers {
         instance.enum_swap_remove(index).call().await.unwrap().value
     }
 
+    pub async fn set(instance: &MyContract, index: u64, value: TestEnum) {
+        instance.enum_set(index, value).call().await.unwrap();
+    }
+
     pub async fn insert(instance: &MyContract, index: u64, value: TestEnum) {
         instance.enum_insert(index, value).call().await.unwrap();
     }

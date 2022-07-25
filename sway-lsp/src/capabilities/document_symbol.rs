@@ -1,9 +1,5 @@
-use crate::core::{
-    session::Session,
-    token::{AstToken, TokenMap, TokenType, TypedAstToken},
-};
+use crate::core::token::{AstToken, TokenMap, TokenType, TypedAstToken};
 use crate::utils::common::get_range_from_span;
-use std::sync::Arc;
 use sway_core::{
     semantic_analysis::ast_node::{
         expression::typed_expression_variant::TypedExpressionVariant, TypedDeclaration,
@@ -11,18 +7,13 @@ use sway_core::{
     Declaration, Expression, Literal,
 };
 use sway_types::{Ident, Spanned};
-use tower_lsp::lsp_types::{DocumentSymbolResponse, Location, SymbolInformation, SymbolKind, Url};
-
-pub fn document_symbol(session: Arc<Session>, url: Url) -> Option<DocumentSymbolResponse> {
-    session
-        .symbol_information(&url)
-        .map(DocumentSymbolResponse::Flat)
-}
+use tower_lsp::lsp_types::{Location, SymbolInformation, SymbolKind, Url};
 
 pub fn to_symbol_information(token_map: &TokenMap, url: Url) -> Vec<SymbolInformation> {
     let mut symbols: Vec<SymbolInformation> = vec![];
 
-    for ((ident, _), token) in token_map {
+    for item in token_map.iter() {
+        let ((ident, _), token) = item.pair();
         let symbol = symbol_info(ident, token, url.clone());
         symbols.push(symbol)
     }
