@@ -163,7 +163,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             found_comment.1.span.as_str(),
-            "/* multi-\n             * line-\n             * comment *"
+            "/* multi-\n             * line-\n             * comment */"
         );
     }
 }

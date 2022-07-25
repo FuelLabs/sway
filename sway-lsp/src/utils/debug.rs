@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::core::token::{AstToken, TokenMap, TokenType, TypedAstToken};
 use crate::utils::{common::get_range_from_span, token};
 use sway_core::{Expression, Literal};
@@ -12,31 +13,45 @@ pub struct DebugFlags {
     pub parsed_tokens_as_warnings: bool,
 }
 
-pub fn generate_warnings_non_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
+pub(crate) fn generate_warnings_non_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
     let warnings = tokens
         .iter()
-        .filter(|(_, v)| v.typed.is_none())
-        .map(|((ident, _), _)| warning_from_ident(ident))
+        .filter(|item| {
+            let ((_, _), token) = item.pair();
+            token.typed.is_none()
+        })
+        .map(|item| {
+            let (ident, _) = item.key();
+            warning_from_ident(ident)
+        })
         .collect();
 
     warnings
 }
 
-pub fn generate_warnings_for_parsed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
+pub(crate) fn generate_warnings_for_parsed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
     let warnings = tokens
         .iter()
-        .map(|((ident, _), token_type)| (ident, &token_type.parsed))
-        .map(|(ident, _)| warning_from_ident(ident))
+        .map(|item| {
+            let (ident, _) = item.key();
+            warning_from_ident(ident)
+        })
         .collect();
 
     warnings
 }
 
-pub fn generate_warnings_for_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
+pub(crate) fn generate_warnings_for_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
     let warnings = tokens
         .iter()
-        .filter(|(_, v)| v.typed.is_some())
-        .map(|((ident, _), _)| warning_from_ident(ident))
+        .filter(|item| {
+            let ((_, _), token) = item.pair();
+            token.typed.is_some()
+        })
+        .map(|item| {
+            let (ident, _) = item.key();
+            warning_from_ident(ident)
+        })
         .collect();
 
     warnings
@@ -51,7 +66,7 @@ fn warning_from_ident(ident: &Ident) -> Diagnostic {
     }
 }
 
-pub fn debug_print_ident_and_token(ident: &Ident, token: &TokenType) {
+pub(crate) fn debug_print_ident_and_token(ident: &Ident, token: &TokenType) {
     let pos = ident.span().start_pos().line_col();
     let line_num = pos.0 as u32;
 
