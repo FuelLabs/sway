@@ -50,12 +50,12 @@ fn handle_function_declation(func: &FunctionDeclaration, tokens: &TokenMap) {
         );
     }
 
-    handle_custom_type(&func.return_type, tokens);
-}
-
-fn handle_custom_type(_type_info: &TypeInfo, _tokens: &TokenMap) {
-    // TODO: Not obvious how to handle this now with the new types
-    // I've opened an issue to track this here https://github.com/FuelLabs/sway/issues/2274
+    if let TypeInfo::Custom { name, .. } = &func.return_type {
+        tokens.insert(
+            to_ident_key(&name),
+            TokenType::from_parsed(AstToken::FunctionDeclaration(func.clone())),
+        );
+    }
 }
 
 fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
@@ -155,7 +155,12 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
             }
         }
         Declaration::ImplSelf(impl_self) => {
-            handle_custom_type(&impl_self.type_implementing_for, tokens);
+            if let TypeInfo::Custom { name, .. } = &impl_self.type_implementing_for {
+                tokens.insert(
+                    to_ident_key(&name),
+                    TokenType::from_parsed(AstToken::Declaration(declaration.clone())),
+                );
+            }
 
             for func_dec in &impl_self.functions {
                 handle_function_declation(func_dec, tokens);
@@ -275,12 +280,13 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                     TokenType::from_parsed(AstToken::Expression(expression.clone())),
                 );
             }
-            tokens.insert(
-                to_ident_key(&Ident::new(call_path_binding.inner.suffix.1.clone())),
-                TokenType::from_parsed(AstToken::Expression(expression.clone())),
-            );
 
-            // handle_custom_type(&struct_name.suffix.0, tokens);
+            if let (TypeInfo::Custom { name, .. }, ..) = &call_path_binding.inner.suffix {
+                tokens.insert(
+                    to_ident_key(&name),
+                    TokenType::from_parsed(AstToken::Expression(expression.clone())),
+                );
+            }
 
             for field in fields {
                 tokens.insert(
@@ -332,6 +338,18 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                 MethodName::FromTrait { call_path, .. } => call_path.prefixes.clone(),
                 _ => vec![],
             };
+
+            if let MethodName::FromType {
+                call_path_binding, ..
+            } = &method_name_binding.inner
+            {
+                if let (TypeInfo::Custom { name, .. }, ..) = &call_path_binding.inner.suffix {
+                    tokens.insert(
+                        to_ident_key(&name),
+                        TokenType::from_parsed(AstToken::Expression(expression.clone())),
+                    );
+                }
+            }
 
             // Don't collect applications of desugared operators due to mismatched ident lengths.
             if !desugared_op(&prefixes) {
