@@ -20,7 +20,7 @@ To create a new empty storage map, we have to declare the map in a `storage` blo
 {{#include ../../../examples/storage_map/src/main.sw:storage_map_decl}}
 ```
 
-Just like any other storage variable, two things are requires when declaring a `StorageMap`: a type annotation and an initializers. The initializer is just an empty struct of type `StorageMap` because `StorageMap<K, V>` itself is an empty struct! Everything that is interesting about `StorageMap<K, V>` is implemented in its methods.
+Just like any other storage variable, two things are required when declaring a `StorageMap`: a type annotation and an initializer. The initializer is just an empty struct of type `StorageMap` because `StorageMap<K, V>` itself is an empty struct! Everything that is interesting about `StorageMap<K, V>` is implemented in its methods.
 
 Storage maps, just like `Vec<T>` and `StorageVec<T>`, are implemented using generics which means that the `StorageMap<K, V>` type provided by the standard library can map keys of any type `K` to values of any type `V`. In the example above, we’ve told the Sway compiler that the `StorageMap<K, V>` in `map` will map keys of type `Address` to values of type `u64`.
 
