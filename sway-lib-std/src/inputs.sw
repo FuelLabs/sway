@@ -88,7 +88,7 @@ pub fn predicate_data<T>(index: u64) -> Option<T> {
     match type {
         // 0 is the `Coin` Input type
         0u8 => {
-            Option::Some(input_coin_predicate_data(index)
+            Option::Some(input_coin_predicate_data(index))
         },
         // 2 is the `Message` Input type
         2u8 => {
