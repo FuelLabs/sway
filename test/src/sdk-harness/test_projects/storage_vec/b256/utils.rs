@@ -53,6 +53,10 @@ pub mod wrappers {
         instance.b256_swap_remove(index).call().await.unwrap().value
     }
 
+    pub async fn set(instance: &MyContract, index: u64, value: [u8; 32]) {
+        instance.b256_set(index, value).call().await.unwrap();
+    }
+
     pub async fn insert(instance: &MyContract, index: u64, value: [u8; 32]) {
         instance.b256_insert(index, value).call().await.unwrap();
     }
