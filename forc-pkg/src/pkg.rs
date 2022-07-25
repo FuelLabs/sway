@@ -1382,7 +1382,6 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
 
         // Copy current_dir to target
         let copy_options = fs_extra::dir::CopyOptions::new();
-        println!("copying from {:?} to {:?}", repo_path, path);
         fs_extra::copy_items(&[repo_path], &path, &copy_options)?;
         Ok(())
     })?;
