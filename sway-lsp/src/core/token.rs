@@ -14,10 +14,16 @@ use sway_types::{Ident, Span};
 pub type TokenMap = DashMap<(Ident, Span), Token>;
 
 #[derive(Debug, Clone)]
+pub enum TypeDefinition {
+    TypeId(TypeId),
+    Ident(Ident),
+}
+
+#[derive(Debug, Clone)]
 pub struct Token {
     pub parsed: AstToken,
     pub typed: Option<TypedAstToken>,
-    pub type_id: Option<TypeId>,
+    pub type_def: Option<TypeDefinition>,
 }
 
 impl Token {
@@ -25,7 +31,7 @@ impl Token {
         Self {
             parsed: token,
             typed: None,
-            type_id: None,
+            type_def: None,
         }
     }
 }

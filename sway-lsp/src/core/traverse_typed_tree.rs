@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::{
-    core::token::{TokenMap, TypedAstToken},
+    core::token::{TokenMap, TypeDefinition, TypedAstToken},
     utils::token::to_ident_key,
 };
 use sway_core::semantic_analysis::ast_node::{
@@ -106,6 +106,7 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
         TypedDeclaration::ImplTrait(TypedImplTrait {
             trait_name,
             methods,
+            implementing_for_type_id,
             ..
         }) => {
             for ident in &trait_name.prefixes {
@@ -116,6 +117,7 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
 
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&trait_name.suffix)) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                token.type_def = Some(TypeDefinition::TypeId(implementing_for_type_id.clone()));
             }
 
             for method in methods {
@@ -136,6 +138,7 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                 let return_type_ident = Ident::new(method.return_type_span.clone());
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&return_type_ident)) {
                     token.typed = Some(TypedAstToken::TypedFunctionDeclaration(method.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(method.return_type.clone()));
                 }
             }
         }
@@ -147,6 +150,12 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
             for trait_fn in &abi_decl.interface_surface {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&trait_fn.name)) {
                     token.typed = Some(TypedAstToken::TypedTraitFn(trait_fn.clone()));
+                }
+
+                let return_ident = Ident::new(trait_fn.return_type_span.clone());
+                if let Some(mut token) = tokens.get_mut(&to_ident_key(&return_ident)) {
+                    token.typed = Some(TypedAstToken::TypedTraitFn(trait_fn.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(trait_fn.return_type));
                 }
             }
         }
@@ -202,6 +211,7 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
 
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&call_path.suffix)) {
                 token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
+                token.type_def = Some(TypeDefinition::Ident(function_decl.name.clone()));
             }
 
             for exp in contract_call_params.values() {

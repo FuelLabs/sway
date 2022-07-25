@@ -67,6 +67,7 @@ fn capabilities() -> ServerCapabilities {
             ..Default::default()
         }),
         document_formatting_provider: Some(OneOf::Left(true)),
+        definition_provider: Some(OneOf::Left(true)),
         ..ServerCapabilities::default()
     }
 }

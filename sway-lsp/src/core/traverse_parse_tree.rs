@@ -5,7 +5,7 @@ use crate::{
     utils::token::{desugared_op, to_ident_key},
 };
 use sway_core::{
-    constants::{MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX},
+    constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX},
     parse_tree::MethodName,
     AstNode, AstNodeContent, Declaration, Expression, FunctionDeclaration, ReassignmentTarget,
     TypeInfo, WhileLoop,
@@ -68,6 +68,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                     .name
                     .as_str()
                     .contains(MATCH_RETURN_VAR_NAME_PREFIX)
+                && !variable.name.as_str().contains(DESTRUCTURE_PREFIX)
             {
                 tokens.insert(
                     to_ident_key(&variable.name),
@@ -255,6 +256,7 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
         Expression::VariableExpression { name, .. } => {
             if !name.as_str().contains(TUPLE_NAME_PREFIX)
                 && !name.as_str().contains(MATCH_RETURN_VAR_NAME_PREFIX)
+                && !name.as_str().contains(DESTRUCTURE_PREFIX)
             {
                 tokens.insert(
                     to_ident_key(name),

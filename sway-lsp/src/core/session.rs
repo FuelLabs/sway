@@ -2,7 +2,7 @@ use crate::{
     capabilities::{self, formatting::get_format_text_edits},
     core::{
         document::{DocumentError, TextDocument},
-        token::{Token, TokenMap},
+        token::{Token, TokenMap, TypeDefinition},
         {traverse_parse_tree, traverse_typed_tree},
     },
     sway_config::SwayConfig,
@@ -97,17 +97,21 @@ impl Session {
 
     pub fn declared_token_ident(&self, token: &Token) -> Option<Ident> {
         // Look up the tokens TypeId
-        match utils::token::type_id(token) {
-            Some(type_id) => {
-                // Use the TypeId to look up the actual type
-                let type_info = sway_core::type_engine::look_up_type_id(type_id);
-
-                match type_info {
-                    TypeInfo::UnknownGeneric { name }
-                    | TypeInfo::Enum { name, .. }
-                    | TypeInfo::Struct { name, .. }
-                    | TypeInfo::Custom { name, .. } => Some(name),
-                    _ => None,
+        match &token.type_def {
+            Some(type_def) => {
+                match type_def {
+                    TypeDefinition::TypeId(type_id) => {
+                        // Use the TypeId to look up the actual type
+                        let type_info = sway_core::type_engine::look_up_type_id(*type_id);
+                        match type_info {
+                            TypeInfo::UnknownGeneric { name }
+                            | TypeInfo::Enum { name, .. }
+                            | TypeInfo::Struct { name, .. }
+                            | TypeInfo::Custom { name, .. } => Some(name),
+                            _ => None,
+                        }
+                    }
+                    TypeDefinition::Ident(ident) => Some(ident.clone()),
                 }
             }
             None => None,
@@ -230,6 +234,8 @@ impl Session {
                 typed_program,
                 warnings,
             } => {
+                eprintln!("{:#?}", &typed_program.root.all_nodes);
+
                 for node in &typed_program.root.all_nodes {
                     traverse_typed_tree::traverse_node(node, &self.token_map);
                 }
