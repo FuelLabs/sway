@@ -188,7 +188,13 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                         TokenType::from_parsed(AstToken::FunctionParameter(param.clone())),
                     );
                 }
-                // TODO: handle return type
+                
+                if let TypeInfo::Custom { name, .. } = &trait_fn.return_type {
+                    tokens.insert(
+                        to_ident_key(&name),
+                        TokenType::from_parsed(AstToken::TraitFn(trait_fn.clone())),
+                    );
+                }
             }
         }
         Declaration::ConstantDeclaration(const_decl) => {
