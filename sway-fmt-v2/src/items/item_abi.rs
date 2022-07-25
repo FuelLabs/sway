@@ -1,7 +1,11 @@
 use crate::{
     config::items::ItemBraceStyle,
     fmt::{Format, FormattedCode, Formatter},
-    utils::{attribute::FormatDecl, bracket::CurlyBrace},
+    utils::{
+        attribute::FormatDecl,
+        bracket::CurlyBrace,
+        comments::{ByteSpan, LeafSpans},
+    },
     FormatterError,
 };
 use std::fmt::Write;
@@ -128,5 +132,17 @@ impl CurlyBrace for ItemAbi {
             .shrink_left(formatter.config.whitespace.tab_spaces)
             .unwrap_or_default();
         Ok(())
+    }
+}
+
+impl LeafSpans for ItemAbi {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = vec![ByteSpan::from(self.abi_token.span())];
+        collected_spans.push(ByteSpan::from(self.name.span()));
+        collected_spans.append(&mut self.abi_items.leaf_spans());
+        if let Some(abi_defs) = &self.abi_defs_opt {
+            collected_spans.append(&mut abi_defs.leaf_spans());
+        }
+        collected_spans
     }
 }
