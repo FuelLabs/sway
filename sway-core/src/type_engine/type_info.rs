@@ -1276,11 +1276,14 @@ impl TypeInfo {
     /// and return its contents.
     ///
     /// Returns an error if `self` is not a `TypeInfo::Struct`.
-    pub(crate) fn expect_struct(&self, debug_span: &Span) -> CompileResult<&Vec<TypedStructField>> {
+    pub(crate) fn expect_struct(
+        &self,
+        debug_span: &Span,
+    ) -> CompileResult<(&Ident, &Vec<TypedStructField>)> {
         let warnings = vec![];
         let errors = vec![];
         match self {
-            TypeInfo::Struct { fields, .. } => ok(fields, warnings, errors),
+            TypeInfo::Struct { name, fields, .. } => ok((name, fields), warnings, errors),
             TypeInfo::ErrorRecovery => err(warnings, errors),
             a => err(
                 vec![],

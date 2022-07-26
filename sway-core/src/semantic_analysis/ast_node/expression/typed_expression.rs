@@ -954,15 +954,13 @@ impl TypedExpression {
 
         // extract the struct name and fields from the type info
         let type_info = look_up_type_id(type_id);
-        let struct_fields = check!(
+        let (struct_name, struct_fields) = check!(
             type_info.expect_struct(&span),
             return err(warnings, errors),
             warnings,
             errors
         );
         let mut struct_fields = struct_fields.clone();
-
-        let struct_name = Ident::new(call_path_binding.inner.suffix.1.clone());
 
         // match up the names with their type annotations from the declaration
         let mut typed_fields_buf = vec![];
@@ -1021,8 +1019,9 @@ impl TypedExpression {
         }
         let exp = TypedExpression {
             expression: TypedExpressionVariant::StructExpression {
-                struct_name,
+                struct_name: struct_name.clone(),
                 fields: typed_fields_buf,
+                span: call_path_binding.inner.suffix.1.clone(),
             },
             return_type: type_id,
             is_constant: IsConstant::No,
