@@ -19,6 +19,7 @@ impl Format for ExprStructField {
             write!(formatted_code, "{} ", expr.0.span().as_str())?;
             expr.1.format(formatted_code, formatter)?;
         }
+        writeln!(formatted_code)?;
 
         Ok(())
     }
@@ -40,7 +41,7 @@ impl CurlyBrace for ExprStructField {
             }
             _ => {
                 // Add opening brace to the same line
-                write!(line, " {}", Delimiter::Brace.as_open_char())?;
+                writeln!(line, " {}", Delimiter::Brace.as_open_char())?;
                 shape = shape.block_indent(extra_width);
             }
         }

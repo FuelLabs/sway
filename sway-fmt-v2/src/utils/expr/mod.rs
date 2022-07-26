@@ -2,8 +2,8 @@ use crate::fmt::*;
 use std::fmt::Write;
 use sway_parse::{
     token::{Delimiter, PunctKind},
-    AbiCastArgs, CodeBlockContents, Expr, ExprArrayDescriptor, ExprStructField,
-    ExprTupleDescriptor, MatchBranch,
+    CodeBlockContents, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor,
+    MatchBranch,
 };
 use sway_types::Spanned;
 
@@ -27,12 +27,10 @@ impl Format for Expr {
             Self::Path(path) => path.format(formatted_code, formatter)?,
             Self::Literal(lit) => lit.format(formatted_code, formatter)?,
             Self::AbiCast { abi_token, args } => {
-                write!(formatted_code, "{} ", abi_token.span().as_str())?;
-                AbiCastArgs::open_parenthesis(formatted_code, formatter)?;
+                write!(formatted_code, "{}", abi_token.span().as_str())?;
                 args.clone()
                     .into_inner()
                     .format(formatted_code, formatter)?;
-                AbiCastArgs::close_parenthesis(formatted_code, formatter)?;
             }
             Self::Struct { path, fields } => {
                 path.format(formatted_code, formatter)?;
@@ -131,6 +129,14 @@ impl Format for Expr {
                 CodeBlockContents::close_curly_brace(formatted_code, formatter)?;
             }
             Self::FuncApp { func, args } => {
+                // don't indent unless on new line
+                if formatted_code.ends_with('\n') {
+                    write!(
+                        formatted_code,
+                        "{}",
+                        formatter.shape.indent.to_string(formatter)
+                    )?;
+                }
                 func.format(formatted_code, formatter)?;
                 Self::open_parenthesis(formatted_code, formatter)?;
                 args.clone()
@@ -151,6 +157,14 @@ impl Format for Expr {
                 contract_args_opt,
                 args,
             } => {
+                // don't indent unless on new line
+                if formatted_code.ends_with('\n') {
+                    write!(
+                        formatted_code,
+                        "{}",
+                        formatter.shape.indent.to_string(formatter)
+                    )?;
+                }
                 target.format(formatted_code, formatter)?;
                 write!(formatted_code, "{}", dot_token.span().as_str())?;
                 name.format(formatted_code, formatter)?;
@@ -173,6 +187,11 @@ impl Format for Expr {
                 dot_token,
                 name,
             } => {
+                write!(
+                    formatted_code,
+                    "{}",
+                    formatter.shape.indent.to_string(formatter)
+                )?;
                 target.format(formatted_code, formatter)?;
                 write!(formatted_code, "{}", dot_token.span().as_str())?;
                 name.format(formatted_code, formatter)?;
@@ -209,7 +228,7 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", star_token.span().as_str())?;
+                write!(formatted_code, " {} ", star_token.span().as_str())?;
                 rhs.format(formatted_code, formatter)?;
             }
             Self::Div {
@@ -218,7 +237,7 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", forward_slash_token.span().as_str())?;
+                write!(formatted_code, " {} ", forward_slash_token.span().as_str())?;
                 rhs.format(formatted_code, formatter)?;
             }
             Self::Modulo {
@@ -227,7 +246,7 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", percent_token.span().as_str())?;
+                write!(formatted_code, " {} ", percent_token.span().as_str())?;
                 rhs.format(formatted_code, formatter)?;
             }
             Self::Add {
@@ -236,7 +255,7 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", add_token.span().as_str())?;
+                write!(formatted_code, " {} ", add_token.span().as_str())?;
                 rhs.format(formatted_code, formatter)?;
             }
             Self::Sub {
@@ -245,7 +264,7 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", sub_token.span().as_str())?;
+                write!(formatted_code, " {} ", sub_token.span().as_str())?;
                 rhs.format(formatted_code, formatter)?;
             }
             Self::Shl {
@@ -254,7 +273,7 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", shl_token.span().as_str())?;
+                write!(formatted_code, " {} ", shl_token.span().as_str())?;
                 rhs.format(formatted_code, formatter)?;
             }
             Self::Shr {
@@ -263,7 +282,7 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", shr_token.span().as_str())?;
+                write!(formatted_code, " {} ", shr_token.span().as_str())?;
                 rhs.format(formatted_code, formatter)?;
             }
             Self::BitAnd {
@@ -272,7 +291,7 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", ampersand_token.span().as_str())?;
+                write!(formatted_code, " {} ", ampersand_token.span().as_str())?;
                 rhs.format(formatted_code, formatter)?;
             }
             Self::BitXor {
@@ -281,7 +300,7 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", caret_token.span().as_str())?;
+                write!(formatted_code, " {} ", caret_token.span().as_str())?;
                 rhs.format(formatted_code, formatter)?;
             }
             Self::BitOr {
@@ -290,7 +309,7 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", pipe_token.span().as_str())?;
+                write!(formatted_code, " {} ", pipe_token.span().as_str())?;
                 rhs.format(formatted_code, formatter)?;
             }
             Self::Equal {
@@ -299,7 +318,7 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", double_eq_token.span().as_str())?;
+                write!(formatted_code, " {} ", double_eq_token.span().as_str())?;
                 rhs.format(formatted_code, formatter)?;
             }
             Self::NotEqual {
@@ -308,7 +327,7 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", bang_eq_token.span().as_str())?;
+                write!(formatted_code, " {} ", bang_eq_token.span().as_str())?;
                 rhs.format(formatted_code, formatter)?;
             }
             Self::LessThan {
@@ -317,7 +336,7 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", less_than_token.span().as_str())?;
+                write!(formatted_code, " {} ", less_than_token.span().as_str())?;
                 rhs.format(formatted_code, formatter)?;
             }
             Self::GreaterThan {
@@ -326,7 +345,7 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", greater_than_token.span().as_str())?;
+                write!(formatted_code, " {} ", greater_than_token.span().as_str())?;
                 rhs.format(formatted_code, formatter)?;
             }
             Self::LessThanEq {
@@ -335,7 +354,7 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", less_than_eq_token.span().as_str())?;
+                write!(formatted_code, " {} ", less_than_eq_token.span().as_str())?;
                 rhs.format(formatted_code, formatter)?;
             }
             Self::GreaterThanEq {
@@ -344,7 +363,11 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", greater_than_eq_token.span().as_str())?;
+                write!(
+                    formatted_code,
+                    " {} ",
+                    greater_than_eq_token.span().as_str()
+                )?;
                 rhs.format(formatted_code, formatter)?;
             }
             Self::LogicalAnd {
@@ -353,7 +376,11 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", double_ampersand_token.span().as_str())?;
+                write!(
+                    formatted_code,
+                    " {} ",
+                    double_ampersand_token.span().as_str()
+                )?;
                 rhs.format(formatted_code, formatter)?;
             }
             Self::LogicalOr {
@@ -362,7 +389,7 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", double_pipe_token.span().as_str())?;
+                write!(formatted_code, " {} ", double_pipe_token.span().as_str())?;
                 rhs.format(formatted_code, formatter)?;
             }
             Self::Reassignment {

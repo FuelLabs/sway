@@ -9,9 +9,11 @@ impl Format for AbiCastArgs {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        Self::open_parenthesis(formatted_code, formatter)?;
         self.name.format(formatted_code, formatter)?;
         write!(formatted_code, "{} ", self.comma_token.span().as_str())?;
         self.address.format(formatted_code, formatter)?;
+        Self::close_parenthesis(formatted_code, formatter)?;
 
         Ok(())
     }

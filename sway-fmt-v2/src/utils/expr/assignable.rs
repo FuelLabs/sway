@@ -10,7 +10,14 @@ impl Format for Assignable {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         match self {
-            Assignable::Var(name) => name.format(formatted_code, formatter)?,
+            Assignable::Var(name) => {
+                write!(
+                    formatted_code,
+                    "{}",
+                    formatter.shape.indent.to_string(formatter)
+                )?;
+                name.format(formatted_code, formatter)?;
+            }
             Assignable::Index { target, arg } => {
                 target.format(formatted_code, formatter)?;
                 Expr::open_square_bracket(formatted_code, formatter)?;
@@ -51,7 +58,7 @@ impl Format for ReassignmentOp {
         formatted_code: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(formatted_code, "{}", self.span.as_str())?;
+        write!(formatted_code, " {} ", self.span.as_str())?;
         Ok(())
     }
 }
