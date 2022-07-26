@@ -821,6 +821,7 @@ fn connect_expression(
         StructExpression {
             struct_name,
             fields,
+            ..
         } => {
             let decl = match graph.namespace.find_struct_decl(struct_name.as_str()) {
                 Some(ix) => *ix,
