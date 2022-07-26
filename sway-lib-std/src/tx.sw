@@ -117,6 +117,8 @@ pub const OUTPUT_CONTRACT_CREATED = 5u8;
 //  - tx_output_at_index()
 //  - tx_witness_at_index()
 
+// @todo decide how to handle cases like tx_script_length(), where the field doesn't exist on the transaction-create type. probbaly best to return an option.
+
 
 pub fn tx_type() -> u8 {
     __gtf::<u8>(0, GTF_TYPE)
@@ -171,12 +173,17 @@ pub fn tx_maturity() -> u32 {
     }
 }
 
-/// Get the transaction script length.
-pub fn tx_script_length() -> u64 {
-    // GTF_SCRIPT_SCRIPT_LENGTH = 0x005
-    asm(res) {
-        gtf res zero i5;
-        res: u64
+/// Get the transaction-script script length.
+pub fn tx_script_length() -> Option<u64> {
+    match type {
+        0u8 => {
+            // tx is a transaction-script
+            Option::Some(__gtf::<u64>(0, GTF_SCRIPT_SCRIPT_LENGTH))
+        },
+        1u8 => {
+            // tx is a transaction-create, which has no script length field.
+            Option::None
+        }
     }
 }
 
