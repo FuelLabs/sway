@@ -94,7 +94,6 @@ impl ToJsonAbi for TypedFunctionDeclaration {
                     name: x.name.as_str().to_string(),
                     type_field: x.type_id.json_abi_str(),
                     components: x.type_id.generate_json_abi(),
-                    original_type_field: None,
                     type_arguments: x
                         .type_id
                         .get_type_parameters()
@@ -105,7 +104,6 @@ impl ToJsonAbi for TypedFunctionDeclaration {
                 name: "".to_string(),
                 type_field: self.return_type.json_abi_str(),
                 components: self.return_type.generate_json_abi(),
-                original_type_field: None,
                 type_arguments: self
                     .return_type
                     .get_type_parameters()

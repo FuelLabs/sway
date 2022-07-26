@@ -180,9 +180,33 @@ impl ToJsonAbi for TypedStructField {
     fn generate_json_abi(&self) -> Self::Output {
         Property {
             name: self.name.to_string(),
-            type_field: self.type_id.json_abi_str(),
+//            type_field: self.original_type_info.json_abi_str()
+            type_field: match &self.original_type_info {
+                TypeInfo::Custom {
+                    name,
+                    type_arguments,
+                } => {
+                    let type_arguments = match type_arguments {
+                        Some(type_arguments) => type_arguments
+                            .iter()
+                            .map(|ty| ty.type_id.json_abi_str())
+                            .collect::<Vec<String>>(),
+                        None => vec![],
+                    };
+
+                    if type_arguments.is_empty() {
+                        format!("{}", name)
+                    } else {
+                        format!(
+                            "{}<{}>",
+                            self.type_id.json_abi_str(),
+                            type_arguments.join(",")
+                        )
+                    }
+                }
+                _ => self.type_id.json_abi_str(),
+            },
             components: self.type_id.generate_json_abi(),
-            original_type_field: Some(self.original_type_info.json_abi_str()),
             type_arguments: self
                 .type_id
                 .get_type_parameters()

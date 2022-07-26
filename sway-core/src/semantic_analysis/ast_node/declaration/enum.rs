@@ -214,7 +214,6 @@ impl ToJsonAbi for TypedEnumVariant {
                 _ => self.type_id.json_abi_str(),
             },
             components: self.type_id.generate_json_abi(),
-            original_type_field: Some(self.original_type_info.json_abi_str()),
             type_arguments: self
                 .type_id
                 .get_type_parameters()
