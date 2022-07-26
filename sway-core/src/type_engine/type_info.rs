@@ -372,6 +372,7 @@ impl JsonAbiString for TypeInfo {
             }
             Ref(id, _sp) => format!("T{} ({})", id, (*id).json_abi_str()),
             Tuple(fields) => {
+                dbg!(fields);
                 let field_strs = fields
                     .iter()
                     .map(|field| field.json_abi_str())
@@ -787,6 +788,7 @@ impl TypeInfo {
                                 new_field_id,
                                 fields[index].span.clone(),
                             )),
+                            original_type_info: fields[index].original_type_info.clone(),
                             span: fields[index].span.clone(),
                         });
                         index += 1;
@@ -803,6 +805,7 @@ impl TypeInfo {
                                 new_field_id,
                                 fields[index].span.clone(),
                             )),
+                            original_type_info: fields[index].original_type_info.clone(),
                             span: fields[index].span.clone(),
                         },
                         None => fields[index].clone(),

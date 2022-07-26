@@ -1013,7 +1013,8 @@ fn ty_to_type_info(ec: &mut ErrorContext, ty: Ty) -> Result<TypeInfo, ErrorEmitt
 fn ty_to_type_argument(ec: &mut ErrorContext, ty: Ty) -> Result<TypeArgument, ErrorEmitted> {
     let span = ty.span();
     let type_argument = TypeArgument {
-        type_id: insert_type(ty_to_type_info(ec, ty)?),
+        type_id: insert_type(ty_to_type_info(ec, ty.clone())?),
+        original_type_info: ty_to_type_info(ec, ty)?,
         span,
     };
     Ok(type_argument)
@@ -3117,8 +3118,12 @@ fn generic_args_to_type_arguments(
         .into_iter()
         .map(|ty| {
             let span = ty.span();
-            let type_id = insert_type(ty_to_type_info(ec, ty)?);
-            Ok(TypeArgument { type_id, span })
+            let type_id = insert_type(ty_to_type_info(ec, ty.clone())?);
+            Ok(TypeArgument {
+                type_id,
+                original_type_info: ty_to_type_info(ec, ty)?,
+                span,
+            })
         })
         .collect()
 }

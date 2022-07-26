@@ -92,7 +92,25 @@ impl ToJsonAbi for TypedFunctionDeclaration {
                 .iter()
                 .map(|x| Property {
                     name: x.name.as_str().to_string(),
-                    type_field: x.type_id.json_abi_str(),
+                    type_field: {
+                        let type_parameters = match x.type_id.get_type_parameters() {
+                            Some(type_parameters) => type_parameters
+                                .iter()
+                                .map(|ty| ty.name_ident.as_str().to_string())
+                                .collect::<Vec<String>>(),
+                            None => vec![],
+                        };
+
+                        if type_parameters.is_empty() {
+                            x.type_id.json_abi_str()
+                        } else {
+                            format!(
+                                "{}<{}>",
+                                x.type_id.json_abi_str(),
+                                type_parameters.join(", ")
+                            )
+                        }
+                    },
                     components: x.type_id.generate_json_abi(),
                     type_arguments: x
                         .type_id
@@ -102,7 +120,25 @@ impl ToJsonAbi for TypedFunctionDeclaration {
                 .collect(),
             outputs: vec![Property {
                 name: "".to_string(),
-                type_field: self.return_type.json_abi_str(),
+                type_field: {
+                    let type_parameters = match self.return_type.get_type_parameters() {
+                        Some(type_parameters) => type_parameters
+                            .iter()
+                            .map(|ty| ty.name_ident.as_str().to_string())
+                            .collect::<Vec<String>>(),
+                        None => vec![],
+                    };
+
+                    if type_parameters.is_empty() {
+                        self.return_type.json_abi_str()
+                    } else {
+                        format!(
+                            "{}<{}>",
+                            self.return_type.json_abi_str(),
+                            type_parameters.join(", ")
+                        )
+                    }
+                },
                 components: self.return_type.generate_json_abi(),
                 type_arguments: self
                     .return_type

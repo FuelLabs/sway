@@ -3,7 +3,9 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     error::{err, ok},
     semantic_analysis::{TypeCheckContext, TypedEnumVariant},
-    type_engine::{insert_type, CreateTypeId, EnforceTypeArguments, TypeArgument, TypeId},
+    type_engine::{
+        insert_type, look_up_type_id, CreateTypeId, EnforceTypeArguments, TypeArgument, TypeId,
+    },
     CompileError, CompileResult, Literal, Scrutinee, StructScrutineeField, TypeInfo,
 };
 
@@ -228,6 +230,7 @@ impl TypedScrutinee {
                             .into_iter()
                             .map(|x| TypeArgument {
                                 type_id: x.type_id,
+                                original_type_info: look_up_type_id(x.type_id),
                                 span: span.clone(),
                             })
                             .collect(),

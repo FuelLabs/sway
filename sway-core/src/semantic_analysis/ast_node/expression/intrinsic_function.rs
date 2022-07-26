@@ -142,6 +142,7 @@ impl TypedIntrinsicFunctionKind {
                     arguments: vec![],
                     type_arguments: vec![TypeArgument {
                         type_id,
+                        original_type_info: look_up_type_id(type_id),
                         span: targ.span,
                     }],
                     span,
@@ -175,6 +176,7 @@ impl TypedIntrinsicFunctionKind {
                     arguments: vec![],
                     type_arguments: vec![TypeArgument {
                         type_id,
+                        original_type_info: look_up_type_id(type_id),
                         span: targ.span,
                     }],
                     span,
@@ -326,6 +328,7 @@ impl TypedIntrinsicFunctionKind {
                         arguments: vec![index, tx_field_id],
                         type_arguments: vec![TypeArgument {
                             type_id,
+                            original_type_info: look_up_type_id(type_id),
                             span: targ.span,
                         }],
                         span,

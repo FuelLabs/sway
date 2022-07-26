@@ -180,7 +180,7 @@ impl ToJsonAbi for TypedStructField {
     fn generate_json_abi(&self) -> Self::Output {
         Property {
             name: self.name.to_string(),
-//            type_field: self.original_type_info.json_abi_str()
+            //            type_field: self.original_type_info.json_abi_str()
             type_field: match &self.original_type_info {
                 TypeInfo::Custom {
                     name,
@@ -200,7 +200,7 @@ impl ToJsonAbi for TypedStructField {
                         format!(
                             "{}<{}>",
                             self.type_id.json_abi_str(),
-                            type_arguments.join(",")
+                            type_arguments.join(", ")
                         )
                     }
                 }
@@ -225,7 +225,6 @@ impl TypedStructField {
     pub(crate) fn type_check(mut ctx: TypeCheckContext, field: StructField) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        dbg!(&field);
         let r#type = check!(
             ctx.resolve_type_with_self(
                 insert_type(field.type_info.clone()),

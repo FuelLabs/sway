@@ -1094,6 +1094,7 @@ impl TypedExpression {
             }
             typed_field_types.push(TypeArgument {
                 type_id: typed_field.return_type,
+                original_type_info: look_up_type_id(typed_field.return_type),
                 span: typed_field.span.clone(),
             });
             typed_fields.push(typed_field);

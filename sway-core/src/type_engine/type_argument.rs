@@ -8,6 +8,7 @@ use sway_types::{Property, Span};
 #[derive(Debug, Clone)]
 pub struct TypeArgument {
     pub(crate) type_id: TypeId,
+    pub(crate) original_type_info: TypeInfo,
     pub(crate) span: Span,
 }
 
@@ -33,6 +34,7 @@ impl Default for TypeArgument {
     fn default() -> Self {
         TypeArgument {
             type_id: insert_type(TypeInfo::Unknown),
+            original_type_info: TypeInfo::Unknown,
             span: Span::dummy(),
         }
     }
@@ -46,7 +48,7 @@ impl fmt::Display for TypeArgument {
 
 impl JsonAbiString for TypeArgument {
     fn json_abi_str(&self) -> String {
-        look_up_type_id(self.type_id).json_abi_str()
+        self.original_type_info.json_abi_str()
     }
 }
 
@@ -56,7 +58,7 @@ impl ToJsonAbi for TypeArgument {
     fn generate_json_abi(&self) -> Self::Output {
         Property {
             name: "__tuple_element".to_string(),
-            type_field: self.type_id.json_abi_str(),
+            type_field: self.original_type_info.json_abi_str(),
             components: self.type_id.generate_json_abi(),
             type_arguments: self
                 .type_id
