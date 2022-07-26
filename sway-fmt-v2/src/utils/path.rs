@@ -1,5 +1,8 @@
-use crate::fmt::*;
-use std::fmt::Write;
+use crate::{
+    fmt::*,
+    utils::comments::{ByteSpan, LeafSpans},
+};
+use std::{fmt::Write, vec};
 use sway_parse::{PathExpr, PathExprSegment, PathType, PathTypeSegment, QualifiedPathRoot};
 use sway_types::Spanned;
 
@@ -130,5 +133,17 @@ impl Format for PathTypeSegment {
         }
 
         Ok(())
+    }
+}
+
+impl LeafSpans for PathExpr {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        vec![ByteSpan::from(self.span())]
+    }
+}
+
+impl LeafSpans for PathType {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        vec![ByteSpan::from(self.span())]
     }
 }
