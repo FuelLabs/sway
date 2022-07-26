@@ -122,11 +122,7 @@ pub const OUTPUT_CONTRACT_CREATED = 5u8;
 
 
 pub fn tx_type() -> u8 {
-    // GTF_TYPE = 0x001
-    asm(res) {
-        gtf res zero i1;
-        res: u8
-    }
+    __gtf::<u8>(0, GTF_TYPE)
 }
 
 /// Get the transaction gas price for either tx type
