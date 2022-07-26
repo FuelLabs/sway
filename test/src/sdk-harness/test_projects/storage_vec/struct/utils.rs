@@ -58,6 +58,10 @@ pub mod wrappers {
             .value
     }
 
+    pub async fn set(instance: &MyContract, index: u64, value: TestStruct) {
+        instance.struct_set(index, value).call().await.unwrap();
+    }
+
     pub async fn insert(instance: &MyContract, index: u64, value: TestStruct) {
         instance.struct_insert(index, value).call().await.unwrap();
     }

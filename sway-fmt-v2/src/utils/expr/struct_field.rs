@@ -1,4 +1,11 @@
-use crate::{config::items::ItemBraceStyle, fmt::*, utils::bracket::CurlyBrace};
+use crate::{
+    config::items::ItemBraceStyle,
+    fmt::*,
+    utils::{
+        bracket::CurlyBrace,
+        comments::{ByteSpan, LeafSpans},
+    },
+};
 use std::fmt::Write;
 use sway_parse::{token::Delimiter, ExprStructField};
 use sway_types::Spanned;
@@ -19,7 +26,7 @@ impl Format for ExprStructField {
             write!(formatted_code, "{} ", expr.0.span().as_str())?;
             expr.1.format(formatted_code, formatter)?;
         }
-        writeln!(formatted_code)?;
+        // writeln!(formatted_code)?;
 
         Ok(())
     }
@@ -41,7 +48,7 @@ impl CurlyBrace for ExprStructField {
             }
             _ => {
                 // Add opening brace to the same line
-                writeln!(line, " {}", Delimiter::Brace.as_open_char())?;
+                write!(line, " {}", Delimiter::Brace.as_open_char())?;
                 shape = shape.block_indent(extra_width);
             }
         }
@@ -63,5 +70,17 @@ impl CurlyBrace for ExprStructField {
             Delimiter::Brace.as_close_char()
         )?;
         Ok(())
+    }
+}
+
+impl LeafSpans for ExprStructField {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = vec![ByteSpan::from(self.field_name.span())];
+        if let Some(expr) = &self.expr_opt {
+            collected_spans.push(ByteSpan::from(expr.0.span()));
+            // TODO: determine if we are allowing comments between `:` and expr
+            collected_spans.append(&mut expr.1.leaf_spans());
+        }
+        collected_spans
     }
 }

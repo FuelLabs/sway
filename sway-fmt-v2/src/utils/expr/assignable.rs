@@ -1,4 +1,10 @@
-use crate::{fmt::*, utils::bracket::SquareBracket};
+use crate::{
+    fmt::*,
+    utils::{
+        bracket::SquareBracket,
+        comments::{ByteSpan, LeafSpans},
+    },
+};
 use std::fmt::Write;
 use sway_parse::{expr::ReassignmentOp, Assignable, Expr};
 use sway_types::Spanned;
@@ -60,5 +66,38 @@ impl Format for ReassignmentOp {
     ) -> Result<(), FormatterError> {
         write!(formatted_code, " {} ", self.span.as_str())?;
         Ok(())
+    }
+}
+
+impl LeafSpans for Assignable {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = Vec::new();
+        match self {
+            Assignable::Var(var) => collected_spans.push(ByteSpan::from(var.span())),
+            Assignable::Index { target, arg } => {
+                collected_spans.append(&mut target.leaf_spans());
+                collected_spans.append(&mut arg.leaf_spans());
+            }
+            Assignable::FieldProjection {
+                target,
+                dot_token,
+                name,
+            } => {
+                collected_spans.append(&mut target.leaf_spans());
+                collected_spans.push(ByteSpan::from(dot_token.span()));
+                collected_spans.push(ByteSpan::from(name.span()));
+            }
+            Assignable::TupleFieldProjection {
+                target,
+                dot_token,
+                field: _field,
+                field_span,
+            } => {
+                collected_spans.append(&mut target.leaf_spans());
+                collected_spans.push(ByteSpan::from(dot_token.span()));
+                collected_spans.push(ByteSpan::from(field_span.clone()));
+            }
+        };
+        collected_spans
     }
 }

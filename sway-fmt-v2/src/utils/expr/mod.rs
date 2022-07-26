@@ -1,4 +1,7 @@
-use crate::fmt::*;
+use crate::{
+    fmt::*,
+    utils::comments::{ByteSpan, LeafSpans},
+};
 use std::fmt::Write;
 use sway_parse::{
     token::{Delimiter, PunctKind},
@@ -438,5 +441,331 @@ impl SquareBracket for Expr {
     ) -> Result<(), FormatterError> {
         write!(line, "{}", Delimiter::Bracket.as_close_char())?;
         Ok(())
+    }
+}
+
+// Leaf Spans
+
+// TODO: Find a better way of handling Boxed version
+impl LeafSpans for Box<Expr> {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        visit_expr(self)
+    }
+}
+
+impl LeafSpans for Expr {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        visit_expr(self)
+    }
+}
+
+/// Collects various expr field's ByteSpans.
+fn visit_expr(expr: &Expr) -> Vec<ByteSpan> {
+    match expr {
+        Expr::Path(path) => path.leaf_spans(),
+        Expr::Literal(literal) => literal.leaf_spans(),
+        Expr::AbiCast { abi_token, args } => {
+            let mut collected_spans = vec![ByteSpan::from(abi_token.span())];
+            collected_spans.append(&mut args.leaf_spans());
+            collected_spans
+        }
+        Expr::Struct { path, fields } => {
+            let mut collected_spans = path.leaf_spans();
+            collected_spans.append(&mut fields.leaf_spans());
+            collected_spans
+        }
+        Expr::Tuple(tuple) => tuple.leaf_spans(),
+        Expr::Parens(parens) => parens.leaf_spans(),
+        Expr::Block(block) => block.leaf_spans(),
+        Expr::Array(array) => array.leaf_spans(),
+        Expr::Asm(asm) => asm.leaf_spans(),
+        Expr::Return {
+            return_token,
+            expr_opt,
+        } => {
+            let mut collected_spans = vec![ByteSpan::from(return_token.span())];
+            if let Some(expr) = expr_opt {
+                collected_spans.append(&mut expr.leaf_spans());
+            }
+            collected_spans
+        }
+        Expr::If(expr_if) => expr_if.leaf_spans(),
+        Expr::Match {
+            match_token,
+            value,
+            branches,
+        } => {
+            let mut collected_spans = vec![ByteSpan::from(match_token.span())];
+            collected_spans.append(&mut value.leaf_spans());
+            collected_spans.append(&mut branches.leaf_spans());
+            collected_spans
+        }
+        Expr::While {
+            while_token,
+            condition,
+            block,
+        } => {
+            let mut collected_spans = vec![ByteSpan::from(while_token.span())];
+            collected_spans.append(&mut condition.leaf_spans());
+            collected_spans.append(&mut block.leaf_spans());
+            collected_spans
+        }
+        Expr::FuncApp { func, args } => {
+            let mut collected_spans = Vec::new();
+            collected_spans.append(&mut func.leaf_spans());
+            collected_spans.append(&mut args.leaf_spans());
+            collected_spans
+        }
+        Expr::Index { target, arg } => {
+            let mut collected_spans = Vec::new();
+            collected_spans.append(&mut target.leaf_spans());
+            collected_spans.append(&mut arg.leaf_spans());
+            collected_spans
+        }
+        Expr::MethodCall {
+            target,
+            dot_token,
+            name,
+            contract_args_opt,
+            args,
+        } => {
+            let mut collected_spans = Vec::new();
+            collected_spans.append(&mut target.leaf_spans());
+            collected_spans.push(ByteSpan::from(dot_token.span()));
+            collected_spans.push(ByteSpan::from(name.span()));
+            if let Some(contract_args) = contract_args_opt {
+                collected_spans.append(&mut contract_args.leaf_spans());
+            }
+            collected_spans.append(&mut args.leaf_spans());
+            collected_spans
+        }
+        Expr::FieldProjection {
+            target,
+            dot_token,
+            name,
+        } => {
+            let mut collected_spans = Vec::new();
+            collected_spans.append(&mut target.leaf_spans());
+            collected_spans.push(ByteSpan::from(dot_token.span()));
+            collected_spans.push(ByteSpan::from(name.span()));
+            collected_spans
+        }
+        Expr::TupleFieldProjection {
+            target,
+            dot_token,
+            field: _field,
+            field_span,
+        } => {
+            let mut collected_spans = Vec::new();
+            collected_spans.append(&mut target.leaf_spans());
+            collected_spans.push(ByteSpan::from(dot_token.span()));
+            collected_spans.push(ByteSpan::from(field_span.clone()));
+            collected_spans
+        }
+        Expr::Ref { ref_token, expr } => {
+            let mut collected_spans = vec![ByteSpan::from(ref_token.span())];
+            collected_spans.append(&mut expr.leaf_spans());
+            collected_spans
+        }
+        Expr::Deref { deref_token, expr } => {
+            let mut collected_spans = vec![ByteSpan::from(deref_token.span())];
+            collected_spans.append(&mut expr.leaf_spans());
+            collected_spans
+        }
+        Expr::Not { bang_token, expr } => {
+            let mut collected_spans = vec![ByteSpan::from(bang_token.span())];
+            collected_spans.append(&mut expr.leaf_spans());
+            collected_spans
+        }
+        Expr::Mul {
+            lhs,
+            star_token,
+            rhs,
+        } => {
+            let mut collected_spans = lhs.leaf_spans();
+            collected_spans.push(ByteSpan::from(star_token.span()));
+            collected_spans.append(&mut rhs.leaf_spans());
+            collected_spans
+        }
+        Expr::Div {
+            lhs,
+            forward_slash_token,
+            rhs,
+        } => {
+            let mut collected_spans = lhs.leaf_spans();
+            collected_spans.push(ByteSpan::from(forward_slash_token.span()));
+            collected_spans.append(&mut rhs.leaf_spans());
+            collected_spans
+        }
+        Expr::Modulo {
+            lhs,
+            percent_token,
+            rhs,
+        } => {
+            let mut collected_spans = lhs.leaf_spans();
+            collected_spans.push(ByteSpan::from(percent_token.span()));
+            collected_spans.append(&mut rhs.leaf_spans());
+            collected_spans
+        }
+        Expr::Add {
+            lhs,
+            add_token,
+            rhs,
+        } => {
+            let mut collected_spans = lhs.leaf_spans();
+            collected_spans.push(ByteSpan::from(add_token.span()));
+            collected_spans.append(&mut rhs.leaf_spans());
+            collected_spans
+        }
+        Expr::Sub {
+            lhs,
+            sub_token,
+            rhs,
+        } => {
+            let mut collected_spans = lhs.leaf_spans();
+            collected_spans.push(ByteSpan::from(sub_token.span()));
+            collected_spans.append(&mut rhs.leaf_spans());
+            collected_spans
+        }
+        Expr::Shl {
+            lhs,
+            shl_token,
+            rhs,
+        } => {
+            let mut collected_spans = lhs.leaf_spans();
+            collected_spans.push(ByteSpan::from(shl_token.span()));
+            collected_spans.append(&mut rhs.leaf_spans());
+            collected_spans
+        }
+        Expr::Shr {
+            lhs,
+            shr_token,
+            rhs,
+        } => {
+            let mut collected_spans = lhs.leaf_spans();
+            collected_spans.push(ByteSpan::from(shr_token.span()));
+            collected_spans.append(&mut rhs.leaf_spans());
+            collected_spans
+        }
+        Expr::BitAnd {
+            lhs,
+            ampersand_token,
+            rhs,
+        } => {
+            let mut collected_spans = lhs.leaf_spans();
+            collected_spans.push(ByteSpan::from(ampersand_token.span()));
+            collected_spans.append(&mut rhs.leaf_spans());
+            collected_spans
+        }
+        Expr::BitXor {
+            lhs,
+            caret_token,
+            rhs,
+        } => {
+            let mut collected_spans = lhs.leaf_spans();
+            collected_spans.push(ByteSpan::from(caret_token.span()));
+            collected_spans.append(&mut rhs.leaf_spans());
+            collected_spans
+        }
+        Expr::BitOr {
+            lhs,
+            pipe_token,
+            rhs,
+        } => {
+            let mut collected_spans = lhs.leaf_spans();
+            collected_spans.push(ByteSpan::from(pipe_token.span()));
+            collected_spans.append(&mut rhs.leaf_spans());
+            collected_spans
+        }
+        Expr::Equal {
+            lhs,
+            double_eq_token,
+            rhs,
+        } => {
+            let mut collected_spans = lhs.leaf_spans();
+            collected_spans.push(ByteSpan::from(double_eq_token.span()));
+            collected_spans.append(&mut rhs.leaf_spans());
+            collected_spans
+        }
+        Expr::NotEqual {
+            lhs,
+            bang_eq_token,
+            rhs,
+        } => {
+            let mut collected_spans = lhs.leaf_spans();
+            collected_spans.push(ByteSpan::from(bang_eq_token.span()));
+            collected_spans.append(&mut rhs.leaf_spans());
+            collected_spans
+        }
+        Expr::LessThan {
+            lhs,
+            less_than_token,
+            rhs,
+        } => {
+            let mut collected_spans = lhs.leaf_spans();
+            collected_spans.push(ByteSpan::from(less_than_token.span()));
+            collected_spans.append(&mut rhs.leaf_spans());
+            collected_spans
+        }
+        Expr::GreaterThan {
+            lhs,
+            greater_than_token,
+            rhs,
+        } => {
+            let mut collected_spans = lhs.leaf_spans();
+            collected_spans.push(ByteSpan::from(greater_than_token.span()));
+            collected_spans.append(&mut rhs.leaf_spans());
+            collected_spans
+        }
+        Expr::LessThanEq {
+            lhs,
+            less_than_eq_token,
+            rhs,
+        } => {
+            let mut collected_spans = lhs.leaf_spans();
+            collected_spans.push(ByteSpan::from(less_than_eq_token.span()));
+            collected_spans.append(&mut rhs.leaf_spans());
+            collected_spans
+        }
+        Expr::GreaterThanEq {
+            lhs,
+            greater_than_eq_token,
+            rhs,
+        } => {
+            let mut collected_spans = lhs.leaf_spans();
+            collected_spans.push(ByteSpan::from(greater_than_eq_token.span()));
+            collected_spans.append(&mut rhs.leaf_spans());
+            collected_spans
+        }
+        Expr::LogicalAnd {
+            lhs,
+            double_ampersand_token,
+            rhs,
+        } => {
+            let mut collected_spans = lhs.leaf_spans();
+            collected_spans.push(ByteSpan::from(double_ampersand_token.span()));
+            collected_spans.append(&mut rhs.leaf_spans());
+            collected_spans
+        }
+        Expr::LogicalOr {
+            lhs,
+            double_pipe_token,
+            rhs,
+        } => {
+            let mut collected_spans = lhs.leaf_spans();
+            collected_spans.push(ByteSpan::from(double_pipe_token.span()));
+            collected_spans.append(&mut rhs.leaf_spans());
+            collected_spans
+        }
+        Expr::Reassignment {
+            assignable,
+            reassignment_op,
+            expr,
+        } => {
+            let mut collected_spans = assignable.leaf_spans();
+            collected_spans.push(ByteSpan::from(reassignment_op.span.clone()));
+            collected_spans.append(&mut expr.leaf_spans());
+            collected_spans
+        }
     }
 }

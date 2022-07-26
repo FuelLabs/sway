@@ -1,11 +1,15 @@
 use crate::{
     fmt::*,
-    utils::bracket::{Parenthesis, SquareBracket},
+    utils::{
+        bracket::{Parenthesis, SquareBracket},
+        comments::{ByteSpan, LeafSpans},
+    },
 };
 use std::fmt::Write;
 use sway_parse::{
     expr::asm::{AsmBlock, AsmBlockContents, AsmFinalExpr, AsmRegisterDeclaration},
     token::Delimiter,
+    Instruction,
 };
 use sway_types::Spanned;
 
@@ -118,5 +122,54 @@ impl Format for AsmFinalExpr {
         }
 
         Ok(())
+    }
+}
+
+impl LeafSpans for AsmBlock {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = vec![ByteSpan::from(self.asm_token.span())];
+        collected_spans.append(&mut self.registers.leaf_spans());
+        collected_spans.append(&mut self.contents.leaf_spans());
+        collected_spans
+    }
+}
+
+impl LeafSpans for AsmRegisterDeclaration {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = vec![ByteSpan::from(self.register.span())];
+        if let Some(value) = &self.value_opt {
+            collected_spans.append(&mut value.leaf_spans());
+            // TODO: determine if we are allowing comments between `:` and expr
+        }
+        collected_spans
+    }
+}
+
+impl LeafSpans for AsmBlockContents {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = Vec::new();
+        for instruction in &self.instructions {
+            collected_spans.append(&mut instruction.leaf_spans());
+            // TODO: probably we shouldn't allow for comments in between the instruction and comma since it may/will result in build failure after formatting
+        }
+        collected_spans
+    }
+}
+
+impl LeafSpans for Instruction {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        // Visit instructions as a whole unit, meaning we cannot insert comments inside an instruction.
+        vec![ByteSpan::from(self.span())]
+    }
+}
+
+impl LeafSpans for AsmFinalExpr {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = vec![ByteSpan::from(self.register.span())];
+        if let Some(ty) = &self.ty_opt {
+            collected_spans.append(&mut ty.leaf_spans());
+            // TODO: determine if we are allowing comments between `:` and ty
+        }
+        collected_spans
     }
 }

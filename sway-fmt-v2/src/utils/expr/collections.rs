@@ -1,6 +1,9 @@
 use crate::{
     fmt::*,
-    utils::bracket::{Parenthesis, SquareBracket},
+    utils::{
+        bracket::{Parenthesis, SquareBracket},
+        comments::{ByteSpan, LeafSpans},
+    },
 };
 use std::fmt::Write;
 use sway_parse::{token::Delimiter, ExprArrayDescriptor, ExprTupleDescriptor};
@@ -84,5 +87,39 @@ impl SquareBracket for ExprArrayDescriptor {
     ) -> Result<(), FormatterError> {
         write!(line, "{}", Delimiter::Bracket.as_close_char())?;
         Ok(())
+    }
+}
+
+impl LeafSpans for ExprTupleDescriptor {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = Vec::new();
+        if let ExprTupleDescriptor::Cons {
+            head,
+            comma_token,
+            tail,
+        } = self
+        {
+            collected_spans.append(&mut head.leaf_spans());
+            collected_spans.push(ByteSpan::from(comma_token.span()));
+            collected_spans.append(&mut tail.leaf_spans());
+        }
+        collected_spans
+    }
+}
+
+impl LeafSpans for ExprArrayDescriptor {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = Vec::new();
+        if let ExprArrayDescriptor::Repeat {
+            value,
+            semicolon_token,
+            length,
+        } = self
+        {
+            collected_spans.append(&mut value.leaf_spans());
+            collected_spans.push(ByteSpan::from(semicolon_token.span()));
+            collected_spans.append(&mut length.leaf_spans());
+        }
+        collected_spans
     }
 }

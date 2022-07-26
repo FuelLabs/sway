@@ -1,4 +1,11 @@
-use crate::{config::items::ItemBraceStyle, fmt::*, utils::bracket::CurlyBrace};
+use crate::{
+    config::items::ItemBraceStyle,
+    fmt::*,
+    utils::{
+        bracket::CurlyBrace,
+        comments::{ByteSpan, LeafSpans},
+    },
+};
 use std::fmt::Write;
 use sway_parse::{token::Delimiter, CodeBlockContents};
 
@@ -62,5 +69,18 @@ impl CurlyBrace for CodeBlockContents {
             Delimiter::Brace.as_close_char()
         )?;
         Ok(())
+    }
+}
+
+impl LeafSpans for CodeBlockContents {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_span = Vec::new();
+        for statement in self.statements.iter() {
+            collected_span.append(&mut statement.leaf_spans());
+        }
+        if let Some(expr) = &self.final_expr_opt {
+            collected_span.append(&mut expr.leaf_spans());
+        }
+        collected_span
     }
 }

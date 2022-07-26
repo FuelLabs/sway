@@ -1,4 +1,10 @@
-use crate::{fmt::*, utils::bracket::CurlyBrace};
+use crate::{
+    fmt::*,
+    utils::{
+        bracket::CurlyBrace,
+        comments::{ByteSpan, LeafSpans},
+    },
+};
 use std::{fmt::Write, ops::ControlFlow};
 use sway_parse::{token::Delimiter, IfCondition, IfExpr, MatchBranch, MatchBranchKind};
 use sway_types::Spanned;
@@ -160,5 +166,76 @@ impl CurlyBrace for MatchBranchKind {
     ) -> Result<(), FormatterError> {
         write!(line, "{}", Delimiter::Brace.as_close_char())?;
         Ok(())
+    }
+}
+
+impl LeafSpans for IfExpr {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = vec![ByteSpan::from(self.if_token.span())];
+        collected_spans.append(&mut self.condition.leaf_spans());
+        collected_spans.append(&mut self.then_block.leaf_spans());
+        if let Some(else_block) = &self.else_opt {
+            collected_spans.push(ByteSpan::from(else_block.0.span()));
+            let mut else_body_spans = match &else_block.1 {
+                std::ops::ControlFlow::Continue(if_expr) => if_expr.leaf_spans(),
+                std::ops::ControlFlow::Break(else_body) => else_body.leaf_spans(),
+            };
+            collected_spans.append(&mut else_body_spans);
+        }
+        collected_spans
+    }
+}
+
+impl LeafSpans for IfCondition {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        match self {
+            IfCondition::Expr(expr) => expr.leaf_spans(),
+            IfCondition::Let {
+                let_token,
+                lhs,
+                eq_token,
+                rhs,
+            } => {
+                let mut collected_spans = vec![ByteSpan::from(let_token.span())];
+                collected_spans.append(&mut lhs.leaf_spans());
+                collected_spans.push(ByteSpan::from(eq_token.span()));
+                collected_spans.append(&mut rhs.leaf_spans());
+                collected_spans
+            }
+        }
+    }
+}
+
+impl LeafSpans for MatchBranch {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = Vec::new();
+        collected_spans.append(&mut self.pattern.leaf_spans());
+        collected_spans.push(ByteSpan::from(self.fat_right_arrow_token.span()));
+        collected_spans.append(&mut self.kind.leaf_spans());
+        collected_spans
+    }
+}
+
+impl LeafSpans for MatchBranchKind {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = Vec::new();
+        match self {
+            MatchBranchKind::Block {
+                block,
+                comma_token_opt,
+            } => {
+                collected_spans.append(&mut block.leaf_spans());
+                // TODO: determine if we allow comments between block and comma_token
+                if let Some(comma_token) = comma_token_opt {
+                    collected_spans.push(ByteSpan::from(comma_token.span()));
+                }
+            }
+            MatchBranchKind::Expr { expr, comma_token } => {
+                collected_spans.append(&mut expr.leaf_spans());
+                // TODO: determine if we allow comments between expr and comma_token
+                collected_spans.push(ByteSpan::from(comma_token.span()));
+            }
+        };
+        collected_spans
     }
 }

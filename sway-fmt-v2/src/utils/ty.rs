@@ -1,4 +1,7 @@
-use crate::fmt::{Format, FormattedCode, Formatter, FormatterError};
+use crate::{
+    fmt::{Format, FormattedCode, Formatter, FormatterError},
+    utils::comments::{ByteSpan, LeafSpans},
+};
 use std::fmt::Write;
 use sway_parse::{
     brackets::SquareBrackets,
@@ -58,6 +61,7 @@ impl Format for TyArrayDescriptor {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         self.ty.format(formatted_code, formatter)?;
+        // TODO: once expr formatting is completly implemented switch this to use the actual formatting rather than the raw str coming from span
         write!(
             formatted_code,
             "{} {}",
@@ -101,5 +105,48 @@ impl Format for TyTupleDescriptor {
             tail.format(formatted_code, formatter)?;
         }
         Ok(())
+    }
+}
+
+impl LeafSpans for Ty {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        match self {
+            Ty::Path(path) => path.leaf_spans(),
+            Ty::Tuple(tuple) => tuple.leaf_spans(),
+            Ty::Array(array) => array.leaf_spans(),
+            Ty::Str { str_token, length } => {
+                let mut collected_spans = vec![ByteSpan::from(str_token.span())];
+                collected_spans.append(&mut length.leaf_spans());
+                collected_spans
+            }
+            Ty::Infer { underscore_token } => vec![ByteSpan::from(underscore_token.span())],
+        }
+    }
+}
+
+impl LeafSpans for TyTupleDescriptor {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = Vec::new();
+        if let TyTupleDescriptor::Cons {
+            head,
+            comma_token,
+            tail,
+        } = self
+        {
+            collected_spans.append(&mut head.leaf_spans());
+            collected_spans.push(ByteSpan::from(comma_token.span()));
+            collected_spans.append(&mut tail.leaf_spans());
+        }
+        collected_spans
+    }
+}
+
+impl LeafSpans for TyArrayDescriptor {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = Vec::new();
+        collected_spans.append(&mut self.ty.leaf_spans());
+        collected_spans.push(ByteSpan::from(self.semicolon_token.span()));
+        collected_spans.append(&mut self.length.leaf_spans());
+        collected_spans
     }
 }

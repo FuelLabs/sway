@@ -1,4 +1,7 @@
-use crate::fmt::*;
+use crate::{
+    fmt::*,
+    utils::comments::{ByteSpan, LeafSpans},
+};
 use std::fmt::Write;
 use sway_parse::{token::Delimiter, Pattern, PatternStructField};
 use sway_types::Spanned;
@@ -111,5 +114,62 @@ impl Format for PatternStructField {
             }
         }
         Ok(())
+    }
+}
+
+impl LeafSpans for Pattern {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = Vec::new();
+        match self {
+            Pattern::Wildcard { underscore_token } => {
+                collected_spans.push(ByteSpan::from(underscore_token.span()));
+            }
+            Pattern::Var { mutable, name } => {
+                if let Some(mutable) = mutable {
+                    collected_spans.push(ByteSpan::from(mutable.span()));
+                }
+                collected_spans.push(ByteSpan::from(name.span()));
+            }
+            Pattern::Literal(literal) => {
+                collected_spans.append(&mut literal.leaf_spans());
+            }
+            Pattern::Constant(constant) => {
+                collected_spans.append(&mut constant.leaf_spans());
+            }
+            Pattern::Constructor { path, args } => {
+                collected_spans.append(&mut path.leaf_spans());
+                collected_spans.append(&mut args.leaf_spans());
+            }
+            Pattern::Struct { path, fields } => {
+                collected_spans.append(&mut path.leaf_spans());
+                collected_spans.append(&mut fields.leaf_spans());
+            }
+            Pattern::Tuple(tuple) => {
+                collected_spans.append(&mut tuple.leaf_spans());
+            }
+        }
+        collected_spans
+    }
+}
+
+impl LeafSpans for PatternStructField {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = Vec::new();
+        match self {
+            PatternStructField::Rest { token } => {
+                collected_spans.push(ByteSpan::from(token.span()));
+            }
+            PatternStructField::Field {
+                field_name,
+                pattern_opt,
+            } => {
+                collected_spans.push(ByteSpan::from(field_name.span()));
+                if let Some(pattern) = pattern_opt {
+                    collected_spans.push(ByteSpan::from(pattern.0.span()));
+                    collected_spans.append(&mut pattern.1.leaf_spans());
+                }
+            }
+        }
+        collected_spans
     }
 }

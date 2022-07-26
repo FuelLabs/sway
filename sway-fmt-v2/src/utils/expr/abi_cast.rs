@@ -1,4 +1,10 @@
-use crate::{fmt::*, utils::bracket::Parenthesis};
+use crate::{
+    fmt::*,
+    utils::{
+        bracket::Parenthesis,
+        comments::{ByteSpan, LeafSpans},
+    },
+};
 use std::fmt::Write;
 use sway_parse::{token::Delimiter, AbiCastArgs};
 use sway_types::Spanned;
@@ -34,5 +40,14 @@ impl Parenthesis for AbiCastArgs {
     ) -> Result<(), FormatterError> {
         write!(line, "{}", Delimiter::Parenthesis.as_close_char())?;
         Ok(())
+    }
+}
+
+impl LeafSpans for AbiCastArgs {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = vec![ByteSpan::from(self.name.span())];
+        collected_spans.push(ByteSpan::from(self.comma_token.span()));
+        collected_spans.append(&mut self.address.leaf_spans());
+        collected_spans
     }
 }
