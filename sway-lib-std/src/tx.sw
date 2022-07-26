@@ -162,11 +162,11 @@ pub fn tx_maturity() -> u32 {
     match type {
         0u8 => {
             // tx is a transaction-script
-            __gtf::<u64>(0, GTF_SCRIPT_MATURITY)
+            __gtf::<u32>(0, GTF_SCRIPT_MATURITY)
         },
         1u8 => {
             // tx is a transaction-create
-            __gtf::<u64>(0, GTF_CREATE_MATURITY)
+            __gtf::<u32>(0, GTF_CREATE_MATURITY)
         }
     }
 }
