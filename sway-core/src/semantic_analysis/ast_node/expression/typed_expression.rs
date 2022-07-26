@@ -1437,7 +1437,11 @@ impl TypedExpression {
                     expression: TypedExpressionVariant::Array {
                         contents: Vec::new(),
                     },
-                    return_type: insert_type(TypeInfo::Array(insert_type(TypeInfo::Unknown), 0)),
+                    return_type: insert_type(TypeInfo::Array(
+                        insert_type(TypeInfo::Unknown),
+                        0,
+                        Box::new(TypeInfo::Unknown),
+                    )),
                     is_constant: IsConstant::Yes,
                     span,
                 },
@@ -1488,7 +1492,11 @@ impl TypedExpression {
                 expression: TypedExpressionVariant::Array {
                     contents: typed_contents,
                 },
-                return_type: insert_type(TypeInfo::Array(elem_type, array_count)),
+                return_type: insert_type(TypeInfo::Array(
+                    elem_type,
+                    array_count,
+                    Box::new(look_up_type_id(elem_type)),
+                )),
                 is_constant: IsConstant::No, // Maybe?
                 span,
             },
@@ -1520,7 +1528,7 @@ impl TypedExpression {
         };
 
         // If the return type is a static array then create a TypedArrayIndex.
-        if let TypeInfo::Array(elem_type_id, _) = look_up_type_id(prefix_te.return_type) {
+        if let TypeInfo::Array(elem_type_id, _, _) = look_up_type_id(prefix_te.return_type) {
             let type_info_u64 = TypeInfo::UnsignedInteger(IntegerBits::SixtyFour);
             let ctx = ctx
                 .with_help_text("")
@@ -1687,7 +1695,11 @@ mod tests {
     fn do_type_check_for_boolx2(expr: Expression) -> CompileResult<TypedExpression> {
         do_type_check(
             expr,
-            insert_type(TypeInfo::Array(insert_type(TypeInfo::Boolean), 2)),
+            insert_type(TypeInfo::Array(
+                insert_type(TypeInfo::Boolean),
+                2,
+                Box::new(TypeInfo::Boolean),
+            )),
         )
     }
 
@@ -1795,7 +1807,11 @@ mod tests {
 
         let comp_res = do_type_check(
             expr,
-            insert_type(TypeInfo::Array(insert_type(TypeInfo::Boolean), 0)),
+            insert_type(TypeInfo::Array(
+                insert_type(TypeInfo::Boolean),
+                0,
+                Box::new(TypeInfo::Boolean),
+            )),
         );
         assert!(comp_res.warnings.is_empty() && comp_res.errors.is_empty());
     }

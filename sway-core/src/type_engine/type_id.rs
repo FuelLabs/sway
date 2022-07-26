@@ -63,9 +63,9 @@ impl ToJsonAbi for TypeId {
 
     fn generate_json_abi(&self) -> Self::Output {
         match look_up_type_id(*self) {
-            TypeInfo::Array(type_id, _) => Some(vec![Property {
+            TypeInfo::Array(type_id, _, original_type_info) => Some(vec![Property {
                 name: "__array_element".to_string(),
-                type_field: type_id.json_abi_str(),
+                type_field: (*original_type_info).json_abi_str(),
                 components: type_id.generate_json_abi(),
                 type_arguments: type_id
                     .get_type_parameters()
@@ -131,7 +131,7 @@ impl ReplaceSelfType for TypeId {
                     }
                 }
             }
-            TypeInfo::Array(mut type_id, _) => {
+            TypeInfo::Array(mut type_id, _, _) => {
                 type_id.replace_self_type(self_type);
             }
             TypeInfo::Storage { mut fields } => {

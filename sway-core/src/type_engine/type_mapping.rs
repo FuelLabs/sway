@@ -86,7 +86,7 @@ pub(crate) fn create_type_mapping(superset_type: TypeId, subset_type: TypeId) ->
                 type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>(),
             )
         }
-        (TypeInfo::Array(superset_type, _), TypeInfo::Array(subset_type, _)) => {
+        (TypeInfo::Array(superset_type, _, _), TypeInfo::Array(subset_type, _, _)) => {
             vec![(superset_type, subset_type)]
         }
         (

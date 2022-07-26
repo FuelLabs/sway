@@ -1000,8 +1000,12 @@ fn ty_to_type_info(ec: &mut ErrorContext, ty: Ty) -> Result<TypeInfo, ErrorEmitt
         Ty::Array(bracketed_ty_array_descriptor) => {
             let ty_array_descriptor = bracketed_ty_array_descriptor.into_inner();
             TypeInfo::Array(
-                crate::type_engine::insert_type(ty_to_type_info(ec, *ty_array_descriptor.ty)?),
+                crate::type_engine::insert_type(ty_to_type_info(
+                    ec,
+                    *ty_array_descriptor.ty.clone(),
+                )?),
                 expr_to_usize(ec, *ty_array_descriptor.length)?,
+                Box::new(ty_to_type_info(ec, *ty_array_descriptor.ty)?),
             )
         }
         Ty::Str { length, .. } => TypeInfo::Str(expr_to_u64(ec, *length.into_inner())?),
