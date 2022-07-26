@@ -31,7 +31,7 @@ const GTF_SCRIPT_OUTPUT_AT_INDEX = 0x00E;
 
 const GTF_CREATE_GAS_PRICE = 0x010;
 const GTF_CREATE_GAS_LIMIT = 0x011;
-// const GTF_CREATE_MATURITY = 0x012;
+const GTF_CREATE_MATURITY = 0x012;
 // const GTF_CREATE_BYTECODE_LENGTH = 0x013;
 // const GTF_CREATE_BYTECODE_WITNESS_INDEX = 0x014;
 // const GTF_CREATE_STORAGE_SLOTS_COUNT = 0x015;
@@ -110,12 +110,9 @@ pub const OUTPUT_CONTRACT_CREATED = 5u8;
 
 // @todo refactor all to use intrinsic
 // @todo make generic versions of:
-//  - tx_gas_price()
-//  - tx_gas_limit()
 //  - tx_inputs_count()
 //  - tx_outputs_cout()
 //  - tx_witness_count()
-//  - tx_maturity()
 //  - tx_input_at_index()
 //  - tx_output_at_index()
 //  - tx_witness_at_index()
@@ -158,12 +155,19 @@ pub fn tx_gas_limit() -> u64 {
     }
 }
 
-/// Get the transaction maturity.
+/// Get the transaction maturity for either tx type
+/// (transaction-script or transaction-create).
 pub fn tx_maturity() -> u32 {
-    // GTF_SCRIPT_MATURITY = 0x004;
-    asm(res) {
-        gtf res zero i4;
-        res: u64
+    let type = tx_type();
+    match type {
+        0u8 => {
+            // tx is a transaction-script
+            __gtf::<u64>(0, GTF_SCRIPT_MATURITY)
+        },
+        1u8 => {
+            // tx is a transaction-create
+            __gtf::<u64>(0, GTF_CREATE_MATURITY)
+        }
     }
 }
 
