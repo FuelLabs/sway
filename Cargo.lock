@@ -3658,6 +3658,7 @@ version = "0.18.1"
 dependencies = [
  "anyhow",
  "forc-util",
+ "ropey",
  "serde",
  "serde_ignored",
  "sway-core",

@@ -230,11 +230,8 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
             handle_expression(prefix, tokens);
             handle_expression(index, tokens);
         }
-        TypedExpressionVariant::StructExpression {
-            ref struct_name,
-            ref fields,
-        } => {
-            if let Some(mut token) = tokens.get_mut(&to_ident_key(struct_name)) {
+        TypedExpressionVariant::StructExpression { fields, span, .. } => {
+            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(span.clone()))) {
                 token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
             }
 

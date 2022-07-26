@@ -1,4 +1,11 @@
-use crate::{config::items::ItemBraceStyle, fmt::*, utils::bracket::CurlyBrace};
+use crate::{
+    config::items::ItemBraceStyle,
+    fmt::*,
+    utils::{
+        bracket::CurlyBrace,
+        comments::{ByteSpan, LeafSpans},
+    },
+};
 use std::fmt::Write;
 use sway_parse::{token::Delimiter, ItemTrait, Traits};
 use sway_types::Spanned;
@@ -111,5 +118,32 @@ impl Format for Traits {
         }
 
         Ok(())
+    }
+}
+
+impl LeafSpans for ItemTrait {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = Vec::new();
+        if let Some(visibility) = &self.visibility {
+            collected_spans.push(ByteSpan::from(visibility.span()));
+        }
+        collected_spans.push(ByteSpan::from(self.trait_token.span()));
+        collected_spans.push(ByteSpan::from(self.name.span()));
+        if let Some(super_traits) = &self.super_traits {
+            collected_spans.append(&mut super_traits.leaf_spans());
+        }
+        collected_spans.append(&mut self.trait_items.leaf_spans());
+        if let Some(trait_defs) = &self.trait_defs_opt {
+            collected_spans.append(&mut trait_defs.leaf_spans());
+        }
+        collected_spans
+    }
+}
+
+impl LeafSpans for Traits {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = self.prefix.leaf_spans();
+        collected_spans.append(&mut self.suffixes.leaf_spans());
+        collected_spans
     }
 }
