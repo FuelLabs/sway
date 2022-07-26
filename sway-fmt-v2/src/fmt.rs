@@ -12,7 +12,7 @@ pub use crate::{
 
 #[derive(Debug, Default)]
 pub struct Formatter {
-    pub shape: Shape,
+    pub(crate) shape: Shape,
     pub config: Config,
 }
 

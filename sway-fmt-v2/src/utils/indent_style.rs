@@ -1,105 +1,82 @@
 //! Associated functions and tests for handling of indentation.
 use std::{
     borrow::Cow,
-    cmp::min,
+    fmt::Write,
     ops::{Add, Sub},
 };
 
 use crate::{
-    constants::{INDENT_BUFFER, INDENT_BUFFER_LEN, INFINITE_SHAPE_WIDTH},
+    constants::{HARD_TAB, INDENT_BUFFER, INDENT_BUFFER_LEN, INFINITE_SHAPE_WIDTH},
     fmt::Formatter,
+    FormatterError,
 };
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
-pub struct Indent {
-    /// Width of the block indent, in characters. Must be a multiple of
-    /// Config::tab_spaces.
-    pub block_indent: usize,
-    /// Alignment in characters.
-    pub alignment: usize,
+pub(crate) struct Indent {
+    /// Width of the block indent, in characters.
+    pub(crate) block_indent: usize,
 }
 
 impl Indent {
-    pub fn new(block_indent: usize, alignment: usize) -> Self {
-        Self {
-            block_indent,
-            alignment,
-        }
+    /// Constructs a new instance of `Indent` with a given size.
+    fn new(block_indent: usize) -> Self {
+        Self { block_indent }
     }
-
-    pub fn from_width(formatter: &Formatter, width: usize) -> Self {
-        let tab_spaces = formatter.config.whitespace.tab_spaces;
-        if formatter.config.whitespace.hard_tabs {
-            let tab_num = width / tab_spaces;
-            let alignment = width % tab_spaces;
-            Self::new(tab_spaces * tab_num, alignment)
-        } else {
-            Self::new(width, 0)
-        }
+    /// Constructs an empty instance of `Indent`.
+    fn empty() -> Self {
+        Self::new(0)
     }
-
-    pub fn empty() -> Self {
-        Self::new(0, 0)
-    }
-
-    pub fn block_only(&self) -> Self {
-        Self {
-            block_indent: self.block_indent,
-            alignment: 0,
-        }
-    }
-
-    pub fn block_indent(mut self, formatter: &Formatter) -> Self {
+    /// Adds a level of indentation specified by the `Formatter::config` to the current `block_indent`.
+    fn block_indent(mut self, formatter: &Formatter) -> Self {
         self.block_indent += formatter.config.whitespace.tab_spaces;
         self
     }
-
-    pub fn block_unindent(mut self, formatter: &Formatter) -> Self {
+    /// Removes a level of indentation specified by the `Formatter::config` to the current `block_indent`.
+    /// If the current level of indentation would be negative, a new `Indent` is contructed.
+    fn block_unindent(mut self, formatter: &Formatter) -> Self {
         let tab_spaces = formatter.config.whitespace.tab_spaces;
         if self.block_indent < tab_spaces {
-            Indent::new(self.block_indent, 0)
+            Self::new(self.block_indent)
         } else {
             self.block_indent -= tab_spaces;
             self
         }
     }
-
-    pub fn width(&self) -> usize {
-        self.block_indent + self.alignment
+    /// Current indent size.
+    pub(crate) fn width(&self) -> usize {
+        self.block_indent
     }
-
-    pub fn to_string(self, formatter: &Formatter) -> Cow<'static, str> {
-        self.to_string_inner(formatter, 1)
-    }
-
-    pub fn to_string_with_newline(self, formatter: &Formatter) -> Cow<'static, str> {
-        self.to_string_inner(formatter, 0)
-    }
-
-    fn to_string_inner(self, formatter: &Formatter, offset: usize) -> Cow<'static, str> {
+    // Checks for either `hard_tabs` or `tab_spaces` and creates a
+    // buffer of whitespace from the current level of indentation.
+    // This also takes an offset which determines whether to add a new line.
+    fn to_string_inner(
+        self,
+        formatter: &Formatter,
+        offset: usize,
+    ) -> Result<Cow<'static, str>, FormatterError> {
         let (num_tabs, num_spaces) = if formatter.config.whitespace.hard_tabs {
             (
                 self.block_indent / formatter.config.whitespace.tab_spaces,
-                self.alignment,
+                0,
             )
         } else {
             (0, self.width())
         };
         let num_chars = num_tabs + num_spaces;
         if num_tabs == 0 && num_chars + offset <= INDENT_BUFFER_LEN {
-            Cow::from(&INDENT_BUFFER[offset..=num_chars])
+            Ok(Cow::from(&INDENT_BUFFER[offset..=num_chars]))
         } else {
             let mut indent = String::with_capacity(num_chars + if offset == 0 { 1 } else { 0 });
             if offset == 0 {
-                indent.push('\n');
+                writeln!(indent)?;
             }
             for _ in 0..num_tabs {
-                indent.push('\t')
+                write!(indent, "{}", HARD_TAB)?;
             }
             for _ in 0..num_spaces {
-                indent.push(' ')
+                write!(indent, " ")?;
             }
-            Cow::from(indent)
+            Ok(Cow::from(indent))
         }
     }
 }
@@ -110,7 +87,6 @@ impl Add for Indent {
     fn add(self, rhs: Indent) -> Indent {
         Indent {
             block_indent: self.block_indent + rhs.block_indent,
-            alignment: self.alignment + rhs.alignment,
         }
     }
 }
@@ -119,40 +95,19 @@ impl Sub for Indent {
     type Output = Indent;
 
     fn sub(self, rhs: Indent) -> Indent {
-        Indent::new(
-            self.block_indent - rhs.block_indent,
-            self.alignment - rhs.alignment,
-        )
-    }
-}
-
-impl Add<usize> for Indent {
-    type Output = Indent;
-
-    fn add(self, rhs: usize) -> Indent {
-        Indent::new(self.block_indent, self.alignment + rhs)
-    }
-}
-
-impl Sub<usize> for Indent {
-    type Output = Indent;
-
-    fn sub(self, rhs: usize) -> Indent {
-        Indent::new(self.block_indent, self.alignment - rhs)
+        Indent::new(self.block_indent - rhs.block_indent)
     }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
-pub struct Shape {
-    pub width: usize,
+pub(crate) struct Shape {
+    /// Width of current `Item` before declaring `LineStyle`.
+    pub(crate) width: usize,
     /// The current indentation of code.
-    pub indent: Indent,
-    /// Indentation + any already emitted text on the first line of the current
-    /// statement.
-    pub offset: usize,
+    pub(crate) indent: Indent,
     /// Used in determining `SameLineWhere` formatting.
     /// Default is false.
-    pub has_where_clause: bool,
+    pub(crate) has_where_clause: bool,
 }
 
 impl Shape {
@@ -172,16 +127,16 @@ impl Shape {
     // |<------------>|  max width
     // |<---->|          indent
     //        |<--->|    width
-    pub fn legacy(&self, width: usize, indent: Indent) -> Self {
+    /// Construct a new `Shape` with a given width and level of indentation.
+    pub(crate) fn legacy(&self, width: usize, indent: Indent) -> Self {
         Self {
             width,
             indent,
-            offset: indent.alignment,
             has_where_clause: self.has_where_clause,
         }
     }
-
-    pub fn indented(&self, indent: Indent, formatter: &Formatter) -> Self {
+    /// Construct a new `Shape` that takes into account the current level of indentation.
+    pub(crate) fn indented(&self, indent: Indent, formatter: &Formatter) -> Self {
         Self {
             width: formatter
                 .config
@@ -189,130 +144,64 @@ impl Shape {
                 .max_width
                 .saturating_sub(indent.width()),
             indent,
-            offset: indent.alignment,
             has_where_clause: self.has_where_clause,
         }
     }
-
-    pub fn with_max_width(&self, formatter: &Formatter) -> Self {
+    /// A wrapper for `Indent::block_indent()`.
+    ///
+    /// Adds a level of indentation specified by the `Formatter::config` to the current `block_indent`.
+    pub(crate) fn block_indent(&mut self, formatter: &Formatter) -> Self {
         Self {
-            width: formatter
-                .config
-                .whitespace
-                .max_width
-                .saturating_sub(self.indent.width()),
+            indent: self.indent.block_indent(formatter),
             ..*self
         }
     }
-
-    pub fn visual_indent(&self, extra_width: usize) -> Self {
-        let alignment = self.offset + extra_width;
+    /// A wrapper for `Indent::block_unindent()`.
+    ///
+    /// Removes a level of indentation specified by the `Formatter::config` to the current `block_indent`.
+    /// If the current level of indentation would be negative, a new `Indent` is contructed.
+    pub(crate) fn block_unindent(&self, formatter: &Formatter) -> Self {
         Self {
-            width: self.width,
-            indent: Indent::new(self.indent.block_indent, alignment),
-            offset: alignment,
-            has_where_clause: self.has_where_clause,
-        }
-    }
-
-    pub fn block_indent(&mut self, extra_width: usize) -> Self {
-        if self.indent.alignment == 0 {
-            Self {
-                width: self.width,
-                indent: Indent::new(self.indent.block_indent + extra_width, 0),
-                offset: 0,
-                has_where_clause: self.has_where_clause,
-            }
-        } else {
-            Self {
-                width: self.width,
-                indent: self.indent + extra_width,
-                offset: self.indent.alignment + extra_width,
-                has_where_clause: self.has_where_clause,
-            }
-        }
-    }
-
-    pub fn block_left(&mut self, width: usize) -> Option<Self> {
-        self.block_indent(width).sub_width(width)
-    }
-
-    pub fn add_offset(&self, extra_width: usize) -> Self {
-        Self {
-            offset: self.offset + extra_width,
+            indent: self.indent.block_unindent(formatter),
             ..*self
         }
     }
-
-    pub fn block(&self) -> Self {
+    /// Updates `Shape::width` to the current width of the `Item`.
+    pub(crate) fn update_width(&self, len_chars: usize) -> Self {
         Self {
-            indent: self.indent.block_only(),
+            width: len_chars,
             ..*self
         }
     }
-
-    pub fn saturating_sub_width(&self, width: usize) -> Self {
-        self.sub_width(width).unwrap_or(Self { width: 0, ..*self })
-    }
-
-    pub fn sub_width(&self, width: usize) -> Option<Self> {
-        Some(Self {
-            width: self.width.checked_sub(width)?,
-            ..*self
-        })
-    }
-
-    pub fn shrink_left(&self, width: usize) -> Option<Self> {
-        Some(Self {
-            width: self.width.checked_sub(width)?,
-            indent: self.indent + width,
-            offset: self.offset + width,
-            has_where_clause: self.has_where_clause,
-        })
-    }
-
-    pub fn offset_left(&self, width: usize) -> Option<Self> {
-        self.add_offset(width).sub_width(width)
-    }
-
-    pub fn used_width(&self) -> usize {
-        self.indent.block_indent + self.offset
-    }
-
-    pub fn rhs_overhead(&self, formatter: &Formatter) -> usize {
-        formatter
-            .config
-            .whitespace
-            .max_width
-            .saturating_sub(self.used_width() + self.width)
-    }
-
-    pub fn comment(&self, formatter: &Formatter) -> Self {
-        let width = min(
-            self.width,
-            formatter
-                .config
-                .comments
-                .comment_width
-                .saturating_sub(self.indent.width()),
-        );
-        Self { width, ..*self }
-    }
-
-    pub fn to_string_with_newline(self, formatter: &Formatter) -> Cow<'static, str> {
-        let mut offset_indent = self.indent;
-        offset_indent.alignment = self.offset;
-        offset_indent.to_string_inner(formatter, 0)
-    }
-
     /// Creates a `Shape` with a virtually infinite width.
-    pub fn infinite_width(&self) -> Self {
+    pub(crate) fn infinite_width(&self) -> Self {
         Self {
             width: INFINITE_SHAPE_WIDTH,
             ..*self
         }
     }
-
+    /// A wrapper for `Indent::to_string_inner()` that does not add a new line.
+    ///
+    /// Checks for either `hard_tabs` or `tab_spaces` and creates a
+    /// buffer of whitespace from the current level of indentation.
+    /// This also takes an offset which determines whether to add a new line.
+    pub(crate) fn to_string(
+        self,
+        formatter: &Formatter,
+    ) -> Result<Cow<'static, str>, FormatterError> {
+        self.indent.to_string_inner(formatter, 1)
+    }
+    /// A wrapper for `Indent::to_string_inner()` that also adds a new line.
+    ///
+    /// Checks for either `hard_tabs` or `tab_spaces` and creates a
+    /// buffer of whitespace from the current level of indentation.
+    /// This also takes an offset which determines whether to add a new line.
+    pub(crate) fn to_string_with_newline(
+        self,
+        formatter: &Formatter,
+    ) -> Result<Cow<'static, str>, FormatterError> {
+        self.indent.to_string_inner(formatter, 0)
+    }
     /// Update the value of `has_where_clause`.
     pub fn update_where_clause(&mut self) -> Self {
         match self.has_where_clause {
@@ -334,84 +223,44 @@ mod test {
 
     #[test]
     fn indent_add_sub() {
-        let indent = Indent::new(4, 8) + Indent::new(8, 12);
+        let indent = Indent::new(4) + Indent::new(8);
         assert_eq!(12, indent.block_indent);
-        assert_eq!(20, indent.alignment);
 
-        let indent = indent - Indent::new(4, 4);
+        let indent = indent - Indent::new(4);
         assert_eq!(8, indent.block_indent);
-        assert_eq!(16, indent.alignment);
     }
-
-    #[test]
-    fn indent_add_sub_alignment() {
-        let indent = Indent::new(4, 8) + 4;
-        assert_eq!(4, indent.block_indent);
-        assert_eq!(12, indent.alignment);
-
-        let indent = indent - 4;
-        assert_eq!(4, indent.block_indent);
-        assert_eq!(8, indent.alignment);
-    }
-
     #[test]
     fn indent_to_string_spaces() {
-        let formatter = Formatter::default();
-        let indent = Indent::new(4, 8);
+        let mut formatter = Formatter::default();
+        formatter.shape.indent = Indent::new(12);
 
         // 12 spaces
-        assert_eq!("            ", indent.to_string(&formatter));
+        assert_eq!(
+            "            ",
+            formatter.shape.to_string(&formatter).unwrap()
+        );
     }
 
     #[test]
     fn indent_to_string_hard_tabs() {
         let mut formatter = Formatter::default();
         formatter.config.whitespace.hard_tabs = true;
-        let indent = Indent::new(8, 4);
+        formatter.shape.indent = Indent::new(8);
 
         // 2 tabs + 4 spaces
-        assert_eq!("\t\t    ", indent.to_string(&formatter));
+        assert_eq!("\t\t", formatter.shape.to_string(&formatter).unwrap());
     }
 
     #[test]
-    fn shape_visual_indent() {
-        let formatter = Formatter::default();
+    fn shape_block_indent() {
+        let mut formatter = Formatter::default();
+        formatter.config.whitespace.tab_spaces = 20;
         let max_width = formatter.config.whitespace.max_width;
-        let indent = Indent::new(4, 8);
-        let shape = Shape::legacy(&formatter.shape, max_width, indent);
-        let shape = shape.visual_indent(20);
-
-        assert_eq!(max_width, shape.width);
-        assert_eq!(4, shape.indent.block_indent);
-        assert_eq!(28, shape.indent.alignment);
-        assert_eq!(28, shape.offset);
-    }
-
-    #[test]
-    fn shape_block_indent_without_alignment() {
-        let formatter = Formatter::default();
-        let max_width = formatter.config.whitespace.max_width;
-        let indent = Indent::new(4, 0);
+        let indent = Indent::new(4);
         let mut shape = Shape::legacy(&formatter.shape, max_width, indent);
-        let shape = shape.block_indent(20);
+        let shape = shape.block_indent(&formatter);
 
         assert_eq!(max_width, shape.width);
         assert_eq!(24, shape.indent.block_indent);
-        assert_eq!(0, shape.indent.alignment);
-        assert_eq!(0, shape.offset);
-    }
-
-    #[test]
-    fn shape_block_indent_with_alignment() {
-        let formatter = Formatter::default();
-        let max_width = formatter.config.whitespace.max_width;
-        let indent = Indent::new(4, 8);
-        let mut shape = Shape::legacy(&formatter.shape, max_width, indent);
-        let shape = shape.block_indent(20);
-
-        assert_eq!(max_width, shape.width);
-        assert_eq!(4, shape.indent.block_indent);
-        assert_eq!(28, shape.indent.alignment);
-        assert_eq!(28, shape.offset);
     }
 }

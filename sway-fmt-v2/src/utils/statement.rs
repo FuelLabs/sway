@@ -39,7 +39,7 @@ impl Format for StatementLet {
         write!(
             formatted_code,
             "{}{} ",
-            formatter.shape.indent.to_string(formatter),
+            formatter.shape.to_string(formatter)?,
             self.let_token.span().as_str()
         )?;
         // pattern

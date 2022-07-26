@@ -34,30 +34,29 @@ impl CurlyBrace for ItemFn {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
-        let extra_width = formatter.config.whitespace.tab_spaces;
         let mut shape = formatter.shape;
         let open_brace = Delimiter::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
                 writeln!(line, "\n{}", open_brace)?;
-                shape = shape.block_indent(extra_width);
+                shape = shape.block_indent(formatter);
             }
             ItemBraceStyle::SameLineWhere => match shape.has_where_clause {
                 true => {
                     writeln!(line, "{}", open_brace)?;
                     shape = shape.update_where_clause();
-                    shape = shape.block_indent(extra_width);
+                    shape = shape.block_indent(formatter);
                 }
                 false => {
                     writeln!(line, " {}", open_brace)?;
-                    shape = shape.block_indent(extra_width);
+                    shape = shape.block_indent(formatter);
                 }
             },
             _ => {
                 // TODO: implement PreferSameLine
                 writeln!(line, " {}", open_brace)?;
-                shape = shape.block_indent(extra_width);
+                shape = shape.block_indent(formatter);
             }
         }
 
@@ -70,10 +69,9 @@ impl CurlyBrace for ItemFn {
     ) -> Result<(), FormatterError> {
         writeln!(line, "{}", Delimiter::Brace.as_close_char())?;
         // If shape is becoming left-most alligned or - indent just have the defualt shape
-        formatter.shape = formatter
-            .shape
-            .shrink_left(formatter.config.whitespace.tab_spaces)
-            .unwrap_or_default();
+        let mut shape = formatter.shape;
+        shape = shape.block_unindent(formatter);
+        formatter.shape = shape;
         Ok(())
     }
 }
@@ -177,11 +175,7 @@ impl Format for CodeBlockContents {
             statement.format(formatted_code, formatter)?;
         }
         if let Some(final_expr) = &self.final_expr_opt {
-            write!(
-                formatted_code,
-                "{}",
-                formatter.shape.indent.to_string(formatter)
-            )?;
+            write!(formatted_code, "{}", formatter.shape.to_string(formatter)?)?;
             final_expr.format(formatted_code, formatter)?;
             writeln!(formatted_code)?;
         }

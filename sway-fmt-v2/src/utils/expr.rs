@@ -41,11 +41,7 @@ impl Format for Expr {
                     }
                 }
                 if let Some(final_value) = &fields.final_value_opt {
-                    write!(
-                        formatted_code,
-                        "{}",
-                        &formatter.shape.indent.to_string(formatter)
-                    )?;
+                    write!(formatted_code, "{}", &formatter.shape.to_string(formatter)?)?;
                     final_value.format(formatted_code, formatter)?;
                     writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
                 }
@@ -205,7 +201,7 @@ impl Format for ExprStructField {
         write!(
             formatted_code,
             "{}{}",
-            formatter.shape.indent.to_string(formatter),
+            formatter.shape.to_string(formatter)?,
             self.field_name.span().as_str()
         )?;
         if let Some(expr) = &self.expr_opt {
@@ -223,18 +219,17 @@ impl CurlyBrace for ExprStructField {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
-        let extra_width = formatter.config.whitespace.tab_spaces;
         let mut shape = formatter.shape;
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
                 write!(line, "\n{}", Delimiter::Brace.as_open_char())?;
-                shape = shape.block_indent(extra_width);
+                shape = shape.block_indent(formatter);
             }
             _ => {
                 // Add opening brace to the same line
                 write!(line, " {}", Delimiter::Brace.as_open_char())?;
-                shape = shape.block_indent(extra_width);
+                shape = shape.block_indent(formatter);
             }
         }
 
@@ -247,11 +242,11 @@ impl CurlyBrace for ExprStructField {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         // Unindent by one block
-        formatter.shape.indent = formatter.shape.indent.block_unindent(formatter);
+        formatter.shape = formatter.shape.block_unindent(formatter);
         write!(
             line,
             "{}{}",
-            formatter.shape.indent.to_string(formatter),
+            formatter.shape.to_string(formatter)?,
             Delimiter::Brace.as_close_char()
         )?;
         Ok(())

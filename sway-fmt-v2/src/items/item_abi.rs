@@ -33,21 +33,13 @@ impl Format for ItemAbi {
             let attribute_list = item.0.attribute_list.clone();
             // add indent + format attribute if it exists
             if !attribute_list.is_empty() {
-                write!(
-                    formatted_code,
-                    "{}",
-                    &formatter.shape.indent.to_string(formatter),
-                )?;
+                write!(formatted_code, "{}", &formatter.shape.to_string(formatter)?,)?;
                 for attr in attribute_list {
                     attr.format(formatted_code, formatter)?;
                 }
             }
             // add indent + format item
-            write!(
-                formatted_code,
-                "{}",
-                &formatter.shape.indent.to_string(formatter),
-            )?;
+            write!(formatted_code, "{}", &formatter.shape.to_string(formatter)?,)?;
             writeln!(
                 formatted_code,
                 "{}{}",
@@ -67,22 +59,14 @@ impl Format for ItemAbi {
                 let attribute_list = item.attribute_list.clone();
                 // add indent + format attribute if it exists
                 if !attribute_list.is_empty() {
-                    write!(
-                        formatted_code,
-                        "{}",
-                        &formatter.shape.indent.to_string(formatter),
-                    )?;
+                    write!(formatted_code, "{}", &formatter.shape.to_string(formatter)?,)?;
                     for attr in attribute_list {
                         attr.format(formatted_code, formatter)?;
                     }
                 }
 
                 // add indent + format item
-                write!(
-                    formatted_code,
-                    "{}",
-                    &formatter.shape.indent.to_string(formatter),
-                )?;
+                write!(formatted_code, "{}", &formatter.shape.to_string(formatter)?,)?;
                 item.value.format(formatted_code, formatter)?; // TODO(PR #2173): ItemFn formatting
 
                 if iter.peek().is_some() {
@@ -102,19 +86,18 @@ impl CurlyBrace for ItemAbi {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
-        let extra_width = formatter.config.whitespace.tab_spaces;
         let mut shape = formatter.shape;
         let open_brace = Delimiter::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
                 write!(line, "\n{}\n", open_brace)?;
-                shape = shape.block_indent(extra_width);
+                shape = shape.block_indent(formatter);
             }
             _ => {
                 // Add opening brace to the same line
                 writeln!(line, " {}", open_brace)?;
-                shape = shape.block_indent(extra_width);
+                shape = shape.block_indent(formatter);
             }
         }
 
@@ -127,10 +110,7 @@ impl CurlyBrace for ItemAbi {
     ) -> Result<(), FormatterError> {
         line.push(Delimiter::Brace.as_close_char());
         // If shape is becoming left-most alligned or - indent just have the defualt shape
-        formatter.shape = formatter
-            .shape
-            .shrink_left(formatter.config.whitespace.tab_spaces)
-            .unwrap_or_default();
+        formatter.shape = formatter.shape.block_unindent(formatter);
         Ok(())
     }
 }

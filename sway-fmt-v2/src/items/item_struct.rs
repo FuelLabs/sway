@@ -109,11 +109,7 @@ fn format_struct(
 
                 let mut value_pairs_iter = value_pairs.iter().enumerate().peekable();
                 for (field_index, field) in value_pairs_iter.clone() {
-                    write!(
-                        formatted_code,
-                        "{}",
-                        &formatter.shape.indent.to_string(formatter)
-                    )?;
+                    write!(formatted_code, "{}", &formatter.shape.to_string(formatter)?)?;
 
                     let type_field = &field.0;
                     // Add name
@@ -146,11 +142,7 @@ fn format_struct(
             FieldAlignment::Off => {
                 let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
                 for field in value_pairs_iter.clone() {
-                    write!(
-                        formatted_code,
-                        "{}",
-                        &formatter.shape.indent.to_string(formatter)
-                    )?;
+                    write!(formatted_code, "{}", &formatter.shape.to_string(formatter)?)?;
                     // TypeField
                     field.0.format(formatted_code, formatter)?;
 
@@ -159,11 +151,7 @@ fn format_struct(
                     }
                 }
                 if let Some(final_value) = &fields.final_value_opt {
-                    write!(
-                        formatted_code,
-                        "{}",
-                        &formatter.shape.indent.to_string(formatter)
-                    )?;
+                    write!(formatted_code, "{}", &formatter.shape.to_string(formatter)?)?;
                     final_value.format(formatted_code, formatter)?;
                     writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
                 }
@@ -212,18 +200,17 @@ impl CurlyBrace for ItemStruct {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
-        let extra_width = formatter.config.whitespace.tab_spaces;
         let mut shape = formatter.shape;
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
                 write!(line, "\n{}", Delimiter::Brace.as_open_char())?;
-                shape = shape.block_indent(extra_width);
+                shape = shape.block_indent(formatter);
             }
             _ => {
                 // Add opening brace to the same line
                 write!(line, " {}", Delimiter::Brace.as_open_char())?;
-                shape = shape.block_indent(extra_width);
+                shape = shape.block_indent(formatter);
             }
         }
 
@@ -237,10 +224,7 @@ impl CurlyBrace for ItemStruct {
     ) -> Result<(), FormatterError> {
         write!(line, "{}", Delimiter::Brace.as_close_char())?;
         // If shape is becoming left-most alligned or - indent just have the defualt shape
-        formatter.shape = formatter
-            .shape
-            .shrink_left(formatter.config.whitespace.tab_spaces)
-            .unwrap_or_default();
+        formatter.shape = formatter.shape.block_unindent(formatter);
         Ok(())
     }
 }
