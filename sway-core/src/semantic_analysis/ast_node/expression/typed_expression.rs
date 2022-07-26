@@ -1021,6 +1021,7 @@ impl TypedExpression {
             expression: TypedExpressionVariant::StructExpression {
                 struct_name: struct_name.clone(),
                 fields: typed_fields_buf,
+                span: call_path_binding.inner.suffix.1.clone(),
             },
             return_type: type_id,
             is_constant: IsConstant::No,
