@@ -29,7 +29,7 @@ const GTF_SCRIPT_OUTPUT_AT_INDEX = 0x00E;
 
 // const GTF_SCRIPT_WITNESS_AT_INDEX = 0x00F;
 
-// const GTF_CREATE_GAS_PRICE = 0x010;
+const GTF_CREATE_GAS_PRICE = 0x010;
 // const GTF_CREATE_GAS_LIMIT = 0x011;
 // const GTF_CREATE_MATURITY = 0x012;
 // const GTF_CREATE_BYTECODE_LENGTH = 0x013;
@@ -108,7 +108,19 @@ pub const OUTPUT_CONTRACT_CREATED = 5u8;
 
 /// Get the transaction type.
 
-// TODO: Use consts in place of immmediate values when https://github.com/FuelLabs/sway/issues/810 lands. can also refactor to have a single gtf() function and just pass the contants in as needed.
+// @todo refactor all to use intrinsic
+// @todo make generic versions of:
+//  - tx_gas_price()
+//  - tx_gas_limit()
+//  - tx_inputs_count()
+//  - tx_outputs_cout()
+//  - tx_witness_count()
+//  - tx_maturity()
+//  - tx_input_at_index()
+//  - tx_output_at_index()
+//  - tx_witness_at_index()
+
+
 pub fn tx_type() -> u8 {
     // GTF_TYPE = 0x001
     asm(res) {
@@ -117,13 +129,21 @@ pub fn tx_type() -> u8 {
     }
 }
 
-/// Get the transaction-script gas price.
-pub fn tx_script_gas_price() -> u64 {
-    // GTF_SCRIPT_GAS_PRICE = 0x002
-    asm(res) {
-        gtf res zero i2;
-        res: u64
+/// Get the transaction gas price for either tx type
+/// (transaction-script or transaction-create).
+pub fn tx_gas_price() -> u64 {
+    let type = tx_type();
+    match type {
+        0u8 => {
+            // tx is a transaction-script
+            __gtf::<u64>(0, GTF_SCRIPT_GAS_PRICE)
+        },
+        1u8 => {
+            // tx is a transaction-create
+            __gtf::<u64>(0, GTF_CREATE_GAS_PRICE)
+        }
     }
+
 }
 
 /// Get the transaction-script gas limit.
