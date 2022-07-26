@@ -13,7 +13,7 @@
               }
             ],
             "name": "bim",
-            "type": "[b256; 3]",
+            "type": "T",
             "typeArguments": null
           },
           {
@@ -32,7 +32,7 @@
               }
             ],
             "name": "bam",
-            "type": "enum MyEnum",
+            "type": "enum MyEnum<u64>",
             "typeArguments": [
               {
                 "components": null,
@@ -44,7 +44,7 @@
           }
         ],
         "name": "arg1",
-        "type": "struct MyStruct",
+        "type": "struct MyStruct<T, U>",
         "typeArguments": [
           {
             "components": [
@@ -74,7 +74,7 @@
               {
                 "components": null,
                 "name": "bim",
-                "type": "u64",
+                "type": "T",
                 "typeArguments": null
               },
               {
@@ -93,7 +93,7 @@
                   }
                 ],
                 "name": "bam",
-                "type": "enum MyEnum",
+                "type": "enum MyEnum<u64>",
                 "typeArguments": [
                   {
                     "components": null,
@@ -105,7 +105,7 @@
               }
             ],
             "name": "__array_element",
-            "type": "struct MyStruct",
+            "type": "MyStruct<u64,bool>",
             "typeArguments": [
               {
                 "components": null,
@@ -123,7 +123,7 @@
           }
         ],
         "name": "arg2",
-        "type": "[struct MyStruct; 4]",
+        "type": "[MyStruct<u64,bool>; 4]",
         "typeArguments": null
       },
       {
@@ -179,12 +179,12 @@
               {
                 "components": null,
                 "name": "__array_element",
-                "type": "u8",
+                "type": "V",
                 "typeArguments": null
               }
             ],
             "name": "tim",
-            "type": "[u8; 3]",
+            "type": "[V; 3]",
             "typeArguments": null
           },
           {
@@ -194,7 +194,7 @@
                   {
                     "components": null,
                     "name": "bim",
-                    "type": "u8",
+                    "type": "T",
                     "typeArguments": null
                   },
                   {
@@ -213,7 +213,7 @@
                       }
                     ],
                     "name": "bam",
-                    "type": "enum MyEnum",
+                    "type": "enum MyEnum<u64>",
                     "typeArguments": [
                       {
                         "components": null,
@@ -225,7 +225,7 @@
                   }
                 ],
                 "name": "__array_element",
-                "type": "struct MyStruct",
+                "type": "MyStruct<V,W>",
                 "typeArguments": [
                   {
                     "components": null,
@@ -243,12 +243,12 @@
               }
             ],
             "name": "tam",
-            "type": "[struct MyStruct; 5]",
+            "type": "[MyStruct<V,W>; 5]",
             "typeArguments": null
           }
         ],
         "name": "arg",
-        "type": "struct MyArrayStruct",
+        "type": "struct MyArrayStruct<V, W>",
         "typeArguments": [
           {
             "components": null,
