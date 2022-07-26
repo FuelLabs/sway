@@ -30,7 +30,7 @@ const GTF_SCRIPT_OUTPUT_AT_INDEX = 0x00E;
 // const GTF_SCRIPT_WITNESS_AT_INDEX = 0x00F;
 
 const GTF_CREATE_GAS_PRICE = 0x010;
-// const GTF_CREATE_GAS_LIMIT = 0x011;
+const GTF_CREATE_GAS_LIMIT = 0x011;
 // const GTF_CREATE_MATURITY = 0x012;
 // const GTF_CREATE_BYTECODE_LENGTH = 0x013;
 // const GTF_CREATE_BYTECODE_WITNESS_INDEX = 0x014;
@@ -142,12 +142,19 @@ pub fn tx_gas_price() -> u64 {
 
 }
 
-/// Get the transaction-script gas limit.
-pub fn tx_script_gas_limit() -> u64 {
-    // GTF_SCRIPT_GAS_LIMIT = 0x003
-    asm(res) {
-        gtf res zero i3;
-        res: u64
+/// Get the transaction-script gas limit for either tx type
+/// (transaction-script or transaction-create).
+pub fn tx_gas_limit() -> u64 {
+    let type = tx_type();
+    match type {
+        0u8 => {
+            // tx is a transaction-script
+            __gtf::<u64>(0, GTF_SCRIPT_GAS_LIMIT)
+        },
+        1u8 => {
+            // tx is a transaction-create
+            __gtf::<u64>(0, GTF_CREATE_GAS_LIMIT)
+        }
     }
 }
 
