@@ -220,11 +220,7 @@ pub fn tx_inputs_count() -> u64 {
 
 /// Get the transaction outputs count.
 pub fn tx_outputs_count() -> u64 {
-    // GTF_SCRIPT_OUTPUTS_COUNT = 0x008
-    asm(res) {
-        gtf res zero i8;
-        res: u64
-    }
+    __gtf::<u64>(0, GTF_SCRIPT_OUTPUTS_COUNT)
 }
 
 /// Get the transaction witnesses count.
