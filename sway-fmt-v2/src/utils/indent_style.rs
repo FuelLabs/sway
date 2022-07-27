@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{
-    constants::{HARD_TAB, INDENT_BUFFER, INDENT_BUFFER_LEN, INFINITE_SHAPE_WIDTH},
+    constants::{HARD_TAB, INDENT_BUFFER, INDENT_BUFFER_LEN},
     fmt::Formatter,
     FormatterError,
 };
@@ -14,6 +14,7 @@ use crate::{
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub(crate) struct Indent {
     /// Width of the block indent, in characters.
+    /// Must be a multiple of `tab_spaces`.
     pub(crate) block_indent: usize,
 }
 
@@ -99,12 +100,26 @@ impl Sub for Indent {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum LineStyle {
+    Inline,
+    Multiline,
+}
+
+impl Default for LineStyle {
+    fn default() -> Self {
+        Self::Multiline
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub(crate) struct Shape {
-    /// Width of current `Item` before declaring `LineStyle`.
+    /// The current number of characters in the given `Item`.
     pub(crate) width: usize,
     /// The current indentation of code.
     pub(crate) indent: Indent,
+    /// Determines whether a code line is inline, or multiline.
+    pub(crate) line_style: LineStyle,
     /// Used in determining `SameLineWhere` formatting.
     /// Default is false.
     pub(crate) has_where_clause: bool,
@@ -127,11 +142,13 @@ impl Shape {
     // |<------------>|  max width
     // |<---->|          indent
     //        |<--->|    width
+    //
     /// Construct a new `Shape` with a given width and level of indentation.
     pub(crate) fn legacy(&self, width: usize, indent: Indent) -> Self {
         Self {
             width,
             indent,
+            line_style: self.line_style,
             has_where_clause: self.has_where_clause,
         }
     }
@@ -144,6 +161,7 @@ impl Shape {
                 .max_width
                 .saturating_sub(indent.width()),
             indent,
+            line_style: self.line_style,
             has_where_clause: self.has_where_clause,
         }
     }
@@ -173,10 +191,41 @@ impl Shape {
             ..*self
         }
     }
-    /// Creates a `Shape` with a virtually infinite width.
-    pub(crate) fn infinite_width(&self) -> Self {
+    /// Checks the config, and if `small_structure_single_line` is enabled,
+    /// determines whether the `Shape::width` is greater than the `structure_lit_width`
+    /// threshold. If it isn't, the `Shape::line_style` is updated to `Inline`.
+    pub(crate) fn get_line_style(&mut self, formatter: &Formatter) -> Self {
+        let allow_inline_style = formatter.config.structures.small_structures_single_line;
+        // Get the width limit of a structure to be formatted into single line if `allow_inline_style` is true.
+        if allow_inline_style {
+            let width_heuristics = formatter
+                .config
+                .heuristics
+                .heuristics_pref
+                .to_width_heuristics(&formatter.config.whitespace);
+
+            if self.width > width_heuristics.structure_lit_width {
+                Self {
+                    line_style: LineStyle::Multiline,
+                    ..*self
+                }
+            } else {
+                Self {
+                    line_style: LineStyle::Inline,
+                    ..*self
+                }
+            }
+        } else {
+            Self {
+                line_style: LineStyle::Multiline,
+                ..*self
+            }
+        }
+    }
+    /// Reset `Shape::line_style` to default.
+    pub(crate) fn reset_line_style(&mut self) -> Self {
         Self {
-            width: INFINITE_SHAPE_WIDTH,
+            line_style: LineStyle::default(),
             ..*self
         }
     }
@@ -203,7 +252,7 @@ impl Shape {
         self.indent.to_string_inner(formatter, 0)
     }
     /// Update the value of `has_where_clause`.
-    pub fn update_where_clause(&mut self) -> Self {
+    pub(crate) fn update_where_clause(&mut self) -> Self {
         match self.has_where_clause {
             true => Self {
                 has_where_clause: false,
@@ -262,5 +311,31 @@ mod test {
 
         assert_eq!(max_width, shape.width);
         assert_eq!(24, shape.indent.block_indent);
+    }
+
+    #[test]
+    fn test_line_style() {
+        let mut formatter = Formatter::default();
+        let mut shape = formatter.shape;
+        formatter.shape = shape.get_line_style(&formatter);
+        assert_eq!(LineStyle::Inline, formatter.shape.line_style);
+
+        formatter.shape.width = 19;
+        shape = formatter.shape;
+        formatter.shape = shape.get_line_style(&formatter);
+        assert_eq!(LineStyle::Multiline, formatter.shape.line_style);
+    }
+
+    #[test]
+    fn test_reset_line_style() {
+        let mut formatter = Formatter::default();
+        formatter.shape.line_style = LineStyle::Inline;
+        let mut shape = formatter.shape;
+
+        formatter.shape = shape.get_line_style(&formatter);
+        assert_eq!(LineStyle::Inline, formatter.shape.line_style);
+
+        formatter.shape = shape.reset_line_style();
+        assert_eq!(LineStyle::Multiline, formatter.shape.line_style);
     }
 }

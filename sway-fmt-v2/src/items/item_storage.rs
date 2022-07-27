@@ -4,7 +4,6 @@ use crate::{
     utils::{
         bracket::CurlyBrace,
         comments::{ByteSpan, LeafSpans},
-        item::ItemLenChars,
     },
     FormatterError,
 };
@@ -21,51 +20,12 @@ impl Format for ItemStorage {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        // Should we format small storage into single line
-        let storage_single_line = formatter.config.structures.small_structures_single_line;
+        // Add storage token
+        write!(formatted_code, "{}", self.storage_token.span().as_str())?;
+        let fields = self.fields.clone().into_inner();
 
-        // Get the width limit of a storage to be formatted into single line if storage_single_line is true
-        let config_whitespace = formatter.config.whitespace;
-        let width_heuristics = formatter
-            .config
-            .heuristics
-            .heuristics_pref
-            .to_width_heuristics(&config_whitespace);
-        let storage_width = width_heuristics.structure_lit_width;
-
-        let multiline = !storage_single_line || self.len_chars()? > storage_width;
-        format_storage(self, formatter, formatted_code, multiline)?;
-        Ok(())
-    }
-}
-
-impl ItemLenChars for ItemStorage {
-    fn len_chars(&self) -> Result<usize, FormatterError> {
-        // Format to single line and return the length
-        let mut str_item = String::new();
-        let mut formatter = Formatter::default();
-        format_storage(self, &mut formatter, &mut str_item, false)?;
-        Ok(str_item.chars().count() as usize)
-    }
-}
-
-fn format_storage(
-    item_storage: &ItemStorage,
-    formatter: &mut Formatter,
-    formatted_code: &mut String,
-    multiline: bool,
-) -> Result<(), FormatterError> {
-    // Add storage token
-    write!(
-        formatted_code,
-        "{}",
-        item_storage.storage_token.span().as_str()
-    )?;
-    let fields = item_storage.fields.clone().into_inner();
-
-    // Handle openning brace
-    ItemStorage::open_curly_brace(formatted_code, formatter)?;
-    if multiline {
+        // Handle openning brace
+        Self::open_curly_brace(formatted_code, formatter)?;
         writeln!(formatted_code)?;
         // Determine alignment tactic
         match formatter.config.structures.field_alignment {
@@ -144,38 +104,10 @@ fn format_storage(
                 }
             }
         }
-    } else {
-        // non-multiline formatting
-        write!(formatted_code, " ")?;
-        let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
-        for field in value_pairs_iter.clone() {
-            // storage_field
-            write!(
-                formatted_code,
-                "{}{} ",
-                field.0.name.span().as_str(),
-                field.0.colon_token.span().as_str(),
-            )?;
-            field.0.ty.format(formatted_code, formatter)?;
-            write!(formatted_code, " {} ", field.0.eq_token.ident().as_str())?;
-            field.0.initializer.format(formatted_code, formatter)?;
-            if value_pairs_iter.peek().is_some() {
-                write!(formatted_code, "{} ", field.1.span().as_str())?;
-            }
-        }
-        if let Some(final_value) = &fields.final_value_opt {
-            final_value.format(formatted_code, formatter)?;
-            write!(formatted_code, " ")?;
-        } else {
-            formatted_code.pop();
-            formatted_code.pop();
-            write!(formatted_code, " ")?;
-        }
+        // Handle closing brace
+        Self::close_curly_brace(formatted_code, formatter)?;
+        Ok(())
     }
-
-    // Handle closing brace
-    ItemStorage::close_curly_brace(formatted_code, formatter)?;
-    Ok(())
 }
 
 impl CurlyBrace for ItemStorage {
