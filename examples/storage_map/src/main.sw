@@ -1,45 +1,49 @@
 contract;
 
+// ANCHOR: storage_map_import
 use std::storage::StorageMap;
-
-struct Data {
-    x: b256,
-    y: str[4],
-}
+// ANCHOR_END: storage_map_import
+use std::{address::Address, logging::log, option::Option, revert::revert};
 
 storage {
-    map1: StorageMap<u64,
+    // ANCHOR: storage_map_decl
+    map: StorageMap<Address,
     u64> = StorageMap {
     },
-    map2: StorageMap<(b256,
-    bool), Data> = StorageMap {
+    // ANCHOR_END: storage_map_decl
+    // ANCHOR: storage_map_tuple_key
+    map_two_keys: StorageMap<(b256,
+    bool), b256> = StorageMap {
     },
+    // ANCHOR_END: storage_map_tuple_key
 }
 
 abi StorageMapExample {
-    #[storage(write)]fn insert_into_map1(key: u64, value: u64);
+    #[storage(write)]fn insert_into_storage_map();
 
-    #[storage(read)]fn get_from_map1(key: u64, value: u64) -> u64;
-
-    #[storage(write)]fn insert_into_map2(key: (b256, bool), value: Data);
-
-    #[storage(read)]fn get_from_map2(key: (b256, bool), value: Data) -> Data;
+    #[storage(read, write)]fn get_from_storage_map();
 }
 
 impl StorageMapExample for Contract {
-    #[storage(write)]fn insert_into_map1(key: u64, value: u64) {
-        storage.map1.insert(key, value);
-    }
+    // ANCHOR: storage_map_insert
+    #[storage(write)]fn insert_into_storage_map() {
+        let addr1 = 0x0101010101010101010101010101010101010101010101010101010101010101;
+        let addr2 = 0x0202020202020202020202020202020202020202020202020202020202020202;
 
-    #[storage(read)]fn get_from_map1(key: u64, value: u64) -> u64 {
-        storage.map1.get(key)
+        storage.map.insert(~Address::from(addr1), 42);
+        storage.map.insert(~Address::from(addr2), 77);
     }
+    // ANCHOR_END: storage_map_insert
 
-    #[storage(write)]fn insert_into_map2(key: (b256, bool), value: Data) {
-        storage.map2.insert(key, value);
-    }
+    // ANCHOR: storage_map_get
+    #[storage(read, write)]fn get_from_storage_map() {
+        let addr1 = 0x0101010101010101010101010101010101010101010101010101010101010101;
+        let addr2 = 0x0202020202020202020202020202020202020202020202020202020202020202;
 
-    #[storage(read)]fn get_from_map2(key: (b256, bool), value: Data) -> Data {
-        storage.map2.get(key)
+        storage.map.insert(~Address::from(addr1), 42);
+        storage.map.insert(~Address::from(addr2), 77);
+
+        let value1 = storage.map.get(~Address::from(addr1));
     }
+    // ANCHOR_END: storage_map_get
 }
