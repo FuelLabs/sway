@@ -35,7 +35,11 @@ impl Format for ItemTrait {
         write!(formatted_code, " ")?;
         Self::open_curly_brace(formatted_code, formatter)?;
         for trait_items in self.trait_items.clone().into_inner() {
-            write!(formatted_code, "{}", formatter.shape.to_string(formatter)?)?;
+            write!(
+                formatted_code,
+                "{}",
+                formatter.shape.indent.to_string(&formatter.config)?
+            )?;
             // format `Annotated<FnSignature>`
             trait_items.0.format(formatted_code, formatter)?;
             writeln!(formatted_code, "{}\n", trait_items.1.span().as_str())?;
@@ -44,7 +48,11 @@ impl Format for ItemTrait {
         if let Some(trait_defs) = &self.trait_defs_opt {
             Self::open_curly_brace(formatted_code, formatter)?;
             for trait_items in trait_defs.clone().into_inner() {
-                write!(formatted_code, "{}", formatter.shape.to_string(formatter)?)?;
+                write!(
+                    formatted_code,
+                    "{}",
+                    formatter.shape.indent.to_string(&formatter.config)?
+                )?;
                 // format `Annotated<ItemFn>`
                 trait_items.format(formatted_code, formatter)?;
             }
@@ -62,21 +70,19 @@ impl CurlyBrace for ItemTrait {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
-        let mut shape = formatter.shape;
         let open_brace = Delimiter::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
                 writeln!(line, "\n{}", open_brace)?;
-                shape = shape.block_indent(formatter);
+                formatter.shape.block_indent(&formatter.config);
             }
             _ => {
                 writeln!(line, "{}", open_brace)?;
-                shape = shape.block_indent(formatter);
+                formatter.shape.block_indent(&formatter.config);
             }
         }
 
-        formatter.shape = shape;
         Ok(())
     }
     fn close_curly_brace(
@@ -84,7 +90,7 @@ impl CurlyBrace for ItemTrait {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         writeln!(line, "{}", Delimiter::Brace.as_close_char())?;
-        formatter.shape = formatter.shape.block_unindent(formatter);
+        formatter.shape.block_unindent(&formatter.config);
         Ok(())
     }
 }

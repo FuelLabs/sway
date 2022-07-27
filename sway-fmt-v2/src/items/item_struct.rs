@@ -22,13 +22,12 @@ impl Format for ItemStruct {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let mut shape = formatter.shape;
-        shape = shape.update_width(self.len_chars()?);
-        formatter.shape = shape.get_line_style(formatter);
+        formatter.shape.update_width(self.len_chars()?);
+        formatter.shape.get_line_style(&formatter.config);
 
         format_struct(self, formatted_code, formatter)?;
         if formatter.shape.line_style == LineStyle::Inline {
-            formatter.shape = shape.reset_line_style();
+            formatter.shape.reset_line_style();
         }
 
         Ok(())
@@ -104,7 +103,11 @@ fn format_struct(
 
                     let mut value_pairs_iter = value_pairs.iter().enumerate().peekable();
                     for (var_index, variant) in value_pairs_iter.clone() {
-                        write!(formatted_code, "{}", &formatter.shape.to_string(formatter)?)?;
+                        write!(
+                            formatted_code,
+                            "{}",
+                            &formatter.shape.indent.to_string(&formatter.config)?
+                        )?;
 
                         let type_field = &variant.0;
                         // Add name
@@ -138,7 +141,11 @@ fn format_struct(
                 FieldAlignment::Off => {
                     let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
                     for variant in value_pairs_iter.clone() {
-                        write!(formatted_code, "{}", &formatter.shape.to_string(formatter)?)?;
+                        write!(
+                            formatted_code,
+                            "{}",
+                            &formatter.shape.indent.to_string(&formatter.config)?
+                        )?;
                         // TypeField
                         variant.0.format(formatted_code, formatter)?;
 
@@ -147,7 +154,11 @@ fn format_struct(
                         }
                     }
                     if let Some(final_value) = &fields.final_value_opt {
-                        write!(formatted_code, "{}", &formatter.shape.to_string(formatter)?)?;
+                        write!(
+                            formatted_code,
+                            "{}",
+                            &formatter.shape.indent.to_string(&formatter.config)?
+                        )?;
                         final_value.format(formatted_code, formatter)?;
                         writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
                     }
@@ -198,21 +209,19 @@ impl CurlyBrace for ItemStruct {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
-        let mut shape = formatter.shape;
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
                 write!(line, "\n{}", Delimiter::Brace.as_open_char())?;
-                shape = shape.block_indent(formatter);
+                formatter.shape.block_indent(&formatter.config);
             }
             _ => {
                 // Add opening brace to the same line
                 write!(line, " {}", Delimiter::Brace.as_open_char())?;
-                shape = shape.block_indent(formatter);
+                formatter.shape.block_indent(&formatter.config);
             }
         }
 
-        formatter.shape = shape;
         Ok(())
     }
 
@@ -222,7 +231,7 @@ impl CurlyBrace for ItemStruct {
     ) -> Result<(), FormatterError> {
         write!(line, "{}", Delimiter::Brace.as_close_char())?;
         // If shape is becoming left-most alligned or - indent just have the defualt shape
-        formatter.shape = formatter.shape.block_unindent(formatter);
+        formatter.shape.block_unindent(&formatter.config);
         Ok(())
     }
 }

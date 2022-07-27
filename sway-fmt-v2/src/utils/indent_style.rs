@@ -1,14 +1,13 @@
 //! Associated functions and tests for handling of indentation.
+use crate::{
+    config::manifest::Config,
+    constants::{HARD_TAB, INDENT_BUFFER, INDENT_BUFFER_LEN},
+    FormatterError,
+};
 use std::{
     borrow::Cow,
     fmt::Write,
     ops::{Add, Sub},
-};
-
-use crate::{
-    constants::{HARD_TAB, INDENT_BUFFER, INDENT_BUFFER_LEN},
-    fmt::Formatter,
-    FormatterError,
 };
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
@@ -28,19 +27,16 @@ impl Indent {
         Self::new(0)
     }
     /// Adds a level of indentation specified by the `Formatter::config` to the current `block_indent`.
-    fn block_indent(mut self, formatter: &Formatter) -> Self {
-        self.block_indent += formatter.config.whitespace.tab_spaces;
-        self
+    fn block_indent(&mut self, config: &Config) {
+        self.block_indent += config.whitespace.tab_spaces
     }
     /// Removes a level of indentation specified by the `Formatter::config` to the current `block_indent`.
-    /// If the current level of indentation would be negative, a new `Indent` is contructed.
-    fn block_unindent(mut self, formatter: &Formatter) -> Self {
-        let tab_spaces = formatter.config.whitespace.tab_spaces;
+    /// If the current level of indentation would be negative, leave it as is.
+    fn block_unindent(&mut self, config: &Config) {
+        let tab_spaces = config.whitespace.tab_spaces;
         if self.block_indent < tab_spaces {
-            Self::new(self.block_indent)
         } else {
-            self.block_indent -= tab_spaces;
-            self
+            self.block_indent -= tab_spaces
         }
     }
     /// Current indent size.
@@ -52,14 +48,11 @@ impl Indent {
     // This also takes an offset which determines whether to add a new line.
     fn to_string_inner(
         self,
-        formatter: &Formatter,
+        config: &Config,
         offset: usize,
     ) -> Result<Cow<'static, str>, FormatterError> {
-        let (num_tabs, num_spaces) = if formatter.config.whitespace.hard_tabs {
-            (
-                self.block_indent / formatter.config.whitespace.tab_spaces,
-                0,
-            )
+        let (num_tabs, num_spaces) = if config.whitespace.hard_tabs {
+            (self.block_indent / config.whitespace.tab_spaces, 0)
         } else {
             (0, self.width())
         };
@@ -79,6 +72,17 @@ impl Indent {
             }
             Ok(Cow::from(indent))
         }
+    }
+    /// A wrapper for `Indent::to_string_inner()` that does not add a new line.
+    pub(crate) fn to_string(self, config: &Config) -> Result<Cow<'static, str>, FormatterError> {
+        self.to_string_inner(config, 1)
+    }
+    /// A wrapper for `Indent::to_string_inner()` that also adds a new line.
+    pub(crate) fn to_string_with_newline(
+        self,
+        config: &Config,
+    ) -> Result<Cow<'static, str>, FormatterError> {
+        self.to_string_inner(config, 0)
     }
 }
 
@@ -153,13 +157,9 @@ impl Shape {
         }
     }
     /// Construct a new `Shape` that takes into account the current level of indentation.
-    pub(crate) fn indented(&self, indent: Indent, formatter: &Formatter) -> Self {
+    pub(crate) fn indented(&self, indent: Indent, config: &Config) -> Self {
         Self {
-            width: formatter
-                .config
-                .whitespace
-                .max_width
-                .saturating_sub(indent.width()),
+            width: config.whitespace.max_width.saturating_sub(indent.width()),
             indent,
             line_style: self.line_style,
             has_where_clause: self.has_where_clause,
@@ -168,100 +168,50 @@ impl Shape {
     /// A wrapper for `Indent::block_indent()`.
     ///
     /// Adds a level of indentation specified by the `Formatter::config` to the current `block_indent`.
-    pub(crate) fn block_indent(&mut self, formatter: &Formatter) -> Self {
-        Self {
-            indent: self.indent.block_indent(formatter),
-            ..*self
-        }
+    pub(crate) fn block_indent(&mut self, config: &Config) {
+        self.indent.block_indent(config)
     }
     /// A wrapper for `Indent::block_unindent()`.
     ///
     /// Removes a level of indentation specified by the `Formatter::config` to the current `block_indent`.
     /// If the current level of indentation would be negative, a new `Indent` is contructed.
-    pub(crate) fn block_unindent(&self, formatter: &Formatter) -> Self {
-        Self {
-            indent: self.indent.block_unindent(formatter),
-            ..*self
-        }
+    pub(crate) fn block_unindent(&mut self, config: &Config) {
+        self.indent.block_unindent(config);
     }
     /// Updates `Shape::width` to the current width of the `Item`.
-    pub(crate) fn update_width(&self, len_chars: usize) -> Self {
-        Self {
-            width: len_chars,
-            ..*self
-        }
+    pub(crate) fn update_width(&mut self, len_chars: usize) {
+        self.width = len_chars;
     }
     /// Checks the config, and if `small_structure_single_line` is enabled,
     /// determines whether the `Shape::width` is greater than the `structure_lit_width`
     /// threshold. If it isn't, the `Shape::line_style` is updated to `Inline`.
-    pub(crate) fn get_line_style(&mut self, formatter: &Formatter) -> Self {
-        let allow_inline_style = formatter.config.structures.small_structures_single_line;
+    pub(crate) fn get_line_style(&mut self, config: &Config) {
+        let allow_inline_style = config.structures.small_structures_single_line;
         // Get the width limit of a structure to be formatted into single line if `allow_inline_style` is true.
         if allow_inline_style {
-            let width_heuristics = formatter
-                .config
+            let width_heuristics = config
                 .heuristics
                 .heuristics_pref
-                .to_width_heuristics(&formatter.config.whitespace);
+                .to_width_heuristics(&config.whitespace);
 
             if self.width > width_heuristics.structure_lit_width {
-                Self {
-                    line_style: LineStyle::Multiline,
-                    ..*self
-                }
+                self.line_style = LineStyle::Multiline
             } else {
-                Self {
-                    line_style: LineStyle::Inline,
-                    ..*self
-                }
+                self.line_style = LineStyle::Inline
             }
         } else {
-            Self {
-                line_style: LineStyle::Multiline,
-                ..*self
-            }
+            self.line_style = LineStyle::Multiline
         }
     }
     /// Reset `Shape::line_style` to default.
-    pub(crate) fn reset_line_style(&mut self) -> Self {
-        Self {
-            line_style: LineStyle::default(),
-            ..*self
-        }
-    }
-    /// A wrapper for `Indent::to_string_inner()` that does not add a new line.
-    ///
-    /// Checks for either `hard_tabs` or `tab_spaces` and creates a
-    /// buffer of whitespace from the current level of indentation.
-    /// This also takes an offset which determines whether to add a new line.
-    pub(crate) fn to_string(
-        self,
-        formatter: &Formatter,
-    ) -> Result<Cow<'static, str>, FormatterError> {
-        self.indent.to_string_inner(formatter, 1)
-    }
-    /// A wrapper for `Indent::to_string_inner()` that also adds a new line.
-    ///
-    /// Checks for either `hard_tabs` or `tab_spaces` and creates a
-    /// buffer of whitespace from the current level of indentation.
-    /// This also takes an offset which determines whether to add a new line.
-    pub(crate) fn to_string_with_newline(
-        self,
-        formatter: &Formatter,
-    ) -> Result<Cow<'static, str>, FormatterError> {
-        self.indent.to_string_inner(formatter, 0)
+    pub(crate) fn reset_line_style(&mut self) {
+        self.line_style = LineStyle::default()
     }
     /// Update the value of `has_where_clause`.
-    pub(crate) fn update_where_clause(&mut self) -> Self {
+    pub(crate) fn update_where_clause(&mut self) {
         match self.has_where_clause {
-            true => Self {
-                has_where_clause: false,
-                ..*self
-            },
-            false => Self {
-                has_where_clause: true,
-                ..*self
-            },
+            true => self.has_where_clause = false,
+            false => self.has_where_clause = true,
         }
     }
 }
@@ -269,6 +219,7 @@ impl Shape {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::fmt::Formatter;
 
     #[test]
     fn indent_add_sub() {
@@ -286,7 +237,7 @@ mod test {
         // 12 spaces
         assert_eq!(
             "            ",
-            formatter.shape.to_string(&formatter).unwrap()
+            formatter.shape.indent.to_string(&formatter.config).unwrap()
         );
     }
 
@@ -297,7 +248,10 @@ mod test {
         formatter.shape.indent = Indent::new(8);
 
         // 2 tabs + 4 spaces
-        assert_eq!("\t\t", formatter.shape.to_string(&formatter).unwrap());
+        assert_eq!(
+            "\t\t",
+            formatter.shape.indent.to_string(&formatter.config).unwrap()
+        );
     }
 
     #[test]
@@ -307,7 +261,7 @@ mod test {
         let max_width = formatter.config.whitespace.max_width;
         let indent = Indent::new(4);
         let mut shape = Shape::legacy(&formatter.shape, max_width, indent);
-        let shape = shape.block_indent(&formatter);
+        shape.block_indent(&formatter.config);
 
         assert_eq!(max_width, shape.width);
         assert_eq!(24, shape.indent.block_indent);
@@ -316,13 +270,11 @@ mod test {
     #[test]
     fn test_line_style() {
         let mut formatter = Formatter::default();
-        let mut shape = formatter.shape;
-        formatter.shape = shape.get_line_style(&formatter);
+        formatter.shape.get_line_style(&formatter.config);
         assert_eq!(LineStyle::Inline, formatter.shape.line_style);
 
         formatter.shape.width = 19;
-        shape = formatter.shape;
-        formatter.shape = shape.get_line_style(&formatter);
+        formatter.shape.get_line_style(&formatter.config);
         assert_eq!(LineStyle::Multiline, formatter.shape.line_style);
     }
 
@@ -330,12 +282,11 @@ mod test {
     fn test_reset_line_style() {
         let mut formatter = Formatter::default();
         formatter.shape.line_style = LineStyle::Inline;
-        let mut shape = formatter.shape;
 
-        formatter.shape = shape.get_line_style(&formatter);
+        formatter.shape.get_line_style(&formatter.config);
         assert_eq!(LineStyle::Inline, formatter.shape.line_style);
 
-        formatter.shape = shape.reset_line_style();
+        formatter.shape.reset_line_style();
         assert_eq!(LineStyle::Multiline, formatter.shape.line_style);
     }
 }
