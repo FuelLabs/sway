@@ -174,7 +174,7 @@ impl Shape {
     /// A wrapper for `Indent::block_unindent()`.
     ///
     /// Removes a level of indentation specified by the `Formatter::config` to the current `block_indent`.
-    /// If the current level of indentation would be negative, a new `Indent` is contructed.
+    /// If the current level of indentation would be negative, leave it as is.
     pub(crate) fn block_unindent(&mut self, config: &Config) {
         self.indent.block_unindent(config);
     }
