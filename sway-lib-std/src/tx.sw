@@ -119,7 +119,8 @@ pub const OUTPUT_CONTRACT_CREATED = 5u8;
 
 // @todo handle cases where a field doesn't exist on the transaction type by returning an option.
 
-
+/// Get the type of the current transaction.
+/// Either 0 (transaction-script) or 1 (transaction-create)
 pub fn tx_type() -> u8 {
     __gtf::<u8>(0, GTF_TYPE)
 }
