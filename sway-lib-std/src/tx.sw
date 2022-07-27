@@ -176,6 +176,7 @@ pub fn tx_maturity() -> u32 {
 /// Get the transaction-script script length.
 /// Returns Option::None if not a transaction-script.
 pub fn tx_script_length() -> Option<u64> {
+    let type = tx_type();
     match type {
         0u8 => {
             // tx is a transaction-script
@@ -191,6 +192,7 @@ pub fn tx_script_length() -> Option<u64> {
 /// Get the transaction script data length.
 /// Returns Option::None if not a transaction-script.
 pub fn tx_script_data_length() -> Option<u64> {
+    let type = tx_type();
     match type {
         0u8 => {
             // tx is a transaction-script
@@ -206,6 +208,7 @@ pub fn tx_script_data_length() -> Option<u64> {
 /// Get the transaction inputs count for either tx type
 /// (transaction-script or transaction-create).
 pub fn tx_inputs_count() -> u64 {
+    let type = tx_type();
     match type {
         0u8 => {
             // tx is a transaction-script
@@ -221,6 +224,7 @@ pub fn tx_inputs_count() -> u64 {
 /// Get the transaction outputs count for either tx type
 /// (transaction-script or transaction-create).
 pub fn tx_outputs_count() -> u64 {
+    let type = tx_type();
     match type {
         0u8 => {
             // tx is a transaction-script
@@ -236,8 +240,7 @@ pub fn tx_outputs_count() -> u64 {
 /// Get the transaction witnesses count for either tx type
 /// (transaction-script or transaction-create).
 pub fn tx_witnesses_count() -> u64 {
-    __gtf::<u64>(0, GTF_SCRIPT_WITNESSES_COUNT)
-
+    let type = tx_type();
     match type {
         0u8 => {
             // tx is a transaction-script
@@ -253,6 +256,7 @@ pub fn tx_witnesses_count() -> u64 {
 /// Get the transaction receipts root.
 /// Returns Option::None if not a transaction-script.
 pub fn tx_receipts_root() -> Option<b256> {
+    let type = tx_type();
     match type {
         0u8 => {
             // tx is a transaction-script
@@ -265,30 +269,41 @@ pub fn tx_receipts_root() -> Option<b256> {
     }
 }
 
-////////////////////////////////////////
-// Script
-////////////////////////////////////////
-
 /// Get the transaction script start pointer.
-pub fn tx_script_start_pointer() -> u64 {
-    // GTF_SCRIPT_SCRIPT = 0x00B
-    asm(res) {
-        gtf res zero i11;
-        res: u64
+/// Returns Option::None if not a transaction-script.
+pub fn tx_script_start_pointer() -> Option<u64> {
+    let type = tx_type();
+    match type {
+        0u8 => {
+            // tx is a transaction-script
+            Option::Some(__gtf::<u64>(0, GTF_SCRIPT_SCRIPT))
+        },
+        1u8 => {
+            // tx is a transaction-create, which has no script length field.
+            Option::None
+        }
     }
 }
 
 /// Get the transaction script data start pointer.
-pub fn tx_script_data_start_pointer() -> u64 {
-    // GTF_SCRIPT_SCRIPT_DATA = 0x00C
-    asm(res) {
-        gtf res zero i12;
-        res: u64
+/// Returns Option::None if not a transaction-script.
+pub fn tx_script_data_start_pointer() -> Option<u64> {
+    let type = tx_type();
+    match type {
+        0u8 => {
+            // tx is a transaction-script
+            Option::Some(__gtf::<u64>(0, GTF_SCRIPT_SCRIPT_DATA))
+        },
+        1u8 => {
+            // tx is a transaction-create, which has no script length field.
+            Option::None
+        }
     }
 }
 
 /// Get the script data, typed. Unsafe.
 pub fn tx_script_data<T>() -> T {
+    let ptr = tx_script_data_start_pointer();
     // TODO some safety checks on the input data? We are going to assume it is the right type for now.
     read::<T>(tx_script_data_start_pointer())
 }
