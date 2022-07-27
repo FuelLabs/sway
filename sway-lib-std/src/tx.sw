@@ -36,8 +36,8 @@ const GTF_CREATE_MATURITY = 0x012;
 // const GTF_CREATE_BYTECODE_WITNESS_INDEX = 0x014;
 // const GTF_CREATE_STORAGE_SLOTS_COUNT = 0x015;
 const GTF_CREATE_INPUTS_COUNT = 0x016;
-// const GTF_CREATE_OUTPUTS_COUNT = 0x017;
-// const GTF_CREATE_WITNESSES_COUNT = 0x018;
+const GTF_CREATE_OUTPUTS_COUNT = 0x017;
+const GTF_CREATE_WITNESSES_COUNT = 0x018;
 // const GTF_CREATE_SALT = 0x019;
 // const GTF_CREATE_STORAGE_SLOT_AT_INDEX = 0x01A;
 // const GTF_CREATE_INPUT_AT_INDEX = 0x01B;
@@ -218,17 +218,35 @@ pub fn tx_inputs_count() -> u64 {
     }
 }
 
-/// Get the transaction outputs count.
+/// Get the transaction outputs count for either tx type
+/// (transaction-script or transaction-create).
 pub fn tx_outputs_count() -> u64 {
-    __gtf::<u64>(0, GTF_SCRIPT_OUTPUTS_COUNT)
+    match type {
+        0u8 => {
+            // tx is a transaction-script
+            __gtf::<u64>(0, GTF_SCRIPT_OUTPUTS_COUNT)
+        },
+        1u8 => {
+            // tx is a transaction-create
+            __gtf::<u64>(0, GTF_CREATE_OUTPUTS_COUNT)
+        }
+    }
 }
 
-/// Get the transaction witnesses count.
+/// Get the transaction witnesses count for either tx type
+/// (transaction-script or transaction-create).
 pub fn tx_witnesses_count() -> u64 {
-    // GTF_SCRIPT_WITNESSES_COUNT = 0x009
-    asm(res) {
-        gtf res zero i9;
-        res: u64
+    __gtf::<u64>(0, GTF_SCRIPT_WITNESSES_COUNT)
+
+    match type {
+        0u8 => {
+            // tx is a transaction-script
+            __gtf::<u64>(0, GTF_SCRIPT_WITNESSES_COUNT)
+        },
+        1u8 => {
+            // tx is a transaction-create
+            __gtf::<u64>(0, GTF_CREATE_WITNESSES_COUNT)
+        }
     }
 }
 
