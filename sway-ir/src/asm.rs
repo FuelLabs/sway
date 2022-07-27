@@ -43,7 +43,7 @@ pub struct AsmInstruction {
     pub name: Ident,
     pub args: Vec<Ident>,
     pub immediate: Option<Ident>,
-    pub span_md_idx: Option<MetadataIndex>,
+    pub metadata: Option<MetadataIndex>,
 }
 
 impl AsmBlock {
