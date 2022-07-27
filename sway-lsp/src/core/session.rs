@@ -236,7 +236,7 @@ impl Session {
                 typed_program,
                 warnings,
             } => {
-                eprintln!("{:#?}", &typed_program.root.all_nodes);
+                //eprintln!("{:#?}", &typed_program.root.all_nodes);
 
                 for node in &typed_program.root.all_nodes {
                     traverse_typed_tree::traverse_node(node, &self.token_map);

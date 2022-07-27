@@ -267,7 +267,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("test/src/e2e_vm_tests/test_programs/should_pass/language")
-            .join("nested_structs")
+            .join("enum_if_let")
     }
 
     fn sway_example_dir() -> PathBuf {
@@ -279,7 +279,7 @@ mod tests {
     }
 
     fn lsp_test_dir() -> PathBuf {
-        env::current_dir().unwrap().join("test_programs/enums")
+        env::current_dir().unwrap().join("test_programs/particle")
     }
 
     fn load_sway_example() -> (Url, String) {
