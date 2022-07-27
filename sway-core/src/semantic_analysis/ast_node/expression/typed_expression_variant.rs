@@ -49,6 +49,7 @@ pub enum TypedExpressionVariant {
     StructExpression {
         struct_name: Ident,
         fields: Vec<TypedStructExpressionField>,
+        span: Span,
     },
     CodeBlock(TypedCodeBlock),
     // a flag that this value will later be provided as a parameter, but is currently unknown
@@ -85,8 +86,10 @@ pub enum TypedExpressionVariant {
         tag: usize,
         contents: Option<Box<TypedExpression>>,
         /// If there is an error regarding this instantiation of the enum,
-        /// use this span as it points to the call site and not the declaration.
-        instantiation_span: Span,
+        /// use these spans as it points to the call site and not the declaration.
+        /// They are also used in the language server.
+        enum_instantiation_span: Span,
+        variant_instantiation_span: Span,
     },
     AbiCast {
         abi_name: CallPath,
@@ -177,12 +180,18 @@ impl PartialEq for TypedExpressionVariant {
                 Self::StructExpression {
                     struct_name: l_struct_name,
                     fields: l_fields,
+                    span: l_span,
                 },
                 Self::StructExpression {
                     struct_name: r_struct_name,
                     fields: r_fields,
+                    span: r_span,
                 },
-            ) => l_struct_name == r_struct_name && l_fields.clone() == r_fields.clone(),
+            ) => {
+                l_struct_name == r_struct_name
+                    && l_fields.clone() == r_fields.clone()
+                    && l_span == r_span
+            }
             (Self::CodeBlock(l0), Self::CodeBlock(r0)) => l0 == r0,
             (
                 Self::IfExp {
