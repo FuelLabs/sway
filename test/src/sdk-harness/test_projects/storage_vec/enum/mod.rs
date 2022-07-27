@@ -2,7 +2,7 @@ mod utils;
 
 use utils::{
     setup::get_contract_instance,
-    wrappers::{clear, get, insert, is_empty, len, pop, push, remove, swap_remove},
+    wrappers::{clear, get, insert, is_empty, len, pop, push, remove, set, swap_remove},
     TestEnum,
 };
 
@@ -119,7 +119,14 @@ mod success {
     async fn can_insert() {
         let (instance, _id) = get_contract_instance().await;
 
-        push(&instance, ENUM1).await;
+        let len_vec = len(&instance).await;
+        assert_eq!(len_vec, 0);
+
+        insert(&instance, 0, ENUM1).await;
+
+        let len_vec = len(&instance).await;
+        assert_eq!(len_vec, 1);
+
         push(&instance, ENUM2).await;
         push(&instance, ENUM3).await;
         push(&instance, ENUM4).await;
@@ -206,6 +213,31 @@ mod success {
         let isempty = is_empty(&instance).await;
         assert_eq!(isempty, true);
     }
+
+    #[tokio::test]
+    async fn can_set() {
+        let (instance, _id) = get_contract_instance().await;
+
+        push(&instance, ENUM1).await;
+        push(&instance, ENUM2).await;
+        push(&instance, ENUM3).await;
+        push(&instance, ENUM4).await;
+
+        assert_eq!(ENUM1, get(&instance, 0).await);
+        assert_eq!(ENUM2, get(&instance, 1).await);
+        assert_eq!(ENUM3, get(&instance, 2).await);
+        assert_eq!(ENUM4, get(&instance, 3).await);
+
+        set(&instance, 0, ENUM4).await;
+        set(&instance, 1, ENUM3).await;
+        set(&instance, 2, ENUM2).await;
+        set(&instance, 3, ENUM1).await;
+
+        assert_eq!(ENUM4, get(&instance, 0).await);
+        assert_eq!(ENUM3, get(&instance, 1).await);
+        assert_eq!(ENUM2, get(&instance, 2).await);
+        assert_eq!(ENUM1, get(&instance, 3).await);
+    }
 }
 
 // Some of these are meant to be tests for None returns but since the SDK doesnt support options;
@@ -251,5 +283,13 @@ mod failure {
         let (instance, _id) = get_contract_instance().await;
 
         insert(&instance, 1, ENUM5).await;
+    }
+
+    #[tokio::test]
+    #[should_panic(expected = "Revert(0)")]
+    async fn cant_set() {
+        let (instance, _id) = get_contract_instance().await;
+
+        set(&instance, 1, ENUM5).await;
     }
 }

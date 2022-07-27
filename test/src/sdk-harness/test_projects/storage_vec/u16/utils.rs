@@ -53,6 +53,10 @@ pub mod wrappers {
         instance.u16_swap_remove(index).call().await.unwrap().value
     }
 
+    pub async fn set(instance: &MyContract, index: u64, value: u16) {
+        instance.u16_set(index, value).call().await.unwrap();
+    }
+
     pub async fn insert(instance: &MyContract, index: u64, value: u16) {
         instance.u16_insert(index, value).call().await.unwrap();
     }

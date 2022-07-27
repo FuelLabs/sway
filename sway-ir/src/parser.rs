@@ -141,8 +141,10 @@ mod ir_builder {
                 / op_extract_value()
                 / op_get_storage_key()
                 / op_get_ptr()
+                / op_gtf()
                 / op_insert_element()
                 / op_insert_value()
+                / op_int_to_ptr()
                 / op_load()
                 / op_nop()
                 / op_phi()
@@ -225,6 +227,11 @@ mod ir_builder {
                     IrAstOperation::GetPtr(name, ty, offset)
                 }
 
+            rule op_gtf() -> IrAstOperation
+                = "gtf" _ index:id() comma() tx_field_id:decimal()  {
+                    IrAstOperation::Gtf(index, tx_field_id)
+                }
+
             rule op_insert_element() -> IrAstOperation
                 = "insert_element" _ name:id() comma() ty:ast_ty() comma() val:id() comma() idx:id() {
                     IrAstOperation::InsertElement(name, ty, val, idx)
@@ -233,6 +240,11 @@ mod ir_builder {
             rule op_insert_value() -> IrAstOperation
                 = "insert_value" _ aval:id() comma() ty:ast_ty() comma() ival:id() comma() idcs:(decimal() ++ comma()) {
                     IrAstOperation::InsertValue(aval, ty, ival, idcs)
+                }
+
+            rule op_int_to_ptr() -> IrAstOperation
+                = "int_to_ptr" _ val:id() "to" _ ty:ast_ty() {
+                    IrAstOperation::IntToPtr(val, ty)
                 }
 
             rule op_load() -> IrAstOperation
@@ -577,8 +589,10 @@ mod ir_builder {
         ExtractValue(String, IrAstTy, Vec<u64>),
         GetStorageKey(),
         GetPtr(String, IrAstTy, u64),
+        Gtf(String, u64),
         InsertElement(String, IrAstTy, String, String),
         InsertValue(String, IrAstTy, String, Vec<u64>),
+        IntToPtr(String, IrAstTy),
         Load(String),
         Nop,
         Phi(Vec<(String, String)>),
@@ -1007,6 +1021,11 @@ mod ir_builder {
                         opt_ins_span_md_idx,
                     )
                 }
+                IrAstOperation::Gtf(index, tx_field_id) => block.ins(context).gtf(
+                    *val_map.get(&index).unwrap(),
+                    tx_field_id,
+                    opt_ins_span_md_idx,
+                ),
                 IrAstOperation::InsertElement(aval, ty, val, idx) => {
                     let ir_ty = ty.to_ir_aggregate_type(context);
                     block.ins(context).insert_element(
@@ -1024,6 +1043,14 @@ mod ir_builder {
                         ir_ty,
                         *val_map.get(&ival).unwrap(),
                         idcs,
+                        opt_ins_span_md_idx,
+                    )
+                }
+                IrAstOperation::IntToPtr(val, ty) => {
+                    let to_ty = ty.to_ir_type(context);
+                    block.ins(context).int_to_ptr(
+                        *val_map.get(&val).unwrap(),
+                        to_ty,
                         opt_ins_span_md_idx,
                     )
                 }

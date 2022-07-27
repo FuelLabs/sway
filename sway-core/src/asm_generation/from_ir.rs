@@ -525,6 +525,9 @@ impl<'ir> AsmBuilder<'ir> {
                     ptr_ty,
                     offset,
                 } => self.compile_get_pointer(instr_val, base_ptr, ptr_ty, *offset),
+                Instruction::Gtf { index, tx_field_id } => {
+                    self.compile_gtf(instr_val, index, *tx_field_id)
+                }
                 Instruction::InsertElement {
                     array,
                     ty,
@@ -537,6 +540,7 @@ impl<'ir> AsmBuilder<'ir> {
                     indices,
                     ..
                 } => self.compile_insert_value(instr_val, aggregate, value, indices),
+                Instruction::IntToPtr(val, _) => self.compile_int_to_ptr(instr_val, val),
                 Instruction::Load(src_val) => check!(
                     self.compile_load(instr_val, src_val),
                     return err(warnings, errors),
@@ -1167,6 +1171,22 @@ impl<'ir> AsmBuilder<'ir> {
         }
     }
 
+    fn compile_gtf(&mut self, instr_val: &Value, index: &Value, tx_field_id: u64) {
+        let instr_reg = self.reg_seqr.next();
+        let index_reg = self.value_to_register(index);
+        self.bytecode.push(Op {
+            opcode: either::Either::Left(VirtualOp::GTF(
+                instr_reg,
+                index_reg,
+                VirtualImmediate12 {
+                    value: tx_field_id as u16,
+                },
+            )),
+            comment: "get transaction field".into(),
+            owning_span: instr_val.get_span(self.context),
+        });
+    }
+
     fn compile_insert_element(
         &mut self,
         instr_val: &Value,
@@ -1378,6 +1398,11 @@ impl<'ir> AsmBuilder<'ir> {
         // We set the 'instruction' register to the base register, so that cascading inserts will
         // work.
         self.reg_map.insert(*instr_val, base_reg);
+    }
+
+    fn compile_int_to_ptr(&mut self, instr_val: &Value, int_to_ptr_val: &Value) {
+        let val_reg = self.value_to_register(int_to_ptr_val);
+        self.reg_map.insert(*instr_val, val_reg);
     }
 
     fn compile_load(&mut self, instr_val: &Value, src_val: &Value) -> CompileResult<()> {

@@ -70,7 +70,7 @@ impl UnresolvedTypeCheck for TypedExpression {
         match &self.expression {
             FunctionApplication {
                 arguments,
-                function_body,
+                function_decl,
                 ..
             } => {
                 res.append(
@@ -81,7 +81,8 @@ impl UnresolvedTypeCheck for TypedExpression {
                         .collect::<Vec<_>>(),
                 );
                 res.append(
-                    &mut function_body
+                    &mut function_decl
+                        .body
                         .contents
                         .iter()
                         .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
@@ -219,11 +220,11 @@ impl DeterministicallyAborts for TypedExpression {
         use TypedExpressionVariant::*;
         match &self.expression {
             FunctionApplication {
-                function_body,
+                function_decl,
                 arguments,
                 ..
             } => {
-                function_body.deterministically_aborts()
+                function_decl.body.deterministically_aborts()
                     || arguments.iter().any(|(_, x)| x.deterministically_aborts())
             }
             Tuple { fields, .. } => fields.iter().any(|x| x.deterministically_aborts()),
@@ -1020,6 +1021,7 @@ impl TypedExpression {
             expression: TypedExpressionVariant::StructExpression {
                 struct_name: struct_name.clone(),
                 fields: typed_fields_buf,
+                span: call_path_binding.inner.suffix.1.clone(),
             },
             return_type: type_id,
             is_constant: IsConstant::No,
@@ -1220,6 +1222,7 @@ impl TypedExpression {
         let mut enum_probe_errors = vec![];
         let maybe_enum = {
             let call_path_binding = call_path_binding.clone();
+            let enum_name = call_path_binding.inner.prefixes[0].clone();
             let variant_name = call_path_binding.inner.suffix.clone();
             let enum_call_path = call_path_binding.inner.rshift();
             let mut call_path_binding = TypeBinding {
@@ -1230,16 +1233,16 @@ impl TypedExpression {
             TypeBinding::type_check_with_ident(&mut call_path_binding, &ctx)
                 .flat_map(|unknown_decl| unknown_decl.expect_enum().cloned())
                 .ok(&mut enum_probe_warnings, &mut enum_probe_errors)
-                .map(|enum_decl| (enum_decl, variant_name))
+                .map(|enum_decl| (enum_decl, enum_name, variant_name))
         };
 
         // compare the results of the checks
         let exp = match (is_module, maybe_function, maybe_enum) {
-            (false, None, Some((enum_decl, variant_name))) => {
+            (false, None, Some((enum_decl, enum_name, variant_name))) => {
                 warnings.append(&mut enum_probe_warnings);
                 errors.append(&mut enum_probe_errors);
                 check!(
-                    instantiate_enum(ctx, enum_decl, variant_name, args),
+                    instantiate_enum(ctx, enum_decl, enum_name, variant_name, args),
                     return err(warnings, errors),
                     warnings,
                     errors

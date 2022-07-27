@@ -1,7 +1,11 @@
 use crate::{
     config::{items::ItemBraceStyle, user_def::FieldAlignment},
     fmt::{Format, FormattedCode, Formatter},
-    utils::{bracket::CurlyBrace, item::ItemLenChars},
+    utils::{
+        bracket::CurlyBrace,
+        comments::{ByteSpan, LeafSpans},
+        item::ItemLenChars,
+    },
     FormatterError,
 };
 use std::fmt::Write;
@@ -238,5 +242,21 @@ impl CurlyBrace for ItemStruct {
             .shrink_left(formatter.config.whitespace.tab_spaces)
             .unwrap_or_default();
         Ok(())
+    }
+}
+
+impl LeafSpans for ItemStruct {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = Vec::new();
+        if let Some(visibility) = &self.visibility {
+            collected_spans.push(ByteSpan::from(visibility.span()));
+        }
+        collected_spans.push(ByteSpan::from(self.struct_token.span()));
+        collected_spans.push(ByteSpan::from(self.name.span()));
+        if let Some(generics) = &self.generics {
+            collected_spans.push(ByteSpan::from(generics.parameters.span()))
+        }
+        collected_spans.append(&mut self.fields.leaf_spans());
+        collected_spans
     }
 }

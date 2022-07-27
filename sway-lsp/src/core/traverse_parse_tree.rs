@@ -12,7 +12,7 @@ use sway_core::{
 };
 use sway_types::Ident;
 
-pub fn traverse_node(node: &AstNode, tokens: &mut TokenMap) {
+pub fn traverse_node(node: &AstNode, tokens: &TokenMap) {
     match &node.content {
         AstNodeContent::Declaration(declaration) => handle_declaration(declaration, tokens),
         AstNodeContent::Expression(expression) => handle_expression(expression, tokens),
@@ -23,13 +23,14 @@ pub fn traverse_node(node: &AstNode, tokens: &mut TokenMap) {
             handle_expression(&return_statement.expr, tokens)
         }
         AstNodeContent::WhileLoop(while_loop) => handle_while_loop(while_loop, tokens),
+
         // TODO
         // handle other content types
         _ => {}
     };
 }
 
-fn handle_function_declation(func: &FunctionDeclaration, tokens: &mut TokenMap) {
+fn handle_function_declation(func: &FunctionDeclaration, tokens: &TokenMap) {
     tokens.insert(
         to_ident_key(&func.name),
         TokenType::from_parsed(AstToken::FunctionDeclaration(func.clone())),
@@ -47,12 +48,12 @@ fn handle_function_declation(func: &FunctionDeclaration, tokens: &mut TokenMap) 
     handle_custom_type(&func.return_type, tokens);
 }
 
-fn handle_custom_type(_type_info: &TypeInfo, _tokens: &mut TokenMap) {
+fn handle_custom_type(_type_info: &TypeInfo, _tokens: &TokenMap) {
     // TODO: Not obvious how to handle this now with the new types
     // I've opened an issue to track this here https://github.com/FuelLabs/sway/issues/2274
 }
 
-fn handle_declaration(declaration: &Declaration, tokens: &mut TokenMap) {
+fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
     match declaration {
         Declaration::VariableDeclaration(variable) => {
             // Don't collect tokens if the ident's name contains __tuple_ || __match_return_var_name_
@@ -195,7 +196,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &mut TokenMap) {
     }
 }
 
-fn handle_expression(expression: &Expression, tokens: &mut TokenMap) {
+fn handle_expression(expression: &Expression, tokens: &TokenMap) {
     match expression {
         Expression::Literal { .. } => {}
         Expression::FunctionApplication {
@@ -403,7 +404,7 @@ fn handle_expression(expression: &Expression, tokens: &mut TokenMap) {
     }
 }
 
-fn handle_while_loop(while_loop: &WhileLoop, tokens: &mut TokenMap) {
+fn handle_while_loop(while_loop: &WhileLoop, tokens: &TokenMap) {
     handle_expression(&while_loop.condition, tokens);
     for node in &while_loop.body.contents {
         traverse_node(node, tokens);
