@@ -33,8 +33,7 @@ pub struct FunctionContent {
     pub blocks: Vec<Block>,
     pub is_public: bool,
     pub selector: Option<[u8; 4]>,
-    pub span_md_idx: Option<MetadataIndex>,
-    pub storage_md_idx: Option<MetadataIndex>,
+    pub metadata: Option<MetadataIndex>,
 
     pub local_storage: BTreeMap<String, Pointer>, // BTree rather than Hash for deterministic ordering.
 
@@ -58,12 +57,16 @@ impl Function {
         return_type: Type,
         selector: Option<[u8; 4]>,
         is_public: bool,
-        span_md_idx: Option<MetadataIndex>,
-        storage_md_idx: Option<MetadataIndex>,
+        metadata: Option<MetadataIndex>,
     ) -> Function {
         let arguments = args
             .into_iter()
-            .map(|(name, ty, span_md_idx)| (name, Value::new_argument(context, ty, span_md_idx)))
+            .map(|(name, ty, arg_metadata)| {
+                (
+                    name,
+                    Value::new_argument(context, ty).add_metadatum(context, arg_metadata),
+                )
+            })
             .collect();
         let content = FunctionContent {
             name,
@@ -72,8 +75,7 @@ impl Function {
             blocks: Vec::new(),
             is_public,
             selector,
-            span_md_idx,
-            storage_md_idx,
+            metadata,
             local_storage: BTreeMap::new(),
             next_label_idx: 0,
         };
