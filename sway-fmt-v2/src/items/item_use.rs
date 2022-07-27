@@ -1,13 +1,11 @@
-use std::{fmt::Write, vec};
-
 use crate::{
-    fmt::{Format, FormattedCode, Formatter},
+    fmt::*,
     utils::{
         bracket::CurlyBrace,
         comments::{ByteSpan, LeafSpans},
     },
-    FormatterError,
 };
+use std::{fmt::Write, vec};
 use sway_parse::{token::Delimiter, ItemUse, UseTree};
 use sway_types::Spanned;
 
