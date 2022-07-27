@@ -86,8 +86,10 @@ pub enum TypedExpressionVariant {
         tag: usize,
         contents: Option<Box<TypedExpression>>,
         /// If there is an error regarding this instantiation of the enum,
-        /// use this span as it points to the call site and not the declaration.
-        instantiation_span: Span,
+        /// use these spans as it points to the call site and not the declaration.
+        /// They are also used in the language server.
+        enum_instantiation_span: Span,
+        variant_instantiation_span: Span,
     },
     AbiCast {
         abi_name: CallPath,
