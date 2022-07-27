@@ -6,7 +6,7 @@ use derivative::Derivative;
 use std::{collections::HashMap, fmt};
 
 #[derive(Clone, Debug)]
-pub struct ContractCallMetadata {
+pub struct ContractCallParams {
     pub(crate) func_selector: [u8; 4],
     pub(crate) contract_address: Box<TypedExpression>,
 }
@@ -25,7 +25,7 @@ pub enum TypedExpressionVariant {
         /// there is no selector.
         self_state_idx: Option<StateIndex>,
         #[derivative(Eq(bound = ""))]
-        selector: Option<ContractCallMetadata>,
+        selector: Option<ContractCallParams>,
     },
     LazyOperator {
         #[derivative(Eq(bound = ""))]
