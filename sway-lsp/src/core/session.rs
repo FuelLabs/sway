@@ -321,24 +321,22 @@ impl Session {
         let position = params.text_document_position_params.position;
 
         match self.token_at_position(&url, position) {
-            Some((_, token)) => {
-                match self.declared_token_ident(&token) { 
-                    Some(decl_ident) => {
-                        let range = utils::common::get_range_from_span(&decl_ident.span());
-                        match decl_ident.span().path() {
-                            Some(path) => {
-                                match Url::from_file_path(path.as_ref()) {
-                                    Ok(url) => Some(GotoDefinitionResponse::Scalar(Location::new(url, range))),
-                                    Err(_) => None,
-                                }
+            Some((_, token)) => match self.declared_token_ident(&token) {
+                Some(decl_ident) => {
+                    let range = utils::common::get_range_from_span(&decl_ident.span());
+                    match decl_ident.span().path() {
+                        Some(path) => match Url::from_file_path(path.as_ref()) {
+                            Ok(url) => {
+                                Some(GotoDefinitionResponse::Scalar(Location::new(url, range)))
                             }
-                            None => None,
-                        }
-                    },
-                    None => None,
+                            Err(_) => None,
+                        },
+                        None => None,
+                    }
                 }
-            }
-            None => None, 
+                None => None,
+            },
+            None => None,
         }
     }
 

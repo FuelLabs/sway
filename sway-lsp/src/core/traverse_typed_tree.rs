@@ -297,7 +297,32 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
         TypedExpressionVariant::TupleElemAccess { prefix, .. } => {
             handle_expression(prefix, tokens);
         }
-        TypedExpressionVariant::EnumInstantiation { .. } => {}
+        TypedExpressionVariant::EnumInstantiation {
+            variant_name,
+            variant_instantiation_span,
+            enum_decl,
+            enum_instantiation_span,
+            contents,
+            ..
+        } => {
+            if let Some(mut token) =
+                tokens.get_mut(&to_ident_key(&Ident::new(enum_instantiation_span.clone())))
+            {
+                token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
+                token.type_def = Some(TypeDefinition::Ident(enum_decl.name.clone()));
+            }
+
+            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(
+                variant_instantiation_span.clone(),
+            ))) {
+                token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
+                token.type_def = Some(TypeDefinition::Ident(variant_name.clone()));
+            }
+
+            if let Some(contents) = contents.as_deref() {
+                handle_expression(contents, tokens);
+            }
+        }
         TypedExpressionVariant::AbiCast {
             abi_name, address, ..
         } => {
