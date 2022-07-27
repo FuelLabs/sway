@@ -220,6 +220,8 @@ impl BuildPlan {
         sway_git_tag: &str,
         offline: bool,
     ) -> Result<Self> {
+        // Check toolchain version
+        validate_version(manifest)?;
         let mut graph = Graph::default();
         let mut manifest_map = ManifestMap::default();
         fetch_graph(
@@ -229,6 +231,9 @@ impl BuildPlan {
             &mut graph,
             &mut manifest_map,
         )?;
+        // Validate the graph, since we constructed the graph from scratch the paths will not be a
+        // problem but the version check is still needed
+        validate_graph(&graph, manifest, sway_git_tag);
         let compilation_order = compilation_order(&graph)?;
         Ok(Self {
             graph,
@@ -259,6 +264,8 @@ impl BuildPlan {
         offline: bool,
         sway_git_tag: &str,
     ) -> Result<Self> {
+        // Check toolchain version
+        validate_version(manifest)?;
         // Keep track of the cause for the new lock file if it turns out we need one.
         let mut new_lock_cause = None;
 
@@ -379,6 +386,26 @@ fn find_proj_node(graph: &Graph, proj_name: &str) -> Result<NodeIx> {
     }
 }
 
+fn validate_version(proj_manifest: &ManifestFile) -> Result<()> {
+    match &proj_manifest.project.forc_version {
+        Some(min_forc_version) => {
+            // Get the current version of the toolchain
+            let crate_version = env!("CARGO_PKG_VERSION");
+            let toolchain_version = semver::Version::parse(crate_version)?;
+            if toolchain_version < *min_forc_version {
+                bail!(
+                    "{:?} requires forc version {} but current forc version is {}",
+                    proj_manifest.project.name,
+                    min_forc_version,
+                    crate_version,
+                );
+            }
+        }
+        None => {}
+    }
+    Ok(())
+}
+
 /// Validates the state of the pinned package graph against the given project manifest.
 ///
 /// Returns the set of invalid dependency edges.
@@ -477,6 +504,19 @@ fn validate_dep_manifest(dep: &Pinned, dep_manifest: &ManifestFile) -> Result<()
             dep_manifest.project.name,
             dep_manifest.project.name,
         );
+    }
+    if let Some(dep_forc_version) = &dep_manifest.project.forc_version {
+        let curr_version = env!("CARGO_PKG_VERSION");
+        // Ensure the current forc version is >= forc_version required for this dep
+        let current_forc_version = semver::Version::parse(curr_version)?;
+        if current_forc_version < *dep_forc_version {
+            bail!(
+                "{:?} requires forc version {} but current forc version is {}",
+                dep.name,
+                dep_forc_version,
+                current_forc_version
+            );
+        }
     }
     Ok(())
 }
