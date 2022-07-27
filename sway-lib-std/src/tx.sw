@@ -251,12 +251,18 @@ pub fn tx_witnesses_count() -> u64 {
 }
 
 /// Get the transaction receipts root.
-pub fn tx_receipts_root() -> b256 {
-    // GTF_SCRIPT_RECEIPTS_ROOT = 0x00A
-    read::<b256>(asm(res) {
-        gtf res zero i10;
-        res: u64
-    }, 0)
+/// Returns Option::None if not a transaction-script.
+pub fn tx_receipts_root() -> Option<b256> {
+    match type {
+        0u8 => {
+            // tx is a transaction-script
+            Option::Some(read::<b256>(__gtf::<u64>(0, GTF_SCRIPT_RECEIPTS_ROOT)))
+        },
+        1u8 => {
+            // tx is a transaction-create, which has no script length field.
+            Option::None
+        }
+    }
 }
 
 ////////////////////////////////////////
