@@ -6,19 +6,11 @@
 //!
 //! It is passed around as a mutable reference to many of the Sway-IR APIs.
 
-use std::collections::HashMap;
-
 use generational_arena::Arena;
 
 use crate::{
-    asm::AsmBlockContent,
-    block::BlockContent,
-    function::FunctionContent,
-    irtype::AggregateContent,
-    metadata::{MetadataIndex, Metadatum},
-    module::ModuleContent,
-    module::ModuleIterator,
-    pointer::PointerContent,
+    asm::AsmBlockContent, block::BlockContent, function::FunctionContent, irtype::AggregateContent,
+    metadata::Metadatum, module::ModuleContent, module::ModuleIterator, pointer::PointerContent,
     value::ValueContent,
 };
 
@@ -35,12 +27,7 @@ pub struct Context {
     pub pointers: Arena<PointerContent>,
     pub aggregates: Arena<AggregateContent>,
     pub asm_blocks: Arena<AsmBlockContent>,
-
-    // Each metadatum goes in the arena.  Sometimes we need to do a reverse lookup for metadatum to
-    // metadata index, hence the HashMap.  Not _all_ metadata are in the reverse map, it's up to
-    // the user to determine which is needed there.
     pub metadata: Arena<Metadatum>,
-    pub metadata_reverse_map: HashMap<Metadatum, MetadataIndex>,
 
     next_unique_sym_tag: u64,
 }
