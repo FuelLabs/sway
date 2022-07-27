@@ -1222,6 +1222,7 @@ impl TypedExpression {
         let mut enum_probe_errors = vec![];
         let maybe_enum = {
             let call_path_binding = call_path_binding.clone();
+            let enum_name = call_path_binding.inner.prefixes[0].clone();
             let variant_name = call_path_binding.inner.suffix.clone();
             let enum_call_path = call_path_binding.inner.rshift();
             let mut call_path_binding = TypeBinding {
@@ -1232,16 +1233,16 @@ impl TypedExpression {
             TypeBinding::type_check_with_ident(&mut call_path_binding, &ctx)
                 .flat_map(|unknown_decl| unknown_decl.expect_enum().cloned())
                 .ok(&mut enum_probe_warnings, &mut enum_probe_errors)
-                .map(|enum_decl| (enum_decl, variant_name))
+                .map(|enum_decl| (enum_decl, enum_name, variant_name))
         };
 
         // compare the results of the checks
         let exp = match (is_module, maybe_function, maybe_enum) {
-            (false, None, Some((enum_decl, variant_name))) => {
+            (false, None, Some((enum_decl, enum_name, variant_name))) => {
                 warnings.append(&mut enum_probe_warnings);
                 errors.append(&mut enum_probe_errors);
                 check!(
-                    instantiate_enum(ctx, enum_decl, variant_name, args),
+                    instantiate_enum(ctx, enum_decl, enum_name, variant_name, args),
                     return err(warnings, errors),
                     warnings,
                     errors
