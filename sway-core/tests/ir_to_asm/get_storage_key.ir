@@ -1,7 +1,7 @@
 contract {
     fn foo1<2994c98e>() -> b256 {
         entry:
-        v0 = get_storage_key, !1, !2
+        v0 = get_storage_key, !5
         br block0
 
         block0:
@@ -17,7 +17,7 @@ contract {
 
     fn foo2<f57bdec8>() -> b256 {
         entry:
-        v0 = get_storage_key, !3, !4
+        v0 = get_storage_key, !6
         br block0
 
         block0:
@@ -32,8 +32,10 @@ contract {
     }
 }
 
-!0 = filepath "/path/to/get_storage_key.sw"
+!0 = "/path/to/get_storage_key.sw"
 !1 = span !0 72 91
 !2 = state_index 0
 !3 = span !0 72 91
 !4 = state_index 1
+!5 = (!1 !2)
+!6 = (!3 !4)

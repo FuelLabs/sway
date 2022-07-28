@@ -619,6 +619,10 @@ impl TypeInfo {
         }
     }
 
+    pub fn is_copy_type(&self) -> bool {
+        matches!(self, TypeInfo::Boolean | TypeInfo::UnsignedInteger(_)) || self.is_unit()
+    }
+
     pub(crate) fn apply_type_arguments(
         self,
         type_arguments: Vec<TypeArgument>,

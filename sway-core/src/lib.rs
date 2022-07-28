@@ -9,6 +9,7 @@ pub mod constants;
 mod control_flow_analysis;
 mod convert_parse_tree;
 pub mod ir_generation;
+mod metadata;
 pub mod parse_tree;
 pub mod semantic_analysis;
 pub mod source_map;
@@ -411,8 +412,9 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
     // Do a purity check on the _unoptimised_ IR.
     let mut purity_checker = ir_generation::PurityChecker::default();
+    let mut md_mgr = metadata::MetadataManager::default();
     for entry_point in &entry_point_functions {
-        purity_checker.check_function(&ir, entry_point);
+        purity_checker.check_function(&ir, &mut md_mgr, entry_point);
     }
     check!(
         purity_checker.results(),
