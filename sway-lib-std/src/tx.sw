@@ -40,7 +40,7 @@ const GTF_CREATE_OUTPUTS_COUNT = 0x017;
 const GTF_CREATE_WITNESSES_COUNT = 0x018;
 // const GTF_CREATE_SALT = 0x019;
 // const GTF_CREATE_STORAGE_SLOT_AT_INDEX = 0x01A;
-// const GTF_CREATE_INPUT_AT_INDEX = 0x01B;
+const GTF_CREATE_INPUT_AT_INDEX = 0x01B;
 // const GTF_CREATE_OUTPUT_AT_INDEX = 0x01C;
 // const GTF_CREATE_WITNESS_AT_INDEX = 0x01D;
 
@@ -312,16 +312,19 @@ pub fn tx_script_bytecode<T>() -> T {
     read::<T>(tx_script_start_pointer())
 }
 
-////////////////////////////////////////
-// Inputs
-////////////////////////////////////////
-
-/// Get a pointer to an input given the index of the input.
+/// Get a pointer to an input given the index of the input
+/// for either tx type (transaction-script or transaction-create).
 pub fn tx_input_pointer(index: u64) -> u64 {
-    // GTF_SCRIPT_INPUT_AT_INDEX = 0x00D
-    asm(res, i: index) {
-        gtf res i i13;
-        res: u64
+    let type = tx_type();
+    match type {
+        0u8 => {
+            // tx is a transaction-script
+            __gtf::<u64>(index, GTF_SCRIPT_INPUT_AT_INDEX)
+        },
+        1u8 => {
+            // tx is a transaction-create
+            __gtf::<u64>(index, GTF_CREATE_INPUT_AT_INDEX)
+        }
     }
 }
 
