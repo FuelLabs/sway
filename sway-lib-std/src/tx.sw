@@ -41,7 +41,7 @@ const GTF_CREATE_WITNESSES_COUNT = 0x018;
 // const GTF_CREATE_SALT = 0x019;
 // const GTF_CREATE_STORAGE_SLOT_AT_INDEX = 0x01A;
 const GTF_CREATE_INPUT_AT_INDEX = 0x01B;
-// const GTF_CREATE_OUTPUT_AT_INDEX = 0x01C;
+const GTF_CREATE_OUTPUT_AT_INDEX = 0x01C;
 // const GTF_CREATE_WITNESS_AT_INDEX = 0x01D;
 
 const GTF_INPUT_TYPE = 0x101;
@@ -388,12 +388,24 @@ pub fn predicate_data<T>(index: u64) -> T {
 // Outputs
 ////////////////////////////////////////
 
-/// Get a pointer to an output given the index of the output.
-pub fn tx_output_pointer(index: u64) -> u64 {
-    // GTF_SCRIPT_OUTPUT_AT_INDEX = 0x00E
-    asm(res, i: index) {
-        gtf res i i14;
-        res: u64
+/// Get a pointer to the input at `index`.
+/// If the input's type is `InputCoin` or `InputMessage`,
+/// return the data as an Option::Some(u64).
+/// Otherwise, returns Option::None.
+pub fn tx_output_pointer(index: u64) -> Option<u64> {
+    let type = tx_output_type(index);
+    match type {
+        // 0 is the `Coin` Input type
+        0u8 => {
+            Option::Some(__gtf::<u64>(index, GTF_SCRIPT_OUTPUT_AT_INDEX))
+        },
+        // 1 is the `Contract` Input type
+        1u8 => {
+            Option::Some(__gtf::<u64>(index, GTF_CREATE_OUTPUT_AT_INDEX))
+        },
+        _ => {
+           Option::None
+        },
     }
 }
 
