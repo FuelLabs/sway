@@ -258,7 +258,7 @@ pub(crate) fn type_check_method_application(
             return err(warnings, errors);
         };
         let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
-        Some(ContractCallMetadata {
+        Some(ContractCallParams {
             func_selector,
             contract_address,
         })

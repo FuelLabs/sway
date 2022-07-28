@@ -16,7 +16,6 @@ use crate::{
     context::Context,
     function::Function,
     irtype::{Aggregate, Type},
-    metadata::MetadataIndex,
     pointer::Pointer,
     value::{Value, ValueDatum},
 };
@@ -401,7 +400,6 @@ impl<'a> InstructionInserter<'a> {
         body: Vec<AsmInstruction>,
         return_type: Type,
         return_name: Option<Ident>,
-        span_md_idx: Option<MetadataIndex>,
     ) -> Value {
         let asm = AsmBlock::new(
             self.context,
@@ -410,63 +408,33 @@ impl<'a> InstructionInserter<'a> {
             return_type,
             return_name,
         );
-        self.asm_block_from_asm(asm, args, span_md_idx)
+        self.asm_block_from_asm(asm, args)
     }
 
-    pub fn asm_block_from_asm(
-        self,
-        asm: AsmBlock,
-        args: Vec<AsmArg>,
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Value {
-        let asm_val = Value::new_instruction(
-            self.context,
-            Instruction::AsmBlock(asm, args),
-            span_md_idx,
-            None,
-        );
+    pub fn asm_block_from_asm(self, asm: AsmBlock, args: Vec<AsmArg>) -> Value {
+        let asm_val = Value::new_instruction(self.context, Instruction::AsmBlock(asm, args));
         self.context.blocks[self.block.0].instructions.push(asm_val);
         asm_val
     }
 
-    pub fn bitcast(self, value: Value, ty: Type, span_md_idx: Option<MetadataIndex>) -> Value {
-        let bitcast_val = Value::new_instruction(
-            self.context,
-            Instruction::BitCast(value, ty),
-            span_md_idx,
-            None,
-        );
+    pub fn bitcast(self, value: Value, ty: Type) -> Value {
+        let bitcast_val = Value::new_instruction(self.context, Instruction::BitCast(value, ty));
         self.context.blocks[self.block.0]
             .instructions
             .push(bitcast_val);
         bitcast_val
     }
 
-    pub fn int_to_ptr(self, value: Value, ty: Type, span_md_idx: Option<MetadataIndex>) -> Value {
-        let int_to_ptr_val = Value::new_instruction(
-            self.context,
-            Instruction::IntToPtr(value, ty),
-            span_md_idx,
-            None,
-        );
+    pub fn int_to_ptr(self, value: Value, ty: Type) -> Value {
+        let int_to_ptr_val = Value::new_instruction(self.context, Instruction::IntToPtr(value, ty));
         self.context.blocks[self.block.0]
             .instructions
             .push(int_to_ptr_val);
         int_to_ptr_val
     }
 
-    pub fn branch(
-        self,
-        to_block: Block,
-        phi_value: Option<Value>,
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Value {
-        let br_val = Value::new_instruction(
-            self.context,
-            Instruction::Branch(to_block),
-            span_md_idx,
-            None,
-        );
+    pub fn branch(self, to_block: Block, phi_value: Option<Value>) -> Value {
+        let br_val = Value::new_instruction(self.context, Instruction::Branch(to_block));
         phi_value
             .into_iter()
             .for_each(|pv| to_block.add_phi(self.context, self.block, pv));
@@ -474,38 +442,18 @@ impl<'a> InstructionInserter<'a> {
         br_val
     }
 
-    pub fn call(
-        self,
-        function: Function,
-        args: &[Value],
-        span_md_idx: Option<MetadataIndex>,
-        state_idx_md_idx: Option<MetadataIndex>,
-    ) -> Value {
-        let call_val = Value::new_instruction(
-            self.context,
-            Instruction::Call(function, args.to_vec()),
-            span_md_idx,
-            state_idx_md_idx,
-        );
+    pub fn call(self, function: Function, args: &[Value]) -> Value {
+        let call_val =
+            Value::new_instruction(self.context, Instruction::Call(function, args.to_vec()));
         self.context.blocks[self.block.0]
             .instructions
             .push(call_val);
         call_val
     }
 
-    pub fn cmp(
-        self,
-        pred: Predicate,
-        lhs_value: Value,
-        rhs_value: Value,
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Value {
-        let cmp_val = Value::new_instruction(
-            self.context,
-            Instruction::Cmp(pred, lhs_value, rhs_value),
-            span_md_idx,
-            None,
-        );
+    pub fn cmp(self, pred: Predicate, lhs_value: Value, rhs_value: Value) -> Value {
+        let cmp_val =
+            Value::new_instruction(self.context, Instruction::Cmp(pred, lhs_value, rhs_value));
         self.context.blocks[self.block.0].instructions.push(cmp_val);
         cmp_val
     }
@@ -516,7 +464,6 @@ impl<'a> InstructionInserter<'a> {
         true_block: Block,
         false_block: Block,
         phi_value: Option<Value>,
-        span_md_idx: Option<MetadataIndex>,
     ) -> Value {
         let cbr_val = Value::new_instruction(
             self.context,
@@ -525,8 +472,6 @@ impl<'a> InstructionInserter<'a> {
                 true_block,
                 false_block,
             },
-            span_md_idx,
-            None,
         );
         phi_value.into_iter().for_each(|pv| {
             true_block.add_phi(self.context, self.block, pv);
@@ -536,7 +481,6 @@ impl<'a> InstructionInserter<'a> {
         cbr_val
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn contract_call(
         self,
         return_type: Type,
@@ -545,7 +489,6 @@ impl<'a> InstructionInserter<'a> {
         coins: Value,    // amount of coins to forward
         asset_id: Value, // b256 asset ID of the coint being forwarded
         gas: Value,      // amount of gas to forward
-        span_md_idx: Option<MetadataIndex>,
     ) -> Value {
         let contract_call_val = Value::new_instruction(
             self.context,
@@ -557,8 +500,6 @@ impl<'a> InstructionInserter<'a> {
                 asset_id,
                 gas,
             },
-            span_md_idx,
-            None,
         );
         self.context.blocks[self.block.0]
             .instructions
@@ -566,13 +507,7 @@ impl<'a> InstructionInserter<'a> {
         contract_call_val
     }
 
-    pub fn extract_element(
-        self,
-        array: Value,
-        ty: Aggregate,
-        index_val: Value,
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Value {
+    pub fn extract_element(self, array: Value, ty: Aggregate, index_val: Value) -> Value {
         let extract_element_val = Value::new_instruction(
             self.context,
             Instruction::ExtractElement {
@@ -580,8 +515,6 @@ impl<'a> InstructionInserter<'a> {
                 ty,
                 index_val,
             },
-            span_md_idx,
-            None,
         );
         self.context.blocks[self.block.0]
             .instructions
@@ -589,13 +522,7 @@ impl<'a> InstructionInserter<'a> {
         extract_element_val
     }
 
-    pub fn extract_value(
-        self,
-        aggregate: Value,
-        ty: Aggregate,
-        indices: Vec<u64>,
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Value {
+    pub fn extract_value(self, aggregate: Value, ty: Aggregate, indices: Vec<u64>) -> Value {
         let extract_value_val = Value::new_instruction(
             self.context,
             Instruction::ExtractValue {
@@ -603,8 +530,6 @@ impl<'a> InstructionInserter<'a> {
                 ty,
                 indices,
             },
-            span_md_idx,
-            None,
         );
         self.context.blocks[self.block.0]
             .instructions
@@ -612,41 +537,21 @@ impl<'a> InstructionInserter<'a> {
         extract_value_val
     }
 
-    pub fn get_storage_key(
-        self,
-        span_md_idx: Option<MetadataIndex>,
-        state_index_md_idx: Option<MetadataIndex>,
-    ) -> Value {
-        let get_storage_key_val = Value::new_instruction(
-            self.context,
-            Instruction::GetStorageKey,
-            span_md_idx,
-            state_index_md_idx,
-        );
+    pub fn get_storage_key(self) -> Value {
+        let get_storage_key_val = Value::new_instruction(self.context, Instruction::GetStorageKey);
         self.context.blocks[self.block.0]
             .instructions
             .push(get_storage_key_val);
         get_storage_key_val
     }
 
-    pub fn gtf(self, index: Value, tx_field_id: u64, span_md_idx: Option<MetadataIndex>) -> Value {
-        let gtf_val = Value::new_instruction(
-            self.context,
-            Instruction::Gtf { index, tx_field_id },
-            span_md_idx,
-            None,
-        );
+    pub fn gtf(self, index: Value, tx_field_id: u64) -> Value {
+        let gtf_val = Value::new_instruction(self.context, Instruction::Gtf { index, tx_field_id });
         self.context.blocks[self.block.0].instructions.push(gtf_val);
         gtf_val
     }
 
-    pub fn get_ptr(
-        self,
-        base_ptr: Pointer,
-        ptr_ty: Type,
-        offset: u64,
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Value {
+    pub fn get_ptr(self, base_ptr: Pointer, ptr_ty: Type, offset: u64) -> Value {
         let get_ptr_val = Value::new_instruction(
             self.context,
             Instruction::GetPointer {
@@ -654,8 +559,6 @@ impl<'a> InstructionInserter<'a> {
                 ptr_ty,
                 offset,
             },
-            span_md_idx,
-            None,
         );
         self.context.blocks[self.block.0]
             .instructions
@@ -669,7 +572,6 @@ impl<'a> InstructionInserter<'a> {
         ty: Aggregate,
         value: Value,
         index_val: Value,
-        span_md_idx: Option<MetadataIndex>,
     ) -> Value {
         let insert_val = Value::new_instruction(
             self.context,
@@ -679,8 +581,6 @@ impl<'a> InstructionInserter<'a> {
                 value,
                 index_val,
             },
-            span_md_idx,
-            None,
         );
         self.context.blocks[self.block.0]
             .instructions
@@ -694,7 +594,6 @@ impl<'a> InstructionInserter<'a> {
         ty: Aggregate,
         value: Value,
         indices: Vec<u64>,
-        span_md_idx: Option<MetadataIndex>,
     ) -> Value {
         let insert_val = Value::new_instruction(
             self.context,
@@ -704,8 +603,6 @@ impl<'a> InstructionInserter<'a> {
                 value,
                 indices,
             },
-            span_md_idx,
-            None,
         );
         self.context.blocks[self.block.0]
             .instructions
@@ -713,9 +610,8 @@ impl<'a> InstructionInserter<'a> {
         insert_val
     }
 
-    pub fn load(self, src_val: Value, span_md_idx: Option<MetadataIndex>) -> Value {
-        let load_val =
-            Value::new_instruction(self.context, Instruction::Load(src_val), span_md_idx, None);
+    pub fn load(self, src_val: Value) -> Value {
+        let load_val = Value::new_instruction(self.context, Instruction::Load(src_val));
         self.context.blocks[self.block.0]
             .instructions
             .push(load_val);
@@ -723,42 +619,30 @@ impl<'a> InstructionInserter<'a> {
     }
 
     pub fn nop(self) -> Value {
-        let nop_val = Value::new_instruction(self.context, Instruction::Nop, None, None);
+        let nop_val = Value::new_instruction(self.context, Instruction::Nop);
         self.context.blocks[self.block.0].instructions.push(nop_val);
         nop_val
     }
 
-    pub fn read_register(self, reg: Register, span_md_idx: Option<MetadataIndex>) -> Value {
-        let read_register_val = Value::new_instruction(
-            self.context,
-            Instruction::ReadRegister(reg),
-            span_md_idx,
-            None,
-        );
+    pub fn read_register(self, reg: Register) -> Value {
+        let read_register_val =
+            Value::new_instruction(self.context, Instruction::ReadRegister(reg));
         self.context.blocks[self.block.0]
             .instructions
             .push(read_register_val);
         read_register_val
     }
 
-    pub fn ret(self, value: Value, ty: Type, span_md_idx: Option<MetadataIndex>) -> Value {
-        let ret_val =
-            Value::new_instruction(self.context, Instruction::Ret(value, ty), span_md_idx, None);
+    pub fn ret(self, value: Value, ty: Type) -> Value {
+        let ret_val = Value::new_instruction(self.context, Instruction::Ret(value, ty));
         self.context.blocks[self.block.0].instructions.push(ret_val);
         ret_val
     }
 
-    pub fn state_load_quad_word(
-        self,
-        load_val: Value,
-        key: Value,
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Value {
+    pub fn state_load_quad_word(self, load_val: Value, key: Value) -> Value {
         let state_load_val = Value::new_instruction(
             self.context,
             Instruction::StateLoadQuadWord { load_val, key },
-            span_md_idx,
-            None,
         );
         self.context.blocks[self.block.0]
             .instructions
@@ -766,30 +650,18 @@ impl<'a> InstructionInserter<'a> {
         state_load_val
     }
 
-    pub fn state_load_word(self, key: Value, span_md_idx: Option<MetadataIndex>) -> Value {
-        let state_load_val = Value::new_instruction(
-            self.context,
-            Instruction::StateLoadWord(key),
-            span_md_idx,
-            None,
-        );
+    pub fn state_load_word(self, key: Value) -> Value {
+        let state_load_val = Value::new_instruction(self.context, Instruction::StateLoadWord(key));
         self.context.blocks[self.block.0]
             .instructions
             .push(state_load_val);
         state_load_val
     }
 
-    pub fn state_store_quad_word(
-        self,
-        stored_val: Value,
-        key: Value,
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Value {
+    pub fn state_store_quad_word(self, stored_val: Value, key: Value) -> Value {
         let state_store_val = Value::new_instruction(
             self.context,
             Instruction::StateStoreQuadWord { stored_val, key },
-            span_md_idx,
-            None,
         );
         self.context.blocks[self.block.0]
             .instructions
@@ -797,17 +669,10 @@ impl<'a> InstructionInserter<'a> {
         state_store_val
     }
 
-    pub fn state_store_word(
-        self,
-        stored_val: Value,
-        key: Value,
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Value {
+    pub fn state_store_word(self, stored_val: Value, key: Value) -> Value {
         let state_store_val = Value::new_instruction(
             self.context,
             Instruction::StateStoreWord { stored_val, key },
-            span_md_idx,
-            None,
         );
         self.context.blocks[self.block.0]
             .instructions
@@ -815,20 +680,13 @@ impl<'a> InstructionInserter<'a> {
         state_store_val
     }
 
-    pub fn store(
-        self,
-        dst_val: Value,
-        stored_val: Value,
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Value {
+    pub fn store(self, dst_val: Value, stored_val: Value) -> Value {
         let store_val = Value::new_instruction(
             self.context,
             Instruction::Store {
                 dst_val,
                 stored_val,
             },
-            span_md_idx,
-            None,
         );
         self.context.blocks[self.block.0]
             .instructions
