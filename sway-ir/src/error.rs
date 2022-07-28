@@ -6,7 +6,7 @@
 #[derive(Debug)]
 pub enum IrError {
     FunctionLocalClobbered(String, String),
-    InvalidMetadatum,
+    InvalidMetadatum(String),
     MisplacedTerminator(String),
     MissingBlock(String),
     MissingTerminator(String),
@@ -67,7 +67,7 @@ impl fmt::Display for IrError {
                 f,
                 "Local storage for function {fn_str} already has an entry for variable {var_str}"
             ),
-            IrError::InvalidMetadatum => write!(f, "Unable to convert from invalid metadatum."),
+            IrError::InvalidMetadatum(why_str) => write!(f, "Unable to convert from invalid metadatum: {why_str}"),
             IrError::MisplacedTerminator(blk_str) => {
                 write!(f, "Block {blk_str} has a misplaced terminator.")
             }

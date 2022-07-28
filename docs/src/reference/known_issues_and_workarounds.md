@@ -12,6 +12,8 @@
 
 * [#1188](https://github.com/FuelLabs/sway/issues/1188): Mutable function arguments are not yet allowed except for `self`.
 
+* [#1796](https://github.com/FuelLabs/sway/issues/1796): It is not yet allowed to use `StorageMap<K, V>` as a component of a complex type such as a struct or an enum.
+
 ## General
 
 * No compiler optimization passes have been implemented yet, therefore bytecode will be more expensive and larger than it would be in production. Note that eventually the optimizer will support zero-cost abstractions, avoiding the need for developers to go down to inline assembly to produce optimal code.
