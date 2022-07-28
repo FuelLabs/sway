@@ -8,6 +8,7 @@ use ::contract_id::ContractId;
 use ::intrinsics::is_reference_type;
 use ::mem::read;
 use ::option::Option;
+use ::revert::revert;
 
 ////////////////////////////////////////
 // GTF Immediates
@@ -106,13 +107,7 @@ pub const OUTPUT_CHANGE = 3u8;
 pub const OUTPUT_VARIABLE = 4u8;
 pub const OUTPUT_CONTRACT_CREATED = 5u8;
 
-/// Get the transaction type.
-
-// @todo handle cases where a field doesn't exist on the transaction type by reverting !!!
-// @todo make generic versions of:
-//  - tx_input
-//  - tx_output_at_index()
-//  - tx_witness_at_index()
+// @todo make generic version of tx_witness_at_index()
 
 /// Get the type of the current transaction.
 /// Either 0 (transaction-script) or 1 (transaction-create)
@@ -170,24 +165,24 @@ pub fn tx_maturity() -> u32 {
 }
 
 /// Get the transaction-script script length.
-/// Returns Option::None if not a transaction-script.
-pub fn tx_script_length() -> Option<u64> {
+/// Reverts if not a transaction-script.
+pub fn tx_script_length() -> u64 {
     let type = tx_type();
     match type {
         0u8 => {
             // tx is a transaction-script
-            Option::Some(__gtf::<u64>(0, GTF_SCRIPT_SCRIPT_LENGTH))
+            __gtf::<u64>(0, GTF_SCRIPT_SCRIPT_LENGTH)
         },
         1u8 => {
-            // tx is a transaction-create, which has no script length field.
-            Option::None
+            // tx is a transaction-create which has no script length
+            revert(1)
         }
     }
 }
 
 /// Get the transaction script data length.
-/// Returns Option::None if not a transaction-script.
-pub fn tx_script_data_length() -> Option<u64> {
+/// Reverts if not a transaction-script.
+pub fn tx_script_data_length() -> u64 {
     let type = tx_type();
     match type {
         0u8 => {
@@ -195,8 +190,8 @@ pub fn tx_script_data_length() -> Option<u64> {
             Option::Some(__gtf::<u64>(0, GTF_SCRIPT_SCRIPT_DATA_LENGTH))
         },
         1u8 => {
-            // tx is a transaction-create, which has no script length field.
-            Option::None
+            // tx is a transaction-create which has no script data length
+            revert(1)
         }
     }
 }
@@ -250,49 +245,50 @@ pub fn tx_witnesses_count() -> u64 {
 }
 
 /// Get the transaction receipts root.
-/// Returns Option::None if not a transaction-script.
-pub fn tx_receipts_root() -> Option<b256> {
+/// Reverts if not a transaction-script.
+// @todo test removing the match. VM might just revert anyway for transaction-create ?
+pub fn tx_receipts_root() -> b256 {
     let type = tx_type();
     match type {
         0u8 => {
             // tx is a transaction-script
-            Option::Some(read::<b256>(__gtf::<u64>(0, GTF_SCRIPT_RECEIPTS_ROOT)))
+            read::<b256>(__gtf::<u64>(0, GTF_SCRIPT_RECEIPTS_ROOT))
         },
         1u8 => {
-            // tx is a transaction-create, which has no script length field.
-            Option::None
+            // tx is a transaction-create which has no script data length
+            revert(1)
         }
     }
 }
 
 /// Get the transaction script start pointer.
-/// Returns Option::None if not a transaction-script.
-pub fn tx_script_start_pointer() -> Option<u64> {
+/// Reverts if not a transaction-script.
+pub fn tx_script_start_pointer() -> u64 {
     let type = tx_type();
     match type {
         0u8 => {
             // tx is a transaction-script
-            Option::Some(__gtf::<u64>(0, GTF_SCRIPT_SCRIPT))
+            __gtf::<u64>(0, GTF_SCRIPT_SCRIPT)
         },
         1u8 => {
-            // tx is a transaction-create, which has no script length field.
-            Option::None
+            // tx is a transaction-create which has no script data length
+            revert(1)
         }
     }
 }
 
 /// Get the transaction script data start pointer.
-/// Returns Option::None if not a transaction-script.
-pub fn tx_script_data_start_pointer() -> Option<u64> {
+/// Reverts if not a transaction-script.
+pub fn tx_script_data_start_pointer() -> u64 {
     let type = tx_type();
     match type {
         0u8 => {
             // tx is a transaction-script
-            Option::Some(__gtf::<u64>(0, GTF_SCRIPT_SCRIPT_DATA))
+            __gtf::<u64>(0, GTF_SCRIPT_SCRIPT_DATA)
         },
         1u8 => {
-            // tx is a transaction-create, which has no script length field.
-            Option::None
+            // tx is a transaction-create which has no script data length
+            revert(1)
         }
     }
 }
