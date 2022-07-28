@@ -68,12 +68,14 @@ impl CurlyBrace for ItemFn {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        writeln!(line, "{}", Delimiter::Brace.as_close_char())?;
         // If shape is becoming left-most alligned or - indent just have the defualt shape
-        formatter.shape = formatter
-            .shape
-            .shrink_left(formatter.config.whitespace.tab_spaces)
-            .unwrap_or_default();
+        formatter.shape.indent = formatter.shape.indent.block_unindent(formatter);
+        writeln!(
+            line,
+            "{}{}",
+            formatter.shape.indent.to_string(formatter),
+            Delimiter::Brace.as_close_char()
+        )?;
         Ok(())
     }
 }
@@ -84,6 +86,11 @@ impl Format for FnSignature {
         formatted_code: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(
+            formatted_code,
+            "{}",
+            formatter.shape.indent.to_string(formatter)
+        )?;
         // `pub `
         if let Some(visibility_token) = &self.visibility {
             write!(formatted_code, "{} ", visibility_token.span().as_str())?;

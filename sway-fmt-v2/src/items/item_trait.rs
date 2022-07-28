@@ -35,11 +35,6 @@ impl Format for ItemTrait {
         write!(formatted_code, " ")?;
         Self::open_curly_brace(formatted_code, formatter)?;
         for trait_items in self.trait_items.clone().into_inner() {
-            write!(
-                formatted_code,
-                "{}",
-                formatter.shape.indent.to_string(formatter)
-            )?;
             // format `Annotated<FnSignature>`
             trait_items.0.format(formatted_code, formatter)?;
             writeln!(formatted_code, "{}\n", trait_items.1.span().as_str())?;
@@ -92,11 +87,14 @@ impl CurlyBrace for ItemTrait {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        writeln!(line, "{}", Delimiter::Brace.as_close_char())?;
-        formatter.shape = formatter
-            .shape
-            .shrink_left(formatter.config.whitespace.tab_spaces)
-            .unwrap_or_default();
+        formatter.shape.indent = formatter.shape.indent.block_unindent(formatter);
+        writeln!(
+            line,
+            "{}{}",
+            formatter.shape.indent.to_string(formatter),
+            Delimiter::Brace.as_close_char()
+        )?;
+
         Ok(())
     }
 }
