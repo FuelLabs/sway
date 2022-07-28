@@ -329,13 +329,9 @@ pub fn tx_input_pointer(index: u64) -> u64 {
     }
 }
 
-/// Get the type of an input given a pointer to the input.
+/// Get the type of the input at `index`.
 pub fn tx_input_type(index: u64) -> u8 {
-    // GTF_INPUT_TYPE = 0x101
-    asm(res, i: index) {
-        gtf res i i257;
-        res: u64
-    }
+    __gtf::<u8>(index, GTF_INPUT_TYPE)
 }
 
 /// If the input's type is `InputCoin` or `InputMessage`,
