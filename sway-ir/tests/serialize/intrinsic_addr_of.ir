@@ -2,25 +2,18 @@
 
 script {
   // check: main() -> u64
-  fn main() -> u64, !1 {
+  fn main() -> u64 {
         local ptr { u64, ( { b256 } | { b256 } ) } sender
 
         entry:
         // check: = get_ptr
-        v0 = get_ptr ptr { u64, ( { b256 } | { b256 } ) } sender, ptr { u64, ( { b256 } | { b256 } ) }, 0, !2
-        v1 = const { u64, ( { b256 } | { b256 } ) } { u64 0, { b256 } { b256 0x0100000000000000000000000000000000000000000000000000000000000010 } }, !4
-        store v1, ptr v0, !2
+        v0 = get_ptr ptr { u64, ( { b256 } | { b256 } ) } sender, ptr { u64, ( { b256 } | { b256 } ) }, 0
+        v1 = const { u64, ( { b256 } | { b256 } ) } { u64 0, { b256 } { b256 0x0100000000000000000000000000000000000000000000000000000000000010 } }
+        store v1, ptr v0
         // check: $(arg0=$VAR) = get_ptr
-        v2 = get_ptr ptr { u64, ( { b256 } | { b256 } ) } sender, ptr { u64, ( { b256 } | { b256 } ) }, 0, !5
+        v2 = get_ptr ptr { u64, ( { b256 } | { b256 } ) } sender, ptr { u64, ( { b256 } | { b256 } ) }, 0
         // check: addr_of $arg0
         v3 = addr_of v2
         ret u64 v3
     }
 }
-
-!0 = "/home/vaivaswatha/c/sway/test/src/e2e_vm_tests/test_programs/should_pass/language/addrof_intrinsic/src/main.sw"
-!1 = span !0 162 244
-!2 = span !0 185 220
-!3 = "/home/vaivaswatha/c/sway/sway-lib-std/src/identity.sw"
-!4 = span !3 268 339
-!5 = span !0 235 241
