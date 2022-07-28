@@ -122,11 +122,11 @@ impl fmt::Display for IrError {
             ),
             IrError::VerifyAddrOfUnknownSourceType => write!(
                 f,
-                "Verification failed: AddrOf unable to determine source type."
+                "Verification failed: addr_of unable to determine source type."
             ),
             IrError::VerifyAddrOfCopyType => write!(
                 f,
-                "Verification failed: AddrOf argument must be non-copy (memory) type."
+                "Verification failed: addr_of argument must be non-copy (memory) type."
             ),
             IrError::VerifyBitcastUnknownSourceType => write!(
                 f,

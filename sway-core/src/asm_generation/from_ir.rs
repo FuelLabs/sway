@@ -470,7 +470,7 @@ impl<'ir> AsmBuilder<'ir> {
         let mut errors = Vec::new();
         if let ValueDatum::Instruction(instruction) = &self.context.values[instr_val.0].value {
             match instruction {
-                Instruction::AddrOf(arg) => self.compile_addrof(instr_val, arg),
+                Instruction::AddrOf(arg) => self.compile_addr_of(instr_val, arg),
                 Instruction::AsmBlock(asm, args) => {
                     check!(
                         self.compile_asm_block(instr_val, asm, args),
@@ -746,7 +746,7 @@ impl<'ir> AsmBuilder<'ir> {
         ok((), warnings, errors)
     }
 
-    fn compile_addrof(&mut self, instr_val: &Value, arg: &Value) {
+    fn compile_addr_of(&mut self, instr_val: &Value, arg: &Value) {
         let reg = self.value_to_register(arg);
         self.reg_map.insert(*instr_val, reg);
     }

@@ -6,12 +6,7 @@ use ::intrinsics::{is_reference_type, size_of_val};
 
 /// Returns the address of the given value.
 pub fn addr_of<T>(val: T) -> u64 {
-    if !__is_reference_type::<T>() {
-        revert(0);
-    }
-    asm(ptr: val) {
-        ptr: u64
-    }
+    __addr_of(val)
 }
 
 /// Copies `size` bytes from `src` to `dst`.
