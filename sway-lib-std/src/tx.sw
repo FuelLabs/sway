@@ -26,7 +26,6 @@ const GTF_SCRIPT_SCRIPT = 0x00B;
 const GTF_SCRIPT_SCRIPT_DATA = 0x00C;
 const GTF_SCRIPT_INPUT_AT_INDEX = 0x00D;
 const GTF_SCRIPT_OUTPUT_AT_INDEX = 0x00E;
-
 // const GTF_SCRIPT_WITNESS_AT_INDEX = 0x00F;
 
 const GTF_CREATE_GAS_PRICE = 0x010;
@@ -109,10 +108,9 @@ pub const OUTPUT_CONTRACT_CREATED = 5u8;
 
 /// Get the transaction type.
 
-// @todo refactor all to use intrinsic
 // @todo handle cases where a field doesn't exist on the transaction type by reverting !!!
 // @todo make generic versions of:
-//  - tx_input_at_index()
+//  - tx_input
 //  - tx_output_at_index()
 //  - tx_witness_at_index()
 
@@ -414,46 +412,30 @@ pub fn tx_output_type(index: u64) -> u8 {
     __gtf::<u8>(index, GTF_OUTPUT_TYPE)
 }
 
-/// Get the amount of coins to send for an output given a pointer to the output.
+/// Get the amount of coins to send for the output at `index`.
 /// This method is only meaningful if the output type has the `amount` field.
 /// Specifically: OutputCoin, OutputMessage, OutputChange, OutputVariable.
 pub fn tx_output_amount(index: u64) -> Option<u64> {
     let type = tx_output_type(index);
     match type {
-        // TODO: try using consts in match arms
         // 0 is the `Coin` Output type
         0u8 => {
-            // GTF_OUTPUT_COIN_AMOUNT = 0x203
-            Option::Some(asm(res, i: index) {
-                gtf res i i515;
-                res: u64
-            })
+            Option::Some(__gtf::<u64>(index, GTF_OUTPUT_COIN_AMOUNT))
         },
         // 2 is the `Message` Output type
         2u8 => {
-            // GTF_OUTPUT_MESSAGE_AMOUNT = 0x209
-            Option::Some(asm(res, i: index) {
-                gtf res i i521;
-                res: u64
-            })
+            Option::Some(__gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT))
         },
         // 3 is the `Change` Output type
-        // reusing the immediate for Message output type as there's no immediate for OutputChange
+        // reusing GTF_OUTPUT_MESSAGE_AMOUNT as there's no simlar const for OutputChange
         3u8 => {
             // GTF_OUTPUT_MESSAGE_AMOUNT = 0x209
-            Option::Some(asm(res, i: index) {
-                gtf res i i521;
-                res: u64
-            })
+            Option::Some(__gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT))
         },
         // 4 is the `Variable` Output type
-        // reusing the immediate for Message output type as there's no immediate for OutputVariable
+        // reusing GTF_OUTPUT_MESSAGE_AMOUNT as there's no simlar const for OutputVariable
         4u8 => {
-            // GTF_OUTPUT_MESSAGE_AMOUNT = 0x209
-            Option::Some(asm(res, i: index) {
-                gtf res i i521;
-                res: u64
-            })
+            Option::Some(__gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT))
         },
         _ => {
             Option::None
