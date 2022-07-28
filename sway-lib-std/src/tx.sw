@@ -109,15 +109,11 @@ pub const OUTPUT_CONTRACT_CREATED = 5u8;
 /// Get the transaction type.
 
 // @todo refactor all to use intrinsic
+// @todo handle cases where a field doesn't exist on the transaction type by reverting !!!
 // @todo make generic versions of:
-//  - tx_inputs_count()
-//  - tx_outputs_cout()
-//  - tx_witness_count()
 //  - tx_input_at_index()
 //  - tx_output_at_index()
 //  - tx_witness_at_index()
-
-// @todo handle cases where a field doesn't exist on the transaction type by returning an option.
 
 /// Get the type of the current transaction.
 /// Either 0 (transaction-script) or 1 (transaction-create)
