@@ -403,6 +403,8 @@ pub fn tx_output_pointer(index: u64) -> Option<u64> {
     }
 }
 
+// @review and add docs
+// https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md#witness
 pub fn tx_witness(index: u64) -> T {
     let type = tx_type();
     match type {
