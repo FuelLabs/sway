@@ -482,6 +482,16 @@ impl FnCompiler {
                         .add_metadatum(context, span_md_idx))
                 }
             }
+            Intrinsic::AddrOf => {
+                let exp = arguments[0].clone();
+                let value = self.compile_expression(context, md_mgr, exp)?;
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .addr_of(value)
+                    .add_metadatum(context, span_md_idx))
+            }
         }
     }
 

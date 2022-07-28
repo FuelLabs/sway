@@ -129,6 +129,7 @@ impl<'a> InstructionVerifier<'a> {
             let value_content = &self.context.values[ins.0];
             if let ValueDatum::Instruction(instruction) = &value_content.value {
                 match instruction {
+                    Instruction::AddrOf(arg) => self.verify_addr_of(arg)?,
                     Instruction::AsmBlock(..) => (),
                     Instruction::BitCast(value, ty) => self.verify_bitcast(value, ty)?,
                     Instruction::Branch(block) => self.verify_br(block)?,
@@ -209,6 +210,16 @@ impl<'a> InstructionVerifier<'a> {
             } else {
                 unreachable!("Verify instruction is not an instruction.");
             }
+        }
+        Ok(())
+    }
+
+    fn verify_addr_of(&self, value: &Value) -> Result<(), IrError> {
+        let val_ty = value
+            .get_type(self.context)
+            .ok_or(IrError::VerifyAddrOfUnknownSourceType)?;
+        if val_ty.is_copy_type() {
+            return Err(IrError::VerifyAddrOfCopyType);
         }
         Ok(())
     }

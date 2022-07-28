@@ -20,6 +20,8 @@ pub enum IrError {
     VerifyAccessValueInvalidIndices,
     VerifyAccessValueOnNonStruct,
     VerifyArgumentValueIsNotArgument(String),
+    VerifyAddrOfUnknownSourceType,
+    VerifyAddrOfCopyType,
     VerifyBitcastUnknownSourceType,
     VerifyBitcastFromNonCopyType(String),
     VerifyBitcastToNonCopyType(String),
@@ -117,6 +119,14 @@ impl fmt::Display for IrError {
             IrError::VerifyArgumentValueIsNotArgument(callee) => write!(
                 f,
                 "Verification failed: Argument specifier for function '{callee}' is not an argument value."
+            ),
+            IrError::VerifyAddrOfUnknownSourceType => write!(
+                f,
+                "Verification failed: addr_of unable to determine source type."
+            ),
+            IrError::VerifyAddrOfCopyType => write!(
+                f,
+                "Verification failed: addr_of argument must be non-copy (memory) type."
             ),
             IrError::VerifyBitcastUnknownSourceType => write!(
                 f,
