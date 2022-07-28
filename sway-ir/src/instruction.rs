@@ -422,8 +422,7 @@ impl<'a> InstructionInserter<'a> {
     }
 
     pub fn addr_of(self, value: Value) -> Value {
-        let addrof_val =
-            Value::new_instruction(self.context, Instruction::AddrOf(value));
+        let addrof_val = Value::new_instruction(self.context, Instruction::AddrOf(value));
         self.context.blocks[self.block.0]
             .instructions
             .push(addrof_val);
