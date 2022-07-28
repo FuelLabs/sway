@@ -363,25 +363,20 @@ pub fn tx_input_owner(index: u64) -> Option<Address> {
 // Inputs > Predicate
 ////////////////////////////////////////
 
+/// Get the predicate dats from the input at `index`.
+/// If the input's type is `InputCoin` or `InputMessage`,
+/// return the data as an Option::Some(T).
+/// Otherwise, returns Option::None.
 pub fn predicate_data<T>(index: u64) -> T {
     let type = tx_input_type(index);
     let ptr = match type {
-        // TODO: try using consts in match arms
         // 0 is the `Coin` Input type
         0u8 => {
-            // GTF_INPUT_COIN_PREDICATE_DATA = 0x10D
-            Option::Some(read::<T>(asm(res, i: index) {
-                gtf res i i288;
-                res: u64
-            }), 0)
+            Option::Some(read::<T>(__gtf::<u64>(index, GTF_INPUT_COIN_PREDICATE_DATA)))
         },
         // 2 is the `Message` Input type
         2u8 => {
-            // GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x120
-            Option::Some(read::<T>(asm(res, i: index) {
-                gtf res i i269;
-                res: u64
-            }), 0)
+            Option::Some(read::<T>(__gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA)))
         },
         _ => {
             return Option::None;
