@@ -409,13 +409,9 @@ pub fn tx_output_pointer(index: u64) -> Option<u64> {
     }
 }
 
-/// Get the type of an output at a given index
+/// Get the type of an output at `index`.
 pub fn tx_output_type(index: u64) -> u8 {
-    // GTF_OUTPUT_TYPE = 0x201
-    asm(res, i: index) {
-        gtf res i i513;
-        res: u8
-    }
+    __gtf::<u8>(index, GTF_OUTPUT_TYPE)
 }
 
 /// Get the amount of coins to send for an output given a pointer to the output.
