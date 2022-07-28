@@ -386,6 +386,10 @@ fn find_proj_node(graph: &Graph, proj_name: &str) -> Result<NodeIx> {
     }
 }
 
+/// Check minimum forc version given in the manifest file and the current toolchain version
+///
+/// If required minimum forc version is higher than current forc version return an error with
+/// upgrade instructions
 fn validate_version(proj_manifest: &ManifestFile) -> Result<()> {
     match &proj_manifest.project.forc_version {
         Some(min_forc_version) => {
@@ -394,10 +398,11 @@ fn validate_version(proj_manifest: &ManifestFile) -> Result<()> {
             let toolchain_version = semver::Version::parse(crate_version)?;
             if toolchain_version < *min_forc_version {
                 bail!(
-                    "{:?} requires forc version {} but current forc version is {}",
+                    "{:?} requires forc version {} but current forc version is {}\nUpgrade the toolchain by following: https://fuellabs.github.io/sway/v{}/introduction/installation.html",
                     proj_manifest.project.name,
                     min_forc_version,
                     crate_version,
+                    crate_version
                 );
             }
         }
@@ -511,10 +516,11 @@ fn validate_dep_manifest(dep: &Pinned, dep_manifest: &ManifestFile) -> Result<()
         let current_forc_version = semver::Version::parse(curr_version)?;
         if current_forc_version < *dep_forc_version {
             bail!(
-                "{:?} requires forc version {} but current forc version is {}",
+                "{:?} requires forc version {} but current forc version is {}\nUpgrade the toolchain by following: https://fuellabs.github.io/sway/v{}/introduction/installation.html",
                 dep.name,
                 dep_forc_version,
-                current_forc_version
+                current_forc_version,
+                curr_version
             );
         }
     }
