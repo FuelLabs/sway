@@ -27,7 +27,7 @@ const GTF_SCRIPT_SCRIPT = 0x00B;
 const GTF_SCRIPT_SCRIPT_DATA = 0x00C;
 const GTF_SCRIPT_INPUT_AT_INDEX = 0x00D;
 const GTF_SCRIPT_OUTPUT_AT_INDEX = 0x00E;
-// const GTF_SCRIPT_WITNESS_AT_INDEX = 0x00F;
+const GTF_SCRIPT_WITNESS_AT_INDEX = 0x00F;
 
 const GTF_CREATE_GAS_PRICE = 0x010;
 const GTF_CREATE_GAS_LIMIT = 0x011;
@@ -42,7 +42,7 @@ const GTF_CREATE_WITNESSES_COUNT = 0x018;
 // const GTF_CREATE_STORAGE_SLOT_AT_INDEX = 0x01A;
 const GTF_CREATE_INPUT_AT_INDEX = 0x01B;
 const GTF_CREATE_OUTPUT_AT_INDEX = 0x01C;
-// const GTF_CREATE_WITNESS_AT_INDEX = 0x01D;
+const GTF_CREATE_WITNESS_AT_INDEX = 0x01D;
 
 const GTF_INPUT_TYPE = 0x101;
 const GTF_INPUT_COIN_TX_ID = 0x102;
@@ -387,20 +387,38 @@ pub fn predicate_data<T>(index: u64) -> T {
 /// return the data as an Option::Some(u64).
 /// Otherwise, returns Option::None.
 pub fn tx_output_pointer(index: u64) -> Option<u64> {
-    let type = tx_output_type(index);
+    let type = tx_type();
     match type {
-        // 0 is the `Coin` Input type
         0u8 => {
-            Option::Some(__gtf::<u64>(index, GTF_SCRIPT_OUTPUT_AT_INDEX))
+            // tx is a transaction-script
+            read::<T>(__gtf::<u64>(index, GTF_SCRIPT_OUTPUT_AT_INDEX))
         },
-        // 1 is the `Contract` Input type
         1u8 => {
-            Option::Some(__gtf::<u64>(index, GTF_CREATE_OUTPUT_AT_INDEX))
-        },
+            // tx is a transaction-create
+            read::<T>(__gtf::<u64>(index, GTF_CREATE_OUTPUT_AT_INDEX))
+        }
         _ => {
-           Option::None
-        },
+            revert(0)
+        }
     }
+}
+
+pub fn tx_witness(index: u64) -> T {
+    let type = tx_type();
+    match type {
+        0u8 => {
+            // tx is a transaction-script
+            read::<T>(__gtf::<u64>(index, GTF_SCRIPT_WITNESS_AT_INDEX))
+        },
+        1u8 => {
+            // tx is a transaction-create
+            read::<T>(__gtf::<u64>(index, GTF_CREATE_WITNESS_AT_INDEX))
+        }
+        _ => {
+            revert(0)
+        }
+    }
+
 }
 
 /// Get the type of an output at `index`.
