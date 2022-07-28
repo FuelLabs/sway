@@ -340,22 +340,13 @@ pub fn tx_input_type(index: u64) -> u8 {
 pub fn tx_input_owner(index: u64) -> Option<Address> {
     let type = tx_input_type(index);
     let owner_ptr = match type {
-        // TODO: try using consts in match arms
         // 0 is the `Coin` Input type
         0u8 => {
-            // GTF_INPUT_COIN_OWNER = 0x104
-            asm(res, i: index) {
-                gtf res i i260;
-                res: u64
-            }
+            __gtf::<u64>(index, GTF_INPUT_COIN_OWNER)
         },
         // 2 is the `Message` Input type
         2u8 => {
-            // GTF_INPUT_MESSAGE_OWNER = 0x119
-            asm(res, i: index) {
-                gtf res i i281;
-                res: u64
-            }
+            __gtf::<u64>(index, GTF_INPUT_MESSAGE_OWNER)
         },
         _ => {
             return Option::None;
