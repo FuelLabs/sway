@@ -161,28 +161,12 @@ impl Session {
                 pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline, SWAY_GIT_TAG)
             {
                 //we can then use them directly to convert them to a Vec<Diagnostic>
-                if let Ok((parsed_res, ast_res)) = pkg::check(&plan, silent_mode) {
+                if let Ok((parsed_res, _ast_res)) = pkg::check(&plan, silent_mode) {
                     // First, populate our token_map with un-typed ast nodes
                     let res = self.parse_ast_to_tokens(parsed_res);
                     // Next, populate our token_map with typed ast nodes
-                    //let main_fn_span =
-                    let res = self.parse_ast_to_typed_tokens(ast_res);
+                    //let res = self.parse_ast_to_typed_tokens(ast_res);
                     //self.test_typed_parse(ast_res);
-                    // for ((ident, span), token) in self.token_map() {
-                    //     eprintln!("ident = {:?}", ident);
-                    //     eprintln!("");
-
-                    //     eprintln!("token = {:#?}", token);
-
-                    //     eprintln!("");
-                    //     eprintln!("");
-                    //     eprintln!("");
-
-                    //     eprintln!("------------------");
-
-                    //     eprintln!("");
-
-                    // }
                     return res;
                 }
             }
@@ -203,8 +187,6 @@ impl Session {
                 Err(DocumentError::FailedToParse(diagnostics))
             }
             Some(parse_program) => {
-                //eprintln!("{:#?}", &parse_program.root.tree.root_nodes);
-
                 for node in &parse_program.root.tree.root_nodes {
                     traverse_parse_tree::traverse_node(node, &self.token_map);
                 }
@@ -223,7 +205,7 @@ impl Session {
         }
     }
 
-    fn parse_ast_to_typed_tokens(
+    fn _parse_ast_to_typed_tokens(
         &self,
         ast_res: CompileAstResult,
     ) -> Result<Vec<Diagnostic>, DocumentError> {
@@ -236,8 +218,6 @@ impl Session {
                 typed_program,
                 warnings,
             } => {
-                //eprintln!("{:#?}", &typed_program.root.all_nodes);
-
                 for node in &typed_program.root.all_nodes {
                     traverse_typed_tree::traverse_node(node, &self.token_map);
                 }

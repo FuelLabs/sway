@@ -207,7 +207,6 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(ident)) {
                     token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
                     token.type_def = Some(TypeDefinition::TypeId(expression.return_type.clone()));
-
                 }
             }
 
