@@ -1,8 +1,0 @@
-[project]
-name = "lsp_test_project"
-authors = ["Mind Buffer"]
-entry = "main.sw"
-license = "Apache-2.0"
-
-[dependencies]
-
