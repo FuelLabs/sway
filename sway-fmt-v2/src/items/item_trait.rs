@@ -28,31 +28,21 @@ impl Format for ItemTrait {
             self.name.span().as_str()
         )?;
         // `: super_trait + super_trait`
-        if let Some(super_traits) = &self.super_traits {
-            write!(formatted_code, "{} ", super_traits.0.span().as_str())?;
-            super_traits.1.format(formatted_code, formatter)?;
+        if let Some((colon_token, traits)) = &self.super_traits {
+            write!(formatted_code, "{} ", colon_token.ident().as_str())?;
+            traits.format(formatted_code, formatter)?;
         }
         write!(formatted_code, " ")?;
         Self::open_curly_brace(formatted_code, formatter)?;
-        for trait_items in self.trait_items.clone().into_inner() {
-            write!(
-                formatted_code,
-                "{}",
-                formatter.shape.indent.to_string(formatter)
-            )?;
+        for (fn_signature, semicolon_token) in self.trait_items.clone().into_inner() {
             // format `Annotated<FnSignature>`
-            trait_items.0.format(formatted_code, formatter)?;
-            writeln!(formatted_code, "{}\n", trait_items.1.span().as_str())?;
+            fn_signature.format(formatted_code, formatter)?;
+            writeln!(formatted_code, "{}\n", semicolon_token.ident().as_str())?;
         }
         formatted_code.pop(); // pop last ending newline
         if let Some(trait_defs) = &self.trait_defs_opt {
             Self::open_curly_brace(formatted_code, formatter)?;
             for trait_items in trait_defs.clone().into_inner() {
-                write!(
-                    formatted_code,
-                    "{}",
-                    formatter.shape.indent.to_string(formatter)
-                )?;
                 // format `Annotated<ItemFn>`
                 trait_items.format(formatted_code, formatter)?;
             }

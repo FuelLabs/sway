@@ -108,14 +108,13 @@ fn format_struct(
                 });
 
                 let mut value_pairs_iter = value_pairs.iter().enumerate().peekable();
-                for (field_index, field) in value_pairs_iter.clone() {
+                for (field_index, (type_field, comma_token)) in value_pairs_iter.clone() {
                     write!(
                         formatted_code,
                         "{}",
                         &formatter.shape.indent.to_string(formatter)
                     )?;
 
-                    let type_field = &field.0;
                     // Add name
                     write!(formatted_code, "{}", type_field.name.as_str())?;
 
@@ -137,7 +136,7 @@ fn format_struct(
                     )?;
                     type_field.ty.format(formatted_code, formatter)?;
                     if value_pairs_iter.peek().is_some() {
-                        writeln!(formatted_code, "{}", field.1.span().as_str())?;
+                        writeln!(formatted_code, "{}", comma_token.ident().as_str())?;
                     } else if let Some(final_value) = &fields.final_value_opt {
                         write!(formatted_code, "{}", final_value.span().as_str())?;
                     }
@@ -145,17 +144,17 @@ fn format_struct(
             }
             FieldAlignment::Off => {
                 let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
-                for field in value_pairs_iter.clone() {
+                for (type_field, comma_token) in value_pairs_iter.clone() {
                     write!(
                         formatted_code,
                         "{}",
                         &formatter.shape.indent.to_string(formatter)
                     )?;
                     // TypeField
-                    field.0.format(formatted_code, formatter)?;
+                    type_field.format(formatted_code, formatter)?;
 
                     if value_pairs_iter.peek().is_some() {
-                        writeln!(formatted_code, "{}", field.1.span().as_str())?;
+                        writeln!(formatted_code, "{}", comma_token.ident().as_str())?;
                     }
                 }
                 if let Some(final_value) = &fields.final_value_opt {
