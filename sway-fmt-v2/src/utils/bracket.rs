@@ -45,17 +45,3 @@ pub(crate) trait Parenthesis {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError>;
 }
-
-pub trait AngleBracket {
-    fn open_angle_bracket(
-        self,
-        line: &mut FormattedCode,
-        formatter: &mut Formatter,
-    ) -> Result<(), FormatterError>;
-
-    fn close_angle_bracket(
-        self,
-        line: &mut FormattedCode,
-        formatter: &mut Formatter,
-    ) -> Result<(), FormatterError>;
-}
