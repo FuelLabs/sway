@@ -52,7 +52,7 @@ fn handle_function_declation(func: &FunctionDeclaration, tokens: &TokenMap) {
 
     if let TypeInfo::Custom { name, .. } = &func.return_type {
         tokens.insert(
-            to_ident_key(&name),
+            to_ident_key(name),
             Token::from_parsed(AstToken::FunctionDeclaration(func.clone())),
         );
     }
@@ -158,7 +158,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
         Declaration::ImplSelf(impl_self) => {
             if let TypeInfo::Custom { name, .. } = &impl_self.type_implementing_for {
                 tokens.insert(
-                    to_ident_key(&name),
+                    to_ident_key(name),
                     Token::from_parsed(AstToken::Declaration(declaration.clone())),
                 );
             }
@@ -192,7 +192,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
 
                 if let TypeInfo::Custom { name, .. } = &trait_fn.return_type {
                     tokens.insert(
-                        to_ident_key(&name),
+                        to_ident_key(name),
                         Token::from_parsed(AstToken::TraitFn(trait_fn.clone())),
                     );
                 }
@@ -291,7 +291,7 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
 
             if let (TypeInfo::Custom { name, .. }, ..) = &call_path_binding.inner.suffix {
                 tokens.insert(
-                    to_ident_key(&name),
+                    to_ident_key(name),
                     Token::from_parsed(AstToken::Expression(expression.clone())),
                 );
             }
@@ -353,7 +353,7 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
             {
                 if let (TypeInfo::Custom { name, .. }, ..) = &call_path_binding.inner.suffix {
                     tokens.insert(
-                        to_ident_key(&name),
+                        to_ident_key(name),
                         Token::from_parsed(AstToken::Expression(expression.clone())),
                     );
                 }

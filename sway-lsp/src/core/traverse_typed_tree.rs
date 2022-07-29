@@ -117,7 +117,7 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
 
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&trait_name.suffix)) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-                token.type_def = Some(TypeDefinition::TypeId(implementing_for_type_id.clone()));
+                token.type_def = Some(TypeDefinition::TypeId(*implementing_for_type_id));
             }
 
             for method in methods {
@@ -138,7 +138,7 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                 let return_type_ident = Ident::new(method.return_type_span.clone());
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&return_type_ident)) {
                     token.typed = Some(TypedAstToken::TypedFunctionDeclaration(method.clone()));
-                    token.type_def = Some(TypeDefinition::TypeId(method.return_type.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(method.return_type));
                 }
             }
         }
@@ -206,7 +206,7 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
             for ident in &call_path.prefixes {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(ident)) {
                     token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                    token.type_def = Some(TypeDefinition::TypeId(expression.return_type.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(expression.return_type));
                 }
             }
 
@@ -256,7 +256,7 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
         TypedExpressionVariant::StructExpression { fields, span, .. } => {
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(span.clone()))) {
                 token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                token.type_def = Some(TypeDefinition::TypeId(expression.return_type.clone()));
+                token.type_def = Some(TypeDefinition::TypeId(expression.return_type));
             }
 
             for field in fields {
