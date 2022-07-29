@@ -222,6 +222,7 @@ fn inline_instruction(
                 // We can re-use the old asm block with the updated args.
                 new_block.ins(context).asm_block_from_asm(asm, new_args)
             }
+            Instruction::AddrOf(arg) => new_block.ins(context).addr_of(map_value(arg)),
             Instruction::BitCast(value, ty) => new_block.ins(context).bitcast(map_value(value), ty),
             // For `br` and `cbr` below we don't need to worry about the phi values, they're
             // adjusted later in `inline_function_call()`.

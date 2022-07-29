@@ -315,6 +315,15 @@ fn instruction_to_doc<'a>(
             Instruction::AsmBlock(asm, args) => {
                 asm_block_to_doc(context, md_namer, namer, ins_value, asm, args, metadata)
             }
+            Instruction::AddrOf(value) => maybe_constant_to_doc(context, md_namer, namer, value)
+                .append(
+                    Doc::text_line(format!(
+                        "{} = addr_of {}",
+                        namer.name(context, ins_value),
+                        namer.name(context, value),
+                    ))
+                    .append(md_namer.md_idx_to_doc(context, metadata)),
+                ),
             Instruction::BitCast(value, ty) => {
                 maybe_constant_to_doc(context, md_namer, namer, value).append(Doc::line(
                     Doc::text(format!(

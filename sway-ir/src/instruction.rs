@@ -22,6 +22,8 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub enum Instruction {
+    /// Address of a non-copy (memory) value
+    AddrOf(Value),
     /// An opaque list of ASM instructions passed directly to codegen.
     AsmBlock(AsmBlock, Vec<AsmArg>),
     /// Cast the type of a value without changing its actual content.
@@ -170,6 +172,7 @@ impl Instruction {
     /// `Ret` do not have a type.
     pub fn get_type(&self, context: &Context) -> Option<Type> {
         match self {
+            Instruction::AddrOf(_) => Some(Type::Uint(64)),
             Instruction::AsmBlock(asm_block, _) => asm_block.get_type(context),
             Instruction::BitCast(_, ty) => Some(*ty),
             Instruction::Call(function, _) => Some(context.functions[function.0].return_type),
@@ -260,6 +263,7 @@ impl Instruction {
             }
         };
         match self {
+            Instruction::AddrOf(arg) => replace(arg),
             Instruction::AsmBlock(_, args) => args.iter_mut().for_each(|asm_arg| {
                 asm_arg
                     .initializer
@@ -415,6 +419,14 @@ impl<'a> InstructionInserter<'a> {
         let asm_val = Value::new_instruction(self.context, Instruction::AsmBlock(asm, args));
         self.context.blocks[self.block.0].instructions.push(asm_val);
         asm_val
+    }
+
+    pub fn addr_of(self, value: Value) -> Value {
+        let addrof_val = Value::new_instruction(self.context, Instruction::AddrOf(value));
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(addrof_val);
+        addrof_val
     }
 
     pub fn bitcast(self, value: Value, ty: Type) -> Value {

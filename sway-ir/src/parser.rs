@@ -122,7 +122,8 @@ mod ir_builder {
                 }
 
             rule operation() -> IrAstOperation
-                = op_asm()
+                = op_addr_of()
+                / op_asm()
                 / op_branch()
                 / op_bitcast()
                 / op_call()
@@ -148,6 +149,11 @@ mod ir_builder {
                 / op_state_store_quad_word()
                 / op_state_store_word()
                 / op_store()
+
+            rule op_addr_of() -> IrAstOperation
+                = "addr_of" _ val:id() {
+                    IrAstOperation::AddrOf(val)
+                }
 
             rule op_asm() -> IrAstOperation
                 = "asm" _ "(" _ args:(asm_arg() ** comma()) ")" _ ret:asm_ret()? meta_idx:comma_metadata_idx()? "{" _
@@ -582,6 +588,7 @@ mod ir_builder {
 
     #[derive(Debug)]
     enum IrAstOperation {
+        AddrOf(String),
         Asm(
             Vec<(Ident, Option<IrAstAsmArgInit>)>,
             IrAstTy,
@@ -875,6 +882,10 @@ mod ir_builder {
                     .map(|mdi| self.md_map.get(&mdi).unwrap())
                     .copied();
                 let ins_val = match ins.op {
+                    IrAstOperation::AddrOf(val) => block
+                        .ins(context)
+                        .addr_of(*val_map.get(&val).unwrap())
+                        .add_metadatum(context, opt_metadata),
                     IrAstOperation::Asm(args, return_type, return_name, ops, meta_idx) => {
                         let args = args
                             .into_iter()

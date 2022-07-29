@@ -1,0 +1,19 @@
+// regex: VAR=v\d+
+
+script {
+  // check: main() -> u64
+  fn main() -> u64 {
+        local ptr { u64, ( { b256 } | { b256 } ) } sender
+
+        entry:
+        // check: = get_ptr
+        v0 = get_ptr ptr { u64, ( { b256 } | { b256 } ) } sender, ptr { u64, ( { b256 } | { b256 } ) }, 0
+        v1 = const { u64, ( { b256 } | { b256 } ) } { u64 0, { b256 } { b256 0x0100000000000000000000000000000000000000000000000000000000000010 } }
+        store v1, ptr v0
+        // check: $(arg0=$VAR) = get_ptr
+        v2 = get_ptr ptr { u64, ( { b256 } | { b256 } ) } sender, ptr { u64, ( { b256 } | { b256 } ) }, 0
+        // check: addr_of $arg0
+        v3 = addr_of v2
+        ret u64 v3
+    }
+}
