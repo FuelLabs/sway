@@ -689,16 +689,16 @@ struct Foo {
     baz: bool,
 }
 
-impl Foo {
+trait Qux {
+    fn is_baz_true(self) -> bool;
+}
+
+impl<A, B> Qux<A, B> for Foo where
+    A: Qux,
+    B: Qux,
+{
     fn is_baz_true(self) -> bool {
         self.baz
-    }
-
-    fn new_foo(number: u64, boolean: bool) -> Foo {
-        Foo {
-            bar: number,
-            baz: boolean,
-        }
     }
 }"#;
         let correct_sway_code = r#"script;
@@ -707,15 +707,16 @@ struct Foo {
     bar: u64,
     baz: bool,
 }
-impl Foo {
+trait Qux {
+    fn is_baz_true(self) -> bool;
+}
+
+impl<A, B> Qux<A, B> for Foo where
+    A: Qux,
+    B: Qux,
+{
     fn is_baz_true(self) -> bool {
         self.baz
-    }
-    fn new_foo(number: u64, boolean: bool) -> Foo {
-        Foo {
-            bar: number,
-            baz: boolean,
-        }
     }
 }"#;
         let mut formatter = Formatter::default();

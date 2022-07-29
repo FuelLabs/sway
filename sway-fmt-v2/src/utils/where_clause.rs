@@ -11,7 +11,7 @@ impl Format for WhereClause {
     ) -> Result<(), FormatterError> {
         writeln!(
             formatted_code,
-            "\n{}{}",
+            "{}{}",
             &formatter.shape.indent.to_string(formatter),
             self.where_token.span().as_str(),
         )?;
