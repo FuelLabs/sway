@@ -8,6 +8,7 @@ members = [
     "forc-plugins/forc-fmt",
     "forc-plugins/forc-fmt-v2",
     "forc-plugins/forc-lsp",
+    "forc-plugins/forc-client",
     "forc-util",
     "scripts/examples-checker",
     "scripts/mdbook-forc-documenter",

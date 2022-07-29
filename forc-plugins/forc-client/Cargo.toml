@@ -1,0 +1,14 @@
+[package]
+name = "forc-client"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "3", features = ["derive"] }
+tokio = { version = "1.8" }
+
+
+[[bin]]
+name = "forc-deploy"
+path = "src/bin/deploy/main.rs"

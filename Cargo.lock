@@ -1131,6 +1131,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "forc-client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 3.2.15",
+ "tokio",
+]
+
+[[package]]
 name = "forc-explore"
 version = "0.19.0"
 dependencies = [
