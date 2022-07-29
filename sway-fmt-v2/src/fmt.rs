@@ -561,17 +561,17 @@ fn main() -> bool {
     assert(fuelcoin_balance == 0);
     fuel_coin.mint {
         gas: default_gas
-    }(11);
+    } (11);
     fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
     assert(fuelcoin_balance == 11);
     fuel_coin.burn {
         gas: default_gas
-    }(7);
+    } (7);
     fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
     assert(fuelcoin_balance == 4);
     fuel_coin.force_transfer {
         gas: default_gas
-    }(3, fuelcoin_id, balance_test_id);
+    } (3, fuelcoin_id, balance_test_id);
     fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
     let balance_test_contract_balance = balance_of(fuelcoin_id, balance_test_id);
     assert(fuelcoin_balance == 1);

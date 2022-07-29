@@ -179,6 +179,9 @@ impl Format for Expr {
                         .format(formatted_code, formatter)?;
                     ExprStructField::close_curly_brace(formatted_code, formatter)?;
                 }
+                if formatted_code.ends_with('}') {
+                    write!(formatted_code, " ")?;
+                }
                 Self::open_parenthesis(formatted_code, formatter)?;
                 args.clone()
                     .into_inner()
