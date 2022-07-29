@@ -12,6 +12,7 @@ use crate::{
     function::{Function, FunctionContent},
     instruction::{Instruction, Predicate},
     irtype::{Aggregate, Type},
+    metadata::{MetadataIndex, Metadatum},
     module::ModuleContent,
     pointer::Pointer,
     value::{Value, ValueDatum},
@@ -41,6 +42,7 @@ impl Context {
         for block in &function.blocks {
             self.verify_block(cur_module, function, &self.blocks[block.0])?;
         }
+        self.verify_metadata(function.metadata)?;
         Ok(())
     }
 
@@ -79,6 +81,39 @@ impl Context {
             Ok(())
         }
     }
+
+    fn verify_metadata(&self, md_idx: Option<MetadataIndex>) -> Result<(), IrError> {
+        // For now we check only that struct tags are valid identiers.
+        if let Some(md_idx) = md_idx {
+            match &self.metadata[md_idx.0] {
+                Metadatum::List(md_idcs) => {
+                    for md_idx in md_idcs {
+                        self.verify_metadata(Some(*md_idx))?;
+                    }
+                }
+                Metadatum::Struct(tag, ..) => {
+                    // We could import Regex to match it, but it's a simple identifier style pattern:
+                    // alpha start char, alphanumeric for the rest, or underscore anywhere.
+                    if tag.is_empty() {
+                        return Err(IrError::InvalidMetadatum(
+                            "Struct has empty tag.".to_owned(),
+                        ));
+                    }
+                    let mut chs = tag.chars();
+                    let ch0 = chs.next().unwrap();
+                    if !(ch0.is_ascii_alphabetic() || ch0 == '_')
+                        || chs.any(|ch| !(ch.is_ascii_alphanumeric() || ch == '_'))
+                    {
+                        return Err(IrError::InvalidMetadatum(format!(
+                            "Invalid struct tag: '{tag}'."
+                        )));
+                    }
+                }
+                _otherwise => (),
+            }
+        }
+        Ok(())
+    }
 }
 
 struct InstructionVerifier<'a> {
@@ -91,9 +126,10 @@ struct InstructionVerifier<'a> {
 impl<'a> InstructionVerifier<'a> {
     fn verify_instructions(&self) -> Result<(), IrError> {
         for ins in &self.cur_block.instructions {
-            let instruction = &self.context.values[ins.0].value;
-            if let ValueDatum::Instruction(instruction) = instruction {
+            let value_content = &self.context.values[ins.0];
+            if let ValueDatum::Instruction(instruction) = &value_content.value {
                 match instruction {
+                    Instruction::AddrOf(arg) => self.verify_addr_of(arg)?,
                     Instruction::AsmBlock(..) => (),
                     Instruction::BitCast(value, ty) => self.verify_bitcast(value, ty)?,
                     Instruction::Branch(block) => self.verify_br(block)?,
@@ -167,10 +203,23 @@ impl<'a> InstructionVerifier<'a> {
                         dst_val,
                         stored_val,
                     } => self.verify_store(dst_val, stored_val)?,
-                }
+                };
+
+                // Verify the instruction metadata too.
+                self.context.verify_metadata(value_content.metadata)?;
             } else {
                 unreachable!("Verify instruction is not an instruction.");
             }
+        }
+        Ok(())
+    }
+
+    fn verify_addr_of(&self, value: &Value) -> Result<(), IrError> {
+        let val_ty = value
+            .get_type(self.context)
+            .ok_or(IrError::VerifyAddrOfUnknownSourceType)?;
+        if val_ty.is_copy_type() {
+            return Err(IrError::VerifyAddrOfCopyType);
         }
         Ok(())
     }

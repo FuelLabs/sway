@@ -3,6 +3,7 @@ use crate::{
     ir_generation::{
         const_eval::compile_constant_expression_to_constant, storage::serialize_to_storage_slots,
     },
+    metadata::MetadataManager,
     semantic_analysis::{
         TypeCheckedStorageAccess, TypeCheckedStorageAccessDescriptor, TypedExpression,
         TypedStructField,
@@ -200,7 +201,14 @@ impl TypedStorageField {
     ) -> Result<Vec<StorageSlot>, CompileError> {
         let mut context = Context::default();
         let module = Module::new(&mut context, Kind::Contract);
-        compile_constant_expression_to_constant(&mut context, module, None, &self.initializer)
-            .map(|constant| serialize_to_storage_slots(&constant, &context, ix, &constant.ty, &[]))
+        let mut md_mgr = MetadataManager::default();
+        compile_constant_expression_to_constant(
+            &mut context,
+            &mut md_mgr,
+            module,
+            None,
+            &self.initializer,
+        )
+        .map(|constant| serialize_to_storage_slots(&constant, &context, ix, &constant.ty, &[]))
     }
 }

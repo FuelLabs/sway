@@ -1,0 +1,15 @@
+[
+  {
+    "inputs": [],
+    "name": "test_function",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "bool",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
+  }
+]

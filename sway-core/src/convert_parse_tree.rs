@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::type_engine::{TraitConstraint, TypeArgument, TypeBinding, TypeParameter};
 
 use {
@@ -178,6 +180,8 @@ pub enum ConvertParseTreeError {
     DuplicateStorageField { name: Ident, span: Span },
     #[error("struct field \"{name}\" already declared")]
     DuplicateStructField { name: Ident, span: Span },
+    #[error("identifier \"{name}\" bound more than once in this parameter list")]
+    DuplicateParameterIdentifier { name: Ident, span: Span },
 }
 
 impl Spanned for ConvertParseTreeError {
@@ -227,6 +231,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::DuplicateEnumVariant { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateStorageField { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateStructField { span, .. } => span.clone(),
+            ConvertParseTreeError::DuplicateParameterIdentifier { span, .. } => span.clone(),
         }
     }
 }
@@ -969,6 +974,20 @@ fn fn_args_to_function_parameters(
             function_parameters
         }
     };
+
+    let mut unique_params = HashSet::<Ident>::default();
+    for fn_param in &function_parameters {
+        let already_used = !unique_params.insert(fn_param.name.clone());
+        if already_used {
+            return Err(
+                ec.error(ConvertParseTreeError::DuplicateParameterIdentifier {
+                    name: fn_param.name.clone(),
+                    span: fn_param.name.span(),
+                }),
+            );
+        }
+    }
+
     Ok(function_parameters)
 }
 
