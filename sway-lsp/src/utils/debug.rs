@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use crate::core::token::{AstToken, TokenMap, TokenType, TypedAstToken};
+use crate::core::token::{AstToken, Token, TokenMap, TypedAstToken};
 use crate::utils::{common::get_range_from_span, token};
 use sway_core::{Expression, Literal};
 use sway_types::{Ident, Spanned};
@@ -66,7 +66,7 @@ fn warning_from_ident(ident: &Ident) -> Diagnostic {
     }
 }
 
-pub(crate) fn debug_print_ident_and_token(ident: &Ident, token: &TokenType) {
+pub(crate) fn debug_print_ident_and_token(ident: &Ident, token: &Token) {
     let pos = ident.span().start_pos().line_col();
     let line_num = pos.0 as u32;
 
@@ -79,7 +79,7 @@ pub(crate) fn debug_print_ident_and_token(ident: &Ident, token: &TokenType) {
     );
 }
 
-fn ast_node_type(token_type: &TokenType) -> String {
+fn ast_node_type(token_type: &Token) -> String {
     match &token_type.typed {
         Some(typed_ast_token) => match typed_ast_token {
             TypedAstToken::TypedDeclaration(dec) => dec.friendly_name().to_string(),
