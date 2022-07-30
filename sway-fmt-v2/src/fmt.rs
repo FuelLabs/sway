@@ -693,14 +693,14 @@ trait Qux {
     fn is_baz_true(self) -> bool;
 }
 
-impl<A, B> Qux<A, B> for Foo where
-    A: Qux,
-    B: Qux,
-{
-    fn is_baz_true(self) -> bool {
+impl<A ,     B>    Qux<A, B> for 
+Foo 
+where
+    A    : Qux,
+    B: Qux    ,
+{fn is_baz_true(self) -> bool {
         self.baz
-    }
-}"#;
+    }}"#;
         let correct_sway_code = r#"script;
 
 struct Foo {
