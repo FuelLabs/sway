@@ -27,4 +27,3 @@ walkdir = "2"
 
 [build-dependencies]
 toml = "0.5"
-forc-util = { version = "0.18.1", path = "../forc-util" }
