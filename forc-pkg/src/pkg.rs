@@ -497,7 +497,6 @@ fn validate_dep(
 
     Ok(dep_manifest)
 }
-
 /// Part of dependency validation, any checks related to the depenency's manifest content.
 fn validate_dep_manifest(dep: &Pinned, dep_manifest: &ManifestFile) -> Result<()> {
     // Ensure the name matches the manifest project name.
@@ -511,7 +510,7 @@ fn validate_dep_manifest(dep: &Pinned, dep_manifest: &ManifestFile) -> Result<()
         );
     }
     if let Some(dep_forc_version) = &dep_manifest.project.forc_version {
-        let curr_version = env!("CARGO_PKG_VERSION");
+        let curr_version = include_str!("../.version");
         // Ensure the current forc version is >= forc_version required for this dep
         let current_forc_version = semver::Version::parse(curr_version)?;
         if current_forc_version < *dep_forc_version {
