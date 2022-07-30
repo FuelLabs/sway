@@ -394,7 +394,7 @@ fn validate_version(proj_manifest: &ManifestFile) -> Result<()> {
     match &proj_manifest.project.forc_version {
         Some(min_forc_version) => {
             // Get the current version of the toolchain
-            let crate_version = env!("CARGO_PKG_VERSION");
+            let crate_version = include_str!("../.version");
             let toolchain_version = semver::Version::parse(crate_version)?;
             if toolchain_version < *min_forc_version {
                 bail!(

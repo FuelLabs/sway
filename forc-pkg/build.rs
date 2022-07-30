@@ -11,8 +11,12 @@ fn main() {
             .map(|version| version.to_string());
 
         if let Some(version) = version {
+            // drop `"` around version
+            let mut version = version.chars();
+            version.next();
+            version.next_back();
             // We found the version write it to a file
-            fs::write(".version", version)
+            fs::write(".version", version.as_str())
                 .unwrap_or_else(|_| panic!("Couldn't write version to .version"));
         }
     }
