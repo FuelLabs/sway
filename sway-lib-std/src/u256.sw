@@ -28,7 +28,7 @@ pub trait From {
 impl From for U256 {
     fn from(a: u64, b: u64, c: u64, d: u64) -> U256 {
         U256 {
-            a, b, c, d, 
+            a, b, c, d,
         }
     }
 
@@ -560,7 +560,7 @@ impl core::ops::Multiply for U256 {
 
         let mut i = 256 - 1;
 
-        while i >= 0 {
+        while true {
             total <<= 1;
             if (other & (one << i)) != zero {
                 total = total + self;
@@ -590,7 +590,7 @@ impl core::ops::Divide for U256 {
 
         let mut i = 256 - 1;
 
-        while i >= 0 {
+        while true {
             quotient <<= 1;
             remainder <<= 1;
 
