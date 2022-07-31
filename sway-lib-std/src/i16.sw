@@ -5,6 +5,7 @@ use ::assert::assert;
 
 /// The 16-bit signed integer type.
 /// Represented as an underlying u16 value.
+/// Max value is 2 ^ 15 - 1, min value is - 2 ^ 15
 pub struct I16 {
     underlying: u16,
 }
@@ -78,7 +79,8 @@ impl I16 {
     }
 
     fn from_uint(value: u16) -> I16 {
-        let underlying: u16 = value + ~I16::indent(); // as the minimal value of I16 is -~I16::indent() (1 << 15) we should add ~I16::indent() (1 << 15) 
+        // as the minimal value of I16 is -~I16::indent() (1 << 15) we should add ~I16::indent() (1 << 15)
+        let underlying: u16 = value + ~I16::indent(); 
         I16 {
             underlying
         }
@@ -88,7 +90,8 @@ impl I16 {
 impl core::ops::Add for I16 {
     /// Add a I16 to a I16. Panics on overflow.
     pub fn add(self, other: Self) -> Self {
-        ~I16::from(self.underlying - ~I16::indent() + other.underlying) // subtract 1 << 15 to avoid double move
+        // subtract 1 << 15 to avoid double move
+        ~I16::from(self.underlying - ~I16::indent() + other.underlying)
     }
 }
 
@@ -97,9 +100,11 @@ impl core::ops::Subtract for I16 {
     pub fn subtract(self, other: Self) -> Self {
         let mut res = ~I16::new();
         if self > other {
-            res = ~I16::from(self.underlying - other.underlying + ~I16::indent()); // add 1 << 15 to avoid loosing the move
+            // add 1 << 15 to avoid loosing the move
+            res = ~I16::from(self.underlying - other.underlying + ~I16::indent());
         } else {
-            res = ~I16::from(~I16::indent() - (other.underlying - self.underlying)); // subtract from 1 << 15 as we are getting a negative value
+            // subtract from 1 << 15 as we are getting a negative value
+            res = ~I16::from(~I16::indent() - (other.underlying - self.underlying));
         }
         res
     }

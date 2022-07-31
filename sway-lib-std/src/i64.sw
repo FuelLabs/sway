@@ -5,6 +5,7 @@ use ::assert::assert;
 
 /// The 64-bit signed integer type.
 /// Represented as an underlying u64 value.
+/// Max value is 2 ^ 63 - 1, min value is - 2 ^ 63
 pub struct I64 {
     underlying: u64,
 }
@@ -78,7 +79,8 @@ impl I64 {
     }
 
     fn from_uint(value: u64) -> I64 {
-        let underlying: u64 = value + ~I64::indent(); // as the minimal value of I64 is -~I64::indent() (1 << 63) we should add ~I64::indent() (1 << 63) 
+        // as the minimal value of I64 is -~I64::indent() (1 << 63) we should add ~I64::indent() (1 << 63) 
+        let underlying: u64 = value + ~I64::indent();
         I64 {
             underlying
         }
@@ -88,7 +90,8 @@ impl I64 {
 impl core::ops::Add for I64 {
     /// Add a I64 to a I64. Panics on overflow.
     pub fn add(self, other: Self) -> Self {
-        ~I64::from(self.underlying - ~I64::indent() + other.underlying) // subtract 1 << 63 to avoid double move
+        // subtract 1 << 63 to avoid double move
+        ~I64::from(self.underlying - ~I64::indent() + other.underlying)
     }
 }
 
@@ -97,9 +100,11 @@ impl core::ops::Subtract for I64 {
     pub fn subtract(self, other: Self) -> Self {
         let mut res = ~I64::new();
         if self > other {
-            res = ~I64::from(self.underlying - other.underlying + ~I64::indent()); // add 1 << 63 to avoid loosing the move
+            // add 1 << 63 to avoid loosing the move
+            res = ~I64::from(self.underlying - other.underlying + ~I64::indent());
         } else {
-            res = ~I64::from(~I64::indent() - (other.underlying - self.underlying)); // subtract from 1 << 63 as we are getting a negative value
+            // subtract from 1 << 63 as we are getting a negative value
+            res = ~I64::from(~I64::indent() - (other.underlying - self.underlying));
         }
         res
     }

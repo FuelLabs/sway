@@ -6,6 +6,7 @@ use ::u128::U128;
 
 /// The 128-bit signed integer type.
 /// Represented as an underlying U128 value.
+/// Max value is 2 ^ 127 - 1, min value is - 2 ^ 127
 pub struct I128 {
     underlying: U128,
 }
@@ -82,7 +83,8 @@ impl I128 {
     }
 
     fn from_uint(value: U128) -> I128 {
-        let underlying: U128 = value + ~I128::indent(); // as the minimal value of I128 is -~I128::indent() (1 << 63) we should add ~I128::indent() (1 << 63) 
+        // as the minimal value of I128 is -~I128::indent() (1 << 63) we should add ~I128::indent() (1 << 63) 
+        let underlying: U128 = value + ~I128::indent();
         I128 {
             underlying
         }
@@ -92,7 +94,8 @@ impl I128 {
 impl core::ops::Add for I128 {
     /// Add a I128 to a I128. Panics on overflow.
     pub fn add(self, other: Self) -> Self {
-        ~I128::from(self.underlying - ~I128::indent() + other.underlying) // subtract 1 << 63 to avoid double move
+        // subtract 1 << 63 to avoid double move
+        ~I128::from(self.underlying - ~I128::indent() + other.underlying)
     }
 }
 
@@ -101,9 +104,11 @@ impl core::ops::Subtract for I128 {
     pub fn subtract(self, other: Self) -> Self {
         let mut res = ~I128::new();
         if self > other {
-            res = ~I128::from(self.underlying - other.underlying + ~I128::indent()); // add 1 << 63 to avoid loosing the move
+            // add 1 << 63 to avoid loosing the move
+            res = ~I128::from(self.underlying - other.underlying + ~I128::indent());
         } else {
-            res = ~I128::from(~I128::indent() - (other.underlying - self.underlying)); // subtract from 1 << 63 as we are getting a negative value
+            // subtract from 1 << 63 as we are getting a negative value
+            res = ~I128::from(~I128::indent() - (other.underlying - self.underlying));
         }
         res
     }

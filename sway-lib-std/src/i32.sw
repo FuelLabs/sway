@@ -5,6 +5,7 @@ use ::assert::assert;
 
 /// The 32-bit signed integer type.
 /// Represented as an underlying u32 value.
+/// Max value is 2 ^ 31 - 1, min value is - 2 ^ 31
 pub struct I32 {
     underlying: u32,
 }
@@ -78,7 +79,8 @@ impl I32 {
     }
 
     fn from_uint(value: u32) -> I32 {
-        let underlying: u32 = value + ~I32::indent(); // as the minimal value of I32 is 2147483648 (1 << 31) we should add ~I32::indent() (1 << 31) 
+        // as the minimal value of I32 is 2147483648 (1 << 31) we should add ~I32::indent() (1 << 31) 
+        let underlying: u32 = value + ~I32::indent();
         I32 {
             underlying
         }
@@ -88,7 +90,8 @@ impl I32 {
 impl core::ops::Add for I32 {
     /// Add a I32 to a I32. Panics on overflow.
     pub fn add(self, other: Self) -> Self {
-        ~I32::from(self.underlying - ~I32::indent() + other.underlying) // subtract 1 << 31 to avoid double move
+        // subtract 1 << 31 to avoid double move
+        ~I32::from(self.underlying - ~I32::indent() + other.underlying)
     }
 }
 
@@ -97,9 +100,11 @@ impl core::ops::Subtract for I32 {
     pub fn subtract(self, other: Self) -> Self {
         let mut res = ~I32::new();
         if self > other {
-            res = ~I32::from(self.underlying - other.underlying + ~I32::indent()); // add 1 << 31 to avoid loosing the move
+            // add 1 << 31 to avoid loosing the move
+            res = ~I32::from(self.underlying - other.underlying + ~I32::indent());
         } else {
-            res = ~I32::from(~I32::indent() - (other.underlying - self.underlying)); // subtract from 1 << 31 as we are getting a negative value
+            // subtract from 1 << 31 as we are getting a negative value
+            res = ~I32::from(~I32::indent() - (other.underlying - self.underlying));
         }
         res
     }
