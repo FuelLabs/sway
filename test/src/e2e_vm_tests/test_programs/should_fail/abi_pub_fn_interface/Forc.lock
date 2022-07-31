@@ -1,0 +1,14 @@
+[[package]]
+name = 'abi_pub_fn_interface'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-0AE23D28FE158BCC'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'path+from-root-0AE23D28FE158BCC'
+dependencies = ['core']

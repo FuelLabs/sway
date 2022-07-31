@@ -1,0 +1,8 @@
+[project]
+authors = ["Kaya Gökalp"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "abi_impl_pub_fn"
+implicit-std = false
+
+[dependencies]
