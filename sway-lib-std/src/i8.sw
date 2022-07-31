@@ -5,6 +5,7 @@ use ::assert::assert;
 
 /// The 8-bit signed integer type.
 /// Represented as an underlying u8 value.
+/// Max value is 2 ^ 7 - 1, min value is - 2 ^ 7
 pub struct I8 {
     underlying: u8,
 }
