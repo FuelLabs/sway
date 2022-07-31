@@ -5,30 +5,30 @@ use ::assert::assert;
 
 /// The 8-bit signed integer type.
 /// Represented as an underlying u8 value.
-pub struct i8 {
+pub struct I8 {
     underlying: u8,
 }
 
 pub trait From {
-    /// Function for creating i8 from its u8 and bool components.
+    /// Function for creating I8 from u8
     fn from(value: u8) -> Self;
 }
 
-impl From for i8 {
-    fn from(value: u8) -> i8 {
-        i8 {
+impl From for I8 {
+    fn from(value: u8) -> I8 {
+        I8 {
             underlying: value,
         }
     }
 }
 
-impl core::ops::Eq for i8 {
-    pub fn eq(self, other: i8) -> bool {
+impl core::ops::Eq for I8 {
+    pub fn eq(self, other: I8) -> bool {
         self.underlying == other.underlying
     }
 }
 
-impl core::ops::Ord for i8 {
+impl core::ops::Ord for I8 {
     pub fn gt(self, other: Self) -> bool {
         self.underlying > other.underlying
     }
@@ -38,30 +38,30 @@ impl core::ops::Ord for i8 {
     }
 }
 
-impl i8 {
+impl I8 {
     pub fn indent() -> u8 {
         128u8
     }
 }
 
-impl i8 {
-    /// Initializes a new, zeroed i8.
-    pub fn new() -> i8 {
-        i8 {
-            underlying: ~i8::indent(),
+impl I8 {
+    /// Initializes a new, zeroed I8.
+    pub fn new() -> I8 {
+        I8 {
+            underlying: ~I8::indent(),
         }
     }
 
     /// The smallest value that can be represented by this integer type.
-    pub fn min() -> i8 {
-        i8 {
+    pub fn min() -> I8 {
+        I8 {
             underlying: ~u8::min(),
         }
     }
 
     /// The largest value that can be represented by this type,
-    pub fn max() -> i8 {
-        i8 {
+    pub fn max() -> I8 {
+        I8 {
             underlying: ~u8::max(),
         }
     }
@@ -71,70 +71,70 @@ impl i8 {
         8
     }
 
-    pub fn neg_from(value: u8) -> i8 {
-        i8 {
-            underlying: ~i8::indent() - value,
+    pub fn neg_from(value: u8) -> I8 {
+        I8 {
+            underlying: ~I8::indent() - value,
         }
     }
 
-    fn from_uint(value: u8) -> i8 {
-        let underlying: u8 = value + ~i8::indent(); // as the minimal value of i8 is -~i8::indent() (1 << 7) we should add ~i8::indent() (1 << 7) 
-        i8 {
+    fn from_uint(value: u8) -> I8 {
+        let underlying: u8 = value + ~I8::indent(); // as the minimal value of I8 is -~I8::indent() (1 << 7) we should add ~I8::indent() (1 << 7) 
+        I8 {
             underlying
         }
     }
 }
 
-impl core::ops::Add for i8 {
-    /// Add a i8 to a i8. Panics on overflow.
+impl core::ops::Add for I8 {
+    /// Add a I8 to a I8. Panics on overflow.
     pub fn add(self, other: Self) -> Self {
-        ~i8::from(self.underlying - ~i8::indent() + other.underlying) // subtract 1 << 7 to avoid double move
+        ~I8::from(self.underlying - ~I8::indent() + other.underlying) // subtract 1 << 7 to avoid double move
     }
 }
 
-impl core::ops::Subtract for i8 {
-    /// Subtract a i8 from a i8. Panics of overflow.
+impl core::ops::Subtract for I8 {
+    /// Subtract a I8 from a I8. Panics of overflow.
     pub fn subtract(self, other: Self) -> Self {
-        let mut res = ~i8::new();
+        let mut res = ~I8::new();
         if self > other {
-            res = ~i8::from(self.underlying - other.underlying + ~i8::indent()); // add 1 << 7 to avoid loosing the move
+            res = ~I8::from(self.underlying - other.underlying + ~I8::indent()); // add 1 << 7 to avoid loosing the move
         } else {
-            res = ~i8::from(~i8::indent() - (other.underlying - self.underlying)); // subtract from 1 << 7 as we are getting a negative value
+            res = ~I8::from(~I8::indent() - (other.underlying - self.underlying)); // subtract from 1 << 7 as we are getting a negative value
         }
         res
     }
 }
 
-impl core::ops::Multiply for i8 {
-    /// Multiply a i8 with a i8. Panics of overflow.
+impl core::ops::Multiply for I8 {
+    /// Multiply a I8 with a I8. Panics of overflow.
     pub fn multiply(self, other: Self) -> Self {
-        let mut res = ~i8::new();
-        if self.underlying >= ~i8::indent() && other.underlying >= ~i8::indent() {
-            res = ~i8::from((self.underlying - ~i8::indent()) * (other.underlying -~i8::indent()) + ~i8::indent());
-        } else if self.underlying < ~i8::indent() && other.underlying < ~i8::indent() {
-            res = ~i8::from((~i8::indent() - self.underlying) * (~i8::indent() - other.underlying) + ~i8::indent());
-        } else if self.underlying >= ~i8::indent() && other.underlying < ~i8::indent() {
-            res = ~i8::from(~i8::indent() - (self.underlying - ~i8::indent()) * (~i8::indent() - other.underlying));
-        } else if self.underlying < ~i8::indent() && other.underlying >= ~i8::indent() {
-            res = ~i8::from(~i8::indent() - (other.underlying - ~i8::indent()) * (~i8::indent() - self.underlying));
+        let mut res = ~I8::new();
+        if self.underlying >= ~I8::indent() && other.underlying >= ~I8::indent() {
+            res = ~I8::from((self.underlying - ~I8::indent()) * (other.underlying -~I8::indent()) + ~I8::indent());
+        } else if self.underlying < ~I8::indent() && other.underlying < ~I8::indent() {
+            res = ~I8::from((~I8::indent() - self.underlying) * (~I8::indent() - other.underlying) + ~I8::indent());
+        } else if self.underlying >= ~I8::indent() && other.underlying < ~I8::indent() {
+            res = ~I8::from(~I8::indent() - (self.underlying - ~I8::indent()) * (~I8::indent() - other.underlying));
+        } else if self.underlying < ~I8::indent() && other.underlying >= ~I8::indent() {
+            res = ~I8::from(~I8::indent() - (other.underlying - ~I8::indent()) * (~I8::indent() - self.underlying));
         }
         res
     }
 }
 
-impl core::ops::Divide for i8 {
-    /// Divide a i8 by a i8. Panics if divisor is zero.
+impl core::ops::Divide for I8 {
+    /// Divide a I8 by a I8. Panics if divisor is zero.
     pub fn divide(self, divisor: Self) -> Self {
-        assert(divisor != ~i8::new());
-        let mut res = ~i8::new();
-        if self.underlying >= ~i8::indent() && divisor.underlying > ~i8::indent() {
-            res = ~i8::from((self.underlying - ~i8::indent()) / (divisor.underlying -~i8::indent()) + ~i8::indent());
-        } else if self.underlying < ~i8::indent() && divisor.underlying < ~i8::indent() {
-            res = ~i8::from((~i8::indent() - self.underlying) / (~i8::indent() - divisor.underlying) + ~i8::indent());
-        } else if self.underlying >= ~i8::indent() && divisor.underlying < ~i8::indent() {
-            res = ~i8::from(~i8::indent() - (self.underlying - ~i8::indent()) / (~i8::indent() - divisor.underlying));
-        } else if self.underlying < ~i8::indent() && divisor.underlying > ~i8::indent() {
-            res = ~i8::from(~i8::indent() - (~i8::indent() - self.underlying) / (divisor.underlying - ~i8::indent()));
+        assert(divisor != ~I8::new());
+        let mut res = ~I8::new();
+        if self.underlying >= ~I8::indent() && divisor.underlying > ~I8::indent() {
+            res = ~I8::from((self.underlying - ~I8::indent()) / (divisor.underlying -~I8::indent()) + ~I8::indent());
+        } else if self.underlying < ~I8::indent() && divisor.underlying < ~I8::indent() {
+            res = ~I8::from((~I8::indent() - self.underlying) / (~I8::indent() - divisor.underlying) + ~I8::indent());
+        } else if self.underlying >= ~I8::indent() && divisor.underlying < ~I8::indent() {
+            res = ~I8::from(~I8::indent() - (self.underlying - ~I8::indent()) / (~I8::indent() - divisor.underlying));
+        } else if self.underlying < ~I8::indent() && divisor.underlying > ~I8::indent() {
+            res = ~I8::from(~I8::indent() - (~I8::indent() - self.underlying) / (divisor.underlying - ~I8::indent()));
         }
         res
     }

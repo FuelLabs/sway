@@ -5,30 +5,30 @@ use ::assert::assert;
 
 /// The 16-bit signed integer type.
 /// Represented as an underlying u16 value.
-pub struct i16 {
+pub struct I16 {
     underlying: u16,
 }
 
 pub trait From {
-    /// Function for creating i16 from its u16 and bool components.
+    /// Function for creating I16 from u16
     fn from(value: u16) -> Self;
 }
 
-impl From for i16 {
-    fn from(value: u16) -> i16 {
-        i16 {
+impl From for I16 {
+    fn from(value: u16) -> I16 {
+        I16 {
             underlying: value,
         }
     }
 }
 
-impl core::ops::Eq for i16 {
-    pub fn eq(self, other: i16) -> bool {
+impl core::ops::Eq for I16 {
+    pub fn eq(self, other: I16) -> bool {
         self.underlying == other.underlying
     }
 }
 
-impl core::ops::Ord for i16 {
+impl core::ops::Ord for I16 {
     pub fn gt(self, other: Self) -> bool {
         self.underlying > other.underlying
     }
@@ -38,30 +38,30 @@ impl core::ops::Ord for i16 {
     }
 }
 
-impl i16 {
+impl I16 {
     pub fn indent() -> u16 {
         32768u16
     }
 }
 
-impl i16 {
-    /// Initializes a new, zeroed i16.
-    pub fn new() -> i16 {
-        i16 {
-            underlying: ~i16::indent(),
+impl I16 {
+    /// Initializes a new, zeroed I16.
+    pub fn new() -> I16 {
+        I16 {
+            underlying: ~I16::indent(),
         }
     }
 
     /// The smallest value that can be represented by this integer type.
-    pub fn min() -> i16 {
-        i16 {
+    pub fn min() -> I16 {
+        I16 {
             underlying: ~u16::min(),
         }
     }
 
     /// The largest value that can be represented by this type,
-    pub fn max() -> i16 {
-        i16 {
+    pub fn max() -> I16 {
+        I16 {
             underlying: ~u16::max(),
         }
     }
@@ -71,70 +71,70 @@ impl i16 {
         16
     }
 
-    pub fn neg_from(value: u16) -> i16 {
-        i16 {
-            underlying: ~i16::indent() - value,
+    pub fn neg_from(value: u16) -> I16 {
+        I16 {
+            underlying: ~I16::indent() - value,
         }
     }
 
-    fn from_uint(value: u16) -> i16 {
-        let underlying: u16 = value + ~i16::indent(); // as the minimal value of i16 is -~i16::indent() (1 << 15) we should add ~i16::indent() (1 << 15) 
-        i16 {
+    fn from_uint(value: u16) -> I16 {
+        let underlying: u16 = value + ~I16::indent(); // as the minimal value of I16 is -~I16::indent() (1 << 15) we should add ~I16::indent() (1 << 15) 
+        I16 {
             underlying
         }
     }
 }
 
-impl core::ops::Add for i16 {
-    /// Add a i16 to a i16. Panics on overflow.
+impl core::ops::Add for I16 {
+    /// Add a I16 to a I16. Panics on overflow.
     pub fn add(self, other: Self) -> Self {
-        ~i16::from(self.underlying - ~i16::indent() + other.underlying) // subtract 1 << 15 to avoid double move
+        ~I16::from(self.underlying - ~I16::indent() + other.underlying) // subtract 1 << 15 to avoid double move
     }
 }
 
-impl core::ops::Subtract for i16 {
-    /// Subtract a i16 from a i16. Panics of overflow.
+impl core::ops::Subtract for I16 {
+    /// Subtract a I16 from a I16. Panics of overflow.
     pub fn subtract(self, other: Self) -> Self {
-        let mut res = ~i16::new();
+        let mut res = ~I16::new();
         if self > other {
-            res = ~i16::from(self.underlying - other.underlying + ~i16::indent()); // add 1 << 15 to avoid loosing the move
+            res = ~I16::from(self.underlying - other.underlying + ~I16::indent()); // add 1 << 15 to avoid loosing the move
         } else {
-            res = ~i16::from(~i16::indent() - (other.underlying - self.underlying)); // subtract from 1 << 15 as we are getting a negative value
+            res = ~I16::from(~I16::indent() - (other.underlying - self.underlying)); // subtract from 1 << 15 as we are getting a negative value
         }
         res
     }
 }
 
-impl core::ops::Multiply for i16 {
-    /// Multiply a i16 with a i16. Panics of overflow.
+impl core::ops::Multiply for I16 {
+    /// Multiply a I16 with a I16. Panics of overflow.
     pub fn multiply(self, other: Self) -> Self {
-        let mut res = ~i16::new();
-        if self.underlying >= ~i16::indent() && other.underlying >= ~i16::indent() {
-            res = ~i16::from((self.underlying - ~i16::indent()) * (other.underlying -~i16::indent()) + ~i16::indent());
-        } else if self.underlying < ~i16::indent() && other.underlying < ~i16::indent() {
-            res = ~i16::from((~i16::indent() - self.underlying) * (~i16::indent() - other.underlying) + ~i16::indent());
-        } else if self.underlying >= ~i16::indent() && other.underlying < ~i16::indent() {
-            res = ~i16::from(~i16::indent() - (self.underlying - ~i16::indent()) * (~i16::indent() - other.underlying));
-        } else if self.underlying < ~i16::indent() && other.underlying >= ~i16::indent() {
-            res = ~i16::from(~i16::indent() - (other.underlying - ~i16::indent()) * (~i16::indent() - self.underlying));
+        let mut res = ~I16::new();
+        if self.underlying >= ~I16::indent() && other.underlying >= ~I16::indent() {
+            res = ~I16::from((self.underlying - ~I16::indent()) * (other.underlying -~I16::indent()) + ~I16::indent());
+        } else if self.underlying < ~I16::indent() && other.underlying < ~I16::indent() {
+            res = ~I16::from((~I16::indent() - self.underlying) * (~I16::indent() - other.underlying) + ~I16::indent());
+        } else if self.underlying >= ~I16::indent() && other.underlying < ~I16::indent() {
+            res = ~I16::from(~I16::indent() - (self.underlying - ~I16::indent()) * (~I16::indent() - other.underlying));
+        } else if self.underlying < ~I16::indent() && other.underlying >= ~I16::indent() {
+            res = ~I16::from(~I16::indent() - (other.underlying - ~I16::indent()) * (~I16::indent() - self.underlying));
         }
         res
     }
 }
 
-impl core::ops::Divide for i16 {
-    /// Divide a i16 by a i16. Panics if divisor is zero.
+impl core::ops::Divide for I16 {
+    /// Divide a I16 by a I16. Panics if divisor is zero.
     pub fn divide(self, divisor: Self) -> Self {
-        assert(divisor != ~i16::new());
-        let mut res = ~i16::new();
-        if self.underlying >= ~i16::indent() && divisor.underlying > ~i16::indent() {
-            res = ~i16::from((self.underlying - ~i16::indent()) / (divisor.underlying -~i16::indent()) + ~i16::indent());
-        } else if self.underlying < ~i16::indent() && divisor.underlying < ~i16::indent() {
-            res = ~i16::from((~i16::indent() - self.underlying) / (~i16::indent() - divisor.underlying) + ~i16::indent());
-        } else if self.underlying >= ~i16::indent() && divisor.underlying < ~i16::indent() {
-            res = ~i16::from(~i16::indent() - (self.underlying - ~i16::indent()) / (~i16::indent() - divisor.underlying));
-        } else if self.underlying < ~i16::indent() && divisor.underlying > ~i16::indent() {
-            res = ~i16::from(~i16::indent() - (~i16::indent() - self.underlying) / (divisor.underlying - ~i16::indent()));
+        assert(divisor != ~I16::new());
+        let mut res = ~I16::new();
+        if self.underlying >= ~I16::indent() && divisor.underlying > ~I16::indent() {
+            res = ~I16::from((self.underlying - ~I16::indent()) / (divisor.underlying -~I16::indent()) + ~I16::indent());
+        } else if self.underlying < ~I16::indent() && divisor.underlying < ~I16::indent() {
+            res = ~I16::from((~I16::indent() - self.underlying) / (~I16::indent() - divisor.underlying) + ~I16::indent());
+        } else if self.underlying >= ~I16::indent() && divisor.underlying < ~I16::indent() {
+            res = ~I16::from(~I16::indent() - (self.underlying - ~I16::indent()) / (~I16::indent() - divisor.underlying));
+        } else if self.underlying < ~I16::indent() && divisor.underlying > ~I16::indent() {
+            res = ~I16::from(~I16::indent() - (~I16::indent() - self.underlying) / (divisor.underlying - ~I16::indent()));
         }
         res
     }
