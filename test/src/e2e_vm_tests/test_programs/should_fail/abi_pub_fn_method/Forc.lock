@@ -1,14 +1,4 @@
 [[package]]
 name = 'abi_pub_fn_method'
 source = 'root'
-dependencies = ['std']
-
-[[package]]
-name = 'core'
-source = 'path+from-root-EB60D283825FED98'
 dependencies = []
-
-[[package]]
-name = 'std'
-source = 'path+from-root-EB60D283825FED98'
-dependencies = ['core']

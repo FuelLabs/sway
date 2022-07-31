@@ -6,4 +6,3 @@ name = "trait_impl_pub_fn"
 implicit-std = false
 
 [dependencies]
-std = { path = "../../../../../../sway-lib-std" }

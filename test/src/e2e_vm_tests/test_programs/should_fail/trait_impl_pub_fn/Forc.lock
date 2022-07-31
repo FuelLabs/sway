@@ -1,14 +1,4 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-6FBAD3B76AADD629'
-dependencies = []
-
-[[package]]
-name = 'std'
-source = 'path+from-root-6FBAD3B76AADD629'
-dependencies = ['core']
-
-[[package]]
 name = 'trait_impl_pub_fn'
 source = 'root'
-dependencies = ['std']
+dependencies = []
