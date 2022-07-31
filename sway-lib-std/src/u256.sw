@@ -350,4 +350,3 @@ impl core::ops::Divide for U256 {
         quotient
     }
 }
-
