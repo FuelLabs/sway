@@ -1,5 +1,5 @@
 contract;
 
 abi MyContract {
-    pub fn f(self) -> bool;
+    pub fn f() -> bool;
 }
