@@ -1,8 +1,9 @@
 library u128;
 
 use core::num::*;
+
 use ::assert::assert;
-use ::flags::*;
+use ::flags::{disable_panic_on_overflow, enable_panic_on_overflow};
 use ::result::Result;
 
 /// The 128-bit unsigned integer type.
@@ -25,7 +26,7 @@ pub trait From {
 impl From for U128 {
     pub fn from(upper: u64, lower: u64) -> U128 {
         U128 {
-            upper, lower,
+            upper, lower, 
         }
     }
 
@@ -190,8 +191,7 @@ impl core::ops::Shiftable for U128 {
 
         // If shifting by at least half the number of bits, then lower word can
         // be discarded.
-        // TODO remove the `else` once #1682 is fixed
-        else if (rhs >= 64) {
+        if (rhs >= 64) {
             return ~Self::from(0, self.upper >>(rhs - 64));
         }
 
@@ -251,7 +251,7 @@ impl core::ops::Subtract for U128 {
         }
 
         U128 {
-            upper, lower,
+            upper, lower, 
         }
     }
 }
@@ -263,17 +263,15 @@ impl core::ops::Multiply for U128 {
         let one = ~U128::from(0, 1);
 
         let mut total = ~U128::new();
-        // The algorithm loops <from number of bits - 1> to <zero>.
-        // Need to add 1 here to invalidate the while loop once i == 0 since we
-        // don't have a break keyword.
-        let mut i = 128 - 1 + 1;
-
-        while i > 0 {
-            // Workaround for not having break keyword
-            let shift = i - 1;
+        let mut i = 128 - 1;
+        while true {
             total <<= 1;
-            if (other & (one << shift)) != zero {
+            if (other & (one << i)) != zero {
                 total = total + self;
+            }
+
+            if i == 0 {
+                break;
             }
 
             i -= 1;
@@ -293,21 +291,19 @@ impl core::ops::Divide for U128 {
 
         let mut quotient = ~U128::new();
         let mut remainder = ~U128::new();
-        // The algorithm loops <from number of bits - 1> to <zero>.
-        // Need to add 1 here to invalidate the while loop once i == 0 since we
-        // don't have a break keyword.
-        let mut i = 128 - 1 + 1;
-
-        while i > 0 {
-            // Workaround for not having break keyword
-            let shift = i - 1;
+        let mut i = 128 - 1;
+        while true {
             quotient <<= 1;
             remainder <<= 1;
-            remainder = remainder | ((self & (one << shift)) >> shift);
+            remainder = remainder | ((self & (one << i)) >> i);
             // TODO use >= once OrdEq can be implemented.
             if remainder > divisor || remainder == divisor {
                 remainder -= divisor;
                 quotient = quotient | one;
+            }
+
+            if i == 0 {
+                break;
             }
 
             i -= 1;
