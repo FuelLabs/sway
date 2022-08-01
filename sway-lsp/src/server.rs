@@ -258,7 +258,7 @@ pub struct RunnableParams {
 
 // Custom LSP-Server Methods
 impl Backend {
-    pub async fn runnable(&self, params: RunnableParams) -> jsonrpc::Result<Option<Range>> {
+    pub async fn runnable(&self, params: RunnableParams) -> jsonrpc::Result<Option<Vec<Range>>> {
         self.log_info_message("client has called the runnable call back!")
             .await;
         let _path = params.text_document.uri.as_str();
@@ -267,7 +267,7 @@ impl Backend {
             .session
             .runnables
             .get(&RunnableType::MainFn)
-            .map(|item| item.value().clone());
+            .map(|item| vec![item.value().clone()]);
 
         Ok(range)
     }
