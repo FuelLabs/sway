@@ -12,7 +12,7 @@ pub use crate::{
 
 #[derive(Debug, Default)]
 pub struct Formatter {
-    pub shape: Shape,
+    pub(crate) shape: Shape,
     pub config: Config,
 }
 
@@ -359,27 +359,6 @@ storage {
         assert_eq!(correct_sway_code, formatted_sway_code)
     }
     #[test]
-    fn test_storage_single_line() {
-        let sway_code_to_format = r#"contract;
-
-storage {
- long_var_name: Type1=Type1{},
-      var2: Type2=Type2{},
-}
-"#;
-        let correct_sway_code = r#"contract;
-
-storage { long_var_name: Type1 = Type1 {
-    }, var2: Type2 = Type2 {
-    } }"#;
-        let mut formatter = Formatter::default();
-        formatter.config.structures.small_structures_single_line = true;
-        formatter.config.whitespace.max_width = 700;
-        let formatted_sway_code =
-            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert_eq!(correct_sway_code, formatted_sway_code)
-    }
-    #[test]
     fn test_storage_initializer() {
         let sway_code_to_format = r#"contract;
 
@@ -606,7 +585,8 @@ fn hello_world(baz: /* this is a comment */ u64) { // This is a comment inside t
 abi StorageMapExample {
     // insert_into_map is blah blah
     #[storage(write)] // this is some other comment
-    fn insert_into_map(key: u64, value: u64); // this is the last comment inside the StorageMapExample
+    fn insert_into_map(key: u64, value: u64);
+    // this is the last comment inside the StorageMapExample
 }"#;
         let correct_sway_code = r#"contract;
 
@@ -614,7 +594,8 @@ abi StorageMapExample {
 abi StorageMapExample {
     // insert_into_map is blah blah
     #[storage(write)] // this is some other comment
-    fn insert_into_map(key: u64, value: u64); // this is the last comment inside the StorageMapExample
+    fn insert_into_map(key: u64, value: u64);
+    // this is the last comment inside the StorageMapExample
 }"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
@@ -675,6 +656,26 @@ trait Programmer {
     fn fav_language(self) -> String;
 }"#;
 
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code)
+    }
+
+    #[test]
+    fn test_where_comment() {
+        let sway_code_to_format = r#"contract;
+
+pub fn hello( person: String ) -> String where /* This is next to where */ T: Eq, /*Here is a comment*/{let greeting = 42;greeting.to_string()}"#;
+        let correct_sway_code = r#"contract;
+
+pub fn hello(person: String) -> String
+where /* This is next to where */
+    T: Eq, /*Here is a comment*/
+{
+    let greeting = 42;
+    greeting.to_string()
+}"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();

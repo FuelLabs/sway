@@ -6,7 +6,7 @@
 #[derive(Debug)]
 pub enum IrError {
     FunctionLocalClobbered(String, String),
-    InvalidMetadatum,
+    InvalidMetadatum(String),
     MisplacedTerminator(String),
     MissingBlock(String),
     MissingTerminator(String),
@@ -20,6 +20,8 @@ pub enum IrError {
     VerifyAccessValueInvalidIndices,
     VerifyAccessValueOnNonStruct,
     VerifyArgumentValueIsNotArgument(String),
+    VerifyAddrOfUnknownSourceType,
+    VerifyAddrOfCopyType,
     VerifyBitcastUnknownSourceType,
     VerifyBitcastFromNonCopyType(String),
     VerifyBitcastToNonCopyType(String),
@@ -65,7 +67,7 @@ impl fmt::Display for IrError {
                 f,
                 "Local storage for function {fn_str} already has an entry for variable {var_str}"
             ),
-            IrError::InvalidMetadatum => write!(f, "Unable to convert from invalid metadatum."),
+            IrError::InvalidMetadatum(why_str) => write!(f, "Unable to convert from invalid metadatum: {why_str}"),
             IrError::MisplacedTerminator(blk_str) => {
                 write!(f, "Block {blk_str} has a misplaced terminator.")
             }
@@ -117,6 +119,14 @@ impl fmt::Display for IrError {
             IrError::VerifyArgumentValueIsNotArgument(callee) => write!(
                 f,
                 "Verification failed: Argument specifier for function '{callee}' is not an argument value."
+            ),
+            IrError::VerifyAddrOfUnknownSourceType => write!(
+                f,
+                "Verification failed: addr_of unable to determine source type."
+            ),
+            IrError::VerifyAddrOfCopyType => write!(
+                f,
+                "Verification failed: addr_of argument must be non-copy (memory) type."
             ),
             IrError::VerifyBitcastUnknownSourceType => write!(
                 f,

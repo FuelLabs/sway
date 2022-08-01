@@ -8,7 +8,7 @@ use ::contract_id::ContractId;
 use ::identity::Identity;
 use ::option::Option;
 use ::result::Result;
-use ::tx::{tx_inputs_count, tx_input_type, tx_input_owner, INPUT_COIN, INPUT_MESSAGE};
+use ::tx::{INPUT_COIN, INPUT_MESSAGE, tx_input_owner, tx_input_type, tx_inputs_count};
 
 pub enum AuthError {
     InputsNotAllOwnedBySameAddress: (),
@@ -57,26 +57,29 @@ fn inputs_owner() -> Result<Identity, AuthError> {
         if input_type != INPUT_COIN && input_type != INPUT_MESSAGE {
             // type != InputCoin or InputMessage, continue looping.
             i += 1;
-        } else {
-            // type == InputCoin or InputMessage
-            let input_owner = tx_input_owner(i);
-            if candidate.is_none() {
-                // This is the first input seen of the correct type.
-                candidate = input_owner;
-                i += 1;
-            } else {
-                // Compare current input owner to candidate.
-                // `candidate` and `input_owner` must be `Option::Some`
-                // at this point, so we can unwrap safely.
-                if input_owner.unwrap() == candidate.unwrap() {
-                    // Owners are a match, continue looping.
-                    i += 1;
-                } else {
-                    // Owners don't match. Return Err.
-                    return Result::Err(AuthError::InputsNotAllOwnedBySameAddress);
-                };
-            };
+            continue;
         }
+
+        // type == InputCoin or InputMessage
+        let input_owner = tx_input_owner(i);
+        if candidate.is_none() {
+            // This is the first input seen of the correct type.
+            candidate = input_owner;
+            i += 1;
+            continue;
+        }
+
+        // Compare current input owner to candidate.
+        // `candidate` and `input_owner` must be `Option::Some`
+        // at this point, so we can unwrap safely.
+        if input_owner.unwrap() == candidate.unwrap() {
+            // Owners are a match, continue looping.
+            i += 1;
+            continue;
+        }
+
+        // Owners don't match. Return Err.
+        return Result::Err(AuthError::InputsNotAllOwnedBySameAddress);
     }
 
     // `candidate` must be `Option::Some` at this point, so can unwrap safely.

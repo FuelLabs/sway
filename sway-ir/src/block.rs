@@ -40,7 +40,7 @@ impl Block {
     /// is optional and is used only when printing the IR.
     pub fn new(context: &mut Context, function: Function, label: Option<String>) -> Block {
         let label = function.get_unique_label(context, label);
-        let phi = Value::new_instruction(context, Instruction::Phi(Vec::new()), None, None);
+        let phi = Value::new_instruction(context, Instruction::Phi(Vec::new()));
         let content = BlockContent {
             label,
             function,
