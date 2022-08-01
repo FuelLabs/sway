@@ -16,9 +16,7 @@ use std::{
     path::PathBuf,
     sync::{Arc, LockResult, RwLock},
 };
-use sway_core::{
-    CompileAstResult, CompileResult, ParseProgram, TypeInfo, TypedProgramKind,
-};
+use sway_core::{CompileAstResult, CompileResult, ParseProgram, TypeInfo, TypedProgramKind};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, GotoDefinitionParams, GotoDefinitionResponse, Location, Position,
