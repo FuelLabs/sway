@@ -6,6 +6,7 @@ use crate::core::{
 };
 use crate::utils::debug::{self, DebugFlags};
 use forc_util::find_manifest_dir;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::*;
@@ -250,6 +251,27 @@ impl LanguageServer for Backend {
     }
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct FileTypeParams {
+    // text_document: TextDocumentIdentifier,
+    path: String,
+}
+
+// Custom LSP-Server Methods
+impl Backend {
+    pub async fn file_type(&self, params: FileTypeParams) -> jsonrpc::Result<Option<String>> {
+        // self.log_info_message("client has called the file_type call back!").await;
+        // let path = params.path; // params.text_document.uri.as_str()
+        // if let Some(document) = self.session.documents.get(&path) {
+        //     if let Some(file_type) = document.sway_file_type() {
+        //         let file_type = file_type.to_string();
+        //         return Ok(Some(file_type));
+        //     }
+        // }
+        Ok(None)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;
@@ -278,8 +300,12 @@ mod tests {
             .join("examples/signatures")
     }
 
+    fn lsp_test_dir() -> PathBuf {
+        env::current_dir().unwrap().join("test_programs/particle")
+    }
+
     fn load_sway_example() -> (Url, String) {
-        let manifest_dir = sway_example_dir();
+        let manifest_dir = lsp_test_dir(); // sway_example_dir();
         let src_path = manifest_dir.join("src/main.sw");
         let mut file = fs::File::open(&src_path).unwrap();
         let mut sway_program = String::new();

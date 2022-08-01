@@ -16,7 +16,9 @@ use std::{
     path::PathBuf,
     sync::{Arc, LockResult, RwLock},
 };
-use sway_core::{CompileAstResult, CompileResult, ParseProgram, TypeInfo};
+use sway_core::{
+    CompileAstResult, CompileResult, ParseProgram, TypeInfo, TypedProgramKind,
+};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, GotoDefinitionParams, GotoDefinitionResponse, Location, Position,
@@ -25,11 +27,21 @@ use tower_lsp::lsp_types::{
 
 pub type Documents = DashMap<String, TextDocument>;
 
+#[derive(Debug, Eq, PartialEq, Hash)]
+pub enum RunnableType {
+    /// This is the main_fn entry point for the predicate or script.
+    MainFn,
+    /// Place holder for when we have in language testing supported.
+    /// The field holds the index of the test to run.
+    TestFn(u8),
+}
+
 #[derive(Debug)]
 pub struct Session {
     pub documents: Documents,
     pub config: RwLock<SwayConfig>,
     pub token_map: TokenMap,
+    pub runnables: DashMap<RunnableType, Range>,
 }
 
 impl Session {
@@ -38,6 +50,7 @@ impl Session {
             documents: DashMap::new(),
             config: RwLock::new(SwayConfig::default()),
             token_map: DashMap::new(),
+            runnables: DashMap::new(),
         }
     }
 
@@ -161,11 +174,11 @@ impl Session {
                 pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline, SWAY_GIT_TAG)
             {
                 //we can then use them directly to convert them to a Vec<Diagnostic>
-                if let Ok((parsed_res, _ast_res)) = pkg::check(&plan, silent_mode) {
+                if let Ok((parsed_res, ast_res)) = pkg::check(&plan, silent_mode) {
                     // First, populate our token_map with un-typed ast nodes
-                    let res = self.parse_ast_to_tokens(parsed_res);
+                    let _ = self.parse_ast_to_tokens(parsed_res);
                     // Next, populate our token_map with typed ast nodes
-                    //let res = self.parse_ast_to_typed_tokens(ast_res);
+                    let res = self.parse_ast_to_typed_tokens(ast_res);
                     //self.test_typed_parse(ast_res);
                     return res;
                 }
@@ -205,7 +218,7 @@ impl Session {
         }
     }
 
-    fn _parse_ast_to_typed_tokens(
+    fn parse_ast_to_typed_tokens(
         &self,
         ast_res: CompileAstResult,
     ) -> Result<Vec<Diagnostic>, DocumentError> {
@@ -218,6 +231,15 @@ impl Session {
                 typed_program,
                 warnings,
             } => {
+                if let TypedProgramKind::Script { main_function, .. }
+                | TypedProgramKind::Predicate { main_function, .. } = typed_program.kind
+                {
+                    let main_fn_location =
+                        utils::common::get_range_from_span(&main_function.name.span());
+                    self.runnables
+                        .insert(RunnableType::MainFn, main_fn_location);
+                }
+
                 for node in &typed_program.root.all_nodes {
                     traverse_typed_tree::traverse_node(node, &self.token_map);
                 }
@@ -234,7 +256,6 @@ impl Session {
     }
 
     pub fn _test_typed_parse(&mut self, _ast_res: CompileAstResult, uri: &Url) {
-        // for ((ident, _span), token) in &self.token_map {
         for item in self.token_map.iter() {
             let ((ident, _span), token) = item.pair();
             utils::debug::debug_print_ident_and_token(ident, token);
