@@ -34,34 +34,31 @@ impl CurlyBrace for ItemFn {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
-        let extra_width = formatter.config.whitespace.tab_spaces;
-        let mut shape = formatter.shape;
         let open_brace = Delimiter::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
                 writeln!(line, "\n{}", open_brace)?;
-                shape = shape.block_indent(extra_width);
+                formatter.shape.block_indent(&formatter.config);
             }
-            ItemBraceStyle::SameLineWhere => match shape.has_where_clause {
+            ItemBraceStyle::SameLineWhere => match formatter.shape.has_where_clause {
                 true => {
                     writeln!(line, "{}", open_brace)?;
-                    shape = shape.update_where_clause();
-                    shape = shape.block_indent(extra_width);
+                    formatter.shape.update_where_clause();
+                    formatter.shape.block_indent(&formatter.config);
                 }
                 false => {
                     writeln!(line, " {}", open_brace)?;
-                    shape = shape.block_indent(extra_width);
+                    formatter.shape.block_indent(&formatter.config);
                 }
             },
             _ => {
                 // TODO: implement PreferSameLine
                 writeln!(line, " {}", open_brace)?;
-                shape = shape.block_indent(extra_width);
+                formatter.shape.block_indent(&formatter.config);
             }
         }
 
-        formatter.shape = shape;
         Ok(())
     }
     fn close_curly_brace(
@@ -70,10 +67,7 @@ impl CurlyBrace for ItemFn {
     ) -> Result<(), FormatterError> {
         writeln!(line, "{}", Delimiter::Brace.as_close_char())?;
         // If shape is becoming left-most alligned or - indent just have the defualt shape
-        formatter.shape = formatter
-            .shape
-            .shrink_left(formatter.config.whitespace.tab_spaces)
-            .unwrap_or_default();
+        formatter.shape.block_unindent(&formatter.config);
         Ok(())
     }
 }
@@ -141,9 +135,7 @@ impl Format for FnSignature {
         // `WhereClause`
         if let Some(where_clause) = &self.where_clause_opt {
             where_clause.format(formatted_code, formatter)?;
-            let mut shape = formatter.shape;
-            shape = shape.update_where_clause();
-            formatter.shape = shape;
+            formatter.shape.update_where_clause();
         }
         Ok(())
     }
@@ -180,7 +172,7 @@ impl Format for CodeBlockContents {
             write!(
                 formatted_code,
                 "{}",
-                formatter.shape.indent.to_string(formatter)
+                formatter.shape.indent.to_string(&formatter.config)?
             )?;
             final_expr.format(formatted_code, formatter)?;
             writeln!(formatted_code)?;
