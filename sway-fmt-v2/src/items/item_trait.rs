@@ -101,9 +101,9 @@ impl Format for Traits {
         // additional `PathType`s
         //
         // ` + PathType`
-        for paths in self.suffixes.iter() {
-            write!(formatted_code, " {} ", paths.0.span().as_str())?;
-            paths.1.format(formatted_code, formatter)?;
+        for (add_token, path_type) in self.suffixes.iter() {
+            write!(formatted_code, " {} ", add_token.span().as_str())?;
+            path_type.format(formatted_code, formatter)?;
         }
 
         Ok(())

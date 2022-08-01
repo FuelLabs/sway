@@ -65,9 +65,14 @@ impl CurlyBrace for ItemFn {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        writeln!(line, "{}", Delimiter::Brace.as_close_char())?;
         // If shape is becoming left-most alligned or - indent just have the defualt shape
         formatter.shape.block_unindent(&formatter.config);
+        writeln!(
+            line,
+            "{}{}",
+            formatter.shape.indent.to_string(&formatter.config)?,
+            Delimiter::Brace.as_close_char()
+        )?;
         Ok(())
     }
 }
@@ -134,6 +139,7 @@ impl Format for FnSignature {
         }
         // `WhereClause`
         if let Some(where_clause) = &self.where_clause_opt {
+            writeln!(formatted_code)?;
             where_clause.format(formatted_code, formatter)?;
             formatter.shape.update_where_clause();
         }

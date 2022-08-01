@@ -681,4 +681,48 @@ where /* This is next to where */
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert_eq!(correct_sway_code, formatted_sway_code)
     }
+    #[test]
+    fn test_impl() {
+        let sway_code_to_format = r#"script;
+
+struct Foo {
+    bar: u64,
+    baz: bool,
+}
+
+trait Qux {
+    fn is_baz_true(self) -> bool;
+}
+
+impl<A ,     B>    Qux<A, B> for 
+Foo 
+where
+    A    : Qux,
+    B: Qux    ,
+{fn is_baz_true(self) -> bool {
+        self.baz
+    }}"#;
+        let correct_sway_code = r#"script;
+
+struct Foo {
+    bar: u64,
+    baz: bool,
+}
+trait Qux {
+    fn is_baz_true(self) -> bool;
+}
+
+impl<A, B> Qux<A, B> for Foo where
+    A: Qux,
+    B: Qux,
+{
+    fn is_baz_true(self) -> bool {
+        self.baz
+    }
+}"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code)
+    }
 }
