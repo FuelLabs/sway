@@ -402,38 +402,54 @@ pub fn tx_witness_pointer(index: u64) -> u64 {
 
 }
 
+enum Output {
+    Coin: (),
+    Messsage: (),
+    Change: (),
+    Variable: (),
+}
+
 /// Get the type of an output at `index`.
-pub fn tx_output_type(index: u64) -> u8 {
-    __gtf::<u8>(index, GTF_OUTPUT_TYPE)
+pub fn tx_output_type(index: u64) -> Output {
+    let type = __gtf::<u8>(index, GTF_OUTPUT_TYPE);
+    match type {
+        0u8 => {
+            Output::Coin
+        },
+        2u8 => {
+            Output::Message
+        },
+        3u8 => {
+            Output::Change
+        },
+        4u8 => {
+            Output::Variable
+        },
+        _ => {
+            revert(0);
+        },
+    }
 }
 
 /// Get the amount of coins to send for the output at `index`.
 /// This method is only meaningful if the output type has the `amount` field.
 /// Specifically: OutputCoin, OutputMessage, OutputChange, OutputVariable.
-pub fn tx_output_amount(index: u64) -> Option<u64> {
+pub fn tx_output_amount(index: u64) -> u64 {
     let type = tx_output_type(index);
     match type {
-        // 0 is the `Coin` Output type
-        0u8 => {
+        Output::Coin => {
             Option::Some(__gtf::<u64>(index, GTF_OUTPUT_COIN_AMOUNT))
         },
-        // 2 is the `Message` Output type
-        2u8 => {
+        Output::Message => {
             Option::Some(__gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT))
         },
-        // 3 is the `Change` Output type
-        // reusing GTF_OUTPUT_MESSAGE_AMOUNT as there's no simlar const for OutputChange
-        3u8 => {
-            // GTF_OUTPUT_MESSAGE_AMOUNT = 0x209
+        // ues GTF_OUTPUT_MESSAGE_AMOUNT as there's no simlar const for OutputChange
+        Output::Change => {
             Option::Some(__gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT))
         },
-        // 4 is the `Variable` Output type
-        // reusing GTF_OUTPUT_MESSAGE_AMOUNT as there's no simlar const for OutputVariable
-        4u8 => {
+        // use GTF_OUTPUT_MESSAGE_AMOUNT as there's no simlar const for OutputVariable
+        Output::Variable => {
             Option::Some(__gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT))
-        },
-        _ => {
-            Option::None
         },
     }
 }
