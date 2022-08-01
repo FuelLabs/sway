@@ -1,9 +1,9 @@
-use crate::core::token::{AstToken, TokenType, TypedAstToken};
+use crate::core::token::{AstToken, Token, TypedAstToken};
 use sway_core::semantic_analysis::ast_node::TypedDeclaration;
 use sway_core::type_engine::TypeId;
 use sway_types::{ident::Ident, span::Span, Spanned};
 
-pub fn is_initial_declaration(token_type: &TokenType) -> bool {
+pub fn is_initial_declaration(token_type: &Token) -> bool {
     match &token_type.typed {
         Some(typed_ast_token) => {
             matches!(
@@ -37,7 +37,7 @@ pub(crate) fn to_ident_key(ident: &Ident) -> (Ident, Span) {
     (ident.clone(), ident.span())
 }
 
-pub fn type_id(token_type: &TokenType) -> Option<TypeId> {
+pub fn type_id(token_type: &Token) -> Option<TypeId> {
     match &token_type.typed {
         Some(typed_ast_token) => match typed_ast_token {
             TypedAstToken::TypedDeclaration(dec) => match dec {

@@ -2,7 +2,7 @@ use crate::{
     capabilities::{self, formatting::get_format_text_edits},
     core::{
         document::{DocumentError, TextDocument},
-        token::{TokenMap, TokenType},
+        token::{Token, TokenMap, TypeDefinition},
         {traverse_parse_tree, traverse_typed_tree},
     },
     sway_config::SwayConfig,
@@ -42,7 +42,7 @@ impl Session {
     }
 
     /// Check if the code editor's cursor is currently over one of our collected tokens.
-    pub fn token_at_position(&self, uri: &Url, position: Position) -> Option<(Ident, TokenType)> {
+    pub fn token_at_position(&self, uri: &Url, position: Position) -> Option<(Ident, Token)> {
         let tokens = self.tokens_for_file(uri);
         match utils::common::ident_and_span_at_position(position, &tokens) {
             Some((ident, _)) => {
@@ -57,7 +57,7 @@ impl Session {
         }
     }
 
-    pub fn all_references_of_token(&self, token: &TokenType) -> Vec<(Ident, TokenType)> {
+    pub fn all_references_of_token(&self, token: &Token) -> Vec<(Ident, Token)> {
         let current_type_id = utils::token::type_id(token);
 
         self.token_map
@@ -95,19 +95,23 @@ impl Session {
             .collect()
     }
 
-    pub fn declared_token_ident(&self, token: &TokenType) -> Option<Ident> {
+    pub fn declared_token_ident(&self, token: &Token) -> Option<Ident> {
         // Look up the tokens TypeId
-        match utils::token::type_id(token) {
-            Some(type_id) => {
-                // Use the TypeId to look up the actual type
-                let type_info = sway_core::type_engine::look_up_type_id(type_id);
-
-                match type_info {
-                    TypeInfo::UnknownGeneric { name }
-                    | TypeInfo::Enum { name, .. }
-                    | TypeInfo::Struct { name, .. }
-                    | TypeInfo::Custom { name, .. } => Some(name),
-                    _ => None,
+        match &token.type_def {
+            Some(type_def) => {
+                match type_def {
+                    TypeDefinition::TypeId(type_id) => {
+                        // Use the TypeId to look up the actual type
+                        let type_info = sway_core::type_engine::look_up_type_id(*type_id);
+                        match type_info {
+                            TypeInfo::UnknownGeneric { name }
+                            | TypeInfo::Enum { name, .. }
+                            | TypeInfo::Struct { name, .. }
+                            | TypeInfo::Custom { name, .. } => Some(name),
+                            _ => None,
+                        }
+                    }
+                    TypeDefinition::Ident(ident) => Some(ident.clone()),
                 }
             }
             None => None,
@@ -296,13 +300,18 @@ impl Session {
         let url = params.text_document_position_params.text_document.uri;
         let position = params.text_document_position_params.position;
 
-        if let Some((_, token)) = self.token_at_position(&url, position) {
-            if let Some(decl_ident) = self.declared_token_ident(&token) {
+        self.token_at_position(&url, position)
+            .and_then(|(_, token)| self.declared_token_ident(&token))
+            .and_then(|decl_ident| {
                 let range = utils::common::get_range_from_span(&decl_ident.span());
-                return Some(GotoDefinitionResponse::Scalar(Location::new(url, range)));
-            }
-        }
-        None
+                match decl_ident.span().path() {
+                    Some(path) => match Url::from_file_path(path.as_ref()) {
+                        Ok(url) => Some(GotoDefinitionResponse::Scalar(Location::new(url, range))),
+                        Err(_) => None,
+                    },
+                    None => None,
+                }
+            })
     }
 
     pub fn completion_items(&self) -> Option<Vec<CompletionItem>> {

@@ -15,7 +15,7 @@ pub struct TypedFunctionParameter {
     pub name: Ident,
     pub is_mutable: bool,
     pub type_id: TypeId,
-    pub(crate) type_span: Span,
+    pub type_span: Span,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
