@@ -41,7 +41,19 @@ impl Parse for ItemImpl {
             }
             None => None,
         };
-        let contents = parser.parse()?;
+        let contents: Braces<Vec<Annotated<ItemFn>>> = parser.parse()?;
+        if trait_opt.is_some() {
+            for item_fn in contents.get().iter() {
+                if let Some(token) = &item_fn.value.fn_signature.visibility {
+                    return Err(parser.emit_error_with_span(
+                        ParseErrorKind::UnnecessaryVisibilityQualifier {
+                            visibility: token.ident(),
+                        },
+                        token.span(),
+                    ));
+                }
+            }
+        }
         Ok(ItemImpl {
             impl_token,
             generic_params_opt,

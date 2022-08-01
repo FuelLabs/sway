@@ -61,13 +61,8 @@ impl Format for TyArrayDescriptor {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         self.ty.format(formatted_code, formatter)?;
-        // TODO: once expr formatting is completly implemented switch this to use the actual formatting rather than the raw str coming from span
-        write!(
-            formatted_code,
-            "{} {}",
-            self.semicolon_token.span().as_str(),
-            self.length.span().as_str()
-        )?;
+        write!(formatted_code, "{} ", self.semicolon_token.span().as_str())?;
+        self.length.format(formatted_code, formatter)?;
         Ok(())
     }
 }

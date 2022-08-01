@@ -886,9 +886,9 @@ impl<'ir> AsmBuilder<'ir> {
 
         let instr_reg = self.reg_seqr.next();
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-        let elem_size =
-            ir_type_size_in_bytes(self.context, &ty.get_elem_type(self.context).unwrap());
-        if elem_size <= 8 {
+        let elem_type = ty.get_elem_type(self.context).unwrap();
+        let elem_size = ir_type_size_in_bytes(self.context, &elem_type);
+        if elem_type.is_copy_type() {
             self.bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::MULI(
                     index_reg.clone(),
@@ -1175,9 +1175,9 @@ impl<'ir> AsmBuilder<'ir> {
 
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
 
-        let elem_size =
-            ir_type_size_in_bytes(self.context, &ty.get_elem_type(self.context).unwrap());
-        if elem_size <= 8 {
+        let elem_type = ty.get_elem_type(self.context).unwrap();
+        let elem_size = ir_type_size_in_bytes(self.context, &elem_type);
+        if elem_type.is_copy_type() {
             self.bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::MULI(
                     index_reg.clone(),

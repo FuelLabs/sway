@@ -25,22 +25,17 @@ impl Format for ItemConst {
         write!(formatted_code, "{}", self.name.as_str())?;
 
         // Check if ty exists
-        if let Some(ty) = &self.ty_opt {
+        if let Some((colon_token, ty)) = &self.ty_opt {
             // Add colon
-            write!(formatted_code, "{} ", ty.0.span().as_str())?;
-            ty.1.format(formatted_code, formatter)?;
+            write!(formatted_code, "{} ", colon_token.ident().as_str())?;
+            ty.format(formatted_code, formatter)?;
         }
 
         // ` = `
         write!(formatted_code, " {} ", self.eq_token.ident().as_str())?;
 
-        // TODO: We are not applying any custom formatting to expr, probably we will need to in the future.
-        write!(
-            formatted_code,
-            "{}{}",
-            self.expr.span().as_str(),
-            self.semicolon_token.ident().as_str()
-        )?;
+        self.expr.format(formatted_code, formatter)?;
+        write!(formatted_code, "{}", self.semicolon_token.ident().as_str())?;
 
         Ok(())
     }
@@ -56,7 +51,6 @@ impl LeafSpans for ItemConst {
         collected_spans.push(ByteSpan::from(self.name.span()));
         if let Some(ty) = &self.ty_opt {
             collected_spans.append(&mut ty.leaf_spans());
-            // TODO: determine if we allow comments in between `:` and ty
         }
         collected_spans.push(ByteSpan::from(self.eq_token.span()));
         collected_spans.append(&mut self.expr.leaf_spans());

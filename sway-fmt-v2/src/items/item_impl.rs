@@ -106,7 +106,9 @@ impl LeafSpans for ItemImpl {
             collected_spans.append(&mut trait_tuple.leaf_spans());
         }
         collected_spans.append(&mut self.ty.leaf_spans());
-        // TODO add where
+        if let Some(where_clause) = &self.where_clause_opt {
+            collected_spans.append(&mut where_clause.leaf_spans());
+        }
         collected_spans.append(&mut self.contents.leaf_spans());
         collected_spans
     }

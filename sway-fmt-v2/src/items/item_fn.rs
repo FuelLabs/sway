@@ -86,11 +86,6 @@ impl Format for FnSignature {
         formatted_code: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(
-            formatted_code,
-            "{}",
-            formatter.shape.indent.to_string(formatter)
-        )?;
         // `pub `
         if let Some(visibility_token) = &self.visibility {
             write!(formatted_code, "{} ", visibility_token.span().as_str())?;
@@ -126,24 +121,24 @@ impl Format for FnSignature {
                 // `self`
                 formatted_code.push_str(self_token.span().as_str());
                 // `args_opt`
-                if let Some(args) = args_opt {
+                if let Some((comma, args)) = args_opt {
                     // `, `
-                    write!(formatted_code, "{} ", args.0.span().as_str())?;
+                    write!(formatted_code, "{} ", comma.ident().as_str())?;
                     // `Punctuated<FnArg, CommaToken>`
-                    args.1.format(formatted_code, formatter)?;
+                    args.format(formatted_code, formatter)?;
                 }
             }
         }
         // `)`
         Self::close_parenthesis(formatted_code, formatter)?;
         // `return_type_opt`
-        if let Some(return_type) = &self.return_type_opt {
+        if let Some((right_arrow, ty)) = &self.return_type_opt {
             write!(
                 formatted_code,
                 " {} ",
-                return_type.0.span().as_str() // `->`
+                right_arrow.ident().as_str() // `->`
             )?;
-            return_type.1.format(formatted_code, formatter)?; // `Ty`
+            ty.format(formatted_code, formatter)?; // `Ty`
         }
         // `WhereClause`
         if let Some(where_clause) = &self.where_clause_opt {
@@ -252,7 +247,9 @@ impl LeafSpans for FnSignature {
         if let Some(return_type) = &self.return_type_opt {
             collected_spans.append(&mut return_type.leaf_spans());
         }
-        // TODO add where, I will add where for all items at once.
+        if let Some(where_clause) = &self.where_clause_opt {
+            collected_spans.append(&mut where_clause.leaf_spans());
+        }
         collected_spans
     }
 }
