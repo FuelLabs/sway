@@ -19,7 +19,7 @@ impl Format for ItemImpl {
         write!(
             formatted_code,
             "{}{}",
-            formatter.shape.indent.to_string(formatter),
+            formatter.shape.indent.to_string(&formatter.config)?,
             self.impl_token.span().as_str()
         )?;
         if let Some(generic_params) = &self.generic_params_opt {
@@ -35,9 +35,7 @@ impl Format for ItemImpl {
         if let Some(where_clause) = &self.where_clause_opt {
             write!(formatted_code, " ")?;
             where_clause.format(formatted_code, formatter)?;
-            let mut shape = formatter.shape;
-            shape = shape.update_where_clause();
-            formatter.shape = shape;
+            formatter.shape.update_where_clause();
         }
         Self::open_curly_brace(formatted_code, formatter)?;
         let contents = self.contents.clone().into_inner();
@@ -56,34 +54,31 @@ impl CurlyBrace for ItemImpl {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
-        let extra_width = formatter.config.whitespace.tab_spaces;
-        let mut shape = formatter.shape;
         let open_brace = Delimiter::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add opening brace to the next line.
                 writeln!(line, "\n{}", open_brace)?;
-                shape = shape.block_indent(extra_width);
+                formatter.shape.block_indent(&formatter.config);
             }
-            ItemBraceStyle::SameLineWhere => match shape.has_where_clause {
+            ItemBraceStyle::SameLineWhere => match formatter.shape.has_where_clause {
                 true => {
                     writeln!(line, "{}", open_brace)?;
-                    shape = shape.update_where_clause();
-                    shape = shape.block_indent(extra_width);
+                    formatter.shape.update_where_clause();
+                    formatter.shape.block_indent(&formatter.config);
                 }
                 false => {
                     writeln!(line, " {}", open_brace)?;
-                    shape = shape.block_indent(extra_width);
+                    formatter.shape.block_indent(&formatter.config);
                 }
             },
             _ => {
                 // TODO: implement PreferSameLine
                 writeln!(line, " {}", open_brace)?;
-                shape = shape.block_indent(extra_width);
+                formatter.shape.block_indent(&formatter.config);
             }
         }
 
-        formatter.shape = shape;
         Ok(())
     }
     fn close_curly_brace(
@@ -91,7 +86,7 @@ impl CurlyBrace for ItemImpl {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         writeln!(line, "{}", Delimiter::Brace.as_close_char())?;
-        formatter.shape.indent = formatter.shape.indent.block_unindent(formatter);
+        formatter.shape.block_unindent(&formatter.config);
         Ok(())
     }
 }

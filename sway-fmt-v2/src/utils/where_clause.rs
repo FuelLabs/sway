@@ -13,13 +13,11 @@ impl Format for WhereClause {
     ) -> Result<(), FormatterError> {
         writeln!(
             formatted_code,
-            "{}{}",
-            &formatter.shape.indent.to_string(formatter),
+            "\n{}{}",
+            &formatter.shape.indent.to_string(&formatter.config)?,
             self.where_token.span().as_str(),
         )?;
-        formatter.shape = formatter
-            .shape
-            .block_indent(formatter.config.whitespace.tab_spaces);
+        formatter.shape.block_indent(&formatter.config);
         // We should add a multiline field to `Shape`
         // so we can reduce this code block to:
         //
@@ -35,10 +33,7 @@ impl Format for WhereClause {
             writeln!(formatted_code, "{}", pair.1.span().as_str())?;
         }
         // reset indent
-        formatter.shape = formatter
-            .shape
-            .shrink_left(formatter.config.whitespace.tab_spaces)
-            .unwrap_or_default();
+        formatter.shape.block_unindent(&formatter.config);
         Ok(())
     }
 }
@@ -52,9 +47,9 @@ impl Format for WhereBound {
         write!(
             formatted_code,
             "{}{}{} ",
-            &formatter.shape.indent.to_string(formatter), // `Indent`
-            self.ty_name.span().as_str(),                 // `Ident`
-            self.colon_token.span().as_str(),             // `ColonToken`
+            &formatter.shape.indent.to_string(&formatter.config)?, // `Indent`
+            self.ty_name.span().as_str(),                          // `Ident`
+            self.colon_token.span().as_str(),                      // `ColonToken`
         )?;
         self.bounds.format(formatted_code, formatter)?;
         Ok(())
