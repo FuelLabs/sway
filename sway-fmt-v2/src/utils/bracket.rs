@@ -1,7 +1,9 @@
 //! The purpose of this file is to house the traits and associated functions for formatting opening and closing delimiters.
 //! This allows us to avoid matching a second time for the `ItemKind` and keeps the code pertaining to individual formatting
 //! contained to each item's file.
-use crate::{fmt::FormattedCode, Formatter, FormatterError};
+use crate::fmt::*;
+use std::fmt::Write;
+use sway_parse::token::PunctKind;
 
 pub(crate) trait CurlyBrace {
     /// Handles brace open scenerio. Checks the config for the placement of the brace.
@@ -44,4 +46,18 @@ pub(crate) trait Parenthesis {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError>;
+}
+
+pub(crate) fn open_angle_bracket(formatted_code: &mut FormattedCode) -> Result<(), FormatterError> {
+    write!(formatted_code, "{}", PunctKind::LessThan.as_char())?;
+
+    Ok(())
+}
+
+pub(crate) fn close_angle_bracket(
+    formatted_code: &mut FormattedCode,
+) -> Result<(), FormatterError> {
+    write!(formatted_code, "{}", PunctKind::GreaterThan.as_char())?;
+
+    Ok(())
 }

@@ -1,9 +1,6 @@
-use crate::{
-    fmt::{Format, FormattedCode, Formatter, FormatterError},
-};
-use std::fmt::Write;
+use super::bracket::{close_angle_bracket, open_angle_bracket};
+use crate::fmt::{Format, FormattedCode, Formatter, FormatterError};
 use sway_parse::{GenericArgs, GenericParams};
-use sway_types::Spanned;
 
 // In the future we will need to determine whether the generic arguments
 // are better suited with a `where` clause. At present they will be
@@ -18,19 +15,11 @@ impl Format for GenericParams {
         let params = self.parameters.clone().into_inner();
 
         // `<`
-        write!(
-            formatted_code,
-            "{}",
-            self.parameters.open_angle_bracket_token.span().as_str()
-        )?;
+        open_angle_bracket(formatted_code)?;
         // format and add parameters
         params.format(formatted_code, formatter)?;
         // `>`
-        write!(
-            formatted_code,
-            "{}",
-            self.parameters.close_angle_bracket_token.span().as_str()
-        )?;
+        close_angle_bracket(formatted_code)?;
 
         Ok(())
     }
@@ -46,19 +35,11 @@ impl Format for GenericArgs {
         let params = self.parameters.clone().into_inner();
 
         // `<`
-        write!(
-            formatted_code,
-            "{}",
-            self.parameters.open_angle_bracket_token.span().as_str()
-        )?;
+        open_angle_bracket(formatted_code)?;
         // format and add parameters
         params.format(formatted_code, formatter)?;
         // `>`
-        write!(
-            formatted_code,
-            "{}",
-            self.parameters.close_angle_bracket_token.span().as_str()
-        )?;
+        close_angle_bracket(formatted_code)?;
 
         Ok(())
     }
