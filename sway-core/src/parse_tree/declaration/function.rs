@@ -23,5 +23,5 @@ pub struct FunctionParameter {
     pub name: Ident,
     pub is_mutable: bool,
     pub(crate) type_id: TypeId,
-    pub(crate) type_span: Span,
+    pub type_span: Span,
 }

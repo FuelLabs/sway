@@ -34,7 +34,7 @@ impl Format for ItemStorage {
                 // In first iteration we are going to be collecting the lengths of the struct fields.
                 let field_length: Vec<usize> = value_pairs
                     .iter()
-                    .map(|field| field.0.name.as_str().len())
+                    .map(|(storage_field, _)| storage_field.name.as_str().len())
                     .collect();
 
                 // Find the maximum length in the `field_length` vector that is still smaller than `storage_field_align_threshold`.
@@ -47,14 +47,13 @@ impl Format for ItemStorage {
                 });
 
                 let mut value_pairs_iter = value_pairs.iter().enumerate().peekable();
-                for (field_index, field) in value_pairs_iter.clone() {
+                for (field_index, (storage_field, comma_token)) in value_pairs_iter.clone() {
                     write!(
                         formatted_code,
                         "{}",
                         &formatter.shape.indent.to_string(&formatter.config)?
                     )?;
 
-                    let storage_field = &field.0;
                     // Add name
                     write!(formatted_code, "{}", storage_field.name.as_str())?;
 
@@ -84,7 +83,7 @@ impl Format for ItemStorage {
                         .initializer
                         .format(formatted_code, formatter)?;
                     if value_pairs_iter.peek().is_some() {
-                        writeln!(formatted_code, "{}", field.1.span().as_str())?;
+                        writeln!(formatted_code, "{}", comma_token.ident().as_str())?;
                     } else if let Some(final_value) = &fields.final_value_opt {
                         final_value.format(formatted_code, formatter)?;
                     }
@@ -92,17 +91,17 @@ impl Format for ItemStorage {
             }
             FieldAlignment::Off => {
                 let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
-                for field in value_pairs_iter.clone() {
+                for (storage_field, comma_token) in value_pairs_iter.clone() {
                     write!(
                         formatted_code,
                         "{}",
                         &formatter.shape.indent.to_string(&formatter.config)?
                     )?;
                     // storage_field
-                    field.0.format(formatted_code, formatter)?;
+                    storage_field.format(formatted_code, formatter)?;
 
                     if value_pairs_iter.peek().is_some() {
-                        writeln!(formatted_code, "{}", field.1.span().as_str())?;
+                        writeln!(formatted_code, "{}", comma_token.ident().as_str())?;
                     }
                 }
                 if let Some(final_value) = &fields.final_value_opt {

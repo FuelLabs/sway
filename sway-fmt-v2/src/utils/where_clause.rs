@@ -3,6 +3,8 @@ use std::fmt::Write;
 use sway_parse::{WhereBound, WhereClause};
 use sway_types::Spanned;
 
+use super::comments::{ByteSpan, LeafSpans};
+
 impl Format for WhereClause {
     fn format(
         &self,
@@ -44,12 +46,29 @@ impl Format for WhereBound {
     ) -> Result<(), FormatterError> {
         write!(
             formatted_code,
-            "{}{}{} {}",
+            "{}{}{} ",
             &formatter.shape.indent.to_string(&formatter.config)?, // `Indent`
             self.ty_name.span().as_str(),                          // `Ident`
             self.colon_token.span().as_str(),                      // `ColonToken`
-            self.bounds.span().as_str()                            //  TODO: `Traits`
         )?;
+        self.bounds.format(formatted_code, formatter)?;
         Ok(())
+    }
+}
+
+impl LeafSpans for WhereBound {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = self.ty_name.leaf_spans();
+        collected_spans.append(&mut self.colon_token.leaf_spans());
+        collected_spans.append(&mut self.bounds.leaf_spans());
+        collected_spans
+    }
+}
+
+impl LeafSpans for WhereClause {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = vec![ByteSpan::from(self.where_token.span())];
+        collected_spans.append(&mut self.bounds.leaf_spans());
+        collected_spans
     }
 }

@@ -87,7 +87,7 @@ fn format_enum(
                     // In first iteration we are going to be collecting the lengths of the enum variants.
                     let variant_length: Vec<usize> = value_pairs
                         .iter()
-                        .map(|variant| variant.0.name.as_str().len())
+                        .map(|(type_field, _)| type_field.name.as_str().len())
                         .collect();
 
                     // Find the maximum length in the variant_length vector that is still smaller than enum_field_align_threshold.
@@ -101,14 +101,13 @@ fn format_enum(
                     });
 
                     let mut value_pairs_iter = value_pairs.iter().enumerate().peekable();
-                    for (var_index, variant) in value_pairs_iter.clone() {
+                    for (var_index, (type_field, comma_token)) in value_pairs_iter.clone() {
                         write!(
                             formatted_code,
                             "{}",
                             &formatter.shape.indent.to_string(&formatter.config)?
                         )?;
 
-                        let type_field = &variant.0;
                         // Add name
                         write!(formatted_code, "{}", type_field.name.as_str())?;
                         let current_variant_length = variant_length[var_index];
@@ -131,7 +130,7 @@ fn format_enum(
                         )?;
                         type_field.ty.format(formatted_code, formatter)?;
                         if value_pairs_iter.peek().is_some() {
-                            writeln!(formatted_code, "{}", variant.1.span().as_str())?;
+                            writeln!(formatted_code, "{}", comma_token.span().as_str())?;
                         } else if let Some(final_value) = &fields.final_value_opt {
                             write!(formatted_code, "{}", final_value.span().as_str())?;
                         }
@@ -139,17 +138,17 @@ fn format_enum(
                 }
                 FieldAlignment::Off => {
                     let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
-                    for variant in value_pairs_iter.clone() {
+                    for (type_field, comma_token) in value_pairs_iter.clone() {
                         write!(
                             formatted_code,
                             "{}",
                             &formatter.shape.indent.to_string(&formatter.config)?
                         )?;
                         // TypeField
-                        variant.0.format(formatted_code, formatter)?;
+                        type_field.format(formatted_code, formatter)?;
 
                         if value_pairs_iter.peek().is_some() {
-                            writeln!(formatted_code, "{}", variant.1.span().as_str())?;
+                            writeln!(formatted_code, "{}", comma_token.span().as_str())?;
                         }
                     }
                     if let Some(final_value) = &fields.final_value_opt {
@@ -168,11 +167,11 @@ fn format_enum(
             // non-multiline formatting
             write!(formatted_code, " ")?;
             let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
-            for variant in value_pairs_iter.clone() {
-                variant.0.format(formatted_code, formatter)?;
+            for (type_field, comma_token) in value_pairs_iter.clone() {
+                type_field.format(formatted_code, formatter)?;
 
                 if value_pairs_iter.peek().is_some() {
-                    write!(formatted_code, "{} ", variant.1.span().as_str())?;
+                    write!(formatted_code, "{} ", comma_token.span().as_str())?;
                 }
             }
             if let Some(final_value) = &fields.final_value_opt {

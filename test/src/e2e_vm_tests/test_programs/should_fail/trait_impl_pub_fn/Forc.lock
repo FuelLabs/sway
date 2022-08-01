@@ -1,0 +1,4 @@
+[[package]]
+name = 'trait_impl_pub_fn'
+source = 'root'
+dependencies = []

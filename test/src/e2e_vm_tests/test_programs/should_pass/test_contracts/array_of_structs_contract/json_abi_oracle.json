@@ -60,5 +60,87 @@
       }
     ],
     "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "components": [
+              {
+                "components": [
+                  {
+                    "components": null,
+                    "name": "number",
+                    "type": "u64",
+                    "typeArguments": null
+                  }
+                ],
+                "name": "id",
+                "type": "struct Id",
+                "typeArguments": null
+              }
+            ],
+            "name": "__array_element",
+            "type": "struct Wrapper",
+            "typeArguments": null
+          }
+        ],
+        "name": "param",
+        "type": "[struct Wrapper; 2]",
+        "typeArguments": null
+      }
+    ],
+    "name": "return_element_of_array_of_structs",
+    "outputs": [
+      {
+        "components": [
+          {
+            "components": [
+              {
+                "components": null,
+                "name": "number",
+                "type": "u64",
+                "typeArguments": null
+              }
+            ],
+            "name": "id",
+            "type": "struct Id",
+            "typeArguments": null
+          }
+        ],
+        "name": "",
+        "type": "struct Wrapper",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "__array_element",
+            "type": "str[3]",
+            "typeArguments": null
+          }
+        ],
+        "name": "param",
+        "type": "[str[3]; 3]",
+        "typeArguments": null
+      }
+    ],
+    "name": "return_element_of_array_of_strings",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "str[3]",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
   }
 ]

@@ -32,12 +32,12 @@ impl Format for Expr {
                 writeln!(formatted_code)?;
                 let fields = fields.clone().into_inner();
                 let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
-                for field in value_pairs_iter.clone() {
+                for (expr_struct_field, comma_token) in value_pairs_iter.clone() {
                     // TypeField
-                    field.0.format(formatted_code, formatter)?;
+                    expr_struct_field.format(formatted_code, formatter)?;
 
                     if value_pairs_iter.peek().is_some() {
-                        writeln!(formatted_code, "{}", field.1.span().as_str())?;
+                        writeln!(formatted_code, "{}", comma_token.ident().as_str())?;
                     }
                 }
                 if let Some(final_value) = &fields.final_value_opt {
@@ -208,9 +208,9 @@ impl Format for ExprStructField {
             formatter.shape.indent.to_string(&formatter.config)?,
             self.field_name.span().as_str()
         )?;
-        if let Some(expr) = &self.expr_opt {
-            write!(formatted_code, "{} ", expr.0.span().as_str())?;
-            expr.1.format(formatted_code, formatter)?;
+        if let Some((colon_token, expr)) = &self.expr_opt {
+            write!(formatted_code, "{} ", colon_token.ident().as_str())?;
+            expr.format(formatted_code, formatter)?;
         }
 
         Ok(())
@@ -593,7 +593,6 @@ impl LeafSpans for ExprStructField {
         let mut collected_spans = vec![ByteSpan::from(self.field_name.span())];
         if let Some(expr) = &self.expr_opt {
             collected_spans.push(ByteSpan::from(expr.0.span()));
-            // TODO: determine if we are allowing comments between `:` and expr
             collected_spans.append(&mut expr.1.leaf_spans());
         }
         collected_spans
@@ -648,7 +647,6 @@ impl LeafSpans for AsmRegisterDeclaration {
         let mut collected_spans = vec![ByteSpan::from(self.register.span())];
         if let Some(value) = &self.value_opt {
             collected_spans.append(&mut value.leaf_spans());
-            // TODO: determine if we are allowing comments between `:` and expr
         }
         collected_spans
     }
@@ -659,7 +657,6 @@ impl LeafSpans for AsmBlockContents {
         let mut collected_spans = Vec::new();
         for instruction in &self.instructions {
             collected_spans.append(&mut instruction.leaf_spans());
-            // TODO: probably we shouldn't allow for comments in between the instruction and comma since it may/will result in build failure after formatting
         }
         collected_spans
     }
@@ -677,7 +674,6 @@ impl LeafSpans for AsmFinalExpr {
         let mut collected_spans = vec![ByteSpan::from(self.register.span())];
         if let Some(ty) = &self.ty_opt {
             collected_spans.append(&mut ty.leaf_spans());
-            // TODO: determine if we are allowing comments between `:` and ty
         }
         collected_spans
     }
@@ -739,14 +735,12 @@ impl LeafSpans for MatchBranchKind {
                 comma_token_opt,
             } => {
                 collected_spans.append(&mut block.leaf_spans());
-                // TODO: determine if we allow comments between block and comma_token
                 if let Some(comma_token) = comma_token_opt {
                     collected_spans.push(ByteSpan::from(comma_token.span()));
                 }
             }
             MatchBranchKind::Expr { expr, comma_token } => {
                 collected_spans.append(&mut expr.leaf_spans());
-                // TODO: determine if we allow comments between expr and comma_token
                 collected_spans.push(ByteSpan::from(comma_token.span()));
             }
         };
