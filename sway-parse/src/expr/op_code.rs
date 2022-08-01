@@ -11,7 +11,7 @@ macro_rules! define_op_codes (
                     $(
                         let $arg_name = parser.parse()?;
                     )*
-                    Ok($ty_name::new(ident, ($($arg_name,)*)))
+                    Ok($ty_name::instruction(ident, ($($arg_name,)*)))
                 },)*
                 _ => {
                     let span = ident.span().clone();

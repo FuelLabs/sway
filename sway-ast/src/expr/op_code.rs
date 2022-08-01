@@ -73,7 +73,7 @@ pub trait Inst {
     /// Arguments to the instruction.
     type Args;
 
-    fn new(ident: Ident, args: Self::Args) -> Instruction;
+    fn instruction(ident: Ident, args: Self::Args) -> Instruction;
 }
 
 macro_rules! define_op_codes (
@@ -85,7 +85,7 @@ macro_rules! define_op_codes (
                 const LIT: &'static str = $s;
                 type Args = ($(op_code_ty!($arg_ty),)*);
 
-                fn new(ident: Ident, ($($arg_name,)*): Self::Args) -> Instruction {
+                fn instruction(ident: Ident, ($($arg_name,)*): Self::Args) -> Instruction {
                     Instruction::$op_name {
                         token: $ty_name { span: ident.span().clone() },
                         $($arg_name,)*

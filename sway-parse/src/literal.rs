@@ -4,7 +4,7 @@ use sway_ast::Literal;
 
 impl Peek for Literal {
     fn peek(peeker: Peeker<'_>) -> Option<Literal> {
-        peeker.peek_literal().ok().map(|l| l.clone())
+        peeker.peek_literal().ok().cloned()
     }
 }
 
