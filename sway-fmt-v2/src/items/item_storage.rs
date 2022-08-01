@@ -87,14 +87,13 @@ fn format_storage(
                 });
 
                 let mut value_pairs_iter = value_pairs.iter().enumerate().peekable();
-                for (field_index, field) in value_pairs_iter.clone() {
+                for (field_index, (storage_field, comma_token)) in value_pairs_iter.clone() {
                     write!(
                         formatted_code,
                         "{}",
                         &formatter.shape.indent.to_string(formatter)
                     )?;
 
-                    let storage_field = &field.0;
                     // Add name
                     write!(formatted_code, "{}", storage_field.name.as_str())?;
 
@@ -124,7 +123,7 @@ fn format_storage(
                         .initializer
                         .format(formatted_code, formatter)?;
                     if value_pairs_iter.peek().is_some() {
-                        writeln!(formatted_code, "{}", field.1.span().as_str())?;
+                        writeln!(formatted_code, "{}", comma_token.ident().as_str())?;
                     } else if let Some(final_value) = &fields.final_value_opt {
                         final_value.format(formatted_code, formatter)?;
                     }
@@ -132,17 +131,17 @@ fn format_storage(
             }
             FieldAlignment::Off => {
                 let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
-                for field in value_pairs_iter.clone() {
+                for (storage_field, comma_token) in value_pairs_iter.clone() {
                     write!(
                         formatted_code,
                         "{}",
                         &formatter.shape.indent.to_string(formatter)
                     )?;
                     // storage_field
-                    field.0.format(formatted_code, formatter)?;
+                    storage_field.format(formatted_code, formatter)?;
 
                     if value_pairs_iter.peek().is_some() {
-                        writeln!(formatted_code, "{}", field.1.span().as_str())?;
+                        writeln!(formatted_code, "{}", comma_token.ident().as_str())?;
                     }
                 }
                 if let Some(final_value) = &fields.final_value_opt {
@@ -160,19 +159,25 @@ fn format_storage(
         // non-multiline formatting
         write!(formatted_code, " ")?;
         let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
-        for field in value_pairs_iter.clone() {
+        for (storage_field, comma_token) in value_pairs_iter.clone() {
             // storage_field
             write!(
                 formatted_code,
                 "{}{} ",
-                field.0.name.span().as_str(),
-                field.0.colon_token.span().as_str(),
+                storage_field.name.span().as_str(),
+                storage_field.colon_token.span().as_str(),
             )?;
-            field.0.ty.format(formatted_code, formatter)?;
-            write!(formatted_code, " {} ", field.0.eq_token.ident().as_str())?;
-            field.0.initializer.format(formatted_code, formatter)?;
+            storage_field.ty.format(formatted_code, formatter)?;
+            write!(
+                formatted_code,
+                " {} ",
+                storage_field.eq_token.ident().as_str()
+            )?;
+            storage_field
+                .initializer
+                .format(formatted_code, formatter)?;
             if value_pairs_iter.peek().is_some() {
-                write!(formatted_code, "{} ", field.1.span().as_str())?;
+                write!(formatted_code, "{} ", comma_token.span().as_str())?;
             }
         }
         if let Some(final_value) = &fields.final_value_opt {

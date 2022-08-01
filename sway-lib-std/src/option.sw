@@ -13,7 +13,7 @@ use ::revert::revert;
 pub enum Option<T> {
     /// Signifies the absence of a value
     None: (),
-    
+
     /// Contains the value
     Some: T,
 }

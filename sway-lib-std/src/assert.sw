@@ -8,7 +8,5 @@ use ::revert::revert;
 pub fn assert(condition: bool) {
     if !condition {
         revert(0);
-    } else {
-        ()
     }
 }
