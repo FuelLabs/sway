@@ -194,7 +194,7 @@ pub fn tx_script_data_length() -> u64 {
     let type = tx_type();
     match type {
         Transaction::Script => {
-            Option::Some(__gtf::<u64>(0, GTF_SCRIPT_SCRIPT_DATA_LENGTH))
+            __gtf::<u64>(0, GTF_SCRIPT_SCRIPT_DATA_LENGTH)
         },
         Transaction::Create => {
             revert(1)
@@ -340,10 +340,7 @@ pub fn tx_input_owner(index: u64) -> Option<Address> {
         },
     };
 
-    Option::Some(~Address::from(read::<b256>(
-        owner_ptr,
-        0
-    )))
+    Option::Some(~Address::from(read::<b256>(owner_ptr)))
 }
 
 ////////////////////////////////////////
