@@ -99,14 +99,14 @@ impl U256 {
 }
 
 impl core::ops::Ord for U256 {
-    pub fn gt(self, other: Self) -> bool {
+    fn gt(self, other: Self) -> bool {
         self.a > other.a
             || (self.a == other.a && self.b > other.b
                 || (self.b == other.b && self.c > other.c
                     || (self.c == other.c && self.d > other.d)))
     }
 
-    pub fn lt(self, other: Self) -> bool {
+    fn lt(self, other: Self) -> bool {
         self.a < other.a
             || (self.a == other.a && self.b < other.b
                 || (self.b == other.b && self.c < other.c
@@ -115,7 +115,7 @@ impl core::ops::Ord for U256 {
 }
 
 impl core::ops::BitwiseAnd for U256 {
-    pub fn binary_and(self, other: Self) -> Self {
+    fn binary_and(self, other: Self) -> Self {
         let(value_word_1, value_word_2, value_word_3, value_word_4) = self.decompose();
         let(other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
         let word_1 = value_word_1 & other_word_1;
@@ -127,7 +127,7 @@ impl core::ops::BitwiseAnd for U256 {
 }
 
 impl core::ops::BitwiseOr for U256 {
-    pub fn binary_or(self, other: Self) -> Self {
+    fn binary_or(self, other: Self) -> Self {
         let(value_word_1, value_word_2, value_word_3, value_word_4) = self.decompose();
         let(other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
         let word_1 = value_word_1 | other_word_1;
@@ -139,7 +139,7 @@ impl core::ops::BitwiseOr for U256 {
 }
 
 impl core::ops::BitwiseXor for U256 {
-    pub fn binary_xor(self, other: Self) -> Self {
+    fn binary_xor(self, other: Self) -> Self {
         let(value_word_1, value_word_2, value_word_3, value_word_4) = self.decompose();
         let(other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
         let word_1 = value_word_1 ^ other_word_1;
@@ -317,7 +317,7 @@ impl core::ops::Multiply for U256 {
 
 impl core::ops::Divide for U256 {
     /// Divide a U256 by a U256. Panics if divisor is zero.
-    pub fn divide(self, divisor: Self) -> Self {
+    fn divide(self, divisor: Self) -> Self {
         let zero = ~U256::from(0, 0, 0, 0);
         let one = ~U256::from(0, 0, 0, 1);
 
