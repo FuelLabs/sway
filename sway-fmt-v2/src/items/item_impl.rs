@@ -7,7 +7,7 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_parse::{token::Delimiter, ItemImpl};
+use sway_ast::{token::Delimiter, ItemImpl};
 use sway_types::Spanned;
 
 impl Format for ItemImpl {

@@ -1,41 +1,37 @@
-use crate::priv_prelude::*;
+use crate::{ErrorEmitted, Parse, ParseErrorKind, ParseResult, ParseToEnd, Parser};
 
-macro_rules! define_brackets (
+use sway_ast::brackets::{Braces, Parens, SquareBrackets};
+use sway_ast::keywords::{CloseAngleBracketToken, OpenAngleBracketToken};
+use sway_ast::token::Delimiter;
+use sway_types::{Span, Spanned};
+
+pub trait ParseBracket<T>: Sized {
+    fn try_parse(parser: &mut Parser) -> ParseResult<Option<Self>>
+    where
+        T: ParseToEnd;
+
+    fn parse_all_inner(
+        parser: &mut Parser,
+        on_error: impl FnOnce(Parser) -> ErrorEmitted,
+    ) -> ParseResult<Self>
+    where
+        T: Parse;
+
+    fn try_parse_all_inner(
+        parser: &mut Parser,
+        on_error: impl FnOnce(Parser) -> ErrorEmitted,
+    ) -> ParseResult<Option<Self>>
+    where
+        T: Parse;
+}
+
+macro_rules! impl_brackets (
     ($ty_name:ident, $delimiter:ident, $error:ident) => {
-        #[derive(Clone, Debug)]
-        pub struct $ty_name<T> {
-            inner: T,
-            span: Span,
-        }
-
-        impl<T> $ty_name<T> {
-            pub fn new<'a>(inner: T, span: Span, _consumed: ParserConsumed<'a>) -> $ty_name<T> {
-                $ty_name {
-                    inner,
-                    span,
-                }
-            }
-
-            pub fn get(&self) -> &T {
-                &self.inner
-            }
-
-            pub fn into_inner(self) -> T {
-                self.inner
-            }
-        }
-
-        impl<T> Spanned for $ty_name<T> {
-            fn span(&self) -> Span {
-                self.span.clone()
-            }
-        }
-
-        impl<T> $ty_name<T>
-        where
-            T: ParseToEnd,
-        {
-            pub fn try_parse(parser: &mut Parser) -> ParseResult<Option<$ty_name<T>>> {
+        impl<T> ParseBracket<T> for $ty_name<T> {
+            fn try_parse(parser: &mut Parser) -> ParseResult<Option<$ty_name<T>>>
+            where
+                T: ParseToEnd
+            {
                 match parser.enter_delimited(Delimiter::$delimiter) {
                     Some((parser, span)) => {
                         let (inner, _consumed) = parser.parse_to_end()?;
@@ -44,16 +40,14 @@ macro_rules! define_brackets (
                     None => Ok(None),
                 }
             }
-        }
 
-        impl<T> $ty_name<T>
-        where
-            T: Parse,
-        {
-            pub fn parse_all_inner(
+            fn parse_all_inner(
                 parser: &mut Parser,
                 on_error: impl FnOnce(Parser) -> ErrorEmitted,
-            ) -> ParseResult<$ty_name<T>> {
+            ) -> ParseResult<$ty_name<T>>
+            where
+                T: Parse
+            {
                 match parser.enter_delimited(Delimiter::$delimiter) {
                     Some((mut parser, span)) => {
                         let inner = parser.parse()?;
@@ -65,16 +59,14 @@ macro_rules! define_brackets (
                     None => Err(parser.emit_error(ParseErrorKind::$error)),
                 }
             }
-        }
 
-        impl<T> $ty_name<T>
-        where
-            T: Parse,
-        {
-            pub fn try_parse_all_inner(
+            fn try_parse_all_inner(
                 parser: &mut Parser,
                 on_error: impl FnOnce(Parser) -> ErrorEmitted,
-            ) -> ParseResult<Option<$ty_name<T>>> {
+            ) -> ParseResult<Option<$ty_name<T>>>
+            where
+                T: Parse
+            {
                 match parser.enter_delimited(Delimiter::$delimiter) {
                     Some((mut parser, span)) => {
                         let inner = parser.parse()?;
@@ -105,21 +97,15 @@ macro_rules! define_brackets (
     };
 );
 
-define_brackets!(Braces, Brace, ExpectedOpenBrace);
-define_brackets!(Parens, Parenthesis, ExpectedOpenParen);
-define_brackets!(SquareBrackets, Bracket, ExpectedOpenBracket);
+impl_brackets!(Braces, Brace, ExpectedOpenBrace);
+impl_brackets!(Parens, Parenthesis, ExpectedOpenParen);
+impl_brackets!(SquareBrackets, Bracket, ExpectedOpenBracket);
 
 #[derive(Clone, Debug)]
 pub struct AngleBrackets<T> {
     pub open_angle_bracket_token: OpenAngleBracketToken,
     pub inner: T,
     pub close_angle_bracket_token: CloseAngleBracketToken,
-}
-
-impl<T> AngleBrackets<T> {
-    pub fn into_inner(self) -> T {
-        self.inner
-    }
 }
 
 impl<T> Spanned for AngleBrackets<T> {

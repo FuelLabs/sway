@@ -17,8 +17,8 @@ use crate::{
     semantic_analysis::*,
     type_engine::{resolve_type, TypeId, TypeInfo},
 };
+use sway_ast::intrinsics::Intrinsic;
 use sway_ir::{Context, *};
-use sway_parse::intrinsics::Intrinsic;
 use sway_types::{
     ident::Ident,
     span::{Span, Spanned},

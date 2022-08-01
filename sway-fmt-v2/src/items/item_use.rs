@@ -5,7 +5,7 @@ use crate::{
     utils::comments::{ByteSpan, LeafSpans},
     FormatterError,
 };
-use sway_parse::{ItemUse, UseTree};
+use sway_ast::{ItemUse, UseTree};
 use sway_types::Spanned;
 
 impl Format for ItemUse {
