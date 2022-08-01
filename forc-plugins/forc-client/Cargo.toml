@@ -7,6 +7,18 @@ edition = "2021"
 anyhow = "1"
 clap = { version = "3", features = ["derive"] }
 tokio = { version = "1.8" }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["ansi", "env-filter", "json"] }
+hex = "0.4.3"
+forc = {path = "../../forc"}
+forc-util = {path = "../../forc-util"}
+forc-pkg = {path = "../../forc-pkg"}
+fuel-gql-client = { version = "0.9", default-features = false }
+fuel-tx = "0.13"
+fuel-vm = "0.12"
+sway-core = { version = "0.19.0", path = "../../sway-core" }
+sway-types = { version = "0.19.0", path = "../../sway-types" }
+sway-utils = { version = "0.19.0", path = "../../sway-utils" }
 
 
 [[bin]]

@@ -1,9 +1,12 @@
 use anyhow::{bail, Result};
-use forc::test::{forc_build, forc_deploy, forc_run, BuildCommand, DeployCommand, RunCommand};
+use forc::test::{forc_build, forc_run, BuildCommand, RunCommand};
 use forc_pkg::Compiled;
 use fuel_tx::Transaction;
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
+use hex::FromHex;
+use std::process::Command;
+use std::str;
 use std::{fmt::Write, fs};
 
 pub(crate) fn deploy_contract(file_name: &str, locked: bool) -> ContractId {
@@ -11,21 +14,27 @@ pub(crate) fn deploy_contract(file_name: &str, locked: bool) -> ContractId {
     // deploy it
     tracing::info!(" Deploying {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-
+    // TODO: handle this better
     let verbose = get_test_config_from_env();
-
-    tokio::runtime::Runtime::new()
-        .unwrap()
-        .block_on(forc_deploy::deploy(DeployCommand {
-            path: Some(format!(
+    let deploy_command = Command::new("forc")
+        .args([
+            "deploy",
+            "--path",
+            &format!(
                 "{}/src/e2e_vm_tests/test_programs/{}",
                 manifest_dir, file_name
-            )),
-            silent_mode: !verbose,
-            locked,
-            ..Default::default()
-        }))
-        .unwrap()
+            ),
+            "--locked",
+        ])
+        .output()
+        .unwrap();
+    let output = str::from_utf8(&deploy_command.stdout).unwrap();
+    let start_bytes = output.find(": 0x").unwrap_or(0);
+    let contract_id_str = &output[start_bytes + 4..output.len()];
+    let contract_id_str = contract_id_str.lines().nth(0).unwrap();
+    let contract_id_bytes = Vec::from_hex(contract_id_str).unwrap();
+    let contract_id: [u8; 32] = contract_id_bytes[..].try_into().unwrap();
+    ContractId::new(contract_id)
 }
 
 /// Run a given project against a node. Assumes the node is running at localhost:4000.

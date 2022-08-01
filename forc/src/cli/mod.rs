@@ -1,6 +1,6 @@
 use self::commands::{
-    addr2line, build, check, clean, completions, deploy, init, json_abi, new, parse_bytecode,
-    plugins, run, template, test, update,
+    addr2line, build, check, clean, completions, init, json_abi, new, parse_bytecode, plugins, run,
+    template, test, update,
 };
 use addr2line::Command as Addr2LineCommand;
 use anyhow::{anyhow, Result};
@@ -9,7 +9,6 @@ pub use check::Command as CheckCommand;
 use clap::Parser;
 pub use clean::Command as CleanCommand;
 pub use completions::Command as CompletionsCommand;
-pub use deploy::Command as DeployCommand;
 pub use init::Command as InitCommand;
 pub use json_abi::Command as JsonAbiCommand;
 pub use new::Command as NewCommand;

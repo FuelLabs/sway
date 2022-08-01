@@ -1,6 +1,8 @@
 use anyhow::Result;
 use clap::Parser;
 
+use super::deploy;
+
 #[derive(Debug, Parser)]
 #[clap(version)]
 #[clap(bin_name = "forc")]
@@ -70,8 +72,8 @@ pub struct Deploy {
     pub time_phases: bool,
 }
 impl Deploy {
-    pub fn exec(self) -> Result<()> {
-        println!("{:?}", self);
+    pub async fn exec(self) -> Result<()> {
+        deploy::deploy(self).await?;
         Ok(())
     }
 }
