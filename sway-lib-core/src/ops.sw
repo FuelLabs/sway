@@ -411,7 +411,7 @@ impl BitwiseXor for u64 {
 }
 
 impl BitwiseAnd for b256 {
-    fn binary_and(val: self, other: Self) -> Self {
+    pub fn binary_and(val: self, other: Self) -> Self {
         let(value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
         let(other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
         let word_1 = value_word_1.binary_and(other_word_1);
@@ -424,7 +424,7 @@ impl BitwiseAnd for b256 {
 }
 
 impl BitwiseOr for b256 {
-    fn binary_or(val: self, other: Self) -> Self {
+    pub fn binary_or(val: self, other: Self) -> Self {
         let(value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
         let(other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
         let word_1 = value_word_1.binary_or(other_word_1);
@@ -437,7 +437,7 @@ impl BitwiseOr for b256 {
 }
 
 impl BitwiseXor for b256 {
-    fn binary_xor(val: self, other: Self) -> Self {
+    pub fn binary_xor(val: self, other: Self) -> Self {
         let(value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
         let(other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
         let word_1 = value_word_1.binary_xor(other_word_1);
@@ -618,7 +618,7 @@ impl Shiftable for b256 {
 /////////////////////////////////////////////////
 
 /// Left shift a u64 and preserve the overflow amount if any
-fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
+pub fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
     let right_shift_amount = 64.subtract(shift_amount);
     let carry = word.rsh(right_shift_amount);
     let shifted = word.lsh(shift_amount);
@@ -626,7 +626,7 @@ fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
 }
 
 /// Right shift a u64 and preserve the overflow amount if any
-fn rsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
+pub fn rsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
     let left_shift_amount = 64.subtract(shift_amount);
     let carry = word.lsh(left_shift_amount);
     let shifted = word.rsh(shift_amount);
