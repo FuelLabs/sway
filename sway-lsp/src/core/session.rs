@@ -160,6 +160,7 @@ impl Session {
 
     pub fn parse_project(&self, uri: &Url) -> Result<Vec<Diagnostic>, DocumentError> {
         self.token_map.clear();
+        self.runnables.clear();
 
         let manifest_dir = PathBuf::from(uri.path());
         let silent_mode = true;

@@ -252,17 +252,11 @@ impl LanguageServer for Backend {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct RunnableParams {
-    text_document: TextDocumentIdentifier,
-}
+pub struct RunnableParams {}
 
 // Custom LSP-Server Methods
 impl Backend {
-    pub async fn runnable(&self, params: RunnableParams) -> jsonrpc::Result<Option<Vec<Range>>> {
-        self.log_info_message("client has called the runnable call back!")
-            .await;
-        let _path = params.text_document.uri.as_str();
-
+    pub async fn runnable(&self, _params: RunnableParams) -> jsonrpc::Result<Option<Vec<Range>>> {
         let range = self
             .session
             .runnables
