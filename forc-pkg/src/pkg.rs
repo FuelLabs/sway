@@ -1626,6 +1626,10 @@ pub fn compile(
             typed_program,
             warnings,
         } => {
+            if build_profile.print_ast {
+                tracing::info!("{:#?}", typed_program);
+            }
+
             let json_abi = time_expr!("generate JSON ABI", typed_program.kind.generate_json_abi());
             let storage_slots = typed_program.storage_slots.clone();
             let tree_type = typed_program.kind.tree_type();

@@ -154,6 +154,22 @@ impl Function {
             })
     }
 
+    /// Remove a [`Block`] from this function.
+    ///
+    /// > Care must be taken to ensure the block has no predecessors otherwise the function will be
+    /// > made invalid.
+    pub fn remove_block(&self, context: &mut Context, block: &Block) -> Result<(), IrError> {
+        let label = block.get_label(context);
+        let func = context.functions.get_mut(self.0).unwrap();
+        let block_idx = func
+            .blocks
+            .iter()
+            .position(|b| b == block)
+            .ok_or(IrError::RemoveMissingBlock(label))?;
+        func.blocks.remove(block_idx);
+        Ok(())
+    }
+
     /// Get a new unique block label.
     ///
     /// If `hint` is `None` then the label will be in the form `"blockN"` where N is an
