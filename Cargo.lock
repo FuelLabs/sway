@@ -1136,6 +1136,19 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap 3.2.15",
+ "forc-client-ops",
+ "forc-util",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "forc-client-ops"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 3.2.15",
  "forc",
  "forc-pkg",
  "forc-util",
@@ -1148,7 +1161,6 @@ dependencies = [
  "sway-utils",
  "tokio",
  "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -3837,14 +3849,13 @@ dependencies = [
  "anyhow",
  "filecheck",
  "forc",
- "forc-client",
+ "forc-client-ops",
  "forc-pkg",
  "forc-util",
  "fuel-asm 0.6.0",
  "fuel-tx",
  "fuel-vm",
  "gag",
- "hex",
  "prettydiff 0.6.1",
  "rand 0.8.5",
  "regex",

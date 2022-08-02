@@ -112,7 +112,7 @@ pub struct Command {
     pub simulate: bool,
 }
 
-pub(crate) async fn exec(command: Command) -> Result<()> {
+pub(crate) async fn _exec(command: Command) -> Result<()> {
     match forc_run::run(command).await {
         Err(e) => bail!("{}", e),
         _ => Ok(()),

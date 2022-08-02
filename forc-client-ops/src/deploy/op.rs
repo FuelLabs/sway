@@ -10,7 +10,7 @@ use sway_core::TreeType;
 use sway_utils::constants::DEFAULT_NODE_URL;
 use tracing::info;
 
-use super::cli::Deploy;
+use super::cmd::Deploy;
 
 pub async fn deploy(command: Deploy) -> Result<fuel_tx::ContractId> {
     let curr_dir = if let Some(ref path) = command.path {

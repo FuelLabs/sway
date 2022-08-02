@@ -1,9 +1,6 @@
-use anyhow::Result;
 use clap::Parser;
 
-use super::deploy;
-
-#[derive(Debug, Parser)]
+#[derive(Debug, Default, Parser)]
 #[clap(version)]
 #[clap(bin_name = "forc")]
 pub struct Deploy {
@@ -70,10 +67,4 @@ pub struct Deploy {
     /// Output the time elapsed over each part of the compilation process.
     #[clap(long)]
     pub time_phases: bool,
-}
-impl Deploy {
-    pub async fn exec(self) -> Result<()> {
-        deploy::deploy(self).await?;
-        Ok(())
-    }
 }
