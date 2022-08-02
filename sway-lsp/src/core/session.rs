@@ -31,7 +31,7 @@ pub enum RunnableType {
     MainFn,
     /// Place holder for when we have in language testing supported.
     /// The field holds the index of the test to run.
-    TestFn(u8),
+    _TestFn(u8),
 }
 
 #[derive(Debug)]

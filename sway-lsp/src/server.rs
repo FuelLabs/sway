@@ -261,7 +261,7 @@ impl Backend {
             .session
             .runnables
             .get(&RunnableType::MainFn)
-            .map(|item| vec![item.value().clone()]);
+            .map(|item| vec![*item.value()]);
 
         Ok(range)
     }
