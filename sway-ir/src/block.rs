@@ -312,13 +312,13 @@ impl BlockContent {
                         true_block,
                         false_block,
                         ..
-                    } => vec![*true_block, *false_block].into_iter(),
+                    } => vec![*true_block, *false_block],
 
-                    Instruction::Branch(block) => vec![*block].into_iter(),
+                    Instruction::Branch(block) => vec![*block],
 
-                    _otherwise => Vec::new().into_iter(),
+                    _otherwise => Vec::new(),
                 })
-                .unwrap_or_else(|| Vec::new().into_iter())
+                .unwrap_or_default()
         })
     }
 }

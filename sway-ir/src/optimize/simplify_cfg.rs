@@ -48,24 +48,18 @@ fn merge_blocks(context: &mut Context, function: &Function) -> Result<bool, IrEr
     // Check whether a pair of blocks are singly paired.  i.e., `from_block` is the only
     // predecessor of `to_block`.
     let are_uniquely_paired = |(from_block, to_block): &(Block, Block)| -> bool {
-        let preds = context.blocks[to_block.0]
-            .predecessors(context)
-            .collect::<Vec<_>>();
-        preds.len() == 1 && preds[0] == *from_block
+        let mut preds = context.blocks[to_block.0].predecessors(context);
+        preds.next() == Some(*from_block) && preds.next().is_none()
     };
 
     // Find a block with an unconditional branch terminator which branches to a block with that
     // single predecessor.
     let twin_blocks = function
         .block_iter(context)
-        .filter_map(|from_block| {
-            // Filter all blocks with a Branch terminator.
-            block_terms_with_br(from_block)
-        })
-        .find(|pair_candidate| {
-            // Find branching blocks where they are singly paired.
-            are_uniquely_paired(pair_candidate)
-        });
+        // Filter all blocks with a Branch terminator.
+        .filter_map(block_terms_with_br)
+        // Find branching blocks where they are singly paired.
+        .find(are_uniquely_paired);
 
     // If not found then abort here.
     let mut block_chain = match twin_blocks {
