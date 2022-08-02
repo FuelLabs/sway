@@ -1,0 +1,29 @@
+// regex: ID=[[:alpha:]0-9]+
+
+script {
+    fn main() -> u64 {
+        local ptr u64 x
+
+        entry:
+        v0 = get_ptr ptr u64 x, ptr u64, 0
+// check: const u64 11
+        v1 = const u64 11
+        store v1, ptr v0
+        br block1
+
+        // Dead block, no predecessors.
+        block0:
+        v1 = phi(entry: v0)
+// not: const u64 22
+        v2 = const u64 22
+        store v2, ptr v0
+        br block1
+
+        block1:
+        v3 = phi(entry: v0)
+// check: const u64 33
+        v4 = const u64 33
+        ret u64 v4
+    }
+}
+
