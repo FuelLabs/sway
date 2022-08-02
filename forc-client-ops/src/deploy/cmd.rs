@@ -2,7 +2,7 @@ use clap::Parser;
 
 #[derive(Debug, Default, Parser)]
 #[clap(version)]
-#[clap(bin_name = "forc")]
+#[clap(bin_name = "forc deploy")]
 pub struct Deploy {
     /// Path to the project, if not specified, current working directory will be used.
     #[clap(short, long)]

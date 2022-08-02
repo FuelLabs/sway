@@ -28,10 +28,38 @@ pub fn plugin_commands() -> Vec<String> {
             let name = path.file_name().unwrap().to_str().unwrap();
 
             if name.starts_with("forc-") {
-                let plugin = name.split_once('-').unwrap().1;
-                plugins.push(plugin.to_string());
+                // Check for parent plugin (like `forc-client`)
+                let child_plugins = collect_child_plugins(&path.join("Cargo.toml")).unwrap();
+                if child_plugins.is_empty() {
+                    let plugin = name.split_once('-').unwrap().1;
+                    plugins.push(plugin.to_string());
+                } else {
+                    for child_plugin in child_plugins {
+                        let plugin = child_plugin.split_once('-').unwrap().1;
+                        plugins.push(plugin.to_string());
+                    }
+                }
             }
         }
     }
     plugins
+}
+/// Collects child plugins for a given plugin's Cargo.toml path
+fn collect_child_plugins(manifest_path: &PathBuf) -> Result<Vec<String>> {
+    let mut child_plugins = Vec::new();
+    let forc_toml: toml::Value = toml::de::from_str(&fs::read_to_string(manifest_path)?)?;
+    if let Some(table) = forc_toml.as_table() {
+        if let Some(values) = table.get("bin").and_then(|bin| bin.as_array()) {
+            for value in values {
+                if let Some(name) = value.as_table().and_then(|table| table.get("name")) {
+                    let name_str = name.to_string();
+                    let mut name = name_str.chars();
+                    name.next();
+                    name.next_back();
+                    child_plugins.push(String::from(name.as_str()));
+                }
+            }
+        }
+    }
+    Ok(child_plugins)
 }
