@@ -1,0 +1,14 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-333FD703A60081C3'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'path+from-root-333FD703A60081C3'
+dependencies = ['core']
+
+[[package]]
+name = 'u256_mul_test'
+source = 'root'
+dependencies = ['std']
