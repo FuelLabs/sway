@@ -4,6 +4,7 @@ use crate::{
     utils::{
         bracket::CurlyBrace,
         comments::{ByteSpan, LeafSpans},
+        indent_style::LineStyle,
         item::ItemLenChars,
     },
     FormatterError,
@@ -21,22 +22,14 @@ impl Format for ItemEnum {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        // Bring configurations into scope.
-        //
-        // Should small enums formatted into a single line.
-        let enum_lit_single_line = formatter.config.structures.small_structures_single_line;
+        formatter.shape.update_width(self.len_chars()?);
+        formatter.shape.get_line_style(&formatter.config);
 
-        // Get the width limit of an enum to be formatted into single line if `enum_lit_single_line` is true.
-        let width_heuristics = formatter
-            .config
-            .heuristics
-            .heuristics_pref
-            .to_width_heuristics(&formatter.config.whitespace);
-        let enum_lit_width = width_heuristics.structure_lit_width;
+        format_enum(self, formatted_code, formatter)?;
+        if formatter.shape.line_style == LineStyle::Inline {
+            formatter.shape.reset_line_style();
+        }
 
-        let multiline = !enum_lit_single_line || self.len_chars()? > enum_lit_width;
-
-        format_enum(self, formatted_code, formatter, multiline)?;
         Ok(())
     }
 }
@@ -62,7 +55,6 @@ fn format_enum(
     item_enum: &ItemEnum,
     formatted_code: &mut FormattedCode,
     formatter: &mut Formatter,
-    multiline: bool,
 ) -> Result<(), FormatterError> {
     // If there is a visibility token add it to the formatted_code with a ` ` after it.
     if let Some(visibility) = &item_enum.visibility {
@@ -81,113 +73,120 @@ fn format_enum(
         generics.format(formatted_code, formatter)?;
     }
 
-    let variants = item_enum.fields.clone().into_inner();
+    let fields = item_enum.fields.clone().into_inner();
 
     // Handle openning brace
     ItemEnum::open_curly_brace(formatted_code, formatter)?;
-    if multiline {
-        writeln!(formatted_code)?;
-        // Determine alignment tactic
-        match formatter.config.structures.field_alignment {
-            FieldAlignment::AlignFields(enum_variant_align_threshold) => {
-                let value_pairs = variants.value_separator_pairs;
-                // In first iteration we are going to be collecting the lengths of the enum variants.
-                let variant_length: Vec<usize> = value_pairs
-                    .iter()
-                    .map(|variant| variant.0.name.as_str().len())
-                    .collect();
+    match formatter.shape.line_style {
+        LineStyle::Multiline => {
+            writeln!(formatted_code)?;
+            // Determine alignment tactic
+            match formatter.config.structures.field_alignment {
+                FieldAlignment::AlignFields(enum_variant_align_threshold) => {
+                    let value_pairs = fields.value_separator_pairs;
+                    // In first iteration we are going to be collecting the lengths of the enum variants.
+                    let variant_length: Vec<usize> = value_pairs
+                        .iter()
+                        .map(|(type_field, _)| type_field.name.as_str().len())
+                        .collect();
 
-                // Find the maximum length in the variant_length vector that is still smaller than enum_field_align_threshold.
-                let mut max_valid_variant_length = 0;
-                variant_length.iter().for_each(|length| {
-                    if *length > max_valid_variant_length && *length < enum_variant_align_threshold
-                    {
-                        max_valid_variant_length = *length;
-                    }
-                });
+                    // Find the maximum length in the variant_length vector that is still smaller than enum_field_align_threshold.
+                    let mut max_valid_variant_length = 0;
+                    variant_length.iter().for_each(|length| {
+                        if *length > max_valid_variant_length
+                            && *length < enum_variant_align_threshold
+                        {
+                            max_valid_variant_length = *length;
+                        }
+                    });
 
-                let mut value_pairs_iter = value_pairs.iter().enumerate().peekable();
-                for (var_index, variant) in value_pairs_iter.clone() {
-                    formatted_code.push_str(&formatter.shape.indent.to_string(formatter));
+                    let mut value_pairs_iter = value_pairs.iter().enumerate().peekable();
+                    for (var_index, (type_field, comma_token)) in value_pairs_iter.clone() {
+                        write!(
+                            formatted_code,
+                            "{}",
+                            &formatter.shape.indent.to_string(&formatter.config)?
+                        )?;
 
-                    let type_field = &variant.0;
-                    // Add name
-                    write!(formatted_code, "{}", type_field.name.as_str())?;
-                    let current_variant_length = variant_length[var_index];
-                    if current_variant_length < max_valid_variant_length {
-                        // We need to add alignment between : and ty
-                        // max_valid_variant_length: the length of the variant that we are taking as a reference to align
-                        // current_variant_length: the length of the current variant that we are trying to format
-                        let mut required_alignment =
-                            max_valid_variant_length - current_variant_length;
-                        while required_alignment != 0 {
-                            write!(formatted_code, " ")?;
-                            required_alignment -= 1;
+                        // Add name
+                        write!(formatted_code, "{}", type_field.name.as_str())?;
+                        let current_variant_length = variant_length[var_index];
+                        if current_variant_length < max_valid_variant_length {
+                            // We need to add alignment between : and ty
+                            // max_valid_variant_length: the length of the variant that we are taking as a reference to align
+                            // current_variant_length: the length of the current variant that we are trying to format
+                            let mut required_alignment =
+                                max_valid_variant_length - current_variant_length;
+                            while required_alignment != 0 {
+                                write!(formatted_code, " ")?;
+                                required_alignment -= 1;
+                            }
+                        }
+                        // Add `:`, ty & `CommaToken`
+                        write!(
+                            formatted_code,
+                            " {} ",
+                            type_field.colon_token.ident().as_str(),
+                        )?;
+                        type_field.ty.format(formatted_code, formatter)?;
+                        if value_pairs_iter.peek().is_some() {
+                            writeln!(formatted_code, "{}", comma_token.span().as_str())?;
+                        } else if let Some(final_value) = &fields.final_value_opt {
+                            write!(formatted_code, "{}", final_value.span().as_str())?;
                         }
                     }
-                    // Add `:`, ty & `CommaToken`
-                    write!(
-                        formatted_code,
-                        " {} ",
-                        type_field.colon_token.ident().as_str(),
-                    )?;
-                    type_field.ty.format(formatted_code, formatter)?;
-                    if value_pairs_iter.peek().is_some() {
-                        writeln!(formatted_code, "{}", variant.1.span().as_str())?;
-                    } else if let Some(final_value) = &variants.final_value_opt {
-                        write!(formatted_code, "{}", final_value.span().as_str())?;
+                }
+                FieldAlignment::Off => {
+                    let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
+                    for (type_field, comma_token) in value_pairs_iter.clone() {
+                        write!(
+                            formatted_code,
+                            "{}",
+                            &formatter.shape.indent.to_string(&formatter.config)?
+                        )?;
+                        // TypeField
+                        type_field.format(formatted_code, formatter)?;
+
+                        if value_pairs_iter.peek().is_some() {
+                            writeln!(formatted_code, "{}", comma_token.span().as_str())?;
+                        }
+                    }
+                    if let Some(final_value) = &fields.final_value_opt {
+                        write!(
+                            formatted_code,
+                            "{}",
+                            &formatter.shape.indent.to_string(&formatter.config)?
+                        )?;
+                        final_value.format(formatted_code, formatter)?;
+                        writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
                     }
                 }
             }
-            FieldAlignment::Off => {
-                let mut value_pairs_iter = variants.value_separator_pairs.iter().peekable();
-                for variant in value_pairs_iter.clone() {
-                    write!(
-                        formatted_code,
-                        "{}",
-                        &formatter.shape.indent.to_string(formatter)
-                    )?;
-                    // TypeField
-                    variant.0.format(formatted_code, formatter)?;
+        }
+        LineStyle::Inline => {
+            // non-multiline formatting
+            write!(formatted_code, " ")?;
+            let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
+            for (type_field, comma_token) in value_pairs_iter.clone() {
+                type_field.format(formatted_code, formatter)?;
 
-                    if value_pairs_iter.peek().is_some() {
-                        writeln!(formatted_code, "{}", variant.1.span().as_str())?;
-                    }
-                }
-                if let Some(final_value) = &variants.final_value_opt {
-                    write!(
-                        formatted_code,
-                        "{}",
-                        &formatter.shape.indent.to_string(formatter)
-                    )?;
-                    final_value.format(formatted_code, formatter)?;
-                    writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
+                if value_pairs_iter.peek().is_some() {
+                    write!(formatted_code, "{} ", comma_token.span().as_str())?;
                 }
             }
-        }
-    } else {
-        // non-multiline formatting
-        write!(formatted_code, " ")?;
-        let mut value_pairs_iter = variants.value_separator_pairs.iter().peekable();
-        for variant in value_pairs_iter.clone() {
-            variant.0.format(formatted_code, formatter)?;
-
-            if value_pairs_iter.peek().is_some() {
-                write!(formatted_code, "{} ", variant.1.span().as_str())?;
+            if let Some(final_value) = &fields.final_value_opt {
+                final_value.format(formatted_code, formatter)?;
+                write!(formatted_code, " ")?;
+            } else {
+                formatted_code.pop();
+                formatted_code.pop();
+                write!(formatted_code, " ")?;
             }
-        }
-        if let Some(final_value) = &variants.final_value_opt {
-            final_value.format(formatted_code, formatter)?;
-            write!(formatted_code, " ")?;
-        } else {
-            formatted_code.pop();
-            formatted_code.pop();
-            write!(formatted_code, " ")?;
         }
     }
-
     // Handle closing brace
     ItemEnum::close_curly_brace(formatted_code, formatter)?;
+
     Ok(())
 }
 
@@ -196,7 +195,8 @@ impl ItemLenChars for ItemEnum {
         // Format to single line and return the length
         let mut str_item = String::new();
         let mut formatter = Formatter::default();
-        format_enum(self, &mut str_item, &mut formatter, false)?;
+        formatter.shape.line_style = LineStyle::Inline;
+        format_enum(self, &mut str_item, &mut formatter)?;
         Ok(str_item.chars().count() as usize)
     }
 }
@@ -207,23 +207,20 @@ impl CurlyBrace for ItemEnum {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
-        let extra_width = formatter.config.whitespace.tab_spaces;
-        let mut shape = formatter.shape;
         let open_brace = Delimiter::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
                 writeln!(line, "\n{}", open_brace)?;
-                shape = shape.block_indent(extra_width);
+                formatter.shape.block_indent(&formatter.config);
             }
             _ => {
                 // Add opening brace to the same line
                 write!(line, " {}", open_brace)?;
-                shape = shape.block_indent(extra_width);
+                formatter.shape.block_indent(&formatter.config);
             }
         }
 
-        formatter.shape = shape;
         Ok(())
     }
     fn close_curly_brace(
@@ -232,10 +229,7 @@ impl CurlyBrace for ItemEnum {
     ) -> Result<(), FormatterError> {
         write!(line, "{}", Delimiter::Brace.as_close_char())?;
         // If shape is becoming left-most aligned or - indent just have the defualt shape
-        formatter.shape = formatter
-            .shape
-            .shrink_left(formatter.config.whitespace.tab_spaces)
-            .unwrap_or_default();
+        formatter.shape.block_unindent(&formatter.config);
         Ok(())
     }
 }

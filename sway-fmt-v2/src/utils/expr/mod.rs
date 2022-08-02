@@ -53,7 +53,7 @@ impl Format for Expr {
                     write!(
                         formatted_code,
                         "{}",
-                        &formatter.shape.indent.to_string(formatter)
+                        &formatter.shape.indent.to_string(&formatter.config)?
                     )?;
                     final_value.format(formatted_code, formatter)?;
                     writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
@@ -137,7 +137,7 @@ impl Format for Expr {
                     write!(
                         formatted_code,
                         "{}",
-                        formatter.shape.indent.to_string(formatter)
+                        formatter.shape.indent.to_string(&formatter.config)?
                     )?;
                 }
                 func.format(formatted_code, formatter)?;
@@ -165,7 +165,7 @@ impl Format for Expr {
                     write!(
                         formatted_code,
                         "{}",
-                        formatter.shape.indent.to_string(formatter)
+                        formatter.shape.indent.to_string(&formatter.config)?
                     )?;
                 }
                 target.format(formatted_code, formatter)?;
@@ -196,7 +196,7 @@ impl Format for Expr {
                 write!(
                     formatted_code,
                     "{}",
-                    formatter.shape.indent.to_string(formatter)
+                    formatter.shape.indent.to_string(&formatter.config)?
                 )?;
                 target.format(formatted_code, formatter)?;
                 write!(formatted_code, "{}", dot_token.span().as_str())?;

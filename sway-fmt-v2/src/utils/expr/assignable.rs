@@ -20,7 +20,7 @@ impl Format for Assignable {
                 write!(
                     formatted_code,
                     "{}",
-                    formatter.shape.indent.to_string(formatter)
+                    formatter.shape.indent.to_string(&formatter.config)?
                 )?;
                 name.format(formatted_code, formatter)?;
             }

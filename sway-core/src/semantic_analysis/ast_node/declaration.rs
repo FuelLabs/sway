@@ -410,7 +410,7 @@ pub struct TypedTraitFn {
     pub return_type: TypeId,
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
-    pub(crate) return_type_span: Span,
+    pub return_type_span: Span,
 }
 
 impl CopyTypes for TypedTraitFn {

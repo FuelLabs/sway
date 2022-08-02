@@ -218,10 +218,7 @@ pub fn tx_input_owner(index: u64) -> Option<Address> {
     };
 
     let ptr = tx_input_pointer(index);
-    Option::Some(~Address::from(b256_from_pointer_offset(
-        ptr,
-        owner_offset
-    )))
+    Option::Some(~Address::from(b256_from_pointer_offset(ptr, owner_offset)))
 }
 
 /// Get the type of an input at a given index

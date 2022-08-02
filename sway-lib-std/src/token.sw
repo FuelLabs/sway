@@ -2,11 +2,11 @@
 library token;
 
 use ::address::Address;
-use ::contract_id::ContractId;
-use ::revert::revert;
-use ::tx::*;
 use ::context::call_frames::contract_id;
+use ::contract_id::ContractId;
 use ::identity::Identity;
+use ::revert::revert;
+use ::tx::{OUTPUT_VARIABLE, tx_output_amount, tx_output_type, tx_outputs_count};
 
 /// Mint `amount` coins of the current contract's `asset_id` and transfer them
 /// to `to` by calling either force_transfer_to_contract() or
