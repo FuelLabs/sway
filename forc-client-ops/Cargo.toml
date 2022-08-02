@@ -12,7 +12,10 @@ forc-util = {path = "../forc-util"}
 fuel-gql-client = { version = "0.9", default-features = false }
 fuel-tx = "0.13"
 fuel-vm = "0.12"
+futures = "0.3"
 hex = "0.4.3"
+serde = { version = "1.0"}
+serde_json = "1.0.73"
 sway-core = { version = "0.19.0", path = "../sway-core" }
 sway-types = { version = "0.19.0", path = "../sway-types" }
 sway-utils = { version = "0.19.0", path = "../sway-utils" }

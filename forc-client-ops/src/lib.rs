@@ -1,2 +1,2 @@
 pub mod deploy;
-mod run;
+pub mod run;

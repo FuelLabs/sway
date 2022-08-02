@@ -1,11 +1,9 @@
-use crate::ops::forc_run;
-use anyhow::{bail, Result};
 use clap::Parser;
 
 /// Run script project.
 /// Crafts a script transaction then sends it to a running node.
 #[derive(Debug, Default, Parser)]
-pub struct Command {
+pub struct Run {
     /// Hex string of data to input to script.
     #[clap(short, long)]
     pub data: Option<String>,
@@ -110,11 +108,4 @@ pub struct Command {
     /// in the node's view of the blockchain, (i.e. it does not affect the chain state).
     #[clap(long)]
     pub simulate: bool,
-}
-
-pub(crate) async fn _exec(command: Command) -> Result<()> {
-    match forc_run::run(command).await {
-        Err(e) => bail!("{}", e),
-        _ => Ok(()),
-    }
 }

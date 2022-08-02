@@ -1,6 +1,9 @@
 use anyhow::{bail, Result};
-use forc::test::{forc_build, forc_run, BuildCommand, RunCommand};
-use forc_client_ops::deploy::{cmd::Deploy, op::deploy};
+use forc::test::{forc_build, BuildCommand};
+use forc_client_ops::{
+    deploy::{cmd::Deploy, op::deploy},
+    run::{cmd::Run, op::run},
+};
 use forc_pkg::Compiled;
 use fuel_tx::Transaction;
 use fuel_vm::interpreter::Interpreter;
@@ -46,7 +49,7 @@ pub(crate) fn runs_on_node(
 
     let verbose = get_test_config_from_env();
 
-    let command = RunCommand {
+    let command = Run {
         path: Some(format!(
             "{}/src/e2e_vm_tests/test_programs/{}",
             manifest_dir, file_name
@@ -59,7 +62,7 @@ pub(crate) fn runs_on_node(
     };
     tokio::runtime::Runtime::new()
         .unwrap()
-        .block_on(forc_run::run(command))
+        .block_on(run(command))
         .unwrap()
 }
 

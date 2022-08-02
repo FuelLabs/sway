@@ -1,5 +1,5 @@
 use self::commands::{
-    addr2line, build, check, clean, completions, init, json_abi, new, parse_bytecode, plugins, run,
+    addr2line, build, check, clean, completions, init, json_abi, new, parse_bytecode, plugins,
     template, test, update,
 };
 use addr2line::Command as Addr2LineCommand;
@@ -14,7 +14,6 @@ pub use json_abi::Command as JsonAbiCommand;
 pub use new::Command as NewCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
 pub use plugins::Command as PluginsCommand;
-pub use run::Command as RunCommand;
 pub use template::Command as TemplateCommand;
 use test::Command as TestCommand;
 pub use update::Command as UpdateCommand;

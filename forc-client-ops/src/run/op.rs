@@ -1,9 +1,9 @@
-use crate::cli::{BuildCommand, RunCommand};
-use crate::ops::forc_build;
-use crate::utils::defaults::NODE_URL;
-use crate::utils::parameters::TxParameters;
-use crate::utils::SWAY_GIT_TAG;
 use anyhow::{anyhow, bail, Result};
+use forc::cli::BuildCommand;
+use forc::ops::forc_build;
+use forc::utils::defaults::NODE_URL;
+use forc::utils::parameters::TxParameters;
+use forc::utils::SWAY_GIT_TAG;
 use forc_pkg::{fuel_core_not_running, ManifestFile};
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::Transaction;
@@ -13,7 +13,9 @@ use std::str::FromStr;
 use sway_core::TreeType;
 use tracing::info;
 
-pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
+use super::cmd::Run;
+
+pub async fn run(command: Run) -> Result<Vec<fuel_tx::Receipt>> {
     let path_dir = if let Some(path) = &command.path {
         PathBuf::from(path)
     } else {
