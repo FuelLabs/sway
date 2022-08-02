@@ -26,10 +26,8 @@ forc-util = { version = "0.19.0", path = "../forc-util" }
 fs_extra = "1.2"
 fuel-asm = "0.6"
 fuel-crypto = "0.5"
-fuel-gql-client = { version = "0.9", default-features = false }
 fuel-tx = "0.13"
 fuel-vm = "0.12"
-futures = "0.3"
 hex = "0.4.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.73"

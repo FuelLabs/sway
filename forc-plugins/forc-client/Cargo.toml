@@ -16,3 +16,7 @@ tracing-subscriber = { version = "0.3", features = ["ansi", "env-filter", "json"
 [[bin]]
 name = "forc-deploy"
 path = "src/bin/deploy/main.rs"
+
+[[bin]]
+name = "forc-run"
+path = "src/bin/run/main.rs"
