@@ -56,3 +56,4 @@ pub(crate) const INDENT_BUFFER: &str =
     "\n                                                                                ";
 // 8096 is close enough to infinite according to `rustfmt`.
 pub(crate) const INFINITE_SHAPE_WIDTH: usize = 8096;
+pub(crate) const HARD_TAB: char = '\t';
