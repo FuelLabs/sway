@@ -114,6 +114,16 @@ impl Value {
         }
     }
 
+    pub fn get_instruction_mut<'a>(&self, context: &'a mut Context) -> Option<&'a mut Instruction> {
+        if let ValueDatum::Instruction(instruction) =
+            &mut context.values.get_mut(self.0).unwrap().value
+        {
+            Some(instruction)
+        } else {
+            None
+        }
+    }
+
     /// Get the type for this value, if found.
     ///
     /// Arguments and constants always have a type, but only some instructions do.
