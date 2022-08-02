@@ -1,7 +1,7 @@
 use crate::capabilities;
 use crate::core::{
     document::{DocumentError, TextDocument},
-    session::{RunnableType, Session},
+    session::Session,
     token::TokenMap,
 };
 use crate::utils::debug::{self, DebugFlags};
@@ -260,7 +260,7 @@ impl Backend {
         let range = self
             .session
             .runnables
-            .get(&RunnableType::MainFn)
+            .get(&capabilities::runnable::RunnableType::MainFn)
             .map(|item| vec![*item.value()]);
 
         Ok(range)

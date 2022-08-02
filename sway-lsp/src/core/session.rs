@@ -1,5 +1,5 @@
 use crate::{
-    capabilities::{self, formatting::get_format_text_edits},
+    capabilities::{self, formatting::get_format_text_edits, runnable::RunnableType},
     core::{
         document::{DocumentError, TextDocument},
         token::{Token, TokenMap, TypeDefinition},
@@ -24,15 +24,6 @@ use tower_lsp::lsp_types::{
 };
 
 pub type Documents = DashMap<String, TextDocument>;
-
-#[derive(Debug, Eq, PartialEq, Hash)]
-pub enum RunnableType {
-    /// This is the main_fn entry point for the predicate or script.
-    MainFn,
-    /// Place holder for when we have in language testing supported.
-    /// The field holds the index of the test to run.
-    _TestFn(u8),
-}
 
 #[derive(Debug)]
 pub struct Session {
