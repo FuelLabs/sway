@@ -22,15 +22,21 @@ fn run_tests<F: Fn(&mut sway_ir::Context) -> bool>(sub_dir: &str, opt_fn: F) {
             path.display()
         );
 
-        let mut ir = match sway_ir::parser::parse(&input) {
-            Ok(ir) => ir,
-            Err(parse_err) => {
-                println!("{parse_err}");
-                panic!()
-            }
-        };
+        let mut ir = sway_ir::parser::parse(&input).unwrap_or_else(|parse_err| {
+            println!("{parse_err}");
+            panic!()
+        });
 
-        assert!(opt_fn(&mut ir));
+        // The tests should return true, indicating they made modifications.
+        assert!(
+            opt_fn(&mut ir),
+            "Pass returned false (no changes made to {}).",
+            path.display()
+        );
+        let ir = ir.verify().unwrap_or_else(|err| {
+            println!("{err}");
+            panic!();
+        });
 
         let output = sway_ir::printer::to_string(&ir);
 
@@ -72,8 +78,23 @@ fn inline() {
 fn constants() {
     run_tests("constants", |ir: &mut sway_ir::Context| {
         let fn_idcs: Vec<_> = ir.functions.iter().map(|func| func.0).collect();
-        fn_idcs.into_iter().all(|fn_idx| {
+        fn_idcs.into_iter().fold(false, |acc, fn_idx| {
             sway_ir::optimize::combine_constants(ir, &sway_ir::function::Function(fn_idx)).unwrap()
+                || acc
+        })
+    })
+}
+
+// -------------------------------------------------------------------------------------------------
+
+#[allow(clippy::needless_collect)]
+#[test]
+fn simplify_cfg() {
+    run_tests("simplify_cfg", |ir: &mut sway_ir::Context| {
+        let fn_idcs: Vec<_> = ir.functions.iter().map(|func| func.0).collect();
+        fn_idcs.into_iter().fold(false, |acc, fn_idx| {
+            sway_ir::optimize::simplify_cfg(ir, &sway_ir::function::Function(fn_idx)).unwrap()
+                || acc
         })
     })
 }
