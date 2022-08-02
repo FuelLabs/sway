@@ -13,7 +13,7 @@ pub async fn start(config: DebugFlags) {
     let stdout = tokio::io::stdout();
 
     let (service, socket) = LspService::build(|client| Backend::new(client, config))
-        .custom_method("sway/runnable", Backend::runnable)
+        .custom_method("sway/runnables", Backend::runnables)
         .finish();
     Server::new(stdin, stdout, socket).serve(service).await;
 }
