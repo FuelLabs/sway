@@ -82,6 +82,7 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
             for field in &struct_dec.fields {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&field.name)) {
                     token.typed = Some(TypedAstToken::TypedStructField(field.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(field.type_id));
                 }
             }
         }
