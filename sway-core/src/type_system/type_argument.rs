@@ -7,8 +7,8 @@ use sway_types::{Property, Span};
 
 #[derive(Debug, Clone)]
 pub struct TypeArgument {
-    pub(crate) type_id: TypeId,
-    pub(crate) span: Span,
+    pub type_id: TypeId,
+    pub span: Span,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:

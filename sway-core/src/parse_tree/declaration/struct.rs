@@ -17,7 +17,7 @@ pub struct StructDeclaration {
 #[derive(Debug, Clone)]
 pub struct StructField {
     pub name: Ident,
-    pub(crate) type_info: TypeInfo,
+    pub type_info: TypeInfo,
     pub(crate) span: Span,
     pub type_span: Span,
 }

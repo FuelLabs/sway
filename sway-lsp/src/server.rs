@@ -308,8 +308,12 @@ mod tests {
             .join("examples/signatures")
     }
 
+    fn lsp_test_dir() -> PathBuf {
+        env::current_dir().unwrap().join("test_programs/particle")
+    }
+
     fn load_sway_example() -> (Url, String) {
-        let manifest_dir = sway_example_dir();
+        let manifest_dir = lsp_test_dir(); //sway_example_dir();
         let src_path = manifest_dir.join("src/main.sw");
         let mut file = fs::File::open(&src_path).unwrap();
         let mut sway_program = String::new();
