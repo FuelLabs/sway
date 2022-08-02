@@ -24,6 +24,3 @@ toml = "0.5"
 tracing = "0.1"
 url = { version = "2.2", features = ["serde"] }
 walkdir = "2"
-
-[build-dependencies]
-toml = "0.5"
