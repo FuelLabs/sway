@@ -3686,6 +3686,7 @@ dependencies = [
  "forc-util",
  "futures",
  "ropey",
+ "serde",
  "serde_json",
  "sway-core",
  "sway-fmt",

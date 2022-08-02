@@ -6,6 +6,7 @@ use crate::core::{
 };
 use crate::utils::debug::{self, DebugFlags};
 use forc_util::find_manifest_dir;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::*;
@@ -247,6 +248,22 @@ impl LanguageServer for Backend {
         params: TextDocumentPositionParams,
     ) -> jsonrpc::Result<Option<PrepareRenameResponse>> {
         Ok(capabilities::rename::prepare_rename(&self.session, params))
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct RunnableParams {}
+
+// Custom LSP-Server Methods
+impl Backend {
+    pub async fn runnables(&self, _params: RunnableParams) -> jsonrpc::Result<Option<Vec<Range>>> {
+        let range = self
+            .session
+            .runnables
+            .get(&capabilities::runnable::RunnableType::MainFn)
+            .map(|item| vec![*item.value()]);
+
+        Ok(range)
     }
 }
 
