@@ -18,6 +18,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         path,
         binary_outfile,
         debug_outfile,
+        print_ast,
         print_finalized_asm,
         print_intermediate_asm,
         print_ir,
@@ -72,6 +73,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
             );
             Default::default()
         });
+    profile.print_ast |= print_ast;
     profile.print_ir |= print_ir;
     profile.print_finalized_asm |= print_finalized_asm;
     profile.print_intermediate_asm |= print_intermediate_asm;
