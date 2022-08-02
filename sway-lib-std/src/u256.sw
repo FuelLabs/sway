@@ -352,11 +352,11 @@ impl core::ops::Divide for U256 {
 }
 
 impl core::ops::Ord for U256 {
-    pub fn gt(self, other: Self) -> bool {
+    fn gt(self, other: Self) -> bool {
         self.a > other.a || self.a == other.a && self.b > other.b ||  self.a == other.a && self.b == other.b  && self.c > other.c ||  self.a == other.a && self.b == other.b  && self.c == other.c && self.d > other.d
     }
 
-    pub fn lt(self, other: Self) -> bool {
+    fn lt(self, other: Self) -> bool {
         self.a < other.a
             || (self.a == other.a && self.b < other.b
                 || (self.b == other.b && self.c < other.c
