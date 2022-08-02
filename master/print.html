@@ -695,6 +695,17 @@ impl FizzBuzz for Contract {
 }
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="wallet-smart-contract"><a class="header" href="#wallet-smart-contract">Wallet Smart Contract</a></h1>
+<h2 id="abi-declaration"><a class="header" href="#abi-declaration">ABI Declaration</a></h2>
+<pre><code class="language-sway">library wallet_abi;
+
+use std::address::Address;
+
+abi Wallet {
+    #[storage(read, write)]fn receive_funds();
+    #[storage(read, write)]fn send_funds(amount_to_send: u64, recipient_address: Address);
+}
+</code></pre>
+<h2 id="abi-implementation"><a class="header" href="#abi-implementation">ABI Implementation</a></h2>
 <pre><code class="language-sway">contract;
 
 use std::{
@@ -710,15 +721,12 @@ use std::{
     token::transfer_to_output,
 };
 
+use wallet_abi::Wallet;
+
 const OWNER_ADDRESS: b256 = 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861;
 
 storage {
     balance: u64 = 0,
-}
-
-abi Wallet {
-    #[storage(read, write)]fn receive_funds();
-    #[storage(read, write)]fn send_funds(amount_to_send: u64, recipient_address: Address);
 }
 
 impl Wallet for Contract {
@@ -773,76 +781,109 @@ impl Wallet for Contract {
 <p>As with any Sway program, the program starts with a declaration of what <a href="sway-program-types/./index.html">program type</a> it is. A contract must also either define or import an <a href="sway-program-types/smart_contracts.html#the-abi-declaration">ABI declaration</a> and implement it. It is considered good practice to define your ABI in a separate library and import it into your contract. This allows callers of your contract to simply import the ABI directly and use it in their scripts to call your contract. Let's take a look at an ABI declaration in a library:</p>
 <pre><code class="language-sway">library wallet_abi;
 
+use std::address::Address;
+
 abi Wallet {
-    fn receive_funds();
-    fn send_funds(amount_to_send: u64, recipient_address: b256);
+    #[storage(read, write)]fn receive_funds();
+    #[storage(read, write)]fn send_funds(amount_to_send: u64, recipient_address: Address);
 }
 </code></pre>
 <p>Let's focus on the ABI declaration and inspect it line-by-line.</p>
 <h3 id="the-abi-declaration"><a class="header" href="#the-abi-declaration">The ABI Declaration</a></h3>
 <pre><code class="language-sway">abi Wallet {
-    fn receive_funds();
-    fn send_funds(amount_to_send: u64, recipient_address: b256);
+    #[storage(read, write)]fn receive_funds();
+    #[storage(read, write)]fn send_funds(amount_to_send: u64, recipient_address: Address);
 }
 </code></pre>
 <hr />
-<p>In the first line, <code>abi Wallet {</code>, we declare the name of this <em>Application Binary Interface</em>, or ABI. We are naming this ABI <code>Wallet</code>. To import this ABI into either a script for calling or a contract for implementing, you would use <code>use wallet_abi::Wallet;</code>.</p>
+<p>In the first line, <code>abi Wallet {</code>, we declare the name of this <em>Application Binary Interface</em>, or ABI. We are naming this ABI <code>Wallet</code>. To import this ABI into either a script for calling or a contract for implementing, you would use </p>
+<pre><code class="language-sway">use wallet_abi::Wallet;
+</code></pre>
 <hr />
 <p>In the second line,</p>
-<pre><code class="language-sway">    fn receive_funds();
+<pre><code class="language-sway">    #[storage(read, write)]fn receive_funds();
 </code></pre>
 <p>we are declaring an ABI method called <code>receive_funds</code> which, when called, should receive funds into this wallet. Note that we are simply defining an interface here, so there is no <em>function body</em> or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to <a href="sway-program-types/../advanced/traits.html">trait declarations</a>. This particular ABI method does not take any parameters.</p>
 <hr />
 <p>In the third line,</p>
-<pre><code class="language-sway">    fn send_funds(amount_to_send: u64, recipient_address: Address);
+<pre><code class="language-sway">    #[storage(read, write)]fn send_funds(amount_to_send: u64, recipient_address: Address);
 </code></pre>
 <p>we are declaring another ABI method, this time called <code>send_funds</code>. It takes two parameters: the amount to send, and the address to send the funds to.</p>
+<blockquote>
+<p><strong>Note</strong>: The ABI methods <code>receive_funds</code> and <code>send_funds</code> also require the annotation <code>#[storage(read, write)]</code> because their implementations require reading and writing a storage variable that keeps track of the wallet balance, as we will see shortly. Refer to <a href="sway-program-types/../blockchain-development/purity.html#Purity">Purity</a> for more information on storage annotations.</p>
+</blockquote>
 <h2 id="implementing-an-abi-for-a-smart-contract"><a class="header" href="#implementing-an-abi-for-a-smart-contract">Implementing an ABI for a Smart Contract</a></h2>
 <p>Now that we've discussed how to define the interface, let's discuss how to use it. We will start by implementing the above ABI for a specific contract.</p>
 <p>Implementing an ABI for a contract is accomplished with <code>impl &lt;ABI name&gt; for Contract</code> syntax. The <code>for Contract</code> syntax can only be used to implement an ABI for a contract; implementing methods for a struct should use <code>impl Foo</code> syntax.</p>
 <pre><code class="language-sway">impl Wallet for Contract {
-    fn receive_funds() {
-        if asset_id == BASE_ASSET_ID {
-            let balance = storage.balance.write();
-            deref balance = balance + coins_to_forward;
-        };
+    #[storage(read, write)]fn receive_funds() {
+        if msg_asset_id() == BASE_ASSET_ID {
+            // If we received `BASE_ASSET_ID` then keep track of the balance.
+            // Otherwise, we're receiving other native assets and don't care
+            // about our balance of tokens.
+            storage.balance = storage.balance + msg_amount();
+        }
     }
 
-    fn send_funds(amount_to_send: u64, recipient_address: b256) {
-        assert(sender() == OWNER_ADDRESS);
-        assert(storage.balance.read() &gt; amount_to_send);
-        let balance = storage.balance.write();
-        deref balance = balance - amount_to_send;
-        transfer_coins(asset_id, recipient_address, amount_to_send);
+    #[storage(read, write)]fn send_funds(amount_to_send: u64, recipient_address: Address) {
+        // Note: The return type of `msg_sender()` can be inferred by the
+        // compiler. It is shown here for explicitness.
+        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
+        match sender.unwrap() {
+            Identity::Address(addr) =&gt; {
+                assert(addr == ~Address::from(OWNER_ADDRESS));
+            },
+            _ =&gt; {
+                revert(0);
+            },
+        };
+
+        let current_balance = storage.balance;
+        assert(current_balance &gt;= amount_to_send);
+
+        storage.balance = current_balance - amount_to_send;
+        // Note: `transfer_to_output()` is not a call and thus not an
+        // interaction. Regardless, this code conforms to
+        // checks-effects-interactions to avoid re-entrancy.
+        transfer_to_output(amount_to_send, BASE_ASSET_ID, recipient_address);
     }
 }
 </code></pre>
 <p>You may notice once again the similarities between <a href="sway-program-types/../advanced/traits.html">traits</a> and ABIs. And, indeed, as a bonus, you can specify methods in addition to the interface surface of an ABI, just like a trait. By implementing the methods in the interface surface, you get the extra method implementations For Free™.</p>
 <p>Note that the above implementation of the ABI follows the <a href="https://docs.soliditylang.org/en/v0.6.11/security-considerations.html#re-entrancy">Checks, Effects, Interactions</a> pattern.</p>
 <h2 id="calling-a-smart-contract-from-a-script"><a class="header" href="#calling-a-smart-contract-from-a-script">Calling a Smart Contract from a Script</a></h2>
+<blockquote>
+<p><strong>Note</strong>: In most cases, calling a contract should be done from the <a href="sway-program-types/../testing/testing-with-rust.html">Rust SDK</a> or the <a href="sway-program-types/../frontend/typescript_sdk.html">TypeScript SDK</a> which provide a more ergonomic UI for interacting with a contract. However, there are situations where manually writing a script to call a contract is required.</p>
+</blockquote>
 <p>Now that we have defined our interface and implemented it for our contract, we need to know how to actually <em>call</em> our contract. Let's take a look at a contract call:</p>
 <pre><code class="language-sway">script;
 
-use std::consts::BASE_ASSET_ID;
-
+use std::{address::Address, constants::ZERO_B256};
 use wallet_abi::Wallet;
-use wallet_abi::SendFundsRequest;
 
 fn main() {
     let contract_address = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
     let caller = abi(Wallet, contract_address);
     let amount_to_send = 200;
-    let recipient_address: 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
-    caller.send_funds{gas: 10000, coins: 0, asset_id: BASE_ASSET_ID}(amount_to_send, recipient_address);
+    let recipient_address = ~Address::from(0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b);
+    caller.send_funds {
+        gas: 10000, coins: 0, asset_id: ZERO_B256
+    }
+    (amount_to_send, recipient_address);
 }
 </code></pre>
 <p>The main new concept is the <em>abi cast</em>: <code>abi(AbiName, contract_address)</code>. This returns a <code>ContractCaller</code> type which can be used to call contracts. The methods of the ABI become the methods available on this contract caller: <code>send_funds</code> and <code>receive_funds</code>. We then directly call the contract ABI method as if it was just a regular method. You also have the option of specifying the following special parameters inside curly braces right before the main list of parameters:</p>
 <ol>
-<li><code>gas</code>: represents the gas being forwarded to the contract when it is called.</li>
-<li><code>coins</code>: represents how many coins are being forwarded with this call.</li>
-<li><code>asset_id</code>: represents the ID of the <em>asset type</em> of the coins being forwarded.</li>
+<li><code>gas</code>: a <code>u64</code> that represents the gas being forwarded to the contract when it is called.</li>
+<li><code>coins</code>: a <code>u64</code> that represents how many coins are being forwarded with this call.</li>
+<li><code>asset_id</code>: a <code>b256</code> that represents the ID of the <em>asset type</em> of the coins being forwarded.</li>
 </ol>
-<p>Each special parameter is optional and assumes a default value when skipped.</p>
+<p>Each special parameter is optional and assumes a default value when skipped:</p>
+<ol>
+<li>The default value for <code>gas</code> is the context gas (i.e. the content of the special register <code>$cgas</code>). Refer to the <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md">FuelVM specifications</a> for more information about context gas.</li>
+<li>The default value for <code>coins</code> is 0.</li>
+<li>The default value for <code>asset_id</code> is <code>ZERO_B256</code>.</li>
+</ol>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="libraries"><a class="header" href="#libraries">Libraries</a></h1>
 <p>Libraries in Sway are files used to define new common behavior. The most prominent example of this is the <a href="sway-program-types/../introduction/standard_library.html">Sway Standard Library</a>.</p>
 <h2 id="writing-libraries"><a class="header" href="#writing-libraries">Writing Libraries</a></h2>

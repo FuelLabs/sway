@@ -138,6 +138,17 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="wallet-smart-contract"><a class="header" href="#wallet-smart-contract">Wallet Smart Contract</a></h1>
+<h2 id="abi-declaration"><a class="header" href="#abi-declaration">ABI Declaration</a></h2>
+<pre><code class="language-sway">library wallet_abi;
+
+use std::address::Address;
+
+abi Wallet {
+    #[storage(read, write)]fn receive_funds();
+    #[storage(read, write)]fn send_funds(amount_to_send: u64, recipient_address: Address);
+}
+</code></pre>
+<h2 id="abi-implementation"><a class="header" href="#abi-implementation">ABI Implementation</a></h2>
 <pre><code class="language-sway">contract;
 
 use std::{
@@ -153,15 +164,12 @@ use std::{
     token::transfer_to_output,
 };
 
+use wallet_abi::Wallet;
+
 const OWNER_ADDRESS: b256 = 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861;
 
 storage {
     balance: u64 = 0,
-}
-
-abi Wallet {
-    #[storage(read, write)]fn receive_funds();
-    #[storage(read, write)]fn send_funds(amount_to_send: u64, recipient_address: Address);
 }
 
 impl Wallet for Contract {
