@@ -6,7 +6,7 @@ use ::context::call_frames::contract_id;
 use ::contract_id::ContractId;
 use ::identity::Identity;
 use ::revert::revert;
-use ::tx::{OUTPUT_VARIABLE, tx_output_amount, tx_output_type, tx_outputs_count};
+use ::tx::{OUTPUT_VARIABLE, tx_output_amount, tx_output_type, tx_outputs_count, Output};
 
 /// Mint `amount` coins of the current contract's `asset_id` and transfer them
 /// to `to` by calling either force_transfer_to_contract() or
@@ -97,11 +97,19 @@ pub fn transfer_to_output(amount: u64, asset_id: ContractId, to: Address) {
     // variable output with a value of zero is by definition unused.
     let outputs_count = tx_outputs_count();
     while index < outputs_count {
-        if tx_output_type(index) == OUTPUT_VARIABLE && tx_output_amount(index) == 0 {
-            output_index = index;
-            output_found = true;
-            break; // break early and use the output we found
-        };
+        let output_type = tx_output_type(index);
+        match output_type {
+            Output::Variable => {
+                if tx_output_amount(index) == 0 {
+                    output_index = index;
+                    output_found = true;
+                    break; // break early and use the output we found
+                }
+            },
+            _ => {
+                ();
+            },
+        }
         index += 1;
     }
 
