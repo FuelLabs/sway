@@ -2,7 +2,7 @@ use anyhow::{anyhow, bail, Result};
 use forc::{
     cli::BuildCommand,
     ops::forc_build,
-    utils::{defaults::NODE_URL, parameters::TxParameters, SWAY_GIT_TAG},
+    utils::{defaults::NODE_URL, parameters::TxParameters},
 };
 use forc_pkg::{fuel_core_not_running, ManifestFile};
 use fuel_gql_client::client::FuelClient;
@@ -20,7 +20,7 @@ pub async fn run(command: Run) -> Result<Vec<fuel_tx::Receipt>> {
     } else {
         std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
-    let manifest = ManifestFile::from_dir(&path_dir, SWAY_GIT_TAG)?;
+    let manifest = ManifestFile::from_dir(&path_dir)?;
     manifest.check_program_type(vec![TreeType::Script])?;
 
     let input_data = &command.data.unwrap_or_else(|| "".into());
@@ -29,6 +29,7 @@ pub async fn run(command: Run) -> Result<Vec<fuel_tx::Receipt>> {
 
     let build_command = BuildCommand {
         path: command.path,
+        print_ast: command.print_ast,
         print_finalized_asm: command.print_finalized_asm,
         print_intermediate_asm: command.print_intermediate_asm,
         print_ir: command.print_ir,

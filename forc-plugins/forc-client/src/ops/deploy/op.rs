@@ -1,5 +1,5 @@
 use anyhow::{bail, Result};
-use forc::{cli::BuildCommand, ops::forc_build, utils::SWAY_GIT_TAG};
+use forc::{cli::BuildCommand, ops::forc_build};
 use forc_pkg::ManifestFile;
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::{Output, Salt, StorageSlot, Transaction};
@@ -17,11 +17,12 @@ pub async fn deploy(command: Deploy) -> Result<fuel_tx::ContractId> {
     } else {
         std::env::current_dir()?
     };
-    let manifest = ManifestFile::from_dir(&curr_dir, SWAY_GIT_TAG)?;
+    let manifest = ManifestFile::from_dir(&curr_dir)?;
     manifest.check_program_type(vec![TreeType::Contract])?;
 
     let Deploy {
         path,
+        print_ast,
         print_finalized_asm,
         print_intermediate_asm,
         print_ir,
@@ -41,6 +42,7 @@ pub async fn deploy(command: Deploy) -> Result<fuel_tx::ContractId> {
 
     let build_command = BuildCommand {
         path,
+        print_ast,
         print_finalized_asm,
         print_intermediate_asm,
         print_ir,

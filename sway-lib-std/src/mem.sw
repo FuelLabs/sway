@@ -1,8 +1,8 @@
 //! Library for working with memory.
 library mem;
 
-use ::revert::revert;
 use ::intrinsics::{is_reference_type, size_of_val};
+use ::revert::revert;
 
 /// Returns the address of the given value.
 pub fn addr_of<T>(val: T) -> u64 {
