@@ -107,11 +107,22 @@ pub const OUTPUT_CHANGE = 3u8;
 pub const OUTPUT_VARIABLE = 4u8;
 pub const OUTPUT_CONTRACT_CREATED = 5u8;
 
-// @todo make generic version of tx_witness_at_index()
-
-enum Transaction {
+pub enum Transaction {
     Script: (),
     Create: (),
+}
+
+pub enum Input {
+    Coin: (),
+    Contract: (),
+    Message: (),
+}
+
+pub enum Output {
+    Coin: (),
+    Message: (),
+    Change: (),
+    Variable: (),
 }
 
 /// Get the type of the current transaction.
@@ -317,8 +328,22 @@ pub fn tx_input_pointer(index: u64) -> u64 {
 }
 
 /// Get the type of the input at `index`.
-pub fn tx_input_type(index: u64) -> u8 {
-    __gtf::<u8>(index, GTF_INPUT_TYPE)
+pub fn tx_input_type(index: u64) -> Input {
+    let type = __gtf::<u8>(index, GTF_INPUT_TYPE);
+    match type {
+        0u8 => {
+            Input::Coin
+        },
+        1u8 => {
+            Input::Contract
+        },
+        2u8 => {
+            Input::Message
+        },
+        _ => {
+            revert(0);
+        }
+    }
 }
 
 /// If the input's type is `InputCoin` or `InputMessage`,
@@ -327,12 +352,10 @@ pub fn tx_input_type(index: u64) -> u8 {
 pub fn tx_input_owner(index: u64) -> Option<Address> {
     let type = tx_input_type(index);
     let owner_ptr = match type {
-        // 0 is the `Coin` Input type
-        0u8 => {
+        Input::Coin => {
             __gtf::<u64>(index, GTF_INPUT_COIN_OWNER)
         },
-        // 2 is the `Message` Input type
-        2u8 => {
+        Input::Message => {
             __gtf::<u64>(index, GTF_INPUT_MESSAGE_OWNER)
         },
         _ => {
@@ -347,25 +370,23 @@ pub fn tx_input_owner(index: u64) -> Option<Address> {
 // Inputs > Predicate
 ////////////////////////////////////////
 
-/// Get the predicate dats from the input at `index`.
+/// Get the predicate data pointer from the input at `index`.
 /// If the input's type is `InputCoin` or `InputMessage`,
-/// return the data as an Option::Some(T).
+/// return the data as an Option::Some(ptr).
 /// Otherwise, returns Option::None.
-pub fn predicate_data<T>(index: u64) -> T {
+pub fn predicate_data_pointer(index: u64) -> Option<u64> {
     let type = tx_input_type(index);
-    let ptr = match type {
-        // 0 is the `Coin` Input type
-        0u8 => {
-            Option::Some(read::<T>(__gtf::<u64>(index, GTF_INPUT_COIN_PREDICATE_DATA)))
+    match type {
+        Input::Coin => {
+            Option::Some(__gtf::<u64>(index, GTF_INPUT_COIN_PREDICATE_DATA))
         },
-        // 2 is the `Message` Input type
-        2u8 => {
-            Option::Some(read::<T>(__gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA)))
+        Input::Message => {
+            Option::Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA))
         },
         _ => {
-            return Option::None;
-        },
-    };
+            Option::None
+        }
+    }
 }
 
 ////////////////////////////////////////
@@ -402,13 +423,6 @@ pub fn tx_witness_pointer(index: u64) -> u64 {
 
 }
 
-enum Output {
-    Coin: (),
-    Messsage: (),
-    Change: (),
-    Variable: (),
-}
-
 /// Get the type of an output at `index`.
 pub fn tx_output_type(index: u64) -> Output {
     let type = __gtf::<u8>(index, GTF_OUTPUT_TYPE);
@@ -438,32 +452,33 @@ pub fn tx_output_amount(index: u64) -> u64 {
     let type = tx_output_type(index);
     match type {
         Output::Coin => {
-            Option::Some(__gtf::<u64>(index, GTF_OUTPUT_COIN_AMOUNT))
+            __gtf::<u64>(index, GTF_OUTPUT_COIN_AMOUNT)
         },
         Output::Message => {
-            Option::Some(__gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT))
+            __gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT)
         },
         // ues GTF_OUTPUT_MESSAGE_AMOUNT as there's no simlar const for OutputChange
         Output::Change => {
-            Option::Some(__gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT))
+            __gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT)
         },
         // use GTF_OUTPUT_MESSAGE_AMOUNT as there's no simlar const for OutputVariable
         Output::Variable => {
-            Option::Some(__gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT))
+            __gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT)
         },
     }
 }
 
 /// Get the id of the current transaction.
+/// If the input's type is `InputCoin` or `InputContract`,
+/// return the data as an Option::Some(b256).
+/// Otherwise, returns Option::None.
 pub fn tx_id(index: u64) -> Option<b256> {
-    let type = tx_output_type(index);
+    let type = tx_input_type(index);
     match type {
-        // 0 is the `Coin` Input type
-        0u8 => {
+        Input::Coin => {
             Option::Some(read::<b256>(__gtf::<u64>(index, GTF_INPUT_COIN_TX_ID)))
         },
-        // 1 is the `Contract` Input type
-        1u8 => {
+        Input::Contract => {
             Option::Some(read::<b256>(__gtf::<u64>(index, GTF_INPUT_CONTRACT_TX_ID)))
         },
         _ => {
