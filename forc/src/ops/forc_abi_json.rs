@@ -1,7 +1,4 @@
-use crate::{
-    cli::{BuildCommand, JsonAbiCommand},
-    utils::SWAY_GIT_TAG,
-};
+use crate::cli::{BuildCommand, JsonAbiCommand};
 use anyhow::Result;
 use forc_pkg::ManifestFile;
 use serde_json::{json, Value};
@@ -16,7 +13,7 @@ pub fn build(command: JsonAbiCommand) -> Result<Value> {
     } else {
         std::env::current_dir()?
     };
-    let manifest = ManifestFile::from_dir(&curr_dir, SWAY_GIT_TAG)?;
+    let manifest = ManifestFile::from_dir(&curr_dir)?;
     manifest.check_program_type(vec![TreeType::Contract, TreeType::Script])?;
 
     let build_command = BuildCommand {

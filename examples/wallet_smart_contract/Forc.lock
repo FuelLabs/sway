@@ -9,6 +9,14 @@ source = 'path+from-root-E11027628D2FC8AD'
 dependencies = ['core']
 
 [[package]]
+name = 'wallet_abi'
+source = 'path+from-root-E11027628D2FC8AD'
+dependencies = ['std']
+
+[[package]]
 name = 'wallet_smart_contract'
 source = 'root'
-dependencies = ['std']
+dependencies = [
+    'std',
+    'wallet_abi',
+]

@@ -26,14 +26,14 @@ impl<T: Parse + Format> Format for Annotated<T> {
             write!(
                 formatted_code,
                 "{}",
-                &formatter.shape.indent.to_string(formatter),
+                &formatter.shape.indent.to_string(&formatter.config)?,
             )?;
             attr.format(formatted_code, formatter)?;
         }
         write!(
             formatted_code,
             "{}",
-            &formatter.shape.indent.to_string(formatter),
+            &formatter.shape.indent.to_string(&formatter.config)?,
         )?;
         // format `ItemKind`
         self.value.format(formatted_code, formatter)
