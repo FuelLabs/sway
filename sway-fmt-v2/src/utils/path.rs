@@ -6,6 +6,8 @@ use std::{fmt::Write, vec};
 use sway_parse::{PathExpr, PathExprSegment, PathType, PathTypeSegment, QualifiedPathRoot};
 use sway_types::Spanned;
 
+use super::bracket::{close_angle_bracket, open_angle_bracket};
+
 impl Format for PathExpr {
     fn format(
         &self,
@@ -14,19 +16,11 @@ impl Format for PathExpr {
     ) -> Result<(), FormatterError> {
         if let Some((root, double_colon_token)) = &self.root_opt {
             if let Some(root) = &root {
-                write!(
-                    formatted_code,
-                    "{}",
-                    root.open_angle_bracket_token.span().as_str()
-                )?;
+                open_angle_bracket(formatted_code)?;
                 root.clone()
                     .into_inner()
                     .format(formatted_code, formatter)?;
-                write!(
-                    formatted_code,
-                    "{}",
-                    root.close_angle_bracket_token.span().as_str()
-                )?;
+                close_angle_bracket(formatted_code)?;
             }
             write!(formatted_code, "{}", double_colon_token.ident().as_str())?;
         }
@@ -86,19 +80,11 @@ impl Format for PathType {
     ) -> Result<(), FormatterError> {
         if let Some(root_opt) = &self.root_opt {
             if let Some(root) = &root_opt.0 {
-                write!(
-                    formatted_code,
-                    "{}",
-                    root.open_angle_bracket_token.span().as_str()
-                )?;
+                open_angle_bracket(formatted_code)?;
                 root.clone()
                     .into_inner()
                     .format(formatted_code, formatter)?;
-                write!(
-                    formatted_code,
-                    "{}",
-                    root.close_angle_bracket_token.span().as_str()
-                )?;
+                close_angle_bracket(formatted_code)?;
             }
             write!(formatted_code, "{}", root_opt.1.span().as_str())?;
         }

@@ -3681,11 +3681,11 @@ version = "0.19.1"
 dependencies = [
  "async-trait",
  "dashmap",
- "forc",
  "forc-pkg",
  "forc-util",
  "futures",
  "ropey",
+ "serde",
  "serde_json",
  "sway-core",
  "sway-fmt",

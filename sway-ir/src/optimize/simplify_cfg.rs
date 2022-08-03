@@ -1,3 +1,13 @@
+//! ## Simplify Control Flow Graph
+//!
+//! The optimizations here aim to reduce the complexity in control flow by removing basic blocks.
+//! This may be done by removing 'dead' blocks which are no longer called (or in other words, have
+//! no predecessors) or by merging blocks which are linked by a single unconditional branch.
+//!
+//! Removing blocks will make the IR neater and more efficient but will also remove indirection of
+//! data flow via PHI instructions which in turn can make analyses for passes like constant folding
+//! much simpler.
+
 use crate::{
     block::Block, context::Context, error::IrError, function::Function, instruction::Instruction,
     value::ValueDatum,
@@ -130,20 +140,9 @@ fn merge_blocks(context: &mut Context, function: &Function) -> Result<bool, IrEr
     // `from_block`.
     let succs = context.blocks[final_to_block.0]
         .successors(context)
-        .collect::<Vec<crate::block::Block>>();
+        .collect::<Vec<_>>();
     for succ in succs {
-        if let Some(phi_content) = context.values.get_mut(succ.get_phi(context).0) {
-            if let ValueDatum::Instruction(Instruction::Phi(els)) = &mut phi_content.value {
-                // This is the phi for a successor block of `to_block` which we're about to
-                // remove/merge with `from_block`, so the predecessor needs to change from `to_block`
-                // to `from_block`.
-                els.iter_mut().for_each(|(block, _)| {
-                    if *block == final_to_block {
-                        *block = from_block;
-                    }
-                });
-            }
-        };
+        succ.update_phi_source_block(context, final_to_block, from_block)
     }
 
     Ok(true)
