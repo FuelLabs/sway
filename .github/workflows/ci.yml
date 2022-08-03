@@ -609,6 +609,12 @@ jobs:
           command: install
           args: --profile=release --path ./forc-plugins/forc-explore
 
+      - name: Install Forc-Client
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --profile=release --path ./forc-plugins/forc-client
+
       - name: Prep Assets
         id: prep_assets
         env:
