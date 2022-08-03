@@ -10,7 +10,7 @@ use sway_core::{
     AstNode, AstNodeContent, Declaration, Expression, FunctionDeclaration, ReassignmentTarget,
     TypeInfo, WhileLoop,
 };
-use sway_types::Ident;
+use sway_types::{Ident, Spanned};
 
 use super::token::TypeDefinition;
 
@@ -130,7 +130,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                     }
                     TypeInfo::Ref(type_id, span) => {
                         let mut token = Token::from_parsed(AstToken::StructField(field.clone()));
-                        token.type_def = Some(TypeDefinition::TypeId(type_id.clone()));
+                        token.type_def = Some(TypeDefinition::TypeId(*type_id));
                         tokens.insert(to_ident_key(&Ident::new(span.clone())), token);
                     }
                     TypeInfo::Custom {
@@ -138,7 +138,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                         type_arguments,
                     } => {
                         tokens.insert(
-                            to_ident_key(&name),
+                            to_ident_key(name),
                             Token::from_parsed(AstToken::StructField(field.clone())),
                         );
 
@@ -256,6 +256,11 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                 tokens.insert(
                     to_ident_key(&field.name),
                     Token::from_parsed(AstToken::StorageField(field.clone())),
+                );
+
+                tokens.insert(
+                    to_ident_key(&Ident::new(field.initializer.span())),
+                    Token::from_parsed(AstToken::Expression(field.initializer.clone())),
                 );
             }
         }

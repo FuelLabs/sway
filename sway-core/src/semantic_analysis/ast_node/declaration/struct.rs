@@ -146,6 +146,7 @@ pub struct TypedStructField {
     pub name: Ident,
     pub type_id: TypeId,
     pub(crate) span: Span,
+    pub type_span: Span,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -214,6 +215,7 @@ impl TypedStructField {
             name: field.name,
             type_id: r#type,
             span: field.span,
+            type_span: field.type_span,
         };
         ok(field, warnings, errors)
     }

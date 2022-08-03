@@ -84,6 +84,13 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                     token.typed = Some(TypedAstToken::TypedStructField(field.clone()));
                     token.type_def = Some(TypeDefinition::TypeId(field.type_id));
                 }
+
+                if let Some(mut token) =
+                    tokens.get_mut(&to_ident_key(&Ident::new(field.type_span.clone())))
+                {
+                    token.typed = Some(TypedAstToken::TypedStructField(field.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(field.type_id));
+                }
             }
         }
         TypedDeclaration::EnumDeclaration(enum_decl) => {
@@ -170,6 +177,14 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
             for field in &storage_decl.fields {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&field.name)) {
                     token.typed = Some(TypedAstToken::TypedStorageField(field.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(field.type_id));
+                }
+
+                if let Some(mut token) =
+                    tokens.get_mut(&to_ident_key(&Ident::new(field.initializer.span.clone())))
+                {
+                    token.typed = Some(TypedAstToken::TypedExpression(field.initializer.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(field.initializer.return_type));
                 }
             }
         }
