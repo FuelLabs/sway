@@ -5,10 +5,9 @@ use std::option::Option;
 use std::tx::*;
 
 abi TxContractTest {
-    fn get_tx_type() -> u8;
+    fn get_tx_type() -> Transaction;
     fn get_tx_gas_price() -> u64;
     fn get_tx_gas_limit() -> u64;
-    fn get_tx_byte_price() -> u64;
     fn get_tx_maturity() -> u32;
     fn get_tx_script_length() -> u64;
     fn get_tx_script_data_length() -> u64;
@@ -18,18 +17,17 @@ abi TxContractTest {
     fn get_tx_receipts_root() -> b256;
     fn get_tx_script_start_pointer() -> u64;
 
-    fn get_tx_input_type_from_ptr(ptr: u64) -> u8;
+    fn get_tx_input_type_from_ptr(ptr: u64) -> Input;
     fn get_tx_input_pointer(index: u64) -> u64;
-    fn get_tx_input_type(ptr: u64) -> u8;
     fn get_tx_input_coin_owner(index: u64) -> Address;
 
     fn get_tx_output_pointer(index: u64) -> u64;
-    fn get_tx_output_type(ptr: u64) -> u8;
-    fn get_tx_id() -> b256;
+    fn get_tx_output_type(ptr: u64) -> Output;
+    fn get_tx_id(index: u64) -> Option<b256>;
 }
 
 impl TxContractTest for Contract {
-    fn get_tx_type() -> u8 {
+    fn get_tx_type() -> Transaction {
         tx_type()
     }
     fn get_tx_gas_price() -> u64 {
@@ -37,9 +35,6 @@ impl TxContractTest for Contract {
     }
     fn get_tx_gas_limit() -> u64 {
         tx_gas_limit()
-    }
-    fn get_tx_byte_price() -> u64 {
-        tx_byte_price()
     }
     fn get_tx_maturity() -> u32 {
         tx_maturity()
@@ -68,11 +63,8 @@ impl TxContractTest for Contract {
     fn get_tx_input_pointer(index: u64) -> u64 {
         tx_input_pointer(index)
     }
-    fn get_tx_input_type_from_ptr(ptr: u64) -> u8 {
-        tx_input_type_from_pointer(ptr)
-    }
-    fn get_tx_input_type(index: u64) -> u8 {
-        tx_input_type(index)
+    fn get_tx_input_type_from_ptr(ptr: u64) -> Input {
+        tx_input_type(ptr)
     }
     // TODO: Add test for getting InputMessage owner when we have InputMessages
     // fn get_tx_input_message_owner(index: u64) -> Address {
@@ -84,10 +76,10 @@ impl TxContractTest for Contract {
     fn get_tx_output_pointer(index: u64) -> u64 {
         tx_output_pointer(index)
     }
-    fn get_tx_output_type(ptr: u64) -> u8 {
-        tx_output_type_from_pointer(ptr)
+    fn get_tx_output_type(ptr: u64) -> Output {
+        tx_output_type(ptr)
     }
-    fn get_tx_id() -> b256 {
-        tx_id()
+    fn get_tx_id(index: u64) -> Option<b256> {
+        tx_id(index)
     }
 }

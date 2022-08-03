@@ -261,7 +261,8 @@ pub fn tx_receipts_root() -> b256 {
     let type = tx_type();
     match type {
         Transaction::Script => {
-            read::<b256>(__gtf::<u64>(0, GTF_SCRIPT_RECEIPTS_ROOT))
+            let val: b256 = read(__gtf::<u64>(0, GTF_SCRIPT_RECEIPTS_ROOT));
+            val
         },
         _ => {
             revert(0);
@@ -303,14 +304,14 @@ pub fn tx_script_data_start_pointer() -> u64 {
 pub fn tx_script_data<T>() -> T {
     let ptr = tx_script_data_start_pointer();
     // TODO some safety checks on the input data? We are going to assume it is the right type for now.
-    read::<T>(tx_script_data_start_pointer())
+    read(tx_script_data_start_pointer())
 }
 
 /// Get the script bytecode
 /// Must be cast to a u64 array, with sufficient length to contain the bytecode.
 /// Bytecode will be padded to next whole word.
 pub fn tx_script_bytecode<T>() -> T {
-    read::<T>(tx_script_start_pointer())
+    read(tx_script_start_pointer())
 }
 
 /// Get a pointer to an input given the index of the input
@@ -362,8 +363,8 @@ pub fn tx_input_owner(index: u64) -> Option<Address> {
             return Option::None;
         },
     };
-
-    Option::Some(~Address::from(read::<b256>(owner_ptr)))
+    let val: b256 = read(owner_ptr);
+    Option::Some(~Address::from(val))
 }
 
 ////////////////////////////////////////
@@ -393,18 +394,16 @@ pub fn predicate_data_pointer(index: u64) -> Option<u64> {
 // Outputs
 ////////////////////////////////////////
 
-/// Get a pointer to the input at `index`.
-/// If the input's type is `InputCoin` or `InputMessage`,
-/// return the data as an Option::Some(u64).
-/// Otherwise, returns Option::None.
-pub fn tx_output_pointer(index: u64) -> Option<u64> {
+/// Get a pointer to the Ouput at `index`
+/// for either tx type (transaction-script or transaction-create).
+pub fn tx_output_pointer(index: u64) -> u64 {
     let type = tx_type();
     match type {
         Transaction::Script => {
-            read::<T>(__gtf::<u64>(index, GTF_SCRIPT_OUTPUT_AT_INDEX))
+            __gtf::<u64>(index, GTF_SCRIPT_OUTPUT_AT_INDEX)
         },
         Transaction::Create => {
-            read::<T>(__gtf::<u64>(index, GTF_CREATE_OUTPUT_AT_INDEX))
+            __gtf::<u64>(index, GTF_CREATE_OUTPUT_AT_INDEX)
         },
     }
 }
@@ -414,10 +413,10 @@ pub fn tx_witness_pointer(index: u64) -> u64 {
     let type = tx_type();
     match type {
         Transaction::Script => {
-            read::<T>(__gtf::<u64>(index, GTF_SCRIPT_WITNESS_AT_INDEX))
+            read(__gtf::<u64>(index, GTF_SCRIPT_WITNESS_AT_INDEX))
         },
         Transaction::Create => {
-            read::<T>(__gtf::<u64>(index, GTF_CREATE_WITNESS_AT_INDEX))
+            read(__gtf::<u64>(index, GTF_CREATE_WITNESS_AT_INDEX))
         },
     }
 
@@ -476,10 +475,12 @@ pub fn tx_id(index: u64) -> Option<b256> {
     let type = tx_input_type(index);
     match type {
         Input::Coin => {
-            Option::Some(read::<b256>(__gtf::<u64>(index, GTF_INPUT_COIN_TX_ID)))
+            let val: b256 = read(__gtf::<u64>(index, GTF_INPUT_COIN_TX_ID));
+            Option::Some(val)
         },
         Input::Contract => {
-            Option::Some(read::<b256>(__gtf::<u64>(index, GTF_INPUT_CONTRACT_TX_ID)))
+            let val: b256 = read(__gtf::<u64>(index, GTF_INPUT_CONTRACT_TX_ID));
+            Option::Some(val)
         },
         _ => {
            Option::None

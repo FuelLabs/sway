@@ -34,7 +34,8 @@ async fn can_get_tx_type() {
 
     let result = contract_instance.get_tx_type().call().await.unwrap();
     // Script transactions are of type = 0
-    assert_eq!(result.value, 0);
+    assert_eq!(result.value, Transaction::Script);
+    // assert_eq!(result.value, 0);
 }
 
 #[tokio::test]
@@ -64,21 +65,6 @@ async fn can_get_gas_limit() {
         .await
         .unwrap();
     assert_eq!(result.value, gas_limit);
-}
-
-#[tokio::test]
-async fn can_get_byte_price() {
-    let (contract_instance, _, _) = get_contracts().await;
-    // TODO set this to a non-zero value once SDK supports spending coins.
-    let byte_price = 0;
-
-    let result = contract_instance
-        .get_tx_byte_price()
-        .tx_params(TxParameters::new(None, None, Some(byte_price), None))
-        .call()
-        .await
-        .unwrap();
-    assert_eq!(result.value, byte_price);
 }
 
 #[tokio::test]
