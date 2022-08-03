@@ -1,6 +1,5 @@
 use anyhow::{bail, Result};
-use forc::ops::forc_build;
-use forc::{cli::BuildCommand, utils::SWAY_GIT_TAG};
+use forc::{cli::BuildCommand, ops::forc_build, utils::SWAY_GIT_TAG};
 use forc_pkg::ManifestFile;
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::{Output, Salt, StorageSlot, Transaction};

@@ -3,7 +3,6 @@ resolver = "2"
 members = [
     "docstrings",
     "forc",
-    "forc-client-ops",
     "forc-pkg",
     "forc-plugins/forc-explore",
     "forc-plugins/forc-fmt",

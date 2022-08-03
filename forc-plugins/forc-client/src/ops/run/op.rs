@@ -1,15 +1,14 @@
 use anyhow::{anyhow, bail, Result};
-use forc::cli::BuildCommand;
-use forc::ops::forc_build;
-use forc::utils::defaults::NODE_URL;
-use forc::utils::parameters::TxParameters;
-use forc::utils::SWAY_GIT_TAG;
+use forc::{
+    cli::BuildCommand,
+    ops::forc_build,
+    utils::{defaults::NODE_URL, parameters::TxParameters, SWAY_GIT_TAG},
+};
 use forc_pkg::{fuel_core_not_running, ManifestFile};
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::Transaction;
 use futures::TryFutureExt;
-use std::path::PathBuf;
-use std::str::FromStr;
+use std::{path::PathBuf, str::FromStr};
 use sway_core::TreeType;
 use tracing::info;
 

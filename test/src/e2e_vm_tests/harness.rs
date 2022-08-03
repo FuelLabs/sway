@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use forc::test::{forc_build, BuildCommand};
-use forc_client_ops::{
+use forc_client::ops::{
     deploy::{cmd::Deploy, op::deploy},
     run::{cmd::Run, op::run},
 };

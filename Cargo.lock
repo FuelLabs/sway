@@ -1134,19 +1134,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap 3.2.15",
- "forc-client-ops",
- "forc-util",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "forc-client-ops"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap 3.2.15",
  "forc",
  "forc-pkg",
  "forc-util",
@@ -3850,7 +3837,7 @@ dependencies = [
  "anyhow",
  "filecheck",
  "forc",
- "forc-client-ops",
+ "forc-client",
  "forc-pkg",
  "forc-util",
  "fuel-asm 0.6.0",
