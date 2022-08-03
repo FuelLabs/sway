@@ -4,6 +4,7 @@ use crate::{
     utils::{
         bracket::CurlyBrace,
         comments::{ByteSpan, LeafSpans},
+        indent_style::LineStyle,
     },
 };
 use std::fmt::Write;
@@ -16,17 +17,11 @@ impl Format for ExprStructField {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(
-            formatted_code,
-            "{}{}",
-            formatter.shape.indent.to_string(&formatter.config)?,
-            self.field_name.span().as_str()
-        )?;
-        if let Some(expr) = &self.expr_opt {
-            write!(formatted_code, "{} ", expr.0.span().as_str())?;
-            expr.1.format(formatted_code, formatter)?;
+        write!(formatted_code, "{}", self.field_name.span().as_str())?;
+        if let Some((colon_token, expr)) = &self.expr_opt {
+            write!(formatted_code, "{} ", colon_token.span().as_str())?;
+            expr.format(formatted_code, formatter)?;
         }
-        // writeln!(formatted_code)?;
 
         Ok(())
     }
@@ -60,12 +55,16 @@ impl CurlyBrace for ExprStructField {
     ) -> Result<(), FormatterError> {
         // Unindent by one block
         formatter.shape.block_unindent(&formatter.config);
-        write!(
-            line,
-            "{}{}",
-            formatter.shape.indent.to_string(&formatter.config)?,
-            Delimiter::Brace.as_close_char()
-        )?;
+        match formatter.shape.line_style {
+            LineStyle::Inline => write!(line, "{}", Delimiter::Brace.as_close_char())?,
+            _ => write!(
+                line,
+                "{}{}",
+                formatter.shape.indent.to_string(&formatter.config)?,
+                Delimiter::Brace.as_close_char()
+            )?,
+        }
+
         Ok(())
     }
 }
@@ -73,10 +72,10 @@ impl CurlyBrace for ExprStructField {
 impl LeafSpans for ExprStructField {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = vec![ByteSpan::from(self.field_name.span())];
-        if let Some(expr) = &self.expr_opt {
-            collected_spans.push(ByteSpan::from(expr.0.span()));
+        if let Some((colon_token, expr)) = &self.expr_opt {
+            collected_spans.push(ByteSpan::from(colon_token.span()));
             // TODO: determine if we are allowing comments between `:` and expr
-            collected_spans.append(&mut expr.1.leaf_spans());
+            collected_spans.append(&mut expr.leaf_spans());
         }
         collected_spans
     }

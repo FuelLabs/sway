@@ -10,7 +10,7 @@ pub use crate::{
     error::{ConfigError, FormatterError},
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Formatter {
     pub(crate) shape: Shape,
     pub config: Config,
@@ -313,6 +313,7 @@ enum TestTy {
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert_eq!(correct_sway_code, formatted_sway_code);
     }
+    // Leaving this comment here for Kaya, this test seems to have a parsing error!
     fn test_storage_without_alignment() {
         let sway_code_to_format = r#"contract;
 
@@ -485,24 +486,23 @@ struct Opts {
     id: ContractId,
 }
 
-fn main() -> bool {
-    let default_gas = 1_000_000_000_000;
+fn  main(       ) -> bool{
+    let default_gas  = 1_000_000_000_000           ;let fuelcoin_id = ~ContractId::from(0x018f59fe434b323a5054e7bb41de983f4926a3c5d3e4e1f9f33b5f0f0e611889);
 
-    let fuelcoin_id = ~ContractId::from(0x018f59fe434b323a5054e7bb41de983f4926a3c5d3e4e1f9f33b5f0f0e611889);
+    let balance_test_id = ~ContractId :: from( 0x597e5ddb1a6bec92a96a73e4f0bc6f6e3e7b21f5e03e1c812cd63cffac480463 ) ;
 
-    let balance_test_id = ~ContractId::from(0x597e5ddb1a6bec92a96a73e4f0bc6f6e3e7b21f5e03e1c812cd63cffac480463);
-
-    let fuel_coin = abi(TestFuelCoin, fuelcoin_id.into());
+    let fuel_coin = abi(    TestFuelCoin, fuelcoin_id.into(       ) ) ;               
 
     assert(fuelcoin_balance == 0);
 
-    fuel_coin.mint {
-        gas: default_gas
+    fuel_coin.mint        {
+        gas:             default_gas
     }
+
     (11);
 
     fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
-    assert(fuelcoin_balance == 11);
+    assert( fuelcoin_balance   == 11 ) ;
 
     fuel_coin.burn {
         gas: default_gas
@@ -538,26 +538,24 @@ fn main() -> bool {
     let balance_test_id = ~ContractId::from(0x597e5ddb1a6bec92a96a73e4f0bc6f6e3e7b21f5e03e1c812cd63cffac480463);
     let fuel_coin = abi(TestFuelCoin, fuelcoin_id.into());
     assert(fuelcoin_balance == 0);
-    fuel_coin.mint {
-        gas: default_gas
-    } (11);
+    fuel_coin.mint { gas: default_gas }(11);
     fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
     assert(fuelcoin_balance == 11);
-    fuel_coin.burn {
-        gas: default_gas
-    } (7);
+    fuel_coin.burn { gas: default_gas }(7);
     fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
     assert(fuelcoin_balance == 4);
     fuel_coin.force_transfer {
-        gas: default_gas
-    } (3, fuelcoin_id, balance_test_id);
+        gas: default_gas,
+    }(3, fuelcoin_id, balance_test_id);
     fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
     let balance_test_contract_balance = balance_of(fuelcoin_id, balance_test_id);
     assert(fuelcoin_balance == 1);
     assert(balance_test_contract_balance == 3);
     true
-    }"#;
+}"#;
         let mut formatter = Formatter::default();
+        formatter.config.structures.small_structures_single_line = true;
+        formatter.config.whitespace.max_width = 220;
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert_eq!(correct_sway_code, formatted_sway_code)

@@ -6,6 +6,8 @@ use std::fmt::Write;
 use sway_parse::{GenericArgs, GenericParams};
 use sway_types::Spanned;
 
+use super::indent_style::LineStyle;
+
 // In the future we will need to determine whether the generic arguments
 // are better suited with a `where` clause. At present they will be
 // formatted in line.
@@ -17,6 +19,8 @@ impl Format for GenericParams {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         let params = self.parameters.clone().into_inner();
+        let prev_state = formatter.shape.line_style;
+        formatter.shape.line_style = LineStyle::Normal;
 
         // `<`
         Self::open_angle_bracket(self.clone(), formatted_code, formatter)?;
@@ -24,6 +28,8 @@ impl Format for GenericParams {
         params.format(formatted_code, formatter)?;
         // `>`
         Self::close_angle_bracket(self.clone(), formatted_code, formatter)?;
+
+        formatter.shape.line_style = prev_state;
 
         Ok(())
     }

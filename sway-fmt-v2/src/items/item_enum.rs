@@ -10,10 +10,7 @@ use crate::{
     FormatterError,
 };
 use std::fmt::Write;
-use sway_parse::{
-    token::{Delimiter, PunctKind},
-    ItemEnum,
-};
+use sway_parse::{token::Delimiter, ItemEnum};
 use sway_types::Spanned;
 
 impl Format for ItemEnum {
@@ -26,9 +23,7 @@ impl Format for ItemEnum {
         formatter.shape.get_line_style(&formatter.config);
 
         format_enum(self, formatted_code, formatter)?;
-        if formatter.shape.line_style == LineStyle::Inline {
-            formatter.shape.reset_line_style();
-        }
+        formatter.shape.reset_line_style();
 
         Ok(())
     }
@@ -78,11 +73,12 @@ fn format_enum(
     // Handle openning brace
     ItemEnum::open_curly_brace(formatted_code, formatter)?;
     match formatter.shape.line_style {
-        LineStyle::Multiline => {
-            writeln!(formatted_code)?;
+        LineStyle::Inline => fields.format(formatted_code, formatter)?,
+        _ => {
             // Determine alignment tactic
             match formatter.config.structures.field_alignment {
                 FieldAlignment::AlignFields(enum_variant_align_threshold) => {
+                    writeln!(formatted_code)?;
                     let value_pairs = fields.value_separator_pairs;
                     // In first iteration we are going to be collecting the lengths of the enum variants.
                     let variant_length: Vec<usize> = value_pairs
@@ -136,51 +132,7 @@ fn format_enum(
                         }
                     }
                 }
-                FieldAlignment::Off => {
-                    let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
-                    for (type_field, comma_token) in value_pairs_iter.clone() {
-                        write!(
-                            formatted_code,
-                            "{}",
-                            &formatter.shape.indent.to_string(&formatter.config)?
-                        )?;
-                        // TypeField
-                        type_field.format(formatted_code, formatter)?;
-
-                        if value_pairs_iter.peek().is_some() {
-                            writeln!(formatted_code, "{}", comma_token.span().as_str())?;
-                        }
-                    }
-                    if let Some(final_value) = &fields.final_value_opt {
-                        write!(
-                            formatted_code,
-                            "{}",
-                            &formatter.shape.indent.to_string(&formatter.config)?
-                        )?;
-                        final_value.format(formatted_code, formatter)?;
-                        writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
-                    }
-                }
-            }
-        }
-        LineStyle::Inline => {
-            // non-multiline formatting
-            write!(formatted_code, " ")?;
-            let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
-            for (type_field, comma_token) in value_pairs_iter.clone() {
-                type_field.format(formatted_code, formatter)?;
-
-                if value_pairs_iter.peek().is_some() {
-                    write!(formatted_code, "{} ", comma_token.span().as_str())?;
-                }
-            }
-            if let Some(final_value) = &fields.final_value_opt {
-                final_value.format(formatted_code, formatter)?;
-                write!(formatted_code, " ")?;
-            } else {
-                formatted_code.pop();
-                formatted_code.pop();
-                write!(formatted_code, " ")?;
+                FieldAlignment::Off => fields.format(formatted_code, formatter)?,
             }
         }
     }

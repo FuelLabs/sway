@@ -4,14 +4,12 @@ use crate::{
     utils::{
         bracket::CurlyBrace,
         comments::{ByteSpan, LeafSpans},
+        indent_style::LineStyle,
     },
     FormatterError,
 };
 use std::fmt::Write;
-use sway_parse::{
-    token::{Delimiter, PunctKind},
-    ItemStorage, StorageField,
-};
+use sway_parse::{token::Delimiter, ItemStorage, StorageField};
 use sway_types::Spanned;
 
 impl Format for ItemStorage {
@@ -20,16 +18,18 @@ impl Format for ItemStorage {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        formatter.shape.line_style = LineStyle::Multiline;
         // Add storage token
         write!(formatted_code, "{}", self.storage_token.span().as_str())?;
         let fields = self.fields.clone().into_inner();
 
         // Handle openning brace
         Self::open_curly_brace(formatted_code, formatter)?;
-        writeln!(formatted_code)?;
+
         // Determine alignment tactic
         match formatter.config.structures.field_alignment {
             FieldAlignment::AlignFields(storage_field_align_threshold) => {
+                writeln!(formatted_code)?;
                 let value_pairs = fields.value_separator_pairs;
                 // In first iteration we are going to be collecting the lengths of the struct fields.
                 let field_length: Vec<usize> = value_pairs
@@ -89,34 +89,12 @@ impl Format for ItemStorage {
                     }
                 }
             }
-            FieldAlignment::Off => {
-                let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
-                for (storage_field, comma_token) in value_pairs_iter.clone() {
-                    write!(
-                        formatted_code,
-                        "{}",
-                        &formatter.shape.indent.to_string(&formatter.config)?
-                    )?;
-                    // storage_field
-                    storage_field.format(formatted_code, formatter)?;
-
-                    if value_pairs_iter.peek().is_some() {
-                        writeln!(formatted_code, "{}", comma_token.ident().as_str())?;
-                    }
-                }
-                if let Some(final_value) = &fields.final_value_opt {
-                    write!(
-                        formatted_code,
-                        "{}",
-                        &formatter.shape.indent.to_string(&formatter.config)?
-                    )?;
-                    final_value.format(formatted_code, formatter)?;
-                    writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
-                }
-            }
+            FieldAlignment::Off => fields.format(formatted_code, formatter)?,
         }
         // Handle closing brace
         Self::close_curly_brace(formatted_code, formatter)?;
+        formatter.shape.reset_line_style();
+
         Ok(())
     }
 }

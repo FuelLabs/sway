@@ -11,6 +11,8 @@ use sway_parse::{
     ty::{Ty, TyArrayDescriptor, TyTupleDescriptor},
 };
 use sway_types::Spanned;
+
+use super::indent_style::LineStyle;
 impl Format for Ty {
     fn format(
         &self,
@@ -97,7 +99,10 @@ impl Format for TyTupleDescriptor {
         {
             head.format(formatted_code, formatter)?;
             write!(formatted_code, "{} ", comma_token.ident().as_str())?;
+            let prev_state = formatter.shape.line_style;
+            formatter.shape.line_style = LineStyle::Normal;
             tail.format(formatted_code, formatter)?;
+            formatter.shape.line_style = prev_state;
         }
         Ok(())
     }

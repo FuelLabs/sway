@@ -106,13 +106,14 @@ impl Sub for Indent {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum LineStyle {
+    Normal,
     Inline,
     Multiline,
 }
 
 impl Default for LineStyle {
     fn default() -> Self {
-        Self::Multiline
+        Self::Normal
     }
 }
 
@@ -122,7 +123,7 @@ pub(crate) struct Shape {
     pub(crate) width: usize,
     /// The current indentation of code.
     pub(crate) indent: Indent,
-    /// Determines whether a code line is inline, or multiline.
+    /// Determines whether a code line is normal, inline or multiline.
     pub(crate) line_style: LineStyle,
     /// Used in determining `SameLineWhere` formatting.
     /// Default is false.
@@ -203,9 +204,10 @@ impl Shape {
             self.line_style = LineStyle::Multiline
         }
     }
-    /// Reset `Shape::line_style` to default.
+    /// Reset `Shape::line_style` to default and `Shape::width` to 0.
     pub(crate) fn reset_line_style(&mut self) {
-        self.line_style = LineStyle::default()
+        self.line_style = LineStyle::default();
+        self.width = 0;
     }
     /// Update the value of `has_where_clause`.
     pub(crate) fn update_where_clause(&mut self) {

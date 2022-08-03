@@ -4,13 +4,19 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_parse::{
-    token::{Delimiter, PunctKind},
-    CodeBlockContents, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor,
+    brackets::Parens,
+    keywords::{CommaToken, DotToken},
+    punctuated::Punctuated,
+    token::Delimiter,
+    Braces, CodeBlockContents, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor,
     MatchBranch,
 };
-use sway_types::Spanned;
+use sway_types::{Ident, Spanned};
 
-use super::bracket::{CurlyBrace, Parenthesis, SquareBracket};
+use super::{
+    bracket::{CurlyBrace, Parenthesis, SquareBracket},
+    indent_style::LineStyle,
+};
 
 pub(crate) mod abi_cast;
 pub(crate) mod asm_block;
@@ -36,27 +42,14 @@ impl Format for Expr {
                     .format(formatted_code, formatter)?;
             }
             Self::Struct { path, fields } => {
+                println!("struct {:?}", formatter.shape.line_style);
                 path.format(formatted_code, formatter)?;
                 ExprStructField::open_curly_brace(formatted_code, formatter)?;
-                writeln!(formatted_code)?;
-                let fields = fields.clone().into_inner();
-                let mut value_pairs_iter = fields.value_separator_pairs.iter().peekable();
-                for field in value_pairs_iter.clone() {
-                    // TypeField
-                    field.0.format(formatted_code, formatter)?;
-
-                    if value_pairs_iter.peek().is_some() {
-                        writeln!(formatted_code, "{}", field.1.span().as_str())?;
-                    }
-                }
-                if let Some(final_value) = &fields.final_value_opt {
-                    write!(
-                        formatted_code,
-                        "{}",
-                        &formatter.shape.indent.to_string(&formatter.config)?
-                    )?;
-                    final_value.format(formatted_code, formatter)?;
-                    writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
+                let fields = &fields.clone().into_inner();
+                match formatter.shape.line_style {
+                    LineStyle::Inline => fields.format(formatted_code, formatter)?,
+                    // TODO: add field alignment
+                    _ => fields.format(formatted_code, formatter)?,
                 }
                 ExprStructField::close_curly_brace(formatted_code, formatter)?;
             }
@@ -160,44 +153,43 @@ impl Format for Expr {
                 contract_args_opt,
                 args,
             } => {
-                // don't indent unless on new line
-                if formatted_code.ends_with('\n') {
-                    write!(
-                        formatted_code,
-                        "{}",
-                        formatter.shape.indent.to_string(&formatter.config)?
-                    )?;
-                }
-                target.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", dot_token.span().as_str())?;
-                name.format(formatted_code, formatter)?;
-                if let Some(contract_args) = &contract_args_opt {
-                    ExprStructField::open_curly_brace(formatted_code, formatter)?;
-                    contract_args
-                        .clone()
-                        .into_inner()
-                        .format(formatted_code, formatter)?;
-                    ExprStructField::close_curly_brace(formatted_code, formatter)?;
-                }
-                if formatted_code.ends_with('}') {
-                    write!(formatted_code, " ")?;
-                }
-                Self::open_parenthesis(formatted_code, formatter)?;
-                args.clone()
-                    .into_inner()
-                    .format(formatted_code, formatter)?;
-                Self::close_parenthesis(formatted_code, formatter)?;
+                let prev_state = formatter.shape.line_style;
+                // This is the same logic from the `.len_chars()` method
+                // which is unavailable here.
+                //
+                let mut buf = FormattedCode::new();
+                let mut temp_formatter = Formatter::default();
+                temp_formatter.shape.line_style = LineStyle::Inline;
+                format_method_call(
+                    target,
+                    dot_token,
+                    name,
+                    contract_args_opt,
+                    args,
+                    &mut buf,
+                    &mut temp_formatter,
+                )?;
+
+                // changes to the actual formatter
+                formatter.shape.update_width(buf.chars().count() as usize);
+                formatter.shape.get_line_style(&formatter.config);
+
+                format_method_call(
+                    target,
+                    dot_token,
+                    name,
+                    contract_args_opt,
+                    args,
+                    formatted_code,
+                    formatter,
+                )?;
+                formatter.shape.line_style = prev_state;
             }
             Self::FieldProjection {
                 target,
                 dot_token,
                 name,
             } => {
-                write!(
-                    formatted_code,
-                    "{}",
-                    formatter.shape.indent.to_string(&formatter.config)?
-                )?;
                 target.format(formatted_code, formatter)?;
                 write!(formatted_code, "{}", dot_token.span().as_str())?;
                 name.format(formatted_code, formatter)?;
@@ -445,6 +437,49 @@ impl SquareBracket for Expr {
         write!(line, "{}", Delimiter::Bracket.as_close_char())?;
         Ok(())
     }
+}
+
+pub(crate) fn format_method_call(
+    target: &Expr,
+    dot_token: &DotToken,
+    name: &Ident,
+    contract_args_opt: &Option<Braces<Punctuated<ExprStructField, CommaToken>>>,
+    args: &Parens<Punctuated<Expr, CommaToken>>,
+    formatted_code: &mut FormattedCode,
+    formatter: &mut Formatter,
+) -> Result<(), FormatterError> {
+    // don't indent unless on new line
+    if formatted_code.ends_with('\n') {
+        write!(
+            formatted_code,
+            "{}",
+            formatter.shape.indent.to_string(&formatter.config)?
+        )?;
+    }
+    target.format(formatted_code, formatter)?;
+    write!(formatted_code, "{}", dot_token.span().as_str())?;
+    name.format(formatted_code, formatter)?;
+    if let Some(contract_args) = &contract_args_opt {
+        ExprStructField::open_curly_brace(formatted_code, formatter)?;
+        let contract_args = &contract_args.clone().into_inner();
+        match formatter.shape.line_style {
+            LineStyle::Inline => {
+                contract_args.format(formatted_code, formatter)?;
+            }
+            _ => {
+                contract_args.format(formatted_code, formatter)?;
+            }
+        }
+        ExprStructField::close_curly_brace(formatted_code, formatter)?;
+    }
+    Expr::open_parenthesis(formatted_code, formatter)?;
+    formatter.shape.reset_line_style();
+    args.clone()
+        .into_inner()
+        .format(formatted_code, formatter)?;
+    Expr::close_parenthesis(formatted_code, formatter)?;
+
+    Ok(())
 }
 
 // Leaf Spans
