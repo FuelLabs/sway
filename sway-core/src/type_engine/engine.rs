@@ -13,6 +13,7 @@ lazy_static! {
 #[derive(Debug, Default)]
 pub(crate) struct Engine {
     slab: ConcurrentSlab<TypeInfo>,
+    storage_only_types: ConcurrentSlab<TypeInfo>,
 }
 
 impl Engine {
@@ -29,6 +30,19 @@ impl Engine {
             TypeInfo::Ref(other, _sp) => self.look_up_type_id(other),
             ty => ty,
         }
+    }
+
+    pub fn set_type_as_storage_only(&self, id: TypeId) {
+        self.storage_only_types.insert(self.look_up_type_id(id));
+    }
+
+    pub fn is_type_storage_only(&self, id: TypeId) -> bool {
+        let ti = &self.look_up_type_id(id);
+        self.is_type_info_storage_only(ti)
+    }
+
+    pub fn is_type_info_storage_only(&self, ti: &TypeInfo) -> bool {
+        self.storage_only_types.exists(|x| ti.is_subset_of(x))
     }
 
     fn monomorphize<T>(
@@ -473,6 +487,18 @@ pub fn look_up_type_id(id: TypeId) -> TypeInfo {
 
 pub(crate) fn look_up_type_id_raw(id: TypeId) -> TypeInfo {
     TYPE_ENGINE.look_up_type_id_raw(id)
+}
+
+pub fn set_type_as_storage_only(id: TypeId) {
+    TYPE_ENGINE.set_type_as_storage_only(id);
+}
+
+pub fn is_type_storage_only(id: TypeId) -> bool {
+    TYPE_ENGINE.is_type_storage_only(id)
+}
+
+pub fn is_type_info_storage_only(ti: &TypeInfo) -> bool {
+    TYPE_ENGINE.is_type_info_storage_only(ti)
 }
 
 pub(crate) fn monomorphize<T>(
