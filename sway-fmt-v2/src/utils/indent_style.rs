@@ -289,6 +289,6 @@ mod test {
         assert_eq!(LineStyle::Inline, formatter.shape.line_style);
 
         formatter.shape.reset_line_style();
-        assert_eq!(LineStyle::Multiline, formatter.shape.line_style);
+        assert_eq!(LineStyle::Normal, formatter.shape.line_style);
     }
 }
