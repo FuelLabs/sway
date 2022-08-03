@@ -42,10 +42,10 @@ impl Preprocessor for ForcDocumenter {
         let possible_commands: Vec<String> = possible_forc_commands();
         let examples: HashMap<String, String> = load_examples()?;
 
+        let (plugins, virtual_plugins) = plugin_commands();
         let mut command_contents: HashMap<String, String> =
             get_contents_from_commands(&possible_commands);
-        let mut plugin_contents: HashMap<String, String> =
-            get_contents_from_commands(&plugin_commands());
+        let mut plugin_contents: HashMap<String, String> = get_contents_from_commands(&plugins);
         let mut removed_commands = Vec::new();
 
         book.for_each_mut(|item| {
@@ -55,9 +55,21 @@ impl Preprocessor for ForcDocumenter {
                         if let BookItem::Chapter(ref mut plugin_chapter) = sub_item {
                             if let Some(content) = plugin_contents.remove(&plugin_chapter.name) {
                                 inject_content(plugin_chapter, &content, &examples);
-                            } else {
+                            } else if !virtual_plugins.contains(&plugin_chapter.name) {
                                 removed_commands.push(plugin_chapter.name.clone());
                             };
+                            for sub_sub_item in plugin_chapter.sub_items.iter_mut() {
+                                if let BookItem::Chapter(ref mut plugin_sub_chapter) = sub_sub_item
+                                {
+                                    if let Some(content) =
+                                        plugin_contents.remove(&plugin_sub_chapter.name)
+                                    {
+                                        inject_content(plugin_sub_chapter, &content, &examples);
+                                    } else {
+                                        removed_commands.push(plugin_sub_chapter.name.clone());
+                                    };
+                                }
+                            }
                         }
                     }
                 }

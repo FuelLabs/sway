@@ -14,9 +14,11 @@ fn find_forc_plugins_dir() -> Result<PathBuf> {
     Ok(plugins_dir)
 }
 
-pub fn plugin_commands() -> Vec<String> {
+/// Returns list of actual plugin commands and virtual
+pub fn plugin_commands() -> (Vec<String>, Vec<String>) {
     let plugins_dir = find_forc_plugins_dir().expect("Failed to find plugins directory");
     let mut plugins: Vec<String> = Vec::new();
+    let mut virtual_plugins: Vec<String> = Vec::new();
 
     for entry in fs::read_dir(&plugins_dir)
         .expect("Failed to read plugins directory")
@@ -28,21 +30,22 @@ pub fn plugin_commands() -> Vec<String> {
             let name = path.file_name().unwrap().to_str().unwrap();
 
             if name.starts_with("forc-") {
-                // Check for parent plugin (like `forc-client`)
+                let plugin = name.split_once('-').unwrap().1;
+                // Check for child plugins (like `forc-deploy` and `forc-run` of `forc-client`)
                 let child_plugins = collect_child_plugins(&path.join("Cargo.toml")).unwrap();
                 if child_plugins.is_empty() {
-                    let plugin = name.split_once('-').unwrap().1;
                     plugins.push(plugin.to_string());
                 } else {
                     for child_plugin in child_plugins {
                         let plugin = child_plugin.split_once('-').unwrap().1;
                         plugins.push(plugin.to_string());
                     }
+                    virtual_plugins.push(format!("forc {}", plugin));
                 }
             }
         }
     }
-    plugins
+    (plugins, virtual_plugins)
 }
 /// Collects child plugins for a given plugin's Cargo.toml path
 fn collect_child_plugins(manifest_path: &PathBuf) -> Result<Vec<String>> {
