@@ -48,6 +48,6 @@ where
 
     pub fn exists<F: Fn(&T) -> bool>(&self, f: F) -> bool {
         let inner = self.inner.read().unwrap();
-        inner.iter().any(|t| f(t))
+        inner.iter().any(f)
     }
 }

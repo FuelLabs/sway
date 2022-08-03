@@ -182,11 +182,8 @@ impl TypedImplTrait {
 
     // If any method contains a call to get_storage_index, then
     // impl_typ can only be a storage type.
-    // This is noted down in the module's root module.
-    fn gather_storage_only_types(
-        impl_typ: TypeId,
-        methods: &Vec<TypedFunctionDeclaration>,
-    ) {
+    // This is noted down in the type engine.
+    fn gather_storage_only_types(impl_typ: TypeId, methods: &[TypedFunctionDeclaration]) {
         use crate::semantic_analysis;
         fn ast_node_contains_get_storage_index(x: &TypedAstNodeContent) -> bool {
             match x {
@@ -228,13 +225,13 @@ impl TypedImplTrait {
                 }
                 TypedExpressionVariant::Tuple { fields: exprvec }
                 | TypedExpressionVariant::Array { contents: exprvec } => {
-                    exprvec.iter().any(|f| expr_contains_get_storage_index(f))
+                    exprvec.iter().any(expr_contains_get_storage_index)
                 }
 
                 TypedExpressionVariant::StructExpression { fields, .. } => fields
                     .iter()
                     .any(|f| expr_contains_get_storage_index(&f.value)),
-                TypedExpressionVariant::CodeBlock(cb) => codeblock_contains_get_storage_index(&cb),
+                TypedExpressionVariant::CodeBlock(cb) => codeblock_contains_get_storage_index(cb),
                 TypedExpressionVariant::IfExp {
                     condition,
                     then,
@@ -260,10 +257,7 @@ impl TypedImplTrait {
                 TypedExpressionVariant::IntrinsicFunction(TypedIntrinsicFunctionKind {
                     kind,
                     ..
-                }) => match kind {
-                    sway_parse::intrinsics::Intrinsic::GetStorageKey => true,
-                    _ => false,
-                },
+                }) => matches!(kind, sway_parse::intrinsics::Intrinsic::GetStorageKey),
             }
         }
         fn decl_contains_get_storage_index(decl: &TypedDeclaration) -> bool {

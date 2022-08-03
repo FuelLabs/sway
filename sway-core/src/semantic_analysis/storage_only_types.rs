@@ -1,10 +1,7 @@
 use sway_types::{Span, Spanned};
 
 use crate::type_engine::{is_type_info_storage_only, resolve_type, TypeId};
-use crate::{
-    error::ok,
-    semantic_analysis, CompileError, CompileResult, CompileWarning,
-};
+use crate::{error::ok, semantic_analysis, CompileError, CompileResult, CompileWarning};
 use crate::{TypedDeclaration, TypedFunctionDeclaration};
 
 use crate::semantic_analysis::{
@@ -83,7 +80,7 @@ fn expr_validate(expr: &TypedExpression) -> CompileResult<()> {
         }
         TypedExpressionVariant::CodeBlock(cb) => {
             check!(
-                validate_decls_for_storage_only_types_in_codeblock(&cb),
+                validate_decls_for_storage_only_types_in_codeblock(cb),
                 (),
                 warnings,
                 errors
@@ -161,7 +158,7 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
             ..
         }) => {
             check!(
-                check_type(expr.return_type, name.span().clone(), false),
+                check_type(expr.return_type, name.span(), false),
                 (),
                 warnings,
                 errors
