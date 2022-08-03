@@ -39,7 +39,7 @@ impl Format for StatementLet {
         write!(
             formatted_code,
             "{}{} ",
-            formatter.shape.indent.to_string(formatter),
+            formatter.shape.indent.to_string(&formatter.config)?,
             self.let_token.span().as_str()
         )?;
         // pattern
@@ -88,7 +88,6 @@ impl LeafSpans for StatementLet {
         // Add ty's ByteSpan if it exists
         if let Some(ty) = &self.ty_opt {
             collected_spans.push(ByteSpan::from(ty.0.span()));
-            // TODO: determine if we are allowing comments between `:` and ty
             collected_spans.append(&mut ty.1.leaf_spans());
         }
         // Add eq token's ByteSpan

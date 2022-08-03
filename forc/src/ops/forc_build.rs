@@ -1,6 +1,6 @@
 use crate::{
     cli::BuildCommand,
-    utils::{SWAY_BIN_HASH_SUFFIX, SWAY_BIN_ROOT_SUFFIX, SWAY_GIT_TAG},
+    utils::{SWAY_BIN_HASH_SUFFIX, SWAY_BIN_ROOT_SUFFIX},
 };
 use anyhow::Result;
 use forc_pkg::{self as pkg, ManifestFile};
@@ -18,6 +18,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         path,
         binary_outfile,
         debug_outfile,
+        print_ast,
         print_finalized_asm,
         print_intermediate_asm,
         print_ir,
@@ -56,9 +57,9 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         std::env::current_dir()?
     };
 
-    let manifest = ManifestFile::from_dir(&this_dir, SWAY_GIT_TAG)?;
+    let manifest = ManifestFile::from_dir(&this_dir)?;
 
-    let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline, SWAY_GIT_TAG)?;
+    let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)?;
 
     // Retrieve the specified build profile
     let mut profile = manifest
@@ -72,6 +73,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
             );
             Default::default()
         });
+    profile.print_ast |= print_ast;
     profile.print_ir |= print_ir;
     profile.print_finalized_asm |= print_finalized_asm;
     profile.print_intermediate_asm |= print_intermediate_asm;

@@ -454,7 +454,7 @@ fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileRes
                 Vec::new(),
                 vec![CompileError::InternalOwned(
                     ir_error.to_string(),
-                    span::Span::new("".into(), 0, 0, None).unwrap(),
+                    span::Span::dummy(),
                 )],
             );
         }
@@ -469,7 +469,7 @@ fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<
                 Vec::new(),
                 vec![CompileError::InternalOwned(
                     ir_error.to_string(),
-                    span::Span::new("".into(), 0, 0, None).unwrap(),
+                    span::Span::dummy(),
                 )],
             );
         }

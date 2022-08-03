@@ -23,7 +23,7 @@ pub struct TypedImplTrait {
     pub trait_name: CallPath,
     pub(crate) span: Span,
     pub methods: Vec<TypedFunctionDeclaration>,
-    pub(crate) implementing_for_type_id: TypeId,
+    pub implementing_for_type_id: TypeId,
 }
 
 impl CopyTypes for TypedImplTrait {
