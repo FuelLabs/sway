@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use std::{fmt::Write, vec};
-use sway_parse::{token::Delimiter, ItemUse, UseTree};
+use sway_ast::{token::Delimiter, ItemUse, UseTree};
 use sway_types::Spanned;
 
 impl Format for ItemUse {

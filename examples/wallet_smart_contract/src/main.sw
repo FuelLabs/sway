@@ -1,3 +1,4 @@
+// ANCHOR: full_wallet
 contract;
 
 use std::{
@@ -13,17 +14,17 @@ use std::{
     token::transfer_to_output,
 };
 
+// ANCHOR: abi_import
+use wallet_abi::Wallet;
+// ANCHOR_END: abi_import
+
 const OWNER_ADDRESS: b256 = 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861;
 
 storage {
     balance: u64 = 0,
 }
 
-abi Wallet {
-    #[storage(read, write)]fn receive_funds();
-    #[storage(read, write)]fn send_funds(amount_to_send: u64, recipient_address: Address);
-}
-
+// ANCHOR: abi_impl
 impl Wallet for Contract {
     #[storage(read, write)]fn receive_funds() {
         if msg_asset_id() == BASE_ASSET_ID {
@@ -57,3 +58,5 @@ impl Wallet for Contract {
         transfer_to_output(amount_to_send, BASE_ASSET_ID, recipient_address);
     }
 }
+// ANCHOR_END: abi_impl
+// ANCHOR_END: full_wallet

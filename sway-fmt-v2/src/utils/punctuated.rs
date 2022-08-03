@@ -4,7 +4,7 @@ use crate::{
     FormatterError,
 };
 use std::fmt::Write;
-use sway_parse::{keywords::CommaToken, punctuated::Punctuated, StorageField, TypeField};
+use sway_ast::{keywords::CommaToken, punctuated::Punctuated, StorageField, TypeField};
 use sway_types::{Ident, Spanned};
 
 impl<T, P> LeafSpans for Punctuated<T, P>

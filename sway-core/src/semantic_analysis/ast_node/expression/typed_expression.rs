@@ -16,7 +16,7 @@ use crate::{
     error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::DeterministicallyAborts,
 };
 
-use sway_parse::intrinsics::Intrinsic;
+use sway_ast::intrinsics::Intrinsic;
 use sway_types::{Ident, Span, Spanned};
 
 use std::{
@@ -31,7 +31,7 @@ pub struct TypedExpression {
     /// whether or not this expression is constantly evaluable (if the result is known at compile
     /// time)
     pub(crate) is_constant: IsConstant,
-    pub(crate) span: Span,
+    pub span: Span,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:

@@ -1,20 +1,9 @@
-use crate::priv_prelude::*;
+use crate::{Parse, ParseErrorKind, ParseResult, Parser};
 
-#[derive(Clone, Debug)]
-pub struct ItemImpl {
-    pub impl_token: ImplToken,
-    pub generic_params_opt: Option<GenericParams>,
-    pub trait_opt: Option<(PathType, ForToken)>,
-    pub ty: Ty,
-    pub where_clause_opt: Option<WhereClause>,
-    pub contents: Braces<Vec<Annotated<ItemFn>>>,
-}
-
-impl Spanned for ItemImpl {
-    fn span(&self) -> Span {
-        Span::join(self.impl_token.span(), self.contents.span())
-    }
-}
+use sway_ast::attribute::Annotated;
+use sway_ast::keywords::{Keyword, OpenAngleBracketToken, WhereToken};
+use sway_ast::{Braces, ItemFn, ItemImpl, Ty};
+use sway_types::Spanned;
 
 impl Parse for ItemImpl {
     fn parse(parser: &mut Parser) -> ParseResult<ItemImpl> {
@@ -41,7 +30,19 @@ impl Parse for ItemImpl {
             }
             None => None,
         };
-        let contents = parser.parse()?;
+        let contents: Braces<Vec<Annotated<ItemFn>>> = parser.parse()?;
+        if trait_opt.is_some() {
+            for item_fn in contents.get().iter() {
+                if let Some(token) = &item_fn.value.fn_signature.visibility {
+                    return Err(parser.emit_error_with_span(
+                        ParseErrorKind::UnnecessaryVisibilityQualifier {
+                            visibility: token.ident(),
+                        },
+                        token.span(),
+                    ));
+                }
+            }
+        }
         Ok(ItemImpl {
             impl_token,
             generic_params_opt,
