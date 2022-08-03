@@ -4,8 +4,9 @@ use crate::{
     utils::comments::{ByteSpan, LeafSpans},
 };
 use std::{fmt::Write, vec};
-use sway_parse::{
+use sway_ast::{
     expr::asm::{AsmBlockContents, AsmFinalExpr},
+    keywords::Token,
     token::{Delimiter, PunctKind},
     AbiCastArgs, AsmBlock, AsmRegisterDeclaration, Assignable, Expr, ExprArrayDescriptor,
     ExprStructField, ExprTupleDescriptor, IfCondition, IfExpr, Instruction, MatchBranch,
