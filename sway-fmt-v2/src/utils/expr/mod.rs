@@ -42,7 +42,6 @@ impl Format for Expr {
                     .format(formatted_code, formatter)?;
             }
             Self::Struct { path, fields } => {
-                println!("struct {:?}", formatter.shape.line_style);
                 path.format(formatted_code, formatter)?;
                 ExprStructField::open_curly_brace(formatted_code, formatter)?;
                 let fields = &fields.clone().into_inner();
