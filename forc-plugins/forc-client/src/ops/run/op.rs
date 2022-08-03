@@ -12,9 +12,9 @@ use std::{path::PathBuf, str::FromStr};
 use sway_core::TreeType;
 use tracing::info;
 
-use super::cmd::Run;
+use super::cmd::RunCommand;
 
-pub async fn run(command: Run) -> Result<Vec<fuel_tx::Receipt>> {
+pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     let path_dir = if let Some(path) = &command.path {
         PathBuf::from(path)
     } else {

@@ -9,9 +9,9 @@ use sway_core::TreeType;
 use sway_utils::constants::DEFAULT_NODE_URL;
 use tracing::info;
 
-use super::cmd::Deploy;
+use super::cmd::DeployCommand;
 
-pub async fn deploy(command: Deploy) -> Result<fuel_tx::ContractId> {
+pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
     let curr_dir = if let Some(ref path) = command.path {
         PathBuf::from(path)
     } else {
@@ -20,7 +20,7 @@ pub async fn deploy(command: Deploy) -> Result<fuel_tx::ContractId> {
     let manifest = ManifestFile::from_dir(&curr_dir)?;
     manifest.check_program_type(vec![TreeType::Contract])?;
 
-    let Deploy {
+    let DeployCommand {
         path,
         print_ast,
         print_finalized_asm,

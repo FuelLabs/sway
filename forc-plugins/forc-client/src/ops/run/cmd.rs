@@ -4,7 +4,7 @@ use clap::Parser;
 /// Crafts a script transaction then sends it to a running node.
 #[derive(Debug, Default, Parser)]
 #[clap(bin_name = "forc run")]
-pub struct Run {
+pub struct RunCommand {
     /// Hex string of data to input to script.
     #[clap(short, long)]
     pub data: Option<String>,

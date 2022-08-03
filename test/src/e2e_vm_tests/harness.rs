@@ -1,8 +1,8 @@
 use anyhow::{bail, Result};
 use forc::test::{forc_build, BuildCommand};
 use forc_client::ops::{
-    deploy::{cmd::Deploy, op::deploy},
-    run::{cmd::Run, op::run},
+    deploy::{cmd::DeployCommand, op::deploy},
+    run::{cmd::RunCommand, op::run},
 };
 use forc_pkg::Compiled;
 use fuel_tx::Transaction;
@@ -20,7 +20,7 @@ pub(crate) fn deploy_contract(file_name: &str, locked: bool) -> ContractId {
 
     tokio::runtime::Runtime::new()
         .unwrap()
-        .block_on(deploy(Deploy {
+        .block_on(deploy(DeployCommand {
             path: Some(format!(
                 "{}/src/e2e_vm_tests/test_programs/{}",
                 manifest_dir, file_name
@@ -49,7 +49,7 @@ pub(crate) fn runs_on_node(
 
     let verbose = get_test_config_from_env();
 
-    let command = Run {
+    let command = RunCommand {
         path: Some(format!(
             "{}/src/e2e_vm_tests/test_programs/{}",
             manifest_dir, file_name

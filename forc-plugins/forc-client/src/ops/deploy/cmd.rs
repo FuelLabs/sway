@@ -3,7 +3,7 @@ use clap::Parser;
 #[derive(Debug, Default, Parser)]
 #[clap(version)]
 #[clap(bin_name = "forc deploy")]
-pub struct Deploy {
+pub struct DeployCommand {
     /// Path to the project, if not specified, current working directory will be used.
     #[clap(short, long)]
     pub path: Option<String>,
