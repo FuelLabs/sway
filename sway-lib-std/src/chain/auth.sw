@@ -8,7 +8,7 @@ use ::contract_id::ContractId;
 use ::identity::Identity;
 use ::option::Option;
 use ::result::Result;
-use ::tx::{INPUT_COIN, INPUT_MESSAGE, tx_input_owner, tx_input_type, tx_inputs_count};
+use ::tx::{INPUT_COIN, INPUT_MESSAGE, tx_input_owner, tx_input_type, Input, tx_inputs_count};
 
 pub enum AuthError {
     InputsNotAllOwnedBySameAddress: (),
@@ -54,11 +54,26 @@ fn inputs_owner() -> Result<Identity, AuthError> {
     // Note: `inputs_count` is guaranteed to be at least 1 for any valid tx.
     while i < inputs_count {
         let input_type = tx_input_type(i);
-        if input_type != INPUT_COIN && input_type != INPUT_MESSAGE {
-            // type != InputCoin or InputMessage, continue looping.
-            i += 1;
-            continue;
+        match input_type {
+            Input::Coin => {
+                ();
+            },
+            Input::Message => {
+                ();
+            },
+            _ => {
+                // type != InputCoin or InputMessage, continue looping.
+                i += 1;
+                continue;
+            }
         }
+
+
+        // if input_type != INPUT_COIN && input_type != INPUT_MESSAGE {
+        //     // type != InputCoin or InputMessage, continue looping.
+        //     i += 1;
+        //     continue;
+        // }
 
         // type == InputCoin or InputMessage
         let input_owner = tx_input_owner(i);
