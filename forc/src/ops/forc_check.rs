@@ -1,4 +1,4 @@
-use crate::{cli::CheckCommand, utils::SWAY_GIT_TAG};
+use crate::cli::CheckCommand;
 use anyhow::Result;
 use forc_pkg::{self as pkg, ManifestFile};
 use std::path::PathBuf;
@@ -16,8 +16,8 @@ pub fn check(command: CheckCommand) -> Result<sway_core::CompileAstResult> {
     } else {
         std::env::current_dir()?
     };
-    let manifest = ManifestFile::from_dir(&this_dir, SWAY_GIT_TAG)?;
-    let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline, SWAY_GIT_TAG)?;
+    let manifest = ManifestFile::from_dir(&this_dir)?;
+    let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)?;
 
     let (_, ast_res) = pkg::check(&plan, silent_mode)?;
     Ok(ast_res)
