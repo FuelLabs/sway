@@ -8,6 +8,6 @@ struct Validation {
 }
 
 fn main() -> bool {
-    let validation:Validation = get_predicate_data();
+    let validation:Validation = get_predicate_data(0);
     validation.total_complete == 100 && validation.has_account
 }

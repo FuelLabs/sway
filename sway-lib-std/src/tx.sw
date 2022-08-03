@@ -390,6 +390,18 @@ pub fn predicate_data_pointer(index: u64) -> Option<u64> {
     }
 }
 
+pub fn get_predicate_data<T>(index: u64) -> T {
+    let data = predicate_data_pointer(index);
+    match data {
+        Option::Some(d) => {
+            read(d)
+        },
+        Option::None => {
+            revert(0)
+        },
+    }
+}
+
 ////////////////////////////////////////
 // Outputs
 ////////////////////////////////////////
