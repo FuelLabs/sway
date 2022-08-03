@@ -9,7 +9,6 @@ use crate::{
     utils,
 };
 use dashmap::DashMap;
-use forc::utils::SWAY_GIT_TAG;
 use forc_pkg::{self as pkg};
 use serde_json::Value;
 use std::{
@@ -159,10 +158,8 @@ impl Session {
         let offline = false;
 
         // TODO: match on any errors and report them back to the user in a future PR
-        if let Ok(manifest) = pkg::ManifestFile::from_dir(&manifest_dir, SWAY_GIT_TAG) {
-            if let Ok(plan) =
-                pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline, SWAY_GIT_TAG)
-            {
+        if let Ok(manifest) = pkg::ManifestFile::from_dir(&manifest_dir) {
+            if let Ok(plan) = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline) {
                 //we can then use them directly to convert them to a Vec<Diagnostic>
                 if let Ok((parsed_res, ast_res)) = pkg::check(&plan, silent_mode) {
                     // First, populate our token_map with un-typed ast nodes

@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_parse::{token::Delimiter, ExprArrayDescriptor, ExprTupleDescriptor};
+use sway_ast::{token::Delimiter, ExprArrayDescriptor, ExprTupleDescriptor};
 use sway_types::Spanned;
 
 // TODO: add long and multiline formatting

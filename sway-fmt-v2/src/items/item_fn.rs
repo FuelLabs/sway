@@ -7,7 +7,8 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_parse::{token::Delimiter, FnArg, FnArgs, FnSignature, ItemFn};
+use sway_ast::keywords::Token;
+use sway_ast::{token::Delimiter, FnArg, FnArgs, FnSignature, ItemFn};
 use sway_types::Spanned;
 
 impl Format for ItemFn {

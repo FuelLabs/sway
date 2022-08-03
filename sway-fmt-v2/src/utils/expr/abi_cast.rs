@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_parse::{token::Delimiter, AbiCastArgs};
+use sway_ast::{token::Delimiter, AbiCastArgs};
 use sway_types::Spanned;
 
 impl Format for AbiCastArgs {

@@ -3,7 +3,7 @@ use crate::{
     utils::comments::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
-use sway_parse::{
+use sway_ast::{
     brackets::Parens,
     keywords::{CommaToken, DotToken},
     punctuated::Punctuated,

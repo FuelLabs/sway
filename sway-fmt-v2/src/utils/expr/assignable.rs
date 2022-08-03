@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_parse::{expr::ReassignmentOp, Assignable, Expr};
+use sway_ast::{expr::ReassignmentOp, Assignable, Expr};
 use sway_types::Spanned;
 
 impl Format for Assignable {

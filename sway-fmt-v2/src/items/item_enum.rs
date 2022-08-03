@@ -10,7 +10,8 @@ use crate::{
     FormatterError,
 };
 use std::fmt::Write;
-use sway_parse::{token::Delimiter, ItemEnum};
+use sway_ast::keywords::Token;
+use sway_ast::{token::Delimiter, ItemEnum};
 use sway_types::Spanned;
 
 impl Format for ItemEnum {

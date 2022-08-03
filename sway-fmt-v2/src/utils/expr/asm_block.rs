@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_parse::{
+use sway_ast::{
     expr::asm::{AsmBlock, AsmBlockContents, AsmFinalExpr, AsmRegisterDeclaration},
     token::Delimiter,
     Instruction,

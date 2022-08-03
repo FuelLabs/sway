@@ -27,6 +27,7 @@ prettydiff = "0.5"
 serde = { version = "1.0", features = ["derive"] }
 sha2 = "0.9"
 smallvec = "1.7"
+sway-ast = { version = "0.19.1", path = "../sway-ast" }
 sway-ir = { version = "0.19.1", path = "../sway-ir" }
 sway-parse = { version = "0.19.1", path = "../sway-parse" }
 sway-types = { version = "0.19.1", path = "../sway-types" }

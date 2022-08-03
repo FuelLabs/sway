@@ -3609,6 +3609,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "sway-ast"
+version = "0.19.1"
+dependencies = [
+ "extension-trait",
+ "num-bigint",
+ "num-traits",
+ "sway-types",
+]
+
+[[package]]
 name = "sway-core"
 version = "0.19.1"
 dependencies = [
@@ -3630,6 +3640,7 @@ dependencies = [
  "serde",
  "sha2 0.9.9",
  "smallvec",
+ "sway-ast",
  "sway-ir",
  "sway-parse",
  "sway-types",
@@ -3657,6 +3668,7 @@ dependencies = [
  "ropey",
  "serde",
  "serde_ignored",
+ "sway-ast",
  "sway-core",
  "sway-parse",
  "sway-types",
@@ -3681,7 +3693,6 @@ version = "0.19.1"
 dependencies = [
  "async-trait",
  "dashmap",
- "forc",
  "forc-pkg",
  "forc-util",
  "futures",
@@ -3706,6 +3717,7 @@ dependencies = [
  "num-bigint",
  "num-traits",
  "phf",
+ "sway-ast",
  "sway-types",
  "thiserror",
  "unicode-xid",

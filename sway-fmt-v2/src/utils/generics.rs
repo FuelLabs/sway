@@ -1,6 +1,6 @@
 use super::bracket::{close_angle_bracket, open_angle_bracket};
 use crate::fmt::{Format, FormattedCode, Formatter, FormatterError};
-use sway_parse::{GenericArgs, GenericParams};
+use sway_ast::{GenericArgs, GenericParams};
 
 use super::indent_style::LineStyle;
 

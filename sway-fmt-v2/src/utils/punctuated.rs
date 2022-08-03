@@ -4,7 +4,7 @@ use crate::{
     FormatterError,
 };
 use std::fmt::Write;
-use sway_parse::{
+use sway_ast::{
     keywords::CommaToken, punctuated::Punctuated, token::PunctKind, StorageField, TypeField,
 };
 use sway_types::{Ident, Spanned};

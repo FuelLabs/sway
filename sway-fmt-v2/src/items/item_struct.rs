@@ -10,7 +10,7 @@ use crate::{
     FormatterError,
 };
 use std::fmt::Write;
-use sway_parse::{token::Delimiter, ItemStruct};
+use sway_ast::{keywords::Token, token::Delimiter, ItemStruct};
 use sway_types::Spanned;
 
 impl Format for ItemStruct {

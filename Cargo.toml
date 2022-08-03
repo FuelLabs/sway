@@ -11,6 +11,7 @@ members = [
     "forc-util",
     "scripts/examples-checker",
     "scripts/mdbook-forc-documenter",
+    "sway-ast",
     "sway-core",
     "sway-fmt",
     "sway-fmt-v2",

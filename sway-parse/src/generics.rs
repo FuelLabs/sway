@@ -1,9 +1,7 @@
-use crate::priv_prelude::*;
+use crate::{Parse, ParseResult, Parser};
 
-#[derive(Clone, Debug)]
-pub struct GenericParams {
-    pub parameters: AngleBrackets<Punctuated<Ident, CommaToken>>,
-}
+use sway_ast::punctuated::Punctuated;
+use sway_ast::{AngleBrackets, GenericArgs, GenericParams};
 
 impl Parse for GenericParams {
     fn parse(parser: &mut Parser) -> ParseResult<GenericParams> {
@@ -30,17 +28,6 @@ impl Parse for GenericParams {
             close_angle_bracket_token,
         };
         Ok(GenericParams { parameters })
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct GenericArgs {
-    pub parameters: AngleBrackets<Punctuated<Ty, CommaToken>>,
-}
-
-impl Spanned for GenericArgs {
-    fn span(&self) -> Span {
-        self.parameters.span()
     }
 }
 

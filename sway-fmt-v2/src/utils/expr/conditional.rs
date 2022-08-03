@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use std::{fmt::Write, ops::ControlFlow};
-use sway_parse::{token::Delimiter, IfCondition, IfExpr, MatchBranch, MatchBranchKind};
+use sway_ast::{token::Delimiter, IfCondition, IfExpr, MatchBranch, MatchBranchKind};
 use sway_types::Spanned;
 
 impl Format for IfExpr {
