@@ -8,9 +8,7 @@ async fn get_evm_test_instance() -> (EvmTestContract, ContractId) {
         "test_projects/evm/out/debug/evm.bin",
         &wallet,
         TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_artifacts/evm/out/debug/evm-storage_slots.json".to_string(),
-        )),
+        StorageConfiguration::default(),
     )
     .await
     .unwrap();

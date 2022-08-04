@@ -11,9 +11,7 @@ async fn test_storage_map_instance() -> TestStorageMapContract {
         "test_projects/storage_map/out/debug/storage_map.bin",
         &wallet,
         TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_artifacts/storage_map/out/debug/storage_map-storage_slots.json".to_string(),
-        )),
+        StorageConfiguration::default(),
     )
     .await
     .unwrap();
