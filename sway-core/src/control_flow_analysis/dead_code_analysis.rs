@@ -366,9 +366,17 @@ fn connect_declaration(
                 )
             }
         }
-        ConstantDeclaration(TypedConstantDeclaration { name, .. }) => {
+        ConstantDeclaration(TypedConstantDeclaration { name, value, .. }) => {
             graph.namespace.insert_constant(name.clone(), entry_node);
-            Ok(leaves.to_vec())
+            connect_expression(
+                &value.expression,
+                graph,
+                &[entry_node],
+                exit_node,
+                "constant declaration expression",
+                tree_type,
+                value.span.clone(),
+            )
         }
         FunctionDeclaration(fn_decl) => {
             connect_typed_fn_decl(fn_decl, graph, entry_node, span, exit_node, tree_type)?;

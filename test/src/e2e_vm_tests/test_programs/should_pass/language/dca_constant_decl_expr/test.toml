@@ -1,0 +1,5 @@
+category = "compile"
+validate_abi = true
+
+# not: const C1 = 66;
+# not: -------------- This declaration is never used.
