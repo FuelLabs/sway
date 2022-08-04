@@ -1,6 +1,8 @@
+// all
+//
 // regex: VAR=v\d+
 // regex: MD=!\d+
-// regex: LABEL=[[:alpha:]0-9]+:
+// regex: LABEL=[[:alpha:]0-9_]+:
 
 script {
     fn return_storage_key_wrapper() -> b256 {
