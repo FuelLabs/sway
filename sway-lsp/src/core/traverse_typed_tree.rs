@@ -180,12 +180,7 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                     token.type_def = Some(TypeDefinition::TypeId(field.type_id));
                 }
 
-                if let Some(mut token) =
-                    tokens.get_mut(&to_ident_key(&Ident::new(field.initializer.span.clone())))
-                {
-                    token.typed = Some(TypedAstToken::TypedExpression(field.initializer.clone()));
-                    token.type_def = Some(TypeDefinition::TypeId(field.initializer.return_type));
-                }
+                handle_expression(&field.initializer, tokens);
             }
         }
         TypedDeclaration::StorageReassignment(storage_reassignment) => {
