@@ -3,7 +3,7 @@ use crate::{
     utils::comments::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
-use sway_parse::{Statement, StatementLet};
+use sway_ast::{Statement, StatementLet};
 use sway_types::Spanned;
 
 impl Format for Statement {
