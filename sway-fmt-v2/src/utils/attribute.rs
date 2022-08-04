@@ -3,11 +3,11 @@ use crate::{
     FormatterError,
 };
 use std::fmt::Write;
-use sway_parse::{
+use sway_ast::{
     attribute::{Annotated, Attribute, AttributeDecl},
     token::Delimiter,
-    Parse,
 };
+use sway_parse::Parse;
 use sway_types::Spanned;
 
 use super::{

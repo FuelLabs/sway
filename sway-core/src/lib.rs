@@ -141,7 +141,7 @@ fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeTy
     })
 }
 
-fn module_path(parent_module_dir: &Path, dep: &sway_parse::Dependency) -> PathBuf {
+fn module_path(parent_module_dir: &Path, dep: &sway_ast::Dependency) -> PathBuf {
     parent_module_dir
         .iter()
         .chain(dep.path.span().as_str().split('/').map(AsRef::as_ref))

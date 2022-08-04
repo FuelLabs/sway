@@ -8,7 +8,8 @@ use crate::{
     FormatterError,
 };
 use std::fmt::Write;
-use sway_parse::{
+use sway_ast::keywords::Token;
+use sway_ast::{
     token::{Delimiter, PunctKind},
     ItemStorage, StorageField,
 };
