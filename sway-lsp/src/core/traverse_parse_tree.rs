@@ -258,10 +258,51 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                     Token::from_parsed(AstToken::StorageField(field.clone())),
                 );
 
-                tokens.insert(
-                    to_ident_key(&Ident::new(field.initializer.span())),
-                    Token::from_parsed(AstToken::Expression(field.initializer.clone())),
-                );
+                match &field.type_info {
+                //     TypeInfo::UnsignedInteger(..)
+                //     | TypeInfo::Boolean
+                //     | TypeInfo::Byte
+                //     | TypeInfo::B256 => {
+                //         tokens.insert(
+                //             to_ident_key(&Ident::new(field.type_span.clone())),
+                //             Token::from_parsed(AstToken::StorageField(field.clone())),
+                //         );
+                //     }
+                //     TypeInfo::Tuple(args) => {
+                //         for arg in args {
+                //             let mut token =
+                //                 Token::from_parsed(AstToken::StorageField(field.clone()));
+                //             token.type_def = Some(TypeDefinition::TypeId(arg.type_id));
+                //             tokens.insert(to_ident_key(&Ident::new(arg.span.clone())), token);
+                //         }
+                //     }
+                //     TypeInfo::Ref(type_id, span) => {
+                //         let mut token = Token::from_parsed(AstToken::StorageField(field.clone()));
+                //         token.type_def = Some(TypeDefinition::TypeId(*type_id));
+                //         tokens.insert(to_ident_key(&Ident::new(span.clone())), token);
+                //     }
+                    TypeInfo::Custom {
+                        name,
+                        type_arguments,
+                    } => {
+                        tokens.insert(
+                            to_ident_key(name),
+                            Token::from_parsed(AstToken::StorageField(field.clone())),
+                        );
+
+                        if let Some(args) = type_arguments {
+                            for arg in args {
+                                let mut token =
+                                    Token::from_parsed(AstToken::StorageField(field.clone()));
+                                token.type_def = Some(TypeDefinition::TypeId(arg.type_id));
+                                tokens.insert(to_ident_key(&Ident::new(arg.span.clone())), token);
+                            }
+                        }
+                    }
+                    _ => (),
+                }
+
+                handle_expression(&field.initializer, tokens);
             }
         }
         // TODO: collect these tokens as keywords once the compiler returns the span

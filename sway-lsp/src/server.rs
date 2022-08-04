@@ -305,7 +305,7 @@ mod tests {
             .unwrap()
             .parent()
             .unwrap()
-            .join("examples/signatures")
+            .join("examples/storage_variables")
     }
 
     fn lsp_test_dir() -> PathBuf {
@@ -313,7 +313,7 @@ mod tests {
     }
 
     fn load_sway_example() -> (Url, String) {
-        let manifest_dir = lsp_test_dir(); //sway_example_dir();
+        let manifest_dir = sway_example_dir();
         let src_path = manifest_dir.join("src/main.sw");
         let mut file = fs::File::open(&src_path).unwrap();
         let mut sway_program = String::new();
