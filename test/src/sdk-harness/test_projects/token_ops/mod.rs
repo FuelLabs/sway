@@ -309,12 +309,13 @@ async fn get_fuelcoin_instance(wallet: Wallet) -> (TestFuelCoinContract, Contrac
         "test_projects/token_ops/out/debug/token_ops.bin",
         &wallet,
         TxParameters::default(),
-        StorageConfiguration::default()
+        StorageConfiguration::default(),
     )
     .await
     .unwrap();
 
-    let fuelcoin_instance = TestFuelCoinContractBuilder::new(fuelcoin_id.to_string(), wallet).build();
+    let fuelcoin_instance =
+        TestFuelCoinContractBuilder::new(fuelcoin_id.to_string(), wallet).build();
 
     (fuelcoin_instance, fuelcoin_id)
 }
