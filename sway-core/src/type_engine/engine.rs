@@ -474,6 +474,7 @@ impl Engine {
 
     pub fn clear(&self) {
         self.slab.clear();
+        self.storage_only_types.clear();
     }
 }
 
