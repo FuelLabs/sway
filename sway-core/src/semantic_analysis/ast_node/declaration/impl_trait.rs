@@ -257,7 +257,7 @@ impl TypedImplTrait {
                 TypedExpressionVariant::IntrinsicFunction(TypedIntrinsicFunctionKind {
                     kind,
                     ..
-                }) => matches!(kind, sway_parse::intrinsics::Intrinsic::GetStorageKey),
+                }) => matches!(kind, sway_ast::intrinsics::Intrinsic::GetStorageKey),
             }
         }
         fn decl_contains_get_storage_index(decl: &TypedDeclaration) -> bool {
