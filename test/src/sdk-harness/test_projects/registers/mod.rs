@@ -23,7 +23,7 @@ async fn deploy_test_registers_instance() -> TestRegistersContract {
     .await
     .unwrap();
 
-    TestRegistersContract::new(id.to_string(), wallet)
+    TestRegistersContractBuilder::new(id.to_string(), wallet).build()
 }
 
 #[tokio::test]

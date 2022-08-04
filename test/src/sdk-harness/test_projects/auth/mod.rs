@@ -77,8 +77,8 @@ async fn get_contracts() -> (
     .await
     .unwrap();
 
-    let instance_1 = AuthContract::new(id_1.to_string(), wallet.clone());
-    let instance_2 = AuthCallerContract::new(id_2.to_string(), wallet.clone());
+    let instance_1 = AuthContractBuilder::new(id_1.to_string(), wallet.clone()).build();
+    let instance_2 = AuthCallerContractBuilder::new(id_2.to_string(), wallet.clone()).build();
 
     (instance_1, id_1, instance_2, id_2, wallet)
 }

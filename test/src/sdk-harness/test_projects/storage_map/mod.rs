@@ -18,7 +18,7 @@ async fn test_storage_map_instance() -> TestStorageMapContract {
     .await
     .unwrap();
 
-    TestStorageMapContract::new(id.to_string(), wallet)
+    TestStorageMapContractBuilder::new(id.to_string(), wallet).build()
 }
 
 mod u64_to {

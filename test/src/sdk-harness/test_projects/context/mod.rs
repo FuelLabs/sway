@@ -42,8 +42,8 @@ async fn get_contracts() -> (
     .await
     .unwrap();
 
-    let instance_2 = TestContextCallerContract::new(id_2.to_string(), wallet.clone());
-    let instance_1 = TestContextContract::new(id_1.to_string(), wallet.clone());
+    let instance_2 = TestContextCallerContractBuilder::new(id_2.to_string(), wallet.clone()).build();
+    let instance_1 = TestContextContractBuilder::new(id_1.to_string(), wallet.clone()).build();
 
     (instance_1, id_1, instance_2, id_2)
 }

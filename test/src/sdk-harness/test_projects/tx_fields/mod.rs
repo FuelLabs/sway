@@ -23,7 +23,7 @@ async fn get_contracts() -> (TxContractTest, ContractId, Wallet) {
     )
     .await
     .unwrap();
-    let instance = TxContractTest::new(contract_id.to_string(), wallet.clone());
+    let instance = TxContractTestBuilder::new(contract_id.to_string(), wallet.clone()).build();
 
     (instance, contract_id, wallet)
 }
