@@ -80,22 +80,29 @@ impl Backend {
         diagnostics: Vec<Diagnostic>,
         token_map: &TokenMap,
     ) {
-        // If parsed_tokens_as_warnings is true, take over the normal error and warning display behavior
-        // and instead show the parsed tokens as warnings.
-        // This is useful for debugging the lsp parser.
-        if self.config.parsed_tokens_as_warnings {
-            let diagnostics = debug::generate_warnings_for_parsed_tokens(token_map);
-
-            //let diagnostics = debug::generate_warnings_for_typed_tokens(token_map);
-            self.client
-                .publish_diagnostics(uri.clone(), diagnostics, None)
-                .await;
-        } else {
-            // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
-            // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
-            self.client
-                .publish_diagnostics(uri.clone(), diagnostics, None)
-                .await;
+        match &self.config.collected_tokens_as_warnings {
+            Some(s) => {
+                // If collected_tokens_as_warnings is Some, take over the normal error and warning display behavior
+                // and instead show the either the parsed or typed tokens as warnings.
+                // This is useful for debugging the lsp parser.
+                let diagnostics = match s.as_str() {
+                    "parsed" => Some(debug::generate_warnings_for_parsed_tokens(token_map)),
+                    "typed" => Some(debug::generate_warnings_for_typed_tokens(token_map)),
+                    _ => None,
+                };
+                if let Some(diagnostics) = diagnostics {
+                    self.client
+                        .publish_diagnostics(uri.clone(), diagnostics, None)
+                        .await;
+                }
+            }
+            None => {
+                // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
+                // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
+                self.client
+                    .publish_diagnostics(uri.clone(), diagnostics, None)
+                    .await;
+            }
         }
     }
 }
