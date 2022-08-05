@@ -4,6 +4,7 @@ mod module;
 pub mod namespace;
 mod node_dependencies;
 mod program;
+mod storage_only_types;
 mod type_check_context;
 pub(crate) use ast_node::*;
 pub use ast_node::{TypedConstantDeclaration, TypedDeclaration, TypedFunctionDeclaration};

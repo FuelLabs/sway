@@ -45,4 +45,9 @@ where
         let mut inner = self.inner.write().unwrap();
         *inner = Vec::new();
     }
+
+    pub fn exists<F: Fn(&T) -> bool>(&self, f: F) -> bool {
+        let inner = self.inner.read().unwrap();
+        inner.iter().any(f)
+    }
 }
