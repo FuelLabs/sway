@@ -477,7 +477,7 @@ trait CompSciStudent: Programmer + Student {
         assert_eq!(correct_sway_code, formatted_sway_code)
     }
     #[test]
-    fn test_expr() {
+    fn test_method_calls() {
         let sway_code_to_format = r#"script;
 
 struct Opts {

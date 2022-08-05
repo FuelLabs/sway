@@ -9,7 +9,7 @@ use sway_ast::{
     punctuated::Punctuated,
     token::Delimiter,
     Braces, CodeBlockContents, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor,
-    MatchBranch,
+    MatchBranch, PathExpr,
 };
 use sway_types::{Ident, Spanned};
 
@@ -25,6 +25,9 @@ pub(crate) mod code_block;
 pub(crate) mod collections;
 pub(crate) mod conditional;
 pub(crate) mod struct_field;
+
+#[cfg(test)]
+mod tests;
 
 impl Format for Expr {
     fn format(
@@ -42,15 +45,21 @@ impl Format for Expr {
                     .format(formatted_code, formatter)?;
             }
             Self::Struct { path, fields } => {
-                path.format(formatted_code, formatter)?;
-                ExprStructField::open_curly_brace(formatted_code, formatter)?;
-                let fields = &fields.clone().into_inner();
-                match formatter.shape.line_style {
-                    LineStyle::Inline => fields.format(formatted_code, formatter)?,
-                    // TODO: add field alignment
-                    _ => fields.format(formatted_code, formatter)?,
-                }
-                ExprStructField::close_curly_brace(formatted_code, formatter)?;
+                let prev_state = formatter.shape.line_style;
+                // This is the same logic from the `.len_chars()` method
+                // which is unavailable here.
+                //
+                let mut buf = FormattedCode::new();
+                let mut temp_formatter = Formatter::default();
+                temp_formatter.shape.line_style = LineStyle::Inline;
+                format_expr_struct(path, fields, &mut buf, &mut temp_formatter)?;
+
+                // changes to the actual formatter
+                formatter.shape.update_width(buf.chars().count() as usize);
+                formatter.shape.get_line_style(&formatter.config);
+
+                format_expr_struct(path, fields, formatted_code, formatter)?;
+                formatter.shape.line_style = prev_state;
             }
             Self::Tuple(tuple_descriptor) => {
                 ExprTupleDescriptor::open_parenthesis(formatted_code, formatter)?;
@@ -436,6 +445,25 @@ impl SquareBracket for Expr {
         write!(line, "{}", Delimiter::Bracket.as_close_char())?;
         Ok(())
     }
+}
+
+pub(crate) fn format_expr_struct(
+    path: &PathExpr,
+    fields: &Braces<Punctuated<ExprStructField, CommaToken>>,
+    formatted_code: &mut FormattedCode,
+    formatter: &mut Formatter,
+) -> Result<(), FormatterError> {
+    path.format(formatted_code, formatter)?;
+    ExprStructField::open_curly_brace(formatted_code, formatter)?;
+    let fields = &fields.clone().into_inner();
+    match formatter.shape.line_style {
+        LineStyle::Inline => fields.format(formatted_code, formatter)?,
+        // TODO: add field alignment
+        _ => fields.format(formatted_code, formatter)?,
+    }
+    ExprStructField::close_curly_brace(formatted_code, formatter)?;
+
+    Ok(())
 }
 
 pub(crate) fn format_method_call(
