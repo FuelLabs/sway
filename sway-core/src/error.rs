@@ -998,6 +998,8 @@ pub enum CompileError {
     NoDeclaredStorage { span: Span },
     #[error("Multiple storage declarations were found")]
     MultipleStorageDeclarations { span: Span },
+    #[error("Type {ty} can only be declared directly as a storage field")]
+    InvalidStorageOnlyTypeDecl { ty: String, span: Span },
     #[error("Expected identifier, found keyword \"{name}\" ")]
     InvalidVariableName { name: Ident },
     #[error(
@@ -1189,6 +1191,7 @@ impl Spanned for CompileError {
             UnrecognizedContractParam { span, .. } => span.clone(),
             CallParamForNonContractCallMethod { span, .. } => span.clone(),
             StorageFieldDoesNotExist { name } => name.span(),
+            InvalidStorageOnlyTypeDecl { span, .. } => span.clone(),
             NoDeclaredStorage { span, .. } => span.clone(),
             MultipleStorageDeclarations { span, .. } => span.clone(),
             InvalidVariableName { name } => name.span(),
