@@ -128,7 +128,7 @@ async fn get_hashing_instance() -> (HashingTestContract, ContractId) {
         &wallet,
         TxParameters::default(),
         StorageConfiguration::with_storage_path(Some(
-            "test_artifacts/hashing/out/debug/hashing-storage_slots.json".to_string(),
+            "test_projects/hashing/out/debug/hashing-storage_slots.json".to_string(),
         )),
     )
     .await

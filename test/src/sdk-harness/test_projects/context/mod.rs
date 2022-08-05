@@ -26,7 +26,7 @@ async fn get_contracts() -> (
         &wallet,
         TxParameters::default(),
         StorageConfiguration::with_storage_path(Some(
-            "test_artifacts/context/out/debug/context-storage_slots.json".to_string(),
+            "test_projects/context/out/debug/context-storage_slots.json".to_string(),
         )),
     )
     .await

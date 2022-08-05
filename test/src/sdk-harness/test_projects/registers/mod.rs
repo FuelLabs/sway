@@ -17,7 +17,7 @@ async fn deploy_test_registers_instance() -> TestRegistersContract {
         &wallet,
         TxParameters::default(),
         StorageConfiguration::with_storage_path(Some(
-            "test_artifacts/registers/out/debug/registers-storage_slots.json".to_string(),
+            "test_projects/registers/out/debug/registers-storage_slots.json".to_string(),
         )),
     )
     .await

@@ -15,7 +15,7 @@ async fn get_call_frames_instance() -> (CallFramesTestContract, ContractId) {
         &wallet,
         TxParameters::default(),
         StorageConfiguration::with_storage_path(Some(
-            "test_artifacts/call_frames/out/debug/call_frames-storage_slots.json".to_string(),
+            "test_projects/call_frames/out/debug/call_frames-storage_slots.json".to_string(),
         )),
     )
     .await

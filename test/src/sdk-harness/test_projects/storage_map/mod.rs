@@ -12,7 +12,7 @@ async fn test_storage_map_instance() -> TestStorageMapContract {
         &wallet,
         TxParameters::default(),
         StorageConfiguration::with_storage_path(Some(
-            "test_artifacts/storage_map/out/debug/storage_map-storage_slots.json".to_string(),
+            "test_projects/storage_map/out/debug/storage_map-storage_slots.json".to_string(),
         )),
     )
     .await
