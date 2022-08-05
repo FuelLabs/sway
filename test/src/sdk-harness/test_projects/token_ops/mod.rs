@@ -316,7 +316,8 @@ async fn get_fuelcoin_instance(wallet: Wallet) -> (TestFuelCoinContract, Contrac
     .await
     .unwrap();
 
-    let fuelcoin_instance = TestFuelCoinContractBuilder::new(fuelcoin_id.to_string(), wallet).build();
+    let fuelcoin_instance =
+        TestFuelCoinContractBuilder::new(fuelcoin_id.to_string(), wallet).build();
 
     (fuelcoin_instance, fuelcoin_id.into())
 }
