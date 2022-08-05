@@ -42,7 +42,7 @@ macro_rules! fmt_test_inner {
                 let changeset = diff_lines(&formatted_code, $desired_output);
                 let count_of_updates = changeset.diff().len();
                 if count_of_updates != 0 {
-                    println!("FAIL: {count_of_updates} diff items.");
+                    println!("FAILED: {count_of_updates} diff items.");
                 }
                 for diff in changeset.diff() {
                     match diff {
