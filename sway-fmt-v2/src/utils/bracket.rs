@@ -3,7 +3,7 @@
 //! contained to each item's file.
 use crate::fmt::*;
 use std::fmt::Write;
-use sway_parse::token::PunctKind;
+use sway_ast::token::PunctKind;
 
 pub(crate) trait CurlyBrace {
     /// Handles brace open scenerio. Checks the config for the placement of the brace.

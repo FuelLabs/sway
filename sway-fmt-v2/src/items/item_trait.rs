@@ -7,7 +7,7 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_parse::{token::Delimiter, ItemTrait, Traits};
+use sway_ast::{keywords::Token, token::Delimiter, ItemTrait, Traits};
 use sway_types::Spanned;
 
 impl Format for ItemTrait {

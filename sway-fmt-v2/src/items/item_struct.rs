@@ -10,7 +10,8 @@ use crate::{
     FormatterError,
 };
 use std::fmt::Write;
-use sway_parse::{
+use sway_ast::{
+    keywords::Token,
     token::{Delimiter, PunctKind},
     ItemStruct,
 };
