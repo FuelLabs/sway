@@ -111,7 +111,7 @@ pub const TEST: u16 = 10;"#;
     }
 
     #[test]
-    fn test_struct_multiline_line_alignment() {
+    fn test_struct_alignment() {
         let sway_code_to_format = r#"contract;
 pub struct Foo<T, P> {
    barbazfoo: u64,
@@ -132,43 +132,7 @@ pub struct Foo<T, P> {
         assert_eq!(correct_sway_code, formatted_sway_code)
     }
     #[test]
-    fn test_struct_single_line() {
-        let sway_code_to_format = r#"contract;
-pub struct Foo {
-    bar: u64,
-    baz: bool,
-}
-"#;
-        let correct_sway_code = r#"contract;
-
-pub struct Foo { bar: u64, baz: bool }"#;
-        let mut formatter = Formatter::default();
-        formatter.config.structures.small_structures_single_line = true;
-        formatter.config.whitespace.max_width = 300;
-        let formatted_sway_code =
-            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert_eq!(correct_sway_code, formatted_sway_code)
-    }
-    #[test]
-    fn test_enum_single_line() {
-        let sway_code_to_format = r#"contract;
-pub enum Foo {
-    bar: u64,
-    baz: bool,
-}
-"#;
-        let correct_sway_code = r#"contract;
-
-pub enum Foo { bar: u64, baz: bool }"#;
-        let mut formatter = Formatter::default();
-        formatter.config.structures.small_structures_single_line = true;
-        formatter.config.whitespace.max_width = 300;
-        let formatted_sway_code =
-            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert_eq!(correct_sway_code, formatted_sway_code)
-    }
-    #[test]
-    fn test_struct_multi_line() {
+    fn test_struct() {
         let sway_code_to_format = r#"contract;
 pub struct Foo {
     bar: u64,
@@ -313,7 +277,7 @@ enum TestTy {
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert_eq!(correct_sway_code, formatted_sway_code);
     }
-    // Leaving this comment here for Kaya, this test seems to have a parsing error!
+    // Leaving this comment here for Kaya, this test was getting overlooked, likely from a merge resolution.
     fn test_storage_without_alignment() {
         let sway_code_to_format = r#"contract;
 

@@ -46,17 +46,19 @@ impl Format for Expr {
             }
             Self::Struct { path, fields } => {
                 let prev_state = formatter.shape.line_style;
-                // This is the same logic from the `.len_chars()` method
-                // which is unavailable here.
-                //
+                // get the length in chars of the code in a single line format
                 let mut buf = FormattedCode::new();
                 let mut temp_formatter = Formatter::default();
                 temp_formatter.shape.line_style = LineStyle::Inline;
                 format_expr_struct(path, fields, &mut buf, &mut temp_formatter)?;
+                // get the largest field size
+                let field_width = get_field_width(&fields.clone().into_inner())?;
 
                 // changes to the actual formatter
                 formatter.shape.update_width(buf.chars().count() as usize);
-                formatter.shape.get_line_style(&formatter.config);
+                formatter
+                    .shape
+                    .get_line_style(field_width, &formatter.config);
 
                 format_expr_struct(path, fields, formatted_code, formatter)?;
                 formatter.shape.line_style = prev_state;
@@ -162,9 +164,7 @@ impl Format for Expr {
                 args,
             } => {
                 let prev_state = formatter.shape.line_style;
-                // This is the same logic from the `.len_chars()` method
-                // which is unavailable here.
-                //
+                // get the length in chars of the code in a single line format
                 let mut buf = FormattedCode::new();
                 let mut temp_formatter = Formatter::default();
                 temp_formatter.shape.line_style = LineStyle::Inline;
@@ -177,10 +177,17 @@ impl Format for Expr {
                     &mut buf,
                     &mut temp_formatter,
                 )?;
+                // get the largest field size
+                let mut field_width: usize = 0;
+                if let Some(contract_args) = &contract_args_opt {
+                    field_width = get_field_width(&contract_args.clone().into_inner())?;
+                }
 
                 // changes to the actual formatter
                 formatter.shape.update_width(buf.chars().count() as usize);
-                formatter.shape.get_line_style(&formatter.config);
+                formatter
+                    .shape
+                    .get_line_style(field_width, &formatter.config);
 
                 format_method_call(
                     target,
@@ -447,7 +454,7 @@ impl SquareBracket for Expr {
     }
 }
 
-pub(crate) fn format_expr_struct(
+fn format_expr_struct(
     path: &PathExpr,
     fields: &Braces<Punctuated<ExprStructField, CommaToken>>,
     formatted_code: &mut FormattedCode,
@@ -466,7 +473,7 @@ pub(crate) fn format_expr_struct(
     Ok(())
 }
 
-pub(crate) fn format_method_call(
+fn format_method_call(
     target: &Expr,
     dot_token: &DotToken,
     name: &Ident,
@@ -507,6 +514,26 @@ pub(crate) fn format_method_call(
     Expr::close_parenthesis(formatted_code, formatter)?;
 
     Ok(())
+}
+
+fn get_field_width(
+    fields: &Punctuated<ExprStructField, CommaToken>,
+) -> Result<usize, FormatterError> {
+    let mut largest_field: usize = 0;
+    for (field, _) in &fields.value_separator_pairs {
+        let field_length = field.field_name.as_str().chars().count() as usize;
+        if field_length > largest_field {
+            largest_field = field_length;
+        }
+    }
+    if let Some(final_value) = &fields.final_value_opt {
+        let field_length = final_value.field_name.as_str().chars().count() as usize;
+        if field_length > largest_field {
+            largest_field = field_length;
+        }
+    }
+
+    Ok(largest_field)
 }
 
 // Leaf Spans

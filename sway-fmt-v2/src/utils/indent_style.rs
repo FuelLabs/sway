@@ -186,16 +186,19 @@ impl Shape {
     /// Checks the config, and if `small_structure_single_line` is enabled,
     /// determines whether the `Shape::width` is greater than the `structure_lit_width`
     /// threshold. If it isn't, the `Shape::line_style` is updated to `Inline`.
-    pub(crate) fn get_line_style(&mut self, config: &Config) {
+    pub(crate) fn get_line_style(&mut self, field_width: usize, config: &Config) {
         let allow_inline_style = config.structures.small_structures_single_line;
         // Get the width limit of a structure to be formatted into single line if `allow_inline_style` is true.
         if allow_inline_style {
             let width_heuristics = config
                 .heuristics
                 .heuristics_pref
-                .to_width_heuristics(&config.whitespace);
+                .to_width_heuristics(config.whitespace.max_width);
 
-            if self.width > width_heuristics.structure_lit_width {
+            if self.width > config.whitespace.max_width
+                || self.width > width_heuristics.structure_lit_width
+                || field_width > width_heuristics.structure_field_width
+            {
                 self.line_style = LineStyle::Multiline
             } else {
                 self.line_style = LineStyle::Inline
@@ -272,11 +275,10 @@ mod test {
     #[test]
     fn test_line_style() {
         let mut formatter = Formatter::default();
-        formatter.shape.get_line_style(&formatter.config);
+        formatter.shape.get_line_style(18, &formatter.config);
         assert_eq!(LineStyle::Inline, formatter.shape.line_style);
 
-        formatter.shape.width = 19;
-        formatter.shape.get_line_style(&formatter.config);
+        formatter.shape.get_line_style(36, &formatter.config);
         assert_eq!(LineStyle::Multiline, formatter.shape.line_style);
     }
 
@@ -285,7 +287,7 @@ mod test {
         let mut formatter = Formatter::default();
         formatter.shape.line_style = LineStyle::Inline;
 
-        formatter.shape.get_line_style(&formatter.config);
+        formatter.shape.get_line_style(8, &formatter.config);
         assert_eq!(LineStyle::Inline, formatter.shape.line_style);
 
         formatter.shape.reset_line_style();

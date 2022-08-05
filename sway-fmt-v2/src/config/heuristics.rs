@@ -6,7 +6,7 @@ use crate::constants::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{user_opts::HeuristicsOptions, whitespace::Whitespace};
+use super::user_opts::HeuristicsOptions;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Heuristics {
@@ -51,11 +51,11 @@ pub enum HeuristicsPreferences {
 }
 
 impl HeuristicsPreferences {
-    pub fn to_width_heuristics(self, ws_opts: &Whitespace) -> WidthHeuristics {
+    pub fn to_width_heuristics(self, max_width: usize) -> WidthHeuristics {
         match self {
             HeuristicsPreferences::Off => WidthHeuristics::off(),
-            HeuristicsPreferences::Max => WidthHeuristics::max(ws_opts.max_width),
-            HeuristicsPreferences::Scaled => WidthHeuristics::scaled(ws_opts.max_width),
+            HeuristicsPreferences::Max => WidthHeuristics::max(max_width),
+            HeuristicsPreferences::Scaled => WidthHeuristics::scaled(max_width),
         }
     }
 }
