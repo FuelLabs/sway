@@ -1,5 +1,9 @@
 use crate::{
-    capabilities::{self, formatting::get_format_text_edits, runnable::RunnableType},
+    capabilities::{
+        self,
+        formatting::get_format_text_edits,
+        runnable::{Runnable, RunnableType},
+    },
     core::{
         document::{DocumentError, TextDocument},
         token::{Token, TokenMap, TypeDefinition},
@@ -29,7 +33,7 @@ pub struct Session {
     pub documents: Documents,
     pub config: RwLock<SwayConfig>,
     pub token_map: TokenMap,
-    pub runnables: DashMap<RunnableType, Range>,
+    pub runnables: DashMap<RunnableType, Runnable>,
 }
 
 impl Session {
@@ -218,13 +222,17 @@ impl Session {
                 typed_program,
                 warnings,
             } => {
-                if let TypedProgramKind::Script { main_function, .. }
-                | TypedProgramKind::Predicate { main_function, .. } = typed_program.kind
+                if let TypedProgramKind::Script {
+                    ref main_function, ..
+                }
+                | TypedProgramKind::Predicate {
+                    ref main_function, ..
+                } = typed_program.kind
                 {
                     let main_fn_location =
                         utils::common::get_range_from_span(&main_function.name.span());
-                    self.runnables
-                        .insert(RunnableType::MainFn, main_fn_location);
+                    let runnable = Runnable::new(main_fn_location, typed_program.kind.tree_type());
+                    self.runnables.insert(RunnableType::MainFn, runnable);
                 }
 
                 for node in &typed_program.root.all_nodes {
