@@ -25,7 +25,7 @@ async fn get_contracts() -> (TxContractTest, ContractId, Wallet) {
     .unwrap();
     let instance = TxContractTestBuilder::new(contract_id.to_string(), wallet.clone()).build();
 
-    (instance, contract_id, wallet)
+    (instance, contract_id.into(), wallet)
 }
 
 #[tokio::test]
@@ -244,7 +244,7 @@ async fn can_get_tx_input_coin_owner() {
         .await
         .unwrap();
 
-    assert_eq!(owner_result.value, wallet.address());
+    assert_eq!(owner_result.value, wallet.address().into());
 }
 
 #[tokio::test]

@@ -1,6 +1,7 @@
 use fuel_core::service::{Config, FuelService};
 use fuel_gql_client::client::FuelClient;
 use fuels::contract::script::Script;
+use fuels::prelude::*;
 use fuels::tx::{ConsensusParameters, Transaction};
 use hex;
 
@@ -9,6 +10,7 @@ async fn run_valid() {
     let bin = std::fs::read("test_projects/logging/out/debug/logging.bin");
     let server = FuelService::new_node(Config::local_node()).await.unwrap();
     let client = FuelClient::from(server.bound_address);
+    let (provider, _address) = setup_test_provider(vec![], None).await;
 
     let tx = Transaction::Script {
         gas_price: 0,
@@ -25,7 +27,7 @@ async fn run_valid() {
     };
 
     let script = Script::new(tx);
-    let receipts = script.call(&client).await.unwrap();
+    let receipts = script.call(&provider).await.unwrap();
 
     let correct_hex =
         hex::decode("ef86afa9696cf0dc6385e2c407a6e159a1103cefb7e2ae0636fb33d3cb2a9e4a");

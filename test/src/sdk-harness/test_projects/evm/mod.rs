@@ -14,7 +14,7 @@ async fn get_evm_test_instance() -> (EvmTestContract, ContractId) {
     .unwrap();
     let instance = EvmTestContractBuilder::new(id.to_string(), wallet).build();
 
-    (instance, id)
+    (instance, id.into())
 }
 
 #[tokio::test]

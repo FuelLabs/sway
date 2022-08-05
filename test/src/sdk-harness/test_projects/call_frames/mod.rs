@@ -20,7 +20,7 @@ async fn get_call_frames_instance() -> (CallFramesTestContract, ContractId) {
     .unwrap();
     let instance = CallFramesTestContractBuilder::new(id.to_string(), wallet).build();
 
-    (instance, id)
+    (instance, id.into())
 }
 
 #[tokio::test]

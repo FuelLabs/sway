@@ -26,7 +26,7 @@ pub mod setup {
 
         let instance = MyContractBuilder::new(id.to_string(), wallet).build();
 
-        (instance, id)
+        (instance, id.into())
     }
 }
 

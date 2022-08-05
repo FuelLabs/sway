@@ -49,7 +49,7 @@ async fn create_predicate(
         .unwrap();
 
     let output_coin = Output::coin(predicate_address, amount_to_predicate, asset_id);
-    let output_change = Output::change(wallet.address(), 0, asset_id);
+    let output_change = Output::change(wallet.address().into(), 0, asset_id.into());
     let mut tx = Transaction::script(
         1,
         1000000,
@@ -82,7 +82,7 @@ async fn submit_to_predicate(
     let utxo_predicate_hash = wallet
         .get_provider()
         .unwrap()
-        .get_spendable_coins(&predicate_address, asset_id, amount_to_predicate)
+        .get_spendable_coins(&predicate_address.into(), asset_id, amount_to_predicate)
         .await
         .unwrap();
 
@@ -118,14 +118,14 @@ async fn submit_to_predicate(
     );
 
     let script = Script::new(new_tx);
-    let _call_result = script.call(&wallet.get_provider().unwrap().client).await;
+    let _call_result = script.call(&wallet.get_provider().unwrap()).await;
 }
 
 async fn get_balance(wallet: &Wallet, address: Address, asset_id: AssetId) -> u64 {
     wallet
         .get_provider()
         .unwrap()
-        .get_asset_balance(&address, asset_id)
+        .get_asset_balance(&address.into(), asset_id)
         .await
         .unwrap()
 }

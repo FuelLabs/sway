@@ -133,7 +133,7 @@ async fn get_hashing_instance() -> (HashingTestContract, ContractId) {
     .unwrap();
     let instance = HashingTestContractBuilder::new(id.to_string(), wallet).build();
 
-    (instance, id)
+    (instance, id.into())
 }
 
 mod sha256 {
