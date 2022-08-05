@@ -1,14 +1,11 @@
 use assert_matches::assert_matches;
 use fuel_core::service::{Config, FuelService};
-use fuel_gql_client::client::FuelClient;
 use fuels::contract::script::Script;
 use fuels::prelude::*;
 use fuels::tx::{ConsensusParameters, Receipt, Transaction};
 
 async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>, fuels::prelude::Error> {
     let bin = std::fs::read("test_projects/script_data/out/debug/script_data.bin");
-    let server = FuelService::new_node(Config::local_node()).await.unwrap();
-    let client = FuelClient::from(server.bound_address);
     let (provider, _address) = setup_test_provider(vec![], None).await;
 
     let tx = Transaction::Script {

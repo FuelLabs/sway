@@ -1,5 +1,4 @@
 use fuel_core::service::{Config, FuelService};
-use fuel_gql_client::client::FuelClient;
 use fuels::contract::script::Script;
 use fuels::prelude::*;
 use fuels::tx::{ConsensusParameters, Transaction};
@@ -8,9 +7,16 @@ use hex;
 #[tokio::test]
 async fn run_valid() {
     let bin = std::fs::read("test_projects/logging/out/debug/logging.bin");
-    let server = FuelService::new_node(Config::local_node()).await.unwrap();
-    let client = FuelClient::from(server.bound_address);
-    let (provider, _address) = setup_test_provider(vec![], None).await;
+
+    let wallet = LocalWallet::new_random(None);
+    let coins = setup_single_asset_coins(
+        wallet.address(),
+        BASE_ASSET_ID,
+        1,
+        1,
+    );
+
+    let (provider, _address) = setup_test_provider(coins.clone(), None).await;
 
     let tx = Transaction::Script {
         gas_price: 0,
