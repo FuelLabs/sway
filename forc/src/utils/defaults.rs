@@ -100,12 +100,7 @@ abigen!(MyContract, "out/debug/"#,
 
 async fn get_contract_instance() -> (MyContract, ContractId) {
     // Launch a local network and deploy the contract
-    let mut wallets = launch_custom_provider_and_get_wallets(
-        WalletsConfig::new(Some(1), Some(1000000), Some(1)),
-        None,
-    )
-    .await;
-    let wallet = wallets.pop().unwrap();
+    let wallet = launch_provider_and_get_wallet().await;
 
     let id = Contract::deploy(
         "./out/debug/"#,
