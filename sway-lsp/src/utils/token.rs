@@ -1,6 +1,6 @@
-use crate::core::token::{AstToken, Token, TypedAstToken};
-use sway_core::semantic_analysis::ast_node::TypedDeclaration;
+use crate::core::token::{AstToken, Token, TokenMap, TypedAstToken};
 use sway_core::type_system::TypeId;
+use sway_core::{semantic_analysis::ast_node::TypedDeclaration, TypeInfo};
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 pub fn is_initial_declaration(token_type: &Token) -> bool {
@@ -35,6 +35,29 @@ pub(crate) fn desugared_op(prefixes: &[Ident]) -> bool {
 // only checks for the string, not the span.
 pub(crate) fn to_ident_key(ident: &Ident) -> (Ident, Span) {
     (ident.clone(), ident.span())
+}
+
+pub fn declaration_of_type_id(type_id: &TypeId, tokens: &TokenMap) -> Option<TypedDeclaration> {
+    ident_of_type_id(type_id)
+        .and_then(|decl_ident| tokens.get(&to_ident_key(&decl_ident)))
+        .and_then(|item| Some(item.value().clone()))
+        .and_then(|token| token.typed)
+        .and_then(|typed_token| match typed_token {
+            TypedAstToken::TypedDeclaration(dec) => Some(dec),
+            _ => None,
+        })
+}
+
+pub fn ident_of_type_id(type_id: &TypeId) -> Option<Ident> {
+    // Use the TypeId to look up the actual type
+    let type_info = sway_core::type_engine::look_up_type_id(*type_id);
+    match type_info {
+        TypeInfo::UnknownGeneric { name }
+        | TypeInfo::Enum { name, .. }
+        | TypeInfo::Struct { name, .. }
+        | TypeInfo::Custom { name, .. } => Some(name),
+        _ => None,
+    }
 }
 
 pub fn type_id(token_type: &Token) -> Option<TypeId> {

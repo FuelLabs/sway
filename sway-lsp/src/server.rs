@@ -297,7 +297,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("test/src/e2e_vm_tests/test_programs/should_pass/language")
-            .join("storage_declaration")
+            .join("struct_field_access")
     }
 
     fn sway_example_dir() -> PathBuf {

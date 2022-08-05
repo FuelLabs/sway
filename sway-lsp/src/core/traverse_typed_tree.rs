@@ -2,15 +2,18 @@
 
 use crate::{
     core::token::{TokenMap, TypeDefinition, TypedAstToken},
-    utils::token::to_ident_key,
+    utils::token::{declaration_of_type_id, to_ident_key},
 };
-use sway_core::semantic_analysis::ast_node::{
-    expression::{
-        typed_expression::TypedExpression, typed_expression_variant::TypedExpressionVariant,
-        TypedIntrinsicFunctionKind,
+use sway_core::{
+    semantic_analysis::ast_node::{
+        expression::{
+            typed_expression::TypedExpression, typed_expression_variant::TypedExpressionVariant,
+            TypedIntrinsicFunctionKind,
+        },
+        while_loop::TypedWhileLoop,
+        TypedImplTrait, {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
     },
-    while_loop::TypedWhileLoop,
-    TypedImplTrait, {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
+    type_engine::TypeId,
 };
 use sway_types::ident::Ident;
 
@@ -61,6 +64,13 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                 {
                     token.typed = Some(TypedAstToken::TypedFunctionParameter(parameter.clone()));
                 }
+            }
+
+            if let Some(mut token) =
+                tokens.get_mut(&to_ident_key(&Ident::new(func.return_type_span.clone())))
+            {
+                token.typed = Some(TypedAstToken::TypedFunctionDeclaration(func.clone()));
+                token.type_def = Some(TypeDefinition::TypeId(func.return_type));
             }
         }
         TypedDeclaration::TraitDeclaration(trait_decl) => {
@@ -270,9 +280,42 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
                 token.type_def = Some(TypeDefinition::TypeId(expression.return_type));
             }
 
+            // would be nice to just grab the StructDeclaration here instead of just the TypedDeclaration
+            // which then requires use to reach further in to get the struct out. Perhaps its fine
+            let struct_decl = declaration_of_type_id(&expression.return_type, tokens).and_then(
+                |decl| match decl {
+                    TypedDeclaration::StructDeclaration(struct_decl) => Some(struct_decl),
+                    _ => None,
+                },
+            );
+
             for field in fields {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&field.name)) {
                     token.typed = Some(TypedAstToken::TypedExpression(field.value.clone()));
+
+                    if let Some(struct_decl) = &struct_decl {
+                        for decl_field in &struct_decl.fields {
+                            if decl_field.name == field.name {
+                                // NOTE: we don't necessarily want to assign this to the type_def as it might be
+                                // u32, bool etc which will be handy for doing inlay hints.
+                                // We might want to create a new field called, decleration_span: Option<Span> or similar for this.
+                                //
+                                // That being said, we can always just look up the type_id on the type_def itself
+                                // in order to infer the type!
+                                token.type_def =
+                                    Some(TypeDefinition::Ident(decl_field.name.clone()));
+                            }
+                        }
+                    }
+
+                    // 1. Pass in an Option<TypeId> for the parent into handle_expression()
+                    // 2. let decl_ident = utils::token::ident_of_type_id(type_id)
+                    // 3. let struct_decl = tokens.get(decl_ident);
+                    // 4. for decl_field in struct_decl.fields {
+                    //      if decl_field.name = field.name {
+                    //          token.type_def = Some(TypeDefinition::Ident(decl_field.name));
+                    //      }
+                    //    }
                 }
                 handle_expression(&field.value, tokens);
             }
