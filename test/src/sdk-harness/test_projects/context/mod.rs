@@ -25,7 +25,9 @@ async fn get_contracts() -> (
         "test_projects/context/out/debug/context.bin",
         &wallet,
         TxParameters::default(),
-        StorageConfiguration::default(),
+        StorageConfiguration::with_storage_path(Some(
+            "test_artifacts/context/out/debug/context-storage_slots.json".to_string(),
+        )),
     )
     .await
     .unwrap();
@@ -33,7 +35,9 @@ async fn get_contracts() -> (
         "test_artifacts/context_caller_contract/out/debug/context_caller_contract.bin",
         &wallet,
         TxParameters::default(),
-        StorageConfiguration::default(),
+        StorageConfiguration::with_storage_path(Some(
+            "test_artifacts/context_caller_contract/out/debug/context_caller_contract-storage_slots.json".to_string(),
+        )),
     )
     .await
     .unwrap();

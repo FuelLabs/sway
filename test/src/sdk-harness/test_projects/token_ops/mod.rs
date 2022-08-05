@@ -309,13 +309,16 @@ async fn get_fuelcoin_instance(wallet: Wallet) -> (TestFuelCoinContract, Contrac
         "test_projects/token_ops/out/debug/token_ops.bin",
         &wallet,
         TxParameters::default(),
-        StorageConfiguration::default(),
+        StorageConfiguration::with_storage_path(Some(
+            "test_artifacts/token_ops/out/debug/token_ops-storage_slots.json".to_string(),
+        )),
     )
     .await
     .unwrap();
 
-    let fuelcoin_instance =
-        TestFuelCoinContractBuilder::new(fuelcoin_id.to_string(), wallet).build();
+    dbg!(fuelcoin_id);
+
+    let fuelcoin_instance = TestFuelCoinContractBuilder::new(fuelcoin_id.to_string(), wallet).build();
 
     (fuelcoin_instance, fuelcoin_id.into())
 }
@@ -325,7 +328,9 @@ async fn get_balance_contract_id(wallet: Wallet) -> ContractId {
         "test_artifacts/balance_contract/out/debug/balance_contract.bin",
         &wallet,
         TxParameters::default(),
-        StorageConfiguration::default(),
+        StorageConfiguration::with_storage_path(Some(
+            "test_artifacts/token_ops/out/debug/token_ops-storage_slots.json".to_string(),
+        )),
     )
     .await
     .unwrap();
