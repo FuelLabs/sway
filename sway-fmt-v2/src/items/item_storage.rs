@@ -130,6 +130,7 @@ impl CurlyBrace for ItemStorage {
         // shrink_left would return error if the current indentation level is becoming < 0, in that
         // case we should use the Shape::default() which has 0 indentation level.
         formatter.shape.block_unindent(&formatter.config);
+
         Ok(())
     }
 }

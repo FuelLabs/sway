@@ -277,21 +277,33 @@ enum TestTy {
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert_eq!(correct_sway_code, formatted_sway_code);
     }
-    // Leaving this comment here for Kaya, this test was getting overlooked, likely from a merge resolution.
+    #[test]
     fn test_storage_without_alignment() {
         let sway_code_to_format = r#"contract;
-
-storage{foo:Test=Test{},bar
-: 
-    Test=Test{}
-, baz: u64 } 
-"#;
+        struct Type1 {
+            foo: u64,
+        }
+        
+        struct Type2 {
+            bar: u64,
+        }
+        
+        storage {
+         var1: Type1=Type1{ foo: 8 },
+              var2: Type2=Type2{ bar: 9 },
+        }
+        "#;
         let correct_sway_code = r#"contract;
 
+struct Type1 {
+    foo: u64,
+}
+struct Type2 {
+    bar: u64,
+}
 storage {
-    foo: Test,
-    bar: Test,
-    baz: u64,
+    var1: Type1 = Type1 { foo: 8 },
+    var2: Type2 = Type2 { bar: 9 },
 }"#;
 
         let mut formatter = Formatter::default();
@@ -302,19 +314,30 @@ storage {
     #[test]
     fn test_storage_with_alignment() {
         let sway_code_to_format = r#"contract;
+struct Type1 {
+    foo: u64,
+}
+
+struct Type2 {
+    bar: u64,
+}
 
 storage {
- long_var_name: Type1=Type1{},
-      var2: Type2=Type2{},
+ long_var_name: Type1=Type1{ foo: 8 },
+      var2: Type2=Type2{ bar: 9 },
 }
 "#;
         let correct_sway_code = r#"contract;
 
+struct Type1 {
+    foo : u64,
+}
+struct Type2 {
+    bar : u64,
+}
 storage {
-    long_var_name : Type1 = Type1 {
-    },
-    var2          : Type2 = Type2 {
-    },
+    long_var_name : Type1 = Type1 { foo: 8 },
+    var2          : Type2 = Type2 { bar: 9 },
 }"#;
 
         let mut formatter = Formatter::default();
@@ -667,21 +690,32 @@ pub const /* TEST: blah blah tests */ TEST: u16 = 10;"#; // Comment next to cons
     #[test]
     fn test_storage_comments() {
         let sway_code_to_format = r#"contract;
+
+struct Type1 {
+    foo: u64,
+}
+struct Type2 {
+    bar: u64,
+}
 storage {
     // Testing a comment inside storage
-    long_var_name: Type1=Type1{},
+    long_var_name: Type1=Type1{ foo: 8},
     // Testing another comment
-    var2: Type2 = Type2{} // This is the last comment
+    var2: Type2 = Type2{bar:9} // This is the last comment
 }"#;
         let correct_sway_code = r#"contract;
 
+struct Type1 {
+    foo: u64,
+}
+struct Type2 {
+    bar: u64,
+}
 storage {
     // Testing a comment inside storage
-    long_var_name: Type1 = Type1 {
-    },
+    long_var_name: Type1 = Type1 { foo: 8 },
     // Testing another comment
-    var2: Type2 = Type2 {
-    }, // This is the last comment
+    var2: Type2 = Type2 { bar: 9 }, // This is the last comment
 }"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
