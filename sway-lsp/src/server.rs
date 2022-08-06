@@ -263,14 +263,20 @@ pub struct RunnableParams {}
 
 // Custom LSP-Server Methods
 impl Backend {
-    pub async fn runnables(&self, _params: RunnableParams) -> jsonrpc::Result<Option<Vec<Range>>> {
-        let range = self
+    pub async fn runnables(
+        &self,
+        _params: RunnableParams,
+    ) -> jsonrpc::Result<Option<Vec<(Range, String)>>> {
+        let ranges = self
             .session
             .runnables
             .get(&capabilities::runnable::RunnableType::MainFn)
-            .map(|item| vec![*item.value()]);
+            .map(|item| {
+                let runnable = item.value();
+                vec![(runnable.range, format!("{}", runnable.tree_type))]
+            });
 
-        Ok(range)
+        Ok(ranges)
     }
 }
 
