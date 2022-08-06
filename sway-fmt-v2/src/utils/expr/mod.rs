@@ -52,7 +52,8 @@ impl Format for Expr {
                 temp_formatter.shape.line_style = LineStyle::Inline;
                 format_expr_struct(path, fields, &mut buf, &mut temp_formatter)?;
                 // get the largest field size
-                let field_width = get_field_width(&fields.clone().into_inner())?;
+                let field_width =
+                    get_field_width(&fields.clone().into_inner(), &mut formatter.clone())?;
 
                 // changes to the actual formatter
                 formatter.shape.update_width(buf.chars().count() as usize);
@@ -180,7 +181,10 @@ impl Format for Expr {
                 // get the largest field size
                 let mut field_width: usize = 0;
                 if let Some(contract_args) = &contract_args_opt {
-                    field_width = get_field_width(&contract_args.clone().into_inner())?;
+                    field_width = get_field_width(
+                        &contract_args.clone().into_inner(),
+                        &mut formatter.clone(),
+                    )?;
                 }
 
                 // changes to the actual formatter
@@ -518,16 +522,32 @@ fn format_method_call(
 
 fn get_field_width(
     fields: &Punctuated<ExprStructField, CommaToken>,
+    formatter: &mut Formatter,
 ) -> Result<usize, FormatterError> {
     let mut largest_field: usize = 0;
-    for (field, _) in &fields.value_separator_pairs {
-        let field_length = field.field_name.as_str().chars().count() as usize;
+    for (field, comma_token) in &fields.value_separator_pairs {
+        let mut field_length = field.field_name.as_str().chars().count() as usize;
+        if let Some((colon_token, expr)) = &field.expr_opt {
+            let mut buf = String::new();
+            write!(buf, "{} ", colon_token.span().as_str())?;
+            expr.format(&mut buf, formatter)?;
+            field_length += buf.chars().count() as usize;
+        }
+        field_length += comma_token.span().as_str().chars().count() as usize;
+
         if field_length > largest_field {
             largest_field = field_length;
         }
     }
     if let Some(final_value) = &fields.final_value_opt {
-        let field_length = final_value.field_name.as_str().chars().count() as usize;
+        let mut field_length = final_value.field_name.as_str().chars().count() as usize;
+        if let Some((colon_token, expr)) = &final_value.expr_opt {
+            let mut buf = String::new();
+            write!(buf, "{} ", colon_token.span().as_str())?;
+            expr.format(&mut buf, formatter)?;
+            field_length += buf.chars().count() as usize;
+        }
+
         if field_length > largest_field {
             largest_field = field_length;
         }
