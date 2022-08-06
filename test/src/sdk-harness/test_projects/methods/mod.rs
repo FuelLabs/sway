@@ -27,5 +27,5 @@ async fn get_methods_instance(wallet: Wallet) -> MethodsContract {
     )
     .await
     .unwrap();
-    MethodsContract::new(id.to_string(), wallet)
+    MethodsContractBuilder::new(id.to_string(), wallet).build()
 }
