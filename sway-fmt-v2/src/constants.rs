@@ -16,7 +16,7 @@ pub const DEFAULT_FN_CALL_WIDTH: usize = 60;
 pub const DEFAULT_ATTR_FN_LIKE_WIDTH: usize = 70;
 /// Default max width in the body of a user-defined structure literal before falling back to vertical formatting.
 pub const DEFAULT_STRUCTURE_LIT_WIDTH: usize = 18;
-/// Default max width in the body of a user-defined structure field before falling back to vertical formatting.
+/// Default max width of a user-defined structure field before falling back to vertical formatting.
 pub const DEFAULT_STRUCTURE_VAR_WIDTH: usize = 35;
 /// Default Maximum width of an array literal before falling back to vertical formatting.
 pub const DEFAULT_ARRAY_WIDTH: usize = 60;
