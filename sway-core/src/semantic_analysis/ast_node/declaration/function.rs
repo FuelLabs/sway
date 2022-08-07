@@ -161,6 +161,13 @@ impl TypedFunctionDeclaration {
             ));
         }
 
+        // add the function parameters, check if the function is `main`,
+        // if so push `MainArgsNotYetSupported` with the span 
+        if name.as_str() == crate::constants::DEFAULT_ENTRY_POINT_FN_NAME 
+                && new_parameters.len() != 0 {
+            errors.push(CompileError::MainArgsNotYetSupported { span: span.to_owned()}) 
+        }
+
         // type check the return type
         let return_type = check!(
             ctx.resolve_type_with_self(
@@ -226,7 +233,7 @@ impl TypedFunctionDeclaration {
             is_contract_call: ctx.mode() == Mode::ImplAbiFn,
             purity,
         };
-
+        
         ok(function_decl, warnings, errors)
     }
 
