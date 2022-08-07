@@ -12,6 +12,11 @@ struct Cli {
     /// Intended for use in `CI` to ensure test lock files are up to date
     #[clap(long)]
     locked: bool,
+
+    // We need to support this since `cargo-insta` uses it
+    // In the future, this can mimic `cargo test --quiet`s behaviour
+    #[clap(long, short)]
+    quiet: bool,
 }
 
 fn main() {
