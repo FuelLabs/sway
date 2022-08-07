@@ -72,7 +72,7 @@ pub struct WidthHeuristics {
     // Maximum width in the body of a user-defined structure literal before falling back to
     // vertical formatting.
     pub(crate) structure_lit_width: usize,
-    // Maximum width in the body of a user-defined structure field before falling back
+    // Maximum width of a user-defined structure field before falling back
     // to vertical formatting.
     pub(crate) structure_field_width: usize,
     // Maximum width of an array literal before falling back to vertical
