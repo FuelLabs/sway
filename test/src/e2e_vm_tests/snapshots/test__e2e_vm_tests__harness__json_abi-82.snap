@@ -1,0 +1,32 @@
+---
+source: test/src/e2e_vm_tests/harness.rs
+expression: output_contents
+---
+[
+  {
+    "inputs": [],
+    "name": "main",
+    "outputs": [
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "field_1",
+            "type": "u64",
+            "typeArguments": null
+          },
+          {
+            "components": null,
+            "name": "field_2",
+            "type": "b256",
+            "typeArguments": null
+          }
+        ],
+        "name": "",
+        "type": "struct BiggerThanAWord",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
+  }
+]

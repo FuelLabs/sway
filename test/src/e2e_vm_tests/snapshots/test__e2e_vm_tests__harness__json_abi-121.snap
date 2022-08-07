@@ -1,0 +1,19 @@
+---
+source: test/src/e2e_vm_tests/harness.rs
+expression: output_contents
+---
+[
+  {
+    "inputs": [],
+    "name": "returns_gm_one",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "bool",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
+  }
+]

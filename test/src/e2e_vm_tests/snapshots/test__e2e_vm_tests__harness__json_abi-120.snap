@@ -1,0 +1,19 @@
+---
+source: test/src/e2e_vm_tests/harness.rs
+expression: output_contents
+---
+[
+  {
+    "inputs": [],
+    "name": "get_42",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
+  }
+]

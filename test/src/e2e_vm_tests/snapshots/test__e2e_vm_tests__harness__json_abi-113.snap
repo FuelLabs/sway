@@ -1,0 +1,45 @@
+---
+source: test/src/e2e_vm_tests/harness.rs
+expression: output_contents
+---
+[
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "a",
+        "type": "u64",
+        "typeArguments": null
+      },
+      {
+        "components": null,
+        "name": "b",
+        "type": "u64",
+        "typeArguments": null
+      }
+    ],
+    "name": "multiply_u64",
+    "outputs": [
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "__tuple_element",
+            "type": "u64",
+            "typeArguments": null
+          },
+          {
+            "components": null,
+            "name": "__tuple_element",
+            "type": "u64",
+            "typeArguments": null
+          }
+        ],
+        "name": "",
+        "type": "(u64, u64)",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
+  }
+]

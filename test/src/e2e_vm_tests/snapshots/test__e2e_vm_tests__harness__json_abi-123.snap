@@ -1,0 +1,19 @@
+---
+source: test/src/e2e_vm_tests/harness.rs
+expression: output_contents
+---
+[
+  {
+    "inputs": [],
+    "name": "foo",
+    "outputs": [
+      {
+        "components": [],
+        "name": "",
+        "type": "()",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
+  }
+]

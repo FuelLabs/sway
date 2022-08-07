@@ -163,27 +163,16 @@ pub(crate) fn compile_to_bytes_verbose(
 pub(crate) fn test_json_abi(file_name: &str, compiled: &Compiled) -> Result<()> {
     emit_json_abi(file_name, compiled)?;
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let oracle_path = format!(
-        "{}/src/e2e_vm_tests/test_programs/{}/{}",
-        manifest_dir, file_name, "json_abi_oracle.json"
-    );
     let output_path = format!(
         "{}/src/e2e_vm_tests/test_programs/{}/{}",
         manifest_dir, file_name, "json_abi_output.json"
     );
-    if fs::metadata(oracle_path.clone()).is_err() {
-        bail!("JSON ABI oracle file does not exist for this test.");
-    }
     if fs::metadata(output_path.clone()).is_err() {
         bail!("JSON ABI output file does not exist for this test.");
     }
-    let oracle_contents =
-        fs::read_to_string(oracle_path).expect("Something went wrong reading the file.");
     let output_contents =
         fs::read_to_string(output_path).expect("Something went wrong reading the file.");
-    if oracle_contents != output_contents {
-        bail!("Mismatched ABI JSON output.");
-    }
+    insta::assert_snapshot!(output_contents);
     Ok(())
 }
 

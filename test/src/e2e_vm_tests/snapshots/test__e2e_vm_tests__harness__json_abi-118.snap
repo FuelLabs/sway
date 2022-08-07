@@ -1,0 +1,53 @@
+---
+source: test/src/e2e_vm_tests/harness.rs
+expression: output_contents
+---
+[
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "components": [
+              {
+                "components": null,
+                "name": "foo",
+                "type": "u64",
+                "typeArguments": null
+              }
+            ],
+            "name": "inn",
+            "type": "struct Inner",
+            "typeArguments": null
+          }
+        ],
+        "name": "input1",
+        "type": "struct StructOne",
+        "typeArguments": null
+      },
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "foo",
+            "type": "u64",
+            "typeArguments": null
+          }
+        ],
+        "name": "input2",
+        "type": "struct StructTwo",
+        "typeArguments": null
+      }
+    ],
+    "name": "foo",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
+  }
+]

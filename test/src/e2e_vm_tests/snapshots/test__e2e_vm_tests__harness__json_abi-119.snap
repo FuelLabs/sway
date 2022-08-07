@@ -1,0 +1,39 @@
+---
+source: test/src/e2e_vm_tests/harness.rs
+expression: output_contents
+---
+[
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "increment_by",
+        "type": "u64",
+        "typeArguments": null
+      }
+    ],
+    "name": "increment",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
+  }
+]

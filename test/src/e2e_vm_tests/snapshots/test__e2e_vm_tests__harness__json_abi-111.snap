@@ -1,0 +1,92 @@
+---
+source: test/src/e2e_vm_tests/harness.rs
+expression: output_contents
+---
+[
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "mint_amount",
+        "type": "u64",
+        "typeArguments": null
+      }
+    ],
+    "name": "mint",
+    "outputs": [
+      {
+        "components": [],
+        "name": "",
+        "type": "()",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "burn_amount",
+        "type": "u64",
+        "typeArguments": null
+      }
+    ],
+    "name": "burn",
+    "outputs": [
+      {
+        "components": [],
+        "name": "",
+        "type": "()",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "coins",
+        "type": "u64",
+        "typeArguments": null
+      },
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "value",
+            "type": "b256",
+            "typeArguments": null
+          }
+        ],
+        "name": "asset_id",
+        "type": "struct ContractId",
+        "typeArguments": null
+      },
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "value",
+            "type": "b256",
+            "typeArguments": null
+          }
+        ],
+        "name": "c_id",
+        "type": "struct ContractId",
+        "typeArguments": null
+      }
+    ],
+    "name": "force_transfer",
+    "outputs": [
+      {
+        "components": [],
+        "name": "",
+        "type": "()",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
+  }
+]

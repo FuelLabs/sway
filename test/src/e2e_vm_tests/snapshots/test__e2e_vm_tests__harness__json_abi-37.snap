@@ -1,0 +1,26 @@
+---
+source: test/src/e2e_vm_tests/harness.rs
+expression: output_contents
+---
+[
+  {
+    "inputs": [],
+    "name": "main",
+    "outputs": [
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "__array_element",
+            "type": "u32",
+            "typeArguments": null
+          }
+        ],
+        "name": "",
+        "type": "[u32; 0]",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
+  }
+]
