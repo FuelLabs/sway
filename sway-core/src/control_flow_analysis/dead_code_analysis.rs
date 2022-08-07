@@ -21,7 +21,7 @@ use sway_types::{span::Span, Spanned};
 
 impl ControlFlowGraph {
     pub(crate) fn find_dead_code(&self) -> Vec<CompileWarning> {
-        // Dead code is code that has no path to the entry point.
+        // Dead code is code that has no path from the entry point.
         // Collect all connected nodes by traversing from the entries.
         // The dead nodes are those we did not collect.
         let mut connected = BTreeSet::new();
@@ -38,18 +38,19 @@ impl ControlFlowGraph {
             .filter(|n| !connected.contains(n))
             .collect();
 
+        let priv_enum_var_warn = |name: &Ident| CompileWarning {
+            span: name.span(),
+            warning_content: Warning::DeadEnumVariant {
+                variant_name: name.clone(),
+            },
+        };
         let dead_enum_variant_warnings = dead_nodes
             .iter()
             .filter_map(|x| match &self.graph[*x] {
                 ControlFlowGraphNode::EnumVariant {
                     variant_name,
                     is_public,
-                } if !is_public => Some(CompileWarning {
-                    span: variant_name.span(),
-                    warning_content: Warning::DeadEnumVariant {
-                        variant_name: variant_name.clone(),
-                    },
-                }),
+                } if !is_public => Some(priv_enum_var_warn(variant_name)),
                 _ => None,
             })
             .collect::<Vec<_>>();
@@ -63,12 +64,7 @@ impl ControlFlowGraph {
                 ControlFlowGraphNode::EnumVariant {
                     variant_name,
                     is_public,
-                } if !is_public => Some(CompileWarning {
-                    span: variant_name.span(),
-                    warning_content: Warning::DeadEnumVariant {
-                        variant_name: variant_name.clone(),
-                    },
-                }),
+                } if !is_public => Some(priv_enum_var_warn(variant_name)),
                 ControlFlowGraphNode::EnumVariant { .. } => None,
                 ControlFlowGraphNode::MethodDeclaration { span, .. } => Some(CompileWarning {
                     span: span.clone(),
@@ -203,6 +199,7 @@ impl ControlFlowGraph {
         Ok(())
     }
 }
+
 fn connect_node(
     node: &TypedAstNode,
     graph: &mut ControlFlowGraph,
@@ -369,9 +366,17 @@ fn connect_declaration(
                 )
             }
         }
-        ConstantDeclaration(TypedConstantDeclaration { name, .. }) => {
+        ConstantDeclaration(TypedConstantDeclaration { name, value, .. }) => {
             graph.namespace.insert_constant(name.clone(), entry_node);
-            Ok(leaves.to_vec())
+            connect_expression(
+                &value.expression,
+                graph,
+                &[entry_node],
+                exit_node,
+                "constant declaration expression",
+                tree_type,
+                value.span.clone(),
+            )
         }
         FunctionDeclaration(fn_decl) => {
             connect_typed_fn_decl(fn_decl, graph, entry_node, span, exit_node, tree_type)?;
@@ -563,6 +568,7 @@ fn connect_abi_declaration(
         entry_node,
     );
 }
+
 /// For an enum declaration, we want to make a declaration node for every individual enum
 /// variant. When a variant is constructed, we can point an edge at that variant. This way,
 /// we can see clearly, and thusly warn, when individual variants are not ever constructed.
@@ -1234,8 +1240,16 @@ fn construct_dead_code_warning_from_node(node: &TypedAstNode) -> Option<CompileW
             span: span.clone(),
             warning_content: Warning::DeadDeclaration,
         },
-        // otherwise, this is unreachable.
-        TypedAstNode { span, .. } => CompileWarning {
+        // Otherwise, this is unreachable.
+        TypedAstNode {
+            span,
+            content:
+                TypedAstNodeContent::ReturnStatement(_)
+                | TypedAstNodeContent::ImplicitReturnExpression(_)
+                | TypedAstNodeContent::Expression(_)
+                | TypedAstNodeContent::SideEffect
+                | TypedAstNodeContent::WhileLoop(_),
+        } => CompileWarning {
             span: span.clone(),
             warning_content: Warning::UnreachableCode,
         },

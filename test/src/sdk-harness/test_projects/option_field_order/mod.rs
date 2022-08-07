@@ -26,7 +26,7 @@ async fn setup() -> MyContract {
     .await
     .unwrap();
 
-    let instance = MyContract::new(id.to_string(), wallet);
+    let instance = MyContractBuilder::new(id.to_string(), wallet).build();
 
     instance
 }

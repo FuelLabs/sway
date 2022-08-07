@@ -1,7 +1,7 @@
 use std::fmt;
 
 use itertools::Itertools;
-use sway_parse::intrinsics::Intrinsic;
+use sway_ast::intrinsics::Intrinsic;
 use sway_types::Span;
 
 use crate::{

@@ -16,7 +16,7 @@ use crate::{
     error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::DeterministicallyAborts,
 };
 
-use sway_parse::intrinsics::Intrinsic;
+use sway_ast::intrinsics::Intrinsic;
 use sway_types::{Ident, Span, Spanned};
 
 use std::{

@@ -8,7 +8,8 @@ use crate::{
     FormatterError,
 };
 use std::fmt::Write;
-use sway_parse::{token::Delimiter, ItemAbi};
+use sway_ast::keywords::Token;
+use sway_ast::{token::Delimiter, ItemAbi};
 use sway_types::Spanned;
 
 impl Format for ItemAbi {
