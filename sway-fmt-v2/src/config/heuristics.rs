@@ -143,11 +143,3 @@ impl WidthHeuristics {
         }
     }
 }
-
-impl ::std::str::FromStr for WidthHeuristics {
-    type Err = &'static str;
-
-    fn from_str(_: &str) -> Result<Self, Self::Err> {
-        Err("WidthHeuristics is not parsable")
-    }
-}
