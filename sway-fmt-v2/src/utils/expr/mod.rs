@@ -52,14 +52,14 @@ impl Format for Expr {
                 temp_formatter.shape.line_style = LineStyle::Inline;
                 format_expr_struct(path, fields, &mut buf, &mut temp_formatter)?;
                 // get the largest field size
-                let field_width =
+                let (field_width, body_width) =
                     get_field_width(&fields.clone().into_inner(), &mut formatter.clone())?;
 
                 // changes to the actual formatter
                 formatter.shape.update_width(buf.chars().count() as usize);
                 formatter
                     .shape
-                    .get_line_style(field_width, &formatter.config);
+                    .get_line_style(field_width, body_width, &formatter.config);
 
                 format_expr_struct(path, fields, formatted_code, formatter)?;
                 formatter.shape.line_style = prev_state;
@@ -179,9 +179,9 @@ impl Format for Expr {
                     &mut temp_formatter,
                 )?;
                 // get the largest field size
-                let mut field_width: usize = 0;
+                let (mut field_width, mut body_width): (usize, usize) = (0, 0);
                 if let Some(contract_args) = &contract_args_opt {
-                    field_width = get_field_width(
+                    (field_width, body_width) = get_field_width(
                         &contract_args.clone().into_inner(),
                         &mut formatter.clone(),
                     )?;
@@ -191,7 +191,7 @@ impl Format for Expr {
                 formatter.shape.update_width(buf.chars().count() as usize);
                 formatter
                     .shape
-                    .get_line_style(field_width, &formatter.config);
+                    .get_line_style(field_width, body_width, &formatter.config);
 
                 format_method_call(
                     target,
@@ -523,8 +523,9 @@ fn format_method_call(
 fn get_field_width(
     fields: &Punctuated<ExprStructField, CommaToken>,
     formatter: &mut Formatter,
-) -> Result<usize, FormatterError> {
+) -> Result<(usize, usize), FormatterError> {
     let mut largest_field: usize = 0;
+    let mut body_width: usize = 3; // this is taking into account the opening brace, the following space and the ending brace.
     for (field, comma_token) in &fields.value_separator_pairs {
         let mut field_length = field.field_name.as_str().chars().count() as usize;
         if let Some((colon_token, expr)) = &field.expr_opt {
@@ -534,6 +535,7 @@ fn get_field_width(
             field_length += buf.chars().count() as usize;
         }
         field_length += comma_token.span().as_str().chars().count() as usize;
+        body_width += &field_length + 1; // accounting for the following space
 
         if field_length > largest_field {
             largest_field = field_length;
@@ -547,13 +549,14 @@ fn get_field_width(
             expr.format(&mut buf, formatter)?;
             field_length += buf.chars().count() as usize;
         }
+        body_width += &field_length + 1; // accounting for the following space
 
         if field_length > largest_field {
             largest_field = field_length;
         }
     }
 
-    Ok(largest_field)
+    Ok(dbg!(largest_field, body_width))
 }
 
 // Leaf Spans
