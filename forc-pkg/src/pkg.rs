@@ -1732,14 +1732,14 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
                     "You specified both {} and 'release' profiles. Using the 'release' profile",
                     build_profile
                 );
-                selected_build_profile = key_release.clone();
+                selected_build_profile = key_release;
             } else {
                 selected_build_profile = build_profile.clone();
             }
         }
         None => {
             if release {
-                selected_build_profile = key_release.clone();
+                selected_build_profile = key_release;
             }
         }
     }
