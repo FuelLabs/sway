@@ -1098,7 +1098,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.19.1"
+version = "0.19.2"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -1132,7 +1132,7 @@ dependencies = [
 
 [[package]]
 name = "forc-explore"
-version = "0.19.1"
+version = "0.19.2"
 dependencies = [
  "anyhow",
  "clap 3.2.15",
@@ -1147,7 +1147,7 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.19.1"
+version = "0.19.2"
 dependencies = [
  "anyhow",
  "clap 3.2.15",
@@ -1162,7 +1162,7 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt-v2"
-version = "0.19.1"
+version = "0.19.2"
 dependencies = [
  "anyhow",
  "clap 3.2.15",
@@ -1177,7 +1177,7 @@ dependencies = [
 
 [[package]]
 name = "forc-lsp"
-version = "0.19.1"
+version = "0.19.2"
 dependencies = [
  "anyhow",
  "clap 3.2.15",
@@ -1187,7 +1187,7 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.19.1"
+version = "0.19.2"
 dependencies = [
  "anyhow",
  "forc-util",
@@ -1208,7 +1208,7 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.19.1"
+version = "0.19.2"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -3616,7 +3616,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ast"
-version = "0.19.1"
+version = "0.19.2"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -3626,7 +3626,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.19.1"
+version = "0.19.2"
 dependencies = [
  "clap 3.2.15",
  "derivative",
@@ -3658,7 +3658,7 @@ dependencies = [
 
 [[package]]
 name = "sway-fmt"
-version = "0.19.1"
+version = "0.19.2"
 dependencies = [
  "ropey",
  "sway-core",
@@ -3667,7 +3667,7 @@ dependencies = [
 
 [[package]]
 name = "sway-fmt-v2"
-version = "0.19.1"
+version = "0.19.2"
 dependencies = [
  "anyhow",
  "forc-util",
@@ -3686,7 +3686,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.19.1"
+version = "0.19.2"
 dependencies = [
  "anyhow",
  "filecheck",
@@ -3697,7 +3697,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.19.1"
+version = "0.19.2"
 dependencies = [
  "async-trait",
  "dashmap",
@@ -3719,7 +3719,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.19.1"
+version = "0.19.2"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -3733,7 +3733,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.19.1"
+version = "0.19.2"
 dependencies = [
  "fuel-asm 0.6.0",
  "fuel-crypto",
@@ -3744,7 +3744,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.19.1"
+version = "0.19.2"
 
 [[package]]
 name = "syn"
