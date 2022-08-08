@@ -34,8 +34,7 @@ async fn can_get_tx_type() {
 
     let result = contract_instance.get_tx_type().call().await.unwrap();
     // Script transactions are of type = 0
-    assert_eq!(result.value, Transaction::Script);
-    // assert_eq!(result.value, 0);
+    assert_eq!(result.value, Transaction::Script());
 }
 
 #[tokio::test]
@@ -189,8 +188,6 @@ async fn can_get_script_start_offset() {
 async fn can_get_tx_input_type() {
     let (contract_instance, _, _) = get_contracts().await;
 
-    // Contract input
-    let input_type = 1;
     let result_ptr = contract_instance
         .get_tx_input_pointer(0)
         .call()
@@ -202,10 +199,8 @@ async fn can_get_tx_input_type() {
         .call()
         .await
         .unwrap();
-    assert_eq!(result.value, input_type);
+    assert_eq!(result.value, Input::Contract());
 
-    // Coin input
-    let input_type = 0;
     let result_ptr = contract_instance
         .get_tx_input_pointer(1)
         .call()
@@ -216,7 +211,7 @@ async fn can_get_tx_input_type() {
         .call()
         .await
         .unwrap();
-    assert_eq!(result.value, input_type);
+    assert_eq!(result.value, Input::Coin());
 }
 
 // TODO: Add tests for getting InputMessage owner, type when InputMessages land.
@@ -237,8 +232,6 @@ async fn can_get_tx_input_coin_owner() {
 async fn can_get_tx_output_type() {
     let (contract_instance, _, _) = get_contracts().await;
 
-    // Contract output
-    let output_type = 1;
     let result_ptr = contract_instance
         .get_tx_output_pointer(0)
         .call()
@@ -249,10 +242,8 @@ async fn can_get_tx_output_type() {
         .call()
         .await
         .unwrap();
-    assert_eq!(result.value, output_type);
+    assert_eq!(result.value, Output::Contract());
 
-    // Change output
-    let output_type = 3;
     let result_ptr = contract_instance
         .get_tx_output_pointer(1)
         .call()
@@ -263,20 +254,20 @@ async fn can_get_tx_output_type() {
         .call()
         .await
         .unwrap();
-    assert_eq!(result.value, output_type);
+    assert_eq!(result.value, Output::Change());
 }
 
 #[tokio::test]
 async fn can_get_tx_id() {
     let (contract_instance, _, _) = get_contracts().await;
 
-    let call_handler = contract_instance.get_tx_id();
+    let call_handler = contract_instance.get_tx_id(0);
     let script = call_handler.get_script().await;
     let tx_id = script.tx.id();
 
-    let result = contract_instance.get_tx_id().call().await.unwrap();
+    let result = contract_instance.get_tx_id(0).call().await.unwrap();
 
     let byte_array: [u8; 32] = tx_id.into();
 
-    assert_eq!(result.value, byte_array);
+    assert_eq!(result.value, Option::Some(byte_array));
 }

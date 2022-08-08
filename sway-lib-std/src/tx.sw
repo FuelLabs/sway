@@ -1,5 +1,4 @@
 //! Transaction field getters.
-//! This will be replaced by instructions: https://github.com/FuelLabs/fuel-specs/issues/287
 library tx;
 
 use ::address::Address;
@@ -120,6 +119,7 @@ pub enum Input {
 
 pub enum Output {
     Coin: (),
+    Contract: (),
     Message: (),
     Change: (),
     Variable: (),
@@ -464,6 +464,9 @@ pub fn tx_output_amount(index: u64) -> u64 {
     match type {
         Output::Coin => {
             __gtf::<u64>(index, GTF_OUTPUT_COIN_AMOUNT)
+        },
+        Output::Contract => {
+            revert(0);
         },
         Output::Message => {
             __gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT)
