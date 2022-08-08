@@ -70,6 +70,7 @@ pub enum TypedExpressionVariant {
     StructFieldAccess {
         prefix: Box<TypedExpression>,
         field_to_access: TypedStructField,
+        field_instantiation_span: Span,
         resolved_type_of_parent: TypeId,
     },
     TupleElemAccess {
@@ -236,11 +237,13 @@ impl PartialEq for TypedExpressionVariant {
                     prefix: l_prefix,
                     field_to_access: l_field_to_access,
                     resolved_type_of_parent: l_resolved_type_of_parent,
+                    ..
                 },
                 Self::StructFieldAccess {
                     prefix: r_prefix,
                     field_to_access: r_field_to_access,
                     resolved_type_of_parent: r_resolved_type_of_parent,
+                    ..
                 },
             ) => {
                 (**l_prefix) == (**r_prefix)

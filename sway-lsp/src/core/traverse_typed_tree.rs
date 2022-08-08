@@ -352,12 +352,16 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
         TypedExpressionVariant::StructFieldAccess {
             prefix,
             field_to_access,
+            field_instantiation_span,
             ..
         } => {
             handle_expression(prefix, tokens);
 
-            if let Some(mut token) = tokens.get_mut(&to_ident_key(&field_to_access.name)) {
+            if let Some(mut token) =
+                tokens.get_mut(&to_ident_key(&Ident::new(field_instantiation_span.clone())))
+            {
                 token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
+                token.type_def = Some(TypeDefinition::Ident(field_to_access.name.clone()));
             }
         }
         TypedExpressionVariant::TupleElemAccess { prefix, .. } => {

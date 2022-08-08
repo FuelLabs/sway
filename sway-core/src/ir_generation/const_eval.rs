@@ -299,6 +299,7 @@ fn const_eval_typed_expr(
             prefix,
             field_to_access,
             resolved_type_of_parent,
+            ..
         } => match const_eval_typed_expr(lookup, known_consts, &*prefix) {
             Some(Constant {
                 value: ConstantValue::Struct(fields),
