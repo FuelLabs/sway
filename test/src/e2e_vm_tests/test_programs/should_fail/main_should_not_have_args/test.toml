@@ -1,4 +1,4 @@
 category = "fail"
 
-# check: main(42)
-# nextln: $()arguments to "main()" are not yet supported.
+# check: }
+# nextln:_^ arguments to "main()" are not yet supported.
