@@ -1,6 +1,6 @@
 use crate::utils::{
-    comments::handle_comments, indent_style::Shape, newline_style::apply_newline_style,
-    program_type::insert_program_type,
+    comments::handle_comments, newline_style::apply_newline_style,
+    program_type::insert_program_type, shape::Shape,
 };
 use std::{path::Path, sync::Arc};
 use sway_core::BuildConfig;

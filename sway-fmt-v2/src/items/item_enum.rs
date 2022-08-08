@@ -4,7 +4,7 @@ use crate::{
     utils::{
         bracket::CurlyBrace,
         comments::{ByteSpan, LeafSpans},
-        indent_style::LineStyle,
+        shape::LineStyle,
     },
     FormatterError,
 };

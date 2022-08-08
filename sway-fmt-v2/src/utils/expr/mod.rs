@@ -15,7 +15,7 @@ use sway_types::{Ident, Spanned};
 
 use super::{
     bracket::{CurlyBrace, Parenthesis, SquareBracket},
-    indent_style::{ExprKind, LineStyle},
+    shape::{ExprKind, LineStyle},
 };
 
 pub(crate) mod abi_cast;

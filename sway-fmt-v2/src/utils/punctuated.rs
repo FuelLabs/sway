@@ -9,7 +9,7 @@ use sway_ast::{
 };
 use sway_types::{Ident, Spanned};
 
-use super::indent_style::LineStyle;
+use super::shape::LineStyle;
 
 impl<T, P> LeafSpans for Punctuated<T, P>
 where

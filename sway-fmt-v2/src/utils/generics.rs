@@ -2,7 +2,7 @@ use super::bracket::{close_angle_bracket, open_angle_bracket};
 use crate::fmt::{Format, FormattedCode, Formatter, FormatterError};
 use sway_ast::{GenericArgs, GenericParams};
 
-use super::indent_style::LineStyle;
+use super::shape::LineStyle;
 
 // In the future we will need to determine whether the generic arguments
 // are better suited with a `where` clause. At present they will be

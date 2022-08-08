@@ -12,7 +12,7 @@ use sway_ast::{
 };
 use sway_types::Spanned;
 
-use super::indent_style::LineStyle;
+use super::shape::LineStyle;
 
 impl Format for Ty {
     fn format(
