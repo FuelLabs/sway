@@ -3,14 +3,15 @@ use crate::{
     utils::comments::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
-use sway_parse::{
+use sway_ast::{
     brackets::SquareBrackets,
     expr::Expr,
-    keywords::{StrToken, UnderscoreToken},
+    keywords::{StrToken, Token, UnderscoreToken},
     token::Delimiter,
     ty::{Ty, TyArrayDescriptor, TyTupleDescriptor},
 };
 use sway_types::Spanned;
+
 impl Format for Ty {
     fn format(
         &self,

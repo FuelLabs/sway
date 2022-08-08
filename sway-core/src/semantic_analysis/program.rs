@@ -1,6 +1,6 @@
 use super::{
-    TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration, TypedImplTrait,
-    TypedStorageDeclaration,
+    storage_only_types, TypedAstNode, TypedAstNodeContent, TypedDeclaration,
+    TypedFunctionDeclaration, TypedImplTrait, TypedStorageDeclaration,
 };
 use crate::{
     error::*,
@@ -110,6 +110,15 @@ impl TypedProgram {
                 }
                 _ => (),
             };
+        }
+
+        for ast_n in &root.all_nodes {
+            check!(
+                storage_only_types::validate_decls_for_storage_only_types_in_ast(&ast_n.content),
+                continue,
+                warnings,
+                errors
+            );
         }
 
         // Some checks that are specific to non-contracts
