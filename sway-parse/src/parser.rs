@@ -228,7 +228,7 @@ impl<'a> Peeker<'a> {
 
     pub fn peek_delimiter(self) -> Result<Delimiter, Self> {
         match self.token_trees {
-            [TokenTree::Group(Group { delimiter, .. })] => {
+            [TokenTree::Group(Group { delimiter, .. }), ..] => {
                 *self.num_tokens = 1;
                 Ok(*delimiter)
             }
