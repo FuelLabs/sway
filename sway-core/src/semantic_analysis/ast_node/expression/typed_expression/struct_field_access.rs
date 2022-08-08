@@ -14,7 +14,7 @@ pub(crate) fn instantiate_struct_field_access(
 ) -> CompileResult<TypedExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let field_instantiation_span = field_to_access.span().clone();
+    let field_instantiation_span = field_to_access.span();
     let field = check!(
         look_up_type_id(parent.return_type).apply_subfields(&[field_to_access], &parent.span),
         return err(warnings, errors),

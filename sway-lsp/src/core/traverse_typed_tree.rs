@@ -2,18 +2,15 @@
 
 use crate::{
     core::token::{TokenMap, TypeDefinition, TypedAstToken},
-    utils::token::{declaration_of_type_id, struct_declaration_of_type_id, to_ident_key},
+    utils::token::{struct_declaration_of_type_id, to_ident_key},
 };
-use sway_core::{
-    semantic_analysis::ast_node::{
-        expression::{
-            typed_expression::TypedExpression, typed_expression_variant::TypedExpressionVariant,
-            TypedIntrinsicFunctionKind,
-        },
-        while_loop::TypedWhileLoop,
-        ProjectionKind, TypedImplTrait, {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
+use sway_core::semantic_analysis::ast_node::{
+    expression::{
+        typed_expression::TypedExpression, typed_expression_variant::TypedExpressionVariant,
+        TypedIntrinsicFunctionKind,
     },
-    type_engine::TypeId,
+    while_loop::TypedWhileLoop,
+    ProjectionKind, TypedImplTrait, {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
 };
 use sway_types::ident::Ident;
 
@@ -123,7 +120,7 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
 
             for proj_kind in &reassignment.lhs_indices {
                 if let ProjectionKind::StructField { name } = proj_kind {
-                    if let Some(mut token) = tokens.get_mut(&to_ident_key(&name)) {
+                    if let Some(mut token) = tokens.get_mut(&to_ident_key(name)) {
                         token.typed = Some(TypedAstToken::TypedReassignment(reassignment.clone()));
                         if let Some(struct_decl) =
                             &struct_declaration_of_type_id(&reassignment.lhs_type, tokens)
@@ -307,26 +304,11 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
                     {
                         for decl_field in &struct_decl.fields {
                             if decl_field.name == field.name {
-                                // NOTE: we don't necessarily want to assign this to the type_def as it might be
-                                // u32, bool etc which will be handy for doing inlay hints.
-                                // We might want to create a new field called, decleration_span: Option<Span> or similar for this.
-                                //
-                                // That being said, we can always just look up the type_id on the type_def itself
-                                // in order to infer the type!
                                 token.type_def =
                                     Some(TypeDefinition::Ident(decl_field.name.clone()));
                             }
                         }
                     }
-
-                    // 1. Pass in an Option<TypeId> for the parent into handle_expression()
-                    // 2. let decl_ident = utils::token::ident_of_type_id(type_id)
-                    // 3. let struct_decl = tokens.get(decl_ident);
-                    // 4. for decl_field in struct_decl.fields {
-                    //      if decl_field.name = field.name {
-                    //          token.type_def = Some(TypeDefinition::Ident(decl_field.name));
-                    //      }
-                    //    }
                 }
                 handle_expression(&field.value, tokens);
             }

@@ -45,7 +45,7 @@ pub(crate) fn to_ident_key(ident: &Ident) -> (Ident, Span) {
 pub fn declaration_of_type_id(type_id: &TypeId, tokens: &TokenMap) -> Option<TypedDeclaration> {
     ident_of_type_id(type_id)
         .and_then(|decl_ident| tokens.get(&to_ident_key(&decl_ident)))
-        .and_then(|item| Some(item.value().clone()))
+        .map(|item| item.value().clone())
         .and_then(|token| token.typed)
         .and_then(|typed_token| match typed_token {
             TypedAstToken::TypedDeclaration(dec) => Some(dec),

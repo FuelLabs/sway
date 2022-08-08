@@ -10,7 +10,7 @@ use sway_core::{
     AstNode, AstNodeContent, Declaration, Expression, FunctionDeclaration, ReassignmentTarget,
     TypeInfo, WhileLoop,
 };
-use sway_types::{Ident, Spanned};
+use sway_types::Ident;
 
 use super::token::TypeDefinition;
 
