@@ -212,7 +212,11 @@ impl TypedProgram {
             _ => (),
         }
 
-        ok((), warnings, errors)
+        if errors.is_empty() {
+            ok((), warnings, errors)
+        } else {
+            err(warnings, errors)
+        }
     }
 
     /// Ensures there are no unresolved types or types awaiting resolution in the AST.
