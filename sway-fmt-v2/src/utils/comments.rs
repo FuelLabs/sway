@@ -8,17 +8,19 @@ use std::{
     path::PathBuf,
     sync::Arc,
 };
-use sway_parse::{
+use sway_ast::{
     attribute::Annotated,
     brackets::{Parens, SquareBrackets},
     keywords::{
         AddToken, ColonToken, CommaToken, ForToken, ForwardSlashToken, RightArrowToken,
         SemicolonToken,
     },
-    token::{lex_commented, Comment, CommentedTokenTree, CommentedTree},
-    Braces, Module, Parse, TypeField,
+    token::{Comment, CommentedTokenTree, CommentedTree},
+    Braces, Module, TypeField,
 };
+use sway_parse::{lex_commented, Parse};
 use sway_types::{Ident, Span, Spanned};
+
 /// Represents a span for the comments in a spesific file
 /// A stripped down version of sway-types::src::Span
 #[derive(PartialEq, Eq, Debug, Clone, Default)]

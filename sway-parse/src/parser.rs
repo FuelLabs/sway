@@ -1,4 +1,9 @@
-use crate::priv_prelude::*;
+use crate::{Parse, ParseError, ParseErrorKind, ParseToEnd, Peek};
+
+use core::marker::PhantomData;
+use sway_ast::literal::Literal;
+use sway_ast::token::{Delimiter, Group, Punct, PunctKind, Spacing, TokenStream, TokenTree};
+use sway_types::{Ident, Span, Spanned};
 
 pub struct Parser<'a, 'e> {
     token_trees: &'a [TokenTree],

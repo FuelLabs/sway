@@ -3,7 +3,8 @@ use crate::{
     utils::comments::{ByteSpan, LeafSpans},
 };
 use std::{fmt::Write, vec};
-use sway_parse::{PathExpr, PathExprSegment, PathType, PathTypeSegment, QualifiedPathRoot};
+use sway_ast::keywords::Token;
+use sway_ast::{PathExpr, PathExprSegment, PathType, PathTypeSegment, QualifiedPathRoot};
 use sway_types::Spanned;
 
 use super::bracket::{close_angle_bracket, open_angle_bracket};
