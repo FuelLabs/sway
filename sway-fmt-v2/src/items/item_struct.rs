@@ -104,7 +104,7 @@ impl Format for ItemStruct {
         }
         // Handle closing brace
         Self::close_curly_brace(formatted_code, formatter)?;
-        formatter.shape.reset_line_style();
+        formatter.shape.reset_line_heuristics();
 
         Ok(())
     }
@@ -139,6 +139,7 @@ impl CurlyBrace for ItemStruct {
         write!(line, "{}", Delimiter::Brace.as_close_char())?;
         // If shape is becoming left-most alligned or - indent just have the defualt shape
         formatter.shape.block_unindent(&formatter.config);
+
 
         Ok(())
     }

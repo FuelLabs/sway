@@ -525,7 +525,7 @@ fn format_method_call(
         ExprStructField::close_curly_brace(formatted_code, formatter)?;
     }
     Expr::open_parenthesis(formatted_code, formatter)?;
-    formatter.shape.reset_line_style();
+    formatter.shape.reset_line_heuristics();
     args.clone()
         .into_inner()
         .format(formatted_code, formatter)?;

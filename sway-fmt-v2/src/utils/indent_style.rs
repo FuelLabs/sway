@@ -255,10 +255,9 @@ impl Shape {
     pub(crate) fn update_line_heuristics(&mut self, line_heuristics: LineHeuristics) {
         self.line_heuristics = line_heuristics;
     }
-    /// Reset `Shape::line_heuristics` to default and `Shape::width` to 0.
-    pub(crate) fn reset_line_style(&mut self) {
-        self.width = 0;
-        self.line_heuristics = LineHeuristics::default();
+    /// Reset `Shape::line_heuristics` to default.
+    pub(crate) fn reset_line_heuristics(&mut self) {
+        self.update_line_heuristics(LineHeuristics::default());
     }
     /// Update the value of `has_where_clause`.
     pub(crate) fn update_where_clause(&mut self) {
@@ -358,7 +357,7 @@ mod test {
             formatter.shape.line_heuristics.line_style
         );
 
-        formatter.shape.reset_line_style();
+        formatter.shape.reset_line_heuristics();
         assert_eq!(
             LineStyle::Normal,
             formatter.shape.line_heuristics.line_style

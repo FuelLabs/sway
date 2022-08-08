@@ -102,7 +102,7 @@ impl Format for ItemEnum {
         }
         // Handle closing brace
         ItemEnum::close_curly_brace(formatted_code, formatter)?;
-        formatter.shape.reset_line_style();
+        formatter.shape.reset_line_heuristics();
 
         Ok(())
     }
@@ -137,6 +137,7 @@ impl CurlyBrace for ItemEnum {
         write!(line, "{}", Delimiter::Brace.as_close_char())?;
         // If shape is becoming left-most aligned or - indent just have the defualt shape
         formatter.shape.block_unindent(&formatter.config);
+
 
         Ok(())
     }

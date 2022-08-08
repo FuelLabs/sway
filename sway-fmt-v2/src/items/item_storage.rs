@@ -97,7 +97,7 @@ impl Format for ItemStorage {
         }
         // Handle closing brace
         Self::close_curly_brace(formatted_code, formatter)?;
-        formatter.shape.reset_line_style();
+        formatter.shape.reset_line_heuristics();
 
         Ok(())
     }
@@ -133,6 +133,7 @@ impl CurlyBrace for ItemStorage {
         // shrink_left would return error if the current indentation level is becoming < 0, in that
         // case we should use the Shape::default() which has 0 indentation level.
         formatter.shape.block_unindent(&formatter.config);
+
 
         Ok(())
     }
