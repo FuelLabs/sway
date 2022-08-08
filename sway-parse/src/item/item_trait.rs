@@ -1,9 +1,7 @@
-use crate::{Parse, ParseBracket, ParseErrorKind, ParseResult, Parser};
+use crate::{Parse, ParseBracket, ParseResult, Parser};
 
 use sway_ast::attribute::Annotated;
-use sway_ast::keywords::Keyword;
 use sway_ast::{Braces, FnSignature, ItemFn, ItemTrait, Traits};
-use sway_types::Spanned;
 
 impl Parse for ItemTrait {
     fn parse(parser: &mut Parser) -> ParseResult<ItemTrait> {
@@ -21,27 +19,13 @@ impl Parse for ItemTrait {
         let trait_items: Braces<Vec<(Annotated<FnSignature>, _)>> = parser.parse()?;
         for item in trait_items.get().iter() {
             let (fn_sig, _) = item;
-            if let Some(token) = &fn_sig.value.visibility {
-                return Err(parser.emit_error_with_span(
-                    ParseErrorKind::UnnecessaryVisibilityQualifier {
-                        visibility: token.ident(),
-                    },
-                    token.span(),
-                ));
-            }
+            parser.ban_visibility_qualifier(&fn_sig.value.visibility)?;
         }
 
         let trait_defs_opt: Option<Braces<Vec<Annotated<ItemFn>>>> = Braces::try_parse(parser)?;
         if let Some(trait_defs) = &trait_defs_opt {
             for item in trait_defs.get().iter() {
-                if let Some(token) = &item.value.fn_signature.visibility {
-                    return Err(parser.emit_error_with_span(
-                        ParseErrorKind::UnnecessaryVisibilityQualifier {
-                            visibility: token.ident(),
-                        },
-                        token.span(),
-                    ));
-                }
+                parser.ban_visibility_qualifier(&item.value.fn_signature.visibility)?;
             }
         }
 
