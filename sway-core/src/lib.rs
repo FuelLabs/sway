@@ -387,7 +387,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // Check if we have `script` or `predicate` and their main functions have no arguments.
     check!(
         program.check_args_to_main(),
-        return err(warnings,errors),
+        return err(warnings, errors),
         warnings,
         errors,
     );

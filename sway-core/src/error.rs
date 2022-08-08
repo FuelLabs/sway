@@ -1047,7 +1047,7 @@ pub enum CompileError {
     #[error("\"continue\" used outside of a loop")]
     ContinueOutsideLoop { span: Span },
     #[error("arguments to \"main()\" are not yet supported.")]
-    MainArgsNotYetSupported{ span:Span }, 
+    MainArgsNotYetSupported { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1212,7 +1212,7 @@ impl Spanned for CompileError {
             IntrinsicIncorrectNumTArgs { span, .. } => span.clone(),
             BreakOutsideLoop { span } => span.clone(),
             ContinueOutsideLoop { span } => span.clone(),
-            MainArgsNotYetSupported{span} => span.clone(),
+            MainArgsNotYetSupported { span } => span.clone(),
         }
     }
 }

@@ -201,14 +201,14 @@ impl TypedProgram {
         let mut errors = Vec::new();
         let warnings = Vec::new();
         match &self.kind {
-            TypedProgramKind::Script{main_function,..} |
-            TypedProgramKind::Predicate{main_function, ..}  => {
+            TypedProgramKind::Script { main_function, .. }
+            | TypedProgramKind::Predicate { main_function, .. } => {
                 if !main_function.parameters.is_empty() {
                     errors.push(CompileError::MainArgsNotYetSupported {
-                        span: main_function.span.clone()
+                        span: main_function.span.clone(),
                     })
                 }
-            },
+            }
             _ => (),
         }
 
