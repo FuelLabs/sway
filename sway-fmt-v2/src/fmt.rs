@@ -361,7 +361,15 @@ struct Type2 {
 }
 
 storage {
-    var1: Type1 = Type1 {x: 0,y: 0, },
+    var1: Type1 = Type1 {
+        
+        
+        
+        x: 0,
+        
+        y: 
+        0, 
+        },
     var2: Type2 = Type2 { w: 0x0000000000000000000000000000000000000000000000000000000000000000,z: false,
     },
 }"#;
