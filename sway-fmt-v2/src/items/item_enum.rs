@@ -138,7 +138,6 @@ impl CurlyBrace for ItemEnum {
         // If shape is becoming left-most aligned or - indent just have the defualt shape
         formatter.shape.block_unindent(&formatter.config);
 
-
         Ok(())
     }
 }

@@ -140,7 +140,6 @@ impl CurlyBrace for ItemStruct {
         // If shape is becoming left-most alligned or - indent just have the defualt shape
         formatter.shape.block_unindent(&formatter.config);
 
-
         Ok(())
     }
 }

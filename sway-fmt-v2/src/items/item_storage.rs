@@ -134,7 +134,6 @@ impl CurlyBrace for ItemStorage {
         // case we should use the Shape::default() which has 0 indentation level.
         formatter.shape.block_unindent(&formatter.config);
 
-
         Ok(())
     }
 }
