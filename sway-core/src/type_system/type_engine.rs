@@ -1,7 +1,6 @@
 use super::*;
 use crate::concurrent_slab::ConcurrentSlab;
 use crate::namespace::{Path, Root};
-use crate::type_engine::AbiName;
 use lazy_static::lazy_static;
 use sway_types::span::Span;
 use sway_types::{Ident, Spanned};

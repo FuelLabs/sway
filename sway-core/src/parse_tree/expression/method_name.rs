@@ -1,7 +1,7 @@
 use sway_types::Span;
 
 use crate::parse_tree::CallPath;
-use crate::type_engine::TypeBinding;
+use crate::type_system::TypeBinding;
 use crate::{Ident, TypeInfo};
 
 #[allow(clippy::large_enum_variant)]
