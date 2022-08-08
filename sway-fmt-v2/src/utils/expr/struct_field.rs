@@ -55,7 +55,7 @@ impl CurlyBrace for ExprStructField {
     ) -> Result<(), FormatterError> {
         // Unindent by one block
         formatter.shape.block_unindent(&formatter.config);
-        match formatter.shape.line_heuristics.line_style {
+        match formatter.shape.code_line.line_style {
             LineStyle::Inline => write!(line, "{}", Delimiter::Brace.as_close_char())?,
             _ => write!(
                 line,

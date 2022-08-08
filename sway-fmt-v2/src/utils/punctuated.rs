@@ -55,7 +55,7 @@ where
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        match formatter.shape.line_heuristics.line_style {
+        match formatter.shape.code_line.line_style {
             LineStyle::Normal => {
                 let value_pairs = &self.value_separator_pairs;
                 for (type_field, punctuation) in value_pairs.iter() {

@@ -98,17 +98,17 @@ impl Format for TyTupleDescriptor {
             tail,
         } = self
         {
-            let prev_state = formatter.shape.line_heuristics;
+            let prev_state = formatter.shape.code_line;
             formatter
                 .shape
-                .line_heuristics
+                .code_line
                 .update_line_style(LineStyle::Normal);
 
             head.format(formatted_code, formatter)?;
             write!(formatted_code, "{} ", comma_token.ident().as_str())?;
             tail.format(formatted_code, formatter)?;
 
-            formatter.shape.update_line_heuristics(prev_state);
+            formatter.shape.update_line_settings(prev_state);
         }
 
         Ok(())

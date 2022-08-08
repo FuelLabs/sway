@@ -21,7 +21,7 @@ impl Format for ItemStorage {
     ) -> Result<(), FormatterError> {
         formatter
             .shape
-            .line_heuristics
+            .code_line
             .update_line_style(LineStyle::Multiline);
         // Add storage token
         write!(formatted_code, "{}", self.storage_token.span().as_str())?;
@@ -97,7 +97,7 @@ impl Format for ItemStorage {
         }
         // Handle closing brace
         Self::close_curly_brace(formatted_code, formatter)?;
-        formatter.shape.reset_line_heuristics();
+        formatter.shape.reset_line_settings();
 
         Ok(())
     }

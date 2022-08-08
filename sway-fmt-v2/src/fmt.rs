@@ -34,6 +34,7 @@ impl Formatter {
             Err(e) => return Err(e),
         };
         let shape = Shape::default();
+
         Ok(Self { config, shape })
     }
     pub fn format(
@@ -42,23 +43,28 @@ impl Formatter {
         build_config: Option<&BuildConfig>,
     ) -> Result<FormattedCode, FormatterError> {
         let path = build_config.map(|build_config| build_config.canonical_root_module());
-        let src_len = src.len();
+        // update shape of the formatter with the width heuristics settings from the `Config`
+        self.shape.from_width_heuristics(
+            self.config
+                .heuristics
+                .heuristics_pref
+                .to_width_heuristics(self.config.whitespace.max_width),
+        );
         let module = sway_parse::parse_file(src.clone(), path.clone())?;
-        // Get parsed items
-        let items = &module.items;
-        // Get the program type (script, predicate, contract or library)
-        let program_type = &module.kind;
 
         // Formatted code will be pushed here with raw newline stlye.
         // Which means newlines are not converted into system-specific versions until `apply_newline_style()`.
         // Use the length of src as a hint of the memory size needed for `raw_formatted_code`,
         // which will reduce the number of reallocations
-        let mut raw_formatted_code = String::with_capacity(src_len);
+        let mut raw_formatted_code = String::with_capacity(src.len());
 
-        // Insert program type to the formatted code.
+        // Get the program type (script, predicate, contract or library)
+        // and insert program type to the formatted code.
+        let program_type = &module.kind;
         insert_program_type(&mut raw_formatted_code, program_type)?;
 
         // Insert parsed & formatted items into the formatted code.
+        let items = &module.items;
         let mut iter = items.iter().peekable();
         while let Some(item) = iter.next() {
             // format Annotated<ItemKind>

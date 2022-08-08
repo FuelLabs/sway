@@ -3,13 +3,13 @@ use crate::{
     utils::{
         bracket::{Parenthesis, SquareBracket},
         comments::{ByteSpan, LeafSpans},
+        shape::LineStyle,
     },
 };
 use std::fmt::Write;
 use sway_ast::{token::Delimiter, ExprArrayDescriptor, ExprTupleDescriptor};
 use sway_types::Spanned;
 
-// TODO: add long and multiline formatting
 impl Format for ExprTupleDescriptor {
     fn format(
         &self,
@@ -23,11 +23,28 @@ impl Format for ExprTupleDescriptor {
                 comma_token,
                 tail,
             } => {
-                head.format(formatted_code, formatter)?;
-                write!(formatted_code, "{} ", comma_token.span().as_str())?;
-                tail.format(formatted_code, formatter)?;
+                Self::open_parenthesis(formatted_code, formatter)?;
+                match formatter.shape.code_line.line_style {
+                    LineStyle::Multiline => {
+                        write!(
+                            formatted_code,
+                            "{}",
+                            formatter.shape.indent.to_string(&formatter.config)?
+                        )?;
+                        head.format(formatted_code, formatter)?;
+                        write!(formatted_code, "{}", comma_token.span().as_str())?;
+                        tail.format(formatted_code, formatter)?;
+                    }
+                    _ => {
+                        head.format(formatted_code, formatter)?;
+                        write!(formatted_code, "{} ", comma_token.span().as_str())?;
+                        tail.format(formatted_code, formatter)?;
+                    }
+                }
+                Self::close_parenthesis(formatted_code, formatter)?;
             }
         }
+
         Ok(())
     }
 }
@@ -35,16 +52,35 @@ impl Format for ExprTupleDescriptor {
 impl Parenthesis for ExprTupleDescriptor {
     fn open_parenthesis(
         line: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Parenthesis.as_open_char())?;
+        match formatter.shape.code_line.line_style {
+            LineStyle::Multiline => {
+                formatter.shape.block_indent(&formatter.config);
+                writeln!(line, "{}", Delimiter::Parenthesis.as_open_char())?;
+            }
+            _ => write!(line, "{}", Delimiter::Parenthesis.as_open_char())?,
+        }
+
         Ok(())
     }
     fn close_parenthesis(
         line: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Parenthesis.as_close_char())?;
+        match formatter.shape.code_line.line_style {
+            LineStyle::Multiline => {
+                formatter.shape.block_unindent(&formatter.config);
+                write!(
+                    line,
+                    "{}{}",
+                    formatter.shape.indent.to_string(&formatter.config)?,
+                    Delimiter::Parenthesis.as_close_char()
+                )?;
+            }
+            _ => write!(line, "{}", Delimiter::Parenthesis.as_close_char())?,
+        }
+
         Ok(())
     }
 }
@@ -69,6 +105,7 @@ impl Format for ExprArrayDescriptor {
                 length.format(formatted_code, formatter)?;
             }
         }
+
         Ok(())
     }
 }
@@ -76,16 +113,35 @@ impl Format for ExprArrayDescriptor {
 impl SquareBracket for ExprArrayDescriptor {
     fn open_square_bracket(
         line: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Bracket.as_open_char())?;
+        match formatter.shape.code_line.line_style {
+            LineStyle::Multiline => {
+                formatter.shape.block_indent(&formatter.config);
+                writeln!(line, "{}", Delimiter::Bracket.as_open_char())?;
+            }
+            _ => write!(line, "{}", Delimiter::Bracket.as_open_char())?,
+        }
+
         Ok(())
     }
     fn close_square_bracket(
         line: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Bracket.as_close_char())?;
+        match formatter.shape.code_line.line_style {
+            LineStyle::Multiline => {
+                formatter.shape.block_unindent(&formatter.config);
+                write!(
+                    line,
+                    "\n{}{}",
+                    formatter.shape.indent.to_string(&formatter.config)?,
+                    Delimiter::Bracket.as_close_char()
+                )?;
+            }
+            _ => write!(line, "{}", Delimiter::Bracket.as_close_char())?,
+        }
+
         Ok(())
     }
 }

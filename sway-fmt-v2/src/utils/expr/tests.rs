@@ -110,3 +110,8 @@ fmt_test!(  nested_args_func_app "foo(a_struct { hello: \"hi\" }, a_var, foo.bar
                     hello  :  \"hi\"
             }, a_var  , foo . bar . baz . quux)"
 );
+
+fmt_test!(  multiline_tuple "(\n    \"reallyreallylongstring\",\n    \"yetanotherreallyreallyreallylongstring\",\n    \"okaynowthatsjustaridiculouslylongstringrightthere\",\n)",
+            intermediate_whitespace "(\"reallyreallylongstring\",             \"yetanotherreallyreallyreallylongstring\",
+            \"okaynowthatsjustaridiculouslylongstringrightthere\")"
+);

@@ -1,6 +1,6 @@
 //! Associated functions and tests for handling of indentation.
 use crate::{
-    config::manifest::Config,
+    config::{heuristics::WidthHeuristics, manifest::Config},
     constants::{HARD_TAB, INDENT_BUFFER, INDENT_BUFFER_LEN},
     FormatterError,
 };
@@ -105,19 +105,19 @@ impl Sub for Indent {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
-pub(crate) struct LineHeuristics {
+pub(crate) struct CodeLine {
     pub(crate) line_style: LineStyle,
     pub(crate) expr_kind: ExprKind,
 }
 
-impl LineHeuristics {
-    /// Update `LineHeuristics::line_style` with a given LineStyle.
+impl CodeLine {
+    /// Update `CodeLine::line_style` with a given LineStyle.
     pub(crate) fn update_line_style(&mut self, line_style: LineStyle) {
-        self.line_style = line_style;
+        self.line_style = line_style
     }
-    /// Update `LineHeuristics::expr_kind` with a given ExprKind.
+    /// Update `CodeLine::expr_kind` with a given ExprKind.
     pub(crate) fn update_expr_kind(&mut self, expr_kind: ExprKind) {
-        self.expr_kind = expr_kind;
+        self.expr_kind = expr_kind
     }
 }
 
@@ -161,7 +161,9 @@ pub(crate) struct Shape {
     pub(crate) indent: Indent,
     /// Used in determining which heuristics settings to use from the config
     /// and whether a code line is normal, inline or multiline.
-    pub(crate) line_heuristics: LineHeuristics,
+    pub(crate) code_line: CodeLine,
+    /// The definitive width settings from the `Config`.
+    pub(crate) width_heuristics: WidthHeuristics,
     /// Used in determining `SameLineWhere` formatting.
     /// Default is false.
     pub(crate) has_where_clause: bool,
@@ -185,6 +187,13 @@ impl Shape {
     // |<---->|          indent
     //        |<--->|    width
     //
+    /// A wrapper for `to_width_heuristics()` that also checks if the settings are default.
+    pub(crate) fn from_width_heuristics(&mut self, width_heuristics: WidthHeuristics) {
+        if width_heuristics == WidthHeuristics::default() {
+        } else {
+            self.width_heuristics = width_heuristics
+        }
+    }
     /// A wrapper for `Indent::block_indent()`.
     ///
     /// Adds a level of indentation specified by the `Formatter::config` to the current `block_indent`.
@@ -196,51 +205,74 @@ impl Shape {
     /// Removes a level of indentation specified by the `Formatter::config` to the current `block_indent`.
     /// If the current level of indentation would be negative, leave it as is.
     pub(crate) fn block_unindent(&mut self, config: &Config) {
-        self.indent.block_unindent(config);
+        self.indent.block_unindent(config)
     }
     /// Updates `Shape::width` to the current width of the `Item`.
     pub(crate) fn update_width(&mut self, len_chars: usize) {
-        self.width = len_chars;
+        self.width = len_chars
+    }
+    pub(crate) fn add_width(&mut self, len_chars: usize) {
+        self.width += len_chars
+    }
+    pub(crate) fn sub_width(&mut self, len_chars: usize) {
+        self.width -= len_chars
+    }
+    pub(crate) fn reset_width(&mut self) {
+        self.update_width(0)
     }
     /// Checks the config, and if `small_structure_single_line` is enabled,
     /// determines whether the `Shape::width` is greater than the `structure_lit_width`
     /// threshold. If it isn't, the `Shape::line_style` is updated to `Inline`.
     pub(crate) fn get_line_style(
         &mut self,
-        field_width: usize,
+        field_width: Option<usize>,
         body_width: usize,
         config: &Config,
     ) {
-        match self.line_heuristics.expr_kind {
+        // we can maybe do this at the beginning and store it on shape since it won't change during formatting
+        // let width_heuristics = config
+        //     .heuristics
+        //     .heuristics_pref
+        //     .to_width_heuristics(config.whitespace.max_width);
+        match self.code_line.expr_kind {
             ExprKind::Struct => {
                 // Get the width limit of a structure to be formatted into single line if `allow_inline_style` is true.
                 if config.structures.small_structures_single_line {
-                    let width_heuristics = config
-                        .heuristics
-                        .heuristics_pref
-                        .to_width_heuristics(config.whitespace.max_width);
-
+                    if let Some(field_width) = field_width {
+                        if field_width > self.width_heuristics.structure_field_width {
+                            self.code_line.update_line_style(LineStyle::Multiline)
+                        }
+                    }
                     if self.width > config.whitespace.max_width
-                        || body_width > width_heuristics.structure_lit_width
-                        || field_width > width_heuristics.structure_field_width
+                        || body_width > self.width_heuristics.structure_lit_width
                     {
-                        self.line_heuristics.update_line_style(LineStyle::Multiline)
+                        self.code_line.update_line_style(LineStyle::Multiline)
                     } else {
-                        self.line_heuristics.update_line_style(LineStyle::Inline)
+                        self.code_line.update_line_style(LineStyle::Inline)
                     }
                 } else {
-                    self.line_heuristics.update_line_style(LineStyle::Multiline)
+                    self.code_line.update_line_style(LineStyle::Multiline)
                 }
             }
-            _ => self.line_heuristics.update_line_style(LineStyle::default()),
+            ExprKind::Collection => {
+                if self.width > config.whitespace.max_width
+                    || body_width > self.width_heuristics.collection_width
+                {
+                    self.code_line.update_line_style(LineStyle::Multiline)
+                } else {
+                    self.code_line.update_line_style(LineStyle::Normal)
+                }
+            }
+            _ => self.code_line.update_line_style(LineStyle::default()),
         }
     }
-    pub(crate) fn update_line_heuristics(&mut self, line_heuristics: LineHeuristics) {
-        self.line_heuristics = line_heuristics;
+    /// Update `Shape::code_line` with the provided settings.
+    pub(crate) fn update_line_settings(&mut self, line_settings: CodeLine) {
+        self.code_line = line_settings
     }
-    /// Reset `Shape::line_heuristics` to default.
-    pub(crate) fn reset_line_heuristics(&mut self) {
-        self.update_line_heuristics(LineHeuristics::default());
+    /// Reset `Shape::code_line` to default.
+    pub(crate) fn reset_line_settings(&mut self) {
+        self.update_line_settings(CodeLine::default())
     }
     /// Update the value of `has_where_clause`.
     pub(crate) fn update_where_clause(&mut self) {
@@ -304,45 +336,33 @@ mod test {
     #[test]
     fn test_get_line_style_struct() {
         let mut formatter = Formatter::default();
+        formatter.shape.code_line.update_expr_kind(ExprKind::Struct);
         formatter
             .shape
-            .line_heuristics
-            .update_expr_kind(ExprKind::Struct);
-        formatter.shape.get_line_style(9, 18, &formatter.config);
-        assert_eq!(
-            LineStyle::Inline,
-            formatter.shape.line_heuristics.line_style
-        );
+            .get_line_style(Some(9), 18, &formatter.config);
+        assert_eq!(LineStyle::Inline, formatter.shape.code_line.line_style);
 
-        formatter.shape.get_line_style(10, 19, &formatter.config);
-        assert_eq!(
-            LineStyle::Multiline,
-            formatter.shape.line_heuristics.line_style
-        );
+        formatter
+            .shape
+            .get_line_style(Some(10), 19, &formatter.config);
+        assert_eq!(LineStyle::Multiline, formatter.shape.code_line.line_style);
     }
 
     #[test]
     fn test_reset_line_style() {
         let mut formatter = Formatter::default();
+        formatter.shape.code_line.update_expr_kind(ExprKind::Struct);
         formatter
             .shape
-            .line_heuristics
-            .update_expr_kind(ExprKind::Struct);
-        formatter
-            .shape
-            .line_heuristics
+            .code_line
             .update_line_style(LineStyle::Inline);
 
-        formatter.shape.get_line_style(8, 18, &formatter.config);
-        assert_eq!(
-            LineStyle::Inline,
-            formatter.shape.line_heuristics.line_style
-        );
+        formatter
+            .shape
+            .get_line_style(Some(8), 18, &formatter.config);
+        assert_eq!(LineStyle::Inline, formatter.shape.code_line.line_style);
 
-        formatter.shape.reset_line_heuristics();
-        assert_eq!(
-            LineStyle::Normal,
-            formatter.shape.line_heuristics.line_style
-        );
+        formatter.shape.reset_line_settings();
+        assert_eq!(LineStyle::Normal, formatter.shape.code_line.line_style);
     }
 }

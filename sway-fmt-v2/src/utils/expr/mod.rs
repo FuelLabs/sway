@@ -46,41 +46,56 @@ impl Format for Expr {
             }
             Self::Struct { path, fields } => {
                 // store previous state and update expr kind
-                let prev_state = formatter.shape.line_heuristics;
-                formatter
-                    .shape
-                    .line_heuristics
-                    .update_expr_kind(ExprKind::Struct);
+                let prev_state = formatter.shape.code_line;
+                formatter.shape.code_line.update_expr_kind(ExprKind::Struct);
 
-                // get the length in chars of the code in a single line format
+                // get the length in chars of the code_line in a single line format,
+                // this include the path
                 let mut buf = FormattedCode::new();
                 let mut temp_formatter = Formatter::default();
                 temp_formatter
                     .shape
-                    .line_heuristics
+                    .code_line
                     .update_line_style(LineStyle::Inline);
                 format_expr_struct(path, fields, &mut buf, &mut temp_formatter)?;
 
-                // get the largest field size
+                // get the largest field size and the size of the body
                 let (field_width, body_width) =
                     get_field_width(&fields.clone().into_inner(), &mut formatter.clone())?;
 
                 // changes to the actual formatter
-                formatter.shape.update_width(buf.chars().count() as usize);
+                let expr_width = buf.chars().count() as usize;
+                formatter.shape.add_width(expr_width);
                 formatter
                     .shape
-                    .get_line_style(field_width, body_width, &formatter.config);
+                    .get_line_style(Some(field_width), body_width, &formatter.config);
+                debug_expr(buf, field_width, body_width, expr_width, formatter);
 
                 format_expr_struct(path, fields, formatted_code, formatter)?;
-                formatter.shape.update_line_heuristics(prev_state);
+                formatter.shape.sub_width(expr_width);
+                formatter.shape.update_line_settings(prev_state);
             }
             Self::Tuple(tuple_descriptor) => {
-                ExprTupleDescriptor::open_parenthesis(formatted_code, formatter)?;
-                tuple_descriptor
-                    .clone()
-                    .into_inner()
-                    .format(formatted_code, formatter)?;
-                ExprTupleDescriptor::close_parenthesis(formatted_code, formatter)?;
+                // store previous state and update expr kind
+                let prev_state = formatter.shape.code_line;
+                formatter
+                    .shape
+                    .code_line
+                    .update_expr_kind(ExprKind::Collection);
+
+                // get the length in chars of the code_line in a normal line format
+                let mut buf = FormattedCode::new();
+                let mut temp_formatter = Formatter::default();
+                format_tuple(tuple_descriptor, &mut buf, &mut temp_formatter)?;
+                let body_width = buf.chars().count() as usize;
+
+                formatter.shape.add_width(body_width);
+                formatter
+                    .shape
+                    .get_line_style(None, body_width, &formatter.config);
+
+                format_tuple(tuple_descriptor, formatted_code, formatter)?;
+                formatter.shape.update_line_settings(prev_state);
             }
             Self::Parens(expr) => {
                 Self::open_parenthesis(formatted_code, formatter)?;
@@ -174,13 +189,13 @@ impl Format for Expr {
                 contract_args_opt,
                 args,
             } => {
-                let prev_state = formatter.shape.line_heuristics;
+                let prev_state = formatter.shape.code_line;
                 // get the length in chars of the code in a single line format
                 let mut buf = FormattedCode::new();
                 let mut temp_formatter = Formatter::default();
                 temp_formatter
                     .shape
-                    .line_heuristics
+                    .code_line
                     .update_line_style(LineStyle::Inline);
                 format_method_call(
                     target,
@@ -201,14 +216,12 @@ impl Format for Expr {
                 }
 
                 // changes to the actual formatter
-                formatter.shape.update_width(buf.chars().count() as usize);
+                let expr_width = buf.chars().count() as usize;
+                formatter.shape.add_width(expr_width);
+                formatter.shape.code_line.update_expr_kind(ExprKind::Struct);
                 formatter
                     .shape
-                    .line_heuristics
-                    .update_expr_kind(ExprKind::Struct);
-                formatter
-                    .shape
-                    .get_line_style(field_width, body_width, &formatter.config);
+                    .get_line_style(Some(field_width), body_width, &formatter.config);
 
                 format_method_call(
                     target,
@@ -219,7 +232,8 @@ impl Format for Expr {
                     formatted_code,
                     formatter,
                 )?;
-                formatter.shape.update_line_heuristics(prev_state);
+                formatter.shape.sub_width(expr_width);
+                formatter.shape.update_line_settings(prev_state);
             }
             Self::FieldProjection {
                 target,
@@ -475,6 +489,21 @@ impl SquareBracket for Expr {
     }
 }
 
+pub(super) fn debug_expr(
+    buf: FormattedCode,
+    field_width: usize,
+    body_width: usize,
+    expr_width: usize,
+    formatter: &mut Formatter,
+) {
+    println!(
+        "line: {buf}\nfield: {field_width}, body: {body_width}, expr: {expr_width}, width: {}",
+        formatter.shape.width
+    );
+    println!("{:?}", formatter.shape.code_line);
+    println!("{:?}", formatter.shape.width_heuristics);
+}
+
 fn format_expr_struct(
     path: &PathExpr,
     fields: &Braces<Punctuated<ExprStructField, CommaToken>>,
@@ -484,12 +513,25 @@ fn format_expr_struct(
     path.format(formatted_code, formatter)?;
     ExprStructField::open_curly_brace(formatted_code, formatter)?;
     let fields = &fields.clone().into_inner();
-    match formatter.shape.line_heuristics.line_style {
+    match formatter.shape.code_line.line_style {
         LineStyle::Inline => fields.format(formatted_code, formatter)?,
         // TODO: add field alignment
         _ => fields.format(formatted_code, formatter)?,
     }
     ExprStructField::close_curly_brace(formatted_code, formatter)?;
+
+    Ok(())
+}
+
+fn format_tuple(
+    tuple_descriptor: &Parens<ExprTupleDescriptor>,
+    formatted_code: &mut FormattedCode,
+    formatter: &mut Formatter,
+) -> Result<(), FormatterError> {
+    tuple_descriptor
+        .clone()
+        .into_inner()
+        .format(formatted_code, formatter)?;
 
     Ok(())
 }
@@ -517,7 +559,7 @@ fn format_method_call(
     if let Some(contract_args) = &contract_args_opt {
         ExprStructField::open_curly_brace(formatted_code, formatter)?;
         let contract_args = &contract_args.clone().into_inner();
-        match formatter.shape.line_heuristics.line_style {
+        match formatter.shape.code_line.line_style {
             LineStyle::Inline => {
                 contract_args.format(formatted_code, formatter)?;
             }
@@ -528,7 +570,7 @@ fn format_method_call(
         ExprStructField::close_curly_brace(formatted_code, formatter)?;
     }
     Expr::open_parenthesis(formatted_code, formatter)?;
-    formatter.shape.reset_line_heuristics();
+    formatter.shape.reset_line_settings();
     args.clone()
         .into_inner()
         .format(formatted_code, formatter)?;
@@ -573,7 +615,7 @@ fn get_field_width(
         }
     }
 
-    Ok(dbg!(largest_field, body_width))
+    Ok((largest_field, body_width))
 }
 
 // Leaf Spans

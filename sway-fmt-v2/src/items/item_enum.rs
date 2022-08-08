@@ -20,7 +20,7 @@ impl Format for ItemEnum {
     ) -> Result<(), FormatterError> {
         formatter
             .shape
-            .line_heuristics
+            .code_line
             .update_line_style(LineStyle::Multiline);
         // If there is a visibility token add it to the formatted_code with a ` ` after it.
         if let Some(visibility) = &self.visibility {
@@ -102,7 +102,7 @@ impl Format for ItemEnum {
         }
         // Handle closing brace
         ItemEnum::close_curly_brace(formatted_code, formatter)?;
-        formatter.shape.reset_line_heuristics();
+        formatter.shape.reset_line_settings();
 
         Ok(())
     }
