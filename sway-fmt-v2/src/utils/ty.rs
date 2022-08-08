@@ -3,14 +3,15 @@ use crate::{
     utils::comments::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
-use sway_parse::{
+use sway_ast::{
     brackets::SquareBrackets,
     expr::Expr,
-    keywords::{StrToken, UnderscoreToken},
+    keywords::{StrToken, Token, UnderscoreToken},
     token::Delimiter,
     ty::{Ty, TyArrayDescriptor, TyTupleDescriptor},
 };
 use sway_types::Spanned;
+
 impl Format for Ty {
     fn format(
         &self,
@@ -61,13 +62,8 @@ impl Format for TyArrayDescriptor {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         self.ty.format(formatted_code, formatter)?;
-        // TODO: once expr formatting is completly implemented switch this to use the actual formatting rather than the raw str coming from span
-        write!(
-            formatted_code,
-            "{} {}",
-            self.semicolon_token.span().as_str(),
-            self.length.span().as_str()
-        )?;
+        write!(formatted_code, "{} ", self.semicolon_token.span().as_str())?;
+        self.length.format(formatted_code, formatter)?;
         Ok(())
     }
 }

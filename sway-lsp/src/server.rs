@@ -6,6 +6,7 @@ use crate::core::{
 };
 use crate::utils::debug::{self, DebugFlags};
 use forc_util::find_manifest_dir;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::*;
@@ -67,6 +68,7 @@ fn capabilities() -> ServerCapabilities {
             ..Default::default()
         }),
         document_formatting_provider: Some(OneOf::Left(true)),
+        definition_provider: Some(OneOf::Left(true)),
         ..ServerCapabilities::default()
     }
 }
@@ -249,6 +251,28 @@ impl LanguageServer for Backend {
     }
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct RunnableParams {}
+
+// Custom LSP-Server Methods
+impl Backend {
+    pub async fn runnables(
+        &self,
+        _params: RunnableParams,
+    ) -> jsonrpc::Result<Option<Vec<(Range, String)>>> {
+        let ranges = self
+            .session
+            .runnables
+            .get(&capabilities::runnable::RunnableType::MainFn)
+            .map(|item| {
+                let runnable = item.value();
+                vec![(runnable.range, format!("{}", runnable.tree_type))]
+            });
+
+        Ok(ranges)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;
@@ -266,7 +290,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("test/src/e2e_vm_tests/test_programs/should_pass/language")
-            .join("is_reference_type")
+            .join("enum_if_let")
     }
 
     fn sway_example_dir() -> PathBuf {
@@ -274,11 +298,11 @@ mod tests {
             .unwrap()
             .parent()
             .unwrap()
-            .join("examples/subcurrency")
+            .join("examples/signatures")
     }
 
     fn load_sway_example() -> (Url, String) {
-        let manifest_dir = sway_example_dir(); //e2e_test_dir();
+        let manifest_dir = sway_example_dir();
         let src_path = manifest_dir.join("src/main.sw");
         let mut file = fs::File::open(&src_path).unwrap();
         let mut sway_program = String::new();

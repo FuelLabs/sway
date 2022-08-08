@@ -13,7 +13,7 @@ pub(crate) use asm::*;
 pub(crate) use match_branch::MatchBranch;
 pub use method_name::MethodName;
 pub use scrutinee::*;
-use sway_parse::intrinsics::Intrinsic;
+use sway_ast::intrinsics::Intrinsic;
 
 /// Represents a parsed, but not yet type checked, [Expression](https://en.wikipedia.org/wiki/Expression_(computer_science)).
 #[derive(Debug, Clone)]

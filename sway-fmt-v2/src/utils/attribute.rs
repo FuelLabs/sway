@@ -3,11 +3,11 @@ use crate::{
     FormatterError,
 };
 use std::fmt::Write;
-use sway_parse::{
+use sway_ast::{
     attribute::{Annotated, Attribute, AttributeDecl},
     token::Delimiter,
-    Parse,
 };
+use sway_parse::Parse;
 use sway_types::Spanned;
 
 use super::{
@@ -23,8 +23,18 @@ impl<T: Parse + Format> Format for Annotated<T> {
     ) -> Result<(), FormatterError> {
         // format each `Attribute`
         for attr in &self.attribute_list {
+            write!(
+                formatted_code,
+                "{}",
+                &formatter.shape.indent.to_string(&formatter.config)?,
+            )?;
             attr.format(formatted_code, formatter)?;
         }
+        write!(
+            formatted_code,
+            "{}",
+            &formatter.shape.indent.to_string(&formatter.config)?,
+        )?;
         // format `ItemKind`
         self.value.format(formatted_code, formatter)
     }
