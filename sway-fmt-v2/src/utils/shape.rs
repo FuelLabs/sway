@@ -184,16 +184,7 @@ impl Shape {
     // |<------------>|  max width
     // |<---->|          indent
     //        |<--->|    width
-    ///
-    /// Construct a new `Shape` with a given width and level of indentation.
-    pub(crate) fn legacy(&self, width: usize, indent: Indent) -> Self {
-        Self {
-            width,
-            indent,
-            line_heuristics: self.line_heuristics,
-            has_where_clause: self.has_where_clause,
-        }
-    }
+    //
     /// A wrapper for `Indent::block_indent()`.
     ///
     /// Adds a level of indentation specified by the `Formatter::config` to the current `block_indent`.
@@ -301,14 +292,13 @@ mod test {
     #[test]
     fn shape_block_indent() {
         let mut formatter = Formatter::default();
-        formatter.config.whitespace.tab_spaces = 20;
+        formatter.config.whitespace.tab_spaces = 24;
         let max_width = formatter.config.whitespace.max_width;
-        let indent = Indent::new(4);
-        let mut shape = Shape::legacy(&formatter.shape, max_width, indent);
-        shape.block_indent(&formatter.config);
+        formatter.shape.update_width(max_width);
+        formatter.shape.block_indent(&formatter.config);
 
-        assert_eq!(max_width, shape.width);
-        assert_eq!(24, shape.indent.block_indent);
+        assert_eq!(max_width, formatter.shape.width);
+        assert_eq!(24, formatter.shape.indent.block_indent);
     }
 
     #[test]

@@ -45,11 +45,13 @@ impl Format for Expr {
                     .format(formatted_code, formatter)?;
             }
             Self::Struct { path, fields } => {
+                // store previous state and update expr kind
                 let prev_state = formatter.shape.line_heuristics;
                 formatter
                     .shape
                     .line_heuristics
                     .update_expr_kind(ExprKind::Struct);
+
                 // get the length in chars of the code in a single line format
                 let mut buf = FormattedCode::new();
                 let mut temp_formatter = Formatter::default();
@@ -58,6 +60,7 @@ impl Format for Expr {
                     .line_heuristics
                     .update_line_style(LineStyle::Inline);
                 format_expr_struct(path, fields, &mut buf, &mut temp_formatter)?;
+
                 // get the largest field size
                 let (field_width, body_width) =
                     get_field_width(&fields.clone().into_inner(), &mut formatter.clone())?;
