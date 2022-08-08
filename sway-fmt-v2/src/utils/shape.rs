@@ -188,7 +188,7 @@ impl Shape {
     //        |<--->|    width
     //
     /// A wrapper for `to_width_heuristics()` that also checks if the settings are default.
-    pub(crate) fn from_width_heuristics(&mut self, width_heuristics: WidthHeuristics) {
+    pub(crate) fn apply_width_heuristics(&mut self, width_heuristics: WidthHeuristics) {
         if width_heuristics == WidthHeuristics::default() {
         } else {
             self.width_heuristics = width_heuristics

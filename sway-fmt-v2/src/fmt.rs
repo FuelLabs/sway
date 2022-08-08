@@ -44,7 +44,7 @@ impl Formatter {
     ) -> Result<FormattedCode, FormatterError> {
         let path = build_config.map(|build_config| build_config.canonical_root_module());
         // update shape of the formatter with the width heuristics settings from the `Config`
-        self.shape.from_width_heuristics(
+        self.shape.apply_width_heuristics(
             self.config
                 .heuristics
                 .heuristics_pref
