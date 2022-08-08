@@ -117,6 +117,15 @@ impl Default for LineStyle {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum ExprKind {
+    Variable,
+    Function,
+    Struct,
+    Collection,
+    MethodChain,
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub(crate) struct Shape {
     /// The current number of characters in the given `Item`.
@@ -192,9 +201,8 @@ impl Shape {
         body_width: usize,
         config: &Config,
     ) {
-        let allow_inline_style = config.structures.small_structures_single_line;
         // Get the width limit of a structure to be formatted into single line if `allow_inline_style` is true.
-        if allow_inline_style {
+        if config.structures.small_structures_single_line {
             let width_heuristics = config
                 .heuristics
                 .heuristics_pref

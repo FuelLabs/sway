@@ -23,7 +23,7 @@ pub const DEFAULT_ARRAY_WIDTH: usize = 60;
 /// Defalt width threshold for an array element to be considered short.
 pub const DEFAULT_SHORT_ARRAY_ELEM_WIDTH_THRESHOLD: usize = 10;
 /// Default max length of a chain to fit on a single line.
-pub const DEFAULT_CHAIN_WIDTH: usize = 60;
+pub const DEFAULT_METHOD_CHAIN_WIDTH: usize = 60;
 /// Default max line length for single line if-else expression.
 pub const DEFAULT_SINGLE_LINE_IF_ELSE_WIDTH: usize = 50;
 
