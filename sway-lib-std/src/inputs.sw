@@ -48,9 +48,23 @@ pub const INPUT_COIN = 0u8;
 pub const INPUT_CONTRACT = 1u8;
 pub const INPUT_MESSAGE = 2u8;
 
-/// Get the type of an input given a pointer to the input.
-pub fn tx_input_type(index: u64) -> u8 {
-    __gtf::<u8>(index, GTF_INPUT_TYPE)
+/// Get the type of the input at `index`.
+pub fn tx_input_type(index: u64) -> Input {
+    let type = __gtf::<u8>(index, GTF_INPUT_TYPE);
+    match type {
+        0u8 => {
+            Input::Coin
+        },
+        1u8 => {
+            Input::Contract
+        },
+        2u8 => {
+            Input::Message
+        },
+        _ => {
+            revert(0);
+        }
+    }
 }
 
 /// Get the tx id of the input coin at `index`.
@@ -100,9 +114,18 @@ pub fn predicate_data<T>(index: u64) -> Option<T> {
     };
 }
 
-/// Get the transaction inputs count.
+/// Get the transaction inputs count for either tx type
+/// (transaction-script or transaction-create).
 pub fn tx_inputs_count() -> u64 {
-    __gtf::<u64>(0, GTF_SCRIPT_INPUTS_COUNT)
+    let type = tx_type();
+    match type {
+        Transaction::Script => {
+            __gtf::<u64>(0, GTF_SCRIPT_INPUTS_COUNT)
+        },
+        Transaction::Create => {
+            __gtf::<u64>(0, GTF_CREATE_INPUTS_COUNT)
+        },
+    }
 }
 
 /// Get a pointer to the input at `index`.

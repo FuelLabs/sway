@@ -170,20 +170,6 @@ pub fn tx_script_data_length() -> u64 {
     }
 }
 
-/// Get the transaction inputs count for either tx type
-/// (transaction-script or transaction-create).
-pub fn tx_inputs_count() -> u64 {
-    let type = tx_type();
-    match type {
-        Transaction::Script => {
-            __gtf::<u64>(0, GTF_SCRIPT_INPUTS_COUNT)
-        },
-        Transaction::Create => {
-            __gtf::<u64>(0, GTF_CREATE_INPUTS_COUNT)
-        },
-    }
-}
-
 /// Get the transaction outputs count for either tx type
 /// (transaction-script or transaction-create).
 pub fn tx_outputs_count() -> u64 {
@@ -311,25 +297,6 @@ pub fn tx_input_pointer(index: u64) -> u64 {
         },
         Transaction::Create => {
             __gtf::<u64>(index, GTF_CREATE_INPUT_AT_INDEX)
-        }
-    }
-}
-
-/// Get the type of the input at `index`.
-pub fn tx_input_type(index: u64) -> Input {
-    let type = __gtf::<u8>(index, GTF_INPUT_TYPE);
-    match type {
-        0u8 => {
-            Input::Coin
-        },
-        1u8 => {
-            Input::Contract
-        },
-        2u8 => {
-            Input::Message
-        },
-        _ => {
-            revert(0);
         }
     }
 }
