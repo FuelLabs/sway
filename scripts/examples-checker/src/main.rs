@@ -58,7 +58,7 @@ fn dir_contains_forc_manifest(path: &Path) -> bool {
 fn get_sway_path() -> PathBuf {
     let mut curr_path = std::env::current_dir().unwrap();
     loop {
-        if curr_path.ends_with("sway") {
+        if curr_path.join("examples").exists() && curr_path.join("sway-core").exists() {
             return curr_path;
         }
         curr_path = curr_path.parent().unwrap().to_path_buf()
@@ -132,7 +132,6 @@ fn exec(paths: Vec<PathBuf>, all_examples: bool, command_kind: CommandKind) -> R
 
     if all_examples {
         let examples_dir = get_sway_path().join("examples");
-
         for res in fs::read_dir(examples_dir).expect("Failed to read examples directory") {
             let path = match res {
                 Ok(entry) => entry.path(),
