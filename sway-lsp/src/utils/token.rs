@@ -1,6 +1,11 @@
 use crate::core::token::{AstToken, Token, TokenMap, TypedAstToken};
-use sway_core::type_system::TypeId;
-use sway_core::{semantic_analysis::ast_node::TypedDeclaration, TypeInfo};
+use sway_core::type_system::{TypeInfo, TypeId};
+use sway_core::{
+    semantic_analysis::ast_node::{
+        declaration::TypedStructDeclaration,
+        TypedDeclaration,
+    },
+};
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 pub fn is_initial_declaration(token_type: &Token) -> bool {
@@ -46,6 +51,16 @@ pub fn declaration_of_type_id(type_id: &TypeId, tokens: &TokenMap) -> Option<Typ
             TypedAstToken::TypedDeclaration(dec) => Some(dec),
             _ => None,
         })
+}
+
+pub fn struct_declaration_of_type_id(
+    type_id: &TypeId,
+    tokens: &TokenMap,
+) -> Option<TypedStructDeclaration> {
+    declaration_of_type_id(type_id, tokens).and_then(|decl| match decl {
+        TypedDeclaration::StructDeclaration(struct_decl) => Some(struct_decl),
+        _ => None,
+    })
 }
 
 pub fn ident_of_type_id(type_id: &TypeId) -> Option<Ident> {

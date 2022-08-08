@@ -2,7 +2,7 @@
 
 use crate::{
     core::token::{TokenMap, TypeDefinition, TypedAstToken},
-    utils::token::{declaration_of_type_id, to_ident_key},
+    utils::token::{declaration_of_type_id, struct_declaration_of_type_id, to_ident_key},
 };
 use sway_core::{
     semantic_analysis::ast_node::{
@@ -11,7 +11,7 @@ use sway_core::{
             TypedIntrinsicFunctionKind,
         },
         while_loop::TypedWhileLoop,
-        TypedImplTrait, {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
+        ProjectionKind, TypedImplTrait, {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
     },
     type_engine::TypeId,
 };
@@ -119,6 +119,24 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
 
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&reassignment.lhs_base_name)) {
                 token.typed = Some(TypedAstToken::TypedReassignment(reassignment.clone()));
+            }
+
+            for proj_kind in &reassignment.lhs_indices {
+                if let ProjectionKind::StructField { name } = proj_kind {
+                    if let Some(mut token) = tokens.get_mut(&to_ident_key(&name)) {
+                        token.typed = Some(TypedAstToken::TypedReassignment(reassignment.clone()));
+                        if let Some(struct_decl) =
+                            &struct_declaration_of_type_id(&reassignment.lhs_type, tokens)
+                        {
+                            for decl_field in &struct_decl.fields {
+                                if &decl_field.name == name {
+                                    token.type_def =
+                                        Some(TypeDefinition::Ident(decl_field.name.clone()));
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         TypedDeclaration::ImplTrait(TypedImplTrait {
@@ -280,20 +298,13 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
                 token.type_def = Some(TypeDefinition::TypeId(expression.return_type));
             }
 
-            // would be nice to just grab the StructDeclaration here instead of just the TypedDeclaration
-            // which then requires use to reach further in to get the struct out. Perhaps its fine
-            let struct_decl = declaration_of_type_id(&expression.return_type, tokens).and_then(
-                |decl| match decl {
-                    TypedDeclaration::StructDeclaration(struct_decl) => Some(struct_decl),
-                    _ => None,
-                },
-            );
-
             for field in fields {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&field.name)) {
                     token.typed = Some(TypedAstToken::TypedExpression(field.value.clone()));
 
-                    if let Some(struct_decl) = &struct_decl {
+                    if let Some(struct_decl) =
+                        &struct_declaration_of_type_id(&expression.return_type, tokens)
+                    {
                         for decl_field in &struct_decl.fields {
                             if decl_field.name == field.name {
                                 // NOTE: we don't necessarily want to assign this to the type_def as it might be
