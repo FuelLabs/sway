@@ -3,7 +3,7 @@ use super::{FunctionDeclaration, FunctionParameter};
 use crate::{
     function::Purity,
     parse_tree::{CallPath, Visibility},
-    type_engine::TypeInfo,
+    type_system::TypeInfo,
 };
 
 use sway_types::{ident::Ident, span::Span};

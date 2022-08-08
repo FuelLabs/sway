@@ -12,7 +12,7 @@ use crate::{
         TypeCheckedStorageReassignment, TypedAsmRegisterDeclaration, TypedAstNode,
         TypedAstNodeContent, TypedImplTrait, TypedIntrinsicFunctionKind, TypedStorageDeclaration,
     },
-    type_engine::{resolve_type, TypeInfo},
+    type_system::{resolve_type, TypeInfo},
     CompileError, CompileWarning, Ident, TreeType, Warning,
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
@@ -1035,7 +1035,7 @@ fn connect_expression(
             Ok(prefix_idx)
         }
         AbiName(abi_name) => {
-            if let crate::type_engine::AbiName::Known(abi_name) = abi_name {
+            if let crate::type_system::AbiName::Known(abi_name) = abi_name {
                 // abis are treated as traits here
                 let decl = graph.namespace.find_trait(abi_name).cloned();
                 if let Some(decl_node) = decl {

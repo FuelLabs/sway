@@ -1,13 +1,12 @@
 mod copy_types;
 mod create_type_id;
-#[allow(clippy::module_inception)]
-mod type_engine;
 mod integer_bits;
 mod replace_self_type;
 mod resolved_type;
 mod trait_constraint;
 mod type_argument;
 mod type_binding;
+mod type_engine;
 mod type_id;
 mod type_info;
 mod type_mapping;
@@ -16,13 +15,13 @@ mod unresolved_type_check;
 
 pub(crate) use copy_types::*;
 pub(crate) use create_type_id::*;
-pub use type_engine::*;
 pub use integer_bits::*;
 pub(crate) use replace_self_type::*;
 pub(crate) use resolved_type::*;
 pub(crate) use trait_constraint::*;
 pub(crate) use type_argument::*;
 pub(crate) use type_binding::*;
+pub use type_engine::*;
 pub use type_id::*;
 pub use type_info::*;
 pub(crate) use type_mapping::*;

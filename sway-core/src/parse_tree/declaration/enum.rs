@@ -1,4 +1,4 @@
-use crate::{parse_tree::Visibility, type_engine::*};
+use crate::{parse_tree::Visibility, type_system::*};
 
 use sway_types::{ident::Ident, span::Span};
 

@@ -1,6 +1,6 @@
 use crate::{
     parse_tree::{Expression, Visibility},
-    type_engine::TypeInfo,
+    type_system::TypeInfo,
 };
 
 use sway_types::ident::Ident;
