@@ -196,6 +196,29 @@ impl TypedProgram {
         ok(typed_program_kind, vec![], errors)
     }
 
+    /// Checks that no arguments passed to a `main()` in a `script` or `predicate`.
+    pub(crate) fn check_args_to_main(&self) -> CompileResult<()> {
+        let mut errors = Vec::new();
+        let warnings = Vec::new();
+        match &self.kind {
+            TypedProgramKind::Script{main_function,..} |
+            TypedProgramKind::Predicate{main_function, ..}  => {
+                if !main_function.parameters.is_empty() {
+                    errors.push(CompileError::MainArgsNotYetSupported {
+                        span: main_function.span.clone()
+                    })
+                }
+            },
+            _ => (),
+        }
+
+        CompileResult{
+            value:None,
+            warnings,
+            errors,
+        }
+    }
+
     /// Ensures there are no unresolved types or types awaiting resolution in the AST.
     pub(crate) fn finalize_types(&self) -> CompileResult<()> {
         // Get all of the entry points for this tree type. For libraries, that's everything

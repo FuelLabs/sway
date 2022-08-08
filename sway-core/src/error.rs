@@ -1046,7 +1046,7 @@ pub enum CompileError {
     BreakOutsideLoop { span: Span },
     #[error("\"continue\" used outside of a loop")]
     ContinueOutsideLoop { span: Span },
-    #[error("arguments to \"fn main()\" are not yet supported.")]
+    #[error("arguments to \"main()\" are not yet supported.")]
     MainArgsNotYetSupported{ span:Span }, 
 }
 

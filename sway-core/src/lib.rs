@@ -384,6 +384,14 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         errors
     );
 
+    // Check if we have `script` or `predicate` and their main function have arguments
+    check!(
+        program.check_args_to_main(),
+        return err(warnings,errors),
+        warnings,
+        errors,
+    );
+
     let tree_type = program.kind.tree_type();
     let mut ir = match ir_generation::compile_program(program) {
         Ok(ir) => ir,
