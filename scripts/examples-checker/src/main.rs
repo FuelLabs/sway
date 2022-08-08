@@ -132,6 +132,7 @@ fn exec(paths: Vec<PathBuf>, all_examples: bool, command_kind: CommandKind) -> R
 
     if all_examples {
         let examples_dir = get_sway_path().join("examples");
+
         for res in fs::read_dir(examples_dir).expect("Failed to read examples directory") {
             let path = match res {
                 Ok(entry) => entry.path(),
