@@ -104,6 +104,23 @@ impl Sub for Indent {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub(crate) struct LineHeuristics {
+    pub(crate) line_style: LineStyle,
+    pub(crate) expr_kind: ExprKind,
+}
+
+impl LineHeuristics {
+    /// Update `LineHeuristics::line_style` with a given LineStyle.
+    pub(crate) fn update_line_style(&mut self, line_style: LineStyle) {
+        self.line_style = line_style;
+    }
+    /// Update `LineHeuristics::expr_kind` with a given ExprKind.
+    pub(crate) fn update_expr_kind(&mut self, expr_kind: ExprKind) {
+        self.expr_kind = expr_kind;
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum LineStyle {
     Normal,
@@ -117,6 +134,7 @@ impl Default for LineStyle {
     }
 }
 
+/// The type of expression to determine which part of `Config::heuristics` to use.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ExprKind {
     Variable,
@@ -124,6 +142,14 @@ pub(crate) enum ExprKind {
     Struct,
     Collection,
     MethodChain,
+    Conditional,
+    Undetermined,
+}
+
+impl Default for ExprKind {
+    fn default() -> Self {
+        Self::Undetermined
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
@@ -132,8 +158,9 @@ pub(crate) struct Shape {
     pub(crate) width: usize,
     /// The current indentation of code.
     pub(crate) indent: Indent,
-    /// Determines whether a code line is normal, inline or multiline.
-    pub(crate) line_style: LineStyle,
+    /// Used in determining which heuristics settings to use from the config
+    /// and whether a code line is normal, inline or multiline.
+    pub(crate) line_heuristics: LineHeuristics,
     /// Used in determining `SameLineWhere` formatting.
     /// Default is false.
     pub(crate) has_where_clause: bool,
@@ -162,7 +189,7 @@ impl Shape {
         Self {
             width,
             indent,
-            line_style: self.line_style,
+            line_heuristics: self.line_heuristics,
             has_where_clause: self.has_where_clause,
         }
     }
@@ -171,7 +198,7 @@ impl Shape {
         Self {
             width: config.whitespace.max_width.saturating_sub(indent.width()),
             indent,
-            line_style: self.line_style,
+            line_heuristics: self.line_heuristics,
             has_where_clause: self.has_where_clause,
         }
     }
@@ -201,29 +228,37 @@ impl Shape {
         body_width: usize,
         config: &Config,
     ) {
-        // Get the width limit of a structure to be formatted into single line if `allow_inline_style` is true.
-        if config.structures.small_structures_single_line {
-            let width_heuristics = config
-                .heuristics
-                .heuristics_pref
-                .to_width_heuristics(config.whitespace.max_width);
+        match self.line_heuristics.expr_kind {
+            ExprKind::Struct => {
+                // Get the width limit of a structure to be formatted into single line if `allow_inline_style` is true.
+                if config.structures.small_structures_single_line {
+                    let width_heuristics = config
+                        .heuristics
+                        .heuristics_pref
+                        .to_width_heuristics(config.whitespace.max_width);
 
-            if self.width > config.whitespace.max_width
-                || body_width > width_heuristics.structure_lit_width
-                || field_width > width_heuristics.structure_field_width
-            {
-                self.line_style = LineStyle::Multiline
-            } else {
-                self.line_style = LineStyle::Inline
+                    if self.width > config.whitespace.max_width
+                        || body_width > width_heuristics.structure_lit_width
+                        || field_width > width_heuristics.structure_field_width
+                    {
+                        self.line_heuristics.line_style = LineStyle::Multiline
+                    } else {
+                        self.line_heuristics.line_style = LineStyle::Inline
+                    }
+                } else {
+                    self.line_heuristics.line_style = LineStyle::Multiline
+                }
             }
-        } else {
-            self.line_style = LineStyle::Multiline
+            _ => self.line_heuristics.line_style = LineStyle::default(),
         }
     }
-    /// Reset `Shape::line_style` to default and `Shape::width` to 0.
+    pub(crate) fn update_line_heuristics(&mut self, line_heuristics: LineHeuristics) {
+        self.line_heuristics = line_heuristics;
+    }
+    /// Reset `Shape::line_heuristics` to default and `Shape::width` to 0.
     pub(crate) fn reset_line_style(&mut self) {
-        self.line_style = LineStyle::default();
         self.width = 0;
+        self.line_heuristics = LineHeuristics::default();
     }
     /// Update the value of `has_where_clause`.
     pub(crate) fn update_where_clause(&mut self) {
@@ -286,24 +321,47 @@ mod test {
     }
 
     #[test]
-    fn test_line_style() {
+    fn test_get_line_style_struct() {
         let mut formatter = Formatter::default();
+        formatter
+            .shape
+            .line_heuristics
+            .update_expr_kind(ExprKind::Struct);
         formatter.shape.get_line_style(9, 18, &formatter.config);
-        assert_eq!(LineStyle::Inline, formatter.shape.line_style);
+        assert_eq!(
+            LineStyle::Inline,
+            formatter.shape.line_heuristics.line_style
+        );
 
         formatter.shape.get_line_style(10, 19, &formatter.config);
-        assert_eq!(LineStyle::Multiline, formatter.shape.line_style);
+        assert_eq!(
+            LineStyle::Multiline,
+            formatter.shape.line_heuristics.line_style
+        );
     }
 
     #[test]
     fn test_reset_line_style() {
         let mut formatter = Formatter::default();
-        formatter.shape.line_style = LineStyle::Inline;
+        formatter
+            .shape
+            .line_heuristics
+            .update_expr_kind(ExprKind::Struct);
+        formatter
+            .shape
+            .line_heuristics
+            .update_line_style(LineStyle::Inline);
 
         formatter.shape.get_line_style(8, 18, &formatter.config);
-        assert_eq!(LineStyle::Inline, formatter.shape.line_style);
+        assert_eq!(
+            LineStyle::Inline,
+            formatter.shape.line_heuristics.line_style
+        );
 
         formatter.shape.reset_line_style();
-        assert_eq!(LineStyle::Normal, formatter.shape.line_style);
+        assert_eq!(
+            LineStyle::Normal,
+            formatter.shape.line_heuristics.line_style
+        );
     }
 }

@@ -15,8 +15,11 @@ impl Format for GenericParams {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         let params = self.parameters.clone().into_inner();
-        let prev_state = formatter.shape.line_style;
-        formatter.shape.line_style = LineStyle::Normal;
+        let prev_state = formatter.shape.line_heuristics;
+        formatter
+            .shape
+            .line_heuristics
+            .update_line_style(LineStyle::Normal);
 
         // `<`
         open_angle_bracket(formatted_code)?;
@@ -25,7 +28,7 @@ impl Format for GenericParams {
         // `>`
         close_angle_bracket(formatted_code)?;
 
-        formatter.shape.line_style = prev_state;
+        formatter.shape.update_line_heuristics(prev_state);
 
         Ok(())
     }

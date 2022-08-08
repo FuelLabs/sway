@@ -15,7 +15,7 @@ use sway_types::{Ident, Spanned};
 
 use super::{
     bracket::{CurlyBrace, Parenthesis, SquareBracket},
-    indent_style::LineStyle,
+    indent_style::{ExprKind, LineStyle},
 };
 
 pub(crate) mod abi_cast;
@@ -45,11 +45,18 @@ impl Format for Expr {
                     .format(formatted_code, formatter)?;
             }
             Self::Struct { path, fields } => {
-                let prev_state = formatter.shape.line_style;
+                let prev_state = formatter.shape.line_heuristics;
+                formatter
+                    .shape
+                    .line_heuristics
+                    .update_expr_kind(ExprKind::Struct);
                 // get the length in chars of the code in a single line format
                 let mut buf = FormattedCode::new();
                 let mut temp_formatter = Formatter::default();
-                temp_formatter.shape.line_style = LineStyle::Inline;
+                temp_formatter
+                    .shape
+                    .line_heuristics
+                    .update_line_style(LineStyle::Inline);
                 format_expr_struct(path, fields, &mut buf, &mut temp_formatter)?;
                 // get the largest field size
                 let (field_width, body_width) =
@@ -62,7 +69,7 @@ impl Format for Expr {
                     .get_line_style(field_width, body_width, &formatter.config);
 
                 format_expr_struct(path, fields, formatted_code, formatter)?;
-                formatter.shape.line_style = prev_state;
+                formatter.shape.update_line_heuristics(prev_state);
             }
             Self::Tuple(tuple_descriptor) => {
                 ExprTupleDescriptor::open_parenthesis(formatted_code, formatter)?;
@@ -164,11 +171,14 @@ impl Format for Expr {
                 contract_args_opt,
                 args,
             } => {
-                let prev_state = formatter.shape.line_style;
+                let prev_state = formatter.shape.line_heuristics;
                 // get the length in chars of the code in a single line format
                 let mut buf = FormattedCode::new();
                 let mut temp_formatter = Formatter::default();
-                temp_formatter.shape.line_style = LineStyle::Inline;
+                temp_formatter
+                    .shape
+                    .line_heuristics
+                    .update_line_style(LineStyle::Inline);
                 format_method_call(
                     target,
                     dot_token,
@@ -191,6 +201,10 @@ impl Format for Expr {
                 formatter.shape.update_width(buf.chars().count() as usize);
                 formatter
                     .shape
+                    .line_heuristics
+                    .update_expr_kind(ExprKind::Struct);
+                formatter
+                    .shape
                     .get_line_style(field_width, body_width, &formatter.config);
 
                 format_method_call(
@@ -202,7 +216,7 @@ impl Format for Expr {
                     formatted_code,
                     formatter,
                 )?;
-                formatter.shape.line_style = prev_state;
+                formatter.shape.update_line_heuristics(prev_state);
             }
             Self::FieldProjection {
                 target,
@@ -467,7 +481,7 @@ fn format_expr_struct(
     path.format(formatted_code, formatter)?;
     ExprStructField::open_curly_brace(formatted_code, formatter)?;
     let fields = &fields.clone().into_inner();
-    match formatter.shape.line_style {
+    match formatter.shape.line_heuristics.line_style {
         LineStyle::Inline => fields.format(formatted_code, formatter)?,
         // TODO: add field alignment
         _ => fields.format(formatted_code, formatter)?,
@@ -500,7 +514,7 @@ fn format_method_call(
     if let Some(contract_args) = &contract_args_opt {
         ExprStructField::open_curly_brace(formatted_code, formatter)?;
         let contract_args = &contract_args.clone().into_inner();
-        match formatter.shape.line_style {
+        match formatter.shape.line_heuristics.line_style {
             LineStyle::Inline => {
                 contract_args.format(formatted_code, formatter)?;
             }

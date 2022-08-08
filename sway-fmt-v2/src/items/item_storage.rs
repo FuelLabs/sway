@@ -19,7 +19,10 @@ impl Format for ItemStorage {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        formatter.shape.line_style = LineStyle::Multiline;
+        formatter
+            .shape
+            .line_heuristics
+            .update_line_style(LineStyle::Multiline);
         // Add storage token
         write!(formatted_code, "{}", self.storage_token.span().as_str())?;
         let fields = self.fields.clone().into_inner();
