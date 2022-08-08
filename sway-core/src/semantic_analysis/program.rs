@@ -212,11 +212,7 @@ impl TypedProgram {
             _ => (),
         }
 
-        CompileResult{
-            value:None,
-            warnings,
-            errors,
-        }
+        ok((), warnings, errors)
     }
 
     /// Ensures there are no unresolved types or types awaiting resolution in the AST.

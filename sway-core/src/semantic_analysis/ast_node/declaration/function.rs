@@ -226,7 +226,6 @@ impl TypedFunctionDeclaration {
             is_contract_call: ctx.mode() == Mode::ImplAbiFn,
             purity,
         };
-        
         ok(function_decl, warnings, errors)
     }
 
