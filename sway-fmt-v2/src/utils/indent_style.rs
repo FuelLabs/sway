@@ -241,15 +241,15 @@ impl Shape {
                         || body_width > width_heuristics.structure_lit_width
                         || field_width > width_heuristics.structure_field_width
                     {
-                        self.line_heuristics.line_style = LineStyle::Multiline
+                        self.line_heuristics.update_line_style(LineStyle::Multiline)
                     } else {
-                        self.line_heuristics.line_style = LineStyle::Inline
+                        self.line_heuristics.update_line_style(LineStyle::Inline)
                     }
                 } else {
-                    self.line_heuristics.line_style = LineStyle::Multiline
+                    self.line_heuristics.update_line_style(LineStyle::Multiline)
                 }
             }
-            _ => self.line_heuristics.line_style = LineStyle::default(),
+            _ => self.line_heuristics.update_line_style(LineStyle::default()),
         }
     }
     pub(crate) fn update_line_heuristics(&mut self, line_heuristics: LineHeuristics) {
