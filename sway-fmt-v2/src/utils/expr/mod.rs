@@ -72,6 +72,8 @@ impl Format for Expr {
                 debug_expr(buf, field_width, body_width, expr_width, formatter);
 
                 format_expr_struct(path, fields, formatted_code, formatter)?;
+
+                // revert to previous state
                 formatter.shape.sub_width(expr_width);
                 formatter.shape.update_line_settings(prev_state);
             }
@@ -95,6 +97,9 @@ impl Format for Expr {
                     .get_line_style(None, body_width, &formatter.config);
 
                 format_tuple(tuple_descriptor, formatted_code, formatter)?;
+
+                // revert to previous state
+                formatter.shape.sub_width(body_width);
                 formatter.shape.update_line_settings(prev_state);
             }
             Self::Parens(expr) => {
@@ -190,7 +195,7 @@ impl Format for Expr {
                 args,
             } => {
                 let prev_state = formatter.shape.code_line;
-                // get the length in chars of the code in a single line format
+                // get the length in chars of the code_line in a single line format
                 let mut buf = FormattedCode::new();
                 let mut temp_formatter = Formatter::default();
                 temp_formatter
@@ -206,6 +211,7 @@ impl Format for Expr {
                     &mut buf,
                     &mut temp_formatter,
                 )?;
+
                 // get the largest field size
                 let (mut field_width, mut body_width): (usize, usize) = (0, 0);
                 if let Some(contract_args) = &contract_args_opt {
@@ -232,6 +238,8 @@ impl Format for Expr {
                     formatted_code,
                     formatter,
                 )?;
+
+                // revert to previous state
                 formatter.shape.sub_width(expr_width);
                 formatter.shape.update_line_settings(prev_state);
             }
