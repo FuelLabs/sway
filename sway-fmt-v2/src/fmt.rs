@@ -376,10 +376,7 @@ struct Type2 {
     z: bool,
 }
 storage {
-    var1: Type1 = Type1 {
-        x: 0,
-        y: 0,
-    },
+    var1: Type1 = Type1 { x: 0, y: 0 },
     var2: Type2 = Type2 {
         w: 0x0000000000000000000000000000000000000000000000000000000000000000,
         z: false,
@@ -531,9 +528,7 @@ fn main() -> bool {
     fuel_coin.burn { gas: default_gas }(7);
     fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
     assert(fuelcoin_balance == 4);
-    fuel_coin.force_transfer {
-        gas: default_gas,
-    }(3, fuelcoin_id, balance_test_id);
+    fuel_coin.force_transfer { gas: default_gas }(3, fuelcoin_id, balance_test_id);
     fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
     let balance_test_contract_balance = balance_of(fuelcoin_id, balance_test_id);
     assert(fuelcoin_balance == 1);

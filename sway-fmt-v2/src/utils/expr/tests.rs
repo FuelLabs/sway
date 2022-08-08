@@ -105,7 +105,7 @@ fmt_test!(  basic_func_app "foo()",
             ) "
 );
 
-fmt_test!(  nested_args_func_app "foo(a_struct {\n    hello: \"hi\",\n}, a_var, foo.bar.baz.quux)",
+fmt_test!(  nested_args_func_app "foo(a_struct { hello: \"hi\" }, a_var, foo.bar.baz.quux)",
             intermediate_whitespace "foo(a_struct {
                     hello  :  \"hi\"
             }, a_var  , foo . bar . baz . quux)"
