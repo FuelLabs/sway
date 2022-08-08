@@ -1,7 +1,7 @@
 //! Configuration options related to heuristics.
 use crate::constants::{
-    DEFAULT_ATTR_FN_LIKE_WIDTH, DEFAULT_COLLECTION_WIDTH, DEFAULT_FN_CALL_WIDTH,
-    DEFAULT_MAX_LINE_WIDTH, DEFAULT_METHOD_CHAIN_WIDTH, DEFAULT_SINGLE_LINE_IF_ELSE_WIDTH,
+    DEFAULT_ATTR_FN_LIKE_WIDTH, DEFAULT_CHAIN_WIDTH, DEFAULT_COLLECTION_WIDTH,
+    DEFAULT_FN_CALL_WIDTH, DEFAULT_MAX_LINE_WIDTH, DEFAULT_SINGLE_LINE_IF_ELSE_WIDTH,
     DEFAULT_STRUCTURE_LIT_WIDTH, DEFAULT_STRUCTURE_VAR_WIDTH,
 };
 use serde::{Deserialize, Serialize};
@@ -79,7 +79,7 @@ pub struct WidthHeuristics {
     // formatting.
     pub(crate) collection_width: usize,
     // Maximum length of a chain to fit on a single line.
-    pub(crate) method_chain_width: usize,
+    pub(crate) chain_width: usize,
     // Maximum line length for single line if-else expressions. A value
     // of zero means always break if-else expressions.
     pub(crate) single_line_if_else_max_width: usize,
@@ -94,7 +94,7 @@ impl WidthHeuristics {
             structure_lit_width: 0,
             structure_field_width: 0,
             collection_width: usize::max_value(),
-            method_chain_width: usize::max_value(),
+            chain_width: usize::max_value(),
             single_line_if_else_max_width: 0,
         }
     }
@@ -106,7 +106,7 @@ impl WidthHeuristics {
             structure_lit_width: max_width,
             structure_field_width: max_width,
             collection_width: max_width,
-            method_chain_width: max_width,
+            chain_width: max_width,
             single_line_if_else_max_width: max_width,
         }
     }
@@ -130,8 +130,7 @@ impl WidthHeuristics {
             structure_field_width: (DEFAULT_STRUCTURE_VAR_WIDTH as f32 * max_width_ratio).round()
                 as usize,
             collection_width: (DEFAULT_COLLECTION_WIDTH as f32 * max_width_ratio).round() as usize,
-            method_chain_width: (DEFAULT_METHOD_CHAIN_WIDTH as f32 * max_width_ratio).round()
-                as usize,
+            chain_width: (DEFAULT_CHAIN_WIDTH as f32 * max_width_ratio).round() as usize,
             single_line_if_else_max_width: (DEFAULT_SINGLE_LINE_IF_ELSE_WIDTH as f32
                 * max_width_ratio)
                 .round() as usize,
