@@ -204,35 +204,8 @@ impl TypedProgram {
             }
             _ => (),
         }
-        if errors.is_empty() {
-            ok(typed_program_kind, warnings, errors)
-        } else {
-            err(warnings, errors)
-        }
+        ok(typed_program_kind, warnings, errors)
     }
-
-    // /// Deprecated
-    // pub(crate) fn check_args_to_main(&self) -> CompileResult<()> {
-    //     let mut errors = Vec::new();
-    //     let warnings = Vec::new();
-    //     match &self.kind {
-    //         TypedProgramKind::Script { main_function, .. }
-    //         | TypedProgramKind::Predicate { main_function, .. } => {
-    //             if !main_function.parameters.is_empty() {
-    //                 errors.push(CompileError::MainArgsNotYetSupported {
-    //                     span: main_function.span.clone(),
-    //                 })
-    //             }
-    //         }
-    //         _ => (),
-    //     }
-
-    //     if errors.is_empty() {
-    //         ok((), warnings, errors)
-    //     } else {
-    //         err(warnings, errors)
-    //     }
-    // }
 
     /// Ensures there are no unresolved types or types awaiting resolution in the AST.
     pub(crate) fn finalize_types(&self) -> CompileResult<()> {
