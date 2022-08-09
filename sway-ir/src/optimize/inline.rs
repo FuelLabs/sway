@@ -11,6 +11,7 @@ use crate::{
     error::IrError,
     function::Function,
     instruction::Instruction,
+    irtype::Type,
     metadata::{combine, MetadataIndex},
     pointer::Pointer,
     value::{Value, ValueContent, ValueDatum},
@@ -20,21 +21,43 @@ use crate::{
 ///
 /// e.g., If this is applied to main() then all calls in the program are removed.  This is
 /// obviously dangerous for recursive functions, in which case this pass would inline forever.
+
 pub fn inline_all_function_calls(
     context: &mut Context,
     function: &Function,
 ) -> Result<bool, IrError> {
+    inline_some_function_calls(context, function, |_, _, _| true)
+}
+
+/// Inline function calls based on a provided heuristic predicate.
+///
+/// There are many things to consider when deciding to inline a function.  For example:
+/// - The size of the function, especially if smaller than the call overhead size.
+/// - The stack frame size of the function.
+/// - The number of calls made to the function or if the function is called inside a loop.
+/// - A particular call has constant arguments implying further constant folding.
+/// - An attribute request, e.g., #[always_inline], #[never_inline].
+
+pub fn inline_some_function_calls<F: Fn(&Context, &Function, &Value) -> bool>(
+    context: &mut Context,
+    function: &Function,
+    predicate: F,
+) -> Result<bool, IrError> {
     let mut modified = false;
     loop {
-        // Find the next call site.
+        // Find the next call site which passes the predicate.
         let call_data = function
             .instruction_iter(context)
             .find_map(|(block, call_val)| match context.values[call_val.0].value {
-                ValueDatum::Instruction(Instruction::Call(inlined_function, _)) => {
-                    Some((block, call_val, inlined_function))
-                }
+                ValueDatum::Instruction(Instruction::Call(inlined_function, _)) => predicate(
+                    context,
+                    &inlined_function,
+                    &call_val,
+                )
+                .then_some((block, call_val, inlined_function)),
                 _ => None,
             });
+
         match call_data {
             Some((block, call_val, inlined_function)) => {
                 inline_function_call(context, *function, block, call_val, inlined_function)?;
@@ -46,10 +69,64 @@ pub fn inline_all_function_calls(
     Ok(modified)
 }
 
+/// A utility to get a predicate which can be passed to inline_some_function_calls() based on
+/// certain sizes of the function.  If a constraint is None then any size is assumed to be
+/// acceptable.
+///
+/// The max_stack_size is a bit tricky, as the IR doesn't really know (or care) about the size of
+/// types.  See the source code for how it works.
+
+pub fn is_small_fn(
+    max_blocks: Option<usize>,
+    max_instrs: Option<usize>,
+    max_stack_size: Option<usize>,
+) -> impl Fn(&Context, &Function, &Value) -> bool {
+    fn count_type_elements(context: &Context, ty: &Type) -> usize {
+        // This is meant to just be a heuristic rather than be super accurate.
+        match ty {
+            Type::Unit | Type::Bool | Type::Uint(_) | Type::B256 | Type::String(_) => 1,
+            Type::Array(aggregate) => {
+                let (ty, sz) = context.aggregates[aggregate.0].array_type();
+                count_type_elements(context, ty) * *sz as usize
+            }
+            Type::Union(aggregate) => context.aggregates[aggregate.0]
+                .field_types()
+                .iter()
+                .map(|ty| count_type_elements(context, ty))
+                .max()
+                .unwrap_or(1),
+            Type::Struct(aggregate) => context.aggregates[aggregate.0]
+                .field_types()
+                .iter()
+                .map(|ty| count_type_elements(context, ty))
+                .sum(),
+        }
+    }
+
+    move |context: &Context, function: &Function, _call_site: &Value| -> bool {
+        max_blocks
+            .map(|max_block_count| function.num_blocks(context) <= max_block_count)
+            .unwrap_or(true)
+            && max_instrs
+                .map(|max_instrs_count| function.num_instructions(context) <= max_instrs_count)
+                .unwrap_or(true)
+            && max_stack_size
+                .map(|max_stack_size_count| {
+                    function
+                        .locals_iter(context)
+                        .map(|(_name, ptr)| count_type_elements(context, ptr.get_type(context)))
+                        .sum::<usize>()
+                        <= max_stack_size_count
+                })
+                .unwrap_or(true)
+    }
+}
+
 /// Inline a function to a specific call site within another function.
 ///
 /// The destination function, block and call site must be specified along with the function to
 /// inline.
+
 pub fn inline_function_call(
     context: &mut Context,
     function: Function,
