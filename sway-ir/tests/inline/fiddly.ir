@@ -1,3 +1,5 @@
+// all
+//
 // Based on this Sway which is designed to have many blocks and branches in main() before we inline
 // more blocks and branches.  In particular, we need to be sure the `phi` instructions refer to the
 // correct predecessor blocks.
