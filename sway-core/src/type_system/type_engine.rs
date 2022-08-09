@@ -1,22 +1,21 @@
 use super::*;
 use crate::concurrent_slab::ConcurrentSlab;
 use crate::namespace::{Path, Root};
-use crate::type_engine::AbiName;
 use lazy_static::lazy_static;
 use sway_types::span::Span;
 use sway_types::{Ident, Spanned};
 
 lazy_static! {
-    static ref TYPE_ENGINE: Engine = Engine::default();
+    static ref TYPE_ENGINE: TypeEngine = TypeEngine::default();
 }
 
 #[derive(Debug, Default)]
-pub(crate) struct Engine {
+pub(crate) struct TypeEngine {
     slab: ConcurrentSlab<TypeInfo>,
     storage_only_types: ConcurrentSlab<TypeInfo>,
 }
 
-impl Engine {
+impl TypeEngine {
     pub fn insert_type(&self, ty: TypeInfo) -> TypeId {
         self.slab.insert(ty)
     }

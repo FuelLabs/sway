@@ -15,7 +15,7 @@ use crate::{
     metadata::MetadataManager,
     parse_tree::{AsmOp, AsmRegister, LazyOp, Literal},
     semantic_analysis::*,
-    type_engine::{resolve_type, TypeId, TypeInfo},
+    type_system::{resolve_type, TypeId, TypeInfo},
 };
 use sway_ast::intrinsics::Intrinsic;
 use sway_ir::{Context, *};

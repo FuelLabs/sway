@@ -1,7 +1,7 @@
 use crate::{
     error::*,
     semantic_analysis::*,
-    type_engine::*,
+    type_system::*,
     types::{JsonAbiString, ToJsonAbi},
 };
 
