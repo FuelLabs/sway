@@ -1,5 +1,5 @@
 use crate::{
-    utils::comments::{ByteSpan, LeafSpans},
+    utils::byte_span::{ByteSpan, LeafSpans},
     FormatterError,
 };
 use std::fmt::Write;

@@ -1,5 +1,6 @@
 pub(crate) mod attribute;
 pub(crate) mod bracket;
+pub(crate) mod byte_span;
 pub(crate) mod comments;
 pub(crate) mod expr;
 pub(crate) mod generics;

@@ -1,6 +1,6 @@
 use crate::{
     fmt::*,
-    utils::comments::{ByteSpan, LeafSpans},
+    utils::byte_span::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
 use sway_ast::{Statement, StatementLet};

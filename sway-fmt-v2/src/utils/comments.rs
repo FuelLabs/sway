@@ -1,7 +1,9 @@
-use crate::fmt::{FormattedCode, FormatterError};
+use crate::{
+    fmt::{FormattedCode, FormatterError},
+    utils::byte_span::{ByteSpan, LeafSpans},
+};
 use ropey::Rope;
 use std::{
-    cmp::Ordering,
     collections::BTreeMap,
     fmt::Write,
     ops::Bound::{Excluded, Included},
@@ -19,50 +21,7 @@ use sway_ast::{
     Braces, Module, TypeField,
 };
 use sway_parse::{lex_commented, Parse};
-use sway_types::{Ident, Span, Spanned};
-
-/// Represents a span for the comments in a spesific file
-/// A stripped down version of sway-types::src::Span
-#[derive(PartialEq, Eq, Debug, Clone, Default)]
-pub struct ByteSpan {
-    // The byte position in the string of the start of the span.
-    pub start: usize,
-    // The byte position in the string of the end of the span.
-    pub end: usize,
-}
-
-impl From<Span> for ByteSpan {
-    /// Takes `start` and `end` from `sway::types::Span` and constructs a `ByteSpan`
-    fn from(span: Span) -> Self {
-        ByteSpan {
-            start: span.start(),
-            end: span.end(),
-        }
-    }
-}
-
-impl ByteSpan {
-    pub fn len(&self) -> usize {
-        self.end - self.start
-    }
-}
-
-impl Ord for ByteSpan {
-    fn cmp(&self, other: &Self) -> Ordering {
-        // If the starting position is the same encapsulatig span (i.e, wider one) should come
-        // first
-        match self.start.cmp(&other.start) {
-            Ordering::Equal => other.end.cmp(&self.end),
-            ord => ord,
-        }
-    }
-}
-
-impl PartialOrd for ByteSpan {
-    fn partial_cmp(&self, other: &ByteSpan) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
+use sway_types::{Ident, Spanned};
 
 pub type CommentMap = BTreeMap<ByteSpan, Comment>;
 
@@ -410,30 +369,11 @@ fn insert_after_span(
 fn format_comment(comment: &Comment) -> String {
     comment.span().str()
 }
-/// While searching for a comment we need the possible places a comment can be placed in a structure
-/// `leaf_spans` collects all field's spans so that we can check in between them.
-pub trait LeafSpans {
-    fn leaf_spans(&self) -> Vec<ByteSpan>;
-}
 
 #[cfg(test)]
 mod tests {
     use super::{comment_map_from_src, ByteSpan};
     use std::{ops::Bound::Included, sync::Arc};
-
-    #[test]
-    fn test_comment_span_ordering() {
-        let first_span = ByteSpan { start: 2, end: 6 };
-        let second_span = ByteSpan { start: 2, end: 4 };
-        let third_span = ByteSpan { start: 4, end: 7 };
-
-        let mut vec = vec![second_span.clone(), third_span.clone(), first_span.clone()];
-        vec.sort();
-
-        assert_eq!(vec[0], first_span);
-        assert_eq!(vec[1], second_span);
-        assert_eq!(vec[2], third_span);
-    }
 
     #[test]
     fn test_comment_span_map_standalone_comment() {
