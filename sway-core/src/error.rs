@@ -1046,7 +1046,7 @@ pub enum CompileError {
     BreakOutsideLoop { span: Span },
     #[error("\"continue\" used outside of a loop")]
     ContinueOutsideLoop { span: Span },
-    #[error("arguments to \"main()\" are not yet supported.")]
+    #[error("arguments to \"main()\" are not yet supported. See the issue here: github.com/FuelLabs/sway/issues/845")]
     MainArgsNotYetSupported { span: Span },
 }
 
