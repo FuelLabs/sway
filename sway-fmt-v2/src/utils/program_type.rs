@@ -1,10 +1,8 @@
+use super::comments::{ByteSpan, LeafSpans};
+use crate::FormatterError;
 use std::fmt::Write;
 use sway_ast::{dependency::DependencyPath, token::PunctKind, Dependency, Module, ModuleKind};
 use sway_types::Spanned;
-
-use crate::FormatterError;
-
-use super::comments::{ByteSpan, LeafSpans};
 
 /// Insert the program type without applying a formatting to it.
 ///

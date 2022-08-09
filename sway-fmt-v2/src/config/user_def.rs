@@ -1,8 +1,6 @@
 //! Configuration options related to formatting user-defined structures.
-
-use serde::{Deserialize, Serialize};
-
 use super::user_opts::StructuresOptions;
+use serde::{Deserialize, Serialize};
 
 /// Styling preferences for user-defined structures like `struct`s or `enum`s.
 #[derive(Debug, Clone)]

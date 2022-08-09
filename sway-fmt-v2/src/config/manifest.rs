@@ -1,7 +1,3 @@
-use forc_util::{find_parent_dir_with_file, println_yellow_err};
-use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
-
 pub use crate::error::FormatterError;
 use crate::{
     config::{
@@ -12,6 +8,9 @@ use crate::{
     constants::SWAY_FORMAT_FILE_NAME,
     error::ConfigError,
 };
+use forc_util::{find_parent_dir_with_file, println_yellow_err};
+use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 
 /// A finalized `swayfmt` config.
 #[derive(Debug, Default, Clone)]

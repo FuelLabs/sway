@@ -1,10 +1,9 @@
-use std::vec;
-
 use crate::{
     fmt::{Format, FormattedCode, Formatter},
     utils::comments::{ByteSpan, LeafSpans},
     FormatterError,
 };
+use std::vec;
 use sway_ast::{ItemUse, UseTree};
 use sway_types::Spanned;
 

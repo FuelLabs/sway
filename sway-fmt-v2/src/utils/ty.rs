@@ -1,3 +1,4 @@
+use super::shape::LineStyle;
 use crate::{
     fmt::{Format, FormattedCode, Formatter, FormatterError},
     utils::comments::{ByteSpan, LeafSpans},
@@ -11,8 +12,6 @@ use sway_ast::{
     ty::{Ty, TyArrayDescriptor, TyTupleDescriptor},
 };
 use sway_types::Spanned;
-
-use super::shape::LineStyle;
 
 impl Format for Ty {
     fn format(

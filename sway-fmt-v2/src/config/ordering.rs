@@ -1,5 +1,4 @@
 //! Configuration options related to re-ordering imports, modules and items.
-
 use super::user_opts::OrderingOptions;
 
 #[derive(Debug, Clone)]

@@ -1,7 +1,6 @@
 //! Configuration options related to formatting literals.
-use serde::{Deserialize, Serialize};
-
 use super::user_opts::LiteralsOptions;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Literals {

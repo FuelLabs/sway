@@ -1,9 +1,7 @@
 //! Standard system and editor whitespace configuration options. Advanced whitespace options will be deferred to their corresponding sub-classes.
-use serde::{Deserialize, Serialize};
-
-use crate::constants::{CARRIAGE_RETURN, DEFAULT_MAX_LINE_WIDTH, DEFAULT_TAB_SPACES, LINE_FEED};
-
 use super::user_opts::WhitespaceOptions;
+use crate::constants::{CARRIAGE_RETURN, DEFAULT_MAX_LINE_WIDTH, DEFAULT_TAB_SPACES, LINE_FEED};
+use serde::{Deserialize, Serialize};
 
 /// Whitespace styling preferences.
 #[derive(Debug, Copy, Clone)]

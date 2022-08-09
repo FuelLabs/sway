@@ -1,7 +1,6 @@
 //! Configuration options related to formatting imports.
-use serde::{Deserialize, Serialize};
-
 use super::{lists::ListTactic, user_opts::ImportsOptions, whitespace::IndentStyle};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Imports {

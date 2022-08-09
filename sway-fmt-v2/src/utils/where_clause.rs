@@ -1,9 +1,8 @@
+use super::comments::{ByteSpan, LeafSpans};
 use crate::fmt::*;
 use std::fmt::Write;
 use sway_ast::{WhereBound, WhereClause};
 use sway_types::Spanned;
-
-use super::comments::{ByteSpan, LeafSpans};
 
 impl Format for WhereClause {
     fn format(
