@@ -386,6 +386,41 @@ impl FnCompiler {
         }: TypedIntrinsicFunctionKind,
         span: Span,
     ) -> Result<Value, CompileError> {
+        fn store_key_in_local_mem(
+            compiler: &mut FnCompiler,
+            context: &mut Context,
+            value: Value,
+            span_md_idx: Option<MetadataIndex>,
+        ) -> Result<Value, CompileError> {
+            // New name for the key
+            let key_name = format!("{}", "key_for_storage");
+            let alias_key_name = compiler.lexical_map.insert(key_name.as_str().to_owned());
+
+            // Local pointer for the key
+            let key_ptr = compiler
+                .function
+                .new_local_ptr(context, alias_key_name, Type::B256, true, None)
+                .map_err(|ir_error| {
+                    CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                })?;
+
+            // Convert the key pointer to a value using get_ptr
+            let key_ptr_ty = *key_ptr.get_type(context);
+            let key_ptr_val = compiler
+                .current_block
+                .ins(context)
+                .get_ptr(key_ptr, key_ptr_ty, 0)
+                .add_metadatum(context, span_md_idx);
+
+            // Store the value to the key pointer value
+            compiler
+                .current_block
+                .ins(context)
+                .store(key_ptr_val, value)
+                .add_metadatum(context, span_md_idx);
+            Ok(key_ptr_val)
+        }
+
         // We safely index into arguments and type_arguments arrays below
         // because the type-checker ensures that the arguments are all there.
         match kind {
@@ -490,6 +525,31 @@ impl FnCompiler {
                     .current_block
                     .ins(context)
                     .addr_of(value)
+                    .add_metadatum(context, span_md_idx))
+            }
+            Intrinsic::StateLoadWord => {
+                let exp = arguments[0].clone();
+                let value = self.compile_expression(context, md_mgr, exp)?;
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+                let key_ptr_val = store_key_in_local_mem(self, context, value, span_md_idx)?;
+
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .state_load_word(key_ptr_val)
+                    .add_metadatum(context, span_md_idx))
+            }
+            Intrinsic::StateStoreWord => {
+                let key_exp = arguments[0].clone();
+                let val_exp = arguments[1].clone();
+                let key_value = self.compile_expression(context, md_mgr, key_exp)?;
+                let val_value = self.compile_expression(context, md_mgr, val_exp)?;
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+                let key_ptr_val = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .state_store_word(val_value, key_ptr_val)
                     .add_metadatum(context, span_md_idx))
             }
         }

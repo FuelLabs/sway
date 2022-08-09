@@ -9,6 +9,8 @@ pub enum Intrinsic {
     Eq,
     Gtf,
     AddrOf,
+    StateLoadWord,
+    StateStoreWord,
 }
 
 impl fmt::Display for Intrinsic {
@@ -21,6 +23,8 @@ impl fmt::Display for Intrinsic {
             Intrinsic::Eq => "eq",
             Intrinsic::Gtf => "gtf",
             Intrinsic::AddrOf => "addr_of",
+            Intrinsic::StateLoadWord => "state_load_word",
+            Intrinsic::StateStoreWord => "state_store_word",
         };
         write!(f, "{}", s)
     }
@@ -37,6 +41,8 @@ impl Intrinsic {
             "__eq" => Eq,
             "__gtf" => Gtf,
             "__addr_of" => AddrOf,
+            "__state_load_word" => StateLoadWord,
+            "__state_store_word" => StateStoreWord,
             _ => return None,
         })
     }

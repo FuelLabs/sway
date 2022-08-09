@@ -375,6 +375,100 @@ impl TypedIntrinsicFunctionKind {
                 let return_type = insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour));
                 (intrinsic_function, return_type)
             }
+            Intrinsic::StateLoadWord => {
+                if arguments.len() != 1 {
+                    errors.push(CompileError::IntrinsicIncorrectNumArgs {
+                        name: kind.to_string(),
+                        expected: 1,
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
+                let ctx = ctx
+                    .with_help_text("")
+                    .with_type_annotation(insert_type(TypeInfo::Unknown));
+                let exp = check!(
+                    TypedExpression::type_check(ctx, arguments[0].clone()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let key_ty = resolve_type(exp.return_type, &span).unwrap();
+                if key_ty != TypeInfo::B256 {
+                    errors.push(CompileError::IntrinsicUnsupportedArgType {
+                        name: kind.to_string(),
+                        span,
+                        hint: Hint::new(
+                            "Argument type must be B256, a key into the state storage".to_string(),
+                        ),
+                    });
+                    return err(warnings, errors);
+                }
+                let intrinsic_function = TypedIntrinsicFunctionKind {
+                    kind,
+                    arguments: vec![exp],
+                    type_arguments: vec![],
+                    span,
+                };
+                let return_type = insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour));
+                (intrinsic_function, return_type)
+            }
+            Intrinsic::StateStoreWord => {
+                if arguments.len() != 2 {
+                    errors.push(CompileError::IntrinsicIncorrectNumArgs {
+                        name: kind.to_string(),
+                        expected: 2,
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
+                let mut ctx = ctx
+                    .with_help_text("")
+                    .with_type_annotation(insert_type(TypeInfo::Unknown));
+                let key_exp = check!(
+                    TypedExpression::type_check(ctx.by_ref(), arguments[0].clone()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let key_ty = resolve_type(key_exp.return_type, &span).unwrap();
+                if key_ty != TypeInfo::B256 {
+                    errors.push(CompileError::IntrinsicUnsupportedArgType {
+                        name: kind.to_string(),
+                        span,
+                        hint: Hint::new(
+                            "Argument type must be B256, a key into the state storage".to_string(),
+                        ),
+                    });
+                    return err(warnings, errors);
+                }
+                let ctx = ctx
+                    .with_help_text("")
+                    .with_type_annotation(insert_type(TypeInfo::Unknown));
+                let val_exp = check!(
+                    TypedExpression::type_check(ctx, arguments[1].clone()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let val_ty = resolve_type(val_exp.return_type, &span).unwrap();
+                if val_ty != TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) {
+                    errors.push(CompileError::IntrinsicUnsupportedArgType {
+                        name: kind.to_string(),
+                        span,
+                        hint: Hint::new("Value to be written must be u64".to_string()),
+                    });
+                    return err(warnings, errors);
+                }
+                let intrinsic_function = TypedIntrinsicFunctionKind {
+                    kind,
+                    arguments: vec![key_exp, val_exp],
+                    type_arguments: vec![],
+                    span,
+                };
+                let return_type = insert_type(TypeInfo::Tuple(vec![]));
+                (intrinsic_function, return_type)
+            }
         };
         ok((intrinsic_function, return_type), warnings, errors)
     }

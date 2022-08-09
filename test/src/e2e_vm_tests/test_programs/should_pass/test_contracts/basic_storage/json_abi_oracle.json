@@ -44,5 +44,51 @@
       }
     ],
     "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "key",
+        "type": "b256",
+        "typeArguments": null
+      }
+    ],
+    "name": "intrinsic_load_word",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "key",
+        "type": "b256",
+        "typeArguments": null
+      },
+      {
+        "components": null,
+        "name": "value",
+        "type": "u64",
+        "typeArguments": null
+      }
+    ],
+    "name": "intrinsic_store_word",
+    "outputs": [
+      {
+        "components": [],
+        "name": "",
+        "type": "()",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
   }
 ]
