@@ -6,6 +6,7 @@ pub(crate) mod expr;
 pub(crate) mod generics;
 pub(crate) mod item;
 pub(crate) mod literal;
+pub(crate) mod newline;
 pub(crate) mod newline_style;
 pub(crate) mod path;
 pub(crate) mod pattern;
