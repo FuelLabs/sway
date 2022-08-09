@@ -1,7 +1,7 @@
 use super::{EntryPoint, ExitPoint};
 use crate::parse_tree::CallPath;
 use crate::semantic_analysis::declaration::TypedStorageField;
-use crate::type_engine::TypeInfo;
+use crate::type_system::TypeInfo;
 use crate::Ident;
 use petgraph::prelude::NodeIndex;
 use std::collections::HashMap;

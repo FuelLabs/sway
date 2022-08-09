@@ -9,8 +9,9 @@ use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
 #[derive(Debug, Default)]
 pub struct DebugFlags {
     /// Instructs the client to draw squiggly lines
-    /// under all of the tokens that our server managed to parse
-    pub parsed_tokens_as_warnings: bool,
+    /// under all of the tokens that our server managed to parse.
+    /// String can be either "typed" or "parsed".
+    pub collected_tokens_as_warnings: Option<String>,
 }
 
 pub(crate) fn generate_warnings_non_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
