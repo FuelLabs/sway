@@ -1,11 +1,8 @@
 use crate::core::token::{AstToken, Token, TokenMap, TypedAstToken};
-use sway_core::type_system::{TypeInfo, TypeId};
-use sway_core::{
-    semantic_analysis::ast_node::{
-        declaration::TypedStructDeclaration,
-        TypedDeclaration,
-    },
+use sway_core::semantic_analysis::ast_node::{
+    declaration::TypedStructDeclaration, TypedDeclaration,
 };
+use sway_core::type_system::{TypeId, TypeInfo};
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 pub fn is_initial_declaration(token_type: &Token) -> bool {
@@ -71,7 +68,7 @@ pub(crate) fn struct_declaration_of_type_id(
 
 /// Use the TypeId to look up the associated TypeInfo and return the Ident if one is found.
 pub(crate) fn ident_of_type_id(type_id: &TypeId) -> Option<Ident> {
-    let type_info = sway_core::type_engine::look_up_type_id(*type_id);
+    let type_info = sway_core::type_system::look_up_type_id(*type_id);
     match type_info {
         TypeInfo::UnknownGeneric { name }
         | TypeInfo::Enum { name, .. }
