@@ -2,7 +2,6 @@
 library tx;
 
 use ::address::Address;
-use ::inputs::{tx_input_type, input_coin_tx_id, input_contract_tx_id};
 use ::mem::read;
 use ::option::Option;
 use ::revert::revert;
@@ -287,75 +286,6 @@ pub fn tx_script_bytecode<T>() -> T {
     read(tx_script_start_pointer())
 }
 
-/// Get a pointer to an input given the index of the input
-/// for either tx type (transaction-script or transaction-create).
-pub fn tx_input_pointer(index: u64) -> u64 {
-    let type = tx_type();
-    match type {
-        Transaction::Script => {
-            __gtf::<u64>(index, GTF_SCRIPT_INPUT_AT_INDEX)
-        },
-        Transaction::Create => {
-            __gtf::<u64>(index, GTF_CREATE_INPUT_AT_INDEX)
-        }
-    }
-}
-
-/// If the input's type is `InputCoin` or `InputMessage`,
-/// return the owner as an Option::Some(owner).
-/// Otherwise, returns Option::None.
-pub fn tx_input_owner(index: u64) -> Option<Address> {
-    let type = tx_input_type(index);
-    let owner_ptr = match type {
-        Input::Coin => {
-            __gtf::<u64>(index, GTF_INPUT_COIN_OWNER)
-        },
-        Input::Message => {
-            __gtf::<u64>(index, GTF_INPUT_MESSAGE_OWNER)
-        },
-        _ => {
-            return Option::None;
-        },
-    };
-    let val: b256 = read(owner_ptr);
-    Option::Some(~Address::from(val))
-}
-
-////////////////////////////////////////
-// Inputs > Predicate
-////////////////////////////////////////
-
-/// Get the predicate data pointer from the input at `index`.
-/// If the input's type is `InputCoin` or `InputMessage`,
-/// return the data as an Option::Some(ptr).
-/// Otherwise, returns Option::None.
-pub fn predicate_data_pointer(index: u64) -> Option<u64> {
-    let type = tx_input_type(index);
-    match type {
-        Input::Coin => {
-            Option::Some(__gtf::<u64>(index, GTF_INPUT_COIN_PREDICATE_DATA))
-        },
-        Input::Message => {
-            Option::Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA))
-        },
-        _ => {
-            Option::None
-        }
-    }
-}
-
-pub fn get_predicate_data<T>(index: u64) -> T {
-    let data = predicate_data_pointer(index);
-    match data {
-        Option::Some(d) => {
-            read(d)
-        },
-        Option::None => {
-            revert(0)
-        },
-    }
-}
-
 ////////////////////////////////////////
 // Outputs
 ////////////////////////////////////////
@@ -390,7 +320,7 @@ pub fn tx_witness_pointer(index: u64) -> u64 {
 
 /// Get the type of an output at `index`.
 pub fn tx_output_type(index: u64) -> Output {
-    let type = __gtf::<u8>(index, GTF_OUTPUT_TYPE);
+    let type = tx_output_type(index);
     match type {
         0u8 => {
             Output::Coin
@@ -432,27 +362,6 @@ pub fn tx_output_amount(index: u64) -> u64 {
         // use GTF_OUTPUT_MESSAGE_AMOUNT as there's no simlar const for OutputVariable
         Output::Variable => {
             __gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT)
-        },
-    }
-}
-
-/// Get the id of the current transaction.
-/// If the input's type is `InputCoin` or `InputContract`,
-/// return the data as an Option::Some(b256).
-/// Otherwise, returns Option::None.
-pub fn tx_id(index: u64) -> Option<b256> {
-    let type = tx_input_type(index);
-    match type {
-        Input::Coin => {
-            let val: b256 = read(__gtf::<u64>(index, GTF_INPUT_COIN_TX_ID));
-            Option::Some(val)
-        },
-        Input::Contract => {
-            let val: b256 = read(__gtf::<u64>(index, GTF_INPUT_CONTRACT_TX_ID));
-            Option::Some(val)
-        },
-        _ => {
-           Option::None
         },
     }
 }
