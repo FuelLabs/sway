@@ -72,6 +72,20 @@ pub fn output_pointer(index: u64) -> u64 {
     }
 }
 
+/// Get the transaction outputs count for either tx type
+/// (transaction-script or transaction-create).
+pub fn outputs_count() -> u64 {
+    let type = tx_type();
+    match type {
+        Transaction::Script => {
+            __gtf::<u64>(0, GTF_SCRIPT_OUTPUTS_COUNT)
+        },
+        Transaction::Create => {
+            __gtf::<u64>(0, GTF_CREATE_OUTPUTS_COUNT)
+        },
+    }
+}
+
 /// Get the amount of coins to send for the output at `index`.
 /// This method is only meaningful if the output type has the `amount` field.
 /// Specifically: OutputCoin, OutputMessage, OutputChange, OutputVariable.

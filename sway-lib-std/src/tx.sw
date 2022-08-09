@@ -137,20 +137,6 @@ pub fn tx_script_data_length() -> u64 {
     }
 }
 
-/// Get the transaction outputs count for either tx type
-/// (transaction-script or transaction-create).
-pub fn tx_outputs_count() -> u64 {
-    let type = tx_type();
-    match type {
-        Transaction::Script => {
-            __gtf::<u64>(0, GTF_SCRIPT_OUTPUTS_COUNT)
-        },
-        Transaction::Create => {
-            __gtf::<u64>(0, GTF_CREATE_OUTPUTS_COUNT)
-        },
-    }
-}
-
 /// Get the transaction witnesses count for either tx type
 /// (transaction-script or transaction-create).
 pub fn tx_witnesses_count() -> u64 {
