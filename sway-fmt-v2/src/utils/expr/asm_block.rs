@@ -21,16 +21,10 @@ impl Format for AsmBlock {
     ) -> Result<(), FormatterError> {
         write!(formatted_code, "{} ", self.asm_token.span().as_str())?;
         Self::open_parenthesis(formatted_code, formatter)?;
-        self.registers
-            .clone()
-            .into_inner()
-            .format(formatted_code, formatter)?;
+        self.registers.get().format(formatted_code, formatter)?;
         Self::close_parenthesis(formatted_code, formatter)?;
         Self::open_square_bracket(formatted_code, formatter)?;
-        self.contents
-            .clone()
-            .into_inner()
-            .format(formatted_code, formatter)?;
+        self.contents.get().format(formatted_code, formatter)?;
         Self::close_square_bracket(formatted_code, formatter)?;
 
         Ok(())

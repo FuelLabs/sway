@@ -40,9 +40,7 @@ impl Format for Expr {
             Self::Literal(lit) => lit.format(formatted_code, formatter)?,
             Self::AbiCast { abi_token, args } => {
                 write!(formatted_code, "{}", abi_token.span().as_str())?;
-                args.clone()
-                    .into_inner()
-                    .format(formatted_code, formatter)?;
+                args.get().format(formatted_code, formatter)?;
             }
             Self::Struct { path, fields } => {
                 // store previous state and update expr kind
@@ -61,7 +59,7 @@ impl Format for Expr {
 
                 // get the largest field size and the size of the body
                 let (field_width, body_width) =
-                    get_field_width(&fields.clone().into_inner(), &mut formatter.clone())?;
+                    get_field_width(fields.get(), &mut formatter.clone())?;
 
                 // changes to the actual formatter
                 let expr_width = buf.chars().count() as usize;
@@ -104,25 +102,17 @@ impl Format for Expr {
             }
             Self::Parens(expr) => {
                 Self::open_parenthesis(formatted_code, formatter)?;
-                expr.clone()
-                    .into_inner()
-                    .format(formatted_code, formatter)?;
+                expr.get().format(formatted_code, formatter)?;
                 Self::close_parenthesis(formatted_code, formatter)?;
             }
             Self::Block(code_block) => {
                 CodeBlockContents::open_curly_brace(formatted_code, formatter)?;
-                code_block
-                    .clone()
-                    .into_inner()
-                    .format(formatted_code, formatter)?;
+                code_block.get().format(formatted_code, formatter)?;
                 CodeBlockContents::close_curly_brace(formatted_code, formatter)?;
             }
             Self::Array(array_descriptor) => {
                 ExprArrayDescriptor::open_square_bracket(formatted_code, formatter)?;
-                array_descriptor
-                    .clone()
-                    .into_inner()
-                    .format(formatted_code, formatter)?;
+                array_descriptor.get().format(formatted_code, formatter)?;
                 ExprArrayDescriptor::close_square_bracket(formatted_code, formatter)?;
             }
             Self::Asm(asm_block) => asm_block.format(formatted_code, formatter)?,
@@ -145,7 +135,7 @@ impl Format for Expr {
                 write!(formatted_code, "{} ", match_token.span().as_str())?;
                 value.format(formatted_code, formatter)?;
                 MatchBranch::open_curly_brace(formatted_code, formatter)?;
-                let branches = branches.clone().into_inner();
+                let branches = branches.get();
                 for match_branch in branches.iter() {
                     match_branch.format(formatted_code, formatter)?;
                 }
@@ -159,10 +149,7 @@ impl Format for Expr {
                 write!(formatted_code, "{} ", while_token.span().as_str())?;
                 condition.format(formatted_code, formatter)?;
                 CodeBlockContents::open_curly_brace(formatted_code, formatter)?;
-                block
-                    .clone()
-                    .into_inner()
-                    .format(formatted_code, formatter)?;
+                block.get().format(formatted_code, formatter)?;
                 CodeBlockContents::close_curly_brace(formatted_code, formatter)?;
             }
             Self::FuncApp { func, args } => {
@@ -176,15 +163,13 @@ impl Format for Expr {
                 }
                 func.format(formatted_code, formatter)?;
                 Self::open_parenthesis(formatted_code, formatter)?;
-                args.clone()
-                    .into_inner()
-                    .format(formatted_code, formatter)?;
+                args.get().format(formatted_code, formatter)?;
                 Self::close_parenthesis(formatted_code, formatter)?;
             }
             Self::Index { target, arg } => {
                 target.format(formatted_code, formatter)?;
                 Self::open_square_bracket(formatted_code, formatter)?;
-                arg.clone().into_inner().format(formatted_code, formatter)?;
+                arg.get().format(formatted_code, formatter)?;
                 Self::close_square_bracket(formatted_code, formatter)?;
             }
             Self::MethodCall {
@@ -215,10 +200,8 @@ impl Format for Expr {
                 // get the largest field size
                 let (mut field_width, mut body_width): (usize, usize) = (0, 0);
                 if let Some(contract_args) = &contract_args_opt {
-                    (field_width, body_width) = get_field_width(
-                        &contract_args.clone().into_inner(),
-                        &mut formatter.clone(),
-                    )?;
+                    (field_width, body_width) =
+                        get_field_width(contract_args.get(), &mut formatter.clone())?;
                 }
 
                 // changes to the actual formatter
@@ -520,7 +503,7 @@ fn format_expr_struct(
 ) -> Result<(), FormatterError> {
     path.format(formatted_code, formatter)?;
     ExprStructField::open_curly_brace(formatted_code, formatter)?;
-    let fields = &fields.clone().into_inner();
+    let fields = &fields.get();
     match formatter.shape.code_line.line_style {
         LineStyle::Inline => fields.format(formatted_code, formatter)?,
         // TODO: add field alignment
@@ -536,10 +519,7 @@ fn format_tuple(
     formatted_code: &mut FormattedCode,
     formatter: &mut Formatter,
 ) -> Result<(), FormatterError> {
-    tuple_descriptor
-        .clone()
-        .into_inner()
-        .format(formatted_code, formatter)?;
+    tuple_descriptor.get().format(formatted_code, formatter)?;
 
     Ok(())
 }
@@ -566,7 +546,7 @@ fn format_method_call(
     name.format(formatted_code, formatter)?;
     if let Some(contract_args) = &contract_args_opt {
         ExprStructField::open_curly_brace(formatted_code, formatter)?;
-        let contract_args = &contract_args.clone().into_inner();
+        let contract_args = &contract_args.get();
         match formatter.shape.code_line.line_style {
             LineStyle::Inline => {
                 contract_args.format(formatted_code, formatter)?;
@@ -579,9 +559,7 @@ fn format_method_call(
     }
     Expr::open_parenthesis(formatted_code, formatter)?;
     formatter.shape.reset_line_settings();
-    args.clone()
-        .into_inner()
-        .format(formatted_code, formatter)?;
+    args.get().format(formatted_code, formatter)?;
     Expr::close_parenthesis(formatted_code, formatter)?;
 
     Ok(())
