@@ -192,15 +192,8 @@ impl TypedProgram {
                 }
             }
         };
-
-        ok(typed_program_kind, vec![], errors)
-    }
-
-    /// Checks that no arguments passed to a `main()` in a `script` or `predicate`.
-    pub(crate) fn check_args_to_main(&self) -> CompileResult<()> {
-        let mut errors = Vec::new();
-        let warnings = Vec::new();
-        match &self.kind {
+        // check if no arguments passed to a `main()` in a `script` or `predicate`.
+        match &typed_program_kind {
             TypedProgramKind::Script { main_function, .. }
             | TypedProgramKind::Predicate { main_function, .. } => {
                 if !main_function.parameters.is_empty() {
@@ -209,15 +202,37 @@ impl TypedProgram {
                     })
                 }
             }
-            _ => (),
+            _ => (), 
         }
-
         if errors.is_empty() {
-            ok((), warnings, errors)
+            ok(typed_program_kind, warnings, errors)
         } else {
             err(warnings, errors)
         }
     }
+    
+    // /// Deprecated
+    // pub(crate) fn check_args_to_main(&self) -> CompileResult<()> {
+    //     let mut errors = Vec::new();
+    //     let warnings = Vec::new();
+    //     match &self.kind {
+    //         TypedProgramKind::Script { main_function, .. }
+    //         | TypedProgramKind::Predicate { main_function, .. } => {
+    //             if !main_function.parameters.is_empty() {
+    //                 errors.push(CompileError::MainArgsNotYetSupported {
+    //                     span: main_function.span.clone(),
+    //                 })
+    //             }
+    //         }
+    //         _ => (),
+    //     }
+
+    //     if errors.is_empty() {
+    //         ok((), warnings, errors)
+    //     } else {
+    //         err(warnings, errors)
+    //     }
+    // }
 
     /// Ensures there are no unresolved types or types awaiting resolution in the AST.
     pub(crate) fn finalize_types(&self) -> CompileResult<()> {
