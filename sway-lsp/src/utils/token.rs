@@ -43,7 +43,10 @@ pub(crate) fn to_ident_key(ident: &Ident) -> (Ident, Span) {
 }
 
 /// Uses the TypeId to find the associated TypedDeclaration in the TokenMap.
-pub fn declaration_of_type_id(type_id: &TypeId, tokens: &TokenMap) -> Option<TypedDeclaration> {
+pub(crate) fn declaration_of_type_id(
+    type_id: &TypeId,
+    tokens: &TokenMap,
+) -> Option<TypedDeclaration> {
     ident_of_type_id(type_id)
         .and_then(|decl_ident| tokens.get(&to_ident_key(&decl_ident)))
         .map(|item| item.value().clone())
@@ -54,7 +57,7 @@ pub fn declaration_of_type_id(type_id: &TypeId, tokens: &TokenMap) -> Option<Typ
         })
 }
 
-/// Returns the TypedStructDeclaration associated with the TypeId if it 
+/// Returns the TypedStructDeclaration associated with the TypeId if it
 /// exists within the TokenMap.
 pub(crate) fn struct_declaration_of_type_id(
     type_id: &TypeId,
@@ -78,7 +81,7 @@ pub(crate) fn ident_of_type_id(type_id: &TypeId) -> Option<Ident> {
     }
 }
 
-pub fn type_id(token_type: &Token) -> Option<TypeId> {
+pub(crate) fn type_id(token_type: &Token) -> Option<TypeId> {
     match &token_type.typed {
         Some(typed_ast_token) => match typed_ast_token {
             TypedAstToken::TypedDeclaration(dec) => match dec {

@@ -140,13 +140,11 @@ impl TypedStorageDeclaration {
                      ref span,
                      ref initializer,
                      ..
-                 }| {
-                    TypedStructField {
-                        name: name.clone(),
-                        type_id: *r#type,
-                        span: span.clone(),
-                        type_span: initializer.span.clone(),
-                    }
+                 }| TypedStructField {
+                    name: name.clone(),
+                    type_id: *r#type,
+                    span: span.clone(),
+                    type_span: initializer.span.clone(),
                 },
             )
             .collect()
