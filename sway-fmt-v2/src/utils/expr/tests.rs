@@ -78,10 +78,6 @@ macro_rules! fmt_test_inner {
 }
 }
 
-// TODO:
-// path, literal, abicast, struct, tuple, parens, block, array, asm, return, if, match, while, func app, index, field projection, tuple field projection, ref, deref, operators, bitwise stuff, comp operators
-// logical operators, reassignment
-
 fmt_test!(literal "5", extra_whitespace "  5 "
 );
 
