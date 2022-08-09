@@ -42,6 +42,7 @@ pub(crate) fn to_ident_key(ident: &Ident) -> (Ident, Span) {
     (ident.clone(), ident.span())
 }
 
+/// Uses the TypeId to find the associated TypedDeclaration in the TokenMap.
 pub fn declaration_of_type_id(type_id: &TypeId, tokens: &TokenMap) -> Option<TypedDeclaration> {
     ident_of_type_id(type_id)
         .and_then(|decl_ident| tokens.get(&to_ident_key(&decl_ident)))
@@ -53,7 +54,9 @@ pub fn declaration_of_type_id(type_id: &TypeId, tokens: &TokenMap) -> Option<Typ
         })
 }
 
-pub fn struct_declaration_of_type_id(
+/// Returns the TypedStructDeclaration associated with the TypeId if it 
+/// exists within the TokenMap.
+pub(crate) fn struct_declaration_of_type_id(
     type_id: &TypeId,
     tokens: &TokenMap,
 ) -> Option<TypedStructDeclaration> {
@@ -63,8 +66,8 @@ pub fn struct_declaration_of_type_id(
     })
 }
 
-pub fn ident_of_type_id(type_id: &TypeId) -> Option<Ident> {
-    // Use the TypeId to look up the actual type
+/// Use the TypeId to look up the associated TypeInfo and return the Ident if one is found.
+pub(crate) fn ident_of_type_id(type_id: &TypeId) -> Option<Ident> {
     let type_info = sway_core::type_engine::look_up_type_id(*type_id);
     match type_info {
         TypeInfo::UnknownGeneric { name }

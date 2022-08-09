@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::{
-    core::token::{AstToken, Token, TokenMap},
+    core::token::{AstToken, Token, TokenMap, TypeDefinition},
     utils::token::{desugared_op, to_ident_key},
 };
 use sway_core::{
@@ -11,8 +11,6 @@ use sway_core::{
     TypeInfo, WhileLoop,
 };
 use sway_types::Ident;
-
-use super::token::TypeDefinition;
 
 pub fn traverse_node(node: &AstNode, tokens: &TokenMap) {
     match &node.content {
@@ -119,14 +117,6 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                             to_ident_key(&Ident::new(field.type_span.clone())),
                             Token::from_parsed(AstToken::StructField(field.clone())),
                         );
-                    }
-                    TypeInfo::Tuple(args) => {
-                        for arg in args {
-                            let mut token =
-                                Token::from_parsed(AstToken::StructField(field.clone()));
-                            token.type_def = Some(TypeDefinition::TypeId(arg.type_id));
-                            tokens.insert(to_ident_key(&Ident::new(arg.span.clone())), token);
-                        }
                     }
                     TypeInfo::Ref(type_id, span) => {
                         let mut token = Token::from_parsed(AstToken::StructField(field.clone()));

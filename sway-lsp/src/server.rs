@@ -308,10 +308,6 @@ mod tests {
             .join("examples/storage_variables")
     }
 
-    fn _lsp_test_dir() -> PathBuf {
-        env::current_dir().unwrap().join("test_programs/particle")
-    }
-
     fn load_sway_example() -> (Url, String) {
         let manifest_dir = e2e_test_dir();
         let src_path = manifest_dir.join("src/main.sw");

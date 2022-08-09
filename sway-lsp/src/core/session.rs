@@ -179,7 +179,6 @@ impl Session {
                 Err(DocumentError::FailedToParse(diagnostics))
             }
             Some(parse_program) => {
-                //eprintln!("{:#?}", parse_program);
                 for node in &parse_program.root.tree.root_nodes {
                     traverse_parse_tree::traverse_node(node, &self.token_map);
                 }
@@ -223,7 +222,7 @@ impl Session {
                     let runnable = Runnable::new(main_fn_location, typed_program.kind.tree_type());
                     self.runnables.insert(RunnableType::MainFn, runnable);
                 }
-                //eprintln!("{:#?}", &typed_program.root.all_nodes);
+
                 for node in &typed_program.root.all_nodes {
                     traverse_typed_tree::traverse_node(node, &self.token_map);
                 }
