@@ -118,7 +118,7 @@ pub fn tx_script_length() -> u64 {
             __gtf::<u64>(0, GTF_SCRIPT_SCRIPT_LENGTH)
         },
         Transaction::Create => {
-            revert(1)
+            revert(0)
         },
     }
 }
@@ -132,7 +132,7 @@ pub fn tx_script_data_length() -> u64 {
             __gtf::<u64>(0, GTF_SCRIPT_SCRIPT_DATA_LENGTH)
         },
         Transaction::Create => {
-            revert(1)
+            revert(0)
         }
     }
 }
@@ -165,35 +165,29 @@ pub fn tx_witnesses_count() -> u64 {
     }
 }
 
-// Get witness at index `index`
-pub fn script_witness(index: u64) -> b256 {
-    // GTF_SCRIPT_WITNESS_AT_INDEX = 0x00F
-    read(asm(res, i: index) {
-        gtf res i i15;
-        res: u64
-    })
-}
-
-// Get the length of the witness data at `index`
-pub fn witness_data_length(index: u64) -> u64 {
-    asm(res, i: index) {
-        gtf res i i769;
-        res: u64
+// Get witness at index `index` either tx type
+/// (transaction-script or transaction-create).
+pub fn tx_witness_pointer(index: u64) -> u64 {
+    let type = tx_type();
+    match type {
+        Transaction::Script => {
+            __gtf::<u64>(0, GTF_SCRIPT_WITNESS_AT_INDEX)
+        },
+        Transaction::Create => {
+            __gtf::<u64>(0, GTF_CREATE_WITNESS_AT_INDEX)
+        },
     }
 }
 
-// @todo figure out return type
-// Get the witness data at `index`.
-pub fn witness_data<T>(index: u64) -> T {
-    // GTF_WITNESS_DATA = 0x302
-    read(asm(res, i: index) {
-        gtf res i i770;
-        res: u64
-    })
+// Get the length of the witness data at `index`
+pub fn tx_witness_data_length(index: u64) -> u64 {
+    __gtf::<u64>(index, GTF_WITNESS_DATA_LENGTH)
 }
 
-// const GTF_WITNESS_DATA_LENGTH = 0x301;
-// const GTF_WITNESS_DATA = 0x302;
+// Get the witness data at `index`.
+pub fn tx_witness_data<T>(index: u64) -> T {
+    read(__gtf::<u64>(index, GTF_WITNESS_DATA))
+}
 
 /// Get the transaction receipts root.
 /// Reverts if not a transaction-script.
@@ -252,24 +246,6 @@ pub fn tx_script_data<T>() -> T {
 /// Bytecode will be padded to next whole word.
 pub fn tx_script_bytecode<T>() -> T {
     read(tx_script_start_pointer())
-}
-
-////////////////////////////////////////
-// Outputs
-////////////////////////////////////////
-
-/// Get a pointer to the Ouput at `index`
-/// for either tx type (transaction-script or transaction-create).
-pub fn tx_output_pointer(index: u64) -> u64 {
-    let type = tx_type();
-    match type {
-        Transaction::Script => {
-            __gtf::<u64>(index, GTF_SCRIPT_OUTPUT_AT_INDEX)
-        },
-        Transaction::Create => {
-            __gtf::<u64>(index, GTF_CREATE_OUTPUT_AT_INDEX)
-        },
-    }
 }
 
 /// Get a pointer to the witnex at `index`.

@@ -58,6 +58,20 @@ pub fn output_type(index: u64) -> Output {
     }
 }
 
+/// Get a pointer to the Ouput at `index`
+/// for either tx type (transaction-script or transaction-create).
+pub fn output_pointer(index: u64) -> u64 {
+    let type = tx_type();
+    match type {
+        Transaction::Script => {
+            __gtf::<u64>(index, GTF_SCRIPT_OUTPUT_AT_INDEX)
+        },
+        Transaction::Create => {
+            __gtf::<u64>(index, GTF_CREATE_OUTPUT_AT_INDEX)
+        },
+    }
+}
+
 /// Get the amount of coins to send for the output at `index`.
 /// This method is only meaningful if the output type has the `amount` field.
 /// Specifically: OutputCoin, OutputMessage, OutputChange, OutputVariable.
