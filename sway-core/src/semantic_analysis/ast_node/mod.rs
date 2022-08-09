@@ -15,7 +15,7 @@ pub(crate) use return_statement::*;
 pub(crate) use while_loop::*;
 
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*,
+    error::*, parse_tree::*, semantic_analysis::*, style::*, type_system::*,
     types::DeterministicallyAborts, AstNode, AstNodeContent, Ident, ReturnStatement,
 };
 
@@ -205,10 +205,10 @@ impl TypedAstNode {
         match &self.content {
             ReturnStatement(_) | Declaration(_) => TypeInfo::Tuple(Vec::new()),
             Expression(TypedExpression { return_type, .. }) => {
-                crate::type_engine::look_up_type_id(*return_type)
+                crate::type_system::look_up_type_id(*return_type)
             }
             ImplicitReturnExpression(TypedExpression { return_type, .. }) => {
-                crate::type_engine::look_up_type_id(*return_type)
+                crate::type_system::look_up_type_id(*return_type)
             }
             WhileLoop(_) | SideEffect => TypeInfo::Tuple(Vec::new()),
         }

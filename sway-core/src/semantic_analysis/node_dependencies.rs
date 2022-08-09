@@ -1,11 +1,11 @@
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
-use crate::type_engine::{TypeArgument, TypeParameter};
+use crate::type_system::{TypeArgument, TypeParameter};
 use crate::{
     error::*,
     parse_tree::*,
-    type_engine::{look_up_type_id, AbiName, IntegerBits},
+    type_system::{look_up_type_id, AbiName, IntegerBits},
     AstNode, AstNodeContent, CodeBlock, Declaration, Expression, ReturnStatement, TypeInfo,
     WhileLoop,
 };
