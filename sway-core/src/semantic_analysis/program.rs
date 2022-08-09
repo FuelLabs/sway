@@ -202,7 +202,7 @@ impl TypedProgram {
                     })
                 }
             }
-            _ => (), 
+            _ => (),
         }
         if errors.is_empty() {
             ok(typed_program_kind, warnings, errors)
@@ -210,7 +210,7 @@ impl TypedProgram {
             err(warnings, errors)
         }
     }
-    
+
     // /// Deprecated
     // pub(crate) fn check_args_to_main(&self) -> CompileResult<()> {
     //     let mut errors = Vec::new();
