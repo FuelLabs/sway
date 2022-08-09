@@ -7,7 +7,10 @@ use ::tx::tx_type;
 
 const GTF_INPUT_TYPE = 0x101;
 
-// Input coins
+////////////////////////////////////////
+// GTF Opcode const selectors
+////////////////////////////////////////
+
 const GTF_INPUT_COIN_TX_ID = 0x102;
 const GTF_INPUT_COIN_OUTPUT_INDEX = 0x103;
 const GTF_INPUT_COIN_OWNER = 0x104;
@@ -21,7 +24,6 @@ const GTF_INPUT_COIN_AMOUNT = 0x105;
 // const GTF_INPUT_COIN_PREDICATE = 0x10C;
 const GTF_INPUT_COIN_PREDICATE_DATA = 0x10D;
 
-// Input contracts
 const GTF_INPUT_CONTRACT_TX_ID = 0x10E;
 const GTF_INPUT_CONTRACT_OUTPUT_INDEX = 0x10F;
 // const GTF_INPUT_CONTRACT_BALANCE_ROOT = 0x110;
@@ -29,7 +31,6 @@ const GTF_INPUT_CONTRACT_OUTPUT_INDEX = 0x10F;
 // const GTF_INPUT_CONTRACT_TX_POINTER = 0x112;
 // const GTF_INPUT_CONTRACT_CONTRACT_ID = 0x113;
 
-// Input messages
 // const GTF_INPUT_MESSAGE_MESSAGE_ID = 0x114;
 // const GTF_INPUT_MESSAGE_SENDER = 0x115;
 // const GTF_INPUT_MESSAGE_RECIPIENT = 0x116;
@@ -48,6 +49,12 @@ const GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x120;
 pub const INPUT_COIN = 0u8;
 pub const INPUT_CONTRACT = 1u8;
 pub const INPUT_MESSAGE = 2u8;
+
+pub enum Input {
+    Coin: (),
+    Contract: (),
+    Message: (),
+}
 
 /// Get the type of the input at `index`.
 pub fn input_type(index: u64) -> Input {
