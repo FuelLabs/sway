@@ -17,6 +17,7 @@ dep b512;
 dep address;
 dep identity;
 dep tx;
+dep inputs;
 dep chain;
 dep math;
 dep block;
