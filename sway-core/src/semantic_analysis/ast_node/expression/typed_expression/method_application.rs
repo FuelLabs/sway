@@ -4,7 +4,7 @@ use crate::{
     error::*,
     parse_tree::*,
     semantic_analysis::{TypedExpressionVariant::VariableExpression, *},
-    type_engine::*,
+    type_system::*,
 };
 use std::collections::{HashMap, VecDeque};
 use sway_types::Spanned;

@@ -2,7 +2,7 @@ use sway_types::Span;
 
 use crate::{
     error::{err, ok},
-    type_engine::TypeId,
+    type_system::TypeId,
     CompileError, CompileResult, Scrutinee,
 };
 
