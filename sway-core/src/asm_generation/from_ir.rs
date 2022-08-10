@@ -1603,15 +1603,6 @@ impl<'ir> AsmBuilder<'ir> {
         assert!(offset == 0);
         assert!(ptr_ty.eq(self.context, &Type::B256));
 
-        let key_reg = match self.ptr_map.get(&key_ptr) {
-            Some(Storage::Stack(key_offset)) => {
-                let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
-                let key_offset_in_bytes = key_offset * 8;
-                self.offset_reg(&base_reg, key_offset_in_bytes, owning_span.clone())
-            }
-            _ => unreachable!("Unexpected storage locations for key and val"),
-        };
-
         let val_reg = if matches!(
             &self.context.values[val.0].value,
             ValueDatum::Instruction(Instruction::IntToPtr(..))
@@ -1637,6 +1628,15 @@ impl<'ir> AsmBuilder<'ir> {
                 }
                 _ => unreachable!("Unexpected storage locations for key and val"),
             }
+        };
+
+        let key_reg = match self.ptr_map.get(&key_ptr) {
+            Some(Storage::Stack(key_offset)) => {
+                let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
+                let key_offset_in_bytes = key_offset * 8;
+                self.offset_reg(&base_reg, key_offset_in_bytes, owning_span.clone())
+            }
+            _ => unreachable!("Unexpected storage locations for key and val"),
         };
 
         self.bytecode.push(Op {
