@@ -90,15 +90,6 @@ impl Token for Contract {
         // Note: The return type of `msg_sender()` can be inferred by the
         // compiler. It is shown here for explicitness.
         let sender: Result<Identity, AuthError> = msg_sender();
-        let sender: Address = match sender.unwrap() {
-            Identity::Address(addr) => {
-                assert(addr == ~Address::from(MINTER));
-                addr
-            },
-            _ => {
-                revert(0);
-            },
-        };
 
         // Reduce the balance of sender
         let sender_amount = storage.balances.get(sender);
