@@ -1,7 +1,7 @@
 use super::{EntryPoint, ExitPoint};
 use crate::parse_tree::CallPath;
 use crate::semantic_analysis::declaration::TypedStorageField;
-use crate::type_engine::TypeInfo;
+use crate::type_system::TypeInfo;
 use crate::Ident;
 use petgraph::prelude::NodeIndex;
 use std::collections::HashMap;
@@ -55,7 +55,11 @@ impl ControlFlowNamespace {
     pub(crate) fn insert_constant(&mut self, const_name: Ident, declaration_node: NodeIndex) {
         self.const_namespace.insert(const_name, declaration_node);
     }
-    pub(crate) fn insert_enum(
+    pub(crate) fn insert_enum(&mut self, enum_name: Ident, enum_decl_index: NodeIndex) {
+        self.enum_namespace
+            .insert(enum_name, (enum_decl_index, HashMap::new()));
+    }
+    pub(crate) fn insert_enum_variant(
         &mut self,
         enum_name: Ident,
         enum_decl_index: NodeIndex,
@@ -76,6 +80,9 @@ impl ControlFlowNamespace {
                     .insert(enum_name, (enum_decl_index, variant_space));
             }
         }
+    }
+    pub(crate) fn find_enum(&self, enum_name: &Ident) -> Option<&NodeIndex> {
+        self.enum_namespace.get(enum_name).map(|f| &f.0)
     }
     pub(crate) fn find_enum_variant_index(
         &self,

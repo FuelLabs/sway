@@ -3,7 +3,6 @@ resolver = "2"
 members = [
     "docstrings",
     "forc",
-    "forc-gm",
     "forc-pkg",
     "forc-plugins/forc-explore",
     "forc-plugins/forc-fmt",
@@ -12,6 +11,7 @@ members = [
     "forc-util",
     "scripts/examples-checker",
     "scripts/mdbook-forc-documenter",
+    "sway-ast",
     "sway-core",
     "sway-fmt",
     "sway-fmt-v2",
@@ -29,3 +29,8 @@ exclude = [
 
 [profile.dev.package.sway-lsp]
 debug = 2
+
+[patch.crates-io]
+# A workaround for a bug in mdbook `0.4.20` introduced by some breakage in rustc 1.64.0-nightly (62b272d25 2022-07-21).
+# This should be removed when either this PR https://github.com/rust-lang/mdBook/pull/1861 or a related fix is published.
+mdbook = { git = "https://github.com/mitchmindtree/mdBook", branch = "nightly-borrowcheck-err-workaround" }

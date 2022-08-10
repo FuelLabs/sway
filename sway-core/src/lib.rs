@@ -9,11 +9,12 @@ pub mod constants;
 mod control_flow_analysis;
 mod convert_parse_tree;
 pub mod ir_generation;
+mod metadata;
 pub mod parse_tree;
 pub mod semantic_analysis;
 pub mod source_map;
 mod style;
-pub mod type_engine;
+pub mod type_system;
 
 use crate::{error::*, source_map::SourceMap};
 pub use asm_generation::from_ir::compile_ir_to_asm;
@@ -35,7 +36,7 @@ pub use crate::parse_tree::{
 
 pub use error::{CompileError, CompileResult, CompileWarning};
 use sway_types::{ident::Ident, span, Spanned};
-pub use type_engine::TypeInfo;
+pub use type_system::TypeInfo;
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
@@ -140,7 +141,7 @@ fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeTy
     })
 }
 
-fn module_path(parent_module_dir: &Path, dep: &sway_parse::Dependency) -> PathBuf {
+fn module_path(parent_module_dir: &Path, dep: &sway_ast::Dependency) -> PathBuf {
     parent_module_dir
         .iter()
         .chain(dep.path.span().as_str().split('/').map(AsRef::as_ref))
@@ -411,8 +412,9 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
     // Do a purity check on the _unoptimised_ IR.
     let mut purity_checker = ir_generation::PurityChecker::default();
+    let mut md_mgr = metadata::MetadataManager::default();
     for entry_point in &entry_point_functions {
-        purity_checker.check_function(&ir, entry_point);
+        purity_checker.check_function(&ir, &mut md_mgr, entry_point);
     }
     check!(
         purity_checker.results(),
@@ -452,7 +454,7 @@ fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileRes
                 Vec::new(),
                 vec![CompileError::InternalOwned(
                     ir_error.to_string(),
-                    span::Span::new("".into(), 0, 0, None).unwrap(),
+                    span::Span::dummy(),
                 )],
             );
         }
@@ -467,7 +469,7 @@ fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<
                 Vec::new(),
                 vec![CompileError::InternalOwned(
                     ir_error.to_string(),
-                    span::Span::new("".into(), 0, 0, None).unwrap(),
+                    span::Span::dummy(),
                 )],
             );
         }
@@ -525,7 +527,7 @@ pub fn asm_to_bytecode(
 }
 
 pub fn clear_lazy_statics() {
-    type_engine::clear_type_engine();
+    type_system::clear_type_engine();
 }
 
 /// Given a [TypedProgram], which is type-checked Sway source, construct a graph to analyze

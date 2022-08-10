@@ -1,4 +1,9 @@
-use crate::priv_prelude::*;
+use crate::keywords::RESERVED_KEYWORDS;
+use crate::{ParseErrorKind, ParseResult, Parser, ParserConsumed, Peeker};
+
+use sway_ast::token::Delimiter;
+use sway_ast::Intrinsic;
+use sway_types::{Ident, Spanned};
 
 pub trait Parse {
     fn parse(parser: &mut Parser) -> ParseResult<Self>
@@ -42,6 +47,23 @@ macro_rules! impl_tuple (
                     let $name = parser.parse()?;
                 )*
                 Ok(($($name,)*))
+            }
+        }
+
+        impl<$($name,)*> Peek for ($($name,)*)
+        where
+            $($name: Peek,)*
+        {
+            fn peek(peeker: Peeker<'_>) -> Option<Self> {
+                #![allow(unused_assignments, unused, non_snake_case)]
+
+                let mut tokens = peeker.token_trees;
+                $(
+                    let ($name, fewer_tokens) = Peeker::with::<$name>(tokens)?;
+                    tokens = fewer_tokens;
+
+                )*
+                Some(($($name,)*))
             }
         }
     };

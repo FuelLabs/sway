@@ -3,7 +3,7 @@ use super::{FunctionDeclaration, FunctionParameter};
 use crate::{
     function::Purity,
     parse_tree::{CallPath, Visibility},
-    type_engine::TypeInfo,
+    type_system::TypeInfo,
 };
 
 use sway_types::{ident::Ident, span::Span};
@@ -11,7 +11,7 @@ use sway_types::{ident::Ident, span::Span};
 #[derive(Debug, Clone)]
 pub struct TraitDeclaration {
     pub name: Ident,
-    pub(crate) interface_surface: Vec<TraitFn>,
+    pub interface_surface: Vec<TraitFn>,
     pub methods: Vec<FunctionDeclaration>,
     pub(crate) supertraits: Vec<Supertrait>,
     pub visibility: Visibility,

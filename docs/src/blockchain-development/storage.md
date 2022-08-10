@@ -13,6 +13,7 @@ Declaring variables in storage requires a `storage` declaration that contains a 
 ```sway
 {{#include ../../../examples/storage_variables/src/main.sw:storage_declaration}}
 ```
+
 To write into a storage variable, you need to use the `storage` keyword as follows:
 
 ```sway
@@ -27,15 +28,7 @@ To read a storage variable, you also need to use the `storage` keyword as follow
 
 ## Storage Maps
 
-Generic storage maps are available in the standard library as `StorageMap<K, V>` which have to be defined inside a `storage` block and allow you to call `insert()` and `get()` to insert values at specific keys and get those values respectively. For example:
-
-```sway
-{{#include ../../../examples/storage_map/src/main.sw}}
-```
-
-Because storage maps have to be defined inside a `storage` block, the `storage` keyword is required to access the map itself and then access the appropriate method.
-
-> **Note**: Calling `get(k)` for some key `k` that does not exist in the map (i.e. `insert()` hasn't been called with key `k` yet) returns zero. This is because the FuelVM initializes all storage slots to zero.
+Generic storage maps are available in the standard library as `StorageMap<K, V>` which have to be defined inside a `storage` block and allow you to call `insert()` and `get()` to insert values at specific keys and get those values respectively. Refer to [Storage Maps](../common-collections/storage_map.md) for more information about `StorageMap<K, V>`.
 
 ## Manual Storage Management
 

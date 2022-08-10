@@ -56,25 +56,16 @@ You need the `while` keyword, some condition (`value < 10` in this case) which w
 
 ### `break` and `continue`
 
-There are no `break` or `continue` keywords yet, but [they're coming](https://github.com/FuelLabs/sway/issues/587).
-
-For now, the way to break out of a `while` loop early is to manually invalidate the condition. In this case, that just means setting `counter` to be `>= 10`.
-
-Building on the previous example, here's what that might look like:
+`break` and `continue` keywords are available to use inside the body of a `while` loop. The purpose of the `break` statement is to break out of a loop early:
 
 ```sway
-let mut counter = 0;
-let mut break_early = false;
-while counter < 10 {
-    if break_early == true {
-        // here we ensure the condition will evaluate to false, breaking the loop
-        counter = 10
-    } else {
-        // calling some other function to set the bool value
-        break_early = get_bool_value();
-        counter = counter + 1;
-    }
-}
+{{#include ../../../examples/break_and_continue/src/main.sw:break_example}}
+```
+
+The purpose of the `continue` statement is to skip a portion of a loop in an iteration and jump directly into the next iteration:
+
+```sway
+{{#include ../../../examples/break_and_continue/src/main.sw:continue_example}}
 ```
 
 ### Nested loops

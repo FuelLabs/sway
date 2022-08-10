@@ -1,0 +1,4 @@
+category = "compile"
+
+# not: const C1 = 66;
+# not: -------------- This declaration is never used.

@@ -6,9 +6,9 @@ use ::assert::assert;
 use ::b512::B512;
 use ::contract_id::ContractId;
 use ::identity::Identity;
-use ::option::*;
+use ::option::Option;
 use ::result::Result;
-use ::tx::*;
+use ::tx::{INPUT_COIN, INPUT_MESSAGE, tx_input_owner, tx_input_type, tx_inputs_count};
 
 pub enum AuthError {
     InputsNotAllOwnedBySameAddress: (),
@@ -37,17 +37,16 @@ pub fn caller_contract_id() -> ContractId {
 /// Returns a `Result::Ok(Identity)`, or `Result::Err(AuthError)` if an identity cannot be determined.
 pub fn msg_sender() -> Result<Identity, AuthError> {
     if caller_is_external() {
-        coins_owner()
+        inputs_owner()
     } else {
         // Get caller's `ContractId`.
         Result::Ok(Identity::ContractId(caller_contract_id()))
     }
 }
 
-/// Get the owner of the inputs (of type `InputCoin`) to a TransactionScript,
-/// if they all share the same owner.
-fn coins_owner() -> Result<Identity, AuthError> {
-    let target_input_type = 0u8;
+/// Get the owner of the inputs (of type `InputCoin` or `InputMessage`) to a
+/// TransactionScript if they all share the same owner.
+fn inputs_owner() -> Result<Identity, AuthError> {
     let inputs_count = tx_inputs_count();
     let mut candidate = Option::None::<Address>();
     let mut i = 0;
@@ -55,32 +54,32 @@ fn coins_owner() -> Result<Identity, AuthError> {
     // Note: `inputs_count` is guaranteed to be at least 1 for any valid tx.
     while i < inputs_count {
         let input_type = tx_input_type(i);
-        if input_type != target_input_type {
-            // type != InputCoin
-            // Continue looping.
+        if input_type != INPUT_COIN && input_type != INPUT_MESSAGE {
+            // type != InputCoin or InputMessage, continue looping.
             i += 1;
-        } else {
-            // type == InputCoin
-            let input_owner = tx_input_owner(i);
-            if candidate.is_none() {
-                // This is the first input seen of the correct type.
-                candidate = input_owner;
-                i += 1;
-            } else {
-                // Compare current coin owner to candidate.
-                // `candidate` and `input_owner` must be `Option::Some`
-                // at this point, so we can unwrap safely.
-                if input_owner.unwrap() == candidate.unwrap() {
-                    // Owners are a match, continue looping.
-                    i += 1;
-                } else {
-                    // Owners don't match. Return Err.
-                    // TODO: Use break keyword when possible
-                    i = inputs_count;
-                    return Result::Err(AuthError::InputsNotAllOwnedBySameAddress);
-                };
-            };
+            continue;
         }
+
+        // type == InputCoin or InputMessage
+        let input_owner = tx_input_owner(i);
+        if candidate.is_none() {
+            // This is the first input seen of the correct type.
+            candidate = input_owner;
+            i += 1;
+            continue;
+        }
+
+        // Compare current input owner to candidate.
+        // `candidate` and `input_owner` must be `Option::Some`
+        // at this point, so we can unwrap safely.
+        if input_owner.unwrap() == candidate.unwrap() {
+            // Owners are a match, continue looping.
+            i += 1;
+            continue;
+        }
+
+        // Owners don't match. Return Err.
+        return Result::Err(AuthError::InputsNotAllOwnedBySameAddress);
     }
 
     // `candidate` must be `Option::Some` at this point, so can unwrap safely.

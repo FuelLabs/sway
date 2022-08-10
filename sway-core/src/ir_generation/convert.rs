@@ -1,21 +1,15 @@
 use crate::{
     error::CompileError,
     parse_tree::Literal,
-    type_engine::{resolve_type, TypeId, TypeInfo},
+    type_system::{resolve_type, TypeId, TypeInfo},
 };
 
 use super::types::{create_enum_aggregate, create_tuple_aggregate};
 
-use sway_ir::{Aggregate, Constant, Context, MetadataIndex, Type, Value};
+use sway_ir::{Aggregate, Constant, Context, Type, Value};
 use sway_types::span::Span;
 
-use std::sync::Arc;
-
-pub(super) fn convert_literal_to_value(
-    context: &mut Context,
-    ast_literal: &Literal,
-    span_id_idx: Option<MetadataIndex>,
-) -> Value {
+pub(super) fn convert_literal_to_value(context: &mut Context, ast_literal: &Literal) -> Value {
     match ast_literal {
         // In Sway for now we don't have `as` casting and for integers which may be implicitly cast
         // between widths we just emit a warning, and essentially ignore it.  We also assume a
@@ -23,18 +17,14 @@ pub(super) fn convert_literal_to_value(
         // consistent and doesn't tolerate mising integers of different width, so for now, until we
         // do introduce explicit `as` casting, all integers are `u64` as far as the IR is
         // concerned.
-        Literal::U8(n) | Literal::Byte(n) => {
-            Constant::get_uint(context, 64, *n as u64, span_id_idx)
-        }
-        Literal::U16(n) => Constant::get_uint(context, 64, *n as u64, span_id_idx),
-        Literal::U32(n) => Constant::get_uint(context, 64, *n as u64, span_id_idx),
-        Literal::U64(n) => Constant::get_uint(context, 64, *n, span_id_idx),
-        Literal::Numeric(n) => Constant::get_uint(context, 64, *n, span_id_idx),
-        Literal::String(s) => {
-            Constant::get_string(context, s.as_str().as_bytes().to_vec(), span_id_idx)
-        }
-        Literal::Boolean(b) => Constant::get_bool(context, *b, span_id_idx),
-        Literal::B256(bs) => Constant::get_b256(context, *bs, span_id_idx),
+        Literal::U8(n) | Literal::Byte(n) => Constant::get_uint(context, 64, *n as u64),
+        Literal::U16(n) => Constant::get_uint(context, 64, *n as u64),
+        Literal::U32(n) => Constant::get_uint(context, 64, *n as u64),
+        Literal::U64(n) => Constant::get_uint(context, 64, *n),
+        Literal::Numeric(n) => Constant::get_uint(context, 64, *n),
+        Literal::String(s) => Constant::get_string(context, s.as_str().as_bytes().to_vec()),
+        Literal::Boolean(b) => Constant::get_bool(context, *b),
+        Literal::B256(bs) => Constant::get_b256(context, *bs),
     }
 }
 
@@ -72,7 +62,7 @@ pub(super) fn convert_resolved_typeid_no_span(
     ast_type: &TypeId,
 ) -> Result<Type, CompileError> {
     let msg = "unknown source location";
-    let span = crate::span::Span::new(Arc::from(msg), 0, msg.len(), None).unwrap();
+    let span = crate::span::Span::from_string(msg.to_string());
     convert_resolved_typeid(context, ast_type, &span)
 }
 

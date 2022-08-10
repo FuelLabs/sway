@@ -13,10 +13,10 @@ pub(crate) use self::{
 };
 
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::DeterministicallyAborts,
+    error::*, parse_tree::*, semantic_analysis::*, type_system::*, types::DeterministicallyAborts,
 };
 
-use sway_parse::intrinsics::Intrinsic;
+use sway_ast::intrinsics::Intrinsic;
 use sway_types::{Ident, Span, Spanned};
 
 use std::{
@@ -31,7 +31,7 @@ pub struct TypedExpression {
     /// whether or not this expression is constantly evaluable (if the result is known at compile
     /// time)
     pub(crate) is_constant: IsConstant,
-    pub(crate) span: Span,
+    pub span: Span,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -70,7 +70,7 @@ impl UnresolvedTypeCheck for TypedExpression {
         match &self.expression {
             FunctionApplication {
                 arguments,
-                function_body,
+                function_decl,
                 ..
             } => {
                 res.append(
@@ -81,7 +81,8 @@ impl UnresolvedTypeCheck for TypedExpression {
                         .collect::<Vec<_>>(),
                 );
                 res.append(
-                    &mut function_body
+                    &mut function_decl
+                        .body
                         .contents
                         .iter()
                         .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
@@ -219,11 +220,11 @@ impl DeterministicallyAborts for TypedExpression {
         use TypedExpressionVariant::*;
         match &self.expression {
             FunctionApplication {
-                function_body,
+                function_decl,
                 arguments,
                 ..
             } => {
-                function_body.deterministically_aborts()
+                function_decl.body.deterministically_aborts()
                     || arguments.iter().any(|(_, x)| x.deterministically_aborts())
             }
             Tuple { fields, .. } => fields.iter().any(|x| x.deterministically_aborts()),
@@ -288,7 +289,7 @@ impl DeterministicallyAborts for TypedExpression {
 pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
     TypedExpression {
         expression: TypedExpressionVariant::Tuple { fields: vec![] },
-        return_type: crate::type_engine::insert_type(TypeInfo::ErrorRecovery),
+        return_type: crate::type_system::insert_type(TypeInfo::ErrorRecovery),
         is_constant: IsConstant::No,
         span,
     }
@@ -315,12 +316,16 @@ impl TypedExpression {
             .to_var_name(),
             is_absolute: true,
         };
-        let method_name = MethodName::FromTrait {
-            call_path: call_path.clone(),
+        let method_name_binding = TypeBinding {
+            inner: MethodName::FromTrait {
+                call_path: call_path.clone(),
+            },
+            type_arguments: vec![],
+            span: call_path.span(),
         };
         let arguments = VecDeque::from(arguments);
         let method = check!(
-            resolve_method_name(ctx, &method_name, arguments.clone(), vec![]),
+            resolve_method_name(ctx, &method_name_binding, arguments.clone()),
             return err(warnings, errors),
             warnings,
             errors
@@ -394,16 +399,13 @@ impl TypedExpression {
                 Self::type_check_variable_expression(ctx.namespace, name, span)
             }
             Expression::FunctionApplication {
-                name,
+                call_path_binding,
                 arguments,
                 span,
-                type_arguments,
-                ..
             } => Self::type_check_function_application(
                 ctx.by_ref(),
-                name,
+                call_path_binding,
                 arguments,
-                type_arguments,
                 span,
             ),
             Expression::LazyOperator { op, lhs, rhs, span } => {
@@ -443,34 +445,25 @@ impl TypedExpression {
                 Self::type_check_asm_expression(ctx.by_ref(), asm, span)
             }
             Expression::StructExpression {
-                span,
-                type_arguments,
-                struct_name,
-                fields,
-            } => Self::type_check_struct_expression(
-                ctx.by_ref(),
-                struct_name,
-                type_arguments,
+                call_path_binding,
                 fields,
                 span,
-            ),
+            } => Self::type_check_struct_expression(ctx.by_ref(), call_path_binding, fields, span),
             Expression::SubfieldExpression {
                 prefix,
                 span,
                 field_to_access,
             } => Self::type_check_subfield_expression(ctx.by_ref(), *prefix, span, field_to_access),
             Expression::MethodApplication {
-                method_name,
+                method_name_binding,
                 contract_call_params,
                 arguments,
-                type_arguments,
                 span,
             } => type_check_method_application(
                 ctx.by_ref(),
-                method_name,
+                method_name_binding,
                 contract_call_params,
                 arguments,
-                type_arguments,
                 span,
             ),
             Expression::Tuple { fields, span } => {
@@ -483,17 +476,10 @@ impl TypedExpression {
                 span,
             } => Self::type_check_tuple_index(ctx.by_ref(), *prefix, index, index_span, span),
             Expression::DelineatedPath {
-                call_path,
+                call_path_binding,
                 span,
                 args,
-                type_arguments,
-            } => Self::type_check_delineated_path(
-                ctx.by_ref(),
-                call_path,
-                span,
-                args,
-                type_arguments,
-            ),
+            } => Self::type_check_delineated_path(ctx.by_ref(), call_path_binding, span, args),
             Expression::AbiCast {
                 abi_name,
                 address,
@@ -521,17 +507,10 @@ impl TypedExpression {
                 Self::type_check_storage_load(ctx, field_names, &expr_span)
             }
             Expression::IntrinsicFunction {
-                kind,
-                type_arguments,
+                kind_binding,
                 arguments,
                 span,
-            } => Self::type_check_intrinsic_function(
-                ctx.by_ref(),
-                kind,
-                type_arguments,
-                arguments,
-                span,
-            ),
+            } => Self::type_check_intrinsic_function(ctx.by_ref(), kind_binding, arguments, span),
         };
         let mut typed_expression = match res.value {
             Some(r) => r,
@@ -599,7 +578,7 @@ impl TypedExpression {
             Literal::Byte(_) => TypeInfo::Byte,
             Literal::B256(_) => TypeInfo::B256,
         };
-        let id = crate::type_engine::insert_type(return_type);
+        let id = crate::type_system::insert_type(return_type);
         let exp = TypedExpression {
             expression: TypedExpressionVariant::Literal(lit),
             return_type: id,
@@ -659,35 +638,32 @@ impl TypedExpression {
         ok(exp, vec![], errors)
     }
 
-    #[allow(clippy::type_complexity)]
     fn type_check_function_application(
         ctx: TypeCheckContext,
-        name: CallPath,
+        mut call_path_binding: TypeBinding<CallPath>,
         arguments: Vec<Expression>,
-        type_arguments: Vec<TypeArgument>,
         _span: Span,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        // type deck the declaration
         let unknown_decl = check!(
-            ctx.namespace.resolve_call_path(&name).cloned(),
+            TypeBinding::type_check_with_ident(&mut call_path_binding, &ctx),
             return err(warnings, errors),
             warnings,
             errors
         );
+
+        // check that the decl is a function decl
         let function_decl = check!(
-            unknown_decl.expect_function(),
+            unknown_decl.expect_function().cloned(),
             return err(warnings, errors),
             warnings,
             errors
         );
-        instantiate_function_application(
-            ctx,
-            function_decl.clone(),
-            name,
-            type_arguments,
-            arguments,
-        )
+
+        instantiate_function_application(ctx, function_decl, call_path_binding.inner, arguments)
     }
 
     fn type_check_lazy_operator(
@@ -730,7 +706,7 @@ impl TypedExpression {
             TypedCodeBlock::type_check(ctx.by_ref(), contents),
             (
                 TypedCodeBlock { contents: vec![] },
-                crate::type_engine::insert_type(TypeInfo::Tuple(Vec::new()))
+                crate::type_system::insert_type(TypeInfo::Tuple(Vec::new()))
             ),
             warnings,
             errors
@@ -961,41 +937,16 @@ impl TypedExpression {
     #[allow(clippy::too_many_arguments)]
     fn type_check_struct_expression(
         mut ctx: TypeCheckContext,
-        call_path: CallPath<(TypeInfo, Span)>,
-        type_arguments: Vec<TypeArgument>,
+        call_path_binding: TypeBinding<CallPath<(TypeInfo, Span)>>,
         fields: Vec<StructExpressionField>,
         span: Span,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let (type_info, type_info_span) = call_path.suffix.clone();
-
-        // find the module that the symbol is in
-        let type_info_prefix = ctx.namespace.find_module_path(&call_path.prefixes);
-        check!(
-            ctx.namespace.root().check_submodule(&type_info_prefix),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
-        // create the type info object
-        let type_info = check!(
-            type_info.apply_type_arguments(type_arguments, &type_info_span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
-        // resolve the type of the type info object
+        // type check the call path
         let type_id = check!(
-            ctx.resolve_type_with_self(
-                insert_type(type_info),
-                &span,
-                EnforceTypeArguments::No,
-                Some(&type_info_prefix)
-            ),
+            call_path_binding.type_check_with_type_info(&mut ctx),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors
@@ -1070,6 +1021,7 @@ impl TypedExpression {
             expression: TypedExpressionVariant::StructExpression {
                 struct_name: struct_name.clone(),
                 fields: typed_fields_buf,
+                span: call_path_binding.inner.suffix.1.clone(),
             },
             return_type: type_id,
             is_constant: IsConstant::No,
@@ -1150,7 +1102,7 @@ impl TypedExpression {
             expression: TypedExpressionVariant::Tuple {
                 fields: typed_fields,
             },
-            return_type: crate::type_engine::insert_type(TypeInfo::Tuple(typed_field_types)),
+            return_type: crate::type_system::insert_type(TypeInfo::Tuple(typed_field_types)),
             is_constant,
             span,
         };
@@ -1225,114 +1177,116 @@ impl TypedExpression {
         ok(exp, warnings, errors)
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn type_check_delineated_path(
         ctx: TypeCheckContext,
-        call_path: CallPath,
+        call_path_binding: TypeBinding<CallPath>,
         span: Span,
         args: Vec<Expression>,
-        type_arguments: Vec<TypeArgument>,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
         // The first step is to determine if the call path refers to a module, enum, or function.
-        // We could rely on the capitalization convention, where modules are lowercase
-        // and enums are uppercase, but this is not robust in the long term.
-        // Instead, we try to resolve all paths.
         // If only one exists, then we use that one. Otherwise, if more than one exist, it is
         // an ambiguous reference error.
-        let mut probe_warnings = Vec::new();
-        let mut probe_errors = Vec::new();
 
-        // First, check if this could be a module. We check first so that we can check for
-        // ambiguity in the following enum check.
-        let is_module = ctx
-            .namespace
-            .check_submodule(&call_path.prefixes)
-            .ok(&mut probe_warnings, &mut probe_errors)
-            .is_some();
+        // Check if this could be a module
+        let mut module_probe_warnings = Vec::new();
+        let mut module_probe_errors = Vec::new();
+        let is_module = {
+            let call_path_binding = call_path_binding.clone();
+            ctx.namespace
+                .check_submodule(
+                    &[
+                        call_path_binding.inner.prefixes,
+                        vec![call_path_binding.inner.suffix],
+                    ]
+                    .concat(),
+                )
+                .ok(&mut module_probe_warnings, &mut module_probe_errors)
+                .is_some()
+        };
 
-        // Check if the call path refers to an enum in another module.
-        let (enum_name, enum_mod_path) = call_path.prefixes.split_last().expect("empty call path");
-        let abs_enum_mod_path: Vec<_> = ctx.namespace.find_module_path(enum_mod_path);
-        let exp = if let Some(enum_decl) = ctx
-            .namespace
-            .check_submodule_mut(enum_mod_path)
-            .ok(&mut warnings, &mut errors)
-            .map(|_| ())
-            .and_then(|_| {
-                ctx.namespace
-                    .root()
-                    .resolve_symbol(&abs_enum_mod_path, enum_name)
-                    .value
-            })
-            .and_then(|decl| decl.as_enum().cloned())
-        {
-            // Check for ambiguity between this enum name and a module name.
-            if is_module {
+        // Check if this could be a function
+        let mut function_probe_warnings = Vec::new();
+        let mut function_probe_errors = Vec::new();
+        let maybe_function = {
+            let mut call_path_binding = call_path_binding.clone();
+            TypeBinding::type_check_with_ident(&mut call_path_binding, &ctx)
+                .flat_map(|unknown_decl| unknown_decl.expect_function().cloned())
+                .ok(&mut function_probe_warnings, &mut function_probe_errors)
+        };
+
+        // Check if this could be an enum
+        let mut enum_probe_warnings = vec![];
+        let mut enum_probe_errors = vec![];
+        let maybe_enum = {
+            let call_path_binding = call_path_binding.clone();
+            let enum_name = call_path_binding.inner.prefixes[0].clone();
+            let variant_name = call_path_binding.inner.suffix.clone();
+            let enum_call_path = call_path_binding.inner.rshift();
+            let mut call_path_binding = TypeBinding {
+                inner: enum_call_path,
+                type_arguments: call_path_binding.type_arguments,
+                span: call_path_binding.span,
+            };
+            TypeBinding::type_check_with_ident(&mut call_path_binding, &ctx)
+                .flat_map(|unknown_decl| unknown_decl.expect_enum().cloned())
+                .ok(&mut enum_probe_warnings, &mut enum_probe_errors)
+                .map(|enum_decl| (enum_decl, enum_name, variant_name))
+        };
+
+        // compare the results of the checks
+        let exp = match (is_module, maybe_function, maybe_enum) {
+            (false, None, Some((enum_decl, enum_name, variant_name))) => {
+                warnings.append(&mut enum_probe_warnings);
+                errors.append(&mut enum_probe_errors);
+                check!(
+                    instantiate_enum(ctx, enum_decl, enum_name, variant_name, args),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            (false, Some(func_decl), None) => {
+                warnings.append(&mut function_probe_warnings);
+                errors.append(&mut function_probe_errors);
+                check!(
+                    instantiate_function_application(ctx, func_decl, call_path_binding.inner, args,),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            (true, None, None) => {
+                module_probe_errors.push(CompileError::Unimplemented(
+                    "this case is not yet implemented",
+                    span,
+                ));
+                return err(module_probe_warnings, module_probe_errors);
+            }
+            (true, None, Some(_)) => {
                 errors.push(CompileError::AmbiguousPath { span });
                 return err(warnings, errors);
             }
-            check!(
-                instantiate_enum(ctx, enum_decl, call_path.suffix, args, type_arguments),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )
-
-        // Otherwise, our prefix should point to some module ending with an enum or function.
-        } else if ctx
-            .namespace
-            .check_submodule_mut(&call_path.prefixes)
-            .ok(&mut probe_warnings, &mut probe_errors)
-            .is_some()
-        {
-            let decl = check!(
-                ctx.namespace.resolve_call_path(&call_path).cloned(),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            match decl {
-                TypedDeclaration::EnumDeclaration(enum_decl) => {
-                    check!(
-                        instantiate_enum(ctx, enum_decl, call_path.suffix, args, type_arguments),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    )
-                }
-                TypedDeclaration::FunctionDeclaration(func_decl) => {
-                    check!(
-                        instantiate_function_application(
-                            ctx,
-                            func_decl,
-                            call_path,
-                            vec!(), // the type args in this position are guarenteed to be empty due to parsing
-                            args,
-                        ),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    )
-                }
-                a => {
-                    // TODO: Should this be `NotAnEnumOrFunction`?
-                    errors.push(CompileError::NotAnEnum {
-                        name: call_path.to_string(),
-                        span,
-                        actually: a.friendly_name().to_string(),
-                    });
-                    return err(warnings, errors);
-                }
+            (true, Some(_), None) => {
+                errors.push(CompileError::AmbiguousPath { span });
+                return err(warnings, errors);
             }
-
-        // If prefix is neither a module or enum, there's nothing to be found.
-        } else {
-            errors.push(CompileError::SymbolNotFound {
-                name: call_path.suffix.clone(),
-            });
-            return err(warnings, errors);
+            (true, Some(_), Some(_)) => {
+                errors.push(CompileError::AmbiguousPath { span });
+                return err(warnings, errors);
+            }
+            (false, Some(_), Some(_)) => {
+                errors.push(CompileError::AmbiguousPath { span });
+                return err(warnings, errors);
+            }
+            (false, None, None) => {
+                errors.push(CompileError::SymbolNotFound {
+                    name: call_path_binding.inner.suffix,
+                });
+                return err(warnings, errors);
+            }
         };
 
         ok(exp, warnings, errors)
@@ -1593,44 +1547,34 @@ impl TypedExpression {
             )
         } else {
             // Otherwise convert into a method call 'index(self, index)' via the std::ops::Index trait.
-            let method_name = MethodName::FromTrait {
-                call_path: CallPath {
-                    prefixes: vec![
-                        Ident::new_with_override("core", span.clone()),
-                        Ident::new_with_override("ops", span.clone()),
-                    ],
-                    suffix: Ident::new_with_override("index", span.clone()),
-                    is_absolute: true,
+            let method_name = TypeBinding {
+                inner: MethodName::FromTrait {
+                    call_path: CallPath {
+                        prefixes: vec![
+                            Ident::new_with_override("core", span.clone()),
+                            Ident::new_with_override("ops", span.clone()),
+                        ],
+                        suffix: Ident::new_with_override("index", span.clone()),
+                        is_absolute: true,
+                    },
                 },
+                type_arguments: vec![],
+                span: span.clone(),
             };
-            type_check_method_application(
-                ctx,
-                method_name,
-                vec![],
-                vec![prefix, index],
-                vec![],
-                span,
-            )
+            type_check_method_application(ctx, method_name, vec![], vec![prefix, index], span)
         }
     }
 
     fn type_check_intrinsic_function(
         ctx: TypeCheckContext,
-        kind: Intrinsic,
-        type_arguments: Vec<TypeArgument>,
+        kind_binding: TypeBinding<Intrinsic>,
         arguments: Vec<Expression>,
         span: Span,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let (intrinsic_function, return_type) = check!(
-            TypedIntrinsicFunctionKind::type_check(
-                ctx,
-                kind,
-                type_arguments,
-                arguments,
-                span.clone()
-            ),
+            TypedIntrinsicFunctionKind::type_check(ctx, kind_binding, arguments, span.clone()),
             return err(warnings, errors),
             warnings,
             errors

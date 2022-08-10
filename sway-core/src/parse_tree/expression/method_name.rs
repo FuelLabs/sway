@@ -1,14 +1,16 @@
 use sway_types::Span;
 
 use crate::parse_tree::CallPath;
+use crate::type_system::TypeBinding;
 use crate::{Ident, TypeInfo};
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum MethodName {
     /// Represents a method lookup with a type somewhere in the path
     /// like a::b::~C::d()
     FromType {
-        call_path: CallPath<(TypeInfo, Span)>,
+        call_path_binding: TypeBinding<CallPath<(TypeInfo, Span)>>,
         method_name: Ident,
     },
     /// Represents a method lookup that does not contain any types in the path

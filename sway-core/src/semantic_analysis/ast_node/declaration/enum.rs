@@ -2,7 +2,7 @@ use crate::{
     error::*,
     parse_tree::*,
     semantic_analysis::*,
-    type_engine::{
+    type_system::{
         insert_type, look_up_type_id, CopyTypes, CreateTypeId, EnforceTypeArguments,
         MonomorphizeHelper, ReplaceSelfType, TypeId, TypeMapping, TypeParameter,
     },
@@ -18,7 +18,7 @@ pub struct TypedEnumDeclaration {
     pub(crate) type_parameters: Vec<TypeParameter>,
     pub variants: Vec<TypedEnumVariant>,
     pub(crate) span: Span,
-    pub(crate) visibility: Visibility,
+    pub visibility: Visibility,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:

@@ -1,19 +1,6 @@
-use crate::core::session::Session;
 use std::sync::Arc;
 use sway_fmt::{get_formatted_data, FormattingOptions};
-use tower_lsp::lsp_types::{
-    DocumentFormattingParams, Position, Range, TextDocumentIdentifier, TextEdit,
-};
-
-pub fn format_document(
-    session: Arc<Session>,
-    params: DocumentFormattingParams,
-) -> Option<Vec<TextEdit>> {
-    let text_document: TextDocumentIdentifier = params.text_document;
-    let url = text_document.uri;
-
-    session.format_text(&url)
-}
+use tower_lsp::lsp_types::{Position, Range, TextEdit};
 
 pub fn get_format_text_edits(text: Arc<str>, options: FormattingOptions) -> Option<Vec<TextEdit>> {
     // we only format if code is correct

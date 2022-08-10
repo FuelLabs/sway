@@ -1,6 +1,6 @@
 use super::{
-    TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration, TypedImplTrait,
-    TypedStorageDeclaration,
+    storage_only_types, TypedAstNode, TypedAstNodeContent, TypedDeclaration,
+    TypedFunctionDeclaration, TypedImplTrait, TypedStorageDeclaration,
 };
 use crate::{
     error::*,
@@ -9,7 +9,7 @@ use crate::{
         namespace::{self, Namespace},
         TypeCheckContext, TypedModule,
     },
-    type_engine::*,
+    type_system::*,
     types::ToJsonAbi,
 };
 use fuel_tx::StorageSlot;
@@ -112,6 +112,15 @@ impl TypedProgram {
             };
         }
 
+        for ast_n in &root.all_nodes {
+            check!(
+                storage_only_types::validate_decls_for_storage_only_types_in_ast(&ast_n.content),
+                continue,
+                warnings,
+                errors
+            );
+        }
+
         // Some checks that are specific to non-contracts
         if kind != TreeType::Contract {
             // impure functions are disallowed in non-contracts
@@ -183,8 +192,19 @@ impl TypedProgram {
                 }
             }
         };
-
-        ok(typed_program_kind, vec![], errors)
+        // check if no arguments passed to a `main()` in a `script` or `predicate`.
+        match &typed_program_kind {
+            TypedProgramKind::Script { main_function, .. }
+            | TypedProgramKind::Predicate { main_function, .. } => {
+                if !main_function.parameters.is_empty() {
+                    errors.push(CompileError::MainArgsNotYetSupported {
+                        span: main_function.span.clone(),
+                    })
+                }
+            }
+            _ => (),
+        }
+        ok(typed_program_kind, warnings, errors)
     }
 
     /// Ensures there are no unresolved types or types awaiting resolution in the AST.

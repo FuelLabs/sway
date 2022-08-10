@@ -3,14 +3,17 @@ use crate::{
     FormatterError,
 };
 use std::fmt::Write;
-use sway_parse::{
-    attribute::{Annotated, AttributeDecl},
+use sway_ast::{
+    attribute::{Annotated, Attribute, AttributeDecl},
     token::Delimiter,
-    Parse,
 };
+use sway_parse::Parse;
 use sway_types::Spanned;
 
-use super::bracket::{Parenthesis, SquareBracket};
+use super::{
+    bracket::{Parenthesis, SquareBracket},
+    comments::{ByteSpan, LeafSpans},
+};
 
 impl<T: Parse + Format> Format for Annotated<T> {
     fn format(
@@ -20,8 +23,18 @@ impl<T: Parse + Format> Format for Annotated<T> {
     ) -> Result<(), FormatterError> {
         // format each `Attribute`
         for attr in &self.attribute_list {
+            write!(
+                formatted_code,
+                "{}",
+                &formatter.shape.indent.to_string(&formatter.config)?,
+            )?;
             attr.format(formatted_code, formatter)?;
         }
+        write!(
+            formatted_code,
+            "{}",
+            &formatter.shape.indent.to_string(&formatter.config)?,
+        )?;
         // format `ItemKind`
         self.value.format(formatted_code, formatter)
     }
@@ -89,5 +102,21 @@ impl Parenthesis for AttributeDecl {
     ) -> Result<(), FormatterError> {
         write!(line, "{}", Delimiter::Parenthesis.as_close_char())?;
         Ok(())
+    }
+}
+impl LeafSpans for AttributeDecl {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = vec![ByteSpan::from(self.hash_token.span())];
+        collected_spans.append(&mut self.attribute.leaf_spans());
+        collected_spans
+    }
+}
+impl LeafSpans for Attribute {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = vec![ByteSpan::from(self.name.span())];
+        if let Some(args) = &self.args {
+            collected_spans.append(&mut args.leaf_spans());
+        }
+        collected_spans
     }
 }

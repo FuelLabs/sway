@@ -1,11 +1,13 @@
+// all
+//
 // regex: VAR=v\d+
 // regex: MD=!\d+
-// regex: LABEL=[[:alpha:]0-9]+:
+// regex: LABEL=[[:alpha:]0-9_]+:
 
 script {
     fn return_storage_key_wrapper() -> b256 {
         entry:
-        v0 = call return_storage_key(), !2, !3
+        v0 = call return_storage_key(), !4
         ret b256 v0
     }
 
@@ -18,8 +20,8 @@ script {
 // check: fn main
     fn main() -> b256 {
         entry:
-        v0 = call return_storage_key_wrapper(), !1, !3
-// check: $(arg0=$VAR) = get_storage_key, !1, $(md0=$MD)
+        v0 = call return_storage_key_wrapper(), !5
+// check: $(arg0=$VAR) = get_storage_key, $(stk_md=$MD)
 
 // check: $(arg1=$VAR) = phi($LABEL $arg0)
 // check: $(arg2=$VAR) = phi($LABEL $arg1)
@@ -28,10 +30,14 @@ script {
     }
 }
 
-// check: $(md0) = state_index 42
+// check: $(si_md=$MD) = state_index 42
 
-!0 = filepath "proj/src/main.sw"
+// check: $(stk_md) = (
+// sameln: $si_md
+
+!0 = "proj/src/main.sw"
 !1 = span !0 381 425
 !2 = span !0 404 423
 !3 = state_index 42
-
+!4 = (!2 !3)
+!5 = (!1 !3)

@@ -1,0 +1,27 @@
+// all
+//
+// regex: VAR=v\d+
+// regex: LABEL=[[:alpha:]0-9_]+:
+
+script {
+    fn a(b: u64) -> b256 {
+        entry:
+        v1 = int_to_ptr b to b256
+        ret b256 v1
+    }
+
+// check: fn main
+    fn main() -> b256 {
+        entry:
+
+// check: $(arg0=$VAR) = const u64 11
+        v0 = const u64 11
+// check: $(arg1=$VAR) = int_to_ptr $arg0 to b256
+// not: call
+        v1 = call a(v0)
+
+// check: $(arg2=$VAR) = phi($LABEL $arg1)
+// check: ret b256 $arg2
+        ret b256 v1
+    }
+}

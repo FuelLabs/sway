@@ -1,0 +1,5 @@
+category = "compile"
+
+# check: $()struct S {}
+# nextln: $()This struct is never used.
+

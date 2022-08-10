@@ -4,7 +4,7 @@ use crate::{
         IsConstant, TypeCheckContext, TypedExpression, TypedExpressionVariant,
         TypedVariableDeclaration, VariableMutability,
     },
-    type_engine::*,
+    type_system::*,
     CompileResult, FunctionParameter, Ident, TypedDeclaration,
 };
 
@@ -15,7 +15,7 @@ pub struct TypedFunctionParameter {
     pub name: Ident,
     pub is_mutable: bool,
     pub type_id: TypeId,
-    pub(crate) type_span: Span,
+    pub type_span: Span,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
