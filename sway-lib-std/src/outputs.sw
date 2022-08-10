@@ -3,12 +3,19 @@
 library inputs;
 
 use ::mem::read;
-use ::tx::tx_type;
+use ::tx::{
+    tx_type,
+    GTF_SCRIPT_OUTPUT_AT_INDEX,
+    GTF_CREATE_OUTPUT_AT_INDEX,
+    GTF_SCRIPT_OUTPUTS_COUNT,
+    GTF_CREATE_OUTPUTS_COUNT,
+};
 
 ////////////////////////////////////////
 // GTF Opcode const selectors
 ////////////////////////////////////////
 
+const GTF_OUTPUT_TYPE = 0x201;
 // const GTF_OUTPUT_COIN_TO = 0x202;
 const GTF_OUTPUT_COIN_AMOUNT = 0x203;
 // const GTF_OUTPUT_COIN_ASSET_ID = 0x204;
@@ -38,7 +45,7 @@ pub enum Output {
 
 /// Get the type of an output at `index`.
 pub fn output_type(index: u64) -> Output {
-    let type = tx_output_type(index);
+    let type = __gtf::<u64>(index, GTF_OUTPUT_TYPE);
     match type {
         0u8 => {
             Output::Coin
