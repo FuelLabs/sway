@@ -298,11 +298,11 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                 Token::from_parsed(AstToken::Expression(expression.clone())),
             );
         }
-        ExpressionKind::FunctionApplication(FunctionApplicationExpression {
-            call_path_binding,
-            arguments,
-            ..
-        }) => {
+        ExpressionKind::FunctionApplication(function_application_expression) => {
+            let FunctionApplicationExpression {
+                call_path_binding,
+                arguments,
+            } = &**function_application_expression;
             // Don't collect applications of desugared operators due to mismatched ident lengths.
             if !desugared_op(&call_path_binding.inner.prefixes) {
                 for ident in &call_path_binding.inner.prefixes {
@@ -349,11 +349,11 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                 handle_expression(exp, tokens);
             }
         }
-        ExpressionKind::Struct(StructExpression {
-            call_path_binding,
-            fields,
-            ..
-        }) => {
+        ExpressionKind::Struct(struct_expression) => {
+            let StructExpression {
+                call_path_binding,
+                fields,
+            } = &**struct_expression;
             for ident in &call_path_binding.inner.prefixes {
                 tokens.insert(
                     to_ident_key(ident),
@@ -405,12 +405,12 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
         ExpressionKind::Asm(_) => {
             //TODO handle asm expressions
         }
-        ExpressionKind::MethodApplication(MethodApplicationExpression {
-            method_name_binding,
-            arguments,
-            contract_call_params,
-            ..
-        }) => {
+        ExpressionKind::MethodApplication(method_application_expression) => {
+            let MethodApplicationExpression {
+                method_name_binding,
+                arguments,
+                contract_call_params,
+            } = &**method_application_expression;
             let prefixes = match &method_name_binding.inner {
                 MethodName::FromType {
                     call_path_binding, ..
@@ -462,11 +462,11 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
             );
             handle_expression(prefix, tokens);
         }
-        ExpressionKind::DelineatedPath(DelineatedPathExpression {
-            call_path_binding,
-            args,
-            ..
-        }) => {
+        ExpressionKind::DelineatedPath(delineated_path_expression) => {
+            let DelineatedPathExpression {
+                call_path_binding,
+                args,
+            } = &**delineated_path_expression;
             for ident in &call_path_binding.inner.prefixes {
                 tokens.insert(
                     to_ident_key(ident),
@@ -482,9 +482,8 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                 handle_expression(exp, tokens);
             }
         }
-        ExpressionKind::AbiCast(AbiCastExpression {
-            abi_name, address, ..
-        }) => {
+        ExpressionKind::AbiCast(abi_cast_expression) => {
+            let AbiCastExpression { abi_name, address } = &**abi_cast_expression;
             for ident in &abi_name.prefixes {
                 tokens.insert(
                     to_ident_key(ident),

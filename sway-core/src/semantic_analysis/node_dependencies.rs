@@ -402,14 +402,15 @@ impl Dependencies {
                 // ordered
                 self.gather_from_call_path(&(name.clone()).into(), false, false)
             }
-            ExpressionKind::FunctionApplication(FunctionApplicationExpression {
-                call_path_binding,
-                arguments,
-                ..
-            }) => self
-                .gather_from_call_path(&call_path_binding.inner, false, true)
-                .gather_from_type_arguments(&call_path_binding.type_arguments)
-                .gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg)),
+            ExpressionKind::FunctionApplication(function_application_expression) => {
+                let FunctionApplicationExpression {
+                    call_path_binding,
+                    arguments,
+                } = &**function_application_expression;
+                self.gather_from_call_path(&call_path_binding.inner, false, true)
+                    .gather_from_type_arguments(&call_path_binding.type_arguments)
+                    .gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg))
+            }
             ExpressionKind::LazyOperator(LazyOperatorExpression { lhs, rhs, .. }) => {
                 self.gather_from_expr(lhs).gather_from_expr(rhs)
             }
@@ -439,24 +440,25 @@ impl Dependencies {
             ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index, .. }) => {
                 self.gather_from_expr(prefix).gather_from_expr(index)
             }
-            ExpressionKind::Struct(StructExpression {
-                call_path_binding,
-                fields,
-                ..
-            }) => self
-                .gather_from_typeinfo(&call_path_binding.inner.suffix.0)
-                .gather_from_type_arguments(&call_path_binding.type_arguments)
-                .gather_from_iter(fields.iter(), |deps, field| {
-                    deps.gather_from_expr(&field.value)
-                }),
+            ExpressionKind::Struct(struct_expression) => {
+                let StructExpression {
+                    call_path_binding,
+                    fields,
+                } = &**struct_expression;
+                self.gather_from_typeinfo(&call_path_binding.inner.suffix.0)
+                    .gather_from_type_arguments(&call_path_binding.type_arguments)
+                    .gather_from_iter(fields.iter(), |deps, field| {
+                        deps.gather_from_expr(&field.value)
+                    })
+            }
             ExpressionKind::Subfield(SubfieldExpression { prefix, .. }) => {
                 self.gather_from_expr(prefix)
             }
-            ExpressionKind::DelineatedPath(DelineatedPathExpression {
-                call_path_binding,
-                args,
-                ..
-            }) => {
+            ExpressionKind::DelineatedPath(delineated_path_expression) => {
+                let DelineatedPathExpression {
+                    call_path_binding,
+                    args,
+                } = &**delineated_path_expression;
                 // It's either a module path which we can ignore, or an enum variant path, in which
                 // case we're interested in the enum name and initialiser args, ignoring the
                 // variant name.
@@ -464,9 +466,11 @@ impl Dependencies {
                     .gather_from_type_arguments(&call_path_binding.type_arguments)
                     .gather_from_iter(args.iter(), |deps, arg| deps.gather_from_expr(arg))
             }
-            ExpressionKind::MethodApplication(MethodApplicationExpression {
-                arguments, ..
-            }) => self.gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg)),
+            ExpressionKind::MethodApplication(method_application_expression) => self
+                .gather_from_iter(
+                    method_application_expression.arguments.iter(),
+                    |deps, arg| deps.gather_from_expr(arg),
+                ),
             ExpressionKind::Asm(asm) => self
                 .gather_from_iter(asm.registers.iter(), |deps, register| {
                     deps.gather_from_opt_expr(register.initializer.as_ref())
@@ -475,8 +479,8 @@ impl Dependencies {
 
             // we should do address someday, but due to the whole `re_parse_expression` thing
             // it isn't possible right now
-            ExpressionKind::AbiCast(AbiCastExpression { abi_name, .. }) => {
-                self.gather_from_call_path(abi_name, false, false)
+            ExpressionKind::AbiCast(abi_cast_expression) => {
+                self.gather_from_call_path(&abi_cast_expression.abi_name, false, false)
             }
 
             ExpressionKind::Literal(_) => self,

@@ -106,19 +106,19 @@ pub struct IntrinsicFunctionExpression {
 #[derive(Debug, Clone)]
 pub enum ExpressionKind {
     Literal(Literal),
-    FunctionApplication(FunctionApplicationExpression),
+    FunctionApplication(Box<FunctionApplicationExpression>),
     LazyOperator(LazyOperatorExpression),
     Variable(Ident),
     Tuple(Vec<Expression>),
     TupleIndex(TupleIndexExpression),
     Array(Vec<Expression>),
-    Struct(StructExpression),
+    Struct(Box<StructExpression>),
     CodeBlock(CodeBlock),
     If(IfExpression),
     Match(MatchExpression),
     // separated into other struct for parsing reasons
-    Asm(AsmExpression),
-    MethodApplication(MethodApplicationExpression),
+    Asm(Box<AsmExpression>),
+    MethodApplication(Box<MethodApplicationExpression>),
     /// A _subfield expression_ is anything of the form:
     /// ```ignore
     /// <ident>.<ident>
@@ -146,9 +146,9 @@ pub enum ExpressionKind {
     ///
     /// MyEnum::Variant1
     /// ```
-    DelineatedPath(DelineatedPathExpression),
+    DelineatedPath(Box<DelineatedPathExpression>),
     /// A cast of a hash to an ABI for calling a contract.
-    AbiCast(AbiCastExpression),
+    AbiCast(Box<AbiCastExpression>),
     ArrayIndex(ArrayIndexExpression),
     StorageAccess(StorageAccessExpression),
     IntrinsicFunction(IntrinsicFunctionExpression),

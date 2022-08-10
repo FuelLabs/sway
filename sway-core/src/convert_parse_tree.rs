@@ -1210,14 +1210,14 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             let abi_name = path_type_to_call_path(ec, name)?;
             let address = Box::new(expr_to_expression(ec, *address)?);
             Expression {
-                kind: ExpressionKind::AbiCast(AbiCastExpression { abi_name, address }),
+                kind: ExpressionKind::AbiCast(Box::new(AbiCastExpression { abi_name, address })),
                 span,
             }
         }
         Expr::Struct { path, fields } => {
             let call_path_binding = path_expr_to_call_path_binding(ec, path)?;
             Expression {
-                kind: ExpressionKind::Struct(StructExpression {
+                kind: ExpressionKind::Struct(Box::new(StructExpression {
                     call_path_binding,
                     fields: {
                         fields
@@ -1228,7 +1228,7 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                             })
                             .collect::<Result<_, _>>()?
                     },
-                }),
+                })),
                 span,
             }
         }
@@ -1274,7 +1274,7 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
         Expr::Asm(asm_block) => {
             let asm_expression = asm_block_to_asm_expression(ec, asm_block)?;
             Expression {
-                kind: ExpressionKind::Asm(asm_expression),
+                kind: ExpressionKind::Asm(Box::new(asm_expression)),
                 span,
             }
         }
@@ -1509,11 +1509,13 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                             .unwrap_or_else(|| method_name.span()),
                     };
                     Expression {
-                        kind: ExpressionKind::MethodApplication(MethodApplicationExpression {
-                            method_name_binding,
-                            contract_call_params: Vec::new(),
-                            arguments,
-                        }),
+                        kind: ExpressionKind::MethodApplication(Box::new(
+                            MethodApplicationExpression {
+                                method_name_binding,
+                                contract_call_params: Vec::new(),
+                                arguments,
+                            },
+                        )),
                         span,
                     }
                 }
@@ -1560,22 +1562,22 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                             };
                             if call_path.prefixes.is_empty() {
                                 Expression {
-                                    kind: ExpressionKind::FunctionApplication(
+                                    kind: ExpressionKind::FunctionApplication(Box::new(
                                         FunctionApplicationExpression {
                                             call_path_binding,
                                             arguments,
                                         },
-                                    ),
+                                    )),
                                     span,
                                 }
                             } else {
                                 Expression {
-                                    kind: ExpressionKind::DelineatedPath(
+                                    kind: ExpressionKind::DelineatedPath(Box::new(
                                         DelineatedPathExpression {
                                             call_path_binding,
                                             args: arguments,
                                         },
-                                    ),
+                                    )),
                                     span,
                                 }
                             }
@@ -1620,11 +1622,11 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                 .map(|expr| expr_to_expression(ec, expr))
                 .collect::<Result<_, _>>()?;
             Expression {
-                kind: ExpressionKind::MethodApplication(MethodApplicationExpression {
+                kind: ExpressionKind::MethodApplication(Box::new(MethodApplicationExpression {
                     method_name_binding,
                     contract_call_params,
                     arguments,
-                }),
+                })),
                 span,
             }
         }
@@ -1883,10 +1885,10 @@ fn unary_op_call(
         span: op_span,
     };
     Ok(Expression {
-        kind: ExpressionKind::FunctionApplication(FunctionApplicationExpression {
+        kind: ExpressionKind::FunctionApplication(Box::new(FunctionApplicationExpression {
             call_path_binding,
             arguments: vec![expr_to_expression(ec, arg)?],
-        }),
+        })),
         span,
     })
 }
@@ -1913,11 +1915,11 @@ fn binary_op_call(
         span: op_span,
     };
     Ok(Expression {
-        kind: ExpressionKind::MethodApplication(MethodApplicationExpression {
+        kind: ExpressionKind::MethodApplication(Box::new(MethodApplicationExpression {
             method_name_binding,
             contract_call_params: Vec::new(),
             arguments: vec![lhs, rhs],
-        }),
+        })),
         span,
     })
 }
@@ -2196,10 +2198,10 @@ fn path_expr_to_expression(
             span: call_path.span(),
         };
         Expression {
-            kind: ExpressionKind::DelineatedPath(DelineatedPathExpression {
+            kind: ExpressionKind::DelineatedPath(Box::new(DelineatedPathExpression {
                 call_path_binding,
                 args: Vec::new(),
-            }),
+            })),
             span,
         }
     };

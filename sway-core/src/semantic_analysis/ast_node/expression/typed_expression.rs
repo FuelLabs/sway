@@ -399,15 +399,18 @@ impl TypedExpression {
             ExpressionKind::Variable(name) => {
                 Self::type_check_variable_expression(ctx.namespace, name, span)
             }
-            ExpressionKind::FunctionApplication(FunctionApplicationExpression {
-                call_path_binding,
-                arguments,
-            }) => Self::type_check_function_application(
-                ctx.by_ref(),
-                call_path_binding,
-                arguments,
-                span,
-            ),
+            ExpressionKind::FunctionApplication(function_application_expression) => {
+                let FunctionApplicationExpression {
+                    call_path_binding,
+                    arguments,
+                } = *function_application_expression;
+                Self::type_check_function_application(
+                    ctx.by_ref(),
+                    call_path_binding,
+                    arguments,
+                    span,
+                )
+            }
             ExpressionKind::LazyOperator(LazyOperatorExpression { op, lhs, rhs }) => {
                 let ctx = ctx
                     .by_ref()
@@ -438,39 +441,49 @@ impl TypedExpression {
                     span,
                 )
             }
-            ExpressionKind::Asm(asm) => Self::type_check_asm_expression(ctx.by_ref(), asm, span),
-            ExpressionKind::Struct(StructExpression {
-                call_path_binding,
-                fields,
-            }) => Self::type_check_struct_expression(ctx.by_ref(), call_path_binding, fields, span),
+            ExpressionKind::Asm(asm) => Self::type_check_asm_expression(ctx.by_ref(), *asm, span),
+            ExpressionKind::Struct(struct_expression) => {
+                let StructExpression {
+                    call_path_binding,
+                    fields,
+                } = *struct_expression;
+                Self::type_check_struct_expression(ctx.by_ref(), call_path_binding, fields, span)
+            }
             ExpressionKind::Subfield(SubfieldExpression {
                 prefix,
                 field_to_access,
             }) => {
                 Self::type_check_subfield_expression(ctx.by_ref(), *prefix, span, field_to_access)
             }
-            ExpressionKind::MethodApplication(MethodApplicationExpression {
-                method_name_binding,
-                contract_call_params,
-                arguments,
-            }) => type_check_method_application(
-                ctx.by_ref(),
-                method_name_binding,
-                contract_call_params,
-                arguments,
-                span,
-            ),
+            ExpressionKind::MethodApplication(method_application_expression) => {
+                let MethodApplicationExpression {
+                    method_name_binding,
+                    contract_call_params,
+                    arguments,
+                } = *method_application_expression;
+                type_check_method_application(
+                    ctx.by_ref(),
+                    method_name_binding,
+                    contract_call_params,
+                    arguments,
+                    span,
+                )
+            }
             ExpressionKind::Tuple(fields) => Self::type_check_tuple(ctx.by_ref(), fields, span),
             ExpressionKind::TupleIndex(TupleIndexExpression {
                 prefix,
                 index,
                 index_span,
             }) => Self::type_check_tuple_index(ctx.by_ref(), *prefix, index, index_span, span),
-            ExpressionKind::DelineatedPath(DelineatedPathExpression {
-                call_path_binding,
-                args,
-            }) => Self::type_check_delineated_path(ctx.by_ref(), call_path_binding, span, args),
-            ExpressionKind::AbiCast(AbiCastExpression { abi_name, address }) => {
+            ExpressionKind::DelineatedPath(delineated_path_expression) => {
+                let DelineatedPathExpression {
+                    call_path_binding,
+                    args,
+                } = *delineated_path_expression;
+                Self::type_check_delineated_path(ctx.by_ref(), call_path_binding, span, args)
+            }
+            ExpressionKind::AbiCast(abi_cast_expression) => {
+                let AbiCastExpression { abi_name, address } = *abi_cast_expression;
                 Self::type_check_abi_cast(ctx.by_ref(), abi_name, address, span)
             }
             ExpressionKind::Array(contents) => Self::type_check_array(ctx.by_ref(), contents, span),
