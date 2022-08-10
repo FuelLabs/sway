@@ -8,7 +8,7 @@ use crate::{
         Mode, TypeCheckContext, TypedAstNodeContent, TypedExpression, TypedExpressionVariant,
         TypedIntrinsicFunctionKind, TypedReturnStatement, TypedWhileLoop,
     },
-    type_engine::{
+    type_system::{
         insert_type, look_up_type_id, resolve_type, set_type_as_storage_only, unify_with_self,
         CopyTypes, TypeId, TypeMapping, TypeParameter,
     },

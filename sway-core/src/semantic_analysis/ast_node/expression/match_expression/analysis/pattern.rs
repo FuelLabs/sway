@@ -3,7 +3,7 @@ use std::{cmp::Ordering, fmt};
 use std::fmt::Write;
 use sway_types::Span;
 
-use crate::type_engine::look_up_type_id;
+use crate::type_system::look_up_type_id;
 use crate::TypeInfo;
 use crate::{
     error::{err, ok},

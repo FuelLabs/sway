@@ -9,7 +9,7 @@ use crate::{
         namespace::{self, Namespace},
         TypeCheckContext, TypedModule,
     },
-    type_engine::*,
+    type_system::*,
     types::ToJsonAbi,
 };
 use fuel_tx::StorageSlot;
