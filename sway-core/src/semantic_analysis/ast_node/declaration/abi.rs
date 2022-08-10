@@ -7,7 +7,7 @@ use crate::{
         ast_node::{type_check_interface_surface, type_check_trait_methods},
         TypeCheckContext,
     },
-    type_engine::{insert_type, AbiName, TypeId},
+    type_system::{insert_type, AbiName, TypeId},
     AbiDeclaration, CompileResult, FunctionDeclaration, TypeInfo,
 };
 

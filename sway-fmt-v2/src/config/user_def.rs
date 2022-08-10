@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use super::user_opts::StructuresOptions;
 
 /// Styling preferences for user-defined structures like `struct`s or `enum`s.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Structures {
     /// Align fields of user-defined structures if their diffs fit within threshold.
     pub field_alignment: FieldAlignment,

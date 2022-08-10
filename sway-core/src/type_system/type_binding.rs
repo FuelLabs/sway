@@ -3,7 +3,7 @@ use sway_types::{Span, Spanned};
 use crate::{
     error::{err, ok},
     semantic_analysis::TypeCheckContext,
-    type_engine::{insert_type, EnforceTypeArguments},
+    type_system::{insert_type, EnforceTypeArguments},
     CallPath, CompileResult, TypeInfo, TypedDeclaration,
 };
 
