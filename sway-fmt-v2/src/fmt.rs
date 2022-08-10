@@ -1,5 +1,5 @@
 use crate::utils::{
-    comments::handle_comments, newline_style::apply_newline_style,
+    comments::handle_comments, newline::handle_newlines, newline_style::apply_newline_style,
     program_type::insert_program_type, shape::Shape,
 };
 pub use crate::{
@@ -76,6 +76,14 @@ impl Formatter {
         let mut formatted_code = String::from(&raw_formatted_code);
         // Add comments
         handle_comments(
+            src.clone(),
+            &module,
+            Arc::from(formatted_code.clone()),
+            path.clone(),
+            &mut formatted_code,
+        )?;
+        // Add newline sequences
+        handle_newlines(
             src,
             &module,
             Arc::from(formatted_code.clone()),
