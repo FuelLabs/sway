@@ -2,7 +2,8 @@ use crate::{Parse, ParseErrorKind, ParseResult, ParseToEnd, Parser, ParserConsum
 
 use sway_ast::keywords::{
     AbiToken, BreakToken, ConstToken, ContinueToken, EnumToken, FnToken, ImplToken, MutToken,
-    OpenAngleBracketToken, PubToken, StorageToken, StructToken, TraitToken, UseToken, WhereToken,
+    OpenAngleBracketToken, PubToken, SelfToken, StorageToken, StructToken, TraitToken, UseToken,
+    WhereToken,
 };
 use sway_ast::{FnArg, FnArgs, FnSignature, ItemKind, TypeField};
 
@@ -87,7 +88,13 @@ impl ParseToEnd for FnArgs {
     fn parse_to_end<'a, 'e>(
         mut parser: Parser<'a, 'e>,
     ) -> ParseResult<(FnArgs, ParserConsumed<'a>)> {
-        let mutable_self = parser.take::<MutToken>();
+        let mutable_self = match parser.peek::<(MutToken, SelfToken)>() {
+            Some(_mut_token) => {
+                let mut_token = parser.parse()?;
+                Some(mut_token)
+            }
+            None => None,
+        };
         match parser.take() {
             Some(self_token) => {
                 match parser.take() {

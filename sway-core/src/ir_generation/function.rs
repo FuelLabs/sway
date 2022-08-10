@@ -15,7 +15,7 @@ use crate::{
     metadata::MetadataManager,
     parse_tree::{AsmOp, AsmRegister, LazyOp, Literal},
     semantic_analysis::*,
-    type_system::{resolve_type, TypeId, TypeInfo},
+    type_system::{look_up_type_id, resolve_type, TypeId, TypeInfo},
 };
 use sway_ast::intrinsics::Intrinsic;
 use sway_ir::{Context, *};
@@ -33,6 +33,7 @@ pub(super) struct FnCompiler {
     pub(super) current_block: Block,
     pub(super) block_to_break_to: Option<Block>,
     pub(super) block_to_continue_to: Option<Block>,
+    pub(super) current_fn_param: Option<TypedFunctionParameter>,
     lexical_map: LexicalMap,
     recreated_fns: HashMap<(Span, Vec<TypeId>, Vec<TypeId>), Function>,
 }
@@ -57,6 +58,7 @@ impl FnCompiler {
             block_to_continue_to: None,
             lexical_map,
             recreated_fns: HashMap::new(),
+            current_fn_param: None,
         }
     }
 
@@ -593,7 +595,7 @@ impl FnCompiler {
 
                 // We're still undecided as to whether this should be decided by type or size.
                 // Going with type for now.
-                let arg0_type = arg0.get_type(context).unwrap();
+                let arg0_type = arg0.get_stripped_ptr_type(context).unwrap();
                 if arg0_type.is_copy_type() {
                     self.current_block
                         .ins(context)
@@ -633,7 +635,7 @@ impl FnCompiler {
                 // New struct type to hold the user arguments bundled together.
                 let field_types = compiled_args
                     .iter()
-                    .map(|val| val.get_type(context).unwrap())
+                    .filter_map(|val| val.get_stripped_ptr_type(context))
                     .collect::<Vec<_>>();
                 let user_args_struct_aggregate = Aggregate::new_struct(context, field_types);
 
@@ -798,6 +800,7 @@ impl FnCompiler {
         // Here we build little single-use instantiations of the callee and then call them.  Naming
         // is not yet absolute so we must ensure the function names are unique.
         //
+
         // Eventually we need to Do It Properly and inline into the AST only when necessary, and
         // compile the standard library to an actual module.
 
@@ -833,7 +836,8 @@ impl FnCompiler {
         // Now actually call the new function.
         let args = ast_args
             .into_iter()
-            .map(|(_, expr)| self.compile_expression(context, md_mgr, expr))
+            .zip(callee.parameters.into_iter())
+            .map(|((_, expr), param)| self.compile_fn_arg(context, md_mgr, &param, expr))
             .collect::<Result<Vec<Value>, CompileError>>()?;
         let state_idx_md_idx = match self_state_idx {
             Some(self_state_idx) => {
@@ -847,6 +851,19 @@ impl FnCompiler {
             .call(callee, &args)
             .add_metadatum(context, span_md_idx)
             .add_metadatum(context, state_idx_md_idx))
+    }
+
+    fn compile_fn_arg(
+        &mut self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        fn_param: &TypedFunctionParameter,
+        ast_expr: TypedExpression,
+    ) -> Result<Value, CompileError> {
+        self.current_fn_param = Some(fn_param.clone());
+        let ret = self.compile_expression(context, md_mgr, ast_expr);
+        self.current_fn_param = None;
+        ret
     }
 
     fn compile_if(
@@ -1051,7 +1068,11 @@ impl FnCompiler {
                 .ins(context)
                 .get_ptr(ptr, ptr_ty, 0)
                 .add_metadatum(context, span_md_idx);
-            Ok(if ptr.is_aggregate_ptr(context) {
+            let fn_param = self.current_fn_param.as_ref();
+            let is_mutable_primitive = fn_param.is_some()
+                && look_up_type_id(fn_param.unwrap().type_id).is_copy_type()
+                && fn_param.unwrap().is_mutable;
+            Ok(if ptr.is_aggregate_ptr(context) || is_mutable_primitive {
                 ptr_val
             } else {
                 self.current_block
@@ -1219,7 +1240,7 @@ impl FnCompiler {
                 &ast_reassignment.lhs_indices,
             )?;
 
-            let ty = match val.get_type(context).unwrap() {
+            let ty = match val.get_stripped_ptr_type(context).unwrap() {
                 Type::Struct(aggregate) => aggregate,
                 _otherwise => {
                     let spans = ast_reassignment
@@ -1804,6 +1825,10 @@ impl FnCompiler {
                 match r#type {
                     Type::Array(_) => Err(CompileError::Internal(
                         "Arrays in storage have not been implemented yet.",
+                        Span::dummy(),
+                    )),
+                    Type::Pointer(_) => Err(CompileError::Internal(
+                        "Pointers in storage have not been implemented yet.",
                         Span::dummy(),
                     )),
                     Type::B256 => self.compile_b256_storage(

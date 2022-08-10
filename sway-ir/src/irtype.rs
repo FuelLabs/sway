@@ -9,7 +9,7 @@
 //! [`Aggregate`] is an abstract collection of [`Type`]s used for structs, unions and arrays,
 //! though see below for future improvements around splitting arrays into a different construct.
 
-use crate::context::Context;
+use crate::{context::Context, Pointer};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Type {
@@ -21,12 +21,16 @@ pub enum Type {
     Array(Aggregate),
     Union(Aggregate),
     Struct(Aggregate),
+    Pointer(Pointer),
 }
 
 impl Type {
     /// Return whether this is a 'copy' type, one whose value will always fit in a register.
     pub fn is_copy_type(&self) -> bool {
-        matches!(self, Type::Unit | Type::Bool | Type::Uint(_))
+        matches!(
+            self,
+            Type::Unit | Type::Bool | Type::Uint(_) | Type::Pointer(_)
+        )
     }
 
     /// Return a string representation of type, used for printing.
@@ -58,6 +62,7 @@ impl Type {
                 let agg_content = &context.aggregates[agg.0];
                 format!("{{ {} }}", sep_types_str(agg_content, ", "))
             }
+            Type::Pointer(ptr) => ptr.as_string(context, None),
         }
     }
 
@@ -81,8 +86,31 @@ impl Type {
                 .field_types()
                 .iter()
                 .any(|field_ty| r.eq(context, field_ty)),
+
+            (Type::Pointer(l), Type::Pointer(r)) => l.is_equivalent(context, r),
             _ => false,
         }
+    }
+
+    pub fn strip_ptr_type(&self, context: &Context) -> Type {
+        if let Type::Pointer(ptr) = self {
+            *ptr.get_type(context)
+        } else {
+            *self
+        }
+    }
+
+    /// Gets the inner pointer type if its a pointer.
+    pub fn get_inner_ptr_type(&self, context: &Context) -> Option<Type> {
+        match self {
+            Type::Pointer(ptr) => Some(*ptr.get_type(context)),
+            _ => None,
+        }
+    }
+
+    /// Returns true if this is a pointer type.
+    pub fn is_ptr_type(&self) -> bool {
+        matches!(self, Type::Pointer(_))
     }
 }
 

@@ -360,9 +360,12 @@ fn inline_instruction(
                 base_ptr,
                 ptr_ty,
                 offset,
-            } => new_block
-                .ins(context)
-                .get_ptr(map_ptr(base_ptr), ptr_ty, offset),
+            } => {
+                let ty = *ptr_ty.get_type(context);
+                new_block
+                    .ins(context)
+                    .get_ptr(map_ptr(base_ptr), ty, offset)
+            }
             Instruction::Gtf { index, tx_field_id } => {
                 new_block.ins(context).gtf(map_value(index), tx_field_id)
             }

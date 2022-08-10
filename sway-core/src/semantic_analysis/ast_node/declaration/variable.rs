@@ -1,6 +1,6 @@
 use crate::{semantic_analysis::*, type_system::*, Ident, Visibility};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum VariableMutability {
     // private + mutable
     Mutable,

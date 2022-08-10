@@ -158,8 +158,6 @@ pub enum ConvertParseTreeError {
     TuplePatternsNotSupportedHere { span: Span },
     #[error("constructor patterns require a single argument")]
     ConstructorPatternOneArg { span: Span },
-    #[error("mutable bindings are not supported in this position")]
-    MutableBindingsNotSupportedHere { span: Span },
     #[error("constructor patterns cannot contain sub-patterns")]
     ConstructorPatternSubPatterns { span: Span },
     #[error("paths are not supported in this position")]
@@ -222,7 +220,6 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::WildcardPatternsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::TuplePatternsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::ConstructorPatternOneArg { span } => span.clone(),
-            ConvertParseTreeError::MutableBindingsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::ConstructorPatternSubPatterns { span } => span.clone(),
             ConvertParseTreeError::PathsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::FullySpecifiedTypesNotSupported { span } => span.clone(),
@@ -1984,20 +1981,12 @@ fn fn_arg_to_function_parameter(
 ) -> Result<FunctionParameter, ErrorEmitted> {
     let type_span = fn_arg.ty.span();
     let pat_span = fn_arg.pattern.span();
-    let name = match fn_arg.pattern {
+    let (mutable, name) = match fn_arg.pattern {
         Pattern::Wildcard { .. } => {
             let error = ConvertParseTreeError::WildcardPatternsNotSupportedHere { span: pat_span };
             return Err(ec.error(error));
         }
-        Pattern::Var { mutable, name } => {
-            if let Some(mut_token) = mutable {
-                let error = ConvertParseTreeError::MutableBindingsNotSupportedHere {
-                    span: mut_token.span(),
-                };
-                return Err(ec.error(error));
-            }
-            name
-        }
+        Pattern::Var { mutable, name } => (mutable, name),
         Pattern::Literal(..) => {
             let error = ConvertParseTreeError::LiteralPatternsNotSupportedHere { span: pat_span };
             return Err(ec.error(error));
@@ -2022,7 +2011,7 @@ fn fn_arg_to_function_parameter(
     };
     let function_parameter = FunctionParameter {
         name,
-        is_mutable: false,
+        is_mutable: mutable.is_some(),
         type_id: insert_type(ty_to_type_info(ec, fn_arg.ty)?),
         type_span,
     };

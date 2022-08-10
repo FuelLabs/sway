@@ -57,6 +57,11 @@ impl TypedFunctionParameter {
             warnings,
             errors,
         );
+        let mutability = if parameter.is_mutable {
+            VariableMutability::Mutable
+        } else {
+            VariableMutability::Immutable
+        };
         ctx.namespace.insert_symbol(
             parameter.name.clone(),
             TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -67,17 +72,13 @@ impl TypedFunctionParameter {
                     is_constant: IsConstant::No,
                     span: parameter.name.span(),
                 },
-                is_mutable: if parameter.is_mutable {
-                    VariableMutability::Mutable
-                } else {
-                    VariableMutability::Immutable
-                },
+                is_mutable: mutability,
                 type_ascription: type_id,
             }),
         );
         let parameter = TypedFunctionParameter {
             name: parameter.name,
-            is_mutable: parameter.is_mutable,
+            is_mutable: mutability.is_mutable(),
             type_id,
             type_span: parameter.type_span,
         };

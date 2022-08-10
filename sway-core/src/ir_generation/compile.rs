@@ -3,6 +3,7 @@ use crate::{
     metadata::MetadataManager,
     parse_tree::Visibility,
     semantic_analysis::{ast_node::*, namespace},
+    type_engine::look_up_type_id,
 };
 
 use super::{
@@ -155,14 +156,28 @@ pub(super) fn compile_function(
         let args = ast_fn_decl
             .parameters
             .iter()
-            .map(|param| {
-                convert_resolved_typeid(context, &param.type_id, &param.type_span)
-                    .map(|ty| (param.name.as_str().into(), ty, param.name.span()))
-            })
+            .map(|param| convert_fn_param(context, param))
             .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
         compile_fn_with_args(context, md_mgr, module, ast_fn_decl, args, None).map(&Some)
     }
+}
+
+fn convert_fn_param(
+    context: &mut Context,
+    param: &TypedFunctionParameter,
+) -> Result<(String, Type, Span), CompileError> {
+    convert_resolved_typeid(context, &param.type_id, &param.type_span).map(|ty| {
+        (
+            param.name.as_str().into(),
+            if param.is_mutable && look_up_type_id(param.type_id).is_copy_type() {
+                Type::Pointer(Pointer::new(context, ty, param.is_mutable, None))
+            } else {
+                ty
+            },
+            param.name.span(),
+        )
+    })
 }
 
 fn compile_fn_with_args(
