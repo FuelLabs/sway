@@ -1,6 +1,6 @@
 use sway_types::{Span, Spanned};
 
-use crate::type_engine::{is_type_info_storage_only, resolve_type, TypeId};
+use crate::type_system::{is_type_info_storage_only, resolve_type, TypeId};
 use crate::{error::ok, semantic_analysis, CompileError, CompileResult, CompileWarning};
 use crate::{TypedDeclaration, TypedFunctionDeclaration};
 

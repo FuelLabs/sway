@@ -1,4 +1,4 @@
-use crate::{error::*, namespace::*, parse_tree::*, semantic_analysis::*, type_engine::*};
+use crate::{error::*, namespace::*, parse_tree::*, semantic_analysis::*, type_system::*};
 
 use super::TraitMap;
 
