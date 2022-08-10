@@ -210,6 +210,9 @@ impl Session {
                 typed_program,
                 warnings,
             } => {
+                let typed_ast = format!("{:#?}", typed_program.root.all_nodes);
+                // println!("{}", typed_ast);
+
                 if let TypedProgramKind::Script {
                     ref main_function, ..
                 }
