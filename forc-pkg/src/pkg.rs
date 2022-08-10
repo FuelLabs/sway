@@ -373,8 +373,8 @@ fn find_proj_node(graph: &Graph, proj_name: &str) -> Result<NodeIx> {
 ///
 /// If required minimum forc version is higher than current forc version return an error with
 /// upgrade instructions
-fn validate_version(proj_manifest: &ManifestFile) -> Result<()> {
-    match &proj_manifest.project.forc_version {
+fn validate_version(pkg_manifest: &ManifestFile) -> Result<()> {
+    match &pkg_manifest.project.forc_version {
         Some(min_forc_version) => {
             // Get the current version of the toolchain
             let crate_version = env!("CARGO_PKG_VERSION");
@@ -382,7 +382,7 @@ fn validate_version(proj_manifest: &ManifestFile) -> Result<()> {
             if toolchain_version < *min_forc_version {
                 bail!(
                     "{:?} requires forc version {} but current forc version is {}\nUpdate the toolchain by following: https://fuellabs.github.io/sway/v{}/introduction/installation.html",
-                    proj_manifest.project.name,
+                    pkg_manifest.project.name,
                     min_forc_version,
                     crate_version,
                     crate_version
@@ -485,20 +485,7 @@ fn validate_dep_manifest(dep: &Pinned, dep_manifest: &ManifestFile) -> Result<()
             dep_manifest.project.name,
         );
     }
-    if let Some(dep_forc_version) = &dep_manifest.project.forc_version {
-        let crate_version = env!("CARGO_PKG_VERSION");
-        // Ensure the current forc version is >= forc_version required for this dep
-        let current_forc_version = semver::Version::parse(crate_version)?;
-        if current_forc_version < *dep_forc_version {
-            bail!(
-                "{:?} requires forc version {} but current forc version is {}\nUpdate the toolchain by following: https://fuellabs.github.io/sway/v{}/introduction/installation.html",
-                dep.name,
-                dep_forc_version,
-                current_forc_version,
-                crate_version
-            );
-        }
-    }
+    validate_version(dep_manifest)?;
     Ok(())
 }
 
