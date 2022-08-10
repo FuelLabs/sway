@@ -542,9 +542,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.2.15"
+version = "3.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44bbe24bbd31a185bc2c4f7c2abe80bea13a20d57ee4e55be70ac512bdc76417"
+checksum = "a3dbbb6653e7c55cc8595ad3e1f7be8f32aba4eb7ff7f0fd1163d4f3d137c0a9"
 dependencies = [
  "atty",
  "bitflags",
@@ -563,7 +563,7 @@ version = "3.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ead064480dfc4880a10764488415a97fdd36a4cf1bb022d372f02e8faf8386e1"
 dependencies = [
- "clap 3.2.15",
+ "clap 3.2.16",
 ]
 
 [[package]]
@@ -1022,7 +1022,7 @@ name = "examples-checker"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "clap 3.2.15",
+ "clap 3.2.16",
 ]
 
 [[package]]
@@ -1102,7 +1102,7 @@ version = "0.19.2"
 dependencies = [
  "annotate-snippets",
  "anyhow",
- "clap 3.2.15",
+ "clap 3.2.16",
  "clap_complete",
  "forc-pkg",
  "forc-util",
@@ -1135,7 +1135,7 @@ name = "forc-explore"
 version = "0.19.2"
 dependencies = [
  "anyhow",
- "clap 3.2.15",
+ "clap 3.2.16",
  "forc-util",
  "reqwest",
  "serde",
@@ -1150,7 +1150,7 @@ name = "forc-fmt"
 version = "0.19.2"
 dependencies = [
  "anyhow",
- "clap 3.2.15",
+ "clap 3.2.16",
  "forc-util",
  "prettydiff 0.5.1",
  "sway-core",
@@ -1165,7 +1165,7 @@ name = "forc-fmt-v2"
 version = "0.19.2"
 dependencies = [
  "anyhow",
- "clap 3.2.15",
+ "clap 3.2.16",
  "forc-util",
  "prettydiff 0.5.1",
  "sway-core",
@@ -1180,7 +1180,7 @@ name = "forc-lsp"
 version = "0.19.2"
 dependencies = [
  "anyhow",
- "clap 3.2.15",
+ "clap 3.2.16",
  "sway-lsp",
  "tokio",
 ]
@@ -1191,12 +1191,14 @@ version = "0.19.2"
 dependencies = [
  "anyhow",
  "forc-util",
+ "fuel-crypto",
  "fuel-tx",
  "git2",
  "petgraph",
  "semver 1.0.12",
  "serde",
  "serde_ignored",
+ "serde_json",
  "sway-core",
  "sway-types",
  "sway-utils",
@@ -1287,7 +1289,7 @@ checksum = "70c53c43a395fe5bafb3502e4a87c4d7b64a8cba1ea12e6a2ce33ff95c2a5016"
 dependencies = [
  "anyhow",
  "chrono",
- "clap 3.2.15",
+ "clap 3.2.16",
  "cynic",
  "derive_more",
  "fuel-tx",
@@ -2130,7 +2132,7 @@ source = "git+https://github.com/mitchmindtree/mdBook?branch=nightly-borrowcheck
 dependencies = [
  "anyhow",
  "chrono",
- "clap 3.2.15",
+ "clap 3.2.16",
  "clap_complete",
  "env_logger",
  "handlebars",
@@ -2153,7 +2155,7 @@ name = "mdbook-forc-documenter"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "clap 3.2.15",
+ "clap 3.2.16",
  "mdbook",
  "semver 1.0.12",
  "serde",
@@ -2385,6 +2387,12 @@ dependencies = [
  "smallvec",
  "windows-sys",
 ]
+
+[[package]]
+name = "paste"
+version = "1.0.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9423e2b32f7a043629287a536f21951e8c6a82482d0acb1eeebfc90bc2225b22"
 
 [[package]]
 name = "peg"
@@ -3622,7 +3630,7 @@ dependencies = [
 name = "sway-core"
 version = "0.19.2"
 dependencies = [
- "clap 3.2.15",
+ "clap 3.2.16",
  "derivative",
  "dirs 3.0.2",
  "either",
@@ -3665,6 +3673,8 @@ version = "0.19.2"
 dependencies = [
  "anyhow",
  "forc-util",
+ "paste",
+ "prettydiff 0.6.1",
  "ropey",
  "serde",
  "serde_ignored",
@@ -3827,6 +3837,7 @@ name = "test"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "clap 3.2.16",
  "filecheck",
  "forc",
  "forc-pkg",

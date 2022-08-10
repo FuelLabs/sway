@@ -12,6 +12,8 @@ use sway_ast::{
 };
 use sway_types::Spanned;
 
+use super::shape::LineStyle;
+
 impl Format for Ty {
     fn format(
         &self,
@@ -96,10 +98,19 @@ impl Format for TyTupleDescriptor {
             tail,
         } = self
         {
+            let prev_state = formatter.shape.code_line;
+            formatter
+                .shape
+                .code_line
+                .update_line_style(LineStyle::Normal);
+
             head.format(formatted_code, formatter)?;
             write!(formatted_code, "{} ", comma_token.ident().as_str())?;
             tail.format(formatted_code, formatter)?;
+
+            formatter.shape.update_line_settings(prev_state);
         }
+
         Ok(())
     }
 }
