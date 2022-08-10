@@ -56,6 +56,10 @@ pub enum Input {
     Message: (),
 }
 
+////////////////////////////////////////
+// General Inputs
+////////////////////////////////////////
+
 /// Get the type of the input at `index`.
 pub fn input_type(index: u64) -> Input {
     let type = __gtf::<u8>(index, GTF_INPUT_TYPE);
@@ -258,7 +262,6 @@ pub fn input_message_predicate_data_length(index: u64) -> u64 {
 pub fn input_message_predicate_data(index: u64) -> T {
     read::<T>(__gtf::<u64>(index, GTF_INPUT_MESSAGE_DATA))
 }
-
 
 /// Get the predicate of the input message at `index`.
 pub fn input_message_predicate(index: u64) -> T {
