@@ -32,7 +32,7 @@ const GTF_INPUT_CONTRACT_OUTPUT_INDEX = 0x10F;
 // const GTF_INPUT_CONTRACT_CONTRACT_ID = 0x113;
 
 const GTF_INPUT_MESSAGE_MESSAGE_ID = 0x114;
-// const GTF_INPUT_MESSAGE_SENDER = 0x115;
+const GTF_INPUT_MESSAGE_SENDER = 0x115;
 // const GTF_INPUT_MESSAGE_RECIPIENT = 0x116;
 const GTF_INPUT_MESSAGE_AMOUNT = 0x117;
 // const GTF_INPUT_MESSAGE_NONCE = 0x118;
@@ -219,7 +219,10 @@ pub fn input_message_msg_id(index: u64) -> b256 {
     __gtf::<b256>(index, GTF_INPUT_MESSAGE_MESSAGE_ID)
 }
 
-
+/// Get the sender of the input message at `index`.
+pub fn input_message_sender(index: u64) -> Address {
+    ~Address::from(__gtf::<b256>(index, GTF_INPUT_MESSAGE_SENDER))
+}
 
 /// Get the predicate of the input message at `index`.
 pub fn input_message_predicate(index: u64) -> T {
