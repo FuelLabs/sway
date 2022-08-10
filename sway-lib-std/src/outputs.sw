@@ -1,10 +1,12 @@
 //! Getters for fields on transaction outputs.
-//! This includes OutputCoins, InputMessages and InputContracts.
-library inputs;
+//! This includes OutputCoins, OutputContracts and OutputMessages.
+library outputs;
 
 use ::mem::read;
+use ::revert::revert;
 use ::tx::{
     tx_type,
+    Transaction,
     GTF_SCRIPT_OUTPUT_AT_INDEX,
     GTF_CREATE_OUTPUT_AT_INDEX,
     GTF_SCRIPT_OUTPUTS_COUNT,
@@ -108,11 +110,10 @@ pub fn output_amount(index: u64) -> u64 {
         Output::Message => {
             __gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT)
         },
-        // ues GTF_OUTPUT_MESSAGE_AMOUNT as there's no simlar const for OutputChange
+        // reuse GTF_OUTPUT_MESSAGE_AMOUNT for Output::Change & Output::Variable
         Output::Change => {
             __gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT)
         },
-        // use GTF_OUTPUT_MESSAGE_AMOUNT as there's no simlar const for OutputVariable
         Output::Variable => {
             __gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT)
         },

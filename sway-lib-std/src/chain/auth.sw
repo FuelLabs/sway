@@ -8,7 +8,7 @@ use ::contract_id::ContractId;
 use ::identity::Identity;
 use ::option::Option;
 use ::result::Result;
-use ::tx::{INPUT_COIN, INPUT_MESSAGE, Input, tx_input_owner, tx_input_type, tx_inputs_count};
+use ::inputs::{Input, input_owner, input_type, inputs_count};
 
 pub enum AuthError {
     InputsNotAllOwnedBySameAddress: (),
@@ -47,14 +47,14 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
 /// Get the owner of the inputs (of type `InputCoin` or `InputMessage`) to a
 /// TransactionScript if they all share the same owner.
 fn inputs_owner() -> Result<Identity, AuthError> {
-    let inputs_count = tx_inputs_count();
+    let input_count = inputs_count();
     let mut candidate = Option::None::<Address>();
     let mut i = 0;
 
     // Note: `inputs_count` is guaranteed to be at least 1 for any valid tx.
-    while i < inputs_count {
-        let input_type = tx_input_type(i);
-        match input_type {
+    while i < input_count {
+        let type_of_input = input_type(i);
+        match type_of_input {
             Input::Coin => {
                 ();
             },
@@ -68,17 +68,17 @@ fn inputs_owner() -> Result<Identity, AuthError> {
             }
         }
 
-        // if input_type != INPUT_COIN && input_type != INPUT_MESSAGE {
+        // if input_type != Input::Coin && input_type != Input::Message {
         //     // type != InputCoin or InputMessage, continue looping.
         //     i += 1;
         //     continue;
         // }
 
         // type == InputCoin or InputMessage
-        let input_owner = tx_input_owner(i);
+        let owner_of_input = input_owner(i);
         if candidate.is_none() {
             // This is the first input seen of the correct type.
-            candidate = input_owner;
+            candidate = owner_of_input;
             i += 1;
             continue;
         }
@@ -86,7 +86,7 @@ fn inputs_owner() -> Result<Identity, AuthError> {
         // Compare current input owner to candidate.
         // `candidate` and `input_owner` must be `Option::Some`
         // at this point, so we can unwrap safely.
-        if input_owner.unwrap() == candidate.unwrap() {
+        if owner_of_input.unwrap() == candidate.unwrap() {
             // Owners are a match, continue looping.
             i += 1;
             continue;
