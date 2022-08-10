@@ -101,7 +101,6 @@ impl Format for FnSignature {
         // FnArgs
         match self.arguments.get() {
             FnArgs::Static(args) => {
-                // TODO: Refactor into `Punctuated::format()`
                 args.format(formatted_code, formatter)?;
             }
             FnArgs::NonStatic {
@@ -163,7 +162,6 @@ impl Parenthesis for FnSignature {
     }
 }
 
-// TODO: Use this in `Punctuated::format()`
 impl Format for FnArg {
     fn format(
         &self,

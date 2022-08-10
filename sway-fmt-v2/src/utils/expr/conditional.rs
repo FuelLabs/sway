@@ -218,14 +218,12 @@ impl LeafSpans for MatchBranchKind {
                 comma_token_opt,
             } => {
                 collected_spans.append(&mut block.leaf_spans());
-                // TODO: determine if we allow comments between block and comma_token
                 if let Some(comma_token) = comma_token_opt {
                     collected_spans.push(ByteSpan::from(comma_token.span()));
                 }
             }
             MatchBranchKind::Expr { expr, comma_token } => {
                 collected_spans.append(&mut expr.leaf_spans());
-                // TODO: determine if we allow comments between expr and comma_token
                 collected_spans.push(ByteSpan::from(comma_token.span()));
             }
         };

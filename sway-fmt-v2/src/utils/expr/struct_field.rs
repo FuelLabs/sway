@@ -74,7 +74,6 @@ impl LeafSpans for ExprStructField {
         let mut collected_spans = vec![ByteSpan::from(self.field_name.span())];
         if let Some((colon_token, expr)) = &self.expr_opt {
             collected_spans.push(ByteSpan::from(colon_token.span()));
-            // TODO: determine if we are allowing comments between `:` and expr
             collected_spans.append(&mut expr.leaf_spans());
         }
         collected_spans
