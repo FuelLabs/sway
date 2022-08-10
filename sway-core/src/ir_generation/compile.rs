@@ -3,7 +3,7 @@ use crate::{
     metadata::MetadataManager,
     parse_tree::Visibility,
     semantic_analysis::{ast_node::*, namespace},
-    type_engine::look_up_type_id,
+    type_system::look_up_type_id,
 };
 
 use super::{
@@ -170,7 +170,7 @@ fn convert_fn_param(
     convert_resolved_typeid(context, &param.type_id, &param.type_span).map(|ty| {
         (
             param.name.as_str().into(),
-            if param.is_mutable && look_up_type_id(param.type_id).is_copy_type() {
+            if param.is_reference && look_up_type_id(param.type_id).is_copy_type() {
                 Type::Pointer(Pointer::new(context, ty, param.is_mutable, None))
             } else {
                 ty

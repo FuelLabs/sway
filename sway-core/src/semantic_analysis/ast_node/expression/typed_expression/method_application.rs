@@ -195,7 +195,7 @@ pub(crate) fn type_check_method_application(
                     warnings,
                     errors
                 );
-                variable_decl.is_mutable.is_mutable()
+                variable_decl.mutability.is_mutable()
             }
         };
 

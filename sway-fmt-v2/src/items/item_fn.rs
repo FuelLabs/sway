@@ -105,9 +105,14 @@ impl Format for FnSignature {
             }
             FnArgs::NonStatic {
                 self_token,
+                ref_self,
                 mutable_self,
                 args_opt,
             } => {
+                // `mut `
+                if let Some(ref_token) = ref_self {
+                    write!(formatted_code, "{} ", ref_token.span().as_str())?;
+                }
                 // `mut `
                 if let Some(mut_token) = mutable_self {
                     write!(formatted_code, "{} ", mut_token.span().as_str())?;
@@ -218,10 +223,14 @@ impl LeafSpans for FnArgs {
             }
             FnArgs::NonStatic {
                 self_token,
+                ref_self,
                 mutable_self,
                 args_opt,
             } => {
                 collected_spans.push(ByteSpan::from(self_token.span()));
+                if let Some(reference) = ref_self {
+                    collected_spans.push(ByteSpan::from(reference.span()));
+                }
                 if let Some(mutable) = mutable_self {
                     collected_spans.push(ByteSpan::from(mutable.span()));
                 }

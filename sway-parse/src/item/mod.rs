@@ -2,8 +2,8 @@ use crate::{Parse, ParseErrorKind, ParseResult, ParseToEnd, Parser, ParserConsum
 
 use sway_ast::keywords::{
     AbiToken, BreakToken, ConstToken, ContinueToken, EnumToken, FnToken, ImplToken, MutToken,
-    OpenAngleBracketToken, PubToken, SelfToken, StorageToken, StructToken, TraitToken, UseToken,
-    WhereToken,
+    OpenAngleBracketToken, PubToken, RefToken, SelfToken, StorageToken, StructToken, TraitToken,
+    UseToken, WhereToken,
 };
 use sway_ast::{FnArg, FnArgs, FnSignature, ItemKind, TypeField};
 
@@ -88,13 +88,14 @@ impl ParseToEnd for FnArgs {
     fn parse_to_end<'a, 'e>(
         mut parser: Parser<'a, 'e>,
     ) -> ParseResult<(FnArgs, ParserConsumed<'a>)> {
-        let mutable_self = match parser.peek::<(MutToken, SelfToken)>() {
-            Some(_mut_token) => {
-                let mut_token = parser.parse()?;
-                Some(mut_token)
-            }
-            None => None,
-        };
+        let mut ref_self: Option<RefToken> = None;
+        let mut mutable_self: Option<MutToken> = None;
+        if parser.peek::<(MutToken, SelfToken)>().is_some()
+            || parser.peek::<(RefToken, MutToken, SelfToken)>().is_some()
+        {
+            ref_self = parser.take();
+            mutable_self = parser.take();
+        }
         match parser.take() {
             Some(self_token) => {
                 match parser.take() {
@@ -102,6 +103,7 @@ impl ParseToEnd for FnArgs {
                         let (args, consumed) = parser.parse_to_end()?;
                         let fn_args = FnArgs::NonStatic {
                             self_token,
+                            ref_self,
                             mutable_self,
                             args_opt: Some((comma_token, args)),
                         };
@@ -110,6 +112,7 @@ impl ParseToEnd for FnArgs {
                     None => {
                         let fn_args = FnArgs::NonStatic {
                             self_token,
+                            ref_self,
                             mutable_self,
                             args_opt: None,
                         };

@@ -1,11 +1,11 @@
 use crate::{
-    error::ok,
+    error::{err, ok},
     semantic_analysis::{
-        IsConstant, TypeCheckContext, TypedExpression, TypedExpressionVariant,
-        TypedVariableDeclaration, VariableMutability,
+        convert_to_variable_immutability, IsConstant, TypeCheckContext, TypedExpression,
+        TypedExpressionVariant, TypedVariableDeclaration, VariableMutability,
     },
     type_system::*,
-    CompileResult, FunctionParameter, Ident, TypedDeclaration,
+    CompileError, CompileResult, FunctionParameter, Ident, TypedDeclaration,
 };
 
 use sway_types::{span::Span, Spanned};
@@ -13,6 +13,7 @@ use sway_types::{span::Span, Spanned};
 #[derive(Debug, Clone, Eq)]
 pub struct TypedFunctionParameter {
     pub name: Ident,
+    pub is_reference: bool,
     pub is_mutable: bool,
     pub type_id: TypeId,
     pub type_span: Span,
@@ -57,11 +58,14 @@ impl TypedFunctionParameter {
             warnings,
             errors,
         );
-        let mutability = if parameter.is_mutable {
-            VariableMutability::Mutable
-        } else {
-            VariableMutability::Immutable
-        };
+        let mutability =
+            convert_to_variable_immutability(parameter.is_reference, parameter.is_mutable);
+        if mutability == VariableMutability::Mutable {
+            errors.push(CompileError::MutableParameterNotSupported {
+                param_name: parameter.name,
+            });
+            return err(warnings, errors);
+        }
         ctx.namespace.insert_symbol(
             parameter.name.clone(),
             TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -72,13 +76,14 @@ impl TypedFunctionParameter {
                     is_constant: IsConstant::No,
                     span: parameter.name.span(),
                 },
-                is_mutable: mutability,
+                mutability,
                 type_ascription: type_id,
             }),
         );
         let parameter = TypedFunctionParameter {
             name: parameter.name,
-            is_mutable: mutability.is_mutable(),
+            is_reference: parameter.is_reference,
+            is_mutable: parameter.is_mutable,
             type_id,
             type_span: parameter.type_span,
         };

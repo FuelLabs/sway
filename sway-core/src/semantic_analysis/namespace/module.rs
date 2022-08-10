@@ -157,7 +157,7 @@ impl Module {
                 }
                 // if this is a const, insert it into the local namespace directly
                 if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                    is_mutable: VariableMutability::ExportedConst,
+                    mutability: VariableMutability::ExportedConst,
                     ref name,
                     ..
                 }) = decl

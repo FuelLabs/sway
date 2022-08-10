@@ -814,7 +814,7 @@ impl FnCompiler {
             callee.parameters.iter().map(|p| p.type_id).collect(),
             callee.type_parameters.iter().map(|tp| tp.type_id).collect(),
         );
-        let callee = match self.recreated_fns.get(&fn_key).copied() {
+        let new_callee = match self.recreated_fns.get(&fn_key).copied() {
             Some(func) => func,
             None => {
                 let callee_fn_decl = TypedFunctionDeclaration {
@@ -824,6 +824,7 @@ impl FnCompiler {
                         callee.name,
                         context.get_unique_id()
                     ))),
+                    parameters: callee.parameters.clone(),
                     ..callee
                 };
                 let new_func =
@@ -848,7 +849,7 @@ impl FnCompiler {
         Ok(self
             .current_block
             .ins(context)
-            .call(callee, &args)
+            .call(new_callee, &args)
             .add_metadatum(context, span_md_idx)
             .add_metadatum(context, state_idx_md_idx))
     }
@@ -1069,10 +1070,11 @@ impl FnCompiler {
                 .get_ptr(ptr, ptr_ty, 0)
                 .add_metadatum(context, span_md_idx);
             let fn_param = self.current_fn_param.as_ref();
-            let is_mutable_primitive = fn_param.is_some()
+            let is_ref_primitive = fn_param.is_some()
                 && look_up_type_id(fn_param.unwrap().type_id).is_copy_type()
+                && fn_param.unwrap().is_reference
                 && fn_param.unwrap().is_mutable;
-            Ok(if ptr.is_aggregate_ptr(context) || is_mutable_primitive {
+            Ok(if ptr.is_aggregate_ptr(context) || is_ref_primitive {
                 ptr_val
             } else {
                 self.current_block
@@ -1102,7 +1104,7 @@ impl FnCompiler {
         let TypedVariableDeclaration {
             name,
             body,
-            is_mutable,
+            mutability,
             ..
         } = ast_var_decl;
         // Nothing to do for an abi cast declarations. The address specified in them is already
@@ -1125,7 +1127,13 @@ impl FnCompiler {
         let local_name = self.lexical_map.insert(name.as_str().to_owned());
         let ptr = self
             .function
-            .new_local_ptr(context, local_name, return_type, is_mutable.into(), None)
+            .new_local_ptr(
+                context,
+                local_name,
+                return_type,
+                mutability.is_mutable(),
+                None,
+            )
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
 
         // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
