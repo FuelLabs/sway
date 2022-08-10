@@ -205,6 +205,18 @@ impl Function {
         idx
     }
 
+    /// Return the number of blocks in this function.
+    pub fn num_blocks(&self, context: &Context) -> usize {
+        context.functions[self.0].blocks.len()
+    }
+
+    /// Return the number of instructions in this function.
+    pub fn num_instructions(&self, context: &Context) -> usize {
+        self.block_iter(context)
+            .map(|block| block.num_instructions(context))
+            .sum()
+    }
+
     /// Return the function name.
     pub fn get_name<'a>(&self, context: &'a Context) -> &'a str {
         &context.functions[self.0].name

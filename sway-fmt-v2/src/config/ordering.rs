@@ -2,7 +2,7 @@
 
 use super::user_opts::OrderingOptions;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Ordering {
     /// Reorder import and extern crate statements alphabetically.
     pub reorder_imports: bool,

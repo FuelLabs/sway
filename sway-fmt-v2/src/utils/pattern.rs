@@ -22,8 +22,7 @@ impl Format for Pattern {
                 if let Some(mut_token) = mutable {
                     write!(formatted_code, "{} ", mut_token.span().as_str())?;
                 }
-                // maybe add `Ident::format()`, not sure if needed yet.
-                formatted_code.push_str(name.span().as_str());
+                name.format(formatted_code, formatter)?;
             }
             Self::Literal(lit) => lit.format(formatted_code, formatter)?,
             Self::Constant(path) => path.format(formatted_code, formatter)?,

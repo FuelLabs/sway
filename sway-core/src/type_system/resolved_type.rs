@@ -1,5 +1,5 @@
 use crate::semantic_analysis::TypedExpression;
-use crate::type_engine::*;
+use crate::type_system::*;
 use crate::{semantic_analysis::ast_node::TypedStructField, CallPath, Ident};
 use derivative::Derivative;
 
