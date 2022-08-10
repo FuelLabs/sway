@@ -22,6 +22,7 @@ impl Format for ItemUse {
         }
         self.tree.format(formatted_code, formatter)?;
         write!(formatted_code, "{}", self.semicolon_token.span().as_str())?;
+
         Ok(())
     }
 }
@@ -35,10 +36,7 @@ impl Format for UseTree {
         match self {
             Self::Group { imports } => {
                 Self::open_curly_brace(formatted_code, formatter)?;
-                imports
-                    .clone()
-                    .into_inner()
-                    .format(formatted_code, formatter)?;
+                imports.get().format(formatted_code, formatter)?;
                 Self::close_curly_brace(formatted_code, formatter)?;
             }
             Self::Name { name } => write!(formatted_code, "{}", name.span().as_str())?,
@@ -72,6 +70,7 @@ impl Format for UseTree {
                 suffix.format(formatted_code, formatter)?;
             }
         }
+
         Ok(())
     }
 }
