@@ -1,0 +1,4 @@
+category = "compile"
+
+# not: $()This struct is never used.
+# not: $()This declaration is never used.
