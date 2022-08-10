@@ -14,19 +14,14 @@ impl Parse for Pattern {
             let name = parser.parse()?;
             return Ok(Pattern::Var { mutable, name });
         }
-        if parser.peek::<TrueToken>().is_some() {
-            let ident = parser.parse::<TrueToken>()?;
-            return Ok(Pattern::Literal(Literal::Bool(LitBool {
-                span: ident.span(),
-                kind: LitBoolType::True,
-            })));
+
+        let lit_bool = |span, kind| Ok(Pattern::Literal(Literal::Bool(LitBool { span, kind })));
+
+        if let Some(ident) = parser.take::<TrueToken>() {
+            return lit_bool(ident.span(), LitBoolType::True);
         }
-        if parser.peek::<FalseToken>().is_some() {
-            let ident = parser.parse::<FalseToken>()?;
-            return Ok(Pattern::Literal(Literal::Bool(LitBool {
-                span: ident.span(),
-                kind: LitBoolType::False,
-            })));
+        if let Some(ident) = parser.take::<FalseToken>() {
+            return lit_bool(ident.span(), LitBoolType::False);
         }
         if let Some(literal) = parser.take() {
             return Ok(Pattern::Literal(literal));
@@ -70,17 +65,13 @@ impl Parse for Pattern {
 
 impl Parse for PatternStructField {
     fn parse(parser: &mut Parser) -> ParseResult<PatternStructField> {
-        if parser.peek::<DoubleDotToken>().is_some() {
-            let token = parser.parse()?;
+        if let Some(token) = parser.take::<DoubleDotToken>() {
             return Ok(PatternStructField::Rest { token });
         }
 
         let field_name = parser.parse()?;
         let pattern_opt = match parser.take() {
-            Some(colon_token) => {
-                let pattern = parser.parse()?;
-                Some((colon_token, pattern))
-            }
+            Some(colon_token) => Some((colon_token, parser.parse()?)),
             None => None,
         };
         Ok(PatternStructField::Field {
