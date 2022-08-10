@@ -1,0 +1,486 @@
+contract {
+    fn main<ea1a0f91>() -> u64, !3 {
+        local ptr b256 key
+        local mut ptr b256 key_for_storage
+        local mut ptr b256 key_for_storage_
+        local mut ptr b256 key_for_storage__
+        local mut ptr b256 key_for_storage___
+        local ptr { u64, u64, u64, u64 } q
+        local ptr u64 q_addr
+        local ptr { u64, u64, u64, u64 } r
+        local ptr u64 r_addr
+        local mut ptr b256 result_buffer
+        local ptr u64 size
+        local ptr u64 val
+
+        entry:
+        v0 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000, !5
+        br block7, !9
+
+        block7:
+        v1 = phi(entry: v0), !12
+        v2 = get_ptr mut ptr b256 result_buffer, ptr b256, 0, !14
+        store v1, ptr v2, !15
+        v3 = const bool false
+        v4 = asm(r1: v3, r2) -> bool r2, !17 {
+            eq     r2 r1 zero, !18
+        }
+        br block8, !12
+
+        block8:
+        v5 = phi(block7: v4)
+        cbr v5, sha256_0_block0, sha256_0_block1, !19
+
+        sha256_0_block0:
+        v6 = get_ptr mut ptr b256 result_buffer, ptr b256, 0, !21
+        v7 = load ptr v6, !22
+        v8 = const u64 22, !23
+        v9 = const u64 8, !24
+        v10 = asm(buffer, ptr: v8, eight_bytes: v9, hash: v7) -> b256 hash, !26 {
+            move   buffer sp, !27
+            cfei    i8, !28
+            sw     buffer ptr i0, !29
+            s256   hash buffer eight_bytes, !30
+            cfsi    i8, !31
+        }
+        br sha256_0_block2, !7
+
+        sha256_0_block1:
+        v11 = get_ptr ptr u64 size, ptr u64, 0, !33
+        v12 = const u64 8
+        store v12, ptr v11, !34
+        v13 = get_ptr mut ptr b256 result_buffer, ptr b256, 0, !36
+        v14 = load ptr v13, !37
+        v15 = get_ptr ptr u64 size, ptr u64, 0, !39
+        v16 = load ptr v15, !40
+        v8 = const u64 22, !23
+        v17 = asm(hash: v14, ptr: v8, bytes: v16) -> b256 hash, !42 {
+            s256   hash ptr bytes, !43
+        }
+        br sha256_0_block2, !7
+
+        sha256_0_block2:
+        v18 = phi(sha256_0_block0: v10, sha256_0_block1: v17), !7
+        br block6, !7
+
+        block6:
+        v19 = phi(sha256_0_block2: v18), !44
+        v20 = get_ptr ptr b256 key, ptr b256, 0, !45
+        store v19, ptr v20, !45
+        v21 = get_ptr ptr u64 val, ptr u64, 0, !46
+        v22 = const u64 108, !47
+        store v22, ptr v21, !46
+        v23 = get_ptr ptr b256 key, ptr b256, 0, !48
+        v24 = load ptr v23, !48
+        v25 = get_ptr ptr u64 val, ptr u64, 0, !49
+        v26 = load ptr v25, !49
+        v27 = get_ptr mut ptr b256 key_for_storage, ptr b256, 0, !50
+        store v24, ptr v27, !50
+        state_store_word v26, key ptr v27, !50
+        v28 = get_ptr ptr b256 key, ptr b256, 0, !51
+        v29 = load ptr v28, !51
+        v30 = get_ptr mut ptr b256 key_for_storage_, ptr b256, 0, !52
+        store v29, ptr v30, !52
+        v31 = state_load_word key ptr v30, !52
+        v32 = get_ptr ptr u64 val, ptr u64, 0, !53
+        v33 = load ptr v32, !53
+        v34 = cmp eq v31 v33, !44
+        br block9, !44
+
+        block9:
+        v35 = phi(block6: v34), !56
+        v36 = asm(r1: v35, r2) -> bool r2, !57 {
+            eq     r2 r1 zero, !18
+        }
+        br block11, !58
+
+        block11:
+        v37 = phi(block9: v36)
+        cbr v37, assert_3_block0, assert_3_block1, !59
+
+        assert_3_block0:
+        v38 = const u64 0, !60
+        v39 = asm(r1: v38) {
+            rvrt   r1, !62
+        }
+        v40 = const unit ()
+        br block12, !64
+
+        block12:
+        v41 = phi(assert_3_block0: v40)
+        br assert_3_block2, !55
+
+        assert_3_block1:
+        v42 = const unit ()
+        br assert_3_block2, !55
+
+        assert_3_block2:
+        v43 = phi(block12: v41, assert_3_block1: v42), !55
+        v44 = const unit ()
+        br block10, !55
+
+        block10:
+        v45 = phi(assert_3_block2: v44), !65
+        v46 = get_ptr ptr { u64, u64, u64, u64 } q, ptr { u64, u64, u64, u64 }, 0, !66
+        v47 = const { u64, u64, u64, u64 } { u64 1, u64 2, u64 4, u64 100 }, !67
+        store v47, ptr v46, !66
+        v48 = get_ptr ptr { u64, u64, u64, u64 } r, ptr { u64, u64, u64, u64 }, 0, !68
+        v49 = const { u64, u64, u64, u64 } { u64 101, u64 121, u64 224, u64 104 }, !69
+        store v49, ptr v48, !68
+        v50 = get_ptr ptr { u64, u64, u64, u64 } q, ptr { u64, u64, u64, u64 }, 0, !70
+        v51 = addr_of v50
+, !71        v52 = get_ptr ptr u64 q_addr, ptr u64, 0, !72
+        store v51, ptr v52, !72
+        v53 = get_ptr ptr { u64, u64, u64, u64 } r, ptr { u64, u64, u64, u64 }, 0, !73
+        v54 = addr_of v53
+, !74        v55 = get_ptr ptr u64 r_addr, ptr u64, 0, !75
+        store v54, ptr v55, !75
+        v56 = get_ptr ptr b256 key, ptr b256, 0, !76
+        v57 = load ptr v56, !76
+        v58 = get_ptr ptr u64 q_addr, ptr u64, 0, !77
+        v59 = load ptr v58, !77
+        v60 = get_ptr mut ptr b256 key_for_storage__, ptr b256, 0, !78
+        store v57, ptr v60, !78
+        v61 = int_to_ptr v59 to b256, !78
+        state_store_quad_word ptr v61, key ptr v60, !78
+        v62 = get_ptr ptr b256 key, ptr b256, 0, !79
+        v63 = load ptr v62, !79
+        v64 = get_ptr ptr u64 r_addr, ptr u64, 0, !80
+        v65 = load ptr v64, !80
+        v66 = get_ptr mut ptr b256 key_for_storage___, ptr b256, 0, !81
+        store v63, ptr v66, !81
+        v67 = int_to_ptr v65 to b256, !81
+        state_load_quad_word ptr v67, key ptr v66, !81
+        v68 = get_ptr ptr { u64, u64, u64, u64 } q, ptr { u64, u64, u64, u64 }, 0, !82
+        v69 = extract_value v68, { u64, u64, u64, u64 }, 0, !83
+        v70 = get_ptr ptr { u64, u64, u64, u64 } r, ptr { u64, u64, u64, u64 }, 0, !84
+        v71 = extract_value v70, { u64, u64, u64, u64 }, 0, !83
+        v72 = cmp eq v69 v71, !65
+        br block13, !65
+
+        block13:
+        v73 = phi(block10: v72)
+        cbr v73, block0, block1, !85
+
+        block0:
+        v74 = phi(block13: v73), !86
+        v75 = get_ptr ptr { u64, u64, u64, u64 } q, ptr { u64, u64, u64, u64 }, 0, !87
+        v76 = extract_value v75, { u64, u64, u64, u64 }, 1, !88
+        v77 = get_ptr ptr { u64, u64, u64, u64 } r, ptr { u64, u64, u64, u64 }, 0, !89
+        v78 = extract_value v77, { u64, u64, u64, u64 }, 1, !88
+        v79 = cmp eq v76 v78, !86
+        br block14, !86
+
+        block14:
+        v80 = phi(block0: v79)
+        br block1, !85
+
+        block1:
+        v81 = phi(block13: v73, block14: v80)
+        cbr v81, block2, block3, !90
+
+        block2:
+        v82 = phi(block1: v81), !91
+        v83 = get_ptr ptr { u64, u64, u64, u64 } q, ptr { u64, u64, u64, u64 }, 0, !92
+        v84 = extract_value v83, { u64, u64, u64, u64 }, 2, !93
+        v85 = get_ptr ptr { u64, u64, u64, u64 } r, ptr { u64, u64, u64, u64 }, 0, !94
+        v86 = extract_value v85, { u64, u64, u64, u64 }, 2, !93
+        v87 = cmp eq v84 v86, !91
+        br block15, !91
+
+        block15:
+        v88 = phi(block2: v87)
+        br block3, !90
+
+        block3:
+        v89 = phi(block1: v81, block15: v88)
+        cbr v89, block4, block5, !95
+
+        block4:
+        v90 = phi(block3: v89), !96
+        v91 = get_ptr ptr { u64, u64, u64, u64 } q, ptr { u64, u64, u64, u64 }, 0, !97
+        v92 = extract_value v91, { u64, u64, u64, u64 }, 3, !98
+        v93 = get_ptr ptr { u64, u64, u64, u64 } r, ptr { u64, u64, u64, u64 }, 0, !99
+        v94 = extract_value v93, { u64, u64, u64, u64 }, 3, !98
+        v95 = cmp eq v92 v94, !96
+        br block16, !96
+
+        block16:
+        v96 = phi(block4: v95)
+        br block5, !95
+
+        block5:
+        v97 = phi(block3: v89, block16: v96), !100
+        v98 = asm(r1: v97, r2) -> bool r2, !101 {
+            eq     r2 r1 zero, !18
+        }
+        br block21, !102
+
+        block21:
+        v99 = phi(block5: v98)
+        cbr v99, assert_3_block018, assert_3_block119, !103
+
+        assert_3_block018:
+        v38 = const u64 0, !60
+        v100 = asm(r1: v38) {
+            rvrt   r1, !62
+        }
+        br block22, !104
+
+        block22:
+        v101 = phi(assert_3_block018: v40)
+        br assert_3_block220, !55
+
+        assert_3_block119:
+        br assert_3_block220, !55
+
+        assert_3_block220:
+        v102 = phi(block22: v101, assert_3_block119: v42), !55
+        br block17, !55
+
+        block17:
+        v103 = phi(assert_3_block220: v44)
+        v104 = const u64 128, !105
+        ret u64 v104
+    }
+
+    fn sha256_0(param !106: u64) -> b256, !7 {
+        local mut ptr b256 result_buffer
+        local ptr u64 size
+
+        entry:
+        v0 = call min_1(), !8
+        v1 = get_ptr mut ptr b256 result_buffer, ptr b256, 0, !13
+        store v0, ptr v1, !13
+        v2 = const bool false
+        v3 = call not_2(v2), !11
+        cbr v3, block0, block1, !11
+
+        block0:
+        v4 = get_ptr mut ptr b256 result_buffer, ptr b256, 0, !20
+        v5 = load ptr v4, !20
+        v6 = const u64 8, !24
+        v7 = asm(buffer, ptr: param, eight_bytes: v6, hash: v5) -> b256 hash, !25 {
+            move   buffer sp, !27
+            cfei    i8, !28
+            sw     buffer ptr i0, !29
+            s256   hash buffer eight_bytes, !30
+            cfsi    i8, !31
+        }
+        br block2
+
+        block1:
+        v8 = get_ptr ptr u64 size, ptr u64, 0, !32
+        v9 = const u64 8
+        store v9, ptr v8, !32
+        v10 = get_ptr mut ptr b256 result_buffer, ptr b256, 0, !35
+        v11 = load ptr v10, !35
+        v12 = get_ptr ptr u64 size, ptr u64, 0, !38
+        v13 = load ptr v12, !38
+        v14 = asm(hash: v11, ptr: param, bytes: v13) -> b256 hash, !41 {
+            s256   hash ptr bytes, !43
+        }
+        br block2
+
+        block2:
+        v15 = phi(block0: v7, block1: v14)
+        ret b256 v15
+    }
+
+    fn min_1() -> b256, !107 {
+        entry:
+        v0 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000, !5
+        ret b256 v0
+    }
+
+    fn not_2(a !108: bool) -> bool, !11 {
+        entry:
+        v0 = asm(r1: a, r2) -> bool r2, !16 {
+            eq     r2 r1 zero, !18
+        }
+        ret bool v0
+    }
+
+    fn assert_3(condition !109: bool) -> (), !55 {
+        entry:
+        v0 = call not_4(condition), !11
+        cbr v0, block0, block1, !11
+
+        block0:
+        v1 = const u64 0, !60
+        v2 = call revert_5(v1), !63
+        br block2
+
+        block1:
+        v3 = const unit ()
+        br block2
+
+        block2:
+        v4 = phi(block0: v2, block1: v3)
+        v5 = const unit ()
+        ret () v5
+    }
+
+    fn not_4(a !108: bool) -> bool, !11 {
+        entry:
+        v0 = asm(r1: a, r2) -> bool r2, !16 {
+            eq     r2 r1 zero, !18
+        }
+        ret bool v0
+    }
+
+    fn revert_5(code !110: u64) -> (), !63 {
+        entry:
+        v0 = asm(r1: code) {
+            rvrt   r1, !62
+        }
+        v1 = const unit ()
+        ret () v1
+    }
+
+    fn eq_6(self !111: u64, other !112: u64) -> bool, !113 {
+        entry:
+        v0 = cmp eq self other
+        ret bool v0
+    }
+
+    fn eq_7(self !111: u64, other !112: u64) -> bool, !113 {
+        entry:
+        v0 = cmp eq self other
+        ret bool v0
+    }
+
+    fn eq_8(self !111: u64, other !112: u64) -> bool, !113 {
+        entry:
+        v0 = cmp eq self other
+        ret bool v0
+    }
+
+    fn eq_9(self !111: u64, other !112: u64) -> bool, !113 {
+        entry:
+        v0 = cmp eq self other
+        ret bool v0
+    }
+
+    fn eq_10(self !111: u64, other !112: u64) -> bool, !113 {
+        entry:
+        v0 = cmp eq self other
+        ret bool v0
+    }
+}
+
+!0 = "/home/sway_test/working/sway1/src/main.sw"
+!1 = span !0 183 711
+!2 = storage "readswrites"
+!3 = (!1 !2)
+!4 = "/home/sway_test/sway/sway-lib-core/src/num.sw"
+!5 = span !4 1611 1677
+!6 = "/home/sway_test/sway/sway-lib-std/src/hash.sw"
+!7 = span !6 79 948
+!8 = span !6 150 162
+!9 = (!7 !8)
+!10 = "/home/sway_test/sway/sway-lib-core/src/ops.sw"
+!11 = span !10 7224 7355
+!12 = (!7 !11)
+!13 = span !6 120 163
+!14 = (!7 !13)
+!15 = (!7 !13)
+!16 = span !10 7291 7353
+!17 = (!7 !11 !16)
+!18 = span !10 7316 7329
+!19 = (!7 !11)
+!20 = span !6 255 268
+!21 = (!7 !20)
+!22 = (!7 !20)
+!23 = span !0 233 235
+!24 = span !6 246 247
+!25 = span !6 209 682
+!26 = (!7 !25)
+!27 = span !6 284 298
+!28 = span !6 367 374
+!29 = span !6 412 428
+!30 = span !6 499 527
+!31 = span !6 605 612
+!32 = span !6 704 732
+!33 = (!7 !32)
+!34 = (!7 !32)
+!35 = span !6 751 764
+!36 = (!7 !35)
+!37 = (!7 !35)
+!38 = span !6 785 789
+!39 = (!7 !38)
+!40 = (!7 !38)
+!41 = span !6 741 940
+!42 = (!7 !41)
+!43 = span !6 805 824
+!44 = span !0 315 344
+!45 = span !0 216 237
+!46 = span !0 247 261
+!47 = span !0 257 260
+!48 = span !0 289 292
+!49 = span !0 294 297
+!50 = span !0 270 298
+!51 = span !0 333 336
+!52 = span !0 315 337
+!53 = span !0 341 344
+!54 = "/home/sway_test/sway/sway-lib-std/src/assert.sw"
+!55 = span !54 308 387
+!56 = (!55 !55 !11)
+!57 = (!55 !11 !16)
+!58 = (!55 !11)
+!59 = (!55 !11)
+!60 = span !54 376 377
+!61 = "/home/sway_test/sway/sway-lib-std/src/revert.sw"
+!62 = span !61 227 234
+!63 = span !61 172 243
+!64 = (!55 !63)
+!65 = span !0 630 642
+!66 = span !0 356 402
+!67 = span !0 364 401
+!68 = span !0 411 463
+!69 = span !0 419 462
+!70 = span !0 495 496
+!71 = span !0 485 497
+!72 = span !0 472 498
+!73 = span !0 530 531
+!74 = span !0 520 532
+!75 = span !0 507 533
+!76 = span !0 561 564
+!77 = span !0 566 572
+!78 = span !0 542 573
+!79 = span !0 601 604
+!80 = span !0 606 612
+!81 = span !0 583 613
+!82 = span !0 630 631
+!83 = span !0 90 97
+!84 = span !0 638 639
+!85 = span !0 630 658
+!86 = span !0 646 658
+!87 = span !0 646 647
+!88 = span !0 101 108
+!89 = span !0 654 655
+!90 = span !0 630 674
+!91 = span !0 662 674
+!92 = span !0 662 663
+!93 = span !0 112 119
+!94 = span !0 670 671
+!95 = span !0 630 690
+!96 = span !0 678 690
+!97 = span !0 678 679
+!98 = span !0 123 130
+!99 = span !0 686 687
+!100 = (!55 !55 !11)
+!101 = (!55 !11 !16)
+!102 = (!55 !11)
+!103 = (!55 !11)
+!104 = (!55 !63)
+!105 = span !0 702 705
+!106 = span !6 96 101
+!107 = span !4 1580 1683
+!108 = span !10 7235 7236
+!109 = span !54 322 331
+!110 = span !61 186 190
+!111 = span !10 3939 3943
+!112 = span !10 3945 3950
+!113 = span !10 3933 3999
+
