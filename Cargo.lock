@@ -1133,8 +1133,7 @@ name = "forc-client"
 version = "0.19.1"
 dependencies = [
  "anyhow",
- "clap 3.2.15",
- "forc",
+ "clap 3.2.16",
  "forc-pkg",
  "forc-util",
  "fuel-gql-client",

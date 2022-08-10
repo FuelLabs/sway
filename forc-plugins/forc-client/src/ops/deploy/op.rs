@@ -1,6 +1,5 @@
 use anyhow::{bail, Result};
-use forc::{cli::BuildCommand, ops::forc_build};
-use forc_pkg::ManifestFile;
+use forc_pkg::{BuildOptions, ManifestFile};
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::{Output, Salt, StorageSlot, Transaction};
 use fuel_vm::prelude::*;
@@ -40,7 +39,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         time_phases,
     } = command;
 
-    let build_command = BuildCommand {
+    let build_options = BuildOptions {
         path,
         print_ast,
         print_finalized_asm,
@@ -59,7 +58,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         time_phases,
     };
 
-    let compiled = forc_build::build(build_command)?;
+    let compiled = forc_pkg::build_with_options(build_options)?;
     let (tx, contract_id) = create_contract_tx(
         compiled.bytecode,
         Vec::<fuel_tx::Input>::new(),
