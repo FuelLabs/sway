@@ -71,7 +71,7 @@ where
             LineStyle::Inline => {
                 write!(formatted_code, " ")?;
                 let mut value_pairs_iter = self.value_separator_pairs.iter().peekable();
-                for (type_field, punctuation) in value_pairs_iter.clone() {
+                while let some((type_field, punctuation)) = value_pairs_iter.next() {
                     type_field.format(formatted_code, formatter)?;
                     punctuation.format(formatted_code, formatter)?;
 
@@ -90,7 +90,7 @@ where
             LineStyle::Multiline => {
                 writeln!(formatted_code)?;
                 let mut value_pairs_iter = self.value_separator_pairs.iter().peekable();
-                for (type_field, comma_token) in value_pairs_iter.clone() {
+                while let some((type_field, comma_token)) = value_pairs_iter.next() {
                     write!(
                         formatted_code,
                         "{}",

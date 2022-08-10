@@ -63,7 +63,7 @@ impl Format for ItemStruct {
                 });
 
                 let mut value_pairs_iter = value_pairs.iter().enumerate().peekable();
-                for (var_index, (type_field, comma_token)) in value_pairs_iter.clone() {
+                while let some((var_index, (type_field, comma_token))) = value_pairs_iter.next() {
                     write!(
                         formatted_code,
                         "{}",
