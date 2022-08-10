@@ -484,7 +484,7 @@ impl TypedExpression {
             }
             ExpressionKind::AbiCast(abi_cast_expression) => {
                 let AbiCastExpression { abi_name, address } = *abi_cast_expression;
-                Self::type_check_abi_cast(ctx.by_ref(), abi_name, address, span)
+                Self::type_check_abi_cast(ctx.by_ref(), abi_name, *address, span)
             }
             ExpressionKind::Array(contents) => Self::type_check_array(ctx.by_ref(), contents, span),
             ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index }) => {
@@ -1290,7 +1290,7 @@ impl TypedExpression {
     fn type_check_abi_cast(
         mut ctx: TypeCheckContext,
         abi_name: CallPath,
-        address: Box<Expression>,
+        address: Expression,
         span: Span,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
@@ -1304,7 +1304,7 @@ impl TypedExpression {
                 .with_help_text("An address that is being ABI cast must be of type b256")
                 .with_type_annotation(insert_type(TypeInfo::B256));
             check!(
-                TypedExpression::type_check(ctx, *address),
+                TypedExpression::type_check(ctx, address),
                 error_recovery_expr(err_span),
                 warnings,
                 errors
