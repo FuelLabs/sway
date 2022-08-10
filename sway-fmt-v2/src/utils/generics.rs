@@ -3,10 +3,6 @@ use super::shape::LineStyle;
 use crate::fmt::{Format, FormattedCode, Formatter, FormatterError};
 use sway_ast::{GenericArgs, GenericParams};
 
-// In the future we will need to determine whether the generic arguments
-// are better suited with a `where` clause. At present they will be
-// formatted in line.
-//
 impl Format for GenericParams {
     fn format(
         &self,
@@ -39,7 +35,6 @@ impl Format for GenericArgs {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        // Need to add `<Ty, CommaToken>` to `Punctuated::format()`
         let params = self.parameters.clone().into_inner();
 
         // `<`

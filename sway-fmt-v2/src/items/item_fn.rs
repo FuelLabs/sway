@@ -19,10 +19,7 @@ impl Format for ItemFn {
     ) -> Result<(), FormatterError> {
         self.fn_signature.format(formatted_code, formatter)?;
         Self::open_curly_brace(formatted_code, formatter)?;
-        self.body
-            .clone()
-            .into_inner()
-            .format(formatted_code, formatter)?;
+        self.body.get().format(formatted_code, formatter)?;
         Self::close_curly_brace(formatted_code, formatter)?;
 
         Ok(())
@@ -96,15 +93,14 @@ impl Format for FnSignature {
             self.name.as_str()
         )?;
         // `<T>`
-        if let Some(generics) = &self.generics.clone() {
+        if let Some(generics) = &self.generics {
             generics.format(formatted_code, formatter)?;
         }
         // `(`
         Self::open_parenthesis(formatted_code, formatter)?;
         // FnArgs
-        match self.arguments.clone().into_inner() {
+        match self.arguments.get() {
             FnArgs::Static(args) => {
-                // TODO: Refactor into `Punctuated::format()`
                 args.format(formatted_code, formatter)?;
             }
             FnArgs::NonStatic {
@@ -166,7 +162,6 @@ impl Parenthesis for FnSignature {
     }
 }
 
-// TODO: Use this in `Punctuated::format()`
 impl Format for FnArg {
     fn format(
         &self,
