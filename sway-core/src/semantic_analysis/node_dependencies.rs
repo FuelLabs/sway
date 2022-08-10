@@ -6,8 +6,8 @@ use crate::{
     error::*,
     parse_tree::*,
     type_system::{look_up_type_id, AbiName, IntegerBits},
-    AstNode, AstNodeContent, CodeBlock, Declaration, Expression, ReturnStatement, TypeInfo,
-    WhileLoop,
+    AstNode, AstNodeContent, CodeBlock, Declaration, Expression, IntrinsicFunctionExpression,
+    ReturnStatement, TypeInfo, WhileLoop,
 };
 
 use sway_types::Spanned;
@@ -396,65 +396,67 @@ impl Dependencies {
     }
 
     fn gather_from_expr(self, expr: &Expression) -> Self {
-        match expr {
-            Expression::VariableExpression { name, .. } => {
+        match &expr.kind {
+            ExpressionKind::Variable(name) => {
                 // in the case of ABI variables, we actually want to check if the ABI needs to be
                 // ordered
                 self.gather_from_call_path(&(name.clone()).into(), false, false)
             }
-            Expression::FunctionApplication {
+            ExpressionKind::FunctionApplication(FunctionApplicationExpression {
                 call_path_binding,
                 arguments,
                 ..
-            } => self
+            }) => self
                 .gather_from_call_path(&call_path_binding.inner, false, true)
                 .gather_from_type_arguments(&call_path_binding.type_arguments)
                 .gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg)),
-            Expression::LazyOperator { lhs, rhs, .. } => {
+            ExpressionKind::LazyOperator(LazyOperatorExpression { lhs, rhs, .. }) => {
                 self.gather_from_expr(lhs).gather_from_expr(rhs)
             }
-            Expression::IfExp {
+            ExpressionKind::If(IfExpression {
                 condition,
                 then,
                 r#else,
                 ..
-            } => if let Some(else_expr) = r#else {
+            }) => if let Some(else_expr) = r#else {
                 self.gather_from_expr(else_expr)
             } else {
                 self
             }
             .gather_from_expr(condition)
             .gather_from_expr(then),
-            Expression::MatchExp {
+            ExpressionKind::Match(MatchExpression {
                 value, branches, ..
-            } => self
+            }) => self
                 .gather_from_expr(value)
                 .gather_from_iter(branches.iter(), |deps, branch| {
                     deps.gather_from_match_branch(branch)
                 }),
-            Expression::CodeBlock { contents, .. } => self.gather_from_block(contents),
-            Expression::Array { contents, .. } => {
+            ExpressionKind::CodeBlock(contents) => self.gather_from_block(contents),
+            ExpressionKind::Array(contents) => {
                 self.gather_from_iter(contents.iter(), |deps, expr| deps.gather_from_expr(expr))
             }
-            Expression::ArrayIndex { prefix, index, .. } => {
+            ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index, .. }) => {
                 self.gather_from_expr(prefix).gather_from_expr(index)
             }
-            Expression::StructExpression {
+            ExpressionKind::Struct(StructExpression {
                 call_path_binding,
                 fields,
                 ..
-            } => self
+            }) => self
                 .gather_from_typeinfo(&call_path_binding.inner.suffix.0)
                 .gather_from_type_arguments(&call_path_binding.type_arguments)
                 .gather_from_iter(fields.iter(), |deps, field| {
                     deps.gather_from_expr(&field.value)
                 }),
-            Expression::SubfieldExpression { prefix, .. } => self.gather_from_expr(prefix),
-            Expression::DelineatedPath {
+            ExpressionKind::Subfield(SubfieldExpression { prefix, .. }) => {
+                self.gather_from_expr(prefix)
+            }
+            ExpressionKind::DelineatedPath(DelineatedPathExpression {
                 call_path_binding,
                 args,
                 ..
-            } => {
+            }) => {
                 // It's either a module path which we can ignore, or an enum variant path, in which
                 // case we're interested in the enum name and initialiser args, ignoring the
                 // variant name.
@@ -462,10 +464,10 @@ impl Dependencies {
                     .gather_from_type_arguments(&call_path_binding.type_arguments)
                     .gather_from_iter(args.iter(), |deps, arg| deps.gather_from_expr(arg))
             }
-            Expression::MethodApplication { arguments, .. } => {
-                self.gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg))
-            }
-            Expression::AsmExpression { asm, .. } => self
+            ExpressionKind::MethodApplication(MethodApplicationExpression {
+                arguments, ..
+            }) => self.gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg)),
+            ExpressionKind::Asm(asm) => self
                 .gather_from_iter(asm.registers.iter(), |deps, register| {
                     deps.gather_from_opt_expr(register.initializer.as_ref())
                 })
@@ -473,19 +475,21 @@ impl Dependencies {
 
             // we should do address someday, but due to the whole `re_parse_expression` thing
             // it isn't possible right now
-            Expression::AbiCast { abi_name, .. } => {
+            ExpressionKind::AbiCast(AbiCastExpression { abi_name, .. }) => {
                 self.gather_from_call_path(abi_name, false, false)
             }
 
-            Expression::Literal { .. } => self,
-            Expression::Tuple { fields, .. } => {
+            ExpressionKind::Literal(_) => self,
+            ExpressionKind::Tuple(fields) => {
                 self.gather_from_iter(fields.iter(), |deps, field| deps.gather_from_expr(field))
             }
-            Expression::TupleIndex { prefix, .. } => self.gather_from_expr(prefix),
-            Expression::StorageAccess { .. } => self,
-            Expression::IntrinsicFunction { arguments, .. } => {
-                self.gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg))
+            ExpressionKind::TupleIndex(TupleIndexExpression { prefix, .. }) => {
+                self.gather_from_expr(prefix)
             }
+            ExpressionKind::StorageAccess(_) => self,
+            ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
+                arguments, ..
+            }) => self.gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg)),
         }
     }
 

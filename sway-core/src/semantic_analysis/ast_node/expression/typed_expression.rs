@@ -393,124 +393,105 @@ impl TypedExpression {
 
     pub(crate) fn type_check(mut ctx: TypeCheckContext, expr: Expression) -> CompileResult<Self> {
         let expr_span = expr.span();
-        let res = match expr {
-            Expression::Literal { value: lit, span } => Self::type_check_literal(lit, span),
-            Expression::VariableExpression { name, span, .. } => {
+        let span = expr_span.clone();
+        let res = match expr.kind {
+            ExpressionKind::Literal(lit) => Self::type_check_literal(lit, span),
+            ExpressionKind::Variable(name) => {
                 Self::type_check_variable_expression(ctx.namespace, name, span)
             }
-            Expression::FunctionApplication {
+            ExpressionKind::FunctionApplication(FunctionApplicationExpression {
                 call_path_binding,
                 arguments,
-                span,
-            } => Self::type_check_function_application(
+            }) => Self::type_check_function_application(
                 ctx.by_ref(),
                 call_path_binding,
                 arguments,
                 span,
             ),
-            Expression::LazyOperator { op, lhs, rhs, span } => {
+            ExpressionKind::LazyOperator(LazyOperatorExpression { op, lhs, rhs }) => {
                 let ctx = ctx
                     .by_ref()
                     .with_type_annotation(insert_type(TypeInfo::Boolean));
                 Self::type_check_lazy_operator(ctx, op, *lhs, *rhs, span)
             }
-            Expression::CodeBlock { contents, span, .. } => {
+            ExpressionKind::CodeBlock(contents) => {
                 Self::type_check_code_block(ctx.by_ref(), contents, span)
             }
             // TODO if _condition_ is constant, evaluate it and compile this to an
             // expression with only one branch
-            Expression::IfExp {
+            ExpressionKind::If(IfExpression {
                 condition,
                 then,
                 r#else,
-                span,
-            } => Self::type_check_if_expression(
+            }) => Self::type_check_if_expression(
                 ctx.by_ref().with_help_text(""),
                 *condition,
                 *then,
                 r#else.map(|e| *e),
                 span,
             ),
-            Expression::MatchExp {
-                value,
-                branches,
-                span,
-            } => Self::type_check_match_expression(
-                ctx.by_ref().with_help_text(""),
-                *value,
-                branches,
-                span,
-            ),
-            Expression::AsmExpression { asm, span, .. } => {
-                Self::type_check_asm_expression(ctx.by_ref(), asm, span)
+            ExpressionKind::Match(MatchExpression { value, branches }) => {
+                Self::type_check_match_expression(
+                    ctx.by_ref().with_help_text(""),
+                    *value,
+                    branches,
+                    span,
+                )
             }
-            Expression::StructExpression {
+            ExpressionKind::Asm(asm) => Self::type_check_asm_expression(ctx.by_ref(), asm, span),
+            ExpressionKind::Struct(StructExpression {
                 call_path_binding,
                 fields,
-                span,
-            } => Self::type_check_struct_expression(ctx.by_ref(), call_path_binding, fields, span),
-            Expression::SubfieldExpression {
+            }) => Self::type_check_struct_expression(ctx.by_ref(), call_path_binding, fields, span),
+            ExpressionKind::Subfield(SubfieldExpression {
                 prefix,
-                span,
                 field_to_access,
-            } => Self::type_check_subfield_expression(ctx.by_ref(), *prefix, span, field_to_access),
-            Expression::MethodApplication {
+            }) => {
+                Self::type_check_subfield_expression(ctx.by_ref(), *prefix, span, field_to_access)
+            }
+            ExpressionKind::MethodApplication(MethodApplicationExpression {
                 method_name_binding,
                 contract_call_params,
                 arguments,
-                span,
-            } => type_check_method_application(
+            }) => type_check_method_application(
                 ctx.by_ref(),
                 method_name_binding,
                 contract_call_params,
                 arguments,
                 span,
             ),
-            Expression::Tuple { fields, span } => {
-                Self::type_check_tuple(ctx.by_ref(), fields, span)
-            }
-            Expression::TupleIndex {
+            ExpressionKind::Tuple(fields) => Self::type_check_tuple(ctx.by_ref(), fields, span),
+            ExpressionKind::TupleIndex(TupleIndexExpression {
                 prefix,
                 index,
                 index_span,
-                span,
-            } => Self::type_check_tuple_index(ctx.by_ref(), *prefix, index, index_span, span),
-            Expression::DelineatedPath {
+            }) => Self::type_check_tuple_index(ctx.by_ref(), *prefix, index, index_span, span),
+            ExpressionKind::DelineatedPath(DelineatedPathExpression {
                 call_path_binding,
-                span,
                 args,
-            } => Self::type_check_delineated_path(ctx.by_ref(), call_path_binding, span, args),
-            Expression::AbiCast {
-                abi_name,
-                address,
-                span,
-            } => Self::type_check_abi_cast(ctx.by_ref(), abi_name, address, span),
-            Expression::Array { contents, span } => {
-                Self::type_check_array(ctx.by_ref(), contents, span)
+            }) => Self::type_check_delineated_path(ctx.by_ref(), call_path_binding, span, args),
+            ExpressionKind::AbiCast(AbiCastExpression { abi_name, address }) => {
+                Self::type_check_abi_cast(ctx.by_ref(), abi_name, address, span)
             }
-            Expression::ArrayIndex {
-                prefix,
-                index,
-                span,
-            } => {
+            ExpressionKind::Array(contents) => Self::type_check_array(ctx.by_ref(), contents, span),
+            ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index }) => {
                 let ctx = ctx
                     .by_ref()
                     .with_type_annotation(insert_type(TypeInfo::Unknown))
                     .with_help_text("");
                 Self::type_check_array_index(ctx, *prefix, *index, span)
             }
-            Expression::StorageAccess { field_names, .. } => {
+            ExpressionKind::StorageAccess(StorageAccessExpression { field_names }) => {
                 let ctx = ctx
                     .by_ref()
                     .with_type_annotation(insert_type(TypeInfo::Unknown))
                     .with_help_text("");
-                Self::type_check_storage_load(ctx, field_names, &expr_span)
+                Self::type_check_storage_load(ctx, field_names, &span)
             }
-            Expression::IntrinsicFunction {
+            ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
                 kind_binding,
                 arguments,
-                span,
-            } => Self::type_check_intrinsic_function(ctx.by_ref(), kind_binding, arguments, span),
+            }) => Self::type_check_intrinsic_function(ctx.by_ref(), kind_binding, arguments, span),
         };
         let mut typed_expression = match res.value {
             Some(r) => r,
@@ -1694,17 +1675,17 @@ mod tests {
     #[test]
     fn test_array_type_check_non_homogeneous_0() {
         // [true, 0] -- first element is correct, assumes type is [bool; 2].
-        let expr = Expression::Array {
-            contents: vec![
-                Expression::Literal {
-                    value: Literal::Boolean(true),
+        let expr = Expression {
+            kind: ExpressionKind::Array(vec![
+                Expression {
+                    kind: ExpressionKind::Literal(Literal::Boolean(true)),
                     span: Span::dummy(),
                 },
-                Expression::Literal {
-                    value: Literal::U64(0),
+                Expression {
+                    kind: ExpressionKind::Literal(Literal::U64(0)),
                     span: Span::dummy(),
                 },
-            ],
+            ]),
             span: Span::dummy(),
         };
 
@@ -1722,17 +1703,17 @@ mod tests {
     #[test]
     fn test_array_type_check_non_homogeneous_1() {
         // [0, false] -- first element is incorrect, assumes type is [u64; 2].
-        let expr = Expression::Array {
-            contents: vec![
-                Expression::Literal {
-                    value: Literal::U64(0),
+        let expr = Expression {
+            kind: ExpressionKind::Array(vec![
+                Expression {
+                    kind: ExpressionKind::Literal(Literal::U64(0)),
                     span: Span::dummy(),
                 },
-                Expression::Literal {
-                    value: Literal::Boolean(true),
+                Expression {
+                    kind: ExpressionKind::Literal(Literal::Boolean(true)),
                     span: Span::dummy(),
                 },
-            ],
+            ]),
             span: Span::dummy(),
         };
 
@@ -1757,21 +1738,21 @@ mod tests {
     #[test]
     fn test_array_type_check_bad_count() {
         // [0, false] -- first element is incorrect, assumes type is [u64; 2].
-        let expr = Expression::Array {
-            contents: vec![
-                Expression::Literal {
-                    value: Literal::Boolean(true),
+        let expr = Expression {
+            kind: ExpressionKind::Array(vec![
+                Expression {
+                    kind: ExpressionKind::Literal(Literal::Boolean(true)),
                     span: Span::dummy(),
                 },
-                Expression::Literal {
-                    value: Literal::Boolean(true),
+                Expression {
+                    kind: ExpressionKind::Literal(Literal::Boolean(true)),
                     span: Span::dummy(),
                 },
-                Expression::Literal {
-                    value: Literal::Boolean(true),
+                Expression {
+                    kind: ExpressionKind::Literal(Literal::Boolean(true)),
                     span: Span::dummy(),
                 },
-            ],
+            ]),
             span: Span::dummy(),
         };
 
@@ -1788,8 +1769,8 @@ mod tests {
 
     #[test]
     fn test_array_type_check_empty() {
-        let expr = Expression::Array {
-            contents: Vec::new(),
+        let expr = Expression {
+            kind: ExpressionKind::Array(Vec::new()),
             span: Span::dummy(),
         };
 

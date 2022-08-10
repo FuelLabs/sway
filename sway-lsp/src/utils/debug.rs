@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use crate::core::token::{AstToken, Token, TokenMap, TypedAstToken};
 use crate::utils::{common::get_range_from_span, token};
-use sway_core::{Expression, Literal};
+use sway_core::{Expression, ExpressionKind, Literal};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
 
@@ -97,7 +97,10 @@ fn ast_node_type(token_type: &Token) -> String {
             _ => "".to_string(),
         },
         None => match &token_type.parsed {
-            AstToken::Expression(Expression::Literal { value, .. }) => literal_to_string(value),
+            AstToken::Expression(Expression {
+                kind: ExpressionKind::Literal(value),
+                ..
+            }) => literal_to_string(value),
             _ => "".to_string(),
         },
     }
