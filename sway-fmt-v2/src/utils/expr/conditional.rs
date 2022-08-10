@@ -18,10 +18,7 @@ impl Format for IfExpr {
         write!(formatted_code, "{} ", self.if_token.span().as_str())?;
         self.condition.format(formatted_code, formatter)?;
         Self::open_curly_brace(formatted_code, formatter)?;
-        self.then_block
-            .clone()
-            .into_inner()
-            .format(formatted_code, formatter)?;
+        self.then_block.get().format(formatted_code, formatter)?;
         Self::close_curly_brace(formatted_code, formatter)?;
         if let Some(else_opt) = &self.else_opt {
             write!(formatted_code, "{} ", else_opt.0.span().as_str())?;
@@ -30,8 +27,7 @@ impl Format for IfExpr {
                 ControlFlow::Break(code_block_contents) => {
                     Self::open_curly_brace(formatted_code, formatter)?;
                     code_block_contents
-                        .clone()
-                        .into_inner()
+                        .get()
                         .format(formatted_code, formatter)?;
                     Self::close_curly_brace(formatted_code, formatter)?;
                 }
@@ -133,10 +129,7 @@ impl Format for MatchBranchKind {
                 comma_token_opt,
             } => {
                 Self::open_curly_brace(formatted_code, formatter)?;
-                block
-                    .clone()
-                    .into_inner()
-                    .format(formatted_code, formatter)?;
+                block.get().format(formatted_code, formatter)?;
                 Self::close_curly_brace(formatted_code, formatter)?;
                 if let Some(comma_token) = comma_token_opt {
                     write!(formatted_code, "{}", comma_token.span().as_str())?;

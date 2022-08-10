@@ -25,12 +25,10 @@ impl Parse for ModuleKind {
 
 impl ParseToEnd for Module {
     fn parse_to_end<'a, 'e>(mut parser: Parser<'a, 'e>) -> ParseResult<(Self, ParserConsumed<'a>)> {
-        let kind = parser.parse()?;
-        let semicolon_token = parser.parse()?;
+        let (kind, semicolon_token) = parser.parse()?;
         let mut dependencies = Vec::new();
-        while let Some(..) = parser.peek::<DepToken>() {
-            let dependency = parser.parse()?;
-            dependencies.push(dependency);
+        while let Some(dep) = parser.guarded_parse::<DepToken, _>()? {
+            dependencies.push(dep);
         }
         let (items, consumed) = parser.parse_to_end()?;
         let module = Self {

@@ -38,7 +38,7 @@ impl Format for ItemImpl {
             formatter.shape.update_where_clause();
         }
         Self::open_curly_brace(formatted_code, formatter)?;
-        let contents = self.contents.clone().into_inner();
+        let contents = self.contents.get();
         for item in contents.iter() {
             item.format(formatted_code, formatter)?;
         }
