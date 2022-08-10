@@ -35,7 +35,7 @@ const GTF_INPUT_MESSAGE_MESSAGE_ID = 0x114;
 const GTF_INPUT_MESSAGE_SENDER = 0x115;
 const GTF_INPUT_MESSAGE_RECIPIENT = 0x116;
 const GTF_INPUT_MESSAGE_AMOUNT = 0x117;
-// const GTF_INPUT_MESSAGE_NONCE = 0x118;
+const GTF_INPUT_MESSAGE_NONCE = 0x118;
 const GTF_INPUT_MESSAGE_OWNER = 0x119;
 // const GTF_INPUT_MESSAGE_WITNESS_INDEX = 0x11A;
 // const GTF_INPUT_MESSAGE_DATA_LENGTH = 0x11B;
@@ -227,6 +227,11 @@ pub fn input_message_sender(index: u64) -> Address {
 /// Get the recipient of the input message at `index`.
 pub fn input_message_recipient(index: u64) -> Address {
     ~Address::from(__gtf::<B256>(INDEX, GTF_INPUT_MESSAGE_RECIPIENT))
+}
+
+/// Get the nonce of input message at `index`.
+pub fn input_message_nonce(index: u64) -> b256 {
+    __gtf::<b256>(index, GTF_INPUT_MESSAGE_NONCE)
 }
 
 /// Get the predicate of the input message at `index`.
