@@ -395,7 +395,7 @@ impl FnCompiler {
             span_md_idx: Option<MetadataIndex>,
         ) -> Result<Value, CompileError> {
             // New name for the key
-            let key_name = format!("{}", "key_for_storage");
+            let key_name = "key_for_storage".to_string();
             let alias_key_name = compiler.lexical_map.insert(key_name.as_str().to_owned());
 
             // Local pointer for the key
