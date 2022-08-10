@@ -698,6 +698,7 @@ impl<'a> InstructionVerifier<'a> {
     fn get_pointer_type(&self, ptr_val: &Value) -> Option<Type> {
         match &self.context.values[ptr_val.0].value {
             ValueDatum::Instruction(Instruction::GetPointer { ptr_ty, .. }) => Some(*ptr_ty),
+            ValueDatum::Instruction(Instruction::IntToPtr(_, ty)) => Some(*ty),
             ValueDatum::Argument(arg_ty) => match arg_ty.is_copy_type() {
                 true => None,
                 false => Some(*arg_ty),

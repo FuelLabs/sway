@@ -11,6 +11,8 @@ pub enum Intrinsic {
     AddrOf,
     StateLoadWord,
     StateStoreWord,
+    StateLoadQuad,
+    StateStoreQuad,
 }
 
 impl fmt::Display for Intrinsic {
@@ -25,6 +27,8 @@ impl fmt::Display for Intrinsic {
             Intrinsic::AddrOf => "addr_of",
             Intrinsic::StateLoadWord => "state_load_word",
             Intrinsic::StateStoreWord => "state_store_word",
+            Intrinsic::StateLoadQuad => "state_load_quad",
+            Intrinsic::StateStoreQuad => "state_store_quad",
         };
         write!(f, "{}", s)
     }
@@ -43,6 +47,8 @@ impl Intrinsic {
             "__addr_of" => AddrOf,
             "__state_load_word" => StateLoadWord,
             "__state_store_word" => StateStoreWord,
+            "__state_load_quad" => StateLoadQuad,
+            "__state_store_quad" => StateStoreQuad,
             _ => return None,
         })
     }

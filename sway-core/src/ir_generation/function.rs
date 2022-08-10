@@ -532,7 +532,6 @@ impl FnCompiler {
                 let value = self.compile_expression(context, md_mgr, exp)?;
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 let key_ptr_val = store_key_in_local_mem(self, context, value, span_md_idx)?;
-
                 Ok(self
                     .current_block
                     .ins(context)
@@ -551,6 +550,33 @@ impl FnCompiler {
                     .ins(context)
                     .state_store_word(val_value, key_ptr_val)
                     .add_metadatum(context, span_md_idx))
+            }
+            Intrinsic::StateLoadQuad | Intrinsic::StateStoreQuad => {
+                let key_exp = arguments[0].clone();
+                let val_exp = arguments[1].clone();
+                let key_value = self.compile_expression(context, md_mgr, key_exp)?;
+                let val_value = self.compile_expression(context, md_mgr, val_exp)?;
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+                let key_ptr_val = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
+                // For quad word, the IR instructions take in a pointer rather than a raw u64.
+                let val_ptr = self
+                    .current_block
+                    .ins(context)
+                    .int_to_ptr(val_value, Type::B256)
+                    .add_metadatum(context, span_md_idx);
+                match kind {
+                    Intrinsic::StateLoadQuad => Ok(self
+                        .current_block
+                        .ins(context)
+                        .state_load_quad_word(val_ptr, key_ptr_val)
+                        .add_metadatum(context, span_md_idx)),
+                    Intrinsic::StateStoreQuad => Ok(self
+                        .current_block
+                        .ins(context)
+                        .state_store_quad_word(val_ptr, key_ptr_val)
+                        .add_metadatum(context, span_md_idx)),
+                    _ => unreachable!(),
+                }
             }
         }
     }

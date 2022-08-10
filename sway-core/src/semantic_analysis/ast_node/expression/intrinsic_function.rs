@@ -413,7 +413,7 @@ impl TypedIntrinsicFunctionKind {
                 let return_type = insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour));
                 (intrinsic_function, return_type)
             }
-            Intrinsic::StateStoreWord => {
+            Intrinsic::StateStoreWord | Intrinsic::StateLoadQuad | Intrinsic::StateStoreQuad => {
                 if arguments.len() != 2 {
                     errors.push(CompileError::IntrinsicIncorrectNumArgs {
                         name: kind.to_string(),
@@ -456,7 +456,7 @@ impl TypedIntrinsicFunctionKind {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,
-                        hint: Hint::new("Value to be written must be u64".to_string()),
+                        hint: Hint::new("This argument must be u64".to_string()),
                     });
                     return err(warnings, errors);
                 }
