@@ -1,10 +1,13 @@
 use crate::{
     fmt::*,
-    utils::bracket::CurlyBrace,
     utils::comments::{ByteSpan, LeafSpans},
+    utils::{bracket::CurlyBrace, shape::LineStyle},
 };
 use std::fmt::Write;
-use sway_ast::{token::Delimiter, ItemUse, UseTree};
+use sway_ast::{
+    token::{Delimiter, PunctKind},
+    ItemUse, UseTree,
+};
 use sway_types::Spanned;
 
 impl Format for ItemUse {
@@ -36,7 +39,42 @@ impl Format for UseTree {
         match self {
             Self::Group { imports } => {
                 Self::open_curly_brace(formatted_code, formatter)?;
-                imports.get().format(formatted_code, formatter)?;
+                match formatter.shape.code_line.line_style {
+                    LineStyle::Multiline => {
+                        let imports = imports.get();
+                        let value_pairs = &imports.value_separator_pairs;
+                        let mut ord_vec: Vec<String> = value_pairs
+                            .iter()
+                            .map(
+                                |(use_tree, comma_token)| -> Result<FormattedCode, FormatterError> {
+                                    let mut buf = FormattedCode::new();
+                                    write!(
+                                        buf,
+                                        "{}",
+                                        formatter.shape.indent.to_string(&formatter.config)?
+                                    )?;
+                                    use_tree.format(&mut buf, formatter)?;
+                                    writeln!(buf, "{}", comma_token.span().as_str())?;
+
+                                    Ok(buf)
+                                },
+                            )
+                            .collect::<Result<Vec<String>, _>>()?;
+                        if let Some(final_value) = &imports.final_value_opt {
+                            let mut buf = FormattedCode::new();
+                            write!(
+                                buf,
+                                "{}",
+                                formatter.shape.indent.to_string(&formatter.config)?
+                            )?;
+                            final_value.format(&mut buf, formatter)?;
+                            writeln!(buf, "{}", PunctKind::Comma.as_char())?;
+                            ord_vec.push(buf);
+                        }
+                        ord_vec.sort();
+                    }
+                    _ => imports.get().format(formatted_code, formatter)?,
+                }
                 Self::close_curly_brace(formatted_code, formatter)?;
             }
             Self::Name { name } => write!(formatted_code, "{}", name.span().as_str())?,
@@ -78,16 +116,35 @@ impl Format for UseTree {
 impl CurlyBrace for UseTree {
     fn open_curly_brace(
         line: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Brace.as_open_char())?;
+        match formatter.shape.code_line.line_style {
+            LineStyle::Multiline => {
+                formatter.shape.block_indent(&formatter.config);
+                writeln!(line, "{}", Delimiter::Brace.as_open_char())?;
+            }
+            _ => write!(line, "{}", Delimiter::Brace.as_open_char())?,
+        }
+
         Ok(())
     }
     fn close_curly_brace(
         line: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Brace.as_close_char())?;
+        match formatter.shape.code_line.line_style {
+            LineStyle::Multiline => {
+                formatter.shape.block_unindent(&formatter.config);
+                write!(
+                    line,
+                    "{}{}",
+                    formatter.shape.indent.to_string(&formatter.config)?,
+                    Delimiter::Brace.as_close_char()
+                )?;
+            }
+            _ => write!(line, "{}", Delimiter::Brace.as_close_char())?,
+        }
+
         Ok(())
     }
 }
