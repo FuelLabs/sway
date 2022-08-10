@@ -139,7 +139,6 @@ impl LeafSpans for AsmRegisterDeclaration {
         let mut collected_spans = vec![ByteSpan::from(self.register.span())];
         if let Some(value) = &self.value_opt {
             collected_spans.append(&mut value.leaf_spans());
-            // TODO: determine if we are allowing comments between `:` and expr
         }
         collected_spans
     }
@@ -150,7 +149,6 @@ impl LeafSpans for AsmBlockContents {
         let mut collected_spans = Vec::new();
         for instruction in &self.instructions {
             collected_spans.append(&mut instruction.leaf_spans());
-            // TODO: probably we shouldn't allow for comments in between the instruction and comma since it may/will result in build failure after formatting
         }
         collected_spans
     }
@@ -168,7 +166,6 @@ impl LeafSpans for AsmFinalExpr {
         let mut collected_spans = vec![ByteSpan::from(self.register.span())];
         if let Some(ty) = &self.ty_opt {
             collected_spans.append(&mut ty.leaf_spans());
-            // TODO: determine if we are allowing comments between `:` and ty
         }
         collected_spans
     }
