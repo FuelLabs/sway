@@ -41,6 +41,7 @@ impl Format for UseTree {
                 Self::open_curly_brace(formatted_code, formatter)?;
                 match formatter.shape.code_line.line_style {
                     LineStyle::Multiline => {
+                        // This sorting method does not yet take into account case sensitivity
                         let imports = imports.get();
                         let value_pairs = &imports.value_separator_pairs;
                         let mut ord_vec: Vec<String> = value_pairs
@@ -54,7 +55,7 @@ impl Format for UseTree {
                                         formatter.shape.indent.to_string(&formatter.config)?
                                     )?;
                                     use_tree.format(&mut buf, formatter)?;
-                                    writeln!(buf, "{}", comma_token.span().as_str())?;
+                                    write!(buf, "{}", comma_token.span().as_str())?;
 
                                     Ok(buf)
                                 },
@@ -68,10 +69,12 @@ impl Format for UseTree {
                                 formatter.shape.indent.to_string(&formatter.config)?
                             )?;
                             final_value.format(&mut buf, formatter)?;
-                            writeln!(buf, "{}", PunctKind::Comma.as_char())?;
+                            write!(buf, "{}", PunctKind::Comma.as_char())?;
                             ord_vec.push(buf);
                         }
                         ord_vec.sort();
+
+                        write!(formatted_code, "{}", ord_vec.join("\n"))?;
                     }
                     _ => imports.get().format(formatted_code, formatter)?,
                 }
