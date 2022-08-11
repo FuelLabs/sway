@@ -1,7 +1,10 @@
 use crate::{
     fmt::*,
-    utils::comments::{ByteSpan, LeafSpans},
     utils::{bracket::CurlyBrace, shape::LineStyle},
+    utils::{
+        comments::{ByteSpan, LeafSpans},
+        shape::ExprKind,
+    },
 };
 use std::fmt::Write;
 use sway_ast::{
@@ -19,15 +22,29 @@ impl Format for ItemUse {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        if let Some(pub_token) = &self.visibility {
-            write!(formatted_code, "{} ", pub_token.span().as_str())?;
-        }
-        write!(formatted_code, "{} ", self.use_token.span().as_str())?;
-        if let Some(root_import) = &self.root_import {
-            write!(formatted_code, "{}", root_import.span().as_str())?;
-        }
-        self.tree.format(formatted_code, formatter)?;
-        write!(formatted_code, "{}", self.semicolon_token.span().as_str())?;
+        let prev_state = formatter.shape.code_line;
+        formatter.shape.code_line.update_expr_kind(ExprKind::Import);
+
+        // get the length in chars of the code_line in a single line format,
+        // this include the path
+        let mut buf = FormattedCode::new();
+        let mut temp_formatter = formatter.clone();
+        temp_formatter
+            .shape
+            .code_line
+            .update_line_style(LineStyle::Normal);
+        format_use_stmt(self, &mut buf, &mut temp_formatter)?;
+
+        let expr_width = buf.chars().count() as usize;
+        formatter.shape.add_width(expr_width);
+        formatter
+            .shape
+            .get_line_style(None, None, &formatter.config);
+
+        format_use_stmt(self, formatted_code, formatter)?;
+
+        formatter.shape.sub_width(expr_width);
+        formatter.shape.update_line_settings(prev_state);
 
         Ok(())
     }
@@ -76,7 +93,13 @@ impl Format for UseTree {
                             formatter.shape.indent.to_string(&formatter.config)?
                         ))
                     )?,
-                    _ => write!(formatted_code, "{}", ord_vec.join(" "))?,
+                    _ => {
+                        let mut import_str = ord_vec.join(" ");
+                        if import_str.ends_with(",") {
+                            import_str.pop();
+                        }
+                        write!(formatted_code, "{}", import_str)?;
+                    }
                 }
                 Self::close_curly_brace(formatted_code, formatter)?;
             }
@@ -150,6 +173,28 @@ impl CurlyBrace for UseTree {
 
         Ok(())
     }
+}
+
+fn format_use_stmt(
+    item_use: &ItemUse,
+    formatted_code: &mut FormattedCode,
+    formatter: &mut Formatter,
+) -> Result<(), FormatterError> {
+    if let Some(pub_token) = &item_use.visibility {
+        write!(formatted_code, "{} ", pub_token.span().as_str())?;
+    }
+    write!(formatted_code, "{} ", item_use.use_token.span().as_str())?;
+    if let Some(root_import) = &item_use.root_import {
+        write!(formatted_code, "{}", root_import.span().as_str())?;
+    }
+    item_use.tree.format(formatted_code, formatter)?;
+    write!(
+        formatted_code,
+        "{}",
+        item_use.semicolon_token.span().as_str()
+    )?;
+
+    Ok(())
 }
 
 impl LeafSpans for ItemUse {

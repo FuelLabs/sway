@@ -1,4 +1,4 @@
-use crate::{utils::shape::LineStyle, Format, Formatter};
+use crate::{Format, Formatter};
 use forc_util::{println_green, println_red};
 use paste::paste;
 use prettydiff::{basic::DiffOp, diff_lines};
@@ -8,10 +8,6 @@ use sway_parse::*;
 fn format_code(input: &str) -> String {
     let mut errors = vec![];
     let mut formatter: Formatter = Default::default();
-    formatter
-        .shape
-        .code_line
-        .update_line_style(LineStyle::Multiline);
     let input_arc = std::sync::Arc::from(input);
     let token_stream = lex(&input_arc, 0, input.len(), None).unwrap();
     let mut parser = Parser::new(&token_stream, &mut errors);
@@ -84,20 +80,24 @@ macro_rules! fmt_test_inner {
 }
 
 fmt_test!(multiline      "use foo::{
-    bar,
-    baz,
     quux,
+    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+    yxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
 };",
-          out_of_order   "use foo::{baz, quux, bar};"
+          out_of_order   "use foo::{yxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, quux, xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx};"
 );
 fmt_test!(multiline_nested      "use foo::{
-    bar,
-    baz,
     Quux::{
         a,
         b,
         C,
     },
+    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+    yxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
 };",
-          out_of_order   "use foo::{baz, Quux::{b, a, C}, bar};"
+          out_of_order          "use foo::{xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, Quux::{b, a, C}, yxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx};"
+);
+
+fmt_test!(single_line_sort      "use foo::{bar, baz, Quux::{a, b, C}};",
+          out_of_order          "use foo::{baz, Quux::{b, a, C}, bar};"
 );
