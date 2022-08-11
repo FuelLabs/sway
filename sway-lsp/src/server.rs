@@ -291,6 +291,7 @@ mod tests {
     use tower_lsp::jsonrpc::{self, Request, Response};
     use tower_lsp::LspService;
 
+    #[allow(dead_code)]
     fn e2e_test_dir() -> PathBuf {
         env::current_dir()
             .unwrap()
@@ -300,7 +301,8 @@ mod tests {
             .join("struct_field_access")
     }
 
-    fn _sway_example_dir() -> PathBuf {
+    #[allow(dead_code)]
+    fn sway_example_dir() -> PathBuf {
         env::current_dir()
             .unwrap()
             .parent()
@@ -455,7 +457,8 @@ mod tests {
         assert_eq!(response, Ok(Some(err)));
     }
 
-    #[tokio::test]
+    //#[tokio::test]
+    #[allow(dead_code)]
     async fn did_open() {
         let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
 
@@ -483,7 +486,8 @@ mod tests {
         exit_notification(&mut service).await;
     }
 
-    #[tokio::test]
+    //#[tokio::test]
+    #[allow(dead_code)]
     async fn did_close() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
@@ -508,7 +512,8 @@ mod tests {
         exit_notification(&mut service).await;
     }
 
-    #[tokio::test]
+    //#[tokio::test]
+    #[allow(dead_code)]
     async fn did_change() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
