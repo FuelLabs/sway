@@ -19,12 +19,6 @@ struct NewlineSequence {
     sequence_length: usize,
 }
 
-impl ToString for NewlineSequence {
-    fn to_string(&self) -> String {
-        (0..self.sequence_length).map(|_| "\n").collect::<String>()
-    }
-}
-
 type NewlineMap = BTreeMap<ByteSpan, NewlineSequence>;
 
 /// Search for newline sequences in the unformatted code and collect ByteSpan -> NewlineSequence for the input source
@@ -145,6 +139,16 @@ fn add_newlines(
     Ok(())
 }
 
+/// Compares the length of the newline sequence with threshold. If the sequence exceeds threshold
+/// limit the length of the sequence by threshold
+fn format_newline_sequence(newline_sequence: &NewlineSequence, threshold: usize) -> String {
+    let mut sequence_length = newline_sequence.sequence_length;
+    if sequence_length > threshold {
+        sequence_length = threshold;
+    }
+    (0..sequence_length - 1).map(|_| "\n").collect::<String>()
+}
+
 /// Inserts after given span and returns the offset.
 fn insert_after_span(
     from: &ByteSpan,
@@ -155,7 +159,11 @@ fn insert_after_span(
     let iter = newline_sequences_to_insert.iter();
     let mut sequence_string = String::new();
     for newline_sequence in iter {
-        write!(sequence_string, "{}", newline_sequence.to_string())?;
+        write!(
+            sequence_string,
+            "{}",
+            format_newline_sequence(newline_sequence, 2)
+        )?;
     }
     let mut src_rope = Rope::from_str(formatted_code);
     src_rope.insert(from.end + offset, &sequence_string);
