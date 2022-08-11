@@ -3,6 +3,20 @@ contract;
 use std::address::Address;
 use std::option::Option;
 use std::tx::*;
+use std::inputs::{
+    Input,
+    inputs_count,
+    input_owner,
+    input_pointer,
+    input_type,
+    input_tx_id,
+};
+use std::outputs::{
+    Output,
+    outputs_count,
+    output_pointer,
+    output_type,
+};
 
 abi TxContractTest {
     fn get_tx_type() -> Transaction;
@@ -46,10 +60,10 @@ impl TxContractTest for Contract {
         tx_script_data_length()
     }
     fn get_tx_inputs_count() -> u64 {
-        tx_inputs_count()
+        inputs_count()
     }
     fn get_tx_outputs_count() -> u64 {
-        tx_outputs_count()
+        outputs_count()
     }
     fn get_tx_witnesses_count() -> u64 {
         tx_witnesses_count()
@@ -61,25 +75,25 @@ impl TxContractTest for Contract {
         tx_script_start_pointer()
     }
     fn get_tx_input_pointer(index: u64) -> u64 {
-        tx_input_pointer(index)
+        input_pointer(index)
     }
     fn get_tx_input_type_from_ptr(ptr: u64) -> Input {
-        tx_input_type(ptr)
+        input_type(ptr)
     }
     // TODO: Add test for getting InputMessage owner when we have InputMessages
     // fn get_tx_input_message_owner(index: u64) -> Address {
     //     tx_input_owner(index)
     // }
     fn get_tx_input_coin_owner(index: u64) -> Address {
-        tx_input_owner(index).unwrap()
+        input_owner(index).unwrap()
     }
     fn get_tx_output_pointer(index: u64) -> u64 {
-        tx_output_pointer(index)
+        output_pointer(index)
     }
     fn get_tx_output_type(ptr: u64) -> Output {
-        tx_output_type(ptr)
+        output_type(ptr)
     }
     fn get_tx_id(index: u64) -> Option<b256> {
-        tx_id(index)
+        input_tx_id(index)
     }
 }
