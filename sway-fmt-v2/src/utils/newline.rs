@@ -111,10 +111,10 @@ fn add_newlines(
     // We will definetly have a span in the collected span since for a source code to be parsed there should be some tokens present.
     let mut previous_unformatted_newline_span = unformatted_newline_spans
         .first()
-        .ok_or(FormatterError::CommentError)?;
+        .ok_or(FormatterError::NewlineSequenceError)?;
     let mut previous_formatted_newline_span = formatted_newline_spans
         .first()
-        .ok_or(FormatterError::CommentError)?;
+        .ok_or(FormatterError::NewlineSequenceError)?;
     for (unformatted_newline_span, formatted_newline_span) in unformatted_newline_spans
         .iter()
         .skip(1)
