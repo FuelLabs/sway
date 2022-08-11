@@ -220,8 +220,7 @@ impl TypedImplTrait {
                     prefix: expr1,
                     index: expr2,
                 } => {
-                    expr_contains_get_storage_index(&*expr1)
-                        || expr_contains_get_storage_index(&*expr2)
+                    expr_contains_get_storage_index(expr1) || expr_contains_get_storage_index(expr2)
                 }
                 TypedExpressionVariant::Tuple { fields: exprvec }
                 | TypedExpressionVariant::Array { contents: exprvec } => {
@@ -237,22 +236,22 @@ impl TypedImplTrait {
                     then,
                     r#else,
                 } => {
-                    expr_contains_get_storage_index(&*condition)
-                        || expr_contains_get_storage_index(&*then)
+                    expr_contains_get_storage_index(condition)
+                        || expr_contains_get_storage_index(then)
                         || r#else
                             .as_ref()
-                            .map_or(false, |r#else| expr_contains_get_storage_index(&*r#else))
+                            .map_or(false, |r#else| expr_contains_get_storage_index(r#else))
                 }
                 TypedExpressionVariant::StructFieldAccess { prefix: exp, .. }
                 | TypedExpressionVariant::TupleElemAccess { prefix: exp, .. }
                 | TypedExpressionVariant::AbiCast { address: exp, .. }
                 | TypedExpressionVariant::EnumTag { exp }
                 | TypedExpressionVariant::UnsafeDowncast { exp, .. } => {
-                    expr_contains_get_storage_index(&*exp)
+                    expr_contains_get_storage_index(exp)
                 }
                 TypedExpressionVariant::EnumInstantiation { contents, .. } => contents
                     .as_ref()
-                    .map_or(false, |f| expr_contains_get_storage_index(&*f)),
+                    .map_or(false, |f| expr_contains_get_storage_index(f)),
 
                 TypedExpressionVariant::IntrinsicFunction(TypedIntrinsicFunctionKind {
                     kind,

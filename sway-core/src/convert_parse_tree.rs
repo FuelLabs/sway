@@ -90,7 +90,7 @@ impl ErrorContext {
     }
 }
 
-#[derive(Error, Debug, Clone, PartialEq, Hash)]
+#[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ConvertParseTreeError {
     #[error("pub use imports are not supported")]
     PubUseNotSupported { span: Span },
