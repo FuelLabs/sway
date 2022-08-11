@@ -151,7 +151,7 @@ pub fn tx_witnesses_count() -> u64 {
     }
 }
 
-// Get witness at index `index` either tx type
+// Get a pointer to the witness at index `index` for either tx type
 /// (transaction-script or transaction-create).
 pub fn tx_witness_pointer(index: u64) -> u64 {
     let type = tx_type();
@@ -232,18 +232,4 @@ pub fn tx_script_data<T>() -> T {
 /// Bytecode will be padded to next whole word.
 pub fn tx_script_bytecode<T>() -> T {
     read(tx_script_start_pointer())
-}
-
-/// Get a pointer to the witnex at `index`.
-pub fn tx_witness_pointer(index: u64) -> u64 {
-    let type = tx_type();
-    match type {
-        Transaction::Script => {
-            read(__gtf::<u64>(index, GTF_SCRIPT_WITNESS_AT_INDEX))
-        },
-        Transaction::Create => {
-            read(__gtf::<u64>(index, GTF_CREATE_WITNESS_AT_INDEX))
-        },
-    }
-
 }
