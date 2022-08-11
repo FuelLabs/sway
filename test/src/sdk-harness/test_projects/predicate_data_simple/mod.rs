@@ -1,10 +1,10 @@
-use fuel_core::service::Config;
 use fuel_vm::consts::*;
 use fuel_vm::prelude::Opcode;
 use fuels::contract::abi_encoder::ABIEncoder;
 use fuels::contract::script::Script;
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
+use fuels::test_helpers::Config;
 use fuels::tx::{Address, AssetId, Contract, Input, Output, Transaction, UtxoId};
 use std::str::FromStr;
 
