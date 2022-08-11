@@ -95,7 +95,7 @@ impl Format for UseTree {
                     )?,
                     _ => {
                         let mut import_str = ord_vec.join(" ");
-                        if import_str.ends_with(",") {
+                        if import_str.ends_with(PunctKind::Comma.as_char()) {
                             import_str.pop();
                         }
                         write!(formatted_code, "{}", import_str)?;
