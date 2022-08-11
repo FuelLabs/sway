@@ -4,4 +4,4 @@ Forc stands for Fuel Orchestrator. Forc provides a variety of tools and commands
 
 Find out everything you need to know about Forc under [its chapter in the Sway book][1].
 
-[1]: https://fuellabs.github.io/sway/latest/forc
+[1]: https://fuellabs.github.io/sway/master/forc
