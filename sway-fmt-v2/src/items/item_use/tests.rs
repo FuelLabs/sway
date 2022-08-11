@@ -93,11 +93,11 @@ fmt_test!(multiline      "use foo::{
 fmt_test!(multiline_nested      "use foo::{
     bar,
     baz,
-    quux::{
+    Quux::{
         a,
         b,
-        c,
+        C,
     },
 };",
-          out_of_order   "use foo::{baz, quux::{b, a, c}, bar};"
+          out_of_order   "use foo::{baz, Quux::{b, a, C}, bar};"
 );

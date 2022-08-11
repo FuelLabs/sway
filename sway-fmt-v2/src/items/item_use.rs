@@ -42,43 +42,41 @@ impl Format for UseTree {
         match self {
             Self::Group { imports } => {
                 Self::open_curly_brace(formatted_code, formatter)?;
-                match formatter.shape.code_line.line_style {
-                    LineStyle::Multiline => {
-                        let imports = imports.get();
-                        let value_pairs = &imports.value_separator_pairs;
-                        let mut ord_vec: Vec<String> = value_pairs
-                            .iter()
-                            .map(
-                                |(use_tree, comma_token)| -> Result<FormattedCode, FormatterError> {
-                                    let mut buf = FormattedCode::new();
-                                    write!(
-                                        buf,
-                                        "{}",
-                                        formatter.shape.indent.to_string(&formatter.config)?
-                                    )?;
-                                    use_tree.format(&mut buf, formatter)?;
-                                    write!(buf, "{}", comma_token.span().as_str())?;
-
-                                    Ok(buf)
-                                },
-                            )
-                            .collect::<Result<_, _>>()?;
-                        if let Some(final_value) = &imports.final_value_opt {
+                // sort group imports
+                let imports = imports.get();
+                let value_pairs = &imports.value_separator_pairs;
+                let mut ord_vec: Vec<String> = value_pairs
+                    .iter()
+                    .map(
+                        |(use_tree, comma_token)| -> Result<FormattedCode, FormatterError> {
                             let mut buf = FormattedCode::new();
-                            write!(
-                                buf,
-                                "{}",
-                                formatter.shape.indent.to_string(&formatter.config)?
-                            )?;
-                            final_value.format(&mut buf, formatter)?;
-                            write!(buf, "{}", PunctKind::Comma.as_char())?;
-                            ord_vec.push(buf);
-                        }
-                        ord_vec.sort_by_key(|x| x.to_lowercase());
+                            use_tree.format(&mut buf, formatter)?;
+                            write!(buf, "{}", comma_token.span().as_str())?;
 
-                        writeln!(formatted_code, "{}", ord_vec.join("\n"))?;
-                    }
-                    _ => imports.get().format(formatted_code, formatter)?,
+                            Ok(buf)
+                        },
+                    )
+                    .collect::<Result<_, _>>()?;
+                if let Some(final_value) = &imports.final_value_opt {
+                    let mut buf = FormattedCode::new();
+                    final_value.format(&mut buf, formatter)?;
+                    write!(buf, "{}", PunctKind::Comma.as_char())?;
+
+                    ord_vec.push(buf);
+                }
+                ord_vec.sort_by_key(|x| x.to_lowercase());
+
+                match formatter.shape.code_line.line_style {
+                    LineStyle::Multiline => writeln!(
+                        formatted_code,
+                        "{}{}",
+                        formatter.shape.indent.to_string(&formatter.config)?,
+                        ord_vec.join(&format!(
+                            "\n{}",
+                            formatter.shape.indent.to_string(&formatter.config)?
+                        ))
+                    )?,
+                    _ => write!(formatted_code, "{}", ord_vec.join(" "))?,
                 }
                 Self::close_curly_brace(formatted_code, formatter)?;
             }
