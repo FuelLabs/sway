@@ -24,14 +24,16 @@ pub struct Token {
     pub parsed: AstToken,
     pub typed: Option<TypedAstToken>,
     pub type_def: Option<TypeDefinition>,
+    pub kind: SymbolKind,
 }
 
 impl Token {
-    pub fn from_parsed(token: AstToken) -> Self {
+    pub fn from_parsed(token: AstToken, kind: SymbolKind) -> Self {
         Self {
             parsed: token,
             typed: None,
             type_def: None,
+            kind,
         }
     }
 }
@@ -61,4 +63,25 @@ pub enum TypedAstToken {
     TypedStorageField(TypedStorageField),
     TypeCheckedStorageReassignDescriptor(TypeCheckedStorageReassignDescriptor),
     TypedReassignment(TypedReassignment),
+}
+
+#[derive(Debug, Clone)]
+pub enum SymbolKind {
+    Field,
+    TypeParam,
+    ValueParam,
+    Function,
+    Method,
+    Const,
+    Struct,
+    Trait,
+    Enum,
+    Variant,
+    BoolLiteral,
+    ByteLiteral,
+    CharLiteral,
+    StringLiteral,
+    NumericLiteral,
+    Variable,
+    Unknown,
 }

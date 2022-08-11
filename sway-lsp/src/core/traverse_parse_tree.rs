@@ -1,12 +1,11 @@
 #![allow(dead_code)]
-
 use crate::{
-    core::token::{AstToken, Token, TokenMap, TypeDefinition},
+    core::token::{AstToken, SymbolKind, Token, TokenMap, TypeDefinition},
     utils::token::{desugared_op, to_ident_key},
 };
 use sway_core::{
     constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX},
-    parse_tree::MethodName,
+    parse_tree::{Literal, MethodName},
     AbiCastExpression, ArrayIndexExpression, AstNode, AstNodeContent, CodeBlock, Declaration,
     DelineatedPathExpression, Expression, ExpressionKind, FunctionApplicationExpression,
     FunctionDeclaration, IfExpression, IntrinsicFunctionExpression, LazyOperatorExpression,
@@ -35,7 +34,10 @@ pub fn traverse_node(node: &AstNode, tokens: &TokenMap) {
 fn handle_function_declation(func: &FunctionDeclaration, tokens: &TokenMap) {
     tokens.insert(
         to_ident_key(&func.name),
-        Token::from_parsed(AstToken::FunctionDeclaration(func.clone())),
+        Token::from_parsed(
+            AstToken::FunctionDeclaration(func.clone()),
+            SymbolKind::Function,
+        ),
     );
     for node in &func.body.contents {
         traverse_node(node, tokens);
@@ -43,19 +45,28 @@ fn handle_function_declation(func: &FunctionDeclaration, tokens: &TokenMap) {
     for parameter in &func.parameters {
         tokens.insert(
             to_ident_key(&parameter.name),
-            Token::from_parsed(AstToken::FunctionParameter(parameter.clone())),
+            Token::from_parsed(
+                AstToken::FunctionParameter(parameter.clone()),
+                SymbolKind::ValueParam,
+            ),
         );
 
         tokens.insert(
             to_ident_key(&Ident::new(parameter.type_span.clone())),
-            Token::from_parsed(AstToken::FunctionParameter(parameter.clone())),
+            Token::from_parsed(
+                AstToken::FunctionParameter(parameter.clone()),
+                SymbolKind::Unknown,
+            ),
         );
     }
 
     if let TypeInfo::Custom { name, .. } = &func.return_type {
         tokens.insert(
             to_ident_key(name),
-            Token::from_parsed(AstToken::FunctionDeclaration(func.clone())),
+            Token::from_parsed(
+                AstToken::FunctionDeclaration(func.clone()),
+                SymbolKind::Struct,
+            ),
         );
     }
 }
@@ -74,7 +85,10 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
             {
                 tokens.insert(
                     to_ident_key(&variable.name),
-                    Token::from_parsed(AstToken::Declaration(declaration.clone())),
+                    Token::from_parsed(
+                        AstToken::Declaration(declaration.clone()),
+                        SymbolKind::Variable,
+                    ),
                 );
 
                 if let Some(type_ascription_span) = &variable.type_ascription_span {
@@ -92,13 +106,16 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
         Declaration::TraitDeclaration(trait_decl) => {
             tokens.insert(
                 to_ident_key(&trait_decl.name),
-                Token::from_parsed(AstToken::Declaration(declaration.clone())),
+                Token::from_parsed(
+                    AstToken::Declaration(declaration.clone()),
+                    SymbolKind::Trait,
+                ),
             );
 
             for trait_fn in &trait_decl.interface_surface {
                 tokens.insert(
                     to_ident_key(&trait_fn.name),
-                    Token::from_parsed(AstToken::TraitFn(trait_fn.clone())),
+                    Token::from_parsed(AstToken::TraitFn(trait_fn.clone()), SymbolKind::Method),
                 );
             }
 
@@ -109,12 +126,15 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
         Declaration::StructDeclaration(struct_dec) => {
             tokens.insert(
                 to_ident_key(&struct_dec.name),
-                Token::from_parsed(AstToken::Declaration(declaration.clone())),
+                Token::from_parsed(
+                    AstToken::Declaration(declaration.clone()),
+                    SymbolKind::Struct,
+                ),
             );
             for field in &struct_dec.fields {
                 tokens.insert(
                     to_ident_key(&field.name),
-                    Token::from_parsed(AstToken::StructField(field.clone())),
+                    Token::from_parsed(AstToken::StructField(field.clone()), SymbolKind::Field),
                 );
 
                 match &field.type_info {
@@ -157,12 +177,12 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
         Declaration::EnumDeclaration(enum_decl) => {
             tokens.insert(
                 to_ident_key(&enum_decl.name),
-                Token::from_parsed(AstToken::Declaration(declaration.clone())),
+                Token::from_parsed(AstToken::Declaration(declaration.clone()), SymbolKind::Enum),
             );
             for variant in &enum_decl.variants {
                 tokens.insert(
                     to_ident_key(&variant.name),
-                    Token::from_parsed(AstToken::EnumVariant(variant.clone())),
+                    Token::from_parsed(AstToken::EnumVariant(variant.clone()), SymbolKind::Variant),
                 );
             }
         }
@@ -170,13 +190,19 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
             for ident in &impl_trait.trait_name.prefixes {
                 tokens.insert(
                     to_ident_key(ident),
-                    Token::from_parsed(AstToken::Declaration(declaration.clone())),
+                    Token::from_parsed(
+                        AstToken::Declaration(declaration.clone()),
+                        SymbolKind::Unknown,
+                    ),
                 );
             }
 
             tokens.insert(
                 to_ident_key(&impl_trait.trait_name.suffix),
-                Token::from_parsed(AstToken::Declaration(declaration.clone())),
+                Token::from_parsed(
+                    AstToken::Declaration(declaration.clone()),
+                    SymbolKind::Unknown,
+                ),
             );
 
             for func_dec in &impl_trait.functions {
@@ -187,7 +213,10 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
             if let TypeInfo::Custom { name, .. } = &impl_self.type_implementing_for {
                 tokens.insert(
                     to_ident_key(name),
-                    Token::from_parsed(AstToken::Declaration(declaration.clone())),
+                    Token::from_parsed(
+                        AstToken::Declaration(declaration.clone()),
+                        SymbolKind::Unknown,
+                    ),
                 );
             }
 
@@ -198,30 +227,39 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
         Declaration::AbiDeclaration(abi_decl) => {
             tokens.insert(
                 to_ident_key(&abi_decl.name),
-                Token::from_parsed(AstToken::Declaration(declaration.clone())),
+                Token::from_parsed(
+                    AstToken::Declaration(declaration.clone()),
+                    SymbolKind::Unknown,
+                ),
             );
             for trait_fn in &abi_decl.interface_surface {
                 tokens.insert(
                     to_ident_key(&trait_fn.name),
-                    Token::from_parsed(AstToken::TraitFn(trait_fn.clone())),
+                    Token::from_parsed(AstToken::TraitFn(trait_fn.clone()), SymbolKind::Function),
                 );
 
                 for param in &trait_fn.parameters {
                     tokens.insert(
                         to_ident_key(&param.name),
-                        Token::from_parsed(AstToken::FunctionParameter(param.clone())),
+                        Token::from_parsed(
+                            AstToken::FunctionParameter(param.clone()),
+                            SymbolKind::ValueParam,
+                        ),
                     );
 
                     tokens.insert(
                         to_ident_key(&Ident::new(param.type_span.clone())),
-                        Token::from_parsed(AstToken::FunctionParameter(param.clone())),
+                        Token::from_parsed(
+                            AstToken::FunctionParameter(param.clone()),
+                            SymbolKind::Unknown,
+                        ),
                     );
                 }
 
                 if let TypeInfo::Custom { name, .. } = &trait_fn.return_type {
                     tokens.insert(
                         to_ident_key(name),
-                        Token::from_parsed(AstToken::TraitFn(trait_fn.clone())),
+                        Token::from_parsed(AstToken::TraitFn(trait_fn.clone()), SymbolKind::Struct),
                     );
                 }
             }
@@ -229,7 +267,10 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
         Declaration::ConstantDeclaration(const_decl) => {
             tokens.insert(
                 to_ident_key(&const_decl.name),
-                Token::from_parsed(AstToken::Declaration(declaration.clone())),
+                Token::from_parsed(
+                    AstToken::Declaration(declaration.clone()),
+                    SymbolKind::Const,
+                ),
             );
             handle_expression(&const_decl.value, tokens);
         }
@@ -237,7 +278,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
             for field in &storage_decl.fields {
                 tokens.insert(
                     to_ident_key(&field.name),
-                    Token::from_parsed(AstToken::StorageField(field.clone())),
+                    Token::from_parsed(AstToken::StorageField(field.clone()), SymbolKind::Field),
                 );
 
                 match &field.type_info {
@@ -279,10 +320,21 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
 fn handle_expression(expression: &Expression, tokens: &TokenMap) {
     let span = &expression.span;
     match &expression.kind {
-        ExpressionKind::Literal(_) => {
+        ExpressionKind::Literal(value) => {
+            let symbol_kind = match &value {
+                Literal::U8(..)
+                | Literal::U16(..)
+                | Literal::U32(..)
+                | Literal::U64(..)
+                | Literal::Numeric(..) => SymbolKind::NumericLiteral,
+                Literal::String(..) => SymbolKind::StringLiteral,
+                Literal::Byte(..) | Literal::B256(..) => SymbolKind::ByteLiteral,
+                Literal::Boolean(..) => SymbolKind::BoolLiteral,
+            };
+
             tokens.insert(
                 to_ident_key(&Ident::new(span.clone())),
-                Token::from_parsed(AstToken::Expression(expression.clone())),
+                Token::from_parsed(AstToken::Expression(expression.clone()), symbol_kind),
             );
         }
         ExpressionKind::FunctionApplication(function_application_expression) => {
@@ -295,12 +347,18 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                 for ident in &call_path_binding.inner.prefixes {
                     tokens.insert(
                         to_ident_key(ident),
-                        Token::from_parsed(AstToken::Expression(expression.clone())),
+                        Token::from_parsed(
+                            AstToken::Expression(expression.clone()),
+                            SymbolKind::Unknown,
+                        ),
                     );
                 }
                 tokens.insert(
                     to_ident_key(&call_path_binding.inner.suffix),
-                    Token::from_parsed(AstToken::Expression(expression.clone())),
+                    Token::from_parsed(
+                        AstToken::Expression(expression.clone()),
+                        SymbolKind::Unknown,
+                    ),
                 );
             }
 
@@ -319,7 +377,10 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
             {
                 tokens.insert(
                     to_ident_key(name),
-                    Token::from_parsed(AstToken::Expression(expression.clone())),
+                    Token::from_parsed(
+                        AstToken::Expression(expression.clone()),
+                        SymbolKind::Variable,
+                    ),
                 );
             }
         }
@@ -344,21 +405,30 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
             for ident in &call_path_binding.inner.prefixes {
                 tokens.insert(
                     to_ident_key(ident),
-                    Token::from_parsed(AstToken::Expression(expression.clone())),
+                    Token::from_parsed(
+                        AstToken::Expression(expression.clone()),
+                        SymbolKind::Struct,
+                    ),
                 );
             }
 
             if let (TypeInfo::Custom { name, .. }, ..) = &call_path_binding.inner.suffix {
                 tokens.insert(
                     to_ident_key(name),
-                    Token::from_parsed(AstToken::Expression(expression.clone())),
+                    Token::from_parsed(
+                        AstToken::Expression(expression.clone()),
+                        SymbolKind::Struct,
+                    ),
                 );
             }
 
             for field in fields {
                 tokens.insert(
                     to_ident_key(&field.name),
-                    Token::from_parsed(AstToken::Expression(field.value.clone())),
+                    Token::from_parsed(
+                        AstToken::Expression(field.value.clone()),
+                        SymbolKind::Variable,
+                    ),
                 );
                 handle_expression(&field.value, tokens);
             }
@@ -413,7 +483,10 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                 if let (TypeInfo::Custom { name, .. }, ..) = &call_path_binding.inner.suffix {
                     tokens.insert(
                         to_ident_key(name),
-                        Token::from_parsed(AstToken::Expression(expression.clone())),
+                        Token::from_parsed(
+                            AstToken::Expression(expression.clone()),
+                            SymbolKind::Struct,
+                        ),
                     );
                 }
             }
@@ -422,7 +495,10 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
             if !desugared_op(&prefixes) {
                 tokens.insert(
                     to_ident_key(&method_name_binding.inner.easy_name()),
-                    Token::from_parsed(AstToken::Expression(expression.clone())),
+                    Token::from_parsed(
+                        AstToken::Expression(expression.clone()),
+                        SymbolKind::Unknown,
+                    ),
                 );
             }
 
@@ -433,7 +509,10 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
             for field in contract_call_params {
                 tokens.insert(
                     to_ident_key(&field.name),
-                    Token::from_parsed(AstToken::Expression(field.value.clone())),
+                    Token::from_parsed(
+                        AstToken::Expression(field.value.clone()),
+                        SymbolKind::Field,
+                    ),
                 );
                 handle_expression(&field.value, tokens);
             }
@@ -445,7 +524,7 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
         }) => {
             tokens.insert(
                 to_ident_key(field_to_access),
-                Token::from_parsed(AstToken::Expression(expression.clone())),
+                Token::from_parsed(AstToken::Expression(expression.clone()), SymbolKind::Field),
             );
             handle_expression(prefix, tokens);
         }
@@ -457,12 +536,18 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
             for ident in &call_path_binding.inner.prefixes {
                 tokens.insert(
                     to_ident_key(ident),
-                    Token::from_parsed(AstToken::Expression(expression.clone())),
+                    Token::from_parsed(
+                        AstToken::Expression(expression.clone()),
+                        SymbolKind::Unknown,
+                    ),
                 );
             }
             tokens.insert(
                 to_ident_key(&call_path_binding.inner.suffix),
-                Token::from_parsed(AstToken::Expression(expression.clone())),
+                Token::from_parsed(
+                    AstToken::Expression(expression.clone()),
+                    SymbolKind::Unknown,
+                ),
             );
 
             for exp in args {
@@ -474,12 +559,18 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
             for ident in &abi_name.prefixes {
                 tokens.insert(
                     to_ident_key(ident),
-                    Token::from_parsed(AstToken::Expression(expression.clone())),
+                    Token::from_parsed(
+                        AstToken::Expression(expression.clone()),
+                        SymbolKind::Unknown,
+                    ),
                 );
             }
             tokens.insert(
                 to_ident_key(&abi_name.suffix),
-                Token::from_parsed(AstToken::Expression(expression.clone())),
+                Token::from_parsed(
+                    AstToken::Expression(expression.clone()),
+                    SymbolKind::Unknown,
+                ),
             );
             handle_expression(address, tokens);
         }
@@ -491,7 +582,7 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
             for field in field_names {
                 tokens.insert(
                     to_ident_key(field),
-                    Token::from_parsed(AstToken::Expression(expression.clone())),
+                    Token::from_parsed(AstToken::Expression(expression.clone()), SymbolKind::Field),
                 );
             }
         }
@@ -516,7 +607,7 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                     for ident in idents {
                         tokens.insert(
                             to_ident_key(ident),
-                            Token::from_parsed(AstToken::Reassignment(reassignment.clone())),
+                            Token::from_parsed(AstToken::Reassignment(reassignment.clone()), SymbolKind::Field),
                         );
                     }
                 }

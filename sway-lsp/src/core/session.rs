@@ -337,10 +337,10 @@ impl Session {
         ))
     }
 
-    pub fn semantic_tokens(&self, url: &Url) -> Option<Vec<SemanticToken>> {
-        let tokens = self.tokens_for_file(url);
-        Some(capabilities::semantic_tokens::to_semantic_tokens(&tokens))
-    }
+    // pub fn semantic_tokens(&self, url: &Url) -> Option<Vec<SemanticToken>> {
+    //     let tokens = self.tokens_for_file(url);
+    //     Some(capabilities::semantic_tokens::to_semantic_tokens(&tokens))
+    // }
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
         let tokens = self.tokens_for_file(url);
