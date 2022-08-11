@@ -63,7 +63,7 @@ impl Format for ItemEnum {
                 });
 
                 let mut value_pairs_iter = value_pairs.iter().enumerate().peekable();
-                while let some((var_index, (type_field, comma_token))) = value_pairs_iter.next() {
+                while let Some((var_index, (type_field, comma_token))) = value_pairs_iter.next() {
                     write!(
                         formatted_code,
                         "{}",
