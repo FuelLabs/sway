@@ -733,7 +733,11 @@ fn test_unary_ordering() {
     } = &prog.root.tree.root_nodes[0]
     {
         if let AstNode {
-            content: AstNodeContent::Expression(Expression::LazyOperator { op, .. }),
+            content:
+                AstNodeContent::Expression(Expression {
+                    kind: ExpressionKind::LazyOperator(LazyOperatorExpression { op, .. }),
+                    ..
+                }),
             ..
         } = &body.contents[2]
         {
