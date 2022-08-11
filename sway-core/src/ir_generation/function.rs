@@ -323,6 +323,7 @@ impl FnCompiler {
                 prefix,
                 field_to_access,
                 resolved_type_of_parent,
+                ..
             } => {
                 let span_md_idx = md_mgr.span_to_md(context, &field_to_access.span);
                 self.compile_struct_field_expr(

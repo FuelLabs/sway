@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::{
-    core::token::{AstToken, Token, TokenMap},
+    core::token::{AstToken, Token, TokenMap, TypeDefinition},
     utils::token::{desugared_op, to_ident_key},
 };
 use sway_core::{
@@ -107,6 +107,42 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                     to_ident_key(&field.name),
                     Token::from_parsed(AstToken::StructField(field.clone())),
                 );
+
+                match &field.type_info {
+                    TypeInfo::UnsignedInteger(..)
+                    | TypeInfo::Boolean
+                    | TypeInfo::Byte
+                    | TypeInfo::B256 => {
+                        tokens.insert(
+                            to_ident_key(&Ident::new(field.type_span.clone())),
+                            Token::from_parsed(AstToken::StructField(field.clone())),
+                        );
+                    }
+                    TypeInfo::Ref(type_id, span) => {
+                        let mut token = Token::from_parsed(AstToken::StructField(field.clone()));
+                        token.type_def = Some(TypeDefinition::TypeId(*type_id));
+                        tokens.insert(to_ident_key(&Ident::new(span.clone())), token);
+                    }
+                    TypeInfo::Custom {
+                        name,
+                        type_arguments,
+                    } => {
+                        tokens.insert(
+                            to_ident_key(name),
+                            Token::from_parsed(AstToken::StructField(field.clone())),
+                        );
+
+                        if let Some(args) = type_arguments {
+                            for arg in args {
+                                let mut token =
+                                    Token::from_parsed(AstToken::StructField(field.clone()));
+                                token.type_def = Some(TypeDefinition::TypeId(arg.type_id));
+                                tokens.insert(to_ident_key(&Ident::new(arg.span.clone())), token);
+                            }
+                        }
+                    }
+                    _ => (),
+                }
             }
         }
         Declaration::EnumDeclaration(enum_decl) => {
@@ -211,6 +247,38 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                     to_ident_key(&field.name),
                     Token::from_parsed(AstToken::StorageField(field.clone())),
                 );
+
+                match &field.type_info {
+                    TypeInfo::Tuple(args) => {
+                        for arg in args {
+                            let mut token =
+                                Token::from_parsed(AstToken::StorageField(field.clone()));
+                            token.type_def = Some(TypeDefinition::TypeId(arg.type_id));
+                            tokens.insert(to_ident_key(&Ident::new(arg.span.clone())), token);
+                        }
+                    }
+                    TypeInfo::Custom {
+                        name,
+                        type_arguments,
+                    } => {
+                        tokens.insert(
+                            to_ident_key(name),
+                            Token::from_parsed(AstToken::StorageField(field.clone())),
+                        );
+
+                        if let Some(args) = type_arguments {
+                            for arg in args {
+                                let mut token =
+                                    Token::from_parsed(AstToken::StorageField(field.clone()));
+                                token.type_def = Some(TypeDefinition::TypeId(arg.type_id));
+                                tokens.insert(to_ident_key(&Ident::new(arg.span.clone())), token);
+                            }
+                        }
+                    }
+                    _ => (),
+                }
+
+                handle_expression(&field.initializer, tokens);
             }
         }
         // TODO: collect these tokens as keywords once the compiler returns the span
