@@ -1,5 +1,4 @@
 use crate::constants;
-use crate::Expression::StorageAccess;
 use crate::{
     error::*,
     parse_tree::*,
@@ -129,8 +128,8 @@ pub(crate) fn type_check_method_application(
             errors
         );
 
-        self_state_idx = match arguments.first() {
-            Some(StorageAccess { field_names, .. }) => {
+        self_state_idx = match arguments.first().map(|expr| &expr.kind) {
+            Some(ExpressionKind::StorageAccess(StorageAccessExpression { field_names })) => {
                 let first_field = field_names[0].clone();
                 let self_state_idx = match storage_fields
                     .iter()

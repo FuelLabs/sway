@@ -4,7 +4,7 @@ use sway_core::{
     semantic_analysis::ast_node::{
         expression::typed_expression_variant::TypedExpressionVariant, TypedDeclaration,
     },
-    Declaration, Expression, Literal,
+    Declaration, ExpressionKind, Literal,
 };
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Location, SymbolInformation, SymbolKind, Url};
@@ -61,16 +61,16 @@ fn parsed_to_symbol_kind(ast_token: &AstToken) -> SymbolKind {
             }
         }
         AstToken::Expression(exp) => {
-            match &exp {
-                Expression::Literal { value, .. } => match value {
+            match &exp.kind {
+                ExpressionKind::Literal(value) => match value {
                     Literal::String(_) => SymbolKind::STRING,
                     Literal::Boolean(_) => SymbolKind::BOOLEAN,
                     _ => SymbolKind::NUMBER,
                 },
-                Expression::FunctionApplication { .. } => SymbolKind::FUNCTION,
-                Expression::VariableExpression { .. } => SymbolKind::VARIABLE,
-                Expression::Array { .. } => SymbolKind::ARRAY,
-                Expression::StructExpression { .. } => SymbolKind::STRUCT,
+                ExpressionKind::FunctionApplication(_) => SymbolKind::FUNCTION,
+                ExpressionKind::Variable(_) => SymbolKind::VARIABLE,
+                ExpressionKind::Array(_) => SymbolKind::ARRAY,
+                ExpressionKind::Struct(_) => SymbolKind::STRUCT,
                 // currently we return `variable` type as default
                 _ => SymbolKind::VARIABLE,
             }
