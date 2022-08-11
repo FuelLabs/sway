@@ -9,9 +9,11 @@ use std::{
 };
 use sway_ast::Module;
 
-use crate::{fmt::FormattedCode, FormatterError};
-
-use super::byte_span::{ByteSpan, LeafSpans};
+use crate::{
+    fmt::FormattedCode,
+    utils::byte_span::{ByteSpan, LeafSpans},
+    FormatterError,
+};
 
 /// Represents a series of consecutive newlines
 #[derive(Debug, Clone)]
