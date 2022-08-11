@@ -8,6 +8,8 @@ use sway_ast::{
     token::{Delimiter, PunctKind},
     ItemUse, UseTree,
 };
+#[cfg(test)]
+mod tests;
 use sway_types::Spanned;
 
 impl Format for ItemUse {
@@ -59,7 +61,7 @@ impl Format for UseTree {
                                     Ok(buf)
                                 },
                             )
-                            .collect::<Result<Vec<String>, _>>()?;
+                            .collect::<Result<_, _>>()?;
                         if let Some(final_value) = &imports.final_value_opt {
                             let mut buf = FormattedCode::new();
                             write!(
@@ -73,7 +75,7 @@ impl Format for UseTree {
                         }
                         ord_vec.sort_by_key(|x| x.to_lowercase());
 
-                        write!(formatted_code, "{}", ord_vec.join("\n"))?;
+                        writeln!(formatted_code, "{}", ord_vec.join("\n"))?;
                     }
                     _ => imports.get().format(formatted_code, formatter)?,
                 }
