@@ -9,8 +9,10 @@ use ::result::Result;
 /// Store a stack variable in storage.
 #[storage(write)]pub fn store<T>(key: b256, value: T) {
     if !__is_reference_type::<T>() {
-        // If copy type, then it's a single word.
-        __state_store_word::<T>(key, value);
+        // If copy type, then it's a single word and can be stored with a single SWW.
+        asm(k: key, v: value) {
+            sww k v;
+        };
     } else {
         // If reference type, then it can be more than a word. Loop over every 32
         // bytes and store sequentially.
@@ -25,7 +27,9 @@ use ::result::Result;
 
         while size_left > 32 {
             // Store a 4 words (32 byte) at a time using `swwq`
-            __state_store_quad(local_key, ptr_to_value);
+            asm(k: local_key, v: ptr_to_value) {
+                swwq k v;
+            };
 
             // Move by 32 bytes
             ptr_to_value = ptr_to_value + 32;
@@ -36,16 +40,22 @@ use ::result::Result;
             local_key = sha256(local_key);
         }
 
-        // Store the leftover bytes using a single store quad.
-        __state_store_quad(local_key, ptr_to_value);
+        // Store the leftover bytes using a single `swwq`
+        asm(k: local_key, v: ptr_to_value) {
+            swwq k v;
+        };
     };
 }
 
 /// Load a stack variable from storage.
 #[storage(read)]pub fn get<T>(key: b256) -> T {
     if !__is_reference_type::<T>() {
-        // If copy type, then it's a single word
-        __state_load_word(key)
+        // If copy type, then it's a single word and can be read with a single
+        // SRW.
+        asm(k: key, v) {
+            srw v k;
+            v: T
+        }
     } else {
         // If reference type, then it can be more than a word. Loop over every 32
         // bytes and read sequentially.
@@ -53,15 +63,15 @@ use ::result::Result;
         let mut local_key = key;
 
         // Keep track of the base pointer for the final result
-        let result_ptr: T = stack_ptr();
+        let result_ptr = stack_ptr();
 
         while size_left > 32 {
-            // Read 4 words (32 bytes) at a time
+            // Read 4 words (32 bytes) at a time using `srwq`
             let current_pointer = stack_ptr();
-            asm() {
+            asm(k: local_key, v: current_pointer) {
                 cfei i32;
+                srwq v k;
             };
-            __state_load_quad(local_key, current_pointer);
 
             // Move by 32 bytes
             size_left -= 32;
@@ -73,10 +83,10 @@ use ::result::Result;
 
         // Read the leftover bytes using a single `srwq`
         let current_pointer = stack_ptr();
-        asm() {
+        asm(k: local_key, v: current_pointer) {
             cfei i32;
+            srwq v k;
         }
-        __state_load_quad(local_key, current_pointer);
 
         // Return the final result as type T
         asm(res: result_ptr) {
