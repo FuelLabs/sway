@@ -10,9 +10,7 @@ use ::result::Result;
 #[storage(write)]pub fn store<T>(key: b256, value: T) {
     if !__is_reference_type::<T>() {
         // If copy type, then it's a single word and can be stored with a single SWW.
-        asm(k: key, v: value) {
-            sww k v;
-        };
+        __state_store_word::<T>(key, value);
     } else {
         // If reference type, then it can be more than a word. Loop over every 32
         // bytes and store sequentially.

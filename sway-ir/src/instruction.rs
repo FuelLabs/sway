@@ -210,11 +210,10 @@ impl Instruction {
             Instruction::ConditionalBranch { .. } => None,
             Instruction::Ret(..) => None,
 
-            // These write values but don't return one.  If we're explicit we could return Unit.
-            Instruction::StateLoadQuadWord { .. } => None,
-            Instruction::StateStoreQuadWord { .. } => None,
-            Instruction::StateStoreWord { .. } => None,
-            Instruction::Store { .. } => None,
+            Instruction::StateLoadQuadWord { .. } => Some(Type::Unit),
+            Instruction::StateStoreQuadWord { .. } => Some(Type::Unit),
+            Instruction::StateStoreWord { .. } => Some(Type::Unit),
+            Instruction::Store { .. } => Some(Type::Unit),
 
             // No-op is also no-type.
             Instruction::Nop => None,

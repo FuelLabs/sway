@@ -8,14 +8,14 @@ use super::{
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     constants,
-    error::CompileError,
+    error::{CompileError, Hint},
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
     },
     metadata::MetadataManager,
     parse_tree::{AsmOp, AsmRegister, LazyOp, Literal},
     semantic_analysis::*,
-    type_system::{resolve_type, TypeId, TypeInfo},
+    type_system::{resolve_type, IntegerBits, TypeId, TypeInfo},
 };
 use sway_ast::intrinsics::Intrinsic;
 use sway_ir::{Context, *};
@@ -543,6 +543,16 @@ impl FnCompiler {
             Intrinsic::StateStoreWord => {
                 let key_exp = arguments[0].clone();
                 let val_exp = arguments[1].clone();
+                // Validate that the val_exp is of the right type. We couldn't do it
+                // earlier during type checking as the type arguments may not have been resolved.
+                let val_ty = resolve_type(val_exp.return_type, &span).unwrap();
+                if !val_ty.is_copy_type() {
+                    return Err(CompileError::IntrinsicUnsupportedArgType {
+                        name: kind.to_string(),
+                        span,
+                        hint: Hint::new("This argument must be a copy type".to_string()),
+                    });
+                }
                 let key_value = self.compile_expression(context, md_mgr, key_exp)?;
                 let val_value = self.compile_expression(context, md_mgr, val_exp)?;
                 let span_md_idx = md_mgr.span_to_md(context, &span);
@@ -556,6 +566,16 @@ impl FnCompiler {
             Intrinsic::StateLoadQuad | Intrinsic::StateStoreQuad => {
                 let key_exp = arguments[0].clone();
                 let val_exp = arguments[1].clone();
+                // Validate that the val_exp is of the right type. We couldn't do it
+                // earlier during type checking as the type arguments may not have been resolved.
+                let val_ty = resolve_type(val_exp.return_type, &span).unwrap();
+                if val_ty != TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) {
+                    return Err(CompileError::IntrinsicUnsupportedArgType {
+                        name: kind.to_string(),
+                        span,
+                        hint: Hint::new("This argument must be u64".to_string()),
+                    });
+                }
                 let key_value = self.compile_expression(context, md_mgr, key_exp)?;
                 let val_value = self.compile_expression(context, md_mgr, val_exp)?;
                 let span_md_idx = md_mgr.span_to_md(context, &span);
