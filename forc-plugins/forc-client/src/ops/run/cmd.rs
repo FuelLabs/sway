@@ -3,8 +3,7 @@ use clap::Parser;
 /// Run script project.
 /// Crafts a script transaction then sends it to a running node.
 #[derive(Debug, Default, Parser)]
-#[clap(version)]
-#[clap(bin_name = "forc run")]
+#[clap(bin_name = "forc run", version)]
 pub struct RunCommand {
     /// Hex string of data to input to script.
     #[clap(short, long)]
