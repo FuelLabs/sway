@@ -154,7 +154,7 @@ pub enum ExpressionKind {
     IntrinsicFunction(IntrinsicFunctionExpression),
 }
 
-#[derive(Clone, Debug, PartialEq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum LazyOp {
     And,
     Or,

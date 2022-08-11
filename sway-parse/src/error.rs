@@ -2,7 +2,7 @@ use sway_ast::token::PunctKind;
 use sway_types::{Ident, Span};
 use thiserror::Error;
 
-#[derive(Debug, Error, Clone, PartialEq, Hash)]
+#[derive(Debug, Error, Clone, PartialEq, Eq, Hash)]
 pub enum ParseErrorKind {
     #[error("Expected an import name, group of imports, or `*`.")]
     ExpectedImportNameGroupOrGlob,
@@ -74,7 +74,7 @@ pub enum ParseErrorKind {
     UnnecessaryVisibilityQualifier { visibility: Ident },
 }
 
-#[derive(Debug, Error, Clone, PartialEq, Hash)]
+#[derive(Debug, Error, Clone, PartialEq, Eq, Hash)]
 #[error("{}", kind)]
 pub struct ParseError {
     pub span: Span,
