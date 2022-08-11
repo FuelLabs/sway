@@ -459,7 +459,7 @@ impl TypedIntrinsicFunctionKind {
                     warnings,
                     errors
                 );
-                let type_argument = type_arguments.get(0).and_then(|targ| {
+                let type_argument = type_arguments.get(0).map(|targ| {
                     let mut ctx = ctx
                         .with_help_text("")
                         .with_type_annotation(insert_type(TypeInfo::Unknown));
@@ -474,10 +474,10 @@ impl TypedIntrinsicFunctionKind {
                         warnings,
                         errors,
                     );
-                    Some(TypeArgument {
+                    TypeArgument {
                         type_id,
                         span: span.clone(),
-                    })
+                    }
                 });
                 let intrinsic_function = TypedIntrinsicFunctionKind {
                     kind,
