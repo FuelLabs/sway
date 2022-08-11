@@ -1,4 +1,4 @@
-use crate::type_engine::TypeId;
+use crate::type_system::TypeId;
 use std::sync::RwLock;
 
 #[derive(Debug, Default)]

@@ -1,5 +1,5 @@
 use crate::{
-    error::*, semantic_analysis::*, type_engine::*, CallPath, CompileResult, Ident, TypeInfo,
+    error::*, semantic_analysis::*, type_system::*, CallPath, CompileResult, Ident, TypeInfo,
     TypedDeclaration, TypedFunctionDeclaration,
 };
 

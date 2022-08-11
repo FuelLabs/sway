@@ -21,3 +21,8 @@ sway-parse = { version = "0.19.2", path = "../sway-parse" }
 sway-types = { version = "0.19.2", path = "../sway-types" }
 thiserror = "1.0.30"
 toml = "0.5"
+
+[dev-dependencies]
+forc-util = { path = "../forc-util" }
+paste = "1.0"
+prettydiff = "0.6"

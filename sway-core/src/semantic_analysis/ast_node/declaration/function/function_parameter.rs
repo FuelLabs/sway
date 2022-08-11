@@ -4,7 +4,7 @@ use crate::{
         IsConstant, TypeCheckContext, TypedExpression, TypedExpressionVariant,
         TypedVariableDeclaration, VariableMutability,
     },
-    type_engine::*,
+    type_system::*,
     CompileResult, FunctionParameter, Ident, TypedDeclaration,
 };
 

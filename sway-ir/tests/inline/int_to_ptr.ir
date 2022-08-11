@@ -1,5 +1,7 @@
+// all
+//
 // regex: VAR=v\d+
-// regex: LABEL=[[:alpha:]0-9]+:
+// regex: LABEL=[[:alpha:]0-9_]+:
 
 script {
     fn a(b: u64) -> b256 {

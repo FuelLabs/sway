@@ -7,7 +7,7 @@ use crate::{
         TypeCheckContext, TypedAstNode, TypedAstNodeContent, TypedCodeBlock, TypedExpression,
         TypedExpressionVariant, TypedVariableDeclaration, VariableMutability,
     },
-    type_engine::insert_type,
+    type_system::insert_type,
     types::DeterministicallyAborts,
     CompileResult, MatchBranch, TypeInfo, TypedDeclaration,
 };

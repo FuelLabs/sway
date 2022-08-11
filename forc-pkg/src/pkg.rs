@@ -5,10 +5,10 @@ use crate::{
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
-    find_file_name, git_checkouts_directory, kebab_to_snake_case, print_on_failure,
-    print_on_success, print_on_success_library,
+    default_output_directory, find_file_name, git_checkouts_directory, kebab_to_snake_case,
+    print_on_failure, print_on_success, print_on_success_library,
 };
-use fuel_tx::StorageSlot;
+use fuel_tx::{Contract, StorageSlot};
 use petgraph::{
     self,
     visit::{Bfs, Dfs, EdgeRef, Walker},
@@ -17,7 +17,8 @@ use petgraph::{
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map, BTreeSet, HashMap, HashSet},
-    fmt, fs,
+    fmt,
+    fs::{self, File},
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
     str::FromStr,
@@ -28,7 +29,7 @@ use sway_core::{
 };
 use sway_types::JsonABI;
 use sway_utils::constants;
-use tracing::info;
+use tracing::{info, warn};
 use url::Url;
 
 type GraphIx = u32;
@@ -1672,6 +1673,213 @@ pub fn compile(
             }
         }
     }
+}
+#[derive(Default)]
+pub struct BuildOptions {
+    /// Path to the project, if not specified, current working directory will be used.
+    pub path: Option<String>,
+    /// Print the generated Sway AST (Abstract Syntax Tree).
+    pub print_ast: bool,
+    /// Print the finalized ASM.
+    ///
+    /// This is the state of the ASM with registers allocated and optimisations applied.
+    pub print_finalized_asm: bool,
+    /// Print the generated ASM.
+    ///
+    /// This is the state of the ASM prior to performing register allocation and other ASM
+    /// optimisations.
+    pub print_intermediate_asm: bool,
+    /// Print the generated Sway IR (Intermediate Representation).
+    pub print_ir: bool,
+    /// If set, outputs a binary file representing the script bytes.
+    pub binary_outfile: Option<String>,
+    /// If set, outputs source file mapping in JSON format
+    pub debug_outfile: Option<String>,
+    /// Offline mode, prevents Forc from using the network when managing dependencies.
+    /// Meaning it will only try to use previously downloaded dependencies.
+    pub offline_mode: bool,
+    /// Silent mode. Don't output any warnings or errors to the command line.
+    pub silent_mode: bool,
+    /// The directory in which the sway compiler output artifacts are placed.
+    ///
+    /// By default, this is `<project-root>/out`.
+    pub output_directory: Option<String>,
+    /// By default the JSON for ABIs is formatted for human readability. By using this option JSON
+    /// output will be "minified", i.e. all on one line without whitespace.
+    pub minify_json_abi: bool,
+    /// By default the JSON for initial storage slots is formatted for human readability. By using
+    /// this option JSON output will be "minified", i.e. all on one line without whitespace.
+    pub minify_json_storage_slots: bool,
+    /// Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it
+    /// needs to be updated, Forc will exit with an error
+    pub locked: bool,
+    /// Name of the build profile to use.
+    /// If it is not specified, forc will use debug build profile.
+    pub build_profile: Option<String>,
+    /// Use release build plan. If a custom release plan is not specified, it is implicitly added to the manifest file.
+    ///
+    ///  If --build-profile is also provided, forc omits this flag and uses provided build-profile.
+    pub release: bool,
+    /// Output the time elapsed over each part of the compilation process.
+    pub time_phases: bool,
+}
+
+/// The suffix that helps identify the file which contains the hash of the binary file created when
+/// scripts are built.
+pub const SWAY_BIN_HASH_SUFFIX: &str = "-bin-hash";
+
+/// The suffix that helps identify the file which contains the root hash of the binary file created
+/// when predicates are built.
+pub const SWAY_BIN_ROOT_SUFFIX: &str = "-bin-root";
+
+/// Builds a project with given BuildOptions
+pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
+    let key_debug: String = "debug".to_string();
+    let key_release: String = "release".to_string();
+
+    let BuildOptions {
+        path,
+        binary_outfile,
+        debug_outfile,
+        print_ast,
+        print_finalized_asm,
+        print_intermediate_asm,
+        print_ir,
+        offline_mode,
+        silent_mode,
+        output_directory,
+        minify_json_abi,
+        minify_json_storage_slots,
+        locked,
+        build_profile,
+        release,
+        time_phases,
+    } = build_options;
+
+    let mut selected_build_profile = key_debug;
+    match &build_profile {
+        Some(build_profile) => {
+            if release {
+                warn!(
+                    "You specified both {} and 'release' profiles. Using the 'release' profile",
+                    build_profile
+                );
+                selected_build_profile = key_release;
+            } else {
+                selected_build_profile = build_profile.clone();
+            }
+        }
+        None => {
+            if release {
+                selected_build_profile = key_release;
+            }
+        }
+    }
+
+    let this_dir = if let Some(ref path) = path {
+        PathBuf::from(path)
+    } else {
+        std::env::current_dir()?
+    };
+
+    let manifest = ManifestFile::from_dir(&this_dir)?;
+
+    let plan = BuildPlan::from_lock_and_manifest(&manifest, locked, offline_mode)?;
+
+    // Retrieve the specified build profile
+    let mut profile = manifest
+        .build_profile(&selected_build_profile)
+        .cloned()
+        .unwrap_or_else(|| {
+            warn!(
+                "provided profile option {} is not present in the manifest file. \
+            Using default profile.",
+                selected_build_profile
+            );
+            Default::default()
+        });
+    profile.print_ast |= print_ast;
+    profile.print_ir |= print_ir;
+    profile.print_finalized_asm |= print_finalized_asm;
+    profile.print_intermediate_asm |= print_intermediate_asm;
+    profile.silent |= silent_mode;
+    profile.time_phases |= time_phases;
+
+    // Build it!
+    let (compiled, source_map) = build(&plan, &profile)?;
+
+    if let Some(outfile) = binary_outfile {
+        fs::write(&outfile, &compiled.bytecode)?;
+    }
+
+    if let Some(outfile) = debug_outfile {
+        let source_map_json = serde_json::to_vec(&source_map).expect("JSON serialization failed");
+        fs::write(outfile, &source_map_json)?;
+    }
+
+    // Create the output directory for build artifacts.
+    let output_dir = output_directory
+        .map(PathBuf::from)
+        .unwrap_or_else(|| default_output_directory(manifest.dir()).join(selected_build_profile));
+    if !output_dir.exists() {
+        fs::create_dir_all(&output_dir)?;
+    }
+
+    // Place build artifacts into the output directory.
+    let bin_path = output_dir
+        .join(&manifest.project.name)
+        .with_extension("bin");
+    fs::write(&bin_path, &compiled.bytecode)?;
+    if !compiled.json_abi.is_empty() {
+        let json_abi_stem = format!("{}-abi", manifest.project.name);
+        let json_abi_path = output_dir.join(&json_abi_stem).with_extension("json");
+        let file = File::create(json_abi_path)?;
+        let res = if minify_json_abi {
+            serde_json::to_writer(&file, &compiled.json_abi)
+        } else {
+            serde_json::to_writer_pretty(&file, &compiled.json_abi)
+        };
+        res?;
+    }
+
+    info!("  Bytecode size is {} bytes.", compiled.bytecode.len());
+
+    // Additional ops required depending on the program type
+    match compiled.tree_type {
+        TreeType::Contract => {
+            // For contracts, emit a JSON file with all the initialized storage slots.
+            let json_storage_slots_stem = format!("{}-storage_slots", manifest.project.name);
+            let json_storage_slots_path = output_dir
+                .join(&json_storage_slots_stem)
+                .with_extension("json");
+            let file = File::create(json_storage_slots_path)?;
+            let res = if minify_json_storage_slots {
+                serde_json::to_writer(&file, &compiled.storage_slots)
+            } else {
+                serde_json::to_writer_pretty(&file, &compiled.storage_slots)
+            };
+            res?;
+        }
+        TreeType::Predicate => {
+            // get the root hash of the bytecode for predicates and store the result in a file in the output directory
+            let root = format!("0x{}", Contract::root_from_code(&compiled.bytecode));
+            let root_file_name = format!("{}{}", &manifest.project.name, SWAY_BIN_ROOT_SUFFIX);
+            let root_path = output_dir.join(root_file_name);
+            fs::write(root_path, &root)?;
+            info!("  Predicate root: {}", root);
+        }
+        TreeType::Script => {
+            // hash the bytecode for scripts and store the result in a file in the output directory
+            let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&compiled.bytecode));
+            let hash_file_name = format!("{}{}", &manifest.project.name, SWAY_BIN_HASH_SUFFIX);
+            let hash_path = output_dir.join(hash_file_name);
+            fs::write(hash_path, &bytecode_hash)?;
+            info!("  Script bytecode hash: {}", bytecode_hash);
+        }
+        _ => (),
+    }
+
+    Ok(compiled)
 }
 
 /// Build an entire forc package and return the compiled output.

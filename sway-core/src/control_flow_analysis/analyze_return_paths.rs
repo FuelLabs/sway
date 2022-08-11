@@ -2,7 +2,7 @@
 //! execution.
 
 use crate::{
-    control_flow_analysis::*, error::*, parse_tree::*, semantic_analysis::*, type_engine::*,
+    control_flow_analysis::*, error::*, parse_tree::*, semantic_analysis::*, type_system::*,
 };
 use petgraph::prelude::NodeIndex;
 use sway_types::{ident::Ident, span::Span};

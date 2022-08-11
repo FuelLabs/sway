@@ -9,7 +9,7 @@ use crate::{
         namespace::{self, Namespace},
         TypeCheckContext, TypedModule,
     },
-    type_engine::*,
+    type_system::*,
     types::ToJsonAbi,
 };
 use fuel_tx::StorageSlot;
@@ -192,8 +192,19 @@ impl TypedProgram {
                 }
             }
         };
-
-        ok(typed_program_kind, vec![], errors)
+        // check if no arguments passed to a `main()` in a `script` or `predicate`.
+        match &typed_program_kind {
+            TypedProgramKind::Script { main_function, .. }
+            | TypedProgramKind::Predicate { main_function, .. } => {
+                if !main_function.parameters.is_empty() {
+                    errors.push(CompileError::MainArgsNotYetSupported {
+                        span: main_function.span.clone(),
+                    })
+                }
+            }
+            _ => (),
+        }
+        ok(typed_program_kind, warnings, errors)
     }
 
     /// Ensures there are no unresolved types or types awaiting resolution in the AST.

@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::type_engine::{TraitConstraint, TypeArgument, TypeBinding, TypeParameter};
+use crate::type_system::{TraitConstraint, TypeArgument, TypeBinding, TypeParameter};
 
 use {
     crate::{
@@ -8,7 +8,7 @@ use {
             STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
         },
         error::{err, ok, CompileError, CompileResult, CompileWarning},
-        type_engine::{insert_type, AbiName, IntegerBits},
+        type_system::{insert_type, AbiName, IntegerBits},
         AbiDeclaration, AsmExpression, AsmOp, AsmRegister, AsmRegisterDeclaration, AstNode,
         AstNodeContent, CallPath, CodeBlock, ConstantDeclaration, Declaration, EnumDeclaration,
         EnumVariant, Expression, FunctionDeclaration, FunctionParameter, ImplSelf, ImplTrait,
@@ -1014,7 +1014,7 @@ fn ty_to_type_info(ec: &mut ErrorContext, ty: Ty) -> Result<TypeInfo, ErrorEmitt
         Ty::Array(bracketed_ty_array_descriptor) => {
             let ty_array_descriptor = bracketed_ty_array_descriptor.into_inner();
             TypeInfo::Array(
-                crate::type_engine::insert_type(ty_to_type_info(ec, *ty_array_descriptor.ty)?),
+                crate::type_system::insert_type(ty_to_type_info(ec, *ty_array_descriptor.ty)?),
                 expr_to_usize(ec, *ty_array_descriptor.length)?,
             )
         }

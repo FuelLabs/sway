@@ -7,7 +7,7 @@ use sway_types::Span;
 use crate::{
     error::{err, ok},
     semantic_analysis::TypeCheckContext,
-    type_engine::*,
+    type_system::*,
     types::DeterministicallyAborts,
     CompileError, CompileResult, Expression, Hint,
 };

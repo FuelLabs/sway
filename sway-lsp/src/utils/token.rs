@@ -1,6 +1,6 @@
 use crate::core::token::{AstToken, Token, TypedAstToken};
 use sway_core::semantic_analysis::ast_node::TypedDeclaration;
-use sway_core::type_engine::TypeId;
+use sway_core::type_system::TypeId;
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 pub fn is_initial_declaration(token_type: &Token) -> bool {

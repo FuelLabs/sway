@@ -1,0 +1,4 @@
+[[package]]
+name = 'unused_struct'
+source = 'root'
+dependencies = []

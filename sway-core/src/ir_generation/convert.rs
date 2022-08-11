@@ -1,7 +1,7 @@
 use crate::{
     error::CompileError,
     parse_tree::Literal,
-    type_engine::{resolve_type, TypeId, TypeInfo},
+    type_system::{resolve_type, TypeId, TypeInfo},
 };
 
 use super::types::{create_enum_aggregate, create_tuple_aggregate};

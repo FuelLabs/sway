@@ -1,5 +1,5 @@
 use crate::Ident;
-use crate::{semantic_analysis::*, type_engine::*};
+use crate::{semantic_analysis::*, type_system::*};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TypedStructExpressionField {

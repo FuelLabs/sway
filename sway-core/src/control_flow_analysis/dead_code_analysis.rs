@@ -12,7 +12,7 @@ use crate::{
         TypeCheckedStorageReassignment, TypedAsmRegisterDeclaration, TypedAstNode,
         TypedAstNodeContent, TypedImplTrait, TypedIntrinsicFunctionKind, TypedStorageDeclaration,
     },
-    type_engine::{resolve_type, TypeInfo},
+    type_system::{resolve_type, TypeInfo},
     CompileError, CompileWarning, Ident, TreeType, Warning,
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
@@ -577,6 +577,10 @@ fn connect_enum_declaration(
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
 ) {
+    graph
+        .namespace
+        .insert_enum(enum_decl.name.clone(), entry_node);
+
     // keep a mapping of each variant
     for variant in &enum_decl.variants {
         let variant_index = graph.add_node(ControlFlowGraphNode::from_enum_variant(
@@ -584,7 +588,7 @@ fn connect_enum_declaration(
             enum_decl.visibility != Visibility::Private,
         ));
 
-        graph.namespace.insert_enum(
+        graph.namespace.insert_enum_variant(
             enum_decl.name.clone(),
             entry_node,
             variant.name.clone(),
@@ -630,6 +634,40 @@ fn connect_typed_fn_decl(
     graph
         .namespace
         .insert_function(fn_decl.name.clone(), namespace_entry);
+
+    connect_fn_params_struct_enums(fn_decl, graph, entry_node)?;
+    Ok(())
+}
+
+// Searches for any structs or enums types referenced by the function
+// parameters from the passed function declaration and connects their
+// corresponding struct/enum declaration to the function entry node, thus
+// making sure they are considered used by the DCA pass.
+fn connect_fn_params_struct_enums(
+    fn_decl: &TypedFunctionDeclaration,
+    graph: &mut ControlFlowGraph,
+    fn_decl_entry_node: NodeIndex,
+) -> Result<(), CompileError> {
+    for fn_param in &fn_decl.parameters {
+        let ty = resolve_type(fn_param.type_id, &fn_param.type_span)?;
+        match ty {
+            TypeInfo::Enum { name, .. } => {
+                let ty_index = match graph.namespace.find_enum(&name) {
+                    Some(ix) => *ix,
+                    None => graph.add_node(format!("External enum  {}", name.as_str()).into()),
+                };
+                graph.add_edge(fn_decl_entry_node, ty_index, "".into());
+            }
+            TypeInfo::Struct { name, .. } => {
+                let ty_index = match graph.namespace.find_struct_decl(name.as_str()) {
+                    Some(ix) => *ix,
+                    None => graph.add_node(format!("External struct  {}", name.as_str()).into()),
+                };
+                graph.add_edge(fn_decl_entry_node, ty_index, "".into());
+            }
+            _ => {}
+        }
+    }
     Ok(())
 }
 
@@ -1035,7 +1073,7 @@ fn connect_expression(
             Ok(prefix_idx)
         }
         AbiName(abi_name) => {
-            if let crate::type_engine::AbiName::Known(abi_name) = abi_name {
+            if let crate::type_system::AbiName::Known(abi_name) = abi_name {
                 // abis are treated as traits here
                 let decl = graph.namespace.find_trait(abi_name).cloned();
                 if let Some(decl_node) = decl {

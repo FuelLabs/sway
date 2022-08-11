@@ -107,7 +107,7 @@ impl Session {
                 match type_def {
                     TypeDefinition::TypeId(type_id) => {
                         // Use the TypeId to look up the actual type
-                        let type_info = sway_core::type_engine::look_up_type_id(*type_id);
+                        let type_info = sway_core::type_system::look_up_type_id(*type_id);
                         match type_info {
                             TypeInfo::UnknownGeneric { name }
                             | TypeInfo::Enum { name, .. }
@@ -265,7 +265,7 @@ impl Session {
                 tracing::info!("type_id = {:#?}", type_id);
 
                 // Use the TypeId to look up the actual type
-                let type_info = sway_core::type_engine::look_up_type_id(type_id);
+                let type_info = sway_core::type_system::look_up_type_id(type_id);
                 tracing::info!("type_info = {:#?}", type_info);
             }
 

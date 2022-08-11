@@ -13,7 +13,7 @@ pub(crate) use self::{
 };
 
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::DeterministicallyAborts,
+    error::*, parse_tree::*, semantic_analysis::*, type_system::*, types::DeterministicallyAborts,
 };
 
 use sway_ast::intrinsics::Intrinsic;
@@ -289,7 +289,7 @@ impl DeterministicallyAborts for TypedExpression {
 pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
     TypedExpression {
         expression: TypedExpressionVariant::Tuple { fields: vec![] },
-        return_type: crate::type_engine::insert_type(TypeInfo::ErrorRecovery),
+        return_type: crate::type_system::insert_type(TypeInfo::ErrorRecovery),
         is_constant: IsConstant::No,
         span,
     }
@@ -578,7 +578,7 @@ impl TypedExpression {
             Literal::Byte(_) => TypeInfo::Byte,
             Literal::B256(_) => TypeInfo::B256,
         };
-        let id = crate::type_engine::insert_type(return_type);
+        let id = crate::type_system::insert_type(return_type);
         let exp = TypedExpression {
             expression: TypedExpressionVariant::Literal(lit),
             return_type: id,
@@ -706,7 +706,7 @@ impl TypedExpression {
             TypedCodeBlock::type_check(ctx.by_ref(), contents),
             (
                 TypedCodeBlock { contents: vec![] },
-                crate::type_engine::insert_type(TypeInfo::Tuple(Vec::new()))
+                crate::type_system::insert_type(TypeInfo::Tuple(Vec::new()))
             ),
             warnings,
             errors
@@ -1102,7 +1102,7 @@ impl TypedExpression {
             expression: TypedExpressionVariant::Tuple {
                 fields: typed_fields,
             },
-            return_type: crate::type_engine::insert_type(TypeInfo::Tuple(typed_field_types)),
+            return_type: crate::type_system::insert_type(TypeInfo::Tuple(typed_field_types)),
             is_constant,
             span,
         };

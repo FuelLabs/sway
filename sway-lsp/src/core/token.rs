@@ -5,7 +5,7 @@ use sway_core::{
         TypedDeclaration, TypedEnumVariant, TypedFunctionDeclaration, TypedFunctionParameter,
         TypedReassignment, TypedStorageField, TypedStructField, TypedTraitFn,
     },
-    type_engine::TypeId,
+    type_system::TypeId,
     Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter, Reassignment,
     StorageField, StructField, TraitFn,
 };

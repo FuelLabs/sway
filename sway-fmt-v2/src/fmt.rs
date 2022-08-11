@@ -1,6 +1,6 @@
 use crate::utils::{
-    comments::handle_comments, indent_style::Shape, newline_style::apply_newline_style,
-    program_type::insert_program_type,
+    comments::handle_comments, newline_style::apply_newline_style,
+    program_type::insert_program_type, shape::Shape,
 };
 use std::{path::Path, sync::Arc};
 use sway_core::BuildConfig;
@@ -10,7 +10,7 @@ pub use crate::{
     error::{ConfigError, FormatterError},
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Formatter {
     pub(crate) shape: Shape,
     pub config: Config,
@@ -34,6 +34,7 @@ impl Formatter {
             Err(e) => return Err(e),
         };
         let shape = Shape::default();
+
         Ok(Self { config, shape })
     }
     pub fn format(
@@ -42,23 +43,28 @@ impl Formatter {
         build_config: Option<&BuildConfig>,
     ) -> Result<FormattedCode, FormatterError> {
         let path = build_config.map(|build_config| build_config.canonical_root_module());
-        let src_len = src.len();
+        // update shape of the formatter with the width heuristics settings from the `Config`
+        self.shape.apply_width_heuristics(
+            self.config
+                .heuristics
+                .heuristics_pref
+                .to_width_heuristics(self.config.whitespace.max_width),
+        );
         let module = sway_parse::parse_file(src.clone(), path.clone())?;
-        // Get parsed items
-        let items = &module.items;
-        // Get the program type (script, predicate, contract or library)
-        let program_type = &module.kind;
 
         // Formatted code will be pushed here with raw newline stlye.
         // Which means newlines are not converted into system-specific versions until `apply_newline_style()`.
         // Use the length of src as a hint of the memory size needed for `raw_formatted_code`,
         // which will reduce the number of reallocations
-        let mut raw_formatted_code = String::with_capacity(src_len);
+        let mut raw_formatted_code = String::with_capacity(src.len());
 
-        // Insert program type to the formatted code.
+        // Get the program type (script, predicate, contract or library)
+        // and insert program type to the formatted code.
+        let program_type = &module.kind;
         insert_program_type(&mut raw_formatted_code, program_type)?;
 
         // Insert parsed & formatted items into the formatted code.
+        let items = &module.items;
         let mut iter = items.iter().peekable();
         while let Some(item) = iter.next() {
             // format Annotated<ItemKind>
@@ -111,7 +117,7 @@ pub const TEST: u16 = 10;"#;
     }
 
     #[test]
-    fn test_struct_multiline_line_alignment() {
+    fn test_struct_alignment() {
         let sway_code_to_format = r#"contract;
 pub struct Foo<T, P> {
    barbazfoo: u64,
@@ -132,43 +138,7 @@ pub struct Foo<T, P> {
         assert_eq!(correct_sway_code, formatted_sway_code)
     }
     #[test]
-    fn test_struct_single_line() {
-        let sway_code_to_format = r#"contract;
-pub struct Foo {
-    bar: u64,
-    baz: bool,
-}
-"#;
-        let correct_sway_code = r#"contract;
-
-pub struct Foo { bar: u64, baz: bool }"#;
-        let mut formatter = Formatter::default();
-        formatter.config.structures.small_structures_single_line = true;
-        formatter.config.whitespace.max_width = 300;
-        let formatted_sway_code =
-            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert_eq!(correct_sway_code, formatted_sway_code)
-    }
-    #[test]
-    fn test_enum_single_line() {
-        let sway_code_to_format = r#"contract;
-pub enum Foo {
-    bar: u64,
-    baz: bool,
-}
-"#;
-        let correct_sway_code = r#"contract;
-
-pub enum Foo { bar: u64, baz: bool }"#;
-        let mut formatter = Formatter::default();
-        formatter.config.structures.small_structures_single_line = true;
-        formatter.config.whitespace.max_width = 300;
-        let formatted_sway_code =
-            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert_eq!(correct_sway_code, formatted_sway_code)
-    }
-    #[test]
-    fn test_struct_multi_line() {
+    fn test_struct() {
         let sway_code_to_format = r#"contract;
 pub struct Foo {
     bar: u64,
@@ -313,20 +283,33 @@ enum TestTy {
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert_eq!(correct_sway_code, formatted_sway_code);
     }
+    #[test]
     fn test_storage_without_alignment() {
         let sway_code_to_format = r#"contract;
-
-storage{foo:Test=Test{},bar
-: 
-    Test=Test{}
-, baz: u64 } 
-"#;
+        struct Type1 {
+            foo: u64,
+        }
+        
+        struct Type2 {
+            bar: u64,
+        }
+        
+        storage {
+         var1: Type1=Type1{ foo: 8 },
+              var2: Type2=Type2{ bar: 9 },
+        }
+        "#;
         let correct_sway_code = r#"contract;
 
+struct Type1 {
+    foo: u64,
+}
+struct Type2 {
+    bar: u64,
+}
 storage {
-    foo: Test,
-    bar: Test,
-    baz: u64,
+    var1: Type1 = Type1 { foo: 8 },
+    var2: Type2 = Type2 { bar: 9 },
 }"#;
 
         let mut formatter = Formatter::default();
@@ -337,19 +320,30 @@ storage {
     #[test]
     fn test_storage_with_alignment() {
         let sway_code_to_format = r#"contract;
+struct Type1 {
+    foo: u64,
+}
+
+struct Type2 {
+    bar: u64,
+}
 
 storage {
- long_var_name: Type1=Type1{},
-      var2: Type2=Type2{},
+ long_var_name: Type1=Type1{ foo: 8 },
+      var2: Type2=Type2{ bar: 9 },
 }
 "#;
         let correct_sway_code = r#"contract;
 
+struct Type1 {
+    foo : u64,
+}
+struct Type2 {
+    bar : u64,
+}
 storage {
-    long_var_name : Type1 = Type1 {
-    },
-    var2          : Type2 = Type2 {
-    },
+    long_var_name : Type1 = Type1 { foo: 8 },
+    var2          : Type2 = Type2 { bar: 9 },
 }"#;
 
         let mut formatter = Formatter::default();
@@ -373,7 +367,15 @@ struct Type2 {
 }
 
 storage {
-    var1: Type1 = Type1 {x: 0,y: 0, },
+    var1: Type1 = Type1 {
+        
+        
+        
+        x: 0,
+        
+        y: 
+        0, 
+        },
     var2: Type2 = Type2 { w: 0x0000000000000000000000000000000000000000000000000000000000000000,z: false,
     },
 }"#;
@@ -388,10 +390,7 @@ struct Type2 {
     z: bool,
 }
 storage {
-    var1: Type1 = Type1 {
-        x: 0,
-        y: 0,
-    },
+    var1: Type1 = Type1 { x: 0, y: 0 },
     var2: Type2 = Type2 {
         w: 0x0000000000000000000000000000000000000000000000000000000000000000,
         z: false,
@@ -471,6 +470,88 @@ trait CompSciStudent: Programmer + Student {
     fn git_username(self) -> String;
 }"#;
         let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code)
+    }
+    #[test]
+    fn test_method_calls() {
+        let sway_code_to_format = r#"script;
+
+struct Opts {
+    gas: u64,
+    coins: u64,
+    id: ContractId,
+}
+
+fn  main(       ) -> bool{
+    let default_gas  = 1_000_000_000_000           ;let fuelcoin_id = ~ContractId::from(0x018f59fe434b323a5054e7bb41de983f4926a3c5d3e4e1f9f33b5f0f0e611889);
+
+    let balance_test_id = ~ContractId :: from( 0x597e5ddb1a6bec92a96a73e4f0bc6f6e3e7b21f5e03e1c812cd63cffac480463 ) ;
+
+    let fuel_coin = abi(    TestFuelCoin, fuelcoin_id.into(       ) ) ;               
+
+    assert(fuelcoin_balance == 0);
+
+    fuel_coin.mint        {
+        gas:             default_gas
+    }
+
+    (11);
+
+    fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
+    assert( fuelcoin_balance   == 11 ) ;
+
+    fuel_coin.burn {
+        gas: default_gas
+    }
+    (7);
+
+    fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
+    assert(fuelcoin_balance == 4);
+
+    fuel_coin.force_transfer {
+        gas: default_gas
+    }
+    (3, fuelcoin_id, balance_test_id);
+
+    fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
+    let balance_test_contract_balance = balance_of(fuelcoin_id, balance_test_id);
+    assert(fuelcoin_balance == 1);
+    assert(balance_test_contract_balance == 3);
+
+    true
+}"#;
+
+        let correct_sway_code = r#"script;
+
+struct Opts {
+    gas: u64,
+    coins: u64,
+    id: ContractId,
+}
+fn main() -> bool {
+    let default_gas = 1_000_000_000_000;
+    let fuelcoin_id = ~ContractId::from(0x018f59fe434b323a5054e7bb41de983f4926a3c5d3e4e1f9f33b5f0f0e611889);
+    let balance_test_id = ~ContractId::from(0x597e5ddb1a6bec92a96a73e4f0bc6f6e3e7b21f5e03e1c812cd63cffac480463);
+    let fuel_coin = abi(TestFuelCoin, fuelcoin_id.into());
+    assert(fuelcoin_balance == 0);
+    fuel_coin.mint { gas: default_gas }(11);
+    fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
+    assert(fuelcoin_balance == 11);
+    fuel_coin.burn { gas: default_gas }(7);
+    fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
+    assert(fuelcoin_balance == 4);
+    fuel_coin.force_transfer { gas: default_gas }(3, fuelcoin_id, balance_test_id);
+    fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
+    let balance_test_contract_balance = balance_of(fuelcoin_id, balance_test_id);
+    assert(fuelcoin_balance == 1);
+    assert(balance_test_contract_balance == 3);
+    true
+}"#;
+        let mut formatter = Formatter::default();
+        formatter.config.structures.small_structures_single_line = true;
+        formatter.config.whitespace.max_width = 220;
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert_eq!(correct_sway_code, formatted_sway_code)
@@ -618,21 +699,32 @@ pub const /* TEST: blah blah tests */ TEST: u16 = 10;"#; // Comment next to cons
     #[test]
     fn test_storage_comments() {
         let sway_code_to_format = r#"contract;
+
+struct Type1 {
+    foo: u64,
+}
+struct Type2 {
+    bar: u64,
+}
 storage {
     // Testing a comment inside storage
-    long_var_name: Type1=Type1{},
+    long_var_name: Type1=Type1{ foo: 8},
     // Testing another comment
-    var2: Type2 = Type2{} // This is the last comment
+    var2: Type2 = Type2{bar:9} // This is the last comment
 }"#;
         let correct_sway_code = r#"contract;
 
+struct Type1 {
+    foo: u64,
+}
+struct Type2 {
+    bar: u64,
+}
 storage {
     // Testing a comment inside storage
-    long_var_name: Type1 = Type1 {
-    },
+    long_var_name: Type1 = Type1 { foo: 8 },
     // Testing another comment
-    var2: Type2 = Type2 {
-    }, // This is the last comment
+    var2: Type2 = Type2 { bar: 9 }, // This is the last comment
 }"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
