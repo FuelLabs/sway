@@ -2,8 +2,18 @@
 //! This includes InputCoins, InputMessages and InputContracts.
 library inputs;
 
+use ::address::Address;
 use ::mem::read;
-use ::tx::tx_type;
+use ::option::Option;
+use ::revert::revert;
+use ::tx::{
+    tx_type,
+    Transaction,
+    GTF_SCRIPT_INPUT_AT_INDEX,
+    GTF_CREATE_INPUT_AT_INDEX,
+    GTF_SCRIPT_INPUTS_COUNT,
+    GTF_CREATE_INPUTS_COUNT,
+};
 
 const GTF_INPUT_TYPE = 0x101;
 
@@ -80,7 +90,7 @@ pub fn input_type(index: u64) -> Input {
 /// return the amount as an Option::Some(u64).
 /// Otherwise, returns Option::None.
 pub fn input_output_index(index: u64) -> Option<u64> {
-    let type = input_type();
+    let type = input_type(index);
     match type {
         Input::Coin => {
             Option::Some(__gtf::<u64>(index, GTF_INPUT_COIN_OUTPUT_INDEX))
@@ -91,7 +101,7 @@ pub fn input_output_index(index: u64) -> Option<u64> {
         _ => {
             return Option::None;
         },
-    };
+    }
 }
 
 /// Get amount field from input at `index`.
@@ -99,7 +109,7 @@ pub fn input_output_index(index: u64) -> Option<u64> {
 /// return the amount as an Option::Some(u64).
 /// Otherwise, returns Option::None.
 pub fn input_amount(index: u64) -> Option<u64> {
-    let type = input_type();
+    let type = input_type(index);
     match type {
         Input::Coin => {
             Option::Some(__gtf::<u64>(index, GTF_INPUT_COIN_AMOUNT))
@@ -110,7 +120,7 @@ pub fn input_amount(index: u64) -> Option<u64> {
         _ => {
             return Option::None;
         },
-    };
+    }
 }
 
 /// Get a pointer to an input given the index of the input
@@ -142,7 +152,7 @@ pub fn input_owner(index: u64) -> Option<Address> {
         _ => {
             return Option::None;
         },
-    };
+    }
 }
 
 /// Get the predicate data pointer from the input at `index`.
@@ -198,7 +208,8 @@ pub fn input_tx_id(index: u64) -> Option<b256> {
     let type = input_type(index);
     match type {
         Input::Coin => {
-            Option::Some(input_coin_tx_id(index))
+            let val: b256 = read(__gtf::<u64>(index, GTF_INPUT_COIN_TX_ID));
+            Option::Some(val)
         },
         Input::Contract => {
             let val: b256 = read(__gtf::<u64>(index, GTF_INPUT_CONTRACT_TX_ID));
