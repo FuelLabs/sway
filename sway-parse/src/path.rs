@@ -39,14 +39,10 @@ impl Parse for PathExpr {
 }
 
 fn parse_ident(parser: &mut Parser) -> ParseResult<Ident> {
-    if parser.peek::<StorageToken>().is_some() {
-        let token = parser.parse::<StorageToken>()?;
-        let ident: Ident = Ident::from(token);
-        Ok(ident)
-    } else if parser.peek::<SelfToken>().is_some() {
-        let token = parser.parse::<SelfToken>()?;
-        let ident: Ident = Ident::from(token);
-        Ok(ident)
+    if let Some(token) = parser.take::<StorageToken>() {
+        Ok(Ident::from(token))
+    } else if let Some(token) = parser.take::<SelfToken>() {
+        Ok(Ident::from(token))
     } else {
         parser.parse::<Ident>()
     }
@@ -54,22 +50,10 @@ fn parse_ident(parser: &mut Parser) -> ParseResult<Ident> {
 
 impl Parse for PathExprSegment {
     fn parse(parser: &mut Parser) -> ParseResult<PathExprSegment> {
-        let fully_qualified = parser.take();
-        let name = parse_ident(parser)?;
-        let generics_opt = if parser
-            .peek2::<DoubleColonToken, OpenAngleBracketToken>()
-            .is_some()
-        {
-            let double_colon_token = parser.parse()?;
-            let generics = parser.parse()?;
-            Some((double_colon_token, generics))
-        } else {
-            None
-        };
         Ok(PathExprSegment {
-            fully_qualified,
-            name,
-            generics_opt,
+            fully_qualified: parser.take(),
+            name: parse_ident(parser)?,
+            generics_opt: parser.guarded_parse::<(DoubleColonToken, OpenAngleBracketToken), _>()?,
         })
     }
 }
@@ -110,19 +94,16 @@ impl Parse for PathTypeSegment {
     fn parse(parser: &mut Parser) -> ParseResult<PathTypeSegment> {
         let fully_qualified = parser.take();
         let name = parse_ident(parser)?;
-        let generics_opt = if parser.peek::<OpenAngleBracketToken>().is_some() {
-            let generics = parser.parse()?;
-            Some((None, generics))
-        } else if parser
-            .peek2::<DoubleColonToken, OpenAngleBracketToken>()
-            .is_some()
-        {
-            let double_colon_token = parser.parse()?;
-            let generics = parser.parse()?;
-            Some((Some(double_colon_token), generics))
-        } else {
-            None
-        };
+        let generics_opt =
+            if let Some(generics) = parser.guarded_parse::<OpenAngleBracketToken, _>()? {
+                Some((None, generics))
+            } else if let Some((double_colon_token, generics)) =
+                parser.guarded_parse::<(DoubleColonToken, OpenAngleBracketToken), _>()?
+            {
+                Some((Some(double_colon_token), generics))
+            } else {
+                None
+            };
         Ok(PathTypeSegment {
             fully_qualified,
             name,
