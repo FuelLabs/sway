@@ -8,9 +8,10 @@ use sway_ast::{
     token::{Delimiter, PunctKind},
     ItemUse, UseTree,
 };
+use sway_types::Spanned;
+
 #[cfg(test)]
 mod tests;
-use sway_types::Spanned;
 
 impl Format for ItemUse {
     fn format(
