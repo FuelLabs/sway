@@ -144,10 +144,10 @@ pub fn input_owner(index: u64) -> Option<Address> {
     let type = input_type(index);
     match type {
         Input::Coin => {
-            Option::Some(~Address::from(read(__gtf::<u64>(index, GTF_INPUT_COIN_OWNER))))
+            Option::Some(~Address::from(read::<b256>(__gtf::<u64>(index, GTF_INPUT_COIN_OWNER))))
         },
         Input::Message => {
-            Option::Some(~Address::from(read(__gtf::<u64>(index, GTF_INPUT_MESSAGE_OWNER))))
+            Option::Some(~Address::from(read::<b256>(__gtf::<u64>(index, GTF_INPUT_MESSAGE_OWNER))))
         },
         _ => {
             return Option::None;
@@ -178,7 +178,7 @@ pub fn input_predicate_data<T>(index: u64) -> T {
     let data = input_predicate_data_pointer(index);
     match data {
         Option::Some(d) => {
-            read(d)
+            read::<T>(d)
         },
         Option::None => {
             revert(0)
@@ -208,12 +208,10 @@ pub fn input_tx_id(index: u64) -> Option<b256> {
     let type = input_type(index);
     match type {
         Input::Coin => {
-            let val: b256 = read(__gtf::<u64>(index, GTF_INPUT_COIN_TX_ID));
-            Option::Some(val)
+            Option::Some(read::<b256>(__gtf::<u64>(index, GTF_INPUT_COIN_TX_ID)))
         },
         Input::Contract => {
-            let val: b256 = read(__gtf::<u64>(index, GTF_INPUT_CONTRACT_TX_ID));
-            Option::Some(val)
+            Option::Some(read::<b256>(__gtf::<u64>(index, GTF_INPUT_CONTRACT_TX_ID)))
         },
         _ => {
             Option::None
