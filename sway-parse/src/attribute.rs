@@ -1,14 +1,58 @@
+use crate::priv_prelude::{Peek, Peeker};
 use crate::{Parse, ParseBracket, ParseErrorKind, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
 use sway_ast::attribute::{Annotated, Attribute, AttributeDecl};
-use sway_ast::brackets::Parens;
-use sway_ast::keywords::{HashToken, StorageToken};
+use sway_ast::brackets::{Parens, SquareBrackets};
+use sway_ast::keywords::{HashToken, StorageToken, Token};
+use sway_ast::punctuated::Punctuated;
+use sway_ast::token::{DocComment, DocStyle};
 use sway_types::Ident;
+
+impl Peek for DocComment {
+    fn peek(peeker: Peeker<'_>) -> Option<DocComment> {
+        peeker.peek_doc_comment().ok().map(Clone::clone)
+    }
+}
+
+impl Parse for DocComment {
+    fn parse(parser: &mut Parser) -> ParseResult<DocComment> {
+        match parser.take::<DocComment>() {
+            Some(doc_comment) => Ok(doc_comment),
+            None => Err(parser.emit_error(ParseErrorKind::ExpectedDocComment)),
+        }
+    }
+}
 
 impl<T: Parse> Parse for Annotated<T> {
     fn parse(parser: &mut Parser) -> ParseResult<Self> {
         // Parse the attribute list.
         let mut attribute_list = Vec::new();
+        while let Some(DocComment {
+            doc_style: DocStyle::Outer,
+            ..
+        }) = parser.peek::<DocComment>()
+        {
+            let doc_comment = parser.parse::<DocComment>()?;
+            let content = doc_comment.span.as_str()[3..].to_string();
+            let content: &'static str = Box::leak(content.into_boxed_str());
+            let value = Ident::new_no_span(content);
+            attribute_list.push(AttributeDecl {
+                hash_token: HashToken::new(doc_comment.span.clone()),
+                attribute: SquareBrackets::new(
+                    Attribute {
+                        name: Ident::new_with_override("doc", doc_comment.span.clone()),
+                        args: Some(Parens::new(
+                            Punctuated {
+                                value_separator_pairs: vec![],
+                                final_value_opt: Some(Box::new(value)),
+                            },
+                            doc_comment.span.clone(),
+                        )),
+                    },
+                    doc_comment.span,
+                ),
+            });
+        }
         while let Some(attr) = parser.guarded_parse::<HashToken, _>()? {
             attribute_list.push(attr);
         }

@@ -3,7 +3,9 @@ use crate::{Parse, ParseError, ParseErrorKind, ParseToEnd, Peek};
 use core::marker::PhantomData;
 use sway_ast::keywords::Keyword;
 use sway_ast::literal::Literal;
-use sway_ast::token::{Delimiter, Group, Punct, PunctKind, Spacing, TokenStream, TokenTree};
+use sway_ast::token::{
+    Delimiter, DocComment, Group, Punct, PunctKind, Spacing, TokenStream, TokenTree,
+};
 use sway_ast::PubToken;
 use sway_types::{Ident, Span, Spanned};
 
@@ -231,6 +233,16 @@ impl<'a> Peeker<'a> {
             [TokenTree::Group(Group { delimiter, .. }), ..] => {
                 *self.num_tokens = 1;
                 Ok(*delimiter)
+            }
+            _ => Err(self),
+        }
+    }
+
+    pub fn peek_doc_comment(self) -> Result<&'a DocComment, Self> {
+        match self.token_trees {
+            [TokenTree::DocComment(doc_comment), ..] => {
+                *self.num_tokens = 1;
+                Ok(doc_comment)
             }
             _ => Err(self),
         }
