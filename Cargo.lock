@@ -1465,16 +1465,6 @@ dependencies = [
 
 [[package]]
 name = "fuel-asm"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf02de44ec38d5977d61896cd228b45c9596a38f940f964cacb2d683ada6a064"
-dependencies = [
- "fuel-types",
- "serde",
-]
-
-[[package]]
-name = "fuel-asm"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "135ef9990debd1fa257988a0a8be5b9d787decaba911cc3b97d7712a4b70328d"
@@ -4172,9 +4162,9 @@ dependencies = [
 name = "sway-types"
 version = "0.19.2"
 dependencies = [
- "fuel-asm 0.6.0",
- "fuel-crypto 0.5.0",
- "fuel-tx 0.13.0",
+ "fuel-asm 0.8.0",
+ "fuel-crypto 0.6.0",
+ "fuel-tx 0.18.0",
  "lazy_static",
  "serde",
 ]
