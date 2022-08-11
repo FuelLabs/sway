@@ -33,8 +33,7 @@ pub struct FunctionContent {
     pub blocks: Vec<Block>,
     pub is_public: bool,
     pub selector: Option<[u8; 4]>,
-    pub span_md_idx: Option<MetadataIndex>,
-    pub storage_md_idx: Option<MetadataIndex>,
+    pub metadata: Option<MetadataIndex>,
 
     pub local_storage: BTreeMap<String, Pointer>, // BTree rather than Hash for deterministic ordering.
 
@@ -58,12 +57,16 @@ impl Function {
         return_type: Type,
         selector: Option<[u8; 4]>,
         is_public: bool,
-        span_md_idx: Option<MetadataIndex>,
-        storage_md_idx: Option<MetadataIndex>,
+        metadata: Option<MetadataIndex>,
     ) -> Function {
         let arguments = args
             .into_iter()
-            .map(|(name, ty, span_md_idx)| (name, Value::new_argument(context, ty, span_md_idx)))
+            .map(|(name, ty, arg_metadata)| {
+                (
+                    name,
+                    Value::new_argument(context, ty).add_metadatum(context, arg_metadata),
+                )
+            })
             .collect();
         let content = FunctionContent {
             name,
@@ -72,8 +75,7 @@ impl Function {
             blocks: Vec::new(),
             is_public,
             selector,
-            span_md_idx,
-            storage_md_idx,
+            metadata,
             local_storage: BTreeMap::new(),
             next_label_idx: 0,
         };
@@ -152,6 +154,22 @@ impl Function {
             })
     }
 
+    /// Remove a [`Block`] from this function.
+    ///
+    /// > Care must be taken to ensure the block has no predecessors otherwise the function will be
+    /// > made invalid.
+    pub fn remove_block(&self, context: &mut Context, block: &Block) -> Result<(), IrError> {
+        let label = block.get_label(context);
+        let func = context.functions.get_mut(self.0).unwrap();
+        let block_idx = func
+            .blocks
+            .iter()
+            .position(|b| b == block)
+            .ok_or(IrError::RemoveMissingBlock(label))?;
+        func.blocks.remove(block_idx);
+        Ok(())
+    }
+
     /// Get a new unique block label.
     ///
     /// If `hint` is `None` then the label will be in the form `"blockN"` where N is an
@@ -185,6 +203,18 @@ impl Function {
         let idx = func.next_label_idx;
         func.next_label_idx += 1;
         idx
+    }
+
+    /// Return the number of blocks in this function.
+    pub fn num_blocks(&self, context: &Context) -> usize {
+        context.functions[self.0].blocks.len()
+    }
+
+    /// Return the number of instructions in this function.
+    pub fn num_instructions(&self, context: &Context) -> usize {
+        self.block_iter(context)
+            .map(|block| block.num_instructions(context))
+            .sum()
     }
 
     /// Return the function name.

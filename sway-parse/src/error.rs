@@ -1,4 +1,6 @@
-use crate::priv_prelude::*;
+use sway_ast::token::PunctKind;
+use sway_types::{Ident, Span};
+use thiserror::Error;
 
 #[derive(Debug, Error, Clone, PartialEq, Hash)]
 pub enum ParseErrorKind {

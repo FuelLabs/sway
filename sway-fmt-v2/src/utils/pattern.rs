@@ -1,6 +1,9 @@
-use crate::fmt::*;
+use crate::{
+    fmt::*,
+    utils::comments::{ByteSpan, LeafSpans},
+};
 use std::fmt::Write;
-use sway_parse::{token::Delimiter, Pattern, PatternStructField};
+use sway_ast::{token::Delimiter, Pattern, PatternStructField};
 use sway_types::Spanned;
 
 use super::bracket::{CurlyBrace, Parenthesis};
@@ -19,8 +22,7 @@ impl Format for Pattern {
                 if let Some(mut_token) = mutable {
                     write!(formatted_code, "{} ", mut_token.span().as_str())?;
                 }
-                // maybe add `Ident::format()`, not sure if needed yet.
-                formatted_code.push_str(name.span().as_str());
+                name.format(formatted_code, formatter)?;
             }
             Self::Literal(lit) => lit.format(formatted_code, formatter)?,
             Self::Constant(path) => path.format(formatted_code, formatter)?,
@@ -28,27 +30,20 @@ impl Format for Pattern {
                 path.format(formatted_code, formatter)?;
                 Self::open_parenthesis(formatted_code, formatter)?;
                 // need to add `<Pattern, CommaToken>` to `Punctuated::format()`
-                args.clone()
-                    .into_inner()
-                    .format(formatted_code, formatter)?;
+                args.get().format(formatted_code, formatter)?;
                 Self::close_parenthesis(formatted_code, formatter)?;
             }
             Self::Struct { path, fields } => {
                 path.format(formatted_code, formatter)?;
                 Self::open_curly_brace(formatted_code, formatter)?;
                 // need to add `<PatternStructField, CommaToken>` to `Punctuated::format()`
-                fields
-                    .clone()
-                    .into_inner()
-                    .format(formatted_code, formatter)?;
+                fields.get().format(formatted_code, formatter)?;
                 Self::close_curly_brace(formatted_code, formatter)?;
             }
             Self::Tuple(args) => {
                 Self::open_parenthesis(formatted_code, formatter)?;
                 // need to add `<Pattern, CommaToken>` to `Punctuated::format()`
-                args.clone()
-                    .into_inner()
-                    .format(formatted_code, formatter)?;
+                args.get().format(formatted_code, formatter)?;
                 Self::close_parenthesis(formatted_code, formatter)?;
             }
         }
@@ -112,5 +107,62 @@ impl Format for PatternStructField {
             }
         }
         Ok(())
+    }
+}
+
+impl LeafSpans for Pattern {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = Vec::new();
+        match self {
+            Pattern::Wildcard { underscore_token } => {
+                collected_spans.push(ByteSpan::from(underscore_token.span()));
+            }
+            Pattern::Var { mutable, name } => {
+                if let Some(mutable) = mutable {
+                    collected_spans.push(ByteSpan::from(mutable.span()));
+                }
+                collected_spans.push(ByteSpan::from(name.span()));
+            }
+            Pattern::Literal(literal) => {
+                collected_spans.append(&mut literal.leaf_spans());
+            }
+            Pattern::Constant(constant) => {
+                collected_spans.append(&mut constant.leaf_spans());
+            }
+            Pattern::Constructor { path, args } => {
+                collected_spans.append(&mut path.leaf_spans());
+                collected_spans.append(&mut args.leaf_spans());
+            }
+            Pattern::Struct { path, fields } => {
+                collected_spans.append(&mut path.leaf_spans());
+                collected_spans.append(&mut fields.leaf_spans());
+            }
+            Pattern::Tuple(tuple) => {
+                collected_spans.append(&mut tuple.leaf_spans());
+            }
+        }
+        collected_spans
+    }
+}
+
+impl LeafSpans for PatternStructField {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = Vec::new();
+        match self {
+            PatternStructField::Rest { token } => {
+                collected_spans.push(ByteSpan::from(token.span()));
+            }
+            PatternStructField::Field {
+                field_name,
+                pattern_opt,
+            } => {
+                collected_spans.push(ByteSpan::from(field_name.span()));
+                if let Some(pattern) = pattern_opt {
+                    collected_spans.push(ByteSpan::from(pattern.0.span()));
+                    collected_spans.append(&mut pattern.1.leaf_spans());
+                }
+            }
+        }
+        collected_spans
     }
 }

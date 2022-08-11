@@ -3,11 +3,12 @@ use crate::{
     ir_generation::{
         const_eval::compile_constant_expression_to_constant, storage::serialize_to_storage_slots,
     },
+    metadata::MetadataManager,
     semantic_analysis::{
         TypeCheckedStorageAccess, TypeCheckedStorageAccessDescriptor, TypedExpression,
         TypedStructField,
     },
-    type_engine::{look_up_type_id, TypeId, TypeInfo},
+    type_system::{look_up_type_id, TypeId, TypeInfo},
     Ident,
 };
 use derivative::Derivative;
@@ -74,7 +75,7 @@ impl TypedStorageDeclaration {
         });
 
         fn update_available_struct_fields(id: TypeId) -> Vec<TypedStructField> {
-            match crate::type_engine::look_up_type_id(id) {
+            match crate::type_system::look_up_type_id(id) {
                 TypeInfo::Struct { fields, .. } => fields,
                 _ => vec![],
             }
@@ -137,11 +138,13 @@ impl TypedStorageDeclaration {
                      ref name,
                      type_id: ref r#type,
                      ref span,
+                     ref initializer,
                      ..
                  }| TypedStructField {
                     name: name.clone(),
                     type_id: *r#type,
                     span: span.clone(),
+                    type_span: initializer.span.clone(),
                 },
             )
             .collect()
@@ -200,7 +203,14 @@ impl TypedStorageField {
     ) -> Result<Vec<StorageSlot>, CompileError> {
         let mut context = Context::default();
         let module = Module::new(&mut context, Kind::Contract);
-        compile_constant_expression_to_constant(&mut context, module, None, &self.initializer)
-            .map(|constant| serialize_to_storage_slots(&constant, &context, ix, &constant.ty, &[]))
+        let mut md_mgr = MetadataManager::default();
+        compile_constant_expression_to_constant(
+            &mut context,
+            &mut md_mgr,
+            module,
+            None,
+            &self.initializer,
+        )
+        .map(|constant| serialize_to_storage_slots(&constant, &context, ix, &constant.ty, &[]))
     }
 }

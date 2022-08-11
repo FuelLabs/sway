@@ -1,161 +1,85 @@
-use crate::priv_prelude::*;
+use crate::{Parse, ParseErrorKind, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
-pub mod item_abi;
-pub mod item_const;
-pub mod item_control_flow;
-pub mod item_enum;
-pub mod item_fn;
-pub mod item_impl;
-pub mod item_storage;
-pub mod item_struct;
-pub mod item_trait;
-pub mod item_use;
+use sway_ast::keywords::{
+    AbiToken, BreakToken, ConstToken, ContinueToken, EnumToken, FnToken, ImplToken, MutToken,
+    OpenAngleBracketToken, PubToken, StorageToken, StructToken, TraitToken, UseToken, WhereToken,
+};
+use sway_ast::{FnArg, FnArgs, FnSignature, ItemKind, TypeField};
 
-pub type Item = Annotated<ItemKind>;
-
-impl Spanned for Item {
-    fn span(&self) -> Span {
-        match self.attribute_list.first() {
-            Some(attr0) => Span::join(attr0.span(), self.value.span()),
-            None => self.value.span(),
-        }
-    }
-}
-
-#[allow(clippy::large_enum_variant)]
-#[derive(Clone, Debug)]
-pub enum ItemKind {
-    Use(ItemUse),
-    Struct(ItemStruct),
-    Enum(ItemEnum),
-    Fn(ItemFn),
-    Trait(ItemTrait),
-    Impl(ItemImpl),
-    Abi(ItemAbi),
-    Const(ItemConst),
-    Storage(ItemStorage),
-    Break(ItemBreak),
-    Continue(ItemContinue),
-}
-
-impl Spanned for ItemKind {
-    fn span(&self) -> Span {
-        match self {
-            ItemKind::Use(item_use) => item_use.span(),
-            ItemKind::Struct(item_struct) => item_struct.span(),
-            ItemKind::Enum(item_enum) => item_enum.span(),
-            ItemKind::Fn(item_fn) => item_fn.span(),
-            ItemKind::Trait(item_trait) => item_trait.span(),
-            ItemKind::Impl(item_impl) => item_impl.span(),
-            ItemKind::Abi(item_abi) => item_abi.span(),
-            ItemKind::Const(item_const) => item_const.span(),
-            ItemKind::Storage(item_storage) => item_storage.span(),
-            ItemKind::Break(item_break) => item_break.span(),
-            ItemKind::Continue(item_continue) => item_continue.span(),
-        }
-    }
-}
+mod item_abi;
+mod item_const;
+mod item_control_flow;
+mod item_enum;
+mod item_fn;
+mod item_impl;
+mod item_storage;
+mod item_struct;
+mod item_trait;
+mod item_use;
 
 impl Parse for ItemKind {
     fn parse(parser: &mut Parser) -> ParseResult<ItemKind> {
-        if parser.peek::<UseToken>().is_some() || parser.peek2::<PubToken, UseToken>().is_some() {
+        // FIXME(Centril): Visibility should be moved out of `ItemKind` variants,
+        // introducing a struct `Item` that holds the visibility and the kind,
+        // and then validate in an "AST validation" step which kinds that should have `pub`s.
+
+        if parser.peek::<UseToken>().is_some() || parser.peek::<(PubToken, UseToken)>().is_some() {
             let item_use = parser.parse()?;
             return Ok(ItemKind::Use(item_use));
         }
         if parser.peek::<StructToken>().is_some()
-            || parser.peek2::<PubToken, StructToken>().is_some()
+            || parser.peek::<(PubToken, StructToken)>().is_some()
         {
             let item_struct = parser.parse()?;
             return Ok(ItemKind::Struct(item_struct));
         }
-        if parser.peek::<EnumToken>().is_some() || parser.peek2::<PubToken, EnumToken>().is_some() {
+        if parser.peek::<EnumToken>().is_some() || parser.peek::<(PubToken, EnumToken)>().is_some()
+        {
             let item_enum = parser.parse()?;
             return Ok(ItemKind::Enum(item_enum));
         }
-        if parser.peek::<FnToken>().is_some() || parser.peek2::<PubToken, FnToken>().is_some() {
+        if parser.peek::<FnToken>().is_some() || parser.peek::<(PubToken, FnToken)>().is_some() {
             let item_fn = parser.parse()?;
             return Ok(ItemKind::Fn(item_fn));
         }
-        if parser.peek::<TraitToken>().is_some() || parser.peek2::<PubToken, TraitToken>().is_some()
+        if parser.peek::<TraitToken>().is_some()
+            || parser.peek::<(PubToken, TraitToken)>().is_some()
         {
             let item_trait = parser.parse()?;
             return Ok(ItemKind::Trait(item_trait));
         }
-        if parser.peek::<ImplToken>().is_some() {
-            let item_impl = parser.parse()?;
-            return Ok(ItemKind::Impl(item_impl));
+        if let Some(item) = parser.guarded_parse::<ImplToken, _>()? {
+            return Ok(ItemKind::Impl(item));
         }
-        if parser.peek::<AbiToken>().is_some() {
-            let item_abi = parser.parse()?;
-            return Ok(ItemKind::Abi(item_abi));
+        if let Some(item) = parser.guarded_parse::<AbiToken, _>()? {
+            return Ok(ItemKind::Abi(item));
         }
-        if parser.peek::<ConstToken>().is_some() || parser.peek2::<PubToken, ConstToken>().is_some()
+        if parser.peek::<ConstToken>().is_some()
+            || parser.peek::<(PubToken, ConstToken)>().is_some()
         {
             let item_const = parser.parse()?;
             return Ok(ItemKind::Const(item_const));
         }
-        if parser.peek::<StorageToken>().is_some() {
-            let item_storage = parser.parse()?;
-            return Ok(ItemKind::Storage(item_storage));
+        if let Some(item) = parser.guarded_parse::<StorageToken, _>()? {
+            return Ok(ItemKind::Storage(item));
         }
-        if parser.peek::<BreakToken>().is_some() {
-            let item_break = parser.parse()?;
-            return Ok(ItemKind::Break(item_break));
+        if let Some(item) = parser.guarded_parse::<BreakToken, _>()? {
+            return Ok(ItemKind::Break(item));
         }
-        if parser.peek::<ContinueToken>().is_some() {
-            let item_break = parser.parse()?;
-            return Ok(ItemKind::Continue(item_break));
+        if let Some(item) = parser.guarded_parse::<ContinueToken, _>()? {
+            return Ok(ItemKind::Continue(item));
         }
         Err(parser.emit_error(ParseErrorKind::ExpectedAnItem))
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct TypeField {
-    pub name: Ident,
-    pub colon_token: ColonToken,
-    pub ty: Ty,
-}
-
-impl Spanned for TypeField {
-    fn span(&self) -> Span {
-        Span::join(self.name.span(), self.ty.span())
-    }
-}
-
 impl Parse for TypeField {
     fn parse(parser: &mut Parser) -> ParseResult<TypeField> {
-        let name = parser.parse()?;
-        let colon_token = parser.parse()?;
-        let ty = parser.parse()?;
         Ok(TypeField {
-            name,
-            colon_token,
-            ty,
+            name: parser.parse()?,
+            colon_token: parser.parse()?,
+            ty: parser.parse()?,
         })
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum FnArgs {
-    Static(Punctuated<FnArg, CommaToken>),
-    NonStatic {
-        self_token: SelfToken,
-        mutable_self: Option<MutToken>,
-        args_opt: Option<(CommaToken, Punctuated<FnArg, CommaToken>)>,
-    },
-}
-
-#[derive(Clone, Debug)]
-pub struct FnArg {
-    pub pattern: Pattern,
-    pub colon_token: ColonToken,
-    pub ty: Ty,
-}
-
-impl Spanned for FnArg {
-    fn span(&self) -> Span {
-        Span::join(self.pattern.span(), self.ty.span())
     }
 }
 
@@ -163,13 +87,7 @@ impl ParseToEnd for FnArgs {
     fn parse_to_end<'a, 'e>(
         mut parser: Parser<'a, 'e>,
     ) -> ParseResult<(FnArgs, ParserConsumed<'a>)> {
-        let mutable_self = match parser.peek::<MutToken>() {
-            Some(_mut_token) => {
-                let mut_token = parser.parse()?;
-                Some(mut_token)
-            }
-            None => None,
-        };
+        let mutable_self = parser.take::<MutToken>();
         match parser.take() {
             Some(self_token) => {
                 match parser.take() {
@@ -207,78 +125,30 @@ impl ParseToEnd for FnArgs {
 
 impl Parse for FnArg {
     fn parse(parser: &mut Parser) -> ParseResult<FnArg> {
-        let pattern = parser.parse()?;
-        let colon_token = parser.parse()?;
-        let ty = parser.parse()?;
         Ok(FnArg {
-            pattern,
-            colon_token,
-            ty,
+            pattern: parser.parse()?,
+            colon_token: parser.parse()?,
+            ty: parser.parse()?,
         })
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct FnSignature {
-    pub visibility: Option<PubToken>,
-    pub fn_token: FnToken,
-    pub name: Ident,
-    pub generics: Option<GenericParams>,
-    pub arguments: Parens<FnArgs>,
-    pub return_type_opt: Option<(RightArrowToken, Ty)>,
-    pub where_clause_opt: Option<WhereClause>,
-}
-
-impl Spanned for FnSignature {
-    fn span(&self) -> Span {
-        let start = match &self.visibility {
-            Some(pub_token) => pub_token.span(),
-            None => self.fn_token.span(),
-        };
-        let end = match &self.where_clause_opt {
-            Some(where_clause) => where_clause.span(),
-            None => match &self.return_type_opt {
-                Some((_right_arrow, ty)) => ty.span(),
-                None => self.arguments.span(),
-            },
-        };
-        Span::join(start, end)
     }
 }
 
 impl Parse for FnSignature {
     fn parse(parser: &mut Parser) -> ParseResult<FnSignature> {
-        let visibility = parser.take();
-        let fn_token = parser.parse()?;
-        let name: Ident = parser.parse()?;
-        let generics = if parser.peek::<OpenAngleBracketToken>().is_some() {
-            Some(parser.parse()?)
-        } else {
-            None
-        };
-        let arguments = parser.parse()?;
-        let return_type_opt = match parser.take() {
-            Some(right_arrow_token) => {
-                let ty = parser.parse()?;
-                Some((right_arrow_token, ty))
-            }
-            None => None,
-        };
-        let where_clause_opt = match parser.peek::<WhereToken>() {
-            Some(_where_token) => {
-                let where_clause = parser.parse()?;
-                Some(where_clause)
-            }
-            None => None,
-        };
         Ok(FnSignature {
-            visibility,
-            fn_token,
-            name,
-            generics,
-            arguments,
-            return_type_opt,
-            where_clause_opt,
+            visibility: parser.take(),
+            fn_token: parser.parse()?,
+            name: parser.parse()?,
+            generics: parser.guarded_parse::<OpenAngleBracketToken, _>()?,
+            arguments: parser.parse()?,
+            return_type_opt: match parser.take() {
+                Some(right_arrow_token) => {
+                    let ty = parser.parse()?;
+                    Some((right_arrow_token, ty))
+                }
+                None => None,
+            },
+            where_clause_opt: parser.guarded_parse::<WhereToken, _>()?,
         })
     }
 }
@@ -288,6 +158,8 @@ impl Parse for FnSignature {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
+    use sway_ast::Item;
 
     fn parse_item(input: &str) -> Item {
         let token_stream = crate::token::lex(&Arc::from(input), 0, input.len(), None).unwrap();

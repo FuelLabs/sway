@@ -4,12 +4,16 @@ use crate::{
     constants::STORAGE_PURITY_ATTRIBUTE_NAME,
     convert_parse_tree::ConvertParseTreeError,
     style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case},
-    type_engine::*,
+    type_system::*,
     CallPath, VariableDeclaration,
 };
 use sway_types::{ident::Ident, span::Span, Spanned};
 
-use std::{fmt, path::PathBuf, sync::Arc};
+use std::{
+    fmt::{self, Display},
+    path::PathBuf,
+    sync::Arc,
+};
 use thiserror::Error;
 
 macro_rules! check {
@@ -184,6 +188,26 @@ where
             warnings,
             errors,
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Hash)]
+pub struct Hint {
+    msg: Option<String>,
+}
+
+impl Hint {
+    pub fn empty() -> Hint {
+        Hint { msg: None }
+    }
+    pub fn new(msg: String) -> Hint {
+        Hint { msg: Some(msg) }
+    }
+}
+
+impl Display for Hint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Hint: {}", &self.msg.as_ref().unwrap_or(&"".to_string()))
     }
 }
 
@@ -393,7 +417,7 @@ impl fmt::Display for Warning {
                 "This trait implementation overrides another one that was previously defined."
             ),
             DeadDeclaration => write!(f, "This declaration is never used."),
-            DeadStructDeclaration => write!(f, "This struct is never instantiated."),
+            DeadStructDeclaration => write!(f, "This struct is never used."),
             DeadFunctionDeclaration => write!(f, "This function is never called."),
             UnreachableCode => write!(f, "This code is unreachable."),
             DeadEnumVariant { variant_name } => {
@@ -974,6 +998,8 @@ pub enum CompileError {
     NoDeclaredStorage { span: Span },
     #[error("Multiple storage declarations were found")]
     MultipleStorageDeclarations { span: Span },
+    #[error("Type {ty} can only be declared directly as a storage field")]
+    InvalidStorageOnlyTypeDecl { ty: String, span: Span },
     #[error("Expected identifier, found keyword \"{name}\" ")]
     InvalidVariableName { name: Ident },
     #[error(
@@ -998,8 +1024,12 @@ pub enum CompileError {
     NonConstantDeclValue { span: Span },
     #[error("Declaring storage in a {program_kind} is not allowed.")]
     StorageDeclarationInNonContract { program_kind: String, span: Span },
-    #[error("Unsupported argument type to intrinsic \"{name}\".")]
-    IntrinsicUnsupportedArgType { name: String, span: Span },
+    #[error("Unsupported argument type to intrinsic \"{name}\". {hint}")]
+    IntrinsicUnsupportedArgType {
+        name: String,
+        span: Span,
+        hint: Hint,
+    },
     #[error("Call to \"{name}\" expects {expected} arguments")]
     IntrinsicIncorrectNumArgs {
         name: String,
@@ -1016,6 +1046,8 @@ pub enum CompileError {
     BreakOutsideLoop { span: Span },
     #[error("\"continue\" used outside of a loop")]
     ContinueOutsideLoop { span: Span },
+    #[error("arguments to \"main()\" are not yet supported. See the issue here: github.com/FuelLabs/sway/issues/845")]
+    MainArgsNotYetSupported { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1161,6 +1193,7 @@ impl Spanned for CompileError {
             UnrecognizedContractParam { span, .. } => span.clone(),
             CallParamForNonContractCallMethod { span, .. } => span.clone(),
             StorageFieldDoesNotExist { name } => name.span(),
+            InvalidStorageOnlyTypeDecl { span, .. } => span.clone(),
             NoDeclaredStorage { span, .. } => span.clone(),
             MultipleStorageDeclarations { span, .. } => span.clone(),
             InvalidVariableName { name } => name.span(),
@@ -1179,6 +1212,7 @@ impl Spanned for CompileError {
             IntrinsicIncorrectNumTArgs { span, .. } => span.clone(),
             BreakOutsideLoop { span } => span.clone(),
             ContinueOutsideLoop { span } => span.clone(),
+            MainArgsNotYetSupported { span } => span.clone(),
         }
     }
 }

@@ -1,15 +1,15 @@
 use std::fmt;
 
 use itertools::Itertools;
-use sway_parse::intrinsics::Intrinsic;
+use sway_ast::intrinsics::Intrinsic;
 use sway_types::Span;
 
 use crate::{
     error::{err, ok},
     semantic_analysis::TypeCheckContext,
-    type_engine::*,
+    type_system::*,
     types::DeterministicallyAborts,
-    CompileError, CompileResult, Expression,
+    CompileError, CompileResult, Expression, Hint,
 };
 
 use super::TypedExpression;
@@ -219,6 +219,7 @@ impl TypedIntrinsicFunctionKind {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span: lhs.span,
+                        hint: Hint::empty(),
                     });
                     return err(warnings, errors);
                 }
@@ -293,6 +294,7 @@ impl TypedIntrinsicFunctionKind {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span: index.span.clone(),
+                        hint: Hint::empty(),
                     });
                 }
 
@@ -304,6 +306,7 @@ impl TypedIntrinsicFunctionKind {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span: tx_field_id.span.clone(),
+                        hint: Hint::empty(),
                     });
                 }
 
@@ -332,6 +335,45 @@ impl TypedIntrinsicFunctionKind {
                     },
                     type_id,
                 )
+            }
+            Intrinsic::AddrOf => {
+                if arguments.len() != 1 {
+                    errors.push(CompileError::IntrinsicIncorrectNumArgs {
+                        name: kind.to_string(),
+                        expected: 1,
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
+                let ctx = ctx
+                    .with_help_text("")
+                    .with_type_annotation(insert_type(TypeInfo::Unknown));
+                let exp = check!(
+                    TypedExpression::type_check(ctx, arguments[0].clone()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let copy_ty = resolve_type(exp.return_type, &span).unwrap().is_copy_type();
+                if copy_ty {
+                    errors.push(CompileError::IntrinsicUnsupportedArgType {
+                        name: kind.to_string(),
+                        span,
+                        hint: Hint::new(
+                            "Only a reference type can be used as argument here".to_string(),
+                        ),
+                    });
+                    return err(warnings, errors);
+                }
+
+                let intrinsic_function = TypedIntrinsicFunctionKind {
+                    kind,
+                    arguments: vec![exp],
+                    type_arguments: vec![],
+                    span,
+                };
+                let return_type = insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour));
+                (intrinsic_function, return_type)
             }
         };
         ok((intrinsic_function, return_type), warnings, errors)

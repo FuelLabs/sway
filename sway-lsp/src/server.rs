@@ -6,6 +6,7 @@ use crate::core::{
 };
 use crate::utils::debug::{self, DebugFlags};
 use forc_util::find_manifest_dir;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::*;
@@ -67,6 +68,7 @@ fn capabilities() -> ServerCapabilities {
             ..Default::default()
         }),
         document_formatting_provider: Some(OneOf::Left(true)),
+        definition_provider: Some(OneOf::Left(true)),
         ..ServerCapabilities::default()
     }
 }
@@ -78,22 +80,29 @@ impl Backend {
         diagnostics: Vec<Diagnostic>,
         token_map: &TokenMap,
     ) {
-        // If parsed_tokens_as_warnings is true, take over the normal error and warning display behavior
-        // and instead show the parsed tokens as warnings.
-        // This is useful for debugging the lsp parser.
-        if self.config.parsed_tokens_as_warnings {
-            let diagnostics = debug::generate_warnings_for_parsed_tokens(token_map);
-
-            //let diagnostics = debug::generate_warnings_for_typed_tokens(token_map);
-            self.client
-                .publish_diagnostics(uri.clone(), diagnostics, None)
-                .await;
-        } else {
-            // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
-            // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
-            self.client
-                .publish_diagnostics(uri.clone(), diagnostics, None)
-                .await;
+        match &self.config.collected_tokens_as_warnings {
+            Some(s) => {
+                // If collected_tokens_as_warnings is Some, take over the normal error and warning display behavior
+                // and instead show the either the parsed or typed tokens as warnings.
+                // This is useful for debugging the lsp parser.
+                let diagnostics = match s.as_str() {
+                    "parsed" => Some(debug::generate_warnings_for_parsed_tokens(token_map)),
+                    "typed" => Some(debug::generate_warnings_for_typed_tokens(token_map)),
+                    _ => None,
+                };
+                if let Some(diagnostics) = diagnostics {
+                    self.client
+                        .publish_diagnostics(uri.clone(), diagnostics, None)
+                        .await;
+                }
+            }
+            None => {
+                // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
+                // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
+                self.client
+                    .publish_diagnostics(uri.clone(), diagnostics, None)
+                    .await;
+            }
         }
     }
 }
@@ -249,6 +258,28 @@ impl LanguageServer for Backend {
     }
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct RunnableParams {}
+
+// Custom LSP-Server Methods
+impl Backend {
+    pub async fn runnables(
+        &self,
+        _params: RunnableParams,
+    ) -> jsonrpc::Result<Option<Vec<(Range, String)>>> {
+        let ranges = self
+            .session
+            .runnables
+            .get(&capabilities::runnable::RunnableType::MainFn)
+            .map(|item| {
+                let runnable = item.value();
+                vec![(runnable.range, format!("{}", runnable.tree_type))]
+            });
+
+        Ok(ranges)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;
@@ -260,25 +291,25 @@ mod tests {
     use tower_lsp::jsonrpc::{self, Request, Response};
     use tower_lsp::LspService;
 
-    fn _e2e_test_dir() -> PathBuf {
+    fn e2e_test_dir() -> PathBuf {
         env::current_dir()
             .unwrap()
             .parent()
             .unwrap()
             .join("test/src/e2e_vm_tests/test_programs/should_pass/language")
-            .join("is_reference_type")
+            .join("struct_field_access")
     }
 
-    fn sway_example_dir() -> PathBuf {
+    fn _sway_example_dir() -> PathBuf {
         env::current_dir()
             .unwrap()
             .parent()
             .unwrap()
-            .join("examples/subcurrency")
+            .join("examples/storage_variables")
     }
 
     fn load_sway_example() -> (Url, String) {
-        let manifest_dir = sway_example_dir(); //e2e_test_dir();
+        let manifest_dir = e2e_test_dir();
         let src_path = manifest_dir.join("src/main.sw");
         let mut file = fs::File::open(&src_path).unwrap();
         let mut sway_program = String::new();

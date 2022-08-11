@@ -1,7 +1,7 @@
 use crate::{
     core::{
         session::Session,
-        token::{AstToken, TokenType, TypedAstToken},
+        token::{AstToken, Token, TypedAstToken},
     },
     utils::{
         common::{extract_visibility, get_range_from_span},
@@ -31,7 +31,7 @@ pub fn hover_data(session: &Session, params: HoverParams) -> Option<Hover> {
     None
 }
 
-fn hover_format(token: &TokenType, ident: &Ident) -> Hover {
+fn hover_format(token: &Token, ident: &Ident) -> Hover {
     let token_name: String = ident.as_str().into();
     let range = get_range_from_span(&ident.span());
 

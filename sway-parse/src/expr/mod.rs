@@ -1,279 +1,28 @@
-use crate::priv_prelude::*;
+use crate::{
+    Parse, ParseBracket, ParseErrorKind, ParseResult, ParseToEnd, Parser, ParserConsumed, Peek,
+};
 
-pub mod asm;
+use core::ops::ControlFlow;
+use sway_ast::brackets::{Braces, Parens, SquareBrackets};
+use sway_ast::expr::{ReassignmentOp, ReassignmentOpVariant};
+use sway_ast::keywords::{
+    AbiToken, AddEqToken, AsmToken, BreakToken, CommaToken, ConstToken, ContinueToken, DivEqToken,
+    DoubleColonToken, EnumToken, EqToken, FalseToken, FnToken, IfToken, ImplToken, LetToken,
+    OpenAngleBracketToken, PubToken, SemicolonToken, ShlEqToken, ShrEqToken, StarEqToken,
+    StorageToken, StructToken, SubEqToken, TildeToken, TraitToken, TrueToken, UseToken,
+};
+use sway_ast::literal::{LitBool, LitBoolType};
+use sway_ast::punctuated::Punctuated;
+use sway_ast::token::Delimiter;
+use sway_ast::{
+    AbiCastArgs, CodeBlockContents, Expr, ExprArrayDescriptor, ExprStructField,
+    ExprTupleDescriptor, IfCondition, IfExpr, LitInt, Literal, MatchBranch, MatchBranchKind,
+    Statement, StatementLet,
+};
+use sway_types::{Ident, Spanned};
+
+mod asm;
 pub mod op_code;
-
-#[derive(Clone, Debug)]
-pub enum Expr {
-    Path(PathExpr),
-    Literal(Literal),
-    AbiCast {
-        abi_token: AbiToken,
-        args: Parens<AbiCastArgs>,
-    },
-    Struct {
-        path: PathExpr,
-        fields: Braces<Punctuated<ExprStructField, CommaToken>>,
-    },
-    Tuple(Parens<ExprTupleDescriptor>),
-    Parens(Parens<Box<Expr>>),
-    Block(Braces<CodeBlockContents>),
-    Array(SquareBrackets<ExprArrayDescriptor>),
-    Asm(AsmBlock),
-    Return {
-        return_token: ReturnToken,
-        expr_opt: Option<Box<Expr>>,
-    },
-    If(IfExpr),
-    Match {
-        match_token: MatchToken,
-        value: Box<Expr>,
-        branches: Braces<Vec<MatchBranch>>,
-    },
-    While {
-        while_token: WhileToken,
-        condition: Box<Expr>,
-        block: Braces<CodeBlockContents>,
-    },
-    FuncApp {
-        func: Box<Expr>,
-        args: Parens<Punctuated<Expr, CommaToken>>,
-    },
-    Index {
-        target: Box<Expr>,
-        arg: SquareBrackets<Box<Expr>>,
-    },
-    MethodCall {
-        target: Box<Expr>,
-        dot_token: DotToken,
-        name: Ident,
-        contract_args_opt: Option<Braces<Punctuated<ExprStructField, CommaToken>>>,
-        args: Parens<Punctuated<Expr, CommaToken>>,
-    },
-    FieldProjection {
-        target: Box<Expr>,
-        dot_token: DotToken,
-        name: Ident,
-    },
-    TupleFieldProjection {
-        target: Box<Expr>,
-        dot_token: DotToken,
-        field: BigUint,
-        field_span: Span,
-    },
-    Ref {
-        ref_token: RefToken,
-        expr: Box<Expr>,
-    },
-    Deref {
-        deref_token: DerefToken,
-        expr: Box<Expr>,
-    },
-    Not {
-        bang_token: BangToken,
-        expr: Box<Expr>,
-    },
-    Mul {
-        lhs: Box<Expr>,
-        star_token: StarToken,
-        rhs: Box<Expr>,
-    },
-    Div {
-        lhs: Box<Expr>,
-        forward_slash_token: ForwardSlashToken,
-        rhs: Box<Expr>,
-    },
-    Modulo {
-        lhs: Box<Expr>,
-        percent_token: PercentToken,
-        rhs: Box<Expr>,
-    },
-    Add {
-        lhs: Box<Expr>,
-        add_token: AddToken,
-        rhs: Box<Expr>,
-    },
-    Sub {
-        lhs: Box<Expr>,
-        sub_token: SubToken,
-        rhs: Box<Expr>,
-    },
-    Shl {
-        lhs: Box<Expr>,
-        shl_token: ShlToken,
-        rhs: Box<Expr>,
-    },
-    Shr {
-        lhs: Box<Expr>,
-        shr_token: ShrToken,
-        rhs: Box<Expr>,
-    },
-    BitAnd {
-        lhs: Box<Expr>,
-        ampersand_token: AmpersandToken,
-        rhs: Box<Expr>,
-    },
-    BitXor {
-        lhs: Box<Expr>,
-        caret_token: CaretToken,
-        rhs: Box<Expr>,
-    },
-    BitOr {
-        lhs: Box<Expr>,
-        pipe_token: PipeToken,
-        rhs: Box<Expr>,
-    },
-    Equal {
-        lhs: Box<Expr>,
-        double_eq_token: DoubleEqToken,
-        rhs: Box<Expr>,
-    },
-    NotEqual {
-        lhs: Box<Expr>,
-        bang_eq_token: BangEqToken,
-        rhs: Box<Expr>,
-    },
-    LessThan {
-        lhs: Box<Expr>,
-        less_than_token: LessThanToken,
-        rhs: Box<Expr>,
-    },
-    GreaterThan {
-        lhs: Box<Expr>,
-        greater_than_token: GreaterThanToken,
-        rhs: Box<Expr>,
-    },
-    LessThanEq {
-        lhs: Box<Expr>,
-        less_than_eq_token: LessThanEqToken,
-        rhs: Box<Expr>,
-    },
-    GreaterThanEq {
-        lhs: Box<Expr>,
-        greater_than_eq_token: GreaterThanEqToken,
-        rhs: Box<Expr>,
-    },
-    LogicalAnd {
-        lhs: Box<Expr>,
-        double_ampersand_token: DoubleAmpersandToken,
-        rhs: Box<Expr>,
-    },
-    LogicalOr {
-        lhs: Box<Expr>,
-        double_pipe_token: DoublePipeToken,
-        rhs: Box<Expr>,
-    },
-    Reassignment {
-        assignable: Assignable,
-        reassignment_op: ReassignmentOp,
-        expr: Box<Expr>,
-    },
-}
-
-impl Spanned for Expr {
-    fn span(&self) -> Span {
-        match self {
-            Expr::Path(path_expr) => path_expr.span(),
-            Expr::Literal(literal) => literal.span(),
-            Expr::AbiCast { abi_token, args } => Span::join(abi_token.span(), args.span()),
-            Expr::Struct { path, fields } => Span::join(path.span(), fields.span()),
-            Expr::Tuple(tuple_expr) => tuple_expr.span(),
-            Expr::Parens(parens) => parens.span(),
-            Expr::Block(block_expr) => block_expr.span(),
-            Expr::Array(array_expr) => array_expr.span(),
-            Expr::Asm(asm_block) => asm_block.span(),
-            Expr::Return {
-                return_token,
-                expr_opt,
-            } => {
-                let start = return_token.span();
-                let end = match expr_opt {
-                    Some(expr) => expr.span(),
-                    None => return_token.span(),
-                };
-                Span::join(start, end)
-            }
-            Expr::If(if_expr) => if_expr.span(),
-            Expr::Match {
-                match_token,
-                branches,
-                ..
-            } => Span::join(match_token.span(), branches.span()),
-            Expr::While {
-                while_token, block, ..
-            } => Span::join(while_token.span(), block.span()),
-            Expr::FuncApp { func, args } => Span::join(func.span(), args.span()),
-            Expr::Index { target, arg } => Span::join(target.span(), arg.span()),
-            Expr::MethodCall { target, args, .. } => Span::join(target.span(), args.span()),
-            Expr::FieldProjection { target, name, .. } => Span::join(target.span(), name.span()),
-            Expr::TupleFieldProjection {
-                target, field_span, ..
-            } => Span::join(target.span(), field_span.clone()),
-            Expr::Ref { ref_token, expr } => Span::join(ref_token.span(), expr.span()),
-            Expr::Deref { deref_token, expr } => Span::join(deref_token.span(), expr.span()),
-            Expr::Not { bang_token, expr } => Span::join(bang_token.span(), expr.span()),
-            Expr::Mul { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::Div { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::Modulo { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::Add { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::Sub { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::Shl { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::Shr { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::BitAnd { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::BitXor { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::BitOr { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::Equal { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::NotEqual { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::LessThan { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::GreaterThan { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::LessThanEq { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::GreaterThanEq { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::LogicalAnd { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::LogicalOr { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::Reassignment {
-                assignable, expr, ..
-            } => Span::join(assignable.span(), expr.span()),
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct ReassignmentOp {
-    pub variant: ReassignmentOpVariant,
-    pub span: Span,
-}
-
-#[derive(Clone, Debug)]
-pub enum ReassignmentOpVariant {
-    Equals,
-    AddEquals,
-    SubEquals,
-    MulEquals,
-    DivEquals,
-    ShlEquals,
-    ShrEquals,
-}
-
-impl ReassignmentOpVariant {
-    pub fn core_name(&self) -> &'static str {
-        match self {
-            ReassignmentOpVariant::Equals => "eq",
-            ReassignmentOpVariant::AddEquals => "add",
-            ReassignmentOpVariant::SubEquals => "subtract",
-            ReassignmentOpVariant::MulEquals => "multiply",
-            ReassignmentOpVariant::DivEquals => "divide",
-            ReassignmentOpVariant::ShlEquals => "lsh",
-            ReassignmentOpVariant::ShrEquals => "rsh",
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct AbiCastArgs {
-    pub name: PathType,
-    pub comma_token: CommaToken,
-    pub address: Box<Expr>,
-}
 
 impl ParseToEnd for AbiCastArgs {
     fn parse_to_end<'a, 'e>(
@@ -296,43 +45,6 @@ impl ParseToEnd for AbiCastArgs {
     }
 }
 
-#[allow(clippy::type_complexity)]
-#[derive(Clone, Debug)]
-pub struct IfExpr {
-    pub if_token: IfToken,
-    pub condition: IfCondition,
-    pub then_block: Braces<CodeBlockContents>,
-    pub else_opt: Option<(
-        ElseToken,
-        ControlFlow<Braces<CodeBlockContents>, Box<IfExpr>>,
-    )>,
-}
-
-#[derive(Clone, Debug)]
-pub enum IfCondition {
-    Expr(Box<Expr>),
-    Let {
-        let_token: LetToken,
-        lhs: Box<Pattern>,
-        eq_token: EqToken,
-        rhs: Box<Expr>,
-    },
-}
-
-impl Spanned for IfExpr {
-    fn span(&self) -> Span {
-        let start = self.if_token.span();
-        let end = match &self.else_opt {
-            Some((_else_token, tail)) => match tail {
-                ControlFlow::Break(block) => block.span(),
-                ControlFlow::Continue(if_expr) => if_expr.span(),
-            },
-            None => self.then_block.span(),
-        };
-        Span::join(start, end)
-    }
-}
-
 impl Parse for IfExpr {
     fn parse(parser: &mut Parser) -> ParseResult<IfExpr> {
         let if_token = parser.parse()?;
@@ -340,15 +52,9 @@ impl Parse for IfExpr {
         let then_block = parser.parse()?;
         let else_opt = match parser.take() {
             Some(else_token) => {
-                let else_body = match parser.peek::<IfToken>() {
-                    Some(..) => {
-                        let if_expr = parser.parse()?;
-                        ControlFlow::Continue(Box::new(if_expr))
-                    }
-                    None => {
-                        let else_block = parser.parse()?;
-                        ControlFlow::Break(else_block)
-                    }
+                let else_body = match parser.guarded_parse::<IfToken, _>()? {
+                    Some(if_expr) => ControlFlow::Continue(Box::new(if_expr)),
+                    None => ControlFlow::Break(parser.parse()?),
                 };
                 Some((else_token, else_body))
             }
@@ -382,79 +88,26 @@ impl Parse for IfCondition {
     }
 }
 
-#[derive(Clone, Debug)]
-pub enum ExprTupleDescriptor {
-    Nil,
-    Cons {
-        head: Box<Expr>,
-        comma_token: CommaToken,
-        tail: Punctuated<Expr, CommaToken>,
-    },
-}
-
-#[derive(Clone, Debug)]
-pub enum ExprArrayDescriptor {
-    Sequence(Punctuated<Expr, CommaToken>),
-    Repeat {
-        value: Box<Expr>,
-        semicolon_token: SemicolonToken,
-        length: Box<Expr>,
-    },
-}
-
-#[derive(Clone, Debug)]
-pub struct MatchBranch {
-    pub pattern: Pattern,
-    pub fat_right_arrow_token: FatRightArrowToken,
-    pub kind: MatchBranchKind,
-}
-
-impl Spanned for MatchBranch {
-    fn span(&self) -> Span {
-        Span::join(self.pattern.span(), self.kind.span())
-    }
-}
-
-#[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone)]
-pub enum MatchBranchKind {
-    Block {
-        block: Braces<CodeBlockContents>,
-        comma_token_opt: Option<CommaToken>,
-    },
-    Expr {
-        expr: Expr,
-        comma_token: CommaToken,
-    },
-}
-
-impl Spanned for MatchBranchKind {
-    fn span(&self) -> Span {
-        match self {
-            MatchBranchKind::Block {
-                block,
-                comma_token_opt,
-            } => match comma_token_opt {
-                Some(comma_token) => Span::join(block.span(), comma_token.span()),
-                None => block.span(),
-            },
-            MatchBranchKind::Expr { expr, comma_token } => {
-                Span::join(expr.span(), comma_token.span())
-            }
-        }
-    }
-}
-
 impl Parse for Expr {
     fn parse(parser: &mut Parser) -> ParseResult<Expr> {
         parse_reassignment(parser, ParseExprCtx::default())
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct CodeBlockContents {
-    pub statements: Vec<Statement>,
-    pub final_expr_opt: Option<Box<Expr>>,
+impl Parse for StatementLet {
+    fn parse(parser: &mut Parser) -> ParseResult<Self> {
+        Ok(StatementLet {
+            let_token: parser.parse()?,
+            pattern: parser.parse()?,
+            ty_opt: match parser.take() {
+                Some(colon_token) => Some((colon_token, parser.parse()?)),
+                None => None,
+            },
+            eq_token: parser.parse()?,
+            expr: parser.parse()?,
+            semicolon_token: parser.parse()?,
+        })
+    }
 }
 
 impl ParseToEnd for CodeBlockContents {
@@ -466,73 +119,10 @@ impl ParseToEnd for CodeBlockContents {
             if let Some(consumed) = parser.check_empty() {
                 break (None, consumed);
             }
-            if parser.peek::<UseToken>().is_some()
-                || parser.peek::<StructToken>().is_some()
-                || parser.peek::<EnumToken>().is_some()
-                || parser.peek::<FnToken>().is_some()
-                || parser.peek::<PubToken>().is_some()
-                || parser.peek::<TraitToken>().is_some()
-                || parser.peek::<ImplToken>().is_some()
-                || parser.peek2::<AbiToken, Ident>().is_some()
-                || parser.peek::<ConstToken>().is_some()
-                || parser.peek::<BreakToken>().is_some()
-                || parser.peek::<ContinueToken>().is_some()
-                || matches!(
-                    parser.peek2::<StorageToken, Delimiter>(),
-                    Some((_, Delimiter::Brace))
-                )
-            {
-                let item = parser.parse()?;
-                let statement = Statement::Item(item);
-                statements.push(statement);
-                continue;
+            match parse_stmt(&mut parser)? {
+                StmtOrTail::Stmt(s) => statements.push(s),
+                StmtOrTail::Tail(e, c) => break (Some(e), c),
             }
-            if let Some(let_token) = parser.take() {
-                let pattern = parser.parse()?;
-                let ty_opt = match parser.take() {
-                    Some(colon_token) => {
-                        let ty = parser.parse()?;
-                        Some((colon_token, ty))
-                    }
-                    None => None,
-                };
-                let eq_token = parser.parse()?;
-                let expr = parser.parse()?;
-                let semicolon_token = parser.parse()?;
-                let statement_let = StatementLet {
-                    let_token,
-                    pattern,
-                    ty_opt,
-                    eq_token,
-                    expr,
-                    semicolon_token,
-                };
-                let statement = Statement::Let(statement_let);
-                statements.push(statement);
-                continue;
-            }
-            let expr = parse_statement_expr(&mut parser)?;
-            if let Some(semicolon_token) = parser.take() {
-                let statement = Statement::Expr {
-                    expr,
-                    semicolon_token_opt: Some(semicolon_token),
-                };
-                statements.push(statement);
-                continue;
-            }
-            if let Some(consumed) = parser.check_empty() {
-                break (Some(Box::new(expr)), consumed);
-            }
-            if expr.is_control_flow() {
-                let statement = Statement::Expr {
-                    expr,
-                    semicolon_token_opt: None,
-                };
-                statements.push(statement);
-                continue;
-            }
-
-            return Err(parser.emit_error(ParseErrorKind::UnexpectedTokenInStatement));
         };
         let code_block_contents = CodeBlockContents {
             statements,
@@ -540,6 +130,70 @@ impl ParseToEnd for CodeBlockContents {
         };
         Ok((code_block_contents, consumed))
     }
+}
+
+/// A statement or a tail expression in a block.
+#[allow(clippy::large_enum_variant)]
+enum StmtOrTail<'a> {
+    /// A statement.
+    Stmt(Statement),
+    /// Tail expression in a block.
+    Tail(Box<Expr>, ParserConsumed<'a>),
+}
+
+/// Parses either a statement or a tail expression.
+fn parse_stmt<'a>(parser: &mut Parser<'a, '_>) -> ParseResult<StmtOrTail<'a>> {
+    let stmt = |s| Ok(StmtOrTail::Stmt(s));
+
+    // Try parsing an item as a statement.
+    if parser.peek::<UseToken>().is_some()
+        || parser.peek::<StructToken>().is_some()
+        || parser.peek::<EnumToken>().is_some()
+        || parser.peek::<FnToken>().is_some()
+        || parser.peek::<PubToken>().is_some()
+        || parser.peek::<TraitToken>().is_some()
+        || parser.peek::<ImplToken>().is_some()
+        || parser.peek::<(AbiToken, Ident)>().is_some()
+        || parser.peek::<ConstToken>().is_some()
+        || parser.peek::<BreakToken>().is_some()
+        || parser.peek::<ContinueToken>().is_some()
+        || matches!(
+            parser.peek::<(StorageToken, Delimiter)>(),
+            Some((_, Delimiter::Brace))
+        )
+    {
+        return stmt(Statement::Item(parser.parse()?));
+    }
+
+    // Try a `let` statement.
+    if let Some(slet) = parser.guarded_parse::<LetToken, _>()? {
+        return stmt(Statement::Let(slet));
+    }
+
+    // Try an `expr;` statement.
+    let expr = parse_statement_expr(parser)?;
+    if let Some(semicolon_token) = parser.take() {
+        return stmt(Statement::Expr {
+            expr,
+            semicolon_token_opt: Some(semicolon_token),
+        });
+    }
+
+    // Reached EOF? Then an expression is a statement.
+    if let Some(consumed) = parser.check_empty() {
+        return Ok(StmtOrTail::Tail(Box::new(expr), consumed));
+    }
+
+    // For statements like `if`,
+    // they don't need to be terminated by `;` to be statements.
+    if expr.is_control_flow() {
+        return stmt(Statement::Expr {
+            expr,
+            semicolon_token_opt: None,
+        });
+    }
+
+    Err(parser.emit_error(ParseErrorKind::UnexpectedTokenInStatement))
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -573,66 +227,32 @@ fn parse_statement_expr(parser: &mut Parser) -> ParseResult<Expr> {
     parse_reassignment(parser, ctx)
 }
 
+/// Eats a `ReassignmentOp`, if any, from `parser`.
+fn take_reassignment_op(parser: &mut Parser) -> Option<ReassignmentOp> {
+    let (variant, span) = if let Some(add_eq_token) = parser.take::<AddEqToken>() {
+        (ReassignmentOpVariant::AddEquals, add_eq_token.span())
+    } else if let Some(sub_eq_token) = parser.take::<SubEqToken>() {
+        (ReassignmentOpVariant::SubEquals, sub_eq_token.span())
+    } else if let Some(mul_eq_token) = parser.take::<StarEqToken>() {
+        (ReassignmentOpVariant::MulEquals, mul_eq_token.span())
+    } else if let Some(div_eq_token) = parser.take::<DivEqToken>() {
+        (ReassignmentOpVariant::DivEquals, div_eq_token.span())
+    } else if let Some(shl_eq_token) = parser.take::<ShlEqToken>() {
+        (ReassignmentOpVariant::ShlEquals, shl_eq_token.span())
+    } else if let Some(shr_eq_token) = parser.take::<ShrEqToken>() {
+        (ReassignmentOpVariant::ShrEquals, shr_eq_token.span())
+    } else if let Some(eq_token) = parser.take::<EqToken>() {
+        (ReassignmentOpVariant::Equals, eq_token.span())
+    } else {
+        return None;
+    };
+    Some(ReassignmentOp { variant, span })
+}
+
 fn parse_reassignment(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
     let expr = parse_logical_or(parser, ctx)?;
-    let mut reassignment_op = None;
-    if parser.peek::<AddEqToken>().is_some() {
-        if let Some(add_eq_token) = parser.take::<AddEqToken>() {
-            reassignment_op = Some(ReassignmentOp {
-                variant: ReassignmentOpVariant::AddEquals,
-                span: add_eq_token.span(),
-            });
-        }
-    }
-    if parser.peek::<SubEqToken>().is_some() {
-        if let Some(sub_eq_token) = parser.take::<SubEqToken>() {
-            reassignment_op = Some(ReassignmentOp {
-                variant: ReassignmentOpVariant::SubEquals,
-                span: sub_eq_token.span(),
-            });
-        }
-    }
-    if parser.peek::<StarEqToken>().is_some() {
-        if let Some(mul_eq_token) = parser.take::<StarEqToken>() {
-            reassignment_op = Some(ReassignmentOp {
-                variant: ReassignmentOpVariant::MulEquals,
-                span: mul_eq_token.span(),
-            });
-        }
-    }
-    if parser.peek::<DivEqToken>().is_some() {
-        if let Some(div_eq_token) = parser.take::<DivEqToken>() {
-            reassignment_op = Some(ReassignmentOp {
-                variant: ReassignmentOpVariant::DivEquals,
-                span: div_eq_token.span(),
-            });
-        }
-    }
-    if parser.peek::<ShlEqToken>().is_some() {
-        if let Some(shl_eq_token) = parser.take::<ShlEqToken>() {
-            reassignment_op = Some(ReassignmentOp {
-                variant: ReassignmentOpVariant::ShlEquals,
-                span: shl_eq_token.span(),
-            });
-        }
-    }
-    if parser.peek::<ShrEqToken>().is_some() {
-        if let Some(shr_eq_token) = parser.take::<ShrEqToken>() {
-            reassignment_op = Some(ReassignmentOp {
-                variant: ReassignmentOpVariant::ShrEquals,
-                span: shr_eq_token.span(),
-            });
-        }
-    }
-    if parser.peek::<EqToken>().is_some() {
-        if let Some(eq_token) = parser.take::<EqToken>() {
-            reassignment_op = Some(ReassignmentOp {
-                variant: ReassignmentOpVariant::Equals,
-                span: eq_token.span(),
-            });
-        }
-    }
-    if let Some(reassignment_op) = reassignment_op {
+
+    if let Some(reassignment_op) = take_reassignment_op(parser) {
         let assignable = match expr.try_into_assignable() {
             Ok(assignable) => assignable,
             Err(expr) => {
@@ -652,166 +272,123 @@ fn parse_reassignment(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Exp
     Ok(expr)
 }
 
-fn parse_logical_or(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
-    let mut expr = parse_logical_and(parser, ctx)?;
-    if expr.is_control_flow() && ctx.at_start_of_statement {
-        return Ok(expr);
+fn parse_op_rhs<O: Peek>(
+    parser: &mut Parser,
+    ctx: ParseExprCtx,
+    sub: impl Fn(&mut Parser, ParseExprCtx) -> ParseResult<Expr>,
+) -> ParseResult<Option<(O, Box<Expr>)>> {
+    if let Some(op_token) = parser.take() {
+        let rhs = Box::new(sub(parser, ctx.not_statement())?);
+        return Ok(Some((op_token, rhs)));
     }
-    loop {
-        if let Some(double_pipe_token) = parser.take() {
-            let lhs = Box::new(expr);
-            let rhs = Box::new(parse_logical_and(parser, ctx.not_statement())?);
-            expr = Expr::LogicalOr {
-                lhs,
-                double_pipe_token,
-                rhs,
-            };
-            continue;
-        }
-        return Ok(expr);
-    }
+    Ok(None)
 }
 
-fn parse_logical_and(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
-    let mut expr = parse_comparison(parser, ctx)?;
+fn parse_binary<O: Peek>(
+    parser: &mut Parser,
+    ctx: ParseExprCtx,
+    sub: impl Fn(&mut Parser, ParseExprCtx) -> ParseResult<Expr>,
+    combine: impl Fn(Box<Expr>, Box<Expr>, O) -> Expr,
+) -> ParseResult<Expr> {
+    let mut expr = sub(parser, ctx)?;
     if expr.is_control_flow() && ctx.at_start_of_statement {
         return Ok(expr);
     }
-    loop {
-        if let Some(double_ampersand_token) = parser.take() {
-            let lhs = Box::new(expr);
-            let rhs = Box::new(parse_comparison(parser, ctx.not_statement())?);
-            expr = Expr::LogicalAnd {
-                lhs,
-                double_ampersand_token,
-                rhs,
-            };
-            continue;
-        }
-        return Ok(expr);
-    }
-}
-
-fn parse_comparison(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
-    let expr = parse_bit_or(parser, ctx)?;
-    if expr.is_control_flow() && ctx.at_start_of_statement {
-        return Ok(expr);
-    }
-    if let Some(double_eq_token) = parser.take() {
-        let lhs = Box::new(expr);
-        let rhs = Box::new(parse_bit_or(parser, ctx.not_statement())?);
-        return Ok(Expr::Equal {
-            lhs,
-            double_eq_token,
-            rhs,
-        });
-    }
-    if let Some(bang_eq_token) = parser.take() {
-        let lhs = Box::new(expr);
-        let rhs = Box::new(parse_bit_or(parser, ctx.not_statement())?);
-        return Ok(Expr::NotEqual {
-            lhs,
-            bang_eq_token,
-            rhs,
-        });
-    }
-    if let Some(less_than_token) = parser.take() {
-        let lhs = Box::new(expr);
-        let rhs = Box::new(parse_bit_or(parser, ctx.not_statement())?);
-        return Ok(Expr::LessThan {
-            lhs,
-            less_than_token,
-            rhs,
-        });
-    }
-    if let Some(greater_than_token) = parser.take() {
-        let lhs = Box::new(expr);
-        let rhs = Box::new(parse_bit_or(parser, ctx.not_statement())?);
-        return Ok(Expr::GreaterThan {
-            lhs,
-            greater_than_token,
-            rhs,
-        });
-    }
-    if let Some(less_than_eq_token) = parser.take() {
-        let lhs = Box::new(expr);
-        let rhs = Box::new(parse_bit_or(parser, ctx.not_statement())?);
-        return Ok(Expr::LessThanEq {
-            lhs,
-            less_than_eq_token,
-            rhs,
-        });
-    }
-    if let Some(greater_than_eq_token) = parser.take() {
-        let lhs = Box::new(expr);
-        let rhs = Box::new(parse_bit_or(parser, ctx.not_statement())?);
-        return Ok(Expr::GreaterThanEq {
-            lhs,
-            greater_than_eq_token,
-            rhs,
-        });
+    while let Some((op_token, rhs)) = parse_op_rhs(parser, ctx, &sub)? {
+        expr = combine(Box::new(expr), rhs, op_token);
     }
     Ok(expr)
 }
 
-fn parse_bit_or(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
-    let mut expr = parse_bit_xor(parser, ctx)?;
-    if expr.is_control_flow() && ctx.at_start_of_statement {
-        return Ok(expr);
-    }
-    loop {
-        if let Some(pipe_token) = parser.take() {
-            let lhs = Box::new(expr);
-            let rhs = Box::new(parse_bit_xor(parser, ctx.not_statement())?);
-            expr = Expr::BitOr {
-                lhs,
-                pipe_token,
-                rhs,
-            };
-            continue;
+fn parse_logical_or(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
+    let combine = |lhs, rhs, double_pipe_token| Expr::LogicalOr {
+        lhs,
+        double_pipe_token,
+        rhs,
+    };
+    parse_binary(parser, ctx, parse_logical_and, combine)
+}
+
+fn parse_logical_and(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
+    let combine = |lhs, rhs, double_ampersand_token| Expr::LogicalAnd {
+        lhs,
+        double_ampersand_token,
+        rhs,
+    };
+    parse_binary(parser, ctx, parse_comparison, combine)
+}
+
+fn parse_comparison(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
+    let expr = parse_bit_or(parser, ctx)?;
+    let expr = if expr.is_control_flow() && ctx.at_start_of_statement {
+        expr
+    } else if let Some((double_eq_token, rhs)) = parse_op_rhs(parser, ctx, parse_bit_or)? {
+        Expr::Equal {
+            lhs: Box::new(expr),
+            double_eq_token,
+            rhs,
         }
-        return Ok(expr);
-    }
+    } else if let Some((bang_eq_token, rhs)) = parse_op_rhs(parser, ctx, parse_bit_or)? {
+        Expr::NotEqual {
+            lhs: Box::new(expr),
+            bang_eq_token,
+            rhs,
+        }
+    } else if let Some((less_than_token, rhs)) = parse_op_rhs(parser, ctx, parse_bit_or)? {
+        Expr::LessThan {
+            lhs: Box::new(expr),
+            less_than_token,
+            rhs,
+        }
+    } else if let Some((greater_than_token, rhs)) = parse_op_rhs(parser, ctx, parse_bit_or)? {
+        Expr::GreaterThan {
+            lhs: Box::new(expr),
+            greater_than_token,
+            rhs,
+        }
+    } else if let Some((less_than_eq_token, rhs)) = parse_op_rhs(parser, ctx, parse_bit_or)? {
+        Expr::LessThanEq {
+            lhs: Box::new(expr),
+            less_than_eq_token,
+            rhs,
+        }
+    } else if let Some((greater_than_eq_token, rhs)) = parse_op_rhs(parser, ctx, parse_bit_or)? {
+        Expr::GreaterThanEq {
+            lhs: Box::new(expr),
+            greater_than_eq_token,
+            rhs,
+        }
+    } else {
+        expr
+    };
+    Ok(expr)
+}
+
+fn parse_bit_or(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
+    let combine = |lhs, rhs, pipe_token| Expr::BitOr {
+        lhs,
+        pipe_token,
+        rhs,
+    };
+    parse_binary(parser, ctx, parse_bit_xor, combine)
 }
 
 fn parse_bit_xor(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
-    let mut expr = parse_bit_and(parser, ctx)?;
-    if expr.is_control_flow() && ctx.at_start_of_statement {
-        return Ok(expr);
-    }
-    loop {
-        if let Some(caret_token) = parser.take() {
-            let lhs = Box::new(expr);
-            let rhs = Box::new(parse_bit_and(parser, ctx.not_statement())?);
-            expr = Expr::BitXor {
-                lhs,
-                caret_token,
-                rhs,
-            };
-            continue;
-        }
-        return Ok(expr);
-    }
+    let combine = |lhs, rhs, caret_token| Expr::BitXor {
+        lhs,
+        caret_token,
+        rhs,
+    };
+    parse_binary(parser, ctx, parse_bit_and, combine)
 }
 
 fn parse_bit_and(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
-    let mut expr = parse_shift(parser, ctx)?;
-    if expr.is_control_flow() && ctx.at_start_of_statement {
-        return Ok(expr);
-    }
-    loop {
-        if let Some(ampersand_token) = parser.take() {
-            let lhs = Box::new(expr);
-            let rhs = Box::new(parse_shift(parser, ctx.not_statement())?);
-            expr = Expr::BitAnd {
-                lhs,
-                ampersand_token,
-                rhs,
-            };
-            continue;
-        }
-        return Ok(expr);
-    }
+    let combine = |lhs, rhs, ampersand_token| Expr::BitAnd {
+        lhs,
+        ampersand_token,
+        rhs,
+    };
+    parse_binary(parser, ctx, parse_shift, combine)
 }
 
 fn parse_shift(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
@@ -820,27 +397,21 @@ fn parse_shift(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
         return Ok(expr);
     }
     loop {
-        if let Some(shl_token) = parser.take() {
-            let lhs = Box::new(expr);
-            let rhs = Box::new(parse_add(parser, ctx.not_statement())?);
-            expr = Expr::Shl {
-                lhs,
+        expr = if let Some((shl_token, rhs)) = parse_op_rhs(parser, ctx, parse_add)? {
+            Expr::Shl {
+                lhs: Box::new(expr),
                 shl_token,
                 rhs,
-            };
-            continue;
-        }
-        if let Some(shr_token) = parser.take() {
-            let lhs = Box::new(expr);
-            let rhs = Box::new(parse_add(parser, ctx.not_statement())?);
-            expr = Expr::Shr {
-                lhs,
+            }
+        } else if let Some((shr_token, rhs)) = parse_op_rhs(parser, ctx, parse_add)? {
+            Expr::Shr {
+                lhs: Box::new(expr),
                 shr_token,
                 rhs,
-            };
-            continue;
-        }
-        return Ok(expr);
+            }
+        } else {
+            return Ok(expr);
+        };
     }
 }
 
@@ -850,27 +421,21 @@ fn parse_add(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
         return Ok(expr);
     }
     loop {
-        if let Some(add_token) = parser.take() {
-            let lhs = Box::new(expr);
-            let rhs = Box::new(parse_mul(parser, ctx.not_statement())?);
-            expr = Expr::Add {
-                lhs,
+        expr = if let Some((add_token, rhs)) = parse_op_rhs(parser, ctx, parse_mul)? {
+            Expr::Add {
+                lhs: Box::new(expr),
                 add_token,
                 rhs,
-            };
-            continue;
-        }
-        if let Some(sub_token) = parser.take() {
-            let lhs = Box::new(expr);
-            let rhs = Box::new(parse_mul(parser, ctx.not_statement())?);
-            expr = Expr::Sub {
-                lhs,
+            }
+        } else if let Some((sub_token, rhs)) = parse_op_rhs(parser, ctx, parse_mul)? {
+            Expr::Sub {
+                lhs: Box::new(expr),
                 sub_token,
                 rhs,
-            };
-            continue;
-        }
-        return Ok(expr);
+            }
+        } else {
+            return Ok(expr);
+        };
     }
 }
 
@@ -880,51 +445,39 @@ fn parse_mul(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
         return Ok(expr);
     }
     loop {
-        if let Some(star_token) = parser.take() {
-            let lhs = Box::new(expr);
-            let rhs = Box::new(parse_unary_op(parser, ctx.not_statement())?);
-            expr = Expr::Mul {
-                lhs,
+        expr = if let Some((star_token, rhs)) = parse_op_rhs(parser, ctx, parse_unary_op)? {
+            Expr::Mul {
+                lhs: Box::new(expr),
                 star_token,
                 rhs,
-            };
-            continue;
-        }
-        if let Some(forward_slash_token) = parser.take() {
-            let lhs = Box::new(expr);
-            let rhs = Box::new(parse_unary_op(parser, ctx.not_statement())?);
-            expr = Expr::Div {
-                lhs,
+            }
+        } else if let Some((forward_slash_token, rhs)) = parse_op_rhs(parser, ctx, parse_unary_op)?
+        {
+            Expr::Div {
+                lhs: Box::new(expr),
                 forward_slash_token,
                 rhs,
-            };
-            continue;
-        }
-        if let Some(percent_token) = parser.take() {
-            let lhs = Box::new(expr);
-            let rhs = Box::new(parse_unary_op(parser, ctx.not_statement())?);
-            expr = Expr::Modulo {
-                lhs,
+            }
+        } else if let Some((percent_token, rhs)) = parse_op_rhs(parser, ctx, parse_unary_op)? {
+            Expr::Modulo {
+                lhs: Box::new(expr),
                 percent_token,
                 rhs,
-            };
-            continue;
-        }
-        return Ok(expr);
+            }
+        } else {
+            return Ok(expr);
+        };
     }
 }
 
 fn parse_unary_op(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
-    if let Some(ref_token) = parser.take() {
-        let expr = Box::new(parse_unary_op(parser, ctx.not_statement())?);
+    if let Some((ref_token, expr)) = parse_op_rhs(parser, ctx, parse_unary_op)? {
         return Ok(Expr::Ref { ref_token, expr });
     }
-    if let Some(deref_token) = parser.take() {
-        let expr = Box::new(parse_unary_op(parser, ctx.not_statement())?);
+    if let Some((deref_token, expr)) = parse_op_rhs(parser, ctx, parse_unary_op)? {
         return Ok(Expr::Deref { deref_token, expr });
     }
-    if let Some(bang_token) = parser.take() {
-        let expr = Box::new(parse_unary_op(parser, ctx.not_statement())?);
+    if let Some((bang_token, expr)) = parse_op_rhs(parser, ctx, parse_unary_op)? {
         return Ok(Expr::Not { bang_token, expr });
     }
     parse_projection(parser, ctx)
@@ -1015,14 +568,11 @@ fn parse_func_app(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
     if expr.is_control_flow() && ctx.at_start_of_statement {
         return Ok(expr);
     }
-    loop {
-        if let Some(args) = Parens::try_parse(parser)? {
-            let func = Box::new(expr);
-            expr = Expr::FuncApp { func, args };
-            continue;
-        }
-        return Ok(expr);
+    while let Some(args) = Parens::try_parse(parser)? {
+        let func = Box::new(expr);
+        expr = Expr::FuncApp { func, args };
     }
+    Ok(expr)
 }
 
 fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
@@ -1033,46 +583,35 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
         return Ok(Expr::Array(array_inner));
     }
     if let Some((mut parser, span)) = parser.enter_delimited(Delimiter::Parenthesis) {
-        if let Some(consumed) = parser.check_empty() {
-            return Ok(Expr::Tuple(Parens::new(
-                ExprTupleDescriptor::Nil,
-                span,
-                consumed,
-            )));
+        if let Some(_consumed) = parser.check_empty() {
+            return Ok(Expr::Tuple(Parens::new(ExprTupleDescriptor::Nil, span)));
         }
         let head = parser.parse()?;
         if let Some(comma_token) = parser.take() {
-            let (tail, consumed) = parser.parse_to_end()?;
+            let (tail, _consumed) = parser.parse_to_end()?;
             let tuple = ExprTupleDescriptor::Cons {
                 head,
                 comma_token,
                 tail,
             };
-            return Ok(Expr::Tuple(Parens::new(tuple, span, consumed)));
+            return Ok(Expr::Tuple(Parens::new(tuple, span)));
         }
-        if let Some(consumed) = parser.check_empty() {
-            return Ok(Expr::Parens(Parens::new(head, span, consumed)));
+        if let Some(_consumed) = parser.check_empty() {
+            return Ok(Expr::Parens(Parens::new(head, span)));
         }
         return Err(
             parser.emit_error(ParseErrorKind::ExpectedCommaOrCloseParenInTupleOrParenExpression)
         );
     }
-    if parser.peek::<TrueToken>().is_some() {
-        let ident = parser.parse::<TrueToken>()?;
-        return Ok(Expr::Literal(Literal::Bool(LitBool {
-            span: ident.span(),
-            kind: LitBoolType::True,
-        })));
+
+    let lit_bool = |span, kind| Ok(Expr::Literal(Literal::Bool(LitBool { span, kind })));
+    if let Some(ident) = parser.take::<TrueToken>() {
+        return lit_bool(ident.span(), LitBoolType::True);
     }
-    if parser.peek::<FalseToken>().is_some() {
-        let ident = parser.parse::<FalseToken>()?;
-        return Ok(Expr::Literal(Literal::Bool(LitBool {
-            span: ident.span(),
-            kind: LitBoolType::False,
-        })));
+    if let Some(ident) = parser.take::<FalseToken>() {
+        return lit_bool(ident.span(), LitBoolType::False);
     }
-    if parser.peek::<AsmToken>().is_some() {
-        let asm_block = parser.parse()?;
+    if let Some(asm_block) = parser.guarded_parse::<AsmToken, _>()? {
         return Ok(Expr::Asm(asm_block));
     }
     if let Some(abi_token) = parser.take() {
@@ -1096,8 +635,7 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
             expr_opt: Some(expr),
         });
     }
-    if parser.peek::<IfToken>().is_some() {
-        let if_expr = parser.parse()?;
+    if let Some(if_expr) = parser.guarded_parse::<IfToken, _>()? {
         return Ok(Expr::If(if_expr));
     }
     if let Some(match_token) = parser.take() {
@@ -1135,21 +673,6 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
         return Ok(Expr::Literal(literal));
     }
     Err(parser.emit_error(ParseErrorKind::ExpectedExpression))
-}
-
-#[derive(Clone, Debug)]
-pub struct ExprStructField {
-    pub field_name: Ident,
-    pub expr_opt: Option<(ColonToken, Box<Expr>)>,
-}
-
-impl Spanned for ExprStructField {
-    fn span(&self) -> Span {
-        match &self.expr_opt {
-            None => self.field_name.span(),
-            Some((_colon_token, expr)) => Span::join(self.field_name.span(), expr.span()),
-        }
-    }
 }
 
 impl Parse for ExprStructField {
@@ -1233,82 +756,13 @@ impl Parse for MatchBranch {
 impl Parse for MatchBranchKind {
     fn parse(parser: &mut Parser) -> ParseResult<MatchBranchKind> {
         if let Some(block) = Braces::try_parse(parser)? {
-            let comma_token_opt = parser.take();
             return Ok(MatchBranchKind::Block {
                 block,
-                comma_token_opt,
+                comma_token_opt: parser.take(),
             });
         }
         let expr = parser.parse()?;
         let comma_token = parser.parse()?;
         Ok(MatchBranchKind::Expr { expr, comma_token })
-    }
-}
-
-impl Expr {
-    pub fn try_into_assignable(self) -> Result<Assignable, Expr> {
-        match self {
-            Expr::Path(path_expr) => match path_expr.try_into_ident() {
-                Ok(name) => Ok(Assignable::Var(name)),
-                Err(path_expr) => Err(Expr::Path(path_expr)),
-            },
-            Expr::Index { target, arg } => match target.try_into_assignable() {
-                Ok(target) => Ok(Assignable::Index {
-                    target: Box::new(target),
-                    arg,
-                }),
-                Err(target) => Err(Expr::Index {
-                    target: Box::new(target),
-                    arg,
-                }),
-            },
-            Expr::FieldProjection {
-                target,
-                dot_token,
-                name,
-            } => match target.try_into_assignable() {
-                Ok(target) => Ok(Assignable::FieldProjection {
-                    target: Box::new(target),
-                    dot_token,
-                    name,
-                }),
-                Err(target) => Err(Expr::FieldProjection {
-                    target: Box::new(target),
-                    dot_token,
-                    name,
-                }),
-            },
-            Expr::TupleFieldProjection {
-                target,
-                dot_token,
-                field,
-                field_span,
-            } => match target.try_into_assignable() {
-                Ok(target) => Ok(Assignable::TupleFieldProjection {
-                    target: Box::new(target),
-                    dot_token,
-                    field,
-                    field_span,
-                }),
-                Err(target) => Err(Expr::TupleFieldProjection {
-                    target: Box::new(target),
-                    dot_token,
-                    field,
-                    field_span,
-                }),
-            },
-            expr => Err(expr),
-        }
-    }
-
-    pub fn is_control_flow(&self) -> bool {
-        matches!(
-            self,
-            Expr::Block(..)
-                | Expr::Asm(..)
-                | Expr::If(..)
-                | Expr::Match { .. }
-                | Expr::While { .. },
-        )
     }
 }

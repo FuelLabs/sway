@@ -9,6 +9,8 @@ pub enum FormatterError {
     FormatError(#[from] std::fmt::Error),
     #[error("Error while lexing file: {0}")]
     LexError(#[from] sway_parse::LexError),
+    #[error("Error while adding comments")]
+    CommentError,
 }
 
 #[derive(Debug, Error)]

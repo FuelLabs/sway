@@ -1,0 +1,3 @@
+category = "run"
+expected_result = { action = "return", value = 0 }
+validate_abi = true

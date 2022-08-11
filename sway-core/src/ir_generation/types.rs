@@ -4,7 +4,7 @@ use crate::{
         ProjectionKind, TypeCheckedStorageAccessDescriptor, TypeCheckedStorageReassignDescriptor,
         TypedEnumVariant,
     },
-    type_engine::{resolve_type, TypeId, TypeInfo},
+    type_system::{resolve_type, TypeId, TypeInfo},
 };
 
 use super::convert::convert_resolved_typeid_no_span;

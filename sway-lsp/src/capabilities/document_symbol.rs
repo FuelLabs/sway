@@ -1,4 +1,4 @@
-use crate::core::token::{AstToken, TokenMap, TokenType, TypedAstToken};
+use crate::core::token::{AstToken, Token, TokenMap, TypedAstToken};
 use crate::utils::common::get_range_from_span;
 use sway_core::{
     semantic_analysis::ast_node::{
@@ -23,7 +23,7 @@ pub fn to_symbol_information(token_map: &TokenMap, url: Url) -> Vec<SymbolInform
 
 #[allow(warnings)]
 // TODO: the "deprecated: None" field is deprecated according to this library
-fn symbol_info(ident: &Ident, token: &TokenType, url: Url) -> SymbolInformation {
+fn symbol_info(ident: &Ident, token: &Token, url: Url) -> SymbolInformation {
     let range = get_range_from_span(&ident.span());
     SymbolInformation {
         name: ident.as_str().to_string(),

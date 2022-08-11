@@ -1,10 +1,10 @@
 library vec;
 
 use ::alloc::{alloc, realloc};
+use ::assert::assert;
 use ::intrinsics::size_of;
 use ::mem::{copy, read, write};
 use ::option::Option;
-use ::assert::assert;
 
 struct RawVec<T> {
     ptr: u64,

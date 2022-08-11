@@ -8,7 +8,7 @@ use crate::{
         },
         IsConstant, TypeCheckContext, TypedExpression, TypedExpressionVariant,
     },
-    type_engine::{insert_type, TypeId},
+    type_system::{insert_type, TypeId},
     CompileError, CompileResult, LazyOp, Literal, MatchBranch, TypeInfo,
 };
 

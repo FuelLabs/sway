@@ -1,4 +1,6 @@
-use crate::type_engine::{TraitConstraint, TypeArgument, TypeBinding, TypeParameter};
+use std::collections::HashSet;
+
+use crate::type_system::{TraitConstraint, TypeArgument, TypeBinding, TypeParameter};
 
 use {
     crate::{
@@ -6,7 +8,7 @@ use {
             STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
         },
         error::{err, ok, CompileError, CompileResult, CompileWarning},
-        type_engine::{insert_type, AbiName, IntegerBits},
+        type_system::{insert_type, AbiName, IntegerBits},
         AbiDeclaration, AsmExpression, AsmOp, AsmRegister, AsmRegisterDeclaration, AstNode,
         AstNodeContent, CallPath, CodeBlock, ConstantDeclaration, Declaration, EnumDeclaration,
         EnumVariant, Expression, FunctionDeclaration, FunctionParameter, ImplSelf, ImplTrait,
@@ -24,7 +26,7 @@ use {
         ops::ControlFlow,
         sync::atomic::{AtomicUsize, Ordering},
     },
-    sway_parse::{
+    sway_ast::{
         expr::{ReassignmentOp, ReassignmentOpVariant},
         ty::TyTupleDescriptor,
         AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents,
@@ -178,6 +180,8 @@ pub enum ConvertParseTreeError {
     DuplicateStorageField { name: Ident, span: Span },
     #[error("struct field \"{name}\" already declared")]
     DuplicateStructField { name: Ident, span: Span },
+    #[error("identifier \"{name}\" bound more than once in this parameter list")]
+    DuplicateParameterIdentifier { name: Ident, span: Span },
 }
 
 impl Spanned for ConvertParseTreeError {
@@ -227,6 +231,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::DuplicateEnumVariant { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateStorageField { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateStructField { span, .. } => span.clone(),
+            ConvertParseTreeError::DuplicateParameterIdentifier { span, .. } => span.clone(),
         }
     }
 }
@@ -588,7 +593,7 @@ fn item_fn_to_function_declaration(
         purity: get_attributed_purity(ec, attributes)?,
         name: item_fn.fn_signature.name,
         visibility: pub_token_opt_to_visibility(item_fn.fn_signature.visibility),
-        body: braced_code_block_contents_to_code_block(ec, item_fn.body, false)?,
+        body: braced_code_block_contents_to_code_block(ec, item_fn.body)?,
         parameters: fn_args_to_function_parameters(
             ec,
             item_fn.fn_signature.arguments.into_inner(),
@@ -914,7 +919,6 @@ fn type_field_to_enum_variant(
 fn braced_code_block_contents_to_code_block(
     ec: &mut ErrorContext,
     braced_code_block_contents: Braces<CodeBlockContents>,
-    is_while_loop_body: bool,
 ) -> Result<CodeBlock, ErrorEmitted> {
     let whole_block_span = braced_code_block_contents.span();
     let code_block_contents = braced_code_block_contents.into_inner();
@@ -925,11 +929,7 @@ fn braced_code_block_contents_to_code_block(
             contents.extend(ast_nodes);
         }
         if let Some(expr) = code_block_contents.final_expr_opt {
-            let final_ast_node = expr_to_ast_node(
-                ec,
-                *expr,
-                !is_while_loop_body, // end_of_non_while_loop_body_block
-            )?;
+            let final_ast_node = expr_to_ast_node(ec, *expr, false)?;
             contents.push(final_ast_node);
         }
         contents
@@ -969,6 +969,20 @@ fn fn_args_to_function_parameters(
             function_parameters
         }
     };
+
+    let mut unique_params = HashSet::<Ident>::default();
+    for fn_param in &function_parameters {
+        let already_used = !unique_params.insert(fn_param.name.clone());
+        if already_used {
+            return Err(
+                ec.error(ConvertParseTreeError::DuplicateParameterIdentifier {
+                    name: fn_param.name.clone(),
+                    span: fn_param.name.span(),
+                }),
+            );
+        }
+    }
+
     Ok(function_parameters)
 }
 
@@ -1000,7 +1014,7 @@ fn ty_to_type_info(ec: &mut ErrorContext, ty: Ty) -> Result<TypeInfo, ErrorEmitt
         Ty::Array(bracketed_ty_array_descriptor) => {
             let ty_array_descriptor = bracketed_ty_array_descriptor.into_inner();
             TypeInfo::Array(
-                crate::type_engine::insert_type(ty_to_type_info(ec, *ty_array_descriptor.ty)?),
+                crate::type_system::insert_type(ty_to_type_info(ec, *ty_array_descriptor.ty)?),
                 expr_to_usize(ec, *ty_array_descriptor.length)?,
             )
         }
@@ -1100,7 +1114,7 @@ fn path_type_to_call_path(
 fn expr_to_ast_node(
     ec: &mut ErrorContext,
     expr: Expr,
-    end_of_non_while_loop_body_block: bool,
+    is_statement: bool,
 ) -> Result<AstNode, ErrorEmitted> {
     let span = expr.span();
     let ast_node = match expr {
@@ -1122,9 +1136,7 @@ fn expr_to_ast_node(
         } => AstNode {
             content: AstNodeContent::WhileLoop(WhileLoop {
                 condition: expr_to_expression(ec, *condition)?,
-                body: braced_code_block_contents_to_code_block(
-                    ec, block, true, // is_while_loop_body
-                )?,
+                body: braced_code_block_contents_to_code_block(ec, block)?,
             }),
             span,
         },
@@ -1165,7 +1177,7 @@ fn expr_to_ast_node(
         },
         expr => {
             let expression = expr_to_expression(ec, expr)?;
-            if end_of_non_while_loop_body_block {
+            if !is_statement {
                 AstNode {
                     content: AstNodeContent::ImplicitReturnExpression(expression),
                     span,
@@ -1867,7 +1879,7 @@ fn binary_op_call(
 
 fn storage_field_to_storage_field(
     ec: &mut ErrorContext,
-    storage_field: sway_parse::StorageField,
+    storage_field: sway_ast::StorageField,
 ) -> Result<StorageField, ErrorEmitted> {
     let storage_field = StorageField {
         name: storage_field.name,
@@ -1884,7 +1896,7 @@ fn statement_to_ast_nodes(
     let ast_nodes = match statement {
         Statement::Let(statement_let) => statement_let_to_ast_nodes(ec, statement_let)?,
         Statement::Item(item) => item_to_ast_nodes(ec, item)?,
-        Statement::Expr { expr, .. } => vec![expr_to_ast_node(ec, expr, false)?],
+        Statement::Expr { expr, .. } => vec![expr_to_ast_node(ec, expr, true)?],
     };
     Ok(ast_nodes)
 }
@@ -1943,7 +1955,7 @@ fn fn_arg_to_function_parameter(
 fn expr_to_usize(ec: &mut ErrorContext, expr: Expr) -> Result<usize, ErrorEmitted> {
     let span = expr.span();
     let value = match expr {
-        Expr::Literal(sway_parse::Literal::Int(lit_int)) => {
+        Expr::Literal(sway_ast::Literal::Int(lit_int)) => {
             match lit_int.ty_opt {
                 None => (),
                 Some(..) => {
@@ -1970,7 +1982,7 @@ fn expr_to_usize(ec: &mut ErrorContext, expr: Expr) -> Result<usize, ErrorEmitte
 fn expr_to_u64(ec: &mut ErrorContext, expr: Expr) -> Result<u64, ErrorEmitted> {
     let span = expr.span();
     let value = match expr {
-        Expr::Literal(sway_parse::Literal::Int(lit_int)) => {
+        Expr::Literal(sway_ast::Literal::Int(lit_int)) => {
             match lit_int.ty_opt {
                 None => (),
                 Some(..) => {
@@ -2150,7 +2162,7 @@ fn braced_code_block_contents_to_expression(
 ) -> Result<Expression, ErrorEmitted> {
     let span = braced_code_block_contents.span();
     Ok(Expression::CodeBlock {
-        contents: braced_code_block_contents_to_code_block(ec, braced_code_block_contents, false)?,
+        contents: braced_code_block_contents_to_code_block(ec, braced_code_block_contents)?,
         span,
     })
 }
@@ -2168,7 +2180,7 @@ fn if_expr_to_expression(
     } = if_expr;
     let then_block_span = then_block.span();
     let then_block = Expression::CodeBlock {
-        contents: braced_code_block_contents_to_code_block(ec, then_block, false)?,
+        contents: braced_code_block_contents_to_code_block(ec, then_block)?,
         span: then_block_span.clone(),
     };
     let else_block = match else_opt {
@@ -2257,11 +2269,11 @@ fn path_root_opt_to_bool(
 
 fn literal_to_literal(
     ec: &mut ErrorContext,
-    literal: sway_parse::Literal,
+    literal: sway_ast::Literal,
 ) -> Result<Literal, ErrorEmitted> {
     let literal = match literal {
-        sway_parse::Literal::Bool(lit_bool) => Literal::Boolean(lit_bool.kind.into()),
-        sway_parse::Literal::String(lit_string) => {
+        sway_ast::Literal::Bool(lit_bool) => Literal::Boolean(lit_bool.kind.into()),
+        sway_ast::Literal::String(lit_string) => {
             let full_span = lit_string.span();
             let inner_span = Span::new(
                 full_span.src().clone(),
@@ -2272,13 +2284,13 @@ fn literal_to_literal(
             .unwrap();
             Literal::String(inner_span)
         }
-        sway_parse::Literal::Char(lit_char) => {
+        sway_ast::Literal::Char(lit_char) => {
             let error = ConvertParseTreeError::CharLiteralsNotImplemented {
                 span: lit_char.span(),
             };
             return Err(ec.error(error));
         }
-        sway_parse::Literal::Int(lit_int) => {
+        sway_ast::Literal::Int(lit_int) => {
             let LitInt {
                 parsed,
                 ty_opt,
@@ -2550,7 +2562,7 @@ fn asm_block_to_asm_expression(
 
 fn match_branch_to_match_branch(
     ec: &mut ErrorContext,
-    match_branch: sway_parse::MatchBranch,
+    match_branch: sway_ast::MatchBranch,
 ) -> Result<MatchBranch, ErrorEmitted> {
     let span = match_branch.span();
     Ok(MatchBranch {
@@ -2559,7 +2571,7 @@ fn match_branch_to_match_branch(
             MatchBranchKind::Block { block, .. } => {
                 let span = block.span();
                 Expression::CodeBlock {
-                    contents: braced_code_block_contents_to_code_block(ec, block, false)?,
+                    contents: braced_code_block_contents_to_code_block(ec, block)?,
                     span,
                 }
             }
@@ -2827,7 +2839,7 @@ fn generic_args_to_type_parameters(
 
 fn asm_register_declaration_to_asm_register_declaration(
     ec: &mut ErrorContext,
-    asm_register_declaration: sway_parse::AsmRegisterDeclaration,
+    asm_register_declaration: sway_ast::AsmRegisterDeclaration,
 ) -> Result<AsmRegisterDeclaration, ErrorEmitted> {
     Ok(AsmRegisterDeclaration {
         name: asm_register_declaration.register,

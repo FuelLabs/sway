@@ -3,7 +3,7 @@ use sway_types::Span;
 use crate::{
     error::{err, ok},
     semantic_analysis::{IsConstant, TypedExpression, TypedExpressionVariant},
-    type_engine::look_up_type_id,
+    type_system::look_up_type_id,
     CompileError, CompileResult,
 };
 

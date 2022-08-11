@@ -9,14 +9,14 @@ async fn get_evm_test_instance() -> (EvmTestContract, ContractId) {
         &wallet,
         TxParameters::default(),
         StorageConfiguration::with_storage_path(Some(
-            "test_artifacts/evm/out/debug/evm-storage_slots.json".to_string(),
+            "test_projects/evm/out/debug/evm-storage_slots.json".to_string(),
         )),
     )
     .await
     .unwrap();
-    let instance = EvmTestContract::new(id.to_string(), wallet);
+    let instance = EvmTestContractBuilder::new(id.to_string(), wallet).build();
 
-    (instance, id)
+    (instance, id.into())
 }
 
 #[tokio::test]

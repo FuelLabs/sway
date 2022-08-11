@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
 use crate::{
-    core::token::{TokenMap, TypedAstToken},
-    utils::token::to_ident_key,
+    core::token::{TokenMap, TypeDefinition, TypedAstToken},
+    utils::token::{struct_declaration_of_type_id, to_ident_key},
 };
 use sway_core::semantic_analysis::ast_node::{
     expression::{
@@ -10,7 +10,7 @@ use sway_core::semantic_analysis::ast_node::{
         TypedIntrinsicFunctionKind,
     },
     while_loop::TypedWhileLoop,
-    TypedImplTrait, {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
+    ProjectionKind, TypedImplTrait, {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
 };
 use sway_types::ident::Ident;
 
@@ -55,6 +55,19 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&parameter.name)) {
                     token.typed = Some(TypedAstToken::TypedFunctionParameter(parameter.clone()));
                 }
+
+                if let Some(mut token) =
+                    tokens.get_mut(&to_ident_key(&Ident::new(parameter.type_span.clone())))
+                {
+                    token.typed = Some(TypedAstToken::TypedFunctionParameter(parameter.clone()));
+                }
+            }
+
+            if let Some(mut token) =
+                tokens.get_mut(&to_ident_key(&Ident::new(func.return_type_span.clone())))
+            {
+                token.typed = Some(TypedAstToken::TypedFunctionDeclaration(func.clone()));
+                token.type_def = Some(TypeDefinition::TypeId(func.return_type));
             }
         }
         TypedDeclaration::TraitDeclaration(trait_decl) => {
@@ -76,6 +89,14 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
             for field in &struct_dec.fields {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&field.name)) {
                     token.typed = Some(TypedAstToken::TypedStructField(field.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(field.type_id));
+                }
+
+                if let Some(mut token) =
+                    tokens.get_mut(&to_ident_key(&Ident::new(field.type_span.clone())))
+                {
+                    token.typed = Some(TypedAstToken::TypedStructField(field.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(field.type_id));
                 }
             }
         }
@@ -96,10 +117,29 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&reassignment.lhs_base_name)) {
                 token.typed = Some(TypedAstToken::TypedReassignment(reassignment.clone()));
             }
+
+            for proj_kind in &reassignment.lhs_indices {
+                if let ProjectionKind::StructField { name } = proj_kind {
+                    if let Some(mut token) = tokens.get_mut(&to_ident_key(name)) {
+                        token.typed = Some(TypedAstToken::TypedReassignment(reassignment.clone()));
+                        if let Some(struct_decl) =
+                            &struct_declaration_of_type_id(&reassignment.lhs_type, tokens)
+                        {
+                            for decl_field in &struct_decl.fields {
+                                if &decl_field.name == name {
+                                    token.type_def =
+                                        Some(TypeDefinition::Ident(decl_field.name.clone()));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
         TypedDeclaration::ImplTrait(TypedImplTrait {
             trait_name,
             methods,
+            implementing_for_type_id,
             ..
         }) => {
             for ident in &trait_name.prefixes {
@@ -110,6 +150,7 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
 
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&trait_name.suffix)) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                token.type_def = Some(TypeDefinition::TypeId(*implementing_for_type_id));
             }
 
             for method in methods {
@@ -130,6 +171,7 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                 let return_type_ident = Ident::new(method.return_type_span.clone());
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&return_type_ident)) {
                     token.typed = Some(TypedAstToken::TypedFunctionDeclaration(method.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(method.return_type));
                 }
             }
         }
@@ -141,6 +183,12 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
             for trait_fn in &abi_decl.interface_surface {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&trait_fn.name)) {
                     token.typed = Some(TypedAstToken::TypedTraitFn(trait_fn.clone()));
+                }
+
+                let return_ident = Ident::new(trait_fn.return_type_span.clone());
+                if let Some(mut token) = tokens.get_mut(&to_ident_key(&return_ident)) {
+                    token.typed = Some(TypedAstToken::TypedTraitFn(trait_fn.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(trait_fn.return_type));
                 }
             }
         }
@@ -154,7 +202,10 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
             for field in &storage_decl.fields {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&field.name)) {
                     token.typed = Some(TypedAstToken::TypedStorageField(field.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(field.type_id));
                 }
+
+                handle_expression(&field.initializer, tokens);
             }
         }
         TypedDeclaration::StorageReassignment(storage_reassignment) => {
@@ -174,7 +225,13 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
 
 fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
     match &expression.expression {
-        TypedExpressionVariant::Literal { .. } => {}
+        TypedExpressionVariant::Literal { .. } => {
+            if let Some(mut token) =
+                tokens.get_mut(&to_ident_key(&Ident::new(expression.span.clone())))
+            {
+                token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
+            }
+        }
         TypedExpressionVariant::FunctionApplication {
             call_path,
             contract_call_params,
@@ -185,11 +242,13 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
             for ident in &call_path.prefixes {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(ident)) {
                     token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(expression.return_type));
                 }
             }
 
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&call_path.suffix)) {
                 token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
+                token.type_def = Some(TypeDefinition::Ident(function_decl.name.clone()));
             }
 
             for exp in contract_call_params.values() {
@@ -230,17 +289,26 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
             handle_expression(prefix, tokens);
             handle_expression(index, tokens);
         }
-        TypedExpressionVariant::StructExpression {
-            ref struct_name,
-            ref fields,
-        } => {
-            if let Some(mut token) = tokens.get_mut(&to_ident_key(struct_name)) {
+        TypedExpressionVariant::StructExpression { fields, span, .. } => {
+            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(span.clone()))) {
                 token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
+                token.type_def = Some(TypeDefinition::TypeId(expression.return_type));
             }
 
             for field in fields {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&field.name)) {
                     token.typed = Some(TypedAstToken::TypedExpression(field.value.clone()));
+
+                    if let Some(struct_decl) =
+                        &struct_declaration_of_type_id(&expression.return_type, tokens)
+                    {
+                        for decl_field in &struct_decl.fields {
+                            if decl_field.name == field.name {
+                                token.type_def =
+                                    Some(TypeDefinition::Ident(decl_field.name.clone()));
+                            }
+                        }
+                    }
                 }
                 handle_expression(&field.value, tokens);
             }
@@ -266,18 +334,47 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
         TypedExpressionVariant::StructFieldAccess {
             prefix,
             field_to_access,
+            field_instantiation_span,
             ..
         } => {
             handle_expression(prefix, tokens);
 
-            if let Some(mut token) = tokens.get_mut(&to_ident_key(&field_to_access.name)) {
+            if let Some(mut token) =
+                tokens.get_mut(&to_ident_key(&Ident::new(field_instantiation_span.clone())))
+            {
                 token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
+                token.type_def = Some(TypeDefinition::Ident(field_to_access.name.clone()));
             }
         }
         TypedExpressionVariant::TupleElemAccess { prefix, .. } => {
             handle_expression(prefix, tokens);
         }
-        TypedExpressionVariant::EnumInstantiation { .. } => {}
+        TypedExpressionVariant::EnumInstantiation {
+            variant_name,
+            variant_instantiation_span,
+            enum_decl,
+            enum_instantiation_span,
+            contents,
+            ..
+        } => {
+            if let Some(mut token) =
+                tokens.get_mut(&to_ident_key(&Ident::new(enum_instantiation_span.clone())))
+            {
+                token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
+                token.type_def = Some(TypeDefinition::Ident(enum_decl.name.clone()));
+            }
+
+            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(
+                variant_instantiation_span.clone(),
+            ))) {
+                token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
+                token.type_def = Some(TypeDefinition::Ident(variant_name.clone()));
+            }
+
+            if let Some(contents) = contents.as_deref() {
+                handle_expression(contents, tokens);
+            }
+        }
         TypedExpressionVariant::AbiCast {
             abi_name, address, ..
         } => {

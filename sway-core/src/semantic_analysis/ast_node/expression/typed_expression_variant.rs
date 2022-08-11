@@ -1,4 +1,4 @@
-use crate::{parse_tree::*, semantic_analysis::*, type_engine::*};
+use crate::{parse_tree::*, semantic_analysis::*, type_system::*};
 
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
@@ -6,7 +6,7 @@ use derivative::Derivative;
 use std::{collections::HashMap, fmt};
 
 #[derive(Clone, Debug)]
-pub struct ContractCallMetadata {
+pub struct ContractCallParams {
     pub(crate) func_selector: [u8; 4],
     pub(crate) contract_address: Box<TypedExpression>,
 }
@@ -25,7 +25,7 @@ pub enum TypedExpressionVariant {
         /// there is no selector.
         self_state_idx: Option<StateIndex>,
         #[derivative(Eq(bound = ""))]
-        selector: Option<ContractCallMetadata>,
+        selector: Option<ContractCallParams>,
     },
     LazyOperator {
         #[derivative(Eq(bound = ""))]
@@ -49,6 +49,7 @@ pub enum TypedExpressionVariant {
     StructExpression {
         struct_name: Ident,
         fields: Vec<TypedStructExpressionField>,
+        span: Span,
     },
     CodeBlock(TypedCodeBlock),
     // a flag that this value will later be provided as a parameter, but is currently unknown
@@ -69,6 +70,7 @@ pub enum TypedExpressionVariant {
     StructFieldAccess {
         prefix: Box<TypedExpression>,
         field_to_access: TypedStructField,
+        field_instantiation_span: Span,
         resolved_type_of_parent: TypeId,
     },
     TupleElemAccess {
@@ -85,8 +87,10 @@ pub enum TypedExpressionVariant {
         tag: usize,
         contents: Option<Box<TypedExpression>>,
         /// If there is an error regarding this instantiation of the enum,
-        /// use this span as it points to the call site and not the declaration.
-        instantiation_span: Span,
+        /// use these spans as it points to the call site and not the declaration.
+        /// They are also used in the language server.
+        enum_instantiation_span: Span,
+        variant_instantiation_span: Span,
     },
     AbiCast {
         abi_name: CallPath,
@@ -177,12 +181,18 @@ impl PartialEq for TypedExpressionVariant {
                 Self::StructExpression {
                     struct_name: l_struct_name,
                     fields: l_fields,
+                    span: l_span,
                 },
                 Self::StructExpression {
                     struct_name: r_struct_name,
                     fields: r_fields,
+                    span: r_span,
                 },
-            ) => l_struct_name == r_struct_name && l_fields.clone() == r_fields.clone(),
+            ) => {
+                l_struct_name == r_struct_name
+                    && l_fields.clone() == r_fields.clone()
+                    && l_span == r_span
+            }
             (Self::CodeBlock(l0), Self::CodeBlock(r0)) => l0 == r0,
             (
                 Self::IfExp {
@@ -227,11 +237,13 @@ impl PartialEq for TypedExpressionVariant {
                     prefix: l_prefix,
                     field_to_access: l_field_to_access,
                     resolved_type_of_parent: l_resolved_type_of_parent,
+                    ..
                 },
                 Self::StructFieldAccess {
                     prefix: r_prefix,
                     field_to_access: r_field_to_access,
                     resolved_type_of_parent: r_resolved_type_of_parent,
+                    ..
                 },
             ) => {
                 (**l_prefix) == (**r_prefix)

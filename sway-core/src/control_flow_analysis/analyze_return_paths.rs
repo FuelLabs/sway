@@ -2,7 +2,7 @@
 //! execution.
 
 use crate::{
-    control_flow_analysis::*, error::*, parse_tree::*, semantic_analysis::*, type_engine::*,
+    control_flow_analysis::*, error::*, parse_tree::*, semantic_analysis::*, type_system::*,
 };
 use petgraph::prelude::NodeIndex;
 use sway_types::{ident::Ident, span::Span};
@@ -11,11 +11,7 @@ impl ControlFlowGraph {
     pub(crate) fn construct_return_path_graph(
         module_nodes: &[TypedAstNode],
     ) -> Result<Self, CompileError> {
-        let mut graph = ControlFlowGraph {
-            graph: Graph::new(),
-            entry_points: vec![],
-            namespace: Default::default(),
-        };
+        let mut graph = ControlFlowGraph::default();
         // do a depth first traversal and cover individual inner ast nodes
         let mut leaves = vec![];
         for ast_entrypoint in module_nodes {
@@ -26,6 +22,7 @@ impl ControlFlowGraph {
         }
         Ok(graph)
     }
+
     /// This function looks through the control flow graph and ensures that all paths that are
     /// required to return a value do, indeed, return a value of the correct type.
     /// It does this by checking every function declaration in both the methods namespace
@@ -53,6 +50,7 @@ impl ControlFlowGraph {
         }
         errors
     }
+
     fn ensure_all_paths_reach_exit(
         &self,
         entry_point: EntryPoint,

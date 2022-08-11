@@ -14,7 +14,7 @@ use crate::{
 };
 
 /// A finalized `swayfmt` config.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Config {
     pub whitespace: Whitespace,
     pub imports: Imports,

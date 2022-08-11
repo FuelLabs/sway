@@ -1,6 +1,7 @@
 use crate::{
     error::CompileError,
-    parse_tree::{Purity, Visibility},
+    metadata::MetadataManager,
+    parse_tree::Visibility,
     semantic_analysis::{ast_node::*, namespace},
 };
 
@@ -10,7 +11,7 @@ use super::{
     function::FnCompiler,
 };
 
-use sway_ir::*;
+use sway_ir::{metadata::combine as md_combine, *};
 use sway_types::{span::Span, Spanned};
 
 pub(super) fn compile_script(
@@ -20,10 +21,11 @@ pub(super) fn compile_script(
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
+    let mut md_mgr = MetadataManager::default();
 
-    compile_constants(context, module, namespace, false)?;
-    compile_declarations(context, module, namespace, declarations)?;
-    compile_function(context, module, main_function)?;
+    compile_constants(context, &mut md_mgr, module, namespace)?;
+    compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
+    compile_function(context, &mut md_mgr, module, main_function)?;
 
     Ok(module)
 }
@@ -35,11 +37,12 @@ pub(super) fn compile_contract(
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
+    let mut md_mgr = MetadataManager::default();
 
-    compile_constants(context, module, namespace, false)?;
-    compile_declarations(context, module, namespace, declarations)?;
+    compile_constants(context, &mut md_mgr, module, namespace)?;
+    compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
     for decl in abi_entries {
-        compile_abi_method(context, module, decl)?;
+        compile_abi_method(context, &mut md_mgr, module, decl)?;
     }
 
     Ok(module)
@@ -47,17 +50,17 @@ pub(super) fn compile_contract(
 
 fn compile_constants(
     context: &mut Context,
+    md_mgr: &mut MetadataManager,
     module: Module,
     module_ns: &namespace::Module,
-    public_only: bool,
 ) -> Result<(), CompileError> {
     for decl_name in module_ns.get_all_declared_symbols() {
         compile_const_decl(
             &mut LookupEnv {
                 context,
+                md_mgr,
                 module,
                 module_ns: Some(module_ns),
-                public_only,
                 lookup: compile_const_decl,
             },
             decl_name,
@@ -65,7 +68,7 @@ fn compile_constants(
     }
 
     for submodule_ns in module_ns.submodules().values() {
-        compile_constants(context, module, submodule_ns, true)?;
+        compile_constants(context, md_mgr, module, submodule_ns)?;
     }
 
     Ok(())
@@ -83,6 +86,7 @@ fn compile_constants(
 
 fn compile_declarations(
     context: &mut Context,
+    md_mgr: &mut MetadataManager,
     module: Module,
     namespace: &namespace::Module,
     declarations: Vec<TypedDeclaration>,
@@ -93,9 +97,9 @@ fn compile_declarations(
                 compile_const_decl(
                     &mut LookupEnv {
                         context,
+                        md_mgr,
                         module,
                         module_ns: Some(namespace),
-                        public_only: false,
                         lookup: compile_const_decl,
                     },
                     &decl.name,
@@ -139,6 +143,7 @@ fn compile_declarations(
 
 pub(super) fn compile_function(
     context: &mut Context,
+    md_mgr: &mut MetadataManager,
     module: Module,
     ast_fn_decl: TypedFunctionDeclaration,
 ) -> Result<Option<Function>, CompileError> {
@@ -156,12 +161,13 @@ pub(super) fn compile_function(
             })
             .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
-        compile_fn_with_args(context, module, ast_fn_decl, args, None).map(&Some)
+        compile_fn_with_args(context, md_mgr, module, ast_fn_decl, args, None).map(&Some)
     }
 }
 
 fn compile_fn_with_args(
     context: &mut Context,
+    md_mgr: &mut MetadataManager,
     module: Module,
     ast_fn_decl: TypedFunctionDeclaration,
     args: Vec<(String, Type, Span)>,
@@ -180,23 +186,12 @@ fn compile_fn_with_args(
 
     let args = args
         .into_iter()
-        .map(|(name, ty, span)| (name, ty, MetadataIndex::from_span(context, &span)))
+        .map(|(name, ty, span)| (name, ty, md_mgr.span_to_md(context, &span)))
         .collect();
     let ret_type = convert_resolved_typeid(context, &return_type, &return_type_span)?;
-    let span_md_idx = MetadataIndex::from_span(context, &span);
-    let storage_md_idx = if purity == Purity::Pure {
-        None
-    } else {
-        Some(MetadataIndex::get_storage_index(
-            context,
-            match purity {
-                Purity::Pure => unreachable!("Already checked for Pure above."),
-                Purity::Reads => StorageOperation::Reads,
-                Purity::Writes => StorageOperation::Writes,
-                Purity::ReadsWrites => StorageOperation::ReadsWrites,
-            },
-        ))
-    };
+    let span_md_idx = md_mgr.span_to_md(context, &span);
+    let storage_md_idx = md_mgr.purity_to_md(context, purity);
+    let metadata = md_combine(context, &span_md_idx, &storage_md_idx);
     let func = Function::new(
         context,
         module,
@@ -205,15 +200,14 @@ fn compile_fn_with_args(
         ret_type,
         selector,
         visibility == Visibility::Public,
-        span_md_idx,
-        storage_md_idx,
+        metadata,
     );
 
     // We clone the struct symbols here, as they contain the globals; any new local declarations
     // may remain within the function scope.
     let mut compiler = FnCompiler::new(context, module, func);
 
-    let mut ret_val = compiler.compile_code_block(context, body)?;
+    let mut ret_val = compiler.compile_code_block(context, md_mgr, body)?;
 
     // Special case: if the return type is unit but the return value type is not, then we have an
     // implicit return from the last expression in the code block having a semi-colon.  This isn't
@@ -221,7 +215,7 @@ fn compile_fn_with_args(
     if ret_type.eq(context, &Type::Unit) && !matches!(ret_val.get_type(context), Some(Type::Unit)) {
         // NOTE: We're replacing the ret_val and throwing away whatever it used to be, as it is
         // never actually used anyway.
-        ret_val = Constant::get_unit(context, None);
+        ret_val = Constant::get_unit(context);
     }
 
     let already_returns = compiler.current_block.is_terminated_by_ret(context);
@@ -241,12 +235,9 @@ fn compile_fn_with_args(
             || compiler.current_block.num_predecessors(context) > 0)
     {
         if ret_type.eq(context, &Type::Unit) {
-            ret_val = Constant::get_unit(context, None);
+            ret_val = Constant::get_unit(context);
         }
-        compiler
-            .current_block
-            .ins(context)
-            .ret(ret_val, ret_type, None);
+        compiler.current_block.ins(context).ret(ret_val, ret_type);
     }
     Ok(func)
 }
@@ -281,6 +272,7 @@ fn compile_impl(
 
 fn compile_abi_method(
     context: &mut Context,
+    md_mgr: &mut MetadataManager,
     module: Module,
     ast_fn_decl: TypedFunctionDeclaration,
 ) -> Result<Function, CompileError> {
@@ -314,5 +306,5 @@ fn compile_abi_method(
         })
         .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
-    compile_fn_with_args(context, module, ast_fn_decl, args, Some(selector))
+    compile_fn_with_args(context, md_mgr, module, ast_fn_decl, args, Some(selector))
 }

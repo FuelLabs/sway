@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()Unsupported argument type to intrinsic "addr_of"

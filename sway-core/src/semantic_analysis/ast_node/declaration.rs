@@ -16,7 +16,7 @@ pub use r#trait::*;
 pub use storage::*;
 pub use variable::*;
 
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_system::*};
 use derivative::Derivative;
 use std::{borrow::Cow, fmt};
 use sway_types::{Ident, Span, Spanned};
@@ -119,7 +119,7 @@ impl fmt::Display for TypedDeclaration {
                     builder.push_str(name.as_str());
                     builder.push_str(": ");
                     builder.push_str(
-                        &crate::type_engine::look_up_type_id(*type_ascription).to_string(),
+                        &crate::type_system::look_up_type_id(*type_ascription).to_string(),
                     );
                     builder.push_str(" = ");
                     builder.push_str(&body.to_string());
@@ -410,7 +410,7 @@ pub struct TypedTraitFn {
     pub return_type: TypeId,
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
-    pub(crate) return_type_span: Span,
+    pub return_type_span: Span,
 }
 
 impl CopyTypes for TypedTraitFn {

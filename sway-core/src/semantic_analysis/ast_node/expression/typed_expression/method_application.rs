@@ -4,7 +4,7 @@ use crate::{
     error::*,
     parse_tree::*,
     semantic_analysis::{TypedExpressionVariant::VariableExpression, *},
-    type_engine::*,
+    type_system::*,
 };
 use std::collections::{HashMap, VecDeque};
 use sway_types::Spanned;
@@ -215,11 +215,19 @@ pub(crate) fn type_check_method_application(
         MethodName::FromType {
             call_path_binding,
             method_name,
-        } => CallPath {
-            prefixes: call_path_binding.inner.prefixes,
-            suffix: method_name,
-            is_absolute: call_path_binding.inner.is_absolute,
-        },
+        } => {
+            let prefixes =
+                if let (TypeInfo::Custom { name, .. }, ..) = &call_path_binding.inner.suffix {
+                    vec![name.clone()]
+                } else {
+                    call_path_binding.inner.prefixes
+                };
+            CallPath {
+                prefixes,
+                suffix: method_name,
+                is_absolute: call_path_binding.inner.is_absolute,
+            }
+        }
         MethodName::FromModule { method_name } => CallPath {
             prefixes: vec![],
             suffix: method_name,
@@ -250,7 +258,7 @@ pub(crate) fn type_check_method_application(
             return err(warnings, errors);
         };
         let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
-        Some(ContractCallMetadata {
+        Some(ContractCallParams {
             func_selector,
             contract_address,
         })
