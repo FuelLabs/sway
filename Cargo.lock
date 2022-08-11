@@ -1314,11 +1314,11 @@ dependencies = [
  "forc-pkg",
  "forc-util",
  "fs_extra",
- "fuel-asm 0.6.0",
- "fuel-crypto 0.5.0",
+ "fuel-asm 0.8.0",
+ "fuel-crypto 0.6.0",
  "fuel-gql-client",
- "fuel-tx 0.13.0",
- "fuel-vm 0.12.3",
+ "fuel-tx 0.18.0",
+ "fuel-vm 0.15.0",
  "futures",
  "hex",
  "serde",
@@ -1516,18 +1516,18 @@ dependencies = [
 
 [[package]]
 name = "fuel-gql-client"
-version = "0.9.6"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70c53c43a395fe5bafb3502e4a87c4d7b64a8cba1ea12e6a2ce33ff95c2a5016"
+checksum = "3298df8a6ccd5d0580ac9e9deffeba7b355949c85d29621b01ffd081b6fa71f7"
 dependencies = [
  "anyhow",
  "chrono",
  "clap 3.2.16",
  "cynic",
  "derive_more",
- "fuel-tx 0.13.0",
+ "fuel-tx 0.18.0",
  "fuel-types",
- "fuel-vm 0.12.3",
+ "fuel-vm 0.15.0",
  "futures",
  "hex",
  "itertools",
@@ -1648,7 +1648,6 @@ dependencies = [
  "fuel-types",
  "itertools",
  "secp256k1 0.20.3",
- "serde",
  "sha3 0.9.1",
  "thiserror",
  "tracing",
@@ -1669,6 +1668,7 @@ dependencies = [
  "itertools",
  "rand 0.8.5",
  "secp256k1 0.24.0",
+ "serde",
  "sha3 0.10.1",
  "tai64",
  "thiserror",
@@ -2284,15 +2284,6 @@ name = "keccak"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9b7d56ba4a8344d6be9729995e6b06f928af29998cdf79fe390cbf6b1fee838"
-
-[[package]]
-name = "kstring"
-version = "1.0.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b310ccceade8121d7d77fee406160e457c2f4e7c7982d589da3499bc7ea4526"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "kv-log-macro"
@@ -4541,14 +4532,13 @@ dependencies = [
 
 [[package]]
 name = "toml_edit"
-version = "0.13.4"
+version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "744e9ed5b352340aa47ce033716991b5589e23781acb97cad37d4ea70560f55b"
+checksum = "5376256e44f2443f8896ac012507c19a012df0fe8758b55246ae51a2279db51f"
 dependencies = [
  "combine 4.6.4",
  "indexmap",
  "itertools",
- "kstring",
 ]
 
 [[package]]
