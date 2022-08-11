@@ -417,7 +417,7 @@ impl fmt::Display for Warning {
                 "This trait implementation overrides another one that was previously defined."
             ),
             DeadDeclaration => write!(f, "This declaration is never used."),
-            DeadStructDeclaration => write!(f, "This struct is never instantiated."),
+            DeadStructDeclaration => write!(f, "This struct is never used."),
             DeadFunctionDeclaration => write!(f, "This function is never called."),
             UnreachableCode => write!(f, "This code is unreachable."),
             DeadEnumVariant { variant_name } => {
@@ -1046,6 +1046,8 @@ pub enum CompileError {
     BreakOutsideLoop { span: Span },
     #[error("\"continue\" used outside of a loop")]
     ContinueOutsideLoop { span: Span },
+    #[error("arguments to \"main()\" are not yet supported. See the issue here: github.com/FuelLabs/sway/issues/845")]
+    MainArgsNotYetSupported { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1210,6 +1212,7 @@ impl Spanned for CompileError {
             IntrinsicIncorrectNumTArgs { span, .. } => span.clone(),
             BreakOutsideLoop { span } => span.clone(),
             ContinueOutsideLoop { span } => span.clone(),
+            MainArgsNotYetSupported { span } => span.clone(),
         }
     }
 }

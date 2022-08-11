@@ -38,7 +38,7 @@ impl Format for ItemEnum {
             generics.format(formatted_code, formatter)?;
         }
 
-        let fields = self.fields.clone().into_inner();
+        let fields = self.fields.get();
 
         // Handle openning brace
         ItemEnum::open_curly_brace(formatted_code, formatter)?;
@@ -46,7 +46,7 @@ impl Format for ItemEnum {
         match formatter.config.structures.field_alignment {
             FieldAlignment::AlignFields(enum_variant_align_threshold) => {
                 writeln!(formatted_code)?;
-                let value_pairs = fields.value_separator_pairs;
+                let value_pairs = &fields.value_separator_pairs;
                 // In first iteration we are going to be collecting the lengths of the enum variants.
                 let variant_length: Vec<usize> = value_pairs
                     .iter()
