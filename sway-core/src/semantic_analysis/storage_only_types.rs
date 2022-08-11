@@ -60,8 +60,8 @@ fn expr_validate(expr: &TypedExpression) -> CompileResult<()> {
             prefix: expr1,
             index: expr2,
         } => {
-            check!(expr_validate(&*expr1), (), warnings, errors);
-            check!(expr_validate(&*expr2), (), warnings, errors);
+            check!(expr_validate(expr1), (), warnings, errors);
+            check!(expr_validate(expr2), (), warnings, errors);
         }
         TypedExpressionVariant::IntrinsicFunction(TypedIntrinsicFunctionKind {
             arguments: exprvec,
@@ -91,10 +91,10 @@ fn expr_validate(expr: &TypedExpression) -> CompileResult<()> {
             then,
             r#else,
         } => {
-            check!(expr_validate(&*condition), (), warnings, errors);
-            check!(expr_validate(&*then), (), warnings, errors);
+            check!(expr_validate(condition), (), warnings, errors);
+            check!(expr_validate(then), (), warnings, errors);
             if let Some(r#else) = r#else {
-                check!(expr_validate(&*r#else), (), warnings, errors);
+                check!(expr_validate(r#else), (), warnings, errors);
             }
         }
         TypedExpressionVariant::StructFieldAccess { prefix: exp, .. }
@@ -102,11 +102,11 @@ fn expr_validate(expr: &TypedExpression) -> CompileResult<()> {
         | TypedExpressionVariant::AbiCast { address: exp, .. }
         | TypedExpressionVariant::EnumTag { exp }
         | TypedExpressionVariant::UnsafeDowncast { exp, .. } => {
-            check!(expr_validate(&*exp), (), warnings, errors)
+            check!(expr_validate(exp), (), warnings, errors)
         }
         TypedExpressionVariant::EnumInstantiation { contents, .. } => {
             if let Some(f) = contents {
-                check!(expr_validate(&*f), (), warnings, errors);
+                check!(expr_validate(f), (), warnings, errors);
             }
         }
     }
