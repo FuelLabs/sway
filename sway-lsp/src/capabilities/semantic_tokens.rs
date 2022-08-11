@@ -3,7 +3,7 @@ use crate::core::{
     token::{AstToken, TokenMap},
 };
 use crate::utils::common::get_range_from_span;
-use sway_core::{Declaration, Expression, Literal};
+use sway_core::{Declaration, ExpressionKind, Literal};
 use sway_types::Span;
 use tower_lsp::lsp_types::{
     SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens,
@@ -108,14 +108,11 @@ fn type_idx(ast_token: &AstToken) -> u32 {
             }
         }
         AstToken::Expression(exp) => {
-            match &exp {
-                Expression::Literal {
-                    value: Literal::String(_),
-                    ..
-                } => TokenTypeIndex::String as u32,
-                Expression::FunctionApplication { .. } => TokenTypeIndex::Function as u32,
-                Expression::VariableExpression { .. } => TokenTypeIndex::Variable as u32,
-                Expression::StructExpression { .. } => TokenTypeIndex::Struct as u32,
+            match &exp.kind {
+                ExpressionKind::Literal(Literal::String(_)) => TokenTypeIndex::String as u32,
+                ExpressionKind::FunctionApplication(_) => TokenTypeIndex::Function as u32,
+                ExpressionKind::Variable(_) => TokenTypeIndex::Variable as u32,
+                ExpressionKind::Struct(_) => TokenTypeIndex::Struct as u32,
                 // currently we return `variable` type as default
                 _ => TokenTypeIndex::Variable as u32,
             }
