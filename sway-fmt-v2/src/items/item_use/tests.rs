@@ -79,12 +79,12 @@ macro_rules! fmt_test_inner {
 }
 }
 
-fmt_test!(multiline      "use foo::{
+fmt_test!(multiline     "use foo::{
     quux,
     xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
     yxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
 };",
-          out_of_order   "use foo::{yxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, quux, xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx};"
+          out_of_order  "use foo::{yxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, quux, xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx};"
 );
 fmt_test!(multiline_nested      "use foo::{
     Quux::{
@@ -98,6 +98,6 @@ fmt_test!(multiline_nested      "use foo::{
           out_of_order          "use foo::{xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, Quux::{b, a, C}, yxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx};"
 );
 
-fmt_test!(single_line_sort      "use foo::{bar, baz, Quux::{a, b, C}};",
-          out_of_order          "use foo::{baz, Quux::{b, a, C}, bar};"
+fmt_test!(single_line_sort  "use foo::{bar, baz, Quux::{a, b, C}};",
+          out_of_order      "use foo::{baz, Quux::{b, a, C}, bar};"
 );
