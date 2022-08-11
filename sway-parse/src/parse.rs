@@ -49,6 +49,23 @@ macro_rules! impl_tuple (
                 Ok(($($name,)*))
             }
         }
+
+        impl<$($name,)*> Peek for ($($name,)*)
+        where
+            $($name: Peek,)*
+        {
+            fn peek(peeker: Peeker<'_>) -> Option<Self> {
+                #![allow(unused_assignments, unused, non_snake_case)]
+
+                let mut tokens = peeker.token_trees;
+                $(
+                    let ($name, fewer_tokens) = Peeker::with::<$name>(tokens)?;
+                    tokens = fewer_tokens;
+
+                )*
+                Some(($($name,)*))
+            }
+        }
     };
 );
 

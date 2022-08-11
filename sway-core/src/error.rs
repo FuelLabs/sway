@@ -417,7 +417,7 @@ impl fmt::Display for Warning {
                 "This trait implementation overrides another one that was previously defined."
             ),
             DeadDeclaration => write!(f, "This declaration is never used."),
-            DeadStructDeclaration => write!(f, "This struct is never instantiated."),
+            DeadStructDeclaration => write!(f, "This struct is never used."),
             DeadFunctionDeclaration => write!(f, "This function is never called."),
             UnreachableCode => write!(f, "This code is unreachable."),
             DeadEnumVariant { variant_name } => {
