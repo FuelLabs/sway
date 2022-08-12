@@ -1,6 +1,6 @@
 # Plugins
 
-Plugins can be used to extend `forc` with new commands that go beyond the native commands mentioned in the previous chapter. While the Fuel ecosystem provides a few commonly useful plugins (`forc-fmt`, `forc-lsp`, `forc-explore`), anyone can write their own!
+Plugins can be used to extend `forc` with new commands that go beyond the native commands mentioned in the previous chapter. While the Fuel ecosystem provides a few commonly useful plugins (`forc-fmt`, `forc-client`, `forc-lsp`, `forc-explore`), anyone can write their own!
 
 Let's install a plugin, `forc-explore`, and see what's underneath the plugin:
 
@@ -26,6 +26,8 @@ Server::run{addr=127.0.0.1:3030}: listening on http://127.0.0.1:3030
 ```
 
 You can visit http://127.0.0.1:3030 to check out the network explorer!
+
+Note that some plugin crates can also provide more than one command. For example, installing the `forc-client` plugin provides the `forc deploy` and `forc run` commands. This is achieved by specifying multiple `[[bin]]` targets within the `forc-client` manifest.
 
 ## Writing your own plugin
 
