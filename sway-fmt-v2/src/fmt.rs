@@ -846,8 +846,7 @@ trait Qux {
     fn is_baz_true(self) -> bool;
 }
 
-impl Qux for Foo
-{
+impl Qux for Foo {
     fn is_baz_true(self) -> bool {
         self.baz
     }
