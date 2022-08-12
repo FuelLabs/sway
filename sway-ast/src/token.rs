@@ -128,6 +128,7 @@ pub enum DocStyle {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct DocComment {
     pub span: Span,
+    pub content_span: Span,
     pub doc_style: DocStyle,
 }
 

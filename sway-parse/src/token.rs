@@ -183,36 +183,43 @@ pub fn lex_commented(
             match char_indices.peek() {
                 Some((_, '/')) => {
                     let _ = char_indices.next();
-                    let doc_style = if !matches!(char_indices.peek(), Some((_, '\n'))) {
-                        match (char_indices.next(), char_indices.peek()) {
+
+                    let end = match char_indices.find(|(_, character)| *character == '\n') {
+                        // Reached EOF
+                        None => end,
+                        // Found "\n"
+                        Some((end, _)) => end,
+                    };
+                    let span = Span::new(src.clone(), index, end, path.clone()).unwrap();
+
+                    let doc_style =
+                        match (span.as_str().chars().nth(2), span.as_str().chars().nth(3)) {
                             // `//!` is an inner line doc comment.
-                            (Some((_, '!')), _) => {
+                            (Some('!'), _) => {
                                 // TODO: Add support for inner line doc comments.
                                 // Some(DocStyle::Inner)
                                 None
                             }
                             // `////` (more than 3 slashes) is not considered a doc comment.
-                            (Some((_, '/')), Some((_, '/'))) => None,
+                            (Some('/'), Some('/')) => None,
                             // `///` is an outer line doc comment.
-                            (Some((_, '/')), _) => Some(DocStyle::Outer),
+                            (Some('/'), _) => Some(DocStyle::Outer),
                             _ => None,
-                        }
+                        };
+
+                    token_trees.push(if let Some(doc_style) = doc_style {
+                        let content_span =
+                            Span::new(src.clone(), index + 3, end, path.clone()).unwrap();
+                        let doc_comment = DocComment {
+                            span,
+                            doc_style,
+                            content_span,
+                        };
+                        CommentedTokenTree::Tree(doc_comment.into())
                     } else {
-                        None
-                    };
-                    for (end, character) in char_indices.by_ref() {
-                        if character == '\n' {
-                            let span = Span::new(src.clone(), index, end, path.clone()).unwrap();
-                            if let Some(doc_style) = doc_style {
-                                let doc_comment = DocComment { span, doc_style };
-                                token_trees.push(CommentedTokenTree::Tree(doc_comment.into()));
-                            } else {
-                                let comment = Comment { span };
-                                token_trees.push(comment.into());
-                            };
-                            break;
-                        }
-                    }
+                        let comment = Comment { span };
+                        comment.into()
+                    });
                 }
                 Some((_, '*')) => {
                     let _ = char_indices.next();
@@ -924,6 +931,7 @@ mod tests {
         ////none
         //!inner
         ///outer
+        /// outer 
         "#;
         let start = 0;
         let end = input.len();
@@ -947,8 +955,9 @@ mod tests {
         //     tts.next(),
         //     Some(CommentedTokenTree::Tree(CommentedTree::DocComment(DocComment {
         //         doc_style: DocStyle::Inner,
-        //         span
-        //     }))) if span.as_str() ==  "//!inner"
+        //         span,
+        //         content_span,
+        //     }))) if span.as_str() ==  "//!inner" && content_span.as_str() == "inner"
         // );
         assert_matches!(
             tts.next(),
@@ -960,8 +969,17 @@ mod tests {
             tts.next(),
             Some(CommentedTokenTree::Tree(CommentedTree::DocComment(DocComment {
                 doc_style: DocStyle::Outer,
-                span
-            }))) if span.as_str() ==  "///outer"
+                span,
+                content_span
+            }))) if span.as_str() ==  "///outer" && content_span.as_str() == "outer"
+        );
+        assert_matches!(
+            tts.next(),
+            Some(CommentedTokenTree::Tree(CommentedTree::DocComment(DocComment {
+                doc_style: DocStyle::Outer,
+                span,
+                content_span
+            }))) if span.as_str() ==  "/// outer " && content_span.as_str() == " outer "
         );
         assert_eq!(tts.next(), None);
     }

@@ -85,6 +85,7 @@ impl Parse for TypeField {
         {
             let _ = parser.parse::<DocComment>()?;
         }
+
         Ok(TypeField {
             name: parser.parse()?,
             colon_token: parser.parse()?,
@@ -169,7 +170,8 @@ impl Parse for FnSignature {
 mod tests {
     use super::*;
     use std::sync::Arc;
-    use sway_ast::Item;
+    use sway_ast::{AttributeDecl, CommaToken, Item, Punctuated};
+    use sway_types::Ident;
 
     fn parse_item(input: &str) -> Item {
         let token_stream = crate::token::lex(&Arc::from(input), 0, input.len(), None).unwrap();
@@ -181,6 +183,10 @@ mod tests {
                 panic!("Parse error: {:?}", errors);
             }
         }
+    }
+
+    fn get_attribute_args(attrib: &AttributeDecl) -> &Punctuated<Ident, CommaToken> {
+        attrib.attribute.get().args.as_ref().unwrap().get()
     }
 
     #[test]
@@ -206,14 +212,7 @@ mod tests {
         assert_eq!(attrib.attribute.get().name.as_str(), "doc");
         assert!(attrib.attribute.get().args.is_some());
 
-        let mut args = attrib
-            .attribute
-            .get()
-            .args
-            .as_ref()
-            .unwrap()
-            .get()
-            .into_iter();
+        let mut args = get_attribute_args(attrib).into_iter();
         assert_eq!(
             args.next().map(|arg| arg.as_str()),
             Some(" This is a doc comment.")
@@ -299,14 +298,7 @@ mod tests {
         assert_eq!(attrib.attribute.get().name.as_str(), "foo");
         assert!(attrib.attribute.get().args.is_some());
 
-        let mut args = attrib
-            .attribute
-            .get()
-            .args
-            .as_ref()
-            .unwrap()
-            .get()
-            .into_iter();
+        let mut args = get_attribute_args(attrib).into_iter();
         assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
         assert_eq!(args.next().map(|arg| arg.as_str()), None);
     }
@@ -332,14 +324,7 @@ mod tests {
         // Args are still parsed as 'some' but with an empty collection.
         assert!(attrib.attribute.get().args.is_some());
 
-        let mut args = attrib
-            .attribute
-            .get()
-            .args
-            .as_ref()
-            .unwrap()
-            .get()
-            .into_iter();
+        let mut args = get_attribute_args(attrib).into_iter();
         assert_eq!(args.next().map(|arg| arg.as_str()), None);
     }
 
@@ -367,14 +352,7 @@ mod tests {
         assert_eq!(attrib.attribute.get().name.as_str(), "foo");
         assert!(attrib.attribute.get().args.is_some());
 
-        let mut args = attrib
-            .attribute
-            .get()
-            .args
-            .as_ref()
-            .unwrap()
-            .get()
-            .into_iter();
+        let mut args = get_attribute_args(attrib).into_iter();
         assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
         assert_eq!(args.next().map(|arg| arg.as_str()), None);
     }
@@ -399,14 +377,7 @@ mod tests {
         assert_eq!(attrib.attribute.get().name.as_str(), "foo");
         assert!(attrib.attribute.get().args.is_some());
 
-        let mut args = attrib
-            .attribute
-            .get()
-            .args
-            .as_ref()
-            .unwrap()
-            .get()
-            .into_iter();
+        let mut args = get_attribute_args(attrib).into_iter();
         assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
         assert_eq!(args.next().map(|arg| arg.as_str()), None);
 
@@ -434,14 +405,7 @@ mod tests {
         assert_eq!(attrib.attribute.get().name.as_str(), "foo");
         assert!(attrib.attribute.get().args.is_some());
 
-        let mut args = attrib
-            .attribute
-            .get()
-            .args
-            .as_ref()
-            .unwrap()
-            .get()
-            .into_iter();
+        let mut args = get_attribute_args(attrib).into_iter();
         assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
         assert_eq!(args.next().map(|arg| arg.as_str()), Some("two"));
         assert_eq!(args.next().map(|arg| arg.as_str()), None);
@@ -472,14 +436,7 @@ mod tests {
         assert_eq!(attrib.attribute.get().name.as_str(), "foo");
         assert!(attrib.attribute.get().args.is_some());
 
-        let mut args = attrib
-            .attribute
-            .get()
-            .args
-            .as_ref()
-            .unwrap()
-            .get()
-            .into_iter();
+        let mut args = get_attribute_args(attrib).into_iter();
         assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
         assert_eq!(args.next().map(|arg| arg.as_str()), None);
 
@@ -487,14 +444,7 @@ mod tests {
         assert_eq!(attrib.attribute.get().name.as_str(), "baz");
         assert!(attrib.attribute.get().args.is_some());
 
-        let mut args = attrib
-            .attribute
-            .get()
-            .args
-            .as_ref()
-            .unwrap()
-            .get()
-            .into_iter();
+        let mut args = get_attribute_args(attrib).into_iter();
         assert_eq!(args.next().map(|arg| arg.as_str()), Some("two"));
         assert_eq!(args.next().map(|arg| arg.as_str()), Some("three"));
         assert_eq!(args.next().map(|arg| arg.as_str()), Some("four"));
@@ -531,14 +481,7 @@ mod tests {
             let attrib = f_sig.unwrap().0.attribute_list.get(0).unwrap();
             assert_eq!(attrib.attribute.get().name.as_str(), "foo");
             assert!(attrib.attribute.get().args.is_some());
-            let mut args = attrib
-                .attribute
-                .get()
-                .args
-                .as_ref()
-                .unwrap()
-                .get()
-                .into_iter();
+            let mut args = get_attribute_args(attrib).into_iter();
             assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
             assert_eq!(args.next().map(|arg| arg.as_str()), None);
 
@@ -557,14 +500,7 @@ mod tests {
             let attrib = g_sig.unwrap().attribute_list.get(0).unwrap();
             assert_eq!(attrib.attribute.get().name.as_str(), "bar");
             assert!(attrib.attribute.get().args.is_some());
-            let mut args = attrib
-                .attribute
-                .get()
-                .args
-                .as_ref()
-                .unwrap()
-                .get()
-                .into_iter();
+            let mut args = get_attribute_args(attrib).into_iter();
             assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
             assert_eq!(args.next().map(|arg| arg.as_str()), Some("two"));
             assert_eq!(args.next().map(|arg| arg.as_str()), Some("three"));
@@ -608,14 +544,7 @@ mod tests {
             let attrib = f_sig.unwrap().0.attribute_list.get(0).unwrap();
             assert_eq!(attrib.attribute.get().name.as_str(), "bar");
             assert!(attrib.attribute.get().args.is_some());
-            let mut args = attrib
-                .attribute
-                .get()
-                .args
-                .as_ref()
-                .unwrap()
-                .get()
-                .into_iter();
+            let mut args = get_attribute_args(attrib).into_iter();
             assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
             assert_eq!(args.next().map(|arg| arg.as_str()), Some("two"));
             assert_eq!(args.next().map(|arg| arg.as_str()), Some("three"));
@@ -643,14 +572,7 @@ mod tests {
             let attrib = h_sig.unwrap().attribute_list.get(0).unwrap();
             assert_eq!(attrib.attribute.get().name.as_str(), "baz");
             assert!(attrib.attribute.get().args.is_some());
-            let mut args = attrib
-                .attribute
-                .get()
-                .args
-                .as_ref()
-                .unwrap()
-                .get()
-                .into_iter();
+            let mut args = get_attribute_args(attrib).into_iter();
             assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
             assert_eq!(args.next().map(|arg| arg.as_str()), None);
 
@@ -681,14 +603,7 @@ mod tests {
             assert_eq!(attrib.attribute.get().name.as_str(), "doc");
             assert!(attrib.attribute.get().args.is_some());
 
-            let mut args = attrib
-                .attribute
-                .get()
-                .args
-                .as_ref()
-                .unwrap()
-                .get()
-                .into_iter();
+            let mut args = get_attribute_args(attrib).into_iter();
             assert_eq!(
                 args.next().map(|arg| arg.as_str()),
                 match i {

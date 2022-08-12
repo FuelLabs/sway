@@ -33,20 +33,17 @@ impl<T: Parse> Parse for Annotated<T> {
         }) = parser.peek::<DocComment>()
         {
             let doc_comment = parser.parse::<DocComment>()?;
-            let content = doc_comment.span.as_str()[3..].to_string();
-            let content: &'static str = Box::leak(content.into_boxed_str());
-            let value = Ident::new_no_span(content);
+            // TODO: Use a Literal instead of an Ident when Attribute args
+            // start supporting them and remove `Ident::new_no_trim`.
+            let value = Ident::new_no_trim(doc_comment.content_span.clone());
             attribute_list.push(AttributeDecl {
                 hash_token: HashToken::new(doc_comment.span.clone()),
                 attribute: SquareBrackets::new(
                     Attribute {
                         name: Ident::new_with_override("doc", doc_comment.span.clone()),
                         args: Some(Parens::new(
-                            Punctuated {
-                                value_separator_pairs: vec![],
-                                final_value_opt: Some(Box::new(value)),
-                            },
-                            doc_comment.span.clone(),
+                            Punctuated::single(value),
+                            doc_comment.content_span,
                         )),
                     },
                     doc_comment.span,

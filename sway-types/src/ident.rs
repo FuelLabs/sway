@@ -72,6 +72,14 @@ impl Ident {
         }
     }
 
+    pub fn new_no_trim(span: Span) -> Ident {
+        Ident {
+            name_override_opt: None,
+            span,
+            is_raw_ident: false,
+        }
+    }
+
     pub fn new_with_raw(span: Span, is_raw_ident: bool) -> Ident {
         let span = span.trim();
         Ident {

@@ -697,10 +697,7 @@ impl ParseToEnd for ExprArrayDescriptor {
         mut parser: Parser<'a, 'e>,
     ) -> ParseResult<(ExprArrayDescriptor, ParserConsumed<'a>)> {
         if let Some(consumed) = parser.check_empty() {
-            let punctuated = Punctuated {
-                value_separator_pairs: Vec::new(),
-                final_value_opt: None,
-            };
+            let punctuated = Punctuated::empty();
             let descriptor = ExprArrayDescriptor::Sequence(punctuated);
             return Ok((descriptor, consumed));
         }
@@ -729,10 +726,7 @@ impl ParseToEnd for ExprArrayDescriptor {
             return Ok((descriptor, consumed));
         }
         if let Some(consumed) = parser.check_empty() {
-            let punctuated = Punctuated {
-                value_separator_pairs: Vec::new(),
-                final_value_opt: Some(Box::new(value)),
-            };
+            let punctuated = Punctuated::single(value);
             let descriptor = ExprArrayDescriptor::Sequence(punctuated);
             return Ok((descriptor, consumed));
         }
