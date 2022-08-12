@@ -63,7 +63,7 @@ impl ToJsonAbi for TypeId {
 
     fn generate_json_abi(&self) -> Self::Output {
         match look_up_type_id(*self) {
-            TypeInfo::Array(type_id, _) => Some(vec![Property {
+            TypeInfo::Array(type_id, _, _) => Some(vec![Property {
                 name: "__array_element".to_string(),
                 type_field: type_id.json_abi_str(),
                 components: type_id.generate_json_abi(),
@@ -131,7 +131,7 @@ impl ReplaceSelfType for TypeId {
                     }
                 }
             }
-            TypeInfo::Array(mut type_id, _) => {
+            TypeInfo::Array(mut type_id, _, _) => {
                 type_id.replace_self_type(self_type);
             }
             TypeInfo::Storage { mut fields } => {
@@ -181,10 +181,17 @@ impl TypeId {
         match (look_up_type_id(self), look_up_type_id(resolved_type_id)) {
             (
                 TypeInfo::Custom { name, .. },
+                TypeInfo::Enum {
+                    name: enum_name, ..
+                },
+            ) => name != enum_name,
+            (
+                TypeInfo::Custom { name, .. },
                 TypeInfo::Struct {
                     name: struct_name, ..
                 },
             ) => name != struct_name,
+
             _ => false,
         }
     }
@@ -192,9 +199,39 @@ impl TypeId {
     pub(crate) fn get_json_type_components(
         &self,
         types: &mut Vec<JsonTypeDeclaration>,
-        resolved_custom: TypeId,
+        resolved_type_id: TypeId,
     ) -> Option<Vec<JsonTypeApplication>> {
         match look_up_type_id(*self) {
+            TypeInfo::Enum { variant_types, .. } => {
+                // A list of all `JsonTypeDeclaration`s needed for the enum variants
+                let variants = variant_types
+                    .iter()
+                    .map(|x| JsonTypeDeclaration {
+                        type_id: *x.initial_type_id,
+                        type_field: x.initial_type_id.get_json_type_str(x.type_id),
+                        components: x.initial_type_id.get_json_type_components(types, x.type_id),
+                        type_parameters: x
+                            .initial_type_id
+                            .get_json_type_parameters(types, x.type_id),
+                    })
+                    .collect::<Vec<_>>();
+                types.extend(variants);
+
+                // Generate the JSON data for the enum. This is basically a list of
+                // `JsonTypeApplication`s
+                Some(
+                    variant_types
+                        .iter()
+                        .map(|x| JsonTypeApplication {
+                            name: x.name.to_string(),
+                            type_id: *x.initial_type_id,
+                            type_arguments: x
+                                .initial_type_id
+                                .get_json_type_arguments(types, x.type_id),
+                        })
+                        .collect(),
+                )
+            }
             TypeInfo::Struct { fields, .. } => {
                 // A list of all `JsonTypeDeclaration`s needed for the struct fields
                 let field_types = fields
@@ -225,14 +262,74 @@ impl TypeId {
                         .collect(),
                 )
             }
+            TypeInfo::Array(..) => {
+                if let TypeInfo::Array(type_id, _, initial_type_id) =
+                    look_up_type_id(resolved_type_id)
+                {
+                    // The `JsonTypeDeclaration`s needed for the array element type
+                    let elem_ty = JsonTypeDeclaration {
+                        type_id: *initial_type_id,
+                        type_field: initial_type_id.get_json_type_str(type_id),
+                        components: initial_type_id.get_json_type_components(types, type_id),
+                        type_parameters: initial_type_id.get_json_type_parameters(types, type_id),
+                    };
+                    types.push(elem_ty);
+
+                    // Generate the JSON data for the array. This is basically a single
+                    // `JsonTypeApplication` for the array element type
+                    Some(vec![JsonTypeApplication {
+                        name: "__array_element".to_string(),
+                        type_id: *initial_type_id,
+                        type_arguments: initial_type_id.get_json_type_arguments(types, type_id),
+                    }])
+                } else {
+                    unreachable!();
+                }
+            }
+            TypeInfo::Tuple(_) => {
+                if let TypeInfo::Tuple(fields) = look_up_type_id(resolved_type_id) {
+                    // A list of all `JsonTypeDeclaration`s needed for the tuple fields
+                    let fields_types = fields
+                        .iter()
+                        .map(|x| JsonTypeDeclaration {
+                            type_id: *x.initial_type_id,
+                            type_field: x.initial_type_id.get_json_type_str(x.type_id),
+                            components: x
+                                .initial_type_id
+                                .get_json_type_components(types, x.type_id),
+                            type_parameters: x
+                                .initial_type_id
+                                .get_json_type_parameters(types, x.type_id),
+                        })
+                        .collect::<Vec<_>>();
+                    types.extend(fields_types);
+
+                    // Generate the JSON data for the tuple. This is basically a list of
+                    // `JsonTypeApplication`s
+                    Some(
+                        fields
+                            .iter()
+                            .map(|x| JsonTypeApplication {
+                                name: "__tuple_element".to_string(),
+                                type_id: *x.initial_type_id,
+                                type_arguments: x
+                                    .initial_type_id
+                                    .get_json_type_arguments(types, x.type_id),
+                            })
+                            .collect(),
+                    )
+                } else {
+                    unreachable!()
+                }
+            }
             TypeInfo::Custom { type_arguments, .. } => {
-                if !self.is_generic(resolved_custom) {
+                if !self.is_generic(resolved_type_id) {
                     // A list of all `JsonTypeDeclaration`s needed for the type arguments
                     let type_args = type_arguments
                         .unwrap_or_default()
                         .iter()
                         .zip(
-                            resolved_custom
+                            resolved_type_id
                                 .get_type_parameters()
                                 .unwrap_or_default()
                                 .iter(),
@@ -250,7 +347,7 @@ impl TypeId {
                         .collect::<Vec<_>>();
                     types.extend(type_args);
 
-                    resolved_custom.get_json_type_components(types, resolved_custom)
+                    resolved_type_id.get_json_type_components(types, resolved_type_id)
                 } else {
                     None
                 }
@@ -262,11 +359,11 @@ impl TypeId {
     pub(crate) fn get_json_type_parameters(
         &self,
         types: &mut Vec<JsonTypeDeclaration>,
-        resolved_custom: TypeId,
+        resolved_type_id: TypeId,
     ) -> Option<Vec<usize>> {
-        match self.is_generic(resolved_custom) {
+        match self.is_generic(resolved_type_id) {
             true => None,
-            false => resolved_custom.get_type_parameters().map(|v| {
+            false => resolved_type_id.get_type_parameters().map(|v| {
                 v.iter()
                     .map(|v| v.get_json_type_parameter(types))
                     .collect::<Vec<_>>()
@@ -277,9 +374,9 @@ impl TypeId {
     pub(crate) fn get_json_type_arguments(
         &self,
         types: &mut Vec<JsonTypeDeclaration>,
-        resolved_custom: TypeId,
+        resolved_type_id: TypeId,
     ) -> Option<Vec<JsonTypeApplication>> {
-        let resolved_params = resolved_custom.get_type_parameters();
+        let resolved_params = resolved_type_id.get_type_parameters();
         match look_up_type_id(*self) {
             TypeInfo::Custom {
                 type_arguments: Some(type_arguments),
@@ -315,13 +412,16 @@ impl TypeId {
         }
     }
 
-    pub(crate) fn get_json_type_str(&self, resolved_custom: TypeId) -> String {
-        if self.is_generic(resolved_custom) {
+    pub(crate) fn get_json_type_str(&self, resolved_type_id: TypeId) -> String {
+        if self.is_generic(resolved_type_id) {
             format!("generic {}", look_up_type_id(*self).json_abi_str())
         } else {
-            match (look_up_type_id(*self), look_up_type_id(resolved_custom)) {
+            match (look_up_type_id(*self), look_up_type_id(resolved_type_id)) {
                 (TypeInfo::Custom { .. }, TypeInfo::Struct { .. }) => {
                     format!("struct {}", look_up_type_id(*self).json_abi_str())
+                }
+                (TypeInfo::Custom { .. }, TypeInfo::Enum { .. }) => {
+                    format!("enum {}", look_up_type_id(*self).json_abi_str())
                 }
                 (TypeInfo::Custom { .. }, _) => {
                     format!("generic {}", look_up_type_id(*self).json_abi_str())
@@ -330,47 +430,4 @@ impl TypeId {
             }
         }
     }
-
-    /*
-            match type_arguments {
-                Some(_) => match look_up_type_id(resolved_custom) {
-                     => {
-                        if struct_name == name {
-                            format!("struct {}", name.as_str())
-                        } else {
-                            format!("generic {}", name.as_str())
-                        }
-                    }
-                    TypeInfo::Enum { .. } => format!("enum {}", name.as_str()),
-                    TypeInfo::Custom { name, .. } => {
-                        format!("Custom {}", name.as_str())
-                    }
-                    _ => format!("generic {}", name.as_str()),
-                },
-                None => format!("generic {}", name.as_str()),
-            },
-            _ => look_up_type_id(*self).json_abi_str(),
-        }
-    }*/
 }
-
-/*
-TypeInfo::Array(type_id, _) => {
-                let element_type = JsonTypeDeclaration {
-                    type_id: *type_id,
-                    type_field: type_id.json_abi_str(),
-                    components: type_id.get_json_type_components(types, type_id),
-                    type_parameters: None, /*type_id.get_type_parameters().map(|v| {
-                                               v.iter()
-                                                   .map(|v| v.generate_json_abi_flat(types))
-                                                   .collect::<Vec<_>>()
-                                           })*/
-                };
-                types.push(element_type);
-                Some(vec![JsonTypeApplication {
-                    name: "__array_element".to_string(),
-                    type_field: *type_id,
-                    type_arguments: None,
-                }])
-            }
-*/

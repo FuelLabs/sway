@@ -595,7 +595,7 @@ impl Dependencies {
             TypeInfo::Tuple(elems) => self.gather_from_iter(elems.iter(), |deps, elem| {
                 deps.gather_from_typeinfo(&look_up_type_id(elem.type_id))
             }),
-            TypeInfo::Array(type_id, _) => self.gather_from_typeinfo(&look_up_type_id(*type_id)),
+            TypeInfo::Array(type_id, _, _) => self.gather_from_typeinfo(&look_up_type_id(*type_id)),
             TypeInfo::Struct { fields, .. } => self
                 .gather_from_iter(fields.iter(), |deps, field| {
                     deps.gather_from_typeinfo(&look_up_type_id(field.type_id))

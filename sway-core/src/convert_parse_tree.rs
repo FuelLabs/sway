@@ -1021,9 +1021,11 @@ fn ty_to_type_info(ec: &mut ErrorContext, ty: Ty) -> Result<TypeInfo, ErrorEmitt
         }
         Ty::Array(bracketed_ty_array_descriptor) => {
             let ty_array_descriptor = bracketed_ty_array_descriptor.into_inner();
+            let initial_elem_ty = insert_type(ty_to_type_info(ec, *ty_array_descriptor.ty)?);
             TypeInfo::Array(
-                crate::type_system::insert_type(ty_to_type_info(ec, *ty_array_descriptor.ty)?),
+                initial_elem_ty,
                 expr_to_usize(ec, *ty_array_descriptor.length)?,
+                initial_elem_ty,
             )
         }
         Ty::Str { length, .. } => TypeInfo::Str(expr_to_u64(ec, *length.into_inner())?),

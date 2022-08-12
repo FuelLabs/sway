@@ -11,7 +11,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub enum AbiName {
     Deferred,
     Known(CallPath),
@@ -79,7 +79,7 @@ pub enum TypeInfo {
     // used for recovering from errors in the ast
     ErrorRecovery,
     // Static, constant size arrays.
-    Array(TypeId, usize),
+    Array(TypeId, usize, TypeId),
     /// Represents the entire storage declaration struct
     /// Stored without initializers here, as typed struct fields,
     /// so type checking is able to treat it as a struct with fields.
@@ -175,7 +175,7 @@ impl Hash for TypeInfo {
                 state.write_u8(17);
                 look_up_type_id(*id).hash(state);
             }
-            TypeInfo::Array(elem_ty, count) => {
+            TypeInfo::Array(elem_ty, count, _) => {
                 state.write_u8(18);
                 look_up_type_id(*elem_ty).hash(state);
                 count.hash(state);
@@ -259,7 +259,7 @@ impl PartialEq for TypeInfo {
                     address: r_address,
                 },
             ) => l_abi_name == r_abi_name && l_address == r_address,
-            (Self::Array(l0, l1), Self::Array(r0, r1)) => {
+            (Self::Array(l0, l1, _), Self::Array(r0, r1, _)) => {
                 look_up_type_id(*l0) == look_up_type_id(*r0) && l1 == r1
             }
             (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
@@ -327,7 +327,7 @@ impl fmt::Display for TypeInfo {
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {}", abi_name)
             }
-            Array(elem_ty, count) => format!("[{}; {}]", elem_ty, count),
+            Array(elem_ty, count, _) => format!("[{}; {}]", elem_ty, count),
             Storage { .. } => "contract storage".into(),
         };
         write!(f, "{}", s)
@@ -373,7 +373,7 @@ impl JsonAbiString for TypeInfo {
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {}", abi_name)
             }
-            Array(elem_ty, count) => format!("[{}; {}]", elem_ty.json_abi_str(), count),
+            Array(elem_ty, count, _) => format!("[{}; {}]", elem_ty.json_abi_str(), count),
             Storage { .. } => "contract storage".into(),
         }
     }
@@ -530,7 +530,7 @@ impl TypeInfo {
                     )
                 }
             }
-            Array(type_id, size) => {
+            Array(type_id, size, _) => {
                 let name = look_up_type_id(*type_id).to_selector_name(error_msg_span);
                 let name = match name.value {
                     Some(name) => name,
@@ -672,7 +672,7 @@ impl TypeInfo {
             | TypeInfo::Numeric
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery
-            | TypeInfo::Array(_, _)
+            | TypeInfo::Array(_, _, _)
             | TypeInfo::Storage { .. } => {
                 errors.push(CompileError::TypeArgumentsNotAllowed { span: span.clone() });
                 err(warnings, errors)
@@ -757,9 +757,11 @@ impl TypeInfo {
                     name: name.clone(),
                 }))
             }
-            TypeInfo::Array(ary_ty_id, count) => look_up_type_id(*ary_ty_id)
+            TypeInfo::Array(ary_ty_id, count, initial_elem_ty) => look_up_type_id(*ary_ty_id)
                 .matches_type_parameter(mapping)
-                .map(|matching_id| insert_type(TypeInfo::Array(matching_id, *count))),
+                .map(|matching_id| {
+                    insert_type(TypeInfo::Array(matching_id, *count, *initial_elem_ty))
+                }),
             TypeInfo::Tuple(fields) => {
                 let mut new_fields = Vec::new();
                 let mut index = 0;
@@ -850,7 +852,7 @@ impl TypeInfo {
             | TypeInfo::Str(_)
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery
-            | TypeInfo::Array(_, _)
+            | TypeInfo::Array(_, _, _)
             | TypeInfo::Storage { .. } => {
                 errors.push(CompileError::Unimplemented(
                     "matching on this type is unsupported right now",
@@ -936,7 +938,7 @@ impl TypeInfo {
                     all_nested_types.append(&mut nested_types);
                 }
             }
-            TypeInfo::Array(type_id, _) => {
+            TypeInfo::Array(type_id, _, _) => {
                 let mut nested_types = check!(
                     look_up_type_id(type_id).extract_nested_types(span),
                     return err(warnings, errors),
@@ -1066,7 +1068,7 @@ impl TypeInfo {
             (Self::Ref(l, _), Self::Ref(r, _)) => {
                 look_up_type_id(*l).is_subset_of(&look_up_type_id(*r))
             }
-            (Self::Array(l0, l1), Self::Array(r0, r1)) => {
+            (Self::Array(l0, l1, _), Self::Array(r0, r1, _)) => {
                 look_up_type_id(*l0).is_subset_of(&look_up_type_id(*r0)) && l1 == r1
             }
             (
