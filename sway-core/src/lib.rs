@@ -24,6 +24,7 @@ use control_flow_analysis::ControlFlowGraph;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use type_system::TypeEngine;
 
 pub use semantic_analysis::{
     namespace::{self, Namespace},
@@ -51,20 +52,24 @@ pub use type_system::TypeInfo;
 ///
 /// # Panics
 /// Panics if the parser panics.
-pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<ParseProgram> {
+pub fn parse(
+    input: Arc<str>,
+    config: Option<&BuildConfig>,
+    type_engine: &TypeEngine,
+) -> CompileResult<ParseProgram> {
     match config {
-        None => parse_in_memory(input),
-        Some(config) => parse_files(input, config),
+        None => parse_in_memory(input, type_engine),
+        Some(config) => parse_files(input, config, type_engine),
     }
 }
 
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
-fn parse_in_memory(src: Arc<str>) -> CompileResult<ParseProgram> {
+fn parse_in_memory(src: Arc<str>, type_engine: &TypeEngine) -> CompileResult<ParseProgram> {
     let module = match sway_parse::parse_file(src, None) {
         Ok(module) => module,
         Err(error) => return err(vec![], parse_file_error_to_compile_errors(error)),
     };
-    convert_parse_tree::convert_parse_tree(module).flat_map(|(kind, tree)| {
+    convert_parse_tree::convert_parse_tree(module, type_engine).flat_map(|(kind, tree)| {
         let submodules = Default::default();
         let root = ParseModule { tree, submodules };
         let program = ParseProgram { kind, root };
@@ -74,9 +79,13 @@ fn parse_in_memory(src: Arc<str>) -> CompileResult<ParseProgram> {
 
 /// When a `BuildConfig` is given, the module source may declare `dep`s that must be parsed from
 /// other files.
-fn parse_files(src: Arc<str>, config: &BuildConfig) -> CompileResult<ParseProgram> {
+fn parse_files(
+    src: Arc<str>,
+    config: &BuildConfig,
+    type_engine: &TypeEngine,
+) -> CompileResult<ParseProgram> {
     let root_mod_path = config.canonical_root_module();
-    parse_module_tree(src, root_mod_path).flat_map(|(kind, root)| {
+    parse_module_tree(src, root_mod_path, type_engine).flat_map(|(kind, root)| {
         let program = ParseProgram { kind, root };
         ok(program, vec![], vec![])
     })
@@ -84,7 +93,11 @@ fn parse_files(src: Arc<str>, config: &BuildConfig) -> CompileResult<ParseProgra
 
 /// Given the source of the module along with its path, parse this module including all of its
 /// submodules.
-fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeType, ParseModule)> {
+fn parse_module_tree(
+    src: Arc<str>,
+    path: Arc<PathBuf>,
+    type_engine: &TypeEngine,
+) -> CompileResult<(TreeType, ParseModule)> {
     // Parse this module first.
     let module = match sway_parse::parse_file(src, Some(path.clone())) {
         Ok(module) => module,
@@ -107,33 +120,35 @@ fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeTy
                 return res.flat_map(|_| err(vec![], vec![error]));
             }
         };
-        parse_module_tree(dep_str.clone(), dep_path.clone()).flat_map(|(kind, module)| {
-            let library_name = match kind {
-                TreeType::Library { name } => name,
-                _ => {
-                    let span = span::Span::new(dep_str, 0, 0, Some(dep_path)).unwrap();
-                    let error = CompileError::ImportMustBeLibrary { span };
-                    return err(vec![], vec![error]);
-                }
-            };
-            // NOTE: Typed `IncludStatement`'s include an `alias` field, however its only
-            // constructor site is always `None`. If we introduce dep aliases in the future, this
-            // is where we should use it.
-            let dep_alias = None;
-            let dep_name = dep_alias.unwrap_or_else(|| library_name.clone());
-            let submodule = ParseSubmodule {
-                library_name,
-                module,
-            };
-            res.flat_map(|mut submods| {
-                submods.push((dep_name, submodule));
-                ok(submods, vec![], vec![])
-            })
-        })
+        parse_module_tree(dep_str.clone(), dep_path.clone(), type_engine).flat_map(
+            |(kind, module)| {
+                let library_name = match kind {
+                    TreeType::Library { name } => name,
+                    _ => {
+                        let span = span::Span::new(dep_str, 0, 0, Some(dep_path)).unwrap();
+                        let error = CompileError::ImportMustBeLibrary { span };
+                        return err(vec![], vec![error]);
+                    }
+                };
+                // NOTE: Typed `IncludStatement`'s include an `alias` field, however its only
+                // constructor site is always `None`. If we introduce dep aliases in the future, this
+                // is where we should use it.
+                let dep_alias = None;
+                let dep_name = dep_alias.unwrap_or_else(|| library_name.clone());
+                let submodule = ParseSubmodule {
+                    library_name,
+                    module,
+                };
+                res.flat_map(|mut submods| {
+                    submods.push((dep_name, submodule));
+                    ok(submods, vec![], vec![])
+                })
+            },
+        )
     });
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
-    convert_parse_tree::convert_parse_tree(module).flat_map(|(prog_kind, tree)| {
+    convert_parse_tree::convert_parse_tree(module, type_engine).flat_map(|(prog_kind, tree)| {
         submodules_res.flat_map(|submodules| {
             let parse_module = ParseModule { tree, submodules };
             ok((prog_kind, parse_module), vec![], vec![])
@@ -268,11 +283,13 @@ pub fn compile_to_ast(
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
 
+    let type_engine = TypeEngine::default();
+
     let CompileResult {
         value: parse_program_opt,
         warnings: new_warnings,
         errors: new_errors,
-    } = parse(input, build_config);
+    } = parse(input, build_config, &type_engine);
 
     warnings.extend(new_warnings);
     errors.extend(new_errors);
@@ -597,97 +614,97 @@ fn module_return_path_analysis(module: &TypedModule, errors: &mut Vec<CompileErr
 
 #[test]
 fn test_basic_prog() {
-    let prog = parse(
-        r#"
-        contract;
+    let type_engine = TypeEngine::default();
+    let program = r#"
+    contract;
 
-    enum yo
-    <T>
-    where
-    T: IsAThing
-    {
-        x: u32,
-        y: MyStruct<u32>
-    }
+enum yo
+<T>
+where
+T: IsAThing
+{
+    x: u32,
+    y: MyStruct<u32>
+}
 
-    enum  MyOtherSumType
-    {
-        x: u32,
-        y: MyStruct<u32>
-    }
-        struct MyStruct<T> {
-            field_name: u64,
-            other_field: T,
-        }
-
-
-    fn generic_function
-    <T>
-    (arg1: u64,
-    arg2: T)
-    ->
-    T
-    where T: Display,
-          T: Debug {
-          let x: MyStruct =
-          MyStruct
-          {
-              field_name:
-              5
-          };
-          return
-          match
-            arg1
-          {
-               1
-               => true,
-               _ => { return false; },
-          };
-    }
-
-    struct MyStruct {
-        test: string,
+enum  MyOtherSumType
+{
+    x: u32,
+    y: MyStruct<u32>
+}
+    struct MyStruct<T> {
+        field_name: u64,
+        other_field: T,
     }
 
 
+fn generic_function
+<T>
+(arg1: u64,
+arg2: T)
+->
+T
+where T: Display,
+      T: Debug {
+      let x: MyStruct =
+      MyStruct
+      {
+          field_name:
+          5
+      };
+      return
+      match
+        arg1
+      {
+           1
+           => true,
+           _ => { return false; },
+      };
+}
 
-    use stdlib::println;
+struct MyStruct {
+    test: string,
+}
 
-    trait MyTrait {
-        // interface points
-        fn myfunc(x: int) -> unit;
-        } {
-        // methods
-        fn calls_interface_fn(x: int) -> unit {
-            // declare a byte
-            let x = 0b10101111;
-            let mut y = 0b11111111;
-            self.interface_fn(x);
-        }
+
+
+use stdlib::println;
+
+trait MyTrait {
+    // interface points
+    fn myfunc(x: int) -> unit;
+    } {
+    // methods
+    fn calls_interface_fn(x: int) -> unit {
+        // declare a byte
+        let x = 0b10101111;
+        let mut y = 0b11111111;
+        self.interface_fn(x);
     }
+}
 
-    pub fn prints_number_five() -> u8 {
-        let x: u8 = 5;
-        let reference_to_x = ref x;
-        let second_value_of_x = deref x; // u8 is `Copy` so this clones
-        println(x);
-         x.to_string();
-         let some_list = [
-         5,
-         10 + 3 / 2,
-         func_app(my_args, (so_many_args))];
-        return 5;
-    }
-    "#
-        .into(),
-        None,
-    );
+pub fn prints_number_five() -> u8 {
+    let x: u8 = 5;
+    let reference_to_x = ref x;
+    let second_value_of_x = deref x; // u8 is `Copy` so this clones
+    println(x);
+     x.to_string();
+     let some_list = [
+     5,
+     10 + 3 / 2,
+     func_app(my_args, (so_many_args))];
+    return 5;
+}
+"#;
+
+    let prog = parse(program.into(), None, &type_engine);
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
     prog.unwrap(&mut warnings, &mut errors);
 }
 #[test]
 fn test_parenthesized() {
+    let type_engine = TypeEngine::default();
     let prog = parse(
         r#"
         contract;
@@ -698,6 +715,7 @@ fn test_parenthesized() {
     "#
         .into(),
         None,
+        &type_engine,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
@@ -707,6 +725,7 @@ fn test_parenthesized() {
 #[test]
 fn test_unary_ordering() {
     use crate::parse_tree::declaration::FunctionDeclaration;
+    let type_engine = TypeEngine::default();
     let prog = parse(
         r#"
     script;
@@ -717,6 +736,7 @@ fn test_unary_ordering() {
     }"#
         .into(),
         None,
+        &type_engine,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();

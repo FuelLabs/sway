@@ -8,7 +8,7 @@ use std::{
     sync::Arc,
 };
 
-use sway_core::{parse, TreeType};
+use sway_core::{parse, type_system::TypeEngine, TreeType};
 use sway_utils::constants;
 
 type PatchMap = BTreeMap<String, Dependency>;
@@ -182,7 +182,8 @@ impl ManifestFile {
     /// Parse and return the associated project's program type.
     pub fn program_type(&self) -> Result<TreeType> {
         let entry_string = self.entry_string()?;
-        let parse_res = parse(entry_string, None);
+        let type_engine = TypeEngine::default();
+        let parse_res = parse(entry_string, None, &type_engine);
         match parse_res.value {
             Some(parse_program) => Ok(parse_program.kind),
             None => bail!(parsing_failed(&self.project.name, parse_res.errors)),

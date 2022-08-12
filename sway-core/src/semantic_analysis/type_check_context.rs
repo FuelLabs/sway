@@ -4,7 +4,7 @@ use crate::{
     semantic_analysis::{ast_node::Mode, Namespace},
     type_system::{
         insert_type, monomorphize, unify_with_self, CopyTypes, EnforceTypeArguments,
-        MonomorphizeHelper, TypeArgument, TypeEngine, TypeId, TypeInfo,
+        MonomorphizeHelper, TypeArgument, TypeId, TypeInfo,
     },
     CompileResult, CompileWarning, TypeError,
 };
@@ -21,9 +21,6 @@ pub struct TypeCheckContext<'ns> {
     /// - A `mod_path` that represents the current module being type-checked. This is automatically
     ///   updated upon entering/exiting submodules via the `enter_submodule` method.
     pub(crate) namespace: &'ns mut Namespace,
-
-    /// The type engine used throughout type-checking.
-    pub(crate) type_engine: TypeEngine,
 
     // The following set of fields are intentionally private. When a `TypeCheckContext` is passed
     // into a new node during type checking, these fields should be updated using the `with_*`
@@ -67,7 +64,6 @@ impl<'ns> TypeCheckContext<'ns> {
     fn from_module_namespace(namespace: &'ns mut Namespace) -> Self {
         Self {
             namespace,
-            type_engine: TypeEngine::default(),
             type_annotation: insert_type(TypeInfo::Unknown),
             help_text: "",
             // TODO: Contract? Should this be passed in based on program kind (aka TreeType)?
@@ -88,7 +84,6 @@ impl<'ns> TypeCheckContext<'ns> {
     pub fn by_ref(&mut self) -> TypeCheckContext {
         TypeCheckContext {
             namespace: self.namespace,
-            type_engine: TypeEngine::default(),
             type_annotation: self.type_annotation,
             self_type: self.self_type,
             mode: self.mode,
@@ -101,7 +96,6 @@ impl<'ns> TypeCheckContext<'ns> {
     pub fn scoped(self, namespace: &mut Namespace) -> TypeCheckContext {
         TypeCheckContext {
             namespace,
-            type_engine: TypeEngine::default(),
             type_annotation: self.type_annotation,
             self_type: self.self_type,
             mode: self.mode,

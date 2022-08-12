@@ -24,8 +24,9 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
-    semantic_analysis::namespace, source_map::SourceMap, types::*, BytecodeCompilationResult,
-    CompileAstResult, CompileError, CompileResult, ParseProgram, TreeType,
+    semantic_analysis::namespace, source_map::SourceMap, type_system::TypeEngine, types::*,
+    BytecodeCompilationResult, CompileAstResult, CompileError, CompileResult, ParseProgram,
+    TreeType,
 };
 use sway_types::JsonABI;
 use sway_utils::constants;
@@ -1932,11 +1933,12 @@ pub fn check(
     sway_core::clear_lazy_statics();
     let mut namespace_map = Default::default();
     let mut source_map = SourceMap::new();
+    let type_engine = TypeEngine::default();
     for (i, &node) in plan.compilation_order.iter().enumerate() {
         let dep_namespace = dependency_namespace(&namespace_map, &plan.graph, node);
         let pkg = &plan.graph[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
-        let parsed_result = parse(manifest, silent_mode)?;
+        let parsed_result = parse(manifest, silent_mode, &type_engine)?;
 
         let parse_program = match &parsed_result.value {
             None => bail!("unable to parse"),
@@ -1968,6 +1970,7 @@ pub fn check(
 pub fn parse(
     manifest: &ManifestFile,
     silent_mode: bool,
+    type_engine: &TypeEngine,
 ) -> anyhow::Result<CompileResult<ParseProgram>> {
     let profile = BuildProfile {
         silent: silent_mode,
@@ -1975,7 +1978,11 @@ pub fn parse(
     };
     let source = manifest.entry_string()?;
     let sway_build_config = sway_build_config(manifest.dir(), &manifest.entry_path(), &profile)?;
-    Ok(sway_core::parse(source, Some(&sway_build_config)))
+    Ok(sway_core::parse(
+        source,
+        Some(&sway_build_config),
+        type_engine,
+    ))
 }
 
 /// Attempt to find a `Forc.toml` with the given project name within the given directory.

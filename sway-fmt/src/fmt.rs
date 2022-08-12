@@ -2,7 +2,7 @@ use super::code_builder::CodeBuilder;
 use crate::traversal::{traverse_for_changes, Change};
 use ropey::Rope;
 use std::sync::Arc;
-use sway_core::BuildConfig;
+use sway_core::{type_system::TypeEngine, BuildConfig};
 
 /// Returns number of lines and formatted text.
 /// Formatting is done as a 2-step process.
@@ -15,7 +15,9 @@ pub fn get_formatted_data(
     formatting_options: FormattingOptions,
     build_config: Option<&BuildConfig>,
 ) -> Result<(usize, String), Vec<String>> {
-    let parsed_res = sway_core::parse(file.clone(), build_config);
+    // this TypeEngine should not be needed to be used for anything
+    let type_engine = TypeEngine::default();
+    let parsed_res = sway_core::parse(file.clone(), build_config, &type_engine);
 
     match parsed_res.value {
         Some(parse_program) => {

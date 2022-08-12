@@ -10,7 +10,7 @@ lazy_static! {
 }
 
 #[derive(Debug, Default)]
-pub(crate) struct TypeEngine {
+pub struct TypeEngine {
     slab: ConcurrentSlab<TypeInfo>,
     storage_only_types: ConcurrentSlab<TypeInfo>,
 }
