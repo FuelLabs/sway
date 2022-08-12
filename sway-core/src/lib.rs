@@ -616,89 +616,82 @@ fn module_return_path_analysis(module: &TypedModule, errors: &mut Vec<CompileErr
 #[test]
 fn test_basic_prog() {
     let type_engine = TypeEngine::default();
-    let program = r#"
-    contract;
-
-enum yo
-<T>
-where
-T: IsAThing
-{
-    x: u32,
-    y: MyStruct<u32>
-}
-
-enum  MyOtherSumType
-{
-    x: u32,
-    y: MyStruct<u32>
-}
-    struct MyStruct<T> {
-        field_name: u64,
-        other_field: T,
+    let prog = parse(
+        r#"
+        contract;
+    enum yo
+    <T>
+    where
+    T: IsAThing
+    {
+        x: u32,
+        y: MyStruct<u32>
     }
-
-
-fn generic_function
-<T>
-(arg1: u64,
-arg2: T)
-->
-T
-where T: Display,
-      T: Debug {
-      let x: MyStruct =
-      MyStruct
-      {
-          field_name:
-          5
-      };
-      return
-      match
-        arg1
-      {
-           1
-           => true,
-           _ => { return false; },
-      };
-}
-
-struct MyStruct {
-    test: string,
-}
-
-
-
-use stdlib::println;
-
-trait MyTrait {
-    // interface points
-    fn myfunc(x: int) -> unit;
-    } {
-    // methods
-    fn calls_interface_fn(x: int) -> unit {
-        // declare a byte
-        let x = 0b10101111;
-        let mut y = 0b11111111;
-        self.interface_fn(x);
+    enum  MyOtherSumType
+    {
+        x: u32,
+        y: MyStruct<u32>
     }
-}
-
-pub fn prints_number_five() -> u8 {
-    let x: u8 = 5;
-    let reference_to_x = ref x;
-    let second_value_of_x = deref x; // u8 is `Copy` so this clones
-    println(x);
-     x.to_string();
-     let some_list = [
-     5,
-     10 + 3 / 2,
-     func_app(my_args, (so_many_args))];
-    return 5;
-}
-"#;
-
-    let prog = parse(program.into(), None, &type_engine);
+        struct MyStruct<T> {
+            field_name: u64,
+            other_field: T,
+        }
+    fn generic_function
+    <T>
+    (arg1: u64,
+    arg2: T)
+    ->
+    T
+    where T: Display,
+          T: Debug {
+          let x: MyStruct =
+          MyStruct
+          {
+              field_name:
+              5
+          };
+          return
+          match
+            arg1
+          {
+               1
+               => true,
+               _ => { return false; },
+          };
+    }
+    struct MyStruct {
+        test: string,
+    }
+    use stdlib::println;
+    trait MyTrait {
+        // interface points
+        fn myfunc(x: int) -> unit;
+        } {
+        // methods
+        fn calls_interface_fn(x: int) -> unit {
+            // declare a byte
+            let x = 0b10101111;
+            let mut y = 0b11111111;
+            self.interface_fn(x);
+        }
+    }
+    pub fn prints_number_five() -> u8 {
+        let x: u8 = 5;
+        let reference_to_x = ref x;
+        let second_value_of_x = deref x; // u8 is `Copy` so this clones
+        println(x);
+         x.to_string();
+         let some_list = [
+         5,
+         10 + 3 / 2,
+         func_app(my_args, (so_many_args))];
+        return 5;
+    }
+    "#
+        .into(),
+        None,
+        &type_engine,
+    );
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
     prog.unwrap(&mut warnings, &mut errors);
