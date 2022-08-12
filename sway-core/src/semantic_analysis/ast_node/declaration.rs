@@ -432,6 +432,7 @@ impl TypedTraitFn {
             parameters: self.parameters.clone(),
             span: self.name.span(),
             return_type: self.return_type,
+            initial_return_type: self.return_type,
             return_type_span: self.return_type_span.clone(),
             visibility: Visibility::Public,
             type_parameters: vec![],

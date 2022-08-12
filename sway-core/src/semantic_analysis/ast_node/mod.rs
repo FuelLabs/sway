@@ -726,6 +726,7 @@ fn type_check_interface_surface(
                                 warnings,
                                 errors,
                             ),
+                            initial_type_id: type_id,
                             type_span,
                         },
                     )
@@ -863,6 +864,7 @@ fn type_check_trait_methods(
                             warnings,
                             errors,
                         ),
+                        initial_type_id: type_id,
                         type_span,
                     }
                 },
@@ -870,9 +872,10 @@ fn type_check_trait_methods(
             .collect::<Vec<_>>();
 
         // TODO check code block implicit return
+        let initial_return_type = insert_type(return_type);
         let return_type = check!(
             ctx.resolve_type_with_self(
-                insert_type(return_type),
+                initial_return_type,
                 &return_type_span,
                 EnforceTypeArguments::Yes,
                 None
@@ -902,6 +905,7 @@ fn type_check_trait_methods(
             parameters,
             span,
             return_type,
+            initial_return_type,
             type_parameters,
             // For now, any method declared is automatically public.
             // We can tweak that later if we want.
@@ -925,6 +929,7 @@ fn error_recovery_function_declaration(decl: FunctionDeclaration) -> TypedFuncti
         visibility,
         ..
     } = decl;
+    let initial_return_type = insert_type(return_type);
     TypedFunctionDeclaration {
         purity: Default::default(),
         name,
@@ -936,7 +941,8 @@ fn error_recovery_function_declaration(decl: FunctionDeclaration) -> TypedFuncti
         return_type_span,
         parameters: Default::default(),
         visibility,
-        return_type: insert_type(return_type),
+        return_type: initial_return_type,
+        initial_return_type,
         type_parameters: Default::default(),
     }
 }

@@ -349,7 +349,7 @@ impl JsonAbiString for TypeInfo {
             }
             .into(),
             Boolean => "bool".into(),
-            Custom { name, .. } => format!("unresolved {}", name.as_str()),
+            Custom { name, .. } => name.to_string(),
             Ref(id, _sp) => format!("T{} ({})", id, (*id).json_abi_str()),
             Tuple(fields) => {
                 let field_strs = fields
@@ -768,11 +768,11 @@ impl TypeInfo {
                         look_up_type_id(fields[index].type_id).matches_type_parameter(mapping);
                     if let Some(new_field_id) = new_field_id_opt {
                         new_fields.extend(fields[..index].iter().cloned());
+                        let type_id =
+                            insert_type(TypeInfo::Ref(new_field_id, fields[index].span.clone()));
                         new_fields.push(TypeArgument {
-                            type_id: insert_type(TypeInfo::Ref(
-                                new_field_id,
-                                fields[index].span.clone(),
-                            )),
+                            type_id,
+                            initial_type_id: type_id, // TODO - this is wrong
                             span: fields[index].span.clone(),
                         });
                         index += 1;
@@ -784,13 +784,17 @@ impl TypeInfo {
                     let new_field = match look_up_type_id(fields[index].type_id)
                         .matches_type_parameter(mapping)
                     {
-                        Some(new_field_id) => TypeArgument {
-                            type_id: insert_type(TypeInfo::Ref(
+                        Some(new_field_id) => {
+                            let type_id = insert_type(TypeInfo::Ref(
                                 new_field_id,
                                 fields[index].span.clone(),
-                            )),
-                            span: fields[index].span.clone(),
-                        },
+                            ));
+                            TypeArgument {
+                                type_id,
+                                initial_type_id: type_id,
+                                span: fields[index].span.clone(),
+                            }
+                        }
                         None => fields[index].clone(),
                     };
                     new_fields.push(new_field);

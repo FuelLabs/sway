@@ -1088,6 +1088,7 @@ impl TypedExpression {
             }
             typed_field_types.push(TypeArgument {
                 type_id: typed_field.return_type,
+                initial_type_id: typed_field.return_type, // TODO - this is wrong
                 span: typed_field.span.clone(),
             });
             typed_fields.push(typed_field);

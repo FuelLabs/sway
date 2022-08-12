@@ -372,3 +372,41 @@ pub struct Property {
     pub components: Option<Vec<Property>>, // Used for custom types
     pub type_arguments: Option<Vec<Property>>, // Used for generic types. Not yet supported in fuels-rs.
 }
+
+/// Alternative Fuel ABI representation in JSON where the type declarations have associated IDs to
+/// help associate type components, type arguments, and type parameters with other types.
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonABIProgram {
+    pub types: Vec<JsonTypeDeclaration>,
+    pub functions: Vec<JsonABIFunction>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonABIFunction {
+    #[serde(rename = "type")]
+    pub inputs: Vec<JsonTypeApplication>,
+    pub name: String,
+    pub output: JsonTypeApplication,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonTypeDeclaration {
+    pub type_id: usize,
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub components: Option<Vec<JsonTypeApplication>>,
+    pub type_parameters: Option<Vec<usize>>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonTypeApplication {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub type_id: usize,
+    pub type_arguments: Option<Vec<JsonTypeApplication>>,
+}

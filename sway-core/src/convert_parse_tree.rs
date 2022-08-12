@@ -853,13 +853,17 @@ fn generic_params_opt_to_type_parameters(
             .parameters
             .into_inner()
             .into_iter()
-            .map(|ident| TypeParameter {
-                type_id: insert_type(TypeInfo::Custom {
+            .map(|ident| {
+                let custom_type = insert_type(TypeInfo::Custom {
                     name: ident.clone(),
                     type_arguments: None,
-                }),
-                name_ident: ident,
-                trait_constraints: Vec::new(),
+                });
+                TypeParameter {
+                    type_id: custom_type,
+                    initial_type_id: custom_type,
+                    name_ident: ident,
+                    trait_constraints: Vec::new(),
+                }
             })
             .collect::<Vec<_>>(),
         None => Vec::new(),
@@ -1030,8 +1034,10 @@ fn ty_to_type_info(ec: &mut ErrorContext, ty: Ty) -> Result<TypeInfo, ErrorEmitt
 
 fn ty_to_type_argument(ec: &mut ErrorContext, ty: Ty) -> Result<TypeArgument, ErrorEmitted> {
     let span = ty.span();
+    let initial_type_id = insert_type(ty_to_type_info(ec, ty)?);
     let type_argument = TypeArgument {
-        type_id: insert_type(ty_to_type_info(ec, ty)?),
+        type_id: initial_type_id,
+        initial_type_id,
         span,
     };
     Ok(type_argument)
@@ -3046,21 +3052,25 @@ fn ty_to_type_parameter(ec: &mut ErrorContext, ty: Ty) -> Result<TypeParameter, 
     let name_ident = match ty {
         Ty::Path(path_type) => path_type_to_ident(ec, path_type)?,
         Ty::Infer { underscore_token } => {
+            let unknown_type = insert_type(TypeInfo::Unknown);
             return Ok(TypeParameter {
-                type_id: insert_type(TypeInfo::Unknown),
+                type_id: unknown_type,
+                initial_type_id: unknown_type,
                 name_ident: underscore_token.into(),
                 trait_constraints: Default::default(),
-            })
+            });
         }
         Ty::Tuple(..) => panic!("tuple types are not allowed in this position"),
         Ty::Array(..) => panic!("array types are not allowed in this position"),
         Ty::Str { .. } => panic!("str types are not allowed in this position"),
     };
+    let custom_type = insert_type(TypeInfo::Custom {
+        name: name_ident.clone(),
+        type_arguments: None,
+    });
     Ok(TypeParameter {
-        type_id: insert_type(TypeInfo::Custom {
-            name: name_ident.clone(),
-            type_arguments: None,
-        }),
+        type_id: custom_type,
+        initial_type_id: custom_type,
         name_ident,
         trait_constraints: Vec::new(),
     })
@@ -3237,7 +3247,11 @@ fn generic_args_to_type_arguments(
         .map(|ty| {
             let span = ty.span();
             let type_id = insert_type(ty_to_type_info(ec, ty)?);
-            Ok(TypeArgument { type_id, span })
+            Ok(TypeArgument {
+                type_id,
+                initial_type_id: type_id,
+                span,
+            })
         })
         .collect()
 }

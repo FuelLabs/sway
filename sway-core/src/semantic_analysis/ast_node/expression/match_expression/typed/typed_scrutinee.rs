@@ -228,6 +228,7 @@ impl TypedScrutinee {
                             .into_iter()
                             .map(|x| TypeArgument {
                                 type_id: x.type_id,
+                                initial_type_id: x.type_id, // TODO - this is wrong
                                 span: span.clone(),
                             })
                             .collect(),
