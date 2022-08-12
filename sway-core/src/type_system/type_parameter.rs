@@ -42,14 +42,20 @@ impl PartialEq for TypeParameter {
 }
 
 impl CopyTypes for TypeParameter {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.type_id = match look_up_type_id(self.type_id).matches_type_parameter(type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, self.name_ident.span())),
-            None => {
-                let ty = TypeInfo::Ref(insert_type(look_up_type_id_raw(self.type_id)), self.span());
-                insert_type(ty)
-            }
-        };
+    fn copy_types(&mut self, type_engine: &TypeEngine, type_mapping: &TypeMapping) {
+        self.type_id =
+            match look_up_type_id(self.type_id).matches_type_parameter(type_engine, type_mapping) {
+                Some(matching_id) => {
+                    type_engine.insert_type(TypeInfo::Ref(matching_id, self.name_ident.span()))
+                }
+                None => {
+                    let ty = TypeInfo::Ref(
+                        type_engine.insert_type(look_up_type_id_raw(self.type_id)),
+                        self.span(),
+                    );
+                    type_engine.insert_type(ty)
+                }
+            };
     }
 }
 
@@ -90,6 +96,7 @@ impl ToJsonAbi for TypeParameter {
 impl TypeParameter {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         type_parameter: TypeParameter,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
@@ -101,7 +108,7 @@ impl TypeParameter {
             return err(warnings, errors);
         }
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
-        let type_id = insert_type(TypeInfo::UnknownGeneric {
+        let type_id = type_engine.insert_type(TypeInfo::UnknownGeneric {
             name: type_parameter.name_ident.clone(),
         });
         let type_parameter_decl = TypedDeclaration::GenericTypeForFunctionScope {

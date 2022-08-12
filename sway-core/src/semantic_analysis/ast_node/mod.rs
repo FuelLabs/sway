@@ -92,22 +92,26 @@ impl fmt::Display for TypedAstNode {
 }
 
 impl CopyTypes for TypedAstNode {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types(&mut self, type_engine: &TypeEngine, type_mapping: &TypeMapping) {
         match self.content {
             TypedAstNodeContent::ReturnStatement(ref mut ret_stmt) => {
-                ret_stmt.copy_types(type_mapping)
+                ret_stmt.copy_types(type_engine, type_mapping)
             }
             TypedAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.copy_types(type_mapping)
+                exp.copy_types(type_engine, type_mapping)
             }
-            TypedAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping),
-            TypedAstNodeContent::Expression(ref mut expr) => expr.copy_types(type_mapping),
+            TypedAstNodeContent::Declaration(ref mut decl) => {
+                decl.copy_types(type_engine, type_mapping)
+            }
+            TypedAstNodeContent::Expression(ref mut expr) => {
+                expr.copy_types(type_engine, type_mapping)
+            }
             TypedAstNodeContent::WhileLoop(TypedWhileLoop {
                 ref mut condition,
                 ref mut body,
             }) => {
-                condition.copy_types(type_mapping);
-                body.copy_types(type_mapping);
+                condition.copy_types(type_engine, type_mapping);
+                body.copy_types(type_engine, type_mapping);
             }
             TypedAstNodeContent::SideEffect => (),
         }
@@ -214,7 +218,11 @@ impl TypedAstNode {
         }
     }
 
-    pub(crate) fn type_check(mut ctx: TypeCheckContext, node: AstNode) -> CompileResult<Self> {
+    pub(crate) fn type_check(
+        mut ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
+        node: AstNode,
+    ) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
@@ -223,12 +231,13 @@ impl TypedAstNode {
             |mut ctx: TypeCheckContext, type_ascription: TypeInfo, expr| {
                 let type_id = check!(
                     ctx.resolve_type_with_self(
-                        insert_type(type_ascription),
+                        type_engine,
+                        type_engine.insert_type(type_ascription),
                         &node.span,
                         EnforceTypeArguments::No,
                         None
                     ),
-                    insert_type(TypeInfo::ErrorRecovery),
+                    type_engine.insert_type(TypeInfo::ErrorRecovery),
                     warnings,
                     errors,
                 );
@@ -236,7 +245,7 @@ impl TypedAstNode {
                     "This declaration's type annotation does not match up with the assigned \
                         expression's type.",
                 );
-                TypedExpression::type_check(ctx, expr)
+                TypedExpression::type_check(ctx, type_engine, expr)
             };
 
         let node = TypedAstNode {
@@ -249,8 +258,12 @@ impl TypedAstNode {
                     };
                     let mut res = match a.import_type {
                         ImportType::Star => ctx.namespace.star_import(&path),
-                        ImportType::SelfImport => ctx.namespace.self_import(&path, a.alias),
-                        ImportType::Item(s) => ctx.namespace.item_import(&path, &s, a.alias),
+                        ImportType::SelfImport => {
+                            ctx.namespace.self_import(type_engine, &path, a.alias)
+                        }
+                        ImportType::Item(s) => {
+                            ctx.namespace.item_import(type_engine, &path, &s, a.alias)
+                        }
                     };
                     warnings.append(&mut res.warnings);
                     errors.append(&mut res.errors);
@@ -270,12 +283,13 @@ impl TypedAstNode {
                                 type_ascription_span.unwrap_or_else(|| name.span());
                             let type_ascription = check!(
                                 ctx.resolve_type_with_self(
-                                    insert_type(type_ascription),
+                                    type_engine,
+                                    type_engine.insert_type(type_ascription),
                                     &type_ascription_span,
                                     EnforceTypeArguments::Yes,
                                     None
                                 ),
-                                insert_type(TypeInfo::ErrorRecovery),
+                                type_engine.insert_type(TypeInfo::ErrorRecovery),
                                 warnings,
                                 errors
                             );
@@ -283,9 +297,14 @@ impl TypedAstNode {
                                 "Variable declaration's type annotation does not match up \
                                     with the assigned expression's type.",
                             );
-                            let result = TypedExpression::type_check(ctx.by_ref(), body);
-                            let body =
-                                check!(result, error_recovery_expr(name.span()), warnings, errors);
+                            let result =
+                                TypedExpression::type_check(ctx.by_ref(), type_engine, body);
+                            let body = check!(
+                                result,
+                                error_recovery_expr(type_engine, name.span()),
+                                warnings,
+                                errors
+                            );
                             let typed_var_decl =
                                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                                     name: name.clone(),
@@ -305,8 +324,12 @@ impl TypedAstNode {
                             let result =
                                 type_check_ascribed_expr(ctx.by_ref(), type_ascription, value);
                             is_screaming_snake_case(&name).ok(&mut warnings, &mut errors);
-                            let value =
-                                check!(result, error_recovery_expr(name.span()), warnings, errors);
+                            let value = check!(
+                                result,
+                                error_recovery_expr(type_engine, name.span()),
+                                warnings,
+                                errors
+                            );
                             let typed_const_decl =
                                 TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
                                     name: name.clone(),
@@ -318,7 +341,7 @@ impl TypedAstNode {
                         }
                         Declaration::EnumDeclaration(decl) => {
                             let enum_decl = check!(
-                                TypedEnumDeclaration::type_check(ctx.by_ref(), decl),
+                                TypedEnumDeclaration::type_check(ctx.by_ref(), type_engine, decl),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -334,10 +357,15 @@ impl TypedAstNode {
                             decl
                         }
                         Declaration::FunctionDeclaration(fn_decl) => {
-                            let mut ctx = ctx.with_type_annotation(insert_type(TypeInfo::Unknown));
+                            let mut ctx = ctx
+                                .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
                             let fn_decl = check!(
-                                TypedFunctionDeclaration::type_check(ctx.by_ref(), fn_decl.clone()),
-                                error_recovery_function_declaration(fn_decl),
+                                TypedFunctionDeclaration::type_check(
+                                    ctx.by_ref(),
+                                    type_engine,
+                                    fn_decl.clone()
+                                ),
+                                error_recovery_function_declaration(type_engine, fn_decl),
                                 warnings,
                                 errors
                             );
@@ -348,7 +376,11 @@ impl TypedAstNode {
                         }
                         Declaration::TraitDeclaration(trait_decl) => {
                             let trait_decl = check!(
-                                TypedTraitDeclaration::type_check(ctx.by_ref(), trait_decl),
+                                TypedTraitDeclaration::type_check(
+                                    ctx.by_ref(),
+                                    type_engine,
+                                    trait_decl
+                                ),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -360,10 +392,10 @@ impl TypedAstNode {
                         }
                         Declaration::Reassignment(Reassignment { lhs, rhs, span }) => {
                             let ctx = ctx
-                                .with_type_annotation(insert_type(TypeInfo::Unknown))
+                                .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown))
                                 .with_help_text("");
                             check!(
-                                reassignment(ctx, lhs, rhs, span),
+                                reassignment(type_engine, ctx, lhs, rhs, span),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -371,7 +403,11 @@ impl TypedAstNode {
                         }
                         Declaration::ImplTrait(impl_trait) => {
                             let (impl_trait, implementing_for_type_id) = check!(
-                                TypedImplTrait::type_check_impl_trait(ctx.by_ref(), impl_trait),
+                                TypedImplTrait::type_check_impl_trait(
+                                    ctx.by_ref(),
+                                    type_engine,
+                                    impl_trait
+                                ),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -385,7 +421,11 @@ impl TypedAstNode {
                         }
                         Declaration::ImplSelf(impl_self) => {
                             let impl_trait = check!(
-                                TypedImplTrait::type_check_impl_self(ctx.by_ref(), impl_self),
+                                TypedImplTrait::type_check_impl_self(
+                                    ctx.by_ref(),
+                                    type_engine,
+                                    impl_self
+                                ),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -399,7 +439,7 @@ impl TypedAstNode {
                         }
                         Declaration::StructDeclaration(decl) => {
                             let decl = check!(
-                                TypedStructDeclaration::type_check(ctx.by_ref(), decl),
+                                TypedStructDeclaration::type_check(ctx.by_ref(), type_engine, decl),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -417,7 +457,11 @@ impl TypedAstNode {
                         }
                         Declaration::AbiDeclaration(abi_decl) => {
                             let abi_decl = check!(
-                                TypedAbiDeclaration::type_check(ctx.by_ref(), abi_decl),
+                                TypedAbiDeclaration::type_check(
+                                    ctx.by_ref(),
+                                    type_engine,
+                                    abi_decl
+                                ),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -437,7 +481,8 @@ impl TypedAstNode {
                             {
                                 let type_id = check!(
                                     ctx.resolve_type_without_self(
-                                        insert_type(type_info),
+                                        type_engine,
+                                        type_engine.insert_type(type_info),
                                         &name.span(),
                                         None
                                     ),
@@ -448,7 +493,11 @@ impl TypedAstNode {
 
                                 let mut ctx = ctx.by_ref().with_type_annotation(type_id);
                                 let initializer = check!(
-                                    TypedExpression::type_check(ctx.by_ref(), initializer),
+                                    TypedExpression::type_check(
+                                        ctx.by_ref(),
+                                        type_engine,
+                                        initializer
+                                    ),
                                     return err(warnings, errors),
                                     warnings,
                                     errors,
@@ -480,11 +529,11 @@ impl TypedAstNode {
                 }
                 AstNodeContent::Expression(expr) => {
                     let ctx = ctx
-                        .with_type_annotation(insert_type(TypeInfo::Unknown))
+                        .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown))
                         .with_help_text("");
                     let inner = check!(
-                        TypedExpression::type_check(ctx, expr.clone()),
-                        error_recovery_expr(expr.span()),
+                        TypedExpression::type_check(ctx, type_engine, expr.clone()),
+                        error_recovery_expr(type_engine, expr.span()),
                         warnings,
                         errors
                     );
@@ -500,7 +549,7 @@ impl TypedAstNode {
                         // That is impossible here, as we don't have that information. It
                         // is the responsibility of the function declaration to type check
                         // all return statements contained within it.
-                        .with_type_annotation(insert_type(TypeInfo::Unknown))
+                        .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown))
                         .with_help_text(
                             "Returned value must match up with the function return type \
                             annotation.",
@@ -508,8 +557,8 @@ impl TypedAstNode {
 
                     TypedAstNodeContent::ReturnStatement(TypedReturnStatement {
                         expr: check!(
-                            TypedExpression::type_check(ctx, expr.clone()),
-                            error_recovery_expr(expr.span()),
+                            TypedExpression::type_check(ctx, type_engine, expr.clone()),
+                            error_recovery_expr(type_engine, expr.span()),
                             warnings,
                             errors
                         ),
@@ -519,8 +568,8 @@ impl TypedAstNode {
                     let ctx =
                         ctx.with_help_text("Implicit return must match up with block's type.");
                     let typed_expr = check!(
-                        TypedExpression::type_check(ctx, expr.clone()),
-                        error_recovery_expr(expr.span()),
+                        TypedExpression::type_check(ctx, type_engine, expr.clone()),
+                        error_recovery_expr(type_engine, expr.span()),
                         warnings,
                         errors
                     );
@@ -530,12 +579,12 @@ impl TypedAstNode {
                     let typed_condition = {
                         let ctx = ctx
                             .by_ref()
-                            .with_type_annotation(insert_type(TypeInfo::Boolean))
+                            .with_type_annotation(type_engine.insert_type(TypeInfo::Boolean))
                             .with_help_text(
                                 "A while loop's loop condition must be a boolean expression.",
                             );
                         check!(
-                            TypedExpression::type_check(ctx, condition),
+                            TypedExpression::type_check(ctx, type_engine, condition),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -543,17 +592,17 @@ impl TypedAstNode {
                     };
 
                     let ctx = ctx
-                        .with_type_annotation(insert_type(TypeInfo::Tuple(Vec::new())))
+                        .with_type_annotation(type_engine.insert_type(TypeInfo::Tuple(Vec::new())))
                         .with_help_text(
                             "A while loop's loop body cannot implicitly return a value. Try \
                              assigning it to a mutable variable declared outside of the loop \
                              instead.",
                         );
                     let (typed_body, _block_implicit_return) = check!(
-                        TypedCodeBlock::type_check(ctx, body),
+                        TypedCodeBlock::type_check(ctx, type_engine, body),
                         (
                             TypedCodeBlock { contents: vec![] },
-                            insert_type(TypeInfo::Tuple(Vec::new()))
+                            type_engine.insert_type(TypeInfo::Tuple(Vec::new()))
                         ),
                         warnings,
                         errors
@@ -588,6 +637,7 @@ impl TypedAstNode {
 }
 
 fn reassignment(
+    type_engine: &TypeEngine,
     ctx: TypeCheckContext,
     lhs: ReassignmentTarget,
     rhs: Expression,
@@ -649,7 +699,8 @@ fn reassignment(
             };
             let names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
             let (ty_of_field, _ty_of_parent) = check!(
-                ctx.namespace.find_subfield_type(&base_name, &names_vec),
+                ctx.namespace
+                    .find_subfield_type(type_engine, &base_name, &names_vec),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -657,8 +708,8 @@ fn reassignment(
             // type check the reassignment
             let ctx = ctx.with_type_annotation(ty_of_field).with_help_text("");
             let rhs = check!(
-                TypedExpression::type_check(ctx, rhs),
-                error_recovery_expr(span),
+                TypedExpression::type_check(ctx, type_engine, rhs),
+                error_recovery_expr(type_engine, span),
                 warnings,
                 errors
             );
@@ -676,15 +727,16 @@ fn reassignment(
         }
         ReassignmentTarget::StorageField(fields) => {
             let ctx = ctx
-                .with_type_annotation(insert_type(TypeInfo::Unknown))
+                .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown))
                 .with_help_text("");
-            reassign_storage_subfield(ctx, fields, rhs, span)
+            reassign_storage_subfield(ctx, type_engine, fields, rhs, span)
                 .map(TypedDeclaration::StorageReassignment)
         }
     }
 }
 
 fn type_check_interface_surface(
+    type_engine: &TypeEngine,
     interface_surface: Vec<TraitFn>,
     namespace: &mut Namespace,
 ) -> CompileResult<Vec<TypedTraitFn>> {
@@ -716,13 +768,14 @@ fn type_check_interface_surface(
                             is_mutable,
                             type_id: check!(
                                 namespace.resolve_type_with_self(
+                                    type_engine,
                                     type_id,
-                                    insert_type(TypeInfo::SelfType),
+                                    type_engine.insert_type(TypeInfo::SelfType),
                                     &type_span,
                                     EnforceTypeArguments::Yes,
                                     None
                                 ),
-                                insert_type(TypeInfo::ErrorRecovery),
+                                type_engine.insert_type(TypeInfo::ErrorRecovery),
                                 warnings,
                                 errors,
                             ),
@@ -732,13 +785,14 @@ fn type_check_interface_surface(
                     .collect(),
                 return_type: check!(
                     namespace.resolve_type_with_self(
-                        insert_type(return_type),
-                        insert_type(TypeInfo::SelfType),
+                        type_engine,
+                        type_engine.insert_type(return_type),
+                        type_engine.insert_type(TypeInfo::SelfType),
                         &return_type_span,
                         EnforceTypeArguments::Yes,
                         None
                     ),
-                    insert_type(TypeInfo::ErrorRecovery),
+                    type_engine.insert_type(TypeInfo::ErrorRecovery),
                     warnings,
                     errors,
                 ),
@@ -750,6 +804,7 @@ fn type_check_interface_surface(
 
 fn type_check_trait_methods(
     mut ctx: TypeCheckContext,
+    type_engine: &TypeEngine,
     methods: Vec<FunctionDeclaration>,
 ) -> CompileResult<Vec<TypedFunctionDeclaration>> {
     let mut warnings = vec![];
@@ -768,19 +823,22 @@ fn type_check_trait_methods(
     } in methods
     {
         // A context while checking the signature where `self_type` refers to `SelfType`.
-        let mut sig_ctx = ctx.by_ref().with_self_type(insert_type(TypeInfo::SelfType));
+        let mut sig_ctx = ctx
+            .by_ref()
+            .with_self_type(type_engine.insert_type(TypeInfo::SelfType));
         parameters.clone().into_iter().for_each(
             |FunctionParameter {
                  name, ref type_id, ..
              }| {
                 let r#type = check!(
                     sig_ctx.resolve_type_with_self(
+                        type_engine,
                         *type_id,
                         &name.span(),
                         EnforceTypeArguments::Yes,
                         None
                     ),
-                    insert_type(TypeInfo::ErrorRecovery),
+                    type_engine.insert_type(TypeInfo::ErrorRecovery),
                     warnings,
                     errors,
                 );
@@ -854,12 +912,13 @@ fn type_check_trait_methods(
                         is_mutable,
                         type_id: check!(
                             sig_ctx.resolve_type_with_self(
+                                type_engine,
                                 type_id,
                                 &type_span,
                                 EnforceTypeArguments::Yes,
                                 None
                             ),
-                            insert_type(TypeInfo::ErrorRecovery),
+                            type_engine.insert_type(TypeInfo::ErrorRecovery),
                             warnings,
                             errors,
                         ),
@@ -872,12 +931,13 @@ fn type_check_trait_methods(
         // TODO check code block implicit return
         let return_type = check!(
             ctx.resolve_type_with_self(
-                insert_type(return_type),
+                type_engine,
+                type_engine.insert_type(return_type),
                 &return_type_span,
                 EnforceTypeArguments::Yes,
                 None
             ),
-            insert_type(TypeInfo::ErrorRecovery),
+            type_engine.insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -890,7 +950,7 @@ fn type_check_trait_methods(
                 annotation.",
             );
         let (body, _code_block_implicit_return) = check!(
-            TypedCodeBlock::type_check(ctx, body),
+            TypedCodeBlock::type_check(ctx, type_engine, body),
             continue,
             warnings,
             errors
@@ -916,7 +976,10 @@ fn type_check_trait_methods(
 
 /// Used to create a stubbed out function when the function fails to compile, preventing cascading
 /// namespace errors
-fn error_recovery_function_declaration(decl: FunctionDeclaration) -> TypedFunctionDeclaration {
+fn error_recovery_function_declaration(
+    type_engine: &TypeEngine,
+    decl: FunctionDeclaration,
+) -> TypedFunctionDeclaration {
     let FunctionDeclaration {
         name,
         return_type,
@@ -936,7 +999,7 @@ fn error_recovery_function_declaration(decl: FunctionDeclaration) -> TypedFuncti
         return_type_span,
         parameters: Default::default(),
         visibility,
-        return_type: insert_type(return_type),
+        return_type: type_engine.insert_type(return_type),
         type_parameters: Default::default(),
     }
 }
@@ -988,6 +1051,7 @@ impl PartialEq for TypeCheckedStorageReassignDescriptor {
 
 fn reassign_storage_subfield(
     ctx: TypeCheckContext,
+    type_engine: &TypeEngine,
     fields: Vec<Ident>,
     rhs: Expression,
     span: Span,
@@ -1079,8 +1143,8 @@ fn reassign_storage_subfield(
     }
     let ctx = ctx.with_type_annotation(curr_type).with_help_text("");
     let rhs = check!(
-        TypedExpression::type_check(ctx, rhs),
-        error_recovery_expr(span),
+        TypedExpression::type_check(ctx, type_engine, rhs),
+        error_recovery_expr(type_engine, span),
         warnings,
         errors
     );

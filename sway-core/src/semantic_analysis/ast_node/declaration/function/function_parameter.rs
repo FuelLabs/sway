@@ -30,8 +30,9 @@ impl PartialEq for TypedFunctionParameter {
 }
 
 impl CopyTypes for TypedFunctionParameter {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.type_id.update_type(type_mapping, &self.type_span);
+    fn copy_types(&mut self, type_engine: &TypeEngine, type_mapping: &TypeMapping) {
+        self.type_id
+            .update_type(type_engine, type_mapping, &self.type_span);
     }
 }
 
@@ -42,18 +43,20 @@ impl TypedFunctionParameter {
 
     pub(crate) fn type_check(
         mut ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         parameter: FunctionParameter,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_id = check!(
             ctx.resolve_type_with_self(
+                type_engine,
                 parameter.type_id,
                 &parameter.type_span,
                 EnforceTypeArguments::Yes,
                 None
             ),
-            insert_type(TypeInfo::ErrorRecovery),
+            type_engine.insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );

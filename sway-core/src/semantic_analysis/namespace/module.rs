@@ -2,6 +2,7 @@ use crate::{
     error::*,
     parse_tree::Visibility,
     semantic_analysis::{ast_node::TypedVariableDeclaration, declaration::VariableMutability},
+    type_system::TypeEngine,
     CompileResult, Ident, TypedDeclaration,
 };
 
@@ -123,12 +124,13 @@ impl Module {
     /// import.
     pub(crate) fn self_import(
         &mut self,
+        type_engine: &TypeEngine,
         src: &Path,
         dst: &Path,
         alias: Option<Ident>,
     ) -> CompileResult<()> {
         let (last_item, src) = src.split_last().expect("guaranteed by grammar");
-        self.item_import(src, last_item, dst, alias)
+        self.item_import(type_engine, src, last_item, dst, alias)
     }
 
     /// Pull a single `item` from the given `src` module and import it into the `dst` module.
@@ -136,6 +138,7 @@ impl Module {
     /// Paths are assumed to be relative to `self`.
     pub(crate) fn item_import(
         &mut self,
+        type_engine: &TypeEngine,
         src: &Path,
         item: &Ident,
         dst: &Path,
@@ -165,7 +168,7 @@ impl Module {
                     self[dst].insert_symbol(alias.unwrap_or_else(|| name.clone()), decl.clone());
                     return ok((), warnings, errors);
                 }
-                let a = decl.return_type().value;
+                let a = decl.return_type(type_engine).value;
                 //  if this is an enum or struct, import its implementations
                 let mut res = match a {
                     Some(a) => src_ns.implemented_traits.get_call_path_and_type_info(a),

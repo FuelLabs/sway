@@ -8,7 +8,7 @@ use crate::{
         namespace::Namespace,
         IsConstant, TypedEnumVariant, TypedExpression, TypedExpressionVariant,
     },
-    type_system::unify,
+    type_system::{unify, TypeEngine},
     CompileResult, Ident, Literal,
 };
 
@@ -64,6 +64,7 @@ pub(crate) type MatcherResult = (MatchReqMap, MatchDeclMap);
 /// ]
 /// ```
 pub(crate) fn matcher(
+    type_engine: &TypeEngine,
     exp: &TypedExpression,
     scrutinee: TypedScrutinee,
     namespace: &mut Namespace,
@@ -85,11 +86,15 @@ pub(crate) fn matcher(
         TypedScrutineeVariant::CatchAll => ok((vec![], vec![]), warnings, errors),
         TypedScrutineeVariant::Literal(value) => match_literal(exp, value, span),
         TypedScrutineeVariant::Variable(name) => match_variable(exp, name, span),
-        TypedScrutineeVariant::StructScrutinee(fields) => match_struct(exp, fields, namespace),
-        TypedScrutineeVariant::EnumScrutinee { value, variant } => {
-            match_enum(exp, variant, *value, span, namespace)
+        TypedScrutineeVariant::StructScrutinee(fields) => {
+            match_struct(type_engine, exp, fields, namespace)
         }
-        TypedScrutineeVariant::Tuple(elems) => match_tuple(exp, elems, span, namespace),
+        TypedScrutineeVariant::EnumScrutinee { value, variant } => {
+            match_enum(type_engine, exp, variant, *value, span, namespace)
+        }
+        TypedScrutineeVariant::Tuple(elems) => {
+            match_tuple(type_engine, exp, elems, span, namespace)
+        }
     }
 }
 
@@ -122,6 +127,7 @@ fn match_variable(
 }
 
 fn match_struct(
+    type_engine: &TypeEngine,
     exp: &TypedExpression,
     fields: Vec<TypedStructScrutineeField>,
     namespace: &mut Namespace,
@@ -150,7 +156,7 @@ fn match_struct(
             // or if the scrutinee has a more complex agenda
             Some(scrutinee) => {
                 let (mut new_match_req_map, mut new_match_decl_map) = check!(
-                    matcher(&subfield, scrutinee, namespace),
+                    matcher(type_engine, &subfield, scrutinee, namespace),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -165,6 +171,7 @@ fn match_struct(
 }
 
 fn match_enum(
+    type_engine: &TypeEngine,
     exp: &TypedExpression,
     variant: TypedEnumVariant,
     scrutinee: TypedScrutinee,
@@ -173,9 +180,10 @@ fn match_enum(
 ) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let (mut match_req_map, unsafe_downcast) = instantiate_unsafe_downcast(exp, variant, span);
+    let (mut match_req_map, unsafe_downcast) =
+        instantiate_unsafe_downcast(type_engine, exp, variant, span);
     let (mut new_match_req_map, match_decl_map) = check!(
-        matcher(&unsafe_downcast, scrutinee, namespace),
+        matcher(type_engine, &unsafe_downcast, scrutinee, namespace),
         return err(warnings, errors),
         warnings,
         errors
@@ -185,6 +193,7 @@ fn match_enum(
 }
 
 fn match_tuple(
+    type_engine: &TypeEngine,
     exp: &TypedExpression,
     elems: Vec<TypedScrutinee>,
     span: Span,
@@ -202,7 +211,7 @@ fn match_tuple(
             errors
         );
         let (mut new_match_req_map, mut new_match_decl_map) = check!(
-            matcher(&tuple_index_access, elem, namespace),
+            matcher(type_engine, &tuple_index_access, elem, namespace),
             return err(warnings, errors),
             warnings,
             errors

@@ -29,14 +29,14 @@ impl PartialEq for TypeArgument {
     }
 }
 
-impl Default for TypeArgument {
-    fn default() -> Self {
-        TypeArgument {
-            type_id: insert_type(TypeInfo::Unknown),
-            span: Span::dummy(),
-        }
-    }
-}
+// impl Default for TypeArgument {
+//     fn default() -> Self {
+//         TypeArgument {
+//             type_id: insert_type(TypeInfo::Unknown),
+//             span: Span::dummy(),
+//         }
+//     }
+// }
 
 impl fmt::Display for TypeArgument {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

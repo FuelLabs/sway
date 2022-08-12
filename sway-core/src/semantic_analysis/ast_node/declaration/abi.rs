@@ -7,7 +7,7 @@ use crate::{
         ast_node::{type_check_interface_surface, type_check_trait_methods},
         TypeCheckContext,
     },
-    type_system::{insert_type, AbiName, TypeId},
+    type_system::{AbiName, TypeEngine, TypeId},
     AbiDeclaration, CompileResult, FunctionDeclaration, TypeInfo,
 };
 
@@ -32,18 +32,19 @@ pub struct TypedAbiDeclaration {
 }
 
 impl CreateTypeId for TypedAbiDeclaration {
-    fn create_type_id(&self) -> TypeId {
+    fn create_type_id(&self, type_engine: &TypeEngine) -> TypeId {
         let ty = TypeInfo::ContractCaller {
             abi_name: AbiName::Known(self.name.clone().into()),
             address: None,
         };
-        insert_type(ty)
+        type_engine.insert_type(ty)
     }
 }
 
 impl TypedAbiDeclaration {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         abi_decl: AbiDeclaration,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
@@ -62,7 +63,7 @@ impl TypedAbiDeclaration {
         // so we don't support the case of calling a contract's own interface
         // from itself. This is by design.
         let interface_surface = check!(
-            type_check_interface_surface(interface_surface, ctx.namespace),
+            type_check_interface_surface(type_engine, interface_surface, ctx.namespace),
             return err(warnings, errors),
             warnings,
             errors
@@ -70,7 +71,7 @@ impl TypedAbiDeclaration {
         // type check these for errors but don't actually use them yet -- the real
         // ones will be type checked with proper symbols when the ABI is implemented
         let _methods = check!(
-            type_check_trait_methods(ctx, methods.clone()),
+            type_check_trait_methods(ctx, type_engine, methods.clone()),
             vec![],
             warnings,
             errors

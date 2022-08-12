@@ -46,9 +46,10 @@ impl PartialEq for TypedExpression {
 }
 
 impl CopyTypes for TypedExpression {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.return_type.update_type(type_mapping, &self.span);
-        self.expression.copy_types(type_mapping);
+    fn copy_types(&mut self, type_engine: &TypeEngine, type_mapping: &TypeMapping) {
+        self.return_type
+            .update_type(type_engine, type_mapping, &self.span);
+        self.expression.copy_types(type_engine, type_mapping);
     }
 }
 
@@ -286,10 +287,10 @@ impl DeterministicallyAborts for TypedExpression {
     }
 }
 
-pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
+pub(crate) fn error_recovery_expr(type_engine: &TypeEngine, span: Span) -> TypedExpression {
     TypedExpression {
         expression: TypedExpressionVariant::Tuple { fields: vec![] },
-        return_type: crate::type_system::insert_type(TypeInfo::ErrorRecovery),
+        return_type: type_engine.insert_type(TypeInfo::ErrorRecovery),
         is_constant: IsConstant::No,
         span,
     }
@@ -299,6 +300,7 @@ pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
 impl TypedExpression {
     pub(crate) fn core_ops_eq(
         ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         arguments: Vec<TypedExpression>,
         span: Span,
     ) -> CompileResult<TypedExpression> {
@@ -325,7 +327,7 @@ impl TypedExpression {
         };
         let arguments = VecDeque::from(arguments);
         let method = check!(
-            resolve_method_name(ctx, &method_name_binding, arguments.clone()),
+            resolve_method_name(ctx, type_engine, &method_name_binding, arguments.clone()),
             return err(warnings, errors),
             warnings,
             errors
@@ -391,13 +393,17 @@ impl TypedExpression {
         }
     }
 
-    pub(crate) fn type_check(mut ctx: TypeCheckContext, expr: Expression) -> CompileResult<Self> {
+    pub(crate) fn type_check(
+        mut ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
+        expr: Expression,
+    ) -> CompileResult<Self> {
         let expr_span = expr.span();
         let span = expr_span.clone();
         let res = match expr.kind {
-            ExpressionKind::Literal(lit) => Self::type_check_literal(lit, span),
+            ExpressionKind::Literal(lit) => Self::type_check_literal(type_engine, lit, span),
             ExpressionKind::Variable(name) => {
-                Self::type_check_variable_expression(ctx.namespace, name, span)
+                Self::type_check_variable_expression(type_engine, ctx.namespace, name, span)
             }
             ExpressionKind::FunctionApplication(function_application_expression) => {
                 let FunctionApplicationExpression {
@@ -406,6 +412,7 @@ impl TypedExpression {
                 } = *function_application_expression;
                 Self::type_check_function_application(
                     ctx.by_ref(),
+                    type_engine,
                     call_path_binding,
                     arguments,
                     span,
@@ -414,11 +421,11 @@ impl TypedExpression {
             ExpressionKind::LazyOperator(LazyOperatorExpression { op, lhs, rhs }) => {
                 let ctx = ctx
                     .by_ref()
-                    .with_type_annotation(insert_type(TypeInfo::Boolean));
-                Self::type_check_lazy_operator(ctx, op, *lhs, *rhs, span)
+                    .with_type_annotation(type_engine.insert_type(TypeInfo::Boolean));
+                Self::type_check_lazy_operator(ctx, type_engine, op, *lhs, *rhs, span)
             }
             ExpressionKind::CodeBlock(contents) => {
-                Self::type_check_code_block(ctx.by_ref(), contents, span)
+                Self::type_check_code_block(ctx.by_ref(), type_engine, contents, span)
             }
             // TODO if _condition_ is constant, evaluate it and compile this to an
             // expression with only one branch
@@ -428,6 +435,7 @@ impl TypedExpression {
                 r#else,
             }) => Self::type_check_if_expression(
                 ctx.by_ref().with_help_text(""),
+                type_engine,
                 *condition,
                 *then,
                 r#else.map(|e| *e),
@@ -436,25 +444,38 @@ impl TypedExpression {
             ExpressionKind::Match(MatchExpression { value, branches }) => {
                 Self::type_check_match_expression(
                     ctx.by_ref().with_help_text(""),
+                    type_engine,
                     *value,
                     branches,
                     span,
                 )
             }
-            ExpressionKind::Asm(asm) => Self::type_check_asm_expression(ctx.by_ref(), *asm, span),
+            ExpressionKind::Asm(asm) => {
+                Self::type_check_asm_expression(ctx.by_ref(), type_engine, *asm, span)
+            }
             ExpressionKind::Struct(struct_expression) => {
                 let StructExpression {
                     call_path_binding,
                     fields,
                 } = *struct_expression;
-                Self::type_check_struct_expression(ctx.by_ref(), call_path_binding, fields, span)
+                Self::type_check_struct_expression(
+                    ctx.by_ref(),
+                    type_engine,
+                    call_path_binding,
+                    fields,
+                    span,
+                )
             }
             ExpressionKind::Subfield(SubfieldExpression {
                 prefix,
                 field_to_access,
-            }) => {
-                Self::type_check_subfield_expression(ctx.by_ref(), *prefix, span, field_to_access)
-            }
+            }) => Self::type_check_subfield_expression(
+                ctx.by_ref(),
+                type_engine,
+                *prefix,
+                span,
+                field_to_access,
+            ),
             ExpressionKind::MethodApplication(method_application_expression) => {
                 let MethodApplicationExpression {
                     method_name_binding,
@@ -463,48 +484,72 @@ impl TypedExpression {
                 } = *method_application_expression;
                 type_check_method_application(
                     ctx.by_ref(),
+                    type_engine,
                     method_name_binding,
                     contract_call_params,
                     arguments,
                     span,
                 )
             }
-            ExpressionKind::Tuple(fields) => Self::type_check_tuple(ctx.by_ref(), fields, span),
+            ExpressionKind::Tuple(fields) => {
+                Self::type_check_tuple(ctx.by_ref(), type_engine, fields, span)
+            }
             ExpressionKind::TupleIndex(TupleIndexExpression {
                 prefix,
                 index,
                 index_span,
-            }) => Self::type_check_tuple_index(ctx.by_ref(), *prefix, index, index_span, span),
+            }) => Self::type_check_tuple_index(
+                ctx.by_ref(),
+                type_engine,
+                *prefix,
+                index,
+                index_span,
+                span,
+            ),
             ExpressionKind::DelineatedPath(delineated_path_expression) => {
                 let DelineatedPathExpression {
                     call_path_binding,
                     args,
                 } = *delineated_path_expression;
-                Self::type_check_delineated_path(ctx.by_ref(), call_path_binding, span, args)
+                Self::type_check_delineated_path(
+                    ctx.by_ref(),
+                    type_engine,
+                    call_path_binding,
+                    span,
+                    args,
+                )
             }
             ExpressionKind::AbiCast(abi_cast_expression) => {
                 let AbiCastExpression { abi_name, address } = *abi_cast_expression;
-                Self::type_check_abi_cast(ctx.by_ref(), abi_name, *address, span)
+                Self::type_check_abi_cast(ctx.by_ref(), type_engine, abi_name, *address, span)
             }
-            ExpressionKind::Array(contents) => Self::type_check_array(ctx.by_ref(), contents, span),
+            ExpressionKind::Array(contents) => {
+                Self::type_check_array(ctx.by_ref(), type_engine, contents, span)
+            }
             ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index }) => {
                 let ctx = ctx
                     .by_ref()
-                    .with_type_annotation(insert_type(TypeInfo::Unknown))
+                    .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown))
                     .with_help_text("");
-                Self::type_check_array_index(ctx, *prefix, *index, span)
+                Self::type_check_array_index(ctx, type_engine, *prefix, *index, span)
             }
             ExpressionKind::StorageAccess(StorageAccessExpression { field_names }) => {
                 let ctx = ctx
                     .by_ref()
-                    .with_type_annotation(insert_type(TypeInfo::Unknown))
+                    .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown))
                     .with_help_text("");
                 Self::type_check_storage_load(ctx, field_names, &span)
             }
             ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
                 kind_binding,
                 arguments,
-            }) => Self::type_check_intrinsic_function(ctx.by_ref(), kind_binding, arguments, span),
+            }) => Self::type_check_intrinsic_function(
+                ctx.by_ref(),
+                type_engine,
+                kind_binding,
+                arguments,
+                span,
+            ),
         };
         let mut typed_expression = match res.value {
             Some(r) => r,
@@ -525,12 +570,13 @@ impl TypedExpression {
         // The annotation may result in a cast, which is handled in the type engine.
         typed_expression.return_type = check!(
             ctx.resolve_type_with_self(
+                type_engine,
                 typed_expression.return_type,
                 &expr_span,
                 EnforceTypeArguments::No,
                 None
             ),
-            insert_type(TypeInfo::ErrorRecovery),
+            type_engine.insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -543,6 +589,7 @@ impl TypedExpression {
                     TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => {
                         typed_expression = check!(
                             Self::resolve_numeric_literal(
+                                type_engine,
                                 lit,
                                 expr_span,
                                 typed_expression.return_type
@@ -560,7 +607,11 @@ impl TypedExpression {
         ok(typed_expression, warnings, errors)
     }
 
-    fn type_check_literal(lit: Literal, span: Span) -> CompileResult<TypedExpression> {
+    fn type_check_literal(
+        type_engine: &TypeEngine,
+        lit: Literal,
+        span: Span,
+    ) -> CompileResult<TypedExpression> {
         let return_type = match &lit {
             Literal::String(s) => TypeInfo::Str(s.as_str().len() as u64),
             Literal::Numeric(_) => TypeInfo::Numeric,
@@ -572,7 +623,7 @@ impl TypedExpression {
             Literal::Byte(_) => TypeInfo::Byte,
             Literal::B256(_) => TypeInfo::B256,
         };
-        let id = crate::type_system::insert_type(return_type);
+        let id = type_engine.insert_type(return_type);
         let exp = TypedExpression {
             expression: TypedExpressionVariant::Literal(lit),
             return_type: id,
@@ -583,6 +634,7 @@ impl TypedExpression {
     }
 
     pub(crate) fn type_check_variable_expression(
+        type_engine: &TypeEngine,
         namespace: &Namespace,
         name: Ident,
         span: Span,
@@ -608,7 +660,7 @@ impl TypedExpression {
                 span,
             },
             Some(TypedDeclaration::AbiDeclaration(decl)) => TypedExpression {
-                return_type: decl.create_type_id(),
+                return_type: decl.create_type_id(type_engine),
                 is_constant: IsConstant::Yes,
                 expression: TypedExpressionVariant::AbiName(AbiName::Known(
                     decl.name.clone().into(),
@@ -620,13 +672,13 @@ impl TypedExpression {
                     name: name.clone(),
                     what_it_is: a.friendly_name(),
                 });
-                error_recovery_expr(name.span())
+                error_recovery_expr(type_engine, name.span())
             }
             None => {
                 errors.push(CompileError::UnknownVariable {
                     var_name: name.clone(),
                 });
-                error_recovery_expr(name.span())
+                error_recovery_expr(type_engine, name.span())
             }
         };
         ok(exp, vec![], errors)
@@ -634,6 +686,7 @@ impl TypedExpression {
 
     fn type_check_function_application(
         ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         mut call_path_binding: TypeBinding<CallPath>,
         arguments: Vec<Expression>,
         _span: Span,
@@ -657,11 +710,18 @@ impl TypedExpression {
             errors
         );
 
-        instantiate_function_application(ctx, function_decl, call_path_binding.inner, arguments)
+        instantiate_function_application(
+            ctx,
+            type_engine,
+            function_decl,
+            call_path_binding.inner,
+            arguments,
+        )
     }
 
     fn type_check_lazy_operator(
         ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         op: LazyOp,
         lhs: Expression,
         rhs: Expression,
@@ -671,15 +731,15 @@ impl TypedExpression {
         let mut errors = vec![];
         let mut ctx = ctx.with_help_text("");
         let typed_lhs = check!(
-            TypedExpression::type_check(ctx.by_ref(), lhs.clone()),
-            error_recovery_expr(lhs.span()),
+            TypedExpression::type_check(ctx.by_ref(), type_engine, lhs.clone()),
+            error_recovery_expr(type_engine, lhs.span()),
             warnings,
             errors
         );
 
         let typed_rhs = check!(
-            TypedExpression::type_check(ctx.by_ref(), rhs.clone()),
-            error_recovery_expr(rhs.span()),
+            TypedExpression::type_check(ctx.by_ref(), type_engine, rhs.clone()),
+            error_recovery_expr(type_engine, rhs.span()),
             warnings,
             errors
         );
@@ -691,16 +751,17 @@ impl TypedExpression {
 
     fn type_check_code_block(
         mut ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         contents: CodeBlock,
         span: Span,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let (typed_block, block_return_type) = check!(
-            TypedCodeBlock::type_check(ctx.by_ref(), contents),
+            TypedCodeBlock::type_check(ctx.by_ref(), type_engine, contents),
             (
                 TypedCodeBlock { contents: vec![] },
-                crate::type_system::insert_type(TypeInfo::Tuple(Vec::new()))
+                type_engine.insert_type(TypeInfo::Tuple(Vec::new()))
             ),
             warnings,
             errors
@@ -724,6 +785,7 @@ impl TypedExpression {
     #[allow(clippy::type_complexity)]
     fn type_check_if_expression(
         mut ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         condition: Expression,
         then: Expression,
         r#else: Option<Expression>,
@@ -735,10 +797,10 @@ impl TypedExpression {
             let ctx = ctx
                 .by_ref()
                 .with_help_text("The condition of an if expression must be a boolean expression.")
-                .with_type_annotation(insert_type(TypeInfo::Boolean));
+                .with_type_annotation(type_engine.insert_type(TypeInfo::Boolean));
             check!(
-                TypedExpression::type_check(ctx, condition.clone()),
-                error_recovery_expr(condition.span()),
+                TypedExpression::type_check(ctx, type_engine, condition.clone()),
+                error_recovery_expr(type_engine, condition.span()),
                 warnings,
                 errors
             )
@@ -747,10 +809,10 @@ impl TypedExpression {
             let ctx = ctx
                 .by_ref()
                 .with_help_text("")
-                .with_type_annotation(insert_type(TypeInfo::Unknown));
+                .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
             check!(
-                TypedExpression::type_check(ctx, then.clone()),
-                error_recovery_expr(then.span()),
+                TypedExpression::type_check(ctx, type_engine, then.clone()),
+                error_recovery_expr(type_engine, then.span()),
                 warnings,
                 errors
             )
@@ -759,16 +821,17 @@ impl TypedExpression {
             let ctx = ctx
                 .by_ref()
                 .with_help_text("")
-                .with_type_annotation(insert_type(TypeInfo::Unknown));
+                .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
             check!(
-                TypedExpression::type_check(ctx, expr.clone()),
-                error_recovery_expr(expr.span()),
+                TypedExpression::type_check(ctx, type_engine, expr.clone()),
+                error_recovery_expr(type_engine, expr.span()),
                 warnings,
                 errors
             )
         });
         let exp = check!(
             instantiate_if_expression(
+                type_engine,
                 condition,
                 then,
                 r#else,
@@ -785,6 +848,7 @@ impl TypedExpression {
 
     fn type_check_match_expression(
         mut ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         value: Expression,
         branches: Vec<MatchBranch>,
         span: Span,
@@ -797,10 +861,10 @@ impl TypedExpression {
             let ctx = ctx
                 .by_ref()
                 .with_help_text("")
-                .with_type_annotation(insert_type(TypeInfo::Unknown));
+                .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
             check!(
-                TypedExpression::type_check(ctx, value.clone()),
-                error_recovery_expr(value.span()),
+                TypedExpression::type_check(ctx, type_engine, value.clone()),
+                error_recovery_expr(type_engine, value.span()),
                 warnings,
                 errors
             )
@@ -823,7 +887,13 @@ impl TypedExpression {
         let typed_match_expression = {
             let ctx = ctx.by_ref().with_help_text("");
             check!(
-                TypedMatchExpression::type_check(ctx, typed_value, branches, span.clone()),
+                TypedMatchExpression::type_check(
+                    ctx,
+                    type_engine,
+                    typed_value,
+                    branches,
+                    span.clone()
+                ),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -855,7 +925,7 @@ impl TypedExpression {
 
         // desugar the typed match expression to a typed if expression
         let typed_if_exp = check!(
-            typed_match_expression.convert_to_typed_if_expression(ctx),
+            typed_match_expression.convert_to_typed_if_expression(ctx, type_engine),
             return err(warnings, errors),
             warnings,
             errors
@@ -867,6 +937,7 @@ impl TypedExpression {
     #[allow(clippy::too_many_arguments)]
     fn type_check_asm_expression(
         mut ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         asm: AsmExpression,
         span: Span,
     ) -> CompileResult<TypedExpression> {
@@ -879,12 +950,13 @@ impl TypedExpression {
             .unwrap_or_else(|| asm.whole_block_span.clone());
         let return_type = check!(
             ctx.resolve_type_with_self(
-                insert_type(asm.return_type.clone()),
+                type_engine,
+                type_engine.insert_type(asm.return_type.clone()),
                 &asm_span,
                 EnforceTypeArguments::No,
                 None
             ),
-            insert_type(TypeInfo::ErrorRecovery),
+            type_engine.insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -899,10 +971,10 @@ impl TypedExpression {
                         let ctx = ctx
                             .by_ref()
                             .with_help_text("")
-                            .with_type_annotation(insert_type(TypeInfo::Unknown));
+                            .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
                         check!(
-                            TypedExpression::type_check(ctx, initializer.clone()),
-                            error_recovery_expr(initializer.span()),
+                            TypedExpression::type_check(ctx, type_engine, initializer.clone()),
+                            error_recovery_expr(type_engine, initializer.span()),
                             warnings,
                             errors
                         )
@@ -928,9 +1000,9 @@ impl TypedExpression {
         ok(exp, warnings, errors)
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn type_check_struct_expression(
         mut ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         call_path_binding: TypeBinding<CallPath<(TypeInfo, Span)>>,
         fields: Vec<StructExpressionField>,
         span: Span,
@@ -940,8 +1012,8 @@ impl TypedExpression {
 
         // type check the call path
         let type_id = check!(
-            call_path_binding.type_check_with_type_info(&mut ctx),
-            insert_type(TypeInfo::ErrorRecovery),
+            call_path_binding.type_check_with_type_info(&mut ctx, type_engine),
+            type_engine.insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors
         );
@@ -972,7 +1044,7 @@ impl TypedExpression {
                             name: def_field.name.clone(),
                             value: TypedExpression {
                                 expression: TypedExpressionVariant::Tuple { fields: vec![] },
-                                return_type: insert_type(TypeInfo::ErrorRecovery),
+                                return_type: type_engine.insert_type(TypeInfo::ErrorRecovery),
                                 is_constant: IsConstant::No,
                                 span: span.clone(),
                             },
@@ -988,7 +1060,7 @@ impl TypedExpression {
                 )
                 .with_type_annotation(def_field.type_id);
             let typed_field = check!(
-                TypedExpression::type_check(ctx, expr_field.value),
+                TypedExpression::type_check(ctx, type_engine, expr_field.value),
                 continue,
                 warnings,
                 errors
@@ -1027,6 +1099,7 @@ impl TypedExpression {
     #[allow(clippy::too_many_arguments)]
     fn type_check_subfield_expression(
         ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         prefix: Expression,
         span: Span,
         field_to_access: Ident,
@@ -1035,9 +1108,9 @@ impl TypedExpression {
         let mut errors = vec![];
         let ctx = ctx
             .with_help_text("")
-            .with_type_annotation(insert_type(TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
         let parent = check!(
-            TypedExpression::type_check(ctx, prefix),
+            TypedExpression::type_check(ctx, type_engine, prefix),
             return err(warnings, errors),
             warnings,
             errors
@@ -1053,6 +1126,7 @@ impl TypedExpression {
 
     fn type_check_tuple(
         mut ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         fields: Vec<Expression>,
         span: Span,
     ) -> CompileResult<Self> {
@@ -1071,15 +1145,18 @@ impl TypedExpression {
             let field_type = field_type_opt
                 .as_ref()
                 .map(|field_type_ids| field_type_ids[i].clone())
-                .unwrap_or_default();
+                .unwrap_or(TypeArgument {
+                    span: Span::dummy(),
+                    type_id: type_engine.insert_type(TypeInfo::Unknown),
+                });
             let field_span = field.span();
             let ctx = ctx
                 .by_ref()
                 .with_help_text("tuple field type does not match the expected type")
                 .with_type_annotation(field_type.type_id);
             let typed_field = check!(
-                TypedExpression::type_check(ctx, field),
-                error_recovery_expr(field_span),
+                TypedExpression::type_check(ctx, type_engine, field),
+                error_recovery_expr(type_engine, field_span),
                 warnings,
                 errors
             );
@@ -1096,7 +1173,7 @@ impl TypedExpression {
             expression: TypedExpressionVariant::Tuple {
                 fields: typed_fields,
             },
-            return_type: crate::type_system::insert_type(TypeInfo::Tuple(typed_field_types)),
+            return_type: type_engine.insert_type(TypeInfo::Tuple(typed_field_types)),
             is_constant,
             span,
         };
@@ -1146,6 +1223,7 @@ impl TypedExpression {
 
     fn type_check_tuple_index(
         ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         prefix: Expression,
         index: usize,
         index_span: Span,
@@ -1155,9 +1233,9 @@ impl TypedExpression {
         let mut errors = vec![];
         let ctx = ctx
             .with_help_text("")
-            .with_type_annotation(insert_type(TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
         let parent = check!(
-            TypedExpression::type_check(ctx, prefix),
+            TypedExpression::type_check(ctx, type_engine, prefix),
             return err(warnings, errors),
             warnings,
             errors
@@ -1173,6 +1251,7 @@ impl TypedExpression {
 
     fn type_check_delineated_path(
         ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         call_path_binding: TypeBinding<CallPath>,
         span: Span,
         args: Vec<Expression>,
@@ -1236,7 +1315,7 @@ impl TypedExpression {
                 warnings.append(&mut enum_probe_warnings);
                 errors.append(&mut enum_probe_errors);
                 check!(
-                    instantiate_enum(ctx, enum_decl, enum_name, variant_name, args),
+                    instantiate_enum(ctx, type_engine, enum_decl, enum_name, variant_name, args),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1246,7 +1325,13 @@ impl TypedExpression {
                 warnings.append(&mut function_probe_warnings);
                 errors.append(&mut function_probe_errors);
                 check!(
-                    instantiate_function_application(ctx, func_decl, call_path_binding.inner, args,),
+                    instantiate_function_application(
+                        ctx,
+                        type_engine,
+                        func_decl,
+                        call_path_binding.inner,
+                        args,
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1286,9 +1371,9 @@ impl TypedExpression {
         ok(exp, warnings, errors)
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn type_check_abi_cast(
         mut ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         abi_name: CallPath,
         address: Expression,
         span: Span,
@@ -1302,10 +1387,10 @@ impl TypedExpression {
             let ctx = ctx
                 .by_ref()
                 .with_help_text("An address that is being ABI cast must be of type b256")
-                .with_type_annotation(insert_type(TypeInfo::B256));
+                .with_type_annotation(type_engine.insert_type(TypeInfo::B256));
             check!(
-                TypedExpression::type_check(ctx, address),
-                error_recovery_expr(err_span),
+                TypedExpression::type_check(ctx, type_engine, address),
+                error_recovery_expr(type_engine, err_span),
                 warnings,
                 errors
             )
@@ -1354,7 +1439,7 @@ impl TypedExpression {
                     AbiName::Deferred => {
                         return ok(
                             TypedExpression {
-                                return_type: insert_type(TypeInfo::ContractCaller {
+                                return_type: type_engine.insert_type(TypeInfo::ContractCaller {
                                     abi_name: AbiName::Deferred,
                                     address: None,
                                 }),
@@ -1377,7 +1462,7 @@ impl TypedExpression {
             }
         };
 
-        let return_type = insert_type(TypeInfo::ContractCaller {
+        let return_type = type_engine.insert_type(TypeInfo::ContractCaller {
             abi_name: AbiName::Known(abi_name.clone()),
             address: Some(Box::new(address_expr.clone())),
         });
@@ -1394,10 +1479,10 @@ impl TypedExpression {
             let ctx = ctx
                 .by_ref()
                 .with_help_text("")
-                .with_type_annotation(insert_type(TypeInfo::Unknown))
+                .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown))
                 .with_mode(Mode::ImplAbiFn);
             type_checked_fn_buf.push(check!(
-                TypedFunctionDeclaration::type_check(ctx, method.clone()),
+                TypedFunctionDeclaration::type_check(ctx, type_engine, method.clone()),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -1422,6 +1507,7 @@ impl TypedExpression {
 
     fn type_check_array(
         mut ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         contents: Vec<Expression>,
         span: Span,
     ) -> CompileResult<Self> {
@@ -1431,7 +1517,10 @@ impl TypedExpression {
                     expression: TypedExpressionVariant::Array {
                         contents: Vec::new(),
                     },
-                    return_type: insert_type(TypeInfo::Array(insert_type(TypeInfo::Unknown), 0)),
+                    return_type: type_engine.insert_type(TypeInfo::Array(
+                        type_engine.insert_type(TypeInfo::Unknown),
+                        0,
+                    )),
                     is_constant: IsConstant::Yes,
                     span,
                 },
@@ -1449,10 +1538,10 @@ impl TypedExpression {
                 let ctx = ctx
                     .by_ref()
                     .with_help_text("")
-                    .with_type_annotation(insert_type(TypeInfo::Unknown));
+                    .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
                 check!(
-                    Self::type_check(ctx, expr),
-                    error_recovery_expr(span),
+                    Self::type_check(ctx, type_engine, expr),
+                    error_recovery_expr(type_engine, span),
                     warnings,
                     errors
                 )
@@ -1482,7 +1571,7 @@ impl TypedExpression {
                 expression: TypedExpressionVariant::Array {
                     contents: typed_contents,
                 },
-                return_type: insert_type(TypeInfo::Array(elem_type, array_count)),
+                return_type: type_engine.insert_type(TypeInfo::Array(elem_type, array_count)),
                 is_constant: IsConstant::No, // Maybe?
                 span,
             },
@@ -1493,6 +1582,7 @@ impl TypedExpression {
 
     fn type_check_array_index(
         mut ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         prefix: Expression,
         index: Expression,
         span: Span,
@@ -1504,9 +1594,9 @@ impl TypedExpression {
             let ctx = ctx
                 .by_ref()
                 .with_help_text("")
-                .with_type_annotation(insert_type(TypeInfo::Unknown));
+                .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
             check!(
-                TypedExpression::type_check(ctx, prefix.clone()),
+                TypedExpression::type_check(ctx, type_engine, prefix.clone()),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -1518,9 +1608,9 @@ impl TypedExpression {
             let type_info_u64 = TypeInfo::UnsignedInteger(IntegerBits::SixtyFour);
             let ctx = ctx
                 .with_help_text("")
-                .with_type_annotation(insert_type(type_info_u64));
+                .with_type_annotation(type_engine.insert_type(type_info_u64));
             let index_te = check!(
-                TypedExpression::type_check(ctx, index),
+                TypedExpression::type_check(ctx, type_engine, index),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -1555,12 +1645,20 @@ impl TypedExpression {
                 type_arguments: vec![],
                 span: span.clone(),
             };
-            type_check_method_application(ctx, method_name, vec![], vec![prefix, index], span)
+            type_check_method_application(
+                ctx,
+                type_engine,
+                method_name,
+                vec![],
+                vec![prefix, index],
+                span,
+            )
         }
     }
 
     fn type_check_intrinsic_function(
         ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         kind_binding: TypeBinding<Intrinsic>,
         arguments: Vec<Expression>,
         span: Span,
@@ -1568,7 +1666,13 @@ impl TypedExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
         let (intrinsic_function, return_type) = check!(
-            TypedIntrinsicFunctionKind::type_check(ctx, kind_binding, arguments, span.clone()),
+            TypedIntrinsicFunctionKind::type_check(
+                ctx,
+                type_engine,
+                kind_binding,
+                arguments,
+                span.clone()
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -1583,6 +1687,7 @@ impl TypedExpression {
     }
 
     fn resolve_numeric_literal(
+        type_engine: &TypeEngine,
         lit: Literal,
         span: Span,
         new_type: TypeId,
@@ -1642,7 +1747,7 @@ impl TypedExpression {
                             span.clone(),
                         )
                     }),
-                    insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+                    type_engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
                 ),
                 _ => unreachable!("Unexpected type for integer literals"),
             },
@@ -1661,7 +1766,7 @@ impl TypedExpression {
             }
             Err(e) => {
                 errors.push(e);
-                let exp = error_recovery_expr(span);
+                let exp = error_recovery_expr(type_engine, span);
                 ok(exp, vec![], errors)
             }
         }
@@ -1672,16 +1777,26 @@ impl TypedExpression {
 mod tests {
     use super::*;
 
-    fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<TypedExpression> {
+    fn do_type_check(
+        type_engine: &TypeEngine,
+        expr: Expression,
+        type_annotation: TypeId,
+    ) -> CompileResult<TypedExpression> {
         let mut namespace = Namespace::init_root(namespace::Module::default());
-        let ctx = TypeCheckContext::from_root(&mut namespace).with_type_annotation(type_annotation);
-        TypedExpression::type_check(ctx, expr)
+        let ctx = TypeCheckContext::from_root(&mut namespace, type_engine)
+            .with_type_annotation(type_annotation);
+        TypedExpression::type_check(ctx, type_engine, expr)
     }
 
     fn do_type_check_for_boolx2(expr: Expression) -> CompileResult<TypedExpression> {
+        let type_engine = TypeEngine::default();
         do_type_check(
+            &type_engine,
             expr,
-            insert_type(TypeInfo::Array(insert_type(TypeInfo::Boolean), 2)),
+            type_engine.insert_type(TypeInfo::Array(
+                type_engine.insert_type(TypeInfo::Boolean),
+                2,
+            )),
         )
     }
 
@@ -1786,10 +1901,15 @@ mod tests {
             kind: ExpressionKind::Array(Vec::new()),
             span: Span::dummy(),
         };
+        let type_engine = TypeEngine::default();
 
         let comp_res = do_type_check(
+            &type_engine,
             expr,
-            insert_type(TypeInfo::Array(insert_type(TypeInfo::Boolean), 0)),
+            type_engine.insert_type(TypeInfo::Array(
+                type_engine.insert_type(TypeInfo::Boolean),
+                0,
+            )),
         );
         assert!(comp_res.warnings.is_empty() && comp_res.errors.is_empty());
     }

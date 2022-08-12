@@ -3,7 +3,7 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     error::{err, ok},
     semantic_analysis::{TypeCheckContext, TypedEnumVariant},
-    type_system::{insert_type, CreateTypeId, EnforceTypeArguments, TypeArgument, TypeId},
+    type_system::{CreateTypeId, EnforceTypeArguments, TypeArgument, TypeEngine, TypeId},
     CompileError, CompileResult, Literal, Scrutinee, StructScrutineeField, TypeInfo,
 };
 
@@ -38,6 +38,7 @@ pub(crate) struct TypedStructScrutineeField {
 impl TypedScrutinee {
     pub(crate) fn type_check(
         mut ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         scrutinee: Scrutinee,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
@@ -45,17 +46,17 @@ impl TypedScrutinee {
         let typed_scrutinee = match scrutinee {
             Scrutinee::CatchAll { span } => TypedScrutinee {
                 variant: TypedScrutineeVariant::CatchAll,
-                type_id: insert_type(TypeInfo::Unknown),
+                type_id: type_engine.insert_type(TypeInfo::Unknown),
                 span,
             },
             Scrutinee::Literal { value, span } => TypedScrutinee {
                 variant: TypedScrutineeVariant::Literal(value.clone()),
-                type_id: insert_type(value.to_typeinfo()),
+                type_id: type_engine.insert_type(value.to_typeinfo()),
                 span,
             },
             Scrutinee::Variable { name, span } => TypedScrutinee {
                 variant: TypedScrutineeVariant::Variable(name),
-                type_id: insert_type(TypeInfo::Unknown),
+                type_id: type_engine.insert_type(TypeInfo::Unknown),
                 span,
             },
             Scrutinee::StructScrutinee {
@@ -110,7 +111,11 @@ impl TypedScrutinee {
                             let typed_scrutinee = match scrutinee {
                                 None => None,
                                 Some(scrutinee) => Some(check!(
-                                    TypedScrutinee::type_check(ctx.by_ref(), scrutinee),
+                                    TypedScrutinee::type_check(
+                                        ctx.by_ref(),
+                                        type_engine,
+                                        scrutinee
+                                    ),
                                     return err(warnings, errors),
                                     warnings,
                                     errors
@@ -142,7 +147,7 @@ impl TypedScrutinee {
                 }
                 TypedScrutinee {
                     variant: TypedScrutineeVariant::StructScrutinee(typed_fields),
-                    type_id: struct_decl.create_type_id(),
+                    type_id: struct_decl.create_type_id(type_engine),
                     span,
                 }
             }
@@ -187,7 +192,7 @@ impl TypedScrutinee {
                     warnings,
                     errors
                 );
-                let enum_type_id = enum_decl.create_type_id();
+                let enum_type_id = enum_decl.create_type_id(type_engine);
                 // check to see if the variant exists and grab it if it does
                 let variant = check!(
                     enum_decl.expect_variant_from_name(&variant_name).cloned(),
@@ -197,7 +202,7 @@ impl TypedScrutinee {
                 );
                 // type check the nested scrutinee
                 let typed_value = check!(
-                    TypedScrutinee::type_check(ctx, *value),
+                    TypedScrutinee::type_check(ctx, type_engine, *value),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -215,7 +220,7 @@ impl TypedScrutinee {
                 let mut typed_elems = vec![];
                 for elem in elems.into_iter() {
                     typed_elems.push(check!(
-                        TypedScrutinee::type_check(ctx.by_ref(), elem),
+                        TypedScrutinee::type_check(ctx.by_ref(), type_engine, elem),
                         continue,
                         warnings,
                         errors
@@ -223,7 +228,7 @@ impl TypedScrutinee {
                 }
                 TypedScrutinee {
                     variant: TypedScrutineeVariant::Tuple(typed_elems.clone()),
-                    type_id: insert_type(TypeInfo::Tuple(
+                    type_id: type_engine.insert_type(TypeInfo::Tuple(
                         typed_elems
                             .into_iter()
                             .map(|x| TypeArgument {

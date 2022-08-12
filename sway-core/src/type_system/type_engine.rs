@@ -71,8 +71,8 @@ impl TypeEngine {
                     });
                     return err(warnings, errors);
                 }
-                let type_mapping = insert_type_parameters(value.type_parameters());
-                value.copy_types(&type_mapping);
+                let type_mapping = insert_type_parameters(self, value.type_parameters());
+                value.copy_types(self, &type_mapping);
                 ok((), warnings, errors)
             }
             (true, false) => {
@@ -104,18 +104,19 @@ impl TypeEngine {
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = check!(
                         namespace.resolve_type(
+                            self,
                             type_argument.type_id,
                             &type_argument.span,
                             enforce_type_arguments,
                             None,
                             mod_path
                         ),
-                        insert_type(TypeInfo::ErrorRecovery),
+                        self.insert_type(TypeInfo::ErrorRecovery),
                         warnings,
                         errors
                     );
                 }
-                let type_mapping = insert_type_parameters(value.type_parameters());
+                let type_mapping = insert_type_parameters(self, value.type_parameters());
                 for ((_, interim_type), type_argument) in
                     type_mapping.iter().zip(type_arguments.iter())
                 {
@@ -128,7 +129,7 @@ impl TypeEngine {
                     warnings.append(&mut new_warnings);
                     errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
                 }
-                value.copy_types(&type_mapping);
+                value.copy_types(self, &type_mapping);
                 ok((), warnings, errors)
             }
         }
@@ -477,9 +478,9 @@ impl TypeEngine {
     }
 }
 
-pub fn insert_type(ty: TypeInfo) -> TypeId {
-    TYPE_ENGINE.insert_type(ty)
-}
+// pub fn insert_type(ty: TypeInfo) -> TypeId {
+//     TYPE_ENGINE.insert_type(ty)
+// }
 
 pub fn look_up_type_id(id: TypeId) -> TypeInfo {
     TYPE_ENGINE.look_up_type_id(id)

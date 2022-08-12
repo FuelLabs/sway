@@ -24,19 +24,19 @@ impl PartialEq for TypedStructDeclaration {
 }
 
 impl CopyTypes for TypedStructDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types(&mut self, type_engine: &TypeEngine, type_mapping: &TypeMapping) {
         self.fields
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_engine, type_mapping));
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_engine, type_mapping));
     }
 }
 
 impl CreateTypeId for TypedStructDeclaration {
-    fn create_type_id(&self) -> TypeId {
-        insert_type(TypeInfo::Struct {
+    fn create_type_id(&self, type_engine: &TypeEngine) -> TypeId {
+        type_engine.insert_type(TypeInfo::Struct {
             name: self.name.clone(),
             fields: self.fields.clone(),
             type_parameters: self.type_parameters.clone(),
@@ -63,6 +63,7 @@ impl MonomorphizeHelper for TypedStructDeclaration {
 impl TypedStructDeclaration {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         decl: StructDeclaration,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
@@ -85,7 +86,7 @@ impl TypedStructDeclaration {
         let mut new_type_parameters = vec![];
         for type_parameter in type_parameters.into_iter() {
             new_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
+                TypeParameter::type_check(ctx.by_ref(), type_engine, type_parameter),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -96,7 +97,7 @@ impl TypedStructDeclaration {
         let mut new_fields = vec![];
         for field in fields.into_iter() {
             new_fields.push(check!(
-                TypedStructField::type_check(ctx.by_ref(), field),
+                TypedStructField::type_check(ctx.by_ref(), type_engine, field),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -169,8 +170,9 @@ impl PartialEq for TypedStructField {
 }
 
 impl CopyTypes for TypedStructField {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.type_id.update_type(type_mapping, &self.span);
+    fn copy_types(&mut self, type_engine: &TypeEngine, type_mapping: &TypeMapping) {
+        self.type_id
+            .update_type(type_engine, type_mapping, &self.span);
     }
 }
 
@@ -197,17 +199,22 @@ impl ReplaceSelfType for TypedStructField {
 }
 
 impl TypedStructField {
-    pub(crate) fn type_check(mut ctx: TypeCheckContext, field: StructField) -> CompileResult<Self> {
+    pub(crate) fn type_check(
+        mut ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
+        field: StructField,
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let r#type = check!(
             ctx.resolve_type_with_self(
-                insert_type(field.type_info),
+                type_engine,
+                type_engine.insert_type(field.type_info),
                 &field.type_span,
                 EnforceTypeArguments::Yes,
                 None
             ),
-            insert_type(TypeInfo::ErrorRecovery),
+            type_engine.insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );

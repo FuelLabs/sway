@@ -1945,7 +1945,7 @@ pub fn check(
             Some(program) => program,
         };
 
-        let ast_result = sway_core::parsed_to_ast(parse_program, dep_namespace);
+        let ast_result = sway_core::parsed_to_ast(parse_program, dep_namespace, &type_engine);
 
         let typed_program = match &ast_result {
             CompileAstResult::Failure { .. } => bail!("unable to type check"),

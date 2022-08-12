@@ -8,7 +8,7 @@ use crate::{
         },
         IsConstant, TypeCheckContext, TypedExpression, TypedExpressionVariant,
     },
-    type_system::{insert_type, TypeId},
+    type_system::{TypeEngine, TypeId},
     CompileError, CompileResult, LazyOp, Literal, MatchBranch, TypeInfo,
 };
 
@@ -25,6 +25,7 @@ pub(crate) struct TypedMatchExpression {
 impl TypedMatchExpression {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         typed_value: TypedExpression,
         branches: Vec<MatchBranch>,
         span: Span,
@@ -38,7 +39,7 @@ impl TypedMatchExpression {
             ctx.with_help_text("all branches of a match statement must return the same type");
         for branch in branches.into_iter() {
             let typed_branch = check!(
-                TypedMatchBranch::type_check(ctx.by_ref(), &typed_value, branch),
+                TypedMatchBranch::type_check(ctx.by_ref(), type_engine, &typed_value, branch),
                 continue,
                 warnings,
                 errors
@@ -61,6 +62,7 @@ impl TypedMatchExpression {
     pub(crate) fn convert_to_typed_if_expression(
         self,
         mut ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -81,7 +83,7 @@ impl TypedMatchExpression {
                 let joined_span = Span::join(left_req.span.clone(), right_req.span.clone());
                 let args = vec![left_req, right_req];
                 let new_condition = check!(
-                    TypedExpression::core_ops_eq(ctx.by_ref(), args, joined_span),
+                    TypedExpression::core_ops_eq(ctx.by_ref(), type_engine, args, joined_span),
                     continue,
                     warnings,
                     errors
@@ -94,7 +96,7 @@ impl TypedMatchExpression {
                             LazyOp::And,
                             new_condition,
                             inner_condition,
-                            insert_type(TypeInfo::Boolean),
+                            type_engine.insert_type(TypeInfo::Boolean),
                             joined_span,
                         )
                     }
@@ -110,6 +112,7 @@ impl TypedMatchExpression {
                 (None, Some(conditional)) => {
                     check!(
                         instantiate_if_expression(
+                            type_engine,
                             conditional,
                             result.clone(),
                             Some(result), // TODO: this is a really bad hack and we should not do this
@@ -125,12 +128,13 @@ impl TypedMatchExpression {
                 (Some(prev_if_exp), None) => {
                     let conditional = TypedExpression {
                         expression: TypedExpressionVariant::Literal(Literal::Boolean(true)),
-                        return_type: insert_type(TypeInfo::Boolean),
+                        return_type: type_engine.insert_type(TypeInfo::Boolean),
                         is_constant: IsConstant::No,
                         span: result_span.clone(),
                     };
                     check!(
                         instantiate_if_expression(
+                            type_engine,
                             conditional,
                             result,
                             Some(prev_if_exp),
@@ -146,6 +150,7 @@ impl TypedMatchExpression {
                 (Some(prev_if_exp), Some(conditional)) => {
                     check!(
                         instantiate_if_expression(
+                            type_engine,
                             conditional,
                             result,
                             Some(prev_if_exp),

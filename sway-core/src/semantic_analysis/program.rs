@@ -9,7 +9,7 @@ use crate::{
         namespace::{self, Namespace},
         TypeCheckContext, TypedModule,
     },
-    type_system::*,
+    type_system::{self, *},
     types::ToJsonAbi,
 };
 use fuel_tx::StorageSlot;
@@ -30,12 +30,13 @@ impl TypedProgram {
     pub fn type_check(
         parsed: &ParseProgram,
         initial_namespace: namespace::Module,
+        initial_type_engine: &type_system::TypeEngine,
     ) -> CompileResult<Self> {
         let mut namespace = Namespace::init_root(initial_namespace);
-        let ctx = TypeCheckContext::from_root(&mut namespace);
+        let ctx = TypeCheckContext::from_root(&mut namespace, initial_type_engine);
         let ParseProgram { root, kind } = parsed;
         let mod_span = root.tree.span.clone();
-        let mod_res = TypedModule::type_check(ctx, root);
+        let mod_res = TypedModule::type_check(ctx, initial_type_engine, root);
         mod_res.flat_map(|root| {
             let kind_res = Self::validate_root(&root, kind.clone(), mod_span);
             kind_res.map(|kind| Self {

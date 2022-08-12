@@ -7,7 +7,7 @@ use crate::{
         TypeCheckContext, TypedAstNode, TypedAstNodeContent, TypedCodeBlock, TypedExpression,
         TypedExpressionVariant, TypedVariableDeclaration, VariableMutability,
     },
-    type_system::insert_type,
+    type_system::TypeEngine,
     types::DeterministicallyAborts,
     CompileResult, MatchBranch, TypeInfo, TypedDeclaration,
 };
@@ -25,6 +25,7 @@ pub(crate) struct TypedMatchBranch {
 impl TypedMatchBranch {
     pub(crate) fn type_check(
         mut ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         typed_value: &TypedExpression,
         branch: MatchBranch,
     ) -> CompileResult<Self> {
@@ -39,7 +40,7 @@ impl TypedMatchBranch {
 
         // type check the scrutinee
         let typed_scrutinee = check!(
-            TypedScrutinee::type_check(ctx.by_ref(), scrutinee),
+            TypedScrutinee::type_check(ctx.by_ref(), type_engine, scrutinee),
             return err(warnings, errors),
             warnings,
             errors
@@ -47,7 +48,7 @@ impl TypedMatchBranch {
 
         // calculate the requirements map and the declarations map
         let (match_req_map, match_decl_map) = check!(
-            matcher(typed_value, typed_scrutinee, ctx.namespace),
+            matcher(type_engine, typed_value, typed_scrutinee, ctx.namespace),
             return err(warnings, errors),
             warnings,
             errors
@@ -80,9 +81,9 @@ impl TypedMatchBranch {
         let typed_result = {
             let ctx = ctx
                 .by_ref()
-                .with_type_annotation(insert_type(TypeInfo::Unknown));
+                .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
             check!(
-                TypedExpression::type_check(ctx, result),
+                TypedExpression::type_check(ctx, type_engine, result),
                 return err(warnings, errors),
                 warnings,
                 errors

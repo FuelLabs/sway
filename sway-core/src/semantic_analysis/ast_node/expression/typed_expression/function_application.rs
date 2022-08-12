@@ -8,6 +8,7 @@ use sway_types::{state::StateIndex, Spanned};
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
+    type_engine: &TypeEngine,
     function_decl: TypedFunctionDeclaration,
     call_path: CallPath,
     arguments: Vec<Expression>,
@@ -47,8 +48,8 @@ pub(crate) fn instantiate_function_application(
                 )
                 .with_type_annotation(param.type_id);
             let exp = check!(
-                TypedExpression::type_check(ctx, arg.clone()),
-                error_recovery_expr(arg.span()),
+                TypedExpression::type_check(ctx, type_engine, arg.clone()),
+                error_recovery_expr(type_engine, arg.span()),
                 warnings,
                 errors
             );

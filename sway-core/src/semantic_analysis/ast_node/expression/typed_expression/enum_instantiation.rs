@@ -7,6 +7,7 @@ use sway_types::{Ident, Spanned};
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_enum(
     ctx: TypeCheckContext,
+    type_engine: &TypeEngine,
     enum_decl: TypedEnumDeclaration,
     enum_name: Ident,
     enum_variant_name: Ident,
@@ -30,7 +31,7 @@ pub(crate) fn instantiate_enum(
     match (&args[..], look_up_type_id(enum_variant.type_id)) {
         ([], ty) if ty.is_unit() => ok(
             TypedExpression {
-                return_type: enum_decl.create_type_id(),
+                return_type: enum_decl.create_type_id(type_engine),
                 expression: TypedExpressionVariant::EnumInstantiation {
                     tag: enum_variant.tag,
                     contents: None,
@@ -50,7 +51,7 @@ pub(crate) fn instantiate_enum(
                 .with_help_text("Enum instantiator must match its declared variant type.")
                 .with_type_annotation(enum_variant.type_id);
             let typed_expr = check!(
-                TypedExpression::type_check(ctx, single_expr.clone()),
+                TypedExpression::type_check(ctx, type_engine, single_expr.clone()),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -61,7 +62,7 @@ pub(crate) fn instantiate_enum(
 
             ok(
                 TypedExpression {
-                    return_type: enum_decl.create_type_id(),
+                    return_type: enum_decl.create_type_id(type_engine),
                     expression: TypedExpressionVariant::EnumInstantiation {
                         tag: enum_variant.tag,
                         contents: Some(Box::new(typed_expr)),

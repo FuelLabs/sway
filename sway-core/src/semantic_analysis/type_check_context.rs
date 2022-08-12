@@ -3,8 +3,8 @@ use crate::{
     parse_tree::declaration::Purity,
     semantic_analysis::{ast_node::Mode, Namespace},
     type_system::{
-        insert_type, monomorphize, unify_with_self, CopyTypes, EnforceTypeArguments,
-        MonomorphizeHelper, TypeArgument, TypeId, TypeInfo,
+        monomorphize, unify_with_self, CopyTypes, EnforceTypeArguments, MonomorphizeHelper,
+        TypeArgument, TypeEngine, TypeId, TypeInfo,
     },
     CompileResult, CompileWarning, TypeError,
 };
@@ -57,17 +57,17 @@ impl<'ns> TypeCheckContext<'ns> {
     /// - mode: NoneAbi
     /// - help_text: ""
     /// - purity: Pure
-    pub fn from_root(root_namespace: &'ns mut Namespace) -> Self {
-        Self::from_module_namespace(root_namespace)
+    pub fn from_root(root_namespace: &'ns mut Namespace, type_engine: &TypeEngine) -> Self {
+        Self::from_module_namespace(root_namespace, type_engine)
     }
 
-    fn from_module_namespace(namespace: &'ns mut Namespace) -> Self {
+    fn from_module_namespace(namespace: &'ns mut Namespace, type_engine: &TypeEngine) -> Self {
         Self {
             namespace,
-            type_annotation: insert_type(TypeInfo::Unknown),
+            type_annotation: type_engine.insert_type(TypeInfo::Unknown),
             help_text: "",
             // TODO: Contract? Should this be passed in based on program kind (aka TreeType)?
-            self_type: insert_type(TypeInfo::Contract),
+            self_type: type_engine.insert_type(TypeInfo::Contract),
             mode: Mode::NonAbi,
             purity: Purity::default(),
         }
@@ -108,7 +108,12 @@ impl<'ns> TypeCheckContext<'ns> {
     /// type-checking its content.
     ///
     /// Returns the result of the given `with_submod_ctx` function.
-    pub fn enter_submodule<F, T>(self, dep_name: Ident, with_submod_ctx: F) -> T
+    pub fn enter_submodule<F, T>(
+        self,
+        type_engine: &TypeEngine,
+        dep_name: Ident,
+        with_submod_ctx: F,
+    ) -> T
     where
         F: FnOnce(TypeCheckContext) -> T,
     {
@@ -117,7 +122,7 @@ impl<'ns> TypeCheckContext<'ns> {
         // engine here once they're added.
         let Self { namespace, .. } = self;
         let mut submod_ns = namespace.enter_submodule(dep_name);
-        let submod_ctx = TypeCheckContext::from_module_namespace(&mut submod_ns);
+        let submod_ctx = TypeCheckContext::from_module_namespace(&mut submod_ns, type_engine);
         with_submod_ctx(submod_ctx)
     }
 
@@ -199,12 +204,14 @@ impl<'ns> TypeCheckContext<'ns> {
     /// the `TypeCheckContext`.
     pub(crate) fn resolve_type_with_self(
         &mut self,
+        type_engine: &TypeEngine,
         type_id: TypeId,
         span: &Span,
         enforce_type_args: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         self.namespace.resolve_type_with_self(
+            type_engine,
             type_id,
             self.self_type,
             span,
@@ -216,12 +223,13 @@ impl<'ns> TypeCheckContext<'ns> {
     /// Short-hand for calling [Namespace::resolve_type_without_self]
     pub(crate) fn resolve_type_without_self(
         &mut self,
+        type_engine: &TypeEngine,
         type_id: TypeId,
         span: &Span,
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         self.namespace
-            .resolve_type_without_self(type_id, span, type_info_prefix)
+            .resolve_type_without_self(type_engine, type_id, span, type_info_prefix)
     }
 
     /// Short-hand around `type_system::unify_with_self`, where the `TypeCheckContext` provides the

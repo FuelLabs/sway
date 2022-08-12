@@ -67,9 +67,9 @@ impl PartialEq for TypedVariableDeclaration {
 }
 
 impl CopyTypes for TypedVariableDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types(&mut self, type_engine: &TypeEngine, type_mapping: &TypeMapping) {
         self.type_ascription
-            .update_type(type_mapping, &self.body.span);
-        self.body.copy_types(type_mapping)
+            .update_type(type_engine, type_mapping, &self.body.span);
+        self.body.copy_types(type_engine, type_mapping)
     }
 }

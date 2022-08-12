@@ -100,6 +100,7 @@ impl Namespace {
     /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
     pub(crate) fn resolve_type_with_self(
         &mut self,
+        type_engine: &TypeEngine,
         type_id: TypeId,
         self_type: TypeId,
         span: &Span,
@@ -107,6 +108,7 @@ impl Namespace {
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         self.root.resolve_type_with_self(
+            type_engine,
             type_id,
             self_type,
             span,
@@ -119,11 +121,13 @@ impl Namespace {
     /// Short-hand for calling [Root::resolve_type_without_self] on `root` and with the `mod_path`.
     pub(crate) fn resolve_type_without_self(
         &mut self,
+        type_engine: &TypeEngine,
         type_id: TypeId,
         span: &Span,
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         self.root.resolve_type(
+            type_engine,
             type_id,
             span,
             EnforceTypeArguments::Yes,
@@ -135,6 +139,7 @@ impl Namespace {
     /// Short-hand for calling [Root::find_method_for_type] on `root` with the `mod_path`.
     pub(crate) fn find_method_for_type(
         &mut self,
+        type_engine: &TypeEngine,
         r#type: TypeId,
         method_prefix: &Path,
         method_name: &Ident,
@@ -142,6 +147,7 @@ impl Namespace {
         args_buf: &VecDeque<TypedExpression>,
     ) -> CompileResult<TypedFunctionDeclaration> {
         self.root.find_method_for_type(
+            type_engine,
             &self.mod_path,
             r#type,
             method_prefix,
@@ -157,18 +163,26 @@ impl Namespace {
     }
 
     /// Short-hand for performing a [Module::self_import] with `mod_path` as the destination.
-    pub(crate) fn self_import(&mut self, src: &Path, alias: Option<Ident>) -> CompileResult<()> {
-        self.root.self_import(src, &self.mod_path, alias)
+    pub(crate) fn self_import(
+        &mut self,
+        type_engine: &TypeEngine,
+        src: &Path,
+        alias: Option<Ident>,
+    ) -> CompileResult<()> {
+        self.root
+            .self_import(type_engine, src, &self.mod_path, alias)
     }
 
     /// Short-hand for performing a [Module::item_import] with `mod_path` as the destination.
     pub(crate) fn item_import(
         &mut self,
+        type_engine: &TypeEngine,
         src: &Path,
         item: &Ident,
         alias: Option<Ident>,
     ) -> CompileResult<()> {
-        self.root.item_import(src, item, &self.mod_path, alias)
+        self.root
+            .item_import(type_engine, src, item, &self.mod_path, alias)
     }
 
     /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].

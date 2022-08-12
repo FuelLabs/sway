@@ -5,6 +5,7 @@ use crate::{error::*, semantic_analysis::*, type_system::*, types::Deterministic
 use super::TypedExpression;
 
 pub(crate) fn instantiate_if_expression(
+    type_engine: &TypeEngine,
     condition: TypedExpression,
     then: TypedExpression,
     r#else: Option<TypedExpression>,
@@ -22,7 +23,7 @@ pub(crate) fn instantiate_if_expression(
         let ty_to_check = if r#else.is_some() {
             type_annotation
         } else {
-            insert_type(TypeInfo::Tuple(vec![]))
+            type_engine.insert_type(TypeInfo::Tuple(vec![]))
         };
         let (mut new_warnings, new_errors) = unify_with_self(
             then.return_type,
@@ -60,7 +61,7 @@ pub(crate) fn instantiate_if_expression(
     let r#else_ret_ty = r#else
         .as_ref()
         .map(|x| x.return_type)
-        .unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new())));
+        .unwrap_or_else(|| type_engine.insert_type(TypeInfo::Tuple(Vec::new())));
     // if there is a type annotation, then the else branch must exist
     if !else_deterministically_aborts && !then_deterministically_aborts {
         let (mut new_warnings, new_errors) = unify_with_self(

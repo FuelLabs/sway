@@ -8,7 +8,7 @@ pub struct TypedStructExpressionField {
 }
 
 impl CopyTypes for TypedStructExpressionField {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.value.copy_types(type_mapping);
+    fn copy_types(&mut self, type_engine: &TypeEngine, type_mapping: &TypeMapping) {
+        self.value.copy_types(type_engine, type_mapping);
     }
 }

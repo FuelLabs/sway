@@ -7,10 +7,10 @@ pub struct TypedCodeBlock {
 }
 
 impl CopyTypes for TypedCodeBlock {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types(&mut self, type_engine: &TypeEngine, type_mapping: &TypeMapping) {
         self.contents
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_engine, type_mapping));
     }
 }
 
@@ -23,6 +23,7 @@ impl DeterministicallyAborts for TypedCodeBlock {
 impl TypedCodeBlock {
     pub(crate) fn type_check(
         mut ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         code_block: CodeBlock,
     ) -> CompileResult<(Self, TypeId)> {
         let mut warnings = Vec::new();
@@ -35,7 +36,8 @@ impl TypedCodeBlock {
             .iter()
             .filter_map(|node| {
                 let ctx = ctx.by_ref().scoped(&mut code_block_namespace);
-                TypedAstNode::type_check(ctx, node.clone()).ok(&mut warnings, &mut errors)
+                TypedAstNode::type_check(ctx, type_engine, node.clone())
+                    .ok(&mut warnings, &mut errors)
             })
             .collect::<Vec<TypedAstNode>>();
 
@@ -73,7 +75,8 @@ impl TypedCodeBlock {
         let typed_code_block = TypedCodeBlock {
             contents: evaluated_contents,
         };
-        let type_id = return_type.unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new())));
+        let type_id =
+            return_type.unwrap_or_else(|| type_engine.insert_type(TypeInfo::Tuple(Vec::new())));
         ok((typed_code_block, type_id), warnings, errors)
     }
 }

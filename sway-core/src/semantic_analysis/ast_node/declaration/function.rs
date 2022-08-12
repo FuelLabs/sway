@@ -51,16 +51,16 @@ impl PartialEq for TypedFunctionDeclaration {
 }
 
 impl CopyTypes for TypedFunctionDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types(&mut self, type_engine: &TypeEngine, type_mapping: &TypeMapping) {
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_engine, type_mapping));
         self.parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_engine, type_mapping));
         self.return_type
-            .update_type(type_mapping, &self.return_type_span);
-        self.body.copy_types(type_mapping);
+            .update_type(type_engine, type_mapping, &self.return_type_span);
+        self.body.copy_types(type_engine, type_mapping);
     }
 }
 
@@ -114,7 +114,11 @@ impl ToJsonAbi for TypedFunctionDeclaration {
 }
 
 impl TypedFunctionDeclaration {
-    pub fn type_check(ctx: TypeCheckContext, fn_decl: FunctionDeclaration) -> CompileResult<Self> {
+    pub fn type_check(
+        ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
+        fn_decl: FunctionDeclaration,
+    ) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
@@ -142,7 +146,7 @@ impl TypedFunctionDeclaration {
         let mut new_type_parameters = vec![];
         for type_parameter in type_parameters.into_iter() {
             new_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
+                TypeParameter::type_check(ctx.by_ref(), type_engine, type_parameter),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -154,7 +158,7 @@ impl TypedFunctionDeclaration {
         let mut new_parameters = vec![];
         for parameter in parameters.into_iter() {
             new_parameters.push(check!(
-                TypedFunctionParameter::type_check(ctx.by_ref(), parameter),
+                TypedFunctionParameter::type_check(ctx.by_ref(), type_engine, parameter),
                 continue,
                 warnings,
                 errors
@@ -164,12 +168,13 @@ impl TypedFunctionDeclaration {
         // type check the return type
         let return_type = check!(
             ctx.resolve_type_with_self(
-                insert_type(return_type),
+                type_engine,
+                type_engine.insert_type(return_type),
                 &return_type_span,
                 EnforceTypeArguments::Yes,
                 None
             ),
-            insert_type(TypeInfo::ErrorRecovery),
+            type_engine.insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -184,10 +189,10 @@ impl TypedFunctionDeclaration {
                 .with_help_text("Function body's return type does not match up with its return type annotation.")
                 .with_type_annotation(return_type);
             check!(
-                TypedCodeBlock::type_check(ctx, body),
+                TypedCodeBlock::type_check(ctx, type_engine, body),
                 (
                     TypedCodeBlock { contents: vec![] },
-                    insert_type(TypeInfo::ErrorRecovery)
+                    type_engine.insert_type(TypeInfo::ErrorRecovery)
                 ),
                 warnings,
                 errors
@@ -324,6 +329,8 @@ fn test_function_selector_behavior() {
 
     assert_eq!(selector_text, "foo()".to_string());
 
+    let type_engine = TypeEngine::default();
+
     let decl = TypedFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_with_override("bar", Span::dummy()),
@@ -332,13 +339,13 @@ fn test_function_selector_behavior() {
             TypedFunctionParameter {
                 name: Ident::new_no_span("foo"),
                 is_mutable: false,
-                type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
+                type_id: type_engine.insert_type(TypeInfo::Str(5)),
                 type_span: Span::dummy(),
             },
             TypedFunctionParameter {
                 name: Ident::new_no_span("baz"),
                 is_mutable: false,
-                type_id: insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
+                type_id: type_engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
                 type_span: Span::dummy(),
             },
         ],

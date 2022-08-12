@@ -155,12 +155,20 @@ impl ReplaceSelfType for TypeId {
 }
 
 impl TypeId {
-    pub(crate) fn update_type(&mut self, type_mapping: &TypeMapping, span: &Span) {
-        *self = match look_up_type_id(*self).matches_type_parameter(type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, span.clone())),
+    pub(crate) fn update_type(
+        &mut self,
+        type_engine: &TypeEngine,
+        mapping: &TypeMapping,
+        span: &Span,
+    ) {
+        *self = match look_up_type_id(*self).matches_type_parameter(type_engine, mapping) {
+            Some(matching_id) => type_engine.insert_type(TypeInfo::Ref(matching_id, span.clone())),
             None => {
-                let ty = TypeInfo::Ref(insert_type(look_up_type_id_raw(*self)), span.clone());
-                insert_type(ty)
+                let ty = TypeInfo::Ref(
+                    type_engine.insert_type(look_up_type_id_raw(*self)),
+                    span.clone(),
+                );
+                type_engine.insert_type(ty)
             }
         };
     }

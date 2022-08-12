@@ -5,7 +5,7 @@ use crate::{
         ast_node::expression::match_expression::MatchReqMap, IsConstant, TypedEnumVariant,
         TypedExpressionVariant,
     },
-    type_system::{insert_type, IntegerBits},
+    type_system::{IntegerBits, TypeEngine},
     Literal, TypeInfo,
 };
 
@@ -13,6 +13,7 @@ use super::TypedExpression;
 
 // currently the unsafe downcast expr is only used for enums, so this method is specialized for enums
 pub(crate) fn instantiate_unsafe_downcast(
+    type_engine: &TypeEngine,
     exp: &TypedExpression,
     variant: TypedEnumVariant,
     span: Span,
@@ -22,13 +23,13 @@ pub(crate) fn instantiate_unsafe_downcast(
             expression: TypedExpressionVariant::EnumTag {
                 exp: Box::new(exp.clone()),
             },
-            return_type: insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+            return_type: type_engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
             is_constant: IsConstant::No,
             span: exp.span.clone(),
         },
         TypedExpression {
             expression: TypedExpressionVariant::Literal(Literal::U64(variant.tag as u64)),
-            return_type: insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+            return_type: type_engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
             is_constant: IsConstant::No,
             span: exp.span.clone(),
         },

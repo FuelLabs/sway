@@ -1,5 +1,5 @@
 use crate::{
-    type_system::{create_type_mapping, look_up_type_id, CopyTypes, TypeId},
+    type_system::{create_type_mapping, look_up_type_id, CopyTypes, TypeEngine, TypeId},
     CallPath, TypeInfo, TypedFunctionDeclaration,
 };
 
@@ -78,6 +78,7 @@ impl TraitMap {
 
     pub(crate) fn get_methods_for_type(
         &self,
+        type_engine: &TypeEngine,
         incoming_type_id: TypeId,
     ) -> Vec<TypedFunctionDeclaration> {
         let mut methods = vec![];
@@ -91,7 +92,7 @@ impl TraitMap {
                 let mut trait_methods = trait_methods.values().cloned().collect::<Vec<_>>();
                 trait_methods
                     .iter_mut()
-                    .for_each(|x| x.copy_types(&type_mapping));
+                    .for_each(|x| x.copy_types(type_engine, &type_mapping));
                 methods.append(&mut trait_methods);
             }
         }

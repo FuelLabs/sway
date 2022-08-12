@@ -680,7 +680,11 @@ impl TypeInfo {
         }
     }
 
-    pub(crate) fn matches_type_parameter(&self, mapping: &TypeMapping) -> Option<TypeId> {
+    pub(crate) fn matches_type_parameter(
+        &self,
+        type_engine: &TypeEngine,
+        mapping: &TypeMapping,
+    ) -> Option<TypeId> {
         use TypeInfo::*;
         match self {
             TypeInfo::Custom { .. } => {
@@ -706,23 +710,23 @@ impl TypeInfo {
             } => {
                 let mut new_fields = fields.clone();
                 for new_field in new_fields.iter_mut() {
-                    if let Some(matching_id) =
-                        look_up_type_id(new_field.type_id).matches_type_parameter(mapping)
+                    if let Some(matching_id) = look_up_type_id(new_field.type_id)
+                        .matches_type_parameter(type_engine, mapping)
                     {
-                        new_field.type_id =
-                            insert_type(TypeInfo::Ref(matching_id, new_field.span.clone()));
+                        new_field.type_id = type_engine
+                            .insert_type(TypeInfo::Ref(matching_id, new_field.span.clone()));
                     }
                 }
                 let mut new_type_parameters = type_parameters.clone();
                 for new_param in new_type_parameters.iter_mut() {
-                    if let Some(matching_id) =
-                        look_up_type_id(new_param.type_id).matches_type_parameter(mapping)
+                    if let Some(matching_id) = look_up_type_id(new_param.type_id)
+                        .matches_type_parameter(type_engine, mapping)
                     {
-                        new_param.type_id =
-                            insert_type(TypeInfo::Ref(matching_id, new_param.span().clone()));
+                        new_param.type_id = type_engine
+                            .insert_type(TypeInfo::Ref(matching_id, new_param.span().clone()));
                     }
                 }
-                Some(insert_type(TypeInfo::Struct {
+                Some(type_engine.insert_type(TypeInfo::Struct {
                     fields: new_fields,
                     name: name.clone(),
                     type_parameters: new_type_parameters,
@@ -735,41 +739,41 @@ impl TypeInfo {
             } => {
                 let mut new_variants = variant_types.clone();
                 for new_variant in new_variants.iter_mut() {
-                    if let Some(matching_id) =
-                        look_up_type_id(new_variant.type_id).matches_type_parameter(mapping)
+                    if let Some(matching_id) = look_up_type_id(new_variant.type_id)
+                        .matches_type_parameter(type_engine, mapping)
                     {
-                        new_variant.type_id =
-                            insert_type(TypeInfo::Ref(matching_id, new_variant.span.clone()));
+                        new_variant.type_id = type_engine
+                            .insert_type(TypeInfo::Ref(matching_id, new_variant.span.clone()));
                     }
                 }
                 let mut new_type_parameters = type_parameters.clone();
                 for new_param in new_type_parameters.iter_mut() {
-                    if let Some(matching_id) =
-                        look_up_type_id(new_param.type_id).matches_type_parameter(mapping)
+                    if let Some(matching_id) = look_up_type_id(new_param.type_id)
+                        .matches_type_parameter(type_engine, mapping)
                     {
-                        new_param.type_id =
-                            insert_type(TypeInfo::Ref(matching_id, new_param.span().clone()));
+                        new_param.type_id = type_engine
+                            .insert_type(TypeInfo::Ref(matching_id, new_param.span().clone()));
                     }
                 }
-                Some(insert_type(TypeInfo::Enum {
+                Some(type_engine.insert_type(TypeInfo::Enum {
                     variant_types: new_variants,
                     type_parameters: new_type_parameters,
                     name: name.clone(),
                 }))
             }
             TypeInfo::Array(ary_ty_id, count) => look_up_type_id(*ary_ty_id)
-                .matches_type_parameter(mapping)
-                .map(|matching_id| insert_type(TypeInfo::Array(matching_id, *count))),
+                .matches_type_parameter(type_engine, mapping)
+                .map(|matching_id| type_engine.insert_type(TypeInfo::Array(matching_id, *count))),
             TypeInfo::Tuple(fields) => {
                 let mut new_fields = Vec::new();
                 let mut index = 0;
                 while index < fields.len() {
-                    let new_field_id_opt =
-                        look_up_type_id(fields[index].type_id).matches_type_parameter(mapping);
+                    let new_field_id_opt = look_up_type_id(fields[index].type_id)
+                        .matches_type_parameter(type_engine, mapping);
                     if let Some(new_field_id) = new_field_id_opt {
                         new_fields.extend(fields[..index].iter().cloned());
                         new_fields.push(TypeArgument {
-                            type_id: insert_type(TypeInfo::Ref(
+                            type_id: type_engine.insert_type(TypeInfo::Ref(
                                 new_field_id,
                                 fields[index].span.clone(),
                             )),
@@ -782,10 +786,10 @@ impl TypeInfo {
                 }
                 while index < fields.len() {
                     let new_field = match look_up_type_id(fields[index].type_id)
-                        .matches_type_parameter(mapping)
+                        .matches_type_parameter(type_engine, mapping)
                     {
                         Some(new_field_id) => TypeArgument {
-                            type_id: insert_type(TypeInfo::Ref(
+                            type_id: type_engine.insert_type(TypeInfo::Ref(
                                 new_field_id,
                                 fields[index].span.clone(),
                             )),
@@ -799,7 +803,7 @@ impl TypeInfo {
                 if new_fields.is_empty() {
                     None
                 } else {
-                    Some(insert_type(TypeInfo::Tuple(new_fields)))
+                    Some(type_engine.insert_type(TypeInfo::Tuple(new_fields)))
                 }
             }
             Unknown

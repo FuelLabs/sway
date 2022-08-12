@@ -3,8 +3,8 @@ use crate::{
     parse_tree::*,
     semantic_analysis::*,
     type_system::{
-        insert_type, look_up_type_id, CopyTypes, CreateTypeId, EnforceTypeArguments,
-        MonomorphizeHelper, ReplaceSelfType, TypeId, TypeMapping, TypeParameter,
+        look_up_type_id, CopyTypes, CreateTypeId, EnforceTypeArguments, MonomorphizeHelper,
+        ReplaceSelfType, TypeEngine, TypeId, TypeMapping, TypeParameter,
     },
     types::{JsonAbiString, ToJsonAbi},
     TypeInfo,
@@ -34,19 +34,19 @@ impl PartialEq for TypedEnumDeclaration {
 }
 
 impl CopyTypes for TypedEnumDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types(&mut self, type_engine: &TypeEngine, type_mapping: &TypeMapping) {
         self.variants
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_engine, type_mapping));
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_engine, type_mapping));
     }
 }
 
 impl CreateTypeId for TypedEnumDeclaration {
-    fn create_type_id(&self) -> TypeId {
-        insert_type(TypeInfo::Enum {
+    fn create_type_id(&self, type_engine: &TypeEngine) -> TypeId {
+        type_engine.insert_type(TypeInfo::Enum {
             name: self.name.clone(),
             variant_types: self.variants.clone(),
             type_parameters: self.type_parameters.clone(),
@@ -71,7 +71,11 @@ impl MonomorphizeHelper for TypedEnumDeclaration {
 }
 
 impl TypedEnumDeclaration {
-    pub fn type_check(ctx: TypeCheckContext, decl: EnumDeclaration) -> CompileResult<Self> {
+    pub fn type_check(
+        ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
+        decl: EnumDeclaration,
+    ) -> CompileResult<Self> {
         let mut errors = vec![];
         let mut warnings = vec![];
 
@@ -92,7 +96,7 @@ impl TypedEnumDeclaration {
         let mut new_type_parameters = vec![];
         for type_parameter in type_parameters.into_iter() {
             new_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
+                TypeParameter::type_check(ctx.by_ref(), type_engine, type_parameter),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -103,7 +107,7 @@ impl TypedEnumDeclaration {
         let mut variants_buf = vec![];
         for variant in variants {
             variants_buf.push(check!(
-                TypedEnumVariant::type_check(ctx.by_ref(), variant.clone()),
+                TypedEnumVariant::type_check(ctx.by_ref(), type_engine, variant.clone()),
                 continue,
                 warnings,
                 errors
@@ -176,8 +180,9 @@ impl PartialEq for TypedEnumVariant {
 }
 
 impl CopyTypes for TypedEnumVariant {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.type_id.update_type(type_mapping, &self.span);
+    fn copy_types(&mut self, type_engine: &TypeEngine, type_mapping: &TypeMapping) {
+        self.type_id
+            .update_type(type_engine, type_mapping, &self.span);
     }
 }
 
@@ -206,18 +211,20 @@ impl ReplaceSelfType for TypedEnumVariant {
 impl TypedEnumVariant {
     pub(crate) fn type_check(
         mut ctx: TypeCheckContext,
+        type_engine: &TypeEngine,
         variant: EnumVariant,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let enum_variant_type = check!(
             ctx.resolve_type_with_self(
-                insert_type(variant.type_info),
+                type_engine,
+                type_engine.insert_type(variant.type_info),
                 &variant.span,
                 EnforceTypeArguments::Yes,
                 None
             ),
-            insert_type(TypeInfo::ErrorRecovery),
+            type_engine.insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );

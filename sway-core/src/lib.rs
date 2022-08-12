@@ -222,6 +222,7 @@ pub enum BytecodeCompilationResult {
 pub fn parsed_to_ast(
     parse_program: &ParseProgram,
     initial_namespace: namespace::Module,
+    initial_type_engine: &type_system::TypeEngine,
 ) -> CompileAstResult {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
@@ -230,7 +231,7 @@ pub fn parsed_to_ast(
         value: typed_program_result,
         warnings: new_warnings,
         errors: new_errors,
-    } = TypedProgram::type_check(parse_program, initial_namespace);
+    } = TypedProgram::type_check(parse_program, initial_namespace, initial_type_engine);
     warnings.extend(new_warnings);
     errors.extend(new_errors);
     let typed_program = match typed_program_result {
@@ -302,7 +303,7 @@ pub fn compile_to_ast(
         }
     };
 
-    match parsed_to_ast(&parse_program, initial_namespace) {
+    match parsed_to_ast(&parse_program, initial_namespace, &type_engine) {
         CompileAstResult::Success {
             typed_program,
             warnings: new_warnings,

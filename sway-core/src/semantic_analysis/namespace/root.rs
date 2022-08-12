@@ -64,8 +64,10 @@ impl Root {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn resolve_type_with_self(
         &mut self,
+        type_engine: &TypeEngine,
         mut type_id: TypeId,
         self_type: TypeId,
         span: &Span,
@@ -75,6 +77,7 @@ impl Root {
     ) -> CompileResult<TypeId> {
         type_id.replace_self_type(self_type);
         self.resolve_type(
+            type_engine,
             type_id,
             span,
             enforce_type_arguments,
@@ -85,6 +88,7 @@ impl Root {
 
     pub(crate) fn resolve_type(
         &self,
+        type_engine: &TypeEngine,
         type_id: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
@@ -121,7 +125,7 @@ impl Root {
                             warnings,
                             errors
                         );
-                        decl.create_type_id()
+                        decl.create_type_id(type_engine)
                     }
                     Some(TypedDeclaration::EnumDeclaration(mut decl)) => {
                         check!(
@@ -137,48 +141,56 @@ impl Root {
                             warnings,
                             errors
                         );
-                        decl.create_type_id()
+                        decl.create_type_id(type_engine)
                     }
                     Some(TypedDeclaration::GenericTypeForFunctionScope { name, type_id }) => {
-                        insert_type(TypeInfo::Ref(type_id, name.span()))
+                        type_engine.insert_type(TypeInfo::Ref(type_id, name.span()))
                     }
                     _ => {
                         errors.push(CompileError::UnknownTypeName {
                             name: name.to_string(),
                             span: name.span(),
                         });
-                        insert_type(TypeInfo::ErrorRecovery)
+                        type_engine.insert_type(TypeInfo::ErrorRecovery)
                     }
                 }
             }
             TypeInfo::Ref(id, _) => id,
             TypeInfo::Array(type_id, n) => {
                 let new_type_id = check!(
-                    self.resolve_type(type_id, span, enforce_type_arguments, None, mod_path),
-                    insert_type(TypeInfo::ErrorRecovery),
+                    self.resolve_type(
+                        type_engine,
+                        type_id,
+                        span,
+                        enforce_type_arguments,
+                        None,
+                        mod_path
+                    ),
+                    type_engine.insert_type(TypeInfo::ErrorRecovery),
                     warnings,
                     errors
                 );
-                insert_type(TypeInfo::Array(new_type_id, n))
+                type_engine.insert_type(TypeInfo::Array(new_type_id, n))
             }
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = check!(
                         self.resolve_type(
+                            type_engine,
                             type_argument.type_id,
                             span,
                             enforce_type_arguments,
                             None,
                             mod_path
                         ),
-                        insert_type(TypeInfo::ErrorRecovery),
+                        type_engine.insert_type(TypeInfo::ErrorRecovery),
                         warnings,
                         errors
                     );
                 }
-                insert_type(TypeInfo::Tuple(type_arguments))
+                type_engine.insert_type(TypeInfo::Tuple(type_arguments))
             }
-            o => insert_type(o),
+            o => type_engine.insert_type(o),
         };
         ok(type_id, warnings, errors)
     }
@@ -191,8 +203,10 @@ impl Root {
     ///
     /// This method should only be called on the root namespace. `mod_path` is the current module,
     /// `method_path` is assumed to be absolute.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn find_method_for_type(
         &mut self,
+        type_engine: &TypeEngine,
         mod_path: &Path,
         mut type_id: TypeId,
         method_prefix: &Path,
@@ -212,20 +226,21 @@ impl Root {
         );
 
         // grab the local methods from the local module
-        let local_methods = local_module.get_methods_for_type(type_id);
+        let local_methods = local_module.get_methods_for_type(type_engine, type_id);
 
         type_id.replace_self_type(self_type);
 
         // resolve the type
         let type_id = check!(
             self.resolve_type(
+                type_engine,
                 type_id,
                 &method_name.span(),
                 EnforceTypeArguments::No,
                 None,
                 method_prefix
             ),
-            insert_type(TypeInfo::ErrorRecovery),
+            type_engine.insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors
         );
@@ -239,7 +254,7 @@ impl Root {
         );
 
         // grab the methods from where the type is declared
-        let mut type_methods = type_module.get_methods_for_type(type_id);
+        let mut type_methods = type_module.get_methods_for_type(type_engine, type_id);
 
         let mut methods = local_methods;
         methods.append(&mut type_methods);

@@ -12,6 +12,7 @@ use sway_types::{state::StateIndex, Span};
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn type_check_method_application(
     mut ctx: TypeCheckContext,
+    type_engine: &TypeEngine,
     method_name_binding: TypeBinding<MethodName>,
     contract_call_params: Vec<StructExpressionField>,
     arguments: Vec<Expression>,
@@ -26,10 +27,10 @@ pub(crate) fn type_check_method_application(
         let ctx = ctx
             .by_ref()
             .with_help_text("")
-            .with_type_annotation(insert_type(TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
         args_buf.push_back(check!(
-            TypedExpression::type_check(ctx, arg.clone()),
-            error_recovery_expr(span.clone()),
+            TypedExpression::type_check(ctx, type_engine, arg.clone()),
+            error_recovery_expr(type_engine, span.clone()),
             warnings,
             errors
         ));
@@ -37,7 +38,12 @@ pub(crate) fn type_check_method_application(
 
     // resolve the method name to a typed function declaration and type_check
     let method = check!(
-        resolve_method_name(ctx.by_ref(), &method_name_binding, args_buf.clone()),
+        resolve_method_name(
+            ctx.by_ref(),
+            type_engine,
+            &method_name_binding,
+            args_buf.clone()
+        ),
         return err(warnings, errors),
         warnings,
         errors
@@ -84,9 +90,11 @@ pub(crate) fn type_check_method_application(
             let type_annotation = match param.name.span().as_str() {
                 constants::CONTRACT_CALL_GAS_PARAMETER_NAME
                 | constants::CONTRACT_CALL_COINS_PARAMETER_NAME => {
-                    insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour))
+                    type_engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour))
                 }
-                constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME => insert_type(TypeInfo::B256),
+                constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME => {
+                    type_engine.insert_type(TypeInfo::B256)
+                }
                 _ => unreachable!(),
             };
             let ctx = ctx
@@ -100,8 +108,8 @@ pub(crate) fn type_check_method_application(
                     contract_call_params_map.insert(
                         param.name.to_string(),
                         check!(
-                            TypedExpression::type_check(ctx, param.value),
-                            error_recovery_expr(span.clone()),
+                            TypedExpression::type_check(ctx, type_engine, param.value),
+                            error_recovery_expr(type_engine, span.clone()),
                             warnings,
                             errors
                         ),
@@ -311,6 +319,7 @@ pub(crate) fn type_check_method_application(
 
 pub(crate) fn resolve_method_name(
     mut ctx: TypeCheckContext,
+    type_engine: &TypeEngine,
     method_name: &TypeBinding<MethodName>,
     arguments: VecDeque<TypedExpression>,
 ) -> CompileResult<TypedFunctionDeclaration> {
@@ -325,8 +334,8 @@ pub(crate) fn resolve_method_name(
         } => {
             // type check the call path
             let type_id = check!(
-                call_path_binding.type_check_with_type_info(&mut ctx),
-                insert_type(TypeInfo::ErrorRecovery),
+                call_path_binding.type_check_with_type_info(&mut ctx, type_engine),
+                type_engine.insert_type(TypeInfo::ErrorRecovery),
                 warnings,
                 errors
             );
@@ -345,6 +354,7 @@ pub(crate) fn resolve_method_name(
             // find the method
             check!(
                 ctx.namespace.find_method_for_type(
+                    type_engine,
                     type_id,
                     &type_info_prefix,
                     method_name,
@@ -364,11 +374,12 @@ pub(crate) fn resolve_method_name(
             let type_id = arguments
                 .get(0)
                 .map(|x| x.return_type)
-                .unwrap_or_else(|| insert_type(TypeInfo::Unknown));
+                .unwrap_or_else(|| type_engine.insert_type(TypeInfo::Unknown));
 
             // find the method
             check!(
                 ctx.namespace.find_method_for_type(
+                    type_engine,
                     type_id,
                     &module_path,
                     &call_path.suffix,
@@ -388,11 +399,12 @@ pub(crate) fn resolve_method_name(
             let type_id = arguments
                 .get(0)
                 .map(|x| x.return_type)
-                .unwrap_or_else(|| insert_type(TypeInfo::Unknown));
+                .unwrap_or_else(|| type_engine.insert_type(TypeInfo::Unknown));
 
             // find the method
             check!(
                 ctx.namespace.find_method_for_type(
+                    type_engine,
                     type_id,
                     &module_path,
                     method_name,

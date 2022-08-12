@@ -45,17 +45,25 @@ pub enum TypedDeclaration {
 impl CopyTypes for TypedDeclaration {
     /// The entry point to monomorphizing typed declarations. Instantiates all new type ids,
     /// assuming `self` has already been copied.
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types(&mut self, type_engine: &TypeEngine, type_mapping: &TypeMapping) {
         use TypedDeclaration::*;
         match self {
-            VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_mapping),
-            ConstantDeclaration(ref mut const_decl) => const_decl.copy_types(type_mapping),
-            FunctionDeclaration(ref mut fn_decl) => fn_decl.copy_types(type_mapping),
-            TraitDeclaration(ref mut trait_decl) => trait_decl.copy_types(type_mapping),
-            StructDeclaration(ref mut struct_decl) => struct_decl.copy_types(type_mapping),
-            EnumDeclaration(ref mut enum_decl) => enum_decl.copy_types(type_mapping),
-            Reassignment(ref mut reassignment) => reassignment.copy_types(type_mapping),
-            ImplTrait(impl_trait) => impl_trait.copy_types(type_mapping),
+            VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_engine, type_mapping),
+            ConstantDeclaration(ref mut const_decl) => {
+                const_decl.copy_types(type_engine, type_mapping)
+            }
+            FunctionDeclaration(ref mut fn_decl) => fn_decl.copy_types(type_engine, type_mapping),
+            TraitDeclaration(ref mut trait_decl) => {
+                trait_decl.copy_types(type_engine, type_mapping)
+            }
+            StructDeclaration(ref mut struct_decl) => {
+                struct_decl.copy_types(type_engine, type_mapping)
+            }
+            EnumDeclaration(ref mut enum_decl) => enum_decl.copy_types(type_engine, type_mapping),
+            Reassignment(ref mut reassignment) => {
+                reassignment.copy_types(type_engine, type_mapping)
+            }
+            ImplTrait(impl_trait) => impl_trait.copy_types(type_engine, type_mapping),
             // generics in an ABI is unsupported by design
             AbiDeclaration(..)
             | StorageDeclaration(..)
@@ -327,7 +335,7 @@ impl TypedDeclaration {
         }
     }
 
-    pub(crate) fn return_type(&self) -> CompileResult<TypeId> {
+    pub(crate) fn return_type(&self, type_engine: &TypeEngine) -> CompileResult<TypeId> {
         let type_id = match self {
             TypedDeclaration::VariableDeclaration(TypedVariableDeclaration { body, .. }) => {
                 body.return_type
@@ -341,14 +349,16 @@ impl TypedDeclaration {
                     )],
                 )
             }
-            TypedDeclaration::StructDeclaration(decl) => decl.create_type_id(),
-            TypedDeclaration::EnumDeclaration(decl) => decl.create_type_id(),
+            TypedDeclaration::StructDeclaration(decl) => decl.create_type_id(type_engine),
+            TypedDeclaration::EnumDeclaration(decl) => decl.create_type_id(type_engine),
             TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => rhs.return_type,
-            TypedDeclaration::StorageDeclaration(decl) => insert_type(TypeInfo::Storage {
-                fields: decl.fields_as_typed_struct_fields(),
-            }),
+            TypedDeclaration::StorageDeclaration(decl) => {
+                type_engine.insert_type(TypeInfo::Storage {
+                    fields: decl.fields_as_typed_struct_fields(),
+                })
+            }
             TypedDeclaration::GenericTypeForFunctionScope { name, type_id } => {
-                insert_type(TypeInfo::Ref(*type_id, name.span()))
+                type_engine.insert_type(TypeInfo::Ref(*type_id, name.span()))
             }
             decl => {
                 return err(
@@ -396,8 +406,8 @@ pub struct TypedConstantDeclaration {
 }
 
 impl CopyTypes for TypedConstantDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.value.copy_types(type_mapping);
+    fn copy_types(&mut self, type_engine: &TypeEngine, type_mapping: &TypeMapping) {
+        self.value.copy_types(type_engine, type_mapping);
     }
 }
 
@@ -414,9 +424,9 @@ pub struct TypedTraitFn {
 }
 
 impl CopyTypes for TypedTraitFn {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types(&mut self, type_engine: &TypeEngine, type_mapping: &TypeMapping) {
         self.return_type
-            .update_type(type_mapping, &self.return_type_span);
+            .update_type(type_engine, type_mapping, &self.return_type_span);
     }
 }
 
@@ -493,9 +503,9 @@ pub struct TypedReassignment {
 }
 
 impl CopyTypes for TypedReassignment {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.rhs.copy_types(type_mapping);
+    fn copy_types(&mut self, type_engine: &TypeEngine, type_mapping: &TypeMapping) {
+        self.rhs.copy_types(type_engine, type_mapping);
         self.lhs_type
-            .update_type(type_mapping, &self.lhs_base_name.span());
+            .update_type(type_engine, type_mapping, &self.lhs_base_name.span());
     }
 }

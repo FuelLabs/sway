@@ -3,11 +3,11 @@ use sway_types::{Span, Spanned};
 use crate::{
     error::{err, ok},
     semantic_analysis::TypeCheckContext,
-    type_system::{insert_type, EnforceTypeArguments},
+    type_system::EnforceTypeArguments,
     CallPath, CompileResult, TypeInfo, TypedDeclaration,
 };
 
-use super::{ReplaceSelfType, TypeArgument, TypeId};
+use super::{ReplaceSelfType, TypeArgument, TypeEngine, TypeId};
 
 /// A `TypeBinding` is the result of using turbofish to bind types to
 /// generic parameters.
@@ -85,6 +85,7 @@ impl TypeBinding<CallPath<(TypeInfo, Span)>> {
     pub(crate) fn type_check_with_type_info(
         &self,
         ctx: &mut TypeCheckContext,
+        type_engine: &TypeEngine,
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -111,12 +112,13 @@ impl TypeBinding<CallPath<(TypeInfo, Span)>> {
         // resolve the type of the type info object
         let type_id = check!(
             ctx.resolve_type_with_self(
-                insert_type(type_info),
+                type_engine,
+                type_engine.insert_type(type_info),
                 &type_info_span,
                 EnforceTypeArguments::No,
                 Some(&type_info_prefix)
             ),
-            insert_type(TypeInfo::ErrorRecovery),
+            type_engine.insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors
         );

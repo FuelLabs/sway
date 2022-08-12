@@ -128,10 +128,11 @@ impl Items {
 
     pub(crate) fn get_methods_for_type(
         &self,
+        type_engine: &TypeEngine,
         implementing_for_type_id: TypeId,
     ) -> Vec<TypedFunctionDeclaration> {
         self.implemented_traits
-            .get_methods_for_type(implementing_for_type_id)
+            .get_methods_for_type(type_engine, implementing_for_type_id)
     }
 
     pub(crate) fn get_canonical_path(&self, symbol: &Ident) -> &[Ident] {
@@ -156,6 +157,7 @@ impl Items {
     /// the second is the [ResolvedType] of its parent, for control-flow analysis.
     pub(crate) fn find_subfield_type(
         &self,
+        type_engine: &TypeEngine,
         base_name: &Ident,
         projections: &[ProjectionKind],
     ) -> CompileResult<(TypeId, TypeId)> {
@@ -171,7 +173,7 @@ impl Items {
             }
         };
         let mut symbol = check!(
-            symbol.return_type(),
+            symbol.return_type(type_engine),
             return err(warnings, errors),
             warnings,
             errors
