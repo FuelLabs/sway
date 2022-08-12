@@ -3,7 +3,6 @@
 library alloc;
 
 use ::mem::copy;
-use ::context::registers::stack_ptr;
 
 /// Allocates zeroed memory on the heap
 ///
@@ -45,13 +44,4 @@ pub fn realloc(ptr: u64, size: u64, new_size: u64) -> u64 {
     } else {
         ptr
     }
-}
-
-// Allocate a type on the stack.
-pub fn alloca<T>() -> u64 {
-    let current_pointer = stack_ptr();
-    asm() {
-        cfei i32;
-    };
-    current_pointer
 }

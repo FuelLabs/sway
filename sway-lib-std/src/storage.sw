@@ -5,7 +5,6 @@ use ::context::registers::stack_ptr;
 use ::hash::sha256;
 use ::option::Option;
 use ::result::Result;
-use ::alloc::alloca;
 
 /// Store a stack variable in storage.
 #[storage(write)]pub fn store<T>(key: b256, value: T) {
@@ -64,7 +63,10 @@ use ::alloc::alloca;
 
         while size_left > 32 {
             // Read 4 words (32 bytes) at a time
-            let current_pointer = alloca::<i32>();
+            let current_pointer = stack_ptr();
+            asm() {
+                cfei i32;
+            };
             __state_load_quad(local_key, current_pointer);
 
             // Move by 32 bytes
@@ -76,7 +78,10 @@ use ::alloc::alloca;
         }
 
         // Read the leftover bytes using a single `srwq`
-        let current_pointer = alloca::<i32>();
+        let current_pointer = stack_ptr();
+        asm() {
+            cfei i32;
+        }
         __state_load_quad(local_key, current_pointer);
 
         // Return the final result as type T
