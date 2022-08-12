@@ -1,7 +1,7 @@
 use crate::Ident;
 use crate::{semantic_analysis::*, type_system::*};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypedStructExpressionField {
     pub name: Ident,
     pub value: TypedExpression,
