@@ -38,5 +38,8 @@ fn main() -> bool {
     assert(counter_5 == 11);
     assert(counter_4 == 7);
 
+    // test while loop expression
+    let result = while true { break; };
+
     true
 }

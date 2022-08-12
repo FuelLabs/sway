@@ -220,9 +220,6 @@ impl FnCompiler {
                     TypedAstNodeContent::ImplicitReturnExpression(te) => {
                         self.compile_expression(context, md_mgr, te)
                     }
-                    TypedAstNodeContent::WhileLoop(twl) => {
-                        self.compile_while_loop(context, md_mgr, twl, span_md_idx)
-                    }
                     // a side effect can be () because it just impacts the type system/namespacing.
                     // There should be no new IR generated.
                     TypedAstNodeContent::SideEffect => Ok(Constant::get_unit(context)),
@@ -374,6 +371,9 @@ impl FnCompiler {
                 self.compile_unsafe_downcast(context, md_mgr, exp, variant)
             }
             TypedExpressionVariant::EnumTag { exp } => self.compile_enum_tag(context, md_mgr, exp),
+            TypedExpressionVariant::WhileLoop { body, condition } => {
+                self.compile_while_loop(context, md_mgr, body, *condition, span_md_idx)
+            }
         }
     }
 
@@ -970,7 +970,8 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_while_loop: TypedWhileLoop,
+        body: TypedCodeBlock,
+        condition: TypedExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         // We're dancing around a bit here to make the blocks sit in the right order.  Ideally we
@@ -1007,7 +1008,7 @@ impl FnCompiler {
         // Compile the body and a branch to the condition block if no branch is already present in
         // the body block
         self.current_block = body_block;
-        self.compile_code_block(context, md_mgr, ast_while_loop.body)?;
+        self.compile_code_block(context, md_mgr, body)?;
         if !self.current_block.is_terminated(context) {
             self.current_block.ins(context).branch(cond_block, None);
         }
@@ -1018,7 +1019,7 @@ impl FnCompiler {
 
         // Add the conditional which jumps into the body or out to the final block.
         self.current_block = cond_block;
-        let cond_value = self.compile_expression(context, md_mgr, ast_while_loop.condition)?;
+        let cond_value = self.compile_expression(context, md_mgr, condition)?;
         if !self.current_block.is_terminated(context) {
             self.current_block.ins(context).conditional_branch(
                 cond_value,
