@@ -186,5 +186,18 @@
       }
     ],
     "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "test_storage_exhaustive",
+    "outputs": [
+      {
+        "components": [],
+        "name": "",
+        "type": "()",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
   }
 ]
