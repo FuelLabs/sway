@@ -26,7 +26,96 @@ Every Sway file must begin with a declaration of what type of program it is.
 
 See [the chapter on program types](../sway-program-types/index.md) for more information.
 
+## Your First Sway Project
+We'll build a simple counter contract that has a single function to increment the counter and return the new value of the counter. We'll create a contract and script to interact with the contract. 
+
+A few pieces of info that will be helpful before moving on: 
+- The main features of a smart contract that differentiate it from scripts or predicates are that it is callable and stateful.
+- A script is runnable bytecode on the chain which can call contracts to perform some task. It does not represent ownership of any resources and it cannot be called by a contract.
+
+### Writing the Contract
+
+First, let's [install the Sway toolchain](./installation.md). Then with `forc` installed, create a contract project:
+
+```sh
+forc new counter_contract
+```
+
+Here is the project that Forc has initialized:
+
+```console
+$ cd my-fuel-project
+$ tree .
+├── Cargo.toml
+├── Forc.toml
+├── src
+│   └── main.sw
+└── tests
+    └── harness.rs
+```
+
+`Forc.toml` is the _manifest file_ (similar to `Cargo.toml` for Cargo or `package.json` for Node), and defines project metadata such as the project name and dependencies. We'll be writing our code in the `src/main.sw` file in both of these projects.
+
+Cd into your contract project and delte the boilerplate code in `src/main.sw`. Every Sway file must start with a declaration of what type of program the file contains; here, we've declared that this file is a contract. 
+
+```sway
+contract; 
+```
+
+Next, we'll define a our storage value. In our case, we have a single counter that we'll call `amount` and initialize it to 0. 
+
+```sway
+storage {
+    amount: u64 = 0,
+}
+```
+
+### ABI 
+An ABI defines an interface, and there is no function body in the ABI. A contract must either define or import an ABI declaration and implement it. It is considered best practice to define your ABI in a seperate library and import it into your contract because this allows callers of the contract import and use the ABI in scripts to call your contract. For simplicity, we will define the ABI natively in the contract.
+
+```sway 
+abi Counter {
+    #[storage(read, write)]
+    fn increment() -> u64;
+}
+```
+Going line by line: 
+`#[storage(read, write)]` <-- this is an annotation which denotes that this function has the permissions to read and write a value in storage.
+
+`fn increment() -> u64;`<-- We're introducing the functionality to increment and denoting its return value. 
+
+### Implent ABI 
+Here is where you will write the implementation of the functions defined in your ABI.
+
+```sway
+impl Counter for Contract {
+    #[storage(read, write)]
+    fn increment() -> u64 {
+        storage.amount = storage.amount + 1;
+        return storage.amount;
+    }
+}
+```
+
+Going line by line: 
+`#[storage(read, write)]` <-- this is an annotation which denotes that this function has the permissions to read and write a value in storage.
+
+``` sway 
+fn increment() -> u64 {
+        storage.amount = storage.amount + 1;
+        return storage.amount;
+    }
+```
+
+
+
+
+
+
+
+
 ## Create Wallet Projects with `forc`
+
 
 To deploy a wallet on Fuel, we will need to write a library, a contract, and a script in Sway.
 
