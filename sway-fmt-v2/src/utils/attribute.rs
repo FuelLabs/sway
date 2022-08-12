@@ -54,14 +54,14 @@ impl FormatDecl for AttributeDecl {
         write!(line, "{}", self.hash_token.span().as_str())?;
         // `[`
         Self::open_square_bracket(line, formatter)?;
-        let attr = self.attribute.clone().into_inner();
+        let attr = self.attribute.get();
         // name e.g. `storage`
         write!(line, "{}", attr.name.span().as_str())?;
         // `(`
         Self::open_parenthesis(line, formatter)?;
         // format and add args e.g. `read, write`
-        if let Some(args) = attr.args {
-            args.into_inner().format(line, formatter)?;
+        if let Some(args) = &attr.args {
+            args.get().format(line, formatter)?;
         }
         // ')'
         Self::close_parenthesis(line, formatter)?;

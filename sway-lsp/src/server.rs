@@ -291,25 +291,27 @@ mod tests {
     use tower_lsp::jsonrpc::{self, Request, Response};
     use tower_lsp::LspService;
 
-    fn _e2e_test_dir() -> PathBuf {
+    #[allow(dead_code)]
+    fn e2e_test_dir() -> PathBuf {
         env::current_dir()
             .unwrap()
             .parent()
             .unwrap()
             .join("test/src/e2e_vm_tests/test_programs/should_pass/language")
-            .join("enum_if_let")
+            .join("struct_field_access")
     }
 
+    #[allow(dead_code)]
     fn sway_example_dir() -> PathBuf {
         env::current_dir()
             .unwrap()
             .parent()
             .unwrap()
-            .join("examples/signatures")
+            .join("examples/storage_variables")
     }
 
     fn load_sway_example() -> (Url, String) {
-        let manifest_dir = sway_example_dir();
+        let manifest_dir = e2e_test_dir();
         let src_path = manifest_dir.join("src/main.sw");
         let mut file = fs::File::open(&src_path).unwrap();
         let mut sway_program = String::new();
@@ -455,7 +457,8 @@ mod tests {
         assert_eq!(response, Ok(Some(err)));
     }
 
-    #[tokio::test]
+    //#[tokio::test]
+    #[allow(dead_code)]
     async fn did_open() {
         let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
 
@@ -483,7 +486,8 @@ mod tests {
         exit_notification(&mut service).await;
     }
 
-    #[tokio::test]
+    //#[tokio::test]
+    #[allow(dead_code)]
     async fn did_close() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
@@ -508,7 +512,8 @@ mod tests {
         exit_notification(&mut service).await;
     }
 
-    #[tokio::test]
+    //#[tokio::test]
+    #[allow(dead_code)]
     async fn did_change() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 

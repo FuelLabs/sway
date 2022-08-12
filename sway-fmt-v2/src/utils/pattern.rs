@@ -30,27 +30,20 @@ impl Format for Pattern {
                 path.format(formatted_code, formatter)?;
                 Self::open_parenthesis(formatted_code, formatter)?;
                 // need to add `<Pattern, CommaToken>` to `Punctuated::format()`
-                args.clone()
-                    .into_inner()
-                    .format(formatted_code, formatter)?;
+                args.get().format(formatted_code, formatter)?;
                 Self::close_parenthesis(formatted_code, formatter)?;
             }
             Self::Struct { path, fields } => {
                 path.format(formatted_code, formatter)?;
                 Self::open_curly_brace(formatted_code, formatter)?;
                 // need to add `<PatternStructField, CommaToken>` to `Punctuated::format()`
-                fields
-                    .clone()
-                    .into_inner()
-                    .format(formatted_code, formatter)?;
+                fields.get().format(formatted_code, formatter)?;
                 Self::close_curly_brace(formatted_code, formatter)?;
             }
             Self::Tuple(args) => {
                 Self::open_parenthesis(formatted_code, formatter)?;
                 // need to add `<Pattern, CommaToken>` to `Punctuated::format()`
-                args.clone()
-                    .into_inner()
-                    .format(formatted_code, formatter)?;
+                args.get().format(formatted_code, formatter)?;
                 Self::close_parenthesis(formatted_code, formatter)?;
             }
         }

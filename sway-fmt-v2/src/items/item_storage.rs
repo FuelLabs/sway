@@ -25,7 +25,7 @@ impl Format for ItemStorage {
             .update_line_style(LineStyle::Multiline);
         // Add storage token
         write!(formatted_code, "{}", self.storage_token.span().as_str())?;
-        let fields = self.fields.clone().into_inner();
+        let fields = self.fields.get();
 
         // Handle openning brace
         Self::open_curly_brace(formatted_code, formatter)?;
@@ -34,7 +34,7 @@ impl Format for ItemStorage {
         match formatter.config.structures.field_alignment {
             FieldAlignment::AlignFields(storage_field_align_threshold) => {
                 writeln!(formatted_code)?;
-                let value_pairs = fields.value_separator_pairs;
+                let value_pairs = &fields.value_separator_pairs;
                 // In first iteration we are going to be collecting the lengths of the struct fields.
                 let field_length: Vec<usize> = value_pairs
                     .iter()

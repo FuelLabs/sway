@@ -601,8 +601,8 @@ fn reassignment(
             let mut expr = var;
             let mut names_vec = Vec::new();
             let (base_name, final_return_type) = loop {
-                match *expr {
-                    Expression::VariableExpression { name, .. } => {
+                match expr.kind {
+                    ExpressionKind::Variable(name) => {
                         // check that the reassigned name exists
                         let unknown_decl = check!(
                             ctx.namespace.resolve_symbol(&name).cloned(),
@@ -622,22 +622,22 @@ fn reassignment(
                         }
                         break (name, variable_decl.body.return_type);
                     }
-                    Expression::SubfieldExpression {
+                    ExpressionKind::Subfield(SubfieldExpression {
                         prefix,
                         field_to_access,
                         ..
-                    } => {
+                    }) => {
                         names_vec.push(ProjectionKind::StructField {
                             name: field_to_access,
                         });
                         expr = prefix;
                     }
-                    Expression::TupleIndex {
+                    ExpressionKind::TupleIndex(TupleIndexExpression {
                         prefix,
                         index,
                         index_span,
                         ..
-                    } => {
+                    }) => {
                         names_vec.push(ProjectionKind::TupleField { index, index_span });
                         expr = prefix;
                     }
