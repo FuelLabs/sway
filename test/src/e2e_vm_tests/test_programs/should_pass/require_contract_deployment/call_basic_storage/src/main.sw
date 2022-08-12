@@ -3,7 +3,7 @@ use basic_storage_abi::{StoreU64, Quad};
 use std::assert::assert;
 
 fn main() -> u64 {
-    let addr = abi(StoreU64, 0x5d316113b7239ca2d6d0ab2fd5b81a0f055aff071f89c2e6c0b1f782dacfbf56);
+    let addr = abi(StoreU64, 0x44e9394f2d3b9ce7ed4899f2bcf28478f1218ca0f310c7d0105d638b95fee171);
     let key = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     let value = 4242;
 
@@ -22,6 +22,8 @@ fn main() -> u64 {
     addr.intrinsic_store_quad(key, q);
     let r = addr.intrinsic_load_quad(key);
     assert(q.v1 == r.v1 && q.v2 == r.v2 && q.v3 == r.v3 && q.v4 == r.v4);
+
+    addr.test_storage_exhaustive();
 
     res
 }

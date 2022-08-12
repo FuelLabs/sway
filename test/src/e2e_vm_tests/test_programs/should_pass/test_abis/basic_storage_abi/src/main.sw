@@ -22,4 +22,7 @@ abi StoreU64 {
     fn intrinsic_store_quad(key: b256, value: Quad);
     #[storage(read)]
     fn intrinsic_load_quad(key: b256) -> Quad;
+
+    #[storage(read, write)]
+    fn test_storage_exhaustive();
 }
