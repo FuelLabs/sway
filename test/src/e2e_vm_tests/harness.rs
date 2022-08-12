@@ -75,6 +75,7 @@ pub(crate) fn runs_in_vm(file_name: &str, locked: bool) -> (ProgramState, Compil
     let inputs = vec![];
     let outputs = vec![];
     let witness = vec![];
+
     let tx_to_test = Transaction::script(
         gas_price,
         gas_limit,
@@ -85,16 +86,13 @@ pub(crate) fn runs_in_vm(file_name: &str, locked: bool) -> (ProgramState, Compil
         outputs,
         witness,
     );
-    let checked_tx: CheckedTransaction = CheckedTransaction {
-        transaction: tx_to_test,
-        block_height: ,
-        initial_free_balances: ,
-        max_fee: 0,
-        min_fee: 0,
-        checked_signatures: true,
-    };
 
     let block_height = (u32::MAX >> 1) as u64;
+    let params = &ConsensusParameters::DEFAULT;
+
+    let checked_tx: CheckedTransaction =
+        CheckedTransaction::check(tx_to_test.clone(), block_height, params).unwrap();
+
     tx_to_test
         .validate(block_height, &Default::default())
         .unwrap();
