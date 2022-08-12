@@ -1626,19 +1626,15 @@ impl TypedExpression {
             )
         };
 
-        let ctx = ctx
-            .with_type_annotation(insert_type(TypeInfo::Tuple(Vec::new())))
-            .with_help_text(
-                "A while loop's loop body cannot implicitly return a value. Try \
+        let unit_ty = insert_type(TypeInfo::Tuple(Vec::new()));
+        let ctx = ctx.with_type_annotation(unit_ty).with_help_text(
+            "A while loop's loop body cannot implicitly return a value. Try \
                  assigning it to a mutable variable declared outside of the loop \
                  instead.",
-            );
-        let (typed_body, block_implicit_return) = check!(
+        );
+        let (typed_body, _block_implicit_return) = check!(
             TypedCodeBlock::type_check(ctx, body),
-            (
-                TypedCodeBlock { contents: vec![] },
-                insert_type(TypeInfo::Tuple(Vec::new()))
-            ),
+            return err(warnings, errors),
             warnings,
             errors
         );
@@ -1647,7 +1643,7 @@ impl TypedExpression {
                 condition: Box::new(typed_condition),
                 body: typed_body,
             },
-            return_type: block_implicit_return,
+            return_type: unit_ty,
             is_constant: IsConstant::Yes,
             span,
         };
