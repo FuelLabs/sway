@@ -217,9 +217,14 @@ impl BuildPlan {
     ///
     /// To account for an existing lock file, use `from_lock_and_manifest` instead.
     pub fn from_manifest(manifest: &ManifestFile, offline: bool) -> Result<Self> {
+        // Check toolchain version
+        validate_version(manifest)?;
         let mut graph = Graph::default();
         let mut manifest_map = ManifestMap::default();
         fetch_graph(manifest, offline, &mut graph, &mut manifest_map)?;
+        // Validate the graph, since we constructed the graph from scratch the paths will not be a
+        // problem but the version check is still needed
+        validate_graph(&graph, manifest);
         let compilation_order = compilation_order(&graph)?;
         Ok(Self {
             graph,
@@ -249,6 +254,8 @@ impl BuildPlan {
         locked: bool,
         offline: bool,
     ) -> Result<Self> {
+        // Check toolchain version
+        validate_version(manifest)?;
         // Keep track of the cause for the new lock file if it turns out we need one.
         let mut new_lock_cause = None;
 
@@ -363,6 +370,31 @@ fn find_proj_node(graph: &Graph, proj_name: &str) -> Result<NodeIx> {
     }
 }
 
+/// Check minimum forc version given in the manifest file and the current toolchain version
+///
+/// If required minimum forc version is higher than current forc version return an error with
+/// upgrade instructions
+fn validate_version(pkg_manifest: &ManifestFile) -> Result<()> {
+    match &pkg_manifest.project.forc_version {
+        Some(min_forc_version) => {
+            // Get the current version of the toolchain
+            let crate_version = env!("CARGO_PKG_VERSION");
+            let toolchain_version = semver::Version::parse(crate_version)?;
+            if toolchain_version < *min_forc_version {
+                bail!(
+                    "{:?} requires forc version {} but current forc version is {}\nUpdate the toolchain by following: https://fuellabs.github.io/sway/v{}/introduction/installation.html",
+                    pkg_manifest.project.name,
+                    min_forc_version,
+                    crate_version,
+                    crate_version
+                );
+            }
+        }
+        None => {}
+    }
+    Ok(())
+}
+
 /// Validates the state of the pinned package graph against the given project manifest.
 ///
 /// Returns the set of invalid dependency edges.
@@ -442,7 +474,6 @@ fn validate_dep(
 
     Ok(dep_manifest)
 }
-
 /// Part of dependency validation, any checks related to the depenency's manifest content.
 fn validate_dep_manifest(dep: &Pinned, dep_manifest: &ManifestFile) -> Result<()> {
     // Ensure the name matches the manifest project name.
@@ -455,6 +486,7 @@ fn validate_dep_manifest(dep: &Pinned, dep_manifest: &ManifestFile) -> Result<()
             dep_manifest.project.name,
         );
     }
+    validate_version(dep_manifest)?;
     Ok(())
 }
 

@@ -19,7 +19,7 @@ use std::{
     path::PathBuf,
     sync::{Arc, LockResult, RwLock},
 };
-use sway_core::{CompileAstResult, CompileResult, ParseProgram, TypeInfo, TypedProgramKind};
+use sway_core::{CompileAstResult, CompileResult, ParseProgram, TypedProgramKind};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, GotoDefinitionParams, GotoDefinitionResponse, Location, Position,
@@ -103,22 +103,10 @@ impl Session {
     pub fn declared_token_ident(&self, token: &Token) -> Option<Ident> {
         // Look up the tokens TypeId
         match &token.type_def {
-            Some(type_def) => {
-                match type_def {
-                    TypeDefinition::TypeId(type_id) => {
-                        // Use the TypeId to look up the actual type
-                        let type_info = sway_core::type_system::look_up_type_id(*type_id);
-                        match type_info {
-                            TypeInfo::UnknownGeneric { name }
-                            | TypeInfo::Enum { name, .. }
-                            | TypeInfo::Struct { name, .. }
-                            | TypeInfo::Custom { name, .. } => Some(name),
-                            _ => None,
-                        }
-                    }
-                    TypeDefinition::Ident(ident) => Some(ident.clone()),
-                }
-            }
+            Some(type_def) => match type_def {
+                TypeDefinition::TypeId(type_id) => utils::token::ident_of_type_id(type_id),
+                TypeDefinition::Ident(ident) => Some(ident.clone()),
+            },
             None => None,
         }
     }
@@ -271,7 +259,7 @@ impl Session {
 
             // Find the ident / span on the returned type
 
-            // Contruct a go_to LSP request from the declerations span
+            // Contruct a go_to LSP request from the declarations span
         }
     }
 

@@ -27,7 +27,7 @@ impl Format for Assignable {
             Assignable::Index { target, arg } => {
                 target.format(formatted_code, formatter)?;
                 Expr::open_square_bracket(formatted_code, formatter)?;
-                arg.clone().into_inner().format(formatted_code, formatter)?;
+                arg.get().format(formatted_code, formatter)?;
                 Expr::close_square_bracket(formatted_code, formatter)?;
             }
             Assignable::FieldProjection {
