@@ -30,7 +30,7 @@ impl<T: Parse> Parse for Annotated<T> {
         while let Some(DocComment {
             doc_style: DocStyle::Outer,
             ..
-        }) = parser.peek::<DocComment>()
+        }) = parser.peek()
         {
             let doc_comment = parser.parse::<DocComment>()?;
             // TODO: Use a Literal instead of an Ident when Attribute args
