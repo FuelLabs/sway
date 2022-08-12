@@ -168,6 +168,8 @@ impl Parse for FnSignature {
 
 #[cfg(test)]
 mod tests {
+    use crate::handler::Handler;
+
     use super::*;
     use std::sync::Arc;
     use sway_ast::{AttributeDecl, CommaToken, Item, Punctuated};
@@ -175,12 +177,12 @@ mod tests {
 
     fn parse_item(input: &str) -> Item {
         let token_stream = crate::token::lex(&Arc::from(input), 0, input.len(), None).unwrap();
-        let mut errors = Vec::new();
-        let mut parser = Parser::new(&token_stream, &mut errors);
+        let handler = Handler::default();
+        let mut parser = Parser::new(&token_stream, &handler);
         match Item::parse(&mut parser) {
             Ok(item) => item,
             Err(_) => {
-                panic!("Parse error: {:?}", errors);
+                panic!("Parse error: {:?}", handler.into_errors());
             }
         }
     }
