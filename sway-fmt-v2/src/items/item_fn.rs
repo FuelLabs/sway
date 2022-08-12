@@ -109,7 +109,7 @@ impl Format for FnSignature {
                 mutable_self,
                 args_opt,
             } => {
-                // `mut `
+                // `ref `
                 if let Some(ref_token) = ref_self {
                     write!(formatted_code, "{} ", ref_token.span().as_str())?;
                 }

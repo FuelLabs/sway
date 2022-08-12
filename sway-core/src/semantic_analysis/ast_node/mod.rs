@@ -773,7 +773,11 @@ fn type_check_trait_methods(
         let mut sig_ctx = ctx.by_ref().with_self_type(insert_type(TypeInfo::SelfType));
         parameters.clone().into_iter().for_each(
             |FunctionParameter {
-                 name, ref type_id, ..
+                 name,
+                 is_reference,
+                 is_mutable,
+                 ref type_id,
+                 ..
              }| {
                 let r#type = check!(
                     sig_ctx.resolve_type_with_self(
@@ -796,8 +800,7 @@ fn type_check_trait_methods(
                             is_constant: IsConstant::No,
                             span: name.span(),
                         },
-                        // TODO allow mutable function params?
-                        mutability: VariableMutability::Immutable,
+                        mutability: convert_to_variable_immutability(is_reference, is_mutable),
                         type_ascription: r#type,
                     }),
                 );

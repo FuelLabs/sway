@@ -592,9 +592,6 @@ impl FnCompiler {
             1 => {
                 // The single arg doesn't need to be put into a struct.
                 let arg0 = compiled_args[0];
-
-                // We're still undecided as to whether this should be decided by type or size.
-                // Going with type for now.
                 let arg0_type = arg0.get_stripped_ptr_type(context).unwrap();
                 if arg0_type.is_copy_type() {
                     self.current_block
