@@ -4,7 +4,7 @@ use crate::{
     semantic_analysis::{ast_node::Mode, Namespace},
     type_system::{
         insert_type, monomorphize, unify_with_self, CopyTypes, EnforceTypeArguments,
-        MonomorphizeHelper, TypeArgument, TypeId, TypeInfo, TypeEngine,
+        MonomorphizeHelper, TypeArgument, TypeEngine, TypeId, TypeInfo,
     },
     CompileResult, CompileWarning, TypeError,
 };

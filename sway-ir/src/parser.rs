@@ -372,7 +372,7 @@ mod ir_builder {
             rule str_char() -> u8
                 // Match any of the printable characters except '"' and '\'.
                 = c:$([' ' | '!' | '#'..='[' | ']'..='~']) {
-                    *c.as_bytes().get(0).unwrap()
+                    *c.as_bytes().first().unwrap()
                 }
                 / "\\x" h:hex_digit() l:hex_digit() {
                     (h << 4) | l
@@ -386,10 +386,10 @@ mod ir_builder {
             //  right offset.  Fiddly.
             rule hex_digit() -> u8
                 = d:$(['0'..='9']) {
-                    d.as_bytes().get(0).unwrap() - b'0'
+                    d.as_bytes().first().unwrap() - b'0'
                 }
                 / d:$(['a'..='f' | 'A'..='F']) {
-                    (d.as_bytes().get(0).unwrap() | 0x20) - b'a' + 10
+                    (d.as_bytes().first().unwrap() | 0x20) - b'a' + 10
                 }
 
             rule array_const() -> IrAstConstValue

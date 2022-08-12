@@ -7,15 +7,15 @@ use sway_types::Ident;
 
 impl<T: Parse> Parse for Annotated<T> {
     fn parse(parser: &mut Parser) -> ParseResult<Self> {
+        // Parse the attribute list.
         let mut attribute_list = Vec::new();
-        loop {
-            if parser.peek::<HashToken>().is_some() {
-                attribute_list.push(parser.parse()?);
-            } else {
-                break;
-            }
+        while let Some(attr) = parser.guarded_parse::<HashToken, _>()? {
+            attribute_list.push(attr);
         }
+
+        // Parse the `T` value.
         let value = parser.parse()?;
+
         Ok(Annotated {
             attribute_list,
             value,
@@ -25,19 +25,16 @@ impl<T: Parse> Parse for Annotated<T> {
 
 impl Parse for AttributeDecl {
     fn parse(parser: &mut Parser) -> ParseResult<Self> {
-        let hash_token = parser.parse()?;
-        let attribute = parser.parse()?;
         Ok(AttributeDecl {
-            hash_token,
-            attribute,
+            hash_token: parser.parse()?,
+            attribute: parser.parse()?,
         })
     }
 }
 
 impl Parse for Attribute {
     fn parse(parser: &mut Parser) -> ParseResult<Self> {
-        let storage = parser.take::<StorageToken>();
-        let name = if let Some(storage) = storage {
+        let name = if let Some(storage) = parser.take::<StorageToken>() {
             Ident::from(storage)
         } else {
             parser.parse()?

@@ -8,7 +8,7 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_ast::keywords::Token;
-use sway_ast::{token::Delimiter, CodeBlockContents, FnArg, FnArgs, FnSignature, ItemFn};
+use sway_ast::{token::Delimiter, FnArg, FnArgs, FnSignature, ItemFn};
 use sway_types::Spanned;
 
 impl Format for ItemFn {
@@ -19,10 +19,7 @@ impl Format for ItemFn {
     ) -> Result<(), FormatterError> {
         self.fn_signature.format(formatted_code, formatter)?;
         Self::open_curly_brace(formatted_code, formatter)?;
-        self.body
-            .clone()
-            .into_inner()
-            .format(formatted_code, formatter)?;
+        self.body.get().format(formatted_code, formatter)?;
         Self::close_curly_brace(formatted_code, formatter)?;
 
         Ok(())
@@ -96,15 +93,14 @@ impl Format for FnSignature {
             self.name.as_str()
         )?;
         // `<T>`
-        if let Some(generics) = &self.generics.clone() {
+        if let Some(generics) = &self.generics {
             generics.format(formatted_code, formatter)?;
         }
         // `(`
         Self::open_parenthesis(formatted_code, formatter)?;
         // FnArgs
-        match self.arguments.clone().into_inner() {
+        match self.arguments.get() {
             FnArgs::Static(args) => {
-                // TODO: Refactor into `Punctuated::format()`
                 args.format(formatted_code, formatter)?;
             }
             FnArgs::NonStatic {
@@ -166,30 +162,6 @@ impl Parenthesis for FnSignature {
     }
 }
 
-impl Format for CodeBlockContents {
-    fn format(
-        &self,
-        formatted_code: &mut FormattedCode,
-        formatter: &mut Formatter,
-    ) -> Result<(), FormatterError> {
-        for statement in self.statements.iter() {
-            statement.format(formatted_code, formatter)?;
-        }
-        if let Some(final_expr) = &self.final_expr_opt {
-            write!(
-                formatted_code,
-                "{}",
-                formatter.shape.indent.to_string(&formatter.config)?
-            )?;
-            final_expr.format(formatted_code, formatter)?;
-            writeln!(formatted_code)?;
-        }
-
-        Ok(())
-    }
-}
-
-// TODO: Use this in `Punctuated::format()`
 impl Format for FnArg {
     fn format(
         &self,
@@ -212,19 +184,6 @@ impl LeafSpans for ItemFn {
         collected_spans.append(&mut self.fn_signature.leaf_spans());
         collected_spans.append(&mut self.body.leaf_spans());
         collected_spans
-    }
-}
-
-impl LeafSpans for CodeBlockContents {
-    fn leaf_spans(&self) -> Vec<ByteSpan> {
-        let mut collected_span = Vec::new();
-        for statement in self.statements.iter() {
-            collected_span.append(&mut statement.leaf_spans());
-        }
-        if let Some(expr) = &self.final_expr_opt {
-            collected_span.append(&mut expr.leaf_spans());
-        }
-        collected_span
     }
 }
 

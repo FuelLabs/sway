@@ -115,7 +115,7 @@ where
         // Add opening brace's ByteSpan
         collected_spans.push(opening_brace_span);
         // Add T's collected ByteSpan
-        collected_spans.append(&mut self.clone().into_inner().leaf_spans());
+        collected_spans.append(&mut self.get().leaf_spans());
         let mut closing_brace_span = ByteSpan::from(self.span());
         closing_brace_span.start = closing_brace_span.end - 1;
         // Add closing brace's ByteSpan
@@ -135,7 +135,7 @@ where
         // Add opening paren's span
         collected_spans.push(opening_paren_span);
         // Add T's collected ByteSpan
-        collected_spans.append(&mut self.clone().into_inner().leaf_spans());
+        collected_spans.append(&mut self.get().leaf_spans());
         let mut closing_paren_span = ByteSpan::from(self.span());
         closing_paren_span.start = closing_paren_span.end - 1;
         // Add closing paren's ByteSpan
@@ -155,7 +155,7 @@ where
         // Add opening bracket's span
         collected_spans.push(opening_bracket_span);
         // Add T's collected ByteSpan
-        collected_spans.append(&mut self.clone().into_inner().leaf_spans());
+        collected_spans.append(&mut self.get().leaf_spans());
         let mut closing_bracket_span = ByteSpan::from(self.span());
         closing_bracket_span.start = closing_bracket_span.end - 1;
         // Add closing bracket's ByteSpan

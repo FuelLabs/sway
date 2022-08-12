@@ -43,6 +43,7 @@ pub struct Project {
     #[serde(default = "default_entry")]
     pub entry: String,
     pub implicit_std: Option<bool>,
+    pub forc_version: Option<semver::Version>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

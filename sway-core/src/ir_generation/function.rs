@@ -34,6 +34,7 @@ pub(super) struct FnCompiler {
     pub(super) block_to_break_to: Option<Block>,
     pub(super) block_to_continue_to: Option<Block>,
     lexical_map: LexicalMap,
+    recreated_fns: HashMap<(Span, Vec<TypeId>, Vec<TypeId>), Function>,
 }
 
 pub(super) enum StateAccessType {
@@ -55,6 +56,7 @@ impl FnCompiler {
             block_to_break_to: None,
             block_to_continue_to: None,
             lexical_map,
+            recreated_fns: HashMap::new(),
         }
     }
 
@@ -321,6 +323,7 @@ impl FnCompiler {
                 prefix,
                 field_to_access,
                 resolved_type_of_parent,
+                ..
             } => {
                 let span_md_idx = md_mgr.span_to_md(context, &field_to_access.span);
                 self.compile_struct_field_expr(
@@ -787,46 +790,63 @@ impl FnCompiler {
         self_state_idx: Option<StateIndex>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
-        // XXX OK, now, the old compiler inlines everything very lazily.  Function calls include
-        // the body of the callee (i.e., the callee_body arg above) and so codegen just pulled it
-        // straight in, no questions asked.  Library functions are provided in an initial namespace
-        // from Forc and when the parser builds the AST (or is it during type checking?) these
-        // function bodies are embedded.
+        // The compiler inlines everything very lazily.  Function calls include the body of the
+        // callee (i.e., the callee_body arg above). Library functions are provided in an initial
+        // namespace from Forc and when the parser builds the AST (or is it during type checking?)
+        // these function bodies are embedded.
         //
-        // We're going to build little single-use instantiations of the callee and then call them.
-        // For now if they're called in multiple places they'll be redundantly recreated, but also
-        // at present we are still inlining everything so it actually makes little difference.
+        // Here we build little single-use instantiations of the callee and then call them.  Naming
+        // is not yet absolute so we must ensure the function names are unique.
         //
-        // Eventually we need to Do It Properly and inline only when necessary, and compile the
-        // standard library to an actual module.
+        // Eventually we need to Do It Properly and inline into the AST only when necessary, and
+        // compile the standard library to an actual module.
 
-        {
-            let callee_name = format!("{}_{}", callee.name, context.get_unique_id());
+        // Get the callee from the cache if we've already compiled it.  We can't insert it with
+        // .entry() since `compile_function()` returns a Result we need to handle.  The key to our
+        // cache, to uniquely identify a function instance, is the span and the type IDs of any
+        // args and type parameters.  It's using the Sway types rather than IR types, which would
+        // be more accurate but also more fiddly.
+        let fn_key = (
+            callee.span(),
+            callee.parameters.iter().map(|p| p.type_id).collect(),
+            callee.type_parameters.iter().map(|tp| tp.type_id).collect(),
+        );
+        let callee = match self.recreated_fns.get(&fn_key).copied() {
+            Some(func) => func,
+            None => {
+                let callee_fn_decl = TypedFunctionDeclaration {
+                    type_parameters: Vec::new(),
+                    name: Ident::new(Span::from_string(format!(
+                        "{}_{}",
+                        callee.name,
+                        context.get_unique_id()
+                    ))),
+                    ..callee
+                };
+                let new_func =
+                    compile_function(context, md_mgr, self.module, callee_fn_decl)?.unwrap();
+                self.recreated_fns.insert(fn_key, new_func);
+                new_func
+            }
+        };
 
-            let mut callee_fn_decl = callee;
-            callee_fn_decl.type_parameters.clear();
-            callee_fn_decl.name = Ident::new(Span::from_string(callee_name));
-
-            let callee = compile_function(context, md_mgr, self.module, callee_fn_decl)?;
-
-            // Now actually call the new function.
-            let args = ast_args
-                .into_iter()
-                .map(|(_, expr)| self.compile_expression(context, md_mgr, expr))
-                .collect::<Result<Vec<Value>, CompileError>>()?;
-            let state_idx_md_idx = match self_state_idx {
-                Some(self_state_idx) => {
-                    md_mgr.storage_key_to_md(context, self_state_idx.to_usize() as u64)
-                }
-                None => None,
-            };
-            Ok(self
-                .current_block
-                .ins(context)
-                .call(callee.unwrap(), &args)
-                .add_metadatum(context, span_md_idx)
-                .add_metadatum(context, state_idx_md_idx))
-        }
+        // Now actually call the new function.
+        let args = ast_args
+            .into_iter()
+            .map(|(_, expr)| self.compile_expression(context, md_mgr, expr))
+            .collect::<Result<Vec<Value>, CompileError>>()?;
+        let state_idx_md_idx = match self_state_idx {
+            Some(self_state_idx) => {
+                md_mgr.storage_key_to_md(context, self_state_idx.to_usize() as u64)
+            }
+            None => None,
+        };
+        Ok(self
+            .current_block
+            .ins(context)
+            .call(callee, &args)
+            .add_metadatum(context, span_md_idx)
+            .add_metadatum(context, state_idx_md_idx))
     }
 
     fn compile_if(

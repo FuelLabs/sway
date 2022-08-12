@@ -12,6 +12,8 @@ use sway_ast::{
 };
 use sway_types::Spanned;
 
+use super::shape::LineStyle;
+
 impl Format for Ty {
     fn format(
         &self,
@@ -21,10 +23,7 @@ impl Format for Ty {
         match self {
             Self::Array(arr_descriptor) => {
                 write!(formatted_code, "{}", Delimiter::Bracket.as_open_char())?;
-                arr_descriptor
-                    .clone()
-                    .into_inner()
-                    .format(formatted_code, formatter)?;
+                arr_descriptor.get().format(formatted_code, formatter)?;
                 write!(formatted_code, "{}", Delimiter::Bracket.as_close_char())?;
                 Ok(())
             }
@@ -35,10 +34,7 @@ impl Format for Ty {
             }
             Self::Tuple(tup_descriptor) => {
                 write!(formatted_code, "{}", Delimiter::Parenthesis.as_open_char())?;
-                tup_descriptor
-                    .clone()
-                    .into_inner()
-                    .format(formatted_code, formatter)?;
+                tup_descriptor.get().format(formatted_code, formatter)?;
                 write!(formatted_code, "{}", Delimiter::Parenthesis.as_close_char())?;
                 Ok(())
             }
@@ -96,10 +92,19 @@ impl Format for TyTupleDescriptor {
             tail,
         } = self
         {
+            let prev_state = formatter.shape.code_line;
+            formatter
+                .shape
+                .code_line
+                .update_line_style(LineStyle::Normal);
+
             head.format(formatted_code, formatter)?;
             write!(formatted_code, "{} ", comma_token.ident().as_str())?;
             tail.format(formatted_code, formatter)?;
+
+            formatter.shape.update_line_settings(prev_state);
         }
+
         Ok(())
     }
 }
