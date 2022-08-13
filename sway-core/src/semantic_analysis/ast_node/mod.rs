@@ -920,7 +920,7 @@ impl PartialEq for TypeCheckedStorageReassignDescriptor {
     }
 }
 
-fn reassign_storage_subfield(
+pub(crate) fn reassign_storage_subfield(
     ctx: TypeCheckContext,
     fields: Vec<Ident>,
     rhs: Expression,

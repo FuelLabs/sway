@@ -522,6 +522,28 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
         }) => handle_while_loop(body, condition, tokens),
         // TODO: collect these tokens as keywords once the compiler returns the span
         ExpressionKind::Break | ExpressionKind::Continue => (),
+        ExpressionKind::Reassignment(reassignment) => {
+            handle_expression(&reassignment.rhs, tokens);
+
+            match &reassignment.lhs {
+                ReassignmentTarget::VariableExpression(exp) => {
+                    handle_expression(exp, tokens);
+                }
+                ReassignmentTarget::StorageField(idents) => {
+                    for ident in idents {
+                        let reassignment = sway_core::Reassignment {
+                            lhs: reassignment.lhs.clone(),
+                            rhs: (*reassignment.rhs).clone(),
+                            span: span.clone(),
+                        };
+                        tokens.insert(
+                            to_ident_key(ident),
+                            Token::from_parsed(AstToken::Reassignment(reassignment)),
+                        );
+                    }
+                }
+            }
+        }
     }
 }
 

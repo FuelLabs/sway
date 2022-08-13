@@ -1114,6 +1114,24 @@ fn connect_expression(
             }
             Ok(vec![])
         }
+        Reassignment(typed_reassignment) => connect_expression(
+            &typed_reassignment.rhs.expression,
+            graph,
+            leaves,
+            exit_node,
+            "variable reassignment",
+            tree_type,
+            typed_reassignment.rhs.clone().span,
+        ),
+        StorageReassignment(typed_storage_reassignment) => connect_expression(
+            &typed_storage_reassignment.rhs.expression,
+            graph,
+            leaves,
+            exit_node,
+            "variable reassignment",
+            tree_type,
+            typed_storage_reassignment.rhs.clone().span,
+        ),
     }
 }
 

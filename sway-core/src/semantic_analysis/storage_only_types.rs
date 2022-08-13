@@ -6,7 +6,7 @@ use crate::{TypedDeclaration, TypedFunctionDeclaration};
 
 use crate::semantic_analysis::{
     TypedAbiDeclaration, TypedAstNodeContent, TypedExpression, TypedExpressionVariant,
-    TypedIntrinsicFunctionKind, TypedReturnStatement,
+    TypedIntrinsicFunctionKind, TypedReassignment, TypedReturnStatement,
 };
 
 use super::{
@@ -110,6 +110,21 @@ fn expr_validate(expr: &TypedExpression) -> CompileResult<()> {
         }
         TypedExpressionVariant::Break => (),
         TypedExpressionVariant::Continue => (),
+        TypedExpressionVariant::Reassignment(reassignment) => {
+            let TypedReassignment {
+                lhs_base_name, rhs, ..
+            } = &**reassignment;
+            check!(
+                check_type(rhs.return_type, lhs_base_name.span(), false),
+                (),
+                warnings,
+                errors,
+            );
+            check!(expr_validate(rhs), (), warnings, errors)
+        }
+        TypedExpressionVariant::StorageReassignment(_storage_reassignment) => {
+            // FIXME: there's nothing to check here?
+        }
     }
     ok((), warnings, errors)
 }

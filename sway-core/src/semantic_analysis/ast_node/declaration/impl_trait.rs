@@ -259,6 +259,11 @@ impl TypedImplTrait {
                     expr_contains_get_storage_index(condition)
                         || codeblock_contains_get_storage_index(body)
                 }
+                TypedExpressionVariant::Reassignment(reassignment) => {
+                    expr_contains_get_storage_index(&reassignment.rhs)
+                }
+                // FIXME: shouldn't this check the rhs?
+                TypedExpressionVariant::StorageReassignment(_storage_reassignment) => false,
             }
         }
         fn decl_contains_get_storage_index(decl: &TypedDeclaration) -> bool {

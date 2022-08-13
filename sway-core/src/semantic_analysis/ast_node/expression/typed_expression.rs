@@ -222,6 +222,21 @@ impl UnresolvedTypeCheck for TypedExpression {
             | Break
             | Continue
             | FunctionParameter => {}
+            Reassignment(reassignment) => {
+                res.append(&mut reassignment.rhs.check_for_unresolved_types())
+            }
+            StorageReassignment(storage_reassignment) => res.extend(
+                storage_reassignment
+                    .fields
+                    .iter()
+                    .flat_map(|x| x.type_id.check_for_unresolved_types())
+                    .chain(
+                        storage_reassignment
+                            .rhs
+                            .check_for_unresolved_types()
+                            .into_iter(),
+                    ),
+            ),
         }
         res
     }
@@ -299,6 +314,14 @@ impl DeterministicallyAborts for TypedExpression {
             }
             Break => false,
             Continue => false,
+            Reassignment(_reassignment) => {
+                // FIXME: This seems very wrong. We should check rhs, no?
+                false
+            }
+            StorageReassignment(_storage_reassignment) => {
+                // FIXME: This seems very wrong. We should check rhs, no?
+                false
+            }
         }
     }
 }
@@ -391,8 +414,18 @@ impl TypedExpression {
                 }
                 buf
             }
+            TypedExpressionVariant::Reassignment(reassignment) => {
+                reassignment.rhs.gather_return_statements()
+            }
+            TypedExpressionVariant::StorageReassignment(_storage_reassignment) => {
+                // FIXME: we should check rhs here too, no?
+                vec![]
+            }
             // if it is impossible for an expression to contain a return _statement_ (not an
             // implicit return!), put it in the pattern below.
+
+            // FIXME: lots of these expression kinds can contain arbitrary sub-expressions. But
+            // we're not checking those for returns?
             TypedExpressionVariant::LazyOperator { .. }
             | TypedExpressionVariant::Literal(_)
             | TypedExpressionVariant::Tuple { .. }
@@ -559,6 +592,9 @@ impl TypedExpression {
                     span,
                 };
                 ok(expr, vec![], vec![])
+            }
+            ExpressionKind::Reassignment(ReassignmentExpression { lhs, rhs }) => {
+                Self::type_check_reassignment(ctx.by_ref(), lhs, *rhs, span)
             }
         };
         let mut typed_expression = match res.value {
@@ -1695,6 +1731,131 @@ impl TypedExpression {
             span,
         };
         ok(exp, warnings, errors)
+    }
+
+    fn type_check_reassignment(
+        ctx: TypeCheckContext,
+        lhs: ReassignmentTarget,
+        rhs: Expression,
+        span: Span,
+    ) -> CompileResult<Self> {
+        let mut errors = vec![];
+        let mut warnings = vec![];
+        let ctx = ctx
+            .with_type_annotation(insert_type(TypeInfo::Unknown))
+            .with_help_text("");
+        // ensure that the lhs is a variable expression or struct field access
+        match lhs {
+            ReassignmentTarget::VariableExpression(var) => {
+                let mut expr = var;
+                let mut names_vec = Vec::new();
+                let (base_name, final_return_type) = loop {
+                    match expr.kind {
+                        ExpressionKind::Variable(name) => {
+                            // check that the reassigned name exists
+                            let unknown_decl = check!(
+                                ctx.namespace.resolve_symbol(&name).cloned(),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            let variable_decl = check!(
+                                unknown_decl.expect_variable().cloned(),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            if !variable_decl.mutability.is_mutable() {
+                                errors.push(CompileError::AssignmentToNonMutable { name });
+                                return err(warnings, errors);
+                            }
+                            break (name, variable_decl.body.return_type);
+                        }
+                        ExpressionKind::Subfield(SubfieldExpression {
+                            prefix,
+                            field_to_access,
+                            ..
+                        }) => {
+                            names_vec.push(ProjectionKind::StructField {
+                                name: field_to_access,
+                            });
+                            expr = prefix;
+                        }
+                        ExpressionKind::TupleIndex(TupleIndexExpression {
+                            prefix,
+                            index,
+                            index_span,
+                            ..
+                        }) => {
+                            names_vec.push(ProjectionKind::TupleField { index, index_span });
+                            expr = prefix;
+                        }
+                        _ => {
+                            errors.push(CompileError::InvalidExpressionOnLhs { span });
+                            return err(warnings, errors);
+                        }
+                    }
+                };
+                let names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
+                let (ty_of_field, _ty_of_parent) = check!(
+                    ctx.namespace.find_subfield_type(&base_name, &names_vec),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                // type check the reassignment
+                let ctx = ctx.with_type_annotation(ty_of_field).with_help_text("");
+                let rhs_span = rhs.span();
+                let rhs = check!(
+                    TypedExpression::type_check(ctx, rhs),
+                    error_recovery_expr(rhs_span),
+                    warnings,
+                    errors
+                );
+
+                ok(
+                    TypedExpression {
+                        expression: TypedExpressionVariant::Reassignment(Box::new(
+                            TypedReassignment {
+                                lhs_base_name: base_name,
+                                lhs_type: final_return_type,
+                                lhs_indices: names_vec,
+                                rhs,
+                            },
+                        )),
+                        return_type: crate::type_system::insert_type(TypeInfo::Tuple(Vec::new())),
+                        // TODO: if the rhs is constant then this should be constant, no?
+                        is_constant: IsConstant::No,
+                        span,
+                    },
+                    warnings,
+                    errors,
+                )
+            }
+            ReassignmentTarget::StorageField(fields) => {
+                let ctx = ctx
+                    .with_type_annotation(insert_type(TypeInfo::Unknown))
+                    .with_help_text("");
+                let reassignment = check!(
+                    reassign_storage_subfield(ctx, fields, rhs, span.clone()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors,
+                );
+                ok(
+                    TypedExpression {
+                        expression: TypedExpressionVariant::StorageReassignment(Box::new(
+                            reassignment,
+                        )),
+                        return_type: crate::type_system::insert_type(TypeInfo::Tuple(Vec::new())),
+                        is_constant: IsConstant::No,
+                        span,
+                    },
+                    warnings,
+                    errors,
+                )
+            }
+        }
     }
 
     fn resolve_numeric_literal(

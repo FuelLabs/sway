@@ -17,7 +17,7 @@ pub struct Reassignment {
     pub lhs: ReassignmentTarget,
     // the expression that is being assigned to the lhs
     pub rhs: Expression,
-    pub(crate) span: Span,
+    pub span: Span,
 }
 
 impl Reassignment {

@@ -1,5 +1,10 @@
 use crate::{
-    parse_tree::{CallPath, Literal},
+    parse_tree::{
+        // FIXME: move this into this module
+        declaration::ReassignmentTarget,
+        CallPath,
+        Literal,
+    },
     type_system::TypeBinding,
     CodeBlock, TypeInfo,
 };
@@ -110,6 +115,12 @@ pub struct WhileLoopExpression {
 }
 
 #[derive(Debug, Clone)]
+pub struct ReassignmentExpression {
+    pub lhs: ReassignmentTarget,
+    pub rhs: Box<Expression>,
+}
+
+#[derive(Debug, Clone)]
 pub enum ExpressionKind {
     Literal(Literal),
     FunctionApplication(Box<FunctionApplicationExpression>),
@@ -163,6 +174,7 @@ pub enum ExpressionKind {
     WhileLoop(WhileLoopExpression),
     Break,
     Continue,
+    Reassignment(ReassignmentExpression),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
