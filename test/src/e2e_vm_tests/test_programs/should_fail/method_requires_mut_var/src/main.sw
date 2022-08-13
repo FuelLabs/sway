@@ -5,7 +5,7 @@ struct A {
 }
 
 impl A {
-    fn f(mut self) {
+    fn f(ref mut self) {
         self.a = 42;
     }
 }

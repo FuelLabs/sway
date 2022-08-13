@@ -4,7 +4,7 @@ use sway_core::{
     semantic_analysis::ast_node::{
         expression::typed_expression_variant::TypedExpressionVariant, TypedDeclaration,
     },
-    Declaration, Expression,
+    Declaration, ExpressionKind,
 };
 use tower_lsp::lsp_types::{CompletionItem, CompletionItemKind};
 
@@ -47,11 +47,11 @@ pub fn parsed_to_completion_kind(ast_token: &AstToken) -> Option<CompletionItemK
             | Declaration::StorageDeclaration(_) => Some(CompletionItemKind::TEXT),
             Declaration::Break { .. } | Declaration::Continue { .. } => None,
         },
-        AstToken::Expression(exp) => match &exp {
-            Expression::Literal { .. } => Some(CompletionItemKind::VALUE),
-            Expression::FunctionApplication { .. } => Some(CompletionItemKind::FUNCTION),
-            Expression::VariableExpression { .. } => Some(CompletionItemKind::VARIABLE),
-            Expression::StructExpression { .. } => Some(CompletionItemKind::STRUCT),
+        AstToken::Expression(exp) => match &exp.kind {
+            ExpressionKind::Literal { .. } => Some(CompletionItemKind::VALUE),
+            ExpressionKind::FunctionApplication { .. } => Some(CompletionItemKind::FUNCTION),
+            ExpressionKind::Variable { .. } => Some(CompletionItemKind::VARIABLE),
+            ExpressionKind::Struct { .. } => Some(CompletionItemKind::STRUCT),
             _ => None,
         },
         AstToken::FunctionDeclaration(_) => Some(CompletionItemKind::FUNCTION),

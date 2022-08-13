@@ -74,6 +74,7 @@ pub enum FnArgs {
     Static(Punctuated<FnArg, CommaToken>),
     NonStatic {
         self_token: SelfToken,
+        ref_self: Option<RefToken>,
         mutable_self: Option<MutToken>,
         args_opt: Option<(CommaToken, Punctuated<FnArg, CommaToken>)>,
     },

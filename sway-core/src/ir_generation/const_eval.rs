@@ -287,7 +287,7 @@ fn const_eval_typed_expr(
             let tag_value = Constant::new_uint(64, *tag as u64);
             let mut fields: Vec<Constant> = vec![tag_value];
             contents.iter().for_each(|subexpr| {
-                const_eval_typed_expr(lookup, known_consts, &*subexpr)
+                const_eval_typed_expr(lookup, known_consts, subexpr)
                     .into_iter()
                     .for_each(|enum_val| {
                         fields.push(enum_val);
@@ -299,7 +299,8 @@ fn const_eval_typed_expr(
             prefix,
             field_to_access,
             resolved_type_of_parent,
-        } => match const_eval_typed_expr(lookup, known_consts, &*prefix) {
+            ..
+        } => match const_eval_typed_expr(lookup, known_consts, prefix) {
             Some(Constant {
                 value: ConstantValue::Struct(fields),
                 ..
@@ -319,7 +320,7 @@ fn const_eval_typed_expr(
             prefix,
             elem_to_access_num,
             ..
-        } => match const_eval_typed_expr(lookup, known_consts, &*prefix) {
+        } => match const_eval_typed_expr(lookup, known_consts, prefix) {
             Some(Constant {
                 value: ConstantValue::Struct(fields),
                 ..
@@ -337,7 +338,8 @@ fn const_eval_typed_expr(
         | TypedExpressionVariant::StorageAccess(_)
         | TypedExpressionVariant::AbiName(_)
         | TypedExpressionVariant::EnumTag { .. }
-        | TypedExpressionVariant::UnsafeDowncast { .. } => None,
+        | TypedExpressionVariant::UnsafeDowncast { .. }
+        | TypedExpressionVariant::WhileLoop { .. } => None,
     }
 }
 
@@ -357,6 +359,6 @@ fn const_eval_typed_ast_node(
         TypedAstNodeContent::Expression(e) | TypedAstNodeContent::ImplicitReturnExpression(e) => {
             const_eval_typed_expr(lookup, known_consts, e)
         }
-        TypedAstNodeContent::WhileLoop(_) | TypedAstNodeContent::SideEffect => None,
+        TypedAstNodeContent::SideEffect => None,
     }
 }

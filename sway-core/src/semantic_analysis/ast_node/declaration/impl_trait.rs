@@ -6,7 +6,7 @@ use crate::{
     error::{err, ok},
     semantic_analysis::{
         Mode, TypeCheckContext, TypedAstNodeContent, TypedExpression, TypedExpressionVariant,
-        TypedIntrinsicFunctionKind, TypedReturnStatement, TypedWhileLoop,
+        TypedIntrinsicFunctionKind, TypedReturnStatement,
     },
     type_system::{
         insert_type, look_up_type_id, resolve_type, set_type_as_storage_only, unify_with_self,
@@ -193,10 +193,6 @@ impl TypedImplTrait {
                     expr_contains_get_storage_index(expr)
                 }
                 TypedAstNodeContent::Declaration(decl) => decl_contains_get_storage_index(decl),
-                TypedAstNodeContent::WhileLoop(TypedWhileLoop { condition, body }) => {
-                    expr_contains_get_storage_index(condition)
-                        || codeblock_contains_get_storage_index(body)
-                }
                 TypedAstNodeContent::SideEffect => false,
             }
         }
@@ -220,8 +216,7 @@ impl TypedImplTrait {
                     prefix: expr1,
                     index: expr2,
                 } => {
-                    expr_contains_get_storage_index(&*expr1)
-                        || expr_contains_get_storage_index(&*expr2)
+                    expr_contains_get_storage_index(expr1) || expr_contains_get_storage_index(expr2)
                 }
                 TypedExpressionVariant::Tuple { fields: exprvec }
                 | TypedExpressionVariant::Array { contents: exprvec } => {
@@ -237,27 +232,31 @@ impl TypedImplTrait {
                     then,
                     r#else,
                 } => {
-                    expr_contains_get_storage_index(&*condition)
-                        || expr_contains_get_storage_index(&*then)
+                    expr_contains_get_storage_index(condition)
+                        || expr_contains_get_storage_index(then)
                         || r#else
                             .as_ref()
-                            .map_or(false, |r#else| expr_contains_get_storage_index(&*r#else))
+                            .map_or(false, |r#else| expr_contains_get_storage_index(r#else))
                 }
                 TypedExpressionVariant::StructFieldAccess { prefix: exp, .. }
                 | TypedExpressionVariant::TupleElemAccess { prefix: exp, .. }
                 | TypedExpressionVariant::AbiCast { address: exp, .. }
                 | TypedExpressionVariant::EnumTag { exp }
                 | TypedExpressionVariant::UnsafeDowncast { exp, .. } => {
-                    expr_contains_get_storage_index(&*exp)
+                    expr_contains_get_storage_index(exp)
                 }
                 TypedExpressionVariant::EnumInstantiation { contents, .. } => contents
                     .as_ref()
-                    .map_or(false, |f| expr_contains_get_storage_index(&*f)),
+                    .map_or(false, |f| expr_contains_get_storage_index(f)),
 
                 TypedExpressionVariant::IntrinsicFunction(TypedIntrinsicFunctionKind {
                     kind,
                     ..
                 }) => matches!(kind, sway_ast::intrinsics::Intrinsic::GetStorageKey),
+                TypedExpressionVariant::WhileLoop { condition, body } => {
+                    expr_contains_get_storage_index(condition)
+                        || codeblock_contains_get_storage_index(body)
+                }
             }
         }
         fn decl_contains_get_storage_index(decl: &TypedDeclaration) -> bool {

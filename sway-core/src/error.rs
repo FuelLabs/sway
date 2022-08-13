@@ -191,7 +191,7 @@ where
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Hint {
     msg: Option<String>,
 }
@@ -213,7 +213,7 @@ impl Display for Hint {
 
 // TODO: since moving to using Idents instead of strings the warning_content will usually contain a
 // duplicate of the span.
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CompileWarning {
     pub span: Span,
     pub warning_content: Warning,
@@ -258,7 +258,7 @@ impl From<(usize, usize)> for LineCol {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Warning {
     NonClassCaseStructName {
         struct_name: Ident,
@@ -447,7 +447,7 @@ impl fmt::Display for Warning {
 
 // TODO: since moving to using Idents instead of strings, there are a lot of redundant spans in
 // this type.
-#[derive(Error, Debug, Clone, PartialEq, Hash)]
+#[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CompileError {
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
     UnknownVariable { var_name: Ident },
@@ -538,6 +538,10 @@ pub enum CompileError {
         variable_name: Ident,
         span: Span,
     },
+    #[error(
+        "This parameter was declared as mutable, which is not supported yet, did you mean to use ref mut?"
+    )]
+    MutableParameterNotSupported { param_name: Ident },
     #[error(
         "Cannot call associated function \"{fn_name}\" as a method. Use associated function \
         syntax instead."
@@ -1082,6 +1086,7 @@ impl Spanned for CompileError {
             MultipleDefinitionsOfFunction { name } => name.span(),
             ReassignmentToNonVariable { span, .. } => span.clone(),
             AssignmentToNonMutable { name } => name.span(),
+            MutableParameterNotSupported { param_name } => param_name.span(),
             MethodRequiresMutableSelf { span, .. } => span.clone(),
             AssociatedFunctionCalledAsMethod { span, .. } => span.clone(),
             TypeParameterNotInTypeScope { span, .. } => span.clone(),
@@ -1231,7 +1236,7 @@ impl CompileError {
     }
 }
 
-#[derive(Error, Debug, Clone, PartialEq, Hash)]
+#[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeError {
     #[error(
         "Mismatched types.\n\
