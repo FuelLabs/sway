@@ -2,10 +2,13 @@ use crate::{Parse, ParseErrorKind, ParseResult, ParseToEnd, Parser, ParserConsum
 
 use sway_ast::keywords::{
     AbiToken, BreakToken, ConstToken, ContinueToken, EnumToken, FnToken, ImplToken, MutToken,
-    OpenAngleBracketToken, PubToken, StorageToken, StructToken, TraitToken, UseToken, WhereToken,
+    OpenAngleBracketToken, StorageToken, StructToken, TraitToken, UseToken, WhereToken,
 };
 use sway_ast::token::{DocComment, DocStyle};
-use sway_ast::{FnArg, FnArgs, FnSignature, ItemKind, TypeField};
+use sway_ast::{
+    FnArg, FnArgs, FnSignature, ItemConst, ItemEnum, ItemFn, ItemKind, ItemStruct, ItemTrait,
+    ItemUse, TypeField,
+};
 
 mod item_abi;
 mod item_const;
@@ -24,53 +27,44 @@ impl Parse for ItemKind {
         // introducing a struct `Item` that holds the visibility and the kind,
         // and then validate in an "AST validation" step which kinds that should have `pub`s.
 
-        if parser.peek::<UseToken>().is_some() || parser.peek::<(PubToken, UseToken)>().is_some() {
-            let item_use = parser.parse()?;
-            return Ok(ItemKind::Use(item_use));
-        }
-        if parser.peek::<StructToken>().is_some()
-            || parser.peek::<(PubToken, StructToken)>().is_some()
-        {
-            let item_struct = parser.parse()?;
-            return Ok(ItemKind::Struct(item_struct));
-        }
-        if parser.peek::<EnumToken>().is_some() || parser.peek::<(PubToken, EnumToken)>().is_some()
-        {
-            let item_enum = parser.parse()?;
-            return Ok(ItemKind::Enum(item_enum));
-        }
-        if parser.peek::<FnToken>().is_some() || parser.peek::<(PubToken, FnToken)>().is_some() {
-            let item_fn = parser.parse()?;
-            return Ok(ItemKind::Fn(item_fn));
-        }
-        if parser.peek::<TraitToken>().is_some()
-            || parser.peek::<(PubToken, TraitToken)>().is_some()
-        {
-            let item_trait = parser.parse()?;
-            return Ok(ItemKind::Trait(item_trait));
-        }
-        if let Some(item) = parser.guarded_parse::<ImplToken, _>()? {
-            return Ok(ItemKind::Impl(item));
-        }
-        if let Some(item) = parser.guarded_parse::<AbiToken, _>()? {
-            return Ok(ItemKind::Abi(item));
-        }
-        if parser.peek::<ConstToken>().is_some()
-            || parser.peek::<(PubToken, ConstToken)>().is_some()
-        {
-            let item_const = parser.parse()?;
-            return Ok(ItemKind::Const(item_const));
-        }
-        if let Some(item) = parser.guarded_parse::<StorageToken, _>()? {
-            return Ok(ItemKind::Storage(item));
-        }
-        if let Some(item) = parser.guarded_parse::<BreakToken, _>()? {
-            return Ok(ItemKind::Break(item));
-        }
-        if let Some(item) = parser.guarded_parse::<ContinueToken, _>()? {
-            return Ok(ItemKind::Continue(item));
-        }
-        Err(parser.emit_error(ParseErrorKind::ExpectedAnItem))
+        let mut visibility = parser.take();
+
+        let kind = if let Some(mut item) = parser.guarded_parse::<UseToken, ItemUse>()? {
+            item.visibility = visibility.take();
+            ItemKind::Use(item)
+        } else if let Some(mut item) = parser.guarded_parse::<StructToken, ItemStruct>()? {
+            item.visibility = visibility.take();
+            ItemKind::Struct(item)
+        } else if let Some(mut item) = parser.guarded_parse::<EnumToken, ItemEnum>()? {
+            item.visibility = visibility.take();
+            ItemKind::Enum(item)
+        } else if let Some(mut item) = parser.guarded_parse::<FnToken, ItemFn>()? {
+            item.fn_signature.visibility = visibility.take();
+            ItemKind::Fn(item)
+        } else if let Some(mut item) = parser.guarded_parse::<TraitToken, ItemTrait>()? {
+            item.visibility = visibility.take();
+            ItemKind::Trait(item)
+        } else if let Some(item) = parser.guarded_parse::<ImplToken, _>()? {
+            ItemKind::Impl(item)
+        } else if let Some(item) = parser.guarded_parse::<AbiToken, _>()? {
+            ItemKind::Abi(item)
+        } else if let Some(mut item) = parser.guarded_parse::<ConstToken, ItemConst>()? {
+            item.visibility = visibility.take();
+            ItemKind::Const(item)
+        } else if let Some(item) = parser.guarded_parse::<StorageToken, _>()? {
+            ItemKind::Storage(item)
+        } else if let Some(item) = parser.guarded_parse::<BreakToken, _>()? {
+            ItemKind::Break(item)
+        } else if let Some(item) = parser.guarded_parse::<ContinueToken, _>()? {
+            ItemKind::Continue(item)
+        } else {
+            return Err(parser.emit_error(ParseErrorKind::ExpectedAnItem));
+        };
+
+        // Ban visibility qualifiers that haven't been consumed, but do so with recovery.
+        let _ = parser.ban_visibility_qualifier(&visibility);
+
+        Ok(kind)
     }
 }
 
