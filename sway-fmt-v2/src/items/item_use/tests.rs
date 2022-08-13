@@ -2,7 +2,7 @@ use crate::{Format, Formatter};
 use forc_util::{println_green, println_red};
 use paste::paste;
 use prettydiff::{basic::DiffOp, diff_lines};
-use sway_ast::Expr;
+use sway_ast::ItemUse;
 use sway_parse::*;
 
 fn format_code(input: &str) -> String {
@@ -11,7 +11,7 @@ fn format_code(input: &str) -> String {
     let input_arc = std::sync::Arc::from(input);
     let token_stream = lex(&input_arc, 0, input.len(), None).unwrap();
     let mut parser = Parser::new(&token_stream, &mut errors);
-    let expression: Expr = Parse::parse(&mut parser).unwrap();
+    let expression: ItemUse = Parse::parse(&mut parser).unwrap();
 
     let mut buf = Default::default();
     expression.format(&mut buf, &mut formatter).unwrap();
@@ -40,11 +40,12 @@ macro_rules! fmt_test_inner {
             fn [<$scope _ $name>] () {
                 let formatted_code = format_code($y);
                 let changeset = diff_lines(&formatted_code, $desired_output);
-                let count_of_updates = changeset.diff().len();
+                let diff = changeset.diff();
+                let count_of_updates = diff.len();
                 if count_of_updates != 0 {
                     println!("FAILED: {count_of_updates} diff items.");
                 }
-                for diff in changeset.diff() {
+                for diff in diff {
                     match diff {
                         DiffOp::Equal(old) => {
                             for o in old {
@@ -78,36 +79,25 @@ macro_rules! fmt_test_inner {
 }
 }
 
-fmt_test!(literal "5", extra_whitespace "  5 "
+fmt_test!(multiline     "use foo::{
+    quux,
+    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+    yxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+};",
+          out_of_order  "use foo::{yxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, quux, xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx};"
+);
+fmt_test!(multiline_nested      "use foo::{
+    Quux::{
+        a,
+        b,
+        C,
+    },
+    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+    yxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+};",
+          out_of_order          "use foo::{xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, Quux::{b, a, C}, yxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx};"
 );
 
-fmt_test!(  path_foo_bar "foo::bar::baz::quux::quuz",
-            intermediate_whitespace "foo :: bar :: baz :: quux :: quuz");
-
-fmt_test!(  field_proj_foobar "foo.bar.baz.quux",
-            intermediate_whitespace "foo . bar . baz . quux");
-
-fmt_test!(  abi_cast "abi(MyAbi, 0x1111111111111111111111111111111111111111111111111111111111111111)",
-            intermediate_whitespace " abi (
-                  MyAbi  
-                   , 
-                                 0x1111111111111111111111111111111111111111111111111111111111111111
-                                  )  "
-);
-
-fmt_test!(  basic_func_app "foo()",
-            intermediate_whitespace " foo (
-                
-            ) "
-);
-
-fmt_test!(  nested_args_func_app "foo(a_struct { hello: \"hi\" }, a_var, foo.bar.baz.quux)",
-            intermediate_whitespace "foo(a_struct {
-                    hello  :  \"hi\"
-            }, a_var  , foo . bar . baz . quux)"
-);
-
-fmt_test!(  multiline_tuple "(\n    \"reallyreallylongstring\",\n    \"yetanotherreallyreallyreallylongstring\",\n    \"okaynowthatsjustaridiculouslylongstringrightthere\",\n)",
-            intermediate_whitespace "(\"reallyreallylongstring\",             \"yetanotherreallyreallyreallylongstring\",
-            \"okaynowthatsjustaridiculouslylongstringrightthere\")"
+fmt_test!(single_line_sort  "use foo::{bar, baz, Quux::{a, b, C}};",
+          out_of_order      "use foo::{baz, Quux::{b, a, C}, bar};"
 );

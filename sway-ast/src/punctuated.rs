@@ -4,6 +4,22 @@ pub struct Punctuated<T, P> {
     pub final_value_opt: Option<Box<T>>,
 }
 
+impl<T, P> Punctuated<T, P> {
+    pub fn empty() -> Self {
+        Self {
+            value_separator_pairs: vec![],
+            final_value_opt: None,
+        }
+    }
+
+    pub fn single(value: T) -> Self {
+        Self {
+            value_separator_pairs: vec![],
+            final_value_opt: Some(Box::new(value)),
+        }
+    }
+}
+
 impl<T, P> IntoIterator for Punctuated<T, P> {
     type Item = T;
     type IntoIter = PunctuatedIter<T, P>;
