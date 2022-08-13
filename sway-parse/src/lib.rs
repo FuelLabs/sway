@@ -33,7 +33,7 @@ use sway_ast::Module;
 use crate::priv_prelude::*;
 use std::{path::PathBuf, sync::Arc};
 
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ParseFileError {
     Lex(LexError),
     Parse(ErrorEmitted),
