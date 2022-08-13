@@ -99,7 +99,6 @@ pub enum TypedExpressionVariant {
         // this span may be used for errors in the future, although it is not right now.
         span: Span,
     },
-    #[allow(dead_code)]
     StorageAccess(TypeCheckedStorageAccess),
     IntrinsicFunction(TypedIntrinsicFunctionKind),
     /// a zero-sized type-system-only compile-time thing that is used for constructing ABI casts.
@@ -319,6 +318,7 @@ impl PartialEq for TypedExpressionVariant {
                 },
             ) => *l_exp == *r_exp && l_variant == r_variant,
             (Self::EnumTag { exp: l_exp }, Self::EnumTag { exp: r_exp }) => *l_exp == *r_exp,
+            (Self::StorageAccess(l_exp), Self::StorageAccess(r_exp)) => *l_exp == *r_exp,
             _ => false,
         }
     }
@@ -512,7 +512,7 @@ impl fmt::Display for TypedExpressionVariant {
 }
 
 /// Describes the full storage access including all the subfields
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeCheckedStorageAccess {
     pub fields: Vec<TypeCheckedStorageAccessDescriptor>,
     pub(crate) ix: StateIndex,
@@ -535,7 +535,7 @@ impl TypeCheckedStorageAccess {
 }
 
 /// Describes a single subfield access in the sequence when accessing a subfield within storage.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeCheckedStorageAccessDescriptor {
     pub name: Ident,
     pub(crate) type_id: TypeId,
