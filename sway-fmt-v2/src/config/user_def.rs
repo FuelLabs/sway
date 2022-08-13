@@ -1,5 +1,5 @@
 //! Configuration options related to formatting user-defined structures.
-use super::user_opts::StructuresOptions;
+use crate::config::user_opts::StructuresOptions;
 use serde::{Deserialize, Serialize};
 
 /// Styling preferences for user-defined structures like `struct`s or `enum`s.

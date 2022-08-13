@@ -1,5 +1,5 @@
 //! Configuration options related to formatting literals.
-use super::user_opts::LiteralsOptions;
+use crate::config::user_opts::LiteralsOptions;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone)]

@@ -1,5 +1,5 @@
 //! Configuration options related to formatting of expressions and punctuation.
-use super::{items::ItemsLayout, user_opts::ExpressionsOptions};
+use crate::config::{items::ItemsLayout, user_opts::ExpressionsOptions};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone)]

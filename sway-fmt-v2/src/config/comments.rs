@@ -1,6 +1,5 @@
 //! Configuration options related to formatting comments.
-use super::user_opts::CommentsOptions;
-use crate::constants::DEFAULT_MAX_COMMENT_WIDTH;
+use crate::{config::user_opts::CommentsOptions, constants::DEFAULT_MAX_COMMENT_WIDTH};
 
 #[derive(Debug, Clone)]
 pub struct Comments {

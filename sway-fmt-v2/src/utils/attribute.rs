@@ -1,10 +1,9 @@
-use super::{
-    bracket::{Parenthesis, SquareBracket},
-    comments::{ByteSpan, LeafSpans},
-};
 use crate::{
-    fmt::{Format, FormattedCode, Formatter},
-    FormatterError,
+    fmt::*,
+    utils::{
+        bracket::{Parenthesis, SquareBracket},
+        comments::{ByteSpan, LeafSpans},
+    },
 };
 use std::fmt::Write;
 use sway_ast::{

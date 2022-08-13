@@ -1,7 +1,9 @@
-use super::bracket::{CurlyBrace, Parenthesis};
 use crate::{
     fmt::*,
-    utils::comments::{ByteSpan, LeafSpans},
+    utils::{
+        bracket::{CurlyBrace, Parenthesis},
+        comments::{ByteSpan, LeafSpans},
+    },
 };
 use std::fmt::Write;
 use sway_ast::{token::Delimiter, Pattern, PatternStructField};

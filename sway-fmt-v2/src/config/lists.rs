@@ -1,5 +1,5 @@
 //! Configuration options related to rewriting a list.
-use super::{user_opts::ListsOptions, whitespace::IndentStyle};
+use crate::config::{user_opts::ListsOptions, whitespace::IndentStyle};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone)]

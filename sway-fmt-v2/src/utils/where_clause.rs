@@ -1,5 +1,7 @@
-use super::comments::{ByteSpan, LeafSpans};
-use crate::fmt::*;
+use crate::{
+    fmt::*,
+    utils::comments::{ByteSpan, LeafSpans},
+};
 use std::fmt::Write;
 use sway_ast::{WhereBound, WhereClause};
 use sway_types::Spanned;

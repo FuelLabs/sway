@@ -1,5 +1,5 @@
 //! All of the user-facing configuration options stored in [ConfigOptions].
-use super::{
+use crate::config::{
     expr::{ExprBraceStyle, MatchArmLeadingPipe, TypeCombinatorLayout},
     heuristics::HeuristicsPreferences,
     imports::{GroupImports, ImportGranularity},

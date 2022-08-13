@@ -1,5 +1,5 @@
 //! Configuration options related to formatting imports.
-use super::{lists::ListTactic, user_opts::ImportsOptions, whitespace::IndentStyle};
+use crate::config::{lists::ListTactic, user_opts::ImportsOptions, whitespace::IndentStyle};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone)]

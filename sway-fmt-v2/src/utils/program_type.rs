@@ -1,5 +1,7 @@
-use super::comments::{ByteSpan, LeafSpans};
-use crate::FormatterError;
+use crate::{
+    utils::comments::{ByteSpan, LeafSpans},
+    FormatterError,
+};
 use std::fmt::Write;
 use sway_ast::{dependency::DependencyPath, token::PunctKind, Dependency, Module, ModuleKind};
 use sway_types::Spanned;

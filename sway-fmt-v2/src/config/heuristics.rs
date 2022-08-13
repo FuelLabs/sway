@@ -1,9 +1,11 @@
 //! Configuration options related to heuristics.
-use super::user_opts::HeuristicsOptions;
-use crate::constants::{
-    DEFAULT_ATTR_FN_LIKE_WIDTH, DEFAULT_CHAIN_WIDTH, DEFAULT_COLLECTION_WIDTH,
-    DEFAULT_FN_CALL_WIDTH, DEFAULT_MAX_LINE_WIDTH, DEFAULT_SINGLE_LINE_IF_ELSE_WIDTH,
-    DEFAULT_STRUCTURE_LIT_WIDTH, DEFAULT_STRUCTURE_VAR_WIDTH,
+use crate::{
+    config::user_opts::HeuristicsOptions,
+    constants::{
+        DEFAULT_ATTR_FN_LIKE_WIDTH, DEFAULT_CHAIN_WIDTH, DEFAULT_COLLECTION_WIDTH,
+        DEFAULT_FN_CALL_WIDTH, DEFAULT_MAX_LINE_WIDTH, DEFAULT_SINGLE_LINE_IF_ELSE_WIDTH,
+        DEFAULT_STRUCTURE_LIT_WIDTH, DEFAULT_STRUCTURE_VAR_WIDTH,
+    },
 };
 use serde::{Deserialize, Serialize};
 

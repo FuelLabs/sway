@@ -1,7 +1,9 @@
-use super::shape::LineStyle;
 use crate::{
     fmt::{Format, FormattedCode, Formatter, FormatterError},
-    utils::comments::{ByteSpan, LeafSpans},
+    utils::{
+        comments::{ByteSpan, LeafSpans},
+        shape::LineStyle,
+    },
 };
 use std::fmt::Write;
 use sway_ast::{
