@@ -250,7 +250,7 @@ impl TypedAstNode {
                                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                                     name: name.clone(),
                                     body,
-                                    is_mutable: is_mutable.into(),
+                                    mutability: convert_to_variable_immutability(false, is_mutable),
                                     type_ascription,
                                 });
                             ctx.namespace.insert_symbol(name, typed_var_decl.clone());
@@ -539,7 +539,7 @@ fn reassignment(
                             warnings,
                             errors
                         );
-                        if !variable_decl.is_mutable.is_mutable() {
+                        if !variable_decl.mutability.is_mutable() {
                             errors.push(CompileError::AssignmentToNonMutable { name });
                             return err(warnings, errors);
                         }
@@ -631,11 +631,13 @@ fn type_check_interface_surface(
                     .map(
                         |FunctionParameter {
                              name,
+                             is_reference,
                              is_mutable,
                              type_id,
                              type_span,
                          }| TypedFunctionParameter {
                             name,
+                            is_reference,
                             is_mutable,
                             type_id: check!(
                                 namespace.resolve_type_with_self(
@@ -694,7 +696,11 @@ fn type_check_trait_methods(
         let mut sig_ctx = ctx.by_ref().with_self_type(insert_type(TypeInfo::SelfType));
         parameters.clone().into_iter().for_each(
             |FunctionParameter {
-                 name, ref type_id, ..
+                 name,
+                 is_reference,
+                 is_mutable,
+                 ref type_id,
+                 ..
              }| {
                 let r#type = check!(
                     sig_ctx.resolve_type_with_self(
@@ -717,8 +723,7 @@ fn type_check_trait_methods(
                             is_constant: IsConstant::No,
                             span: name.span(),
                         },
-                        // TODO allow mutable function params?
-                        is_mutable: VariableMutability::Immutable,
+                        mutability: convert_to_variable_immutability(is_reference, is_mutable),
                         type_ascription: r#type,
                     }),
                 );
@@ -769,11 +774,13 @@ fn type_check_trait_methods(
                 |FunctionParameter {
                      name,
                      type_id,
+                     is_reference,
                      is_mutable,
                      type_span,
                  }| {
                     TypedFunctionParameter {
                         name,
+                        is_reference,
                         is_mutable,
                         type_id: check!(
                             sig_ctx.resolve_type_with_self(
