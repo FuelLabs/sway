@@ -250,7 +250,7 @@ impl<'a> Peeker<'a> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ErrorEmitted {
     _priv: (),
 }

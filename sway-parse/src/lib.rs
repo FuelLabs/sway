@@ -39,7 +39,7 @@ pub enum ParseFileError {
     Parse(ErrorEmitted),
 }
 
-#[derive(Debug, Clone, PartialEq, Hash, Error)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Error)]
 pub enum ParseFileErrorStandalone {
     #[error(transparent)]
     Lex(LexError),
