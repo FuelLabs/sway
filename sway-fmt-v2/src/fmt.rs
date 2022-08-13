@@ -690,7 +690,7 @@ abi StorageMapExample {
 pub const /* TEST: blah blah tests */ TEST: u16 = 10; // This is a comment next to a const"#;
         let correct_sway_code = r#"contract;
 
-pub const /* TEST: blah blah tests */ TEST: u16 = 10;"#; // Comment next to const is not picked up by the lexer see: #2356
+pub const /* TEST: blah blah tests */ TEST: u16 = 10; // This is a comment next to a const"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();

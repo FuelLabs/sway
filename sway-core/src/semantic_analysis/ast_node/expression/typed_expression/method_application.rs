@@ -81,22 +81,21 @@ pub(crate) fn type_check_method_application(
         }
 
         for param in contract_call_params {
-            let type_annotation = match param.name.span().as_str() {
-                constants::CONTRACT_CALL_GAS_PARAMETER_NAME
-                | constants::CONTRACT_CALL_COINS_PARAMETER_NAME => {
-                    insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour))
-                }
-                constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME => insert_type(TypeInfo::B256),
-                _ => unreachable!(),
-            };
-            let ctx = ctx
-                .by_ref()
-                .with_help_text("")
-                .with_type_annotation(type_annotation);
             match param.name.span().as_str() {
                 constants::CONTRACT_CALL_GAS_PARAMETER_NAME
                 | constants::CONTRACT_CALL_COINS_PARAMETER_NAME
                 | constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME => {
+                    let type_annotation = if param.name.span().as_str()
+                        != constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME
+                    {
+                        insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour))
+                    } else {
+                        insert_type(TypeInfo::B256)
+                    };
+                    let ctx = ctx
+                        .by_ref()
+                        .with_help_text("")
+                        .with_type_annotation(type_annotation);
                     contract_call_params_map.insert(
                         param.name.to_string(),
                         check!(
@@ -195,7 +194,7 @@ pub(crate) fn type_check_method_application(
                     warnings,
                     errors
                 );
-                variable_decl.is_mutable.is_mutable()
+                variable_decl.mutability.is_mutable()
             }
         };
 

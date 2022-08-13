@@ -113,6 +113,10 @@ pub enum TypedExpressionVariant {
         exp: Box<TypedExpression>,
         variant: TypedEnumVariant,
     },
+    WhileLoop {
+        condition: Box<TypedExpression>,
+        body: TypedCodeBlock,
+    },
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -319,6 +323,16 @@ impl PartialEq for TypedExpressionVariant {
                 },
             ) => *l_exp == *r_exp && l_variant == r_variant,
             (Self::EnumTag { exp: l_exp }, Self::EnumTag { exp: r_exp }) => *l_exp == *r_exp,
+            (
+                Self::WhileLoop {
+                    body: l_body,
+                    condition: l_condition,
+                },
+                Self::WhileLoop {
+                    body: r_body,
+                    condition: r_condition,
+                },
+            ) => *l_body == *r_body && l_condition == r_condition,
             _ => false,
         }
     }
@@ -420,6 +434,13 @@ impl CopyTypes for TypedExpressionVariant {
                 variant.copy_types(type_mapping);
             }
             AbiName(_) => (),
+            WhileLoop {
+                ref mut condition,
+                ref mut body,
+            } => {
+                condition.copy_types(type_mapping);
+                body.copy_types(type_mapping);
+            }
         }
     }
 }
@@ -505,6 +526,9 @@ impl fmt::Display for TypedExpressionVariant {
             }
             TypedExpressionVariant::UnsafeDowncast { exp, variant } => {
                 format!("({} as {})", look_up_type_id(exp.return_type), variant.name)
+            }
+            TypedExpressionVariant::WhileLoop { condition, .. } => {
+                format!("while loop on {}", condition)
             }
         };
         write!(f, "{}", s)

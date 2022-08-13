@@ -1,0 +1,103 @@
+use crate::{Format, Formatter};
+use forc_util::{println_green, println_red};
+use paste::paste;
+use prettydiff::{basic::DiffOp, diff_lines};
+use sway_ast::ItemUse;
+use sway_parse::*;
+
+fn format_code(input: &str) -> String {
+    let mut errors = vec![];
+    let mut formatter: Formatter = Default::default();
+    let input_arc = std::sync::Arc::from(input);
+    let token_stream = lex(&input_arc, 0, input.len(), None).unwrap();
+    let mut parser = Parser::new(&token_stream, &mut errors);
+    let expression: ItemUse = Parse::parse(&mut parser).unwrap();
+
+    let mut buf = Default::default();
+    expression.format(&mut buf, &mut formatter).unwrap();
+
+    buf
+}
+
+macro_rules! fmt_test {
+    ($scope:ident $desired_output:expr, $($name:ident $y:expr),+) => {
+        fmt_test_inner!($scope $desired_output,
+                                $($name $y)+
+                                ,
+                                remove_trailing_whitespace format!("{} \n\n\t ", $desired_output).as_str(),
+                                remove_beginning_whitespace format!("  \n\t{}", $desired_output).as_str(),
+                                identity $desired_output, /* test return is valid */
+                                remove_beginning_and_trailing_whitespace format!("  \n\t  {} \n\t   ", $desired_output).as_str()
+                       );
+    };
+}
+
+macro_rules! fmt_test_inner {
+    ($scope:ident $desired_output:expr, $($name:ident $y:expr),+) => {
+        $(
+        paste! {
+            #[test]
+            fn [<$scope _ $name>] () {
+                let formatted_code = format_code($y);
+                let changeset = diff_lines(&formatted_code, $desired_output);
+                let diff = changeset.diff();
+                let count_of_updates = diff.len();
+                if count_of_updates != 0 {
+                    println!("FAILED: {count_of_updates} diff items.");
+                }
+                for diff in diff {
+                    match diff {
+                        DiffOp::Equal(old) => {
+                            for o in old {
+                                println!("{}", o)
+                            }
+                        }
+                        DiffOp::Insert(new) => {
+                            for n in new {
+                                println_green(&format!("+{}", n));
+                            }
+                        }
+                        DiffOp::Remove(old) => {
+                            for o in old {
+                                println_red(&format!("-{}", o));
+                            }
+                        }
+                        DiffOp::Replace(old, new) => {
+                            for o in old {
+                                println_red(&format!("-{}", o));
+                            }
+                            for n in new {
+                                println_green(&format!("+{}", n));
+                            }
+                        }
+                    }
+                }
+                assert_eq!(&formatted_code, $desired_output)
+            }
+        }
+    )+
+}
+}
+
+fmt_test!(multiline     "use foo::{
+    quux,
+    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+    yxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+};",
+          out_of_order  "use foo::{yxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, quux, xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx};"
+);
+fmt_test!(multiline_nested      "use foo::{
+    Quux::{
+        a,
+        b,
+        C,
+    },
+    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+    yxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+};",
+          out_of_order          "use foo::{xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, Quux::{b, a, C}, yxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx};"
+);
+
+fmt_test!(single_line_sort  "use foo::{bar, baz, Quux::{a, b, C}};",
+          out_of_order      "use foo::{baz, Quux::{b, a, C}, bar};"
+);

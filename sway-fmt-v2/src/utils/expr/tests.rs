@@ -71,7 +71,7 @@ macro_rules! fmt_test_inner {
                         }
                     }
                 }
-                assert_eq!(&formatted_code, $desired_output);
+                assert_eq!(&formatted_code, $desired_output)
             }
         }
     )+
