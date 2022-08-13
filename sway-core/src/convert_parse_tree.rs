@@ -1,6 +1,9 @@
 use std::collections::HashSet;
 
-use crate::type_system::{TraitConstraint, TypeArgument, TypeBinding, TypeParameter};
+use crate::{
+    type_system::{TraitConstraint, TypeArgument, TypeBinding, TypeParameter},
+    WhileLoopExpression,
+};
 
 use {
     crate::{
@@ -20,7 +23,7 @@ use {
         StorageDeclaration, StorageField, StructDeclaration, StructExpression,
         StructExpressionField, StructField, StructScrutineeField, SubfieldExpression, Supertrait,
         TraitDeclaration, TraitFn, TreeType, TupleIndexExpression, TypeInfo, UseStatement,
-        VariableDeclaration, Visibility, WhileLoop,
+        VariableDeclaration, Visibility,
     },
     std::{
         collections::HashMap,
@@ -100,8 +103,6 @@ pub enum ConvertParseTreeError {
     PubUseNotSupported { span: Span },
     #[error("return expressions are not allowed outside of blocks")]
     ReturnOutsideOfBlock { span: Span },
-    #[error("while expressions are not allowed outside of blocks")]
-    WhileOutsideOfBlock { span: Span },
     #[error("functions used in applications may not be arbitrary expressions")]
     FunctionArbitraryExpression { span: Span },
     #[error("generics are not supported here")]
@@ -193,7 +194,6 @@ impl Spanned for ConvertParseTreeError {
         match self {
             ConvertParseTreeError::PubUseNotSupported { span } => span.clone(),
             ConvertParseTreeError::ReturnOutsideOfBlock { span } => span.clone(),
-            ConvertParseTreeError::WhileOutsideOfBlock { span } => span.clone(),
             ConvertParseTreeError::FunctionArbitraryExpression { span } => span.clone(),
             ConvertParseTreeError::GenericsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::FullyQualifiedPathsNotSupportedHere { span } => span.clone(),
@@ -1135,15 +1135,6 @@ fn expr_to_ast_node(
                 span,
             }
         }
-        Expr::While {
-            condition, block, ..
-        } => AstNode {
-            content: AstNodeContent::WhileLoop(WhileLoop {
-                condition: expr_to_expression(ec, *condition)?,
-                body: braced_code_block_contents_to_code_block(ec, block)?,
-            }),
-            span,
-        },
         Expr::Reassignment {
             assignable,
             expr,
@@ -1623,12 +1614,15 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                 span,
             }
         }
-        Expr::While { while_token, .. } => {
-            let error = ConvertParseTreeError::WhileOutsideOfBlock {
-                span: while_token.span(),
-            };
-            return Err(ec.error(error));
-        }
+        Expr::While {
+            condition, block, ..
+        } => Expression {
+            kind: ExpressionKind::WhileLoop(WhileLoopExpression {
+                condition: Box::new(expr_to_expression(ec, *condition)?),
+                body: braced_code_block_contents_to_code_block(ec, block)?,
+            }),
+            span,
+        },
         Expr::FuncApp { func, args } => {
             let kind = expr_func_app_to_expression_kind(ec, func, args)?;
             Expression { kind, span }

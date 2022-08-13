@@ -49,7 +49,7 @@ fn main() -> bool {
     };
 
     /////////////////////////////////////////
-    ///  Failure to recover
+    ////  Failure to recover
     /////////////////////////////////////////
 
     // using invalid data here to test the handling of failed pubkey/address recovery.
