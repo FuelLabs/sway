@@ -1,0 +1,6 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+name = "mutable_fn_args_u32"
+entry = "main.sw"
+implicit-std = false

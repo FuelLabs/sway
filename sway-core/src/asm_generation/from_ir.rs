@@ -361,7 +361,7 @@ impl<'ir> AsmBuilder<'ir> {
                 self.ptr_map.insert(*ptr, Storage::Data(data_id));
             } else {
                 match ptr_content.ty {
-                    Type::Unit | Type::Bool | Type::Uint(_) => {
+                    Type::Unit | Type::Bool | Type::Uint(_) | Type::Pointer(_) => {
                         self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
                         stack_base += 1;
                     }
@@ -962,7 +962,7 @@ impl<'ir> AsmBuilder<'ir> {
         let base_reg = self.value_to_register(aggregate_val);
         let ((extract_offset, _), field_type) = aggregate_idcs_to_field_layout(
             self.context,
-            &aggregate_val.get_type(self.context).unwrap(),
+            &aggregate_val.get_stripped_ptr_type(self.context).unwrap(),
             indices,
         );
 
@@ -1095,7 +1095,7 @@ impl<'ir> AsmBuilder<'ir> {
         &mut self,
         instr_val: &Value,
         base_ptr: &Pointer,
-        ptr_ty: &Type,
+        ptr_ty: &Pointer,
         offset: u64,
     ) {
         // `get_ptr` is like a `load` except the value isn't dereferenced.
@@ -1108,7 +1108,8 @@ impl<'ir> AsmBuilder<'ir> {
                     unimplemented!("TODO get_ptr() into the data section.");
                 }
                 Storage::Stack(word_offs) => {
-                    let ptr_ty_size_in_bytes = ir_type_size_in_bytes(self.context, ptr_ty);
+                    let ptr_ty_size_in_bytes =
+                        ir_type_size_in_bytes(self.context, ptr_ty.get_type(self.context));
 
                     let offset_in_bytes = word_offs * 8 + ptr_ty_size_in_bytes * offset;
                     let instr_reg = self.reg_seqr.next();
@@ -1264,11 +1265,11 @@ impl<'ir> AsmBuilder<'ir> {
         let insert_reg = self.value_to_register(value);
         let ((mut insert_offs, field_size_in_bytes), field_type) = aggregate_idcs_to_field_layout(
             self.context,
-            &aggregate_val.get_type(self.context).unwrap(),
+            &aggregate_val.get_stripped_ptr_type(self.context).unwrap(),
             indices,
         );
 
-        let value_type = value.get_type(self.context).unwrap();
+        let value_type = value.get_stripped_ptr_type(self.context).unwrap();
         let value_size_in_bytes = ir_type_size_in_bytes(self.context, &value_type);
         let value_size_in_words = size_bytes_in_words!(value_size_in_bytes);
 
@@ -1589,8 +1590,14 @@ impl<'ir> AsmBuilder<'ir> {
         access_type: StateAccessType,
     ) -> CompileResult<()> {
         // Make sure that both val and key are pointers to B256.
-        assert!(matches!(val.get_type(self.context), Some(Type::B256)));
-        assert!(matches!(key.get_type(self.context), Some(Type::B256)));
+        assert!(matches!(
+            val.get_stripped_ptr_type(self.context),
+            Some(Type::B256)
+        ));
+        assert!(matches!(
+            key.get_stripped_ptr_type(self.context),
+            Some(Type::B256)
+        ));
 
         let key_ptr = self.resolve_ptr(key);
         if key_ptr.value.is_none() {
@@ -1600,7 +1607,7 @@ impl<'ir> AsmBuilder<'ir> {
 
         // Not expecting an offset here nor a pointer cast
         assert!(offset == 0);
-        assert!(ptr_ty.eq(self.context, &Type::B256));
+        assert!(ptr_ty.get_type(self.context).eq(self.context, &Type::B256));
 
         // Expect ptr_ty here to also be b256 and offset to be whatever...
         let val_ptr = self.resolve_ptr(val);
@@ -1610,7 +1617,7 @@ impl<'ir> AsmBuilder<'ir> {
         let (val_ptr, ptr_ty, offset) = val_ptr.value.unwrap();
 
         // Expect the ptr_ty for val to also be B256
-        assert!(ptr_ty.eq(self.context, &Type::B256));
+        assert!(ptr_ty.get_type(self.context).eq(self.context, &Type::B256));
 
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
         match (self.ptr_map.get(&val_ptr), self.ptr_map.get(&key_ptr)) {
@@ -1640,7 +1647,10 @@ impl<'ir> AsmBuilder<'ir> {
 
     fn compile_state_load_word(&mut self, instr_val: &Value, key: &Value) -> CompileResult<()> {
         // Make sure that the key is a pointers to B256.
-        assert!(matches!(key.get_type(self.context), Some(Type::B256)));
+        assert!(matches!(
+            key.get_stripped_ptr_type(self.context),
+            Some(Type::B256)
+        ));
 
         let key_ptr = self.resolve_ptr(key);
         if key_ptr.value.is_none() {
@@ -1650,7 +1660,7 @@ impl<'ir> AsmBuilder<'ir> {
 
         // Not expecting an offset here nor a pointer cast
         assert!(offset == 0);
-        assert!(ptr_ty.eq(self.context, &Type::B256));
+        assert!(ptr_ty.get_type(self.context).eq(self.context, &Type::B256));
 
         let load_reg = self.reg_seqr.next();
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
@@ -1681,7 +1691,10 @@ impl<'ir> AsmBuilder<'ir> {
         key: &Value,
     ) -> CompileResult<()> {
         // Make sure that key is a pointer to B256.
-        assert!(matches!(key.get_type(self.context), Some(Type::B256)));
+        assert!(matches!(
+            key.get_stripped_ptr_type(self.context),
+            Some(Type::B256)
+        ));
 
         // Make sure that store_val is a U64 value.
         assert!(matches!(
@@ -1699,7 +1712,7 @@ impl<'ir> AsmBuilder<'ir> {
 
         // Not expecting an offset here nor a pointer cast
         assert!(offset == 0);
-        assert!(ptr_ty.eq(self.context, &Type::B256));
+        assert!(ptr_ty.get_type(self.context).eq(self.context, &Type::B256));
 
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
         match self.ptr_map.get(&key_ptr) {
@@ -1869,7 +1882,7 @@ impl<'ir> AsmBuilder<'ir> {
         ok((), Vec::new(), Vec::new())
     }
 
-    fn resolve_ptr(&mut self, ptr_val: &Value) -> CompileResult<(Pointer, Type, u64)> {
+    fn resolve_ptr(&mut self, ptr_val: &Value) -> CompileResult<(Pointer, Pointer, u64)> {
         match &self.context.values[ptr_val.0].value {
             ValueDatum::Instruction(Instruction::GetPointer {
                 base_ptr,
@@ -1994,7 +2007,8 @@ impl<'ir> AsmBuilder<'ir> {
                             | Type::Bool
                             | Type::Uint(_)
                             | Type::B256
-                            | Type::String(_) => {
+                            | Type::String(_)
+                            | Type::Pointer(_) => {
                                 Some(self.initialise_non_aggregate_type(constant, span))
                             }
                             Type::Array(_) | Type::Struct(_) | Type::Union(_) => {
@@ -2085,7 +2099,7 @@ impl<'ir> AsmBuilder<'ir> {
         }
 
         match &value_type {
-            Type::Unit | Type::Bool | Type::Uint(_) => {
+            Type::Unit | Type::Bool | Type::Uint(_) | Type::Pointer(_) => {
                 // Get the constant into the namespace.
                 let lit = ir_constant_to_ast_literal(constant);
                 let data_id = self.data_section.insert_data_value(&lit);
@@ -2325,7 +2339,7 @@ fn ir_constant_to_ast_literal(constant: &Constant) -> Literal {
 
 pub fn ir_type_size_in_bytes(context: &Context, ty: &Type) -> u64 {
     match ty {
-        Type::Unit | Type::Bool | Type::Uint(_) => 8,
+        Type::Unit | Type::Bool | Type::Uint(_) | Type::Pointer(_) => 8,
         Type::B256 => 32,
         Type::String(n) => size_bytes_round_up_to_word_alignment!(n),
         Type::Array(aggregate) => {

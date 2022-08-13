@@ -66,7 +66,7 @@ impl TypedMatchBranch {
             let var_decl = TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                 name: left_decl.clone(),
                 body: right_decl,
-                is_mutable: VariableMutability::Immutable,
+                mutability: VariableMutability::Immutable,
                 type_ascription,
             });
             ctx.namespace.insert_symbol(left_decl, var_decl.clone());
