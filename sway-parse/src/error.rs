@@ -72,6 +72,8 @@ pub enum ParseErrorKind {
     ReservedKeywordIdentifier,
     #[error("Unnecessary visibility qualifier, `{}` is implied here.", visibility)]
     UnnecessaryVisibilityQualifier { visibility: Ident },
+    #[error("Expected a doc comment.")]
+    ExpectedDocComment,
 }
 
 #[derive(Debug, Error, Clone, PartialEq, Eq, Hash)]

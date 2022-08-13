@@ -1,6 +1,6 @@
 //! Helper functions for accessing data from call frames.
-/// Call frames store metadata across untrusted inter-contract calls:
-/// https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#call-frames
+//! Call frames store metadata across untrusted inter-contract calls:
+//! https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#call-frames
 library call_frames;
 
 use ::context::registers::frame_ptr;

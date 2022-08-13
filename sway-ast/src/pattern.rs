@@ -6,6 +6,7 @@ pub enum Pattern {
         underscore_token: UnderscoreToken,
     },
     Var {
+        reference: Option<RefToken>,
         mutable: Option<MutToken>,
         name: Ident,
     },
@@ -26,9 +27,17 @@ impl Spanned for Pattern {
     fn span(&self) -> Span {
         match self {
             Pattern::Wildcard { underscore_token } => underscore_token.span(),
-            Pattern::Var { mutable, name } => match mutable {
-                Some(mut_token) => Span::join(mut_token.span(), name.span()),
-                None => name.span(),
+            Pattern::Var {
+                reference,
+                mutable,
+                name,
+            } => match (reference, mutable) {
+                (Some(ref_token), Some(mut_token)) => {
+                    Span::join(Span::join(ref_token.span(), mut_token.span()), name.span())
+                }
+                (Some(ref_token), None) => Span::join(ref_token.span(), name.span()),
+                (None, Some(mut_token)) => Span::join(mut_token.span(), name.span()),
+                (None, None) => name.span(),
             },
             Pattern::Literal(literal) => literal.span(),
             Pattern::Constant(path_expr) => path_expr.span(),
