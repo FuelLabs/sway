@@ -2,11 +2,11 @@ use crate::{
     fmt::*,
     utils::comments::{ByteSpan, LeafSpans},
 };
-use sway_ast::{Item, ItemKind::*};
+use sway_ast::ItemKind::{self, *};
 
-impl LeafSpans for Item {
+impl LeafSpans for ItemKind {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
-        match &self.value {
+        match self {
             Struct(item_struct) => item_struct.leaf_spans(),
             Enum(item_enum) => item_enum.leaf_spans(),
             Fn(item_fn) => item_fn.leaf_spans(),
@@ -22,13 +22,13 @@ impl LeafSpans for Item {
     }
 }
 
-impl Format for Item {
+impl Format for ItemKind {
     fn format(
         &self,
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        match &self.value {
+        match self {
             Use(item_use) => item_use.format(formatted_code, formatter),
             Struct(item_struct) => item_struct.format(formatted_code, formatter),
             Enum(item_enum) => item_enum.format(formatted_code, formatter),

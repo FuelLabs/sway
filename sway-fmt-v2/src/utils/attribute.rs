@@ -21,18 +21,13 @@ impl<T: Parse + Format> Format for Annotated<T> {
     ) -> Result<(), FormatterError> {
         // format each `Attribute`
         for attr in &self.attribute_list {
+            attr.format(formatted_code, formatter)?;
             write!(
                 formatted_code,
                 "{}",
                 &formatter.shape.indent.to_string(&formatter.config)?,
             )?;
-            attr.format(formatted_code, formatter)?;
         }
-        write!(
-            formatted_code,
-            "{}",
-            &formatter.shape.indent.to_string(&formatter.config)?,
-        )?;
         // format `ItemKind`
         self.value.format(formatted_code, formatter)
     }

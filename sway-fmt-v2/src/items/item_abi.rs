@@ -28,6 +28,11 @@ impl Format for ItemAbi {
         // abi_items
         let mut abi_items_iter = self.abi_items.get().iter().peekable();
         while let Some((fn_signature, semicolon)) = abi_items_iter.next() {
+            write!(
+                formatted_code,
+                "{}",
+                &formatter.shape.indent.to_string(&formatter.config)?,
+            )?;
             // add indent + format item
             fn_signature.format(formatted_code, formatter)?;
             writeln!(

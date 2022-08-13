@@ -40,6 +40,11 @@ impl Format for ItemImpl {
         Self::open_curly_brace(formatted_code, formatter)?;
         let contents = self.contents.get();
         for item in contents.iter() {
+            write!(
+                formatted_code,
+                "{}",
+                &formatter.shape.indent.to_string(&formatter.config)?,
+            )?;
             item.format(formatted_code, formatter)?;
         }
         Self::close_curly_brace(formatted_code, formatter)?;
