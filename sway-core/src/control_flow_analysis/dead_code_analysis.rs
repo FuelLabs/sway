@@ -7,7 +7,7 @@ use crate::{
             TypedEnumDeclaration, TypedExpression, TypedExpressionVariant,
             TypedFunctionDeclaration, TypedReassignment, TypedReturnStatement,
             TypedStructDeclaration, TypedStructExpressionField, TypedTraitDeclaration,
-            TypedVariableDeclaration, TypedWhileLoop, VariableMutability,
+            TypedVariableDeclaration, VariableMutability,
         },
         TypeCheckedStorageReassignment, TypedAsmRegisterDeclaration, TypedAstNode,
         TypedAstNodeContent, TypedImplTrait, TypedIntrinsicFunctionKind, TypedStorageDeclaration,
@@ -261,38 +261,6 @@ fn connect_node(
                 graph.add_edge(this_index, exit_node, "return".into());
             }
             (return_contents, None)
-        }
-        TypedAstNodeContent::WhileLoop(TypedWhileLoop { body, .. }) => {
-            // a while loop can loop back to the beginning,
-            // or it can terminate.
-            // so we connect the _end_ of the while loop _both_ to its beginning and the next node.
-            // the loop could also be entirely skipped
-
-            let entry = graph.add_node(node.into());
-            let while_loop_exit = graph.add_node("while loop exit".to_string().into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, entry, "".into());
-            }
-            // it is possible for a whole while loop to be skipped so add edge from
-            // beginning of while loop straight to exit
-            graph.add_edge(
-                entry,
-                while_loop_exit,
-                "condition is initially false".into(),
-            );
-            let mut leaves = vec![entry];
-            let (l_leaves, _l_exit_node) =
-                depth_first_insertion_code_block(body, graph, &leaves, exit_node, tree_type)?;
-            // insert edges from end of block back to beginning of it
-            for leaf in &l_leaves {
-                graph.add_edge(*leaf, entry, "loop repeats".into());
-            }
-
-            leaves = l_leaves;
-            for leaf in leaves {
-                graph.add_edge(leaf, while_loop_exit, "".into());
-            }
-            (vec![while_loop_exit], exit_node)
         }
         TypedAstNodeContent::Expression(TypedExpression {
             expression: expr_variant,
@@ -1103,6 +1071,36 @@ fn connect_expression(
             tree_type,
             exp.span.clone(),
         ),
+        WhileLoop { body, .. } => {
+            // a while loop can loop back to the beginning,
+            // or it can terminate.
+            // so we connect the _end_ of the while loop _both_ to its beginning and the next node.
+            // the loop could also be entirely skipped
+
+            let entry = leaves[0];
+            let while_loop_exit = graph.add_node("while loop exit".to_string().into());
+
+            // it is possible for a whole while loop to be skipped so add edge from
+            // beginning of while loop straight to exit
+            graph.add_edge(
+                entry,
+                while_loop_exit,
+                "condition is initially false".into(),
+            );
+            let mut leaves = vec![entry];
+            let (l_leaves, _l_exit_node) =
+                depth_first_insertion_code_block(body, graph, &leaves, exit_node, tree_type)?;
+            // insert edges from end of block back to beginning of it
+            for leaf in &l_leaves {
+                graph.add_edge(*leaf, entry, "loop repeats".into());
+            }
+
+            leaves = l_leaves;
+            for leaf in leaves {
+                graph.add_edge(leaf, while_loop_exit, "".into());
+            }
+            Ok(vec![while_loop_exit])
+        }
     }
 }
 
@@ -1285,8 +1283,7 @@ fn construct_dead_code_warning_from_node(node: &TypedAstNode) -> Option<CompileW
                 TypedAstNodeContent::ReturnStatement(_)
                 | TypedAstNodeContent::ImplicitReturnExpression(_)
                 | TypedAstNodeContent::Expression(_)
-                | TypedAstNodeContent::SideEffect
-                | TypedAstNodeContent::WhileLoop(_),
+                | TypedAstNodeContent::SideEffect,
         } => CompileWarning {
             span: span.clone(),
             warning_content: Warning::UnreachableCode,

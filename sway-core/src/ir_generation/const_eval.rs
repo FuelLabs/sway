@@ -338,7 +338,8 @@ fn const_eval_typed_expr(
         | TypedExpressionVariant::StorageAccess(_)
         | TypedExpressionVariant::AbiName(_)
         | TypedExpressionVariant::EnumTag { .. }
-        | TypedExpressionVariant::UnsafeDowncast { .. } => None,
+        | TypedExpressionVariant::UnsafeDowncast { .. }
+        | TypedExpressionVariant::WhileLoop { .. } => None,
     }
 }
 
@@ -358,6 +359,6 @@ fn const_eval_typed_ast_node(
         TypedAstNodeContent::Expression(e) | TypedAstNodeContent::ImplicitReturnExpression(e) => {
             const_eval_typed_expr(lookup, known_consts, e)
         }
-        TypedAstNodeContent::WhileLoop(_) | TypedAstNodeContent::SideEffect => None,
+        TypedAstNodeContent::SideEffect => None,
     }
 }
