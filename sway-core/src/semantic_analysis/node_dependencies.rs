@@ -7,7 +7,7 @@ use crate::{
     parse_tree::*,
     type_system::{look_up_type_id, AbiName, IntegerBits},
     AstNode, AstNodeContent, CodeBlock, Declaration, Expression, IntrinsicFunctionExpression,
-    ReturnStatement, TypeInfo, WhileLoop,
+    ReturnStatement, TypeInfo, WhileLoopExpression,
 };
 
 use sway_types::Spanned;
@@ -494,6 +494,9 @@ impl Dependencies {
             ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
                 arguments, ..
             }) => self.gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg)),
+            ExpressionKind::WhileLoop(WhileLoopExpression {
+                condition, body, ..
+            }) => self.gather_from_expr(condition).gather_from_block(body),
         }
     }
 
@@ -529,9 +532,6 @@ impl Dependencies {
             AstNodeContent::Expression(expr) => self.gather_from_expr(expr),
             AstNodeContent::ImplicitReturnExpression(expr) => self.gather_from_expr(expr),
             AstNodeContent::Declaration(decl) => self.gather_from_decl(decl),
-            AstNodeContent::WhileLoop(WhileLoop { condition, body }) => {
-                self.gather_from_expr(condition).gather_from_block(body)
-            }
 
             // No deps from these guys.
             AstNodeContent::UseStatement(_) => self,

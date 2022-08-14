@@ -8,17 +8,17 @@ struct A {
 }
 
 impl A {
-    fn f(mut self) {
+    fn f(ref mut self) {
         self.a = 42;
         self.b = 77;
     }
 
-    fn g(mut self, inc: u64) {
+    fn g(ref mut self, inc: u64) {
         self.a = self.a + inc;
         self.b = self.b + inc;
     }
 
-    fn h(mut self) {
+    fn h(ref mut self) {
         self = A {
             a: 100,
             b: 200,
@@ -32,7 +32,7 @@ enum E {
 }
 
 impl E {
-    fn j(mut self, inc: u64) {
+    fn j(ref mut self, inc: u64) {
         self = match self {
             E::X(val) => E::Y(val + inc),
             E::Y(val) => E::X(val + inc),

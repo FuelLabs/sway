@@ -134,7 +134,10 @@ fn connect_node(
             }
             Ok((NodeConnection::Return(this_index), vec![]))
         }
-        TypedAstNodeContent::WhileLoop(TypedWhileLoop { body, .. }) => {
+        TypedAstNodeContent::Expression(TypedExpression {
+            expression: TypedExpressionVariant::WhileLoop { body, .. },
+            ..
+        }) => {
             // This is very similar to the dead code analysis for a while loop.
             let entry = graph.add_node(node.into());
             let while_loop_exit = graph.add_node("while loop exit".to_string().into());

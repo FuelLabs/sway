@@ -31,7 +31,7 @@ pub use semantic_analysis::{
 };
 pub mod types;
 pub use crate::parse_tree::{
-    Declaration, Expression, ParseModule, ParseProgram, TreeType, UseStatement, WhileLoop, *,
+    Declaration, Expression, ParseModule, ParseProgram, TreeType, UseStatement, *,
 };
 
 pub use error::{CompileError, CompileResult, CompileWarning};
