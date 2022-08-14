@@ -1,4 +1,4 @@
-use crate::type_engine::TypeId;
+use crate::type_system::TypeId;
 use std::sync::RwLock;
 
 #[derive(Debug, Default)]
@@ -44,5 +44,10 @@ where
     pub fn clear(&self) {
         let mut inner = self.inner.write().unwrap();
         *inner = Vec::new();
+    }
+
+    pub fn exists<F: Fn(&T) -> bool>(&self, f: F) -> bool {
+        let inner = self.inner.read().unwrap();
+        inner.iter().any(f)
     }
 }

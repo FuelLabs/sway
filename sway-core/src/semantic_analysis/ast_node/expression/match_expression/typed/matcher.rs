@@ -8,7 +8,7 @@ use crate::{
         namespace::Namespace,
         IsConstant, TypedEnumVariant, TypedExpression, TypedExpressionVariant,
     },
-    type_engine::unify,
+    type_system::unify,
     CompileResult, Ident, Literal,
 };
 

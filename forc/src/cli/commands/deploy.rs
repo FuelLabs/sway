@@ -9,6 +9,9 @@ pub struct Command {
     /// Path to the project, if not specified, current working directory will be used.
     #[clap(short, long)]
     pub path: Option<String>,
+    /// Print the generated Sway AST (Abstract Syntax Tree).
+    #[clap(long)]
+    pub print_ast: bool,
     /// Print the finalized ASM.
     ///
     /// This is the state of the ASM with registers allocated and optimisations applied.

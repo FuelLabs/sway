@@ -5,10 +5,10 @@ use crate::{
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
-    find_file_name, git_checkouts_directory, kebab_to_snake_case, print_on_failure,
-    print_on_success, print_on_success_library,
+    default_output_directory, find_file_name, git_checkouts_directory, kebab_to_snake_case,
+    print_on_failure, print_on_success, print_on_success_library,
 };
-use fuel_tx::StorageSlot;
+use fuel_tx::{Contract, StorageSlot};
 use petgraph::{
     self,
     visit::{Bfs, Dfs, EdgeRef, Walker},
@@ -17,7 +17,8 @@ use petgraph::{
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map, BTreeSet, HashMap, HashSet},
-    fmt, fs,
+    fmt,
+    fs::{self, File},
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
     str::FromStr,
@@ -28,7 +29,7 @@ use sway_core::{
 };
 use sway_types::JsonABI;
 use sway_utils::constants;
-use tracing::info;
+use tracing::{info, warn};
 use url::Url;
 
 type GraphIx = u32;
@@ -215,20 +216,15 @@ impl BuildPlan {
     /// Create a new build plan for the project by fetching and pinning all dependenies.
     ///
     /// To account for an existing lock file, use `from_lock_and_manifest` instead.
-    pub fn from_manifest(
-        manifest: &ManifestFile,
-        sway_git_tag: &str,
-        offline: bool,
-    ) -> Result<Self> {
+    pub fn from_manifest(manifest: &ManifestFile, offline: bool) -> Result<Self> {
+        // Check toolchain version
+        validate_version(manifest)?;
         let mut graph = Graph::default();
         let mut manifest_map = ManifestMap::default();
-        fetch_graph(
-            manifest,
-            offline,
-            sway_git_tag,
-            &mut graph,
-            &mut manifest_map,
-        )?;
+        fetch_graph(manifest, offline, &mut graph, &mut manifest_map)?;
+        // Validate the graph, since we constructed the graph from scratch the paths will not be a
+        // problem but the version check is still needed
+        validate_graph(&graph, manifest);
         let compilation_order = compilation_order(&graph)?;
         Ok(Self {
             graph,
@@ -257,8 +253,9 @@ impl BuildPlan {
         manifest: &ManifestFile,
         locked: bool,
         offline: bool,
-        sway_git_tag: &str,
     ) -> Result<Self> {
+        // Check toolchain version
+        validate_version(manifest)?;
         // Keep track of the cause for the new lock file if it turns out we need one.
         let mut new_lock_cause = None;
 
@@ -284,21 +281,15 @@ impl BuildPlan {
         // might have edited the `Forc.lock` file when they shouldn't have, a path dependency no
         // longer exists at its specified location, etc. We must first remove all invalid nodes
         // before we can determine what we need to fetch.
-        let invalid_deps = validate_graph(&graph, manifest, sway_git_tag);
+        let invalid_deps = validate_graph(&graph, manifest);
         remove_deps(&mut graph, &manifest.project.name, &invalid_deps);
 
         // We know that the remaining nodes have valid paths, otherwise they would have been
         // removed. We can safely produce an initial `manifest_map`.
-        let mut manifest_map = graph_to_manifest_map(manifest.clone(), &graph, sway_git_tag)?;
+        let mut manifest_map = graph_to_manifest_map(manifest.clone(), &graph)?;
 
         // Attempt to fetch the remainder of the graph.
-        let _added = fetch_graph(
-            manifest,
-            offline,
-            sway_git_tag,
-            &mut graph,
-            &mut manifest_map,
-        )?;
+        let _added = fetch_graph(manifest, offline, &mut graph, &mut manifest_map)?;
 
         // Determine the compilation order.
         let compilation_order = compilation_order(&graph)?;
@@ -379,14 +370,35 @@ fn find_proj_node(graph: &Graph, proj_name: &str) -> Result<NodeIx> {
     }
 }
 
+/// Check minimum forc version given in the manifest file and the current toolchain version
+///
+/// If required minimum forc version is higher than current forc version return an error with
+/// upgrade instructions
+fn validate_version(pkg_manifest: &ManifestFile) -> Result<()> {
+    match &pkg_manifest.project.forc_version {
+        Some(min_forc_version) => {
+            // Get the current version of the toolchain
+            let crate_version = env!("CARGO_PKG_VERSION");
+            let toolchain_version = semver::Version::parse(crate_version)?;
+            if toolchain_version < *min_forc_version {
+                bail!(
+                    "{:?} requires forc version {} but current forc version is {}\nUpdate the toolchain by following: https://fuellabs.github.io/sway/v{}/introduction/installation.html",
+                    pkg_manifest.project.name,
+                    min_forc_version,
+                    crate_version,
+                    crate_version
+                );
+            }
+        }
+        None => {}
+    }
+    Ok(())
+}
+
 /// Validates the state of the pinned package graph against the given project manifest.
 ///
 /// Returns the set of invalid dependency edges.
-fn validate_graph(
-    graph: &Graph,
-    proj_manifest: &ManifestFile,
-    sway_git_tag: &str,
-) -> BTreeSet<EdgeIx> {
+fn validate_graph(graph: &Graph, proj_manifest: &ManifestFile) -> BTreeSet<EdgeIx> {
     // If we don't have a project node, remove everything as we can't validate dependencies
     // without knowing where to start.
     let proj_node = match find_proj_node(graph, &proj_manifest.project.name) {
@@ -395,7 +407,7 @@ fn validate_graph(
     };
     // Collect all invalid dependency nodes.
     let mut visited = HashSet::new();
-    validate_deps(graph, proj_node, proj_manifest, sway_git_tag, &mut visited)
+    validate_deps(graph, proj_node, proj_manifest, &mut visited)
 }
 
 /// Recursively validate all dependencies of the given `node`.
@@ -405,20 +417,19 @@ fn validate_deps(
     graph: &Graph,
     node: NodeIx,
     node_manifest: &ManifestFile,
-    sway_git_tag: &str,
     visited: &mut HashSet<NodeIx>,
 ) -> BTreeSet<EdgeIx> {
     let mut remove = BTreeSet::default();
     for edge in graph.edges_directed(node, Direction::Outgoing) {
         let dep_name = edge.weight();
         let dep_node = edge.target();
-        match validate_dep(graph, node_manifest, dep_name, dep_node, sway_git_tag) {
+        match validate_dep(graph, node_manifest, dep_name, dep_node) {
             Err(_) => {
                 remove.insert(edge.id());
             }
             Ok(dep_manifest) => {
                 if visited.insert(dep_node) {
-                    let rm = validate_deps(graph, dep_node, &dep_manifest, sway_git_tag, visited);
+                    let rm = validate_deps(graph, dep_node, &dep_manifest, visited);
                     remove.extend(rm);
                 }
                 continue;
@@ -436,20 +447,18 @@ fn validate_dep(
     node_manifest: &ManifestFile,
     dep_name: &str,
     dep_node: NodeIx,
-    sway_git_tag: &str,
 ) -> Result<ManifestFile> {
     // Check the validity of the dependency path, including its path root.
-    let dep_path =
-        dep_path(graph, node_manifest, dep_name, dep_node, sway_git_tag).map_err(|e| {
-            anyhow!(
-                "failed to construct path for dependency {:?}: {}",
-                dep_name,
-                e
-            )
-        })?;
+    let dep_path = dep_path(graph, node_manifest, dep_name, dep_node).map_err(|e| {
+        anyhow!(
+            "failed to construct path for dependency {:?}: {}",
+            dep_name,
+            e
+        )
+    })?;
 
     // Ensure the manifest is accessible.
-    let dep_manifest = ManifestFile::from_dir(&dep_path, sway_git_tag)?;
+    let dep_manifest = ManifestFile::from_dir(&dep_path)?;
 
     // Check that the dependency's source matches the entry in the parent manifest.
     let dep_entry = node_manifest
@@ -465,7 +474,6 @@ fn validate_dep(
 
     Ok(dep_manifest)
 }
-
 /// Part of dependency validation, any checks related to the depenency's manifest content.
 fn validate_dep_manifest(dep: &Pinned, dep_manifest: &ManifestFile) -> Result<()> {
     // Ensure the name matches the manifest project name.
@@ -478,6 +486,7 @@ fn validate_dep_manifest(dep: &Pinned, dep_manifest: &ManifestFile) -> Result<()
             dep_manifest.project.name,
         );
     }
+    validate_version(dep_manifest)?;
     Ok(())
 }
 
@@ -490,13 +499,12 @@ fn dep_path(
     node_manifest: &ManifestFile,
     dep_name: &str,
     dep_node: NodeIx,
-    sway_git_tag: &str,
 ) -> Result<PathBuf> {
     let dep = &graph[dep_node];
     match &dep.source {
         SourcePinned::Git(git) => {
             let repo_path = git_commit_path(&dep.name, &git.source.repo, &git.commit_hash);
-            find_dir_within(&repo_path, &dep.name, sway_git_tag).ok_or_else(|| {
+            find_dir_within(&repo_path, &dep.name).ok_or_else(|| {
                 anyhow!(
                     "failed to find package `{}` in {}",
                     dep.name,
@@ -886,11 +894,7 @@ pub fn compilation_order(graph: &Graph) -> Result<Vec<NodeIx>> {
 /// manifest of for every node in the graph.
 ///
 /// Assumes the given `graph` only contains valid dependencies (see `validate_graph`).
-fn graph_to_manifest_map(
-    proj_manifest: ManifestFile,
-    graph: &Graph,
-    sway_git_tag: &str,
-) -> Result<ManifestMap> {
+fn graph_to_manifest_map(proj_manifest: ManifestFile, graph: &Graph) -> Result<ManifestMap> {
     let mut manifest_map = ManifestMap::new();
 
     // Traverse the graph from the project node.
@@ -918,15 +922,14 @@ fn graph_to_manifest_map(
             })
             .next()
             .ok_or_else(|| anyhow!("more than one root package detected in graph"))?;
-        let dep_path =
-            dep_path(graph, parent_manifest, dep_name, dep_node, sway_git_tag).map_err(|e| {
-                anyhow!(
-                    "failed to construct path for dependency {:?}: {}",
-                    dep_name,
-                    e
-                )
-            })?;
-        let dep_manifest = ManifestFile::from_dir(&dep_path, sway_git_tag)?;
+        let dep_path = dep_path(graph, parent_manifest, dep_name, dep_node).map_err(|e| {
+            anyhow!(
+                "failed to construct path for dependency {:?}: {}",
+                dep_name,
+                e
+            )
+        })?;
+        let dep_manifest = ManifestFile::from_dir(&dep_path)?;
         let dep = &graph[dep_node];
         manifest_map.insert(dep.id(), dep_manifest);
     }
@@ -1001,7 +1004,6 @@ pub fn fetch_id(path: &Path, timestamp: std::time::Instant) -> u64 {
 fn fetch_graph(
     proj_manifest: &ManifestFile,
     offline: bool,
-    sway_git_tag: &str,
     graph: &mut Graph,
     manifest_map: &mut ManifestMap,
 ) -> Result<HashSet<NodeIx>> {
@@ -1037,7 +1039,6 @@ fn fetch_graph(
         offline,
         proj_node,
         path_root,
-        sway_git_tag,
         graph,
         manifest_map,
         &mut fetched,
@@ -1054,7 +1055,6 @@ fn fetch_deps(
     offline: bool,
     node: NodeIx,
     path_root: PinnedId,
-    sway_git_tag: &str,
     graph: &mut Graph,
     manifest_map: &mut ManifestMap,
     fetched: &mut HashMap<Pkg, NodeIx>,
@@ -1076,14 +1076,7 @@ fn fetch_deps(
         let dep_node = match fetched.entry(dep_pkg) {
             hash_map::Entry::Occupied(entry) => *entry.get(),
             hash_map::Entry::Vacant(entry) => {
-                let dep_pinned = pin_pkg(
-                    fetch_id,
-                    path_root,
-                    entry.key(),
-                    manifest_map,
-                    offline,
-                    sway_git_tag,
-                )?;
+                let dep_pinned = pin_pkg(fetch_id, path_root, entry.key(), manifest_map, offline)?;
                 let dep_node = graph.add_node(dep_pinned);
                 added.insert(dep_node);
                 *entry.insert(dep_node)
@@ -1121,7 +1114,6 @@ fn fetch_deps(
             offline,
             dep_node,
             path_root,
-            sway_git_tag,
             graph,
             manifest_map,
             fetched,
@@ -1258,7 +1250,6 @@ fn pin_pkg(
     pkg: &Pkg,
     manifest_map: &mut ManifestMap,
     offline: bool,
-    sway_git_tag: &str,
 ) -> Result<Pinned> {
     let name = pkg.name.clone();
     let pinned = match &pkg.source {
@@ -1266,7 +1257,7 @@ fn pin_pkg(
             let source = SourcePinned::Root;
             let pinned = Pinned { name, source };
             let id = pinned.id();
-            let manifest = ManifestFile::from_dir(path, sway_git_tag)?;
+            let manifest = ManifestFile::from_dir(path)?;
             manifest_map.insert(id, manifest);
             pinned
         }
@@ -1275,7 +1266,7 @@ fn pin_pkg(
             let source = SourcePinned::Path(path_pinned);
             let pinned = Pinned { name, source };
             let id = pinned.id();
-            let manifest = ManifestFile::from_dir(path, sway_git_tag)?;
+            let manifest = ManifestFile::from_dir(path)?;
             manifest_map.insert(id, manifest);
             pinned
         }
@@ -1307,15 +1298,14 @@ fn pin_pkg(
                     info!("  Fetching {}", pinned_git.to_string());
                     fetch_git(fetch_id, &pinned.name, &pinned_git)?;
                 }
-                let path =
-                    find_dir_within(&repo_path, &pinned.name, sway_git_tag).ok_or_else(|| {
-                        anyhow!(
-                            "failed to find package `{}` in {}",
-                            pinned.name,
-                            pinned_git.to_string()
-                        )
-                    })?;
-                let manifest = ManifestFile::from_dir(&path, sway_git_tag)?;
+                let path = find_dir_within(&repo_path, &pinned.name).ok_or_else(|| {
+                    anyhow!(
+                        "failed to find package `{}` in {}",
+                        pinned.name,
+                        pinned_git.to_string()
+                    )
+                })?;
+                let manifest = ManifestFile::from_dir(&path)?;
                 entry.insert(manifest);
             }
             pinned
@@ -1626,6 +1616,10 @@ pub fn compile(
             typed_program,
             warnings,
         } => {
+            if build_profile.print_ast {
+                tracing::info!("{:#?}", typed_program);
+            }
+
             let json_abi = time_expr!("generate JSON ABI", typed_program.kind.generate_json_abi());
             let storage_slots = typed_program.storage_slots.clone();
             let tree_type = typed_program.kind.tree_type();
@@ -1679,6 +1673,213 @@ pub fn compile(
             }
         }
     }
+}
+#[derive(Default)]
+pub struct BuildOptions {
+    /// Path to the project, if not specified, current working directory will be used.
+    pub path: Option<String>,
+    /// Print the generated Sway AST (Abstract Syntax Tree).
+    pub print_ast: bool,
+    /// Print the finalized ASM.
+    ///
+    /// This is the state of the ASM with registers allocated and optimisations applied.
+    pub print_finalized_asm: bool,
+    /// Print the generated ASM.
+    ///
+    /// This is the state of the ASM prior to performing register allocation and other ASM
+    /// optimisations.
+    pub print_intermediate_asm: bool,
+    /// Print the generated Sway IR (Intermediate Representation).
+    pub print_ir: bool,
+    /// If set, outputs a binary file representing the script bytes.
+    pub binary_outfile: Option<String>,
+    /// If set, outputs source file mapping in JSON format
+    pub debug_outfile: Option<String>,
+    /// Offline mode, prevents Forc from using the network when managing dependencies.
+    /// Meaning it will only try to use previously downloaded dependencies.
+    pub offline_mode: bool,
+    /// Silent mode. Don't output any warnings or errors to the command line.
+    pub silent_mode: bool,
+    /// The directory in which the sway compiler output artifacts are placed.
+    ///
+    /// By default, this is `<project-root>/out`.
+    pub output_directory: Option<String>,
+    /// By default the JSON for ABIs is formatted for human readability. By using this option JSON
+    /// output will be "minified", i.e. all on one line without whitespace.
+    pub minify_json_abi: bool,
+    /// By default the JSON for initial storage slots is formatted for human readability. By using
+    /// this option JSON output will be "minified", i.e. all on one line without whitespace.
+    pub minify_json_storage_slots: bool,
+    /// Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it
+    /// needs to be updated, Forc will exit with an error
+    pub locked: bool,
+    /// Name of the build profile to use.
+    /// If it is not specified, forc will use debug build profile.
+    pub build_profile: Option<String>,
+    /// Use release build plan. If a custom release plan is not specified, it is implicitly added to the manifest file.
+    ///
+    ///  If --build-profile is also provided, forc omits this flag and uses provided build-profile.
+    pub release: bool,
+    /// Output the time elapsed over each part of the compilation process.
+    pub time_phases: bool,
+}
+
+/// The suffix that helps identify the file which contains the hash of the binary file created when
+/// scripts are built.
+pub const SWAY_BIN_HASH_SUFFIX: &str = "-bin-hash";
+
+/// The suffix that helps identify the file which contains the root hash of the binary file created
+/// when predicates are built.
+pub const SWAY_BIN_ROOT_SUFFIX: &str = "-bin-root";
+
+/// Builds a project with given BuildOptions
+pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
+    let key_debug: String = "debug".to_string();
+    let key_release: String = "release".to_string();
+
+    let BuildOptions {
+        path,
+        binary_outfile,
+        debug_outfile,
+        print_ast,
+        print_finalized_asm,
+        print_intermediate_asm,
+        print_ir,
+        offline_mode,
+        silent_mode,
+        output_directory,
+        minify_json_abi,
+        minify_json_storage_slots,
+        locked,
+        build_profile,
+        release,
+        time_phases,
+    } = build_options;
+
+    let mut selected_build_profile = key_debug;
+    match &build_profile {
+        Some(build_profile) => {
+            if release {
+                warn!(
+                    "You specified both {} and 'release' profiles. Using the 'release' profile",
+                    build_profile
+                );
+                selected_build_profile = key_release;
+            } else {
+                selected_build_profile = build_profile.clone();
+            }
+        }
+        None => {
+            if release {
+                selected_build_profile = key_release;
+            }
+        }
+    }
+
+    let this_dir = if let Some(ref path) = path {
+        PathBuf::from(path)
+    } else {
+        std::env::current_dir()?
+    };
+
+    let manifest = ManifestFile::from_dir(&this_dir)?;
+
+    let plan = BuildPlan::from_lock_and_manifest(&manifest, locked, offline_mode)?;
+
+    // Retrieve the specified build profile
+    let mut profile = manifest
+        .build_profile(&selected_build_profile)
+        .cloned()
+        .unwrap_or_else(|| {
+            warn!(
+                "provided profile option {} is not present in the manifest file. \
+            Using default profile.",
+                selected_build_profile
+            );
+            Default::default()
+        });
+    profile.print_ast |= print_ast;
+    profile.print_ir |= print_ir;
+    profile.print_finalized_asm |= print_finalized_asm;
+    profile.print_intermediate_asm |= print_intermediate_asm;
+    profile.silent |= silent_mode;
+    profile.time_phases |= time_phases;
+
+    // Build it!
+    let (compiled, source_map) = build(&plan, &profile)?;
+
+    if let Some(outfile) = binary_outfile {
+        fs::write(&outfile, &compiled.bytecode)?;
+    }
+
+    if let Some(outfile) = debug_outfile {
+        let source_map_json = serde_json::to_vec(&source_map).expect("JSON serialization failed");
+        fs::write(outfile, &source_map_json)?;
+    }
+
+    // Create the output directory for build artifacts.
+    let output_dir = output_directory
+        .map(PathBuf::from)
+        .unwrap_or_else(|| default_output_directory(manifest.dir()).join(selected_build_profile));
+    if !output_dir.exists() {
+        fs::create_dir_all(&output_dir)?;
+    }
+
+    // Place build artifacts into the output directory.
+    let bin_path = output_dir
+        .join(&manifest.project.name)
+        .with_extension("bin");
+    fs::write(&bin_path, &compiled.bytecode)?;
+    if !compiled.json_abi.is_empty() {
+        let json_abi_stem = format!("{}-abi", manifest.project.name);
+        let json_abi_path = output_dir.join(&json_abi_stem).with_extension("json");
+        let file = File::create(json_abi_path)?;
+        let res = if minify_json_abi {
+            serde_json::to_writer(&file, &compiled.json_abi)
+        } else {
+            serde_json::to_writer_pretty(&file, &compiled.json_abi)
+        };
+        res?;
+    }
+
+    info!("  Bytecode size is {} bytes.", compiled.bytecode.len());
+
+    // Additional ops required depending on the program type
+    match compiled.tree_type {
+        TreeType::Contract => {
+            // For contracts, emit a JSON file with all the initialized storage slots.
+            let json_storage_slots_stem = format!("{}-storage_slots", manifest.project.name);
+            let json_storage_slots_path = output_dir
+                .join(&json_storage_slots_stem)
+                .with_extension("json");
+            let file = File::create(json_storage_slots_path)?;
+            let res = if minify_json_storage_slots {
+                serde_json::to_writer(&file, &compiled.storage_slots)
+            } else {
+                serde_json::to_writer_pretty(&file, &compiled.storage_slots)
+            };
+            res?;
+        }
+        TreeType::Predicate => {
+            // get the root hash of the bytecode for predicates and store the result in a file in the output directory
+            let root = format!("0x{}", Contract::root_from_code(&compiled.bytecode));
+            let root_file_name = format!("{}{}", &manifest.project.name, SWAY_BIN_ROOT_SUFFIX);
+            let root_path = output_dir.join(root_file_name);
+            fs::write(root_path, &root)?;
+            info!("  Predicate root: {}", root);
+        }
+        TreeType::Script => {
+            // hash the bytecode for scripts and store the result in a file in the output directory
+            let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&compiled.bytecode));
+            let hash_file_name = format!("{}{}", &manifest.project.name, SWAY_BIN_HASH_SUFFIX);
+            let hash_path = output_dir.join(hash_file_name);
+            fs::write(hash_path, &bytecode_hash)?;
+            info!("  Script bytecode hash: {}", bytecode_hash);
+        }
+        _ => (),
+    }
+
+    Ok(compiled)
 }
 
 /// Build an entire forc package and return the compiled output.
@@ -1780,14 +1981,14 @@ pub fn parse(
 /// Attempt to find a `Forc.toml` with the given project name within the given directory.
 ///
 /// Returns the path to the package on success, or `None` in the case it could not be found.
-pub fn find_within(dir: &Path, pkg_name: &str, sway_git_tag: &str) -> Option<PathBuf> {
+pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
     walkdir::WalkDir::new(dir)
         .into_iter()
         .filter_map(Result::ok)
         .filter(|entry| entry.path().ends_with(constants::MANIFEST_FILE_NAME))
         .find_map(|entry| {
             let path = entry.path();
-            let manifest = Manifest::from_file(path, sway_git_tag).ok()?;
+            let manifest = Manifest::from_file(path).ok()?;
             if manifest.project.name == pkg_name {
                 Some(path.to_path_buf())
             } else {
@@ -1797,8 +1998,8 @@ pub fn find_within(dir: &Path, pkg_name: &str, sway_git_tag: &str) -> Option<Pat
 }
 
 /// The same as [find_within], but returns the package's project directory.
-pub fn find_dir_within(dir: &Path, pkg_name: &str, sway_git_tag: &str) -> Option<PathBuf> {
-    find_within(dir, pkg_name, sway_git_tag).and_then(|path| path.parent().map(Path::to_path_buf))
+pub fn find_dir_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
+    find_within(dir, pkg_name).and_then(|path| path.parent().map(Path::to_path_buf))
 }
 
 #[test]

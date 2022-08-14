@@ -1,8 +1,8 @@
 use crate::{
-    fmt::{Format, FormattedCode, Formatter, FormatterError},
+    fmt::*,
     utils::comments::{ByteSpan, LeafSpans},
 };
-use sway_parse::{Item, ItemKind::*};
+use sway_ast::{Item, ItemKind::*};
 
 impl LeafSpans for Item {
     fn leaf_spans(&self) -> Vec<ByteSpan> {

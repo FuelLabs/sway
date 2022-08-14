@@ -1,4 +1,13 @@
-use crate::priv_prelude::*;
+use crate::{Parse, ParseError, ParseErrorKind, ParseToEnd, Peek};
+
+use core::marker::PhantomData;
+use sway_ast::keywords::Keyword;
+use sway_ast::literal::Literal;
+use sway_ast::token::{
+    Delimiter, DocComment, Group, Punct, PunctKind, Spacing, TokenStream, TokenTree,
+};
+use sway_ast::PubToken;
+use sway_types::{Ident, Span, Spanned};
 
 pub struct Parser<'a, 'e> {
     token_trees: &'a [TokenTree],
@@ -16,9 +25,9 @@ impl<'a, 'e> Parser<'a, 'e> {
     }
 
     pub fn emit_error(&mut self, kind: ParseErrorKind) -> ErrorEmitted {
-        let span = match self.token_trees.first() {
-            Some(token_tree) => token_tree.span(),
-            None => {
+        let span = match self.token_trees {
+            [token_tree, ..] => token_tree.span(),
+            _ => {
                 // Create a new span that points to _just_ after the last parsed item
                 let num_trailing_spaces =
                     self.full_span.as_str().len() - self.full_span.as_str().trim_end().len();
@@ -40,66 +49,32 @@ impl<'a, 'e> Parser<'a, 'e> {
         ErrorEmitted { _priv: () }
     }
 
+    /// Eats a `P` in its canonical way by peeking.
+    ///
+    /// Unlike [`Parser::peek`], this method advances the parser on success, but not on failure.
     pub fn take<P: Peek>(&mut self) -> Option<P> {
-        let mut num_tokens = 0;
-        let peeker = Peeker {
-            token_trees: self.token_trees,
-            num_tokens: &mut num_tokens,
-        };
-        let value = P::peek(peeker)?;
-        self.token_trees = &self.token_trees[num_tokens..];
+        let (value, tokens) = Peeker::with(self.token_trees)?;
+        self.token_trees = tokens;
         Some(value)
     }
 
+    /// Tries to peek a `P` in its canonical way.
+    ///
+    /// Either way, on success or failure, the parser is not advanced.
     pub fn peek<P: Peek>(&self) -> Option<P> {
-        let mut num_tokens = 0;
-        let peeker = Peeker {
-            token_trees: self.token_trees,
-            num_tokens: &mut num_tokens,
-        };
-        let value = P::peek(peeker)?;
-        Some(value)
+        Peeker::with(self.token_trees).map(|(v, _)| v)
     }
 
-    pub fn peek2<P0: Peek, P1: Peek>(&self) -> Option<(P0, P1)> {
-        let mut num_tokens = 0;
-        let peeker = Peeker {
-            token_trees: self.token_trees,
-            num_tokens: &mut num_tokens,
-        };
-        let value0 = P0::peek(peeker)?;
-        let peeker = Peeker {
-            token_trees: &self.token_trees[num_tokens..],
-            num_tokens: &mut num_tokens,
-        };
-        let value1 = P1::peek(peeker)?;
-        Some((value0, value1))
-    }
-
-    pub fn peek3<P0: Peek, P1: Peek, P2: Peek>(&self) -> Option<(P0, P1, P2)> {
-        let mut num_tokens_0 = 0;
-        let peeker = Peeker {
-            token_trees: self.token_trees,
-            num_tokens: &mut num_tokens_0,
-        };
-        let value0 = P0::peek(peeker)?;
-        let mut num_tokens_1 = 0;
-        let peeker = Peeker {
-            token_trees: &self.token_trees[num_tokens_0..],
-            num_tokens: &mut num_tokens_1,
-        };
-        let value1 = P1::peek(peeker)?;
-        let mut num_tokens_2 = 0;
-        let peeker = Peeker {
-            token_trees: &self.token_trees[(num_tokens_0 + num_tokens_1)..],
-            num_tokens: &mut num_tokens_2,
-        };
-        let value2 = P2::peek(peeker)?;
-        Some((value0, value1, value2))
-    }
-
+    /// Parses a `T` in its canonical way.
     pub fn parse<T: Parse>(&mut self) -> ParseResult<T> {
         T::parse(self)
+    }
+
+    /// Parses `T` given that the guard `G` was successfully peeked.
+    ///
+    /// Useful to parse e.g., `$keyword $stuff` as a unit where `$keyword` is your guard.
+    pub fn guarded_parse<G: Peek, T: Parse>(&mut self) -> ParseResult<Option<T>> {
+        self.peek::<G>().map(|_| self.parse()).transpose()
     }
 
     pub fn parse_to_end<T: ParseToEnd>(self) -> ParseResult<(T, ParserConsumed<'a>)> {
@@ -119,15 +94,14 @@ impl<'a, 'e> Parser<'a, 'e> {
         &mut self,
         expected_delimiter: Delimiter,
     ) -> Option<(Parser<'_, '_>, Span)> {
-        match self.token_trees.split_first()? {
-            (
-                TokenTree::Group(Group {
-                    delimiter,
-                    token_stream,
-                    span,
-                }),
-                rest,
-            ) if *delimiter == expected_delimiter => {
+        match self.token_trees {
+            [TokenTree::Group(Group {
+                delimiter,
+                token_stream,
+                span,
+            }), rest @ ..]
+                if *delimiter == expected_delimiter =>
+            {
                 self.token_trees = rest;
                 let parser = Parser {
                     token_trees: token_stream.token_trees(),
@@ -145,28 +119,49 @@ impl<'a, 'e> Parser<'a, 'e> {
     }
 
     pub fn check_empty(&self) -> Option<ParserConsumed<'a>> {
-        if self.is_empty() {
-            Some(ParserConsumed { _priv: PhantomData })
-        } else {
-            None
-        }
+        self.is_empty()
+            .then(|| ParserConsumed { _priv: PhantomData })
     }
 
     pub fn debug_tokens(&self) -> &[TokenTree] {
         let len = std::cmp::min(5, self.token_trees.len());
         &self.token_trees[..len]
     }
+
+    /// Errors given `Some(PubToken)`.
+    pub fn ban_visibility_qualifier(&mut self, vis: &Option<PubToken>) -> ParseResult<()> {
+        if let Some(token) = vis {
+            return Err(self.emit_error_with_span(
+                ParseErrorKind::UnnecessaryVisibilityQualifier {
+                    visibility: token.ident(),
+                },
+                token.span(),
+            ));
+        }
+        Ok(())
+    }
 }
 
 pub struct Peeker<'a> {
-    token_trees: &'a [TokenTree],
+    pub token_trees: &'a [TokenTree],
     num_tokens: &'a mut usize,
 }
 
 impl<'a> Peeker<'a> {
+    /// Peek a `P` in `token_trees`, if any, and return the `P` + the remainder of the token trees.
+    pub fn with<P: Peek>(token_trees: &'a [TokenTree]) -> Option<(P, &'a [TokenTree])> {
+        let mut num_tokens = 0;
+        let peeker = Peeker {
+            token_trees,
+            num_tokens: &mut num_tokens,
+        };
+        let value = P::peek(peeker)?;
+        Some((value, &token_trees[num_tokens..]))
+    }
+
     pub fn peek_ident(self) -> Result<&'a Ident, Self> {
-        match self.token_trees.first() {
-            Some(TokenTree::Ident(ident)) => {
+        match self.token_trees {
+            [TokenTree::Ident(ident), ..] => {
                 *self.num_tokens = 1;
                 Ok(ident)
             }
@@ -175,8 +170,8 @@ impl<'a> Peeker<'a> {
     }
 
     pub fn peek_literal(self) -> Result<&'a Literal, Self> {
-        match self.token_trees.first() {
-            Some(TokenTree::Literal(literal)) => {
+        match self.token_trees {
+            [TokenTree::Literal(literal), ..] => {
                 *self.num_tokens = 1;
                 Ok(literal)
             }
@@ -195,17 +190,13 @@ impl<'a> Peeker<'a> {
         if self.token_trees.len() < punct_kinds.len() {
             return Err(self);
         }
-        for (i, punct_kind) in first_punct_kinds.iter().enumerate() {
-            match &self.token_trees[i] {
+        for (punct_kind, tt) in first_punct_kinds.iter().zip(self.token_trees.iter()) {
+            match tt {
                 TokenTree::Punct(Punct {
                     kind,
                     spacing: Spacing::Joint,
                     ..
-                }) => {
-                    if *kind != *punct_kind {
-                        return Err(self);
-                    }
-                }
+                }) if *kind == *punct_kind => {}
                 _ => return Err(self),
             }
         }
@@ -214,23 +205,18 @@ impl<'a> Peeker<'a> {
                 kind,
                 spacing,
                 span,
-            }) => {
-                if *kind != *last_punct_kind {
-                    return Err(self);
-                }
-                match spacing {
-                    Spacing::Alone => span,
-                    Spacing::Joint => match &self.token_trees.get(punct_kinds.len()) {
-                        Some(TokenTree::Punct(Punct { kind, .. })) => {
-                            if not_followed_by.contains(kind) {
-                                return Err(self);
-                            }
-                            span
+            }) if *kind == *last_punct_kind => match spacing {
+                Spacing::Alone => span,
+                Spacing::Joint => match &self.token_trees.get(punct_kinds.len()) {
+                    Some(TokenTree::Punct(Punct { kind, .. })) => {
+                        if not_followed_by.contains(kind) {
+                            return Err(self);
                         }
-                        _ => span,
-                    },
-                }
-            }
+                        span
+                    }
+                    _ => span,
+                },
+            },
             _ => return Err(self),
         };
         let span_start = match &self.token_trees[0] {
@@ -243,10 +229,20 @@ impl<'a> Peeker<'a> {
     }
 
     pub fn peek_delimiter(self) -> Result<Delimiter, Self> {
-        match self.token_trees.first() {
-            Some(TokenTree::Group(Group { delimiter, .. })) => {
+        match self.token_trees {
+            [TokenTree::Group(Group { delimiter, .. }), ..] => {
                 *self.num_tokens = 1;
                 Ok(*delimiter)
+            }
+            _ => Err(self),
+        }
+    }
+
+    pub fn peek_doc_comment(self) -> Result<&'a DocComment, Self> {
+        match self.token_trees {
+            [TokenTree::DocComment(doc_comment), ..] => {
+                *self.num_tokens = 1;
+                Ok(doc_comment)
             }
             _ => Err(self),
         }

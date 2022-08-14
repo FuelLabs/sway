@@ -2,15 +2,15 @@
 
 use crate::{
     core::token::{TokenMap, TypeDefinition, TypedAstToken},
-    utils::token::to_ident_key,
+    utils::token::{struct_declaration_of_type_id, to_ident_key},
 };
 use sway_core::semantic_analysis::ast_node::{
+    code_block::TypedCodeBlock,
     expression::{
         typed_expression::TypedExpression, typed_expression_variant::TypedExpressionVariant,
         TypedIntrinsicFunctionKind,
     },
-    while_loop::TypedWhileLoop,
-    TypedImplTrait, {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
+    ProjectionKind, TypedImplTrait, {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
 };
 use sway_types::ident::Ident;
 
@@ -24,7 +24,6 @@ pub fn traverse_node(node: &TypedAstNode, tokens: &TokenMap) {
         TypedAstNodeContent::ImplicitReturnExpression(expression) => {
             handle_expression(expression, tokens)
         }
-        TypedAstNodeContent::WhileLoop(while_loop) => handle_while_loop(while_loop, tokens),
         TypedAstNodeContent::SideEffect => (),
     };
 }
@@ -62,6 +61,13 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                     token.typed = Some(TypedAstToken::TypedFunctionParameter(parameter.clone()));
                 }
             }
+
+            if let Some(mut token) =
+                tokens.get_mut(&to_ident_key(&Ident::new(func.return_type_span.clone())))
+            {
+                token.typed = Some(TypedAstToken::TypedFunctionDeclaration(func.clone()));
+                token.type_def = Some(TypeDefinition::TypeId(func.return_type));
+            }
         }
         TypedDeclaration::TraitDeclaration(trait_decl) => {
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&trait_decl.name)) {
@@ -82,6 +88,14 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
             for field in &struct_dec.fields {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&field.name)) {
                     token.typed = Some(TypedAstToken::TypedStructField(field.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(field.type_id));
+                }
+
+                if let Some(mut token) =
+                    tokens.get_mut(&to_ident_key(&Ident::new(field.type_span.clone())))
+                {
+                    token.typed = Some(TypedAstToken::TypedStructField(field.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(field.type_id));
                 }
             }
         }
@@ -101,6 +115,24 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
 
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&reassignment.lhs_base_name)) {
                 token.typed = Some(TypedAstToken::TypedReassignment(reassignment.clone()));
+            }
+
+            for proj_kind in &reassignment.lhs_indices {
+                if let ProjectionKind::StructField { name } = proj_kind {
+                    if let Some(mut token) = tokens.get_mut(&to_ident_key(name)) {
+                        token.typed = Some(TypedAstToken::TypedReassignment(reassignment.clone()));
+                        if let Some(struct_decl) =
+                            &struct_declaration_of_type_id(&reassignment.lhs_type, tokens)
+                        {
+                            for decl_field in &struct_decl.fields {
+                                if &decl_field.name == name {
+                                    token.type_def =
+                                        Some(TypeDefinition::Ident(decl_field.name.clone()));
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         TypedDeclaration::ImplTrait(TypedImplTrait {
@@ -169,7 +201,10 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
             for field in &storage_decl.fields {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&field.name)) {
                     token.typed = Some(TypedAstToken::TypedStorageField(field.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(field.type_id));
                 }
+
+                handle_expression(&field.initializer, tokens);
             }
         }
         TypedDeclaration::StorageReassignment(storage_reassignment) => {
@@ -262,6 +297,17 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
             for field in fields {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&field.name)) {
                     token.typed = Some(TypedAstToken::TypedExpression(field.value.clone()));
+
+                    if let Some(struct_decl) =
+                        &struct_declaration_of_type_id(&expression.return_type, tokens)
+                    {
+                        for decl_field in &struct_decl.fields {
+                            if decl_field.name == field.name {
+                                token.type_def =
+                                    Some(TypeDefinition::Ident(decl_field.name.clone()));
+                            }
+                        }
+                    }
                 }
                 handle_expression(&field.value, tokens);
             }
@@ -287,12 +333,16 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
         TypedExpressionVariant::StructFieldAccess {
             prefix,
             field_to_access,
+            field_instantiation_span,
             ..
         } => {
             handle_expression(prefix, tokens);
 
-            if let Some(mut token) = tokens.get_mut(&to_ident_key(&field_to_access.name)) {
+            if let Some(mut token) =
+                tokens.get_mut(&to_ident_key(&Ident::new(field_instantiation_span.clone())))
+            {
                 token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
+                token.type_def = Some(TypeDefinition::Ident(field_to_access.name.clone()));
             }
         }
         TypedExpressionVariant::TupleElemAccess { prefix, .. } => {
@@ -359,6 +409,9 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
                 token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
             }
         }
+        TypedExpressionVariant::WhileLoop {
+            body, condition, ..
+        } => handle_while_loop(body, condition, tokens),
     }
 }
 
@@ -371,9 +424,9 @@ fn handle_intrinsic_function(
     }
 }
 
-fn handle_while_loop(while_loop: &TypedWhileLoop, tokens: &TokenMap) {
-    handle_expression(&while_loop.condition, tokens);
-    for node in &while_loop.body.contents {
+fn handle_while_loop(body: &TypedCodeBlock, condition: &TypedExpression, tokens: &TokenMap) {
+    handle_expression(condition, tokens);
+    for node in &body.contents {
         traverse_node(node, tokens);
     }
 }

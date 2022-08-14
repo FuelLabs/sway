@@ -3,7 +3,7 @@ use crate::constants::DEFAULT_MAX_COMMENT_WIDTH;
 
 use super::user_opts::CommentsOptions;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Comments {
     /// Break comments to fit on the line.
     pub wrap_comments: bool,

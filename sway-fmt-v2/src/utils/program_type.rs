@@ -1,5 +1,5 @@
 use std::fmt::Write;
-use sway_parse::{dependency::DependencyPath, token::PunctKind, Dependency, Module, ModuleKind};
+use sway_ast::{dependency::DependencyPath, token::PunctKind, Dependency, Module, ModuleKind};
 use sway_types::Spanned;
 
 use crate::FormatterError;

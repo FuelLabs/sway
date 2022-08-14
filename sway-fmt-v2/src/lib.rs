@@ -11,5 +11,5 @@ mod fmt;
 mod items;
 mod utils;
 
-pub use crate::fmt::Formatter;
+pub use crate::fmt::{Format, Formatter};
 pub use error::FormatterError;

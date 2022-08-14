@@ -7,7 +7,7 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_parse::{token::Delimiter, ItemTrait, Traits};
+use sway_ast::{keywords::Token, token::Delimiter, ItemTrait, Traits};
 use sway_types::Spanned;
 
 impl Format for ItemTrait {
@@ -34,7 +34,7 @@ impl Format for ItemTrait {
         }
         write!(formatted_code, " ")?;
         Self::open_curly_brace(formatted_code, formatter)?;
-        for (fn_signature, semicolon_token) in self.trait_items.clone().into_inner() {
+        for (fn_signature, semicolon_token) in self.trait_items.get() {
             // format `Annotated<FnSignature>`
             fn_signature.format(formatted_code, formatter)?;
             writeln!(formatted_code, "{}\n", semicolon_token.ident().as_str())?;
@@ -42,7 +42,7 @@ impl Format for ItemTrait {
         formatted_code.pop(); // pop last ending newline
         if let Some(trait_defs) = &self.trait_defs_opt {
             Self::open_curly_brace(formatted_code, formatter)?;
-            for trait_items in trait_defs.clone().into_inner() {
+            for trait_items in trait_defs.get() {
                 write!(
                     formatted_code,
                     "{}",

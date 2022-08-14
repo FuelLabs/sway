@@ -14,7 +14,7 @@ pub mod parse_tree;
 pub mod semantic_analysis;
 pub mod source_map;
 mod style;
-pub mod type_engine;
+pub mod type_system;
 
 use crate::{error::*, source_map::SourceMap};
 pub use asm_generation::from_ir::compile_ir_to_asm;
@@ -31,12 +31,12 @@ pub use semantic_analysis::{
 };
 pub mod types;
 pub use crate::parse_tree::{
-    Declaration, Expression, ParseModule, ParseProgram, TreeType, UseStatement, WhileLoop, *,
+    Declaration, Expression, ParseModule, ParseProgram, TreeType, UseStatement, *,
 };
 
 pub use error::{CompileError, CompileResult, CompileWarning};
 use sway_types::{ident::Ident, span, Spanned};
-pub use type_engine::TypeInfo;
+pub use type_system::TypeInfo;
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
@@ -141,7 +141,7 @@ fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeTy
     })
 }
 
-fn module_path(parent_module_dir: &Path, dep: &sway_parse::Dependency) -> PathBuf {
+fn module_path(parent_module_dir: &Path, dep: &sway_ast::Dependency) -> PathBuf {
     parent_module_dir
         .iter()
         .chain(dep.path.span().as_str().split('/').map(AsRef::as_ref))
@@ -527,7 +527,7 @@ pub fn asm_to_bytecode(
 }
 
 pub fn clear_lazy_statics() {
-    type_engine::clear_type_engine();
+    type_system::clear_type_engine();
 }
 
 /// Given a [TypedProgram], which is type-checked Sway source, construct a graph to analyze
@@ -733,7 +733,11 @@ fn test_unary_ordering() {
     } = &prog.root.tree.root_nodes[0]
     {
         if let AstNode {
-            content: AstNodeContent::Expression(Expression::LazyOperator { op, .. }),
+            content:
+                AstNodeContent::Expression(Expression {
+                    kind: ExpressionKind::LazyOperator(LazyOperatorExpression { op, .. }),
+                    ..
+                }),
             ..
         } = &body.contents[2]
         {

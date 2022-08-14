@@ -95,7 +95,7 @@ async fn get_pow_test_instance(wallet: LocalWallet) -> (TestPowContract, Contrac
     .await
     .unwrap();
 
-    let pow_instance = TestPowContract::new(pow_id.to_string(), wallet);
+    let pow_instance = TestPowContractBuilder::new(pow_id.to_string(), wallet).build();
 
-    (pow_instance, pow_id)
+    (pow_instance, pow_id.into())
 }

@@ -1,6 +1,6 @@
 use crate::fmt::*;
 use std::fmt::Write;
-use sway_parse::{WhereBound, WhereClause};
+use sway_ast::{WhereBound, WhereClause};
 use sway_types::Spanned;
 
 use super::comments::{ByteSpan, LeafSpans};

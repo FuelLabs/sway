@@ -1,219 +1,16 @@
-use crate::priv_prelude::*;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Spacing {
-    Joint,
-    Alone,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum PunctKind {
-    Semicolon,
-    Colon,
-    ForwardSlash,
-    Comma,
-    Star,
-    Add,
-    Sub,
-    LessThan,
-    GreaterThan,
-    Equals,
-    Dot,
-    Bang,
-    Percent,
-    Ampersand,
-    Caret,
-    Pipe,
-    Tilde,
-    Underscore,
-    Sharp,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
-pub struct Punct {
-    pub span: Span,
-    pub kind: PunctKind,
-    pub spacing: Spacing,
-}
-
-impl Spanned for Punct {
-    fn span(&self) -> Span {
-        self.span.clone()
-    }
-}
-
-impl PunctKind {
-    pub fn as_char(&self) -> char {
-        match self {
-            PunctKind::Semicolon => ';',
-            PunctKind::Colon => ':',
-            PunctKind::ForwardSlash => '/',
-            PunctKind::Comma => ',',
-            PunctKind::Star => '*',
-            PunctKind::Add => '+',
-            PunctKind::Sub => '-',
-            PunctKind::LessThan => '<',
-            PunctKind::GreaterThan => '>',
-            PunctKind::Equals => '=',
-            PunctKind::Dot => '.',
-            PunctKind::Bang => '!',
-            PunctKind::Percent => '%',
-            PunctKind::Ampersand => '&',
-            PunctKind::Caret => '^',
-            PunctKind::Pipe => '|',
-            PunctKind::Tilde => '~',
-            PunctKind::Underscore => '_',
-            PunctKind::Sharp => '#',
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
-pub struct GenericGroup<T> {
-    pub delimiter: Delimiter,
-    pub token_stream: T,
-    pub span: Span,
-}
-
-pub type Group = GenericGroup<TokenStream>;
-pub type CommentedGroup = GenericGroup<CommentedTokenStream>;
-
-impl<T> Spanned for GenericGroup<T> {
-    fn span(&self) -> Span {
-        self.span.clone()
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Delimiter {
-    Parenthesis,
-    Brace,
-    Bracket,
-}
-
-impl Delimiter {
-    pub fn as_open_char(self) -> char {
-        match self {
-            Delimiter::Parenthesis => '(',
-            Delimiter::Brace => '{',
-            Delimiter::Bracket => '[',
-        }
-    }
-    pub fn as_close_char(self) -> char {
-        match self {
-            Delimiter::Parenthesis => ')',
-            Delimiter::Brace => '}',
-            Delimiter::Bracket => ']',
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
-pub struct Comment {
-    pub span: Span,
-}
-
-impl Spanned for Comment {
-    fn span(&self) -> Span {
-        self.span.clone()
-    }
-}
-
-/// Allows for generalizing over commented and uncommented token streams.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
-pub enum GenericTokenTree<T> {
-    Punct(Punct),
-    Ident(Ident),
-    Group(GenericGroup<T>),
-    Literal(Literal),
-}
-
-pub type TokenTree = GenericTokenTree<TokenStream>;
-pub type CommentedTree = GenericTokenTree<CommentedTokenStream>;
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
-pub enum CommentedTokenTree {
-    Comment(Comment),
-    Tree(CommentedTree),
-}
-
-impl CommentedGroup {
-    pub fn strip_comments(self) -> Group {
-        Group {
-            delimiter: self.delimiter,
-            token_stream: self.token_stream.strip_comments(),
-            span: self.span,
-        }
-    }
-}
-
-impl<T> Spanned for GenericTokenTree<T> {
-    fn span(&self) -> Span {
-        match self {
-            Self::Punct(punct) => punct.span(),
-            Self::Ident(ident) => ident.span(),
-            Self::Group(group) => group.span(),
-            Self::Literal(literal) => literal.span(),
-        }
-    }
-}
-
-impl Spanned for CommentedTokenTree {
-    fn span(&self) -> Span {
-        match self {
-            Self::Comment(cmt) => cmt.span(),
-            Self::Tree(tt) => tt.span(),
-        }
-    }
-}
-
-impl<T> From<Punct> for GenericTokenTree<T> {
-    fn from(punct: Punct) -> Self {
-        Self::Punct(punct)
-    }
-}
-
-impl<T> From<Ident> for GenericTokenTree<T> {
-    fn from(ident: Ident) -> Self {
-        Self::Ident(ident)
-    }
-}
-
-impl<T> From<GenericGroup<T>> for GenericTokenTree<T> {
-    fn from(group: GenericGroup<T>) -> Self {
-        Self::Group(group)
-    }
-}
-
-impl<T> From<Literal> for GenericTokenTree<T> {
-    fn from(lit: Literal) -> Self {
-        Self::Literal(lit)
-    }
-}
-
-impl From<Comment> for CommentedTokenTree {
-    fn from(comment: Comment) -> Self {
-        Self::Comment(comment)
-    }
-}
-
-impl From<CommentedTree> for CommentedTokenTree {
-    fn from(tree: CommentedTree) -> Self {
-        Self::Tree(tree)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
-pub struct TokenStream {
-    token_trees: Vec<TokenTree>,
-    full_span: Span,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
-pub struct CommentedTokenStream {
-    token_trees: Vec<CommentedTokenTree>,
-    full_span: Span,
-}
+use core::mem;
+use extension_trait::extension_trait;
+use num_bigint::BigUint;
+use std::path::PathBuf;
+use std::sync::Arc;
+use sway_ast::literal::{LitChar, LitInt, LitIntType, LitString, Literal};
+use sway_ast::token::{
+    Comment, CommentedGroup, CommentedTokenStream, CommentedTokenTree, Delimiter, DocComment,
+    DocStyle, Punct, PunctKind, Spacing, TokenStream,
+};
+use sway_types::{Ident, Span, Spanned};
+use thiserror::Error;
+use unicode_xid::UnicodeXID;
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 #[error("{}", kind)]
@@ -386,14 +183,43 @@ pub fn lex_commented(
             match char_indices.peek() {
                 Some((_, '/')) => {
                     let _ = char_indices.next();
-                    for (end, character) in char_indices.by_ref() {
-                        if character == '\n' {
-                            let span = Span::new(src.clone(), index, end, path.clone()).unwrap();
-                            let comment = Comment { span };
-                            token_trees.push(comment.into());
-                            break;
-                        }
-                    }
+
+                    let end = match char_indices.find(|(_, character)| *character == '\n') {
+                        // Reached EOF
+                        None => end,
+                        // Found "\n"
+                        Some((end, _)) => end,
+                    };
+                    let span = Span::new(src.clone(), index, end, path.clone()).unwrap();
+
+                    let doc_style =
+                        match (span.as_str().chars().nth(2), span.as_str().chars().nth(3)) {
+                            // `//!` is an inner line doc comment.
+                            (Some('!'), _) => {
+                                // TODO: Add support for inner line doc comments.
+                                // Some(DocStyle::Inner)
+                                None
+                            }
+                            // `////` (more than 3 slashes) is not considered a doc comment.
+                            (Some('/'), Some('/')) => None,
+                            // `///` is an outer line doc comment.
+                            (Some('/'), _) => Some(DocStyle::Outer),
+                            _ => None,
+                        };
+
+                    token_trees.push(if let Some(doc_style) = doc_style {
+                        let content_span =
+                            Span::new(src.clone(), index + 3, end, path.clone()).unwrap();
+                        let doc_comment = DocComment {
+                            span,
+                            doc_style,
+                            content_span,
+                        };
+                        CommentedTokenTree::Tree(doc_comment.into())
+                    } else {
+                        let comment = Comment { span };
+                        comment.into()
+                    });
                 }
                 Some((_, '*')) => {
                     let _ = char_indices.next();
@@ -1047,67 +873,18 @@ fn span_until(
     Span::new(src.clone(), start, end, path.clone()).unwrap()
 }
 
-impl TokenStream {
-    pub fn token_trees(&self) -> &[TokenTree] {
-        &self.token_trees
-    }
-}
-
-impl Spanned for TokenStream {
-    fn span(&self) -> Span {
-        self.full_span.clone()
-    }
-}
-
-impl CommentedTokenTree {
-    pub fn strip_comments(self) -> Option<TokenTree> {
-        let commented_tt = match self {
-            Self::Comment(_) => return None,
-            Self::Tree(commented_tt) => commented_tt,
-        };
-        let tt = match commented_tt {
-            CommentedTree::Punct(punct) => punct.into(),
-            CommentedTree::Ident(ident) => ident.into(),
-            CommentedTree::Group(group) => group.strip_comments().into(),
-            CommentedTree::Literal(lit) => lit.into(),
-        };
-        Some(tt)
-    }
-}
-
-impl CommentedTokenStream {
-    pub fn token_trees(&self) -> &[CommentedTokenTree] {
-        &self.token_trees
-    }
-
-    pub fn strip_comments(self) -> TokenStream {
-        let token_trees = self
-            .token_trees
-            .into_iter()
-            .filter_map(|tree| tree.strip_comments())
-            .collect();
-        TokenStream {
-            token_trees,
-            full_span: self.full_span,
-        }
-    }
-}
-
-impl Spanned for CommentedTokenStream {
-    fn span(&self) -> Span {
-        self.full_span.clone()
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{lex_commented, CommentedTokenTree, CommentedTree};
+    use super::lex_commented;
     use crate::priv_prelude::*;
+    use assert_matches::assert_matches;
     use std::sync::Arc;
+    use sway_ast::token::{Comment, CommentedTokenTree, CommentedTree, DocComment, DocStyle};
 
     #[test]
     fn lex_commented_token_stream() {
         let input = r#"
+        //
         // Single-line comment.
         struct Foo {
             /* multi-
@@ -1121,6 +898,7 @@ mod tests {
         let path = None;
         let stream = lex_commented(&Arc::from(input), start, end, path).unwrap();
         let mut tts = stream.token_trees().iter();
+        assert_eq!(tts.next().unwrap().span().as_str(), "//");
         assert_eq!(
             tts.next().unwrap().span().as_str(),
             "// Single-line comment."
@@ -1144,5 +922,65 @@ mod tests {
             assert!(tts.next().is_none());
         }
         assert!(tts.next().is_none());
+    }
+
+    #[test]
+    fn lex_doc_comments() {
+        let input = r#"
+        //none
+        ////none
+        //!inner
+        ///outer
+        /// outer 
+        "#;
+        let start = 0;
+        let end = input.len();
+        let path = None;
+        let stream = lex_commented(&Arc::from(input), start, end, path).unwrap();
+        let mut tts = stream.token_trees().iter();
+        assert_matches!(
+            tts.next(),
+            Some(CommentedTokenTree::Comment(Comment {
+                span
+            })) if span.as_str() ==  "//none"
+        );
+        assert_matches!(
+            tts.next(),
+            Some(CommentedTokenTree::Comment(Comment {
+                span
+            })) if span.as_str() ==  "////none"
+        );
+        // TODO: Add support for inner line doc comments.
+        // assert_matches!(
+        //     tts.next(),
+        //     Some(CommentedTokenTree::Tree(CommentedTree::DocComment(DocComment {
+        //         doc_style: DocStyle::Inner,
+        //         span,
+        //         content_span,
+        //     }))) if span.as_str() ==  "//!inner" && content_span.as_str() == "inner"
+        // );
+        assert_matches!(
+            tts.next(),
+            Some(CommentedTokenTree::Comment(Comment {
+                span
+            })) if span.as_str() ==  "//!inner"
+        );
+        assert_matches!(
+            tts.next(),
+            Some(CommentedTokenTree::Tree(CommentedTree::DocComment(DocComment {
+                doc_style: DocStyle::Outer,
+                span,
+                content_span
+            }))) if span.as_str() ==  "///outer" && content_span.as_str() == "outer"
+        );
+        assert_matches!(
+            tts.next(),
+            Some(CommentedTokenTree::Tree(CommentedTree::DocComment(DocComment {
+                doc_style: DocStyle::Outer,
+                span,
+                content_span
+            }))) if span.as_str() ==  "/// outer " && content_span.as_str() == " outer "
+        );
+        assert_eq!(tts.next(), None);
     }
 }

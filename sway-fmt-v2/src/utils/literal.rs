@@ -3,7 +3,7 @@ use crate::{
     utils::comments::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
-use sway_parse::Literal;
+use sway_ast::Literal;
 
 impl Format for Literal {
     fn format(

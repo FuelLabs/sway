@@ -15,10 +15,10 @@ use crate::{
     metadata::MetadataManager,
     parse_tree::{AsmOp, AsmRegister, LazyOp, Literal},
     semantic_analysis::*,
-    type_engine::{resolve_type, TypeId, TypeInfo},
+    type_system::{look_up_type_id, resolve_type, TypeId, TypeInfo},
 };
+use sway_ast::intrinsics::Intrinsic;
 use sway_ir::{Context, *};
-use sway_parse::intrinsics::Intrinsic;
 use sway_types::{
     ident::Ident,
     span::{Span, Spanned},
@@ -33,7 +33,9 @@ pub(super) struct FnCompiler {
     pub(super) current_block: Block,
     pub(super) block_to_break_to: Option<Block>,
     pub(super) block_to_continue_to: Option<Block>,
+    pub(super) current_fn_param: Option<TypedFunctionParameter>,
     lexical_map: LexicalMap,
+    recreated_fns: HashMap<(Span, Vec<TypeId>, Vec<TypeId>), Function>,
 }
 
 pub(super) enum StateAccessType {
@@ -55,6 +57,8 @@ impl FnCompiler {
             block_to_break_to: None,
             block_to_continue_to: None,
             lexical_map,
+            recreated_fns: HashMap::new(),
+            current_fn_param: None,
         }
     }
 
@@ -218,9 +222,6 @@ impl FnCompiler {
                     TypedAstNodeContent::ImplicitReturnExpression(te) => {
                         self.compile_expression(context, md_mgr, te)
                     }
-                    TypedAstNodeContent::WhileLoop(twl) => {
-                        self.compile_while_loop(context, md_mgr, twl, span_md_idx)
-                    }
                     // a side effect can be () because it just impacts the type system/namespacing.
                     // There should be no new IR generated.
                     TypedAstNodeContent::SideEffect => Ok(Constant::get_unit(context)),
@@ -321,6 +322,7 @@ impl FnCompiler {
                 prefix,
                 field_to_access,
                 resolved_type_of_parent,
+                ..
             } => {
                 let span_md_idx = md_mgr.span_to_md(context, &field_to_access.span);
                 self.compile_struct_field_expr(
@@ -371,6 +373,9 @@ impl FnCompiler {
                 self.compile_unsafe_downcast(context, md_mgr, exp, variant)
             }
             TypedExpressionVariant::EnumTag { exp } => self.compile_enum_tag(context, md_mgr, exp),
+            TypedExpressionVariant::WhileLoop { body, condition } => {
+                self.compile_while_loop(context, md_mgr, body, *condition, span_md_idx)
+            }
         }
     }
 
@@ -587,10 +592,7 @@ impl FnCompiler {
             1 => {
                 // The single arg doesn't need to be put into a struct.
                 let arg0 = compiled_args[0];
-
-                // We're still undecided as to whether this should be decided by type or size.
-                // Going with type for now.
-                let arg0_type = arg0.get_type(context).unwrap();
+                let arg0_type = arg0.get_stripped_ptr_type(context).unwrap();
                 if arg0_type.is_copy_type() {
                     self.current_block
                         .ins(context)
@@ -630,7 +632,7 @@ impl FnCompiler {
                 // New struct type to hold the user arguments bundled together.
                 let field_types = compiled_args
                     .iter()
-                    .map(|val| val.get_type(context).unwrap())
+                    .filter_map(|val| val.get_stripped_ptr_type(context))
                     .collect::<Vec<_>>();
                 let user_args_struct_aggregate = Aggregate::new_struct(context, field_types);
 
@@ -787,46 +789,79 @@ impl FnCompiler {
         self_state_idx: Option<StateIndex>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
-        // XXX OK, now, the old compiler inlines everything very lazily.  Function calls include
-        // the body of the callee (i.e., the callee_body arg above) and so codegen just pulled it
-        // straight in, no questions asked.  Library functions are provided in an initial namespace
-        // from Forc and when the parser builds the AST (or is it during type checking?) these
-        // function bodies are embedded.
+        // The compiler inlines everything very lazily.  Function calls include the body of the
+        // callee (i.e., the callee_body arg above). Library functions are provided in an initial
+        // namespace from Forc and when the parser builds the AST (or is it during type checking?)
+        // these function bodies are embedded.
         //
-        // We're going to build little single-use instantiations of the callee and then call them.
-        // For now if they're called in multiple places they'll be redundantly recreated, but also
-        // at present we are still inlining everything so it actually makes little difference.
+        // Here we build little single-use instantiations of the callee and then call them.  Naming
+        // is not yet absolute so we must ensure the function names are unique.
         //
-        // Eventually we need to Do It Properly and inline only when necessary, and compile the
-        // standard library to an actual module.
 
-        {
-            let callee_name = format!("{}_{}", callee.name, context.get_unique_id());
+        // Eventually we need to Do It Properly and inline into the AST only when necessary, and
+        // compile the standard library to an actual module.
 
-            let mut callee_fn_decl = callee;
-            callee_fn_decl.type_parameters.clear();
-            callee_fn_decl.name = Ident::new(Span::from_string(callee_name));
+        // Get the callee from the cache if we've already compiled it.  We can't insert it with
+        // .entry() since `compile_function()` returns a Result we need to handle.  The key to our
+        // cache, to uniquely identify a function instance, is the span and the type IDs of any
+        // args and type parameters.  It's using the Sway types rather than IR types, which would
+        // be more accurate but also more fiddly.
+        let fn_key = (
+            callee.span(),
+            callee.parameters.iter().map(|p| p.type_id).collect(),
+            callee.type_parameters.iter().map(|tp| tp.type_id).collect(),
+        );
+        let new_callee = match self.recreated_fns.get(&fn_key).copied() {
+            Some(func) => func,
+            None => {
+                let callee_fn_decl = TypedFunctionDeclaration {
+                    type_parameters: Vec::new(),
+                    name: Ident::new(Span::from_string(format!(
+                        "{}_{}",
+                        callee.name,
+                        context.get_unique_id()
+                    ))),
+                    parameters: callee.parameters.clone(),
+                    ..callee
+                };
+                let new_func =
+                    compile_function(context, md_mgr, self.module, callee_fn_decl)?.unwrap();
+                self.recreated_fns.insert(fn_key, new_func);
+                new_func
+            }
+        };
 
-            let callee = compile_function(context, md_mgr, self.module, callee_fn_decl)?;
+        // Now actually call the new function.
+        let args = ast_args
+            .into_iter()
+            .zip(callee.parameters.into_iter())
+            .map(|((_, expr), param)| self.compile_fn_arg(context, md_mgr, &param, expr))
+            .collect::<Result<Vec<Value>, CompileError>>()?;
+        let state_idx_md_idx = match self_state_idx {
+            Some(self_state_idx) => {
+                md_mgr.storage_key_to_md(context, self_state_idx.to_usize() as u64)
+            }
+            None => None,
+        };
+        Ok(self
+            .current_block
+            .ins(context)
+            .call(new_callee, &args)
+            .add_metadatum(context, span_md_idx)
+            .add_metadatum(context, state_idx_md_idx))
+    }
 
-            // Now actually call the new function.
-            let args = ast_args
-                .into_iter()
-                .map(|(_, expr)| self.compile_expression(context, md_mgr, expr))
-                .collect::<Result<Vec<Value>, CompileError>>()?;
-            let state_idx_md_idx = match self_state_idx {
-                Some(self_state_idx) => {
-                    md_mgr.storage_key_to_md(context, self_state_idx.to_usize() as u64)
-                }
-                None => None,
-            };
-            Ok(self
-                .current_block
-                .ins(context)
-                .call(callee.unwrap(), &args)
-                .add_metadatum(context, span_md_idx)
-                .add_metadatum(context, state_idx_md_idx))
-        }
+    fn compile_fn_arg(
+        &mut self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        fn_param: &TypedFunctionParameter,
+        ast_expr: TypedExpression,
+    ) -> Result<Value, CompileError> {
+        self.current_fn_param = Some(fn_param.clone());
+        let ret = self.compile_expression(context, md_mgr, ast_expr);
+        self.current_fn_param = None;
+        ret
     }
 
     fn compile_if(
@@ -950,7 +985,8 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_while_loop: TypedWhileLoop,
+        body: TypedCodeBlock,
+        condition: TypedExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         // We're dancing around a bit here to make the blocks sit in the right order.  Ideally we
@@ -987,7 +1023,7 @@ impl FnCompiler {
         // Compile the body and a branch to the condition block if no branch is already present in
         // the body block
         self.current_block = body_block;
-        self.compile_code_block(context, md_mgr, ast_while_loop.body)?;
+        self.compile_code_block(context, md_mgr, body)?;
         if !self.current_block.is_terminated(context) {
             self.current_block.ins(context).branch(cond_block, None);
         }
@@ -998,7 +1034,7 @@ impl FnCompiler {
 
         // Add the conditional which jumps into the body or out to the final block.
         self.current_block = cond_block;
-        let cond_value = self.compile_expression(context, md_mgr, ast_while_loop.condition)?;
+        let cond_value = self.compile_expression(context, md_mgr, condition)?;
         if !self.current_block.is_terminated(context) {
             self.current_block.ins(context).conditional_branch(
                 cond_value,
@@ -1031,7 +1067,12 @@ impl FnCompiler {
                 .ins(context)
                 .get_ptr(ptr, ptr_ty, 0)
                 .add_metadatum(context, span_md_idx);
-            Ok(if ptr.is_aggregate_ptr(context) {
+            let fn_param = self.current_fn_param.as_ref();
+            let is_ref_primitive = fn_param.is_some()
+                && look_up_type_id(fn_param.unwrap().type_id).is_copy_type()
+                && fn_param.unwrap().is_reference
+                && fn_param.unwrap().is_mutable;
+            Ok(if ptr.is_aggregate_ptr(context) || is_ref_primitive {
                 ptr_val
             } else {
                 self.current_block
@@ -1061,7 +1102,7 @@ impl FnCompiler {
         let TypedVariableDeclaration {
             name,
             body,
-            is_mutable,
+            mutability,
             ..
         } = ast_var_decl;
         // Nothing to do for an abi cast declarations. The address specified in them is already
@@ -1084,7 +1125,13 @@ impl FnCompiler {
         let local_name = self.lexical_map.insert(name.as_str().to_owned());
         let ptr = self
             .function
-            .new_local_ptr(context, local_name, return_type, is_mutable.into(), None)
+            .new_local_ptr(
+                context,
+                local_name,
+                return_type,
+                mutability.is_mutable(),
+                None,
+            )
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
 
         // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
@@ -1199,7 +1246,7 @@ impl FnCompiler {
                 &ast_reassignment.lhs_indices,
             )?;
 
-            let ty = match val.get_type(context).unwrap() {
+            let ty = match val.get_stripped_ptr_type(context).unwrap() {
                 Type::Struct(aggregate) => aggregate,
                 _otherwise => {
                     let spans = ast_reassignment
@@ -1784,6 +1831,10 @@ impl FnCompiler {
                 match r#type {
                     Type::Array(_) => Err(CompileError::Internal(
                         "Arrays in storage have not been implemented yet.",
+                        Span::dummy(),
+                    )),
+                    Type::Pointer(_) => Err(CompileError::Internal(
+                        "Pointers in storage have not been implemented yet.",
                         Span::dummy(),
                     )),
                     Type::B256 => self.compile_b256_storage(

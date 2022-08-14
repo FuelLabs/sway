@@ -3,7 +3,7 @@ use crate::{
     utils::comments::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
-use sway_parse::{token::Delimiter, Pattern, PatternStructField};
+use sway_ast::{token::Delimiter, Pattern, PatternStructField};
 use sway_types::Spanned;
 
 use super::bracket::{CurlyBrace, Parenthesis};
@@ -18,12 +18,18 @@ impl Format for Pattern {
             Self::Wildcard { underscore_token } => {
                 formatted_code.push_str(underscore_token.span().as_str())
             }
-            Self::Var { mutable, name } => {
+            Self::Var {
+                reference,
+                mutable,
+                name,
+            } => {
+                if let Some(ref_token) = reference {
+                    write!(formatted_code, "{} ", ref_token.span().as_str())?;
+                }
                 if let Some(mut_token) = mutable {
                     write!(formatted_code, "{} ", mut_token.span().as_str())?;
                 }
-                // maybe add `Ident::format()`, not sure if needed yet.
-                formatted_code.push_str(name.span().as_str());
+                name.format(formatted_code, formatter)?;
             }
             Self::Literal(lit) => lit.format(formatted_code, formatter)?,
             Self::Constant(path) => path.format(formatted_code, formatter)?,
@@ -31,27 +37,20 @@ impl Format for Pattern {
                 path.format(formatted_code, formatter)?;
                 Self::open_parenthesis(formatted_code, formatter)?;
                 // need to add `<Pattern, CommaToken>` to `Punctuated::format()`
-                args.clone()
-                    .into_inner()
-                    .format(formatted_code, formatter)?;
+                args.get().format(formatted_code, formatter)?;
                 Self::close_parenthesis(formatted_code, formatter)?;
             }
             Self::Struct { path, fields } => {
                 path.format(formatted_code, formatter)?;
                 Self::open_curly_brace(formatted_code, formatter)?;
                 // need to add `<PatternStructField, CommaToken>` to `Punctuated::format()`
-                fields
-                    .clone()
-                    .into_inner()
-                    .format(formatted_code, formatter)?;
+                fields.get().format(formatted_code, formatter)?;
                 Self::close_curly_brace(formatted_code, formatter)?;
             }
             Self::Tuple(args) => {
                 Self::open_parenthesis(formatted_code, formatter)?;
                 // need to add `<Pattern, CommaToken>` to `Punctuated::format()`
-                args.clone()
-                    .into_inner()
-                    .format(formatted_code, formatter)?;
+                args.get().format(formatted_code, formatter)?;
                 Self::close_parenthesis(formatted_code, formatter)?;
             }
         }
@@ -125,7 +124,14 @@ impl LeafSpans for Pattern {
             Pattern::Wildcard { underscore_token } => {
                 collected_spans.push(ByteSpan::from(underscore_token.span()));
             }
-            Pattern::Var { mutable, name } => {
+            Pattern::Var {
+                reference,
+                mutable,
+                name,
+            } => {
+                if let Some(reference) = reference {
+                    collected_spans.push(ByteSpan::from(reference.span()));
+                }
                 if let Some(mutable) = mutable {
                     collected_spans.push(ByteSpan::from(mutable.span()));
                 }

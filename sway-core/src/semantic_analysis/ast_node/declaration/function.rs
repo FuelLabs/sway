@@ -1,7 +1,7 @@
 mod function_parameter;
 pub use function_parameter::*;
 
-use crate::{error::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*, types::*};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, style::*, type_system::*, types::*};
 use sha2::{Digest, Sha256};
 use sway_types::{Function, Ident, Property, Span, Spanned};
 
@@ -303,7 +303,7 @@ impl TypedFunctionDeclaration {
 
 #[test]
 fn test_function_selector_behavior() {
-    use crate::type_engine::IntegerBits;
+    use crate::type_system::IntegerBits;
     let decl = TypedFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_no_span("foo"),
@@ -331,12 +331,14 @@ fn test_function_selector_behavior() {
         parameters: vec![
             TypedFunctionParameter {
                 name: Ident::new_no_span("foo"),
+                is_reference: false,
                 is_mutable: false,
-                type_id: crate::type_engine::insert_type(TypeInfo::Str(5)),
+                type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
                 type_span: Span::dummy(),
             },
             TypedFunctionParameter {
                 name: Ident::new_no_span("baz"),
+                is_reference: false,
                 is_mutable: false,
                 type_id: insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
                 type_span: Span::dummy(),

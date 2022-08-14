@@ -1,14 +1,17 @@
 #![allow(dead_code)]
 
 use crate::{
-    core::token::{AstToken, Token, TokenMap},
+    core::token::{AstToken, Token, TokenMap, TypeDefinition},
     utils::token::{desugared_op, to_ident_key},
 };
 use sway_core::{
     constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX},
     parse_tree::MethodName,
-    AstNode, AstNodeContent, Declaration, Expression, FunctionDeclaration, ReassignmentTarget,
-    TypeInfo, WhileLoop,
+    AbiCastExpression, ArrayIndexExpression, AstNode, AstNodeContent, CodeBlock, Declaration,
+    DelineatedPathExpression, Expression, ExpressionKind, FunctionApplicationExpression,
+    FunctionDeclaration, IfExpression, IntrinsicFunctionExpression, LazyOperatorExpression,
+    MatchExpression, MethodApplicationExpression, ReassignmentTarget, StorageAccessExpression,
+    StructExpression, SubfieldExpression, TupleIndexExpression, TypeInfo, WhileLoopExpression,
 };
 use sway_types::Ident;
 
@@ -22,7 +25,6 @@ pub fn traverse_node(node: &AstNode, tokens: &TokenMap) {
         AstNodeContent::ReturnStatement(return_statement) => {
             handle_expression(&return_statement.expr, tokens)
         }
-        AstNodeContent::WhileLoop(while_loop) => handle_while_loop(while_loop, tokens),
 
         // TODO
         // handle other content types
@@ -107,6 +109,42 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                     to_ident_key(&field.name),
                     Token::from_parsed(AstToken::StructField(field.clone())),
                 );
+
+                match &field.type_info {
+                    TypeInfo::UnsignedInteger(..)
+                    | TypeInfo::Boolean
+                    | TypeInfo::Byte
+                    | TypeInfo::B256 => {
+                        tokens.insert(
+                            to_ident_key(&Ident::new(field.type_span.clone())),
+                            Token::from_parsed(AstToken::StructField(field.clone())),
+                        );
+                    }
+                    TypeInfo::Ref(type_id, span) => {
+                        let mut token = Token::from_parsed(AstToken::StructField(field.clone()));
+                        token.type_def = Some(TypeDefinition::TypeId(*type_id));
+                        tokens.insert(to_ident_key(&Ident::new(span.clone())), token);
+                    }
+                    TypeInfo::Custom {
+                        name,
+                        type_arguments,
+                    } => {
+                        tokens.insert(
+                            to_ident_key(name),
+                            Token::from_parsed(AstToken::StructField(field.clone())),
+                        );
+
+                        if let Some(args) = type_arguments {
+                            for arg in args {
+                                let mut token =
+                                    Token::from_parsed(AstToken::StructField(field.clone()));
+                                token.type_def = Some(TypeDefinition::TypeId(arg.type_id));
+                                tokens.insert(to_ident_key(&Ident::new(arg.span.clone())), token);
+                            }
+                        }
+                    }
+                    _ => (),
+                }
             }
         }
         Declaration::EnumDeclaration(enum_decl) => {
@@ -211,6 +249,38 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                     to_ident_key(&field.name),
                     Token::from_parsed(AstToken::StorageField(field.clone())),
                 );
+
+                match &field.type_info {
+                    TypeInfo::Tuple(args) => {
+                        for arg in args {
+                            let mut token =
+                                Token::from_parsed(AstToken::StorageField(field.clone()));
+                            token.type_def = Some(TypeDefinition::TypeId(arg.type_id));
+                            tokens.insert(to_ident_key(&Ident::new(arg.span.clone())), token);
+                        }
+                    }
+                    TypeInfo::Custom {
+                        name,
+                        type_arguments,
+                    } => {
+                        tokens.insert(
+                            to_ident_key(name),
+                            Token::from_parsed(AstToken::StorageField(field.clone())),
+                        );
+
+                        if let Some(args) = type_arguments {
+                            for arg in args {
+                                let mut token =
+                                    Token::from_parsed(AstToken::StorageField(field.clone()));
+                                token.type_def = Some(TypeDefinition::TypeId(arg.type_id));
+                                tokens.insert(to_ident_key(&Ident::new(arg.span.clone())), token);
+                            }
+                        }
+                    }
+                    _ => (),
+                }
+
+                handle_expression(&field.initializer, tokens);
             }
         }
         // TODO: collect these tokens as keywords once the compiler returns the span
@@ -219,18 +289,19 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
 }
 
 fn handle_expression(expression: &Expression, tokens: &TokenMap) {
-    match expression {
-        Expression::Literal { span, .. } => {
+    let span = &expression.span;
+    match &expression.kind {
+        ExpressionKind::Literal(_) => {
             tokens.insert(
                 to_ident_key(&Ident::new(span.clone())),
                 Token::from_parsed(AstToken::Expression(expression.clone())),
             );
         }
-        Expression::FunctionApplication {
-            call_path_binding,
-            arguments,
-            ..
-        } => {
+        ExpressionKind::FunctionApplication(function_application_expression) => {
+            let FunctionApplicationExpression {
+                call_path_binding,
+                arguments,
+            } = &**function_application_expression;
             // Don't collect applications of desugared operators due to mismatched ident lengths.
             if !desugared_op(&call_path_binding.inner.prefixes) {
                 for ident in &call_path_binding.inner.prefixes {
@@ -249,11 +320,11 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                 handle_expression(exp, tokens);
             }
         }
-        Expression::LazyOperator { lhs, rhs, .. } => {
+        ExpressionKind::LazyOperator(LazyOperatorExpression { lhs, rhs, .. }) => {
             handle_expression(lhs, tokens);
             handle_expression(rhs, tokens);
         }
-        Expression::VariableExpression { name, .. } => {
+        ExpressionKind::Variable(name) => {
             if !name.as_str().contains(TUPLE_NAME_PREFIX)
                 && !name.as_str().contains(MATCH_RETURN_VAR_NAME_PREFIX)
                 && !name.as_str().contains(DESTRUCTURE_PREFIX)
@@ -264,24 +335,24 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                 );
             }
         }
-        Expression::Tuple { fields, .. } => {
+        ExpressionKind::Tuple(fields) => {
             for exp in fields {
                 handle_expression(exp, tokens);
             }
         }
-        Expression::TupleIndex { prefix, .. } => {
+        ExpressionKind::TupleIndex(TupleIndexExpression { prefix, .. }) => {
             handle_expression(prefix, tokens);
         }
-        Expression::Array { contents, .. } => {
+        ExpressionKind::Array(contents) => {
             for exp in contents {
                 handle_expression(exp, tokens);
             }
         }
-        Expression::StructExpression {
-            call_path_binding,
-            fields,
-            ..
-        } => {
+        ExpressionKind::Struct(struct_expression) => {
+            let StructExpression {
+                call_path_binding,
+                fields,
+            } = &**struct_expression;
             for ident in &call_path_binding.inner.prefixes {
                 tokens.insert(
                     to_ident_key(ident),
@@ -304,41 +375,41 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                 handle_expression(&field.value, tokens);
             }
         }
-        Expression::CodeBlock { contents, .. } => {
+        ExpressionKind::CodeBlock(contents) => {
             for node in &contents.contents {
                 traverse_node(node, tokens);
             }
         }
-        Expression::IfExp {
+        ExpressionKind::If(IfExpression {
             condition,
             then,
             r#else,
             ..
-        } => {
+        }) => {
             handle_expression(condition, tokens);
             handle_expression(then, tokens);
             if let Some(r#else) = r#else {
                 handle_expression(r#else, tokens);
             }
         }
-        Expression::MatchExp {
+        ExpressionKind::Match(MatchExpression {
             value, branches, ..
-        } => {
+        }) => {
             handle_expression(value, tokens);
             for branch in branches {
                 // TODO: handle_scrutinee(branch.scrutinee, tokens);
                 handle_expression(&branch.result, tokens);
             }
         }
-        Expression::AsmExpression { .. } => {
+        ExpressionKind::Asm(_) => {
             //TODO handle asm expressions
         }
-        Expression::MethodApplication {
-            method_name_binding,
-            arguments,
-            contract_call_params,
-            ..
-        } => {
+        ExpressionKind::MethodApplication(method_application_expression) => {
+            let MethodApplicationExpression {
+                method_name_binding,
+                arguments,
+                contract_call_params,
+            } = &**method_application_expression;
             let prefixes = match &method_name_binding.inner {
                 MethodName::FromType {
                     call_path_binding, ..
@@ -379,22 +450,22 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                 handle_expression(&field.value, tokens);
             }
         }
-        Expression::SubfieldExpression {
+        ExpressionKind::Subfield(SubfieldExpression {
             prefix,
             field_to_access,
             ..
-        } => {
+        }) => {
             tokens.insert(
                 to_ident_key(field_to_access),
                 Token::from_parsed(AstToken::Expression(expression.clone())),
             );
             handle_expression(prefix, tokens);
         }
-        Expression::DelineatedPath {
-            call_path_binding,
-            args,
-            ..
-        } => {
+        ExpressionKind::DelineatedPath(delineated_path_expression) => {
+            let DelineatedPathExpression {
+                call_path_binding,
+                args,
+            } = &**delineated_path_expression;
             for ident in &call_path_binding.inner.prefixes {
                 tokens.insert(
                     to_ident_key(ident),
@@ -410,9 +481,8 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                 handle_expression(exp, tokens);
             }
         }
-        Expression::AbiCast {
-            abi_name, address, ..
-        } => {
+        ExpressionKind::AbiCast(abi_cast_expression) => {
+            let AbiCastExpression { abi_name, address } = &**abi_cast_expression;
             for ident in &abi_name.prefixes {
                 tokens.insert(
                     to_ident_key(ident),
@@ -425,11 +495,11 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
             );
             handle_expression(address, tokens);
         }
-        Expression::ArrayIndex { prefix, index, .. } => {
+        ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index, .. }) => {
             handle_expression(prefix, tokens);
             handle_expression(index, tokens);
         }
-        Expression::StorageAccess { field_names, .. } => {
+        ExpressionKind::StorageAccess(StorageAccessExpression { field_names, .. }) => {
             for field in field_names {
                 tokens.insert(
                     to_ident_key(field),
@@ -437,17 +507,20 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                 );
             }
         }
-        Expression::IntrinsicFunction { arguments, .. } => {
+        ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression { arguments, .. }) => {
             for argument in arguments {
                 handle_expression(argument, tokens);
             }
         }
+        ExpressionKind::WhileLoop(WhileLoopExpression {
+            body, condition, ..
+        }) => handle_while_loop(body, condition, tokens),
     }
 }
 
-fn handle_while_loop(while_loop: &WhileLoop, tokens: &TokenMap) {
-    handle_expression(&while_loop.condition, tokens);
-    for node in &while_loop.body.contents {
+fn handle_while_loop(body: &CodeBlock, condition: &Expression, tokens: &TokenMap) {
+    handle_expression(condition, tokens);
+    for node in &body.contents {
         traverse_node(node, tokens);
     }
 }
