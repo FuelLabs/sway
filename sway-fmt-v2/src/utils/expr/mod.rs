@@ -136,10 +136,17 @@ impl Format for Expr {
             } => {
                 write!(formatted_code, "{} ", match_token.span().as_str())?;
                 value.format(formatted_code, formatter)?;
+                write!(formatted_code, " ")?;
                 MatchBranch::open_curly_brace(formatted_code, formatter)?;
                 let branches = branches.get();
                 for match_branch in branches.iter() {
+                    write!(
+                        formatted_code,
+                        "{}",
+                        formatter.shape.indent.to_string(&formatter.config)?
+                    )?;
                     match_branch.format(formatted_code, formatter)?;
+                    writeln!(formatted_code)?;
                 }
                 MatchBranch::close_curly_brace(formatted_code, formatter)?;
             }
