@@ -1,5 +1,6 @@
 mod item_abi;
 mod item_const;
+mod item_control_flow;
 mod item_enum;
 mod item_fn;
 mod item_impl;
