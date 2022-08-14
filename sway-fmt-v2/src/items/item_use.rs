@@ -7,7 +7,6 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use std::vec;
 use sway_ast::{
     token::{Delimiter, PunctKind},
     ItemUse, UseTree,

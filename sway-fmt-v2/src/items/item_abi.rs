@@ -7,8 +7,7 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::keywords::Token;
-use sway_ast::{token::Delimiter, ItemAbi};
+use sway_ast::{keywords::Token, token::Delimiter, ItemAbi};
 use sway_types::Spanned;
 
 impl Format for ItemAbi {
