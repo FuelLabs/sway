@@ -23,13 +23,7 @@ pub struct Reassignment {
 impl Reassignment {
     pub fn lhs_span(&self) -> Span {
         match &self.lhs {
-            ReassignmentTarget::VariableExpression(var) => match **var {
-                Expression::SubfieldExpression { ref span, .. } => span.clone(),
-                Expression::VariableExpression { ref name, .. } => name.span(),
-                _ => {
-                    unreachable!("any other reassignment lhs is invalid and cannot be constructed.")
-                }
-            },
+            ReassignmentTarget::VariableExpression(var) => var.span.clone(),
             ReassignmentTarget::StorageField(ref idents) => idents
                 .iter()
                 .fold(idents[0].span(), |acc, ident| Span::join(acc, ident.span())),

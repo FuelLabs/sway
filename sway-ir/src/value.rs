@@ -4,7 +4,7 @@
 //! refer to each other and to constants via the [`Value`] wrapper.
 //!
 //! Like most IR data structures they are `Copy` and cheap to pass around by value.  They are
-//! therefore also easy to replace, a common practise for optimization passes.
+//! therefore also easy to replace, a common practice for optimization passes.
 
 use crate::{
     constant::Constant,
@@ -133,5 +133,10 @@ impl Value {
             ValueDatum::Constant(c) => Some(c.ty),
             ValueDatum::Instruction(ins) => ins.get_type(context),
         }
+    }
+
+    /// Get the type for this value with any pointer stripped, if found.
+    pub fn get_stripped_ptr_type(&self, context: &Context) -> Option<Type> {
+        self.get_type(context).map(|f| f.strip_ptr_type(context))
     }
 }
