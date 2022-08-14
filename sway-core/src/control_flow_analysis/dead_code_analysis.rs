@@ -316,7 +316,7 @@ fn connect_declaration(
         VariableDeclaration(TypedVariableDeclaration {
             name,
             body,
-            is_mutable,
+            mutability: is_mutable,
             ..
         }) => {
             if matches!(is_mutable, VariableMutability::ExportedConst) {
