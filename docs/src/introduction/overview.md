@@ -94,7 +94,7 @@ abi Counter {
 
 `#[storage(read)]` is an annotation which denotes that this function has the permissions to read values in storage. 
 
-`fn counter() -> u64;` - We're introducing the functionality to to increment the counter and denoting the function's return value. 
+`fn counter() -> u64;` - We're introducing the functionality to to increment the counter and denoting the function's return value.
 
 ### Implement ABI 
 Below your ABI definition, you will write the implementation of the functions defined in your ABI.
