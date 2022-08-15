@@ -1,0 +1,84 @@
+{
+  "functions": [
+    {
+      "name": "from_f1",
+      "output": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      },
+      "type": []
+    },
+    {
+      "name": "from_f2",
+      "output": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      },
+      "type": []
+    },
+    {
+      "name": "from_f3",
+      "output": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      },
+      "type": []
+    },
+    {
+      "name": "from_f4",
+      "output": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      },
+      "type": []
+    },
+    {
+      "name": "from_callers",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      },
+      "type": []
+    }
+  ],
+  "types": [
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "type": "(b256, b256, b256, b256)",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 1,
+      "typeParameters": null
+    }
+  ]
+}

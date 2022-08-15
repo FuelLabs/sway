@@ -1,0 +1,59 @@
+{
+  "functions": [
+    {
+      "name": "get_u64",
+      "output": {
+        "name": "",
+        "type": 2,
+        "typeArguments": null
+      },
+      "type": [
+        {
+          "name": "storage_key",
+          "type": 1,
+          "typeArguments": null
+        }
+      ]
+    },
+    {
+      "name": "store_u64",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      },
+      "type": [
+        {
+          "name": "key",
+          "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "value",
+          "type": 2,
+          "typeArguments": null
+        }
+      ]
+    }
+  ],
+  "types": [
+    {
+      "components": [],
+      "type": "()",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 2,
+      "typeParameters": null
+    }
+  ]
+}

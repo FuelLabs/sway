@@ -1,0 +1,36 @@
+{
+  "functions": [
+    {
+      "name": "increment",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      },
+      "type": [
+        {
+          "name": "increment_by",
+          "type": 0,
+          "typeArguments": null
+        }
+      ]
+    },
+    {
+      "name": "get",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      },
+      "type": []
+    }
+  ],
+  "types": [
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 0,
+      "typeParameters": null
+    }
+  ]
+}
