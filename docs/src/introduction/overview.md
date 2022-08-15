@@ -90,7 +90,7 @@ abi Counter {
 
 `#[storage(read, write)]` is an annotation which denotes that this function has the permissions to read and write a value in storage.
 
-`fn increment()` - We're introducing the functionality to increment and denoting it shouldn't return any value . 
+`fn increment()` - We're introducing the functionality to increment and denoting it shouldn't return any value. 
 
 `#[storage(read)]` is an annotation which denotes that this function has the permissions to read values in storage. 
 
