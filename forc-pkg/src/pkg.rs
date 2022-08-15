@@ -2032,15 +2032,13 @@ fn update_json_type_application(
     type_application: &mut JsonTypeApplication,
     old_to_new_id: &HashMap<usize, usize>,
 ) {
-    for (old_id, new_id) in old_to_new_id.iter() {
-        if type_application.type_id == *old_id {
-            type_application.type_id = *new_id;
-        }
+    if let Some(new_id) = old_to_new_id.get(&type_application.type_id) {
+        type_application.type_id = *new_id;
+    }
 
-        if let Some(args) = &mut type_application.type_arguments {
-            for arg in args.iter_mut() {
-                update_json_type_application(arg, old_to_new_id);
-            }
+    if let Some(args) = &mut type_application.type_arguments {
+        for arg in args.iter_mut() {
+            update_json_type_application(arg, old_to_new_id);
         }
     }
 }
@@ -2051,19 +2049,17 @@ fn update_json_type_declaration(
     type_declaration: &mut JsonTypeDeclaration,
     old_to_new_id: &HashMap<usize, usize>,
 ) {
-    for (old_id, new_id) in old_to_new_id.iter() {
-        if let Some(params) = &mut type_declaration.type_parameters {
-            for param in params.iter_mut() {
-                if *param == *old_id {
-                    *param = *new_id;
-                }
+    if let Some(params) = &mut type_declaration.type_parameters {
+        for param in params.iter_mut() {
+            if let Some(new_id) = old_to_new_id.get(&param) {
+                *param = *new_id;
             }
         }
+    }
 
-        if let Some(components) = &mut type_declaration.components {
-            for component in components.iter_mut() {
-                update_json_type_application(component, old_to_new_id);
-            }
+    if let Some(components) = &mut type_declaration.components {
+        for component in components.iter_mut() {
+            update_json_type_application(component, old_to_new_id);
         }
     }
 }
