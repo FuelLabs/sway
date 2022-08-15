@@ -1,9 +1,8 @@
-mod code_block;
+pub mod code_block;
 pub mod declaration;
 pub mod expression;
 pub mod mode;
 mod return_statement;
-pub mod while_loop;
 
 use std::fmt;
 
@@ -12,7 +11,6 @@ pub use declaration::*;
 pub(crate) use expression::*;
 pub(crate) use mode::*;
 pub(crate) use return_statement::*;
-pub(crate) use while_loop::*;
 
 use crate::{
     error::*, parse_tree::*, semantic_analysis::*, style::*, type_system::*,
@@ -37,7 +35,6 @@ pub enum TypedAstNodeContent {
     Declaration(TypedDeclaration),
     Expression(TypedExpression),
     ImplicitReturnExpression(TypedExpression),
-    WhileLoop(TypedWhileLoop),
     // a no-op node used for something that just issues a side effect, like an import statement.
     SideEffect,
 }
@@ -50,17 +47,6 @@ impl UnresolvedTypeCheck for TypedAstNodeContent {
             Declaration(decl) => decl.check_for_unresolved_types(),
             Expression(expr) => expr.check_for_unresolved_types(),
             ImplicitReturnExpression(expr) => expr.check_for_unresolved_types(),
-            WhileLoop(lo) => {
-                let mut condition = lo.condition.check_for_unresolved_types();
-                let mut body = lo
-                    .body
-                    .contents
-                    .iter()
-                    .flat_map(TypedAstNode::check_for_unresolved_types)
-                    .collect();
-                condition.append(&mut body);
-                condition
-            }
             SideEffect => vec![],
         }
     }
@@ -84,7 +70,6 @@ impl fmt::Display for TypedAstNode {
             Declaration(ref typed_decl) => typed_decl.to_string(),
             Expression(exp) => exp.to_string(),
             ImplicitReturnExpression(exp) => format!("return {}", exp),
-            WhileLoop(w_loop) => w_loop.to_string(),
             SideEffect => "".into(),
         };
         f.write_str(&text)
@@ -102,13 +87,6 @@ impl CopyTypes for TypedAstNode {
             }
             TypedAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping),
             TypedAstNodeContent::Expression(ref mut expr) => expr.copy_types(type_mapping),
-            TypedAstNodeContent::WhileLoop(TypedWhileLoop {
-                ref mut condition,
-                ref mut body,
-            }) => {
-                condition.copy_types(type_mapping);
-                body.copy_types(type_mapping);
-            }
             TypedAstNodeContent::SideEffect => (),
         }
     }
@@ -127,9 +105,6 @@ impl DeterministicallyAborts for TypedAstNode {
             ReturnStatement(_) => true,
             Declaration(_) => false,
             Expression(exp) | ImplicitReturnExpression(exp) => exp.deterministically_aborts(),
-            WhileLoop(TypedWhileLoop { condition, body }) => {
-                condition.deterministically_aborts() || body.deterministically_aborts()
-            }
             SideEffect => false,
         }
     }
@@ -141,11 +116,7 @@ impl TypedAstNode {
         use TypedAstNodeContent::*;
         match &self.content {
             Declaration(decl) => decl.visibility().is_public(),
-            ReturnStatement(_)
-            | Expression(_)
-            | WhileLoop(_)
-            | SideEffect
-            | ImplicitReturnExpression(_) => false,
+            ReturnStatement(_) | Expression(_) | SideEffect | ImplicitReturnExpression(_) => false,
         }
     }
 
@@ -176,17 +147,6 @@ impl TypedAstNode {
             TypedAstNodeContent::ImplicitReturnExpression(ref exp) => {
                 exp.gather_return_statements()
             }
-            TypedAstNodeContent::WhileLoop(TypedWhileLoop {
-                ref condition,
-                ref body,
-                ..
-            }) => {
-                let mut buf = condition.gather_return_statements();
-                for node in &body.contents {
-                    buf.append(&mut node.gather_return_statements())
-                }
-                buf
-            }
             // assignments and  reassignments can happen during control flow and can abort
             TypedAstNodeContent::Declaration(TypedDeclaration::VariableDeclaration(
                 TypedVariableDeclaration { body, .. },
@@ -210,7 +170,7 @@ impl TypedAstNode {
             ImplicitReturnExpression(TypedExpression { return_type, .. }) => {
                 crate::type_system::look_up_type_id(*return_type)
             }
-            WhileLoop(_) | SideEffect => TypeInfo::Tuple(Vec::new()),
+            SideEffect => TypeInfo::Tuple(Vec::new()),
         }
     }
 
@@ -290,7 +250,7 @@ impl TypedAstNode {
                                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                                     name: name.clone(),
                                     body,
-                                    is_mutable: is_mutable.into(),
+                                    mutability: convert_to_variable_immutability(false, is_mutable),
                                     type_ascription,
                                 });
                             ctx.namespace.insert_symbol(name, typed_var_decl.clone());
@@ -526,43 +486,6 @@ impl TypedAstNode {
                     );
                     TypedAstNodeContent::ImplicitReturnExpression(typed_expr)
                 }
-                AstNodeContent::WhileLoop(WhileLoop { condition, body }) => {
-                    let typed_condition = {
-                        let ctx = ctx
-                            .by_ref()
-                            .with_type_annotation(insert_type(TypeInfo::Boolean))
-                            .with_help_text(
-                                "A while loop's loop condition must be a boolean expression.",
-                            );
-                        check!(
-                            TypedExpression::type_check(ctx, condition),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        )
-                    };
-
-                    let ctx = ctx
-                        .with_type_annotation(insert_type(TypeInfo::Tuple(Vec::new())))
-                        .with_help_text(
-                            "A while loop's loop body cannot implicitly return a value. Try \
-                             assigning it to a mutable variable declared outside of the loop \
-                             instead.",
-                        );
-                    let (typed_body, _block_implicit_return) = check!(
-                        TypedCodeBlock::type_check(ctx, body),
-                        (
-                            TypedCodeBlock { contents: vec![] },
-                            insert_type(TypeInfo::Tuple(Vec::new()))
-                        ),
-                        warnings,
-                        errors
-                    );
-                    TypedAstNodeContent::WhileLoop(TypedWhileLoop {
-                        condition: typed_condition,
-                        body: typed_body,
-                    })
-                }
             },
             span: node.span.clone(),
         };
@@ -616,7 +539,7 @@ fn reassignment(
                             warnings,
                             errors
                         );
-                        if !variable_decl.is_mutable.is_mutable() {
+                        if !variable_decl.mutability.is_mutable() {
                             errors.push(CompileError::AssignmentToNonMutable { name });
                             return err(warnings, errors);
                         }
@@ -708,11 +631,13 @@ fn type_check_interface_surface(
                     .map(
                         |FunctionParameter {
                              name,
+                             is_reference,
                              is_mutable,
                              type_id,
                              type_span,
                          }| TypedFunctionParameter {
                             name,
+                            is_reference,
                             is_mutable,
                             type_id: check!(
                                 namespace.resolve_type_with_self(
@@ -771,7 +696,11 @@ fn type_check_trait_methods(
         let mut sig_ctx = ctx.by_ref().with_self_type(insert_type(TypeInfo::SelfType));
         parameters.clone().into_iter().for_each(
             |FunctionParameter {
-                 name, ref type_id, ..
+                 name,
+                 is_reference,
+                 is_mutable,
+                 ref type_id,
+                 ..
              }| {
                 let r#type = check!(
                     sig_ctx.resolve_type_with_self(
@@ -794,8 +723,7 @@ fn type_check_trait_methods(
                             is_constant: IsConstant::No,
                             span: name.span(),
                         },
-                        // TODO allow mutable function params?
-                        is_mutable: VariableMutability::Immutable,
+                        mutability: convert_to_variable_immutability(is_reference, is_mutable),
                         type_ascription: r#type,
                     }),
                 );
@@ -846,11 +774,13 @@ fn type_check_trait_methods(
                 |FunctionParameter {
                      name,
                      type_id,
+                     is_reference,
                      is_mutable,
                      type_span,
                  }| {
                     TypedFunctionParameter {
                         name,
+                        is_reference,
                         is_mutable,
                         type_id: check!(
                             sig_ctx.resolve_type_with_self(

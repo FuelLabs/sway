@@ -21,6 +21,7 @@ pub struct FunctionDeclaration {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionParameter {
     pub name: Ident,
+    pub is_reference: bool,
     pub is_mutable: bool,
     pub(crate) type_id: TypeId,
     pub type_span: Span,
