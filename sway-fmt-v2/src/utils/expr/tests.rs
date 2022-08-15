@@ -111,3 +111,7 @@ fmt_test!(  multiline_tuple "(\n    \"reallyreallylongstring\",\n    \"yetanothe
             intermediate_whitespace "(\"reallyreallylongstring\",             \"yetanotherreallyreallyreallylongstring\",
             \"okaynowthatsjustaridiculouslylongstringrightthere\")"
 );
+
+fmt_test!(  multiline_match_stmt "match foo {\n    Foo::foo => {}\n    Foo::bar => {}\n}",
+            intermediate_whitespace "match foo {\n    Foo::foo => {}\n    Foo::bar => {}\n}"
+);
