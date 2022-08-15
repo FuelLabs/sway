@@ -1,11 +1,9 @@
 use crate::{
-    fmt::{Format, FormattedCode, Formatter},
+    fmt::*,
     utils::comments::{ByteSpan, LeafSpans},
-    FormatterError,
 };
 use std::fmt::Write;
-use sway_ast::keywords::Token;
-use sway_ast::ItemConst;
+use sway_ast::{keywords::Token, ItemConst};
 use sway_types::Spanned;
 
 impl Format for ItemConst {

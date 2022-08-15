@@ -1,6 +1,10 @@
 use crate::{
     fmt::*,
-    utils::comments::{ByteSpan, LeafSpans},
+    utils::{
+        bracket::{CurlyBrace, Parenthesis, SquareBracket},
+        comments::{ByteSpan, LeafSpans},
+        shape::{ExprKind, LineStyle},
+    },
 };
 use std::fmt::Write;
 use sway_ast::{
@@ -12,11 +16,6 @@ use sway_ast::{
     MatchBranch, PathExpr,
 };
 use sway_types::{Ident, Spanned};
-
-use super::{
-    bracket::{CurlyBrace, Parenthesis, SquareBracket},
-    shape::{ExprKind, LineStyle},
-};
 
 pub(crate) mod abi_cast;
 pub(crate) mod asm_block;

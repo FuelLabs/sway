@@ -1,6 +1,9 @@
 use crate::{
-    fmt::{Format, FormattedCode, Formatter},
-    FormatterError,
+    fmt::*,
+    utils::{
+        bracket::{Parenthesis, SquareBracket},
+        comments::{ByteSpan, LeafSpans},
+    },
 };
 use std::fmt::Write;
 use sway_ast::{
@@ -9,11 +12,6 @@ use sway_ast::{
 };
 use sway_parse::Parse;
 use sway_types::Spanned;
-
-use super::{
-    bracket::{Parenthesis, SquareBracket},
-    comments::{ByteSpan, LeafSpans},
-};
 
 impl<T: Parse + Format> Format for Annotated<T> {
     fn format(
