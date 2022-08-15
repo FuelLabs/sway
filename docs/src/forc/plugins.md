@@ -25,7 +25,7 @@ Running server on http://127.0.0.1:3030
 Server::run{addr=127.0.0.1:3030}: listening on http://127.0.0.1:3030
 ```
 
-You can visit http://127.0.0.1:3030 to check out the network explorer!
+You can visit <http://127.0.0.1:3030> to check out the network explorer!
 
 ## Writing your own plugin
 
