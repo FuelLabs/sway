@@ -2,13 +2,12 @@ use crate::utils::{
     comments::handle_comments, newline_style::apply_newline_style,
     program_type::insert_program_type, shape::Shape,
 };
-use std::{path::Path, sync::Arc};
-use sway_core::BuildConfig;
-
 pub use crate::{
     config::manifest::Config,
     error::{ConfigError, FormatterError},
 };
+use std::{path::Path, sync::Arc};
+use sway_core::BuildConfig;
 
 #[derive(Debug, Default, Clone)]
 pub struct Formatter {
@@ -50,7 +49,7 @@ impl Formatter {
                 .heuristics_pref
                 .to_width_heuristics(self.config.whitespace.max_width),
         );
-        let module = sway_parse::parse_file(src.clone(), path.clone())?;
+        let module = sway_parse::parse_file_standalone(src.clone(), path.clone())?;
 
         // Formatted code will be pushed here with raw newline stlye.
         // Which means newlines are not converted into system-specific versions until `apply_newline_style()`.
@@ -264,7 +263,7 @@ enum TestTy {
 example::
     type,
     TupleNil: (),
-    Tuple: (   u64, 
+    Tuple: (   u64,
         u32
     ),
 }"#;
@@ -289,11 +288,11 @@ enum TestTy {
         struct Type1 {
             foo: u64,
         }
-        
+
         struct Type2 {
             bar: u64,
         }
-        
+
         storage {
          var1: Type1=Type1{ foo: 8 },
               var2: Type2=Type2{ bar: 9 },
@@ -368,13 +367,13 @@ struct Type2 {
 
 storage {
     var1: Type1 = Type1 {
-        
-        
-        
+
+
+
         x: 0,
-        
-        y: 
-        0, 
+
+        y:
+        0,
         },
     var2: Type2 = Type2 { w: 0x0000000000000000000000000000000000000000000000000000000000000000,z: false,
     },
@@ -489,7 +488,7 @@ fn  main(       ) -> bool{
 
     let balance_test_id = ~ContractId :: from( 0x597e5ddb1a6bec92a96a73e4f0bc6f6e3e7b21f5e03e1c812cd63cffac480463 ) ;
 
-    let fuel_coin = abi(    TestFuelCoin, fuelcoin_id.into(       ) ) ;               
+    let fuel_coin = abi(    TestFuelCoin, fuelcoin_id.into(       ) ) ;
 
     assert(fuelcoin_balance == 0);
 
@@ -690,7 +689,7 @@ abi StorageMapExample {
 pub const /* TEST: blah blah tests */ TEST: u16 = 10; // This is a comment next to a const"#;
         let correct_sway_code = r#"contract;
 
-pub const /* TEST: blah blah tests */ TEST: u16 = 10;"#; // Comment next to const is not picked up by the lexer see: #2356
+pub const /* TEST: blah blah tests */ TEST: u16 = 10; // This is a comment next to a const"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
@@ -786,8 +785,8 @@ trait Qux {
     fn is_baz_true(self) -> bool;
 }
 
-impl<A ,     B>    Qux<A, B> for 
-Foo 
+impl<A ,     B>    Qux<A, B> for
+Foo
 where
     A    : Qux,
     B: Qux    ,
@@ -808,6 +807,45 @@ impl<A, B> Qux<A, B> for Foo where
     A: Qux,
     B: Qux,
 {
+    fn is_baz_true(self) -> bool {
+        self.baz
+    }
+}"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code)
+    }
+
+    #[test]
+    fn test_impl_without_generics() {
+        let sway_code_to_format = r#"script;
+
+struct Foo {
+    bar: u64,
+    baz: bool,
+}
+
+trait Qux {
+    fn is_baz_true(self) -> bool;
+}
+
+impl   Qux for 
+Foo 
+{fn is_baz_true(self) -> bool {
+        self.baz
+    }}"#;
+        let correct_sway_code = r#"script;
+
+struct Foo {
+    bar: u64,
+    baz: bool,
+}
+trait Qux {
+    fn is_baz_true(self) -> bool;
+}
+
+impl Qux for Foo {
     fn is_baz_true(self) -> bool {
         self.baz
     }

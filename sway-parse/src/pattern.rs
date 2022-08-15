@@ -9,10 +9,15 @@ use sway_types::Spanned;
 
 impl Parse for Pattern {
     fn parse(parser: &mut Parser) -> ParseResult<Pattern> {
-        if let Some(mut_token) = parser.take() {
-            let mutable = Some(mut_token);
+        let ref_token = parser.take();
+        let mut_token = parser.take();
+        if ref_token.is_some() || mut_token.is_some() {
             let name = parser.parse()?;
-            return Ok(Pattern::Var { mutable, name });
+            return Ok(Pattern::Var {
+                reference: ref_token,
+                mutable: mut_token,
+                name,
+            });
         }
 
         let lit_bool = |span, kind| Ok(Pattern::Literal(Literal::Bool(LitBool { span, kind })));
@@ -55,6 +60,7 @@ impl Parse for Pattern {
         }
         match path.try_into_ident() {
             Ok(name) => Ok(Pattern::Var {
+                reference: None,
                 mutable: None,
                 name,
             }),

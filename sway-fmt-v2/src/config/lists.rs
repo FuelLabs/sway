@@ -1,7 +1,6 @@
 //! Configuration options related to rewriting a list.
+use crate::config::{user_opts::ListsOptions, whitespace::IndentStyle};
 use serde::{Deserialize, Serialize};
-
-use super::{user_opts::ListsOptions, whitespace::IndentStyle};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Lists {
