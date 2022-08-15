@@ -10,9 +10,9 @@ be:
 
 * The single word `all`, indicating all `CALL`s found throughout the input will be inlined.
 * A combination of sizes which are passed to the `optimize::inline::is_small_fn()` function:
-    * `blocks N` to indicate a maximum of `N` allowed blocks constraint.
-    * `instrs N`  to indicate a maximum of `N` allowed instructions constraint.
-    * `stack N` to indicate a maximum of `N` for stack size constraint.
+  * `blocks N` to indicate a maximum of `N` allowed blocks constraint.
+  * `instrs N`  to indicate a maximum of `N` allowed instructions constraint.
+  * `stack N` to indicate a maximum of `N` for stack size constraint.
 
 Any keyword found later in the line will override an earlier parameter.  `all` will override any
 other constraint.

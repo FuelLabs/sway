@@ -20,7 +20,7 @@ Let's focus on the ABI declaration and inspect it line-by-line.
 
 ---
 
-In the first line, `abi Wallet {`, we declare the name of this _Application Binary Interface_, or ABI. We are naming this ABI `Wallet`. To import this ABI into either a script for calling or a contract for implementing, you would use 
+In the first line, `abi Wallet {`, we declare the name of this _Application Binary Interface_, or ABI. We are naming this ABI `Wallet`. To import this ABI into either a script for calling or a contract for implementing, you would use
 
 ```sway
 {{#include ../../../examples/wallet_smart_contract/src/main.sw:abi_import}}
