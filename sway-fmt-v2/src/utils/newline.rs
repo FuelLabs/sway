@@ -192,7 +192,7 @@ mod tests {
 
     use super::newline_map_from_src;
     #[test]
-    fn test_newline_sequences() {
+    fn test_newline_map() {
         let raw_src = r#"script;
 
 fn main() {
