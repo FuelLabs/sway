@@ -88,7 +88,7 @@ abi Counter {
 }
 ```
 
-#### Going line by line:
+#### Going line by line
 
 `#[storage(read, write)]` is an annotation which denotes that this function has the permissions to read and write a value in storage.
 
@@ -114,11 +114,12 @@ impl Counter for Contract {
     }
 }
 ```
+
 > Note: `return storage.counter;` is equivalent to `storage.counter`.
 
-#### Going line by line: 
+#### Going line by line
 
-` #[storage(read)]` is an annotation which denotes that this function has the permissions to read values in storage. 
+`#[storage(read)]` is an annotation which denotes that this function has the permissions to read values in storage.
 
 ```sway
 fn counter() -> u64 {
@@ -130,16 +131,17 @@ Read and return the counter property value from the contract storage.
 
 `#[storage(read, write)]` is an annotation which denotes that this function has the permissions to read and write values in storage.
 
-``` sway 
+```sway
 fn increment() {
         storage.counter = storage.counter + 1;
 }
 ```
+
 The function body accesses the value counter in storage, and increments the value by one. Then, we return the newly updated value of counter.
 
 ### Build the Contract
 
-Build `counter_contract` by running the following command in your terminal from inside the `counter_contract` directory.: 
+Build `counter_contract` by running the following command in your terminal from inside the `counter_contract` directory:
 
 ```sh
 forc build
