@@ -1,12 +1,11 @@
 use crate::{
     config::{items::ItemBraceStyle, user_def::FieldAlignment},
-    fmt::{Format, FormattedCode, Formatter},
+    fmt::*,
     utils::{
         bracket::CurlyBrace,
         comments::{ByteSpan, LeafSpans},
         shape::LineStyle,
     },
-    FormatterError,
 };
 use std::fmt::Write;
 use sway_ast::{token::Delimiter, ItemEnum};

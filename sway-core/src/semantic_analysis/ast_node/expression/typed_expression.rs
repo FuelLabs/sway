@@ -202,6 +202,16 @@ impl UnresolvedTypeCheck for TypedExpression {
                 res.append(&mut exp.check_for_unresolved_types());
                 res.append(&mut variant.type_id.check_for_unresolved_types());
             }
+            WhileLoop { condition, body } => {
+                res.append(&mut condition.check_for_unresolved_types());
+                res.append(
+                    &mut body
+                        .contents
+                        .iter()
+                        .flat_map(TypedAstNode::check_for_unresolved_types)
+                        .collect(),
+                );
+            }
             // storage access can never be generic
             // variable expressions don't ever have return types themselves, they're stored in
             // `TypedExpression::return_type`. Variable expressions are just names of variables.
@@ -282,6 +292,9 @@ impl DeterministicallyAborts for TypedExpression {
             AbiName(_) => false,
             EnumTag { exp } => exp.deterministically_aborts(),
             UnsafeDowncast { exp, .. } => exp.deterministically_aborts(),
+            WhileLoop { condition, body } => {
+                condition.deterministically_aborts() || body.deterministically_aborts()
+            }
         }
     }
 }
@@ -363,6 +376,13 @@ impl TypedExpression {
             TypedExpressionVariant::CodeBlock(TypedCodeBlock { contents, .. }) => {
                 let mut buf = vec![];
                 for node in contents {
+                    buf.append(&mut node.gather_return_statements())
+                }
+                buf
+            }
+            TypedExpressionVariant::WhileLoop { condition, body } => {
+                let mut buf = condition.gather_return_statements();
+                for node in &body.contents {
                     buf.append(&mut node.gather_return_statements())
                 }
                 buf
@@ -505,6 +525,9 @@ impl TypedExpression {
                 kind_binding,
                 arguments,
             }) => Self::type_check_intrinsic_function(ctx.by_ref(), kind_binding, arguments, span),
+            ExpressionKind::WhileLoop(WhileLoopExpression { condition, body }) => {
+                Self::type_check_while_loop(ctx.by_ref(), *condition, body, span)
+            }
         };
         let mut typed_expression = match res.value {
             Some(r) => r,
@@ -1577,6 +1600,51 @@ impl TypedExpression {
             expression: TypedExpressionVariant::IntrinsicFunction(intrinsic_function),
             return_type,
             is_constant: IsConstant::No,
+            span,
+        };
+        ok(exp, warnings, errors)
+    }
+
+    fn type_check_while_loop(
+        mut ctx: TypeCheckContext,
+        condition: Expression,
+        body: CodeBlock,
+        span: Span,
+    ) -> CompileResult<Self> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let typed_condition = {
+            let ctx = ctx
+                .by_ref()
+                .with_type_annotation(insert_type(TypeInfo::Boolean))
+                .with_help_text("A while loop's loop condition must be a boolean expression.");
+            check!(
+                TypedExpression::type_check(ctx, condition),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )
+        };
+
+        let unit_ty = insert_type(TypeInfo::Tuple(Vec::new()));
+        let ctx = ctx.with_type_annotation(unit_ty).with_help_text(
+            "A while loop's loop body cannot implicitly return a value. Try \
+                 assigning it to a mutable variable declared outside of the loop \
+                 instead.",
+        );
+        let (typed_body, _block_implicit_return) = check!(
+            TypedCodeBlock::type_check(ctx, body),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let exp = TypedExpression {
+            expression: TypedExpressionVariant::WhileLoop {
+                condition: Box::new(typed_condition),
+                body: typed_body,
+            },
+            return_type: unit_ty,
+            is_constant: IsConstant::Yes,
             span,
         };
         ok(exp, warnings, errors)

@@ -2,9 +2,14 @@ use crate::{Parse, ParseErrorKind, ParseResult, ParseToEnd, Parser, ParserConsum
 
 use sway_ast::keywords::{
     AbiToken, BreakToken, ConstToken, ContinueToken, EnumToken, FnToken, ImplToken, MutToken,
-    OpenAngleBracketToken, PubToken, StorageToken, StructToken, TraitToken, UseToken, WhereToken,
+    OpenAngleBracketToken, RefToken, SelfToken, StorageToken, StructToken, TraitToken, UseToken,
+    WhereToken,
 };
-use sway_ast::{FnArg, FnArgs, FnSignature, ItemKind, TypeField};
+use sway_ast::token::{DocComment, DocStyle};
+use sway_ast::{
+    FnArg, FnArgs, FnSignature, ItemConst, ItemEnum, ItemFn, ItemKind, ItemStruct, ItemTrait,
+    ItemUse, TypeField,
+};
 
 mod item_abi;
 mod item_const;
@@ -23,58 +28,59 @@ impl Parse for ItemKind {
         // introducing a struct `Item` that holds the visibility and the kind,
         // and then validate in an "AST validation" step which kinds that should have `pub`s.
 
-        if parser.peek::<UseToken>().is_some() || parser.peek::<(PubToken, UseToken)>().is_some() {
-            let item_use = parser.parse()?;
-            return Ok(ItemKind::Use(item_use));
-        }
-        if parser.peek::<StructToken>().is_some()
-            || parser.peek::<(PubToken, StructToken)>().is_some()
-        {
-            let item_struct = parser.parse()?;
-            return Ok(ItemKind::Struct(item_struct));
-        }
-        if parser.peek::<EnumToken>().is_some() || parser.peek::<(PubToken, EnumToken)>().is_some()
-        {
-            let item_enum = parser.parse()?;
-            return Ok(ItemKind::Enum(item_enum));
-        }
-        if parser.peek::<FnToken>().is_some() || parser.peek::<(PubToken, FnToken)>().is_some() {
-            let item_fn = parser.parse()?;
-            return Ok(ItemKind::Fn(item_fn));
-        }
-        if parser.peek::<TraitToken>().is_some()
-            || parser.peek::<(PubToken, TraitToken)>().is_some()
-        {
-            let item_trait = parser.parse()?;
-            return Ok(ItemKind::Trait(item_trait));
-        }
-        if let Some(item) = parser.guarded_parse::<ImplToken, _>()? {
-            return Ok(ItemKind::Impl(item));
-        }
-        if let Some(item) = parser.guarded_parse::<AbiToken, _>()? {
-            return Ok(ItemKind::Abi(item));
-        }
-        if parser.peek::<ConstToken>().is_some()
-            || parser.peek::<(PubToken, ConstToken)>().is_some()
-        {
-            let item_const = parser.parse()?;
-            return Ok(ItemKind::Const(item_const));
-        }
-        if let Some(item) = parser.guarded_parse::<StorageToken, _>()? {
-            return Ok(ItemKind::Storage(item));
-        }
-        if let Some(item) = parser.guarded_parse::<BreakToken, _>()? {
-            return Ok(ItemKind::Break(item));
-        }
-        if let Some(item) = parser.guarded_parse::<ContinueToken, _>()? {
-            return Ok(ItemKind::Continue(item));
-        }
-        Err(parser.emit_error(ParseErrorKind::ExpectedAnItem))
+        let mut visibility = parser.take();
+
+        let kind = if let Some(mut item) = parser.guarded_parse::<UseToken, ItemUse>()? {
+            item.visibility = visibility.take();
+            ItemKind::Use(item)
+        } else if let Some(mut item) = parser.guarded_parse::<StructToken, ItemStruct>()? {
+            item.visibility = visibility.take();
+            ItemKind::Struct(item)
+        } else if let Some(mut item) = parser.guarded_parse::<EnumToken, ItemEnum>()? {
+            item.visibility = visibility.take();
+            ItemKind::Enum(item)
+        } else if let Some(mut item) = parser.guarded_parse::<FnToken, ItemFn>()? {
+            item.fn_signature.visibility = visibility.take();
+            ItemKind::Fn(item)
+        } else if let Some(mut item) = parser.guarded_parse::<TraitToken, ItemTrait>()? {
+            item.visibility = visibility.take();
+            ItemKind::Trait(item)
+        } else if let Some(item) = parser.guarded_parse::<ImplToken, _>()? {
+            ItemKind::Impl(item)
+        } else if let Some(item) = parser.guarded_parse::<AbiToken, _>()? {
+            ItemKind::Abi(item)
+        } else if let Some(mut item) = parser.guarded_parse::<ConstToken, ItemConst>()? {
+            item.visibility = visibility.take();
+            ItemKind::Const(item)
+        } else if let Some(item) = parser.guarded_parse::<StorageToken, _>()? {
+            ItemKind::Storage(item)
+        } else if let Some(item) = parser.guarded_parse::<BreakToken, _>()? {
+            ItemKind::Break(item)
+        } else if let Some(item) = parser.guarded_parse::<ContinueToken, _>()? {
+            ItemKind::Continue(item)
+        } else {
+            return Err(parser.emit_error(ParseErrorKind::ExpectedAnItem));
+        };
+
+        // Ban visibility qualifiers that haven't been consumed, but do so with recovery.
+        let _ = parser.ban_visibility_qualifier(&visibility);
+
+        Ok(kind)
     }
 }
 
 impl Parse for TypeField {
     fn parse(parser: &mut Parser) -> ParseResult<TypeField> {
+        // TODO: Remove this when `TypeField`s are annotated.
+        // Eat DocComments to prevent errors in existing code.
+        while let Some(DocComment {
+            doc_style: DocStyle::Outer,
+            ..
+        }) = parser.peek::<DocComment>()
+        {
+            let _ = parser.parse::<DocComment>()?;
+        }
+
         Ok(TypeField {
             name: parser.parse()?,
             colon_token: parser.parse()?,
@@ -87,7 +93,14 @@ impl ParseToEnd for FnArgs {
     fn parse_to_end<'a, 'e>(
         mut parser: Parser<'a, 'e>,
     ) -> ParseResult<(FnArgs, ParserConsumed<'a>)> {
-        let mutable_self = parser.take::<MutToken>();
+        let mut ref_self: Option<RefToken> = None;
+        let mut mutable_self: Option<MutToken> = None;
+        if parser.peek::<(MutToken, SelfToken)>().is_some()
+            || parser.peek::<(RefToken, MutToken, SelfToken)>().is_some()
+        {
+            ref_self = parser.take();
+            mutable_self = parser.take();
+        }
         match parser.take() {
             Some(self_token) => {
                 match parser.take() {
@@ -95,6 +108,7 @@ impl ParseToEnd for FnArgs {
                         let (args, consumed) = parser.parse_to_end()?;
                         let fn_args = FnArgs::NonStatic {
                             self_token,
+                            ref_self,
                             mutable_self,
                             args_opt: Some((comma_token, args)),
                         };
@@ -103,6 +117,7 @@ impl ParseToEnd for FnArgs {
                     None => {
                         let fn_args = FnArgs::NonStatic {
                             self_token,
+                            ref_self,
                             mutable_self,
                             args_opt: None,
                         };
@@ -157,20 +172,58 @@ impl Parse for FnSignature {
 
 #[cfg(test)]
 mod tests {
+    use crate::handler::Handler;
+
     use super::*;
     use std::sync::Arc;
-    use sway_ast::Item;
+    use sway_ast::{AttributeDecl, CommaToken, Item, Punctuated};
+    use sway_types::Ident;
 
     fn parse_item(input: &str) -> Item {
         let token_stream = crate::token::lex(&Arc::from(input), 0, input.len(), None).unwrap();
-        let mut errors = Vec::new();
-        let mut parser = Parser::new(&token_stream, &mut errors);
+        let handler = Handler::default();
+        let mut parser = Parser::new(&token_stream, &handler);
         match Item::parse(&mut parser) {
             Ok(item) => item,
             Err(_) => {
-                panic!("Parse error: {:?}", errors);
+                panic!("Parse error: {:?}", handler.into_errors());
             }
         }
+    }
+
+    fn get_attribute_args(attrib: &AttributeDecl) -> &Punctuated<Ident, CommaToken> {
+        attrib.attribute.get().args.as_ref().unwrap().get()
+    }
+
+    #[test]
+    fn parse_doc_comment() {
+        let item = parse_item(
+            r#"
+            // I will be ignored.
+            //! I will be ignored.
+            /// This is a doc comment.
+            //! I will be ignored.
+            // I will be ignored.
+            fn f() -> bool {
+                false
+            }
+            "#,
+        );
+
+        assert!(matches!(item.value, ItemKind::Fn(_)));
+
+        assert_eq!(item.attribute_list.len(), 1);
+
+        let attrib = item.attribute_list.get(0).unwrap();
+        assert_eq!(attrib.attribute.get().name.as_str(), "doc");
+        assert!(attrib.attribute.get().args.is_some());
+
+        let mut args = get_attribute_args(attrib).into_iter();
+        assert_eq!(
+            args.next().map(|arg| arg.as_str()),
+            Some(" This is a doc comment.")
+        );
+        assert_eq!(args.next().map(|arg| arg.as_str()), None);
     }
 
     #[test]
@@ -251,14 +304,7 @@ mod tests {
         assert_eq!(attrib.attribute.get().name.as_str(), "foo");
         assert!(attrib.attribute.get().args.is_some());
 
-        let mut args = attrib
-            .attribute
-            .get()
-            .args
-            .as_ref()
-            .unwrap()
-            .get()
-            .into_iter();
+        let mut args = get_attribute_args(attrib).into_iter();
         assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
         assert_eq!(args.next().map(|arg| arg.as_str()), None);
     }
@@ -284,14 +330,7 @@ mod tests {
         // Args are still parsed as 'some' but with an empty collection.
         assert!(attrib.attribute.get().args.is_some());
 
-        let mut args = attrib
-            .attribute
-            .get()
-            .args
-            .as_ref()
-            .unwrap()
-            .get()
-            .into_iter();
+        let mut args = get_attribute_args(attrib).into_iter();
         assert_eq!(args.next().map(|arg| arg.as_str()), None);
     }
 
@@ -319,14 +358,7 @@ mod tests {
         assert_eq!(attrib.attribute.get().name.as_str(), "foo");
         assert!(attrib.attribute.get().args.is_some());
 
-        let mut args = attrib
-            .attribute
-            .get()
-            .args
-            .as_ref()
-            .unwrap()
-            .get()
-            .into_iter();
+        let mut args = get_attribute_args(attrib).into_iter();
         assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
         assert_eq!(args.next().map(|arg| arg.as_str()), None);
     }
@@ -351,14 +383,7 @@ mod tests {
         assert_eq!(attrib.attribute.get().name.as_str(), "foo");
         assert!(attrib.attribute.get().args.is_some());
 
-        let mut args = attrib
-            .attribute
-            .get()
-            .args
-            .as_ref()
-            .unwrap()
-            .get()
-            .into_iter();
+        let mut args = get_attribute_args(attrib).into_iter();
         assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
         assert_eq!(args.next().map(|arg| arg.as_str()), None);
 
@@ -386,14 +411,7 @@ mod tests {
         assert_eq!(attrib.attribute.get().name.as_str(), "foo");
         assert!(attrib.attribute.get().args.is_some());
 
-        let mut args = attrib
-            .attribute
-            .get()
-            .args
-            .as_ref()
-            .unwrap()
-            .get()
-            .into_iter();
+        let mut args = get_attribute_args(attrib).into_iter();
         assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
         assert_eq!(args.next().map(|arg| arg.as_str()), Some("two"));
         assert_eq!(args.next().map(|arg| arg.as_str()), None);
@@ -424,14 +442,7 @@ mod tests {
         assert_eq!(attrib.attribute.get().name.as_str(), "foo");
         assert!(attrib.attribute.get().args.is_some());
 
-        let mut args = attrib
-            .attribute
-            .get()
-            .args
-            .as_ref()
-            .unwrap()
-            .get()
-            .into_iter();
+        let mut args = get_attribute_args(attrib).into_iter();
         assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
         assert_eq!(args.next().map(|arg| arg.as_str()), None);
 
@@ -439,14 +450,7 @@ mod tests {
         assert_eq!(attrib.attribute.get().name.as_str(), "baz");
         assert!(attrib.attribute.get().args.is_some());
 
-        let mut args = attrib
-            .attribute
-            .get()
-            .args
-            .as_ref()
-            .unwrap()
-            .get()
-            .into_iter();
+        let mut args = get_attribute_args(attrib).into_iter();
         assert_eq!(args.next().map(|arg| arg.as_str()), Some("two"));
         assert_eq!(args.next().map(|arg| arg.as_str()), Some("three"));
         assert_eq!(args.next().map(|arg| arg.as_str()), Some("four"));
@@ -483,14 +487,7 @@ mod tests {
             let attrib = f_sig.unwrap().0.attribute_list.get(0).unwrap();
             assert_eq!(attrib.attribute.get().name.as_str(), "foo");
             assert!(attrib.attribute.get().args.is_some());
-            let mut args = attrib
-                .attribute
-                .get()
-                .args
-                .as_ref()
-                .unwrap()
-                .get()
-                .into_iter();
+            let mut args = get_attribute_args(attrib).into_iter();
             assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
             assert_eq!(args.next().map(|arg| arg.as_str()), None);
 
@@ -509,14 +506,7 @@ mod tests {
             let attrib = g_sig.unwrap().attribute_list.get(0).unwrap();
             assert_eq!(attrib.attribute.get().name.as_str(), "bar");
             assert!(attrib.attribute.get().args.is_some());
-            let mut args = attrib
-                .attribute
-                .get()
-                .args
-                .as_ref()
-                .unwrap()
-                .get()
-                .into_iter();
+            let mut args = get_attribute_args(attrib).into_iter();
             assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
             assert_eq!(args.next().map(|arg| arg.as_str()), Some("two"));
             assert_eq!(args.next().map(|arg| arg.as_str()), Some("three"));
@@ -560,14 +550,7 @@ mod tests {
             let attrib = f_sig.unwrap().0.attribute_list.get(0).unwrap();
             assert_eq!(attrib.attribute.get().name.as_str(), "bar");
             assert!(attrib.attribute.get().args.is_some());
-            let mut args = attrib
-                .attribute
-                .get()
-                .args
-                .as_ref()
-                .unwrap()
-                .get()
-                .into_iter();
+            let mut args = get_attribute_args(attrib).into_iter();
             assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
             assert_eq!(args.next().map(|arg| arg.as_str()), Some("two"));
             assert_eq!(args.next().map(|arg| arg.as_str()), Some("three"));
@@ -595,20 +578,47 @@ mod tests {
             let attrib = h_sig.unwrap().attribute_list.get(0).unwrap();
             assert_eq!(attrib.attribute.get().name.as_str(), "baz");
             assert!(attrib.attribute.get().args.is_some());
-            let mut args = attrib
-                .attribute
-                .get()
-                .args
-                .as_ref()
-                .unwrap()
-                .get()
-                .into_iter();
+            let mut args = get_attribute_args(attrib).into_iter();
             assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
             assert_eq!(args.next().map(|arg| arg.as_str()), None);
 
             assert!(defs.next().is_none());
         } else {
             panic!("Parsed ABI is not an ABI.");
+        }
+    }
+
+    #[test]
+    fn parse_attributes_doc_comment() {
+        let item = parse_item(
+            r#"
+            /// This is a doc comment.
+            /// This is another doc comment.
+            fn f() -> bool {
+                false
+            }
+            "#,
+        );
+
+        assert!(matches!(item.value, ItemKind::Fn(_)));
+
+        assert_eq!(item.attribute_list.len(), 2);
+
+        for i in 0..2 {
+            let attrib = item.attribute_list.get(i).unwrap();
+            assert_eq!(attrib.attribute.get().name.as_str(), "doc");
+            assert!(attrib.attribute.get().args.is_some());
+
+            let mut args = get_attribute_args(attrib).into_iter();
+            assert_eq!(
+                args.next().map(|arg| arg.as_str()),
+                match i {
+                    0 => Some(" This is a doc comment."),
+                    1 => Some(" This is another doc comment."),
+                    _ => unreachable!(),
+                }
+            );
+            assert_eq!(args.next().map(|arg| arg.as_str()), None);
         }
     }
 }

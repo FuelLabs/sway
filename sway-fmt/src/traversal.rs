@@ -88,8 +88,6 @@ fn traverse_ast_node(ast_node: &AstNode, changes: &mut Vec<Change>) {
         AstNodeContent::IncludeStatement(_) => {
             changes.push(Change::new(&ast_node.span, ChangeType::IncludeStatement))
         }
-
-        _ => {}
     }
 }
 

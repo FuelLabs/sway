@@ -331,12 +331,14 @@ fn test_function_selector_behavior() {
         parameters: vec![
             TypedFunctionParameter {
                 name: Ident::new_no_span("foo"),
+                is_reference: false,
                 is_mutable: false,
                 type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
                 type_span: Span::dummy(),
             },
             TypedFunctionParameter {
                 name: Ident::new_no_span("baz"),
+                is_reference: false,
                 is_mutable: false,
                 type_id: insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
                 type_span: Span::dummy(),
