@@ -205,7 +205,7 @@ async fn can_get_contract_id() {
 
 Run the following command in the terminal: `forc test`. 
 
-You'll see something like this as your output: 
+You'll see something like this as your output:
 
 ```console
  Compiled library "core".
