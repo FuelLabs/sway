@@ -1,6 +1,6 @@
 # Getting Started
 
-Follow this guide to write and deploy a simple wallet smart contract in Sway.
+Follow this guide to write, test, and deploy a simple smart contract in Sway.
 
 ## Glossary
 
@@ -22,12 +22,10 @@ There are four types of Sway programs:
 
 Contracts, predicates, and scripts can produce artifacts usable on the blockchain, while a library is simply a project designed for code reuse and is not directly deployable.
 
-Every Sway file must begin with a declaration of what type of program it is.
-
 See [the chapter on program types](../sway-program-types/index.md) for more information.
 
 ## Your First Sway Project
-We'll build a simple counter contract that has a single function to increment the counter and return the new value of the counter. We'll create a contract and script to interact with the contract. 
+We'll build a simple counter contract with two functions: one to increment the counter, and one to return the value of the counter. 
 
 A few pieces of info that will be helpful before moving on: 
 - The main features of a smart contract that differentiate it from scripts or predicates are that it is callable and stateful.
@@ -44,7 +42,7 @@ forc new counter_contract
 Here is the project that Forc has initialized:
 
 ```console
-$ cd my-fuel-project
+$ cd counter_contract
 $ tree .
 ├── Cargo.toml
 ├── Forc.toml
@@ -54,15 +52,17 @@ $ tree .
     └── harness.rs
 ```
 
-`Forc.toml` is the _manifest file_ (similar to `Cargo.toml` for Cargo or `package.json` for Node), and defines project metadata such as the project name and dependencies. We'll be writing our code in the `src/main.sw` file in both of these projects.
+`Forc.toml` is the _manifest file_ (similar to `Cargo.toml` for Cargo or `package.json` for Node), and defines project metadata such as the project name and dependencies. 
 
-Cd into your contract project and delte the boilerplate code in `src/main.sw`. Every Sway file must start with a declaration of what type of program the file contains; here, we've declared that this file is a contract. 
+We'll be writing our code in the `src/main.sw`.
+
+`Cd` into your contract project and delete the boilerplate code in `src/main.sw`. Every Sway file must start with a declaration of what type of program the file contains; here, we've declared that this file is a contract. 
 
 ```sway
 contract; 
 ```
 
-Next, we'll define a our storage value. In our case, we have a single counter that we'll call `counter` and initialize it to 0. 
+Next, we'll define a our storage value. In our case, we have a single counter that we'll call `counter` of type 64-bit unsigned integer and initialize it to 0. 
 
 ```sway
 storage {
@@ -71,7 +71,9 @@ storage {
 ```
 
 ### ABI 
-An ABI defines an interface, and there is no function body in the ABI. A contract must either define or import an ABI declaration and implement it. It is considered best practice to define your ABI in a seperate library and import it into your contract because this allows callers of the contract import and use the ABI in scripts to call your contract. For simplicity, we will define the ABI natively in the contract.
+An ABI defines an interface, and there is no function body in the ABI. A contract must either define or import an ABI declaration and implement it. It is considered best practice to define your ABI in a separate library and import it into your contract because this allows callers of the contract to import and use the ABI in scripts to call your contract. 
+
+For simplicity, we will define the ABI natively in the contract.
 
 ```sway 
 abi Counter {
@@ -82,7 +84,8 @@ abi Counter {
     fn counter() -> u64;
 }
 ```
-Going line by line: 
+#### Going line by line: 
+
 `#[storage(read, write)]` is an annotation which denotes that this function has the permissions to read and write a value in storage.
 
 `fn increment()` - We're introducing the functionality to increment and denoting it shouldn't return any value . 
@@ -91,8 +94,8 @@ Going line by line:
 
 `fn counter() -> u64;` - We're introducing the functionality to to increment the counter and denoting the function's return value. 
 
-### Implent ABI 
-Here is where you will write the implementation of the functions defined in your ABI.
+### Implement ABI 
+Below your ABI definition, you will write the implementation of the functions defined in your ABI.
 
 ```sway
 impl Counter for Contract {
@@ -108,7 +111,7 @@ impl Counter for Contract {
 ```
 > Note: `return storage.counter;` is equivalent to `storage.counter`  .
 
-Going line by line: 
+#### Going line by line: 
 
 ` #[storage(read)]` is an annotation which denotes that this function has the permissions to read values in storage. 
 
@@ -117,7 +120,7 @@ fn counter() -> u64 {
     return storage.counter;
   }
   ```
-  Read and return the counter property value from the contract storage 
+  Read and return the counter property value from the contract storage.
 
 `#[storage(read, write)]` is an annotation which denotes that this function has the permissions to read and write values in storage.
 
@@ -130,13 +133,13 @@ The function body accesses the value counter in storage, and increments the valu
 
 ### Build the Contract
 
-Build `counter_contract` by running
+Build `counter_contract` by running the following command in your terminal from inside the `counter_contract` directory.: 
 
 ```sh
 forc build
 ```
 
-from inside the `counter_contract` directory. You should see something like this:
+You should see something like this output:
 
 ```console
 Compiled library "core".
@@ -147,7 +150,7 @@ Compiled library "core".
 
 ### Deploy the Contract
 
-It's now time to deploy the wallet contract and call it on a Fuel node. We will show how to do this using `forc` from the command line, but you can also do it using the [Rust SDK](https://github.com/FuelLabs/fuels-rs#deploying-a-sway-contract) or the [TypeScript SDK](https://github.com/FuelLabs/fuels-ts/#deploying-contracts)
+It's now time to deploy the contract and call it on a Fuel node. We will show how to do this using `forc` from the command line, but you can also do it using the [Rust SDK](https://github.com/FuelLabs/fuels-rs#deploying-a-sway-contract) or the [TypeScript SDK](https://github.com/FuelLabs/fuels-ts/#deploying-contracts)
 
 ### Spin Up a Fuel node
 
@@ -161,13 +164,11 @@ This starts a Fuel node with a volatile database that will be cleared when shut 
 
 ### Deploy `counter_contract` To Your Local Fuel Node
 
-To deploy `counter_contract` on your local Fuel node, run the following command back in your original terminal so you don't end the process running the local Fuel node:
+To deploy `counter_contract` on your local Fuel node, run the following command back in your original terminal so you don't end the process running the local Fuel node, from the root of the `wallet_contract` directory:
 
 ```sh
 forc deploy
 ```
-
-from the root of the `wallet_contract` directory.
 
 This should produce some output in `stdout` that looks like this:
 
@@ -200,7 +201,9 @@ async fn can_get_contract_id() {
 }
 ```
 
-Run the following command in the terminal: `forc test`. You'll see something like this as your output: 
+Run the following command in the terminal: `forc test`. 
+
+You'll see something like this as your output: 
 
 ```console
  Compiled library "core".
