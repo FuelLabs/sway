@@ -5,7 +5,6 @@ use sway_ast::keywords::{
     OpenAngleBracketToken, RefToken, SelfToken, StorageToken, StructToken, TraitToken, UseToken,
     WhereToken,
 };
-use sway_ast::token::{DocComment, DocStyle};
 use sway_ast::{
     FnArg, FnArgs, FnSignature, ItemConst, ItemEnum, ItemFn, ItemKind, ItemStruct, ItemTrait,
     ItemUse, TypeField,
@@ -71,16 +70,6 @@ impl Parse for ItemKind {
 
 impl Parse for TypeField {
     fn parse(parser: &mut Parser) -> ParseResult<TypeField> {
-        // TODO: Remove this when `TypeField`s are annotated.
-        // Eat DocComments to prevent errors in existing code.
-        while let Some(DocComment {
-            doc_style: DocStyle::Outer,
-            ..
-        }) = parser.peek::<DocComment>()
-        {
-            let _ = parser.parse::<DocComment>()?;
-        }
-
         Ok(TypeField {
             name: parser.parse()?,
             colon_token: parser.parse()?,
@@ -211,6 +200,60 @@ mod tests {
         );
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
+
+        assert_eq!(item.attribute_list.len(), 1);
+
+        let attrib = item.attribute_list.get(0).unwrap();
+        assert_eq!(attrib.attribute.get().name.as_str(), "doc");
+        assert!(attrib.attribute.get().args.is_some());
+
+        let mut args = get_attribute_args(attrib).into_iter();
+        assert_eq!(
+            args.next().map(|arg| arg.as_str()),
+            Some(" This is a doc comment.")
+        );
+        assert_eq!(args.next().map(|arg| arg.as_str()), None);
+    }
+
+    #[test]
+    fn parse_doc_comment_struct() {
+        let item = parse_item(
+            r#"
+            // I will be ignored.
+            //! I will be ignored.
+            /// This is a doc comment.
+            //! I will be ignored.
+            // I will be ignored.
+            struct MyStruct {
+                // I will be ignored.
+                //! I will be ignored.
+                /// This is a doc comment.
+                //! I will be ignored.
+                // I will be ignored.
+                a: bool,
+            }
+            "#,
+        );
+
+        assert!(matches!(item.value, ItemKind::Struct(_)));
+
+        assert_eq!(item.attribute_list.len(), 1);
+
+        let attrib = item.attribute_list.get(0).unwrap();
+        assert_eq!(attrib.attribute.get().name.as_str(), "doc");
+        assert!(attrib.attribute.get().args.is_some());
+
+        let mut args = get_attribute_args(attrib).into_iter();
+        assert_eq!(
+            args.next().map(|arg| arg.as_str()),
+            Some(" This is a doc comment.")
+        );
+        assert_eq!(args.next().map(|arg| arg.as_str()), None);
+
+        let item = match item.value {
+            ItemKind::Struct(item) => item.fields.inner.into_iter().next().unwrap(),
+            _ => unreachable!(),
+        };
 
         assert_eq!(item.attribute_list.len(), 1);
 
