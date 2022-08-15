@@ -26,9 +26,9 @@ See [the chapter on program types](../sway-program-types/index.md) for more info
 
 ## Your First Sway Project
 
-We'll build a simple counter contract with two functions: one to increment the counter, and one to return the value of the counter. 
+We'll build a simple counter contract with two functions: one to increment the counter, and one to return the value of the counter.
 
-A few pieces of info that will be helpful before moving on: 
+A few pieces of info that will be helpful before moving on:
 
 - The main features of a smart contract that differentiate it from scripts or predicates are that it is callable and stateful.
 - A script is runnable bytecode on the chain which can call contracts to perform some task. It does not represent ownership of any resources and it cannot be called by a contract.
@@ -54,17 +54,17 @@ $ tree .
     └── harness.rs
 ```
 
-`Forc.toml` is the _manifest file_ (similar to `Cargo.toml` for Cargo or `package.json` for Node), and defines project metadata such as the project name and dependencies. 
+`Forc.toml` is the _manifest file_ (similar to `Cargo.toml` for Cargo or `package.json` for Node), and defines project metadata such as the project name and dependencies.
 
 We'll be writing our code in the `src/main.sw`.
 
-`cd` into your contract project and delete the boilerplate code in `src/main.sw`. Every Sway file must start with a declaration of what type of program the file contains; here, we've declared that this file is a contract. 
+`cd` into your contract project and delete the boilerplate code in `src/main.sw`. Every Sway file must start with a declaration of what type of program the file contains; here, we've declared that this file is a contract.
 
 ```sway
-contract; 
+contract;
 ```
 
-Next, we'll define a our storage value. In our case, we have a single counter that we'll call `counter` of type 64-bit unsigned integer and initialize it to 0. 
+Next, we'll define a our storage value. In our case, we have a single counter that we'll call `counter` of type 64-bit unsigned integer and initialize it to 0.
 
 ```sway
 storage {
@@ -72,12 +72,13 @@ storage {
 }
 ```
 
-### ABI 
-An ABI defines an interface, and there is no function body in the ABI. A contract must either define or import an ABI declaration and implement it. It is considered best practice to define your ABI in a separate library and import it into your contract because this allows callers of the contract to import and use the ABI in scripts to call your contract. 
+### ABI
+
+An ABI defines an interface, and there is no function body in the ABI. A contract must either define or import an ABI declaration and implement it. It is considered best practice to define your ABI in a separate library and import it into your contract because this allows callers of the contract to import and use the ABI in scripts to call your contract.
 
 For simplicity, we will define the ABI natively in the contract.
 
-```sway 
+```sway
 abi Counter {
     #[storage(read, write)]
     fn increment();
@@ -86,17 +87,19 @@ abi Counter {
     fn counter() -> u64;
 }
 ```
-#### Going line by line: 
+
+#### Going line by line:
 
 `#[storage(read, write)]` is an annotation which denotes that this function has the permissions to read and write a value in storage.
 
-`fn increment()` - We're introducing the functionality to increment and denoting it shouldn't return any value. 
+`fn increment()` - We're introducing the functionality to increment and denoting it shouldn't return any value.
 
-`#[storage(read)]` is an annotation which denotes that this function has the permissions to read values in storage. 
+`#[storage(read)]` is an annotation which denotes that this function has the permissions to read values in storage.
 
 `fn counter() -> u64;` - We're introducing the functionality to to increment the counter and denoting the function's return value.
 
-### Implement ABI 
+### Implement ABI
+
 Below your ABI definition, you will write the implementation of the functions defined in your ABI.
 
 ```sway
@@ -111,7 +114,7 @@ impl Counter for Contract {
     }
 }
 ```
-> Note: `return storage.counter;` is equivalent to `storage.counter`  .
+> Note: `return storage.counter;` is equivalent to `storage.counter`.
 
 #### Going line by line: 
 
@@ -192,19 +195,19 @@ Note the contract ID—you will need it if you want to build out a frontend to i
 
 In the directory `tests`, navigate to `harness.rs.` Here you'll see there is some boilerplate code to help you start interacting with and testing your contract.
 
-At the bottom of the file, define the body of `can_get_contract_instance`. Here is what your code should look like to verify that the value of the counter did get incremented: 
+At the bottom of the file, define the body of `can_get_contract_instance`. Here is what your code should look like to verify that the value of the counter did get incremented:
 
 ```sway
 #[tokio::test]
 async fn can_get_contract_id() {
-    let (_instance, _id) = get_contract_instance().await; 
+    let (_instance, _id) = get_contract_instance().await;
     // Now you have an instance of your contract you can use to test each function
     let result = _instance.increment().call().await.unwrap();
     assert!(result.value > 0)
 }
 ```
 
-Run the following command in the terminal: `forc test`. 
+Run the following command in the terminal: `forc test`.
 
 You'll see something like this as your output:
 
