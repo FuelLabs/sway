@@ -28,7 +28,7 @@ impl Target for Contract {
             let id = id.value;
             let caller = abi(Attacker, id);
 
-            /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
+            // this call transfers control to the attacker contract, allowing it to execute arbitrary code.
             let return_value = caller.evil_callback_1();
             false
         }
@@ -43,7 +43,7 @@ impl Target for Contract {
         let id = id.value;
         let caller = abi(Attacker, id);
 
-        /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
+        // this call transfers control to the attacker contract, allowing it to execute arbitrary code.
         let return_value = caller.evil_callback_2();
     }
 
@@ -56,7 +56,7 @@ impl Target for Contract {
         let id = id.value;
         let caller = abi(Attacker, id);
 
-        /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
+        // this call transfers control to the attacker contract, allowing it to execute arbitrary code.
         let return_value = caller.evil_callback_3();
     }
 

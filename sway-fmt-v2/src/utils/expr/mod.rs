@@ -1,6 +1,10 @@
 use crate::{
     fmt::*,
-    utils::comments::{ByteSpan, LeafSpans},
+    utils::{
+        bracket::{CurlyBrace, Parenthesis, SquareBracket},
+        comments::{ByteSpan, LeafSpans},
+        shape::{ExprKind, LineStyle},
+    },
 };
 use std::fmt::Write;
 use sway_ast::{
@@ -12,11 +16,6 @@ use sway_ast::{
     MatchBranch, PathExpr,
 };
 use sway_types::{Ident, Spanned};
-
-use super::{
-    bracket::{CurlyBrace, Parenthesis, SquareBracket},
-    shape::{ExprKind, LineStyle},
-};
 
 pub(crate) mod abi_cast;
 pub(crate) mod asm_block;
@@ -64,9 +63,11 @@ impl Format for Expr {
                 // changes to the actual formatter
                 let expr_width = buf.chars().count() as usize;
                 formatter.shape.add_width(expr_width);
-                formatter
-                    .shape
-                    .get_line_style(Some(field_width), body_width, &formatter.config);
+                formatter.shape.get_line_style(
+                    Some(field_width),
+                    Some(body_width),
+                    &formatter.config,
+                );
                 debug_expr(buf, field_width, body_width, expr_width, formatter);
 
                 format_expr_struct(path, fields, formatted_code, formatter)?;
@@ -92,7 +93,7 @@ impl Format for Expr {
                 formatter.shape.add_width(body_width);
                 formatter
                     .shape
-                    .get_line_style(None, body_width, &formatter.config);
+                    .get_line_style(None, Some(body_width), &formatter.config);
 
                 format_tuple(tuple_descriptor, formatted_code, formatter)?;
 
@@ -208,9 +209,11 @@ impl Format for Expr {
                 let expr_width = buf.chars().count() as usize;
                 formatter.shape.add_width(expr_width);
                 formatter.shape.code_line.update_expr_kind(ExprKind::Struct);
-                formatter
-                    .shape
-                    .get_line_style(Some(field_width), body_width, &formatter.config);
+                formatter.shape.get_line_style(
+                    Some(field_width),
+                    Some(body_width),
+                    &formatter.config,
+                );
 
                 format_method_call(
                     target,
