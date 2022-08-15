@@ -181,7 +181,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
             {
                 let token = Token::from_parsed(
                     AstToken::Declaration(declaration.clone()),
-                    SymbolKind::Unknown,
+                    SymbolKind::Struct,
                 );
                 tokens.insert(to_ident_key(name), token.clone());
                 if let Some(args) = type_arguments {
