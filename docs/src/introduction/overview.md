@@ -222,4 +222,4 @@ test can_get_contract_id ... ok
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.24s
 ```
 
-Congratulations, you've just created and tested your first Sway smart contract 🎉. Now you can build a frontend to interact with your contract using the Typescript SDK. You can find a step-by-step guide to building a front end for your project [here](https://luizstacio.github.io/fuels-ts/QUICKSTART). 
+Congratulations, you've just created and tested your first Sway smart contract 🎉. Now you can build a frontend to interact with your contract using the TypeScript SDK. You can find a step-by-step guide to building a front end for your project [here](https://luizstacio.github.io/fuels-ts/QUICKSTART).
