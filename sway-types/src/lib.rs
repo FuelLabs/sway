@@ -387,7 +387,6 @@ pub struct JsonABIProgram {
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonABIFunction {
-    #[serde(rename = "type")]
     pub inputs: Vec<JsonTypeApplication>,
     pub name: String,
     pub output: JsonTypeApplication,
