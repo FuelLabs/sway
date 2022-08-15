@@ -180,7 +180,7 @@ impl CurlyBrace for MatchBranchKind {
     }
     fn close_curly_brace(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         write!(line, "{}", Delimiter::Brace.as_close_char())?;
         Ok(())
