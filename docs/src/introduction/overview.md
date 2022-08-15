@@ -25,6 +25,7 @@ Contracts, predicates, and scripts can produce artifacts usable on the blockchai
 See [the chapter on program types](../sway-program-types/index.md) for more information.
 
 ## Your First Sway Project
+
 We'll build a simple counter contract with two functions: one to increment the counter, and one to return the value of the counter. 
 
 A few pieces of info that will be helpful before moving on: 
