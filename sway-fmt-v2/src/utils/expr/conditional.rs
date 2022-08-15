@@ -103,16 +103,25 @@ impl Format for MatchBranch {
 impl CurlyBrace for MatchBranch {
     fn open_curly_brace(
         line: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Brace.as_open_char())?;
+        formatter.shape.block_indent(&formatter.config);
+        writeln!(line, "{}", Delimiter::Brace.as_open_char())?;
+
         Ok(())
     }
     fn close_curly_brace(
         line: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Brace.as_close_char())?;
+        formatter.shape.block_unindent(&formatter.config);
+        write!(
+            line,
+            "{}{}",
+            formatter.shape.indent.to_string(&formatter.config)?,
+            Delimiter::Brace.as_close_char()
+        )?;
+
         Ok(())
     }
 }

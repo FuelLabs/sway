@@ -28,10 +28,9 @@ Once `fuelup` is installed, `fuelup-init` automatically runs the command below
 fuelup toolchain install latest
 ```
 
-to install the latest Sway toolchain. 
+to install the latest Sway toolchain.
 
 You can run the same command at a later time to update the toolchain.
-
 
 ## Installing from Source
 
