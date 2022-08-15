@@ -49,14 +49,19 @@ fn handle_function_declation(func: &FunctionDeclaration, tokens: &TokenMap) {
         collect_function_parameter(parameter, tokens);
     }
 
-    if let TypeInfo::Custom { name, .. } = &func.return_type {
-        tokens.insert(
-            to_ident_key(name),
-            Token::from_parsed(
-                AstToken::FunctionDeclaration(func.clone()),
-                SymbolKind::Struct,
-            ),
+    if let TypeInfo::Custom {
+        name,
+        type_arguments,
+    } = &func.return_type
+    {
+        let token = Token::from_parsed(
+            AstToken::FunctionDeclaration(func.clone()),
+            SymbolKind::Struct,
         );
+        tokens.insert(to_ident_key(name), token.clone());
+        if let Some(args) = type_arguments {
+            collect_type_args(args, &token, tokens);
+        }
     }
 }
 
@@ -169,14 +174,19 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
             }
         }
         Declaration::ImplSelf(impl_self) => {
-            if let TypeInfo::Custom { name, .. } = &impl_self.type_implementing_for {
-                tokens.insert(
-                    to_ident_key(name),
-                    Token::from_parsed(
-                        AstToken::Declaration(declaration.clone()),
-                        SymbolKind::Unknown,
-                    ),
+            if let TypeInfo::Custom {
+                name,
+                type_arguments,
+            } = &impl_self.type_implementing_for
+            {
+                let token = Token::from_parsed(
+                    AstToken::Declaration(declaration.clone()),
+                    SymbolKind::Unknown,
                 );
+                tokens.insert(to_ident_key(name), token.clone());
+                if let Some(args) = type_arguments {
+                    collect_type_args(args, &token, tokens);
+                }
             }
 
             for func_dec in &impl_self.functions {
@@ -201,11 +211,17 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                     collect_function_parameter(parameter, tokens);
                 }
 
-                if let TypeInfo::Custom { name, .. } = &trait_fn.return_type {
-                    tokens.insert(
-                        to_ident_key(name),
-                        Token::from_parsed(AstToken::TraitFn(trait_fn.clone()), SymbolKind::Struct),
-                    );
+                if let TypeInfo::Custom {
+                    name,
+                    type_arguments,
+                } = &trait_fn.return_type
+                {
+                    let token =
+                        Token::from_parsed(AstToken::TraitFn(trait_fn.clone()), SymbolKind::Struct);
+                    tokens.insert(to_ident_key(name), token.clone());
+                    if let Some(args) = type_arguments {
+                        collect_type_args(args, &token, tokens);
+                    }
                 }
             }
         }
@@ -327,14 +343,22 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                 );
             }
 
-            if let (TypeInfo::Custom { name, .. }, ..) = &call_path_binding.inner.suffix {
-                tokens.insert(
-                    to_ident_key(name),
-                    Token::from_parsed(
-                        AstToken::Expression(expression.clone()),
-                        SymbolKind::Struct,
-                    ),
+            if let (
+                TypeInfo::Custom {
+                    name,
+                    type_arguments,
+                },
+                ..,
+            ) = &call_path_binding.inner.suffix
+            {
+                let token = Token::from_parsed(
+                    AstToken::Expression(expression.clone()),
+                    SymbolKind::Struct,
                 );
+                tokens.insert(to_ident_key(name), token.clone());
+                if let Some(args) = type_arguments {
+                    collect_type_args(args, &token, tokens);
+                }
             }
 
             for field in fields {
@@ -395,14 +419,22 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                 call_path_binding, ..
             } = &method_name_binding.inner
             {
-                if let (TypeInfo::Custom { name, .. }, ..) = &call_path_binding.inner.suffix {
-                    tokens.insert(
-                        to_ident_key(name),
-                        Token::from_parsed(
-                            AstToken::Expression(expression.clone()),
-                            SymbolKind::Struct,
-                        ),
+                if let (
+                    TypeInfo::Custom {
+                        name,
+                        type_arguments,
+                    },
+                    ..,
+                ) = &call_path_binding.inner.suffix
+                {
+                    let token = Token::from_parsed(
+                        AstToken::Expression(expression.clone()),
+                        SymbolKind::Struct,
                     );
+                    tokens.insert(to_ident_key(name), token.clone());
+                    if let Some(args) = type_arguments {
+                        collect_type_args(args, &token, tokens);
+                    }
                 }
             }
 
