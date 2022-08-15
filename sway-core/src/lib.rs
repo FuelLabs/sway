@@ -24,6 +24,7 @@ use control_flow_analysis::ControlFlowGraph;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use sway_ast::Dependency;
 
 pub use semantic_analysis::{
     namespace::{self, Namespace},
@@ -58,17 +59,31 @@ pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<Par
     }
 }
 
+/// Parse a file with contents `src` at `path`.
+fn parse_file(src: Arc<str>, path: Option<Arc<PathBuf>>) -> CompileResult<sway_ast::Module> {
+    let handler = sway_parse::handler::Handler::default();
+    match sway_parse::parse_file(&handler, src, path) {
+        Ok(module) => ok(
+            module,
+            vec![],
+            parse_file_error_to_compile_errors(handler, None),
+        ),
+        Err(error) => err(
+            vec![],
+            parse_file_error_to_compile_errors(handler, Some(error)),
+        ),
+    }
+}
+
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
 fn parse_in_memory(src: Arc<str>) -> CompileResult<ParseProgram> {
-    let module = match sway_parse::parse_file(src, None) {
-        Ok(module) => module,
-        Err(error) => return err(vec![], parse_file_error_to_compile_errors(error)),
-    };
-    convert_parse_tree::convert_parse_tree(module).flat_map(|(kind, tree)| {
-        let submodules = Default::default();
-        let root = ParseModule { tree, submodules };
-        let program = ParseProgram { kind, root };
-        ok(program, vec![], vec![])
+    parse_file(src, None).flat_map(|module| {
+        convert_parse_tree::convert_parse_tree(module).flat_map(|(kind, tree)| {
+            let submodules = Default::default();
+            let root = ParseModule { tree, submodules };
+            let program = ParseProgram { kind, root };
+            ok(program, vec![], vec![])
+        })
     })
 }
 
@@ -82,19 +97,13 @@ fn parse_files(src: Arc<str>, config: &BuildConfig) -> CompileResult<ParseProgra
     })
 }
 
-/// Given the source of the module along with its path, parse this module including all of its
-/// submodules.
-fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeType, ParseModule)> {
-    // Parse this module first.
-    let module = match sway_parse::parse_file(src, Some(path.clone())) {
-        Ok(module) => module,
-        Err(error) => return err(vec![], parse_file_error_to_compile_errors(error)),
-    };
-    let module_dir = path.parent().expect("module file has no parent directory");
-
-    // Parse all submodules before converting to the `ParseTree`.
+/// Parse all dependencies `deps` as submodules.
+fn parse_submodules(
+    deps: &[Dependency],
+    module_dir: &Path,
+) -> CompileResult<Vec<(Ident, ParseSubmodule)>> {
     let init_res = ok(vec![], vec![], vec![]);
-    let submodules_res = module.dependencies.iter().fold(init_res, |res, dep| {
+    deps.iter().fold(init_res, |res, dep| {
         let dep_path = Arc::new(module_path(module_dir, dep));
         let dep_str: Arc<str> = match std::fs::read_to_string(&*dep_path) {
             Ok(s) => Arc::from(s),
@@ -130,13 +139,25 @@ fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeTy
                 ok(submods, vec![], vec![])
             })
         })
-    });
+    })
+}
 
-    // Convert from the raw parsed module to the `ParseTree` ready for type-check.
-    convert_parse_tree::convert_parse_tree(module).flat_map(|(prog_kind, tree)| {
-        submodules_res.flat_map(|submodules| {
-            let parse_module = ParseModule { tree, submodules };
-            ok((prog_kind, parse_module), vec![], vec![])
+/// Given the source of the module along with its path, parse this module including all of its
+/// submodules.
+fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeType, ParseModule)> {
+    // Parse this module first.
+    parse_file(src, Some(path.clone())).flat_map(|module| {
+        let module_dir = path.parent().expect("module file has no parent directory");
+
+        // Parse all submodules before converting to the `ParseTree`.
+        let submodules_res = parse_submodules(&module.dependencies, module_dir);
+
+        // Convert from the raw parsed module to the `ParseTree` ready for type-check.
+        convert_parse_tree::convert_parse_tree(module).flat_map(|(prog_kind, tree)| {
+            submodules_res.flat_map(|submodules| {
+                let parse_module = ParseModule { tree, submodules };
+                ok((prog_kind, parse_module), vec![], vec![])
+            })
         })
     })
 }
@@ -149,10 +170,14 @@ fn module_path(parent_module_dir: &Path, dep: &sway_ast::Dependency) -> PathBuf 
         .with_extension(crate::constants::DEFAULT_FILE_EXTENSION)
 }
 
-fn parse_file_error_to_compile_errors(error: sway_parse::ParseFileError) -> Vec<CompileError> {
+fn parse_file_error_to_compile_errors(
+    handler: sway_parse::handler::Handler,
+    error: Option<sway_parse::ParseFileError>,
+) -> Vec<CompileError> {
     match error {
-        sway_parse::ParseFileError::Lex(error) => vec![CompileError::Lex { error }],
-        sway_parse::ParseFileError::Parse(errors) => errors
+        Some(sway_parse::ParseFileError::Lex(error)) => vec![CompileError::Lex { error }],
+        Some(sway_parse::ParseFileError::Parse(_)) | None => handler
+            .into_errors()
             .into_iter()
             .map(|error| CompileError::Parse { error })
             .collect(),

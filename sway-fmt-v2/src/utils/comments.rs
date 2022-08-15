@@ -262,19 +262,20 @@ pub fn handle_comments(
     path: Option<Arc<PathBuf>>,
     formatted_code: &mut FormattedCode,
 ) -> Result<(), FormatterError> {
-    // Collect Span -> Comment mapping from unformatted input
+    // Collect Span -> Comment mapping from unformatted input.
     let comment_map = comment_map_from_src(unformatted_input.clone())?;
+
     // After the formatting existing items should be the same (type of the item) but their spans will be changed since we applied formatting to them.
-    let formatted_module = sway_parse::parse_file(formatted_input, path)?;
-    // Actually find & insert the comments
+    let formatted_module = sway_parse::parse_file_standalone(formatted_input, path)?;
+
+    // Actually find & insert the comments.
     add_comments(
         comment_map,
         unformatted_module,
         &formatted_module,
         formatted_code,
         unformatted_input,
-    )?;
-    Ok(())
+    )
 }
 
 /// Adds the comments from comment_map to correct places in the formatted code. This requires us
