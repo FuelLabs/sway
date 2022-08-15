@@ -1,16 +1,14 @@
 use crate::{
     config::{items::ItemBraceStyle, user_def::FieldAlignment},
-    fmt::{Format, FormattedCode, Formatter},
+    fmt::*,
     utils::{
         bracket::CurlyBrace,
         comments::{ByteSpan, LeafSpans},
         shape::LineStyle,
     },
-    FormatterError,
 };
 use std::fmt::Write;
-use sway_ast::keywords::Token;
-use sway_ast::{token::Delimiter, ItemStorage, StorageField};
+use sway_ast::{keywords::Token, token::Delimiter, ItemStorage, StorageField};
 use sway_types::Spanned;
 
 impl Format for ItemStorage {

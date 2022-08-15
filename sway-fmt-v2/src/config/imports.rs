@@ -1,7 +1,6 @@
 //! Configuration options related to formatting imports.
+use crate::config::{lists::ListTactic, user_opts::ImportsOptions, whitespace::IndentStyle};
 use serde::{Deserialize, Serialize};
-
-use super::{lists::ListTactic, user_opts::ImportsOptions, whitespace::IndentStyle};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Imports {

@@ -1,7 +1,6 @@
 //! Configuration options related to formatting of expressions and punctuation.
+use crate::config::{items::ItemsLayout, user_opts::ExpressionsOptions};
 use serde::{Deserialize, Serialize};
-
-use super::{items::ItemsLayout, user_opts::ExpressionsOptions};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Expressions {
