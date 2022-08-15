@@ -161,10 +161,13 @@
 </code></pre>
 <p>Note two details here. First, in order to use <code>push</code>, we need to first access the vector using the <code>storage</code> keyword. Second, because <code>push</code> requires accessing storage, a <code>storage</code> annotation is required on the ABI function that calls <code>push</code>. While it may seem that <code>#[storage(write)]</code> should be enough here, the <code>read</code> annotation is also required because each call to <code>push</code> requires <em>reading</em> (and then updating) the length of the storage vector which is also stored in persistent storage.</p>
 <blockquote>
-<p><strong>Note</strong>: The storage annotation is also required for any private function defined in the contract that tries to push into the vector.</p>
+<p><strong>Note</strong>
+The storage annotation is also required for any private function defined in the contract that tries to push into the vector.</p>
 </blockquote>
+<!-- markdownlint-disable-line MD028 -->
 <blockquote>
-<p><strong>Note</strong>: There is no need to add the <code>mut</code> keyword when declaring a <code>StorageVec&lt;T&gt;</code>. All storage variables are mutable by default.</p>
+<p><strong>Note</strong>
+There is no need to add the <code>mut</code> keyword when declaring a <code>StorageVec&lt;T&gt;</code>. All storage variables are mutable by default.</p>
 </blockquote>
 <h2 id="reading-elements-of-storage-vectors"><a class="header" href="#reading-elements-of-storage-vectors">Reading Elements of Storage Vectors</a></h2>
 <p>To read a value stored in a vector at a particular index, you can use the <code>get</code> method as shown below:</p>

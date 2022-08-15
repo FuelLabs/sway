@@ -140,7 +140,7 @@
                         <h1 id="structs-tuples-and-enums"><a class="header" href="#structs-tuples-and-enums">Structs, Tuples, and Enums</a></h1>
 <h2 id="structs"><a class="header" href="#structs">Structs</a></h2>
 <p>Structs in Sway are a named grouping of types. You may also be familiar with structs via another name: <em>product types</em>. Sway does not make any significantly unique usages of structs; they are similar to most other languages which have structs. If you're coming from an object-oriented background, a struct is like the data attributes of an object.</p>
-<p>Firstly, we declare a struct named <code>Foo</code> with two fields. The first field is named <code>bar</code> and it accepts values of type <code>u64</code>, the second field is named <code>baz</code> and it accepts <code>bool</code> values. </p>
+<p>Firstly, we declare a struct named <code>Foo</code> with two fields. The first field is named <code>bar</code> and it accepts values of type <code>u64</code>, the second field is named <code>baz</code> and it accepts <code>bool</code> values.</p>
 <pre><code class="language-sway">library data_structures;
 
 // Declare a struct type
@@ -293,7 +293,7 @@ Moreover, the order of the fields does not matter when instantiating however we 
 <p>Furthermore, multiple variables can be extracted from a struct using the destructuring syntax.</p>
 <h3 id="struct-memory-layout"><a class="header" href="#struct-memory-layout">Struct Memory Layout</a></h3>
 <blockquote>
-<p><strong>Note</strong> 
+<p><strong>Note</strong>
 This information is not vital if you are new to the language, or programming in general</p>
 </blockquote>
 <p>Structs have zero memory overhead. What that means is that in memory, each struct field is laid out sequentially. No metadata regarding the struct's name or other properties is preserved at runtime. In other words, structs are compile-time constructs. This is the same in Rust, but different in other languages with runtimes like Java.</p>

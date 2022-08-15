@@ -164,10 +164,13 @@
 </code></pre>
 <p>Note two details here. First, in order to use <code>insert</code>, we need to first access the storage map using the <code>storage</code> keyword. Second, because <code>insert</code> requires <em>writing</em> into storage, a <code>#[storage(write)]</code> annotation is required on the ABI function that calls <code>insert</code>.</p>
 <blockquote>
-<p><strong>Note</strong>: The storage annotation is also required for any private function defined in the contract that tries to insert into the map.</p>
+<p><strong>Note</strong>
+The storage annotation is also required for any private function defined in the contract that tries to insert into the map.</p>
 </blockquote>
+<!-- markdownlint-disable-line MD028 -->
 <blockquote>
-<p><strong>Note</strong>: There is no need to add the <code>mut</code> keyword when declaring a <code>StorageMap&lt;K, V&gt;</code>. All storage variables are mutable by default.</p>
+<p><strong>Note</strong>
+There is no need to add the <code>mut</code> keyword when declaring a <code>StorageMap&lt;K, V&gt;</code>. All storage variables are mutable by default.</p>
 </blockquote>
 <h2 id="accessing-values-in-a-storage-map"><a class="header" href="#accessing-values-in-a-storage-map">Accessing Values in a Storage Map</a></h2>
 <p>We can get a value out of the storage map by providing its <code>key</code> to the <code>get</code> method, as shown below:</p>

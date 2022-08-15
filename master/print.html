@@ -167,7 +167,7 @@
 <p>Once <code>fuelup</code> is installed, <code>fuelup-init</code> automatically runs the command below</p>
 <pre><code class="language-sh">fuelup toolchain install latest
 </code></pre>
-<p>to install the latest Sway toolchain. </p>
+<p>to install the latest Sway toolchain.</p>
 <p>You can run the same command at a later time to update the toolchain.</p>
 <h2 id="installing-from-source"><a class="header" href="#installing-from-source">Installing from Source</a></h2>
 <h3 id="dependencies"><a class="header" href="#dependencies">Dependencies</a></h3>
@@ -795,7 +795,7 @@ abi Wallet {
 }
 </code></pre>
 <hr />
-<p>In the first line, <code>abi Wallet {</code>, we declare the name of this <em>Application Binary Interface</em>, or ABI. We are naming this ABI <code>Wallet</code>. To import this ABI into either a script for calling or a contract for implementing, you would use </p>
+<p>In the first line, <code>abi Wallet {</code>, we declare the name of this <em>Application Binary Interface</em>, or ABI. We are naming this ABI <code>Wallet</code>. To import this ABI into either a script for calling or a contract for implementing, you would use</p>
 <pre><code class="language-sway">use wallet_abi::Wallet;
 </code></pre>
 <hr />
@@ -1198,7 +1198,7 @@ let forty_two: b256 = my_contract_id.into();
             },
         };
 </code></pre>
-<p>A common use case for <code>Identity</code> is for access control. The use of <code>Identity</code> uniquely allows both <code>ContractId</code> and <code>Address</code> to have access control inclusively. </p>
+<p>A common use case for <code>Identity</code> is for access control. The use of <code>Identity</code> uniquely allows both <code>ContractId</code> and <code>Address</code> to have access control inclusively.</p>
 <pre><code class="language-sway">        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
         require(sender.unwrap() == storage.owner, MyError::UnauthorizedUser);
 </code></pre>
@@ -1218,7 +1218,7 @@ let forty_two: b256 = my_contract_id.into();
 <div style="break-before: page; page-break-before: always;"></div><h1 id="structs-tuples-and-enums"><a class="header" href="#structs-tuples-and-enums">Structs, Tuples, and Enums</a></h1>
 <h2 id="structs"><a class="header" href="#structs">Structs</a></h2>
 <p>Structs in Sway are a named grouping of types. You may also be familiar with structs via another name: <em>product types</em>. Sway does not make any significantly unique usages of structs; they are similar to most other languages which have structs. If you're coming from an object-oriented background, a struct is like the data attributes of an object.</p>
-<p>Firstly, we declare a struct named <code>Foo</code> with two fields. The first field is named <code>bar</code> and it accepts values of type <code>u64</code>, the second field is named <code>baz</code> and it accepts <code>bool</code> values. </p>
+<p>Firstly, we declare a struct named <code>Foo</code> with two fields. The first field is named <code>bar</code> and it accepts values of type <code>u64</code>, the second field is named <code>baz</code> and it accepts <code>bool</code> values.</p>
 <pre><code class="language-sway">library data_structures;
 
 // Declare a struct type
@@ -1371,7 +1371,7 @@ Moreover, the order of the fields does not matter when instantiating however we 
 <p>Furthermore, multiple variables can be extracted from a struct using the destructuring syntax.</p>
 <h3 id="struct-memory-layout"><a class="header" href="#struct-memory-layout">Struct Memory Layout</a></h3>
 <blockquote>
-<p><strong>Note</strong> 
+<p><strong>Note</strong>
 This information is not vital if you are new to the language, or programming in general</p>
 </blockquote>
 <p>Structs have zero memory overhead. What that means is that in memory, each struct field is laid out sequentially. No metadata regarding the struct's name or other properties is preserved at runtime. In other words, structs are compile-time constructs. This is the same in Rust, but different in other languages with runtimes like Java.</p>
@@ -2619,10 +2619,13 @@ fn main() -&gt; bool {
 </code></pre>
 <p>Note two details here. First, in order to use <code>push</code>, we need to first access the vector using the <code>storage</code> keyword. Second, because <code>push</code> requires accessing storage, a <code>storage</code> annotation is required on the ABI function that calls <code>push</code>. While it may seem that <code>#[storage(write)]</code> should be enough here, the <code>read</code> annotation is also required because each call to <code>push</code> requires <em>reading</em> (and then updating) the length of the storage vector which is also stored in persistent storage.</p>
 <blockquote>
-<p><strong>Note</strong>: The storage annotation is also required for any private function defined in the contract that tries to push into the vector.</p>
+<p><strong>Note</strong>
+The storage annotation is also required for any private function defined in the contract that tries to push into the vector.</p>
 </blockquote>
+<!-- markdownlint-disable-line MD028 -->
 <blockquote>
-<p><strong>Note</strong>: There is no need to add the <code>mut</code> keyword when declaring a <code>StorageVec&lt;T&gt;</code>. All storage variables are mutable by default.</p>
+<p><strong>Note</strong>
+There is no need to add the <code>mut</code> keyword when declaring a <code>StorageVec&lt;T&gt;</code>. All storage variables are mutable by default.</p>
 </blockquote>
 <h2 id="reading-elements-of-storage-vectors"><a class="header" href="#reading-elements-of-storage-vectors">Reading Elements of Storage Vectors</a></h2>
 <p>To read a value stored in a vector at a particular index, you can use the <code>get</code> method as shown below:</p>
@@ -2698,10 +2701,13 @@ fn main() -&gt; bool {
 </code></pre>
 <p>Note two details here. First, in order to use <code>insert</code>, we need to first access the storage map using the <code>storage</code> keyword. Second, because <code>insert</code> requires <em>writing</em> into storage, a <code>#[storage(write)]</code> annotation is required on the ABI function that calls <code>insert</code>.</p>
 <blockquote>
-<p><strong>Note</strong>: The storage annotation is also required for any private function defined in the contract that tries to insert into the map.</p>
+<p><strong>Note</strong>
+The storage annotation is also required for any private function defined in the contract that tries to insert into the map.</p>
 </blockquote>
+<!-- markdownlint-disable-line MD028 -->
 <blockquote>
-<p><strong>Note</strong>: There is no need to add the <code>mut</code> keyword when declaring a <code>StorageMap&lt;K, V&gt;</code>. All storage variables are mutable by default.</p>
+<p><strong>Note</strong>
+There is no need to add the <code>mut</code> keyword when declaring a <code>StorageMap&lt;K, V&gt;</code>. All storage variables are mutable by default.</p>
 </blockquote>
 <h2 id="accessing-values-in-a-storage-map"><a class="header" href="#accessing-values-in-a-storage-map">Accessing Values in a Storage Map</a></h2>
 <p>We can get a value out of the storage map by providing its <code>key</code> to the <code>get</code> method, as shown below:</p>
@@ -3010,13 +3016,13 @@ Any changes to the branch will require a re-review.</li>
 <h3 id="linking-issues"><a class="header" href="#linking-issues">Linking issues</a></h3>
 <p>Pull requests should be linked to at least one issue in the same repo.</p>
 <p>If the pull request resolves the relevant issues, and you want GitHub to close these issues automatically after it merged into the default branch, you can use the syntax (<code>KEYWORD #ISSUE-NUMBER</code>) like this:</p>
-<pre><code>close #123
+<pre><code class="language-markdown">close #123
 </code></pre>
 <p>If the pull request links an issue but does not close it, you can use the keyword <code>ref</code> like this:</p>
-<pre><code>ref #456
+<pre><code class="language-markdown">ref #456
 </code></pre>
 <p>Multiple issues should use full syntax for each issue and separate by a comma, like:</p>
-<pre><code>close #123, ref #456
+<pre><code class="language-markdown">close #123, ref #456
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="forc-reference"><a class="header" href="#forc-reference">Forc Reference</a></h1>
 <p>Forc stands for Fuel Orchestrator. Forc provides a variety of tools and commands for developers working with the Fuel ecosystem, such as scaffolding a new project, formatting, running scripts, deploying contracts, testing contracts, and more. If you're coming from a Rust background, forc is similar to cargo.</p>
@@ -3180,7 +3186,8 @@ custom_lib = { path = &quot;../custom_lib&quot; }
 <p>Once the package is added, running <code>forc build</code> will automatically download added dependencies.</p>
 <h2 id="updating-dependencies"><a class="header" href="#updating-dependencies">Updating dependencies</a></h2>
 <p>To update dependencies in your Forc directory you can run <code>forc update</code>. For <code>path</code> dependencies this will have no effect. For <code>git</code> dependencies with a <code>branch</code> reference, this will update the project to use the latest commit for the given branch.</p>
-<div style="break-before: page; page-break-before: always;"></div><p>Here are a list of commands available to forc:</p>
+<div style="break-before: page; page-break-before: always;"></div><!-- markdownlint-disable MD041 -->
+<p>Here are a list of commands available to forc:</p>
 <ul>
 <li><a href="forc/commands/./forc_addr2line.html">forc addr2line</a></li>
 <li><a href="forc/commands/./forc_build.html">forc build</a></li>
@@ -3283,7 +3290,7 @@ build-profile.</p>
 <p><code>-s</code>, <code>--silent</code> </p>
 <p>Silent mode. Don't output any warnings or errors to the command line</p>
 <p><code>--time-phases</code> </p>
-<p>Output the time elapsed over each part of the compilation process</p>
+<p>Output the time elapsed over each part of the compilation process<!-- markdownlint-disable MD041 --></p>
 <h2 id="example-2"><a class="header" href="#example-2">EXAMPLE</a></h2>
 <p>Compile the sway files of the current project.</p>
 <pre><code class="language-console">$ forc build
@@ -3334,7 +3341,7 @@ used</p>
 <p>Specify shell to enable tab-completion for</p>
 <p>[possible values: zsh, bash, fish, powershell, elvish]</p>
 <p>For more info:
-https://fuellabs.github.io/sway/latest/forc/commands/forc_completions.html</p>
+https://fuellabs.github.io/sway/latest/forc/commands/forc_completions.html<!-- markdownlint-disable MD041 --></p>
 <h2 id="discussion"><a class="header" href="#discussion">DISCUSSION</a></h2>
 <p>Enable tab completion for Bash, Fish, Zsh, or PowerShell
 The script is output on <code>stdout</code>, allowing one to re-direct the
@@ -3469,7 +3476,7 @@ build-profile.</p>
 <p>Output the time elapsed over each part of the compilation process</p>
 <p><code>-u</code>, <code>--url</code> &lt;<em>URL</em>&gt;</p>
 <p>The node url to deploy, if not specified uses DEFAULT_NODE_URL. If url is specified
-overrides network url in manifest file (if there is one)</p>
+overrides network url in manifest file (if there is one)<!-- markdownlint-disable MD041 --></p>
 <h2 id="example-3"><a class="header" href="#example-3">EXAMPLE</a></h2>
 <p>You can use <code>forc deploy</code>, which triggers a contract deployment transaction and sends it to a running node.</p>
 <p>Alternatively, you can deploy your Sway contract programmatically using <a href="https://github.com/FuelLabs/fuels-rs">fuels-rs</a>, our Rust SDK.</p>
@@ -3495,7 +3502,7 @@ basic contract program</p>
 <p><code>--script</code> </p>
 <p>Create a package with a script target (src/main.sw)</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
-<p>Use verbose output</p>
+<p>Use verbose output<!-- markdownlint-disable MD041 --></p>
 <h2 id="example-4"><a class="header" href="#example-4">EXAMPLE</a></h2>
 <pre><code class="language-console">$ forc init my-fuel-project
 $ cd my-fuel-project
@@ -3555,7 +3562,7 @@ basic contract program</p>
 <p><code>--script</code> </p>
 <p>Adding this flag creates an empty script program</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
-<p>Use verbose output</p>
+<p>Use verbose output<!-- markdownlint-disable MD041 --></p>
 <h2 id="example-5"><a class="header" href="#example-5">EXAMPLE</a></h2>
 <pre><code class="language-console">$ forc new my-fuel-project
 $ cd my-fuel-project
@@ -3579,7 +3586,7 @@ $ tree
 <p>&lt;<em>FILE_PATH</em>&gt;</p>
 <h2 id="options-9"><a class="header" href="#options-9">OPTIONS:</a></h2>
 <p><code>-h</code>, <code>--help</code> </p>
-<p>Print help information</p>
+<p>Print help information<!-- markdownlint-disable MD041 --></p>
 <h2 id="example-6"><a class="header" href="#example-6">EXAMPLE</a></h2>
 <p>We can try this command with the initial project created using <code>forc init</code>, with the counter template:</p>
 <pre><code class="language-sh">forc new --template counter counter
@@ -3705,7 +3712,7 @@ All trailing arguments following <code>--</code> are collected within this argum
 <p>The <code>--color always</code> option is forwarded to <code>cargo test</code> like so:</p>
 <p><code>cargo test --color always</code></p>
 <p><code>-h</code>, <code>--help</code> </p>
-<p>Print help information</p>
+<p>Print help information<!-- markdownlint-disable MD041 --></p>
 <h2 id="example-7"><a class="header" href="#example-7">EXAMPLE</a></h2>
 <p>You can write tests in Rust using our <a href="https://github.com/FuelLabs/fuels-rs">Rust SDK</a>. These tests can be run using <code>forc test</code>, which will look for Rust tests under the <code>tests/</code> directory (which is created automatically with <code>forc new</code>).</p>
 <p>You can find an example under the <a href="forc/commands/../../testing/testing-with-rust.html">Testing with Rust</a> section.</p>
@@ -3739,7 +3746,7 @@ will be used</p>
 <p><code>-t</code>, <code>--template-name</code> &lt;<em>TEMPLATE_NAME</em>&gt;</p>
 <p>The name of the template that needs to be fetched and used from git repo provided</p>
 <p><code>-u</code>, <code>--url</code> &lt;<em>URL</em>&gt;</p>
-<p>The template url, should be a git repo [default: https://github.com/fuellabs/sway]</p>
+<p>The template url, should be a git repo [default: https://github.com/fuellabs/sway]<!-- markdownlint-disable MD041 --></p>
 <h2 id="example-8"><a class="header" href="#example-8">EXAMPLE</a></h2>
 <pre><code class="language-sh">forc template --url https://github.com/owner/template/ --project_name my_example_project
 </code></pre>
@@ -3763,7 +3770,7 @@ Fuel Network Explorer 0.1.1
 Running server on http://127.0.0.1:3030
 Server::run{addr=127.0.0.1:3030}: listening on http://127.0.0.1:3030
 </code></pre>
-<p>You can visit http://127.0.0.1:3030 to check out the network explorer!</p>
+<p>You can visit <a href="http://127.0.0.1:3030">http://127.0.0.1:3030</a> to check out the network explorer!</p>
 <h2 id="writing-your-own-plugin"><a class="header" href="#writing-your-own-plugin">Writing your own plugin</a></h2>
 <p>We encourage anyone to write and publish their own <code>forc</code> plugin to enhance their development experience.</p>
 <p>Your plugin must be named in the format <code>forc-&lt;MY_PLUGIN&gt;</code> and you may use the above template as a starting point. You can use <a href="https://docs.rs/clap/latest/clap/">clap</a> and add more subcommands, options and configurations to suit your plugin's needs.</p>
