@@ -1,49 +1,49 @@
 {
   "functions": [
     {
+      "inputs": [],
       "name": "from_f1",
       "output": {
         "name": "",
         "type": 1,
         "typeArguments": null
-      },
-      "type": []
+      }
     },
     {
+      "inputs": [],
       "name": "from_f2",
       "output": {
         "name": "",
         "type": 1,
         "typeArguments": null
-      },
-      "type": []
+      }
     },
     {
+      "inputs": [],
       "name": "from_f3",
       "output": {
         "name": "",
         "type": 1,
         "typeArguments": null
-      },
-      "type": []
+      }
     },
     {
+      "inputs": [],
       "name": "from_f4",
       "output": {
         "name": "",
         "type": 1,
         "typeArguments": null
-      },
-      "type": []
+      }
     },
     {
+      "inputs": [],
       "name": "from_callers",
       "output": {
         "name": "",
         "type": 0,
         "typeArguments": null
-      },
-      "type": []
+      }
     }
   ],
   "types": [

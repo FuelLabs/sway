@@ -1,28 +1,28 @@
 {
   "functions": [
     {
-      "name": "increment",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      },
-      "type": [
+      "inputs": [
         {
           "name": "increment_by",
           "type": 0,
           "typeArguments": null
         }
-      ]
+      ],
+      "name": "increment",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
     },
     {
+      "inputs": [],
       "name": "get",
       "output": {
         "name": "",
         "type": 0,
         "typeArguments": null
-      },
-      "type": []
+      }
     }
   ],
   "types": [

@@ -1,13 +1,7 @@
 {
   "functions": [
     {
-      "name": "multiply_u64",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      },
-      "type": [
+      "inputs": [
         {
           "name": "a",
           "type": 1,
@@ -18,7 +12,13 @@
           "type": 1,
           "typeArguments": null
         }
-      ]
+      ],
+      "name": "multiply_u64",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
     }
   ],
   "types": [

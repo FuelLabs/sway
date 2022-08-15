@@ -1,13 +1,7 @@
 {
   "functions": [
     {
-      "name": "complex_function",
-      "output": {
-        "name": "",
-        "type": 13,
-        "typeArguments": null
-      },
-      "type": [
+      "inputs": [
         {
           "name": "arg1",
           "type": 16,
@@ -39,16 +33,16 @@
           "type": 15,
           "typeArguments": null
         }
-      ]
-    },
-    {
-      "name": "take_generic_array",
+      ],
+      "name": "complex_function",
       "output": {
         "name": "",
-        "type": 18,
+        "type": 13,
         "typeArguments": null
-      },
-      "type": [
+      }
+    },
+    {
+      "inputs": [
         {
           "name": "arg",
           "type": 14,
@@ -65,7 +59,13 @@
             }
           ]
         }
-      ]
+      ],
+      "name": "take_generic_array",
+      "output": {
+        "name": "",
+        "type": 18,
+        "typeArguments": null
+      }
     }
   ],
   "types": [

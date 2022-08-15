@@ -1,37 +1,31 @@
 {
   "functions": [
     {
+      "inputs": [],
       "name": "get_id",
       "output": {
         "name": "",
         "type": 1,
         "typeArguments": null
-      },
-      "type": []
+      }
     },
     {
-      "name": "get_this_balance",
-      "output": {
-        "name": "",
-        "type": 2,
-        "typeArguments": null
-      },
-      "type": [
+      "inputs": [
         {
           "name": "asset_id",
           "type": 1,
           "typeArguments": null
         }
-      ]
-    },
-    {
-      "name": "get_balance_of_contract",
+      ],
+      "name": "get_this_balance",
       "output": {
         "name": "",
         "type": 2,
         "typeArguments": null
-      },
-      "type": [
+      }
+    },
+    {
+      "inputs": [
         {
           "name": "asset_id",
           "type": 1,
@@ -42,43 +36,49 @@
           "type": 1,
           "typeArguments": null
         }
-      ]
+      ],
+      "name": "get_balance_of_contract",
+      "output": {
+        "name": "",
+        "type": 2,
+        "typeArguments": null
+      }
     },
     {
+      "inputs": [],
       "name": "get_amount",
       "output": {
         "name": "",
         "type": 2,
         "typeArguments": null
-      },
-      "type": []
+      }
     },
     {
+      "inputs": [],
       "name": "get_asset_id",
       "output": {
         "name": "",
         "type": 1,
         "typeArguments": null
-      },
-      "type": []
+      }
     },
     {
+      "inputs": [],
       "name": "get_gas",
       "output": {
         "name": "",
         "type": 2,
         "typeArguments": null
-      },
-      "type": []
+      }
     },
     {
+      "inputs": [],
       "name": "get_global_gas",
       "output": {
         "name": "",
         "type": 2,
         "typeArguments": null
-      },
-      "type": []
+      }
     }
   ],
   "types": [

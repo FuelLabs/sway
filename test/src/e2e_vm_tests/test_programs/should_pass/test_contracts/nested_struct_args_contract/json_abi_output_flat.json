@@ -1,13 +1,7 @@
 {
   "functions": [
     {
-      "name": "foo",
-      "output": {
-        "name": "",
-        "type": 3,
-        "typeArguments": null
-      },
-      "type": [
+      "inputs": [
         {
           "name": "input1",
           "type": 1,
@@ -18,7 +12,13 @@
           "type": 2,
           "typeArguments": null
         }
-      ]
+      ],
+      "name": "foo",
+      "output": {
+        "name": "",
+        "type": 3,
+        "typeArguments": null
+      }
     }
   ],
   "types": [

@@ -1,34 +1,34 @@
 {
   "functions": [
     {
-      "name": "bug1",
-      "output": {
-        "name": "",
-        "type": 3,
-        "typeArguments": null
-      },
-      "type": [
+      "inputs": [
         {
           "name": "param",
           "type": 2,
           "typeArguments": null
         }
-      ]
-    },
-    {
-      "name": "bug2",
+      ],
+      "name": "bug1",
       "output": {
         "name": "",
         "type": 3,
         "typeArguments": null
-      },
-      "type": [
+      }
+    },
+    {
+      "inputs": [
         {
           "name": "param",
           "type": 1,
           "typeArguments": null
         }
-      ]
+      ],
+      "name": "bug2",
+      "output": {
+        "name": "",
+        "type": 3,
+        "typeArguments": null
+      }
     }
   ],
   "types": [

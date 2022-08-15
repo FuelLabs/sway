@@ -1,28 +1,22 @@
 {
   "functions": [
     {
-      "name": "get_u64",
-      "output": {
-        "name": "",
-        "type": 2,
-        "typeArguments": null
-      },
-      "type": [
+      "inputs": [
         {
           "name": "storage_key",
           "type": 1,
           "typeArguments": null
         }
-      ]
-    },
-    {
-      "name": "store_u64",
+      ],
+      "name": "get_u64",
       "output": {
         "name": "",
-        "type": 0,
+        "type": 2,
         "typeArguments": null
-      },
-      "type": [
+      }
+    },
+    {
+      "inputs": [
         {
           "name": "key",
           "type": 1,
@@ -33,7 +27,13 @@
           "type": 2,
           "typeArguments": null
         }
-      ]
+      ],
+      "name": "store_u64",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
     }
   ],
   "types": [
