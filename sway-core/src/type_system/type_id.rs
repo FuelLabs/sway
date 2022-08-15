@@ -191,7 +191,8 @@ impl TypeId {
                     name: struct_name, ..
                 },
             ) => name != struct_name,
-
+            (TypeInfo::Custom { .. }, TypeInfo::Array(..)) => true,
+            (TypeInfo::Custom { .. }, TypeInfo::Tuple { .. }) => true,
             _ => false,
         }
     }

@@ -27,7 +27,7 @@ use sway_core::{
     semantic_analysis::namespace, source_map::SourceMap, types::*, BytecodeCompilationResult,
     CompileAstResult, CompileError, CompileResult, ParseProgram, TreeType,
 };
-use sway_types::{JsonABI, JsonABIProgram};
+use sway_types::{JsonABI, JsonABIProgram, JsonTypeApplication, JsonTypeDeclaration};
 use sway_utils::constants;
 use tracing::{info, warn};
 use url::Url;
@@ -1945,6 +1945,9 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
         tree_type = Some(compiled.tree_type);
         source_map.insert_dependency(manifest.dir());
     }
+
+    standardize_json_abi_types(&mut json_abi_program);
+
     let tree_type =
         tree_type.ok_or_else(|| anyhow!("build plan must contain at least one package"))?;
     let compiled = Compiled {
@@ -1955,6 +1958,114 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
         tree_type,
     };
     Ok((compiled, source_map))
+}
+
+/// Standardize the JSON ABI data structure by eliminating duplicate types. This is an iterative
+/// process because every time two types are merged, new opportunities for more merging arise.
+fn standardize_json_abi_types(json_abi_program: &mut JsonABIProgram) {
+    loop {
+        // If type with id_1 is a duplicate of type with id_2, then keep track of the mapping
+        // between id_1 and id_2 in the HashMap below.
+        let mut old_to_new_id: HashMap<usize, usize> = HashMap::new();
+
+        // HashSet to eliminate duplicate type declarations.
+        let mut types_set: HashSet<JsonTypeDeclaration> = HashSet::new();
+
+        // Insert values in the HashSet `types_set` if they haven't been inserted before.
+        // Otherwise, create an appropriate mapping in the HashMap `old_to_new_id`.
+        for decl in json_abi_program.types.iter_mut() {
+            if let Some(ty) = types_set.get(decl) {
+                old_to_new_id.insert(decl.type_id, ty.type_id);
+            } else {
+                types_set.insert(decl.clone());
+            }
+        }
+
+        // Nothing to do if the hash map is empty as there are not merge opportunities. We can now
+        // exit the loop.
+        if old_to_new_id.is_empty() {
+            break;
+        }
+
+        // Convert the set into a vector and store it back in `json_abi_program.types`.
+        json_abi_program.types = types_set.into_iter().collect::<Vec<_>>();
+
+        // Update all `JsonTypeApplication`s and all `JsonTypeDeclaration`s
+        update_all_types(json_abi_program, &old_to_new_id);
+    }
+
+    // Sort the `JsonTypeDeclaration`s in alphabetical order of type_field
+    json_abi_program
+        .types
+        .sort_by(|t1, t2| t1.type_field.cmp(&t2.type_field));
+
+    // Standardize IDs (i.e. change them to 0,1,2,... according to the alphabetical order above
+    let mut old_to_new_id: HashMap<usize, usize> = HashMap::new();
+    for (ix, decl) in json_abi_program.types.iter_mut().enumerate() {
+        old_to_new_id.insert(decl.type_id, ix);
+        decl.type_id = ix;
+    }
+
+    // Update all `JsonTypeApplication`s and all `JsonTypeDeclaration`s
+    update_all_types(json_abi_program, &old_to_new_id);
+}
+
+fn update_all_types(json_abi_program: &mut JsonABIProgram, old_to_new_id: &HashMap<usize, usize>) {
+    // Update all `JsonTypeApplication`s in every function
+    for func in json_abi_program.functions.iter_mut() {
+        for input in func.inputs.iter_mut() {
+            update_json_type_application(input, old_to_new_id);
+        }
+
+        update_json_type_application(&mut func.output, old_to_new_id);
+    }
+
+    // Update all `JsonTypeDeclaration`
+    for decl in json_abi_program.types.iter_mut() {
+        update_json_type_declaration(decl, old_to_new_id);
+    }
+}
+
+/// Recursively updates the type IDs used in a `JsonTypeApplication` given a HashMap from old to
+/// new IDs
+fn update_json_type_application(
+    type_application: &mut JsonTypeApplication,
+    old_to_new_id: &HashMap<usize, usize>,
+) {
+    for (old_id, new_id) in old_to_new_id.iter() {
+        if type_application.type_id == *old_id {
+            type_application.type_id = *new_id;
+        }
+
+        if let Some(args) = &mut type_application.type_arguments {
+            for arg in args.iter_mut() {
+                update_json_type_application(arg, old_to_new_id);
+            }
+        }
+    }
+}
+
+/// Recursively updates the type IDs used in a `JsonTypeDeclaration` given a HashMap from old to
+/// new IDs
+fn update_json_type_declaration(
+    type_declaration: &mut JsonTypeDeclaration,
+    old_to_new_id: &HashMap<usize, usize>,
+) {
+    for (old_id, new_id) in old_to_new_id.iter() {
+        if let Some(params) = &mut type_declaration.type_parameters {
+            for param in params.iter_mut() {
+                if *param == *old_id {
+                    *param = *new_id;
+                }
+            }
+        }
+
+        if let Some(components) = &mut type_declaration.components {
+            for component in components.iter_mut() {
+                update_json_type_application(component, old_to_new_id);
+            }
+        }
+    }
 }
 
 /// Compile the entire forc package and return a CompileAstResult.
