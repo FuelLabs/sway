@@ -138,17 +138,31 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                 );
 
                 match &field.type_info {
-                    TypeInfo::UnsignedInteger(..)
-                    | TypeInfo::Boolean
+                    TypeInfo::UnsignedInteger(..) => {
+                        tokens.insert(
+                            to_ident_key(&Ident::new(field.type_span.clone())),
+                            Token::from_parsed(AstToken::StructField(field.clone()),
+                            SymbolKind::NumericLiteral),
+                        );
+                    }
+                    TypeInfo::Boolean => {
+                        tokens.insert(
+                            to_ident_key(&Ident::new(field.type_span.clone())),
+                            Token::from_parsed(AstToken::StructField(field.clone()),
+                            SymbolKind::BoolLiteral),
+                        );
+                    }
                     | TypeInfo::Byte
                     | TypeInfo::B256 => {
                         tokens.insert(
                             to_ident_key(&Ident::new(field.type_span.clone())),
-                            Token::from_parsed(AstToken::StructField(field.clone())),
+                            Token::from_parsed(AstToken::StructField(field.clone()),
+                            SymbolKind::ByteLiteral),
                         );
                     }
                     TypeInfo::Ref(type_id, span) => {
-                        let mut token = Token::from_parsed(AstToken::StructField(field.clone()));
+                        let mut token = Token::from_parsed(AstToken::StructField(field.clone()),
+                    SymbolKind::Unknown);
                         token.type_def = Some(TypeDefinition::TypeId(*type_id));
                         tokens.insert(to_ident_key(&Ident::new(span.clone())), token);
                     }
@@ -158,13 +172,16 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                     } => {
                         tokens.insert(
                             to_ident_key(name),
-                            Token::from_parsed(AstToken::StructField(field.clone())),
+                            Token::from_parsed(AstToken::StructField(field.clone()),
+                        SymbolKind::Struct),
                         );
 
                         if let Some(args) = type_arguments {
                             for arg in args {
+                                //TODO write a function that converts type_id to SymbolKind
                                 let mut token =
-                                    Token::from_parsed(AstToken::StructField(field.clone()));
+                                    Token::from_parsed(AstToken::StructField(field.clone()),
+                                    SymbolKind::Unknown);
                                 token.type_def = Some(TypeDefinition::TypeId(arg.type_id));
                                 tokens.insert(to_ident_key(&Ident::new(arg.span.clone())), token);
                             }
@@ -284,8 +301,10 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                 match &field.type_info {
                     TypeInfo::Tuple(args) => {
                         for arg in args {
+                            //TODO write a function that converts type_id to SymbolKind
                             let mut token =
-                                Token::from_parsed(AstToken::StorageField(field.clone()));
+                                Token::from_parsed(AstToken::StorageField(field.clone()),
+                            SymbolKind::Unknown);
                             token.type_def = Some(TypeDefinition::TypeId(arg.type_id));
                             tokens.insert(to_ident_key(&Ident::new(arg.span.clone())), token);
                         }
@@ -296,13 +315,16 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                     } => {
                         tokens.insert(
                             to_ident_key(name),
-                            Token::from_parsed(AstToken::StorageField(field.clone())),
+                            Token::from_parsed(AstToken::StorageField(field.clone()),
+                        SymbolKind::Struct),
                         );
 
                         if let Some(args) = type_arguments {
                             for arg in args {
+                                //TODO write a function that converts type_id to SymbolKind
                                 let mut token =
-                                    Token::from_parsed(AstToken::StorageField(field.clone()));
+                                    Token::from_parsed(AstToken::StorageField(field.clone()),
+                                    SymbolKind::Unknown);
                                 token.type_def = Some(TypeDefinition::TypeId(arg.type_id));
                                 tokens.insert(to_ident_key(&Ident::new(arg.span.clone())), token);
                             }
