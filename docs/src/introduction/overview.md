@@ -129,7 +129,7 @@ fn counter() -> u64 {
 ``` sway 
 fn increment() {
         storage.counter = storage.counter + 1;
-    }
+}
 ```
 The function body accesses the value counter in storage, and increments the value by one. Then, we return the newly updated value of counter.
 
