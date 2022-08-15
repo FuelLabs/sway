@@ -6,7 +6,7 @@ use sway_ast::ItemStruct;
 impl Parse for ItemStruct {
     fn parse(parser: &mut Parser) -> ParseResult<ItemStruct> {
         Ok(ItemStruct {
-            visibility: parser.take(),
+            visibility: None,
             struct_token: parser.parse()?,
             name: parser.parse()?,
             generics: parser.guarded_parse::<OpenAngleBracketToken, _>()?,

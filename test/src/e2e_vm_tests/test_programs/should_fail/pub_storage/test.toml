@@ -1,0 +1,5 @@
+category = "fail"
+
+# check: pub storage {
+# check: $()Unnecessary visibility qualifier, `pub` is implied here.
+# check: $()Mismatched types.
