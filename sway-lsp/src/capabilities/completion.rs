@@ -43,7 +43,6 @@ pub fn parsed_to_completion_kind(ast_token: &AstToken) -> Option<CompletionItemK
             Declaration::ImplTrait { .. }
             | Declaration::ImplSelf(_)
             | Declaration::AbiDeclaration(_)
-            | Declaration::Reassignment(_)
             | Declaration::StorageDeclaration(_) => Some(CompletionItemKind::TEXT),
         },
         AstToken::Expression(exp) => match &exp.kind {
@@ -74,9 +73,7 @@ pub fn typed_to_completion_kind(typed_ast_token: &TypedAstToken) -> Option<Compl
             TypedDeclaration::ConstantDeclaration(_) => Some(CompletionItemKind::CONSTANT),
             TypedDeclaration::ImplTrait { .. }
             | TypedDeclaration::AbiDeclaration(_)
-            | TypedDeclaration::Reassignment(_)
-            | TypedDeclaration::StorageDeclaration(_)
-            | TypedDeclaration::StorageReassignment(_) => Some(CompletionItemKind::TEXT),
+            | TypedDeclaration::StorageDeclaration(_) => Some(CompletionItemKind::TEXT),
             _ => None,
         },
         TypedAstToken::TypedExpression(exp) => match &exp.expression {

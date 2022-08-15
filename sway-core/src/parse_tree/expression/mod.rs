@@ -1,10 +1,5 @@
 use crate::{
-    parse_tree::{
-        // FIXME: move this into this module
-        declaration::ReassignmentTarget,
-        CallPath,
-        Literal,
-    },
+    parse_tree::{CallPath, Literal},
     type_system::TypeBinding,
     CodeBlock, TypeInfo,
 };
@@ -175,6 +170,15 @@ pub enum ExpressionKind {
     Break,
     Continue,
     Reassignment(ReassignmentExpression),
+}
+
+/// Represents the left hand side of a reassignment, which could either be a regular variable
+/// expression, denoted by [ReassignmentTarget::VariableExpression], or, a storage field, denoted
+/// by [ReassignmentTarget::StorageField].
+#[derive(Debug, Clone)]
+pub enum ReassignmentTarget {
+    VariableExpression(Box<Expression>),
+    StorageField(Vec<Ident>),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

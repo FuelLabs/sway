@@ -167,11 +167,6 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
             value: expr,
             name,
             ..
-        })
-        | TypedDeclaration::Reassignment(semantic_analysis::TypedReassignment {
-            rhs: expr,
-            lhs_base_name: name,
-            ..
         }) => {
             check!(
                 check_type(expr.return_type, name.span(), false),
@@ -246,8 +241,7 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
             }
         }
         TypedDeclaration::GenericTypeForFunctionScope { .. }
-        | TypedDeclaration::ErrorRecovery
-        | TypedDeclaration::StorageReassignment(_) => {}
+        | TypedDeclaration::ErrorRecovery => {}
     }
     ok((), warnings, errors)
 }

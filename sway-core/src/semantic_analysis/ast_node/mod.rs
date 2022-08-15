@@ -151,9 +151,6 @@ impl TypedAstNode {
             TypedAstNodeContent::Declaration(TypedDeclaration::VariableDeclaration(
                 TypedVariableDeclaration { body, .. },
             )) => body.gather_return_statements(),
-            TypedAstNodeContent::Declaration(TypedDeclaration::Reassignment(
-                TypedReassignment { rhs, .. },
-            )) => rhs.gather_return_statements(),
             TypedAstNodeContent::Expression(exp) => exp.gather_return_statements(),
             TypedAstNodeContent::SideEffect | TypedAstNodeContent::Declaration(_) => vec![],
         }
@@ -316,17 +313,6 @@ impl TypedAstNode {
                             let decl = TypedDeclaration::TraitDeclaration(trait_decl);
                             ctx.namespace.insert_symbol(name, decl.clone());
                             decl
-                        }
-                        Declaration::Reassignment(Reassignment { lhs, rhs, span }) => {
-                            let ctx = ctx
-                                .with_type_annotation(insert_type(TypeInfo::Unknown))
-                                .with_help_text("");
-                            check!(
-                                reassignment(ctx, lhs, rhs, span),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            )
                         }
                         Declaration::ImplTrait(impl_trait) => {
                             let (impl_trait, implementing_for_type_id) = check!(
@@ -504,103 +490,6 @@ impl TypedAstNode {
         }
 
         ok(node, warnings, errors)
-    }
-}
-
-fn reassignment(
-    ctx: TypeCheckContext,
-    lhs: ReassignmentTarget,
-    rhs: Expression,
-    span: Span,
-) -> CompileResult<TypedDeclaration> {
-    let mut errors = vec![];
-    let mut warnings = vec![];
-    // ensure that the lhs is a variable expression or struct field access
-    match lhs {
-        ReassignmentTarget::VariableExpression(var) => {
-            let mut expr = var;
-            let mut names_vec = Vec::new();
-            let (base_name, final_return_type) = loop {
-                match expr.kind {
-                    ExpressionKind::Variable(name) => {
-                        // check that the reassigned name exists
-                        let unknown_decl = check!(
-                            ctx.namespace.resolve_symbol(&name).cloned(),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        let variable_decl = check!(
-                            unknown_decl.expect_variable().cloned(),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        if !variable_decl.mutability.is_mutable() {
-                            errors.push(CompileError::AssignmentToNonMutable { name });
-                            return err(warnings, errors);
-                        }
-                        break (name, variable_decl.body.return_type);
-                    }
-                    ExpressionKind::Subfield(SubfieldExpression {
-                        prefix,
-                        field_to_access,
-                        ..
-                    }) => {
-                        names_vec.push(ProjectionKind::StructField {
-                            name: field_to_access,
-                        });
-                        expr = prefix;
-                    }
-                    ExpressionKind::TupleIndex(TupleIndexExpression {
-                        prefix,
-                        index,
-                        index_span,
-                        ..
-                    }) => {
-                        names_vec.push(ProjectionKind::TupleField { index, index_span });
-                        expr = prefix;
-                    }
-                    _ => {
-                        errors.push(CompileError::InvalidExpressionOnLhs { span });
-                        return err(warnings, errors);
-                    }
-                }
-            };
-            let names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
-            let (ty_of_field, _ty_of_parent) = check!(
-                ctx.namespace.find_subfield_type(&base_name, &names_vec),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            // type check the reassignment
-            let ctx = ctx.with_type_annotation(ty_of_field).with_help_text("");
-            let rhs = check!(
-                TypedExpression::type_check(ctx, rhs),
-                error_recovery_expr(span),
-                warnings,
-                errors
-            );
-
-            ok(
-                TypedDeclaration::Reassignment(TypedReassignment {
-                    lhs_base_name: base_name,
-                    lhs_type: final_return_type,
-                    lhs_indices: names_vec,
-                    rhs,
-                }),
-                warnings,
-                errors,
-            )
-        }
-        ReassignmentTarget::StorageField(fields) => {
-            let ctx = ctx
-                .with_type_annotation(insert_type(TypeInfo::Unknown))
-                .with_help_text("");
-            reassign_storage_subfield(ctx, fields, rhs, span)
-                .map(TypedDeclaration::StorageReassignment)
-        }
     }
 }
 

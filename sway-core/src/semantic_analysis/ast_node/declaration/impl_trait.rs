@@ -273,11 +273,7 @@ impl TypedImplTrait {
                 )
                 | TypedDeclaration::ConstantDeclaration(
                     semantic_analysis::TypedConstantDeclaration { value: expr, .. },
-                )
-                | TypedDeclaration::Reassignment(semantic_analysis::TypedReassignment {
-                    rhs: expr,
-                    ..
-                }) => expr_contains_get_storage_index(expr),
+                ) => expr_contains_get_storage_index(expr),
                 // We're already inside a type's impl. So we can't have these
                 // nested functions etc. We just ignore them.
                 TypedDeclaration::FunctionDeclaration(_)
@@ -288,8 +284,7 @@ impl TypedImplTrait {
                 | TypedDeclaration::AbiDeclaration(_)
                 | TypedDeclaration::GenericTypeForFunctionScope { .. }
                 | TypedDeclaration::ErrorRecovery
-                | TypedDeclaration::StorageDeclaration(_)
-                | TypedDeclaration::StorageReassignment(_) => false,
+                | TypedDeclaration::StorageDeclaration(_) => false,
             }
         }
         fn codeblock_contains_get_storage_index(cb: &semantic_analysis::TypedCodeBlock) -> bool {

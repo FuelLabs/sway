@@ -5,12 +5,12 @@ use crate::{
         ast_node::{
             TypedAbiDeclaration, TypedCodeBlock, TypedConstantDeclaration, TypedDeclaration,
             TypedEnumDeclaration, TypedExpression, TypedExpressionVariant,
-            TypedFunctionDeclaration, TypedReassignment, TypedReturnStatement,
-            TypedStructDeclaration, TypedStructExpressionField, TypedTraitDeclaration,
-            TypedVariableDeclaration, VariableMutability,
+            TypedFunctionDeclaration, TypedReturnStatement, TypedStructDeclaration,
+            TypedStructExpressionField, TypedTraitDeclaration, TypedVariableDeclaration,
+            VariableMutability,
         },
-        TypeCheckedStorageReassignment, TypedAsmRegisterDeclaration, TypedAstNode,
-        TypedAstNodeContent, TypedImplTrait, TypedIntrinsicFunctionKind, TypedStorageDeclaration,
+        TypedAsmRegisterDeclaration, TypedAstNode, TypedAstNodeContent, TypedImplTrait,
+        TypedIntrinsicFunctionKind, TypedStorageDeclaration,
     },
     type_system::{resolve_type, TypeInfo},
     CompileError, CompileWarning, Ident, TreeType, Warning,
@@ -366,24 +366,6 @@ fn connect_declaration(
             connect_enum_declaration(enum_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
-        StorageReassignment(TypeCheckedStorageReassignment { rhs, .. }) => connect_expression(
-            &rhs.expression,
-            graph,
-            &[entry_node],
-            exit_node,
-            "variable reassignment",
-            tree_type,
-            rhs.span.clone(),
-        ),
-        Reassignment(TypedReassignment { rhs, .. }) => connect_expression(
-            &rhs.expression,
-            graph,
-            &[entry_node],
-            exit_node,
-            "variable reassignment",
-            tree_type,
-            rhs.clone().span,
-        ),
         ImplTrait(TypedImplTrait {
             trait_name,
             methods,
