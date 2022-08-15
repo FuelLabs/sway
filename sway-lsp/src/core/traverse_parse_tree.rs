@@ -9,9 +9,10 @@ use sway_core::{
     type_system::TypeArgument,
     AbiCastExpression, ArrayIndexExpression, AstNode, AstNodeContent, CodeBlock, Declaration,
     DelineatedPathExpression, Expression, ExpressionKind, FunctionApplicationExpression,
-    FunctionDeclaration, IfExpression, IntrinsicFunctionExpression, LazyOperatorExpression,
-    MatchExpression, MethodApplicationExpression, ReassignmentTarget, StorageAccessExpression,
-    StructExpression, SubfieldExpression, TupleIndexExpression, TypeInfo, WhileLoopExpression,
+    FunctionDeclaration, FunctionParameter, IfExpression, IntrinsicFunctionExpression,
+    LazyOperatorExpression, MatchExpression, MethodApplicationExpression, ReassignmentTarget,
+    StorageAccessExpression, StructExpression, SubfieldExpression, TupleIndexExpression, TypeInfo,
+    WhileLoopExpression,
 };
 use sway_types::{Ident, Span};
 
@@ -43,22 +44,9 @@ fn handle_function_declation(func: &FunctionDeclaration, tokens: &TokenMap) {
     for node in &func.body.contents {
         traverse_node(node, tokens);
     }
-    for parameter in &func.parameters {
-        tokens.insert(
-            to_ident_key(&parameter.name),
-            Token::from_parsed(
-                AstToken::FunctionParameter(parameter.clone()),
-                SymbolKind::ValueParam,
-            ),
-        );
 
-        tokens.insert(
-            to_ident_key(&Ident::new(parameter.type_span.clone())),
-            Token::from_parsed(
-                AstToken::FunctionParameter(parameter.clone()),
-                SymbolKind::Unknown,
-            ),
-        );
+    for parameter in &func.parameters {
+        collect_function_parameter(parameter, tokens);
     }
 
     if let TypeInfo::Custom { name, .. } = &func.return_type {
@@ -209,22 +197,8 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                     Token::from_parsed(AstToken::TraitFn(trait_fn.clone()), SymbolKind::Function),
                 );
 
-                for param in &trait_fn.parameters {
-                    tokens.insert(
-                        to_ident_key(&param.name),
-                        Token::from_parsed(
-                            AstToken::FunctionParameter(param.clone()),
-                            SymbolKind::ValueParam,
-                        ),
-                    );
-
-                    tokens.insert(
-                        to_ident_key(&Ident::new(param.type_span.clone())),
-                        Token::from_parsed(
-                            AstToken::FunctionParameter(param.clone()),
-                            SymbolKind::Unknown,
-                        ),
-                    );
+                for parameter in &trait_fn.parameters {
+                    collect_function_parameter(parameter, tokens);
                 }
 
                 if let TypeInfo::Custom { name, .. } = &trait_fn.return_type {
@@ -567,7 +541,7 @@ fn handle_while_loop(body: &CodeBlock, condition: &Expression, tokens: &TokenMap
 fn collect_type_args(type_arguments: &Vec<TypeArgument>, token: &Token, tokens: &TokenMap) {
     for arg in type_arguments {
         let mut token = token.clone();
-        let type_info = sway_core::type_system::look_up_type_id(arg.type_id.clone());
+        let type_info = sway_core::type_system::look_up_type_id(arg.type_id);
         let symbol_kind = type_info_to_symbol_kind(&type_info);
         token.kind = symbol_kind;
         token.type_def = Some(TypeDefinition::TypeId(arg.type_id));
@@ -599,6 +573,7 @@ fn collect_type_info_token(
             name,
             type_arguments,
         } => {
+            token.type_def = Some(TypeDefinition::Ident(name.clone()));
             tokens.insert(to_ident_key(name), token.clone());
             if let Some(args) = type_arguments {
                 collect_type_args(args, &token, tokens);
@@ -606,4 +581,21 @@ fn collect_type_info_token(
         }
         _ => (),
     }
+}
+
+fn collect_function_parameter(parameter: &FunctionParameter, tokens: &TokenMap) {
+    let token = Token::from_parsed(
+        AstToken::FunctionParameter(parameter.clone()),
+        SymbolKind::ValueParam,
+    );
+    tokens.insert(to_ident_key(&parameter.name), token.clone());
+
+    let type_info = sway_core::type_system::look_up_type_id(parameter.type_id);
+
+    collect_type_info_token(
+        tokens,
+        &token,
+        &type_info,
+        Some(parameter.type_span.clone()),
+    );
 }

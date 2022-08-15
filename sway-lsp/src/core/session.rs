@@ -23,7 +23,7 @@ use sway_core::{CompileAstResult, CompileResult, ParseProgram, TypedProgram, Typ
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, GotoDefinitionParams, GotoDefinitionResponse, Location, Position,
-    Range, SemanticToken, SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
+    Range, SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
 };
 
 pub type Documents = DashMap<String, TextDocument>;

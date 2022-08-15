@@ -1,10 +1,9 @@
 use crate::core::{
     session::Session,
-    token::{AstToken, SymbolKind, Token},
+    token::{SymbolKind, Token},
 };
 use crate::utils::common::get_range_from_span;
 use std::sync::atomic::{AtomicU32, Ordering};
-use sway_core::{Declaration, ExpressionKind, Literal};
 use sway_types::Span;
 use tower_lsp::lsp_types::{
     Range, SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens,
@@ -34,51 +33,6 @@ pub fn semantic_tokens_full(session: &Session, url: &Url) -> Option<SemanticToke
     let semantic_tokens = semantic_tokens(&tokens_sorted);
 
     Some(semantic_tokens.into())
-}
-
-fn type_idx(ast_token: &AstToken) -> u32 {
-    match ast_token {
-        AstToken::Declaration(dec) => {
-            match dec {
-                Declaration::VariableDeclaration(_) => TokenTypeIndex::Variable as u32,
-                Declaration::FunctionDeclaration(_) => TokenTypeIndex::Function as u32,
-                Declaration::TraitDeclaration(_) | Declaration::ImplTrait { .. } => {
-                    TokenTypeIndex::Interface as u32
-                }
-                Declaration::StructDeclaration(_) => TokenTypeIndex::Struct as u32,
-                Declaration::EnumDeclaration(_) => TokenTypeIndex::Enum as u32,
-                // currently we return `variable` type as default
-                _ => TokenTypeIndex::Variable as u32,
-            }
-        }
-        AstToken::Expression(exp) => {
-            match &exp.kind {
-                ExpressionKind::Literal(Literal::String(_)) => TokenTypeIndex::String as u32,
-                ExpressionKind::FunctionApplication(_) => TokenTypeIndex::Function as u32,
-                ExpressionKind::Variable(_) => TokenTypeIndex::Variable as u32,
-                ExpressionKind::Struct(_) => TokenTypeIndex::Struct as u32,
-                // currently we return `variable` type as default
-                _ => TokenTypeIndex::Variable as u32,
-            }
-        }
-        AstToken::FunctionDeclaration(_) => TokenTypeIndex::Function as u32,
-        AstToken::FunctionParameter(_) => TokenTypeIndex::Parameter as u32,
-        AstToken::TraitFn(_) => TokenTypeIndex::Function as u32,
-        // currently we return `variable` type as default
-        _ => TokenTypeIndex::Variable as u32,
-    }
-}
-
-/// these values should reflect indexes in `token_types`
-#[repr(u32)]
-enum TokenTypeIndex {
-    Function = 1,
-    Parameter = 5,
-    String = 6,
-    Variable = 9,
-    Enum = 10,
-    Struct = 11,
-    Interface = 12,
 }
 
 //-------------------------------
@@ -184,12 +138,8 @@ pub(crate) fn type_index(ty: SemanticTokenType) -> u32 {
 }
 
 pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
-    //SemanticTokenType::COMMENT,
-    //SemanticTokenType::KEYWORD,
     SemanticTokenType::STRING,
     SemanticTokenType::NUMBER,
-    //SemanticTokenType::REGEXP,
-    //SemanticTokenType::OPERATOR,
     SemanticTokenType::NAMESPACE,
     SemanticTokenType::TYPE,
     SemanticTokenType::STRUCT,
@@ -201,7 +151,6 @@ pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
     SemanticTokenType::FUNCTION,
     SemanticTokenType::METHOD,
     SemanticTokenType::PROPERTY,
-    //SemanticTokenType::MACRO,
     SemanticTokenType::VARIABLE,
     SemanticTokenType::PARAMETER,
     SemanticTokenType::new("generic"),
