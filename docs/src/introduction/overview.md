@@ -189,7 +189,7 @@ Note the contract ID—you will need it if you want to build out a frontend to i
 
 ## Testing your Contract
 
-In the directory `tests`, navigate to `harness.rs.` Here you'll see there is some boilerpalte code to help you start interacting with and testing your contract. 
+In the directory `tests`, navigate to `harness.rs.` Here you'll see there is some boilerplate code to help you start interacting with and testing your contract.
 
 At the bottom of the file, define the body of `can_get_contract_instance`. Here is what your code should look like to verify that the value of the counter did get incremented: 
 
