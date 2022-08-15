@@ -24,8 +24,8 @@ impl Format for ItemImpl {
         )?;
         if let Some(generic_params) = &self.generic_params_opt {
             generic_params.format(formatted_code, formatter)?;
-            write!(formatted_code, " ")?;
         }
+        write!(formatted_code, " ")?;
         if let Some((path_type, for_token)) = &self.trait_opt {
             path_type.format(formatted_code, formatter)?;
             write!(formatted_code, " {}", for_token.span().as_str())?;

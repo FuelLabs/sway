@@ -1,12 +1,13 @@
 use crate::{
     fmt::*,
-    utils::comments::{ByteSpan, LeafSpans},
+    utils::{
+        bracket::{CurlyBrace, Parenthesis},
+        comments::{ByteSpan, LeafSpans},
+    },
 };
 use std::fmt::Write;
 use sway_ast::{token::Delimiter, Pattern, PatternStructField};
 use sway_types::Spanned;
-
-use super::bracket::{CurlyBrace, Parenthesis};
 
 impl Format for Pattern {
     fn format(

@@ -3,15 +3,15 @@ use forc_util::{println_green, println_red};
 use paste::paste;
 use prettydiff::{basic::DiffOp, diff_lines};
 use sway_ast::Expr;
-use sway_parse::*;
+use sway_parse::{handler::Handler, *};
 
 fn format_code(input: &str) -> String {
-    let mut errors = vec![];
     let mut formatter: Formatter = Default::default();
     let input_arc = std::sync::Arc::from(input);
     let token_stream = lex(&input_arc, 0, input.len(), None).unwrap();
-    let mut parser = Parser::new(&token_stream, &mut errors);
-    let expression: Expr = Parse::parse(&mut parser).unwrap();
+    let handler = Handler::default();
+    let mut parser = Parser::new(&token_stream, &handler);
+    let expression: Expr = parser.parse().unwrap();
 
     let mut buf = Default::default();
     expression.format(&mut buf, &mut formatter).unwrap();
@@ -89,15 +89,15 @@ fmt_test!(  field_proj_foobar "foo.bar.baz.quux",
 
 fmt_test!(  abi_cast "abi(MyAbi, 0x1111111111111111111111111111111111111111111111111111111111111111)",
             intermediate_whitespace " abi (
-                  MyAbi  
-                   , 
+                  MyAbi
+                   ,
                                  0x1111111111111111111111111111111111111111111111111111111111111111
                                   )  "
 );
 
 fmt_test!(  basic_func_app "foo()",
             intermediate_whitespace " foo (
-                
+
             ) "
 );
 
@@ -110,4 +110,8 @@ fmt_test!(  nested_args_func_app "foo(a_struct { hello: \"hi\" }, a_var, foo.bar
 fmt_test!(  multiline_tuple "(\n    \"reallyreallylongstring\",\n    \"yetanotherreallyreallyreallylongstring\",\n    \"okaynowthatsjustaridiculouslylongstringrightthere\",\n)",
             intermediate_whitespace "(\"reallyreallylongstring\",             \"yetanotherreallyreallyreallylongstring\",
             \"okaynowthatsjustaridiculouslylongstringrightthere\")"
+);
+
+fmt_test!(  multiline_match_stmt "match foo {\n    Foo::foo => {}\n    Foo::bar => {}\n}",
+            intermediate_whitespace "match foo {\n    Foo::foo => {}\n    Foo::bar => {}\n}"
 );
