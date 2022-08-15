@@ -89,7 +89,9 @@ pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {
                     assert!(crate::e2e_vm_tests::harness::test_json_abi(&name, &result.1).is_ok());
                 }
                 if validate_abi_flat {
-                    assert!(crate::e2e_vm_tests::harness::test_json_abi_flat(&name, &result.1).is_ok());
+                    assert!(
+                        crate::e2e_vm_tests::harness::test_json_abi_flat(&name, &result.1).is_ok()
+                    );
                 }
                 number_of_tests_executed += 1;
             }
@@ -106,7 +108,9 @@ pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {
                     assert!(crate::e2e_vm_tests::harness::test_json_abi(&name, &compiled).is_ok());
                 }
                 if validate_abi_flat {
-                    assert!(crate::e2e_vm_tests::harness::test_json_abi_flat(&name, &compiled).is_ok());
+                    assert!(
+                        crate::e2e_vm_tests::harness::test_json_abi_flat(&name, &compiled).is_ok()
+                    );
                 }
                 if validate_storage_slots {
                     assert!(crate::e2e_vm_tests::harness::test_json_storage_slots(
@@ -317,7 +321,7 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
         .get("validate_abi")
         .map(|v| v.as_bool().unwrap_or(false))
         .unwrap_or(false);
-    
+
     let validate_abi_flat = toml_content
         .get("validate_abi_flat")
         .map(|v| v.as_bool().unwrap_or(false))

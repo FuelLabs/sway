@@ -2051,7 +2051,7 @@ fn update_json_type_declaration(
 ) {
     if let Some(params) = &mut type_declaration.type_parameters {
         for param in params.iter_mut() {
-            if let Some(new_id) = old_to_new_id.get(&param) {
+            if let Some(new_id) = old_to_new_id.get(param) {
                 *param = *new_id;
             }
         }

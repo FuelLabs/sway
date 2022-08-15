@@ -364,6 +364,13 @@ impl TypedProgramKind {
                     functions: result,
                 }
             }
+            TypedProgramKind::Script { main_function, .. } => {
+                let result = vec![main_function.generate_json_abi_function(types)];
+                JsonABIProgram {
+                    types: types.to_vec(),
+                    functions: result,
+                }
+            }
             _ => JsonABIProgram {
                 types: vec![],
                 functions: vec![],
