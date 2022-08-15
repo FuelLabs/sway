@@ -2010,6 +2010,7 @@ fn standardize_json_abi_types(json_abi_program: &mut JsonABIProgram) {
     update_all_types(json_abi_program, &old_to_new_id);
 }
 
+/// Recursively updates the type IDs used in a JsonABIProgram
 fn update_all_types(json_abi_program: &mut JsonABIProgram, old_to_new_id: &HashMap<usize, usize>) {
     // Update all `JsonTypeApplication`s in every function
     for func in json_abi_program.functions.iter_mut() {

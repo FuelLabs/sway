@@ -177,7 +177,10 @@ impl TypeId {
         }
     }
 
-    pub(crate) fn is_generic(self, resolved_type_id: TypeId) -> bool {
+    /// Indicates of a given type is generic or not. Rely on whether the type is `Custom` and
+    /// consider the special case where the resolved type is a struct or enum with a name that
+    /// matches the name of the `Custom`.
+    pub(crate) fn is_generic_parameter(self, resolved_type_id: TypeId) -> bool {
         match (look_up_type_id(self), look_up_type_id(resolved_type_id)) {
             (
                 TypeInfo::Custom { name, .. },
@@ -191,12 +194,15 @@ impl TypeId {
                     name: struct_name, ..
                 },
             ) => name != struct_name,
-            (TypeInfo::Custom { .. }, TypeInfo::Array(..)) => true,
-            (TypeInfo::Custom { .. }, TypeInfo::Tuple { .. }) => true,
+            (TypeInfo::Custom { .. }, _) => true,
             _ => false,
         }
     }
 
+    /// Return the components of a given (potentially generic) type while considering what it
+    /// actually resolves to. These components are essentially of type of `JsonTypeApplication`.
+    /// The method below also updates the provided list of `JsonTypeDeclaration`s  to add the newly
+    /// discovered types.
     pub(crate) fn get_json_type_components(
         &self,
         types: &mut Vec<JsonTypeDeclaration>,
@@ -324,7 +330,7 @@ impl TypeId {
                 }
             }
             TypeInfo::Custom { type_arguments, .. } => {
-                if !self.is_generic(resolved_type_id) {
+                if !self.is_generic_parameter(resolved_type_id) {
                     // A list of all `JsonTypeDeclaration`s needed for the type arguments
                     let type_args = type_arguments
                         .unwrap_or_default()
@@ -357,12 +363,16 @@ impl TypeId {
         }
     }
 
+    /// Return the type parameters of a given (potentially generic) type while considering what it
+    /// actually resolves to. These parameters are essentially of type of `usize` which are
+    /// basically the IDs of some set of `JsonTypeDeclaration`s. The method below also updates the
+    /// provide list of `JsonTypeDeclaration`s  to add the newly discovered types.
     pub(crate) fn get_json_type_parameters(
         &self,
         types: &mut Vec<JsonTypeDeclaration>,
         resolved_type_id: TypeId,
     ) -> Option<Vec<usize>> {
-        match self.is_generic(resolved_type_id) {
+        match self.is_generic_parameter(resolved_type_id) {
             true => None,
             false => resolved_type_id.get_type_parameters().map(|v| {
                 v.iter()
@@ -372,6 +382,10 @@ impl TypeId {
         }
     }
 
+    /// Return the type arguments of a given (potentially generic) type while considering what it
+    /// actually resolves to. These arguments are essentially of type of `JsonTypeApplication`. The
+    /// method below also updates the provided list of `JsonTypeDeclaration`s  to add the newly
+    /// discovered types.
     pub(crate) fn get_json_type_arguments(
         &self,
         types: &mut Vec<JsonTypeDeclaration>,
@@ -413,8 +427,9 @@ impl TypeId {
         }
     }
 
+    /// Gives back a string that represents the type, considering what it resolves to
     pub(crate) fn get_json_type_str(&self, resolved_type_id: TypeId) -> String {
-        if self.is_generic(resolved_type_id) {
+        if self.is_generic_parameter(resolved_type_id) {
             format!("generic {}", look_up_type_id(*self).json_abi_str())
         } else {
             match (look_up_type_id(*self), look_up_type_id(resolved_type_id)) {

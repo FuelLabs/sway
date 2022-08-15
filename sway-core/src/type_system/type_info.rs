@@ -78,7 +78,9 @@ pub enum TypeInfo {
     Contract,
     // used for recovering from errors in the ast
     ErrorRecovery,
-    // Static, constant size arrays.
+    // Static, constant size arrays. The second `TypeId` below contains the initial type ID
+    // which could be generic.
+    // TODO: change this to a struct instead of a tuple
     Array(TypeId, usize, TypeId),
     /// Represents the entire storage declaration struct
     /// Stored without initializers here, as typed struct fields,
@@ -774,7 +776,7 @@ impl TypeInfo {
                             insert_type(TypeInfo::Ref(new_field_id, fields[index].span.clone()));
                         new_fields.push(TypeArgument {
                             type_id,
-                            initial_type_id: type_id, // TODO - this is wrong
+                            initial_type_id: fields[index].initial_type_id,
                             span: fields[index].span.clone(),
                         });
                         index += 1;
