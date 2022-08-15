@@ -120,9 +120,10 @@ impl Counter for Contract {
 ```sway
 fn counter() -> u64 {
     return storage.counter;
-  }
-  ```
-  Read and return the counter property value from the contract storage.
+}
+```
+
+Read and return the counter property value from the contract storage.
 
 `#[storage(read, write)]` is an annotation which denotes that this function has the permissions to read and write values in storage.
 
