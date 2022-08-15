@@ -75,7 +75,7 @@ fn parsed_to_symbol_kind(ast_token: &AstToken) -> SymbolKind {
         }
         AstToken::FunctionDeclaration(_) => SymbolKind::FUNCTION,
         AstToken::FunctionParameter(_) => SymbolKind::TYPE_PARAMETER,
-        AstToken::StructField(_) => SymbolKind::FIELD,
+        AstToken::StructField(_) | AstToken::StructExpressionField(_) => SymbolKind::FIELD,
         AstToken::EnumVariant(_) => SymbolKind::ENUM_MEMBER,
         AstToken::TraitFn(_) => SymbolKind::FUNCTION,
         AstToken::StorageField(_) => SymbolKind::FIELD,

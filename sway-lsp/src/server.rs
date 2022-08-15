@@ -417,11 +417,11 @@ mod tests {
     }
 
     fn tmp_test_dir() -> PathBuf {
-        env::current_dir().unwrap().join("test_programs/enums")
+        env::current_dir().unwrap().join("test_programs/particle")
     }
 
     fn load_sway_example() -> (Url, String) {
-        let manifest_dir = e2e_test_dir();
+        let manifest_dir = tmp_test_dir();
         let src_path = manifest_dir.join("src/main.sw");
         let mut file = fs::File::open(&src_path).unwrap();
         let mut sway_program = String::new();
@@ -584,8 +584,8 @@ mod tests {
         assert_eq!(response, Ok(Some(err)));
     }
 
-    //#[tokio::test]
-    #[allow(dead_code)]
+    #[tokio::test]
+    //#[allow(dead_code)]
     async fn did_open() {
         let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
 

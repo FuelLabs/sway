@@ -367,8 +367,8 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                 tokens.insert(
                     to_ident_key(&field.name),
                     Token::from_parsed(
-                        AstToken::Expression(field.value.clone()),
-                        SymbolKind::Variable,
+                        AstToken::StructExpressionField(field.clone()),
+                        SymbolKind::Field,
                     ),
                 );
                 handle_expression(&field.value, tokens);

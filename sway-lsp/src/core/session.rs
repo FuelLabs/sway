@@ -187,6 +187,7 @@ impl Session {
                 Err(DocumentError::FailedToParse(diagnostics))
             }
             Some(parse_program) => {
+                eprintln!("{:#?}", &parse_program.root.tree.root_nodes);
                 for node in &parse_program.root.tree.root_nodes {
                     traverse_parse_tree::traverse_node(node, &self.token_map);
                 }
@@ -336,11 +337,6 @@ impl Session {
             self.token_map(),
         ))
     }
-
-    // pub fn semantic_tokens(&self, url: &Url) -> Option<Vec<SemanticToken>> {
-    //     let tokens = self.tokens_for_file(url);
-    //     Some(capabilities::semantic_tokens::to_semantic_tokens(&tokens))
-    // }
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
         let tokens = self.tokens_for_file(url);

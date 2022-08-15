@@ -7,7 +7,7 @@ use sway_core::{
     },
     type_system::TypeId,
     Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
-    ReassignmentExpression, StorageField, StructField, TraitFn,
+    ReassignmentExpression, StorageField, StructExpressionField, StructField, TraitFn,
 };
 use sway_types::{Ident, Span};
 
@@ -42,6 +42,7 @@ impl Token {
 pub enum AstToken {
     Declaration(Declaration),
     Expression(Expression),
+    StructExpressionField(StructExpressionField),
     FunctionDeclaration(FunctionDeclaration),
     FunctionParameter(FunctionParameter),
     StructField(StructField),
