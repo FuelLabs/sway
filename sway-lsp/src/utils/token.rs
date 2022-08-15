@@ -1,4 +1,4 @@
-use crate::core::token::{AstToken, Token, TokenMap, TypedAstToken};
+use crate::core::token::{AstToken, SymbolKind, Token, TokenMap, TypedAstToken};
 use sway_core::semantic_analysis::ast_node::{
     declaration::TypedStructDeclaration, TypedDeclaration,
 };
@@ -75,6 +75,26 @@ pub(crate) fn ident_of_type_id(type_id: &TypeId) -> Option<Ident> {
         | TypeInfo::Struct { name, .. }
         | TypeInfo::Custom { name, .. } => Some(name),
         _ => None,
+    }
+}
+
+pub(crate) fn type_info_to_symbol_kind(type_info: &TypeInfo) -> SymbolKind {
+    match type_info {
+        TypeInfo::UnsignedInteger(..) | TypeInfo::Numeric => SymbolKind::NumericLiteral,
+        TypeInfo::Boolean => SymbolKind::BoolLiteral,
+        TypeInfo::Byte | TypeInfo::B256 => SymbolKind::ByteLiteral,
+        TypeInfo::Str(..) => SymbolKind::StringLiteral,
+        TypeInfo::Custom { .. } | TypeInfo::Struct { .. } => SymbolKind::Struct,
+        TypeInfo::Enum { .. } => SymbolKind::Enum,
+        TypeInfo::Ref(type_id, ..) => {
+            let type_info = sway_core::type_system::look_up_type_id(*type_id);
+            type_info_to_symbol_kind(&type_info)
+        }
+        TypeInfo::Array(type_id, ..) => {
+            let type_info = sway_core::type_system::look_up_type_id(*type_id);
+            type_info_to_symbol_kind(&type_info)
+        }
+        _ => SymbolKind::Unknown,
     }
 }
 
