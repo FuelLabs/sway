@@ -11,7 +11,8 @@ use crate::{
     error::IrError,
     function::Function,
     instruction::Instruction,
-    metadata::MetadataIndex,
+    irtype::Type,
+    metadata::{combine, MetadataIndex},
     pointer::Pointer,
     value::{Value, ValueContent, ValueDatum},
 };
@@ -20,21 +21,43 @@ use crate::{
 ///
 /// e.g., If this is applied to main() then all calls in the program are removed.  This is
 /// obviously dangerous for recursive functions, in which case this pass would inline forever.
+
 pub fn inline_all_function_calls(
     context: &mut Context,
     function: &Function,
 ) -> Result<bool, IrError> {
+    inline_some_function_calls(context, function, |_, _, _| true)
+}
+
+/// Inline function calls based on a provided heuristic predicate.
+///
+/// There are many things to consider when deciding to inline a function.  For example:
+/// - The size of the function, especially if smaller than the call overhead size.
+/// - The stack frame size of the function.
+/// - The number of calls made to the function or if the function is called inside a loop.
+/// - A particular call has constant arguments implying further constant folding.
+/// - An attribute request, e.g., #[always_inline], #[never_inline].
+
+pub fn inline_some_function_calls<F: Fn(&Context, &Function, &Value) -> bool>(
+    context: &mut Context,
+    function: &Function,
+    predicate: F,
+) -> Result<bool, IrError> {
     let mut modified = false;
     loop {
-        // Find the next call site.
+        // Find the next call site which passes the predicate.
         let call_data = function
             .instruction_iter(context)
             .find_map(|(block, call_val)| match context.values[call_val.0].value {
-                ValueDatum::Instruction(Instruction::Call(inlined_function, _)) => {
-                    Some((block, call_val, inlined_function))
-                }
+                ValueDatum::Instruction(Instruction::Call(inlined_function, _)) => predicate(
+                    context,
+                    &inlined_function,
+                    &call_val,
+                )
+                .then_some((block, call_val, inlined_function)),
                 _ => None,
             });
+
         match call_data {
             Some((block, call_val, inlined_function)) => {
                 inline_function_call(context, *function, block, call_val, inlined_function)?;
@@ -46,10 +69,69 @@ pub fn inline_all_function_calls(
     Ok(modified)
 }
 
+/// A utility to get a predicate which can be passed to inline_some_function_calls() based on
+/// certain sizes of the function.  If a constraint is None then any size is assumed to be
+/// acceptable.
+///
+/// The max_stack_size is a bit tricky, as the IR doesn't really know (or care) about the size of
+/// types.  See the source code for how it works.
+
+pub fn is_small_fn(
+    max_blocks: Option<usize>,
+    max_instrs: Option<usize>,
+    max_stack_size: Option<usize>,
+) -> impl Fn(&Context, &Function, &Value) -> bool {
+    fn count_type_elements(context: &Context, ty: &Type) -> usize {
+        // This is meant to just be a heuristic rather than be super accurate.
+        match ty {
+            Type::Unit
+            | Type::Bool
+            | Type::Uint(_)
+            | Type::B256
+            | Type::String(_)
+            | Type::Pointer(_) => 1,
+            Type::Array(aggregate) => {
+                let (ty, sz) = context.aggregates[aggregate.0].array_type();
+                count_type_elements(context, ty) * *sz as usize
+            }
+            Type::Union(aggregate) => context.aggregates[aggregate.0]
+                .field_types()
+                .iter()
+                .map(|ty| count_type_elements(context, ty))
+                .max()
+                .unwrap_or(1),
+            Type::Struct(aggregate) => context.aggregates[aggregate.0]
+                .field_types()
+                .iter()
+                .map(|ty| count_type_elements(context, ty))
+                .sum(),
+        }
+    }
+
+    move |context: &Context, function: &Function, _call_site: &Value| -> bool {
+        max_blocks
+            .map(|max_block_count| function.num_blocks(context) <= max_block_count)
+            .unwrap_or(true)
+            && max_instrs
+                .map(|max_instrs_count| function.num_instructions(context) <= max_instrs_count)
+                .unwrap_or(true)
+            && max_stack_size
+                .map(|max_stack_size_count| {
+                    function
+                        .locals_iter(context)
+                        .map(|(_name, ptr)| count_type_elements(context, ptr.get_type(context)))
+                        .sum::<usize>()
+                        <= max_stack_size_count
+                })
+                .unwrap_or(true)
+    }
+}
+
 /// Inline a function to a specific call site within another function.
 ///
 /// The destination function, block and call site must be specified along with the function to
 /// inline.
+
 pub fn inline_function_call(
     context: &mut Context,
     function: Function,
@@ -95,9 +177,9 @@ pub fn inline_function_call(
         }
     }
 
-    // Get the state index metadata attached to the function call. This needs to be propagated to
-    // the __get_storage_key intrinsic
-    let state_idx_md_idx = context.values[call_site.0].state_idx_md_idx;
+    // Get the metadata attached to the function call which may need to be propagated to the
+    // inlined instructions.
+    let metadata = context.values[call_site.0].metadata;
 
     // Now remove the call altogether.
     context.values.remove(call_site.0);
@@ -146,7 +228,7 @@ pub fn inline_function_call(
                 &block_map,
                 &mut value_map,
                 &ptr_map,
-                state_idx_md_idx,
+                metadata,
             );
         }
     }
@@ -182,7 +264,7 @@ fn inline_instruction(
     block_map: &HashMap<Block, Block>,
     value_map: &mut HashMap<Value, Value>,
     ptr_map: &HashMap<Pointer, Pointer>,
-    state_idx_md_idx: Option<MetadataIndex>,
+    fn_metadata: Option<MetadataIndex>,
 ) {
     // Util to translate old blocks to new.  If an old block isn't in the map then we panic, since
     // it should be guaranteed to be there...that's a bug otherwise.
@@ -202,11 +284,13 @@ fn inline_instruction(
     // restructure instructions somehow, so we don't need a persistent `&Context` to access them.
     if let ValueContent {
         value: ValueDatum::Instruction(old_ins),
-        span_md_idx,
-        state_idx_md_idx: current_state_idx_md_idx,
-        ..
+        metadata: val_metadata,
     } = context.values[instruction.0].clone()
     {
+        // Combine the function metadata with this instruction metadata so we don't lose the
+        // function metadata after inlining.
+        let metadata = combine(context, &fn_metadata, &val_metadata);
+
         let new_ins = match old_ins {
             Instruction::AsmBlock(asm, args) => {
                 let new_args = args
@@ -218,37 +302,25 @@ fn inline_instruction(
                     .collect();
 
                 // We can re-use the old asm block with the updated args.
-                new_block
-                    .ins(context)
-                    .asm_block_from_asm(asm, new_args, span_md_idx)
+                new_block.ins(context).asm_block_from_asm(asm, new_args)
             }
-            Instruction::BitCast(value, ty) => {
-                new_block
-                    .ins(context)
-                    .bitcast(map_value(value), ty, span_md_idx)
-            }
+            Instruction::AddrOf(arg) => new_block.ins(context).addr_of(map_value(arg)),
+            Instruction::BitCast(value, ty) => new_block.ins(context).bitcast(map_value(value), ty),
             // For `br` and `cbr` below we don't need to worry about the phi values, they're
             // adjusted later in `inline_function_call()`.
-            Instruction::Branch(b) => {
-                new_block
-                    .ins(context)
-                    .branch(map_block(b), None, span_md_idx)
-            }
+            Instruction::Branch(b) => new_block.ins(context).branch(map_block(b), None),
             Instruction::Call(f, args) => new_block.ins(context).call(
                 f,
                 args.iter()
                     .map(|old_val: &Value| map_value(*old_val))
                     .collect::<Vec<Value>>()
                     .as_slice(),
-                span_md_idx,
-                current_state_idx_md_idx,
             ),
-            Instruction::Cmp(pred, lhs_value, rhs_value) => new_block.ins(context).cmp(
-                pred,
-                map_value(lhs_value),
-                map_value(rhs_value),
-                span_md_idx,
-            ),
+            Instruction::Cmp(pred, lhs_value, rhs_value) => {
+                new_block
+                    .ins(context)
+                    .cmp(pred, map_value(lhs_value), map_value(rhs_value))
+            }
             Instruction::ConditionalBranch {
                 cond_value,
                 true_block,
@@ -258,7 +330,6 @@ fn inline_instruction(
                 map_block(true_block),
                 map_block(false_block),
                 None,
-                span_md_idx,
             ),
             Instruction::ContractCall {
                 return_type,
@@ -274,37 +345,35 @@ fn inline_instruction(
                 map_value(coins),
                 map_value(asset_id),
                 map_value(gas),
-                span_md_idx,
             ),
             Instruction::ExtractElement {
                 array,
                 ty,
                 index_val,
-            } => new_block.ins(context).extract_element(
-                map_value(array),
-                ty,
-                map_value(index_val),
-                span_md_idx,
-            ),
+            } => new_block
+                .ins(context)
+                .extract_element(map_value(array), ty, map_value(index_val)),
             Instruction::ExtractValue {
                 aggregate,
                 ty,
                 indices,
-            } => {
-                new_block
-                    .ins(context)
-                    .extract_value(map_value(aggregate), ty, indices, span_md_idx)
-            }
-            Instruction::GetStorageKey => new_block
+            } => new_block
                 .ins(context)
-                .get_storage_key(span_md_idx, state_idx_md_idx),
+                .extract_value(map_value(aggregate), ty, indices),
+            Instruction::GetStorageKey => new_block.ins(context).get_storage_key(),
             Instruction::GetPointer {
                 base_ptr,
                 ptr_ty,
                 offset,
-            } => new_block
-                .ins(context)
-                .get_ptr(map_ptr(base_ptr), ptr_ty, offset, span_md_idx),
+            } => {
+                let ty = *ptr_ty.get_type(context);
+                new_block
+                    .ins(context)
+                    .get_ptr(map_ptr(base_ptr), ty, offset)
+            }
+            Instruction::Gtf { index, tx_field_id } => {
+                new_block.ins(context).gtf(map_value(index), tx_field_id)
+            }
             Instruction::InsertElement {
                 array,
                 ty,
@@ -315,7 +384,6 @@ fn inline_instruction(
                 ty,
                 map_value(value),
                 map_value(index_val),
-                span_md_idx,
             ),
             Instruction::InsertValue {
                 aggregate,
@@ -327,47 +395,43 @@ fn inline_instruction(
                 ty,
                 map_value(value),
                 indices,
-                span_md_idx,
             ),
-            Instruction::Load(src_val) => {
-                new_block.ins(context).load(map_value(src_val), span_md_idx)
+            Instruction::IntToPtr(value, ty) => {
+                new_block.ins(context).int_to_ptr(map_value(value), ty)
             }
+            Instruction::Load(src_val) => new_block.ins(context).load(map_value(src_val)),
             Instruction::Nop => new_block.ins(context).nop(),
-            Instruction::ReadRegister(reg) => {
-                new_block.ins(context).read_register(reg, span_md_idx)
-            }
+            Instruction::ReadRegister(reg) => new_block.ins(context).read_register(reg),
             // We convert `ret` to `br post_block` and add the returned value as a phi value.
-            Instruction::Ret(val, _) => {
-                new_block
-                    .ins(context)
-                    .branch(*post_block, Some(map_value(val)), span_md_idx)
-            }
+            Instruction::Ret(val, _) => new_block
+                .ins(context)
+                .branch(*post_block, Some(map_value(val))),
             Instruction::StateLoadQuadWord { load_val, key } => new_block
                 .ins(context)
-                .state_load_quad_word(map_value(load_val), map_value(key), span_md_idx),
-            Instruction::StateLoadWord(key) => new_block
-                .ins(context)
-                .state_load_word(map_value(key), span_md_idx),
+                .state_load_quad_word(map_value(load_val), map_value(key)),
+            Instruction::StateLoadWord(key) => {
+                new_block.ins(context).state_load_word(map_value(key))
+            }
             Instruction::StateStoreQuadWord { stored_val, key } => new_block
                 .ins(context)
-                .state_store_quad_word(map_value(stored_val), map_value(key), span_md_idx),
+                .state_store_quad_word(map_value(stored_val), map_value(key)),
             Instruction::StateStoreWord { stored_val, key } => new_block
                 .ins(context)
-                .state_store_word(map_value(stored_val), map_value(key), span_md_idx),
+                .state_store_word(map_value(stored_val), map_value(key)),
             Instruction::Store {
                 dst_val,
                 stored_val,
-            } => {
-                new_block
-                    .ins(context)
-                    .store(map_value(dst_val), map_value(stored_val), span_md_idx)
-            }
+            } => new_block
+                .ins(context)
+                .store(map_value(dst_val), map_value(stored_val)),
             // NOTE: We're not translating the phi value yet, since this is the single instance of
             // use of a value which may not be mapped yet -- a branch from a subsequent block,
             // back up to this block.  And we don't need to add a `phi` instruction because an
             // empty one is added upon block creation; we can return that instead.
             Instruction::Phi(_) => new_block.get_phi(context),
-        };
+        }
+        .add_metadatum(context, metadata);
+
         value_map.insert(*instruction, new_ins);
     }
 }

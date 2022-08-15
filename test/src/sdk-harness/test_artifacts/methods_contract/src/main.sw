@@ -2,11 +2,10 @@ contract;
 
 use methods_abi::MethodsContract;
 
-use std::result::*;
 use std::identity::*;
 use std::chain::auth::*;
 use std::option::*;
-use std::assert::*;
+use std::revert::*;
 
 fn bogus() -> Identity {
     let sender = msg_sender();

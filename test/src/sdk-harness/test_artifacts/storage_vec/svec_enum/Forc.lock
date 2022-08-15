@@ -1,0 +1,14 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-BA7DA646BFFC59D3'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'path+from-root-BA7DA646BFFC59D3'
+dependencies = ['core']
+
+[[package]]
+name = 'svec_enum'
+source = 'root'
+dependencies = ['std']

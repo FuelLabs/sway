@@ -1,0 +1,14 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-F1A9B05C249770CB'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'path+from-root-F1A9B05C249770CB'
+dependencies = ['core']
+
+[[package]]
+name = 'svec_array'
+source = 'root'
+dependencies = ['std']

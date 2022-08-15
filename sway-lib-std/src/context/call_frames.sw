@@ -1,9 +1,12 @@
 //! Helper functions for accessing data from call frames.
-/// Call frames store metadata across untrusted inter-contract calls:
-/// https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#call-frames
+//! Call frames store metadata across untrusted inter-contract calls:
+//! https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#call-frames
 library call_frames;
 
+use ::context::registers::frame_ptr;
 use ::contract_id::ContractId;
+use ::intrinsics::is_reference_type;
+use ::mem::read;
 
 // Note that everything when serialized is padded to word length.
 //
@@ -12,6 +15,10 @@ use ::contract_id::ContractId;
 
 const SAVED_REGISTERS_OFFSET: u64 = 64;
 const PREV_FRAME_POINTER_OFFSET: u64 = 48;
+/// Where 584 is the current offset in bytes from the start of the call frame.
+const FIRST_PARAMETER_OFFSET: u64 = 584;
+/// Where 592 (584 + 8) is the current offset in bytes from the start of the call frame.
+const SECOND_PARAMETER_OFFSET: u64 = 592;
 
 ///////////////////////////////////////////////////////////
 //  Accessing the current call frame
@@ -44,17 +51,15 @@ pub fn code_size() -> u64 {
 
 /// Get the first parameter from the current call frame.
 pub fn first_param() -> u64 {
-    asm(size, ptr, offset: 584) {
-        add size fp offset;
-        size: u64
-    }
+    read(frame_ptr() + FIRST_PARAMETER_OFFSET)
 }
 
 /// Get the second parameter from the current call frame.
-pub fn second_param() -> u64 {
-    asm(size, ptr, offset: 592) {
-        add size fp offset;
-        size: u64
+pub fn second_param<T>() -> T {
+    if !is_reference_type::<T>() {
+        read::<T>(frame_ptr() + SECOND_PARAMETER_OFFSET)
+    } else {
+        read::<T>(read::<u64>(frame_ptr() + SECOND_PARAMETER_OFFSET))
     }
 }
 

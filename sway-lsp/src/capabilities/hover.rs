@@ -1,77 +1,98 @@
 use crate::{
     core::{
-        session::{Documents, Session},
-        token::Token,
-        token_type::{TokenType, VarBody},
+        session::Session,
+        token::{AstToken, Token, TypedAstToken},
     },
-    utils::common::extract_visibility,
+    utils::{
+        common::{extract_visibility, get_range_from_span},
+        function::extract_fn_signature,
+        token::to_ident_key,
+    },
 };
-use std::sync::Arc;
+use sway_core::{semantic_analysis::ast_node::TypedDeclaration, Declaration, Visibility};
+use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Hover, HoverContents, HoverParams, MarkupContent, MarkupKind};
 
-pub fn get_hover_data(session: Arc<Session>, params: HoverParams) -> Option<Hover> {
+pub fn hover_data(session: &Session, params: HoverParams) -> Option<Hover> {
     let position = params.text_document_position_params.position;
     let url = &params.text_document_position_params.text_document.uri;
-
-    match session.documents.get(url.path()) {
-        Some(ref document) => {
-            if let Some(token) = document.get_token_at_position(position) {
-                if token.is_initial_declaration() {
-                    Some(get_hover_format(token, &session.documents))
-                } else {
-                    // todo: this logic is flawed at the moment
-                    // if there are multiple tokens with the same name and type in different files
-                    // there is no way for us to know which one is currently used in here
-                    for document_ref in &session.documents {
-                        if let Some(declared_token) = document_ref.get_declared_token(&token.name) {
-                            if declared_token.is_same_type(token) {
-                                return Some(get_hover_format(declared_token, &session.documents));
-                            }
-                        }
-                    }
-                    None
-                }
-            } else {
-                None
+    if let Some((_, token)) = session.token_at_position(url, position) {
+        if let Some(decl_ident) = session.declared_token_ident(&token) {
+            if let Some(decl_token) = session
+                .token_map()
+                .get(&to_ident_key(&decl_ident))
+                .map(|item| item.value().clone())
+            {
+                let hover = hover_format(&decl_token, &decl_ident);
+                return Some(hover);
             }
         }
-        _ => None,
     }
+    None
 }
 
-fn get_hover_format(token: &Token, documents: &Documents) -> Hover {
-    let value = match &token.token_type {
-        TokenType::VariableDeclaration(var_details) => {
-            let var_type = match &var_details.var_body {
-                VarBody::FunctionCall(fn_name) => get_var_type_from_fn(fn_name, documents),
-                VarBody::Type(var_type) => var_type.clone(),
-                _ => "".into(),
-            };
+fn hover_format(token: &Token, ident: &Ident) -> Hover {
+    let token_name: String = ident.as_str().into();
+    let range = get_range_from_span(&ident.span());
 
-            format!(
-                "let{} {}: {}",
-                if var_details.is_mutable { " mut" } else { "" },
-                token.name,
-                var_type
-            )
-        }
-        TokenType::FunctionDeclaration(func_details) => func_details.signature.clone(),
-        TokenType::StructDeclaration(struct_details) => format!(
-            "{}struct {}",
-            extract_visibility(&struct_details.visibility),
-            &token.name
-        ),
-        TokenType::TraitDeclaration(trait_details) => format!(
-            "{}trait {}",
-            extract_visibility(&trait_details.visibility),
-            &token.name
-        ),
-        TokenType::EnumDeclaration(enum_details) => format!(
-            "{}enum {}",
-            extract_visibility(&enum_details.visibility),
-            &token.name
-        ),
-        _ => token.name.clone(),
+    let format_visibility_hover = |visibility: Visibility, decl_name: &str| -> String {
+        format!(
+            "{}{} {}",
+            extract_visibility(&visibility),
+            decl_name,
+            token_name
+        )
+    };
+
+    let format_variable_hover = |is_mutable: bool, type_name: String| -> String {
+        let mutability = match is_mutable {
+            false => "",
+            true => " mut",
+        };
+        format!("let{} {}: {}", mutability, token_name, type_name,)
+    };
+
+    let value = match &token.typed {
+        Some(typed_token) => match typed_token {
+            TypedAstToken::TypedDeclaration(decl) => match decl {
+                TypedDeclaration::VariableDeclaration(var_decl) => {
+                    let type_name = format!("{}", var_decl.type_ascription);
+                    format_variable_hover(var_decl.mutability.is_mutable(), type_name)
+                }
+                TypedDeclaration::FunctionDeclaration(func) => extract_fn_signature(&func.span()),
+                TypedDeclaration::StructDeclaration(ref struct_decl) => {
+                    format_visibility_hover(struct_decl.visibility, decl.friendly_name())
+                }
+                TypedDeclaration::TraitDeclaration(ref trait_decl) => {
+                    format_visibility_hover(trait_decl.visibility, decl.friendly_name())
+                }
+                TypedDeclaration::EnumDeclaration(ref enum_decl) => {
+                    format_visibility_hover(enum_decl.visibility, decl.friendly_name())
+                }
+                _ => token_name,
+            },
+            _ => token_name,
+        },
+        None => match &token.parsed {
+            AstToken::Declaration(decl) => match decl {
+                Declaration::VariableDeclaration(var_decl) => {
+                    let type_name = format!("{}", var_decl.type_ascription);
+                    format_variable_hover(var_decl.is_mutable, type_name)
+                }
+                Declaration::FunctionDeclaration(func) => extract_fn_signature(&func.span),
+                Declaration::StructDeclaration(struct_decl) => {
+                    format_visibility_hover(struct_decl.visibility, "struct")
+                }
+                Declaration::TraitDeclaration(trait_decl) => {
+                    format_visibility_hover(trait_decl.visibility, "trait")
+                }
+                Declaration::EnumDeclaration(enum_decl) => {
+                    format_visibility_hover(enum_decl.visibility, "enum")
+                }
+                _ => token_name,
+            },
+            _ => token_name,
+        },
     };
 
     Hover {
@@ -79,20 +100,6 @@ fn get_hover_format(token: &Token, documents: &Documents) -> Hover {
             value: format!("```sway\n{}\n```", value),
             kind: MarkupKind::Markdown,
         }),
-        range: Some(token.range),
+        range: Some(range),
     }
-}
-
-fn get_var_type_from_fn(fn_name: &str, documents: &Documents) -> String {
-    for document_ref in documents {
-        if let Some(declared_token) = document_ref.get_declared_token(fn_name) {
-            if let TokenType::FunctionDeclaration(func_details) = &declared_token.token_type {
-                return func_details
-                    .get_return_type_from_signature()
-                    .unwrap_or_default();
-            }
-        }
-    }
-
-    "".into()
 }

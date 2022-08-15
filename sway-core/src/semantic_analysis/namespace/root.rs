@@ -1,5 +1,5 @@
 use crate::{
-    error::*, semantic_analysis::*, type_engine::*, CallPath, CompileResult, Ident, TypeInfo,
+    error::*, semantic_analysis::*, type_system::*, CallPath, CompileResult, Ident, TypeInfo,
     TypedDeclaration, TypedFunctionDeclaration,
 };
 
@@ -84,7 +84,7 @@ impl Root {
     }
 
     pub(crate) fn resolve_type(
-        &mut self,
+        &self,
         type_id: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
@@ -93,14 +93,17 @@ impl Root {
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let module_path = type_info_prefix.unwrap_or(mod_path);
+        let module_path = match type_info_prefix {
+            Some(type_info_prefix) => type_info_prefix,
+            None => mod_path,
+        };
         let type_id = match look_up_type_id(type_id) {
             TypeInfo::Custom {
-                ref name,
+                name,
                 type_arguments,
             } => {
                 match self
-                    .resolve_symbol(module_path, name)
+                    .resolve_symbol(module_path, &name)
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
@@ -108,7 +111,7 @@ impl Root {
                         check!(
                             monomorphize(
                                 &mut decl,
-                                type_arguments.unwrap_or_default(),
+                                &mut type_arguments.unwrap_or_default(),
                                 enforce_type_arguments,
                                 span,
                                 self,
@@ -124,7 +127,7 @@ impl Root {
                         check!(
                             monomorphize(
                                 &mut decl,
-                                type_arguments.unwrap_or_default(),
+                                &mut type_arguments.unwrap_or_default(),
                                 enforce_type_arguments,
                                 span,
                                 self,

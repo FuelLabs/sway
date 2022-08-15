@@ -1,4 +1,7 @@
-use sway_core::{AstNode, AstNodeContent, Declaration, Expression, ParseTree, ReturnStatement};
+use sway_core::{
+    AstNode, AstNodeContent, Declaration, Expression, ExpressionKind, IfExpression, ParseTree,
+    ReturnStatement,
+};
 
 use sway_types::span::Span;
 
@@ -85,8 +88,6 @@ fn traverse_ast_node(ast_node: &AstNode, changes: &mut Vec<Change>) {
         AstNodeContent::IncludeStatement(_) => {
             changes.push(Change::new(&ast_node.span, ChangeType::IncludeStatement))
         }
-
-        _ => {}
     }
 }
 
@@ -131,33 +132,26 @@ fn handle_declaration(dec: &Declaration, ast_node: &AstNode, changes: &mut Vec<C
 }
 
 fn handle_expression(expr: &Expression, changes: &mut Vec<Change>) {
-    match &expr {
-        Expression::StructExpression { span, .. } => {
-            changes.push(Change::new(span, ChangeType::Struct))
-        }
-        Expression::IfExp {
+    let span = &expr.span;
+    match &expr.kind {
+        ExpressionKind::Struct(_) => changes.push(Change::new(span, ChangeType::Struct)),
+        ExpressionKind::If(IfExpression {
             condition: _,
             then,
             r#else,
-            span: _,
-        } => {
+        }) => {
             handle_expression(then, changes);
 
             if let Some(else_expr) = r#else {
                 handle_expression(else_expr, changes);
             }
         }
-        Expression::CodeBlock { contents, span: _ } => {
+        ExpressionKind::CodeBlock(contents) => {
             for content in &contents.contents {
                 traverse_ast_node(content, changes);
             }
         }
-        Expression::DelineatedPath {
-            span,
-            args: _,
-            call_path: _,
-            type_arguments: _,
-        } => {
+        ExpressionKind::DelineatedPath(_) => {
             changes.push(Change::new(span, ChangeType::DelineatedPath));
         }
         _ => {}

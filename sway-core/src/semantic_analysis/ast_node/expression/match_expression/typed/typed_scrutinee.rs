@@ -3,7 +3,7 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     error::{err, ok},
     semantic_analysis::{TypeCheckContext, TypedEnumVariant},
-    type_engine::{insert_type, CreateTypeId, EnforceTypeArguments, TypeArgument, TypeId},
+    type_system::{insert_type, CreateTypeId, EnforceTypeArguments, TypeArgument, TypeId},
     CompileError, CompileResult, Literal, Scrutinee, StructScrutineeField, TypeInfo,
 };
 
@@ -80,7 +80,7 @@ impl TypedScrutinee {
                 check!(
                     ctx.monomorphize(
                         &mut struct_decl,
-                        vec!(),
+                        &mut [],
                         EnforceTypeArguments::No,
                         &struct_name.span()
                     ),
@@ -179,7 +179,7 @@ impl TypedScrutinee {
                 check!(
                     ctx.monomorphize(
                         &mut enum_decl,
-                        vec!(),
+                        &mut [],
                         EnforceTypeArguments::No,
                         &enum_name.span()
                     ),

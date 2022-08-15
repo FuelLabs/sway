@@ -121,7 +121,7 @@ impl std::convert::From<String> for ControlFlowGraphNode {
 
 impl std::convert::From<&str> for ControlFlowGraphNode {
     fn from(other: &str) -> Self {
-        ControlFlowGraphNode::OrganizationalDominator(other.to_string())
+        other.to_string().into()
     }
 }
 

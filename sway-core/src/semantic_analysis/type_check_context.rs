@@ -2,7 +2,7 @@ use crate::{
     namespace::Path,
     parse_tree::declaration::Purity,
     semantic_analysis::{ast_node::Mode, Namespace},
-    type_engine::{
+    type_system::{
         insert_type, monomorphize, unify_with_self, CopyTypes, EnforceTypeArguments,
         MonomorphizeHelper, TypeArgument, TypeId, TypeInfo,
     },
@@ -176,9 +176,9 @@ impl<'ns> TypeCheckContext<'ns> {
 
     /// Short-hand for calling the `monomorphize` function in the type engine
     pub(crate) fn monomorphize<T>(
-        &mut self,
+        &self,
         value: &mut T,
-        type_arguments: Vec<TypeArgument>,
+        type_arguments: &mut [TypeArgument],
         enforce_type_arguments: EnforceTypeArguments,
         call_site_span: &Span,
     ) -> CompileResult<()>
@@ -190,7 +190,7 @@ impl<'ns> TypeCheckContext<'ns> {
             type_arguments,
             enforce_type_arguments,
             call_site_span,
-            &mut self.namespace.root,
+            &self.namespace.root,
             &self.namespace.mod_path,
         )
     }
@@ -224,7 +224,7 @@ impl<'ns> TypeCheckContext<'ns> {
             .resolve_type_without_self(type_id, span, type_info_prefix)
     }
 
-    /// Short-hand around `type_engine::unify_with_self`, where the `TypeCheckContext` provides the
+    /// Short-hand around `type_system::unify_with_self`, where the `TypeCheckContext` provides the
     /// type annotation, self type and help text.
     pub(crate) fn unify_with_self(
         &self,

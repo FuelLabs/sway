@@ -4,10 +4,13 @@ use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     error::{err, ok},
-    semantic_analysis::{Mode, TypeCheckContext},
-    type_engine::{
-        insert_type, look_up_type_id, resolve_type, unify_with_self, CopyTypes, TypeId,
-        TypeMapping, TypeParameter,
+    semantic_analysis::{
+        Mode, TypeCheckContext, TypedAstNodeContent, TypedExpression, TypedExpressionVariant,
+        TypedIntrinsicFunctionKind, TypedReturnStatement,
+    },
+    type_system::{
+        insert_type, look_up_type_id, resolve_type, set_type_as_storage_only, unify_with_self,
+        CopyTypes, TypeId, TypeMapping, TypeParameter,
     },
     CallPath, CompileError, CompileResult, FunctionDeclaration, ImplSelf, ImplTrait, Purity,
     TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
@@ -20,7 +23,7 @@ pub struct TypedImplTrait {
     pub trait_name: CallPath,
     pub(crate) span: Span,
     pub methods: Vec<TypedFunctionDeclaration>,
-    pub(crate) implementing_for_type_id: TypeId,
+    pub implementing_for_type_id: TypeId,
 }
 
 impl CopyTypes for TypedImplTrait {
@@ -177,6 +180,126 @@ impl TypedImplTrait {
         ok(impl_trait, warnings, errors)
     }
 
+    // If any method contains a call to get_storage_index, then
+    // impl_typ can only be a storage type.
+    // This is noted down in the type engine.
+    fn gather_storage_only_types(impl_typ: TypeId, methods: &[TypedFunctionDeclaration]) {
+        use crate::semantic_analysis;
+        fn ast_node_contains_get_storage_index(x: &TypedAstNodeContent) -> bool {
+            match x {
+                TypedAstNodeContent::ReturnStatement(TypedReturnStatement { expr })
+                | TypedAstNodeContent::Expression(expr)
+                | TypedAstNodeContent::ImplicitReturnExpression(expr) => {
+                    expr_contains_get_storage_index(expr)
+                }
+                TypedAstNodeContent::Declaration(decl) => decl_contains_get_storage_index(decl),
+                TypedAstNodeContent::SideEffect => false,
+            }
+        }
+        fn expr_contains_get_storage_index(expr: &TypedExpression) -> bool {
+            match &expr.expression {
+                TypedExpressionVariant::Literal(_)
+                | TypedExpressionVariant::VariableExpression { .. }
+                | TypedExpressionVariant::FunctionParameter
+                | TypedExpressionVariant::AsmExpression { .. }
+                | TypedExpressionVariant::StorageAccess(_)
+                | TypedExpressionVariant::AbiName(_) => false,
+                TypedExpressionVariant::FunctionApplication { arguments, .. } => arguments
+                    .iter()
+                    .any(|f| expr_contains_get_storage_index(&f.1)),
+                TypedExpressionVariant::LazyOperator {
+                    lhs: expr1,
+                    rhs: expr2,
+                    ..
+                }
+                | TypedExpressionVariant::ArrayIndex {
+                    prefix: expr1,
+                    index: expr2,
+                } => {
+                    expr_contains_get_storage_index(expr1) || expr_contains_get_storage_index(expr2)
+                }
+                TypedExpressionVariant::Tuple { fields: exprvec }
+                | TypedExpressionVariant::Array { contents: exprvec } => {
+                    exprvec.iter().any(expr_contains_get_storage_index)
+                }
+
+                TypedExpressionVariant::StructExpression { fields, .. } => fields
+                    .iter()
+                    .any(|f| expr_contains_get_storage_index(&f.value)),
+                TypedExpressionVariant::CodeBlock(cb) => codeblock_contains_get_storage_index(cb),
+                TypedExpressionVariant::IfExp {
+                    condition,
+                    then,
+                    r#else,
+                } => {
+                    expr_contains_get_storage_index(condition)
+                        || expr_contains_get_storage_index(then)
+                        || r#else
+                            .as_ref()
+                            .map_or(false, |r#else| expr_contains_get_storage_index(r#else))
+                }
+                TypedExpressionVariant::StructFieldAccess { prefix: exp, .. }
+                | TypedExpressionVariant::TupleElemAccess { prefix: exp, .. }
+                | TypedExpressionVariant::AbiCast { address: exp, .. }
+                | TypedExpressionVariant::EnumTag { exp }
+                | TypedExpressionVariant::UnsafeDowncast { exp, .. } => {
+                    expr_contains_get_storage_index(exp)
+                }
+                TypedExpressionVariant::EnumInstantiation { contents, .. } => contents
+                    .as_ref()
+                    .map_or(false, |f| expr_contains_get_storage_index(f)),
+
+                TypedExpressionVariant::IntrinsicFunction(TypedIntrinsicFunctionKind {
+                    kind,
+                    ..
+                }) => matches!(kind, sway_ast::intrinsics::Intrinsic::GetStorageKey),
+                TypedExpressionVariant::WhileLoop { condition, body } => {
+                    expr_contains_get_storage_index(condition)
+                        || codeblock_contains_get_storage_index(body)
+                }
+            }
+        }
+        fn decl_contains_get_storage_index(decl: &TypedDeclaration) -> bool {
+            match decl {
+                TypedDeclaration::VariableDeclaration(
+                    semantic_analysis::TypedVariableDeclaration { body: expr, .. },
+                )
+                | TypedDeclaration::ConstantDeclaration(
+                    semantic_analysis::TypedConstantDeclaration { value: expr, .. },
+                )
+                | TypedDeclaration::Reassignment(semantic_analysis::TypedReassignment {
+                    rhs: expr,
+                    ..
+                }) => expr_contains_get_storage_index(expr),
+                // We're already inside a type's impl. So we can't have these
+                // nested functions etc. We just ignore them.
+                TypedDeclaration::FunctionDeclaration(_)
+                | TypedDeclaration::TraitDeclaration(_)
+                | TypedDeclaration::StructDeclaration(_)
+                | TypedDeclaration::EnumDeclaration(_)
+                | TypedDeclaration::ImplTrait(_)
+                | TypedDeclaration::AbiDeclaration(_)
+                | TypedDeclaration::GenericTypeForFunctionScope { .. }
+                | TypedDeclaration::ErrorRecovery
+                | TypedDeclaration::StorageDeclaration(_)
+                | TypedDeclaration::StorageReassignment(_)
+                | TypedDeclaration::Break { .. }
+                | TypedDeclaration::Continue { .. } => false,
+            }
+        }
+        fn codeblock_contains_get_storage_index(cb: &semantic_analysis::TypedCodeBlock) -> bool {
+            cb.contents
+                .iter()
+                .any(|x| ast_node_contains_get_storage_index(&x.content))
+        }
+        let contains_get_storage_index = methods
+            .iter()
+            .any(|f| codeblock_contains_get_storage_index(&f.body));
+        if contains_get_storage_index {
+            set_type_as_storage_only(impl_typ);
+        }
+    }
+
     pub(crate) fn type_check_impl_self(
         ctx: TypeCheckContext,
         impl_self: ImplSelf,
@@ -257,6 +380,8 @@ impl TypedImplTrait {
                 errors
             ));
         }
+
+        Self::gather_storage_only_types(implementing_for_type_id, &methods);
 
         let impl_trait = TypedImplTrait {
             trait_name,

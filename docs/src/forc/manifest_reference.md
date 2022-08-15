@@ -10,6 +10,7 @@ The `Forc.toml` (the _manifest_ file) is a compulsory file for each package and 
   * `entry` — The entry point for the compiler to start parsing from.
     * For the recomended way of selecting an entry point of large libraries please take a look at: [Libraries](./../sway-program-types/libraries.md)
   * `implicit-std` -  Controls whether provided `std` version (with the current `forc` version) will get added as a dependency _implicitly_. _Unless you know what you are doing, leave this as default._
+  * `forc-version` - The minimum forc version required for this project to work properly.
 
 * [`[dependencies]`](#the-dependencies-section) — Defines the dependencies.
 * `[network]` — Defines a network for forc to interact with.
@@ -65,6 +66,7 @@ The `[build-profiles]` tables provide a way to customize compiler settings such 
 
 The following fields needs to be provided for a build-profile:
 
+* `print-ast` - Whether to print out the generated AST (true) or not (false).
 * `print-finalized-asm` - Whether to compile to bytecode (false) or to print out the generated ASM (true).
 * `print-intermediate-asm` - Whether to compile to bytecode (false) or to print out the generated ASM (true).
 * `print-ir` - Whether to compile to bytecode (false) or to print out the generated IR (true).

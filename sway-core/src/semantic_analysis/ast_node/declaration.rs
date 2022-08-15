@@ -16,7 +16,7 @@ pub use r#trait::*;
 pub use storage::*;
 pub use variable::*;
 
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_system::*};
 use derivative::Derivative;
 use std::{borrow::Cow, fmt};
 use sway_types::{Ident, Span, Spanned};
@@ -104,22 +104,23 @@ impl fmt::Display for TypedDeclaration {
             self.friendly_name(),
             match self {
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                    is_mutable,
+                    mutability,
                     name,
                     type_ascription,
                     body,
                     ..
                 }) => {
                     let mut builder = String::new();
-                    match is_mutable {
+                    match mutability {
                         VariableMutability::Mutable => builder.push_str("mut"),
+                        VariableMutability::RefMutable => builder.push_str("ref mut"),
                         VariableMutability::Immutable => {}
                         VariableMutability::ExportedConst => builder.push_str("pub const"),
                     }
                     builder.push_str(name.as_str());
                     builder.push_str(": ");
                     builder.push_str(
-                        &crate::type_engine::look_up_type_id(*type_ascription).to_string(),
+                        &crate::type_system::look_up_type_id(*type_ascription).to_string(),
                     );
                     builder.push_str(" = ");
                     builder.push_str(&body.to_string());
@@ -215,60 +216,6 @@ impl UnresolvedTypeCheck for TypedDeclaration {
 }
 
 impl TypedDeclaration {
-    /// Attempt to retrieve the declaration as an enum declaration.
-    ///
-    /// Returns `None` if `self` is not an `TypedEnumDeclaration`.
-    pub(crate) fn as_enum(&self) -> Option<&TypedEnumDeclaration> {
-        match self {
-            TypedDeclaration::EnumDeclaration(decl) => Some(decl),
-            _ => None,
-        }
-    }
-
-    /// Attempt to retrieve the declaration as a struct declaration.
-    ///
-    /// Returns `None` if `self` is not a `TypedStructDeclaration`.
-    #[allow(dead_code)]
-    pub(crate) fn as_struct(&self) -> Option<&TypedStructDeclaration> {
-        match self {
-            TypedDeclaration::StructDeclaration(decl) => Some(decl),
-            _ => None,
-        }
-    }
-
-    /// Attempt to retrieve the declaration as a function declaration.
-    ///
-    /// Returns `None` if `self` is not a `TypedFunctionDeclaration`.
-    #[allow(dead_code)]
-    pub(crate) fn as_function(&self) -> Option<&TypedFunctionDeclaration> {
-        match self {
-            TypedDeclaration::FunctionDeclaration(decl) => Some(decl),
-            _ => None,
-        }
-    }
-
-    /// Attempt to retrieve the declaration as a variable declaration.
-    ///
-    /// Returns `None` if `self` is not a `TypedVariableDeclaration`.
-    #[allow(dead_code)]
-    pub(crate) fn as_variable(&self) -> Option<&TypedVariableDeclaration> {
-        match self {
-            TypedDeclaration::VariableDeclaration(decl) => Some(decl),
-            _ => None,
-        }
-    }
-
-    /// Attempt to retrieve the declaration as an Abi declaration.
-    ///
-    /// Returns `None` if `self` is not a `TypedAbiDeclaration`.
-    #[allow(dead_code)]
-    pub(crate) fn as_abi(&self) -> Option<&TypedAbiDeclaration> {
-        match self {
-            TypedDeclaration::AbiDeclaration(decl) => Some(decl),
-            _ => None,
-        }
-    }
-
     /// Retrieves the declaration as an enum declaration.
     ///
     /// Returns an error if `self` is not a `TypedEnumDeclaration`.
@@ -430,9 +377,10 @@ impl TypedDeclaration {
             | ErrorRecovery
             | Break { .. }
             | Continue { .. } => Visibility::Public,
-            VariableDeclaration(TypedVariableDeclaration { is_mutable, .. }) => {
-                is_mutable.visibility()
-            }
+            VariableDeclaration(TypedVariableDeclaration {
+                mutability: is_mutable,
+                ..
+            }) => is_mutable.visibility(),
             EnumDeclaration(TypedEnumDeclaration { visibility, .. })
             | ConstantDeclaration(TypedConstantDeclaration { visibility, .. })
             | FunctionDeclaration(TypedFunctionDeclaration { visibility, .. })
@@ -464,7 +412,7 @@ pub struct TypedTraitFn {
     pub return_type: TypeId,
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
-    pub(crate) return_type_span: Span,
+    pub return_type_span: Span,
 }
 
 impl CopyTypes for TypedTraitFn {

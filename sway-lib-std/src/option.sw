@@ -11,11 +11,11 @@ use ::revert::revert;
 /// `Option` is a type that represents either the existence of a value ([`Some`]) or a value's absence
 /// ([`None`]).
 pub enum Option<T> {
-    /// Contains the value
-    Some: T,
-
     /// Signifies the absence of a value
     None: (),
+
+    /// Contains the value
+    Some: T,
 }
 
 /////////////////////////////////////////////////////////////////////////////

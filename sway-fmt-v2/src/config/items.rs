@@ -1,8 +1,9 @@
 //! Configuration options related to item formatting.
+use crate::{
+    config::{lists::ListTactic, user_opts::ItemsOptions},
+    constants::{DEFAULT_BLANK_LINES_LOWER_BOUND, DEFAULT_BLANK_LINES_UPPER_BOUND},
+};
 use serde::{Deserialize, Serialize};
-
-use super::{lists::ListTactic, user_opts::ItemsOptions};
-use crate::constants::{DEFAULT_BLANK_LINES_LOWER_BOUND, DEFAULT_BLANK_LINES_UPPER_BOUND};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Items {

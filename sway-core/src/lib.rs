@@ -9,11 +9,12 @@ pub mod constants;
 mod control_flow_analysis;
 mod convert_parse_tree;
 pub mod ir_generation;
+mod metadata;
 pub mod parse_tree;
 pub mod semantic_analysis;
 pub mod source_map;
 mod style;
-pub mod type_engine;
+pub mod type_system;
 
 use crate::{error::*, source_map::SourceMap};
 pub use asm_generation::from_ir::compile_ir_to_asm;
@@ -23,6 +24,7 @@ use control_flow_analysis::ControlFlowGraph;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use sway_ast::Dependency;
 
 pub use semantic_analysis::{
     namespace::{self, Namespace},
@@ -30,12 +32,12 @@ pub use semantic_analysis::{
 };
 pub mod types;
 pub use crate::parse_tree::{
-    Declaration, Expression, ParseModule, ParseProgram, TreeType, UseStatement, WhileLoop, *,
+    Declaration, Expression, ParseModule, ParseProgram, TreeType, UseStatement, *,
 };
 
 pub use error::{CompileError, CompileResult, CompileWarning};
 use sway_types::{ident::Ident, span, Spanned};
-pub use type_engine::TypeInfo;
+pub use type_system::TypeInfo;
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
@@ -57,17 +59,31 @@ pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<Par
     }
 }
 
+/// Parse a file with contents `src` at `path`.
+fn parse_file(src: Arc<str>, path: Option<Arc<PathBuf>>) -> CompileResult<sway_ast::Module> {
+    let handler = sway_parse::handler::Handler::default();
+    match sway_parse::parse_file(&handler, src, path) {
+        Ok(module) => ok(
+            module,
+            vec![],
+            parse_file_error_to_compile_errors(handler, None),
+        ),
+        Err(error) => err(
+            vec![],
+            parse_file_error_to_compile_errors(handler, Some(error)),
+        ),
+    }
+}
+
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
 fn parse_in_memory(src: Arc<str>) -> CompileResult<ParseProgram> {
-    let module = match sway_parse::parse_file(src, None) {
-        Ok(module) => module,
-        Err(error) => return err(vec![], parse_file_error_to_compile_errors(error)),
-    };
-    convert_parse_tree::convert_parse_tree(module).flat_map(|(kind, tree)| {
-        let submodules = Default::default();
-        let root = ParseModule { tree, submodules };
-        let program = ParseProgram { kind, root };
-        ok(program, vec![], vec![])
+    parse_file(src, None).flat_map(|module| {
+        convert_parse_tree::convert_parse_tree(module).flat_map(|(kind, tree)| {
+            let submodules = Default::default();
+            let root = ParseModule { tree, submodules };
+            let program = ParseProgram { kind, root };
+            ok(program, vec![], vec![])
+        })
     })
 }
 
@@ -81,19 +97,13 @@ fn parse_files(src: Arc<str>, config: &BuildConfig) -> CompileResult<ParseProgra
     })
 }
 
-/// Given the source of the module along with its path, parse this module including all of its
-/// submodules.
-fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeType, ParseModule)> {
-    // Parse this module first.
-    let module = match sway_parse::parse_file(src, Some(path.clone())) {
-        Ok(module) => module,
-        Err(error) => return err(vec![], parse_file_error_to_compile_errors(error)),
-    };
-    let module_dir = path.parent().expect("module file has no parent directory");
-
-    // Parse all submodules before converting to the `ParseTree`.
+/// Parse all dependencies `deps` as submodules.
+fn parse_submodules(
+    deps: &[Dependency],
+    module_dir: &Path,
+) -> CompileResult<Vec<(Ident, ParseSubmodule)>> {
     let init_res = ok(vec![], vec![], vec![]);
-    let submodules_res = module.dependencies.iter().fold(init_res, |res, dep| {
+    deps.iter().fold(init_res, |res, dep| {
         let dep_path = Arc::new(module_path(module_dir, dep));
         let dep_str: Arc<str> = match std::fs::read_to_string(&*dep_path) {
             Ok(s) => Arc::from(s),
@@ -129,18 +139,30 @@ fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeTy
                 ok(submods, vec![], vec![])
             })
         })
-    });
+    })
+}
 
-    // Convert from the raw parsed module to the `ParseTree` ready for type-check.
-    convert_parse_tree::convert_parse_tree(module).flat_map(|(prog_kind, tree)| {
-        submodules_res.flat_map(|submodules| {
-            let parse_module = ParseModule { tree, submodules };
-            ok((prog_kind, parse_module), vec![], vec![])
+/// Given the source of the module along with its path, parse this module including all of its
+/// submodules.
+fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeType, ParseModule)> {
+    // Parse this module first.
+    parse_file(src, Some(path.clone())).flat_map(|module| {
+        let module_dir = path.parent().expect("module file has no parent directory");
+
+        // Parse all submodules before converting to the `ParseTree`.
+        let submodules_res = parse_submodules(&module.dependencies, module_dir);
+
+        // Convert from the raw parsed module to the `ParseTree` ready for type-check.
+        convert_parse_tree::convert_parse_tree(module).flat_map(|(prog_kind, tree)| {
+            submodules_res.flat_map(|submodules| {
+                let parse_module = ParseModule { tree, submodules };
+                ok((prog_kind, parse_module), vec![], vec![])
+            })
         })
     })
 }
 
-fn module_path(parent_module_dir: &Path, dep: &sway_parse::Dependency) -> PathBuf {
+fn module_path(parent_module_dir: &Path, dep: &sway_ast::Dependency) -> PathBuf {
     parent_module_dir
         .iter()
         .chain(dep.path.span().as_str().split('/').map(AsRef::as_ref))
@@ -148,10 +170,14 @@ fn module_path(parent_module_dir: &Path, dep: &sway_parse::Dependency) -> PathBu
         .with_extension(crate::constants::DEFAULT_FILE_EXTENSION)
 }
 
-fn parse_file_error_to_compile_errors(error: sway_parse::ParseFileError) -> Vec<CompileError> {
+fn parse_file_error_to_compile_errors(
+    handler: sway_parse::handler::Handler,
+    error: Option<sway_parse::ParseFileError>,
+) -> Vec<CompileError> {
     match error {
-        sway_parse::ParseFileError::Lex(error) => vec![CompileError::Lex { error }],
-        sway_parse::ParseFileError::Parse(errors) => errors
+        Some(sway_parse::ParseFileError::Lex(error)) => vec![CompileError::Lex { error }],
+        Some(sway_parse::ParseFileError::Parse(_)) | None => handler
+            .into_errors()
             .into_iter()
             .map(|error| CompileError::Parse { error })
             .collect(),
@@ -411,8 +437,9 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
     // Do a purity check on the _unoptimised_ IR.
     let mut purity_checker = ir_generation::PurityChecker::default();
+    let mut md_mgr = metadata::MetadataManager::default();
     for entry_point in &entry_point_functions {
-        purity_checker.check_function(&ir, entry_point);
+        purity_checker.check_function(&ir, &mut md_mgr, entry_point);
     }
     check!(
         purity_checker.results(),
@@ -452,7 +479,7 @@ fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileRes
                 Vec::new(),
                 vec![CompileError::InternalOwned(
                     ir_error.to_string(),
-                    span::Span::new("".into(), 0, 0, None).unwrap(),
+                    span::Span::dummy(),
                 )],
             );
         }
@@ -467,7 +494,7 @@ fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<
                 Vec::new(),
                 vec![CompileError::InternalOwned(
                     ir_error.to_string(),
-                    span::Span::new("".into(), 0, 0, None).unwrap(),
+                    span::Span::dummy(),
                 )],
             );
         }
@@ -484,7 +511,9 @@ pub fn compile_to_bytecode(
     source_map: &mut SourceMap,
 ) -> BytecodeCompilationResult {
     let asm_res = compile_to_asm(input, initial_namespace, build_config);
-    asm_to_bytecode(asm_res, source_map)
+    let result = asm_to_bytecode(asm_res, source_map);
+    clear_lazy_statics();
+    result
 }
 
 /// Given a [CompilationResult] containing the assembly (opcodes), compile to a
@@ -520,6 +549,10 @@ pub fn asm_to_bytecode(
             BytecodeCompilationResult::Library { warnings }
         }
     }
+}
+
+pub fn clear_lazy_statics() {
+    type_system::clear_type_engine();
 }
 
 /// Given a [TypedProgram], which is type-checked Sway source, construct a graph to analyze
@@ -725,7 +758,11 @@ fn test_unary_ordering() {
     } = &prog.root.tree.root_nodes[0]
     {
         if let AstNode {
-            content: AstNodeContent::Expression(Expression::LazyOperator { op, .. }),
+            content:
+                AstNodeContent::Expression(Expression {
+                    kind: ExpressionKind::LazyOperator(LazyOperatorExpression { op, .. }),
+                    ..
+                }),
             ..
         } = &body.contents[2]
         {

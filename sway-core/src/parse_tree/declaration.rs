@@ -16,7 +16,7 @@ pub(crate) use impl_trait::*;
 pub use r#enum::*;
 pub use r#struct::*;
 pub use r#trait::*;
-pub(crate) use reassignment::*;
+pub use reassignment::*;
 pub use storage::*;
 pub use variable::*;
 

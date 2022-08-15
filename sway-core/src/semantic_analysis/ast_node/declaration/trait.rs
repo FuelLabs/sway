@@ -8,7 +8,7 @@ use crate::{
         Mode, TypeCheckContext, TypedCodeBlock,
     },
     style::is_upper_camel_case,
-    type_engine::{insert_type, CopyTypes, TypeMapping},
+    type_system::{insert_type, CopyTypes, TypeMapping},
     CallPath, CompileError, CompileResult, FunctionDeclaration, FunctionParameter, Namespace,
     Supertrait, TraitDeclaration, TypeInfo, TypedDeclaration, TypedFunctionDeclaration, Visibility,
 };
@@ -27,7 +27,7 @@ pub struct TypedTraitDeclaration {
     #[derivative(Eq(bound = ""))]
     pub(crate) methods: Vec<FunctionDeclaration>,
     pub(crate) supertraits: Vec<Supertrait>,
-    pub(crate) visibility: Visibility,
+    pub visibility: Visibility,
 }
 
 impl CopyTypes for TypedTraitDeclaration {
@@ -195,11 +195,13 @@ fn convert_trait_methods_to_dummy_funcs(
                     .map(
                         |FunctionParameter {
                              name,
+                             is_reference,
                              is_mutable,
                              type_id,
                              type_span,
                          }| TypedFunctionParameter {
                             name: name.clone(),
+                            is_reference: *is_reference,
                             is_mutable: *is_mutable,
                             type_id: check!(
                                 trait_namespace.resolve_type_with_self(

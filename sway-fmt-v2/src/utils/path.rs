@@ -1,6 +1,14 @@
-use crate::fmt::*;
-use std::fmt::Write;
-use sway_parse::{PathExpr, PathExprSegment, PathType, PathTypeSegment, QualifiedPathRoot};
+use crate::{
+    fmt::*,
+    utils::{
+        bracket::{close_angle_bracket, open_angle_bracket},
+        comments::{ByteSpan, LeafSpans},
+    },
+};
+use std::{fmt::Write, vec};
+use sway_ast::{
+    keywords::Token, PathExpr, PathExprSegment, PathType, PathTypeSegment, QualifiedPathRoot,
+};
 use sway_types::Spanned;
 
 impl Format for PathExpr {
@@ -9,23 +17,15 @@ impl Format for PathExpr {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        if let Some(root_opt) = &self.root_opt {
-            if let Some(root) = &root_opt.0 {
-                write!(
-                    formatted_code,
-                    "{}",
-                    root.open_angle_bracket_token.span().as_str()
-                )?;
+        if let Some((root, double_colon_token)) = &self.root_opt {
+            if let Some(root) = &root {
+                open_angle_bracket(formatted_code)?;
                 root.clone()
                     .into_inner()
                     .format(formatted_code, formatter)?;
-                write!(
-                    formatted_code,
-                    "{}",
-                    root.close_angle_bracket_token.span().as_str()
-                )?;
+                close_angle_bracket(formatted_code)?;
             }
-            write!(formatted_code, "{}", root_opt.1.span().as_str())?;
+            write!(formatted_code, "{}", double_colon_token.ident().as_str())?;
         }
         self.prefix.format(formatted_code, formatter)?;
         for suffix in self.suffix.iter() {
@@ -83,19 +83,11 @@ impl Format for PathType {
     ) -> Result<(), FormatterError> {
         if let Some(root_opt) = &self.root_opt {
             if let Some(root) = &root_opt.0 {
-                write!(
-                    formatted_code,
-                    "{}",
-                    root.open_angle_bracket_token.span().as_str()
-                )?;
+                open_angle_bracket(formatted_code)?;
                 root.clone()
                     .into_inner()
                     .format(formatted_code, formatter)?;
-                write!(
-                    formatted_code,
-                    "{}",
-                    root.close_angle_bracket_token.span().as_str()
-                )?;
+                close_angle_bracket(formatted_code)?;
             }
             write!(formatted_code, "{}", root_opt.1.span().as_str())?;
         }
@@ -130,5 +122,17 @@ impl Format for PathTypeSegment {
         }
 
         Ok(())
+    }
+}
+
+impl LeafSpans for PathExpr {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        vec![ByteSpan::from(self.span())]
+    }
+}
+
+impl LeafSpans for PathType {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        vec![ByteSpan::from(self.span())]
     }
 }

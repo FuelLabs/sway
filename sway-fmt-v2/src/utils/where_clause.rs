@@ -1,6 +1,9 @@
-use crate::fmt::*;
+use crate::{
+    fmt::*,
+    utils::comments::{ByteSpan, LeafSpans},
+};
 use std::fmt::Write;
-use sway_parse::{WhereBound, WhereClause};
+use sway_ast::{WhereBound, WhereClause};
 use sway_types::Spanned;
 
 impl Format for WhereClause {
@@ -11,15 +14,13 @@ impl Format for WhereClause {
     ) -> Result<(), FormatterError> {
         writeln!(
             formatted_code,
-            "\n{}{}",
-            &formatter.shape.indent.to_string(formatter),
+            "{}{}",
+            &formatter.shape.indent.to_string(&formatter.config)?,
             self.where_token.span().as_str(),
         )?;
-        formatter.shape = formatter
-            .shape
-            .block_indent(formatter.config.whitespace.tab_spaces);
-        // We need to add the `WhereBound` formatting to punctuated so that we
-        // can replace the formatting here with:
+        formatter.shape.block_indent(&formatter.config);
+        // We should add a multiline field to `Shape`
+        // so we can reduce this code block to:
         //
         // ```rust,ignore
         // self.bounds.format(formatted_code, formatter)?;
@@ -33,10 +34,7 @@ impl Format for WhereClause {
             writeln!(formatted_code, "{}", pair.1.span().as_str())?;
         }
         // reset indent
-        formatter.shape = formatter
-            .shape
-            .shrink_left(formatter.config.whitespace.tab_spaces)
-            .unwrap_or_default();
+        formatter.shape.block_unindent(&formatter.config);
         Ok(())
     }
 }
@@ -49,12 +47,29 @@ impl Format for WhereBound {
     ) -> Result<(), FormatterError> {
         write!(
             formatted_code,
-            "{}{}{} {}",
-            &formatter.shape.indent.to_string(formatter), // `Indent`
-            self.ty_name.span().as_str(),                 // `Ident`
-            self.colon_token.span().as_str(),             // `ColonToken`
-            self.bounds.span().as_str()                   //  TODO: `Traits`
+            "{}{}{} ",
+            &formatter.shape.indent.to_string(&formatter.config)?, // `Indent`
+            self.ty_name.span().as_str(),                          // `Ident`
+            self.colon_token.span().as_str(),                      // `ColonToken`
         )?;
+        self.bounds.format(formatted_code, formatter)?;
         Ok(())
+    }
+}
+
+impl LeafSpans for WhereBound {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = self.ty_name.leaf_spans();
+        collected_spans.append(&mut self.colon_token.leaf_spans());
+        collected_spans.append(&mut self.bounds.leaf_spans());
+        collected_spans
+    }
+}
+
+impl LeafSpans for WhereClause {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = vec![ByteSpan::from(self.where_token.span())];
+        collected_spans.append(&mut self.bounds.leaf_spans());
+        collected_spans
     }
 }

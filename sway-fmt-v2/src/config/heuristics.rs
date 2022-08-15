@@ -1,12 +1,13 @@
 //! Configuration options related to heuristics.
-use crate::constants::{
-    DEFAULT_ARRAY_WIDTH, DEFAULT_ATTR_FN_LIKE_WIDTH, DEFAULT_CHAIN_WIDTH, DEFAULT_FN_CALL_WIDTH,
-    DEFAULT_MAX_LINE_WIDTH, DEFAULT_SINGLE_LINE_IF_ELSE_WIDTH, DEFAULT_STRUCTURE_LIT_WIDTH,
-    DEFAULT_STRUCTURE_VAR_WIDTH,
+use crate::{
+    config::user_opts::HeuristicsOptions,
+    constants::{
+        DEFAULT_ATTR_FN_LIKE_WIDTH, DEFAULT_CHAIN_WIDTH, DEFAULT_COLLECTION_WIDTH,
+        DEFAULT_FN_CALL_WIDTH, DEFAULT_MAX_LINE_WIDTH, DEFAULT_SINGLE_LINE_IF_ELSE_WIDTH,
+        DEFAULT_STRUCTURE_LIT_WIDTH, DEFAULT_STRUCTURE_VAR_WIDTH,
+    },
 };
 use serde::{Deserialize, Serialize};
-
-use super::{user_opts::HeuristicsOptions, whitespace::Whitespace};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Heuristics {
@@ -51,17 +52,17 @@ pub enum HeuristicsPreferences {
 }
 
 impl HeuristicsPreferences {
-    pub fn to_width_heuristics(self, ws_opts: &Whitespace) -> WidthHeuristics {
+    pub fn to_width_heuristics(self, max_width: usize) -> WidthHeuristics {
         match self {
             HeuristicsPreferences::Off => WidthHeuristics::off(),
-            HeuristicsPreferences::Max => WidthHeuristics::max(ws_opts.max_width),
-            HeuristicsPreferences::Scaled => WidthHeuristics::scaled(ws_opts.max_width),
+            HeuristicsPreferences::Max => WidthHeuristics::max(max_width),
+            HeuristicsPreferences::Scaled => WidthHeuristics::scaled(max_width),
         }
     }
 }
 
 /// 'small' heuristic values
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Copy)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq, Copy)]
 pub struct WidthHeuristics {
     // Maximum width of the args of a function call before falling back
     // to vertical formatting.
@@ -72,23 +73,17 @@ pub struct WidthHeuristics {
     // Maximum width in the body of a user-defined structure literal before falling back to
     // vertical formatting.
     pub(crate) structure_lit_width: usize,
-    // Maximum width in the body of a user-defined structure field before falling back
+    // Maximum width of a user-defined structure field before falling back
     // to vertical formatting.
     pub(crate) structure_field_width: usize,
-    // Maximum width of an array literal before falling back to vertical
+    // Maximum width of a collection literal before falling back to vertical
     // formatting.
-    pub(crate) array_width: usize,
+    pub(crate) collection_width: usize,
     // Maximum length of a chain to fit on a single line.
     pub(crate) chain_width: usize,
     // Maximum line length for single line if-else expressions. A value
     // of zero means always break if-else expressions.
     pub(crate) single_line_if_else_max_width: usize,
-}
-
-impl std::fmt::Display for WidthHeuristics {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
-    }
 }
 
 impl WidthHeuristics {
@@ -99,7 +94,7 @@ impl WidthHeuristics {
             attr_fn_like_width: usize::max_value(),
             structure_lit_width: 0,
             structure_field_width: 0,
-            array_width: usize::max_value(),
+            collection_width: usize::max_value(),
             chain_width: usize::max_value(),
             single_line_if_else_max_width: 0,
         }
@@ -111,7 +106,7 @@ impl WidthHeuristics {
             attr_fn_like_width: max_width,
             structure_lit_width: max_width,
             structure_field_width: max_width,
-            array_width: max_width,
+            collection_width: max_width,
             chain_width: max_width,
             single_line_if_else_max_width: max_width,
         }
@@ -135,7 +130,7 @@ impl WidthHeuristics {
                 as usize,
             structure_field_width: (DEFAULT_STRUCTURE_VAR_WIDTH as f32 * max_width_ratio).round()
                 as usize,
-            array_width: (DEFAULT_ARRAY_WIDTH as f32 * max_width_ratio).round() as usize,
+            collection_width: (DEFAULT_COLLECTION_WIDTH as f32 * max_width_ratio).round() as usize,
             chain_width: (DEFAULT_CHAIN_WIDTH as f32 * max_width_ratio).round() as usize,
             single_line_if_else_max_width: (DEFAULT_SINGLE_LINE_IF_ELSE_WIDTH as f32
                 * max_width_ratio)
@@ -144,10 +139,8 @@ impl WidthHeuristics {
     }
 }
 
-impl ::std::str::FromStr for WidthHeuristics {
-    type Err = &'static str;
-
-    fn from_str(_: &str) -> Result<Self, Self::Err> {
-        Err("WidthHeuristics is not parsable")
+impl Default for WidthHeuristics {
+    fn default() -> Self {
+        Self::scaled(100)
     }
 }

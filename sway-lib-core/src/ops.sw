@@ -411,7 +411,7 @@ impl BitwiseXor for u64 {
 }
 
 impl BitwiseAnd for b256 {
-    pub fn binary_and(val: self, other: Self) -> Self {
+    fn binary_and(val: self, other: Self) -> Self {
         let(value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
         let(other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
         let word_1 = value_word_1.binary_and(other_word_1);
@@ -424,7 +424,7 @@ impl BitwiseAnd for b256 {
 }
 
 impl BitwiseOr for b256 {
-    pub fn binary_or(val: self, other: Self) -> Self {
+    fn binary_or(val: self, other: Self) -> Self {
         let(value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
         let(other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
         let word_1 = value_word_1.binary_or(other_word_1);
@@ -437,7 +437,7 @@ impl BitwiseOr for b256 {
 }
 
 impl BitwiseXor for b256 {
-    pub fn binary_xor(val: self, other: Self) -> Self {
+    fn binary_xor(val: self, other: Self) -> Self {
         let(value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
         let(other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
         let word_1 = value_word_1.binary_xor(other_word_1);
@@ -595,7 +595,7 @@ impl Shiftable for b256 {
             w1 = shifted_1;
         } else if w.eq(1) {
             let(shifted_2, carry_2) = rsh_with_carry(word_2, b);
-            w4 = word_4.rsh(b).add(carry_2);
+            w4 = word_3.rsh(b).add(carry_2);
             let(shifted_1, carry_1) = rsh_with_carry(word_1, b);
             w3 = shifted_2.add(carry_1);
             w2 = shifted_1;

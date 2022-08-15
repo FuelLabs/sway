@@ -1,4 +1,9 @@
-use crate::type_engine::{TraitConstraint, TypeArgument, TypeParameter};
+use std::collections::HashSet;
+
+use crate::{
+    type_system::{TraitConstraint, TypeArgument, TypeBinding, TypeParameter},
+    WhileLoopExpression,
+};
 
 use {
     crate::{
@@ -6,15 +11,19 @@ use {
             STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
         },
         error::{err, ok, CompileError, CompileResult, CompileWarning},
-        type_engine::{insert_type, AbiName, IntegerBits},
-        AbiDeclaration, AsmExpression, AsmOp, AsmRegister, AsmRegisterDeclaration, AstNode,
-        AstNodeContent, CallPath, CodeBlock, ConstantDeclaration, Declaration, EnumDeclaration,
-        EnumVariant, Expression, FunctionDeclaration, FunctionParameter, ImplSelf, ImplTrait,
-        ImportType, IncludeStatement, LazyOp, Literal, MatchBranch, MethodName, ParseTree, Purity,
-        Reassignment, ReassignmentTarget, ReturnStatement, Scrutinee, StorageDeclaration,
-        StorageField, StructDeclaration, StructExpressionField, StructField, StructScrutineeField,
-        Supertrait, TraitDeclaration, TraitFn, TreeType, TypeInfo, UseStatement,
-        VariableDeclaration, Visibility, WhileLoop,
+        type_system::{insert_type, AbiName, IntegerBits},
+        AbiCastExpression, AbiDeclaration, ArrayIndexExpression, AsmExpression, AsmOp, AsmRegister,
+        AsmRegisterDeclaration, AstNode, AstNodeContent, CallPath, CodeBlock, ConstantDeclaration,
+        Declaration, DelineatedPathExpression, EnumDeclaration, EnumVariant, Expression,
+        ExpressionKind, FunctionApplicationExpression, FunctionDeclaration, FunctionParameter,
+        IfExpression, ImplSelf, ImplTrait, ImportType, IncludeStatement,
+        IntrinsicFunctionExpression, LazyOp, LazyOperatorExpression, Literal, MatchBranch,
+        MatchExpression, MethodApplicationExpression, MethodName, ParseTree, Purity, Reassignment,
+        ReassignmentTarget, ReturnStatement, Scrutinee, StorageAccessExpression,
+        StorageDeclaration, StorageField, StructDeclaration, StructExpression,
+        StructExpressionField, StructField, StructScrutineeField, SubfieldExpression, Supertrait,
+        TraitDeclaration, TraitFn, TreeType, TupleIndexExpression, TypeInfo, UseStatement,
+        VariableDeclaration, Visibility,
     },
     std::{
         collections::HashMap,
@@ -24,17 +33,17 @@ use {
         ops::ControlFlow,
         sync::atomic::{AtomicUsize, Ordering},
     },
-    sway_parse::{
+    sway_ast::{
         expr::{ReassignmentOp, ReassignmentOpVariant},
         ty::TyTupleDescriptor,
         AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents,
-        Dependency, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField,
+        CommaToken, Dependency, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField,
         ExprTupleDescriptor, FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition,
         IfExpr, Instruction, Intrinsic, Item, ItemAbi, ItemConst, ItemEnum, ItemFn, ItemImpl,
         ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse, LitInt, LitIntType, MatchBranchKind,
-        Module, ModuleKind, PathExpr, PathExprSegment, PathType, PathTypeSegment, Pattern,
-        PatternStructField, PubToken, QualifiedPathRoot, Statement, StatementLet, Traits, Ty,
-        TypeField, UseTree, WhereClause,
+        Module, ModuleKind, Parens, PathExpr, PathExprSegment, PathType, PathTypeSegment, Pattern,
+        PatternStructField, PubToken, Punctuated, QualifiedPathRoot, Statement, StatementLet,
+        Traits, Ty, TypeField, UseTree, WhereClause,
     },
     sway_types::{Ident, Span, Spanned},
     thiserror::Error,
@@ -88,14 +97,12 @@ impl ErrorContext {
     }
 }
 
-#[derive(Error, Debug, Clone, PartialEq, Hash)]
+#[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ConvertParseTreeError {
     #[error("pub use imports are not supported")]
     PubUseNotSupported { span: Span },
     #[error("return expressions are not allowed outside of blocks")]
     ReturnOutsideOfBlock { span: Span },
-    #[error("while expressions are not allowed outside of blocks")]
-    WhileOutsideOfBlock { span: Span },
     #[error("functions used in applications may not be arbitrary expressions")]
     FunctionArbitraryExpression { span: Span },
     #[error("generics are not supported here")]
@@ -138,6 +145,8 @@ pub enum ConvertParseTreeError {
     U64LiteralOutOfRange { span: Span },
     #[error("signed integers are not supported")]
     SignedIntegersNotSupported { span: Span },
+    #[error("ref variables are not supported")]
+    RefVariablesNotSupported { span: Span },
     #[error("literal patterns not supported in this position")]
     LiteralPatternsNotSupportedHere { span: Span },
     #[error("constant patterns not supported in this position")]
@@ -150,10 +159,10 @@ pub enum ConvertParseTreeError {
     WildcardPatternsNotSupportedHere { span: Span },
     #[error("tuple patterns not supported in this position")]
     TuplePatternsNotSupportedHere { span: Span },
+    #[error("ref patterns not supported in this position")]
+    RefPatternsNotSupportedHere { span: Span },
     #[error("constructor patterns require a single argument")]
     ConstructorPatternOneArg { span: Span },
-    #[error("mutable bindings are not supported in this position")]
-    MutableBindingsNotSupportedHere { span: Span },
     #[error("constructor patterns cannot contain sub-patterns")]
     ConstructorPatternSubPatterns { span: Span },
     #[error("paths are not supported in this position")]
@@ -178,6 +187,8 @@ pub enum ConvertParseTreeError {
     DuplicateStorageField { name: Ident, span: Span },
     #[error("struct field \"{name}\" already declared")]
     DuplicateStructField { name: Ident, span: Span },
+    #[error("identifier \"{name}\" bound more than once in this parameter list")]
+    DuplicateParameterIdentifier { name: Ident, span: Span },
 }
 
 impl Spanned for ConvertParseTreeError {
@@ -185,7 +196,6 @@ impl Spanned for ConvertParseTreeError {
         match self {
             ConvertParseTreeError::PubUseNotSupported { span } => span.clone(),
             ConvertParseTreeError::ReturnOutsideOfBlock { span } => span.clone(),
-            ConvertParseTreeError::WhileOutsideOfBlock { span } => span.clone(),
             ConvertParseTreeError::FunctionArbitraryExpression { span } => span.clone(),
             ConvertParseTreeError::GenericsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::FullyQualifiedPathsNotSupportedHere { span } => span.clone(),
@@ -207,14 +217,15 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::U32LiteralOutOfRange { span } => span.clone(),
             ConvertParseTreeError::U64LiteralOutOfRange { span } => span.clone(),
             ConvertParseTreeError::SignedIntegersNotSupported { span } => span.clone(),
+            ConvertParseTreeError::RefVariablesNotSupported { span } => span.clone(),
             ConvertParseTreeError::LiteralPatternsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::ConstantPatternsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::ConstructorPatternsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::StructPatternsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::WildcardPatternsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::TuplePatternsNotSupportedHere { span } => span.clone(),
+            ConvertParseTreeError::RefPatternsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::ConstructorPatternOneArg { span } => span.clone(),
-            ConvertParseTreeError::MutableBindingsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::ConstructorPatternSubPatterns { span } => span.clone(),
             ConvertParseTreeError::PathsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::FullySpecifiedTypesNotSupported { span } => span.clone(),
@@ -227,6 +238,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::DuplicateEnumVariant { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateStorageField { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateStructField { span, .. } => span.clone(),
+            ConvertParseTreeError::DuplicateParameterIdentifier { span, .. } => span.clone(),
         }
     }
 }
@@ -588,7 +600,7 @@ fn item_fn_to_function_declaration(
         purity: get_attributed_purity(ec, attributes)?,
         name: item_fn.fn_signature.name,
         visibility: pub_token_opt_to_visibility(item_fn.fn_signature.visibility),
-        body: braced_code_block_contents_to_code_block(ec, item_fn.body, false)?,
+        body: braced_code_block_contents_to_code_block(ec, item_fn.body)?,
         parameters: fn_args_to_function_parameters(
             ec,
             item_fn.fn_signature.arguments.into_inner(),
@@ -914,7 +926,6 @@ fn type_field_to_enum_variant(
 fn braced_code_block_contents_to_code_block(
     ec: &mut ErrorContext,
     braced_code_block_contents: Braces<CodeBlockContents>,
-    is_while_loop_body: bool,
 ) -> Result<CodeBlock, ErrorEmitted> {
     let whole_block_span = braced_code_block_contents.span();
     let code_block_contents = braced_code_block_contents.into_inner();
@@ -925,11 +936,7 @@ fn braced_code_block_contents_to_code_block(
             contents.extend(ast_nodes);
         }
         if let Some(expr) = code_block_contents.final_expr_opt {
-            let final_ast_node = expr_to_ast_node(
-                ec,
-                *expr,
-                !is_while_loop_body, // end_of_non_while_loop_body_block
-            )?;
+            let final_ast_node = expr_to_ast_node(ec, *expr, false)?;
             contents.push(final_ast_node);
         }
         contents
@@ -951,11 +958,13 @@ fn fn_args_to_function_parameters(
             .collect::<Result<_, _>>()?,
         FnArgs::NonStatic {
             self_token,
+            ref_self,
             mutable_self,
             args_opt,
         } => {
             let mut function_parameters = vec![FunctionParameter {
                 name: Ident::new(self_token.span()),
+                is_reference: ref_self.is_some(),
                 is_mutable: mutable_self.is_some(),
                 type_id: insert_type(TypeInfo::SelfType),
                 type_span: self_token.span(),
@@ -969,6 +978,20 @@ fn fn_args_to_function_parameters(
             function_parameters
         }
     };
+
+    let mut unique_params = HashSet::<Ident>::default();
+    for fn_param in &function_parameters {
+        let already_used = !unique_params.insert(fn_param.name.clone());
+        if already_used {
+            return Err(
+                ec.error(ConvertParseTreeError::DuplicateParameterIdentifier {
+                    name: fn_param.name.clone(),
+                    span: fn_param.name.span(),
+                }),
+            );
+        }
+    }
+
     Ok(function_parameters)
 }
 
@@ -1000,7 +1023,7 @@ fn ty_to_type_info(ec: &mut ErrorContext, ty: Ty) -> Result<TypeInfo, ErrorEmitt
         Ty::Array(bracketed_ty_array_descriptor) => {
             let ty_array_descriptor = bracketed_ty_array_descriptor.into_inner();
             TypeInfo::Array(
-                crate::type_engine::insert_type(ty_to_type_info(ec, *ty_array_descriptor.ty)?),
+                crate::type_system::insert_type(ty_to_type_info(ec, *ty_array_descriptor.ty)?),
                 expr_to_usize(ec, *ty_array_descriptor.length)?,
             )
         }
@@ -1100,15 +1123,15 @@ fn path_type_to_call_path(
 fn expr_to_ast_node(
     ec: &mut ErrorContext,
     expr: Expr,
-    end_of_non_while_loop_body_block: bool,
+    is_statement: bool,
 ) -> Result<AstNode, ErrorEmitted> {
     let span = expr.span();
     let ast_node = match expr {
         Expr::Return { expr_opt, .. } => {
             let expression = match expr_opt {
                 Some(expr) => expr_to_expression(ec, *expr)?,
-                None => Expression::Tuple {
-                    fields: Vec::new(),
+                None => Expression {
+                    kind: ExpressionKind::Tuple(Vec::new()),
                     span: span.clone(),
                 },
             };
@@ -1117,17 +1140,6 @@ fn expr_to_ast_node(
                 span,
             }
         }
-        Expr::While {
-            condition, block, ..
-        } => AstNode {
-            content: AstNodeContent::WhileLoop(WhileLoop {
-                condition: expr_to_expression(ec, *condition)?,
-                body: braced_code_block_contents_to_code_block(
-                    ec, block, true, // is_while_loop_body
-                )?,
-            }),
-            span,
-        },
         Expr::Reassignment {
             assignable,
             expr,
@@ -1165,7 +1177,7 @@ fn expr_to_ast_node(
         },
         expr => {
             let expression = expr_to_expression(ec, expr)?;
-            if end_of_non_while_loop_body_block {
+            if !is_statement {
                 AstNode {
                     content: AstNodeContent::ImplicitReturnExpression(expression),
                     span,
@@ -1181,79 +1193,363 @@ fn expr_to_ast_node(
     Ok(ast_node)
 }
 
+fn abi_cast_args_to_abi_cast_expression(
+    ec: &mut ErrorContext,
+    args: Parens<AbiCastArgs>,
+) -> Result<Box<AbiCastExpression>, ErrorEmitted> {
+    let AbiCastArgs { name, address, .. } = args.into_inner();
+    let abi_name = path_type_to_call_path(ec, name)?;
+    let address = Box::new(expr_to_expression(ec, *address)?);
+    Ok(Box::new(AbiCastExpression { abi_name, address }))
+}
+
+fn struct_path_and_fields_to_struct_expression(
+    ec: &mut ErrorContext,
+    path: PathExpr,
+    fields: Braces<Punctuated<ExprStructField, CommaToken>>,
+) -> Result<Box<StructExpression>, ErrorEmitted> {
+    let call_path_binding = path_expr_to_call_path_binding(ec, path)?;
+    let fields = {
+        fields
+            .into_inner()
+            .into_iter()
+            .map(|expr_struct_field| {
+                expr_struct_field_to_struct_expression_field(ec, expr_struct_field)
+            })
+            .collect::<Result<_, _>>()?
+    };
+    Ok(Box::new(StructExpression {
+        call_path_binding,
+        fields,
+    }))
+}
+
+fn method_call_fields_to_method_application_expression(
+    ec: &mut ErrorContext,
+    target: Box<Expr>,
+    name: Ident,
+    contract_args_opt: Option<Braces<Punctuated<ExprStructField, CommaToken>>>,
+    args: Parens<Punctuated<Expr, CommaToken>>,
+) -> Result<Box<MethodApplicationExpression>, ErrorEmitted> {
+    let method_name_binding = TypeBinding {
+        inner: MethodName::FromModule {
+            method_name: name.clone(),
+        },
+        type_arguments: vec![],
+        span: name.span(),
+    };
+    let contract_call_params = match contract_args_opt {
+        None => Vec::new(),
+        Some(contract_args) => contract_args
+            .into_inner()
+            .into_iter()
+            .map(|expr_struct_field| {
+                expr_struct_field_to_struct_expression_field(ec, expr_struct_field)
+            })
+            .collect::<Result<_, _>>()?,
+    };
+    let arguments = iter::once(*target)
+        .chain(args.into_inner().into_iter())
+        .map(|expr| expr_to_expression(ec, expr))
+        .collect::<Result<_, _>>()?;
+    Ok(Box::new(MethodApplicationExpression {
+        method_name_binding,
+        contract_call_params,
+        arguments,
+    }))
+}
+
+fn expr_func_app_to_expression_kind(
+    ec: &mut ErrorContext,
+    func: Box<Expr>,
+    args: Parens<Punctuated<Expr, CommaToken>>,
+) -> Result<ExpressionKind, ErrorEmitted> {
+    let span = Span::join(func.span(), args.span());
+    let path_expr = match *func {
+        Expr::Path(path_expr) => path_expr,
+        _ => {
+            let error = ConvertParseTreeError::FunctionArbitraryExpression { span: func.span() };
+            return Err(ec.error(error));
+        }
+    };
+    let PathExpr {
+        root_opt,
+        prefix,
+        mut suffix,
+    } = path_expr;
+    let is_absolute = path_root_opt_to_bool(ec, root_opt)?;
+    let (
+        prefixes,
+        method_type_opt,
+        parent_type_arguments,
+        parent_type_arguments_span,
+        suffix_path_expr,
+    ) = match suffix.pop() {
+        Some((_double_colon_token, call_path_suffix)) => match suffix.pop() {
+            Some((_double_colon_token, maybe_method_segment)) => {
+                let PathExprSegment {
+                    fully_qualified,
+                    name,
+                    generics_opt,
+                } = maybe_method_segment;
+                let (parent_type_arguments, parent_type_arguments_span) = match generics_opt {
+                    Some((_double_colon_token, generic_args)) => (
+                        generic_args_to_type_arguments(ec, generic_args.clone())?,
+                        Some(generic_args.span()),
+                    ),
+                    None => (Vec::new(), None),
+                };
+                let mut prefixes = vec![path_expr_segment_to_ident(ec, prefix)?];
+                for (_double_colon_token, call_path_prefix) in suffix {
+                    let ident = path_expr_segment_to_ident(ec, call_path_prefix)?;
+                    prefixes.push(ident);
+                }
+                if fully_qualified.is_some() {
+                    (
+                        prefixes,
+                        Some(name),
+                        parent_type_arguments,
+                        parent_type_arguments_span,
+                        call_path_suffix,
+                    )
+                } else {
+                    prefixes.push(name);
+                    (
+                        prefixes,
+                        None,
+                        parent_type_arguments,
+                        parent_type_arguments_span,
+                        call_path_suffix,
+                    )
+                }
+            }
+            None => {
+                let PathExprSegment {
+                    fully_qualified,
+                    name,
+                    generics_opt,
+                } = prefix;
+                let (parent_type_arguments, parent_type_arguments_span) = match generics_opt {
+                    Some((_double_colon_token, generic_args)) => (
+                        generic_args_to_type_arguments(ec, generic_args.clone())?,
+                        Some(generic_args.span()),
+                    ),
+                    None => (Vec::new(), None),
+                };
+                if fully_qualified.is_some() {
+                    (
+                        Vec::new(),
+                        Some(name),
+                        parent_type_arguments,
+                        parent_type_arguments_span,
+                        call_path_suffix,
+                    )
+                } else {
+                    (
+                        vec![name],
+                        None,
+                        parent_type_arguments,
+                        parent_type_arguments_span,
+                        call_path_suffix,
+                    )
+                }
+            }
+        },
+        None => (Vec::new(), None, vec![], None, prefix),
+    };
+    let PathExprSegment {
+        fully_qualified,
+        name: method_name,
+        generics_opt,
+    } = suffix_path_expr;
+    if let Some(tilde_token) = fully_qualified {
+        let error = ConvertParseTreeError::FullyQualifiedPathsNotSupportedHere {
+            span: tilde_token.span(),
+        };
+        return Err(ec.error(error));
+    }
+    let arguments = {
+        args.into_inner()
+            .into_iter()
+            .map(|expr| expr_to_expression(ec, expr))
+            .collect::<Result<_, _>>()?
+    };
+    let expression_kind = match method_type_opt {
+        Some(type_name) => {
+            let type_info_span = type_name.span();
+            let type_info = match type_name_to_type_info_opt(&type_name) {
+                Some(type_info) => type_info,
+                None => TypeInfo::Custom {
+                    name: type_name,
+                    type_arguments: None,
+                },
+            };
+            let call_path_binding = TypeBinding {
+                inner: CallPath {
+                    prefixes,
+                    suffix: (type_info, type_info_span.clone()),
+                    is_absolute,
+                },
+                type_arguments: parent_type_arguments,
+                span: parent_type_arguments_span
+                    .map(|parent_type_arguments_span| {
+                        Span::join(type_info_span.clone(), parent_type_arguments_span)
+                    })
+                    .unwrap_or_else(|| type_info_span.clone()),
+            };
+            let (method_type_arguments, method_type_arguments_span) = match generics_opt {
+                Some((_double_colon_token, generic_args)) => (
+                    generic_args_to_type_arguments(ec, generic_args.clone())?,
+                    Some(generic_args.span()),
+                ),
+                None => (Vec::new(), None),
+            };
+            let method_name_binding = TypeBinding {
+                inner: MethodName::FromType {
+                    call_path_binding,
+                    method_name: method_name.clone(),
+                },
+                type_arguments: method_type_arguments,
+                span: method_type_arguments_span
+                    .map(|method_type_arguments_span| {
+                        Span::join(method_name.span(), method_type_arguments_span)
+                    })
+                    .unwrap_or_else(|| method_name.span()),
+            };
+            ExpressionKind::MethodApplication(Box::new(MethodApplicationExpression {
+                method_name_binding,
+                contract_call_params: Vec::new(),
+                arguments,
+            }))
+        }
+        None => {
+            if !parent_type_arguments.is_empty() {
+                let error = ConvertParseTreeError::GenericsNotSupportedHere {
+                    span: parent_type_arguments_span.unwrap(),
+                };
+                return Err(ec.error(error));
+            }
+            let (type_arguments, type_arguments_span) = match generics_opt {
+                Some((_double_colon_token, generic_args)) => (
+                    generic_args_to_type_arguments(ec, generic_args.clone())?,
+                    Some(generic_args.span()),
+                ),
+                None => (Vec::new(), None),
+            };
+            match Intrinsic::try_from_str(method_name.as_str()) {
+                Some(intrinsic) if prefixes.is_empty() && !is_absolute => {
+                    ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
+                        kind_binding: TypeBinding {
+                            inner: intrinsic,
+                            type_arguments,
+                            span: type_arguments_span
+                                .map(|type_arguments_span| {
+                                    Span::join(span.clone(), type_arguments_span)
+                                })
+                                .unwrap_or_else(|| span.clone()),
+                        },
+                        arguments,
+                    })
+                }
+                _ => {
+                    let call_path = CallPath {
+                        prefixes,
+                        suffix: method_name,
+                        is_absolute,
+                    };
+                    let call_path_binding = TypeBinding {
+                        inner: call_path.clone(),
+                        type_arguments,
+                        span: call_path.span(), // TODO: change this span so that it includes the type arguments
+                    };
+                    if call_path.prefixes.is_empty() {
+                        ExpressionKind::FunctionApplication(Box::new(
+                            FunctionApplicationExpression {
+                                call_path_binding,
+                                arguments,
+                            },
+                        ))
+                    } else {
+                        ExpressionKind::DelineatedPath(Box::new(DelineatedPathExpression {
+                            call_path_binding,
+                            args: arguments,
+                        }))
+                    }
+                }
+            }
+        }
+    };
+    Ok(expression_kind)
+}
+
 fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, ErrorEmitted> {
     let span = expr.span();
     let expression = match expr {
         Expr::Path(path_expr) => path_expr_to_expression(ec, path_expr)?,
-        Expr::Literal(literal) => Expression::Literal {
-            value: literal_to_literal(ec, literal)?,
+        Expr::Literal(literal) => Expression {
+            kind: ExpressionKind::Literal(literal_to_literal(ec, literal)?),
             span,
         },
         Expr::AbiCast { args, .. } => {
-            let AbiCastArgs { name, address, .. } = args.into_inner();
-            let abi_name = path_type_to_call_path(ec, name)?;
-            let address = Box::new(expr_to_expression(ec, *address)?);
-            Expression::AbiCast {
-                abi_name,
-                address,
+            let abi_cast_expression = abi_cast_args_to_abi_cast_expression(ec, args)?;
+            Expression {
+                kind: ExpressionKind::AbiCast(abi_cast_expression),
                 span,
             }
         }
         Expr::Struct { path, fields } => {
-            let (struct_name, type_arguments) = path_expr_to_type_info_type_args(ec, path)?;
-            Expression::StructExpression {
-                struct_name,
-                fields: {
-                    fields
-                        .into_inner()
-                        .into_iter()
-                        .map(|expr_struct_field| {
-                            expr_struct_field_to_struct_expression_field(ec, expr_struct_field)
-                        })
-                        .collect::<Result<_, _>>()?
-                },
-                type_arguments,
+            let struct_expression = struct_path_and_fields_to_struct_expression(ec, path, fields)?;
+            Expression {
+                kind: ExpressionKind::Struct(struct_expression),
                 span,
             }
         }
-        Expr::Tuple(parenthesized_expr_tuple_descriptor) => Expression::Tuple {
-            fields: expr_tuple_descriptor_to_expressions(
+        Expr::Tuple(parenthesized_expr_tuple_descriptor) => {
+            let fields = expr_tuple_descriptor_to_expressions(
                 ec,
                 parenthesized_expr_tuple_descriptor.into_inner(),
-            )?,
-            span,
-        },
+            )?;
+            Expression {
+                kind: ExpressionKind::Tuple(fields),
+                span,
+            }
+        }
         Expr::Parens(parens) => expr_to_expression(ec, *parens.into_inner())?,
         Expr::Block(braced_code_block_contents) => {
             braced_code_block_contents_to_expression(ec, braced_code_block_contents)?
         }
         Expr::Array(bracketed_expr_array_descriptor) => {
             match bracketed_expr_array_descriptor.into_inner() {
-                ExprArrayDescriptor::Sequence(exprs) => Expression::Array {
-                    contents: {
-                        exprs
-                            .into_iter()
-                            .map(|expr| expr_to_expression(ec, expr))
-                            .collect::<Result<_, _>>()?
-                    },
-                    span,
-                },
+                ExprArrayDescriptor::Sequence(exprs) => {
+                    let contents = exprs
+                        .into_iter()
+                        .map(|expr| expr_to_expression(ec, expr))
+                        .collect::<Result<_, _>>()?;
+                    Expression {
+                        kind: ExpressionKind::Array(contents),
+                        span,
+                    }
+                }
                 ExprArrayDescriptor::Repeat { value, length, .. } => {
                     let expression = expr_to_expression(ec, *value)?;
                     let length = expr_to_usize(ec, *length)?;
-                    Expression::Array {
-                        contents: iter::repeat_with(|| expression.clone())
-                            .take(length)
-                            .collect(),
+                    let contents = iter::repeat_with(|| expression.clone())
+                        .take(length)
+                        .collect();
+                    Expression {
+                        kind: ExpressionKind::Array(contents),
                         span,
                     }
                 }
             }
         }
-        Expr::Asm(asm_block) => Expression::AsmExpression {
-            asm: asm_block_to_asm_expression(ec, asm_block)?,
-            span,
-        },
+        Expr::Asm(asm_block) => {
+            let asm_expression = asm_block_to_asm_expression(ec, asm_block)?;
+            Expression {
+                kind: ExpressionKind::Asm(asm_expression),
+                span,
+            }
+        }
         Expr::Return { return_token, .. } => {
             let error = ConvertParseTreeError::ReturnOutsideOfBlock {
                 span: return_token.span(),
@@ -1281,8 +1577,8 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                 var_decl_span.clone(),
             );
 
-            let var_decl_exp = Expression::VariableExpression {
-                name: var_decl_name.clone(),
+            let var_decl_exp = Expression {
+                kind: ExpressionKind::Variable(var_decl_name.clone()),
                 span: var_decl_span,
             };
             let branches = {
@@ -1292,8 +1588,8 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                     .map(|match_branch| match_branch_to_match_branch(ec, match_branch))
                     .collect::<Result<_, _>>()?
             };
-            Expression::CodeBlock {
-                contents: CodeBlock {
+            Expression {
+                kind: ExpressionKind::CodeBlock(CodeBlock {
                     contents: vec![
                         AstNode {
                             content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
@@ -1308,182 +1604,39 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                             span: span.clone(),
                         },
                         AstNode {
-                            content: AstNodeContent::ImplicitReturnExpression(
-                                Expression::MatchExp {
+                            content: AstNodeContent::ImplicitReturnExpression(Expression {
+                                kind: ExpressionKind::Match(MatchExpression {
                                     value: Box::new(var_decl_exp),
                                     branches,
-                                    span: span.clone(),
-                                },
-                            ),
+                                }),
+                                span: span.clone(),
+                            }),
                             span: span.clone(),
                         },
                     ],
                     whole_block_span: span.clone(),
-                },
+                }),
                 span,
             }
         }
-        Expr::While { while_token, .. } => {
-            let error = ConvertParseTreeError::WhileOutsideOfBlock {
-                span: while_token.span(),
-            };
-            return Err(ec.error(error));
-        }
+        Expr::While {
+            condition, block, ..
+        } => Expression {
+            kind: ExpressionKind::WhileLoop(WhileLoopExpression {
+                condition: Box::new(expr_to_expression(ec, *condition)?),
+                body: braced_code_block_contents_to_code_block(ec, block)?,
+            }),
+            span,
+        },
         Expr::FuncApp { func, args } => {
-            let path_expr = match *func {
-                Expr::Path(path_expr) => path_expr,
-                _ => {
-                    let error =
-                        ConvertParseTreeError::FunctionArbitraryExpression { span: func.span() };
-                    return Err(ec.error(error));
-                }
-            };
-            let PathExpr {
-                root_opt,
-                prefix,
-                mut suffix,
-            } = path_expr;
-            let is_absolute = path_root_opt_to_bool(ec, root_opt)?;
-            let (prefixes, method_type_opt, suffix_path_expr) = match suffix.pop() {
-                Some((_double_colon_token, call_path_suffix)) => match suffix.pop() {
-                    Some((_double_colon_token, maybe_method_segment)) => {
-                        let PathExprSegment {
-                            fully_qualified,
-                            name,
-                            generics_opt,
-                        } = maybe_method_segment;
-                        if let Some((_double_colon_token, generic_args)) = generics_opt {
-                            let error = ConvertParseTreeError::GenericsNotSupportedHere {
-                                span: generic_args.span(),
-                            };
-                            return Err(ec.error(error));
-                        }
-                        let mut prefixes = vec![path_expr_segment_to_ident(ec, prefix)?];
-                        for (_double_colon_token, call_path_prefix) in suffix {
-                            let ident = path_expr_segment_to_ident(ec, call_path_prefix)?;
-                            prefixes.push(ident);
-                        }
-                        if fully_qualified.is_some() {
-                            (prefixes, Some(name), call_path_suffix)
-                        } else {
-                            prefixes.push(name);
-                            (prefixes, None, call_path_suffix)
-                        }
-                    }
-                    None => {
-                        let PathExprSegment {
-                            fully_qualified,
-                            name,
-                            generics_opt,
-                        } = prefix;
-                        if let Some((_double_colon_token, generic_args)) = generics_opt {
-                            let error = ConvertParseTreeError::GenericsNotSupportedHere {
-                                span: generic_args.span(),
-                            };
-                            return Err(ec.error(error));
-                        }
-                        if fully_qualified.is_some() {
-                            (Vec::new(), Some(name), call_path_suffix)
-                        } else {
-                            (vec![name], None, call_path_suffix)
-                        }
-                    }
-                },
-                None => (Vec::new(), None, prefix),
-            };
-            let PathExprSegment {
-                fully_qualified,
-                name: method_name,
-                generics_opt,
-            } = suffix_path_expr;
-            if let Some(tilde_token) = fully_qualified {
-                let error = ConvertParseTreeError::FullyQualifiedPathsNotSupportedHere {
-                    span: tilde_token.span(),
-                };
-                return Err(ec.error(error));
-            }
-            let arguments = {
-                args.into_inner()
-                    .into_iter()
-                    .map(|expr| expr_to_expression(ec, expr))
-                    .collect::<Result<_, _>>()?
-            };
-            match method_type_opt {
-                Some(type_name) => {
-                    let type_name_span = type_name.span();
-                    let type_name = type_name_to_type_info_opt(&type_name).unwrap_or({
-                        TypeInfo::Custom {
-                            name: type_name,
-                            type_arguments: None,
-                        }
-                    });
-                    let type_arguments = match generics_opt {
-                        Some((_double_colon_token, generic_args)) => {
-                            generic_args_to_type_arguments(ec, generic_args)?
-                        }
-                        None => Vec::new(),
-                    };
-                    let call_path = CallPath {
-                        prefixes,
-                        suffix: (type_name, type_name_span),
-                        is_absolute,
-                    };
-                    Expression::MethodApplication {
-                        method_name: MethodName::FromType {
-                            call_path,
-                            method_name,
-                        },
-                        contract_call_params: Vec::new(),
-                        arguments,
-                        type_arguments,
-                        span,
-                    }
-                }
-                None => {
-                    let type_arguments = match generics_opt {
-                        Some((_double_colon_token, generic_args)) => {
-                            generic_args_to_type_arguments(ec, generic_args)?
-                        }
-                        None => Vec::new(),
-                    };
-                    match Intrinsic::try_from_str(method_name.as_str()) {
-                        Some(intrinsic) if prefixes.is_empty() && !is_absolute => {
-                            Expression::IntrinsicFunction {
-                                kind: intrinsic,
-                                arguments,
-                                type_arguments,
-                                span,
-                            }
-                        }
-                        _ => {
-                            let call_path = CallPath {
-                                prefixes,
-                                suffix: method_name,
-                                is_absolute,
-                            };
-                            if call_path.prefixes.is_empty() {
-                                Expression::FunctionApplication {
-                                    name: call_path,
-                                    arguments,
-                                    type_arguments,
-                                    span,
-                                }
-                            } else {
-                                Expression::DelineatedPath {
-                                    call_path,
-                                    args: arguments,
-                                    type_arguments,
-                                    span,
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            let kind = expr_func_app_to_expression_kind(ec, func, args)?;
+            Expression { kind, span }
         }
-        Expr::Index { target, arg } => Expression::ArrayIndex {
-            prefix: Box::new(expr_to_expression(ec, *target)?),
-            index: Box::new(expr_to_expression(ec, *arg.into_inner())?),
+        Expr::Index { target, arg } => Expression {
+            kind: ExpressionKind::ArrayIndex(ArrayIndexExpression {
+                prefix: Box::new(expr_to_expression(ec, *target)?),
+                index: Box::new(expr_to_expression(ec, *arg.into_inner())?),
+            }),
             span,
         },
         Expr::MethodCall {
@@ -1492,27 +1645,20 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             args,
             contract_args_opt,
             ..
-        } => Expression::MethodApplication {
-            method_name: MethodName::FromModule { method_name: name },
-            contract_call_params: match contract_args_opt {
-                None => Vec::new(),
-                Some(contract_args) => contract_args
-                    .into_inner()
-                    .into_iter()
-                    .map(|expr_struct_field| {
-                        expr_struct_field_to_struct_expression_field(ec, expr_struct_field)
-                    })
-                    .collect::<Result<_, _>>()?,
-            },
-            arguments: {
-                iter::once(*target)
-                    .chain(args.into_inner().into_iter())
-                    .map(|expr| expr_to_expression(ec, expr))
-                    .collect::<Result<_, _>>()?
-            },
-            type_arguments: Vec::new(),
-            span,
-        },
+        } => {
+            let method_application_expression =
+                method_call_fields_to_method_application_expression(
+                    ec,
+                    target,
+                    name,
+                    contract_args_opt,
+                    args,
+                )?;
+            Expression {
+                kind: ExpressionKind::MethodApplication(method_application_expression),
+                span,
+            }
+        }
         Expr::FieldProjection { target, name, .. } => {
             let mut idents = vec![&name];
             let mut base = &*target;
@@ -1539,11 +1685,18 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             match storage_access_field_names_opt {
                 Some(field_names) => {
                     let field_names = field_names.into_iter().rev().cloned().collect();
-                    Expression::StorageAccess { field_names, span }
+                    Expression {
+                        kind: ExpressionKind::StorageAccess(StorageAccessExpression {
+                            field_names,
+                        }),
+                        span,
+                    }
                 }
-                None => Expression::SubfieldExpression {
-                    prefix: Box::new(expr_to_expression(ec, *target)?),
-                    field_to_access: name,
+                None => Expression {
+                    kind: ExpressionKind::Subfield(SubfieldExpression {
+                        prefix: Box::new(expr_to_expression(ec, *target)?),
+                        field_to_access: name,
+                    }),
                     span,
                 },
             }
@@ -1553,16 +1706,19 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             field,
             field_span,
             ..
-        } => Expression::TupleIndex {
-            prefix: Box::new(expr_to_expression(ec, *target)?),
-            index: match usize::try_from(field) {
-                Ok(index) => index,
-                Err(..) => {
-                    let error = ConvertParseTreeError::TupleIndexOutOfRange { span: field_span };
-                    return Err(ec.error(error));
-                }
-            },
-            index_span: field_span,
+        } => Expression {
+            kind: ExpressionKind::TupleIndex(TupleIndexExpression {
+                prefix: Box::new(expr_to_expression(ec, *target)?),
+                index: match usize::try_from(field) {
+                    Ok(index) => index,
+                    Err(..) => {
+                        let error =
+                            ConvertParseTreeError::TupleIndexOutOfRange { span: field_span };
+                        return Err(ec.error(error));
+                    }
+                },
+                index_span: field_span,
+            }),
             span,
         },
         Expr::Ref { ref_token, expr } => unary_op_call(ec, "ref", ref_token.span(), span, *expr)?,
@@ -1714,16 +1870,20 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             let rhs = expr_to_expression(ec, *rhs)?;
             binary_op_call("ge", greater_than_eq_token.span(), span, lhs, rhs)?
         }
-        Expr::LogicalAnd { lhs, rhs, .. } => Expression::LazyOperator {
-            op: LazyOp::And,
-            lhs: Box::new(expr_to_expression(ec, *lhs)?),
-            rhs: Box::new(expr_to_expression(ec, *rhs)?),
+        Expr::LogicalAnd { lhs, rhs, .. } => Expression {
+            kind: ExpressionKind::LazyOperator(LazyOperatorExpression {
+                op: LazyOp::And,
+                lhs: Box::new(expr_to_expression(ec, *lhs)?),
+                rhs: Box::new(expr_to_expression(ec, *rhs)?),
+            }),
             span,
         },
-        Expr::LogicalOr { lhs, rhs, .. } => Expression::LazyOperator {
-            op: LazyOp::Or,
-            lhs: Box::new(expr_to_expression(ec, *lhs)?),
-            rhs: Box::new(expr_to_expression(ec, *rhs)?),
+        Expr::LogicalOr { lhs, rhs, .. } => Expression {
+            kind: ExpressionKind::LazyOperator(LazyOperatorExpression {
+                op: LazyOp::Or,
+                lhs: Box::new(expr_to_expression(ec, *lhs)?),
+                rhs: Box::new(expr_to_expression(ec, *rhs)?),
+            }),
             span,
         },
         Expr::Reassignment { .. } => {
@@ -1741,17 +1901,23 @@ fn unary_op_call(
     span: Span,
     arg: Expr,
 ) -> Result<Expression, ErrorEmitted> {
-    Ok(Expression::FunctionApplication {
-        name: CallPath {
+    let call_path_binding = TypeBinding {
+        inner: CallPath {
             prefixes: vec![
                 Ident::new_with_override("core", op_span.clone()),
                 Ident::new_with_override("ops", op_span.clone()),
             ],
-            suffix: Ident::new_with_override(name, op_span),
+            suffix: Ident::new_with_override(name, op_span.clone()),
             is_absolute: false,
         },
-        arguments: vec![expr_to_expression(ec, arg)?],
-        type_arguments: Vec::new(),
+        type_arguments: vec![],
+        span: op_span,
+    };
+    Ok(Expression {
+        kind: ExpressionKind::FunctionApplication(Box::new(FunctionApplicationExpression {
+            call_path_binding,
+            arguments: vec![expr_to_expression(ec, arg)?],
+        })),
         span,
     })
 }
@@ -1763,27 +1929,33 @@ fn binary_op_call(
     lhs: Expression,
     rhs: Expression,
 ) -> Result<Expression, ErrorEmitted> {
-    Ok(Expression::MethodApplication {
-        method_name: MethodName::FromTrait {
+    let method_name_binding = TypeBinding {
+        inner: MethodName::FromTrait {
             call_path: CallPath {
                 prefixes: vec![
                     Ident::new_with_override("core", op_span.clone()),
                     Ident::new_with_override("ops", op_span.clone()),
                 ],
-                suffix: Ident::new_with_override(name, op_span),
+                suffix: Ident::new_with_override(name, op_span.clone()),
                 is_absolute: true,
             },
         },
-        contract_call_params: Vec::new(),
-        arguments: vec![lhs, rhs],
-        type_arguments: Vec::new(),
+        type_arguments: vec![],
+        span: op_span,
+    };
+    Ok(Expression {
+        kind: ExpressionKind::MethodApplication(Box::new(MethodApplicationExpression {
+            method_name_binding,
+            contract_call_params: Vec::new(),
+            arguments: vec![lhs, rhs],
+        })),
         span,
     })
 }
 
 fn storage_field_to_storage_field(
     ec: &mut ErrorContext,
-    storage_field: sway_parse::StorageField,
+    storage_field: sway_ast::StorageField,
 ) -> Result<StorageField, ErrorEmitted> {
     let storage_field = StorageField {
         name: storage_field.name,
@@ -1800,7 +1972,7 @@ fn statement_to_ast_nodes(
     let ast_nodes = match statement {
         Statement::Let(statement_let) => statement_let_to_ast_nodes(ec, statement_let)?,
         Statement::Item(item) => item_to_ast_nodes(ec, item)?,
-        Statement::Expr { expr, .. } => vec![expr_to_ast_node(ec, expr, false)?],
+        Statement::Expr { expr, .. } => vec![expr_to_ast_node(ec, expr, true)?],
     };
     Ok(ast_nodes)
 }
@@ -1811,20 +1983,16 @@ fn fn_arg_to_function_parameter(
 ) -> Result<FunctionParameter, ErrorEmitted> {
     let type_span = fn_arg.ty.span();
     let pat_span = fn_arg.pattern.span();
-    let name = match fn_arg.pattern {
+    let (reference, mutable, name) = match fn_arg.pattern {
         Pattern::Wildcard { .. } => {
             let error = ConvertParseTreeError::WildcardPatternsNotSupportedHere { span: pat_span };
             return Err(ec.error(error));
         }
-        Pattern::Var { mutable, name } => {
-            if let Some(mut_token) = mutable {
-                let error = ConvertParseTreeError::MutableBindingsNotSupportedHere {
-                    span: mut_token.span(),
-                };
-                return Err(ec.error(error));
-            }
-            name
-        }
+        Pattern::Var {
+            reference,
+            mutable,
+            name,
+        } => (reference, mutable, name),
         Pattern::Literal(..) => {
             let error = ConvertParseTreeError::LiteralPatternsNotSupportedHere { span: pat_span };
             return Err(ec.error(error));
@@ -1849,7 +2017,8 @@ fn fn_arg_to_function_parameter(
     };
     let function_parameter = FunctionParameter {
         name,
-        is_mutable: false,
+        is_reference: reference.is_some(),
+        is_mutable: mutable.is_some(),
         type_id: insert_type(ty_to_type_info(ec, fn_arg.ty)?),
         type_span,
     };
@@ -1859,7 +2028,7 @@ fn fn_arg_to_function_parameter(
 fn expr_to_usize(ec: &mut ErrorContext, expr: Expr) -> Result<usize, ErrorEmitted> {
     let span = expr.span();
     let value = match expr {
-        Expr::Literal(sway_parse::Literal::Int(lit_int)) => {
+        Expr::Literal(sway_ast::Literal::Int(lit_int)) => {
             match lit_int.ty_opt {
                 None => (),
                 Some(..) => {
@@ -1886,7 +2055,7 @@ fn expr_to_usize(ec: &mut ErrorContext, expr: Expr) -> Result<usize, ErrorEmitte
 fn expr_to_u64(ec: &mut ErrorContext, expr: Expr) -> Result<u64, ErrorEmitted> {
     let span = expr.span();
     let value = match expr {
-        Expr::Literal(sway_parse::Literal::Int(lit_int)) => {
+        Expr::Literal(sway_ast::Literal::Int(lit_int)) => {
             match lit_int.ty_opt {
                 None => (),
                 Some(..) => {
@@ -2011,6 +2180,7 @@ fn path_expr_segment_to_ident_or_type_argument(
     };
     Ok((name, type_args))
 }
+
 fn path_expr_segment_to_ident(
     ec: &mut ErrorContext,
     path_expr_segment: PathExprSegment,
@@ -2042,14 +2212,23 @@ fn path_expr_to_expression(
     let span = path_expr.span();
     let expression = if path_expr.root_opt.is_none() && path_expr.suffix.is_empty() {
         let name = path_expr_segment_to_ident(ec, path_expr.prefix)?;
-        Expression::VariableExpression { name, span }
+        Expression {
+            kind: ExpressionKind::Variable(name),
+            span,
+        }
     } else {
         let call_path = path_expr_to_call_path(ec, path_expr)?;
-        Expression::DelineatedPath {
-            call_path,
-            args: Vec::new(),
+        let call_path_binding = TypeBinding {
+            inner: call_path.clone(),
+            type_arguments: vec![],
+            span: call_path.span(),
+        };
+        Expression {
+            kind: ExpressionKind::DelineatedPath(Box::new(DelineatedPathExpression {
+                call_path_binding,
+                args: Vec::new(),
+            })),
             span,
-            type_arguments: Vec::new(),
         }
     };
     Ok(expression)
@@ -2060,8 +2239,9 @@ fn braced_code_block_contents_to_expression(
     braced_code_block_contents: Braces<CodeBlockContents>,
 ) -> Result<Expression, ErrorEmitted> {
     let span = braced_code_block_contents.span();
-    Ok(Expression::CodeBlock {
-        contents: braced_code_block_contents_to_code_block(ec, braced_code_block_contents, false)?,
+    let code_block = braced_code_block_contents_to_code_block(ec, braced_code_block_contents)?;
+    Ok(Expression {
+        kind: ExpressionKind::CodeBlock(code_block),
         span,
     })
 }
@@ -2078,8 +2258,8 @@ fn if_expr_to_expression(
         ..
     } = if_expr;
     let then_block_span = then_block.span();
-    let then_block = Expression::CodeBlock {
-        contents: braced_code_block_contents_to_code_block(ec, then_block, false)?,
+    let then_block = Expression {
+        kind: ExpressionKind::CodeBlock(braced_code_block_contents_to_code_block(ec, then_block)?),
         span: then_block_span.clone(),
     };
     let else_block = match else_opt {
@@ -2095,10 +2275,12 @@ fn if_expr_to_expression(
         }
     };
     let expression = match condition {
-        IfCondition::Expr(condition) => Expression::IfExp {
-            condition: Box::new(expr_to_expression(ec, *condition)?),
-            then: Box::new(then_block),
-            r#else: else_block.map(Box::new),
+        IfCondition::Expr(condition) => Expression {
+            kind: ExpressionKind::If(IfExpression {
+                condition: Box::new(expr_to_expression(ec, *condition)?),
+                then: Box::new(then_block),
+                r#else: else_block.map(Box::new),
+            }),
             span,
         },
         IfCondition::Let { lhs, rhs, .. } => {
@@ -2126,14 +2308,24 @@ fn if_expr_to_expression(
                         scrutinee: Scrutinee::CatchAll {
                             span: else_block_span.clone(),
                         },
-                        result: then_block,
+                        // If there's no else in an `if-let` expression,
+                        // then the else is equivalent to an empty block.
+                        result: Expression {
+                            kind: ExpressionKind::CodeBlock(CodeBlock {
+                                contents: vec![],
+                                whole_block_span: else_block_span.clone(),
+                            }),
+                            span: else_block_span.clone(),
+                        },
                         span: else_block_span,
                     }
                 }
             });
-            Expression::MatchExp {
-                value: Box::new(expr_to_expression(ec, *rhs)?),
-                branches,
+            Expression {
+                kind: ExpressionKind::Match(MatchExpression {
+                    value: Box::new(expr_to_expression(ec, *rhs)?),
+                    branches,
+                }),
                 span,
             }
         }
@@ -2160,11 +2352,11 @@ fn path_root_opt_to_bool(
 
 fn literal_to_literal(
     ec: &mut ErrorContext,
-    literal: sway_parse::Literal,
+    literal: sway_ast::Literal,
 ) -> Result<Literal, ErrorEmitted> {
     let literal = match literal {
-        sway_parse::Literal::Bool(lit_bool) => Literal::Boolean(lit_bool.kind.into()),
-        sway_parse::Literal::String(lit_string) => {
+        sway_ast::Literal::Bool(lit_bool) => Literal::Boolean(lit_bool.kind.into()),
+        sway_ast::Literal::String(lit_string) => {
             let full_span = lit_string.span();
             let inner_span = Span::new(
                 full_span.src().clone(),
@@ -2175,13 +2367,13 @@ fn literal_to_literal(
             .unwrap();
             Literal::String(inner_span)
         }
-        sway_parse::Literal::Char(lit_char) => {
+        sway_ast::Literal::Char(lit_char) => {
             let error = ConvertParseTreeError::CharLiteralsNotImplemented {
                 span: lit_char.span(),
             };
             return Err(ec.error(error));
         }
-        sway_parse::Literal::Int(lit_int) => {
+        sway_ast::Literal::Int(lit_int) => {
             let LitInt {
                 parsed,
                 ty_opt,
@@ -2285,11 +2477,10 @@ fn literal_to_literal(
 /// Like [path_expr_to_call_path], but instead can potentially return type arguments.
 /// Use this when converting a call path that could potentially include type arguments, i.e. the
 /// turbofish.
-#[allow(clippy::type_complexity)]
-fn path_expr_to_type_info_type_args(
+fn path_expr_to_call_path_binding(
     ec: &mut ErrorContext,
     path_expr: PathExpr,
-) -> Result<(CallPath<(TypeInfo, Span)>, Vec<TypeArgument>), ErrorEmitted> {
+) -> Result<TypeBinding<CallPath<(TypeInfo, Span)>>, ErrorEmitted> {
     let PathExpr {
         root_opt,
         prefix,
@@ -2317,21 +2508,25 @@ fn path_expr_to_type_info_type_args(
         None => {
             let (suffix, ty_args) = path_expr_segment_to_ident_or_type_argument(ec, prefix)?;
             let type_info_span = suffix.span();
-            let type_info = type_name_to_type_info_opt(&suffix).unwrap_or(TypeInfo::Custom {
-                name: suffix,
-                type_arguments: None,
-            });
+            let type_info = match type_name_to_type_info_opt(&suffix) {
+                Some(type_info) => type_info,
+                None => TypeInfo::Custom {
+                    name: suffix,
+                    type_arguments: None,
+                },
+            };
             (vec![], type_info, type_info_span, ty_args)
         }
     };
-    Ok((
-        CallPath {
+    Ok(TypeBinding {
+        inner: CallPath {
             prefixes,
-            suffix: (type_info, type_info_span),
+            suffix: (type_info, type_info_span.clone()),
             is_absolute,
         },
         type_arguments,
-    ))
+        span: type_info_span, // TODO: change this span so that it includes the type arguments
+    })
 }
 
 fn path_expr_to_call_path(
@@ -2373,8 +2568,8 @@ fn expr_struct_field_to_struct_expression_field(
     let span = expr_struct_field.span();
     let value = match expr_struct_field.expr_opt {
         Some((_colon_token, expr)) => expr_to_expression(ec, *expr)?,
-        None => Expression::VariableExpression {
-            name: expr_struct_field.field_name.clone(),
+        None => Expression {
+            kind: ExpressionKind::Variable(expr_struct_field.field_name.clone()),
             span: span.clone(),
         },
     };
@@ -2405,7 +2600,7 @@ fn expr_tuple_descriptor_to_expressions(
 fn asm_block_to_asm_expression(
     ec: &mut ErrorContext,
     asm_block: AsmBlock,
-) -> Result<AsmExpression, ErrorEmitted> {
+) -> Result<Box<AsmExpression>, ErrorEmitted> {
     let whole_block_span = asm_block.span();
     let asm_block_contents = asm_block.contents.into_inner();
     let (returns, return_type) = match asm_block_contents.final_expr_opt {
@@ -2439,18 +2634,18 @@ fn asm_block_to_asm_expression(
             .map(|(instruction, _semicolon_token)| instruction_to_asm_op(instruction))
             .collect()
     };
-    Ok(AsmExpression {
+    Ok(Box::new(AsmExpression {
         registers,
         body,
         returns,
         return_type,
         whole_block_span,
-    })
+    }))
 }
 
 fn match_branch_to_match_branch(
     ec: &mut ErrorContext,
-    match_branch: sway_parse::MatchBranch,
+    match_branch: sway_ast::MatchBranch,
 ) -> Result<MatchBranch, ErrorEmitted> {
     let span = match_branch.span();
     Ok(MatchBranch {
@@ -2458,8 +2653,10 @@ fn match_branch_to_match_branch(
         result: match match_branch.kind {
             MatchBranchKind::Block { block, .. } => {
                 let span = block.span();
-                Expression::CodeBlock {
-                    contents: braced_code_block_contents_to_code_block(ec, block, false)?,
+                Expression {
+                    kind: ExpressionKind::CodeBlock(braced_code_block_contents_to_code_block(
+                        ec, block,
+                    )?),
                     span,
                 }
             }
@@ -2482,11 +2679,19 @@ fn statement_let_to_ast_nodes(
     ) -> Result<Vec<AstNode>, ErrorEmitted> {
         let ast_nodes = match pattern {
             Pattern::Wildcard { .. } | Pattern::Var { .. } => {
-                let (mutable, name) = match pattern {
-                    Pattern::Var { mutable, name } => (mutable, name),
-                    Pattern::Wildcard { .. } => (None, Ident::new_no_span("_")),
+                let (reference, mutable, name) = match pattern {
+                    Pattern::Var {
+                        reference,
+                        mutable,
+                        name,
+                    } => (reference, mutable, name),
+                    Pattern::Wildcard { .. } => (None, None, Ident::new_no_span("_")),
                     _ => unreachable!(),
                 };
+                if reference.is_some() {
+                    let error = ConvertParseTreeError::RefVariablesNotSupported { span };
+                    return Err(ec.error(error));
+                }
                 let (type_ascription, type_ascription_span) = match ty_opt {
                     Some(ty) => {
                         let type_ascription_span = ty.span();
@@ -2566,8 +2771,8 @@ fn statement_let_to_ast_nodes(
                 });
 
                 // create a new variable expression that points to the new destructured struct name that we just created
-                let new_expr = Expression::VariableExpression {
-                    name: destructure_name,
+                let new_expr = Expression {
+                    kind: ExpressionKind::Variable(destructure_name),
                     span: span.clone(),
                 };
 
@@ -2582,6 +2787,7 @@ fn statement_let_to_ast_nodes(
                             let recursive_pattern = match pattern_opt {
                                 Some((_colon_token, box_pattern)) => *box_pattern,
                                 None => Pattern::Var {
+                                    reference: None,
                                     mutable: None,
                                     name: field_name.clone(),
                                 },
@@ -2599,10 +2805,12 @@ fn statement_let_to_ast_nodes(
                         ec,
                         recursive_pattern,
                         None,
-                        Expression::SubfieldExpression {
-                            prefix: Box::new(new_expr.clone()),
+                        Expression {
+                            kind: ExpressionKind::Subfield(SubfieldExpression {
+                                prefix: Box::new(new_expr.clone()),
+                                field_to_access: field,
+                            }),
                             span: span.clone(),
-                            field_to_access: field,
                         },
                         span.clone(),
                     )?);
@@ -2652,8 +2860,8 @@ fn statement_let_to_ast_nodes(
                 });
 
                 // create a variable expression that points to the new tuple name that we just created
-                let new_expr = Expression::VariableExpression {
-                    name: tuple_name,
+                let new_expr = Expression {
+                    kind: ExpressionKind::Variable(tuple_name),
                     span: span.clone(),
                 };
 
@@ -2679,10 +2887,12 @@ fn statement_let_to_ast_nodes(
                         ec,
                         pattern,
                         ty_opt,
-                        Expression::TupleIndex {
-                            prefix: Box::new(new_expr.clone()),
-                            index,
-                            index_span: span.clone(),
+                        Expression {
+                            kind: ExpressionKind::TupleIndex(TupleIndexExpression {
+                                prefix: Box::new(new_expr.clone()),
+                                index,
+                                index_span: span.clone(),
+                            }),
                             span: span.clone(),
                         },
                         span.clone(),
@@ -2727,7 +2937,7 @@ fn generic_args_to_type_parameters(
 
 fn asm_register_declaration_to_asm_register_declaration(
     ec: &mut ErrorContext,
-    asm_register_declaration: sway_parse::AsmRegisterDeclaration,
+    asm_register_declaration: sway_ast::AsmRegisterDeclaration,
 ) -> Result<AsmRegisterDeclaration, ErrorEmitted> {
     Ok(AsmRegisterDeclaration {
         name: asm_register_declaration.register,
@@ -2756,7 +2966,15 @@ fn pattern_to_scrutinee(
         Pattern::Wildcard { underscore_token } => Scrutinee::CatchAll {
             span: underscore_token.span(),
         },
-        Pattern::Var { name, .. } => Scrutinee::Variable { name, span },
+        Pattern::Var {
+            reference, name, ..
+        } => {
+            if reference.is_some() {
+                let error = ConvertParseTreeError::RefPatternsNotSupportedHere { span };
+                return Err(ec.error(error));
+            }
+            Scrutinee::Variable { name, span }
+        }
         Pattern::Literal(literal) => Scrutinee::Literal {
             value: literal_to_literal(ec, literal)?,
             span,
@@ -2920,10 +3138,15 @@ fn assignable_to_expression(
 ) -> Result<Expression, ErrorEmitted> {
     let span = assignable.span();
     let expression = match assignable {
-        Assignable::Var(name) => Expression::VariableExpression { name, span },
-        Assignable::Index { target, arg } => Expression::ArrayIndex {
-            prefix: Box::new(assignable_to_expression(ec, *target)?),
-            index: Box::new(expr_to_expression(ec, *arg.into_inner())?),
+        Assignable::Var(name) => Expression {
+            kind: ExpressionKind::Variable(name),
+            span,
+        },
+        Assignable::Index { target, arg } => Expression {
+            kind: ExpressionKind::ArrayIndex(ArrayIndexExpression {
+                prefix: Box::new(assignable_to_expression(ec, *target)?),
+                index: Box::new(expr_to_expression(ec, *arg.into_inner())?),
+            }),
             span,
         },
         Assignable::FieldProjection { target, name, .. } => {
@@ -2947,11 +3170,18 @@ fn assignable_to_expression(
             match storage_access_field_names_opt {
                 Some(field_names) => {
                     let field_names = field_names.into_iter().rev().cloned().collect();
-                    Expression::StorageAccess { field_names, span }
+                    Expression {
+                        kind: ExpressionKind::StorageAccess(StorageAccessExpression {
+                            field_names,
+                        }),
+                        span,
+                    }
                 }
-                None => Expression::SubfieldExpression {
-                    prefix: Box::new(assignable_to_expression(ec, *target)?),
-                    field_to_access: name,
+                None => Expression {
+                    kind: ExpressionKind::Subfield(SubfieldExpression {
+                        prefix: Box::new(assignable_to_expression(ec, *target)?),
+                        field_to_access: name,
+                    }),
                     span,
                 },
             }
@@ -2969,10 +3199,12 @@ fn assignable_to_expression(
                     return Err(ec.error(error));
                 }
             };
-            Expression::TupleIndex {
-                prefix: Box::new(assignable_to_expression(ec, *target)?),
-                index,
-                index_span: field_span,
+            Expression {
+                kind: ExpressionKind::TupleIndex(TupleIndexExpression {
+                    prefix: Box::new(assignable_to_expression(ec, *target)?),
+                    index,
+                    index_span: field_span,
+                }),
                 span,
             }
         }

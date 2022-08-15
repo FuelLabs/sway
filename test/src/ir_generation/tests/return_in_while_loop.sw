@@ -12,7 +12,7 @@ fn main() -> bool {
 
 // check: $while_body:
 // check: $(f_val=$VAL) = const bool false
-// check: ret bool $f_val, !4
+// check: ret bool $f_val, $MD
 // not: br $while
 
 // check: $end_while:

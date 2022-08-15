@@ -3,26 +3,6 @@
     "inputs": [
       {
         "components": null,
-        "name": "initial_value",
-        "type": "u64",
-        "typeArguments": null
-      }
-    ],
-    "name": "initialize",
-    "outputs": [
-      {
-        "components": null,
-        "name": "",
-        "type": "u64",
-        "typeArguments": null
-      }
-    ],
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "components": null,
         "name": "increment_by",
         "type": "u64",
         "typeArguments": null

@@ -1,48 +1,48 @@
 category = "fail"
 
-# check: storage_conflict/src/main.sw:103:4
+# check: storage_conflict/src/main.sw:103:1
 # check: $()This function performs a storage read but does not have the required attribute(s).  Try adding "#[storage(read)]" to the function declaration.
 
-# check: storage_conflict/src/main.sw:46:4
+# check: storage_conflict/src/main.sw:46:1
 # check: $()This function performs a storage read but does not have the required attribute(s).  Try adding "#[storage(read)]" to the function declaration.
 
-# check: storage_conflict/src/main.sw:33:4
+# check: storage_conflict/src/main.sw:33:1
 # check: $()This function performs a storage read but does not have the required attribute(s).  Try adding "#[storage(read)]" to the function declaration.
 
 # check: storage_conflict/src/main.sw:13:5
 # check: $()This function performs a storage read but does not have the required attribute(s).  Try adding "#[storage(read)]" to the function declaration.
 
-# check: storage_conflict/src/main.sw:112:4
+# check: storage_conflict/src/main.sw:112:1
 # check: $()This function performs a storage read but does not have the required attribute(s).  Try adding "#[storage(read)]" to the function declaration.
 
-# check: storage_conflict/src/main.sw:57:4
+# check: storage_conflict/src/main.sw:57:1
 # check: $()This function performs a storage read but does not have the required attribute(s).  Try adding "#[storage(read)]" to the function declaration.
 
-# check: storage_conflict/src/main.sw:53:4
+# check: storage_conflict/src/main.sw:53:1
 # check: $()This function performs a storage read but does not have the required attribute(s).  Try adding "#[storage(read)]" to the function declaration.
 
 # check: storage_conflict/src/main.sw:16:5
 # check: $()This function performs a storage read but does not have the required attribute(s).  Try adding "#[storage(read)]" to the function declaration.
 
-# check: storage_conflict/src/main.sw:123:4
+# check: storage_conflict/src/main.sw:123:1
 # check: $()This function performs a storage write but does not have the required attribute(s).  Try adding "#[storage(write)]" to the function declaration.
 
-# check: storage_conflict/src/main.sw:71:4
+# check: storage_conflict/src/main.sw:71:1
 # check: $()This function performs a storage write but does not have the required attribute(s).  Try adding "#[storage(write)]" to the function declaration.
 
-# check: storage_conflict/src/main.sw:64:4
+# check: storage_conflict/src/main.sw:64:1
 # check: $()This function performs a storage write but does not have the required attribute(s).  Try adding "#[storage(write)]" to the function declaration.
 
 # check: storage_conflict/src/main.sw:19:5
 # check: $()This function performs a storage write but does not have the required attribute(s).  Try adding "#[storage(write)]" to the function declaration.
 
-# check: storage_conflict/src/main.sw:129:4
+# check: storage_conflict/src/main.sw:129:1
 # check: $()This function performs a storage write but does not have the required attribute(s).  Try adding "#[storage(write)]" to the function declaration.
 
-# check: storage_conflict/src/main.sw:87:4
+# check: storage_conflict/src/main.sw:87:1
 # check: $()This function performs a storage write but does not have the required attribute(s).  Try adding "#[storage(write)]" to the function declaration.
 
-# check: storage_conflict/src/main.sw:82:4
+# check: storage_conflict/src/main.sw:82:1
 # check: $()This function performs a storage write but does not have the required attribute(s).  Try adding "#[storage(write)]" to the function declaration.
 
 # check: storage_conflict/src/main.sw:22:5

@@ -30,20 +30,26 @@ Our `tests/harness.rs` file could look like:
 
 ```rust,ignore
 use fuels::{prelude::*, tx::ContractId};
-use fuels_abigen_macro::abigen;
 
 // Load abi from json
-abigen!(MyContract, "out/debug/my-fuel-project-abi.json");
+abigen!(TestContract, "out/debug/my-fuel-project-abi.json");
 
-async fn get_contract_instance() -> (MyContract, ContractId) {
+async fn get_contract_instance() -> (TestContract, ContractId) {
     // Launch a local network and deploy the contract
-    let wallet = launch_provider_and_get_single_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await;
 
-    let id = Contract::deploy("./out/debug/my-fuel-project.bin", &wallet, TxParameters::default())
-        .await
-        .unwrap();
+    let id = Contract::deploy(
+        "./out/debug/my-fuel-project.bin",
+        &wallet,
+        TxParameters::default(),
+        StorageConfiguration::with_storage_path(Some(
+            "./out/debug/my-fuel-project-storage_slots.json".to_string(),
+        )),
+    )
+    .await
+    .unwrap();
 
-    let instance = MyContract::new(id.to_string(), wallet);
+    let instance = TestContract::new(id.to_string(), wallet);
 
     (instance, id)
 }

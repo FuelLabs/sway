@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: fn foo(x: u32, x:u32) {
+# nextln: $()identifier "x" bound more than once in this parameter list

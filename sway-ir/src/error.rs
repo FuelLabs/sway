@@ -6,11 +6,13 @@
 #[derive(Debug)]
 pub enum IrError {
     FunctionLocalClobbered(String, String),
-    InvalidMetadatum,
+    InvalidMetadatum(String),
+    InvalidPhi,
     MisplacedTerminator(String),
     MissingBlock(String),
     MissingTerminator(String),
     ParseFailure(String, String),
+    RemoveMissingBlock(String),
     ValueNotFound(String),
 
     VerifyAccessElementInconsistentTypes,
@@ -20,6 +22,8 @@ pub enum IrError {
     VerifyAccessValueInvalidIndices,
     VerifyAccessValueOnNonStruct,
     VerifyArgumentValueIsNotArgument(String),
+    VerifyAddrOfUnknownSourceType,
+    VerifyAddrOfCopyType,
     VerifyBitcastUnknownSourceType,
     VerifyBitcastFromNonCopyType(String),
     VerifyBitcastToNonCopyType(String),
@@ -35,6 +39,9 @@ pub enum IrError {
     VerifyGetNonExistentPointer,
     VerifyInsertElementOfIncorrectType,
     VerifyInsertValueOfIncorrectType,
+    VerifyIntToPtrFromNonIntegerType(String),
+    VerifyIntToPtrToCopyType(String),
+    VerifyIntToPtrUnknownSourceType,
     VerifyLoadFromNonPointer,
     VerifyLoadNonExistentPointer,
     VerifyMismatchedReturnTypes(String),
@@ -48,7 +55,10 @@ pub enum IrError {
     VerifyStoreNonExistentPointer,
     VerifyStoreToNonPointer,
     VerifyUntypedValuePassedToFunction,
+    VerifyInvalidGtfIndexType,
 }
+
+impl std::error::Error for IrError {}
 
 use std::fmt;
 
@@ -57,9 +67,15 @@ impl fmt::Display for IrError {
         match self {
             IrError::FunctionLocalClobbered(fn_str, var_str) => write!(
                 f,
-                "Local storage for function {fn_str} already has an entry for variable {var_str}"
+                "Local storage for function {fn_str} already has an entry for variable {var_str}."
             ),
-            IrError::InvalidMetadatum => write!(f, "Unable to convert from invalid metadatum."),
+            IrError::InvalidMetadatum(why_str) => {
+                write!(f, "Unable to convert from invalid metadatum: {why_str}.")
+            }
+            IrError::InvalidPhi => write!(
+                f,
+                "Phi instruction has invalid block or value reference list."
+            ),
             IrError::MisplacedTerminator(blk_str) => {
                 write!(f, "Block {blk_str} has a misplaced terminator.")
             }
@@ -68,10 +84,16 @@ impl fmt::Display for IrError {
                 write!(f, "Block {blk_str} is missing its terminator.")
             }
             IrError::ParseFailure(expecting, found) => {
-                write!(f, "Parse failure: expecting '{expecting}', found '{found}'")
+                write!(
+                    f,
+                    "Parse failure: expecting '{expecting}', found '{found}'."
+                )
+            }
+            IrError::RemoveMissingBlock(blk_str) => {
+                write!(f, "Unable to remove block {blk_str}; not found.")
             }
             IrError::ValueNotFound(reason) => {
-                write!(f, "Invalid value: {reason}")
+                write!(f, "Invalid value: {reason}.")
             }
 
             // Verification failures:
@@ -110,20 +132,27 @@ impl fmt::Display for IrError {
             }
             IrError::VerifyArgumentValueIsNotArgument(callee) => write!(
                 f,
-                "Verification failed: Argument specifier for function '{callee}' is not an argument value."
+                "Verification failed: Argument specifier for function '{callee}' is not an \
+                argument value."
+            ),
+            IrError::VerifyAddrOfUnknownSourceType => write!(
+                f,
+                "Verification failed: addr_of unable to determine source type."
+            ),
+            IrError::VerifyAddrOfCopyType => write!(
+                f,
+                "Verification failed: addr_of argument must be non-copy (memory) type."
             ),
             IrError::VerifyBitcastUnknownSourceType => write!(
                 f,
                 "Verification failed: Bitcast unable to determine source type."
             ),
-            IrError::VerifyBitcastFromNonCopyType(ty) => write!(
-                f,
-                "Verification failed: Bitcast cannot be from a {ty}."
-            ),
-            IrError::VerifyBitcastToNonCopyType(ty) => write!(
-                f,
-                "Verification failed: Bitcast cannot be to a {ty}."
-            ),
+            IrError::VerifyBitcastFromNonCopyType(ty) => {
+                write!(f, "Verification failed: Bitcast cannot be from a {ty}.")
+            }
+            IrError::VerifyBitcastToNonCopyType(ty) => {
+                write!(f, "Verification failed: Bitcast cannot be to a {ty}.")
+            }
             IrError::VerifyBitcastBetweenInvalidTypes(from_ty, to_ty) => write!(
                 f,
                 "Verification failed: Bitcast not allowed from a {from_ty} to a {to_ty}."
@@ -131,7 +160,8 @@ impl fmt::Display for IrError {
             IrError::VerifyBranchToMissingBlock(label) => {
                 write!(
                     f,
-                    "Verification failed: Branch to block '{label}' is not a block in the current function."
+                    "Verification failed: Branch to block '{label}' is not a block in the current \
+                    function."
                 )
             }
             IrError::VerifyCallArgTypeMismatch(callee) => {
@@ -155,7 +185,8 @@ impl fmt::Display for IrError {
             IrError::VerifyCmpTypeMismatch(lhs_ty, rhs_ty) => {
                 write!(
                     f,
-                    "Verification failed: Cannot compare values with different widths of {lhs_ty} and {rhs_ty}."
+                    "Verification failed: Cannot compare values with different widths of {lhs_ty} \
+                    and {rhs_ty}."
                 )
             }
             IrError::VerifyCmpUnknownTypes => {
@@ -173,7 +204,8 @@ impl fmt::Display for IrError {
             IrError::VerifyContractCallBadTypes(arg_name) => {
                 write!(
                     f,
-                    "Verification failed: Argument {arg_name} passed to contract call has the incorrect type."
+                    "Verification failed: Argument {arg_name} passed to contract call has the \
+                    incorrect type."
                 )
             }
             IrError::VerifyGetNonExistentPointer => {
@@ -194,6 +226,16 @@ impl fmt::Display for IrError {
                     "Verification failed: Attempt to insert value of incorrect type into a struct."
                 )
             }
+            IrError::VerifyIntToPtrFromNonIntegerType(ty) => {
+                write!(f, "Verification failed: int_to_ptr cannot be from a {ty}.")
+            }
+            IrError::VerifyIntToPtrToCopyType(ty) => {
+                write!(f, "Verification failed: int_to_ptr cannot be to a {ty}.")
+            }
+            IrError::VerifyIntToPtrUnknownSourceType => write!(
+                f,
+                "Verification failed: int_to_ptr unable to determine source type."
+            ),
             IrError::VerifyLoadFromNonPointer => {
                 write!(f, "Verification failed: Load must be from a pointer.")
             }
@@ -203,7 +245,8 @@ impl fmt::Display for IrError {
             ),
             IrError::VerifyMismatchedReturnTypes(fn_str) => write!(
                 f,
-                "Verification failed: Function {fn_str} return type must match its RET instructions."
+                "Verification failed: Function {fn_str} return type must match its RET \
+                instructions."
             ),
             IrError::VerifyPhiFromMissingBlock(label) => {
                 write!(
@@ -249,6 +292,10 @@ impl fmt::Display for IrError {
             IrError::VerifyUntypedValuePassedToFunction => write!(
                 f,
                 "Verification failed: An untyped/void value has been passed to a function call."
+            ),
+            IrError::VerifyInvalidGtfIndexType => write!(
+                f,
+                "Verification failed: An non-integer value has been passed to a 'gtf' instruction."
             ),
         }
     }

@@ -5,7 +5,7 @@ use std::{
     assert::assert,
     chain::auth::{AuthError, msg_sender},
     identity::Identity,
-    result::*,
+    result::Result,
     revert::revert,
 };
 

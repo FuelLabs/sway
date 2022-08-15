@@ -1,4 +1,4 @@
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*, types::*};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_system::*, types::*};
 use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Property, Span, Spanned};
 
@@ -7,7 +7,7 @@ pub struct TypedStructDeclaration {
     pub name: Ident,
     pub fields: Vec<TypedStructField>,
     pub(crate) type_parameters: Vec<TypeParameter>,
-    pub(crate) visibility: Visibility,
+    pub visibility: Visibility,
     pub(crate) span: Span,
 }
 
@@ -146,6 +146,7 @@ pub struct TypedStructField {
     pub name: Ident,
     pub type_id: TypeId,
     pub(crate) span: Span,
+    pub type_span: Span,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -214,6 +215,7 @@ impl TypedStructField {
             name: field.name,
             type_id: r#type,
             span: field.span,
+            type_span: field.type_span,
         };
         ok(field, warnings, errors)
     }

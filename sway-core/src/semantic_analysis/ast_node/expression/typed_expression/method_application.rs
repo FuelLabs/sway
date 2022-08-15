@@ -1,10 +1,9 @@
 use crate::constants;
-use crate::Expression::StorageAccess;
 use crate::{
     error::*,
     parse_tree::*,
     semantic_analysis::{TypedExpressionVariant::VariableExpression, *},
-    type_engine::*,
+    type_system::*,
 };
 use std::collections::{HashMap, VecDeque};
 use sway_types::Spanned;
@@ -13,10 +12,9 @@ use sway_types::{state::StateIndex, Span};
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn type_check_method_application(
     mut ctx: TypeCheckContext,
-    method_name: MethodName,
+    method_name_binding: TypeBinding<MethodName>,
     contract_call_params: Vec<StructExpressionField>,
     arguments: Vec<Expression>,
-    type_arguments: Vec<TypeArgument>,
     span: Span,
 ) -> CompileResult<TypedExpression> {
     let mut warnings = vec![];
@@ -37,9 +35,9 @@ pub(crate) fn type_check_method_application(
         ));
     }
 
-    // resolve the method name to a typed function declaration
+    // resolve the method name to a typed function declaration and type_check
     let method = check!(
-        resolve_method_name(ctx.by_ref(), &method_name, args_buf.clone(), type_arguments,),
+        resolve_method_name(ctx.by_ref(), &method_name_binding, args_buf.clone()),
         return err(warnings, errors),
         warnings,
         errors
@@ -51,7 +49,7 @@ pub(crate) fn type_check_method_application(
         if !ctx.purity().can_call(method.purity) {
             errors.push(CompileError::StorageAccessMismatch {
                 attrs: promote_purity(ctx.purity(), method.purity).to_attribute_syntax(),
-                span: method_name.easy_name().span(),
+                span: method_name_binding.inner.easy_name().span(),
             });
         }
         if !contract_call_params.is_empty() {
@@ -83,22 +81,21 @@ pub(crate) fn type_check_method_application(
         }
 
         for param in contract_call_params {
-            let type_annotation = match param.name.span().as_str() {
-                constants::CONTRACT_CALL_GAS_PARAMETER_NAME
-                | constants::CONTRACT_CALL_COINS_PARAMETER_NAME => {
-                    insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour))
-                }
-                constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME => insert_type(TypeInfo::B256),
-                _ => unreachable!(),
-            };
-            let ctx = ctx
-                .by_ref()
-                .with_help_text("")
-                .with_type_annotation(type_annotation);
             match param.name.span().as_str() {
                 constants::CONTRACT_CALL_GAS_PARAMETER_NAME
                 | constants::CONTRACT_CALL_COINS_PARAMETER_NAME
                 | constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME => {
+                    let type_annotation = if param.name.span().as_str()
+                        != constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME
+                    {
+                        insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour))
+                    } else {
+                        insert_type(TypeInfo::B256)
+                    };
+                    let ctx = ctx
+                        .by_ref()
+                        .with_help_text("")
+                        .with_type_annotation(type_annotation);
                     contract_call_params_map.insert(
                         param.name.to_string(),
                         check!(
@@ -130,8 +127,8 @@ pub(crate) fn type_check_method_application(
             errors
         );
 
-        self_state_idx = match arguments.first() {
-            Some(StorageAccess { field_names, .. }) => {
+        self_state_idx = match arguments.first().map(|expr| &expr.kind) {
+            Some(ExpressionKind::StorageAccess(StorageAccessExpression { field_names })) => {
                 let first_field = field_names[0].clone();
                 let self_state_idx = match storage_fields
                     .iter()
@@ -155,7 +152,7 @@ pub(crate) fn type_check_method_application(
     // If this function is being called with method call syntax, a.b(c),
     // then make sure the first parameter is self, else issue an error.
     if !method.is_contract_call {
-        if let MethodName::FromModule { ref method_name } = method_name {
+        if let MethodName::FromModule { ref method_name } = method_name_binding.inner {
             let is_first_param_self = method
                 .parameters
                 .get(0)
@@ -197,13 +194,13 @@ pub(crate) fn type_check_method_application(
                     warnings,
                     errors
                 );
-                variable_decl.is_mutable.is_mutable()
+                variable_decl.mutability.is_mutable()
             }
         };
 
         if !is_decl_mutable && *is_mutable {
             errors.push(CompileError::MethodRequiresMutableSelf {
-                method_name: method_name.easy_name(),
+                method_name: method_name_binding.inner.easy_name(),
                 variable_name: name.clone(),
                 span,
             });
@@ -212,15 +209,23 @@ pub(crate) fn type_check_method_application(
     }
 
     // retrieve the function call path
-    let call_path = match method_name {
+    let call_path = match method_name_binding.inner {
         MethodName::FromType {
-            call_path,
+            call_path_binding,
             method_name,
-        } => CallPath {
-            prefixes: call_path.prefixes,
-            suffix: method_name,
-            is_absolute: call_path.is_absolute,
-        },
+        } => {
+            let prefixes =
+                if let (TypeInfo::Custom { name, .. }, ..) = &call_path_binding.inner.suffix {
+                    vec![name.clone()]
+                } else {
+                    call_path_binding.inner.prefixes
+                };
+            CallPath {
+                prefixes,
+                suffix: method_name,
+                is_absolute: call_path_binding.inner.is_absolute,
+            }
+        }
         MethodName::FromModule { method_name } => CallPath {
             prefixes: vec![],
             suffix: method_name,
@@ -251,7 +256,7 @@ pub(crate) fn type_check_method_application(
             return err(warnings, errors);
         };
         let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
-        Some(ContractCallMetadata {
+        Some(ContractCallParams {
             func_selector,
             contract_address,
         })
@@ -305,45 +310,33 @@ pub(crate) fn type_check_method_application(
 
 pub(crate) fn resolve_method_name(
     mut ctx: TypeCheckContext,
-    method_name: &MethodName,
+    method_name: &TypeBinding<MethodName>,
     arguments: VecDeque<TypedExpression>,
-    type_arguments: Vec<TypeArgument>,
 ) -> CompileResult<TypedFunctionDeclaration> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let func_decl = match method_name {
+
+    // retrieve the function declaration using the components of the method name
+    let mut func_decl = match &method_name.inner {
         MethodName::FromType {
-            call_path,
+            call_path_binding,
             method_name,
         } => {
-            let (type_info, type_info_span) = call_path.suffix.clone();
+            // type check the call path
+            let type_id = check!(
+                call_path_binding.type_check_with_type_info(&mut ctx),
+                insert_type(TypeInfo::ErrorRecovery),
+                warnings,
+                errors
+            );
 
             // find the module that the symbol is in
-            let type_info_prefix = ctx.namespace.find_module_path(&call_path.prefixes);
+            let type_info_prefix = ctx
+                .namespace
+                .find_module_path(&call_path_binding.inner.prefixes);
             check!(
                 ctx.namespace.root().check_submodule(&type_info_prefix),
                 return err(warnings, errors),
-                warnings,
-                errors
-            );
-
-            // create the type info object
-            let type_info = check!(
-                type_info.apply_type_arguments(type_arguments, &type_info_span),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-
-            // resolve the type of the type info object
-            let type_id = check!(
-                ctx.resolve_type_with_self(
-                    insert_type(type_info),
-                    &type_info_span,
-                    EnforceTypeArguments::No,
-                    Some(&type_info_prefix)
-                ),
-                insert_type(TypeInfo::ErrorRecovery),
                 warnings,
                 errors
             );
@@ -411,5 +404,19 @@ pub(crate) fn resolve_method_name(
             )
         }
     };
+
+    // monomorphize the function declaration
+    check!(
+        ctx.monomorphize(
+            &mut func_decl,
+            &mut method_name.type_arguments.clone(),
+            EnforceTypeArguments::No,
+            &method_name.span()
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
     ok(func_decl, warnings, errors)
 }

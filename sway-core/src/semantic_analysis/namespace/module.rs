@@ -76,18 +76,6 @@ impl Module {
         }
     }
 
-    /// Find the submodule at the given path relative to this module and return mutable access to
-    /// it.
-    ///
-    /// This should be used rather than `IndexMut` when we don't yet know whether the module
-    /// exists.
-    pub(crate) fn check_submodule_mut(&mut self, path: &[Ident]) -> CompileResult<&mut Module> {
-        match self.submodule_mut(path) {
-            None => err(vec![], vec![module_not_found(path)]),
-            Some(module) => ok(module, vec![], vec![]),
-        }
-    }
-
     /// Given a path to a `src` module, create synonyms to every symbol in that module to the given
     /// `dst` module.
     ///
@@ -169,7 +157,7 @@ impl Module {
                 }
                 // if this is a const, insert it into the local namespace directly
                 if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                    is_mutable: VariableMutability::ExportedConst,
+                    mutability: VariableMutability::ExportedConst,
                     ref name,
                     ..
                 }) = decl
