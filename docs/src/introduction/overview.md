@@ -29,6 +29,7 @@ See [the chapter on program types](../sway-program-types/index.md) for more info
 We'll build a simple counter contract with two functions: one to increment the counter, and one to return the value of the counter. 
 
 A few pieces of info that will be helpful before moving on: 
+
 - The main features of a smart contract that differentiate it from scripts or predicates are that it is callable and stateful.
 - A script is runnable bytecode on the chain which can call contracts to perform some task. It does not represent ownership of any resources and it cannot be called by a contract.
 
