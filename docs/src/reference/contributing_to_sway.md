@@ -84,18 +84,18 @@ Pull requests should be linked to at least one issue in the same repo.
 
 If the pull request resolves the relevant issues, and you want GitHub to close these issues automatically after it merged into the default branch, you can use the syntax (`KEYWORD #ISSUE-NUMBER`) like this:
 
-```
+```markdown
 close #123
 ```
 
 If the pull request links an issue but does not close it, you can use the keyword `ref` like this:
 
-```
+```markdown
 ref #456
 ```
 
 Multiple issues should use full syntax for each issue and separate by a comma, like:
 
-```
+```markdown
 close #123, ref #456
 ```
