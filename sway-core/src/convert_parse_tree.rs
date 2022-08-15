@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    type_system::{TraitConstraint, TypeArgument, TypeBinding, TypeParameter},
+    type_system::{resolve_type, TraitConstraint, TypeArgument, TypeBinding, TypeParameter},
     WhileLoopExpression,
 };
 
@@ -189,6 +189,8 @@ pub enum ConvertParseTreeError {
     DuplicateStructField { name: Ident, span: Span },
     #[error("identifier \"{name}\" bound more than once in this parameter list")]
     DuplicateParameterIdentifier { name: Ident, span: Span },
+    #[error("self parameter is not allowed for a free function")]
+    SelfParameterNotAllowedForFreeFn { span: Span },
 }
 
 impl Spanned for ConvertParseTreeError {
@@ -239,6 +241,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::DuplicateStorageField { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateStructField { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateParameterIdentifier { span, .. } => span.clone(),
+            ConvertParseTreeError::SelfParameterNotAllowedForFreeFn { span, .. } => span.clone(),
         }
     }
 }
@@ -315,6 +318,16 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
         }
         ItemKind::Fn(item_fn) => {
             let function_declaration = item_fn_to_function_declaration(ec, item_fn, &attributes)?;
+            for param in &function_declaration.parameters {
+                if let Ok(ty) = resolve_type(param.type_id, &param.type_span) {
+                    if matches!(ty, TypeInfo::SelfType) {
+                        let error = ConvertParseTreeError::SelfParameterNotAllowedForFreeFn {
+                            span: param.type_span.clone(),
+                        };
+                        return Err(ec.error(error));
+                    }
+                }
+            }
             vec![AstNodeContent::Declaration(
                 Declaration::FunctionDeclaration(function_declaration),
             )]
