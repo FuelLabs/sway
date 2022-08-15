@@ -32,15 +32,20 @@ fn newline_map_from_src(unformatted_input: Arc<str>) -> Result<NewlineMap, Forma
     let mut in_sequence = false;
     let mut sequence_start = 0;
     while let Some((char_index, char)) = input_iter.next() {
-        if char == '\n' {
+        if (char == '}' || char == ';') && input_iter.peek().map(|input| input.1) == Some('\n') {
             if !in_sequence {
-                sequence_start = char_index;
+                sequence_start = char_index + 1;
                 in_sequence = true;
             }
+        } else if char == '\n' && in_sequence {
             current_sequence_length += 1;
-        } else if Some('\n') != input_iter.peek().map(|input| input.1)
-            && current_sequence_length > 0
-        {
+        }
+        if Some('}') == input_iter.peek().map(|input| input.1) && in_sequence {
+            // If we are in a sequence and find `}`, abort the sequence
+            current_sequence_length = 0;
+            in_sequence = false;
+        }
+        if Some('\n') != input_iter.peek().map(|input| input.1) && current_sequence_length > 0 {
             // Next char is not a newline so this is the end of the sequence
             let byte_span = ByteSpan {
                 start: sequence_start,
@@ -133,6 +138,7 @@ fn add_newlines(
                 newline_sequences,
                 offset,
                 formatted_code,
+                2,
             )?;
         }
         previous_unformatted_newline_span = unformatted_newline_span;
@@ -141,31 +147,24 @@ fn add_newlines(
     Ok(())
 }
 
-/// Compares the length of the newline sequence with threshold. If the sequence exceeds threshold
-/// limit the length of the sequence by threshold
-fn format_newline_sequence(newline_sequence: &NewlineSequence, threshold: usize) -> String {
-    let mut sequence_length = newline_sequence.sequence_length;
-    if sequence_length > threshold {
-        sequence_length = threshold;
-    }
-    (0..sequence_length - 1).map(|_| "\n").collect::<String>()
-}
-
 /// Inserts after given span and returns the offset.
 fn insert_after_span(
     from: &ByteSpan,
     newline_sequences_to_insert: Vec<NewlineSequence>,
     offset: usize,
     formatted_code: &mut FormattedCode,
+    threshold: usize,
 ) -> Result<usize, FormatterError> {
     let iter = newline_sequences_to_insert.iter();
     let mut sequence_string = String::new();
     for newline_sequence in iter {
-        write!(
-            sequence_string,
-            "{}",
-            format_newline_sequence(newline_sequence, 2)
-        )?;
+        if newline_sequence.sequence_length > threshold {
+            write!(
+                sequence_string,
+                "{}",
+                (0..threshold).map(|_| "\n").collect::<String>()
+            )?;
+        }
     }
     let mut src_rope = Rope::from_str(formatted_code);
     src_rope.insert(from.end + offset, &sequence_string);
@@ -203,6 +202,9 @@ fn main() {
 
 
     let number3: u64 = 30;
+
+
+
 }"#;
 
         let newline_map = newline_map_from_src(Arc::from(raw_src)).unwrap();
@@ -211,7 +213,7 @@ fn main() {
                 .iter()
                 .map(|map_item| map_item.1.sequence_length),
         );
-        let correct_newline_sequence_lengths = vec![2, 1, 2, 3, 1];
+        let correct_newline_sequence_lengths = vec![2, 2, 3];
 
         assert_eq!(newline_sequence_lengths, correct_newline_sequence_lengths);
     }
