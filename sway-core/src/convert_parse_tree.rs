@@ -8,9 +8,10 @@ use crate::{
 use {
     crate::{
         constants::{
-            STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
+            DOC_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME,
+            STORAGE_PURITY_WRITE_NAME,
         },
-        error::{err, ok, CompileError, CompileResult, CompileWarning},
+        error::{err, ok, CompileError, CompileResult, CompileWarning, Warning},
         type_system::{insert_type, AbiName, IntegerBits},
         AbiCastExpression, AbiDeclaration, ArrayIndexExpression, AsmExpression, AsmOp, AsmRegister,
         AsmRegisterDeclaration, AstNode, AstNodeContent, CallPath, CodeBlock, ConstantDeclaration,
@@ -293,7 +294,7 @@ pub fn module_to_sway_parse_tree(
 }
 
 fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, ErrorEmitted> {
-    let attributes = item_attrs_to_map(&item.attribute_list)?;
+    let attributes = item_attrs_to_map(ec, &item.attribute_list)?;
 
     let span = item.span();
     let contents = match item.value {
@@ -394,11 +395,22 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
 
 type AttributesMap<'a> = HashMap<&'a str, Vec<&'a Ident>>;
 
-fn item_attrs_to_map(attribute_list: &[AttributeDecl]) -> Result<AttributesMap, ErrorEmitted> {
+fn item_attrs_to_map<'a>(
+    ec: &mut ErrorContext,
+    attribute_list: &'a [AttributeDecl],
+) -> Result<AttributesMap<'a>, ErrorEmitted> {
     let mut attrs_map = AttributesMap::new();
     for attr_decl in attribute_list {
         let attr = attr_decl.attribute.get();
         let name = attr.name.as_str();
+        if name != STORAGE_PURITY_ATTRIBUTE_NAME && name != DOC_ATTRIBUTE_NAME {
+            ec.warning(CompileWarning {
+                span: attr_decl.span().clone(),
+                warning_content: Warning::UnrecognizedAttribute {
+                    attrib_name: attr.name.clone(),
+                },
+            })
+        }
         let mut args = attr
             .args
             .as_ref()
@@ -665,7 +677,7 @@ fn item_trait_to_trait_declaration(
             .into_inner()
             .into_iter()
             .map(|(fn_signature, _semicolon_token)| {
-                let attributes = item_attrs_to_map(&fn_signature.attribute_list)?;
+                let attributes = item_attrs_to_map(ec, &fn_signature.attribute_list)?;
                 fn_signature_to_trait_fn(ec, fn_signature.value, &attributes)
             })
             .collect::<Result<_, _>>()?
@@ -676,7 +688,7 @@ fn item_trait_to_trait_declaration(
             .into_inner()
             .into_iter()
             .map(|item_fn| {
-                let attributes = item_attrs_to_map(&item_fn.attribute_list)?;
+                let attributes = item_attrs_to_map(ec, &item_fn.attribute_list)?;
                 item_fn_to_function_declaration(ec, item_fn.value, &attributes)
             })
             .collect::<Result<_, _>>()?,
@@ -708,7 +720,7 @@ fn item_impl_to_declaration(
             .into_inner()
             .into_iter()
             .map(|item| {
-                let attributes = item_attrs_to_map(&item.attribute_list)?;
+                let attributes = item_attrs_to_map(ec, &item.attribute_list)?;
                 item_fn_to_function_declaration(ec, item.value, &attributes)
             })
             .collect::<Result<_, _>>()?
@@ -758,7 +770,7 @@ fn item_abi_to_abi_declaration(
                 .into_inner()
                 .into_iter()
                 .map(|(fn_signature, _semicolon_token)| {
-                    let attributes = item_attrs_to_map(&fn_signature.attribute_list)?;
+                    let attributes = item_attrs_to_map(ec, &fn_signature.attribute_list)?;
                     fn_signature_to_trait_fn(ec, fn_signature.value, &attributes)
                 })
                 .collect::<Result<_, _>>()?
@@ -769,7 +781,7 @@ fn item_abi_to_abi_declaration(
                 .into_inner()
                 .into_iter()
                 .map(|item_fn| {
-                    let attributes = item_attrs_to_map(&item_fn.attribute_list)?;
+                    let attributes = item_attrs_to_map(ec, &item_fn.attribute_list)?;
                     item_fn_to_function_declaration(ec, item_fn.value, &attributes)
                 })
                 .collect::<Result<_, _>>()?,

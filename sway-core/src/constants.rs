@@ -31,3 +31,6 @@ pub const MATCH_RETURN_VAR_NAME_PREFIX: &str = "__match_return_var_name_";
 pub const STORAGE_PURITY_ATTRIBUTE_NAME: &str = "storage";
 pub const STORAGE_PURITY_READ_NAME: &str = "read";
 pub const STORAGE_PURITY_WRITE_NAME: &str = "write";
+
+/// The valid attribute strings related to documentation.
+pub const DOC_ATTRIBUTE_NAME: &str = "doc";
