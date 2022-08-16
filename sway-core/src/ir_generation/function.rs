@@ -279,7 +279,7 @@ impl FnCompiler {
             TypedExpressionVariant::LazyOperator { op, lhs, rhs } => {
                 self.compile_lazy_op(context, md_mgr, op, *lhs, *rhs, span_md_idx)
             }
-            TypedExpressionVariant::VariableExpression { name } => {
+            TypedExpressionVariant::VariableExpression { name, .. } => {
                 self.compile_var_expr(context, name.as_str(), span_md_idx)
             }
             TypedExpressionVariant::Array { contents } => {
