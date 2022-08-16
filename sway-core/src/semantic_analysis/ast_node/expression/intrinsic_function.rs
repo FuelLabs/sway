@@ -469,9 +469,11 @@ impl TypedIntrinsicFunctionKind {
                     let mut ctx = ctx
                         .with_help_text("")
                         .with_type_annotation(insert_type(TypeInfo::Unknown));
+                    let initial_type_id =
+                        insert_type(resolve_type(targ.type_id, &targ.span).unwrap());
                     let type_id = check!(
                         ctx.resolve_type_with_self(
-                            insert_type(resolve_type(targ.type_id, &targ.span).unwrap()),
+                            initial_type_id,
                             &targ.span,
                             EnforceTypeArguments::Yes,
                             None
@@ -482,6 +484,7 @@ impl TypedIntrinsicFunctionKind {
                     );
                     TypeArgument {
                         type_id,
+                        initial_type_id,
                         span: span.clone(),
                     }
                 });
