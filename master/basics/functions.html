@@ -150,6 +150,65 @@
     equals(5, 6); // evaluates to `false`
 }
 </code></pre>
+<h2 id="mutable-parameters"><a class="header" href="#mutable-parameters">Mutable Parameters</a></h2>
+<p>We can make a function parameter mutable by adding <code>ref mut</code> before the parameter name. This allows mutating the argument passed into the function when the function is called. For example:</p>
+<pre><code class="language-sway">fn increment(ref mut num: u32) {
+    let prev = num;
+    num = prev + 1u32;
+}
+</code></pre>
+<p>This function is allowed to mutate its parameter <code>num</code> because of the <code>mut</code> keyword. In addition, the <code>ref</code> keyword instructs the function to modify the argument passed to it when the function is called, instead of modifying a local copy of it.</p>
+<pre><code class="language-sway">    let mut num: u32 = 0;
+    increment(num);
+    assert(num == 1u32); // The function `increment()` modifies `num`
+</code></pre>
+<p>Note that the variable <code>num</code> itself has to be declared as mutable for the above to compile.</p>
+<blockquote>
+<p><strong>Note</strong>
+It is not currently allowed to use <code>mut</code> without <code>ref</code> or vice versa for a function parameter.</p>
+</blockquote>
+<p>Similarly, <code>ref mut</code> can be used with more complex data types such as:</p>
+<pre><code class="language-sway">fn swap_tuple(ref mut pair: (u64, u64)) {
+    let temp = pair.0;
+    pair.0 = pair.1;
+    pair.1 = temp;
+}
+
+fn update_color(ref mut color: Color, new_color: Color) {
+    color = new_color;
+}
+</code></pre>
+<p>We can then call these functions as shown below:</p>
+<pre><code class="language-sway">    let mut tuple = (42, 24);
+    swap_tuple(tuple);
+    assert(tuple.0 == 24); // The function `swap_tuple()` modifies `tuple.0`
+    assert(tuple.1 == 42); // The function `swap_tuple()` modifies `tuple.1`
+
+    let mut color = Color::Red;
+    update_color(color, Color::Blue);
+    assert(match color {
+        Color::Blue =&gt; {
+            true
+        }
+        _ =&gt; {
+            false
+        }
+    }
+    ); // The function `update_color()` modifies the color to Blue
+
+    let mut point = Coordinates {
+        x: 1,
+        y: 1,
+    };
+    point.move_right(5);
+    assert(point.x == 6);
+    assert(point.y == 1);
+}
+</code></pre>
+<blockquote>
+<p><strong>Note</strong>
+The only place, in a Sway program, where the <code>ref</code> keyword is valid is before a mutable function parameter.</p>
+</blockquote>
 
                     </main>
 

@@ -170,6 +170,27 @@ fn main() {
 </code></pre>
 <p>Note the syntax of the associated function call: <code>~Foo::new_foo(42, true);</code>. This bit of syntax is unique to Sway: when referring to a type directly, you preface the type with a tilde (<code>~</code>). To call an associated function, refer to the type and then the function name.
 To call a method, simply use dot syntax: <code>foo.iz_baz_true()</code>.</p>
+<p>Similarly to <a href="functions.html">free functions</a>, methods and associated functions may accept <code>ref mut</code> parameters. For example:</p>
+<pre><code class="language-sway">struct Coordinates {
+    x: u64,
+    y: u64,
+}
+
+impl Coordinates {
+    fn move_right(ref mut self, distance: u64) {
+        self.x += distance;
+    }
+}
+</code></pre>
+<p>and when called:</p>
+<pre><code class="language-sway">    let mut point = Coordinates {
+        x: 1,
+        y: 1,
+    };
+    point.move_right(5);
+    assert(point.x == 6);
+    assert(point.y == 1);
+</code></pre>
 <h2 id="syntax-examples"><a class="header" href="#syntax-examples">Syntax Examples</a></h2>
 <pre><code class="language-sway">enum Color {
     Blue: (),
