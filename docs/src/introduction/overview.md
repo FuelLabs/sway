@@ -88,7 +88,7 @@ abi Counter {
 }
 ```
 
-#### Going line by line
+**Going line by line**
 
 `#[storage(read, write)]` is an annotation which denotes that this function has the permissions to read and write a value in storage.
 
@@ -117,7 +117,7 @@ impl Counter for Contract {
 
 > Note: `return storage.counter;` is equivalent to `storage.counter`.
 
-#### Going line by line
+**Going line by line**
 
 `#[storage(read)]` is an annotation which denotes that this function has the permissions to read values in storage.
 
@@ -172,11 +172,13 @@ This starts a Fuel node with a volatile database that will be cleared when shut 
 
 ### Deploy `counter_contract` To Your Local Fuel Node
 
-To deploy `counter_contract` on your local Fuel node, run the following command back in your original terminal so you don't end the process running the local Fuel node, from the root of the `wallet_contract` directory:
+To deploy `counter_contract` on your local Fuel node, open a new terminal tab and run the following command from the root of the `wallet_contract` directory:
 
 ```sh
 forc deploy
 ```
+
+> Note you can't use the same terminal session that is running fuel-core to run any other commands as this will end your fuel-core process.
 
 This should produce some output in `stdout` that looks like this:
 
