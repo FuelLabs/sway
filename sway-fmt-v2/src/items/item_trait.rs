@@ -35,11 +35,6 @@ impl Format for ItemTrait {
         write!(formatted_code, " ")?;
         Self::open_curly_brace(formatted_code, formatter)?;
         for (fn_signature, semicolon_token) in self.trait_items.get() {
-            write!(
-                formatted_code,
-                "{}",
-                &formatter.shape.indent.to_string(&formatter.config)?,
-            )?;
             // format `Annotated<FnSignature>`
             fn_signature.format(formatted_code, formatter)?;
             writeln!(formatted_code, "{}\n", semicolon_token.ident().as_str())?;

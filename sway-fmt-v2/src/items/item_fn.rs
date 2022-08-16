@@ -80,6 +80,11 @@ impl Format for FnSignature {
         formatted_code: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(
+            formatted_code,
+            "{}",
+            formatter.shape.indent.to_string(&formatter.config)?,
+        )?;
         // `pub `
         if let Some(visibility_token) = &self.visibility {
             write!(formatted_code, "{} ", visibility_token.span().as_str())?;
