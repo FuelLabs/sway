@@ -522,6 +522,8 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
         ExpressionKind::WhileLoop(WhileLoopExpression {
             body, condition, ..
         }) => handle_while_loop(body, condition, tokens),
+        // TODO: collect these tokens as keywords once the compiler returns the span
+        ExpressionKind::Break | ExpressionKind::Continue => (),
     }
 }
 

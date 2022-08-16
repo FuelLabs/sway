@@ -1101,6 +1101,20 @@ fn connect_expression(
             }
             Ok(vec![while_loop_exit])
         }
+        Break => {
+            let break_node = graph.add_node("break".to_string().into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, break_node, "".into());
+            }
+            Ok(vec![])
+        }
+        Continue => {
+            let continue_node = graph.add_node("continue".to_string().into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, continue_node, "".into());
+            }
+            Ok(vec![])
+        }
     }
 }
 

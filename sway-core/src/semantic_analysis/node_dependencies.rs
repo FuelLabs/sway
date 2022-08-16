@@ -497,6 +497,8 @@ impl Dependencies {
             ExpressionKind::WhileLoop(WhileLoopExpression {
                 condition, body, ..
             }) => self.gather_from_expr(condition).gather_from_block(body),
+            ExpressionKind::Break => self,
+            ExpressionKind::Continue => self,
         }
     }
 

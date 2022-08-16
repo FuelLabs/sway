@@ -108,6 +108,8 @@ fn expr_validate(expr: &TypedExpression) -> CompileResult<()> {
                 errors
             );
         }
+        TypedExpressionVariant::Break => (),
+        TypedExpressionVariant::Continue => (),
     }
     ok((), warnings, errors)
 }

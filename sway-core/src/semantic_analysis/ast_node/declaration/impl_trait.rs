@@ -202,6 +202,8 @@ impl TypedImplTrait {
                 | TypedExpressionVariant::VariableExpression { .. }
                 | TypedExpressionVariant::FunctionParameter
                 | TypedExpressionVariant::AsmExpression { .. }
+                | TypedExpressionVariant::Break
+                | TypedExpressionVariant::Continue
                 | TypedExpressionVariant::StorageAccess(_)
                 | TypedExpressionVariant::AbiName(_) => false,
                 TypedExpressionVariant::FunctionApplication { arguments, .. } => arguments
