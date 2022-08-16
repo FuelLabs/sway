@@ -613,21 +613,31 @@ impl TypedExpression {
         let mut errors = vec![];
         let exp = match namespace.resolve_symbol(&name).value {
             Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                body, ..
+                name: decl_name,
+                body,
+                ..
             })) => TypedExpression {
                 return_type: body.return_type,
                 is_constant: body.is_constant,
-                expression: TypedExpressionVariant::VariableExpression { name: name.clone() },
+                expression: TypedExpressionVariant::VariableExpression {
+                    name: decl_name.clone(),
+                    span: name.span(),
+                },
                 span,
             },
             Some(TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
-                value, ..
+                name: decl_name,
+                value,
+                ..
             })) => TypedExpression {
                 return_type: value.return_type,
                 is_constant: IsConstant::Yes,
                 // Although this isn't strictly a 'variable' expression we can treat it as one for
                 // this context.
-                expression: TypedExpressionVariant::VariableExpression { name: name.clone() },
+                expression: TypedExpressionVariant::VariableExpression {
+                    name: decl_name.clone(),
+                    span: name.span(),
+                },
                 span,
             },
             Some(TypedDeclaration::AbiDeclaration(decl)) => TypedExpression {
