@@ -35,5 +35,5 @@ pub const STORAGE_PURITY_WRITE_NAME: &str = "write";
 /// The valid attribute strings related to documentation.
 pub const DOC_ATTRIBUTE_NAME: &str = "doc";
 
-/// The list of valid attributes
+/// The list of valid attributes.
 pub const VALID_ATTRIBUTE_NAMES: [&str; 2] = [STORAGE_PURITY_ATTRIBUTE_NAME, DOC_ATTRIBUTE_NAME];
