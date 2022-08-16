@@ -6,7 +6,7 @@ use crate::{TypedDeclaration, TypedFunctionDeclaration};
 
 use crate::semantic_analysis::{
     TypedAbiDeclaration, TypedAstNodeContent, TypedExpression, TypedExpressionVariant,
-    TypedIntrinsicFunctionKind, TypedReturnStatement, TypedWhileLoop,
+    TypedIntrinsicFunctionKind, TypedReturnStatement,
 };
 
 use super::{
@@ -15,23 +15,13 @@ use super::{
 };
 
 fn ast_node_validate(x: &TypedAstNodeContent) -> CompileResult<()> {
-    let mut errors: Vec<CompileError> = vec![];
-    let mut warnings: Vec<CompileWarning> = vec![];
+    let errors: Vec<CompileError> = vec![];
+    let warnings: Vec<CompileWarning> = vec![];
     match x {
         TypedAstNodeContent::ReturnStatement(TypedReturnStatement { expr })
         | TypedAstNodeContent::Expression(expr)
         | TypedAstNodeContent::ImplicitReturnExpression(expr) => expr_validate(expr),
         TypedAstNodeContent::Declaration(decl) => decl_validate(decl),
-        TypedAstNodeContent::WhileLoop(TypedWhileLoop { condition, body }) => {
-            check!(expr_validate(condition), (), warnings, errors);
-            check!(
-                validate_decls_for_storage_only_types_in_codeblock(body),
-                (),
-                warnings,
-                errors
-            );
-            ok((), warnings, errors)
-        }
         TypedAstNodeContent::SideEffect => ok((), warnings, errors),
     }
 }
@@ -60,8 +50,8 @@ fn expr_validate(expr: &TypedExpression) -> CompileResult<()> {
             prefix: expr1,
             index: expr2,
         } => {
-            check!(expr_validate(&*expr1), (), warnings, errors);
-            check!(expr_validate(&*expr2), (), warnings, errors);
+            check!(expr_validate(expr1), (), warnings, errors);
+            check!(expr_validate(expr2), (), warnings, errors);
         }
         TypedExpressionVariant::IntrinsicFunction(TypedIntrinsicFunctionKind {
             arguments: exprvec,
@@ -91,10 +81,10 @@ fn expr_validate(expr: &TypedExpression) -> CompileResult<()> {
             then,
             r#else,
         } => {
-            check!(expr_validate(&*condition), (), warnings, errors);
-            check!(expr_validate(&*then), (), warnings, errors);
+            check!(expr_validate(condition), (), warnings, errors);
+            check!(expr_validate(then), (), warnings, errors);
             if let Some(r#else) = r#else {
-                check!(expr_validate(&*r#else), (), warnings, errors);
+                check!(expr_validate(r#else), (), warnings, errors);
             }
         }
         TypedExpressionVariant::StructFieldAccess { prefix: exp, .. }
@@ -102,12 +92,21 @@ fn expr_validate(expr: &TypedExpression) -> CompileResult<()> {
         | TypedExpressionVariant::AbiCast { address: exp, .. }
         | TypedExpressionVariant::EnumTag { exp }
         | TypedExpressionVariant::UnsafeDowncast { exp, .. } => {
-            check!(expr_validate(&*exp), (), warnings, errors)
+            check!(expr_validate(exp), (), warnings, errors)
         }
         TypedExpressionVariant::EnumInstantiation { contents, .. } => {
             if let Some(f) = contents {
-                check!(expr_validate(&*f), (), warnings, errors);
+                check!(expr_validate(f), (), warnings, errors);
             }
+        }
+        TypedExpressionVariant::WhileLoop { condition, body } => {
+            check!(expr_validate(condition), (), warnings, errors);
+            check!(
+                validate_decls_for_storage_only_types_in_codeblock(body),
+                (),
+                warnings,
+                errors
+            );
         }
     }
     ok((), warnings, errors)

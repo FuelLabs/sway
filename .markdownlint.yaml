@@ -1,0 +1,3 @@
+"default": true # Default state for all rules
+"MD013": false # Disable rule for line length
+"MD033": false # Disable rule banning inline HTML

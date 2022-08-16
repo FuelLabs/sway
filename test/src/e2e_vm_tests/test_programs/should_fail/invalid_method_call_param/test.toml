@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: wrong_call_param
+# nextln:$() Unrecognized contract ABI method parameter "wrong_call_param". The only available parameters are "gas", "coins", and "asset_id"

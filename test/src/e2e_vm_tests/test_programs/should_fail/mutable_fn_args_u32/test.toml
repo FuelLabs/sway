@@ -1,0 +1,5 @@
+category = "fail"
+
+# mutable (non-ref) primitive parameters are not supported yet...
+
+# check: $()This parameter was declared as mutable, which is not supported yet, did you mean to use ref mut?

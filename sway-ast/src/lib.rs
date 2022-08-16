@@ -21,7 +21,7 @@ pub mod where_clause;
 pub use crate::{
     assignable::Assignable,
     attribute::AttributeDecl,
-    brackets::{AngleBrackets, Braces},
+    brackets::{AngleBrackets, Braces, Parens},
     dependency::Dependency,
     expr::{
         asm::{AsmBlock, AsmRegisterDeclaration},
@@ -34,7 +34,6 @@ pub use crate::{
     item::{
         item_abi::ItemAbi,
         item_const::ItemConst,
-        item_control_flow::{ItemBreak, ItemContinue},
         item_enum::ItemEnum,
         item_fn::ItemFn,
         item_impl::ItemImpl,
@@ -44,11 +43,12 @@ pub use crate::{
         item_use::{ItemUse, UseTree},
         FnArg, FnArgs, FnSignature, Item, ItemKind, TypeField,
     },
-    keywords::{DoubleColonToken, PubToken},
+    keywords::{CommaToken, DoubleColonToken, PubToken},
     literal::{LitInt, LitIntType, Literal},
     module::{Module, ModuleKind},
     path::{PathExpr, PathExprSegment, PathType, PathTypeSegment, QualifiedPathRoot},
     pattern::{Pattern, PatternStructField},
+    punctuated::Punctuated,
     statement::{Statement, StatementLet},
     ty::Ty,
     where_clause::{WhereBound, WhereClause},

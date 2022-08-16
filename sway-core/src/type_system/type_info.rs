@@ -11,7 +11,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-#[derive(Debug, Clone, Hash, PartialEq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum AbiName {
     Deferred,
     Known(CallPath),

@@ -1,0 +1,3 @@
+contract;
+
+pub impl A {}

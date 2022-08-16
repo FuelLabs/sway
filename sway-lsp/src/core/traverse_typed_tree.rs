@@ -5,11 +5,11 @@ use crate::{
     utils::token::{struct_declaration_of_type_id, to_ident_key},
 };
 use sway_core::semantic_analysis::ast_node::{
+    code_block::TypedCodeBlock,
     expression::{
         typed_expression::TypedExpression, typed_expression_variant::TypedExpressionVariant,
         TypedIntrinsicFunctionKind,
     },
-    while_loop::TypedWhileLoop,
     ProjectionKind, TypedImplTrait, {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
 };
 use sway_types::ident::Ident;
@@ -24,7 +24,6 @@ pub fn traverse_node(node: &TypedAstNode, tokens: &TokenMap) {
         TypedAstNodeContent::ImplicitReturnExpression(expression) => {
             handle_expression(expression, tokens)
         }
-        TypedAstNodeContent::WhileLoop(while_loop) => handle_while_loop(while_loop, tokens),
         TypedAstNodeContent::SideEffect => (),
     };
 }
@@ -35,6 +34,15 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&variable.name)) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
             }
+            if let Some(type_ascription_span) = &variable.type_ascription_span {
+                if let Some(mut token) =
+                    tokens.get_mut(&to_ident_key(&Ident::new(type_ascription_span.clone())))
+                {
+                    token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(variable.type_ascription));
+                }
+            }
+
             handle_expression(&variable.body, tokens);
         }
         TypedDeclaration::ConstantDeclaration(const_decl) => {
@@ -270,9 +278,10 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
             handle_expression(lhs, tokens);
             handle_expression(rhs, tokens);
         }
-        TypedExpressionVariant::VariableExpression { ref name } => {
-            if let Some(mut token) = tokens.get_mut(&to_ident_key(name)) {
+        TypedExpressionVariant::VariableExpression { ref name, ref span } => {
+            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(span.clone()))) {
                 token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
+                token.type_def = Some(TypeDefinition::Ident(name.clone()));
             }
         }
         TypedExpressionVariant::Tuple { fields } => {
@@ -410,6 +419,9 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
                 token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
             }
         }
+        TypedExpressionVariant::WhileLoop {
+            body, condition, ..
+        } => handle_while_loop(body, condition, tokens),
     }
 }
 
@@ -422,9 +434,9 @@ fn handle_intrinsic_function(
     }
 }
 
-fn handle_while_loop(while_loop: &TypedWhileLoop, tokens: &TokenMap) {
-    handle_expression(&while_loop.condition, tokens);
-    for node in &while_loop.body.contents {
+fn handle_while_loop(body: &TypedCodeBlock, condition: &TypedExpression, tokens: &TokenMap) {
+    handle_expression(condition, tokens);
+    for node in &body.contents {
         traverse_node(node, tokens);
     }
 }
