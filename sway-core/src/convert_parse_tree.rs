@@ -347,16 +347,6 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
                 Declaration::StorageDeclaration(storage_declaration),
             )]
         }
-        ItemKind::Break(_) => {
-            vec![AstNodeContent::Declaration(Declaration::Break {
-                span: span.clone(),
-            })]
-        }
-        ItemKind::Continue(_) => {
-            vec![AstNodeContent::Declaration(Declaration::Continue {
-                span: span.clone(),
-            })]
-        }
     };
     Ok(contents
         .into_iter()
@@ -1898,6 +1888,28 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             let error = ConvertParseTreeError::ReassignmentOutsideOfBlock { span };
             return Err(ec.error(error));
         }
+        Expr::Break { .. } => Expression {
+            kind: ExpressionKind::CodeBlock(CodeBlock {
+                contents: vec![AstNode {
+                    content: AstNodeContent::Declaration(Declaration::Break { span: span.clone() }),
+                    span: span.clone(),
+                }],
+                whole_block_span: span.clone(),
+            }),
+            span,
+        },
+        Expr::Continue { .. } => Expression {
+            kind: ExpressionKind::CodeBlock(CodeBlock {
+                contents: vec![AstNode {
+                    content: AstNodeContent::Declaration(Declaration::Continue {
+                        span: span.clone(),
+                    }),
+                    span: span.clone(),
+                }],
+                whole_block_span: span.clone(),
+            }),
+            span,
+        },
     };
     Ok(expression)
 }
