@@ -4,14 +4,14 @@
       "inputs": [
         {
           "name": "param",
-          "type": 2,
+          "type": 4,
           "typeArguments": null
         }
       ],
       "name": "bug1",
       "output": {
         "name": "",
-        "type": 3,
+        "type": 8,
         "typeArguments": null
       }
     },
@@ -19,40 +19,82 @@
       "inputs": [
         {
           "name": "param",
-          "type": 1,
+          "type": 7,
           "typeArguments": null
         }
       ],
       "name": "bug2",
       "output": {
         "name": "",
-        "type": 3,
+        "type": 9,
         "typeArguments": null
       }
     }
   ],
   "types": [
     {
+      "components": null,
+      "type": "u64",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
       "components": [],
       "type": "()",
-      "typeId": 0,
+      "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "age",
+          "type": 0,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct Person",
+      "typeId": 2,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 3,
       "typeParameters": null
     },
     {
       "components": [
         {
           "name": "__tuple_element",
-          "type": 4,
+          "type": 2,
           "typeArguments": null
         },
         {
           "name": "__tuple_element",
-          "type": 6,
+          "type": 3,
           "typeArguments": null
         }
       ],
-      "type": "(Location, u64)",
-      "typeId": 1,
+      "type": "(_, _)",
+      "typeId": 4,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "Earth",
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "type": "enum Location",
+      "typeId": 5,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 6,
       "typeParameters": null
     },
     {
@@ -68,44 +110,20 @@
           "typeArguments": null
         }
       ],
-      "type": "(Person, u64)",
-      "typeId": 2,
+      "type": "(_, _)",
+      "typeId": 7,
       "typeParameters": null
     },
     {
       "components": null,
       "type": "bool",
-      "typeId": 3,
-      "typeParameters": null
-    },
-    {
-      "components": [
-        {
-          "name": "Earth",
-          "type": 0,
-          "typeArguments": null
-        }
-      ],
-      "type": "enum Location",
-      "typeId": 4,
-      "typeParameters": null
-    },
-    {
-      "components": [
-        {
-          "name": "age",
-          "type": 6,
-          "typeArguments": null
-        }
-      ],
-      "type": "struct Person",
-      "typeId": 5,
+      "typeId": 8,
       "typeParameters": null
     },
     {
       "components": null,
-      "type": "u64",
-      "typeId": 6,
+      "type": "bool",
+      "typeId": 9,
       "typeParameters": null
     }
   ]

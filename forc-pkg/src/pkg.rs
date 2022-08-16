@@ -1968,10 +1968,10 @@ fn standardize_json_abi_types(json_abi_program: &mut JsonABIProgram) {
         // between id_1 and id_2 in the HashMap below.
         let mut old_to_new_id: HashMap<usize, usize> = HashMap::new();
 
-        // HashSet to eliminate duplicate type declarations.
-        let mut types_set: HashSet<JsonTypeDeclaration> = HashSet::new();
+        // BTreeSet to eliminate duplicate type declarations.
+        let mut types_set: BTreeSet<JsonTypeDeclaration> = BTreeSet::new();
 
-        // Insert values in the HashSet `types_set` if they haven't been inserted before.
+        // Insert values in the BTreeSet `types_set` if they haven't been inserted before.
         // Otherwise, create an appropriate mapping in the HashMap `old_to_new_id`.
         for decl in json_abi_program.types.iter_mut() {
             if let Some(ty) = types_set.get(decl) {
@@ -1994,10 +1994,8 @@ fn standardize_json_abi_types(json_abi_program: &mut JsonABIProgram) {
         update_all_types(json_abi_program, &old_to_new_id);
     }
 
-    // Sort the `JsonTypeDeclaration`s in alphabetical order of type_field
-    json_abi_program
-        .types
-        .sort_by(|t1, t2| t1.type_field.cmp(&t2.type_field));
+    // Sort the `JsonTypeDeclaration`s
+    json_abi_program.types.sort();
 
     // Standardize IDs (i.e. change them to 0,1,2,... according to the alphabetical order above
     let mut old_to_new_id: HashMap<usize, usize> = HashMap::new();

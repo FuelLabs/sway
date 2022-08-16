@@ -439,6 +439,18 @@ impl TypeId {
                 (TypeInfo::Custom { .. }, TypeInfo::Enum { .. }) => {
                     format!("enum {}", look_up_type_id(*self).json_abi_str())
                 }
+                (TypeInfo::Tuple(fields), TypeInfo::Tuple(resolved_fields)) => {
+                    assert_eq!(fields.len(), resolved_fields.len());
+                    let field_strs = fields
+                        .iter()
+                        .map(|_| "_".to_string())
+                        .collect::<Vec<String>>();
+                    format!("({})", field_strs.join(", "))
+                }
+                (TypeInfo::Array(_, count, _), TypeInfo::Array(_, resolved_count, _)) => {
+                    assert_eq!(count, resolved_count);
+                    format!("[_; {count}]")
+                }
                 (TypeInfo::Custom { .. }, _) => {
                     format!("generic {}", look_up_type_id(*self).json_abi_str())
                 }

@@ -5,7 +5,7 @@
       "name": "from_f1",
       "output": {
         "name": "",
-        "type": 1,
+        "type": 4,
         "typeArguments": null
       }
     },
@@ -14,7 +14,7 @@
       "name": "from_f2",
       "output": {
         "name": "",
-        "type": 1,
+        "type": 5,
         "typeArguments": null
       }
     },
@@ -23,7 +23,7 @@
       "name": "from_f3",
       "output": {
         "name": "",
-        "type": 1,
+        "type": 6,
         "typeArguments": null
       }
     },
@@ -32,7 +32,7 @@
       "name": "from_f4",
       "output": {
         "name": "",
-        "type": 1,
+        "type": 7,
         "typeArguments": null
       }
     },
@@ -41,36 +41,15 @@
       "name": "from_callers",
       "output": {
         "name": "",
-        "type": 0,
+        "type": 8,
         "typeArguments": null
       }
     }
   ],
   "types": [
     {
-      "components": [
-        {
-          "name": "__tuple_element",
-          "type": 1,
-          "typeArguments": null
-        },
-        {
-          "name": "__tuple_element",
-          "type": 1,
-          "typeArguments": null
-        },
-        {
-          "name": "__tuple_element",
-          "type": 1,
-          "typeArguments": null
-        },
-        {
-          "name": "__tuple_element",
-          "type": 1,
-          "typeArguments": null
-        }
-      ],
-      "type": "(b256, b256, b256, b256)",
+      "components": null,
+      "type": "b256",
       "typeId": 0,
       "typeParameters": null
     },
@@ -78,6 +57,69 @@
       "components": null,
       "type": "b256",
       "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 2,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 3,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 4,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 5,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 6,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 7,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "type": 0,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "type": 2,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "type": 3,
+          "typeArguments": null
+        }
+      ],
+      "type": "(_, _, _, _)",
+      "typeId": 8,
       "typeParameters": null
     }
   ]

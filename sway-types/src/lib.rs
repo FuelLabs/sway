@@ -376,7 +376,6 @@ pub struct Property {
 
 /// Alternative Fuel ABI representation in JSON where the type declarations have associated IDs to
 /// help associate type components, type arguments, and type parameters with other types.
-
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonABIProgram {
@@ -392,7 +391,7 @@ pub struct JsonABIFunction {
     pub output: JsonTypeApplication,
 }
 
-#[derive(Default, Debug, Clone, Eq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Eq, Ord, PartialOrd, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonTypeDeclaration {
     pub type_id: usize,
@@ -402,7 +401,7 @@ pub struct JsonTypeDeclaration {
     pub type_parameters: Option<Vec<usize>>,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Hash, Deserialize)]
+#[derive(Default, Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Hash, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonTypeApplication {
     pub name: String,
