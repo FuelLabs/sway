@@ -1,6 +1,6 @@
 use crate::{
     lock::Lock,
-    manifest::{BuildProfile, Dependency, Manifest, ManifestFile},
+    manifest::{BuildProfile, ConfigTimeConstant, Dependency, Manifest, ManifestFile},
     CORE, STD,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
@@ -16,7 +16,7 @@ use petgraph::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{hash_map, BTreeSet, HashMap, HashSet},
+    collections::{hash_map, BTreeMap, BTreeSet, HashMap, HashSet},
     fmt,
     fs::{self, File},
     hash::{Hash, Hasher},
@@ -1598,14 +1598,14 @@ pub fn compile(
     let entry_path = manifest.entry_path();
     let sway_build_config = time_expr!(
         "produce `sway_core::BuildConfig`",
-        sway_build_config(manifest.dir(), &entry_path, build_profile)?
+        sway_build_config(manifest.dir(), &entry_path, build_profile,)?
     );
     let silent_mode = build_profile.silent;
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
         "compile to ast",
-        compile_ast(manifest, build_profile, namespace)?
+        compile_ast(manifest, build_profile, namespace,)?
     );
     match &ast_res {
         CompileAstResult::Failure { warnings, errors } => {

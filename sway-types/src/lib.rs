@@ -91,6 +91,11 @@ where
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ConfigTimeConstant {
+    pub r#type: String,
+    pub value: String,
+}
 impl AsRef<PathBuf> for Source {
     fn as_ref(&self) -> &PathBuf {
         &self.path
