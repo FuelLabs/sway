@@ -70,7 +70,7 @@ pub enum Instruction {
     /// Return a pointer as a value.
     GetPointer {
         base_ptr: Pointer,
-        ptr_ty: Type,
+        ptr_ty: Pointer,
         offset: u64,
     },
     /// Writing a specific value to an array.
@@ -186,7 +186,7 @@ impl Instruction {
             Instruction::InsertValue { aggregate, .. } => aggregate.get_type(context),
             Instruction::Load(ptr_val) => {
                 if let ValueDatum::Instruction(ins) = &context.values[ptr_val.0].value {
-                    ins.get_type(context)
+                    ins.get_type(context).map(|f| f.strip_ptr_type(context))
                 } else {
                     None
                 }
@@ -200,7 +200,7 @@ impl Instruction {
             }
 
             // These can be recursed to via Load, so we return the pointer type.
-            Instruction::GetPointer { ptr_ty, .. } => Some(*ptr_ty),
+            Instruction::GetPointer { ptr_ty, .. } => Some(Type::Pointer(*ptr_ty)),
 
             // Used to re-interpret an integer as a pointer to some type so return the pointer type.
             Instruction::IntToPtr(_, ty) => Some(*ty),
@@ -228,7 +228,7 @@ impl Instruction {
                 Type::Struct(aggregate) => Some(*aggregate),
                 _otherwise => None,
             },
-            Instruction::GetPointer { ptr_ty, .. } => match ptr_ty {
+            Instruction::GetPointer { ptr_ty, .. } => match ptr_ty.get_type(context) {
                 Type::Array(aggregate) => Some(*aggregate),
                 Type::Struct(aggregate) => Some(*aggregate),
                 _otherwise => None,
@@ -563,11 +563,12 @@ impl<'a> InstructionInserter<'a> {
     }
 
     pub fn get_ptr(self, base_ptr: Pointer, ptr_ty: Type, offset: u64) -> Value {
+        let ptr = Pointer::new(self.context, ptr_ty, false, None);
         let get_ptr_val = Value::new_instruction(
             self.context,
             Instruction::GetPointer {
                 base_ptr,
-                ptr_ty,
+                ptr_ty: ptr,
                 offset,
             },
         );

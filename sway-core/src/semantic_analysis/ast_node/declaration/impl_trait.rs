@@ -6,7 +6,7 @@ use crate::{
     error::{err, ok},
     semantic_analysis::{
         Mode, TypeCheckContext, TypedAstNodeContent, TypedExpression, TypedExpressionVariant,
-        TypedIntrinsicFunctionKind, TypedReturnStatement, TypedWhileLoop,
+        TypedIntrinsicFunctionKind, TypedReturnStatement,
     },
     type_system::{
         insert_type, look_up_type_id, resolve_type, set_type_as_storage_only, unify_with_self,
@@ -193,10 +193,6 @@ impl TypedImplTrait {
                     expr_contains_get_storage_index(expr)
                 }
                 TypedAstNodeContent::Declaration(decl) => decl_contains_get_storage_index(decl),
-                TypedAstNodeContent::WhileLoop(TypedWhileLoop { condition, body }) => {
-                    expr_contains_get_storage_index(condition)
-                        || codeblock_contains_get_storage_index(body)
-                }
                 TypedAstNodeContent::SideEffect => false,
             }
         }
@@ -257,6 +253,10 @@ impl TypedImplTrait {
                     kind,
                     ..
                 }) => matches!(kind, sway_ast::intrinsics::Intrinsic::GetStorageKey),
+                TypedExpressionVariant::WhileLoop { condition, body } => {
+                    expr_contains_get_storage_index(condition)
+                        || codeblock_contains_get_storage_index(body)
+                }
             }
         }
         fn decl_contains_get_storage_index(decl: &TypedDeclaration) -> bool {

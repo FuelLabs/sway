@@ -1,8 +1,11 @@
-use super::bracket::{close_angle_bracket, open_angle_bracket};
-use crate::fmt::{Format, FormattedCode, Formatter, FormatterError};
+use crate::{
+    fmt::*,
+    utils::{
+        bracket::{close_angle_bracket, open_angle_bracket},
+        shape::LineStyle,
+    },
+};
 use sway_ast::{GenericArgs, GenericParams};
-
-use super::shape::LineStyle;
 
 impl Format for GenericParams {
     fn format(

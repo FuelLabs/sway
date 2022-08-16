@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()ref patterns not supported in this position

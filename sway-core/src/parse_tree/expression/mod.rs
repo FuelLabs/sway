@@ -104,6 +104,12 @@ pub struct IntrinsicFunctionExpression {
 }
 
 #[derive(Debug, Clone)]
+pub struct WhileLoopExpression {
+    pub condition: Box<Expression>,
+    pub body: CodeBlock,
+}
+
+#[derive(Debug, Clone)]
 pub enum ExpressionKind {
     Literal(Literal),
     FunctionApplication(Box<FunctionApplicationExpression>),
@@ -152,6 +158,9 @@ pub enum ExpressionKind {
     ArrayIndex(ArrayIndexExpression),
     StorageAccess(StorageAccessExpression),
     IntrinsicFunction(IntrinsicFunctionExpression),
+    /// A control flow element which loops continually until some boolean expression evaluates as
+    /// `false`.
+    WhileLoop(WhileLoopExpression),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
