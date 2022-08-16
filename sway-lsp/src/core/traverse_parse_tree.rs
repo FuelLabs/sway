@@ -290,8 +290,6 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                 handle_expression(&field.initializer, tokens);
             }
         }
-        // TODO: collect these tokens as keywords once the compiler returns the span
-        Declaration::Break { .. } | Declaration::Continue { .. } => {}
     }
 }
 

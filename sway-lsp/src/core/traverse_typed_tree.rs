@@ -226,8 +226,6 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
             }
             handle_expression(&storage_reassignment.rhs, tokens);
         }
-        TypedDeclaration::Break { .. } => {}
-        TypedDeclaration::Continue { .. } => {}
     }
 }
 

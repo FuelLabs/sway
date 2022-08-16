@@ -90,15 +90,7 @@ impl FnCompiler {
         ast_block: TypedCodeBlock,
     ) -> Result<Value, CompileError> {
         self.lexical_map.enter_scope();
-        let index_of_first_break_or_continue_decl =
-            ast_block.contents.clone().into_iter().position(|r| {
-                matches!(
-                    r.content,
-                    TypedAstNodeContent::Declaration(TypedDeclaration::Break { .. })
-                        | TypedAstNodeContent::Declaration(TypedDeclaration::Continue { .. })
-                )
-            });
-        let index_of_first_break_or_continue_expr = {
+        let index_of_first_break_or_continue = {
             ast_block.contents.iter().position(|r| {
                 matches!(
                     r.content,
@@ -109,14 +101,6 @@ impl FnCompiler {
                     })
                 )
             })
-        };
-        let index_of_first_break_or_continue = match (
-            index_of_first_break_or_continue_decl,
-            index_of_first_break_or_continue_expr,
-        ) {
-            (None, None) => None,
-            (Some(i), None) | (None, Some(i)) => Some(i),
-            (Some(i0), Some(i1)) => Some(std::cmp::min(i0, i1)),
         };
 
         // Filter out all ast nodes *after* a `break` statement. Those nodes are essentially dead.
@@ -204,30 +188,6 @@ impl FnCompiler {
                                 span: ast_node.span,
                             })
                         }
-                        TypedDeclaration::Break { .. } => match self.block_to_break_to {
-                            // If `self.block_to_break_to` is not None, then it has been set inside
-                            // a loop and the use of `break` here is legal, so create a branch
-                            // instruction. Error out otherwise.
-                            Some(block_to_break_to) => Ok(self
-                                .current_block
-                                .ins(context)
-                                .branch(block_to_break_to, None)),
-                            None => Err(CompileError::BreakOutsideLoop {
-                                span: ast_node.span,
-                            }),
-                        },
-                        TypedDeclaration::Continue { .. } => match self.block_to_continue_to {
-                            // If `self.block_to_continue_to` is not None, then it has been set inside
-                            // a loop and the use of `continue` here is legal, so create a branch
-                            // instruction. Error out otherwise.
-                            Some(block_to_continue_to) => Ok(self
-                                .current_block
-                                .ins(context)
-                                .branch(block_to_continue_to, None)),
-                            None => Err(CompileError::ContinueOutsideLoop {
-                                span: ast_node.span,
-                            }),
-                        },
                         TypedDeclaration::StorageDeclaration(_) => {
                             Err(CompileError::UnexpectedDeclaration {
                                 decl_type: "storage",
