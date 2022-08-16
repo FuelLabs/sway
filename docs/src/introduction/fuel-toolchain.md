@@ -1,6 +1,6 @@
-# The Sway Toolchain
+# The Fuel Toolchain
 
-The Sway toolchain consists of several components.
+The Fuel toolchain consists of several components.
 
 ## Forc (`forc`)
 
@@ -26,4 +26,4 @@ The [Visual Studio Code plugin](https://marketplace.visualstudio.com/items?itemN
 
 ## Fuel Core (`fuel-core`)
 
-While not directly part of the Sway toolchain, an implementation of the Fuel protocol, [Fuel Core](https://github.com/FuelLabs/fuel-core), is provided. [The Rust SDK](https://github.com/FuelLabs/fuels-rs) will automatically start and stop an instance of the node during tests, so there is no need to manually run a node unless using Forc directly without the SDK.
+An implementation of the Fuel protocol, [Fuel Core](https://github.com/FuelLabs/fuel-core), is provided together with the _Sway toolchain_ to form the _Fuel toolchain_. [The Rust SDK](https://github.com/FuelLabs/fuels-rs) will automatically start and stop an instance of the node during tests, so there is no need to manually run a node unless using Forc directly without the SDK.
