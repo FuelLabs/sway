@@ -35,6 +35,7 @@ pub enum TypedExpressionVariant {
     },
     VariableExpression {
         name: Ident,
+        span: Span,
     },
     Tuple {
         fields: Vec<TypedExpression>,
@@ -156,9 +157,15 @@ impl PartialEq for TypedExpressionVariant {
                 },
             ) => l_op == r_op && (**l_lhs) == (**r_lhs) && (**l_rhs) == (**r_rhs),
             (
-                Self::VariableExpression { name: l_name },
-                Self::VariableExpression { name: r_name },
-            ) => l_name == r_name,
+                Self::VariableExpression {
+                    name: l_name,
+                    span: l_span,
+                },
+                Self::VariableExpression {
+                    name: r_name,
+                    span: r_span,
+                },
+            ) => l_name == r_name && l_span == r_span,
             (Self::Tuple { fields: l_fields }, Self::Tuple { fields: r_fields }) => {
                 l_fields == r_fields
             }
