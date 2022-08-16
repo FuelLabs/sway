@@ -7,7 +7,12 @@ use crate::core::{
 use crate::utils::debug::{self, DebugFlags};
 use forc_util::find_manifest_dir;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{
+    fs::File,
+    path::Path,
+    io::Write,
+    sync::Arc
+};
 use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, Client, LanguageServer};
@@ -261,6 +266,11 @@ impl LanguageServer for Backend {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct RunnableParams {}
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ShowTypedAstParams {
+    pub text_document: TextDocumentIdentifier,
+}
+
 // Custom LSP-Server Methods
 impl Backend {
     pub async fn runnables(
@@ -277,6 +287,41 @@ impl Backend {
             });
 
         Ok(ranges)
+    }
+
+    pub async fn show_typed_ast(
+        &self,
+        params: ShowTypedAstParams,
+    ) -> jsonrpc::Result<Option<TextDocumentIdentifier>> {
+
+        // self.session.typed_program.read()
+        // .and_then(|std::sync::LockResult::Ok(typed_ast)| *ast)
+        // .and_then(|ast| {
+        //     let sc= Some(0);
+        // });
+
+        let res: Option<()> = match self.session.typed_program.read() {
+            std::sync::LockResult::Ok(typed_ast) => {
+                match *typed_ast {
+                    Some(ref typed_program) => {
+                        let typed_ast = format!("{:#?}", typed_program.root.all_nodes);
+                        let path = Path::new("/tmp/typed_ast.rs");
+                        if let Ok(mut file) = File::create(path) {
+                            let _= writeln!(&mut file, "{}", typed_ast);
+                            eprintln!("{:?}", path);
+                        }
+                        None
+                    }
+                    None => None,
+                }
+            }
+            _ => None,
+        };
+        
+
+        Err(jsonrpc::Error::new(
+            jsonrpc::ErrorCode::MethodNotFound,
+        ))
     }
 }
 
@@ -457,7 +502,7 @@ mod tests {
         assert_eq!(response, Ok(Some(err)));
     }
 
-    //#[tokio::test]
+    #[tokio::test]
     #[allow(dead_code)]
     async fn did_open() {
         let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));

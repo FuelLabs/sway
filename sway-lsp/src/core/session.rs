@@ -16,10 +16,12 @@ use dashmap::DashMap;
 use forc_pkg::{self as pkg};
 use serde_json::Value;
 use std::{
+    fs::File,
+    io::Write,
     path::PathBuf,
-    sync::{Arc, LockResult, RwLock},
+    sync::{Arc, LockResult, RwLock}, fmt::write,
 };
-use sway_core::{CompileAstResult, CompileResult, ParseProgram, TypedProgramKind};
+use sway_core::{CompileAstResult, CompileResult, ParseProgram, TypedProgram, TypedProgramKind};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, GotoDefinitionParams, GotoDefinitionResponse, Location, Position,
@@ -34,6 +36,7 @@ pub struct Session {
     pub config: RwLock<SwayConfig>,
     pub token_map: TokenMap,
     pub runnables: DashMap<RunnableType, Runnable>,
+    pub typed_program: RwLock<Option<Box<TypedProgram>>>,
 }
 
 impl Session {
@@ -43,6 +46,7 @@ impl Session {
             config: RwLock::new(SwayConfig::default()),
             token_map: DashMap::new(),
             runnables: DashMap::new(),
+            typed_program: RwLock::new(None),
         }
     }
 
@@ -210,9 +214,6 @@ impl Session {
                 typed_program,
                 warnings,
             } => {
-                let typed_ast = format!("{:#?}", typed_program.root.all_nodes);
-                // println!("{}", typed_ast);
-
                 if let TypedProgramKind::Script {
                     ref main_function, ..
                 }
@@ -234,6 +235,10 @@ impl Session {
                     for node in &submodule.module.all_nodes {
                         traverse_typed_tree::traverse_node(node, &self.token_map);
                     }
+                }
+
+                if let LockResult::Ok(mut typed_ast) = self.typed_program.write() {
+                    *typed_ast = Some(typed_program);
                 }
 
                 Ok(capabilities::diagnostic::get_diagnostics(warnings, vec![]))
