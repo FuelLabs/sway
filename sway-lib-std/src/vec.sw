@@ -1,10 +1,10 @@
 library vec;
 
 use ::alloc::{alloc, realloc};
+use ::assert::assert;
 use ::intrinsics::size_of;
 use ::mem::{copy, read, write};
 use ::option::Option;
-use ::assert::assert;
 
 struct RawVec<T> {
     ptr: u64,
@@ -43,7 +43,7 @@ impl<T> RawVec<T> {
     /// Grow the capacity of the vector by doubling its current capacity. The
     /// `realloc` function / allocates memory on the heap and copies the data
     /// from the old allocation to the new allocation
-    fn grow(mut self) {
+    fn grow(ref mut self) {
         let new_cap = if self.cap == 0 {
             1
         } else {
@@ -87,7 +87,7 @@ impl<T> Vec<T> {
     }
 
     /// Appends an element to the back of a collection.
-    pub fn push(mut self, value: T) {
+    pub fn push(ref mut self, value: T) {
         // If there is insufficient capacity, grow the buffer.
         if self.len == self.buf.capacity() {
             self.buf.grow();
@@ -113,7 +113,7 @@ impl<T> Vec<T> {
     ///
     /// Note that this method has no effect on the allocated capacity
     /// of the vector.
-    pub fn clear(mut self) {
+    pub fn clear(ref mut self) {
         self.len = 0;
     }
 
@@ -146,7 +146,7 @@ impl<T> Vec<T> {
     /// Removes and returns the element at position `index` within the vector,
     /// shifting all elements after it to the left.
     /// Panics if `index >= self.len`
-    pub fn remove(mut self, index: u64) -> T {
+    pub fn remove(ref mut self, index: u64) -> T {
         assert(index < self.len);
 
         let val_size = size_of::<T>();
@@ -171,7 +171,7 @@ impl<T> Vec<T> {
     /// Inserts an element at position `index` within the vector, shifting all
     /// elements after it to the right.
     /// Panics if `index > len`.
-    pub fn insert(mut self, index: u64, element: T) {
+    pub fn insert(ref mut self, index: u64, element: T) {
         assert(index <= self.len);
 
         // If there is insufficient capacity, grow the buffer.
@@ -201,7 +201,7 @@ impl<T> Vec<T> {
 
     /// Removes the last element from a vector and returns it, or [`None`] if it
     /// is empty.
-    fn pop(mut self) -> Option<T> {
+    fn pop(ref mut self) -> Option<T> {
         if self.len == 0 {
             return Option::None;
         }
@@ -219,7 +219,7 @@ impl<T> Vec<T> {
     /// # Reverts
     ///
     /// Reverts if `element1_index` or `element2_index` is greater than or equal to the length of vector.
-    pub fn swap(mut self, element1_index: u64, element2_index: u64) {
+    pub fn swap(ref mut self, element1_index: u64, element2_index: u64) {
         assert(element1_index < self.len);
         assert(element2_index < self.len);
 

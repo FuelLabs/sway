@@ -24,9 +24,9 @@ pub mod setup {
         .await
         .unwrap();
 
-        let instance = MyContract::new(id.to_string(), wallet);
+        let instance = MyContractBuilder::new(id.to_string(), wallet).build();
 
-        (instance, id)
+        (instance, id.into())
     }
 }
 
@@ -56,6 +56,10 @@ pub mod wrappers {
             .await
             .unwrap()
             .value
+    }
+
+    pub async fn set(instance: &MyContract, index: u64, value: TestStruct) {
+        instance.struct_set(index, value).call().await.unwrap();
     }
 
     pub async fn insert(instance: &MyContract, index: u64, value: TestStruct) {

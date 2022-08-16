@@ -1,6 +1,7 @@
-use crate::core::token::{AstToken, TokenMap, TokenType, TypedAstToken};
+#![allow(dead_code)]
+use crate::core::token::{AstToken, Token, TokenMap, TypedAstToken};
 use crate::utils::{common::get_range_from_span, token};
-use sway_core::{Expression, Literal};
+use sway_core::{Expression, ExpressionKind, Literal};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
 
@@ -8,35 +9,50 @@ use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
 #[derive(Debug, Default)]
 pub struct DebugFlags {
     /// Instructs the client to draw squiggly lines
-    /// under all of the tokens that our server managed to parse
-    pub parsed_tokens_as_warnings: bool,
+    /// under all of the tokens that our server managed to parse.
+    /// String can be either "typed" or "parsed".
+    pub collected_tokens_as_warnings: Option<String>,
 }
 
-pub fn generate_warnings_non_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
+pub(crate) fn generate_warnings_non_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
     let warnings = tokens
         .iter()
-        .filter(|(_, v)| v.typed.is_none())
-        .map(|((ident, _), _)| warning_from_ident(ident))
+        .filter(|item| {
+            let ((_, _), token) = item.pair();
+            token.typed.is_none()
+        })
+        .map(|item| {
+            let (ident, _) = item.key();
+            warning_from_ident(ident)
+        })
         .collect();
 
     warnings
 }
 
-pub fn generate_warnings_for_parsed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
+pub(crate) fn generate_warnings_for_parsed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
     let warnings = tokens
         .iter()
-        .map(|((ident, _), token_type)| (ident, &token_type.parsed))
-        .map(|(ident, _)| warning_from_ident(ident))
+        .map(|item| {
+            let (ident, _) = item.key();
+            warning_from_ident(ident)
+        })
         .collect();
 
     warnings
 }
 
-pub fn generate_warnings_for_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
+pub(crate) fn generate_warnings_for_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
     let warnings = tokens
         .iter()
-        .filter(|(_, v)| v.typed.is_some())
-        .map(|((ident, _), _)| warning_from_ident(ident))
+        .filter(|item| {
+            let ((_, _), token) = item.pair();
+            token.typed.is_some()
+        })
+        .map(|item| {
+            let (ident, _) = item.key();
+            warning_from_ident(ident)
+        })
         .collect();
 
     warnings
@@ -51,7 +67,7 @@ fn warning_from_ident(ident: &Ident) -> Diagnostic {
     }
 }
 
-pub fn debug_print_ident_and_token(ident: &Ident, token: &TokenType) {
+pub(crate) fn debug_print_ident_and_token(ident: &Ident, token: &Token) {
     let pos = ident.span().start_pos().line_col();
     let line_num = pos.0 as u32;
 
@@ -64,7 +80,7 @@ pub fn debug_print_ident_and_token(ident: &Ident, token: &TokenType) {
     );
 }
 
-fn ast_node_type(token_type: &TokenType) -> String {
+fn ast_node_type(token_type: &Token) -> String {
     match &token_type.typed {
         Some(typed_ast_token) => match typed_ast_token {
             TypedAstToken::TypedDeclaration(dec) => dec.friendly_name().to_string(),
@@ -81,7 +97,10 @@ fn ast_node_type(token_type: &TokenType) -> String {
             _ => "".to_string(),
         },
         None => match &token_type.parsed {
-            AstToken::Expression(Expression::Literal { value, .. }) => literal_to_string(value),
+            AstToken::Expression(Expression {
+                kind: ExpressionKind::Literal(value),
+                ..
+            }) => literal_to_string(value),
             _ => "".to_string(),
         },
     }

@@ -6,4 +6,12 @@ dependencies = []
 [[package]]
 name = 'enum_if_let'
 source = 'root'
+dependencies = [
+    'core',
+    'std',
+]
+
+[[package]]
+name = 'std'
+source = 'path+from-root-70323834FF9E0867'
 dependencies = ['core']

@@ -2,7 +2,7 @@ use sway_types::Span;
 
 use crate::{
     semantic_analysis::{IsConstant, TypedExpressionVariant},
-    type_engine::TypeId,
+    type_system::TypeId,
     LazyOp,
 };
 

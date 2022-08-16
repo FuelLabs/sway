@@ -1,4 +1,4 @@
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum LineKind {
     SubHeader,
     Arg,

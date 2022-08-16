@@ -31,6 +31,10 @@ pub struct Command {
     #[clap(short, long)]
     pub kill_node: bool,
 
+    /// Print the generated Sway AST (Abstract Syntax Tree).
+    #[clap(long)]
+    pub print_ast: bool,
+
     /// Print the finalized ASM.
     ///
     /// This is the state of the ASM with registers allocated and optimisations applied.

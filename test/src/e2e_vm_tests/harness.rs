@@ -95,52 +95,52 @@ pub(crate) fn runs_in_vm(file_name: &str, locked: bool) -> (ProgramState, Compil
     (*i.transact(tx_to_test).unwrap().state(), script)
 }
 
-/// Returns Err(()) if code _does_ compile, used for test cases where the source
-/// code should have been rejected by the compiler.  When it fails to compile the
-/// captured stdout is returned.
-pub(crate) fn does_not_compile(file_name: &str, locked: bool) -> Result<String, ()> {
-    use std::io::Read;
-
+/// Compiles the code and captures the output of forc and the compilation.
+/// Returns a tuple with the result of the compilation, as well as the output.
+pub(crate) fn compile_and_capture_output(
+    file_name: &str,
+    locked: bool,
+) -> (Result<Compiled>, String) {
     tracing::info!(" Compiling {}", file_name);
 
-    // Capture stdout to a buffer, compile the test and save stdout to a string.
-    let mut buf = gag::BufferRedirect::stdout().unwrap();
-    let result = compile_to_bytes_verbose(file_name, locked, true);
-    let mut output = String::new();
-    buf.read_to_string(&mut output).unwrap();
-    drop(buf);
+    let (result, mut output) = compile_to_bytes_verbose(file_name, locked, true, true);
 
     // If verbosity is requested then print it out.
     if get_test_config_from_env() {
         tracing::info!("{output}");
     }
 
-    // Invert the result; if it succeeds then return an Err.
-    match result {
-        Ok(_) => Err(()),
-        Err(e) => {
-            // Capture the result of the compilation (i.e., any errors Forc produces) and append to
-            // the stdout from the compiler.
-            write!(output, "\n{}", e).map_err(|_| ())?;
-            Ok(output)
-        }
+    // Capture the result of the compilation (i.e., any errors Forc produces) and append to
+    // the stdout from the compiler.
+    if let Err(ref e) = result {
+        write!(output, "\n{}", e).expect("error writing output");
     }
+
+    (result, output)
 }
 
-/// Returns `true` if a file compiled without any errors or warnings,
-/// and `false` if it did not.
+/// Compiles the code and returns a result of the compilation,
 pub(crate) fn compile_to_bytes(file_name: &str, locked: bool) -> Result<Compiled> {
-    compile_to_bytes_verbose(file_name, locked, get_test_config_from_env())
+    compile_to_bytes_verbose(file_name, locked, get_test_config_from_env(), false).0
 }
 
 pub(crate) fn compile_to_bytes_verbose(
     file_name: &str,
     locked: bool,
     verbose: bool,
-) -> Result<Compiled> {
+    capture_output: bool,
+) -> (Result<Compiled>, String) {
+    use std::io::Read;
     tracing::info!(" Compiling {}", file_name);
+
+    let mut buf: Option<gag::BufferRedirect> = None;
+    if capture_output {
+        // Capture stdout to a buffer, compile the test and save stdout to a string.
+        buf = Some(gag::BufferRedirect::stdout().unwrap());
+    }
+
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    forc_build::build(BuildCommand {
+    let compiled = forc_build::build(BuildCommand {
         path: Some(format!(
             "{}/src/e2e_vm_tests/test_programs/{}",
             manifest_dir, file_name
@@ -148,7 +148,16 @@ pub(crate) fn compile_to_bytes_verbose(
         locked,
         silent_mode: !verbose,
         ..Default::default()
-    })
+    });
+
+    let mut output = String::new();
+    if capture_output {
+        let mut buf = buf.unwrap();
+        buf.read_to_string(&mut output).unwrap();
+        drop(buf);
+    }
+
+    (compiled, output)
 }
 
 pub(crate) fn test_json_abi(file_name: &str, compiled: &Compiled) -> Result<()> {

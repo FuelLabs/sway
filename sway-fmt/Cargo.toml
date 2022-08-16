@@ -1,6 +1,6 @@
 [package]
 name = "sway-fmt"
-version = "0.18.1"
+version = "0.19.2"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -10,6 +10,6 @@ description = "Sway sway-fmt."
 
 [dependencies]
 ropey = "1.2"
-sway-core = { version = "0.18.1", path = "../sway-core" }
-sway-types = { version = "0.18.1", path = "../sway-types" }
+sway-core = { version = "0.19.2", path = "../sway-core" }
+sway-types = { version = "0.19.2", path = "../sway-types" }
 

@@ -92,7 +92,6 @@ impl Token for Contract {
         let sender: Result<Identity, AuthError> = msg_sender();
         let sender: Address = match sender.unwrap() {
             Identity::Address(addr) => {
-                assert(addr == ~Address::from(MINTER));
                 addr
             },
             _ => {

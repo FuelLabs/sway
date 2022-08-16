@@ -14,6 +14,8 @@ abi MyContract {
     #[storage(read, write)]
     fn u64_swap_remove(index: u64) -> u64;
     #[storage(read, write)]
+    fn u64_set(index: u64, value: u64);
+    #[storage(read, write)]
     fn u64_insert(index: u64, value: u64);
     #[storage(read)]
     fn u64_len() -> u64;
@@ -47,6 +49,10 @@ impl MyContract for Contract {
     #[storage(read, write)]
     fn u64_swap_remove(index: u64) -> u64 {
         storage.my_vec.swap_remove(index)
+    }
+    #[storage(read, write)]
+    fn u64_set(index: u64, value: u64) {
+        storage.my_vec.set(index, value);
     }
     #[storage(read, write)]
     fn u64_insert(index: u64, value: u64) {

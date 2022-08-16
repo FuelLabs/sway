@@ -10,9 +10,9 @@
 
 * [#428](https://github.com/FuelLabs/sway/issues/428): Arrays are currently immutable which means that changing elements of an array once initialized is not yet possible.
 
-* [#2035](https://github.com/FuelLabs/sway/issues/2035): Dynamic vectors _in storage_ have not yet been implemented. Only [vectors in memory](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/vec.sw) are available at the moment.
-
 * [#1188](https://github.com/FuelLabs/sway/issues/1188): Mutable function arguments are not yet allowed except for `self`.
+
+* [#1796](https://github.com/FuelLabs/sway/issues/1796): It is not yet allowed to use `StorageMap<K, V>` as a component of a complex type such as a struct or an enum.
 
 ## General
 

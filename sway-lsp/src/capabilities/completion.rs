@@ -1,34 +1,18 @@
-use crate::core::{
-    session::Session,
-    token::{AstToken, TokenMap, TypedAstToken},
-};
+use crate::core::token::{AstToken, TokenMap, TypedAstToken};
 use crate::utils::token::is_initial_declaration;
-use std::sync::Arc;
 use sway_core::{
     semantic_analysis::ast_node::{
         expression::typed_expression_variant::TypedExpressionVariant, TypedDeclaration,
     },
-    Declaration, Expression,
+    Declaration, ExpressionKind,
 };
-use tower_lsp::lsp_types::{
-    CompletionItem, CompletionItemKind, CompletionParams, CompletionResponse,
-};
-
-pub fn get_completion(
-    session: Arc<Session>,
-    params: CompletionParams,
-) -> Option<CompletionResponse> {
-    let url = params.text_document_position.text_document.uri;
-
-    session
-        .completion_items(&url)
-        .map(CompletionResponse::Array)
-}
+use tower_lsp::lsp_types::{CompletionItem, CompletionItemKind};
 
 pub fn to_completion_items(token_map: &TokenMap) -> Vec<CompletionItem> {
     let mut completion_items = vec![];
 
-    for ((ident, _), token) in token_map {
+    for item in token_map.iter() {
+        let ((ident, _), token) = item.pair();
         if is_initial_declaration(token) {
             let item = CompletionItem {
                 label: ident.as_str().to_string(),
@@ -63,11 +47,11 @@ pub fn parsed_to_completion_kind(ast_token: &AstToken) -> Option<CompletionItemK
             | Declaration::StorageDeclaration(_) => Some(CompletionItemKind::TEXT),
             Declaration::Break { .. } | Declaration::Continue { .. } => None,
         },
-        AstToken::Expression(exp) => match &exp {
-            Expression::Literal { .. } => Some(CompletionItemKind::VALUE),
-            Expression::FunctionApplication { .. } => Some(CompletionItemKind::FUNCTION),
-            Expression::VariableExpression { .. } => Some(CompletionItemKind::VARIABLE),
-            Expression::StructExpression { .. } => Some(CompletionItemKind::STRUCT),
+        AstToken::Expression(exp) => match &exp.kind {
+            ExpressionKind::Literal { .. } => Some(CompletionItemKind::VALUE),
+            ExpressionKind::FunctionApplication { .. } => Some(CompletionItemKind::FUNCTION),
+            ExpressionKind::Variable { .. } => Some(CompletionItemKind::VARIABLE),
+            ExpressionKind::Struct { .. } => Some(CompletionItemKind::STRUCT),
             _ => None,
         },
         AstToken::FunctionDeclaration(_) => Some(CompletionItemKind::FUNCTION),

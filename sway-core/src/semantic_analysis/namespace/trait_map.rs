@@ -1,5 +1,5 @@
 use crate::{
-    type_engine::{create_type_mapping, look_up_type_id, CopyTypes, TypeId},
+    type_system::{create_type_mapping, look_up_type_id, CopyTypes, TypeId},
     CallPath, TypeInfo, TypedFunctionDeclaration,
 };
 

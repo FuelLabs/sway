@@ -1,7 +1,7 @@
 use crate::{
     core::{
         session::Session,
-        token::{AstToken, TokenType, TypedAstToken},
+        token::{AstToken, Token, TypedAstToken},
     },
     utils::{
         common::{extract_visibility, get_range_from_span},
@@ -9,34 +9,29 @@ use crate::{
         token::to_ident_key,
     },
 };
-
-use std::sync::Arc;
-use tower_lsp::lsp_types::{Hover, HoverContents, HoverParams, MarkupContent, MarkupKind};
-
 use sway_core::{semantic_analysis::ast_node::TypedDeclaration, Declaration, Visibility};
 use sway_types::{Ident, Spanned};
+use tower_lsp::lsp_types::{Hover, HoverContents, HoverParams, MarkupContent, MarkupKind};
 
-pub fn hover_data(session: Arc<Session>, params: HoverParams) -> Option<Hover> {
+pub fn hover_data(session: &Session, params: HoverParams) -> Option<Hover> {
     let position = params.text_document_position_params.position;
     let url = &params.text_document_position_params.text_document.uri;
-
-    match session.documents.get(url.path()) {
-        Some(ref document) => {
-            if let Some((_, token)) = document.token_at_position(position) {
-                if let Some(decl_ident) = document.declared_token_ident(token) {
-                    if let Some(decl_token) = document.token_map().get(&to_ident_key(&decl_ident)) {
-                        let hover = hover_format(decl_token, &decl_ident);
-                        return Some(hover);
-                    }
-                }
+    if let Some((_, token)) = session.token_at_position(url, position) {
+        if let Some(decl_ident) = session.declared_token_ident(&token) {
+            if let Some(decl_token) = session
+                .token_map()
+                .get(&to_ident_key(&decl_ident))
+                .map(|item| item.value().clone())
+            {
+                let hover = hover_format(&decl_token, &decl_ident);
+                return Some(hover);
             }
-            None
         }
-        _ => None,
     }
+    None
 }
 
-fn hover_format(token: &TokenType, ident: &Ident) -> Hover {
+fn hover_format(token: &Token, ident: &Ident) -> Hover {
     let token_name: String = ident.as_str().into();
     let range = get_range_from_span(&ident.span());
 
@@ -62,7 +57,7 @@ fn hover_format(token: &TokenType, ident: &Ident) -> Hover {
             TypedAstToken::TypedDeclaration(decl) => match decl {
                 TypedDeclaration::VariableDeclaration(var_decl) => {
                     let type_name = format!("{}", var_decl.type_ascription);
-                    format_variable_hover(var_decl.is_mutable.is_mutable(), type_name)
+                    format_variable_hover(var_decl.mutability.is_mutable(), type_name)
                 }
                 TypedDeclaration::FunctionDeclaration(func) => extract_fn_signature(&func.span()),
                 TypedDeclaration::StructDeclaration(ref struct_decl) => {

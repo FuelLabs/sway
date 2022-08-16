@@ -1,28 +1,19 @@
-use crate::core::{
-    session::Session,
-    token::{AstToken, TokenMap, TokenType, TypedAstToken},
-};
+use crate::core::token::{AstToken, Token, TokenMap, TypedAstToken};
 use crate::utils::common::get_range_from_span;
-use std::sync::Arc;
 use sway_core::{
     semantic_analysis::ast_node::{
         expression::typed_expression_variant::TypedExpressionVariant, TypedDeclaration,
     },
-    Declaration, Expression, Literal,
+    Declaration, ExpressionKind, Literal,
 };
 use sway_types::{Ident, Spanned};
-use tower_lsp::lsp_types::{DocumentSymbolResponse, Location, SymbolInformation, SymbolKind, Url};
-
-pub fn document_symbol(session: Arc<Session>, url: Url) -> Option<DocumentSymbolResponse> {
-    session
-        .symbol_information(&url)
-        .map(DocumentSymbolResponse::Flat)
-}
+use tower_lsp::lsp_types::{Location, SymbolInformation, SymbolKind, Url};
 
 pub fn to_symbol_information(token_map: &TokenMap, url: Url) -> Vec<SymbolInformation> {
     let mut symbols: Vec<SymbolInformation> = vec![];
 
-    for ((ident, _), token) in token_map {
+    for item in token_map.iter() {
+        let ((ident, _), token) = item.pair();
         let symbol = symbol_info(ident, token, url.clone());
         symbols.push(symbol)
     }
@@ -32,7 +23,7 @@ pub fn to_symbol_information(token_map: &TokenMap, url: Url) -> Vec<SymbolInform
 
 #[allow(warnings)]
 // TODO: the "deprecated: None" field is deprecated according to this library
-fn symbol_info(ident: &Ident, token: &TokenType, url: Url) -> SymbolInformation {
+fn symbol_info(ident: &Ident, token: &Token, url: Url) -> SymbolInformation {
     let range = get_range_from_span(&ident.span());
     SymbolInformation {
         name: ident.as_str().to_string(),
@@ -70,16 +61,16 @@ fn parsed_to_symbol_kind(ast_token: &AstToken) -> SymbolKind {
             }
         }
         AstToken::Expression(exp) => {
-            match &exp {
-                Expression::Literal { value, .. } => match value {
+            match &exp.kind {
+                ExpressionKind::Literal(value) => match value {
                     Literal::String(_) => SymbolKind::STRING,
                     Literal::Boolean(_) => SymbolKind::BOOLEAN,
                     _ => SymbolKind::NUMBER,
                 },
-                Expression::FunctionApplication { .. } => SymbolKind::FUNCTION,
-                Expression::VariableExpression { .. } => SymbolKind::VARIABLE,
-                Expression::Array { .. } => SymbolKind::ARRAY,
-                Expression::StructExpression { .. } => SymbolKind::STRUCT,
+                ExpressionKind::FunctionApplication(_) => SymbolKind::FUNCTION,
+                ExpressionKind::Variable(_) => SymbolKind::VARIABLE,
+                ExpressionKind::Array(_) => SymbolKind::ARRAY,
+                ExpressionKind::Struct(_) => SymbolKind::STRUCT,
                 // currently we return `variable` type as default
                 _ => SymbolKind::VARIABLE,
             }

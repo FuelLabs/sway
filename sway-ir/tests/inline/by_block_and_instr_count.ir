@@ -1,0 +1,80 @@
+// blocks 2 instrs 4
+
+script {
+    fn two_blocks_four_instrs() -> bool {
+        entry:
+        v0 = const bool true
+        br block
+
+        block:
+        v1 = phi(entry: v0)
+        v2 = const bool false
+        v3 = cmp eq v1 v2
+        v4 = cmp eq v2 v3
+        ret bool v4
+    }
+
+    fn two_blocks_five_instrs() -> bool {
+        entry:
+        v0 = const bool true
+        br block
+
+        block:
+        v1 = phi(entry: v0)
+        v2 = const bool false
+        v3 = cmp eq v1 v2
+        v4 = cmp eq v2 v3
+        v5 = const bool true
+        v6 = cmp eq v4 v5
+        ret bool v6
+    }
+
+    fn three_blocks_four_instrs(b: bool) -> bool {
+        entry:
+        v0 = const bool false
+        v1 = cmp eq b v0
+        cbr v1, then_block, else_block
+
+        then_block:
+        v2 = const bool false
+        ret bool v2
+
+        else_block:
+        v3 = const bool true
+        ret bool v3
+    }
+
+    fn three_blocks_five_instrs(b: bool) -> bool {
+        entry:
+        v0 = const bool false
+        v1 = cmp eq b v0
+        v2 = cmp eq b v1
+        cbr v2, then_block, else_block
+
+        then_block:
+        v3 = const bool false
+        ret bool v3
+
+        else_block:
+        v4 = const bool true
+        ret bool v4
+    }
+
+    fn main() -> bool {
+// check: fn main() -> bool
+        entry:
+
+        // This is the only call which should be inlined.
+        v0 = call two_blocks_four_instrs()
+// not: call two_blocks_four_instrs()
+
+        v1 = call two_blocks_five_instrs()
+// check: call two_blocks_five_instrs()
+        v2 = call three_blocks_four_instrs()
+// check: call three_blocks_four_instrs()
+        v3 = call three_blocks_five_instrs()
+// check: call three_blocks_five_instrs()
+
+        ret bool v3
+    }
+}

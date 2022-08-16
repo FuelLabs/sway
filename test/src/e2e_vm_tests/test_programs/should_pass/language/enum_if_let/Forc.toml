@@ -6,3 +6,4 @@ name = "enum_if_let"
 
 [dependencies]
 core = { path = "../../../../../../../sway-lib-core" }
+std = { path = "../../../../../../../sway-lib-std" }

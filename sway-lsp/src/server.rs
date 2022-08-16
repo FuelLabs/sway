@@ -2,9 +2,11 @@ use crate::capabilities;
 use crate::core::{
     document::{DocumentError, TextDocument},
     session::Session,
+    token::TokenMap,
 };
 use crate::utils::debug::{self, DebugFlags};
 use forc_util::find_manifest_dir;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::*;
@@ -31,19 +33,20 @@ impl Backend {
         self.client.log_message(MessageType::INFO, message).await;
     }
 
-    fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
+    async fn log_error_message(&self, message: &str) {
+        self.client.log_message(MessageType::ERROR, message).await;
+    }
+
+    async fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
         let curr_dir = std::env::current_dir().unwrap();
 
         if let Some(path) = find_manifest_dir(&curr_dir) {
             let files = get_sway_files(path);
-
             for file_path in files {
                 if let Some(path) = file_path.to_str() {
                     // store the document
                     let text_document = TextDocument::build_from_path(path)?;
                     self.session.store_document(text_document)?;
-                    // parse the document for tokens
-                    let _ = self.session.parse_document(path);
                 }
             }
         }
@@ -65,30 +68,41 @@ fn capabilities() -> ServerCapabilities {
             ..Default::default()
         }),
         document_formatting_provider: Some(OneOf::Left(true)),
+        definition_provider: Some(OneOf::Left(true)),
         ..ServerCapabilities::default()
     }
 }
 
 impl Backend {
-    async fn publish_diagnostics(&self, uri: Url, diagnostics: Vec<Diagnostic>) {
-        // If parsed_tokens_as_warnings is true, take over the normal error and warning display behavior
-        // and instead show the parsed tokens as warnings.
-        // This is useful for debugging the lsp parser.
-        if self.config.parsed_tokens_as_warnings {
-            if let Some(document) = self.session.documents.get(uri.path()) {
-                let diagnostics = debug::generate_warnings_for_parsed_tokens(document.token_map());
-
-                // let diagnostics = debug::generate_warnings_for_typed_tokens(&document.get_token_map());
+    async fn publish_diagnostics(
+        &self,
+        uri: &Url,
+        diagnostics: Vec<Diagnostic>,
+        token_map: &TokenMap,
+    ) {
+        match &self.config.collected_tokens_as_warnings {
+            Some(s) => {
+                // If collected_tokens_as_warnings is Some, take over the normal error and warning display behavior
+                // and instead show the either the parsed or typed tokens as warnings.
+                // This is useful for debugging the lsp parser.
+                let diagnostics = match s.as_str() {
+                    "parsed" => Some(debug::generate_warnings_for_parsed_tokens(token_map)),
+                    "typed" => Some(debug::generate_warnings_for_typed_tokens(token_map)),
+                    _ => None,
+                };
+                if let Some(diagnostics) = diagnostics {
+                    self.client
+                        .publish_diagnostics(uri.clone(), diagnostics, None)
+                        .await;
+                }
+            }
+            None => {
+                // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
+                // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
                 self.client
-                    .publish_diagnostics(uri, diagnostics, None)
+                    .publish_diagnostics(uri.clone(), diagnostics, None)
                     .await;
             }
-        } else {
-            // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
-            // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
-            self.client
-                .publish_diagnostics(uri, diagnostics, None)
-                .await;
         }
     }
 }
@@ -105,7 +119,7 @@ impl LanguageServer for Backend {
             .await;
 
         // iterate over the project dir, parse all sway files
-        let _ = self.parse_and_store_sway_files();
+        let _ = self.parse_and_store_sway_files().await;
 
         Ok(InitializeResult {
             server_info: None,
@@ -128,63 +142,83 @@ impl LanguageServer for Backend {
     // Document Handlers
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let uri = params.text_document.uri.clone();
-        let diagnostics = capabilities::text_sync::handle_open_file(self.session.clone(), &params);
-        self.publish_diagnostics(uri, diagnostics).await;
+        self.session.handle_open_file(&uri);
+
+        match self.session.parse_project(&uri) {
+            Ok(diagnostics) => {
+                let tokens = self.session.tokens_for_file(&uri);
+                self.publish_diagnostics(&uri, diagnostics, &tokens).await
+            }
+            Err(_) => self.log_error_message("Unable to Parse Project!").await,
+        }
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = params.text_document.uri.clone();
-        let diagnostics = capabilities::text_sync::handle_change_file(self.session.clone(), params);
-        self.publish_diagnostics(uri, diagnostics).await;
+        self.session
+            .update_text_document(&uri, params.content_changes);
+        match self.session.parse_project(&uri) {
+            Ok(diagnostics) => {
+                let tokens = self.session.tokens_for_file(&uri);
+                self.publish_diagnostics(&uri, diagnostics, &tokens).await
+            }
+            Err(_) => self.log_error_message("Unable to Parse Project!").await,
+        }
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
         let uri = params.text_document.uri.clone();
-        let diagnostics = capabilities::text_sync::handle_save_file(self.session.clone(), &params);
-        self.publish_diagnostics(uri, diagnostics).await;
+        match self.session.parse_project(&uri) {
+            Ok(diagnostics) => {
+                let tokens = self.session.tokens_for_file(&uri);
+                self.publish_diagnostics(&uri, diagnostics, &tokens).await
+            }
+            Err(_) => self.log_error_message("Unable to Parse Project!").await,
+        }
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
-        let events = params.changes;
-        capabilities::file_sync::handle_watched_files(self.session.clone(), events);
+        for event in params.changes {
+            if event.typ == FileChangeType::DELETED {
+                let _ = self.session.remove_document(&event.uri);
+            }
+        }
     }
 
     async fn hover(&self, params: HoverParams) -> jsonrpc::Result<Option<Hover>> {
-        Ok(capabilities::hover::hover_data(
-            self.session.clone(),
-            params,
-        ))
+        Ok(capabilities::hover::hover_data(&self.session, params))
     }
 
     async fn completion(
         &self,
-        params: CompletionParams,
+        _params: CompletionParams,
     ) -> jsonrpc::Result<Option<CompletionResponse>> {
         // TODO
         // here we would also need to provide a list of builtin methods not just the ones from the document
-        Ok(capabilities::completion::get_completion(
-            self.session.clone(),
-            params,
-        ))
+        Ok(self
+            .session
+            .completion_items()
+            .map(CompletionResponse::Array))
     }
 
     async fn document_symbol(
         &self,
         params: DocumentSymbolParams,
     ) -> jsonrpc::Result<Option<DocumentSymbolResponse>> {
-        Ok(capabilities::document_symbol::document_symbol(
-            self.session.clone(),
-            params.text_document.uri,
-        ))
+        Ok(self
+            .session
+            .symbol_information(&params.text_document.uri)
+            .map(DocumentSymbolResponse::Flat))
     }
 
     async fn semantic_tokens_full(
         &self,
         params: SemanticTokensParams,
     ) -> jsonrpc::Result<Option<SemanticTokensResult>> {
+        let url = params.text_document.uri;
         Ok(capabilities::semantic_tokens::semantic_tokens_full(
-            self.session.clone(),
-            params,
+            &self.session,
+            &url,
         ))
     }
 
@@ -193,7 +227,7 @@ impl LanguageServer for Backend {
         params: DocumentHighlightParams,
     ) -> jsonrpc::Result<Option<Vec<DocumentHighlight>>> {
         Ok(capabilities::highlight::get_highlights(
-            self.session.clone(),
+            &self.session,
             params,
         ))
     }
@@ -202,34 +236,47 @@ impl LanguageServer for Backend {
         &self,
         params: GotoDefinitionParams,
     ) -> jsonrpc::Result<Option<GotoDefinitionResponse>> {
-        Ok(capabilities::go_to::go_to_definition(
-            self.session.clone(),
-            params,
-        ))
+        Ok(self.session.token_definition_response(params))
     }
 
     async fn formatting(
         &self,
         params: DocumentFormattingParams,
     ) -> jsonrpc::Result<Option<Vec<TextEdit>>> {
-        Ok(capabilities::formatting::format_document(
-            self.session.clone(),
-            params,
-        ))
+        Ok(self.session.format_text(&params.text_document.uri))
     }
 
     async fn rename(&self, params: RenameParams) -> jsonrpc::Result<Option<WorkspaceEdit>> {
-        Ok(capabilities::rename::rename(self.session.clone(), params))
+        Ok(capabilities::rename::rename(&self.session, params))
     }
 
     async fn prepare_rename(
         &self,
         params: TextDocumentPositionParams,
     ) -> jsonrpc::Result<Option<PrepareRenameResponse>> {
-        Ok(capabilities::rename::prepare_rename(
-            self.session.clone(),
-            params,
-        ))
+        Ok(capabilities::rename::prepare_rename(&self.session, params))
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct RunnableParams {}
+
+// Custom LSP-Server Methods
+impl Backend {
+    pub async fn runnables(
+        &self,
+        _params: RunnableParams,
+    ) -> jsonrpc::Result<Option<Vec<(Range, String)>>> {
+        let ranges = self
+            .session
+            .runnables
+            .get(&capabilities::runnable::RunnableType::MainFn)
+            .map(|item| {
+                let runnable = item.value();
+                vec![(runnable.range, format!("{}", runnable.tree_type))]
+            });
+
+        Ok(ranges)
     }
 }
 
@@ -244,25 +291,27 @@ mod tests {
     use tower_lsp::jsonrpc::{self, Request, Response};
     use tower_lsp::LspService;
 
+    #[allow(dead_code)]
     fn e2e_test_dir() -> PathBuf {
         env::current_dir()
             .unwrap()
             .parent()
             .unwrap()
             .join("test/src/e2e_vm_tests/test_programs/should_pass/language")
-            .join("is_reference_type")
+            .join("struct_field_access")
     }
 
-    fn _sway_example_dir() -> PathBuf {
+    #[allow(dead_code)]
+    fn sway_example_dir() -> PathBuf {
         env::current_dir()
             .unwrap()
             .parent()
             .unwrap()
-            .join("examples/fizzbuzz")
+            .join("examples/storage_variables")
     }
 
     fn load_sway_example() -> (Url, String) {
-        let manifest_dir = e2e_test_dir(); //sway_example_dir();
+        let manifest_dir = e2e_test_dir();
         let src_path = manifest_dir.join("src/main.sw");
         let mut file = fs::File::open(&src_path).unwrap();
         let mut sway_program = String::new();
@@ -408,7 +457,8 @@ mod tests {
         assert_eq!(response, Ok(Some(err)));
     }
 
-    #[tokio::test]
+    //#[tokio::test]
+    #[allow(dead_code)]
     async fn did_open() {
         let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
 
@@ -436,7 +486,8 @@ mod tests {
         exit_notification(&mut service).await;
     }
 
-    #[tokio::test]
+    //#[tokio::test]
+    #[allow(dead_code)]
     async fn did_close() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
@@ -461,7 +512,8 @@ mod tests {
         exit_notification(&mut service).await;
     }
 
-    #[tokio::test]
+    //#[tokio::test]
+    #[allow(dead_code)]
     async fn did_change() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 

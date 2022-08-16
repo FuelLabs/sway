@@ -16,7 +16,7 @@ pub use r#trait::*;
 pub use storage::*;
 pub use variable::*;
 
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_system::*};
 use derivative::Derivative;
 use std::{borrow::Cow, fmt};
 use sway_types::{Ident, Span, Spanned};
@@ -104,22 +104,23 @@ impl fmt::Display for TypedDeclaration {
             self.friendly_name(),
             match self {
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                    is_mutable,
+                    mutability,
                     name,
                     type_ascription,
                     body,
                     ..
                 }) => {
                     let mut builder = String::new();
-                    match is_mutable {
+                    match mutability {
                         VariableMutability::Mutable => builder.push_str("mut"),
+                        VariableMutability::RefMutable => builder.push_str("ref mut"),
                         VariableMutability::Immutable => {}
                         VariableMutability::ExportedConst => builder.push_str("pub const"),
                     }
                     builder.push_str(name.as_str());
                     builder.push_str(": ");
                     builder.push_str(
-                        &crate::type_engine::look_up_type_id(*type_ascription).to_string(),
+                        &crate::type_system::look_up_type_id(*type_ascription).to_string(),
                     );
                     builder.push_str(" = ");
                     builder.push_str(&body.to_string());
@@ -376,9 +377,10 @@ impl TypedDeclaration {
             | ErrorRecovery
             | Break { .. }
             | Continue { .. } => Visibility::Public,
-            VariableDeclaration(TypedVariableDeclaration { is_mutable, .. }) => {
-                is_mutable.visibility()
-            }
+            VariableDeclaration(TypedVariableDeclaration {
+                mutability: is_mutable,
+                ..
+            }) => is_mutable.visibility(),
             EnumDeclaration(TypedEnumDeclaration { visibility, .. })
             | ConstantDeclaration(TypedConstantDeclaration { visibility, .. })
             | FunctionDeclaration(TypedFunctionDeclaration { visibility, .. })
@@ -410,7 +412,7 @@ pub struct TypedTraitFn {
     pub return_type: TypeId,
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
-    pub(crate) return_type_span: Span,
+    pub return_type_span: Span,
 }
 
 impl CopyTypes for TypedTraitFn {

@@ -30,7 +30,7 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-fuels = {{ version = "0.17", features = ["fuel-core-lib"] }}
+fuels = {{ version = "0.20", features = ["fuel-core-lib"] }}
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
 
 [[test]]
@@ -101,7 +101,7 @@ abigen!(MyContract, "out/debug/"#,
 async fn get_contract_instance() -> (MyContract, ContractId) {
     // Launch a local network and deploy the contract
     let mut wallets = launch_custom_provider_and_get_wallets(
-        WalletsConfig::new_single(Some(1), Some(1000000)),
+        WalletsConfig::new(Some(1), Some(1000000), Some(1_000_000)),
         None,
     )
     .await;
@@ -122,9 +122,9 @@ async fn get_contract_instance() -> (MyContract, ContractId) {
     .await
     .unwrap();
 
-    let instance = MyContract::new(id.to_string(), wallet);
+    let instance = MyContractBuilder::new(id.to_string(), wallet).build();
 
-    (instance, id)
+    (instance, id.into())
 }
 
 #[tokio::test]

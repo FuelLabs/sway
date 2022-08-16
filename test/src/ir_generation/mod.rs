@@ -114,9 +114,14 @@ pub(super) fn run(filter_regex: Option<&regex::Regex>) {
                 };
 
             // Compile to IR.
-            let mut ir = compile_program(*typed_program).unwrap_or_else(|e| {
-                panic!("Failed to compile test {}:\n{e}", path.display());
-            });
+            let mut ir = compile_program(*typed_program)
+                .unwrap_or_else(|e| {
+                    panic!("Failed to compile test {}:\n{e}", path.display());
+                })
+                .verify()
+                .unwrap_or_else(|err| {
+                    panic!("IR verification failed for test {}:\n{err}", path.display());
+                });
             let ir_output = sway_ir::printer::to_string(&ir);
 
             if ir_checker.is_none() {

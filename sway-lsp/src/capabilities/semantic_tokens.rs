@@ -3,23 +3,17 @@ use crate::core::{
     token::{AstToken, TokenMap},
 };
 use crate::utils::common::get_range_from_span;
-use std::sync::Arc;
-use sway_core::{Declaration, Expression, Literal};
+use sway_core::{Declaration, ExpressionKind, Literal};
 use sway_types::Span;
 use tower_lsp::lsp_types::{
     SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens,
-    SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions, SemanticTokensParams,
-    SemanticTokensResult, SemanticTokensServerCapabilities,
+    SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions, SemanticTokensResult,
+    SemanticTokensServerCapabilities, Url,
 };
 
 // https://github.com/microsoft/vscode-extension-samples/blob/5ae1f7787122812dcc84e37427ca90af5ee09f14/semantic-tokens-sample/vscode.proposed.d.ts#L71
-pub fn semantic_tokens_full(
-    session: Arc<Session>,
-    params: SemanticTokensParams,
-) -> Option<SemanticTokensResult> {
-    let url = params.text_document.uri;
-
-    match session.semantic_tokens(&url) {
+pub fn semantic_tokens_full(session: &Session, url: &Url) -> Option<SemanticTokensResult> {
+    match session.semantic_tokens(url) {
         Some(semantic_tokens) => {
             if semantic_tokens.is_empty() {
                 return None;
@@ -38,12 +32,13 @@ pub fn to_semantic_tokens(token_map: &TokenMap) -> Vec<SemanticToken> {
     let mut semantic_tokens: Vec<SemanticToken> = Vec::new();
 
     let mut prev_token_span = None;
-    for ((_, span), token) in token_map.iter() {
+    for item in token_map.iter() {
+        let ((_, span), token) = item.pair();
         let token_type_idx = type_idx(&token.parsed);
         let semantic_token = semantic_token(token_type_idx, span, prev_token_span);
 
         semantic_tokens.push(semantic_token);
-        prev_token_span = Some(span);
+        prev_token_span = Some(span.clone());
     }
 
     semantic_tokens
@@ -52,7 +47,7 @@ pub fn to_semantic_tokens(token_map: &TokenMap) -> Vec<SemanticToken> {
 fn semantic_token(
     token_type_idx: u32,
     next_token_span: &Span,
-    prev_token_span: Option<&Span>,
+    prev_token_span: Option<Span>,
 ) -> SemanticToken {
     let next_token_range = get_range_from_span(next_token_span);
     let next_token_line_start = next_token_range.start.line;
@@ -64,7 +59,7 @@ fn semantic_token(
     let next_token_start_char = next_token_range.start.character;
 
     let (delta_line, delta_start) = if let Some(prev_token_span) = prev_token_span {
-        let prev_token_range = get_range_from_span(prev_token_span);
+        let prev_token_range = get_range_from_span(&prev_token_span);
         let prev_token_line_start = prev_token_range.start.line;
         let delta_start = if next_token_line_start == prev_token_line_start {
             next_token_start_char - prev_token_range.start.character
@@ -113,14 +108,11 @@ fn type_idx(ast_token: &AstToken) -> u32 {
             }
         }
         AstToken::Expression(exp) => {
-            match &exp {
-                Expression::Literal {
-                    value: Literal::String(_),
-                    ..
-                } => TokenTypeIndex::String as u32,
-                Expression::FunctionApplication { .. } => TokenTypeIndex::Function as u32,
-                Expression::VariableExpression { .. } => TokenTypeIndex::Variable as u32,
-                Expression::StructExpression { .. } => TokenTypeIndex::Struct as u32,
+            match &exp.kind {
+                ExpressionKind::Literal(Literal::String(_)) => TokenTypeIndex::String as u32,
+                ExpressionKind::FunctionApplication(_) => TokenTypeIndex::Function as u32,
+                ExpressionKind::Variable(_) => TokenTypeIndex::Variable as u32,
+                ExpressionKind::Struct(_) => TokenTypeIndex::Struct as u32,
                 // currently we return `variable` type as default
                 _ => TokenTypeIndex::Variable as u32,
             }

@@ -1,29 +1,37 @@
-use std::collections::HashMap;
-use sway_core::semantic_analysis::ast_node::{
-    expression::typed_expression::TypedExpression, TypeCheckedStorageReassignDescriptor,
-    TypedDeclaration, TypedEnumVariant, TypedFunctionDeclaration, TypedFunctionParameter,
-    TypedReassignment, TypedStorageField, TypedStructField, TypedTraitFn,
-};
-use sway_types::{Ident, Span};
-
+use dashmap::DashMap;
 use sway_core::{
+    semantic_analysis::ast_node::{
+        expression::typed_expression::TypedExpression, TypeCheckedStorageReassignDescriptor,
+        TypedDeclaration, TypedEnumVariant, TypedFunctionDeclaration, TypedFunctionParameter,
+        TypedReassignment, TypedStorageField, TypedStructField, TypedTraitFn,
+    },
+    type_system::TypeId,
     Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter, Reassignment,
     StorageField, StructField, TraitFn,
 };
+use sway_types::{Ident, Span};
 
-pub type TokenMap = HashMap<(Ident, Span), TokenType>;
+pub type TokenMap = DashMap<(Ident, Span), Token>;
 
 #[derive(Debug, Clone)]
-pub struct TokenType {
-    pub parsed: AstToken,
-    pub typed: Option<TypedAstToken>,
+pub enum TypeDefinition {
+    TypeId(TypeId),
+    Ident(Ident),
 }
 
-impl TokenType {
+#[derive(Debug, Clone)]
+pub struct Token {
+    pub parsed: AstToken,
+    pub typed: Option<TypedAstToken>,
+    pub type_def: Option<TypeDefinition>,
+}
+
+impl Token {
     pub fn from_parsed(token: AstToken) -> Self {
         Self {
             parsed: token,
             typed: None,
+            type_def: None,
         }
     }
 }

@@ -90,8 +90,12 @@ pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {
             }
 
             TestCategory::Compiles => {
-                let result = crate::e2e_vm_tests::harness::compile_to_bytes(&name, locked);
+                let (result, output) =
+                    crate::e2e_vm_tests::harness::compile_and_capture_output(&name, locked);
+
                 assert!(result.is_ok());
+                check_file_checker(checker, &name, &output);
+
                 let compiled = result.unwrap();
                 if validate_abi {
                     assert!(crate::e2e_vm_tests::harness::test_json_abi(&name, &compiled).is_ok());
@@ -106,18 +110,14 @@ pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {
             }
 
             TestCategory::FailsToCompile => {
-                match crate::e2e_vm_tests::harness::does_not_compile(&name, locked) {
-                    Ok(output) => match checker.explain(&output, filecheck::NO_VARIABLES) {
-                        Ok((success, report)) if !success => {
-                            panic!("For {name}:\nFilecheck failed:\n{report}");
-                        }
-                        Err(e) => {
-                            panic!("For {name}:\nFilecheck directive error: {e}");
-                        }
-                        _ => (),
-                    },
-                    Err(_) => {
+                let (result, output) =
+                    crate::e2e_vm_tests::harness::compile_and_capture_output(&name, locked);
+                match result {
+                    Ok(_) => {
                         panic!("For {name}:\nFailing test did not fail.");
+                    }
+                    Err(_) => {
+                        check_file_checker(checker, &name, &output);
                     }
                 }
                 number_of_tests_executed += 1;
@@ -231,6 +231,22 @@ fn build_file_checker(content: &str) -> Result<filecheck::Checker, String> {
     }
 
     Ok(checker.finish())
+}
+
+/// This functions gets passed the previously built FileCheck-based file checker,
+/// along with the output of the compilation, and checks the output for the
+/// FileCheck directives that were found in the test.toml file, panicking
+/// if the checking fails.
+fn check_file_checker(checker: filecheck::Checker, name: &String, output: &str) {
+    match checker.explain(output, filecheck::NO_VARIABLES) {
+        Ok((success, report)) if !success => {
+            panic!("For {name}:\nFilecheck failed:\n{report}");
+        }
+        Err(e) => {
+            panic!("For {name}:\nFilecheck directive error: {e}");
+        }
+        _ => (),
+    }
 }
 
 fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {

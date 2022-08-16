@@ -4,13 +4,14 @@
 //! refer to each other and to constants via the [`Value`] wrapper.
 //!
 //! Like most IR data structures they are `Copy` and cheap to pass around by value.  They are
-//! therefore also easy to replace, a common practise for optimization passes.
-
-use sway_types::span::Span;
+//! therefore also easy to replace, a common practice for optimization passes.
 
 use crate::{
-    constant::Constant, context::Context, instruction::Instruction, irtype::Type,
-    metadata::MetadataIndex,
+    constant::Constant,
+    context::Context,
+    instruction::Instruction,
+    irtype::Type,
+    metadata::{combine, MetadataIndex},
 };
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
@@ -22,8 +23,7 @@ pub struct Value(pub generational_arena::Index);
 #[derive(Debug, Clone)]
 pub struct ValueContent {
     pub value: ValueDatum,
-    pub span_md_idx: Option<MetadataIndex>,
-    pub state_idx_md_idx: Option<MetadataIndex>,
+    pub metadata: Option<MetadataIndex>,
 }
 
 #[doc(hidden)]
@@ -36,66 +36,51 @@ pub enum ValueDatum {
 
 impl Value {
     /// Return a new argument [`Value`].
-    pub fn new_argument(
-        context: &mut Context,
-        ty: Type,
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Value {
+    pub fn new_argument(context: &mut Context, ty: Type) -> Value {
         let content = ValueContent {
             value: ValueDatum::Argument(ty),
-            span_md_idx,
-            state_idx_md_idx: None,
+            metadata: None,
         };
         Value(context.values.insert(content))
     }
 
     /// Return a new constant [`Value`].
-    pub fn new_constant(
-        context: &mut Context,
-        constant: Constant,
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Value {
+    pub fn new_constant(context: &mut Context, constant: Constant) -> Value {
         let content = ValueContent {
             value: ValueDatum::Constant(constant),
-            span_md_idx,
-            state_idx_md_idx: None,
+            metadata: None,
         };
         Value(context.values.insert(content))
     }
 
     /// Return a new instruction [`Value`].
-    pub fn new_instruction(
-        context: &mut Context,
-        instruction: Instruction,
-        opt_span_md_idx: Option<MetadataIndex>,
-        opt_state_idx_md_idx: Option<MetadataIndex>,
-    ) -> Value {
+    pub fn new_instruction(context: &mut Context, instruction: Instruction) -> Value {
         let content = ValueContent {
             value: ValueDatum::Instruction(instruction),
-            span_md_idx: opt_span_md_idx,
-            state_idx_md_idx: opt_state_idx_md_idx,
+            metadata: None,
         };
         Value(context.values.insert(content))
     }
 
-    /// Return this value's source span.
-    pub fn get_span(&self, context: &Context) -> Option<Span> {
-        // We unwrap the Result for now, until we refactor Span to not need a source string, in
-        // which case there will be no need to open and read a file, and no Result involved.
-        context.values[self.0]
-            .span_md_idx
-            .map(|idx| idx.to_span(context))
-            .transpose()
-            .expect("A valid span.")
+    /// Add some metadata to this value.
+    ///
+    /// As a convenience the `md_idx` argument is an `Option`, in which case this function is a
+    /// no-op.
+    ///
+    /// If there is no existing metadata then the new metadata are added alone. Otherwise the new
+    /// metadatum are added to the list of metadata.
+    pub fn add_metadatum(self, context: &mut Context, md_idx: Option<MetadataIndex>) -> Self {
+        if md_idx.is_some() {
+            let orig_md = context.values[self.0].metadata;
+            let new_md = combine(context, &orig_md, &md_idx);
+            context.values[self.0].metadata = new_md;
+        }
+        self
     }
 
-    /// Return the content of the state index metadata
-    pub fn get_storage_key(&self, context: &Context) -> Option<usize> {
-        context.values[self.0]
-            .state_idx_md_idx
-            .map(|idx| idx.to_state_idx(context))
-            .transpose()
-            .expect("A valid state index.")
+    /// Return this value's metadata.
+    pub fn get_metadata(&self, context: &Context) -> Option<MetadataIndex> {
+        context.values[self.0].metadata
     }
 
     /// Return whether this is a constant value.
@@ -129,6 +114,16 @@ impl Value {
         }
     }
 
+    pub fn get_instruction_mut<'a>(&self, context: &'a mut Context) -> Option<&'a mut Instruction> {
+        if let ValueDatum::Instruction(instruction) =
+            &mut context.values.get_mut(self.0).unwrap().value
+        {
+            Some(instruction)
+        } else {
+            None
+        }
+    }
+
     /// Get the type for this value, if found.
     ///
     /// Arguments and constants always have a type, but only some instructions do.
@@ -138,5 +133,10 @@ impl Value {
             ValueDatum::Constant(c) => Some(c.ty),
             ValueDatum::Instruction(ins) => ins.get_type(context),
         }
+    }
+
+    /// Get the type for this value with any pointer stripped, if found.
+    pub fn get_stripped_ptr_type(&self, context: &Context) -> Option<Type> {
+        self.get_type(context).map(|f| f.strip_ptr_type(context))
     }
 }

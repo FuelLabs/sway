@@ -24,9 +24,9 @@ pub mod setup {
         .await
         .unwrap();
 
-        let instance = MyContract::new(id.to_string(), wallet);
+        let instance = MyContractBuilder::new(id.to_string(), wallet).build();
 
-        (instance, id)
+        (instance, id.into())
     }
 }
 
@@ -51,6 +51,10 @@ pub mod wrappers {
 
     pub async fn swap_remove(instance: &MyContract, index: u64) -> u64 {
         instance.u64_swap_remove(index).call().await.unwrap().value
+    }
+
+    pub async fn set(instance: &MyContract, index: u64, value: u64) {
+        instance.u64_set(index, value).call().await.unwrap();
     }
 
     pub async fn insert(instance: &MyContract, index: u64, value: u64) {

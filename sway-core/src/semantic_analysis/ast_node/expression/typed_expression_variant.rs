@@ -1,4 +1,4 @@
-use crate::{parse_tree::*, semantic_analysis::*, type_engine::*};
+use crate::{parse_tree::*, semantic_analysis::*, type_system::*};
 
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
@@ -6,7 +6,7 @@ use derivative::Derivative;
 use std::{collections::HashMap, fmt};
 
 #[derive(Clone, Debug)]
-pub struct ContractCallMetadata {
+pub struct ContractCallParams {
     pub(crate) func_selector: [u8; 4],
     pub(crate) contract_address: Box<TypedExpression>,
 }
@@ -20,14 +20,12 @@ pub enum TypedExpressionVariant {
         #[derivative(Eq(bound = ""))]
         contract_call_params: HashMap<String, TypedExpression>,
         arguments: Vec<(Ident, TypedExpression)>,
-        function_body: TypedCodeBlock,
-        function_body_name_span: Span,
-        function_body_purity: Purity,
+        function_decl: TypedFunctionDeclaration,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
         self_state_idx: Option<StateIndex>,
         #[derivative(Eq(bound = ""))]
-        selector: Option<ContractCallMetadata>,
+        selector: Option<ContractCallParams>,
     },
     LazyOperator {
         #[derivative(Eq(bound = ""))]
@@ -51,6 +49,7 @@ pub enum TypedExpressionVariant {
     StructExpression {
         struct_name: Ident,
         fields: Vec<TypedStructExpressionField>,
+        span: Span,
     },
     CodeBlock(TypedCodeBlock),
     // a flag that this value will later be provided as a parameter, but is currently unknown
@@ -71,6 +70,7 @@ pub enum TypedExpressionVariant {
     StructFieldAccess {
         prefix: Box<TypedExpression>,
         field_to_access: TypedStructField,
+        field_instantiation_span: Span,
         resolved_type_of_parent: TypeId,
     },
     TupleElemAccess {
@@ -87,8 +87,10 @@ pub enum TypedExpressionVariant {
         tag: usize,
         contents: Option<Box<TypedExpression>>,
         /// If there is an error regarding this instantiation of the enum,
-        /// use this span as it points to the call site and not the declaration.
-        instantiation_span: Span,
+        /// use these spans as it points to the call site and not the declaration.
+        /// They are also used in the language server.
+        enum_instantiation_span: Span,
+        variant_instantiation_span: Span,
     },
     AbiCast {
         abi_name: CallPath,
@@ -97,7 +99,6 @@ pub enum TypedExpressionVariant {
         // this span may be used for errors in the future, although it is not right now.
         span: Span,
     },
-    #[allow(dead_code)]
     StorageAccess(TypeCheckedStorageAccess),
     IntrinsicFunction(TypedIntrinsicFunctionKind),
     /// a zero-sized type-system-only compile-time thing that is used for constructing ABI casts.
@@ -110,6 +111,10 @@ pub enum TypedExpressionVariant {
     UnsafeDowncast {
         exp: Box<TypedExpression>,
         variant: TypedEnumVariant,
+    },
+    WhileLoop {
+        condition: Box<TypedExpression>,
+        body: TypedCodeBlock,
     },
 }
 
@@ -124,17 +129,19 @@ impl PartialEq for TypedExpressionVariant {
                 Self::FunctionApplication {
                     call_path: l_name,
                     arguments: l_arguments,
-                    function_body: l_function_body,
+                    function_decl: l_function_decl,
                     ..
                 },
                 Self::FunctionApplication {
                     call_path: r_name,
                     arguments: r_arguments,
-                    function_body: r_function_body,
+                    function_decl: r_function_decl,
                     ..
                 },
             ) => {
-                l_name == r_name && l_arguments == r_arguments && l_function_body == r_function_body
+                l_name == r_name
+                    && l_arguments == r_arguments
+                    && l_function_decl.body == r_function_decl.body
             }
             (
                 Self::LazyOperator {
@@ -177,12 +184,18 @@ impl PartialEq for TypedExpressionVariant {
                 Self::StructExpression {
                     struct_name: l_struct_name,
                     fields: l_fields,
+                    span: l_span,
                 },
                 Self::StructExpression {
                     struct_name: r_struct_name,
                     fields: r_fields,
+                    span: r_span,
                 },
-            ) => l_struct_name == r_struct_name && l_fields.clone() == r_fields.clone(),
+            ) => {
+                l_struct_name == r_struct_name
+                    && l_fields.clone() == r_fields.clone()
+                    && l_span == r_span
+            }
             (Self::CodeBlock(l0), Self::CodeBlock(r0)) => l0 == r0,
             (
                 Self::IfExp {
@@ -227,11 +240,13 @@ impl PartialEq for TypedExpressionVariant {
                     prefix: l_prefix,
                     field_to_access: l_field_to_access,
                     resolved_type_of_parent: l_resolved_type_of_parent,
+                    ..
                 },
                 Self::StructFieldAccess {
                     prefix: r_prefix,
                     field_to_access: r_field_to_access,
                     resolved_type_of_parent: r_resolved_type_of_parent,
+                    ..
                 },
             ) => {
                 (**l_prefix) == (**r_prefix)
@@ -307,6 +322,17 @@ impl PartialEq for TypedExpressionVariant {
                 },
             ) => *l_exp == *r_exp && l_variant == r_variant,
             (Self::EnumTag { exp: l_exp }, Self::EnumTag { exp: r_exp }) => *l_exp == *r_exp,
+            (Self::StorageAccess(l_exp), Self::StorageAccess(r_exp)) => *l_exp == *r_exp,
+            (
+                Self::WhileLoop {
+                    body: l_body,
+                    condition: l_condition,
+                },
+                Self::WhileLoop {
+                    body: r_body,
+                    condition: r_condition,
+                },
+            ) => *l_body == *r_body && l_condition == r_condition,
             _ => false,
         }
     }
@@ -319,13 +345,13 @@ impl CopyTypes for TypedExpressionVariant {
             Literal(..) => (),
             FunctionApplication {
                 arguments,
-                function_body,
+                function_decl,
                 ..
             } => {
                 arguments
                     .iter_mut()
                     .for_each(|(_ident, expr)| expr.copy_types(type_mapping));
-                function_body.copy_types(type_mapping);
+                function_decl.copy_types(type_mapping);
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).copy_types(type_mapping);
@@ -408,6 +434,13 @@ impl CopyTypes for TypedExpressionVariant {
                 variant.copy_types(type_mapping);
             }
             AbiName(_) => (),
+            WhileLoop {
+                ref mut condition,
+                ref mut body,
+            } => {
+                condition.copy_types(type_mapping);
+                body.copy_types(type_mapping);
+            }
         }
     }
 }
@@ -494,13 +527,16 @@ impl fmt::Display for TypedExpressionVariant {
             TypedExpressionVariant::UnsafeDowncast { exp, variant } => {
                 format!("({} as {})", look_up_type_id(exp.return_type), variant.name)
             }
+            TypedExpressionVariant::WhileLoop { condition, .. } => {
+                format!("while loop on {}", condition)
+            }
         };
         write!(f, "{}", s)
     }
 }
 
 /// Describes the full storage access including all the subfields
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeCheckedStorageAccess {
     pub fields: Vec<TypeCheckedStorageAccessDescriptor>,
     pub(crate) ix: StateIndex,
@@ -523,7 +559,7 @@ impl TypeCheckedStorageAccess {
 }
 
 /// Describes a single subfield access in the sequence when accessing a subfield within storage.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeCheckedStorageAccessDescriptor {
     pub name: Ident,
     pub(crate) type_id: TypeId,

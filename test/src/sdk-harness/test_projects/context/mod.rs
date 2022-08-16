@@ -26,7 +26,7 @@ async fn get_contracts() -> (
         &wallet,
         TxParameters::default(),
         StorageConfiguration::with_storage_path(Some(
-            "test_artifacts/context/out/debug/context-storage_slots.json".to_string(),
+            "test_projects/context/out/debug/context-storage_slots.json".to_string(),
         )),
     )
     .await
@@ -42,10 +42,11 @@ async fn get_contracts() -> (
     .await
     .unwrap();
 
-    let instance_2 = TestContextCallerContract::new(id_2.to_string(), wallet.clone());
-    let instance_1 = TestContextContract::new(id_1.to_string(), wallet.clone());
+    let instance_2 =
+        TestContextCallerContractBuilder::new(id_2.to_string(), wallet.clone()).build();
+    let instance_1 = TestContextContractBuilder::new(id_1.to_string(), wallet.clone()).build();
 
-    (instance_1, id_1, instance_2, id_2)
+    (instance_1, id_1.into(), instance_2, id_2.into())
 }
 
 #[tokio::test]
@@ -61,7 +62,7 @@ async fn can_get_this_balance() {
 
     caller_instance
         .call_receive_coins(send_amount, context_id)
-        .set_contracts(&[context_id])
+        .set_contracts(&[context_id.into()])
         .tx_params(TxParameters::new(None, Some(1_000_000), None, None))
         .call()
         .await
@@ -89,7 +90,7 @@ async fn can_get_balance_of_contract() {
 
     let result = context_instance
         .get_balance_of_contract(caller_id.clone(), caller_id.clone())
-        .set_contracts(&[caller_id])
+        .set_contracts(&[caller_id.into()])
         .call()
         .await
         .unwrap();
@@ -110,7 +111,7 @@ async fn can_get_msg_value() {
 
     let result = caller_instance
         .call_get_amount_with_coins(send_amount, context_id)
-        .set_contracts(&[context_id])
+        .set_contracts(&[context_id.into()])
         .call()
         .await
         .unwrap();
@@ -131,7 +132,7 @@ async fn can_get_msg_id() {
 
     let result = caller_instance
         .call_get_asset_id_with_coins(send_amount, context_id)
-        .set_contracts(&[context_id])
+        .set_contracts(&[context_id.into()])
         .tx_params(TxParameters::new(None, Some(1_000_000), None, None))
         .call()
         .await
@@ -153,7 +154,7 @@ async fn can_get_msg_gas() {
 
     let result = caller_instance
         .call_get_gas_with_coins(send_amount, context_id)
-        .set_contracts(&[context_id])
+        .set_contracts(&[context_id.into()])
         .tx_params(TxParameters::new(Some(0), Some(1_000_000), None, None))
         .call()
         .await
@@ -176,7 +177,7 @@ async fn can_get_global_gas() {
 
     let result = caller_instance
         .call_get_global_gas_with_coins(send_amount, context_id)
-        .set_contracts(&[context_id])
+        .set_contracts(&[context_id.into()])
         .tx_params(TxParameters::new(None, Some(1_000_000), None, None))
         .call()
         .await

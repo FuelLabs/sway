@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: }
+# nextln:$()arguments to \"main()\" are not yet supported. See the issue here: github.com/FuelLabs/sway/issues/845
