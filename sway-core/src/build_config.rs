@@ -1,5 +1,4 @@
-use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
-use sway_types::ConfigTimeConstant;
+use std::{path::PathBuf, sync::Arc};
 
 /// Configuration for the overall build and compilation process.
 #[derive(Clone)]

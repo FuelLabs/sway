@@ -1,0 +1,11 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+name = "config_time_constants"
+entry = "main.sw"
+implicit-std = false
+
+
+[constants]
+# should fail because this is an invalid b256
+some_contract_addr = { type = "b256", value = "0x58cb6ee759d9be0c0f78d3ef24e1b59300c625b3c61999967366dbbebad31c" }

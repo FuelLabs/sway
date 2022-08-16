@@ -1476,8 +1476,9 @@ pub fn dependency_namespace(
     namespace_map: &HashMap<NodeIx, namespace::Module>,
     graph: &Graph,
     node: NodeIx,
-) -> namespace::Module {
-    let mut namespace = namespace::Module::default();
+    constants: BTreeMap<String, ConfigTimeConstant>,
+) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
+    let mut namespace = namespace::Module::default_with_constants(constants)?;
 
     // Add direct dependencies.
     let mut core_added = false;
@@ -1500,7 +1501,7 @@ pub fn dependency_namespace(
         }
     }
 
-    namespace
+    Ok(namespace)
 }
 
 /// Find the `core` dependency (whether direct or transitive) for the given node if it exists.
@@ -1898,9 +1899,18 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
     let mut bytecode = vec![];
     let mut tree_type = None;
     for &node in &plan.compilation_order {
-        let dep_namespace = dependency_namespace(&namespace_map, &plan.graph, node);
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
+        let constants = manifest.config_time_constants();
+        let dep_namespace = match dependency_namespace(&namespace_map, &plan.graph, node, constants)
+        {
+            Ok(o) => o,
+            Err(errs) => {
+                print_on_failure(profile.silent, &[], &errs);
+                bail!("Failed to compile {}", pkg.name);
+            }
+        };
+
         let res = compile(pkg, manifest, profile, dep_namespace, &mut source_map)?;
         let (compiled, maybe_namespace) = res;
         if let Some(namespace) = maybe_namespace {
@@ -1933,9 +1943,11 @@ pub fn check(
     let mut namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     for (i, &node) in plan.compilation_order.iter().enumerate() {
-        let dep_namespace = dependency_namespace(&namespace_map, &plan.graph, node);
         let pkg = &plan.graph[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
+        let constants = manifest.config_time_constants();
+        let dep_namespace =
+            dependency_namespace(&namespace_map, &plan.graph, node, constants).expect("TODO");
         let parsed_result = parse(manifest, silent_mode)?;
 
         let parse_program = match &parsed_result.value {

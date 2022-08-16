@@ -227,10 +227,7 @@ impl ManifestFile {
     }
     /// Getter for the config time constants on the manifest.
     pub fn config_time_constants(&self) -> BTreeMap<String, ConfigTimeConstant> {
-        self.constants
-            .as_ref()
-            .map(|x| x.clone())
-            .unwrap_or_default()
+        self.constants.as_ref().cloned().unwrap_or_default()
     }
 }
 

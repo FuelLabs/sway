@@ -17,7 +17,7 @@ use super::{
 
 use std::collections::BTreeMap;
 use sway_ast::ItemConst;
-use sway_parse::{handler::Handler, lex, Parse, Parser};
+use sway_parse::{handler::Handler, lex, Parser};
 use sway_types::{span::Span, ConfigTimeConstant, Spanned};
 
 /// A single `Module` within a Sway project.
@@ -44,6 +44,25 @@ pub struct Module {
 
 impl Module {
     pub fn default_with_constants(
+        constants: BTreeMap<String, ConfigTimeConstant>,
+    ) -> Result<Self, vec1::Vec1<CompileError>> {
+        let res = Module::default_with_constants_inner(constants);
+        match res.value {
+            Some(x) => Ok(x),
+            None => {
+                let mut errs = res.errors;
+                // it is an invariant that if `.value` is `None` then there's at least one
+                // error
+                assert!(!errs.is_empty());
+                let first_err = errs.pop().unwrap();
+                let mut errs_1 = vec1::vec1![first_err];
+                errs_1.append(&mut errs);
+                Err(errs_1)
+            }
+        }
+    }
+
+    fn default_with_constants_inner(
         constants: BTreeMap<String, ConfigTimeConstant>,
     ) -> CompileResult<Self> {
         // it would be nice to one day maintain a span from the manifest file, but

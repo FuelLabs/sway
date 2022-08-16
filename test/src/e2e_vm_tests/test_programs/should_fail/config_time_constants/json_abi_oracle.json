@@ -6,7 +6,7 @@
       {
         "components": null,
         "name": "",
-        "type": "u32",
+        "type": "u64",
         "typeArguments": null
       }
     ],
