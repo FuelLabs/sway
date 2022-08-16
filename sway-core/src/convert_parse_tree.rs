@@ -8,8 +8,8 @@ use crate::{
 use {
     crate::{
         constants::{
-            DOC_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME,
-            STORAGE_PURITY_WRITE_NAME,
+            STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
+            VALID_ATTRIBUTE_NAMES,
         },
         error::{err, ok, CompileError, CompileResult, CompileWarning, Warning},
         type_system::{insert_type, AbiName, IntegerBits},
@@ -403,7 +403,7 @@ fn item_attrs_to_map<'a>(
     for attr_decl in attribute_list {
         let attr = attr_decl.attribute.get();
         let name = attr.name.as_str();
-        if name != STORAGE_PURITY_ATTRIBUTE_NAME && name != DOC_ATTRIBUTE_NAME {
+        if !VALID_ATTRIBUTE_NAMES.contains(&name) {
             ec.warning(CompileWarning {
                 span: attr_decl.span().clone(),
                 warning_content: Warning::UnrecognizedAttribute {
