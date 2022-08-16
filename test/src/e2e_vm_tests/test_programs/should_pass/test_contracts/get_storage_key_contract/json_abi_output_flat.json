@@ -5,7 +5,7 @@
       "name": "from_f1",
       "output": {
         "name": "",
-        "type": 4,
+        "type": 1,
         "typeArguments": null
       }
     },
@@ -14,7 +14,7 @@
       "name": "from_f2",
       "output": {
         "name": "",
-        "type": 5,
+        "type": 1,
         "typeArguments": null
       }
     },
@@ -23,7 +23,7 @@
       "name": "from_f3",
       "output": {
         "name": "",
-        "type": 6,
+        "type": 1,
         "typeArguments": null
       }
     },
@@ -32,7 +32,7 @@
       "name": "from_f4",
       "output": {
         "name": "",
-        "type": 7,
+        "type": 1,
         "typeArguments": null
       }
     },
@@ -41,65 +41,17 @@
       "name": "from_callers",
       "output": {
         "name": "",
-        "type": 8,
+        "type": 0,
         "typeArguments": null
       }
     }
   ],
   "types": [
     {
-      "components": null,
-      "type": "b256",
-      "typeId": 0,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "b256",
-      "typeId": 1,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "b256",
-      "typeId": 2,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "b256",
-      "typeId": 3,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "b256",
-      "typeId": 4,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "b256",
-      "typeId": 5,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "b256",
-      "typeId": 6,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "b256",
-      "typeId": 7,
-      "typeParameters": null
-    },
-    {
       "components": [
         {
           "name": "__tuple_element",
-          "type": 0,
+          "type": 1,
           "typeArguments": null
         },
         {
@@ -109,17 +61,23 @@
         },
         {
           "name": "__tuple_element",
-          "type": 2,
+          "type": 1,
           "typeArguments": null
         },
         {
           "name": "__tuple_element",
-          "type": 3,
+          "type": 1,
           "typeArguments": null
         }
       ],
       "type": "(_, _, _, _)",
-      "typeId": 8,
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 1,
       "typeParameters": null
     }
   ]

@@ -5,7 +5,7 @@
       "name": "get_id",
       "output": {
         "name": "",
-        "type": 4,
+        "type": 1,
         "typeArguments": null
       }
     },
@@ -20,7 +20,7 @@
       "name": "get_this_balance",
       "output": {
         "name": "",
-        "type": 5,
+        "type": 2,
         "typeArguments": null
       }
     },
@@ -28,19 +28,19 @@
       "inputs": [
         {
           "name": "asset_id",
-          "type": 2,
+          "type": 1,
           "typeArguments": null
         },
         {
           "name": "cid",
-          "type": 3,
+          "type": 1,
           "typeArguments": null
         }
       ],
       "name": "get_balance_of_contract",
       "output": {
         "name": "",
-        "type": 6,
+        "type": 2,
         "typeArguments": null
       }
     },
@@ -49,7 +49,7 @@
       "name": "get_amount",
       "output": {
         "name": "",
-        "type": 7,
+        "type": 2,
         "typeArguments": null
       }
     },
@@ -58,7 +58,7 @@
       "name": "get_asset_id",
       "output": {
         "name": "",
-        "type": 8,
+        "type": 1,
         "typeArguments": null
       }
     },
@@ -67,7 +67,7 @@
       "name": "get_gas",
       "output": {
         "name": "",
-        "type": 9,
+        "type": 2,
         "typeArguments": null
       }
     },
@@ -76,7 +76,7 @@
       "name": "get_global_gas",
       "output": {
         "name": "",
-        "type": 10,
+        "type": 2,
         "typeArguments": null
       }
     }
@@ -101,81 +101,9 @@
       "typeParameters": null
     },
     {
-      "components": [
-        {
-          "name": "value",
-          "type": 0,
-          "typeArguments": null
-        }
-      ],
-      "type": "struct ContractId",
+      "components": null,
+      "type": "u64",
       "typeId": 2,
-      "typeParameters": null
-    },
-    {
-      "components": [
-        {
-          "name": "value",
-          "type": 0,
-          "typeArguments": null
-        }
-      ],
-      "type": "struct ContractId",
-      "typeId": 3,
-      "typeParameters": null
-    },
-    {
-      "components": [
-        {
-          "name": "value",
-          "type": 0,
-          "typeArguments": null
-        }
-      ],
-      "type": "struct ContractId",
-      "typeId": 4,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u64",
-      "typeId": 5,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u64",
-      "typeId": 6,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u64",
-      "typeId": 7,
-      "typeParameters": null
-    },
-    {
-      "components": [
-        {
-          "name": "value",
-          "type": 0,
-          "typeArguments": null
-        }
-      ],
-      "type": "struct ContractId",
-      "typeId": 8,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u64",
-      "typeId": 9,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u64",
-      "typeId": 10,
       "typeParameters": null
     }
   ]

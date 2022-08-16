@@ -1968,8 +1968,8 @@ fn standardize_json_abi_types(json_abi_program: &mut JsonABIProgram) {
         // between id_1 and id_2 in the HashMap below.
         let mut old_to_new_id: HashMap<usize, usize> = HashMap::new();
 
-        // BTreeSet to eliminate duplicate type declarations.
-        let mut types_set: BTreeSet<JsonTypeDeclaration> = BTreeSet::new();
+        // HashSet to eliminate duplicate type declarations.
+        let mut types_set: HashSet<JsonTypeDeclaration> = HashSet::new();
 
         // Insert values in the BTreeSet `types_set` if they haven't been inserted before.
         // Otherwise, create an appropriate mapping in the HashMap `old_to_new_id`.
@@ -1987,15 +1987,29 @@ fn standardize_json_abi_types(json_abi_program: &mut JsonABIProgram) {
             break;
         }
 
-        // Convert the set into a vector and store it back in `json_abi_program.types`.
-        json_abi_program.types = types_set.into_iter().collect::<Vec<_>>();
+        // Convert the set into a vector and store it back in `json_abi_program.types`. We could
+        // convert the HashSet *directly* into a vector using `collect()`, but the order would not
+        // be deterministic. We could use `BTreeSet` instead of `HashSet` but the ordering in the
+        // BTreeSet would have to depend on the original type ID and we're trying to avoid that.
+        let mut filtered_types = vec![];
+        for t in json_abi_program.types.iter() {
+            if let Some(ty) = types_set.get(t) {
+                if ty.type_id == t.type_id {
+                    filtered_types.push((*ty).clone());
+                    types_set.remove(t);
+                }
+            }
+        }
+        json_abi_program.types = filtered_types;
 
         // Update all `JsonTypeApplication`s and all `JsonTypeDeclaration`s
         update_all_types(json_abi_program, &old_to_new_id);
     }
 
     // Sort the `JsonTypeDeclaration`s
-    json_abi_program.types.sort();
+    json_abi_program
+        .types
+        .sort_by(|t1, t2| t1.type_field.cmp(&t2.type_field));
 
     // Standardize IDs (i.e. change them to 0,1,2,... according to the alphabetical order above
     let mut old_to_new_id: HashMap<usize, usize> = HashMap::new();

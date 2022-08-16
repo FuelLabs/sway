@@ -4,7 +4,7 @@
       "inputs": [
         {
           "name": "a",
-          "type": 0,
+          "type": 1,
           "typeArguments": null
         },
         {
@@ -16,15 +16,26 @@
       "name": "multiply_u64",
       "output": {
         "name": "",
-        "type": 4,
+        "type": 0,
         "typeArguments": null
       }
     }
   ],
   "types": [
     {
-      "components": null,
-      "type": "u64",
+      "components": [
+        {
+          "name": "__tuple_element",
+          "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "type": "(_, _)",
       "typeId": 0,
       "typeParameters": null
     },
@@ -32,35 +43,6 @@
       "components": null,
       "type": "u64",
       "typeId": 1,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u64",
-      "typeId": 2,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u64",
-      "typeId": 3,
-      "typeParameters": null
-    },
-    {
-      "components": [
-        {
-          "name": "__tuple_element",
-          "type": 2,
-          "typeArguments": null
-        },
-        {
-          "name": "__tuple_element",
-          "type": 3,
-          "typeArguments": null
-        }
-      ],
-      "type": "(_, _)",
-      "typeId": 4,
       "typeParameters": null
     }
   ]

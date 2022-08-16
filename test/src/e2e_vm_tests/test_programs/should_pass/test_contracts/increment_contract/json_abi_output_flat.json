@@ -11,7 +11,7 @@
       "name": "increment",
       "output": {
         "name": "",
-        "type": 1,
+        "type": 0,
         "typeArguments": null
       }
     },
@@ -20,7 +20,7 @@
       "name": "get",
       "output": {
         "name": "",
-        "type": 2,
+        "type": 0,
         "typeArguments": null
       }
     }
@@ -30,18 +30,6 @@
       "components": null,
       "type": "u64",
       "typeId": 0,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u64",
-      "typeId": 1,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u64",
-      "typeId": 2,
       "typeParameters": null
     }
   ]

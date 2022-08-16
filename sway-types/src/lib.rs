@@ -391,7 +391,7 @@ pub struct JsonABIFunction {
     pub output: JsonTypeApplication,
 }
 
-#[derive(Default, Debug, Clone, Eq, Ord, PartialOrd, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonTypeDeclaration {
     pub type_id: usize,
@@ -401,7 +401,7 @@ pub struct JsonTypeDeclaration {
     pub type_parameters: Option<Vec<usize>>,
 }
 
-#[derive(Default, Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Hash, Deserialize)]
+#[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Hash, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonTypeApplication {
     pub name: String,

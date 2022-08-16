@@ -4,76 +4,64 @@
       "inputs": [
         {
           "name": "input1",
-          "type": 3,
+          "type": 1,
           "typeArguments": null
         },
         {
           "name": "input2",
-          "type": 4,
+          "type": 2,
           "typeArguments": null
         }
       ],
       "name": "foo",
       "output": {
         "name": "",
-        "type": 5,
+        "type": 3,
         "typeArguments": null
       }
     }
   ],
   "types": [
     {
-      "components": null,
-      "type": "u64",
+      "components": [
+        {
+          "name": "foo",
+          "type": 3,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct Inner",
       "typeId": 0,
       "typeParameters": null
     },
     {
       "components": [
         {
-          "name": "foo",
+          "name": "inn",
           "type": 0,
           "typeArguments": null
         }
       ],
-      "type": "struct Inner",
-      "typeId": 1,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u64",
-      "typeId": 2,
-      "typeParameters": null
-    },
-    {
-      "components": [
-        {
-          "name": "inn",
-          "type": 1,
-          "typeArguments": null
-        }
-      ],
       "type": "struct StructOne",
-      "typeId": 3,
+      "typeId": 1,
       "typeParameters": null
     },
     {
       "components": [
         {
           "name": "foo",
-          "type": 2,
+          "type": 3,
           "typeArguments": null
         }
       ],
       "type": "struct StructTwo",
-      "typeId": 4,
+      "typeId": 2,
       "typeParameters": null
     },
     {
       "components": null,
       "type": "u64",
-      "typeId": 5,
+      "typeId": 3,
       "typeParameters": null
     }
   ]

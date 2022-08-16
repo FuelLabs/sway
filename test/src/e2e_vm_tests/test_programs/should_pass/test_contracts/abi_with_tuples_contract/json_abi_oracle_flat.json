@@ -4,14 +4,14 @@
       "inputs": [
         {
           "name": "param",
-          "type": 4,
+          "type": 1,
           "typeArguments": null
         }
       ],
       "name": "bug1",
       "output": {
         "name": "",
-        "type": 8,
+        "type": 3,
         "typeArguments": null
       }
     },
@@ -19,82 +19,23 @@
       "inputs": [
         {
           "name": "param",
-          "type": 7,
+          "type": 2,
           "typeArguments": null
         }
       ],
       "name": "bug2",
       "output": {
         "name": "",
-        "type": 9,
+        "type": 3,
         "typeArguments": null
       }
     }
   ],
   "types": [
     {
-      "components": null,
-      "type": "u64",
-      "typeId": 0,
-      "typeParameters": null
-    },
-    {
       "components": [],
       "type": "()",
-      "typeId": 1,
-      "typeParameters": null
-    },
-    {
-      "components": [
-        {
-          "name": "age",
-          "type": 0,
-          "typeArguments": null
-        }
-      ],
-      "type": "struct Person",
-      "typeId": 2,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u64",
-      "typeId": 3,
-      "typeParameters": null
-    },
-    {
-      "components": [
-        {
-          "name": "__tuple_element",
-          "type": 2,
-          "typeArguments": null
-        },
-        {
-          "name": "__tuple_element",
-          "type": 3,
-          "typeArguments": null
-        }
-      ],
-      "type": "(_, _)",
-      "typeId": 4,
-      "typeParameters": null
-    },
-    {
-      "components": [
-        {
-          "name": "Earth",
-          "type": 1,
-          "typeArguments": null
-        }
-      ],
-      "type": "enum Location",
-      "typeId": 5,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u64",
-      "typeId": 6,
+      "typeId": 0,
       "typeParameters": null
     },
     {
@@ -111,19 +52,60 @@
         }
       ],
       "type": "(_, _)",
-      "typeId": 7,
+      "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "type": 4,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "type": 6,
+          "typeArguments": null
+        }
+      ],
+      "type": "(_, _)",
+      "typeId": 2,
       "typeParameters": null
     },
     {
       "components": null,
       "type": "bool",
-      "typeId": 8,
+      "typeId": 3,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "Earth",
+          "type": 0,
+          "typeArguments": null
+        }
+      ],
+      "type": "enum Location",
+      "typeId": 4,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "age",
+          "type": 6,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct Person",
+      "typeId": 5,
       "typeParameters": null
     },
     {
       "components": null,
-      "type": "bool",
-      "typeId": 9,
+      "type": "u64",
+      "typeId": 6,
       "typeParameters": null
     }
   ]
