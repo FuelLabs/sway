@@ -1,6 +1,6 @@
-# The Sway Toolchain
+# The Fuel Toolchain
 
-The Sway toolchain consists of several components.
+The Fuel toolchain consists of several components.
 
 ## Forc (`forc`)
 
