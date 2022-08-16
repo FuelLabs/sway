@@ -78,6 +78,7 @@ impl TypedFunctionParameter {
                 },
                 mutability,
                 type_ascription: type_id,
+                type_ascription_span: None,
             }),
         );
         let parameter = TypedFunctionParameter {
