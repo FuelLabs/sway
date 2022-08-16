@@ -1,4 +1,5 @@
 use crate::{semantic_analysis::*, type_system::*, Ident, Visibility};
+use sway_types::Span;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum VariableMutability {
@@ -55,6 +56,7 @@ pub struct TypedVariableDeclaration {
     pub body: TypedExpression,
     pub mutability: VariableMutability,
     pub type_ascription: TypeId,
+    pub type_ascription_span: Option<Span>,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:

@@ -1,9 +1,8 @@
 use crate::{Parse, ParseErrorKind, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
 use sway_ast::keywords::{
-    AbiToken, BreakToken, ConstToken, ContinueToken, EnumToken, FnToken, ImplToken, MutToken,
-    OpenAngleBracketToken, RefToken, SelfToken, StorageToken, StructToken, TraitToken, UseToken,
-    WhereToken,
+    AbiToken, ConstToken, EnumToken, FnToken, ImplToken, MutToken, OpenAngleBracketToken, RefToken,
+    SelfToken, StorageToken, StructToken, TraitToken, UseToken, WhereToken,
 };
 use sway_ast::token::{DocComment, DocStyle};
 use sway_ast::{
@@ -13,7 +12,6 @@ use sway_ast::{
 
 mod item_abi;
 mod item_const;
-mod item_control_flow;
 mod item_enum;
 mod item_fn;
 mod item_impl;
@@ -54,10 +52,6 @@ impl Parse for ItemKind {
             ItemKind::Const(item)
         } else if let Some(item) = parser.guarded_parse::<StorageToken, _>()? {
             ItemKind::Storage(item)
-        } else if let Some(item) = parser.guarded_parse::<BreakToken, _>()? {
-            ItemKind::Break(item)
-        } else if let Some(item) = parser.guarded_parse::<ContinueToken, _>()? {
-            ItemKind::Continue(item)
         } else {
             return Err(parser.emit_error(ParseErrorKind::ExpectedAnItem));
         };

@@ -450,6 +450,8 @@ impl Format for Expr {
                 reassignment_op.format(formatted_code, formatter)?;
                 expr.format(formatted_code, formatter)?;
             }
+            Self::Break { .. } => write!(formatted_code, "break")?,
+            Self::Continue { .. } => write!(formatted_code, "continue")?,
         }
 
         Ok(())
@@ -936,6 +938,12 @@ fn visit_expr(expr: &Expr) -> Vec<ByteSpan> {
             collected_spans.push(ByteSpan::from(reassignment_op.span.clone()));
             collected_spans.append(&mut expr.leaf_spans());
             collected_spans
+        }
+        Expr::Break { break_token } => {
+            vec![ByteSpan::from(break_token.span())]
+        }
+        Expr::Continue { continue_token } => {
+            vec![ByteSpan::from(continue_token.span())]
         }
     }
 }
