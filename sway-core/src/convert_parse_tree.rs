@@ -502,7 +502,7 @@ fn item_struct_to_struct_declaration(
         .fields
         .into_inner()
         .into_iter()
-        .map(|type_field| type_field_to_struct_field(ec, type_field))
+        .map(|type_field| type_field_to_struct_field(ec, type_field.value))
         .collect::<Result<Vec<_>, _>>()?;
 
     if fields.iter().any(
@@ -551,7 +551,7 @@ fn item_enum_to_enum_declaration(
         .into_inner()
         .into_iter()
         .enumerate()
-        .map(|(tag, type_field)| type_field_to_enum_variant(ec, type_field, tag))
+        .map(|(tag, type_field)| type_field_to_enum_variant(ec, type_field.value, tag))
         .collect::<Result<Vec<_>, _>>()?;
 
     if variants.iter().any(|variant| {
