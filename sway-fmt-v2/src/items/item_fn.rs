@@ -1,14 +1,13 @@
 use crate::{
     config::items::ItemBraceStyle,
-    fmt::{Format, FormattedCode, Formatter, FormatterError},
+    fmt::*,
     utils::{
         bracket::{CurlyBrace, Parenthesis},
         comments::{ByteSpan, LeafSpans},
     },
 };
 use std::fmt::Write;
-use sway_ast::keywords::Token;
-use sway_ast::{token::Delimiter, FnArg, FnArgs, FnSignature, ItemFn};
+use sway_ast::{keywords::Token, token::Delimiter, FnArg, FnArgs, FnSignature, ItemFn};
 use sway_types::Spanned;
 
 impl Format for ItemFn {
@@ -81,6 +80,11 @@ impl Format for FnSignature {
         formatted_code: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(
+            formatted_code,
+            "{}",
+            formatter.shape.indent.to_string(&formatter.config)?,
+        )?;
         // `pub `
         if let Some(visibility_token) = &self.visibility {
             write!(formatted_code, "{} ", visibility_token.span().as_str())?;

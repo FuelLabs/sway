@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    type_system::{TraitConstraint, TypeArgument, TypeBinding, TypeParameter},
+    type_system::{resolve_type, TraitConstraint, TypeArgument, TypeBinding, TypeParameter},
     WhileLoopExpression,
 };
 
@@ -9,8 +9,9 @@ use {
     crate::{
         constants::{
             STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
+            VALID_ATTRIBUTE_NAMES,
         },
-        error::{err, ok, CompileError, CompileResult, CompileWarning},
+        error::{err, ok, CompileError, CompileResult, CompileWarning, Warning},
         type_system::{insert_type, AbiName, IntegerBits},
         AbiCastExpression, AbiDeclaration, ArrayIndexExpression, AsmExpression, AsmOp, AsmRegister,
         AsmRegisterDeclaration, AstNode, AstNodeContent, CallPath, CodeBlock, ConstantDeclaration,
@@ -189,6 +190,8 @@ pub enum ConvertParseTreeError {
     DuplicateStructField { name: Ident, span: Span },
     #[error("identifier \"{name}\" bound more than once in this parameter list")]
     DuplicateParameterIdentifier { name: Ident, span: Span },
+    #[error("self parameter is not allowed for a free function")]
+    SelfParameterNotAllowedForFreeFn { span: Span },
 }
 
 impl Spanned for ConvertParseTreeError {
@@ -239,6 +242,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::DuplicateStorageField { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateStructField { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateParameterIdentifier { span, .. } => span.clone(),
+            ConvertParseTreeError::SelfParameterNotAllowedForFreeFn { span, .. } => span.clone(),
         }
     }
 }
@@ -290,7 +294,7 @@ pub fn module_to_sway_parse_tree(
 }
 
 fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, ErrorEmitted> {
-    let attributes = item_attrs_to_map(&item.attribute_list)?;
+    let attributes = item_attrs_to_map(ec, &item.attribute_list)?;
 
     let span = item.span();
     let contents = match item.value {
@@ -315,6 +319,16 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
         }
         ItemKind::Fn(item_fn) => {
             let function_declaration = item_fn_to_function_declaration(ec, item_fn, &attributes)?;
+            for param in &function_declaration.parameters {
+                if let Ok(ty) = resolve_type(param.type_id, &param.type_span) {
+                    if matches!(ty, TypeInfo::SelfType) {
+                        let error = ConvertParseTreeError::SelfParameterNotAllowedForFreeFn {
+                            span: param.type_span.clone(),
+                        };
+                        return Err(ec.error(error));
+                    }
+                }
+            }
             vec![AstNodeContent::Declaration(
                 Declaration::FunctionDeclaration(function_declaration),
             )]
@@ -346,16 +360,6 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
             vec![AstNodeContent::Declaration(
                 Declaration::StorageDeclaration(storage_declaration),
             )]
-        }
-        ItemKind::Break(_) => {
-            vec![AstNodeContent::Declaration(Declaration::Break {
-                span: span.clone(),
-            })]
-        }
-        ItemKind::Continue(_) => {
-            vec![AstNodeContent::Declaration(Declaration::Continue {
-                span: span.clone(),
-            })]
         }
     };
     Ok(contents
@@ -391,11 +395,22 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
 
 type AttributesMap<'a> = HashMap<&'a str, Vec<&'a Ident>>;
 
-fn item_attrs_to_map(attribute_list: &[AttributeDecl]) -> Result<AttributesMap, ErrorEmitted> {
+fn item_attrs_to_map<'a>(
+    ec: &mut ErrorContext,
+    attribute_list: &'a [AttributeDecl],
+) -> Result<AttributesMap<'a>, ErrorEmitted> {
     let mut attrs_map = AttributesMap::new();
     for attr_decl in attribute_list {
         let attr = attr_decl.attribute.get();
         let name = attr.name.as_str();
+        if !VALID_ATTRIBUTE_NAMES.contains(&name) {
+            ec.warning(CompileWarning {
+                span: attr_decl.span().clone(),
+                warning_content: Warning::UnrecognizedAttribute {
+                    attrib_name: attr.name.clone(),
+                },
+            })
+        }
         let mut args = attr
             .args
             .as_ref()
@@ -499,7 +514,7 @@ fn item_struct_to_struct_declaration(
         .fields
         .into_inner()
         .into_iter()
-        .map(|type_field| type_field_to_struct_field(ec, type_field))
+        .map(|type_field| type_field_to_struct_field(ec, type_field.value))
         .collect::<Result<Vec<_>, _>>()?;
 
     if fields.iter().any(
@@ -548,7 +563,7 @@ fn item_enum_to_enum_declaration(
         .into_inner()
         .into_iter()
         .enumerate()
-        .map(|(tag, type_field)| type_field_to_enum_variant(ec, type_field, tag))
+        .map(|(tag, type_field)| type_field_to_enum_variant(ec, type_field.value, tag))
         .collect::<Result<Vec<_>, _>>()?;
 
     if variants.iter().any(|variant| {
@@ -662,7 +677,7 @@ fn item_trait_to_trait_declaration(
             .into_inner()
             .into_iter()
             .map(|(fn_signature, _semicolon_token)| {
-                let attributes = item_attrs_to_map(&fn_signature.attribute_list)?;
+                let attributes = item_attrs_to_map(ec, &fn_signature.attribute_list)?;
                 fn_signature_to_trait_fn(ec, fn_signature.value, &attributes)
             })
             .collect::<Result<_, _>>()?
@@ -673,7 +688,7 @@ fn item_trait_to_trait_declaration(
             .into_inner()
             .into_iter()
             .map(|item_fn| {
-                let attributes = item_attrs_to_map(&item_fn.attribute_list)?;
+                let attributes = item_attrs_to_map(ec, &item_fn.attribute_list)?;
                 item_fn_to_function_declaration(ec, item_fn.value, &attributes)
             })
             .collect::<Result<_, _>>()?,
@@ -705,7 +720,7 @@ fn item_impl_to_declaration(
             .into_inner()
             .into_iter()
             .map(|item| {
-                let attributes = item_attrs_to_map(&item.attribute_list)?;
+                let attributes = item_attrs_to_map(ec, &item.attribute_list)?;
                 item_fn_to_function_declaration(ec, item.value, &attributes)
             })
             .collect::<Result<_, _>>()?
@@ -755,7 +770,7 @@ fn item_abi_to_abi_declaration(
                 .into_inner()
                 .into_iter()
                 .map(|(fn_signature, _semicolon_token)| {
-                    let attributes = item_attrs_to_map(&fn_signature.attribute_list)?;
+                    let attributes = item_attrs_to_map(ec, &fn_signature.attribute_list)?;
                     fn_signature_to_trait_fn(ec, fn_signature.value, &attributes)
                 })
                 .collect::<Result<_, _>>()?
@@ -766,7 +781,7 @@ fn item_abi_to_abi_declaration(
                 .into_inner()
                 .into_iter()
                 .map(|item_fn| {
-                    let attributes = item_attrs_to_map(&item_fn.attribute_list)?;
+                    let attributes = item_attrs_to_map(ec, &item_fn.attribute_list)?;
                     item_fn_to_function_declaration(ec, item_fn.value, &attributes)
                 })
                 .collect::<Result<_, _>>()?,
@@ -1890,6 +1905,28 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             let error = ConvertParseTreeError::ReassignmentOutsideOfBlock { span };
             return Err(ec.error(error));
         }
+        Expr::Break { .. } => Expression {
+            kind: ExpressionKind::CodeBlock(CodeBlock {
+                contents: vec![AstNode {
+                    content: AstNodeContent::Declaration(Declaration::Break { span: span.clone() }),
+                    span: span.clone(),
+                }],
+                whole_block_span: span.clone(),
+            }),
+            span,
+        },
+        Expr::Continue { .. } => Expression {
+            kind: ExpressionKind::CodeBlock(CodeBlock {
+                contents: vec![AstNode {
+                    content: AstNodeContent::Declaration(Declaration::Continue {
+                        span: span.clone(),
+                    }),
+                    span: span.clone(),
+                }],
+                whole_block_span: span.clone(),
+            }),
+            span,
+        },
     };
     Ok(expression)
 }
