@@ -115,3 +115,19 @@ fmt_test!(  multiline_tuple "(\n    \"reallyreallylongstring\",\n    \"yetanothe
 fmt_test!(  multiline_match_stmt "match foo {\n    Foo::foo => {}\n    Foo::bar => {}\n}",
             intermediate_whitespace "match foo {\n    Foo::foo => {}\n    Foo::bar => {}\n}"
 );
+
+fmt_test!(  match_branch_kind
+"match foo {
+    Foo::foo => {
+        foo();
+        bar();
+    }
+    Foo::bar => {
+        baz();
+        quux();
+    }
+}",
+            intermediate_whitespace "match     foo
+            
+            \n{\n\n    Foo::foo     => {\n        foo() ;     \n        bar( ); \n    } \n    Foo::\nbar => {\n        baz();\n        quux();\n    }\n\n\n}"
+);
