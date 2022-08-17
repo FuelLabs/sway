@@ -548,6 +548,8 @@ pub enum CompileError {
     MutableParameterNotSupported { param_name: Ident },
     #[error("Cannot pass immutable argument to mutable parameter.")]
     ImmutableArgumentToMutableParameter { span: Span },
+    #[error("ref mut parameter is not allowed for contract ABI function.")]
+    RefMutableNotAllowedInContractAbi { param_name: Ident },
     #[error(
         "Cannot call associated function \"{fn_name}\" as a method. Use associated function \
         syntax instead."
@@ -1094,6 +1096,7 @@ impl Spanned for CompileError {
             AssignmentToNonMutable { name } => name.span(),
             MutableParameterNotSupported { param_name } => param_name.span(),
             ImmutableArgumentToMutableParameter { span } => span.clone(),
+            RefMutableNotAllowedInContractAbi { param_name } => param_name.span(),
             MethodRequiresMutableSelf { span, .. } => span.clone(),
             AssociatedFunctionCalledAsMethod { span, .. } => span.clone(),
             TypeParameterNotInTypeScope { span, .. } => span.clone(),
