@@ -115,3 +115,7 @@ fmt_test!(  multiline_tuple "(\n    \"reallyreallylongstring\",\n    \"yetanothe
 fmt_test!(  multiline_match_stmt "match foo {\n    Foo::foo => {}\n    Foo::bar => {}\n}",
             intermediate_whitespace "match foo {\n    Foo::foo => {}\n    Foo::bar => {}\n}"
 );
+
+fmt_test!(  if_else_block "if foo {\n    foo();\n} else if bar {\n    bar();\n} else {\n    baz();\n}",
+            intermediate_whitespace "if foo {\n    foo();\n} else if bar {\n    bar();\n} else {\n    baz();\n}"
+);
