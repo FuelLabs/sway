@@ -354,7 +354,7 @@ impl Backend {
                             _ => Ok(None),
                         }
                     }
-                    _ => unreachable!(),
+                    _ => Ok(None),
                 }
             }
             _ => Ok(None),
@@ -697,8 +697,6 @@ mod tests {
         messages.next().await.unwrap();
 
         let (uri, sway_program) = load_sway_example();
-
-        // let uri = Url::from_file_path("/Users/joshuabatty/Documents/rust/fuel/sway/examples/enums/src/enum_of_structs.sw").unwrap();
 
         // send "textDocument/didOpen" notification for `uri`
         did_open_notification(&mut service, &uri, &sway_program).await;
