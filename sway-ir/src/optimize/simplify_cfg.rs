@@ -31,7 +31,7 @@ pub fn simplify_cfg(context: &mut Context, function: &Function) -> Result<bool, 
 }
 
 fn remove_dead_blocks(context: &mut Context, function: &Function) -> Result<bool, IrError> {
-    let mut worklist = std::vec::Vec::<Block>::new();
+    let mut worklist = Vec::<Block>::new();
     let mut reachable = std::collections::HashSet::<Block>::new();
 
     // The entry is always reachable. Let's begin with that.
