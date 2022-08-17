@@ -465,6 +465,13 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         errors
     );
 
+    check!(
+        simplify_cfg(&mut ir, &entry_point_functions),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
     if build_config.print_ir {
         tracing::info!("{}", ir);
     }
@@ -490,6 +497,21 @@ fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileRes
 fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
     for function in functions {
         if let Err(ir_error) = sway_ir::optimize::combine_constants(ir, function) {
+            return err(
+                Vec::new(),
+                vec![CompileError::InternalOwned(
+                    ir_error.to_string(),
+                    span::Span::dummy(),
+                )],
+            );
+        }
+    }
+    ok((), Vec::new(), Vec::new())
+}
+
+fn simplify_cfg(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
+    for function in functions {
+        if let Err(ir_error) = sway_ir::optimize::simplify_cfg(ir, function) {
             return err(
                 Vec::new(),
                 vec![CompileError::InternalOwned(
