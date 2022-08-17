@@ -15,31 +15,13 @@ use crate::{
 
 use std::collections::HashMap;
 
-type PredCounts = HashMap<Block, usize>;
-
-fn count_predecessors(context: &Context, function: &Function) -> PredCounts {
-    let mut pred_counts = PredCounts::new();
-
-    for block in function.block_iter(context) {
-        for succ in block.successors(context) {
-            match pred_counts.get_mut(&succ) {
-                Some(count) => *count += 1,
-                None => {
-                    pred_counts.insert(succ, 1);
-                }
-            }
-        }
-    }
-    pred_counts
-}
-
 pub fn simplify_cfg(context: &mut Context, function: &Function) -> Result<bool, IrError> {
     let mut modified = false;
     modified |= remove_dead_blocks(context, function)?;
 
-    let mut pred_counts = count_predecessors(context, function);
+    let pred_counts = function.count_predecessors(context);
     loop {
-        if merge_blocks(context, &mut pred_counts, function)? {
+        if merge_blocks(context, &pred_counts, function)? {
             modified = true;
             continue;
         }
@@ -49,23 +31,23 @@ pub fn simplify_cfg(context: &mut Context, function: &Function) -> Result<bool, 
 }
 
 fn remove_dead_blocks(context: &mut Context, function: &Function) -> Result<bool, IrError> {
-    let mut worklist = std::collections::VecDeque::<Block>::new();
+    let mut worklist = std::vec::Vec::<Block>::new();
     let mut reachable = std::collections::HashSet::<Block>::new();
 
     // The entry is always reachable. Let's begin with that.
     let entry_block = function.get_entry_block(context);
     reachable.insert(entry_block);
-    worklist.push_back(entry_block);
+    worklist.push(entry_block);
 
     // Mark reachable nodes.
     while !worklist.is_empty() {
-        let block = worklist.pop_front().unwrap();
+        let block = worklist.pop().unwrap();
         let succs = block.successors(context);
         for succ in succs {
             // If this isn't already marked reachable, we mark it and add to the worklist.
             if !reachable.contains(&succ) {
                 reachable.insert(succ);
-                worklist.push_back(succ);
+                worklist.push(succ);
             }
         }
     }
@@ -84,7 +66,7 @@ fn remove_dead_blocks(context: &mut Context, function: &Function) -> Result<bool
 
 fn merge_blocks(
     context: &mut Context,
-    pred_counts: &mut PredCounts,
+    pred_counts: &HashMap<Block, usize>,
     function: &Function,
 ) -> Result<bool, IrError> {
     // Check if block branches soley to another block B, and that B has exactly one predecessor.
@@ -165,8 +147,6 @@ fn merge_blocks(
 
         // Remove `to_block`.
         function.remove_block(context, &to_block)?;
-        // We probably don't need to update pred_counts, but anyway ...
-        pred_counts.remove(&to_block);
     }
 
     // Adjust the successors to the final `to_block` to now be successors of the fully merged

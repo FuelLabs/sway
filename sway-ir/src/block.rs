@@ -148,6 +148,8 @@ impl Block {
             }
         })
     }
+
+    /// Get the CFG successors of this block.
     pub(super) fn successors<'a>(&'a self, context: &'a Context) -> Vec<Block> {
         match self.get_terminator(context) {
             Some(Instruction::ConditionalBranch {
