@@ -78,6 +78,7 @@ impl CurlyBrace for ItemFn {
             formatter.shape.indent.to_string(&formatter.config)?,
             Delimiter::Brace.as_close_char()
         )?;
+
         Ok(())
     }
 }
