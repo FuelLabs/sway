@@ -224,9 +224,6 @@ impl Session {
             } => {
                 if let TypedProgramKind::Script {
                     ref main_function, ..
-                }
-                | TypedProgramKind::Predicate {
-                    ref main_function, ..
                 } = typed_program.kind
                 {
                     let main_fn_location =
