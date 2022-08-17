@@ -203,7 +203,7 @@ fn const_eval_typed_expr(
             }
             res
         }
-        TypedExpressionVariant::VariableExpression { name } => match known_consts.get(name) {
+        TypedExpressionVariant::VariableExpression { name, .. } => match known_consts.get(name) {
             // 1. Check if name is in known_consts.
             Some(cvs) => Some(cvs.clone()),
             None => {

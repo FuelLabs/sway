@@ -14,7 +14,6 @@ pub use {
         item::{
             item_abi::ItemAbi,
             item_const::ItemConst,
-            item_control_flow::{ItemBreak, ItemContinue},
             item_enum::ItemEnum,
             item_fn::ItemFn,
             item_impl::ItemImpl,

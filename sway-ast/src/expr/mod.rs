@@ -168,6 +168,12 @@ pub enum Expr {
         reassignment_op: ReassignmentOp,
         expr: Box<Expr>,
     },
+    Break {
+        break_token: BreakToken,
+    },
+    Continue {
+        continue_token: ContinueToken,
+    },
 }
 
 impl Spanned for Expr {
@@ -233,6 +239,8 @@ impl Spanned for Expr {
             Expr::Reassignment {
                 assignable, expr, ..
             } => Span::join(assignable.span(), expr.span()),
+            Expr::Break { break_token } => break_token.span(),
+            Expr::Continue { continue_token } => continue_token.span(),
         }
     }
 }
