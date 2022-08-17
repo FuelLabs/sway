@@ -1,15 +1,13 @@
 use crate::{
     config::items::ItemBraceStyle,
-    fmt::{Format, FormattedCode, Formatter},
+    fmt::*,
     utils::{
         bracket::CurlyBrace,
         comments::{ByteSpan, LeafSpans},
     },
-    FormatterError,
 };
 use std::fmt::Write;
-use sway_ast::keywords::Token;
-use sway_ast::{token::Delimiter, ItemAbi};
+use sway_ast::{keywords::Token, token::Delimiter, ItemAbi};
 use sway_types::Spanned;
 
 impl Format for ItemAbi {

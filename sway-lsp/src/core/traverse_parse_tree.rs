@@ -76,6 +76,13 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                     to_ident_key(&variable.name),
                     Token::from_parsed(AstToken::Declaration(declaration.clone())),
                 );
+
+                if let Some(type_ascription_span) = &variable.type_ascription_span {
+                    tokens.insert(
+                        to_ident_key(&Ident::new(type_ascription_span.clone())),
+                        Token::from_parsed(AstToken::Declaration(declaration.clone())),
+                    );
+                }
             }
             handle_expression(&variable.body, tokens);
         }
