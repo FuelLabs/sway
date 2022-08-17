@@ -1187,7 +1187,16 @@ impl FnCompiler {
                     .add_metadatum(context, span_md_idx)
             })
         } else if let Some(val) = self.function.get_arg(context, name) {
-            Ok(val)
+            let is_ptr = val.get_type(&context).filter(|f| f.is_ptr_type()).is_some();
+            if is_ptr {
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .load(val)
+                    .add_metadatum(context, span_md_idx))
+            } else {
+                Ok(val)
+            }
         } else if let Some(const_val) = self.module.get_global_constant(context, name) {
             Ok(const_val)
         } else {
