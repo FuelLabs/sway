@@ -1,0 +1,14 @@
+category = "compile"
+validate_abi = false
+
+# check: $()#[bad_attr(blah)]
+# nextln: $()Unknown attribute: "bad_attr".
+# nextln: $()fn bad_func() -> bool;
+
+# check: $()#[bad_attr(blah)]
+# nextln: $()Unknown attribute: "bad_attr".
+# nextln: $()fn bad_func() -> bool {
+
+# check: $()#[bad_attr(blah)]
+# nextln: $()Unknown attribute: "bad_attr".
+# nextln: $()struct BadStruct {}
