@@ -58,7 +58,7 @@ $ tree .
 
 We'll be writing our code in the `src/main.sw`.
 
-`cd` into your contract project and delete the boilerplate code in `src/main.sw`. Every Sway file must start with a declaration of what type of program the file contains; here, we've declared that this file is a contract.
+`cd` (change directories) into your contract project and delete the boilerplate code in `src/main.sw`. Every Sway file must start with a declaration of what type of program the file contains; here, we've declared that this file is a contract.
 
 ```sway
 contract;
