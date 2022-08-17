@@ -618,7 +618,7 @@ impl Shiftable for b256 {
 /////////////////////////////////////////////////
 
 /// Left shift a u64 and preserve the overflow amount if any
-pub fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
+fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
     let right_shift_amount = 64.subtract(shift_amount);
     let carry = word.rsh(right_shift_amount);
     let shifted = word.lsh(shift_amount);
@@ -626,7 +626,7 @@ pub fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
 }
 
 /// Right shift a u64 and preserve the overflow amount if any
-pub fn rsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
+fn rsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
     let left_shift_amount = 64.subtract(shift_amount);
     let carry = word.lsh(left_shift_amount);
     let shifted = word.rsh(shift_amount);
