@@ -591,6 +591,7 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                 }
             }
         }
+        ExpressionKind::Return(expr) => handle_expression(expr, tokens),
     }
 }
 

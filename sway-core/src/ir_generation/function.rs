@@ -372,6 +372,9 @@ impl FnCompiler {
                     &storage_reassignment.rhs,
                     span_md_idx,
                 ),
+            TypedExpressionVariant::Return(stmt) => {
+                self.compile_return_statement(context, md_mgr, stmt.expr)
+            }
         }
     }
 

@@ -419,6 +419,7 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
             }
             handle_expression(&storage_reassignment.rhs, tokens);
         }
+        TypedExpressionVariant::Return(stmt) => handle_expression(&stmt.expr, tokens),
     }
 }
 

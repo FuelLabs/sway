@@ -275,6 +275,7 @@ impl TypedImplTrait {
                 TypedExpressionVariant::StorageReassignment(storage_reassignment) => {
                     expr_contains_get_storage_index(&storage_reassignment.rhs)
                 }
+                TypedExpressionVariant::Return(stmt) => expr_contains_get_storage_index(&stmt.expr),
             }
         }
         fn decl_contains_get_storage_index(decl: &TypedDeclaration) -> bool {

@@ -496,6 +496,7 @@ impl Dependencies {
             ExpressionKind::Break => self,
             ExpressionKind::Continue => self,
             ExpressionKind::Reassignment(reassignment) => self.gather_from_expr(&reassignment.rhs),
+            ExpressionKind::Return(expr) => self.gather_from_expr(expr),
         }
     }
 

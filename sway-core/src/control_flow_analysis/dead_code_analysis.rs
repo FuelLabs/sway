@@ -1126,6 +1126,30 @@ fn connect_expression(
             tree_type,
             typed_storage_reassignment.rhs.clone().span,
         ),
+        Return(stmt) => {
+            let this_index = graph.add_node("return entry".into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, this_index, "".into());
+            }
+            let return_contents = connect_expression(
+                &stmt.expr.expression,
+                graph,
+                &[this_index],
+                exit_node,
+                "",
+                tree_type,
+                stmt.expr.span.clone(),
+            )?;
+            // TODO: is this right? Shouldn't we connect the return_contents leaves to the exit
+            // node?
+            for leaf in return_contents {
+                graph.add_edge(this_index, leaf, "".into());
+            }
+            if let Some(exit_node) = exit_node {
+                graph.add_edge(this_index, exit_node, "return".into());
+            }
+            Ok(vec![])
+        }
     }
 }
 

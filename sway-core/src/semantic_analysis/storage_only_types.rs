@@ -134,6 +134,9 @@ fn expr_validate(expr: &TypedExpression) -> CompileResult<()> {
             );
             check!(expr_validate(rhs), (), warnings, errors)
         }
+        TypedExpressionVariant::Return(stmt) => {
+            check!(expr_validate(&stmt.expr), (), warnings, errors)
+        }
     }
     ok((), warnings, errors)
 }

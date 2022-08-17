@@ -212,6 +212,7 @@ impl CollectTypesMetadata for TypedExpression {
                         .collect(),
                 );
             }
+            Return(stmt) => res.append(&mut stmt.expr.collect_types_metadata()),
             // storage access can never be generic
             // variable expressions don't ever have return types themselves, they're stored in
             // `TypedExpression::return_type`. Variable expressions are just names of variables.
@@ -318,6 +319,15 @@ impl DeterministicallyAborts for TypedExpression {
             StorageReassignment(storage_reassignment) => {
                 storage_reassignment.rhs.deterministically_aborts()
             }
+            // TODO: Is this correct?
+            // I'm not sure what this function is supposed to do exactly. It's called
+            // "deterministically_aborts" which I thought meant it checks for an abort/panic, but
+            // it's actually checking for returns.
+            //
+            // Also, is it necessary to check the expression to see if avoids the return? eg.
+            // someone could write `return break;` in a loop, which would mean the return never
+            // gets executed.
+            Return(..) => true,
         }
     }
 }
@@ -472,6 +482,9 @@ impl TypedExpression {
             TypedExpressionVariant::EnumTag { exp } => exp.gather_return_statements(),
             TypedExpressionVariant::UnsafeDowncast { exp, .. } => exp.gather_return_statements(),
 
+            TypedExpressionVariant::Return(stmt) => {
+                vec![stmt]
+            }
             // if it is impossible for an expression to contain a return _statement_ (not an
             // implicit return!), put it in the pattern below.
             TypedExpressionVariant::Literal(_)
@@ -630,6 +643,41 @@ impl TypedExpression {
             }
             ExpressionKind::Reassignment(ReassignmentExpression { lhs, rhs }) => {
                 Self::type_check_reassignment(ctx.by_ref(), lhs, *rhs, span)
+            }
+            ExpressionKind::Return(expr) => {
+                let ctx = ctx
+                    // we use "unknown" here because return statements do not
+                    // necessarily follow the type annotation of their immediate
+                    // surrounding context. Because a return statement is control flow
+                    // that breaks out to the nearest function, we need to type check
+                    // it against the surrounding function.
+                    // That is impossible here, as we don't have that information. It
+                    // is the responsibility of the function declaration to type check
+                    // all return statements contained within it.
+                    .by_ref()
+                    .with_type_annotation(insert_type(TypeInfo::Unknown))
+                    .with_help_text(
+                        "Returned value must match up with the function return type \
+                        annotation.",
+                    );
+                let mut warnings = vec![];
+                let mut errors = vec![];
+                let expr_span = expr.span();
+                let expr = check!(
+                    TypedExpression::type_check(ctx, *expr),
+                    error_recovery_expr(expr_span),
+                    warnings,
+                    errors,
+                );
+                let stmt = TypedReturnStatement { expr };
+                let typed_expr = TypedExpression {
+                    expression: TypedExpressionVariant::Return(Box::new(stmt)),
+                    return_type: insert_type(TypeInfo::Unknown),
+                    // FIXME: This should be Yes?
+                    is_constant: IsConstant::No,
+                    span,
+                };
+                ok(typed_expr, warnings, errors)
             }
         };
         let mut typed_expression = match res.value {

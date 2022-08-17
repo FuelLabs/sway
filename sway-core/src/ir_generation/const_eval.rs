@@ -343,6 +343,7 @@ fn const_eval_typed_expr(
         | TypedExpressionVariant::UnsafeDowncast { .. }
         | TypedExpressionVariant::Break
         | TypedExpressionVariant::Continue
+        | TypedExpressionVariant::Return(..)
         | TypedExpressionVariant::WhileLoop { .. } => None,
     }
 }
