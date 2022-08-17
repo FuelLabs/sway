@@ -48,12 +48,12 @@ impl CurlyBrace for ItemFn {
             }
             ItemBraceStyle::SameLineWhere => match formatter.shape.has_where_clause {
                 true => {
-                    writeln!(line, "{}", open_brace)?;
+                    write!(line, "{}", open_brace)?;
                     formatter.shape.update_where_clause();
                     formatter.shape.block_indent(&formatter.config);
                 }
                 false => {
-                    writeln!(line, " {}", open_brace)?;
+                    write!(line, " {}", open_brace)?;
                     formatter.shape.block_indent(&formatter.config);
                 }
             },
