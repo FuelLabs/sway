@@ -119,7 +119,7 @@ impl Counter for Contract {
 
 ### What we just did
 
-`#[storage(read)]` is an annotation which denotes that this function has the permissions to read values in storage.
+Read and return the counter property value from the contract storage.
 
 ```sway
 fn counter() -> u64 {
@@ -127,17 +127,13 @@ fn counter() -> u64 {
 }
 ```
 
-Read and return the counter property value from the contract storage.
-
-`#[storage(read, write)]` is an annotation which denotes that this function has the permissions to read and write values in storage.
+The function body accesses the value counter in storage, and increments the value by one. Then, we return the newly updated value of counter.
 
 ```sway
 fn increment() {
         storage.counter = storage.counter + 1;
 }
 ```
-
-The function body accesses the value counter in storage, and increments the value by one. Then, we return the newly updated value of counter.
 
 ### Build the Contract
 
