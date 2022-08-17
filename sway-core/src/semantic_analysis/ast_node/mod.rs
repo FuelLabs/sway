@@ -20,7 +20,7 @@ use crate::{
     style::*,
     type_system::*,
     types::DeterministicallyAborts,
-    AstNode, AstNodeContent, Ident, ReturnStatement,
+    AstNode, AstNodeContent, Ident,
 };
 
 use sway_types::{span::Span, state::StateIndex, Spanned};
@@ -37,7 +37,6 @@ pub(crate) enum IsConstant {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TypedAstNodeContent {
-    ReturnStatement(TypedReturnStatement),
     Declaration(TypedDeclaration),
     Expression(TypedExpression),
     ImplicitReturnExpression(TypedExpression),
@@ -49,7 +48,6 @@ impl CollectTypesMetadata for TypedAstNodeContent {
     fn collect_types_metadata(&self) -> Vec<TypeMetadata> {
         use TypedAstNodeContent::*;
         match self {
-            ReturnStatement(stmt) => stmt.expr.collect_types_metadata(),
             Declaration(decl) => decl.collect_types_metadata(),
             Expression(expr) => expr.collect_types_metadata(),
             ImplicitReturnExpression(expr) => expr.collect_types_metadata(),
@@ -70,9 +68,6 @@ impl fmt::Display for TypedAstNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use TypedAstNodeContent::*;
         let text = match &self.content {
-            ReturnStatement(TypedReturnStatement { ref expr }) => {
-                format!("return {}", expr)
-            }
             Declaration(ref typed_decl) => typed_decl.to_string(),
             Expression(exp) => exp.to_string(),
             ImplicitReturnExpression(exp) => format!("return {}", exp),
@@ -85,9 +80,6 @@ impl fmt::Display for TypedAstNode {
 impl CopyTypes for TypedAstNode {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         match self.content {
-            TypedAstNodeContent::ReturnStatement(ref mut ret_stmt) => {
-                ret_stmt.copy_types(type_mapping)
-            }
             TypedAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
                 exp.copy_types(type_mapping)
             }
@@ -108,7 +100,6 @@ impl DeterministicallyAborts for TypedAstNode {
     fn deterministically_aborts(&self) -> bool {
         use TypedAstNodeContent::*;
         match &self.content {
-            ReturnStatement(_) => true,
             Declaration(_) => false,
             Expression(exp) | ImplicitReturnExpression(exp) => exp.deterministically_aborts(),
             SideEffect => false,
@@ -132,7 +123,7 @@ impl TypedAstNode {
                 );
                 visibility.is_public()
             }
-            ReturnStatement(_) | Expression(_) | SideEffect | ImplicitReturnExpression(_) => false,
+            Expression(_) | SideEffect | ImplicitReturnExpression(_) => false,
         };
         ok(public, warnings, errors)
     }
@@ -160,7 +151,6 @@ impl TypedAstNode {
     /// _only_ for explicit returns.
     pub(crate) fn gather_return_statements(&self) -> Vec<&TypedReturnStatement> {
         match &self.content {
-            TypedAstNodeContent::ReturnStatement(ref stmt) => vec![stmt],
             TypedAstNodeContent::ImplicitReturnExpression(ref exp) => {
                 exp.gather_return_statements()
             }
@@ -177,7 +167,7 @@ impl TypedAstNode {
         // return statement should be ()
         use TypedAstNodeContent::*;
         match &self.content {
-            ReturnStatement(_) | Declaration(_) => TypeInfo::Tuple(Vec::new()),
+            Declaration(_) => TypeInfo::Tuple(Vec::new()),
             Expression(TypedExpression { return_type, .. }) => {
                 crate::type_system::look_up_type_id(*return_type)
             }
@@ -454,31 +444,6 @@ impl TypedAstNode {
                         errors
                     );
                     TypedAstNodeContent::Expression(inner)
-                }
-                AstNodeContent::ReturnStatement(ReturnStatement { expr }) => {
-                    let ctx = ctx
-                        // we use "unknown" here because return statements do not
-                        // necessarily follow the type annotation of their immediate
-                        // surrounding context. Because a return statement is control flow
-                        // that breaks out to the nearest function, we need to type check
-                        // it against the surrounding function.
-                        // That is impossible here, as we don't have that information. It
-                        // is the responsibility of the function declaration to type check
-                        // all return statements contained within it.
-                        .with_type_annotation(insert_type(TypeInfo::Unknown))
-                        .with_help_text(
-                            "Returned value must match up with the function return type \
-                            annotation.",
-                        );
-
-                    TypedAstNodeContent::ReturnStatement(TypedReturnStatement {
-                        expr: check!(
-                            TypedExpression::type_check(ctx, expr.clone()),
-                            error_recovery_expr(expr.span()),
-                            warnings,
-                            errors
-                        ),
-                    })
                 }
                 AstNodeContent::ImplicitReturnExpression(expr) => {
                     let ctx =

@@ -7,7 +7,7 @@ use crate::{
     error::{err, ok},
     semantic_analysis::{
         Mode, TypeCheckContext, TypedAstNodeContent, TypedExpression, TypedExpressionVariant,
-        TypedIntrinsicFunctionKind, TypedReturnStatement,
+        TypedIntrinsicFunctionKind,
     },
     type_system::{
         insert_type, look_up_type_id, resolve_type, set_type_as_storage_only, unify_with_self,
@@ -197,8 +197,7 @@ impl TypedImplTrait {
         use crate::semantic_analysis;
         fn ast_node_contains_get_storage_index(x: &TypedAstNodeContent) -> bool {
             match x {
-                TypedAstNodeContent::ReturnStatement(TypedReturnStatement { expr })
-                | TypedAstNodeContent::Expression(expr)
+                TypedAstNodeContent::Expression(expr)
                 | TypedAstNodeContent::ImplicitReturnExpression(expr) => {
                     expr_contains_get_storage_index(expr)
                 }

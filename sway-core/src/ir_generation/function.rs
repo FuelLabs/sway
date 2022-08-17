@@ -111,10 +111,6 @@ impl FnCompiler {
     ) -> Result<Option<Value>, CompileError> {
         let span_md_idx = md_mgr.span_to_md(context, &ast_node.span);
         match ast_node.content {
-            TypedAstNodeContent::ReturnStatement(trs) => {
-                let val = self.compile_return_statement(context, md_mgr, trs.expr)?;
-                Ok(Some(val))
-            }
             TypedAstNodeContent::Declaration(td) => match td {
                 TypedDeclaration::VariableDeclaration(tvd) => {
                     self.compile_var_decl(context, md_mgr, tvd, span_md_idx)

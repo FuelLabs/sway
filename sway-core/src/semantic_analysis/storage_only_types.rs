@@ -8,7 +8,7 @@ use crate::{TypedDeclaration, TypedFunctionDeclaration};
 
 use crate::semantic_analysis::{
     TypedAbiDeclaration, TypedAstNodeContent, TypedExpression, TypedExpressionVariant,
-    TypedIntrinsicFunctionKind, TypedReassignment, TypedReturnStatement,
+    TypedIntrinsicFunctionKind, TypedReassignment,
 };
 
 use super::{
@@ -19,8 +19,7 @@ fn ast_node_validate(x: &TypedAstNodeContent) -> CompileResult<()> {
     let errors: Vec<CompileError> = vec![];
     let warnings: Vec<CompileWarning> = vec![];
     match x {
-        TypedAstNodeContent::ReturnStatement(TypedReturnStatement { expr })
-        | TypedAstNodeContent::Expression(expr)
+        TypedAstNodeContent::Expression(expr)
         | TypedAstNodeContent::ImplicitReturnExpression(expr) => expr_validate(expr),
         TypedAstNodeContent::Declaration(decl) => decl_validate(decl),
         TypedAstNodeContent::SideEffect => ok((), warnings, errors),

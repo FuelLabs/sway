@@ -354,9 +354,6 @@ fn const_eval_typed_ast_node(
     expr: &TypedAstNode,
 ) -> Option<Constant> {
     match &expr.content {
-        TypedAstNodeContent::ReturnStatement(trs) => {
-            const_eval_typed_expr(lookup, known_consts, &trs.expr)
-        }
         TypedAstNodeContent::Declaration(_) => {
             // TODO: add the binding to known_consts (if it's a const) and proceed.
             None

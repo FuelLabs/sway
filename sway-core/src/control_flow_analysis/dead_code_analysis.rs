@@ -7,9 +7,8 @@ use crate::{
         ast_node::{
             TypedAbiDeclaration, TypedCodeBlock, TypedConstantDeclaration, TypedDeclaration,
             TypedEnumDeclaration, TypedExpression, TypedExpressionVariant,
-            TypedFunctionDeclaration, TypedReturnStatement, TypedStructDeclaration,
-            TypedStructExpressionField, TypedTraitDeclaration, TypedVariableDeclaration,
-            VariableMutability,
+            TypedFunctionDeclaration, TypedStructDeclaration, TypedStructExpressionField,
+            TypedTraitDeclaration, TypedVariableDeclaration, VariableMutability,
         },
         TypedAsmRegisterDeclaration, TypedAstNode, TypedAstNodeContent, TypedImplTrait,
         TypedIntrinsicFunctionKind, TypedStorageDeclaration,
@@ -220,33 +219,6 @@ fn connect_node(
     //    let mut graph = graph.clone();
     let span = node.span.clone();
     Ok(match &node.content {
-        TypedAstNodeContent::ReturnStatement(TypedReturnStatement { expr }) => {
-            let this_index = graph.add_node(node.into());
-            for leaf_ix in leaves {
-                graph.add_edge(*leaf_ix, this_index, "".into());
-            }
-            // evaluate the expression
-
-            let return_contents = connect_expression(
-                &expr.expression,
-                graph,
-                &[this_index],
-                exit_node,
-                "",
-                tree_type,
-                expr.span.clone(),
-            )?;
-            for leaf in return_contents {
-                graph.add_edge(this_index, leaf, "".into());
-            }
-            // connect return to the exit node
-            if let Some(exit_node) = exit_node {
-                graph.add_edge(this_index, exit_node, "return".into());
-                (vec![], None)
-            } else {
-                (vec![], None)
-            }
-        }
         TypedAstNodeContent::ImplicitReturnExpression(expr) => {
             let this_index = graph.add_node(node.into());
             for leaf_ix in leaves {
@@ -1332,8 +1304,7 @@ fn construct_dead_code_warning_from_node(node: &TypedAstNode) -> Option<CompileW
         TypedAstNode {
             span,
             content:
-                TypedAstNodeContent::ReturnStatement(_)
-                | TypedAstNodeContent::ImplicitReturnExpression(_)
+                TypedAstNodeContent::ImplicitReturnExpression(_)
                 | TypedAstNodeContent::Expression(_)
                 | TypedAstNodeContent::SideEffect,
         } => CompileWarning {
