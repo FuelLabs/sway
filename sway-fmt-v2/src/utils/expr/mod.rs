@@ -451,7 +451,7 @@ impl Format for Expr {
                 expr.format(formatted_code, formatter)?;
             }
             Self::Break { break_token } => {
-                writeln!(
+                write!(
                     formatted_code,
                     "{}{}",
                     formatter.shape.indent.to_string(&formatter.config)?,
@@ -459,7 +459,7 @@ impl Format for Expr {
                 )?;
             }
             Self::Continue { continue_token } => {
-                writeln!(
+                write!(
                     formatted_code,
                     "{}{}",
                     formatter.shape.indent.to_string(&formatter.config)?,

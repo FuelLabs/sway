@@ -78,7 +78,7 @@ macro_rules! fmt_test_inner {
 }
 }
 
-fmt_test!(literal "5", extra_whitespace "  5 "
+fmt_test!(  literal "5", extra_whitespace "  5 "
 );
 
 fmt_test!(  path_foo_bar "foo::bar::baz::quux::quuz",
@@ -115,3 +115,6 @@ fmt_test!(  multiline_tuple "(\n    \"reallyreallylongstring\",\n    \"yetanothe
 fmt_test!(  multiline_match_stmt "match foo {\n    Foo::foo => {}\n    Foo::bar => {}\n}",
             intermediate_whitespace "match foo {\n    Foo::foo => {}\n    Foo::bar => {}\n}"
 );
+
+fmt_test!(  if_else_control_flow "if foo {\n    break\n} else {\n    continue\n}",
+            intermediate_whitespace "if  foo { \n        break \n}    else  {\n    continue    \n}");
