@@ -20,13 +20,13 @@ pub fn simplify_cfg(context: &mut Context, function: &Function) -> Result<bool, 
             modified = true;
             continue;
         }
-
+        break;
+    }
+    loop {
         if merge_blocks(context, function)? {
             modified = true;
             continue;
         }
-
-        // Other passes here... always continue to the top if pass returns true.
         break;
     }
     Ok(modified)
