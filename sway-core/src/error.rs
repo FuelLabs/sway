@@ -546,6 +546,8 @@ pub enum CompileError {
         "This parameter was declared as mutable, which is not supported yet, did you mean to use ref mut?"
     )]
     MutableParameterNotSupported { param_name: Ident },
+    #[error("Cannot pass immutable argument to mutable parameter.")]
+    ImmutableArgumentToMutableParameter { span: Span },
     #[error(
         "Cannot call associated function \"{fn_name}\" as a method. Use associated function \
         syntax instead."
@@ -1091,6 +1093,7 @@ impl Spanned for CompileError {
             ReassignmentToNonVariable { span, .. } => span.clone(),
             AssignmentToNonMutable { name } => name.span(),
             MutableParameterNotSupported { param_name } => param_name.span(),
+            ImmutableArgumentToMutableParameter { span } => span.clone(),
             MethodRequiresMutableSelf { span, .. } => span.clone(),
             AssociatedFunctionCalledAsMethod { span, .. } => span.clone(),
             TypeParameterNotInTypeScope { span, .. } => span.clone(),
