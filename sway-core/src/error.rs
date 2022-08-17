@@ -318,6 +318,9 @@ pub enum Warning {
         unneeded_attrib: String,
     },
     MatchExpressionUnreachableArm,
+    UnrecognizedAttribute {
+        attrib_name: Ident,
+    },
 }
 
 impl fmt::Display for Warning {
@@ -441,6 +444,7 @@ impl fmt::Display for Warning {
                 and can be removed."
             ),
             MatchExpressionUnreachableArm => write!(f, "This match arm is unreachable."),
+            UnrecognizedAttribute {attrib_name} => write!(f, "Unknown attribute: \"{attrib_name}\"."),
         }
     }
 }
