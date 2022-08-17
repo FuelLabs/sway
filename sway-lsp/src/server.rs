@@ -7,12 +7,8 @@ use crate::core::{
 use crate::utils::debug::{self, DebugFlags};
 use forc_util::find_manifest_dir;
 use serde::{Deserialize, Serialize};
-use std::{
-    fs::File,
-    path::Path,
-    io::Write,
-    sync::Arc
-};
+use std::{fs::File, io::Write, ops::Deref, path::Path, sync::Arc};
+use sway_types::Spanned;
 use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, Client, LanguageServer};
@@ -293,35 +289,40 @@ impl Backend {
         &self,
         params: ShowTypedAstParams,
     ) -> jsonrpc::Result<Option<TextDocumentIdentifier>> {
-
-        // self.session.typed_program.read()
-        // .and_then(|std::sync::LockResult::Ok(typed_ast)| *ast)
-        // .and_then(|ast| {
-        //     let sc= Some(0);
-        // });
-
-        let res: Option<()> = match self.session.typed_program.read() {
+        match self.session.typed_program.read() {
             std::sync::LockResult::Ok(typed_ast) => {
                 match *typed_ast {
                     Some(ref typed_program) => {
-                        let typed_ast = format!("{:#?}", typed_program.root.all_nodes);
-                        let path = Path::new("/tmp/typed_ast.rs");
-                        if let Ok(mut file) = File::create(path) {
-                            let _= writeln!(&mut file, "{}", typed_ast);
-                            eprintln!("{:?}", path);
+                        let open_file = params.text_document.uri;
+                        // Convert the Uri to a PathBuf
+                        let path = open_file.to_file_path().ok();
+                        // Initialize the string with the AST from the root
+                        let mut formatted_ast: String =
+                            format!("{:#?}", typed_program.root.all_nodes);
+                        // Use the name to match on either the DepName (ident) of
+                        // any submodules.
+                        for (ident, submodule) in &typed_program.root.submodules {
+                            if ident.span().path().map(|a| a.deref()) == path.as_ref() {
+                                // Overwrite the root AST with the submodule AST
+                                formatted_ast = format!("{:#?}", submodule.module.all_nodes);
+                            }
                         }
-                        None
+
+                        let tmp_ast_path = Path::new("/tmp/typed_ast.rs");
+                        if let Ok(mut file) = File::create(tmp_ast_path) {
+                            let _ = writeln!(&mut file, "{}", formatted_ast);
+                            if let Ok(uri) = Url::from_file_path(tmp_ast_path) {
+                                // Return the tmp file path where the AST has been written to.
+                                return Ok(Some(TextDocumentIdentifier::new(uri)));
+                            }
+                        }
+                        Ok(None)
                     }
-                    None => None,
+                    _ => Ok(None),
                 }
             }
-            _ => None,
-        };
-        
-
-        Err(jsonrpc::Error::new(
-            jsonrpc::ErrorCode::MethodNotFound,
-        ))
+            _ => Ok(None),
+        }
     }
 }
 

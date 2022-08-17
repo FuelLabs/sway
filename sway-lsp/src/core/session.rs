@@ -16,10 +16,8 @@ use dashmap::DashMap;
 use forc_pkg::{self as pkg};
 use serde_json::Value;
 use std::{
-    fs::File,
-    io::Write,
     path::PathBuf,
-    sync::{Arc, LockResult, RwLock}, fmt::write,
+    sync::{Arc, LockResult, RwLock},
 };
 use sway_core::{CompileAstResult, CompileResult, ParseProgram, TypedProgram, TypedProgramKind};
 use sway_types::{Ident, Spanned};
