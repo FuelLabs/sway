@@ -1971,7 +1971,7 @@ fn standardize_json_abi_types(json_abi_program: &mut JsonABIProgram) {
         // HashSet to eliminate duplicate type declarations.
         let mut types_set: HashSet<JsonTypeDeclaration> = HashSet::new();
 
-        // Insert values in the BTreeSet `types_set` if they haven't been inserted before.
+        // Insert values in the HashSet `types_set` if they haven't been inserted before.
         // Otherwise, create an appropriate mapping in the HashMap `old_to_new_id`.
         for decl in json_abi_program.types.iter_mut() {
             if let Some(ty) = types_set.get(decl) {
