@@ -140,11 +140,12 @@ fn merge_blocks(
         // Replace the `phi` instruction in `to_block` with its singular element.
         let phi_val = to_block.get_phi(context);
         match &context.values[phi_val.0].value {
-            ValueDatum::Instruction(Instruction::Phi(els)) if els.len() == 1 => {
+            ValueDatum::Instruction(Instruction::Phi(els)) if els.len() <= 1 => {
                 // Replace all uses of the phi and then remove it so it isn't merged below.
-                let (_, ref_val) = els[0];
-                function.replace_value(context, phi_val, ref_val, None);
-                to_block.remove_instruction(context, phi_val);
+                if let Some((_, ref_val)) = els.get(0) {
+                    function.replace_value(context, phi_val, *ref_val, None);
+                    to_block.remove_instruction(context, phi_val);
+                }
             }
             _otherwise => return Err(IrError::InvalidPhi),
         };
