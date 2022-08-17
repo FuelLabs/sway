@@ -79,7 +79,7 @@ pub(crate) fn runs_in_vm(file_name: &str, locked: bool) -> (ProgramState, Compil
         .add_unsigned_coin_input(rng.gen(), rng.gen(), 1, Default::default(), rng.gen(), 0)
         .gas_limit(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
         .maturity(maturity)
-        .finalize_checked(block_height as Word, &params);
+        .finalize_checked(block_height as Word, params);
 
     let mut i = Interpreter::with_storage(storage, Default::default());
     (*i.transact(tx).unwrap().state(), script)
