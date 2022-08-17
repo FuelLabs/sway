@@ -3,7 +3,7 @@ use get_storage_key_abi::TestContract;
 use std::assert::assert;
 
 fn main() -> u64 {
-    let caller = abi(TestContract, 0x7c21d11cf8164675bb548e11a408b1ad3f2896d3ab6d108c9c66742f8a28d266);
+    let caller = abi(TestContract, 0xde1fc5ef591759ed30d7ec21256339b11937d3b8d84229ca12915cc3637acdf9);
 
     // Get the storage keys directly by calling the contract methods from_f1,
     // from_f2, from_f3, from_f4. The keys correspond to different entries in
