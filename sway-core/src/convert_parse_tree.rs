@@ -20,11 +20,11 @@ use {
         IfExpression, ImplSelf, ImplTrait, ImportType, IncludeStatement,
         IntrinsicFunctionExpression, LazyOp, LazyOperatorExpression, Literal, MatchBranch,
         MatchExpression, MethodApplicationExpression, MethodName, ParseTree, Purity,
-        ReassignmentExpression, ReassignmentTarget, ReturnStatement, Scrutinee,
-        StorageAccessExpression, StorageDeclaration, StorageField, StructDeclaration,
-        StructExpression, StructExpressionField, StructField, StructScrutineeField,
-        SubfieldExpression, Supertrait, TraitDeclaration, TraitFn, TreeType, TupleIndexExpression,
-        TypeInfo, UseStatement, VariableDeclaration, Visibility,
+        ReassignmentExpression, ReassignmentTarget, Scrutinee, StorageAccessExpression,
+        StorageDeclaration, StorageField, StructDeclaration, StructExpression,
+        StructExpressionField, StructField, StructScrutineeField, SubfieldExpression, Supertrait,
+        TraitDeclaration, TraitFn, TreeType, TupleIndexExpression, TypeInfo, UseStatement,
+        VariableDeclaration, Visibility,
     },
     std::{
         collections::HashMap,
@@ -102,8 +102,6 @@ impl ErrorContext {
 pub enum ConvertParseTreeError {
     #[error("pub use imports are not supported")]
     PubUseNotSupported { span: Span },
-    #[error("return expressions are not allowed outside of blocks")]
-    ReturnOutsideOfBlock { span: Span },
     #[error("functions used in applications may not be arbitrary expressions")]
     FunctionArbitraryExpression { span: Span },
     #[error("generics are not supported here")]
@@ -196,7 +194,6 @@ impl Spanned for ConvertParseTreeError {
     fn span(&self) -> Span {
         match self {
             ConvertParseTreeError::PubUseNotSupported { span } => span.clone(),
-            ConvertParseTreeError::ReturnOutsideOfBlock { span } => span.clone(),
             ConvertParseTreeError::FunctionArbitraryExpression { span } => span.clone(),
             ConvertParseTreeError::GenericsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::FullyQualifiedPathsNotSupportedHere { span } => span.clone(),
@@ -1164,32 +1161,17 @@ fn expr_to_ast_node(
     is_statement: bool,
 ) -> Result<AstNode, ErrorEmitted> {
     let span = expr.span();
-    let ast_node = match expr {
-        Expr::Return { expr_opt, .. } => {
-            let expression = match expr_opt {
-                Some(expr) => expr_to_expression(ec, *expr)?,
-                None => Expression {
-                    kind: ExpressionKind::Tuple(Vec::new()),
-                    span: span.clone(),
-                },
-            };
+    let ast_node = {
+        let expression = expr_to_expression(ec, expr)?;
+        if !is_statement {
             AstNode {
-                content: AstNodeContent::ReturnStatement(ReturnStatement { expr: expression }),
+                content: AstNodeContent::ImplicitReturnExpression(expression),
                 span,
             }
-        }
-        expr => {
-            let expression = expr_to_expression(ec, expr)?;
-            if !is_statement {
-                AstNode {
-                    content: AstNodeContent::ImplicitReturnExpression(expression),
-                    span,
-                }
-            } else {
-                AstNode {
-                    content: AstNodeContent::Expression(expression),
-                    span,
-                }
+        } else {
+            AstNode {
+                content: AstNodeContent::Expression(expression),
+                span,
             }
         }
     };
@@ -1553,11 +1535,18 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                 span,
             }
         }
-        Expr::Return { return_token, .. } => {
-            let error = ConvertParseTreeError::ReturnOutsideOfBlock {
-                span: return_token.span(),
+        Expr::Return { expr_opt, .. } => {
+            let expression = match expr_opt {
+                Some(expr) => expr_to_expression(ec, *expr)?,
+                None => Expression {
+                    kind: ExpressionKind::Tuple(Vec::new()),
+                    span: span.clone(),
+                },
             };
-            return Err(ec.error(error));
+            Expression {
+                kind: ExpressionKind::Return(Box::new(expression)),
+                span,
+            }
         }
         Expr::If(if_expr) => if_expr_to_expression(ec, if_expr)?,
         Expr::Match {
