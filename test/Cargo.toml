@@ -13,7 +13,7 @@ forc = { path = "../forc", features = ["test"], default-features = false }
 forc-pkg = { path = "../forc-pkg" }
 forc-util = { path = "../forc-util" }
 fuel-asm = "0.8"
-fuel-tx = "0.18"
+fuel-tx = { version = "0.18", features = ["builder"]}
 fuel-vm = { version = "0.15", features = ["random"] }
 gag = "1.0"
 prettydiff = "0.6"
