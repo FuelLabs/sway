@@ -34,6 +34,15 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&variable.name)) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
             }
+            if let Some(type_ascription_span) = &variable.type_ascription_span {
+                if let Some(mut token) =
+                    tokens.get_mut(&to_ident_key(&Ident::new(type_ascription_span.clone())))
+                {
+                    token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(variable.type_ascription));
+                }
+            }
+
             handle_expression(&variable.body, tokens);
         }
         TypedDeclaration::ConstantDeclaration(const_decl) => {
@@ -269,9 +278,10 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
             handle_expression(lhs, tokens);
             handle_expression(rhs, tokens);
         }
-        TypedExpressionVariant::VariableExpression { ref name } => {
-            if let Some(mut token) = tokens.get_mut(&to_ident_key(name)) {
+        TypedExpressionVariant::VariableExpression { ref name, ref span } => {
+            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(span.clone()))) {
                 token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
+                token.type_def = Some(TypeDefinition::Ident(name.clone()));
             }
         }
         TypedExpressionVariant::Tuple { fields } => {

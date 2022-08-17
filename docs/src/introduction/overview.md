@@ -30,7 +30,7 @@ See [the chapter on program types](../sway-program-types/index.md) for more info
 
 To deploy a wallet on Fuel, we will need to write a library, a contract, and a script in Sway.
 
-First, let's [install the Sway toolchain](./installation.md). Then with `forc` installed, let's create three different sibling projects:
+First, let's [install the Fuel toolchain](./installation.md). Then with `forc` installed, let's create three different sibling projects:
 
 ```sh
 forc new wallet_lib
@@ -220,7 +220,7 @@ Note that we are passing in the `wallet_contract` contract ID as a command-line 
 If the script is successfully run, it will output something that looks like:
 
 ```console
-$ forc run --pretty-print --contract <contract-id> 
+$ forc run --pretty-print --contract <contract-id>
   Compiled library "core".
   Compiled library "std".
   Compiled library "wallet_lib".
