@@ -263,6 +263,7 @@ impl LanguageServer for Backend {
 pub struct RunnableParams {}
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ShowTypedAstParams {
     pub text_document: TextDocumentIdentifier,
 }
@@ -353,11 +354,11 @@ mod tests {
             .unwrap()
             .parent()
             .unwrap()
-            .join("examples/storage_variables")
+            .join("examples/enums")
     }
 
     fn load_sway_example() -> (Url, String) {
-        let manifest_dir = e2e_test_dir();
+        let manifest_dir = sway_example_dir();
         let src_path = manifest_dir.join("src/main.sw");
         let mut file = fs::File::open(&src_path).unwrap();
         let mut sway_program = String::new();
@@ -425,6 +426,22 @@ mod tests {
         let exit = Request::build("textDocument/didClose").finish();
         let response = service.ready().await.unwrap().call(exit.clone()).await;
         assert_eq!(response, Ok(None));
+    }
+
+    async fn show_typed_ast_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri
+            },
+        });
+        let show_ast = Request::build("sway/show_typed_ast")
+            .params(params)
+            .id(1)
+            .finish();
+        let response = service.ready().await.unwrap().call(show_ast.clone()).await;
+        let ok = Response::from_ok(1.into(), json!({"uri": "file:///tmp/typed_ast.rs"}));
+        assert_eq!(response, Ok(Some(ok)));
+        show_ast
     }
 
     fn config() -> DebugFlags {
@@ -618,6 +635,43 @@ mod tests {
             .finish();
         let response = service.ready().await.unwrap().call(did_change).await;
         assert_eq!(response, Ok(None));
+
+        // send "shutdown" request
+        let _ = shutdown_request(&mut service).await;
+
+        // send "exit" request
+        exit_notification(&mut service).await;
+    }
+
+    #[tokio::test]
+    #[allow(dead_code)]
+    async fn show_typed_ast() {
+        let (mut service, mut messages) =
+            LspService::build(|client| Backend::new(client, config()))
+                .custom_method("sway/show_typed_ast", Backend::show_typed_ast)
+                .finish();
+
+        // send "initialize" request
+        let _ = initialize_request(&mut service).await;
+
+        // send "initialized" notification
+        initialized_notification(&mut service).await;
+
+        // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
+        messages.next().await.unwrap();
+
+        let (uri, sway_program) = load_sway_example();
+
+        // let uri = Url::from_file_path("/Users/joshuabatty/Documents/rust/fuel/sway/examples/enums/src/enum_of_structs.sw").unwrap();
+
+        // send "textDocument/didOpen" notification for `uri`
+        did_open_notification(&mut service, &uri, &sway_program).await;
+
+        // ignore the "textDocument/publishDiagnostics" notification
+        messages.next().await.unwrap();
+
+        // send "sway/show_typed_ast" request
+        let _ = show_typed_ast_request(&mut service, &uri).await;
 
         // send "shutdown" request
         let _ = shutdown_request(&mut service).await;
