@@ -4,6 +4,7 @@ use crate::{
     utils::{
         bracket::{CurlyBrace, Parenthesis},
         comments::{ByteSpan, LeafSpans},
+        shape::ExprKind,
     },
 };
 use std::fmt::Write;
@@ -77,80 +78,110 @@ impl CurlyBrace for ItemFn {
 impl Format for FnSignature {
     fn format(
         &self,
-        formatted_code: &mut String,
+        formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(
-            formatted_code,
-            "{}",
-            formatter.shape.indent.to_string(&formatter.config)?,
-        )?;
-        // `pub `
-        if let Some(visibility_token) = &self.visibility {
-            write!(formatted_code, "{} ", visibility_token.span().as_str())?;
-        }
-        // `fn ` + name
-        write!(
-            formatted_code,
-            "{} {}",
-            self.fn_token.span().as_str(),
-            self.name.as_str()
-        )?;
-        // `<T>`
-        if let Some(generics) = &self.generics {
-            generics.format(formatted_code, formatter)?;
-        }
-        // `(`
-        Self::open_parenthesis(formatted_code, formatter)?;
-        // FnArgs
-        match self.arguments.get() {
-            FnArgs::Static(args) => {
-                args.format(formatted_code, formatter)?;
-            }
-            FnArgs::NonStatic {
-                self_token,
-                ref_self,
-                mutable_self,
-                args_opt,
-            } => {
-                // `ref `
-                if let Some(ref_token) = ref_self {
-                    write!(formatted_code, "{} ", ref_token.span().as_str())?;
-                }
-                // `mut `
-                if let Some(mut_token) = mutable_self {
-                    write!(formatted_code, "{} ", mut_token.span().as_str())?;
-                }
-                // `self`
-                formatted_code.push_str(self_token.span().as_str());
-                // `args_opt`
-                if let Some((comma, args)) = args_opt {
-                    // `, `
-                    write!(formatted_code, "{} ", comma.ident().as_str())?;
-                    // `Punctuated<FnArg, CommaToken>`
-                    args.format(formatted_code, formatter)?;
-                }
-            }
-        }
-        // `)`
-        Self::close_parenthesis(formatted_code, formatter)?;
-        // `return_type_opt`
-        if let Some((right_arrow, ty)) = &self.return_type_opt {
-            write!(
-                formatted_code,
-                " {} ",
-                right_arrow.ident().as_str() // `->`
-            )?;
-            ty.format(formatted_code, formatter)?; // `Ty`
-        }
-        // `WhereClause`
-        if let Some(where_clause) = &self.where_clause_opt {
-            writeln!(formatted_code)?;
-            where_clause.format(formatted_code, formatter)?;
-            formatter.shape.update_where_clause();
-        }
+        let prev_state = formatter.shape.code_line;
+        formatter
+            .shape
+            .code_line
+            .update_expr_kind(ExprKind::Function);
+
+        let mut buf = FormattedCode::new();
+        let mut temp_formatter = Formatter::default();
+        format_fn_sig(self, &mut buf, &mut temp_formatter)?;
+
+        let fn_sig_width = buf.chars().count() as usize;
+        formatter.shape.add_width(fn_sig_width);
+        formatter
+            .shape
+            .get_line_style(None, Some(fn_sig_width), &formatter.config);
+
+        format_fn_sig(self, formatted_code, formatter)?;
+
+        formatter.shape.sub_width(fn_sig_width);
+        formatter.shape.update_line_settings(prev_state);
+
         Ok(())
     }
+}
+
+fn format_fn_sig(
+    fn_sig: &FnSignature,
+    formatted_code: &mut FormattedCode,
+    formatter: &mut Formatter,
+) -> Result<(), FormatterError> {
+    write!(
+        formatted_code,
+        "{}",
+        formatter.shape.indent.to_string(&formatter.config)?,
+    )?;
+    // `pub `
+    if let Some(visibility_token) = &fn_sig.visibility {
+        write!(formatted_code, "{} ", visibility_token.span().as_str())?;
+    }
+    // `fn ` + name
+    write!(
+        formatted_code,
+        "{} {}",
+        fn_sig.fn_token.span().as_str(),
+        fn_sig.name.as_str()
+    )?;
+    // `<T>`
+    if let Some(generics) = &fn_sig.generics {
+        generics.format(formatted_code, formatter)?;
+    }
+    // `(`
+    FnSignature::open_parenthesis(formatted_code, formatter)?;
+    // FnArgs
+    match fn_sig.arguments.get() {
+        FnArgs::Static(args) => {
+            args.format(formatted_code, formatter)?;
+        }
+        FnArgs::NonStatic {
+            self_token,
+            ref_self,
+            mutable_self,
+            args_opt,
+        } => {
+            // `ref `
+            if let Some(ref_token) = ref_self {
+                write!(formatted_code, "{} ", ref_token.span().as_str())?;
+            }
+            // `mut `
+            if let Some(mut_token) = mutable_self {
+                write!(formatted_code, "{} ", mut_token.span().as_str())?;
+            }
+            // `self`
+            formatted_code.push_str(self_token.span().as_str());
+            // `args_opt`
+            if let Some((comma, args)) = args_opt {
+                // `, `
+                write!(formatted_code, "{} ", comma.ident().as_str())?;
+                // `Punctuated<FnArg, CommaToken>`
+                args.format(formatted_code, formatter)?;
+            }
+        }
+    }
+    // `)`
+    FnSignature::close_parenthesis(formatted_code, formatter)?;
+    // `return_type_opt`
+    if let Some((right_arrow, ty)) = &fn_sig.return_type_opt {
+        write!(
+            formatted_code,
+            " {} ",
+            right_arrow.ident().as_str() // `->`
+        )?;
+        ty.format(formatted_code, formatter)?; // `Ty`
+    }
+    // `WhereClause`
+    if let Some(where_clause) = &fn_sig.where_clause_opt {
+        writeln!(formatted_code)?;
+        where_clause.format(formatted_code, formatter)?;
+        formatter.shape.update_where_clause();
+    }
+
+    Ok(())
 }
 
 // We will need to add logic to handle the case of long fn arguments, and break into new line
