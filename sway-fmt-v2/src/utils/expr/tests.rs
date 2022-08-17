@@ -119,3 +119,20 @@ fmt_test!(  multiline_match_stmt "match foo {\n    Foo::foo => {}\n    Foo::bar 
 fmt_test!(  if_else_block "if foo {\n    foo();\n} else if bar {\n    bar();\n} else {\n    baz();\n}",
             intermediate_whitespace "if foo {\n    foo();\n} else if bar {\n    bar();\n} else {\n    baz();\n}"
 );
+
+fmt_test!(  match_branch_kind
+"match foo {
+    Foo::foo => {
+        foo();
+        bar();
+    }
+    Foo::bar => {
+        baz();
+        quux();
+    }
+}",
+            intermediate_whitespace "match     foo
+            
+            \n{\n\n    Foo::foo     => {\n        foo() ;     \n        bar( ); \n    } \n    Foo::\nbar => {\n        baz();\n        quux();\n    }\n\n\n}"
+
+);

@@ -138,6 +138,7 @@ impl CurlyBrace for MatchBranch {
     }
 }
 
+// Later we should add logic to handle transforming `Block` -> `Expr` and vice versa.
 impl Format for MatchBranchKind {
     fn format(
         &self,
@@ -150,7 +151,21 @@ impl Format for MatchBranchKind {
                 comma_token_opt,
             } => {
                 Self::open_curly_brace(formatted_code, formatter)?;
-                block.get().format(formatted_code, formatter)?;
+                let block = block.get();
+                if block.statements.is_empty() && block.final_expr_opt.is_none() {
+                    // even if there is no code block we still want to unindent
+                    // before the closing brace
+                    formatter.shape.block_unindent(&formatter.config);
+                } else {
+                    block.format(formatted_code, formatter)?;
+                    // we handle this here to avoid needless indents
+                    formatter.shape.block_unindent(&formatter.config);
+                    write!(
+                        formatted_code,
+                        "{}",
+                        formatter.shape.indent.to_string(&formatter.config)?
+                    )?;
+                }
                 Self::close_curly_brace(formatted_code, formatter)?;
                 if let Some(comma_token) = comma_token_opt {
                     write!(formatted_code, "{}", comma_token.span().as_str())?;
@@ -169,8 +184,9 @@ impl Format for MatchBranchKind {
 impl CurlyBrace for MatchBranchKind {
     fn open_curly_brace(
         line: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        formatter.shape.block_indent(&formatter.config);
         write!(line, "{}", Delimiter::Brace.as_open_char())?;
         Ok(())
     }
