@@ -21,6 +21,14 @@ struct NewlineSequence {
     sequence_length: usize,
 }
 
+impl ToString for NewlineSequence {
+    fn to_string(&self) -> String {
+        (0..self.sequence_length - 1)
+            .map(|_| "\n")
+            .collect::<String>()
+    }
+}
+
 type NewlineMap = BTreeMap<ByteSpan, NewlineSequence>;
 
 /// Search for newline sequences in the unformatted code and collect ByteSpan -> NewlineSequence for the input source
@@ -32,7 +40,8 @@ fn newline_map_from_src(unformatted_input: Arc<str>) -> Result<NewlineMap, Forma
     let mut in_sequence = false;
     let mut sequence_start = 0;
     while let Some((char_index, char)) = input_iter.next() {
-        if (char == '}' || char == ';') && input_iter.peek().map(|input| input.1) == Some('\n') {
+        let next_char = input_iter.peek().map(|input| input.1);
+        if (char == '}' || char == ';') && next_char == Some('\n') {
             if !in_sequence {
                 sequence_start = char_index + 1;
                 in_sequence = true;
@@ -40,12 +49,15 @@ fn newline_map_from_src(unformatted_input: Arc<str>) -> Result<NewlineMap, Forma
         } else if char == '\n' && in_sequence {
             current_sequence_length += 1;
         }
-        if Some('}') == input_iter.peek().map(|input| input.1) && in_sequence {
+        if (Some('}') == next_char || Some('(') == next_char) && in_sequence {
             // If we are in a sequence and find `}`, abort the sequence
             current_sequence_length = 0;
             in_sequence = false;
         }
-        if Some('\n') != input_iter.peek().map(|input| input.1) && current_sequence_length > 0 {
+        if next_char == Some(' ') || next_char == Some('\t') {
+            continue;
+        }
+        if Some('\n') != next_char && current_sequence_length > 0 && in_sequence {
             // Next char is not a newline so this is the end of the sequence
             let byte_span = ByteSpan {
                 start: sequence_start,
@@ -138,13 +150,21 @@ fn add_newlines(
                 newline_sequences,
                 offset,
                 formatted_code,
-                2,
+                1,
             )?;
         }
         previous_unformatted_newline_span = unformatted_newline_span;
         previous_formatted_newline_span = formatted_newline_span;
     }
     Ok(())
+}
+
+fn format_newline_sequnce(newline_sequence: &NewlineSequence, threshold: usize) -> String {
+    if newline_sequence.sequence_length > threshold {
+        (0..threshold).map(|_| "\n").collect::<String>()
+    } else {
+        newline_sequence.to_string()
+    }
 }
 
 /// Inserts after given span and returns the offset.
@@ -158,13 +178,11 @@ fn insert_after_span(
     let iter = newline_sequences_to_insert.iter();
     let mut sequence_string = String::new();
     for newline_sequence in iter {
-        if newline_sequence.sequence_length > threshold {
-            write!(
-                sequence_string,
-                "{}",
-                (0..threshold).map(|_| "\n").collect::<String>()
-            )?;
-        }
+        write!(
+            sequence_string,
+            "{}",
+            format_newline_sequnce(newline_sequence, threshold)
+        )?;
     }
     let mut src_rope = Rope::from_str(formatted_code);
     src_rope.insert(from.end + offset, &sequence_string);
@@ -214,6 +232,26 @@ fn main() {
                 .map(|map_item| map_item.1.sequence_length),
         );
         let correct_newline_sequence_lengths = vec![2, 2, 3];
+
+        assert_eq!(newline_sequence_lengths, correct_newline_sequence_lengths);
+    }
+
+    #[test]
+    fn test_newline_map_with_whitespaces() {
+        let raw_src = r#"script;
+        fuel_coin.mint        {
+            gas:             default_gas
+        }
+        
+        (11);"#;
+
+        let newline_map = newline_map_from_src(Arc::from(raw_src)).unwrap();
+        let newline_sequence_lengths = Vec::from_iter(
+            newline_map
+                .iter()
+                .map(|map_item| map_item.1.sequence_length),
+        );
+        let correct_newline_sequence_lengths = vec![1];
 
         assert_eq!(newline_sequence_lengths, correct_newline_sequence_lengths);
     }
