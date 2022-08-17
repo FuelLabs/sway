@@ -84,5 +84,5 @@ fmt_test!(  long_fn_name "pub fn hello_this_is_a_really_long_fn_name_wow_so_long
 );
 
 fmt_test!(  long_fn_args "fn foo(\n    mut self,\n    this_is_a_really_long_variable: Foo,\n    hello_im_really_long: Bar,\n) -> String {\n}\n",
-            intermediate_whitespace "fn foo(\n    mut self,\n    this_is_a_really_long_variable: Foo,\n    hello_im_really_long: Bar,\n) -> String {\n}"
+            intermediate_whitespace "  fn  foo( \n        mut self , \n     this_is_a_really_long_variable : Foo ,\n    hello_im_really_long: Bar , \n ) ->    String { \n }     "
 );

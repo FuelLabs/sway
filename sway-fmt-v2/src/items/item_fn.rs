@@ -8,7 +8,11 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{keywords::Token, token::Delimiter, FnArg, FnArgs, FnSignature, ItemFn};
+use sway_ast::{
+    keywords::{MutToken, RefToken, SelfToken, Token},
+    token::Delimiter,
+    FnArg, FnArgs, FnSignature, ItemFn,
+};
 use sway_types::Spanned;
 
 #[cfg(test)]
@@ -185,16 +189,7 @@ fn format_fn_args(
                         "{}",
                         formatter.shape.indent.to_string(&formatter.config)?
                     )?;
-                    // `ref `
-                    if let Some(ref_token) = ref_self {
-                        write!(formatted_code, "{} ", ref_token.span().as_str())?;
-                    }
-                    // `mut `
-                    if let Some(mut_token) = mutable_self {
-                        write!(formatted_code, "{} ", mut_token.span().as_str())?;
-                    }
-                    // `self`
-                    write!(formatted_code, "{}", self_token.span().as_str())?;
+                    format_self(self_token, ref_self, mutable_self, formatted_code)?;
                     // `args_opt`
                     if let Some((comma, args)) = args_opt {
                         // `, `
@@ -204,16 +199,7 @@ fn format_fn_args(
                     }
                 }
                 _ => {
-                    // `ref `
-                    if let Some(ref_token) = ref_self {
-                        write!(formatted_code, "{} ", ref_token.span().as_str())?;
-                    }
-                    // `mut `
-                    if let Some(mut_token) = mutable_self {
-                        write!(formatted_code, "{} ", mut_token.span().as_str())?;
-                    }
-                    // `self`
-                    write!(formatted_code, "{}", self_token.span().as_str())?;
+                    format_self(self_token, ref_self, mutable_self, formatted_code)?;
                     // `args_opt`
                     if let Some((comma, args)) = args_opt {
                         // `, `
@@ -225,6 +211,26 @@ fn format_fn_args(
             }
         }
     }
+
+    Ok(())
+}
+
+fn format_self(
+    self_token: &SelfToken,
+    ref_self: &Option<RefToken>,
+    mutable_self: &Option<MutToken>,
+    formatted_code: &mut FormattedCode,
+) -> Result<(), FormatterError> {
+    // `ref `
+    if let Some(ref_token) = ref_self {
+        write!(formatted_code, "{} ", ref_token.span().as_str())?;
+    }
+    // `mut `
+    if let Some(mut_token) = mutable_self {
+        write!(formatted_code, "{} ", mut_token.span().as_str())?;
+    }
+    // `self`
+    write!(formatted_code, "{}", self_token.span().as_str())?;
 
     Ok(())
 }
