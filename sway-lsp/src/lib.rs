@@ -14,7 +14,7 @@ pub async fn start(config: DebugFlags) {
 
     let (service, socket) = LspService::build(|client| Backend::new(client, config))
         .custom_method("sway/runnables", Backend::runnables)
-        .custom_method("sway/show_typed_ast", Backend::show_typed_ast)
+        .custom_method("sway/show_ast", Backend::show_ast)
         .finish();
     Server::new(stdin, stdout, socket).serve(service).await;
 }

@@ -28,13 +28,19 @@ use tower_lsp::lsp_types::{
 
 pub type Documents = DashMap<String, TextDocument>;
 
+#[derive(Default, Debug)]
+pub struct CompiledProgram {
+    pub parsed: Option<ParseProgram>,
+    pub typed: Option<TypedProgram>,
+}
+
 #[derive(Debug)]
 pub struct Session {
     pub documents: Documents,
     pub config: RwLock<SwayConfig>,
     pub token_map: TokenMap,
     pub runnables: DashMap<RunnableType, Runnable>,
-    pub typed_program: RwLock<Option<Box<TypedProgram>>>,
+    pub compiled_program: RwLock<CompiledProgram>,
 }
 
 impl Session {
@@ -44,7 +50,7 @@ impl Session {
             config: RwLock::new(SwayConfig::default()),
             token_map: DashMap::new(),
             runnables: DashMap::new(),
-            typed_program: RwLock::new(None),
+            compiled_program: RwLock::new(Default::default()),
         }
     }
 
@@ -191,6 +197,10 @@ impl Session {
                     }
                 }
 
+                if let LockResult::Ok(mut program) = self.compiled_program.write() {
+                    program.parsed = Some(parse_program);
+                }
+
                 Ok(capabilities::diagnostic::get_diagnostics(
                     parsed_result.warnings,
                     parsed_result.errors,
@@ -235,8 +245,8 @@ impl Session {
                     }
                 }
 
-                if let LockResult::Ok(mut typed_ast) = self.typed_program.write() {
-                    *typed_ast = Some(typed_program);
+                if let LockResult::Ok(mut program) = self.compiled_program.write() {
+                    program.typed = Some(*typed_program);
                 }
 
                 Ok(capabilities::diagnostic::get_diagnostics(warnings, vec![]))

@@ -264,8 +264,9 @@ pub struct RunnableParams {}
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ShowTypedAstParams {
+pub struct ShowAstParams {
     pub text_document: TextDocumentIdentifier,
+    pub ast_kind: String,
 }
 
 // Custom LSP-Server Methods
@@ -286,40 +287,74 @@ impl Backend {
         Ok(ranges)
     }
 
-    pub async fn show_typed_ast(
+    pub async fn show_ast(
         &self,
-        params: ShowTypedAstParams,
+        params: ShowAstParams,
     ) -> jsonrpc::Result<Option<TextDocumentIdentifier>> {
-        match self.session.typed_program.read() {
-            std::sync::LockResult::Ok(typed_ast) => {
-                match *typed_ast {
-                    Some(ref typed_program) => {
-                        let open_file = params.text_document.uri;
-                        // Convert the Uri to a PathBuf
-                        let path = open_file.to_file_path().ok();
-                        // Initialize the string with the AST from the root
-                        let mut formatted_ast: String =
-                            format!("{:#?}", typed_program.root.all_nodes);
-                        // Use the name to match on either the DepName (ident) of
-                        // any submodules.
-                        for (ident, submodule) in &typed_program.root.submodules {
-                            if ident.span().path().map(|a| a.deref()) == path.as_ref() {
-                                // Overwrite the root AST with the submodule AST
-                                formatted_ast = format!("{:#?}", submodule.module.all_nodes);
-                            }
-                        }
+        let current_open_file = params.text_document.uri;
+        // Convert the Uri to a PathBuf
+        let path = current_open_file.to_file_path().ok();
 
-                        let tmp_ast_path = Path::new("/tmp/typed_ast.rs");
-                        if let Ok(mut file) = File::create(tmp_ast_path) {
-                            let _ = writeln!(&mut file, "{}", formatted_ast);
-                            if let Ok(uri) = Url::from_file_path(tmp_ast_path) {
-                                // Return the tmp file path where the AST has been written to.
-                                return Ok(Some(TextDocumentIdentifier::new(uri)));
-                            }
-                        }
-                        Ok(None)
+        let write_ast_to_file =
+            |path: &Path, ast_string: &String| -> Option<TextDocumentIdentifier> {
+                if let Ok(mut file) = File::create(path) {
+                    let _ = writeln!(&mut file, "{}", ast_string);
+                    if let Ok(uri) = Url::from_file_path(path) {
+                        // Return the tmp file path where the AST has been written to.
+                        return Some(TextDocumentIdentifier::new(uri));
                     }
-                    _ => Ok(None),
+                }
+                None
+            };
+
+        match self.session.compiled_program.read() {
+            std::sync::LockResult::Ok(program) => {
+                match params.ast_kind.as_str() {
+                    "Parsed" => {
+                        match program.parsed {
+                            Some(ref parsed_program) => {
+                                // Initialize the string with the AST from the root
+                                let mut formatted_ast: String =
+                                    format!("{:#?}", parsed_program.root.tree.root_nodes);
+                                // Use the name to match on either the DepName (ident) of
+                                // any submodules.
+                                for (ident, submodule) in &parsed_program.root.submodules {
+                                    if ident.span().path().map(|a| a.deref()) == path.as_ref() {
+                                        // Overwrite the root AST with the submodule AST
+                                        formatted_ast =
+                                            format!("{:#?}", submodule.module.tree.root_nodes);
+                                    }
+                                }
+
+                                let tmp_ast_path = Path::new("/tmp/parsed_ast.rs");
+                                Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
+                            }
+                            _ => Ok(None),
+                        }
+                    }
+                    "Typed" => {
+                        match program.typed {
+                            Some(ref typed_program) => {
+                                // Initialize the string with the AST from the root
+                                let mut formatted_ast: String =
+                                    format!("{:#?}", typed_program.root.all_nodes);
+                                // Use the name to match on either the DepName (ident) of
+                                // any submodules.
+                                for (ident, submodule) in &typed_program.root.submodules {
+                                    if ident.span().path().map(|a| a.deref()) == path.as_ref() {
+                                        // Overwrite the root AST with the submodule AST
+                                        formatted_ast =
+                                            format!("{:#?}", submodule.module.all_nodes);
+                                    }
+                                }
+
+                                let tmp_ast_path = Path::new("/tmp/typed_ast.rs");
+                                Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
+                            }
+                            _ => Ok(None),
+                        }
+                    }
+                    _ => unreachable!(),
                 }
             }
             _ => Ok(None),
@@ -428,13 +463,14 @@ mod tests {
         assert_eq!(response, Ok(None));
     }
 
-    async fn show_typed_ast_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+    async fn show_ast_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
         let params = json!({
             "textDocument": {
                 "uri": uri
             },
+            "astKind": "Typed",
         });
-        let show_ast = Request::build("sway/show_typed_ast")
+        let show_ast = Request::build("sway/show_ast")
             .params(params)
             .id(1)
             .finish();
@@ -645,10 +681,10 @@ mod tests {
 
     #[tokio::test]
     #[allow(dead_code)]
-    async fn show_typed_ast() {
+    async fn show_ast() {
         let (mut service, mut messages) =
             LspService::build(|client| Backend::new(client, config()))
-                .custom_method("sway/show_typed_ast", Backend::show_typed_ast)
+                .custom_method("sway/show_ast", Backend::show_ast)
                 .finish();
 
         // send "initialize" request
@@ -671,7 +707,7 @@ mod tests {
         messages.next().await.unwrap();
 
         // send "sway/show_typed_ast" request
-        let _ = show_typed_ast_request(&mut service, &uri).await;
+        let _ = show_ast_request(&mut service, &uri).await;
 
         // send "shutdown" request
         let _ = shutdown_request(&mut service).await;
