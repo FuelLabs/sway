@@ -89,7 +89,7 @@ abi Counter {
 }
 ```
 
-**Going line by line**
+### Going line by line
 
 `#[storage(read, write)]` is an annotation which denotes that this function has the permissions to read and write a value in storage.
 
@@ -118,7 +118,7 @@ impl Counter for Contract {
 
 > Note: `return storage.counter;` is equivalent to `storage.counter`.
 
-**Going line by line**
+### What we just did
 
 `#[storage(read)]` is an annotation which denotes that this function has the permissions to read values in storage.
 
@@ -231,4 +231,4 @@ test can_get_contract_id ... ok
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.24s
 ```
 
-Congratulations, you've just created and tested your first Sway smart contract 🎉. Now you can build a frontend to interact with your contract using the TypeScript SDK. You can find a step-by-step guide to building a front end for your project [here](https://luizstacio.github.io/fuels-ts/QUICKSTART).
+Congratulations, you've just created and tested your first Sway smart contract 🎉. Now you can build a frontend to interact with your contract using the TypeScript SDK. You can find a step-by-step guide to building a front end for your project [here](https://fuellabs.github.io/fuels-ts/QUICKSTART.html).
