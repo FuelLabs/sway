@@ -1,12 +1,12 @@
 # Installation
 
-Note that if you want to run Sway smart contracts (e.g. for testing), a Fuel Core full node is required. Otherwise, the Sway toolchain is sufficient to compile Sway smart contracts.
+The _Sway toolchain_ is sufficient to compile Sway smart contracts. Otherwise, note that if you want to run Sway smart contracts (e.g. for testing), a Fuel Core full node is required, which is packaged together with the _Sway toolchain_ together as the _Fuel toolchain_.
 
 ## Installing from Pre-compiled Binaries
 
 Pre-compiled release binaries for Linux and macOS are available for the Sway toolchain. Native Windows is currently unsupported ([tracking issue for Windows support](https://github.com/FuelLabs/sway/issues/1526)). Windows Subsystem for Linux should work but is not officially supported.
 
-[`fuelup`](https://github.com/FuelLabs/fuelup) is the equivalent of Rust's `rustup` for the Sway toolchain. It enables easily downloading binary releases of the Sway toolchain.
+[`fuelup`](https://github.com/FuelLabs/fuelup) is the equivalent of Rust's `rustup` for the Fuel toolchain. It enables easily downloading binary releases of the Fuel toolchain.
 
 Start by installing `fuelup` with:
 
@@ -28,7 +28,7 @@ Once `fuelup` is installed, `fuelup-init` automatically runs the command below
 fuelup toolchain install latest
 ```
 
-to install the latest Sway toolchain.
+to install the latest Fuel toolchain.
 
 You can run the same command at a later time to update the toolchain.
 
@@ -45,7 +45,7 @@ rustup install stable
 
 Installing `fuel-core` may require installing additional system dependencies. See [here](https://github.com/FuelLabs/fuel-core#building) for instructions.
 
-The Sway toolchain is built and tested against the `stable` Rust toolchain version (<https://github.com/rust-lang/rust/releases/latest>).  There is no guarantee it will work with the `nightly` Rust toolchain, or with earlier `stable` versions, so ensure you are using `stable` with:
+The Sway toolchain is built and tested against the `stable` Rust toolchain version (<https://github.com/rust-lang/rust/releases/latest>). There is no guarantee it will work with the `nightly` Rust toolchain, or with earlier `stable` versions, so ensure you are using `stable` with:
 
 ```sh
 # Update installed Rust toolchain; can be used independently.
