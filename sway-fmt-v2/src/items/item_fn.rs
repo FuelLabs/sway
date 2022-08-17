@@ -4,12 +4,15 @@ use crate::{
     utils::{
         bracket::{CurlyBrace, Parenthesis},
         comments::{ByteSpan, LeafSpans},
-        shape::ExprKind,
+        shape::{ExprKind, LineStyle},
     },
 };
 use std::fmt::Write;
 use sway_ast::{keywords::Token, token::Delimiter, FnArg, FnArgs, FnSignature, ItemFn};
 use sway_types::Spanned;
+
+#[cfg(test)]
+mod tests;
 
 impl Format for ItemFn {
     fn format(
@@ -87,15 +90,19 @@ impl Format for FnSignature {
             .code_line
             .update_expr_kind(ExprKind::Function);
 
-        let mut buf = FormattedCode::new();
+        let mut fn_sig = FormattedCode::new();
+        let mut fn_args = FormattedCode::new();
         let mut temp_formatter = Formatter::default();
-        format_fn_sig(self, &mut buf, &mut temp_formatter)?;
+        format_fn_sig(self, &mut fn_sig, &mut temp_formatter)?;
+        format_fn_args(self.arguments.get(), &mut fn_args, &mut temp_formatter)?;
 
-        let fn_sig_width = buf.chars().count() as usize;
+        let fn_sig_width = fn_sig.chars().count() as usize + 2; // add two for opening brace + space
+        let fn_args_width = fn_args.chars().count() as usize;
+
         formatter.shape.add_width(fn_sig_width);
         formatter
             .shape
-            .get_line_style(None, Some(fn_sig_width), &formatter.config);
+            .get_line_style(None, Some(fn_args_width), &formatter.config);
 
         format_fn_sig(self, formatted_code, formatter)?;
 
@@ -134,35 +141,7 @@ fn format_fn_sig(
     // `(`
     FnSignature::open_parenthesis(formatted_code, formatter)?;
     // FnArgs
-    match fn_sig.arguments.get() {
-        FnArgs::Static(args) => {
-            args.format(formatted_code, formatter)?;
-        }
-        FnArgs::NonStatic {
-            self_token,
-            ref_self,
-            mutable_self,
-            args_opt,
-        } => {
-            // `ref `
-            if let Some(ref_token) = ref_self {
-                write!(formatted_code, "{} ", ref_token.span().as_str())?;
-            }
-            // `mut `
-            if let Some(mut_token) = mutable_self {
-                write!(formatted_code, "{} ", mut_token.span().as_str())?;
-            }
-            // `self`
-            formatted_code.push_str(self_token.span().as_str());
-            // `args_opt`
-            if let Some((comma, args)) = args_opt {
-                // `, `
-                write!(formatted_code, "{} ", comma.ident().as_str())?;
-                // `Punctuated<FnArg, CommaToken>`
-                args.format(formatted_code, formatter)?;
-            }
-        }
-    }
+    format_fn_args(fn_sig.arguments.get(), formatted_code, formatter)?;
     // `)`
     FnSignature::close_parenthesis(formatted_code, formatter)?;
     // `return_type_opt`
@@ -184,20 +163,109 @@ fn format_fn_sig(
     Ok(())
 }
 
-// We will need to add logic to handle the case of long fn arguments, and break into new line
+fn format_fn_args(
+    fn_args: &FnArgs,
+    formatted_code: &mut FormattedCode,
+    formatter: &mut Formatter,
+) -> Result<(), FormatterError> {
+    match fn_args {
+        FnArgs::Static(args) => {
+            args.format(formatted_code, formatter)?;
+        }
+        FnArgs::NonStatic {
+            self_token,
+            ref_self,
+            mutable_self,
+            args_opt,
+        } => {
+            match formatter.shape.code_line.line_style {
+                LineStyle::Multiline => {
+                    write!(
+                        formatted_code,
+                        "{}",
+                        formatter.shape.indent.to_string(&formatter.config)?
+                    )?;
+                    // `ref `
+                    if let Some(ref_token) = ref_self {
+                        write!(formatted_code, "{} ", ref_token.span().as_str())?;
+                    }
+                    // `mut `
+                    if let Some(mut_token) = mutable_self {
+                        write!(formatted_code, "{} ", mut_token.span().as_str())?;
+                    }
+                    // `self`
+                    write!(formatted_code, "{}", self_token.span().as_str())?;
+                    // `args_opt`
+                    if let Some((comma, args)) = args_opt {
+                        // `, `
+                        write!(formatted_code, "{}", comma.ident().as_str())?;
+                        // `Punctuated<FnArg, CommaToken>`
+                        args.format(formatted_code, formatter)?;
+                    }
+                }
+                _ => {
+                    // `ref `
+                    if let Some(ref_token) = ref_self {
+                        write!(formatted_code, "{} ", ref_token.span().as_str())?;
+                    }
+                    // `mut `
+                    if let Some(mut_token) = mutable_self {
+                        write!(formatted_code, "{} ", mut_token.span().as_str())?;
+                    }
+                    // `self`
+                    write!(formatted_code, "{}", self_token.span().as_str())?;
+                    // `args_opt`
+                    if let Some((comma, args)) = args_opt {
+                        // `, `
+                        write!(formatted_code, "{} ", comma.ident().as_str())?;
+                        // `Punctuated<FnArg, CommaToken>`
+                        args.format(formatted_code, formatter)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
 impl Parenthesis for FnSignature {
     fn open_parenthesis(
         line: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Parenthesis.as_open_char())?;
+        let open_paren = Delimiter::Parenthesis.as_open_char();
+        match formatter.shape.code_line.line_style {
+            LineStyle::Multiline => {
+                formatter.shape.block_indent(&formatter.config);
+                writeln!(line, "{open_paren}")?;
+            }
+            _ => {
+                write!(line, "{open_paren}")?;
+            }
+        }
+
         Ok(())
     }
     fn close_parenthesis(
         line: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Parenthesis.as_close_char())?;
+        let close_paren = Delimiter::Parenthesis.as_close_char();
+        match formatter.shape.code_line.line_style {
+            LineStyle::Multiline => {
+                formatter.shape.block_unindent(&formatter.config);
+                write!(
+                    line,
+                    "{}{close_paren}",
+                    formatter.shape.indent.to_string(&formatter.config)?
+                )?;
+            }
+            _ => {
+                write!(line, "{close_paren}")?;
+            }
+        }
+
         Ok(())
     }
 }
