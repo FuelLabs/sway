@@ -1187,7 +1187,7 @@ impl FnCompiler {
                     .add_metadatum(context, span_md_idx)
             })
         } else if let Some(val) = self.function.get_arg(context, name) {
-            let is_ptr = val.get_type(&context).filter(|f| f.is_ptr_type()).is_some();
+            let is_ptr = val.get_type(context).filter(|f| f.is_ptr_type()).is_some();
             if is_ptr {
                 Ok(self
                     .current_block
