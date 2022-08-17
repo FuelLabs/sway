@@ -148,6 +148,19 @@ impl Block {
             }
         })
     }
+    pub(super) fn successors<'a>(&'a self, context: &'a Context) -> Vec<Block> {
+        match self.get_terminator(context) {
+            Some(Instruction::ConditionalBranch {
+                true_block,
+                false_block,
+                ..
+            }) => vec![*true_block, *false_block],
+
+            Some(Instruction::Branch(block)) => vec![*block],
+
+            _otherwise => Vec::new(),
+        }
+    }
 
     /// Return whether this block is already terminated.  Checks if the final instruction, if it
     /// exists, is a terminator.
@@ -298,28 +311,6 @@ impl BlockContent {
 
     pub(super) fn num_predecessors(&self, context: &Context) -> usize {
         self.predecessors(context).count()
-    }
-
-    pub(super) fn successors<'a>(
-        &'a self,
-        context: &'a Context,
-    ) -> impl Iterator<Item = Block> + 'a {
-        self.function.block_iter(context).flat_map(|block| {
-            block
-                .get_terminator(context)
-                .map(|term_inst| match term_inst {
-                    Instruction::ConditionalBranch {
-                        true_block,
-                        false_block,
-                        ..
-                    } => vec![*true_block, *false_block],
-
-                    Instruction::Branch(block) => vec![*block],
-
-                    _otherwise => Vec::new(),
-                })
-                .unwrap_or_default()
-        })
     }
 }
 
