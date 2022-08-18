@@ -23,7 +23,7 @@ pub fn to_completion_items(token_map: &TokenMap) -> Vec<CompletionItem> {
 pub(crate) fn completion_item_kind(symbol_kind: &SymbolKind) -> Option<CompletionItemKind> {
     match symbol_kind {
         SymbolKind::Field => Some(CompletionItemKind::FIELD),
-        SymbolKind::TypeParam => Some(CompletionItemKind::TYPE_PARAMETER),
+        SymbolKind::BuiltinType => Some(CompletionItemKind::TYPE_PARAMETER),
         SymbolKind::ValueParam => Some(CompletionItemKind::VALUE),
         SymbolKind::Function | SymbolKind::Method => Some(CompletionItemKind::FUNCTION),
         SymbolKind::Const => Some(CompletionItemKind::CONSTANT),

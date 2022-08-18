@@ -32,7 +32,7 @@ fn symbol_info(ident: &Ident, token: &Token, url: Url) -> SymbolInformation {
 pub(crate) fn symbol_kind(symbol_kind: &SymbolKind) -> lsp_types::SymbolKind {
     match symbol_kind {
         SymbolKind::Field => lsp_types::SymbolKind::FIELD,
-        SymbolKind::TypeParam => lsp_types::SymbolKind::TYPE_PARAMETER,
+        SymbolKind::BuiltinType => lsp_types::SymbolKind::TYPE_PARAMETER,
         SymbolKind::Function | SymbolKind::Method => lsp_types::SymbolKind::FUNCTION,
         SymbolKind::Const => lsp_types::SymbolKind::CONSTANT,
         SymbolKind::Struct => lsp_types::SymbolKind::STRUCT,

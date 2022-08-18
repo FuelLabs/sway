@@ -116,7 +116,6 @@ pub(crate) fn semantic_tokens(tokens_sorted: &[(Span, Token)]) -> SemanticTokens
 fn semantic_token_type(kind: &SymbolKind) -> SemanticTokenType {
     match kind {
         SymbolKind::Field => SemanticTokenType::PROPERTY,
-        SymbolKind::TypeParam => SemanticTokenType::TYPE_PARAMETER,
         SymbolKind::ValueParam => SemanticTokenType::PARAMETER,
         SymbolKind::Variable => SemanticTokenType::VARIABLE,
         SymbolKind::Function => SemanticTokenType::FUNCTION,
@@ -129,6 +128,7 @@ fn semantic_token_type(kind: &SymbolKind) -> SemanticTokenType {
         SymbolKind::BoolLiteral => SemanticTokenType::new("boolean"),
         SymbolKind::ByteLiteral | SymbolKind::NumericLiteral => SemanticTokenType::NUMBER,
         SymbolKind::StringLiteral => SemanticTokenType::STRING,
+        SymbolKind::BuiltinType => SemanticTokenType::new("builtinType"),
         SymbolKind::Unknown => SemanticTokenType::new("generic"),
     }
 }
@@ -155,6 +155,7 @@ pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
     SemanticTokenType::PARAMETER,
     SemanticTokenType::new("generic"),
     SemanticTokenType::new("boolean"),
+    SemanticTokenType::new("builtinType"),
 ];
 
 pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
