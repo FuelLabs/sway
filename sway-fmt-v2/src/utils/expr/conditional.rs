@@ -20,10 +20,13 @@ impl Format for IfExpr {
         Self::open_curly_brace(formatted_code, formatter)?;
         self.then_block.get().format(formatted_code, formatter)?;
         Self::close_curly_brace(formatted_code, formatter)?;
-        if let Some(else_opt) = &self.else_opt {
-            write!(formatted_code, "{} ", else_opt.0.span().as_str())?;
-            match &else_opt.1 {
-                ControlFlow::Continue(if_expr) => if_expr.format(formatted_code, formatter)?,
+        if let Some((else_token, control_flow)) = &self.else_opt {
+            write!(formatted_code, " {}", else_token.span().as_str())?;
+            match &control_flow {
+                ControlFlow::Continue(if_expr) => {
+                    write!(formatted_code, " ")?;
+                    if_expr.format(formatted_code, formatter)?
+                }
                 ControlFlow::Break(code_block_contents) => {
                     Self::open_curly_brace(formatted_code, formatter)?;
                     code_block_contents
@@ -41,16 +44,25 @@ impl Format for IfExpr {
 impl CurlyBrace for IfExpr {
     fn open_curly_brace(
         line: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Brace.as_open_char())?;
+        formatter.shape.block_indent(&formatter.config);
+        write!(line, " {}", Delimiter::Brace.as_open_char())?;
+
         Ok(())
     }
     fn close_curly_brace(
         line: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Brace.as_close_char())?;
+        formatter.shape.block_unindent(&formatter.config);
+        write!(
+            line,
+            "{}{}",
+            formatter.shape.indent.to_string(&formatter.config)?,
+            Delimiter::Brace.as_close_char()
+        )?;
+
         Ok(())
     }
 }
@@ -71,7 +83,7 @@ impl Format for IfCondition {
                 eq_token,
                 rhs,
             } => {
-                write!(formatted_code, "{} ", let_token.span().as_str())?;
+                write!(formatted_code, " {} ", let_token.span().as_str())?;
                 lhs.format(formatted_code, formatter)?;
                 write!(formatted_code, " {} ", eq_token.span().as_str())?;
                 rhs.format(formatted_code, formatter)?;
@@ -103,20 +115,30 @@ impl Format for MatchBranch {
 impl CurlyBrace for MatchBranch {
     fn open_curly_brace(
         line: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Brace.as_open_char())?;
+        formatter.shape.block_indent(&formatter.config);
+        writeln!(line, "{}", Delimiter::Brace.as_open_char())?;
+
         Ok(())
     }
     fn close_curly_brace(
         line: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Brace.as_close_char())?;
+        formatter.shape.block_unindent(&formatter.config);
+        write!(
+            line,
+            "{}{}",
+            formatter.shape.indent.to_string(&formatter.config)?,
+            Delimiter::Brace.as_close_char()
+        )?;
+
         Ok(())
     }
 }
 
+// Later we should add logic to handle transforming `Block` -> `Expr` and vice versa.
 impl Format for MatchBranchKind {
     fn format(
         &self,
@@ -129,7 +151,21 @@ impl Format for MatchBranchKind {
                 comma_token_opt,
             } => {
                 Self::open_curly_brace(formatted_code, formatter)?;
-                block.get().format(formatted_code, formatter)?;
+                let block = block.get();
+                if block.statements.is_empty() && block.final_expr_opt.is_none() {
+                    // even if there is no code block we still want to unindent
+                    // before the closing brace
+                    formatter.shape.block_unindent(&formatter.config);
+                } else {
+                    block.format(formatted_code, formatter)?;
+                    // we handle this here to avoid needless indents
+                    formatter.shape.block_unindent(&formatter.config);
+                    write!(
+                        formatted_code,
+                        "{}",
+                        formatter.shape.indent.to_string(&formatter.config)?
+                    )?;
+                }
                 Self::close_curly_brace(formatted_code, formatter)?;
                 if let Some(comma_token) = comma_token_opt {
                     write!(formatted_code, "{}", comma_token.span().as_str())?;
@@ -148,8 +184,9 @@ impl Format for MatchBranchKind {
 impl CurlyBrace for MatchBranchKind {
     fn open_curly_brace(
         line: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        formatter.shape.block_indent(&formatter.config);
         write!(line, "{}", Delimiter::Brace.as_open_char())?;
         Ok(())
     }

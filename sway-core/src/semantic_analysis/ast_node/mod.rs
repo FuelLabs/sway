@@ -226,12 +226,10 @@ impl TypedAstNode {
                             body,
                             is_mutable,
                         }) => {
-                            let type_ascription_span =
-                                type_ascription_span.unwrap_or_else(|| name.span());
                             let type_ascription = check!(
                                 ctx.resolve_type_with_self(
                                     insert_type(type_ascription),
-                                    &type_ascription_span,
+                                    &type_ascription_span.clone().unwrap_or_else(|| name.span()),
                                     EnforceTypeArguments::Yes,
                                     None
                                 ),
@@ -252,6 +250,7 @@ impl TypedAstNode {
                                     body,
                                     mutability: convert_to_variable_immutability(false, is_mutable),
                                     type_ascription,
+                                    type_ascription_span,
                                 });
                             ctx.namespace.insert_symbol(name, typed_var_decl.clone());
                             typed_var_decl
@@ -725,6 +724,7 @@ fn type_check_trait_methods(
                         },
                         mutability: convert_to_variable_immutability(is_reference, is_mutable),
                         type_ascription: r#type,
+                        type_ascription_span: None,
                     }),
                 );
             },

@@ -15,6 +15,7 @@ impl Format for CodeBlockContents {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        writeln!(formatted_code)?;
         for statement in self.statements.iter() {
             statement.format(formatted_code, formatter)?;
         }
@@ -37,17 +38,17 @@ impl CurlyBrace for CodeBlockContents {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        formatter.shape.block_indent(&formatter.config);
+
         let brace_style = formatter.config.items.item_brace_style;
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
                 write!(line, "\n{}", Delimiter::Brace.as_open_char())?;
-                formatter.shape.block_indent(&formatter.config);
             }
             _ => {
                 // Add opening brace to the same line
                 write!(line, " {}", Delimiter::Brace.as_open_char())?;
-                formatter.shape.block_indent(&formatter.config);
             }
         }
 

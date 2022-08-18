@@ -45,7 +45,12 @@ impl Format for ItemStruct {
         match formatter.config.structures.field_alignment {
             FieldAlignment::AlignFields(enum_variant_align_threshold) => {
                 writeln!(formatted_code)?;
-                let value_pairs = &fields.value_separator_pairs;
+                let value_pairs = &fields
+                    .value_separator_pairs
+                    .iter()
+                    // TODO: Handle annotations instead of stripping them
+                    .map(|pair| (&pair.0.value, &pair.1))
+                    .collect::<Vec<_>>();
                 // In first iteration we are going to be collecting the lengths of the struct variants.
                 let variant_length: Vec<usize> = value_pairs
                     .iter()
@@ -93,6 +98,8 @@ impl Format for ItemStruct {
                     if value_pairs_iter.peek().is_some() {
                         writeln!(formatted_code, "{}", comma_token.span().as_str())?;
                     } else if let Some(final_value) = &fields.final_value_opt {
+                        // TODO: Handle annotation
+                        let final_value = &final_value.value;
                         write!(formatted_code, "{}", final_value.span().as_str())?;
                     }
                 }
