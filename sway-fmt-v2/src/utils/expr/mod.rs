@@ -451,10 +451,10 @@ impl Format for Expr {
                 expr.format(formatted_code, formatter)?;
             }
             Self::Break { break_token } => {
-                write!(formatted_code, "{}", break_token.span().as_str(),)?;
+                write!(formatted_code, "{}", break_token.span().as_str())?;
             }
             Self::Continue { continue_token } => {
-                write!(formatted_code, "{}", continue_token.span().as_str(),)?;
+                write!(formatted_code, "{}", continue_token.span().as_str())?;
             }
         }
 
