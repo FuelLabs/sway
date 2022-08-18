@@ -8,6 +8,7 @@ use sway_types::{Property, Span};
 #[derive(Debug, Clone)]
 pub struct TypeArgument {
     pub type_id: TypeId,
+    pub initial_type_id: TypeId,
     pub span: Span,
 }
 
@@ -31,8 +32,10 @@ impl PartialEq for TypeArgument {
 
 impl Default for TypeArgument {
     fn default() -> Self {
+        let initial_type_id = insert_type(TypeInfo::Unknown);
         TypeArgument {
-            type_id: insert_type(TypeInfo::Unknown),
+            type_id: initial_type_id,
+            initial_type_id,
             span: Span::dummy(),
         }
     }

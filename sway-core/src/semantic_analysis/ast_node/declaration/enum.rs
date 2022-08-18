@@ -149,6 +149,7 @@ impl TypedEnumDeclaration {
 pub struct TypedEnumVariant {
     pub name: Ident,
     pub type_id: TypeId,
+    pub initial_type_id: TypeId,
     pub(crate) tag: usize,
     pub(crate) span: Span,
 }
@@ -210,9 +211,10 @@ impl TypedEnumVariant {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let initial_type_id = insert_type(variant.type_info);
         let enum_variant_type = check!(
             ctx.resolve_type_with_self(
-                insert_type(variant.type_info),
+                initial_type_id,
                 &variant.span,
                 EnforceTypeArguments::Yes,
                 None
@@ -225,6 +227,7 @@ impl TypedEnumVariant {
             TypedEnumVariant {
                 name: variant.name.clone(),
                 type_id: enum_variant_type,
+                initial_type_id,
                 tag: variant.tag,
                 span: variant.span,
             },

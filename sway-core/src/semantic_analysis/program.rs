@@ -13,7 +13,7 @@ use crate::{
     types::ToJsonAbi,
 };
 use fuel_tx::StorageSlot;
-use sway_types::{span::Span, Ident, JsonABI, Spanned};
+use sway_types::{span::Span, Ident, JsonABI, JsonABIProgram, JsonTypeDeclaration, Spanned};
 
 #[derive(Clone, Debug)]
 pub struct TypedProgram {
@@ -346,6 +346,35 @@ impl TypedProgramKind {
             TypedProgramKind::Library { name } => TreeType::Library { name: name.clone() },
             TypedProgramKind::Predicate { .. } => TreeType::Predicate,
             TypedProgramKind::Script { .. } => TreeType::Script,
+        }
+    }
+
+    pub fn generate_json_abi_program(
+        &self,
+        types: &mut Vec<JsonTypeDeclaration>,
+    ) -> JsonABIProgram {
+        match self {
+            TypedProgramKind::Contract { abi_entries, .. } => {
+                let result = abi_entries
+                    .iter()
+                    .map(|x| x.generate_json_abi_function(types))
+                    .collect();
+                JsonABIProgram {
+                    types: types.to_vec(),
+                    functions: result,
+                }
+            }
+            TypedProgramKind::Script { main_function, .. } => {
+                let result = vec![main_function.generate_json_abi_function(types)];
+                JsonABIProgram {
+                    types: types.to_vec(),
+                    functions: result,
+                }
+            }
+            _ => JsonABIProgram {
+                types: vec![],
+                functions: vec![],
+            },
         }
     }
 }
