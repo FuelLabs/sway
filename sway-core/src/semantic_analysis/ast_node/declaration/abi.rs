@@ -69,7 +69,7 @@ impl TypedAbiDeclaration {
         );
         for typed_fn in &interface_surface {
             for param in &typed_fn.parameters {
-                if param.is_reference {
+                if param.is_reference && param.is_mutable {
                     errors.push(CompileError::RefMutableNotAllowedInContractAbi {
                         param_name: param.name.clone(),
                     })
@@ -87,7 +87,7 @@ impl TypedAbiDeclaration {
         );
         for typed_fn in &methods {
             for param in &typed_fn.parameters {
-                if param.is_reference {
+                if param.is_reference && param.is_mutable {
                     errors.push(CompileError::RefMutableNotAllowedInContractAbi {
                         param_name: param.name.clone(),
                     })
