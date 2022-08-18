@@ -1,6 +1,5 @@
 #[derive(Debug)]
 pub struct TxParameters {
-    pub byte_price: u64,
     pub gas_limit: u64,
     pub gas_price: u64,
 }
