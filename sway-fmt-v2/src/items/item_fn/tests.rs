@@ -2,7 +2,7 @@ use crate::{Format, Formatter};
 use forc_util::{println_green, println_red};
 use paste::paste;
 use prettydiff::{basic::DiffOp, diff_lines};
-use sway_ast::Expr;
+use sway_ast::ItemFn;
 use sway_parse::{handler::Handler, *};
 
 fn format_code(input: &str) -> String {
@@ -11,7 +11,7 @@ fn format_code(input: &str) -> String {
     let token_stream = lex(&input_arc, 0, input.len(), None).unwrap();
     let handler = Handler::default();
     let mut parser = Parser::new(&token_stream, &handler);
-    let expression: Expr = parser.parse().unwrap();
+    let expression: ItemFn = parser.parse().unwrap();
 
     let mut buf = Default::default();
     expression.format(&mut buf, &mut formatter).unwrap();
@@ -40,11 +40,12 @@ macro_rules! fmt_test_inner {
             fn [<$scope _ $name>] () {
                 let formatted_code = format_code($y);
                 let changeset = diff_lines(&formatted_code, $desired_output);
-                let count_of_updates = changeset.diff().len();
+                let diff = changeset.diff();
+                let count_of_updates = diff.len();
                 if count_of_updates != 0 {
                     println!("FAILED: {count_of_updates} diff items.");
                 }
-                for diff in changeset.diff() {
+                for diff in diff {
                     match diff {
                         DiffOp::Equal(old) => {
                             for o in old {
@@ -78,69 +79,34 @@ macro_rules! fmt_test_inner {
 }
 }
 
-fmt_test!(  literal "5", extra_whitespace "  5 "
+fmt_test!(  long_fn_name            "pub fn hello_this_is_a_really_long_fn_name_wow_so_long_ridiculous(\n    self,\n    foo: Foo,\n    bar: Bar,\n    baz: Baz,\n) {\n}\n",
+            intermediate_whitespace "pub fn hello_this_is_a_really_long_fn_name_wow_so_long_ridiculous    ( self   , foo   : Foo    , bar : Bar  ,    baz:    Baz) {\n    }"
 );
 
-fmt_test!(  path_foo_bar "foo::bar::baz::quux::quuz",
-            intermediate_whitespace "foo :: bar :: baz :: quux :: quuz");
-
-fmt_test!(  field_proj_foobar "foo.bar.baz.quux",
-            intermediate_whitespace "foo . bar . baz . quux");
-
-fmt_test!(  abi_cast "abi(MyAbi, 0x1111111111111111111111111111111111111111111111111111111111111111)",
-            intermediate_whitespace " abi (
-                  MyAbi
-                   ,
-                                 0x1111111111111111111111111111111111111111111111111111111111111111
-                                  )  "
+fmt_test!(  long_fn_args            "fn foo(\n    mut self,\n    this_is_a_really_long_variable: Foo,\n    hello_im_really_long: Bar,\n) -> String {\n}\n",
+            intermediate_whitespace "  fn  foo( \n        mut self , \n     this_is_a_really_long_variable : Foo ,\n    hello_im_really_long: Bar , \n ) ->    String { \n }     "
 );
 
-fmt_test!(  basic_func_app "foo()",
-            intermediate_whitespace " foo (
-
-            ) "
-);
-
-fmt_test!(  nested_args_func_app    "foo(a_struct { hello: \"hi\" }, a_var, foo.bar.baz.quux)",
-            intermediate_whitespace "foo(a_struct {
-                    hello  :  \"hi\"
-            }, a_var  , foo . bar . baz . quux)"
-);
-
-fmt_test!(  multiline_tuple         "(\n    \"reallyreallylongstring\",\n    \"yetanotherreallyreallyreallylongstring\",\n    \"okaynowthatsjustaridiculouslylongstringrightthere\",\n)",
-            intermediate_whitespace "(\"reallyreallylongstring\",             \"yetanotherreallyreallyreallylongstring\",
-            \"okaynowthatsjustaridiculouslylongstringrightthere\")"
-);
-
-fmt_test!(  multiline_match_stmt    "match foo {\n    Foo::foo => {}\n    Foo::bar => {}\n}",
-            intermediate_whitespace "  match   \n  foo  {   \n\n    Foo :: foo  => {        }\n     Foo :: bar  =>  { }   \n}\n"
-);
-
-fmt_test!(  if_else_block "if foo {\n    foo();\n} else if bar {\n    bar();\n} else {\n    baz();\n}",
-            intermediate_whitespace "   if    foo  {   \n       foo( ) ; \n }    else  if   bar  { \n     bar( ) ; \n }  else  { \n    baz(\n) ; \n }\n\n"
-);
-
-fmt_test!(  if_else_control_flow "if foo {\n    break\n} else {\n    continue\n}",
-            intermediate_whitespace "if  foo { \n        break \n}    else  {\n    continue    \n}");
-
-fmt_test!(  match_branch_kind
-"match foo {
-    Foo::foo => {
-        foo();
-        bar();
+fmt_test!(  non_self_fn
+"fn test_function(
+    helloitsverylong: String,
+    whatisgoingonthisistoolong: String,
+    yetanotherlongboy: String,
+) -> bool {
+    match foo {
+        Foo::foo => true,
+        _ => false,
     }
-    Foo::bar => {
-        baz();
-        quux();
-    }
-}",
+}\n",
             intermediate_whitespace
-"match     foo
-            
-\n{\n\n    Foo::foo    
-     => {\n        foo() 
-        ;     \n        bar(
-         ); \n    } \n    Foo::\nbar => 
-         {\n        baz();\n        
-quux();\n    }\n\n\n}"
+"fn   test_function   (\n\n
+    helloitsverylong : String ,
+    whatisgoingonthisistoolong   : String    ,
+    yetanotherlongboy   : String   ,\n
+) -> bool {
+    match  foo  {
+        Foo :: foo => true ,
+         _    => false  ,
+        }
+}"
 );
