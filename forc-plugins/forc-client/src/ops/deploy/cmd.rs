@@ -1,11 +1,8 @@
-use crate::ops::forc_deploy;
-use anyhow::{bail, Result};
 use clap::Parser;
 
-/// Deploy contract project.
-/// Crafts a contract deployment transaction then sends it to a running node.
 #[derive(Debug, Default, Parser)]
-pub struct Command {
+#[clap(bin_name = "forc deploy", version)]
+pub struct DeployCommand {
     /// Path to the project, if not specified, current working directory will be used.
     #[clap(short, long)]
     pub path: Option<String>,
@@ -72,11 +69,4 @@ pub struct Command {
     /// Output the time elapsed over each part of the compilation process.
     #[clap(long)]
     pub time_phases: bool,
-}
-
-pub(crate) async fn exec(command: Command) -> Result<()> {
-    match forc_deploy::deploy(command).await {
-        Err(e) => bail!("{}", e),
-        _ => Ok(()),
-    }
 }
