@@ -1,0 +1,4 @@
+[[package]]
+name = 'ref_mut_contract_abi'
+source = 'root'
+dependencies = []

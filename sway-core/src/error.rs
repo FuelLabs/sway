@@ -546,6 +546,10 @@ pub enum CompileError {
         "This parameter was declared as mutable, which is not supported yet, did you mean to use ref mut?"
     )]
     MutableParameterNotSupported { param_name: Ident },
+    #[error("Cannot pass immutable argument to mutable parameter.")]
+    ImmutableArgumentToMutableParameter { span: Span },
+    #[error("ref mut parameter is not allowed for contract ABI function.")]
+    RefMutableNotAllowedInContractAbi { param_name: Ident },
     #[error(
         "Cannot call associated function \"{fn_name}\" as a method. Use associated function \
         syntax instead."
@@ -1056,6 +1060,8 @@ pub enum CompileError {
     ContinueOutsideLoop { span: Span },
     #[error("arguments to \"main()\" are not yet supported. See the issue here: github.com/FuelLabs/sway/issues/845")]
     MainArgsNotYetSupported { span: Span },
+    #[error("Configuration-time constant value is not a constant item.")]
+    ConfigTimeConstantNotAConstDecl { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1091,6 +1097,8 @@ impl Spanned for CompileError {
             ReassignmentToNonVariable { span, .. } => span.clone(),
             AssignmentToNonMutable { name } => name.span(),
             MutableParameterNotSupported { param_name } => param_name.span(),
+            ImmutableArgumentToMutableParameter { span } => span.clone(),
+            RefMutableNotAllowedInContractAbi { param_name } => param_name.span(),
             MethodRequiresMutableSelf { span, .. } => span.clone(),
             AssociatedFunctionCalledAsMethod { span, .. } => span.clone(),
             TypeParameterNotInTypeScope { span, .. } => span.clone(),
@@ -1222,6 +1230,7 @@ impl Spanned for CompileError {
             BreakOutsideLoop { span } => span.clone(),
             ContinueOutsideLoop { span } => span.clone(),
             MainArgsNotYetSupported { span } => span.clone(),
+            ConfigTimeConstantNotAConstDecl { span } => span.clone(),
         }
     }
 }
