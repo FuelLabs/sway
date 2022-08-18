@@ -117,8 +117,8 @@ jobs:
           args: --debug --path ./forc
       - name: Install Forc plugins
         run: |
-          cargo install --debug --path ./forc-plugins/forc-fmt 
-          cargo install --debug --path ./forc-plugins/forc-lsp 
+          cargo install --debug --path ./forc-plugins/forc-fmt
+          cargo install --debug --path ./forc-plugins/forc-lsp
           cargo install --debug --path ./forc-plugins/forc-explore
           cargo install --debug --path ./forc-plugins/forc-client
       - name: Install mdbook-forc-documenter
@@ -231,7 +231,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.9.4
+        image: ghcr.io/fuellabs/fuel-core:v0.10.1
         ports:
           - 4000:4000
     steps:
@@ -252,7 +252,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.9.4
+        image: ghcr.io/fuellabs/fuel-core:v0.10.1
         ports:
           - 4000:4000
     steps:

@@ -274,12 +274,6 @@ define_op_codes!(
     (Ecr, EcrOpcode, "ecr", (addr: reg, sig: reg, hash: reg)),
     (K256, K256Opcode, "k256", (addr: reg, data: reg, size: reg)),
     (S256, S256Opcode, "s256", (addr: reg, data: reg, size: reg)),
-    (Xil, XilOpcode, "xil", (ret: reg, input: reg)),
-    (Xis, XisOpcode, "xis", (ret: reg, input: reg)),
-    (Xol, XolOpcode, "xol", (ret: reg, output: reg)),
-    (Xos, XosOpcode, "xos", (ret: reg, output: reg)),
-    (Xwl, XwlOpcode, "xwl", (ret: reg, witness: reg)),
-    (Xws, XwsOpcode, "xws", (ret: reg, witness: reg)),
     (Flag, FlagOpcode, "flag", (value: reg)),
     (Gm, GmOpcode, "gm", (ret: reg, op: imm)),
 );

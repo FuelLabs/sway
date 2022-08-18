@@ -7,10 +7,10 @@ version = "0.0.0"
 
 [dependencies]
 assert_matches = "1.5.0"
-fuel-core = { version = "0.9", default-features = false }
-fuel-gql-client = { version = "0.9", default-features = false }
+fuel-core = { version = "0.10", default-features = false }
+fuel-gql-client = { version = "0.10", default-features = false }
 fuel-types = "0.5"
-fuel-vm = "0.12"
+fuel-vm = "0.15"
 fuels = { version = "0.20", features = ["fuel-core-lib"] }
 hex = "0.4.3"
 sha2 = "0.10"
