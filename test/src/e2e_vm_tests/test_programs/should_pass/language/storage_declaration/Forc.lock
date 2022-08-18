@@ -1,9 +1,0 @@
-[[package]]
-name = 'core'
-source = 'path+from-root-EDFF019BE08098DD'
-dependencies = []
-
-[[package]]
-name = 'storage_declaration'
-source = 'root'
-dependencies = ['core']
