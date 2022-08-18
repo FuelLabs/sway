@@ -126,9 +126,10 @@ impl TypedIntrinsicFunctionKind {
                     return err(warnings, errors);
                 }
                 let targ = type_arguments[0].clone();
+                let initial_type_id = insert_type(resolve_type(targ.type_id, &targ.span).unwrap());
                 let type_id = check!(
                     ctx.resolve_type_with_self(
-                        insert_type(resolve_type(targ.type_id, &targ.span).unwrap()),
+                        initial_type_id,
                         &targ.span,
                         EnforceTypeArguments::Yes,
                         None
@@ -142,6 +143,7 @@ impl TypedIntrinsicFunctionKind {
                     arguments: vec![],
                     type_arguments: vec![TypeArgument {
                         type_id,
+                        initial_type_id,
                         span: targ.span,
                     }],
                     span,
@@ -159,9 +161,10 @@ impl TypedIntrinsicFunctionKind {
                     return err(warnings, errors);
                 }
                 let targ = type_arguments[0].clone();
+                let initial_type_id = insert_type(resolve_type(targ.type_id, &targ.span).unwrap());
                 let type_id = check!(
                     ctx.resolve_type_with_self(
-                        insert_type(resolve_type(targ.type_id, &targ.span).unwrap()),
+                        initial_type_id,
                         &targ.span,
                         EnforceTypeArguments::Yes,
                         None
@@ -175,6 +178,7 @@ impl TypedIntrinsicFunctionKind {
                     arguments: vec![],
                     type_arguments: vec![TypeArgument {
                         type_id,
+                        initial_type_id,
                         span: targ.span,
                     }],
                     span,
@@ -311,9 +315,10 @@ impl TypedIntrinsicFunctionKind {
                 }
 
                 let targ = type_arguments[0].clone();
+                let initial_type_id = insert_type(resolve_type(targ.type_id, &targ.span).unwrap());
                 let type_id = check!(
                     ctx.resolve_type_with_self(
-                        insert_type(resolve_type(targ.type_id, &targ.span).unwrap()),
+                        initial_type_id,
                         &targ.span,
                         EnforceTypeArguments::Yes,
                         None
@@ -329,6 +334,7 @@ impl TypedIntrinsicFunctionKind {
                         arguments: vec![index, tx_field_id],
                         type_arguments: vec![TypeArgument {
                             type_id,
+                            initial_type_id,
                             span: targ.span,
                         }],
                         span,
@@ -463,9 +469,11 @@ impl TypedIntrinsicFunctionKind {
                     let mut ctx = ctx
                         .with_help_text("")
                         .with_type_annotation(insert_type(TypeInfo::Unknown));
+                    let initial_type_id =
+                        insert_type(resolve_type(targ.type_id, &targ.span).unwrap());
                     let type_id = check!(
                         ctx.resolve_type_with_self(
-                            insert_type(resolve_type(targ.type_id, &targ.span).unwrap()),
+                            initial_type_id,
                             &targ.span,
                             EnforceTypeArguments::Yes,
                             None
@@ -476,6 +484,7 @@ impl TypedIntrinsicFunctionKind {
                     );
                     TypeArgument {
                         type_id,
+                        initial_type_id,
                         span: span.clone(),
                     }
                 });

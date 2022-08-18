@@ -1,16 +1,15 @@
-use crate::cli::{BuildCommand, RunCommand};
-use crate::ops::forc_build;
-use crate::utils::defaults::NODE_URL;
-use crate::utils::parameters::TxParameters;
 use anyhow::{anyhow, bail, Result};
-use forc_pkg::{fuel_core_not_running, ManifestFile};
+use forc_pkg::{fuel_core_not_running, BuildOptions, ManifestFile};
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::Transaction;
 use futures::TryFutureExt;
-use std::path::PathBuf;
-use std::str::FromStr;
+use std::{path::PathBuf, str::FromStr};
 use sway_core::TreeType;
 use tracing::info;
+
+use super::{cmd::RunCommand, parameters::TxParameters};
+
+pub const NODE_URL: &str = "http://127.0.0.1:4000";
 
 pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     let path_dir = if let Some(path) = &command.path {
@@ -25,7 +24,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     let data = format_hex_data(input_data);
     let script_data = hex::decode(data).expect("Invalid hex");
 
-    let build_command = BuildCommand {
+    let build_options = BuildOptions {
         path: command.path,
         print_ast: command.print_ast,
         print_finalized_asm: command.print_finalized_asm,
@@ -44,7 +43,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         time_phases: command.time_phases,
     };
 
-    let compiled = forc_build::build(build_command)?;
+    let compiled = forc_pkg::build_with_options(build_options)?;
     let contracts = command.contract.unwrap_or_default();
     let (inputs, outputs) = get_tx_inputs_and_outputs(contracts);
 
