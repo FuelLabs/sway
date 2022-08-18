@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()fn foo(ref mut x: u64);
+# nextln: $()ref mut parameter is not allowed for contract ABI function.

@@ -184,13 +184,13 @@ impl Instruction {
             Instruction::Gtf { .. } => Some(Type::Uint(64)),
             Instruction::InsertElement { array, .. } => array.get_type(context),
             Instruction::InsertValue { aggregate, .. } => aggregate.get_type(context),
-            Instruction::Load(ptr_val) => {
-                if let ValueDatum::Instruction(ins) = &context.values[ptr_val.0].value {
+            Instruction::Load(ptr_val) => match &context.values[ptr_val.0].value {
+                ValueDatum::Argument(ty) => Some(ty.strip_ptr_type(context)),
+                ValueDatum::Constant(cons) => Some(cons.ty.strip_ptr_type(context)),
+                ValueDatum::Instruction(ins) => {
                     ins.get_type(context).map(|f| f.strip_ptr_type(context))
-                } else {
-                    None
                 }
-            }
+            },
             Instruction::ReadRegister(_) => Some(Type::Uint(64)),
             Instruction::StateLoadWord(_) => Some(Type::Uint(64)),
             Instruction::Phi(alts) => {

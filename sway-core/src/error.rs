@@ -318,6 +318,9 @@ pub enum Warning {
         unneeded_attrib: String,
     },
     MatchExpressionUnreachableArm,
+    UnrecognizedAttribute {
+        attrib_name: Ident,
+    },
 }
 
 impl fmt::Display for Warning {
@@ -441,6 +444,7 @@ impl fmt::Display for Warning {
                 and can be removed."
             ),
             MatchExpressionUnreachableArm => write!(f, "This match arm is unreachable."),
+            UnrecognizedAttribute {attrib_name} => write!(f, "Unknown attribute: \"{attrib_name}\"."),
         }
     }
 }
@@ -542,6 +546,10 @@ pub enum CompileError {
         "This parameter was declared as mutable, which is not supported yet, did you mean to use ref mut?"
     )]
     MutableParameterNotSupported { param_name: Ident },
+    #[error("Cannot pass immutable argument to mutable parameter.")]
+    ImmutableArgumentToMutableParameter { span: Span },
+    #[error("ref mut parameter is not allowed for contract ABI function.")]
+    RefMutableNotAllowedInContractAbi { param_name: Ident },
     #[error(
         "Cannot call associated function \"{fn_name}\" as a method. Use associated function \
         syntax instead."
@@ -1089,6 +1097,8 @@ impl Spanned for CompileError {
             ReassignmentToNonVariable { span, .. } => span.clone(),
             AssignmentToNonMutable { name } => name.span(),
             MutableParameterNotSupported { param_name } => param_name.span(),
+            ImmutableArgumentToMutableParameter { span } => span.clone(),
+            RefMutableNotAllowedInContractAbi { param_name } => param_name.span(),
             MethodRequiresMutableSelf { span, .. } => span.clone(),
             AssociatedFunctionCalledAsMethod { span, .. } => span.clone(),
             TypeParameterNotInTypeScope { span, .. } => span.clone(),
