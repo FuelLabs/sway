@@ -1204,6 +1204,7 @@ dependencies = [
  "toml",
  "tracing",
  "url",
+ "vec1",
  "walkdir",
 ]
 
@@ -3636,6 +3637,7 @@ dependencies = [
  "thiserror",
  "tracing",
  "uint",
+ "vec1",
 ]
 
 [[package]]
@@ -4408,6 +4410,12 @@ name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
+
+[[package]]
+name = "vec1"
+version = "1.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5fc1631c774f0f9570797191e01247cbefde789eebfbf128074cb934115a6133"
 
 [[package]]
 name = "vec_map"

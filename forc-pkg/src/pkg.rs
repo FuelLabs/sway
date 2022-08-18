@@ -1,6 +1,6 @@
 use crate::{
     lock::Lock,
-    manifest::{BuildProfile, Dependency, Manifest, ManifestFile},
+    manifest::{BuildProfile, ConfigTimeConstant, Dependency, Manifest, ManifestFile},
     CORE, STD,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
@@ -16,7 +16,7 @@ use petgraph::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{hash_map, BTreeSet, HashMap, HashSet},
+    collections::{hash_map, BTreeMap, BTreeSet, HashMap, HashSet},
     fmt,
     fs::{self, File},
     hash::{Hash, Hasher},
@@ -1479,8 +1479,9 @@ pub fn dependency_namespace(
     namespace_map: &HashMap<NodeIx, namespace::Module>,
     graph: &Graph,
     node: NodeIx,
-) -> namespace::Module {
-    let mut namespace = namespace::Module::default();
+    constants: BTreeMap<String, ConfigTimeConstant>,
+) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
+    let mut namespace = namespace::Module::default_with_constants(constants)?;
 
     // Add direct dependencies.
     let mut core_added = false;
@@ -1503,7 +1504,7 @@ pub fn dependency_namespace(
         }
     }
 
-    namespace
+    Ok(namespace)
 }
 
 /// Find the `core` dependency (whether direct or transitive) for the given node if it exists.
@@ -1601,14 +1602,14 @@ pub fn compile(
     let entry_path = manifest.entry_path();
     let sway_build_config = time_expr!(
         "produce `sway_core::BuildConfig`",
-        sway_build_config(manifest.dir(), &entry_path, build_profile)?
+        sway_build_config(manifest.dir(), &entry_path, build_profile,)?
     );
     let silent_mode = build_profile.silent;
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
         "compile to ast",
-        compile_ast(manifest, build_profile, namespace)?
+        compile_ast(manifest, build_profile, namespace,)?
     );
     match &ast_res {
         CompileAstResult::Failure { warnings, errors } => {
@@ -1925,9 +1926,18 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
     let mut bytecode = vec![];
     let mut tree_type = None;
     for &node in &plan.compilation_order {
-        let dep_namespace = dependency_namespace(&namespace_map, &plan.graph, node);
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
+        let constants = manifest.config_time_constants();
+        let dep_namespace = match dependency_namespace(&namespace_map, &plan.graph, node, constants)
+        {
+            Ok(o) => o,
+            Err(errs) => {
+                print_on_failure(profile.silent, &[], &errs);
+                bail!("Failed to compile {}", pkg.name);
+            }
+        };
+
         let res = compile(pkg, manifest, profile, dep_namespace, &mut source_map)?;
         let (compiled, maybe_namespace) = res;
         if let Some(namespace) = maybe_namespace {
@@ -2087,9 +2097,11 @@ pub fn check(
     let mut namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     for (i, &node) in plan.compilation_order.iter().enumerate() {
-        let dep_namespace = dependency_namespace(&namespace_map, &plan.graph, node);
         let pkg = &plan.graph[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
+        let constants = manifest.config_time_constants();
+        let dep_namespace =
+            dependency_namespace(&namespace_map, &plan.graph, node, constants).expect("TODO");
         let parsed_result = parse(manifest, silent_mode)?;
 
         let parse_program = match &parsed_result.value {
