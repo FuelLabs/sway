@@ -12,6 +12,11 @@ impl Format for Statement {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(
+            formatted_code,
+            "{}",
+            formatter.shape.indent.to_string(&formatter.config)?
+        )?;
         match self {
             Self::Let(let_stmt) => let_stmt.format(formatted_code, formatter)?,
             Self::Item(item) => item.format(formatted_code, formatter)?,
@@ -35,13 +40,8 @@ impl Format for StatementLet {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        // Add indent level + `let `
-        write!(
-            formatted_code,
-            "{}{} ",
-            formatter.shape.indent.to_string(&formatter.config)?,
-            self.let_token.span().as_str()
-        )?;
+        // `let `
+        write!(formatted_code, "{} ", self.let_token.span().as_str())?;
         // pattern
         self.pattern.format(formatted_code, formatter)?;
         // `: Ty`
