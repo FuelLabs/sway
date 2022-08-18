@@ -1,7 +1,5 @@
 # _swayfmt_
 
-# The Sway Language Formatter
-
 A tool for formatting Sway code according to style guidelines.
 
 ## Installation
