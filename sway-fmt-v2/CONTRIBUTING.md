@@ -4,7 +4,7 @@ Firstly, thank you for taking interest in advancing the Sway language formatter!
 
 ### Installation
 
-In order to see `swayfmt` in action you will need both `swayfmt` and the `forc-fmt` plugin. As previously stated, you can install these via [`fuelup`](https://github.com/FuelLabs/fuelup) which will install the complete Fuel toolchain, or follow the below instructions to install from source.
+In order to see `swayfmt` in action you will need both `swayfmt` and the [`forc-fmt`](../forc-plugins/forc-fmt/) plugin. As previously stated, you can install these via [`fuelup`](https://github.com/FuelLabs/fuelup) which will install the complete Fuel toolchain, or follow the below instructions to install from source.
 
 **note:** `cargo` is a pre-requisite to this build
 
