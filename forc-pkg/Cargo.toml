@@ -25,4 +25,5 @@ sway-utils = { version = "0.19.2", path = "../sway-utils" }
 toml = "0.5"
 tracing = "0.1"
 url = { version = "2.2", features = ["serde"] }
+vec1 = "1.8.0"
 walkdir = "2"
