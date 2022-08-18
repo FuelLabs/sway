@@ -101,7 +101,11 @@ abigen!(MyContract, "out/debug/"#,
 async fn get_contract_instance() -> (MyContract, ContractId) {
     // Launch a local network and deploy the contract
     let mut wallets = launch_custom_provider_and_get_wallets(
-        WalletsConfig::new(Some(1), Some(1000000), Some(1_000_000)),
+        WalletsConfig::new(
+            Some(1),             /* Single wallet */
+            Some(1),             /* Single coin (UTXO) */
+            Some(1_000_000_000), /* Amount per coin */
+        ),
         None,
     )
     .await;
@@ -164,5 +168,3 @@ fn parse_default_tests_manifest() {
         toml::from_str::<forc_pkg::Manifest>(&default_tests_manifest("test_proj")).unwrap()
     )
 }
-
-pub const NODE_URL: &str = "http://127.0.0.1:4000";

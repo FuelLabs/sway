@@ -1,0 +1,34 @@
+[package]
+name = "forc-client"
+version = "0.19.2"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "3", features = ["derive", "env"] }
+forc-pkg = { version = "0.19.2", path = "../../forc-pkg" }
+forc-util = { version = "0.19.2", path = "../../forc-util" }
+fuel-gql-client = { version = "0.9", default-features = false }
+fuel-tx = "0.13"
+fuel-vm = "0.12"
+futures = "0.3"
+hex = "0.4.3"
+serde = { version = "1.0" }
+serde_json = "1.0.73"
+sway-core = { version = "0.19.2", path = "../../sway-core" }
+sway-types = { version = "0.19.2", path = "../../sway-types" }
+sway-utils = { version = "0.19.2", path = "../../sway-utils" }
+tokio = { version = "1.8", features = ["macros", "rt-multi-thread", "process"] }
+tracing = "0.1"
+
+
+[[bin]]
+name = "forc-deploy"
+path = "src/bin/deploy/main.rs"
+
+[[bin]]
+name = "forc-run"
+path = "src/bin/run/main.rs"
+
+[lib]
+path = "src/lib.rs"
