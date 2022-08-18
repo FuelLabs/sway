@@ -7,7 +7,7 @@ pub struct ItemEnum {
     pub name: Ident,
     pub generics: Option<GenericParams>,
     pub where_clause_opt: Option<WhereClause>,
-    pub fields: Braces<Punctuated<TypeField, CommaToken>>,
+    pub fields: Braces<Punctuated<Annotated<TypeField>, CommaToken>>,
 }
 
 impl Spanned for ItemEnum {

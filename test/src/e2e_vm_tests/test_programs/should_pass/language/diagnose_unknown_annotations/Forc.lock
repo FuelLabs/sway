@@ -1,0 +1,14 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-1C8151ABD9941A97'
+dependencies = []
+
+[[package]]
+name = 'diagnose_unknown_annotations'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-1C8151ABD9941A97'
+dependencies = ['core']
