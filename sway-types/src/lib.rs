@@ -2,6 +2,7 @@ use fuel_asm::Word;
 use fuel_crypto::Hasher;
 use fuel_tx::{Bytes32, ContractId};
 use serde::{Deserialize, Serialize};
+use std::hash::Hash;
 use std::path::{Path, PathBuf};
 use std::{io, iter, slice};
 
@@ -91,6 +92,11 @@ where
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ConfigTimeConstant {
+    pub r#type: String,
+    pub value: String,
+}
 impl AsRef<PathBuf> for Source {
     fn as_ref(&self) -> &PathBuf {
         &self.path
@@ -371,4 +377,57 @@ pub struct Property {
     pub type_field: String,
     pub components: Option<Vec<Property>>, // Used for custom types
     pub type_arguments: Option<Vec<Property>>, // Used for generic types. Not yet supported in fuels-rs.
+}
+
+/// Alternative Fuel ABI representation in JSON where the type declarations have associated IDs to
+/// help associate type components, type arguments, and type parameters with other types.
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonABIProgram {
+    pub types: Vec<JsonTypeDeclaration>,
+    pub functions: Vec<JsonABIFunction>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonABIFunction {
+    pub inputs: Vec<JsonTypeApplication>,
+    pub name: String,
+    pub output: JsonTypeApplication,
+}
+
+#[derive(Default, Debug, Clone, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonTypeDeclaration {
+    pub type_id: usize,
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub components: Option<Vec<JsonTypeApplication>>,
+    pub type_parameters: Option<Vec<usize>>,
+}
+
+#[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Hash, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonTypeApplication {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub type_id: usize,
+    pub type_arguments: Option<Vec<JsonTypeApplication>>,
+}
+
+// Two type declarations are the same if all their attributes (except for `type_id`) are the same.
+// This is useful when trying to merge multiple identical types that have different IDs.
+impl Hash for JsonTypeDeclaration {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.type_field.hash(state);
+        self.components.hash(state);
+        self.type_parameters.hash(state);
+    }
+}
+impl PartialEq for JsonTypeDeclaration {
+    fn eq(&self, other: &Self) -> bool {
+        self.type_field == other.type_field
+            && self.components == other.components
+            && self.type_parameters == other.type_parameters
+    }
 }
