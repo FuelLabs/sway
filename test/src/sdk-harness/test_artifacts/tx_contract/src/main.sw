@@ -5,7 +5,7 @@ use std::option::Option;
 use std::tx::*;
 use std::inputs::{
     Input,
-    inputs_count,
+    input_count,
     input_owner,
     input_pointer,
     input_type,
@@ -13,7 +13,7 @@ use std::inputs::{
 };
 use std::outputs::{
     Output,
-    outputs_count,
+    output_count,
     output_pointer,
     output_type,
 };
@@ -60,10 +60,10 @@ impl TxContractTest for Contract {
         tx_script_data_length()
     }
     fn get_tx_inputs_count() -> u64 {
-        inputs_count()
+        input_count()
     }
     fn get_tx_outputs_count() -> u64 {
-        outputs_count()
+        output_count()
     }
     fn get_tx_witnesses_count() -> u64 {
         tx_witnesses_count()

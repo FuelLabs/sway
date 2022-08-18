@@ -188,7 +188,7 @@ pub fn input_predicate_data<T>(index: u64) -> T {
 
 /// Get the transaction inputs count for either tx type
 /// (transaction-script or transaction-create).
-pub fn inputs_count() -> u64 {
+pub fn input_count() -> u64 {
     let type = tx_type();
     match type {
         Transaction::Script => {

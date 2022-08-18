@@ -84,7 +84,7 @@ pub fn output_pointer(index: u64) -> u64 {
 
 /// Get the transaction outputs count for either tx type
 /// (transaction-script or transaction-create).
-pub fn outputs_count() -> u64 {
+pub fn output_count() -> u64 {
     let type = tx_type();
     match type {
         Transaction::Script => {
