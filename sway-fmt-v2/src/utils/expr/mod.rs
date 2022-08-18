@@ -450,8 +450,12 @@ impl Format for Expr {
                 reassignment_op.format(formatted_code, formatter)?;
                 expr.format(formatted_code, formatter)?;
             }
-            Self::Break { .. } => write!(formatted_code, "break")?,
-            Self::Continue { .. } => write!(formatted_code, "continue")?,
+            Self::Break { break_token } => {
+                write!(formatted_code, "{}", break_token.span().as_str())?;
+            }
+            Self::Continue { continue_token } => {
+                write!(formatted_code, "{}", continue_token.span().as_str())?;
+            }
         }
 
         Ok(())
