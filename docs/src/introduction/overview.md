@@ -132,7 +132,7 @@ The function body accesses the value counter in storage, and increments the valu
 
 ```sway
 fn increment() {
-        storage.counter = storage.counter + 1;
+    storage.counter = storage.counter + 1;
 }
 ```
 
