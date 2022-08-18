@@ -116,11 +116,11 @@ fmt_test!(  multiline_match_stmt    "match foo {\n    Foo::foo => {}\n    Foo::b
             intermediate_whitespace "  match   \n  foo  {   \n\n    Foo :: foo  => {        }\n     Foo :: bar  =>  { }   \n}\n"
 );
 
-fmt_test!(  if_else_block "if foo {\n    foo();\n} else if bar {\n    bar();\n} else {\n    baz();\n}",
+fmt_test!(  if_else_block           "if foo {\n    foo();\n} else if bar {\n    bar();\n} else {\n    baz();\n}",
             intermediate_whitespace "   if    foo  {   \n       foo( ) ; \n }    else  if   bar  { \n     bar( ) ; \n }  else  { \n    baz(\n) ; \n }\n\n"
 );
 
-fmt_test!(  if_else_control_flow "if foo {\n    break\n} else {\n    continue\n}",
+fmt_test!(  if_else_control_flow    "if foo {\n    break\n} else {\n    continue\n}",
             intermediate_whitespace "if  foo { \n        break \n}    else  {\n    continue    \n}");
 
 fmt_test!(  match_branch_kind
