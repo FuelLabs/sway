@@ -2,6 +2,7 @@
 # will have compiled files and executables
 **/*/target/
 **/*/json_abi_output.json
+**/*/json_abi_output_flat.json
 **/*/json_storage_slots_output.json
 target
 
