@@ -81,13 +81,13 @@ macro_rules! fmt_test_inner {
 fmt_test!(  literal "5", extra_whitespace "  5 "
 );
 
-fmt_test!(  path_foo_bar "foo::bar::baz::quux::quuz",
+fmt_test!(  path_foo_bar            "foo::bar::baz::quux::quuz",
             intermediate_whitespace "foo :: bar :: baz :: quux :: quuz");
 
-fmt_test!(  field_proj_foobar "foo.bar.baz.quux",
+fmt_test!(  field_proj_foobar       "foo.bar.baz.quux",
             intermediate_whitespace "foo . bar . baz . quux");
 
-fmt_test!(  abi_cast "abi(MyAbi, 0x1111111111111111111111111111111111111111111111111111111111111111)",
+fmt_test!(  abi_cast                "abi(MyAbi, 0x1111111111111111111111111111111111111111111111111111111111111111)",
             intermediate_whitespace " abi (
                   MyAbi
                    ,
@@ -95,7 +95,7 @@ fmt_test!(  abi_cast "abi(MyAbi, 0x111111111111111111111111111111111111111111111
                                   )  "
 );
 
-fmt_test!(  basic_func_app "foo()",
+fmt_test!(  basic_func_app          "foo()",
             intermediate_whitespace " foo (
 
             ) "
