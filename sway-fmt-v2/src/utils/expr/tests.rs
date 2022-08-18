@@ -78,7 +78,7 @@ macro_rules! fmt_test_inner {
 }
 }
 
-fmt_test!(literal "5", extra_whitespace "  5 "
+fmt_test!(  literal "5", extra_whitespace "  5 "
 );
 
 fmt_test!(  path_foo_bar "foo::bar::baz::quux::quuz",
@@ -101,18 +101,18 @@ fmt_test!(  basic_func_app "foo()",
             ) "
 );
 
-fmt_test!(  nested_args_func_app "foo(a_struct { hello: \"hi\" }, a_var, foo.bar.baz.quux)",
+fmt_test!(  nested_args_func_app    "foo(a_struct { hello: \"hi\" }, a_var, foo.bar.baz.quux)",
             intermediate_whitespace "foo(a_struct {
                     hello  :  \"hi\"
             }, a_var  , foo . bar . baz . quux)"
 );
 
-fmt_test!(  multiline_tuple "(\n    \"reallyreallylongstring\",\n    \"yetanotherreallyreallyreallylongstring\",\n    \"okaynowthatsjustaridiculouslylongstringrightthere\",\n)",
+fmt_test!(  multiline_tuple         "(\n    \"reallyreallylongstring\",\n    \"yetanotherreallyreallyreallylongstring\",\n    \"okaynowthatsjustaridiculouslylongstringrightthere\",\n)",
             intermediate_whitespace "(\"reallyreallylongstring\",             \"yetanotherreallyreallyreallylongstring\",
             \"okaynowthatsjustaridiculouslylongstringrightthere\")"
 );
 
-fmt_test!(  multiline_match_stmt "match foo {\n    Foo::foo => {}\n    Foo::bar => {}\n}",
+fmt_test!(  multiline_match_stmt    "match foo {\n    Foo::foo => {}\n    Foo::bar => {}\n}",
             intermediate_whitespace "  match   \n  foo  {   \n\n    Foo :: foo  => {        }\n     Foo :: bar  =>  { }   \n}\n"
 );
 
@@ -127,7 +127,13 @@ fmt_test!(  match_branch_kind
         quux();
     }
 }",
-            intermediate_whitespace "match     foo
+            intermediate_whitespace
+"match     foo
             
-            \n{\n\n    Foo::foo     => {\n        foo() ;     \n        bar( ); \n    } \n    Foo::\nbar => {\n        baz();\n        quux();\n    }\n\n\n}"
+\n{\n\n    Foo::foo    
+     => {\n        foo() 
+        ;     \n        bar(
+         ); \n    } \n    Foo::\nbar => 
+         {\n        baz();\n        
+quux();\n    }\n\n\n}"
 );
