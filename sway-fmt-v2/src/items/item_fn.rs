@@ -40,12 +40,12 @@ impl CurlyBrace for ItemFn {
             }
             ItemBraceStyle::SameLineWhere => match formatter.shape.has_where_clause {
                 true => {
-                    writeln!(line, "{}", open_brace)?;
+                    write!(line, "{}", open_brace)?;
                     formatter.shape.update_where_clause();
                     formatter.shape.block_indent(&formatter.config);
                 }
                 false => {
-                    writeln!(line, " {}", open_brace)?;
+                    write!(line, " {}", open_brace)?;
                     formatter.shape.block_indent(&formatter.config);
                 }
             },
@@ -80,6 +80,11 @@ impl Format for FnSignature {
         formatted_code: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write!(
+            formatted_code,
+            "{}",
+            formatter.shape.indent.to_string(&formatter.config)?,
+        )?;
         // `pub `
         if let Some(visibility_token) = &self.visibility {
             write!(formatted_code, "{} ", visibility_token.span().as_str())?;

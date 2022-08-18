@@ -217,6 +217,21 @@ impl Function {
             .sum()
     }
 
+    /// Go through all blocks in the function and compute predecessor count for each.
+    pub fn count_predecessors(&self, context: &Context) -> HashMap<Block, usize> {
+        let mut pred_counts = HashMap::<Block, usize>::new();
+
+        for block in self.block_iter(context) {
+            for succ in block.successors(context) {
+                pred_counts
+                    .entry(succ)
+                    .and_modify(|counter| *counter += 1)
+                    .or_insert(1);
+            }
+        }
+        pred_counts
+    }
+
     /// Return the function name.
     pub fn get_name<'a>(&self, context: &'a Context) -> &'a str {
         &context.functions[self.0].name

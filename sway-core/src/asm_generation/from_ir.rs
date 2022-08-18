@@ -1598,6 +1598,7 @@ impl<'ir> AsmBuilder<'ir> {
             key.get_stripped_ptr_type(self.context),
             Some(Type::B256)
         ));
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
 
         let key_ptr = self.resolve_ptr(key);
         if key_ptr.value.is_none() {
@@ -1609,39 +1610,50 @@ impl<'ir> AsmBuilder<'ir> {
         assert!(offset == 0);
         assert!(ptr_ty.get_type(self.context).eq(self.context, &Type::B256));
 
-        // Expect ptr_ty here to also be b256 and offset to be whatever...
-        let val_ptr = self.resolve_ptr(val);
-        if val_ptr.value.is_none() {
-            return val_ptr.map(|_| ());
-        }
-        let (val_ptr, ptr_ty, offset) = val_ptr.value.unwrap();
+        let val_reg = if matches!(
+            &self.context.values[val.0].value,
+            ValueDatum::Instruction(Instruction::IntToPtr(..))
+        ) {
+            match self.reg_map.get(val) {
+                Some(vreg) => vreg.clone(),
+                None => unreachable!("int_to_ptr instruction doesn't have vreg mapped"),
+            }
+        } else {
+            // Expect ptr_ty here to also be b256 and offset to be whatever...
+            let val_ptr = self.resolve_ptr(val);
+            if val_ptr.value.is_none() {
+                return val_ptr.map(|_| ());
+            }
+            let (val_ptr, ptr_ty, offset) = val_ptr.value.unwrap();
+            // Expect the ptr_ty for val to also be B256
+            assert!(ptr_ty.get_type(self.context).eq(self.context, &Type::B256));
+            match self.ptr_map.get(&val_ptr) {
+                Some(Storage::Stack(val_offset)) => {
+                    let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
+                    let val_offset_in_bytes = val_offset * 8 + offset * 32;
+                    self.offset_reg(&base_reg, val_offset_in_bytes, owning_span.clone())
+                }
+                _ => unreachable!("Unexpected storage locations for key and val"),
+            }
+        };
 
-        // Expect the ptr_ty for val to also be B256
-        assert!(ptr_ty.get_type(self.context).eq(self.context, &Type::B256));
-
-        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-        match (self.ptr_map.get(&val_ptr), self.ptr_map.get(&key_ptr)) {
-            (Some(Storage::Stack(val_offset)), Some(Storage::Stack(key_offset))) => {
+        let key_reg = match self.ptr_map.get(&key_ptr) {
+            Some(Storage::Stack(key_offset)) => {
                 let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
-                let val_offset_in_bytes = val_offset * 8 + offset * 32;
                 let key_offset_in_bytes = key_offset * 8;
-
-                let val_reg = self.offset_reg(&base_reg, val_offset_in_bytes, owning_span.clone());
-
-                let key_reg = self.offset_reg(&base_reg, key_offset_in_bytes, owning_span.clone());
-
-                self.bytecode.push(Op {
-                    opcode: Either::Left(match access_type {
-                        StateAccessType::Read => VirtualOp::SRWQ(val_reg, key_reg),
-                        StateAccessType::Write => VirtualOp::SWWQ(key_reg, val_reg),
-                    }),
-                    comment: "quad word state access".into(),
-                    owning_span,
-                });
+                self.offset_reg(&base_reg, key_offset_in_bytes, owning_span.clone())
             }
             _ => unreachable!("Unexpected storage locations for key and val"),
-        }
+        };
 
+        self.bytecode.push(Op {
+            opcode: Either::Left(match access_type {
+                StateAccessType::Read => VirtualOp::SRWQ(val_reg, key_reg),
+                StateAccessType::Write => VirtualOp::SWWQ(key_reg, val_reg),
+            }),
+            comment: "quad word state access".into(),
+            owning_span,
+        });
         ok((), Vec::new(), Vec::new())
     }
 
