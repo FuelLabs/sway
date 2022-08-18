@@ -262,6 +262,15 @@ impl Shape {
                     self.code_line.update_line_style(LineStyle::Normal)
                 }
             }
+            ExprKind::Function => {
+                if self.width > config.whitespace.max_width
+                    || body_width.unwrap_or(0) > self.width_heuristics.fn_call_width
+                {
+                    self.code_line.update_line_style(LineStyle::Multiline)
+                } else {
+                    self.code_line.update_line_style(LineStyle::Normal)
+                }
+            }
             _ => self.code_line.update_line_style(LineStyle::default()),
         }
     }
