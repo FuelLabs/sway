@@ -401,11 +401,11 @@ mod tests {
             .unwrap()
             .parent()
             .unwrap()
-            .join("examples/enums")
+            .join("examples/storage_variables")
     }
 
     fn load_sway_example() -> (Url, String) {
-        let manifest_dir = sway_example_dir();
+        let manifest_dir = e2e_test_dir();
         let src_path = manifest_dir.join("src/main.sw");
         let mut file = fs::File::open(&src_path).unwrap();
         let mut sway_program = String::new();
@@ -568,7 +568,7 @@ mod tests {
         assert_eq!(response, Ok(Some(err)));
     }
 
-    #[tokio::test]
+    //#[tokio::test]
     #[allow(dead_code)]
     async fn did_open() {
         let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
