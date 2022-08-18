@@ -187,7 +187,7 @@ fn format_fn_args(
                 LineStyle::Multiline => {
                     write!(
                         formatted_code,
-                        "{}",
+                        "\n{}",
                         formatter.shape.indent.to_string(&formatter.config)?
                     )?;
                     format_self(self_token, ref_self, mutable_self, formatted_code)?;
@@ -245,7 +245,7 @@ impl Parenthesis for FnSignature {
         match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
                 formatter.shape.block_indent(&formatter.config);
-                writeln!(line, "{open_paren}")?;
+                write!(line, "{open_paren}")?;
             }
             _ => {
                 write!(line, "{open_paren}")?;
