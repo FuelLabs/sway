@@ -287,6 +287,18 @@ impl Backend {
         Ok(ranges)
     }
 
+    /// This method is triggered by a command palette request in VScode
+    /// The 2 commands are: "show parsed ast" or "show typed ast"
+    ///
+    /// If either command is executed, the client requests this method
+    /// by calling the "sway/show_ast".
+    ///
+    /// The function expects the URI of the current open file where the
+    /// request was made, and if the "parsed" or "typed" ast was requested.
+    ///
+    /// A formatted AST is written to a temporary file and the URI is
+    /// returned to the client so it can be opened and displayed in a
+    /// seperate side panel.
     pub async fn show_ast(
         &self,
         params: ShowAstParams,
@@ -310,17 +322,17 @@ impl Backend {
         match self.session.compiled_program.read() {
             std::sync::LockResult::Ok(program) => {
                 match params.ast_kind.as_str() {
-                    "Parsed" => {
+                    "parsed" => {
                         match program.parsed {
                             Some(ref parsed_program) => {
                                 // Initialize the string with the AST from the root
                                 let mut formatted_ast: String =
                                     format!("{:#?}", parsed_program.root.tree.root_nodes);
-                                // Use the name to match on either the DepName (ident) of
-                                // any submodules.
+
                                 for (ident, submodule) in &parsed_program.root.submodules {
+                                    // if the current path matches the path of a submodule
+                                    // overwrite the root AST with the submodule AST
                                     if ident.span().path().map(|a| a.deref()) == path.as_ref() {
-                                        // Overwrite the root AST with the submodule AST
                                         formatted_ast =
                                             format!("{:#?}", submodule.module.tree.root_nodes);
                                     }
@@ -332,17 +344,17 @@ impl Backend {
                             _ => Ok(None),
                         }
                     }
-                    "Typed" => {
+                    "typed" => {
                         match program.typed {
                             Some(ref typed_program) => {
                                 // Initialize the string with the AST from the root
                                 let mut formatted_ast: String =
                                     format!("{:#?}", typed_program.root.all_nodes);
-                                // Use the name to match on either the DepName (ident) of
-                                // any submodules.
+
                                 for (ident, submodule) in &typed_program.root.submodules {
+                                    // if the current path matches the path of a submodule
+                                    // overwrite the root AST with the submodule AST
                                     if ident.span().path().map(|a| a.deref()) == path.as_ref() {
-                                        // Overwrite the root AST with the submodule AST
                                         formatted_ast =
                                             format!("{:#?}", submodule.module.all_nodes);
                                     }
@@ -468,7 +480,7 @@ mod tests {
             "textDocument": {
                 "uri": uri
             },
-            "astKind": "Typed",
+            "astKind": "typed",
         });
         let show_ast = Request::build("sway/show_ast")
             .params(params)
@@ -679,7 +691,7 @@ mod tests {
         exit_notification(&mut service).await;
     }
 
-    #[tokio::test]
+    //#[tokio::test]
     #[allow(dead_code)]
     async fn show_ast() {
         let (mut service, mut messages) =
