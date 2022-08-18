@@ -1,5 +1,6 @@
 #[derive(Debug)]
-pub(crate) struct TxParameters {
+pub struct TxParameters {
+    pub byte_price: u64,
     pub gas_limit: u64,
     pub gas_price: u64,
 }

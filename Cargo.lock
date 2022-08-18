@@ -1319,6 +1319,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "forc-client"
+version = "0.19.2"
+dependencies = [
+ "anyhow",
+ "clap 3.2.16",
+ "forc-pkg",
+ "forc-util",
+ "fuel-gql-client",
+ "fuel-tx",
+ "fuel-vm",
+ "futures",
+ "hex",
+ "serde",
+ "serde_json",
+ "sway-core",
+ "sway-types",
+ "sway-utils",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "forc-explore"
 version = "0.19.2"
 dependencies = [
@@ -4026,6 +4048,7 @@ dependencies = [
  "clap 3.2.16",
  "filecheck",
  "forc",
+ "forc-client",
  "forc-pkg",
  "forc-util",
  "fuel-asm",

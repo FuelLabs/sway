@@ -120,6 +120,7 @@ jobs:
           cargo install --debug --path ./forc-plugins/forc-fmt
           cargo install --debug --path ./forc-plugins/forc-lsp
           cargo install --debug --path ./forc-plugins/forc-explore
+          cargo install --debug --path ./forc-plugins/forc-client
       - name: Install mdbook-forc-documenter
         uses: actions-rs/cargo@v1
         with:
@@ -608,6 +609,12 @@ jobs:
           command: install
           args: --profile=release --path ./forc-plugins/forc-explore
 
+      - name: Install Forc-Client
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --profile=release --path ./forc-plugins/forc-client
+
       - name: Prep Assets
         id: prep_assets
         env:
@@ -618,7 +625,7 @@ jobs:
           ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
-          for binary in forc forc-fmt forc-lsp forc-explore; do
+          for binary in forc forc-fmt forc-lsp forc-explore forc-client; do
             cp $(which ${binary}) ./forc-binaries
           done
           tar -czvf $ZIP_FILE_NAME ./forc-binaries
