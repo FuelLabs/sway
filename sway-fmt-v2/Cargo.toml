@@ -1,6 +1,6 @@
 [package]
 name = "sway-fmt-v2"
-version = "0.20.0"
+version = "0.20.1"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -11,14 +11,14 @@ description = "Sway sway-fmt-v2."
 
 [dependencies]
 anyhow = "1"
-forc-util = { version = "0.20.0", path = "../forc-util" }
+forc-util = { version = "0.20.1", path = "../forc-util" }
 ropey = "1.5"
 serde = { version = "1.0", features = ["derive"] }
 serde_ignored = "0.1"
-sway-ast = { version = "0.20.0", path = "../sway-ast" }
-sway-core = { version = "0.20.0", path = "../sway-core" }
-sway-parse = { version = "0.20.0", path = "../sway-parse" }
-sway-types = { version = "0.20.0", path = "../sway-types" }
+sway-ast = { version = "0.20.1", path = "../sway-ast" }
+sway-core = { version = "0.20.1", path = "../sway-core" }
+sway-parse = { version = "0.20.1", path = "../sway-parse" }
+sway-types = { version = "0.20.1", path = "../sway-types" }
 thiserror = "1.0.30"
 toml = "0.5"
 
