@@ -1,6 +1,6 @@
 [package]
 name = "sway-lsp"
-version = "0.19.2"
+version = "0.20.0"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -10,15 +10,15 @@ description = "LSP server for Sway."
 
 [dependencies]
 dashmap = "5.3.4"
-forc-pkg = { version = "0.19.2", path = "../forc-pkg" }
-forc-util = { version = "0.19.2", path = "../forc-util" }
+forc-pkg = { version = "0.20.0", path = "../forc-pkg" }
+forc-util = { version = "0.20.0", path = "../forc-util" }
 ropey = "1.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.60"
-sway-core = { version = "0.19.2", path = "../sway-core" }
-sway-fmt = { version = "0.19.2", path = "../sway-fmt" }
-sway-types = { version = "0.19.2", path = "../sway-types" }
-sway-utils = { version = "0.19.2", path = "../sway-utils" }
+sway-core = { version = "0.20.0", path = "../sway-core" }
+sway-fmt = { version = "0.20.0", path = "../sway-fmt" }
+sway-types = { version = "0.20.0", path = "../sway-types" }
+sway-utils = { version = "0.20.0", path = "../sway-utils" }
 tokio = { version = "1.3", features = ["io-std", "io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
 tower-lsp = "0.17"
 tracing = "0.1"
