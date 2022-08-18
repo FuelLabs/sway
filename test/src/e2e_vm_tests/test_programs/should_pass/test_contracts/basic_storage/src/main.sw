@@ -1,6 +1,20 @@
 contract;
-use std::{storage::*, assert::assert};
+use std::{storage::*, assert::assert, hash::sha256};
 use basic_storage_abi::*;
+
+storage {
+    str0: str[0] = "",
+    str1: str[1] = "a",
+    str2: str[2] = "aa",
+    str3: str[3] = "aaa",
+    str4: str[4] = "aaaa",
+    str5: str[5] = "aaaaa",
+    str6: str[6] = "aaaaaa",
+    str7: str[7] = "aaaaaaa",
+    str8: str[8] = "aaaaaaaa",
+    str9: str[9] = "aaaaaaaaa",
+    str10: str[10] = "aaaaaaaaaa",
+}
 
 impl StoreU64 for Contract {
     #[storage(read)]
@@ -145,4 +159,16 @@ fn test_storage() {
           }
           _ => assert(false),
     }
+
+    assert(sha256(storage.str0) == sha256(""));
+    assert(sha256(storage.str1) == sha256("a"));
+    assert(sha256(storage.str2) == sha256("aa"));
+    assert(sha256(storage.str3) == sha256("aaa"));
+    assert(sha256(storage.str4) == sha256("aaaa"));
+    assert(sha256(storage.str5) == sha256("aaaaa"));
+    assert(sha256(storage.str6) == sha256("aaaaaa"));
+    assert(sha256(storage.str7) == sha256("aaaaaaa"));
+    assert(sha256(storage.str8) == sha256("aaaaaaaa"));
+    assert(sha256(storage.str9) == sha256("aaaaaaaaa"));
+    assert(sha256(storage.str10) == sha256("aaaaaaaaaa"));
 }
