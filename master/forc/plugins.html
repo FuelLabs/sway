@@ -138,7 +138,7 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="plugins"><a class="header" href="#plugins">Plugins</a></h1>
-<p>Plugins can be used to extend <code>forc</code> with new commands that go beyond the native commands mentioned in the previous chapter. While the Fuel ecosystem provides a few commonly useful plugins (<code>forc-fmt</code>, <code>forc-lsp</code>, <code>forc-explore</code>), anyone can write their own!</p>
+<p>Plugins can be used to extend <code>forc</code> with new commands that go beyond the native commands mentioned in the previous chapter. While the Fuel ecosystem provides a few commonly useful plugins (<code>forc-fmt</code>, <code>forc-client</code>, <code>forc-lsp</code>, <code>forc-explore</code>), anyone can write their own!</p>
 <p>Let's install a plugin, <code>forc-explore</code>, and see what's underneath the plugin:</p>
 <pre><code class="language-sh">cargo install forc-explore
 </code></pre>
@@ -154,6 +154,7 @@ Running server on http://127.0.0.1:3030
 Server::run{addr=127.0.0.1:3030}: listening on http://127.0.0.1:3030
 </code></pre>
 <p>You can visit <a href="http://127.0.0.1:3030">http://127.0.0.1:3030</a> to check out the network explorer!</p>
+<p>Note that some plugin crates can also provide more than one command. For example, installing the <code>forc-client</code> plugin provides the <code>forc deploy</code> and <code>forc run</code> commands. This is achieved by specifying multiple <code>[[bin]]</code> targets within the <code>forc-client</code> manifest.</p>
 <h2 id="writing-your-own-plugin"><a class="header" href="#writing-your-own-plugin">Writing your own plugin</a></h2>
 <p>We encourage anyone to write and publish their own <code>forc</code> plugin to enhance their development experience.</p>
 <p>Your plugin must be named in the format <code>forc-&lt;MY_PLUGIN&gt;</code> and you may use the above template as a starting point. You can use <a href="https://docs.rs/clap/latest/clap/">clap</a> and add more subcommands, options and configurations to suit your plugin's needs.</p>
