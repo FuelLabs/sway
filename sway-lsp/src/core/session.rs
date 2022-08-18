@@ -187,7 +187,6 @@ impl Session {
                 Err(DocumentError::FailedToParse(diagnostics))
             }
             Some(parse_program) => {
-                eprintln!("{:#?}", &parse_program.root.tree.root_nodes);
                 for node in &parse_program.root.tree.root_nodes {
                     traverse_parse_tree::traverse_node(node, &self.token_map);
                 }
