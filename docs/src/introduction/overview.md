@@ -115,7 +115,8 @@ impl Counter for Contract {
 }
 ```
 
-> Note: `return storage.counter;` is equivalent to `storage.counter`.
+> **Note**
+> `return storage.counter;` is equivalent to `storage.counter`.
 
 ### What we just did
 
