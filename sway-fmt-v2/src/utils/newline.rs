@@ -10,7 +10,7 @@ use std::{
 use sway_ast::Module;
 
 use crate::{
-    fmt::FormattedCode,
+    fmt::{FormattedCode, Formatter},
     utils::byte_span::{ByteSpan, LeafSpans},
     FormatterError,
 };
@@ -82,7 +82,10 @@ pub fn handle_newlines(
     formatted_input: Arc<str>,
     path: Option<Arc<PathBuf>>,
     formatted_code: &mut FormattedCode,
+    formatter: &Formatter,
 ) -> Result<(), FormatterError> {
+    // Get newline threshold from config
+    let newline_threshold = formatter.config.whitespace.newline_threshold;
     // Collect ByteSpan -> NewlineSequence mapping from unformatted input
     let newline_map = newline_map_from_src(unformatted_input.clone())?;
     // After the formatting existing items should be the same (type of the item) but their spans will be changed since we applied formatting to them.
@@ -94,6 +97,7 @@ pub fn handle_newlines(
         &formatted_module,
         formatted_code,
         unformatted_input,
+        newline_threshold,
     )?;
     Ok(())
 }
@@ -111,6 +115,7 @@ fn add_newlines(
     formatted_module: &Module,
     formatted_code: &mut FormattedCode,
     unformatted_code: Arc<str>,
+    newline_threshold: usize,
 ) -> Result<(), FormatterError> {
     let mut unformatted_newline_spans = unformatted_module.leaf_spans();
     let mut formatted_newline_spans = formatted_module.leaf_spans();
@@ -150,7 +155,7 @@ fn add_newlines(
                 newline_sequences,
                 offset,
                 formatted_code,
-                1,
+                newline_threshold,
             )?;
         }
         previous_unformatted_newline_span = unformatted_newline_span;

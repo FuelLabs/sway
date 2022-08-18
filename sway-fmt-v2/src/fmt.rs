@@ -89,6 +89,7 @@ impl Formatter {
             Arc::from(formatted_code.clone()),
             path,
             &mut formatted_code,
+            self,
         )?;
         // Replace newlines with specified `NewlineStyle`
         apply_newline_style(
