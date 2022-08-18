@@ -50,13 +50,13 @@ use {
     thiserror::Error,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 /// Contains any errors or warnings that were generated during the conversion into the parse tree.
 /// Typically these warnings and errors are populated as a side effect in the `From` and `Into`
 /// implementations of error types into [ErrorEmitted].
 pub struct ErrorContext {
-    warnings: Vec<CompileWarning>,
-    errors: Vec<CompileError>,
+    pub(crate) warnings: Vec<CompileWarning>,
+    pub(crate) errors: Vec<CompileError>,
 }
 
 #[derive(Debug)]
@@ -790,7 +790,7 @@ fn item_abi_to_abi_declaration(
     })
 }
 
-fn item_const_to_constant_declaration(
+pub(crate) fn item_const_to_constant_declaration(
     ec: &mut ErrorContext,
     item_const: ItemConst,
 ) -> Result<ConstantDeclaration, ErrorEmitted> {
