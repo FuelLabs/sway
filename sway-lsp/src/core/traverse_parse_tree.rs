@@ -88,7 +88,10 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                 if let Some(type_ascription_span) = &variable.type_ascription_span {
                     tokens.insert(
                         to_ident_key(&Ident::new(type_ascription_span.clone())),
-                        Token::from_parsed(AstToken::Declaration(declaration.clone())),
+                        Token::from_parsed(
+                            AstToken::Declaration(declaration.clone()),
+                            type_info_to_symbol_kind(&variable.type_ascription),
+                        ),
                     );
                 }
             }

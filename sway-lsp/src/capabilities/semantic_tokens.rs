@@ -128,7 +128,7 @@ fn semantic_token_type(kind: &SymbolKind) -> SemanticTokenType {
         SymbolKind::Trait => SemanticTokenType::INTERFACE,
         SymbolKind::BoolLiteral => SemanticTokenType::new("boolean"),
         SymbolKind::ByteLiteral | SymbolKind::NumericLiteral => SemanticTokenType::NUMBER,
-        SymbolKind::CharLiteral | SymbolKind::StringLiteral => SemanticTokenType::STRING,
+        SymbolKind::StringLiteral => SemanticTokenType::STRING,
         SymbolKind::Unknown => SemanticTokenType::new("generic"),
     }
 }

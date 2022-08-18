@@ -40,7 +40,7 @@ pub(crate) fn symbol_kind(symbol_kind: &SymbolKind) -> lsp_types::SymbolKind {
         SymbolKind::Enum => lsp_types::SymbolKind::ENUM,
         SymbolKind::Variant => lsp_types::SymbolKind::ENUM_MEMBER,
         SymbolKind::BoolLiteral => lsp_types::SymbolKind::BOOLEAN,
-        SymbolKind::StringLiteral | SymbolKind::CharLiteral => lsp_types::SymbolKind::STRING,
+        SymbolKind::StringLiteral => lsp_types::SymbolKind::STRING,
         SymbolKind::NumericLiteral => lsp_types::SymbolKind::NUMBER,
         SymbolKind::ValueParam
         | SymbolKind::ByteLiteral

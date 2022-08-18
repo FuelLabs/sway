@@ -80,7 +80,6 @@ pub enum SymbolKind {
     Variant,
     BoolLiteral,
     ByteLiteral,
-    CharLiteral,
     StringLiteral,
     NumericLiteral,
     Variable,
