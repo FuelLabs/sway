@@ -20,10 +20,13 @@ impl Format for IfExpr {
         Self::open_curly_brace(formatted_code, formatter)?;
         self.then_block.get().format(formatted_code, formatter)?;
         Self::close_curly_brace(formatted_code, formatter)?;
-        if let Some(else_opt) = &self.else_opt {
-            write!(formatted_code, "{} ", else_opt.0.span().as_str())?;
-            match &else_opt.1 {
-                ControlFlow::Continue(if_expr) => if_expr.format(formatted_code, formatter)?,
+        if let Some((else_token, control_flow)) = &self.else_opt {
+            write!(formatted_code, " {}", else_token.span().as_str())?;
+            match &control_flow {
+                ControlFlow::Continue(if_expr) => {
+                    write!(formatted_code, " ")?;
+                    if_expr.format(formatted_code, formatter)?
+                }
                 ControlFlow::Break(code_block_contents) => {
                     Self::open_curly_brace(formatted_code, formatter)?;
                     code_block_contents
@@ -41,16 +44,25 @@ impl Format for IfExpr {
 impl CurlyBrace for IfExpr {
     fn open_curly_brace(
         line: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Brace.as_open_char())?;
+        formatter.shape.block_indent(&formatter.config);
+        write!(line, " {}", Delimiter::Brace.as_open_char())?;
+
         Ok(())
     }
     fn close_curly_brace(
         line: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Brace.as_close_char())?;
+        formatter.shape.block_unindent(&formatter.config);
+        write!(
+            line,
+            "{}{}",
+            formatter.shape.indent.to_string(&formatter.config)?,
+            Delimiter::Brace.as_close_char()
+        )?;
+
         Ok(())
     }
 }
@@ -71,7 +83,7 @@ impl Format for IfCondition {
                 eq_token,
                 rhs,
             } => {
-                write!(formatted_code, "{} ", let_token.span().as_str())?;
+                write!(formatted_code, " {} ", let_token.span().as_str())?;
                 lhs.format(formatted_code, formatter)?;
                 write!(formatted_code, " {} ", eq_token.span().as_str())?;
                 rhs.format(formatted_code, formatter)?;

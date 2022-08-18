@@ -411,6 +411,14 @@ impl TypedExpression {
         }
     }
 
+    /// gathers the mutability of the expressions within
+    pub(crate) fn gather_mutability(&self) -> VariableMutability {
+        match &self.expression {
+            TypedExpressionVariant::VariableExpression { mutability, .. } => *mutability,
+            _ => VariableMutability::Immutable,
+        }
+    }
+
     pub(crate) fn type_check(mut ctx: TypeCheckContext, expr: Expression) -> CompileResult<Self> {
         let expr_span = expr.span();
         let span = expr_span.clone();
@@ -615,6 +623,7 @@ impl TypedExpression {
             Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                 name: decl_name,
                 body,
+                mutability,
                 ..
             })) => TypedExpression {
                 return_type: body.return_type,
@@ -622,6 +631,7 @@ impl TypedExpression {
                 expression: TypedExpressionVariant::VariableExpression {
                     name: decl_name.clone(),
                     span: name.span(),
+                    mutability: *mutability,
                 },
                 span,
             },
@@ -637,6 +647,7 @@ impl TypedExpression {
                 expression: TypedExpressionVariant::VariableExpression {
                     name: decl_name.clone(),
                     span: name.span(),
+                    mutability: VariableMutability::Immutable,
                 },
                 span,
             },
