@@ -175,7 +175,8 @@ To deploy `counter_contract` on your local Fuel node, open a new terminal tab an
 forc deploy
 ```
 
-> Note you can't use the same terminal session that is running fuel-core to run any other commands as this will end your fuel-core process.
+> **Note**
+> You can't use the same terminal session that is running fuel-core to run any other commands as this will end your fuel-core process.
 
 This should produce some output in `stdout` that looks like this:
 
