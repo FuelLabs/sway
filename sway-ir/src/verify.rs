@@ -562,8 +562,6 @@ impl<'a> InstructionVerifier<'a> {
             } else {
                 Ok(())
             }
-        } else if !self.is_local_pointer(src_ptr.as_ref().unwrap()) {
-            Err(IrError::VerifyLoadNonExistentPointer)
         } else {
             Ok(())
         }

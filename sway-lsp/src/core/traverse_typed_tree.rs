@@ -278,7 +278,9 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
             handle_expression(lhs, tokens);
             handle_expression(rhs, tokens);
         }
-        TypedExpressionVariant::VariableExpression { ref name, ref span } => {
+        TypedExpressionVariant::VariableExpression {
+            ref name, ref span, ..
+        } => {
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(span.clone()))) {
                 token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
                 token.type_def = Some(TypeDefinition::Ident(name.clone()));
