@@ -106,8 +106,8 @@ Below your ABI definition, you will write the implementation of the functions de
 impl Counter for Contract {
     #[storage(read)]
     fn counter() -> u64 {
-        return storage.counter;
-      }
+      return storage.counter;
+    }
     #[storage(read, write)]
     fn increment(){
         storage.counter = storage.counter + 1;
