@@ -1,5 +1,5 @@
 use crate::{
-    utils::comments::{ByteSpan, LeafSpans},
+    utils::byte_span::{ByteSpan, LeafSpans},
     FormatterError,
 };
 use std::fmt::Write;
@@ -38,7 +38,7 @@ pub(crate) fn insert_program_type(
             name.as_str()
         )?,
     };
-    writeln!(formatted_code, "{}\n", PunctKind::Semicolon.as_char())?;
+    writeln!(formatted_code, "{}", PunctKind::Semicolon.as_char())?;
 
     Ok(())
 }

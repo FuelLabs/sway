@@ -43,7 +43,6 @@ pub enum IrError {
     VerifyIntToPtrToCopyType(String),
     VerifyIntToPtrUnknownSourceType,
     VerifyLoadFromNonPointer,
-    VerifyLoadNonExistentPointer,
     VerifyMismatchedReturnTypes(String),
     VerifyPhiFromMissingBlock(String),
     VerifyPhiInconsistentTypes,
@@ -239,10 +238,6 @@ impl fmt::Display for IrError {
             IrError::VerifyLoadFromNonPointer => {
                 write!(f, "Verification failed: Load must be from a pointer.")
             }
-            IrError::VerifyLoadNonExistentPointer => write!(
-                f,
-                "Verification failed: Attempt to load from a pointer not found in function locals."
-            ),
             IrError::VerifyMismatchedReturnTypes(fn_str) => write!(
                 f,
                 "Verification failed: Function {fn_str} return type must match its RET \

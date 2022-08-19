@@ -11,6 +11,8 @@ pub enum FormatterError {
     LexError(#[from] sway_parse::LexError),
     #[error("Error while adding comments")]
     CommentError,
+    #[error("Error while formatting newline sequences")]
+    NewlineSequenceError,
 }
 
 #[derive(Debug, Error)]
