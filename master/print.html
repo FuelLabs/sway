@@ -228,7 +228,7 @@ forc completions --shell=powershell | Out-String | Invoke-Expression
 </code></pre>
 <p>Once the completions have been generated and properly installed, close and reopen your terminal for the new completions to take effect.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="getting-started"><a class="header" href="#getting-started">Getting Started</a></h1>
-<p>Follow this guide to write and deploy a simple wallet smart contract in Sway.</p>
+<p>Follow this guide to write, test, and deploy a simple smart contract in Sway.</p>
 <h2 id="glossary"><a class="header" href="#glossary">Glossary</a></h2>
 <p>Before we begin, it may be helpful to understand terminology that will used throughout the docs and how they relate to each other:</p>
 <ul>
@@ -246,174 +246,145 @@ forc completions --shell=powershell | Out-String | Invoke-Expression
 <li><code>library</code></li>
 </ul>
 <p>Contracts, predicates, and scripts can produce artifacts usable on the blockchain, while a library is simply a project designed for code reuse and is not directly deployable.</p>
-<p>Every Sway file must begin with a declaration of what type of program it is.</p>
 <p>See <a href="introduction/../sway-program-types/index.html">the chapter on program types</a> for more information.</p>
-<h2 id="create-wallet-projects-with-forc"><a class="header" href="#create-wallet-projects-with-forc">Create Wallet Projects with <code>forc</code></a></h2>
-<p>To deploy a wallet on Fuel, we will need to write a library, a contract, and a script in Sway.</p>
-<p>First, let's <a href="introduction/./installation.html">install the Fuel toolchain</a>. Then with <code>forc</code> installed, let's create three different sibling projects:</p>
-<pre><code class="language-sh">forc new wallet_lib
-forc new wallet_contract
-forc new wallet_script
+<h2 id="your-first-sway-project"><a class="header" href="#your-first-sway-project">Your First Sway Project</a></h2>
+<p>We'll build a simple counter contract with two functions: one to increment the counter, and one to return the value of the counter.</p>
+<p>A few pieces of info that will be helpful before moving on:</p>
+<ul>
+<li>The main features of a smart contract that differentiate it from scripts or predicates are that it is callable and stateful.</li>
+<li>A script is runnable bytecode on the chain which can call contracts to perform some task. It does not represent ownership of any resources and it cannot be called by a contract.</li>
+</ul>
+<h3 id="writing-the-contract"><a class="header" href="#writing-the-contract">Writing the Contract</a></h3>
+<p>First, let's <a href="introduction/./installation.html">install the Sway toolchain</a>. Then with <code>forc</code> installed, create a contract project:</p>
+<pre><code class="language-sh">forc new counter_contract
 </code></pre>
-<p>See <a href="introduction/./forc_project.html">here</a> for more information on Forc project structure.</p>
-<h2 id="write-a-sway-smart-contract"><a class="header" href="#write-a-sway-smart-contract">Write a Sway Smart Contract</a></h2>
-<h3 id="declare-abi-in-wallet_lib"><a class="header" href="#declare-abi-in-wallet_lib">Declare ABI in <code>wallet_lib</code></a></h3>
-<p>Navigate into the <code>src/main.sw</code> file of the <code>wallet_lib</code> directory you just created.</p>
-<p>Delete the auto-generated skeleton code currently in the file, and copy and paste the following code:</p>
-<pre><code class="language-sway">library wallet_lib;
-
-abi Wallet {
-    fn receive_funds();
-    fn send_funds(amount_to_send: u64, recipient_address: b256);
-}
+<p>Here is the project that Forc has initialized:</p>
+<pre><code class="language-console">$ cd counter_contract
+$ tree .
+├── Cargo.toml
+├── Forc.toml
+├── src
+│   └── main.sw
+└── tests
+    └── harness.rs
 </code></pre>
-<p>Every Sway file must start with a declaration of what type of program the file contains; here, we've declared that this file is a <code>library</code> called <code>wallet_lib</code>.</p>
-<p>Sway contracts should declare an ABI—an <strong>a</strong>pplication <strong>b</strong>inary <strong>i</strong>nterface—in a library so that it can be re-used by downstream contracts. Let's focus on the ABI declaration and inspect it line-by-line.</p>
-<p>In the first line, we declare the name of this ABI: <code>Wallet</code>. To import this ABI into either a script or another contract for calling the contract, or the contract to implement the ABI, you would use <code>use wallet_lib::Wallet;</code>.</p>
-<p>In the second line we declare an ABI method called <code>receive_funds</code> which, when called, should receive funds into this wallet. This method takes no parameters and does not return anything.</p>
-<blockquote>
-<p><strong>Note</strong>: We are simply defining an interface here, so there is no function body or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to <a href="introduction/../advanced/traits.html">trait declarations</a>.</p>
-</blockquote>
-<p>In the third line we declare another ABI method, this time called <code>send_funds</code>. It takes two parameters: the amount to send, and the address to send the funds to.</p>
-<h3 id="implementing-the-abi-methods-in-wallet_contract"><a class="header" href="#implementing-the-abi-methods-in-wallet_contract">Implementing the ABI Methods in <code>wallet_contract</code></a></h3>
-<p>Now that we've defined the interface, let's discuss how to use it. We will start by implementing the above ABI for a specific contract.</p>
-<p>To do this, navigate to the <code>wallet_contract</code> directory that you created with <code>forc</code> previously.</p>
-<p>First, you need to import the <code>Wallet</code> declaration from the last step. Open up <code>Forc.toml</code>. It should look something like this:</p>
-<pre><code class="language-toml">[project]
-authors = [&quot;user&quot;]
-entry = &quot;main.sw&quot;
-license = &quot;Apache-2.0&quot;
-name = &quot;wallet_contract&quot;
-
-[dependencies]
-</code></pre>
-<p>Include the <code>wallet_lib</code> project as a dependency by adding the following line to the bottom of the file:</p>
-<pre><code class="language-toml">wallet_lib = { path = &quot;../wallet_lib&quot; }
-</code></pre>
-<p>Now, open up <code>main.sw</code> in <code>wallet_contract/src</code> and copy and paste the following code:</p>
+<p><code>Forc.toml</code> is the <em>manifest file</em> (similar to <code>Cargo.toml</code> for Cargo or <code>package.json</code> for Node), and defines project metadata such as the project name and dependencies.</p>
+<p>We'll be writing our code in the <code>src/main.sw</code>.</p>
+<p><code>cd</code> (change directories) into your contract project and delete the boilerplate code in <code>src/main.sw</code>. Every Sway file must start with a declaration of what type of program the file contains; here, we've declared that this file is a contract.</p>
 <pre><code class="language-sway">contract;
-use wallet_lib::Wallet;
+</code></pre>
+<p>Next, we'll define a our storage value. In our case, we have a single counter that we'll call <code>counter</code> of type 64-bit unsigned integer and initialize it to 0.</p>
+<pre><code class="language-sway">storage {
+    counter: u64 = 0,
+}
+</code></pre>
+<h3 id="abi"><a class="header" href="#abi">ABI</a></h3>
+<p>An ABI defines an interface, and there is no function body in the ABI. A contract must either define or import an ABI declaration and implement it. It is considered best practice to define your ABI in a separate library and import it into your contract because this allows callers of the contract to import and use the ABI in scripts to call your contract.</p>
+<p>For simplicity, we will define the ABI natively in the contract.</p>
+<pre><code class="language-sway">abi Counter {
+    #[storage(read, write)]
+    fn increment();
 
-impl Wallet for Contract {
-    fn receive_funds() {
+    #[storage(read)]
+    fn counter() -&gt; u64;
+}
+</code></pre>
+<h3 id="going-line-by-line"><a class="header" href="#going-line-by-line">Going line by line</a></h3>
+<p><code>#[storage(read, write)]</code> is an annotation which denotes that this function has permission to read and write a value in storage.</p>
+<p><code>fn increment()</code> - We're introducing the functionality to increment and denoting it shouldn't return any value.</p>
+<p><code>#[storage(read)]</code> is an annotation which denotes that this function has permission to read values in storage.</p>
+<p><code>fn counter() -&gt; u64;</code> - We're introducing the functionality to increment the counter and denoting the function's return value.</p>
+<h3 id="implement-abi"><a class="header" href="#implement-abi">Implement ABI</a></h3>
+<p>Below your ABI definition, you will write the implementation of the functions defined in your ABI.</p>
+<pre><code class="language-sway">impl Counter for Contract {
+    #[storage(read)]
+    fn counter() -&gt; u64 {
+      return storage.counter;
     }
-
-    fn send_funds(amount_to_send: u64, recipient_address: b256) {
+    #[storage(read, write)]
+    fn increment(){
+        storage.counter = storage.counter + 1;
     }
 }
 </code></pre>
-<p>This implements the ABI methods with empty bodies. Actual implementation of the bodies is left as an exercise for the reader.</p>
-<h2 id="build-the-contract"><a class="header" href="#build-the-contract">Build the Contract</a></h2>
-<p>Build <code>wallet_contract</code> by running</p>
+<blockquote>
+<p><strong>Note</strong>
+<code>return storage.counter;</code> is equivalent to <code>storage.counter</code>.</p>
+</blockquote>
+<h3 id="what-we-just-did"><a class="header" href="#what-we-just-did">What we just did</a></h3>
+<p>Read and return the counter property value from the contract storage.</p>
+<pre><code class="language-sway">fn counter() -&gt; u64 {
+    return storage.counter;
+}
+</code></pre>
+<p>The function body accesses the value counter in storage, and increments the value by one. Then, we return the newly updated value of counter.</p>
+<pre><code class="language-sway">fn increment() {
+    storage.counter = storage.counter + 1;
+}
+</code></pre>
+<h3 id="build-the-contract"><a class="header" href="#build-the-contract">Build the Contract</a></h3>
+<p>Build <code>counter_contract</code> by running the following command in your terminal from inside the <code>counter_contract</code> directory:</p>
 <pre><code class="language-sh">forc build
 </code></pre>
-<p>from inside the <code>wallet_contract</code> directory.</p>
-<h2 id="deploy-the-contract"><a class="header" href="#deploy-the-contract">Deploy the Contract</a></h2>
-<p>It's now time to deploy the wallet contract and call it on a Fuel node. We will show how to do this using <code>forc</code> from the command line, but you can also do it using the <a href="https://github.com/FuelLabs/fuels-rs#deploying-a-sway-contract">Rust SDK</a> or the <a href="https://github.com/FuelLabs/fuels-ts/#deploying-contracts">TypeScript SDK</a></p>
+<p>You should see something like this output:</p>
+<pre><code class="language-console">Compiled library &quot;core&quot;.
+  Compiled library &quot;std&quot;.
+  Compiled contract &quot;counter_contract&quot;.
+  Bytecode size is 240 bytes.
+</code></pre>
+<h3 id="deploy-the-contract"><a class="header" href="#deploy-the-contract">Deploy the Contract</a></h3>
+<p>It's now time to deploy the contract and call it on a Fuel node. We will show how to do this using <code>forc</code> from the command line, but you can also do it using the <a href="https://github.com/FuelLabs/fuels-rs#deploying-a-sway-contract">Rust SDK</a> or the <a href="https://github.com/FuelLabs/fuels-ts/#deploying-contracts">TypeScript SDK</a></p>
 <h3 id="spin-up-a-fuel-node"><a class="header" href="#spin-up-a-fuel-node">Spin Up a Fuel node</a></h3>
 <p>In a separate tab in your terminal, spin up a local Fuel node:</p>
 <pre><code class="language-sh">fuel-core --db-type in-memory
 </code></pre>
 <p>This starts a Fuel node with a volatile database that will be cleared when shut down (good for testing purposes).</p>
-<h3 id="deploy-wallet_contract-to-your-local-fuel-node"><a class="header" href="#deploy-wallet_contract-to-your-local-fuel-node">Deploy <code>wallet_contract</code> To Your Local Fuel Node</a></h3>
-<p>To deploy <code>wallet_contract</code> on your local Fuel node, run</p>
+<h3 id="deploy-counter_contract-to-your-local-fuel-node"><a class="header" href="#deploy-counter_contract-to-your-local-fuel-node">Deploy <code>counter_contract</code> To Your Local Fuel Node</a></h3>
+<p>To deploy <code>counter_contract</code> on your local Fuel node, open a new terminal tab and run the following command from the root of the <code>wallet_contract</code> directory:</p>
 <pre><code class="language-sh">forc deploy
 </code></pre>
-<p>from the root of the <code>wallet_contract</code> directory.</p>
+<blockquote>
+<p><strong>Note</strong>
+You can't use the same terminal session that is running fuel-core to run any other commands as this will end your fuel-core process.</p>
+</blockquote>
 <p>This should produce some output in <code>stdout</code> that looks like this:</p>
 <pre><code class="language-console">$ forc deploy
-  Compiled library &quot;wallet_lib&quot;.
-  Compiled contract &quot;wallet_contract&quot;.
-  Bytecode size is 212 bytes.
-Contract id: 0xf4b63e0e09cb72762cec18a6123a9fb5bd501b87141fac5835d80f5162505c38
-Logs:
-HexString256(HexFormatted(0xd9240bc439834bc6afc3f334abf285b3b733560b63d7ce1eb53afa8981984af7))
-</code></pre>
-<p>Note the contract ID—you will need it in the next step.</p>
-<h2 id="write-a-sway-script-to-call-a-sway-contract"><a class="header" href="#write-a-sway-script-to-call-a-sway-contract">Write a Sway Script to Call a Sway Contract</a></h2>
-<blockquote>
-<p><strong>Note</strong>: If you are using the SDK you do not need to write a script to call the Sway contract, this is all handled automagically by the SDK.</p>
-</blockquote>
-<p>Now that we have deployed our wallet contract, we need to actually <em>call</em> our contract. We can do this by calling the contract from a script.</p>
-<p>Let's navigate to the <code>wallet_script</code> directory created previously.</p>
-<p>First, you need to import the <code>wallet_lib</code> library. Open up the <code>Forc.toml</code> in the root of the directory. Import <code>wallet_lib</code> repo by adding the following line to the bottom of the file:</p>
-<pre><code class="language-toml">wallet_lib = { path = &quot;../wallet_lib&quot; }
-</code></pre>
-<p>Next, open up <code>src/main.sw</code>. Copy and paste the following code:</p>
-<pre><code class="language-sway">script;
-
-use std::constants::BASE_ASSET_ID;
-
-use wallet_lib::Wallet;
-
-fn main() {
-    let caller = abi(Wallet, &lt;contract_address&gt;);
-    caller.send_funds(200, 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b);
-}
-</code></pre>
-<p>Replace <code>&lt;contract_address&gt;</code> with the contract ID you noted when deploying the contract.</p>
-<p>The main new concept is the <em>abi cast</em>: <code>abi(AbiName, ContractAddress)</code>. This returns a <code>ContractCaller</code> type which can be used to call contracts. The methods of the ABI become the methods available on this contract caller: <code>send_funds</code> and <code>receive_funds</code>. We can directly call a contract ABI method as if it were a trait method.</p>
-<h2 id="check-that-wallet_script-builds"><a class="header" href="#check-that-wallet_script-builds">Check That <code>wallet_script</code> Builds</a></h2>
-<p>To check that <code>wallet_script</code> builds successfully, run</p>
-<pre><code class="language-sh">forc build
-</code></pre>
-<p>from the root of the <code>wallet_script</code> directory.</p>
-<h2 id="call-the-contract"><a class="header" href="#call-the-contract">Call the Contract</a></h2>
-<p>It's now time to call the contract. We will show how to do this using <code>forc</code> from the command line, but you can also do this using the <a href="https://github.com/FuelLabs/fuels-rs#generating-type-safe-rust-bindings">Rust SDK</a> or the <a href="https://github.com/FuelLabs/fuels-ts/#calling-contracts">TypeScript SDK</a></p>
-<h3 id="run-wallet_script-against-your-local-fuel-node"><a class="header" href="#run-wallet_script-against-your-local-fuel-node">Run <code>wallet_script</code> Against Your Local Fuel Node</a></h3>
-<p>To run the script now against the local Fuel node, run</p>
-<pre><code class="language-sh">forc run --contract &lt;contract-id&gt;
-</code></pre>
-<p>from the root of the <code>wallet_script</code> directory.</p>
-<p>Note that we are passing in the <code>wallet_contract</code> contract ID as a command-line parameter. You will need to pass in the contract ID of every contract that this script will be interacting with.</p>
-<p>If the script is successfully run, it will output something that looks like:</p>
-<pre><code class="language-console">$ forc run --pretty-print --contract &lt;contract-id&gt;
   Compiled library &quot;core&quot;.
   Compiled library &quot;std&quot;.
-  Compiled library &quot;wallet_lib&quot;.
-  Compiled script &quot;wallet_script&quot;.
-  Bytecode size is 272 bytes.
-[
-  {
-    &quot;Call&quot;: {
-      &quot;amount&quot;: 0,
-      &quot;asset_id&quot;: &quot;0000000000000000000000000000000000000000000000000000000000000000&quot;,
-      &quot;gas&quot;: 99999240,
-      &quot;id&quot;: &quot;ea1f774aae16b8719ce463d4e8097ef72766686ede65e35947084aa0055e59d7&quot;,
-      &quot;is&quot;: 11536,
-      &quot;param1&quot;: 3467577331,
-      &quot;param2&quot;: 10848,
-      &quot;pc&quot;: 11536,
-      &quot;to&quot;: &quot;ea1f774aae16b8719ce463d4e8097ef72766686ede65e35947084aa0055e59d7&quot;
-    }
-  },
-  {
-    &quot;Return&quot;: {
-      &quot;id&quot;: &quot;ea1f774aae16b8719ce463d4e8097ef72766686ede65e35947084aa0055e59d7&quot;,
-      &quot;is&quot;: 11536,
-      &quot;pc&quot;: 11608,
-      &quot;val&quot;: 0
-    }
-  },
-  {
-    &quot;Return&quot;: {
-      &quot;id&quot;: &quot;0000000000000000000000000000000000000000000000000000000000000000&quot;,
-      &quot;is&quot;: 10352,
-      &quot;pc&quot;: 10476,
-      &quot;val&quot;: 0
-    }
-  },
-  {
-    &quot;ScriptResult&quot;: {
-      &quot;gas_used&quot;: 971,
-      &quot;result&quot;: &quot;Success&quot;
-    }
-  }
-]
+  Compiled contract &quot;counter_contract&quot;.
+  Bytecode size is 208 bytes.
+Contract id: 0x1d64105ed60f22f3def36ebbda45d58513e69bcbc4b2fcce0875898b0468d276
+Logs:
+TransactionId(HexFormatted(69a1c45f31892f61ae6b67edd8524550769b1432b7f1984ca0a456ea0de18da7))
 </code></pre>
-<p>It returns a <code>Call</code> receipt and a <code>ScriptResult</code> receipt.</p>
-<h2 id="testing-sway-contracts"><a class="header" href="#testing-sway-contracts">Testing Sway contracts</a></h2>
-<p>The recommended way to test Sway contracts is via the <a href="introduction/../testing/testing-with-rust.html">Rust SDK</a>. You may also write tests in TypeScript if you are using the TypeScript SDK.</p>
+<p>Note the contract ID—you will need it if you want to build out a frontend to interact with this contract.</p>
+<h2 id="testing-your-contract"><a class="header" href="#testing-your-contract">Testing your Contract</a></h2>
+<p>In the directory <code>tests</code>, navigate to <code>harness.rs.</code> Here you'll see there is some boilerplate code to help you start interacting with and testing your contract.</p>
+<p>At the bottom of the file, define the body of <code>can_get_contract_instance</code>. Here is what your code should look like to verify that the value of the counter did get incremented:</p>
+<pre><code class="language-sway">#[tokio::test]
+async fn can_get_contract_id() {
+    let (instance, _id) = get_contract_instance().await;
+    // Now you have an instance of your contract you can use to test each function
+    let result = instance.increment().call().await.unwrap();
+    assert!(result.value &gt; 0)
+}
+</code></pre>
+<p>Run the following command in the terminal: <code>forc test</code>.</p>
+<p>You'll see something like this as your output:</p>
+<pre><code class="language-console"> Compiled library &quot;core&quot;.
+  Compiled library &quot;std&quot;.
+  Compiled contract &quot;counter_contract&quot;.
+  Bytecode size is 208 bytes.
+  Compiling counter_contract v0.1.0 (&lt;/path/to/counter_contract&gt;)
+  Finished test [unoptimized + debuginfo] target(s) in 11.71s
+  Running tests/harness.rs (target/debug/deps/integration_tests-6a600a6a87f48edb)
+
+running 1 test
+test can_get_contract_id ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.24s
+</code></pre>
+<p>Congratulations, you've just created and tested your first Sway smart contract 🎉. Now you can build a frontend to interact with your contract using the TypeScript SDK. You can find a step-by-step guide to building a front end for your project <a href="https://fuellabs.github.io/fuels-ts/QUICKSTART.html">here</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="the-fuel-toolchain"><a class="header" href="#the-fuel-toolchain">The Fuel Toolchain</a></h1>
 <p>The Fuel toolchain consists of several components.</p>
 <h2 id="forc-forc"><a class="header" href="#forc-forc">Forc (<code>forc</code>)</a></h2>
