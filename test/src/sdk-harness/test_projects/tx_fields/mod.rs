@@ -220,7 +220,7 @@ async fn can_get_tx_input_coin_owner() {
     let (contract_instance, _, wallet) = get_contracts().await;
 
     let owner_result = contract_instance
-        .get_tx_input_coin_owner(1)
+        .get_tx_input_coin_owner(0)
         .call()
         .await
         .unwrap();
