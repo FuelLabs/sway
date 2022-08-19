@@ -43,7 +43,7 @@ pub trait From {
 impl From for U256 {
     fn from(a: u64, b: u64, c: u64, d: u64) -> U256 {
         U256 {
-            a, b, c, d,
+            a, b, c, d, 
         }
     }
 
@@ -115,17 +115,11 @@ impl U256 {
 
 impl core::ops::Ord for U256 {
     fn gt(self, other: Self) -> bool {
-        self.a > other.a
-            || (self.a == other.a && self.b > other.b
-                || (self.b == other.b && self.c > other.c
-                    || (self.c == other.c && self.d > other.d)))
+        self.a > other.a || (self.a == other.a && self.b > other.b || (self.b == other.b && self.c > other.c || (self.c == other.c && self.d > other.d)))
     }
 
     fn lt(self, other: Self) -> bool {
-        self.a < other.a
-            || (self.a == other.a && self.b < other.b
-                || (self.b == other.b && self.c < other.c
-                    || (self.c == other.c && self.d < other.d)))
+        self.a < other.a || (self.a == other.a && self.b < other.b || (self.b == other.b && self.c < other.c || (self.c == other.c && self.d < other.d)))
     }
 }
 
