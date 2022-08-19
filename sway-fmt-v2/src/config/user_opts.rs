@@ -18,6 +18,7 @@ pub struct WhitespaceOptions {
     pub tab_spaces: Option<usize>,
     pub newline_style: Option<NewlineStyle>,
     pub indent_style: Option<IndentStyle>,
+    pub newline_threshold: Option<usize>,
 }
 /// See parent struct [Imports].
 #[derive(Serialize, Deserialize, Debug, Copy, Clone)]

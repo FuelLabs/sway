@@ -1,6 +1,6 @@
 use crate::{
     fmt::*,
-    utils::comments::{ByteSpan, LeafSpans},
+    utils::byte_span::{ByteSpan, LeafSpans},
 };
 use sway_ast::ItemKind::{self, *};
 
