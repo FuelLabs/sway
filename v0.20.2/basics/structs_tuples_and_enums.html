@@ -1,0 +1,468 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Structs, Tuples, and Enums - The Sway Programming Language</title>
+        <!-- Custom HTML head -->
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../index.html">The Sway Programming Language</a></li><li class="chapter-item expanded "><a href="../introduction/index.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../introduction/installation.html"><strong aria-hidden="true">1.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="../introduction/overview.html"><strong aria-hidden="true">1.2.</strong> Getting Started</a></li><li class="chapter-item expanded "><a href="../introduction/fuel-toolchain.html"><strong aria-hidden="true">1.3.</strong> The Fuel Toolchain</a></li><li class="chapter-item expanded "><a href="../introduction/forc_project.html"><strong aria-hidden="true">1.4.</strong> A Forc Project</a></li><li class="chapter-item expanded "><a href="../introduction/standard_library.html"><strong aria-hidden="true">1.5.</strong> Standard Library</a></li></ol></li><li class="chapter-item expanded "><a href="../examples/index.html"><strong aria-hidden="true">2.</strong> Examples</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../examples/counter.html"><strong aria-hidden="true">2.1.</strong> Counter</a></li><li class="chapter-item expanded "><a href="../examples/subcurrency.html"><strong aria-hidden="true">2.2.</strong> Subcurrency</a></li><li class="chapter-item expanded "><a href="../examples/fizzbuzz.html"><strong aria-hidden="true">2.3.</strong> FizzBuzz</a></li><li class="chapter-item expanded "><a href="../examples/wallet_smart_contract.html"><strong aria-hidden="true">2.4.</strong> Wallet Smart Contract</a></li></ol></li><li class="chapter-item expanded "><a href="../sway-program-types/index.html"><strong aria-hidden="true">3.</strong> Program Types</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../sway-program-types/smart_contracts.html"><strong aria-hidden="true">3.1.</strong> Contracts</a></li><li class="chapter-item expanded "><a href="../sway-program-types/libraries.html"><strong aria-hidden="true">3.2.</strong> Libraries</a></li><li class="chapter-item expanded "><a href="../sway-program-types/scripts.html"><strong aria-hidden="true">3.3.</strong> Scripts</a></li><li class="chapter-item expanded "><a href="../sway-program-types/predicates.html"><strong aria-hidden="true">3.4.</strong> Predicates</a></li></ol></li><li class="chapter-item expanded "><a href="../basics/index.html"><strong aria-hidden="true">4.</strong> Sway Language Basics</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../basics/variables.html"><strong aria-hidden="true">4.1.</strong> Variables</a></li><li class="chapter-item expanded "><a href="../basics/built_in_types.html"><strong aria-hidden="true">4.2.</strong> Built-in Types</a></li><li class="chapter-item expanded "><a href="../basics/blockchain_types.html"><strong aria-hidden="true">4.3.</strong> Blockchain Types</a></li><li class="chapter-item expanded "><a href="../basics/functions.html"><strong aria-hidden="true">4.4.</strong> Functions</a></li><li class="chapter-item expanded "><a href="../basics/structs_tuples_and_enums.html" class="active"><strong aria-hidden="true">4.5.</strong> Structs, Tuples, and Enums</a></li><li class="chapter-item expanded "><a href="../basics/methods_and_associated_functions.html"><strong aria-hidden="true">4.6.</strong> Methods and Associated Functions</a></li><li class="chapter-item expanded "><a href="../basics/comments_and_logging.html"><strong aria-hidden="true">4.7.</strong> Comments and Logging</a></li><li class="chapter-item expanded "><a href="../basics/control_flow.html"><strong aria-hidden="true">4.8.</strong> Control Flow</a></li></ol></li><li class="chapter-item expanded "><a href="../blockchain-development/index.html"><strong aria-hidden="true">5.</strong> Blockchain Development with Sway</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../blockchain-development/hashing_and_cryptography.html"><strong aria-hidden="true">5.1.</strong> Hashing and Cryptography</a></li><li class="chapter-item expanded "><a href="../blockchain-development/storage.html"><strong aria-hidden="true">5.2.</strong> Contract Storage</a></li><li class="chapter-item expanded "><a href="../blockchain-development/purity.html"><strong aria-hidden="true">5.3.</strong> Function Purity</a></li><li class="chapter-item expanded "><a href="../blockchain-development/identifiers.html"><strong aria-hidden="true">5.4.</strong> Identifiers</a></li><li class="chapter-item expanded "><a href="../blockchain-development/native_assets.html"><strong aria-hidden="true">5.5.</strong> Native Assets</a></li><li class="chapter-item expanded "><a href="../blockchain-development/access_control.html"><strong aria-hidden="true">5.6.</strong> Access Control</a></li><li class="chapter-item expanded "><a href="../blockchain-development/calling_contracts.html"><strong aria-hidden="true">5.7.</strong> Calling Contracts</a></li></ol></li><li class="chapter-item expanded "><a href="../advanced/index.html"><strong aria-hidden="true">6.</strong> Advanced Concepts</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../advanced/generic_types.html"><strong aria-hidden="true">6.1.</strong> Generic Types</a></li><li class="chapter-item expanded "><a href="../advanced/traits.html"><strong aria-hidden="true">6.2.</strong> Traits</a></li><li class="chapter-item expanded "><a href="../advanced/trait_constraints.html"><strong aria-hidden="true">6.3.</strong> Trait Constraints</a></li><li class="chapter-item expanded "><a href="../advanced/assembly.html"><strong aria-hidden="true">6.4.</strong> Assembly</a></li></ol></li><li class="chapter-item expanded "><a href="../common-collections/index.html"><strong aria-hidden="true">7.</strong> Common Collections</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../common-collections/vec.html"><strong aria-hidden="true">7.1.</strong> Vectors on the Heap</a></li><li class="chapter-item expanded "><a href="../common-collections/storage_vec.html"><strong aria-hidden="true">7.2.</strong> Storage Vectors</a></li><li class="chapter-item expanded "><a href="../common-collections/storage_map.html"><strong aria-hidden="true">7.3.</strong> Storage Maps</a></li></ol></li><li class="chapter-item expanded "><a href="../testing/index.html"><strong aria-hidden="true">8.</strong> Testing</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../testing/testing-with-rust.html"><strong aria-hidden="true">8.1.</strong> Testing with Rust</a></li></ol></li><li class="chapter-item expanded "><a href="../frontend/index.html"><strong aria-hidden="true">9.</strong> Application Frontend</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../frontend/typescript_sdk.html"><strong aria-hidden="true">9.1.</strong> TypeScript SDK</a></li></ol></li><li class="chapter-item expanded "><a href="../reference/index.html"><strong aria-hidden="true">10.</strong> Sway Reference</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../reference/style_guide.html"><strong aria-hidden="true">10.1.</strong> Style Guide</a></li><li class="chapter-item expanded "><a href="../reference/known_issues_and_workarounds.html"><strong aria-hidden="true">10.2.</strong> Known Issues and Workarounds</a></li><li class="chapter-item expanded "><a href="../reference/solidity_differences.html"><strong aria-hidden="true">10.3.</strong> Differences From Solidity</a></li><li class="chapter-item expanded "><a href="../reference/rust_differences.html"><strong aria-hidden="true">10.4.</strong> Differences From Rust</a></li><li class="chapter-item expanded "><a href="../reference/contributing_to_sway.html"><strong aria-hidden="true">10.5.</strong> Contributing To Sway</a></li></ol></li><li class="chapter-item expanded "><a href="../forc/index.html"><strong aria-hidden="true">11.</strong> Forc Reference</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../forc/manifest_reference.html"><strong aria-hidden="true">11.1.</strong> Manifest Reference</a></li><li class="chapter-item expanded "><a href="../forc/dependencies.html"><strong aria-hidden="true">11.2.</strong> Dependencies</a></li><li class="chapter-item expanded "><a href="../forc/commands/index.html"><strong aria-hidden="true">11.3.</strong> Commands</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../forc/commands/forc_addr2line.html"><strong aria-hidden="true">11.3.1.</strong> forc addr2line</a></li><li class="chapter-item expanded "><a href="../forc/commands/forc_build.html"><strong aria-hidden="true">11.3.2.</strong> forc build</a></li><li class="chapter-item expanded "><a href="../forc/commands/forc_check.html"><strong aria-hidden="true">11.3.3.</strong> forc check</a></li><li class="chapter-item expanded "><a href="../forc/commands/forc_clean.html"><strong aria-hidden="true">11.3.4.</strong> forc clean</a></li><li class="chapter-item expanded "><a href="../forc/commands/forc_completions.html"><strong aria-hidden="true">11.3.5.</strong> forc completions</a></li><li class="chapter-item expanded "><a href="../forc/commands/forc_init.html"><strong aria-hidden="true">11.3.6.</strong> forc init</a></li><li class="chapter-item expanded "><a href="../forc/commands/forc_json-abi.html"><strong aria-hidden="true">11.3.7.</strong> forc json-abi</a></li><li class="chapter-item expanded "><a href="../forc/commands/forc_new.html"><strong aria-hidden="true">11.3.8.</strong> forc new</a></li><li class="chapter-item expanded "><a href="../forc/commands/forc_parse-bytecode.html"><strong aria-hidden="true">11.3.9.</strong> forc parse-bytecode</a></li><li class="chapter-item expanded "><a href="../forc/commands/forc_plugins.html"><strong aria-hidden="true">11.3.10.</strong> forc plugins</a></li><li class="chapter-item expanded "><a href="../forc/commands/forc_test.html"><strong aria-hidden="true">11.3.11.</strong> forc test</a></li><li class="chapter-item expanded "><a href="../forc/commands/forc_update.html"><strong aria-hidden="true">11.3.12.</strong> forc update</a></li><li class="chapter-item expanded "><a href="../forc/commands/forc_template.html"><strong aria-hidden="true">11.3.13.</strong> forc template</a></li></ol></li><li class="chapter-item expanded "><a href="../forc/plugins.html"><strong aria-hidden="true">11.4.</strong> Plugins</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../forc_client.html"><strong aria-hidden="true">11.4.1.</strong> forc client</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../forc_deploy.html"><strong aria-hidden="true">11.4.1.1.</strong> forc deploy</a></li><li class="chapter-item expanded "><a href="../forc_run.html"><strong aria-hidden="true">11.4.1.2.</strong> forc run</a></li></ol></li><li class="chapter-item expanded "><a href="../forc_explore.html"><strong aria-hidden="true">11.4.2.</strong> forc explore</a></li><li class="chapter-item expanded "><a href="../forc_fmt.html"><strong aria-hidden="true">11.4.3.</strong> forc fmt</a></li><li class="chapter-item expanded "><a href="../forc_lsp.html"><strong aria-hidden="true">11.4.4.</strong> forc lsp</a></li></ol></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The Sway Programming Language</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/FuelLabs/sway" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="structs-tuples-and-enums"><a class="header" href="#structs-tuples-and-enums">Structs, Tuples, and Enums</a></h1>
+<h2 id="structs"><a class="header" href="#structs">Structs</a></h2>
+<p>Structs in Sway are a named grouping of types. You may also be familiar with structs via another name: <em>product types</em>. Sway does not make any significantly unique usages of structs; they are similar to most other languages which have structs. If you're coming from an object-oriented background, a struct is like the data attributes of an object.</p>
+<p>Firstly, we declare a struct named <code>Foo</code> with two fields. The first field is named <code>bar</code> and it accepts values of type <code>u64</code>, the second field is named <code>baz</code> and it accepts <code>bool</code> values.</p>
+<pre><code class="language-sway">library data_structures;
+
+// Declare a struct type
+pub struct Foo {
+    bar: u64,
+    baz: bool,
+}
+
+// Struct types for destructuring
+pub struct Point {
+    x: u64,
+    y: u64,
+}
+
+pub struct Line {
+    p1: Point,
+    p2: Point,
+}
+
+pub struct TupleInStruct {
+    nested_tuple: (u64,
+    (u32, (bool, str[2]))), 
+}
+</code></pre>
+<p>In order to instantiate the struct we use <em>struct instantiation syntax</em>, which is very similar to the declaration syntax except with expressions in place of types.</p>
+<p>There are three ways to instantiate the struct.</p>
+<ul>
+<li>Hardcoding values for the fields</li>
+<li>Passing in variables with names different than the struct fields</li>
+<li>Using a shorthand notation via variables that are the same as the field names</li>
+</ul>
+<pre><code class="language-sway">library utils;
+
+dep data_structures;
+use data_structures::{Foo, Line, Point, TupleInStruct};
+
+fn hardcoded_instantiation() -&gt; Foo {
+    // Instantiate `foo` as `Foo`
+    let mut foo = Foo {
+        bar: 42,
+        baz: false,
+    };
+
+    // Access and write to &quot;baz&quot;
+    foo.baz = true;
+
+    // Return the struct
+    foo
+}
+
+fn variable_instantiation() -&gt; Foo {
+    // Declare variables with the same names as the fields in `Foo`
+    let number = 42;
+    let truthness = false;
+
+    // Instantiate `foo` as `Foo`
+    let mut foo = Foo {
+        bar: number,
+        baz: truthness,
+    };
+
+    // Access and write to &quot;baz&quot;
+    foo.baz = true;
+
+    // Return the struct
+    foo
+}
+
+fn shorthand_instantiation() -&gt; Foo {
+    // Declare variables with the same names as the fields in `Foo`
+    let bar = 42;
+    let baz = false;
+
+    // Instantiate `foo` as `Foo`
+    let mut foo = Foo {
+        bar, baz, 
+    };
+
+    // Access and write to &quot;baz&quot;
+    foo.baz = true;
+
+    // Return the struct
+    foo
+}
+
+fn struct_destructuring() {
+    let point1 = Point {
+        x: 0,
+        y: 0,
+    };
+    // Destructure the values from the struct into variables
+    let Point {
+        x, y
+    }
+    = point1;
+
+    let point2 = Point {
+        x: 1,
+        y: 1,
+    };
+    // If you do not care about specific struct fields then use &quot;..&quot; at the end of your variable list
+    let Point {
+        x, ..
+    }
+    = point2;
+
+    let line = Line {
+        p1: point1,
+        p2: point2,
+    };
+    // Destructure the values from the nested structs into variables
+    let Line {
+        p1: Point {
+            x: x0, y: y0
+        },
+        p2: Point {
+            x: x1, y: y1
+        }
+    }
+    = line;
+    // You may also destructure tuples nested in structs and structs nested in tuples
+    let tuple_in_struct = TupleInStruct {
+        nested_tuple: (42u64,
+        (42u32, (true, &quot;ok&quot;))), 
+    };
+    let TupleInStruct {
+        nested_tuple: (a, (b, (c, d)))
+    }
+    = tuple_in_struct;
+
+    let struct_in_tuple = (Point {
+        x: 2, y: 4, 
+    },
+    Point {
+        x: 3, y: 6, 
+    });
+    let(Point {
+        x: x0, y: y0, 
+    },
+    Point {
+        x: x1, y: y1, 
+    }) = struct_in_tuple;
+}
+</code></pre>
+<blockquote>
+<p><strong>Note</strong>
+You can mix and match all 3 ways to instantiate the struct at the same time.
+Moreover, the order of the fields does not matter when instantiating however we encourage declaring the fields in alphabetical order and instantiating them in the same alphabetical order</p>
+</blockquote>
+<p>Furthermore, multiple variables can be extracted from a struct using the destructuring syntax.</p>
+<h3 id="struct-memory-layout"><a class="header" href="#struct-memory-layout">Struct Memory Layout</a></h3>
+<blockquote>
+<p><strong>Note</strong>
+This information is not vital if you are new to the language, or programming in general</p>
+</blockquote>
+<p>Structs have zero memory overhead. What that means is that in memory, each struct field is laid out sequentially. No metadata regarding the struct's name or other properties is preserved at runtime. In other words, structs are compile-time constructs. This is the same in Rust, but different in other languages with runtimes like Java.</p>
+<h2 id="tuples"><a class="header" href="#tuples">Tuples</a></h2>
+<p>Tuples are a <a href="./built_in_types.html#tuple-types">basic static-length type</a> which contain multiple different types within themselves. The type of a tuple is defined by the types of the values within it, and a tuple can contain basic types as well as structs and enums.</p>
+<p>You can access values directly by using the <code>.</code> syntax. Moreover, multiple variables can be extracted from a tuple using the destructuring syntax.</p>
+<pre><code class="language-sway">library tuples;
+
+fn tuple() {
+    // You can declare the types youself
+    let tuple1: (u8, bool, u64) = (100, false, 10000);
+
+    // Or have the types be inferred
+    let mut tuple2 = (5, true, (&quot;Sway&quot;, 8));
+
+    // Retrieve values from tuples
+    let number = tuple1.0;
+    let sway = tuple2.2.1;
+
+    // Destructure the values from the tuple into variables
+    let(n1, truthness, n2) = tuple1;
+
+    // If you do not care about specific values then use &quot;_&quot;
+    let(_, truthness, _) = tuple2;
+
+    // Internally mutate the tuple
+    tuple2.1 = false;
+
+    // Or change the values all at once (must keep the same data types)
+    tuple2 = (9, false, (&quot;Fuel&quot;, 99));
+}
+</code></pre>
+<h2 id="enums"><a class="header" href="#enums">Enums</a></h2>
+<p><em>Enumerations</em>, or <em>enums</em>, are also known as <em>sum types</em>. An enum is a type that could be one of several variants. To declare an enum, you enumerate all potential variants.</p>
+<p>Here, we have defined five potential colors. Each enum variant is just the color name. As there is no extra data associated with each variant, we say that each variant is of type <code>()</code>, or unit.</p>
+<blockquote>
+<p><strong>Note</strong>
+enum instantiation does not require the <code>~</code> tilde syntax</p>
+</blockquote>
+<pre><code class="language-sway">library basic_enum;
+
+// Declare the enum
+enum Color {
+    Blue: (),
+    Green: (),
+    Red: (),
+    Silver: (),
+    Grey: (),
+}
+
+fn main() {
+    // To instantiate a variable with the value of an enum the syntax is
+    let blue = Color::Blue;
+    let silver = Color::Silver;
+}
+</code></pre>
+<h3 id="enums-of-structs"><a class="header" href="#enums-of-structs">Enums of Structs</a></h3>
+<p>It is also possible to have an enum variant contain extra data. Take a look at this more substantial example, which combines struct declarations with enum variants:</p>
+<pre><code class="language-sway">library enum_of_structs;
+
+struct Item {
+    price: u64,
+    amount: u64,
+    id: u64,
+}
+
+enum MyEnum {
+    Item: Item,
+}
+
+fn main() {
+    let my_enum = MyEnum::Item(Item {
+        price: 5, amount: 2, id: 42
+    });
+}
+</code></pre>
+<h3 id="enums-of-enums"><a class="header" href="#enums-of-enums">Enums of Enums</a></h3>
+<p>It is possible to define enums of enums:</p>
+<pre><code class="language-sway">library enum_of_enums;
+
+pub enum Error {
+    StateError: StateError,
+    UserError: UserError,
+}
+
+pub enum StateError {
+    Void: (),
+    Pending: (),
+    Completed: (),
+}
+
+pub enum UserError {
+    InsufficientPermissions: (),
+    Unauthorized: (),
+}
+</code></pre>
+<h4 id="preferred-usage"><a class="header" href="#preferred-usage">Preferred usage</a></h4>
+<p>The preferred way to use enums is to use the individual (not nested) enums directly because they are easy to follow and the lines are short:</p>
+<pre><code class="language-sway">library enums_preferred;
+
+dep enum_of_enums;
+use enum_of_enums::{StateError, UserError};
+
+fn preferred() {
+    let error1 = StateError::Void;
+    let error2 = UserError::Unauthorized;
+}
+</code></pre>
+<h4 id="inadvisable"><a class="header" href="#inadvisable">Inadvisable</a></h4>
+<p>If you wish to use the nested form of enums via the <code>Error</code> enum from the example above, then you can instantiate them into variables using the following syntax:</p>
+<pre><code class="language-sway">library enums_avoid;
+
+dep enum_of_enums;
+use enum_of_enums::{Error, StateError, UserError};
+
+fn avoid() {
+    let error1 = Error::StateError(StateError::Void);
+    let error2 = Error::UserError(UserError::Unauthorized);
+}
+</code></pre>
+<p>Key points to note:</p>
+<ul>
+<li>You must import all of the enums you need instead of just the <code>Error</code> enum</li>
+<li>The lines may get unnecessarily long (depending on the names)</li>
+<li>The syntax is not the most ergonomic</li>
+</ul>
+<h3 id="enum-memory-layout"><a class="header" href="#enum-memory-layout">Enum Memory Layout</a></h3>
+<blockquote>
+<p><strong>Note</strong>
+This information is not vital if you are new to the language, or programming in general.</p>
+</blockquote>
+<p>Enums do have some memory overhead. To know which variant is being represented, Sway stores a one-word (8-byte) tag for the enum variant. The space reserved after the tag is equivalent to the size of the <em>largest</em> enum variant. So, to calculate the size of an enum in memory, add 8 bytes to the size of the largest variant. For example, in the case of <code>Color</code> above, where the variants are all <code>()</code>, the size would be 8 bytes since the size of the largest variant is 0 bytes.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../basics/functions.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                            <a rel="next" href="../basics/methods_and_associated_functions.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../basics/functions.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                    <a rel="next" href="../basics/methods_and_associated_functions.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        <script src="../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searcher.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+    </body>
+</html>
