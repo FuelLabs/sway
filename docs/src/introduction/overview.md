@@ -218,7 +218,7 @@ You'll see something like this as your output:
   Compiled library "std".
   Compiled contract "counter_contract".
   Bytecode size is 208 bytes.
-  Compiling counter_contract v0.1.0 (/Users/camiinthisthang/Desktop/Workspace/Fuel/counter_contract)
+  Compiling counter_contract v0.1.0 (</path/to/counter_contract>)
   Finished test [unoptimized + debuginfo] target(s) in 11.71s
   Running tests/harness.rs (target/debug/deps/integration_tests-6a600a6a87f48edb)
 
