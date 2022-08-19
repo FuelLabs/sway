@@ -15,7 +15,7 @@ pub fn semantic_tokens_full(session: &Session, url: &Url) -> Option<SemanticToke
     let tokens = session.tokens_for_file(url);
 
     // The tokens need sorting by thier span so each token is sequential
-    // If this is done then the bit offsets used for the lsp_types::SemanticToken are incorrect.
+    // If this step isn't done, then the bit offsets used for the lsp_types::SemanticToken are incorrect.
     let mut tokens_sorted: Vec<_> = tokens
         .iter()
         .map(|item| {
