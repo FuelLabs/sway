@@ -32,7 +32,12 @@ impl Format for ItemStorage {
         match formatter.config.structures.field_alignment {
             FieldAlignment::AlignFields(storage_field_align_threshold) => {
                 writeln!(formatted_code)?;
-                let value_pairs = &fields.value_separator_pairs;
+                let value_pairs = &fields
+                    .value_separator_pairs
+                    .iter()
+                    // TODO: Handle annotations instead of stripping them
+                    .map(|pair| (&pair.0.value, &pair.1))
+                    .collect::<Vec<_>>();
                 // In first iteration we are going to be collecting the lengths of the struct fields.
                 let field_length: Vec<usize> = value_pairs
                     .iter()
