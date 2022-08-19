@@ -1,7 +1,10 @@
 //! Standard system and editor whitespace configuration options. Advanced whitespace options will be deferred to their corresponding sub-classes.
 use crate::{
     config::user_opts::WhitespaceOptions,
-    constants::{CARRIAGE_RETURN, DEFAULT_MAX_LINE_WIDTH, DEFAULT_TAB_SPACES, LINE_FEED},
+    constants::{
+        CARRIAGE_RETURN, DEFAULT_MAX_LINE_WIDTH, DEFAULT_NEWLINE_THRESHOLD, DEFAULT_TAB_SPACES,
+        LINE_FEED,
+    },
 };
 use serde::{Deserialize, Serialize};
 
@@ -18,6 +21,8 @@ pub struct Whitespace {
     pub newline_style: NewlineStyle,
     /// How we indent expressions or items.
     pub indent_style: IndentStyle,
+    /// Max number of newlines allowed between statements before collapsing them to threshold
+    pub newline_threshold: usize,
 }
 
 impl Default for Whitespace {
@@ -28,6 +33,7 @@ impl Default for Whitespace {
             tab_spaces: DEFAULT_TAB_SPACES,
             newline_style: NewlineStyle::Auto,
             indent_style: IndentStyle::Block,
+            newline_threshold: DEFAULT_NEWLINE_THRESHOLD,
         }
     }
 }
@@ -41,6 +47,7 @@ impl Whitespace {
             tab_spaces: opts.tab_spaces.unwrap_or(default.tab_spaces),
             newline_style: opts.newline_style.unwrap_or(default.newline_style),
             indent_style: opts.indent_style.unwrap_or(default.indent_style),
+            newline_threshold: opts.newline_threshold.unwrap_or(default.newline_threshold),
         }
     }
 }
