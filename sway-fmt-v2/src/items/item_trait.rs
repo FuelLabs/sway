@@ -3,7 +3,7 @@ use crate::{
     fmt::*,
     utils::{
         bracket::CurlyBrace,
-        comments::{ByteSpan, LeafSpans},
+        byte_span::{ByteSpan, LeafSpans},
     },
 };
 use std::fmt::Write;
@@ -84,7 +84,7 @@ impl CurlyBrace for ItemTrait {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        writeln!(line, "{}", Delimiter::Brace.as_close_char())?;
+        write!(line, "{}", Delimiter::Brace.as_close_char())?;
         formatter.shape.block_unindent(&formatter.config);
         Ok(())
     }

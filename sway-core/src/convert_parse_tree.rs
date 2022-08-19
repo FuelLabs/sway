@@ -815,7 +815,7 @@ fn item_storage_to_storage_declaration(
         .fields
         .into_inner()
         .into_iter()
-        .map(|storage_field| storage_field_to_storage_field(ec, storage_field))
+        .map(|storage_field| storage_field_to_storage_field(ec, storage_field.value))
         .collect::<Result<_, _>>()?;
 
     // Make sure each storage field is declared once

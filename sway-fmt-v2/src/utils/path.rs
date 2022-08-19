@@ -2,7 +2,7 @@ use crate::{
     fmt::*,
     utils::{
         bracket::{close_angle_bracket, open_angle_bracket},
-        comments::{ByteSpan, LeafSpans},
+        byte_span::{ByteSpan, LeafSpans},
     },
 };
 use std::{fmt::Write, vec};
