@@ -1,6 +1,6 @@
 use self::commands::{
-    addr2line, build, check, clean, completions, init, json_abi, new, parse_bytecode, plugins,
-    template, test, update,
+    addr2line, build, check, clean, completions, init, new, parse_bytecode, plugins, template,
+    test, update,
 };
 use addr2line::Command as Addr2LineCommand;
 use anyhow::{anyhow, Result};
@@ -10,7 +10,6 @@ use clap::Parser;
 pub use clean::Command as CleanCommand;
 pub use completions::Command as CompletionsCommand;
 pub use init::Command as InitCommand;
-pub use json_abi::Command as JsonAbiCommand;
 pub use new::Command as NewCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
 pub use plugins::Command as PluginsCommand;
@@ -44,7 +43,6 @@ enum Forc {
     #[clap(visible_alias = "t")]
     Test(TestCommand),
     Update(UpdateCommand),
-    JsonAbi(JsonAbiCommand),
     Plugins(PluginsCommand),
     Template(TemplateCommand),
     /// This is a catch-all for unknown subcommands and their arguments.
@@ -73,7 +71,6 @@ pub async fn run_cli() -> Result<()> {
         Forc::Plugins(command) => plugins::exec(command),
         Forc::Test(command) => test::exec(command),
         Forc::Update(command) => update::exec(command).await,
-        Forc::JsonAbi(command) => json_abi::exec(command),
         Forc::Template(command) => template::exec(command),
         Forc::Plugin(args) => {
             let output = plugin::execute_external_subcommand(args)?;
