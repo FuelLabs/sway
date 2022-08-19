@@ -137,12 +137,6 @@ pub(crate) enum VirtualOp {
     ECR(VirtualRegister, VirtualRegister, VirtualRegister),
     K256(VirtualRegister, VirtualRegister, VirtualRegister),
     S256(VirtualRegister, VirtualRegister, VirtualRegister),
-    XIL(VirtualRegister, VirtualRegister),
-    XIS(VirtualRegister, VirtualRegister),
-    XOL(VirtualRegister, VirtualRegister),
-    XOS(VirtualRegister, VirtualRegister),
-    XWL(VirtualRegister, VirtualRegister),
-    XWS(VirtualRegister, VirtualRegister),
     NOOP,
     FLAG(VirtualRegister),
     GM(VirtualRegister, VirtualImmediate18),
@@ -228,12 +222,6 @@ impl VirtualOp {
             ECR(r1, r2, r3) => vec![r1, r2, r3],
             K256(r1, r2, r3) => vec![r1, r2, r3],
             S256(r1, r2, r3) => vec![r1, r2, r3],
-            XIL(r1, r2) => vec![r1, r2],
-            XIS(r1, r2) => vec![r1, r2],
-            XOL(r1, r2) => vec![r1, r2],
-            XOS(r1, r2) => vec![r1, r2],
-            XWL(r1, r2) => vec![r1, r2],
-            XWS(r1, r2) => vec![r1, r2],
             NOOP => vec![],
             FLAG(r1) => vec![r1],
             GM(r1, _imm) => vec![r1],
@@ -324,12 +312,6 @@ impl VirtualOp {
             ECR(r1, r2, r3) => vec![r1, r2, r3],
             K256(r1, r2, r3) => vec![r1, r2, r3],
             S256(r1, r2, r3) => vec![r1, r2, r3],
-            XIL(_r1, r2) => vec![r2],
-            XIS(_r1, r2) => vec![r2],
-            XOL(_r1, r2) => vec![r2],
-            XOS(_r1, r2) => vec![r2],
-            XWL(_r1, r2) => vec![r2],
-            XWS(_r1, r2) => vec![r2],
             NOOP => vec![],
             FLAG(r1) => vec![r1],
             GM(_r1, _imm) => vec![],
@@ -420,12 +402,6 @@ impl VirtualOp {
             ECR(_r1, _r2, _r3) => vec![],
             K256(_r1, _r2, _r3) => vec![],
             S256(_r1, _r2, _r3) => vec![],
-            XIL(r1, _r2) => vec![r1],
-            XIS(r1, _r2) => vec![r1],
-            XOL(r1, _r2) => vec![r1],
-            XOS(r1, _r2) => vec![r1],
-            XWL(r1, _r2) => vec![r1],
-            XWS(r1, _r2) => vec![r1],
             NOOP => vec![],
             FLAG(_r1) => vec![],
             GM(r1, _imm) => vec![r1],
@@ -806,30 +782,6 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
             ),
-            XIL(r1, r2) => Self::XIL(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-            ),
-            XIS(r1, r2) => Self::XIS(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-            ),
-            XOL(r1, r2) => Self::XOL(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-            ),
-            XOS(r1, r2) => Self::XOS(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-            ),
-            XWL(r1, r2) => Self::XWL(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-            ),
-            XWS(r1, r2) => Self::XWS(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-            ),
             NOOP => Self::NOOP,
             FLAG(r1) => Self::FLAG(update_reg(reg_to_reg_map, r1)),
             GM(r1, i) => Self::GM(update_reg(reg_to_reg_map, r1), i.clone()),
@@ -1204,24 +1156,6 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            XIL(reg1, reg2) => {
-                AllocatedOpcode::XIL(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
-            }
-            XIS(reg1, reg2) => {
-                AllocatedOpcode::XIS(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
-            }
-            XOL(reg1, reg2) => {
-                AllocatedOpcode::XOL(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
-            }
-            XOS(reg1, reg2) => {
-                AllocatedOpcode::XOS(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
-            }
-            XWL(reg1, reg2) => {
-                AllocatedOpcode::XWL(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
-            }
-            XWS(reg1, reg2) => {
-                AllocatedOpcode::XWS(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
-            }
             NOOP => AllocatedOpcode::NOOP,
             FLAG(reg) => AllocatedOpcode::FLAG(map_reg(&mapping, reg)),
             GM(reg, imm) => AllocatedOpcode::GM(map_reg(&mapping, reg), imm.clone()),

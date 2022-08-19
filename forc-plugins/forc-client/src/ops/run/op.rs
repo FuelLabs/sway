@@ -121,14 +121,12 @@ fn create_tx_with_script_and_data(
 ) -> Transaction {
     let gas_price = tx_params.gas_price;
     let gas_limit = tx_params.gas_limit;
-    let byte_price = tx_params.byte_price;
     let maturity = 0;
     let witnesses = vec![];
 
     Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script,
         script_data,
@@ -148,6 +146,7 @@ fn construct_input_from_contract((_idx, contract): (usize, &String)) -> fuel_tx:
         utxo_id: fuel_tx::UtxoId::new(fuel_tx::Bytes32::zeroed(), 0),
         balance_root: fuel_tx::Bytes32::zeroed(),
         state_root: fuel_tx::Bytes32::zeroed(),
+        tx_pointer: fuel_tx::TxPointer::new(0, 0),
         contract_id: fuel_tx::ContractId::from_str(contract).unwrap(),
     }
 }

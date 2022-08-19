@@ -922,60 +922,6 @@ impl Op {
                     );
                     VirtualOp::S256(r1, r2, r3)
                 }
-                "xil" => {
-                    let (r1, r2) = check!(
-                        two_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::XIL(r1, r2)
-                }
-                "xis" => {
-                    let (r1, r2) = check!(
-                        two_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::XIS(r1, r2)
-                }
-                "xol" => {
-                    let (r1, r2) = check!(
-                        two_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::XOL(r1, r2)
-                }
-                "xos" => {
-                    let (r1, r2) = check!(
-                        two_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::XOS(r1, r2)
-                }
-                "xwl" => {
-                    let (r1, r2) = check!(
-                        two_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::XWL(r1, r2)
-                }
-                "xws" => {
-                    let (r1, r2) = check!(
-                        two_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::XWS(r1, r2)
-                }
                 "noop" => VirtualOp::NOOP,
                 "flag" => {
                     let r1 = check!(
@@ -1410,12 +1356,6 @@ impl fmt::Display for Op {
                 ECR(a, b, c) => format!("ecr {} {} {}", a, b, c),
                 K256(a, b, c) => format!("k256 {} {} {}", a, b, c),
                 S256(a, b, c) => format!("s256 {} {} {}", a, b, c),
-                XIL(a, b) => format!("xil {} {}", a, b),
-                XIS(a, b) => format!("xis {} {}", a, b),
-                XOL(a, b) => format!("xol {} {}", a, b),
-                XOS(a, b) => format!("xos {} {}", a, b),
-                XWL(a, b) => format!("xwl {} {}", a, b),
-                XWS(a, b) => format!("xws {} {}", a, b),
                 NOOP => "noop".to_string(),
                 FLAG(a) => format!("flag {}", a),
                 GM(a, b) => format!("gm {} {}", a, b),
