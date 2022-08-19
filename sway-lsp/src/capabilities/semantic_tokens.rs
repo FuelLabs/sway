@@ -129,6 +129,7 @@ fn semantic_token_type(kind: &SymbolKind) -> SemanticTokenType {
         SymbolKind::ByteLiteral | SymbolKind::NumericLiteral => SemanticTokenType::NUMBER,
         SymbolKind::StringLiteral => SemanticTokenType::STRING,
         SymbolKind::BuiltinType => SemanticTokenType::new("builtinType"),
+        SymbolKind::Module => SemanticTokenType::NAMESPACE,
         SymbolKind::Unknown => SemanticTokenType::new("generic"),
     }
 }

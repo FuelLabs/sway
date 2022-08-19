@@ -159,7 +159,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                     to_ident_key(ident),
                     Token::from_parsed(
                         AstToken::Declaration(declaration.clone()),
-                        SymbolKind::Unknown,
+                        SymbolKind::Module,
                     ),
                 );
             }
@@ -168,7 +168,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                 to_ident_key(&impl_trait.trait_name.suffix),
                 Token::from_parsed(
                     AstToken::Declaration(declaration.clone()),
-                    SymbolKind::Unknown,
+                    SymbolKind::Trait,
                 ),
             );
 
