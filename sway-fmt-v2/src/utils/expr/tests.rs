@@ -144,3 +144,21 @@ fmt_test!(  match_branch_kind
          {\n        baz();\n        
 quux();\n    }\n\n\n}"
 );
+
+fmt_test!(  basic_array             "[1, 2, 3, 4, 5]",
+            intermediate_whitespace " \n [ 1 , 2 , 3 , 4 , 5 ]  \n"
+);
+
+fmt_test!(  long_array
+"[
+    \"hello_there_this_is_a_very_long_string\",
+    \"and_yet_another_very_long_string_just_because\",
+    \"would_you_look_at_that_another_long_string\",
+]",
+intermediate_whitespace
+"    [
+       \"hello_there_this_is_a_very_long_string\",
+     \"and_yet_another_very_long_string_just_because\"\n,
+         \"would_you_look_at_that_another_long_string\",
+ ]    \n"
+);
