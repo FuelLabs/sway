@@ -479,6 +479,17 @@ fn validate_dep(
 }
 /// Part of dependency validation, any checks related to the depenency's manifest content.
 fn validate_dep_manifest(dep: &Pinned, dep_manifest: &ManifestFile) -> Result<()> {
+    // Check that the dependency is a library.
+    match dep_manifest.program_type()? {
+        TreeType::Library { .. } => {}
+        _ => {
+            bail!(
+                "\"{}\" is not a library! Depending on a non-library package is not supported.",
+                dep.name
+            );
+        }
+    }
+
     // Ensure the name matches the manifest project name.
     if dep.name != dep_manifest.project.name {
         bail!(
