@@ -20,6 +20,7 @@ pub struct TypedProgram {
     pub kind: TypedProgramKind,
     pub root: TypedModule,
     pub storage_slots: Vec<StorageSlot>,
+    pub logged_types: Vec<(TypeId, TypeId)>,
 }
 
 impl TypedProgram {
@@ -36,12 +37,14 @@ impl TypedProgram {
         let ParseProgram { root, kind } = parsed;
         let mod_span = root.tree.span.clone();
         let mod_res = TypedModule::type_check(ctx, root);
+        dbg!(&mod_res);
         mod_res.flat_map(|root| {
             let kind_res = Self::validate_root(&root, kind.clone(), mod_span);
             kind_res.map(|kind| Self {
                 kind,
                 root,
                 storage_slots: vec![],
+                logged_types: vec![],
             })
         })
     }
@@ -111,6 +114,8 @@ impl TypedProgram {
                 _ => (),
             };
         }
+
+        dbg!(&root.all_nodes);
 
         for ast_n in &root.all_nodes {
             check!(
@@ -273,6 +278,7 @@ impl TypedProgram {
                                 kind: self.kind.clone(),
                                 root: self.root.clone(),
                                 storage_slots,
+                                logged_types: self.logged_types.clone(),
                             },
                             warnings,
                             errors,
@@ -283,6 +289,7 @@ impl TypedProgram {
                             kind: self.kind.clone(),
                             root: self.root.clone(),
                             storage_slots: vec![],
+                            logged_types: self.logged_types.clone(),
                         },
                         warnings,
                         errors,
@@ -294,6 +301,7 @@ impl TypedProgram {
                     kind: self.kind.clone(),
                     root: self.root.clone(),
                     storage_slots: vec![],
+                    logged_types: self.logged_types.clone(),
                 },
                 warnings,
                 errors,
@@ -362,6 +370,7 @@ impl TypedProgramKind {
                 JsonABIProgram {
                     types: types.to_vec(),
                     functions: result,
+                    logged_types: vec![],
                 }
             }
             TypedProgramKind::Script { main_function, .. } => {
@@ -369,11 +378,13 @@ impl TypedProgramKind {
                 JsonABIProgram {
                     types: types.to_vec(),
                     functions: result,
+                    logged_types: vec![],
                 }
             }
             _ => JsonABIProgram {
                 types: vec![],
                 functions: vec![],
+                logged_types: vec![],
             },
         }
     }

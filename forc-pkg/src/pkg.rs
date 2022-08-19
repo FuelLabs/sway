@@ -1921,6 +1921,7 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
     let mut json_abi_program = JsonABIProgram {
         types: vec![],
         functions: vec![],
+        logged_types: vec![],
     };
     let mut storage_slots = vec![];
     let mut bytecode = vec![];
@@ -1950,6 +1951,9 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
         json_abi_program
             .functions
             .extend(compiled.json_abi_program.functions);
+        json_abi_program
+            .logged_types
+            .extend(compiled.json_abi_program.logged_types);
         storage_slots.extend(compiled.storage_slots);
         bytecode = compiled.bytecode;
         tree_type = Some(compiled.tree_type);

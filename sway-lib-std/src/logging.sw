@@ -6,7 +6,8 @@ use ::intrinsics::{is_reference_type, size_of};
 /// If the type is a reference type, `log` is used.
 /// Otherwise `logd` is used.'
 pub fn log<T>(value: T) {
-    if !is_reference_type::<T>() {
+//    __log::<T>(value);
+    /*if !is_reference_type::<T>() {
         asm(r1: value) {
             log r1 zero zero zero;
         }
@@ -15,5 +16,5 @@ pub fn log<T>(value: T) {
         asm(r1: value, r2: size) {
             logd zero zero r1 r2;
         };
-    }
+    }*/
 }

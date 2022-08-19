@@ -6,13 +6,13 @@ use sway_types::Span;
 
 use crate::{
     error::{err, ok},
-    semantic_analysis::TypeCheckContext,
+    semantic_analysis::{TypeCheckContext, TypedStorageDeclaration},
     type_system::*,
     types::DeterministicallyAborts,
     CompileError, CompileResult, Expression, Hint,
 };
 
-use super::TypedExpression;
+use super::{TypedExpression};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedIntrinsicFunctionKind {
@@ -495,6 +495,54 @@ impl TypedIntrinsicFunctionKind {
                     span,
                 };
                 let return_type = insert_type(TypeInfo::Tuple(vec![]));
+                (intrinsic_function, return_type)
+            }
+            Intrinsic::Log => {
+                if !arguments.is_empty() {
+                    errors.push(CompileError::IntrinsicIncorrectNumArgs {
+                        name: kind.to_string(),
+                        expected: 0,
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
+                if type_arguments.len() != 1 {
+                    errors.push(CompileError::IntrinsicIncorrectNumTArgs {
+                        name: kind.to_string(),
+                        expected: 1,
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
+                let targ = type_arguments[0].clone();
+                let intrinsic_function = {
+                    let initial_type_id = insert_type(resolve_type(targ.type_id, &targ.span).unwrap());
+                    let mut ctx = ctx.by_ref();
+                    let type_id = check!(
+                        ctx.resolve_type_with_self(
+                            initial_type_id,
+                            &targ.span,
+                            EnforceTypeArguments::Yes,
+                            None
+                        ),
+                        insert_type(TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors,
+                    );
+                    TypedIntrinsicFunctionKind {
+                        kind,
+                        arguments: vec![],
+                        type_arguments: vec![TypeArgument {
+                            type_id,
+                            initial_type_id,
+                            span: targ.span,
+                        }],
+                        span: span.clone(),
+                    }
+                };
+                dbg!("Inserting here");
+                ctx.namespace.set_storage_declaration(TypedStorageDeclaration::new(vec![], span));
+                let return_type = insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour));
                 (intrinsic_function, return_type)
             }
         };

@@ -543,7 +543,7 @@ impl TypedExpression {
         };
         let mut warnings = res.warnings;
         let mut errors = res.errors;
-
+        dbg!(ctx.namespace.get_logged_type());
         // if one of the expressions deterministically aborts, we don't want to type check it.
         if !typed_expression.deterministically_aborts() {
             // if the return type cannot be cast into the annotation type then it is a type error
@@ -1606,25 +1606,30 @@ impl TypedExpression {
     }
 
     fn type_check_intrinsic_function(
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         kind_binding: TypeBinding<Intrinsic>,
         arguments: Vec<Expression>,
         span: Span,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let (intrinsic_function, return_type) = check!(
-            TypedIntrinsicFunctionKind::type_check(ctx, kind_binding, arguments, span.clone()),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let (intrinsic_function, return_type) =
+        { 
+            let ctx = ctx.by_ref();
+            check!(
+                TypedIntrinsicFunctionKind::type_check(ctx, kind_binding, arguments, span.clone()),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )
+        };
         let exp = TypedExpression {
             expression: TypedExpressionVariant::IntrinsicFunction(intrinsic_function),
             return_type,
             is_constant: IsConstant::No,
             span,
         };
+        dbg!(ctx.namespace.get_logged_type());
         ok(exp, warnings, errors)
     }
 
