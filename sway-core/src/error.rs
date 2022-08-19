@@ -1058,12 +1058,12 @@ pub enum CompileError {
     BreakOutsideLoop { span: Span },
     #[error("\"continue\" used outside of a loop")]
     ContinueOutsideLoop { span: Span },
-    #[error("arguments to \"main()\" are not yet supported. See the issue here: github.com/FuelLabs/sway/issues/845")]
-    MainArgsNotYetSupported { span: Span },
     #[error("Configuration-time constant value is not a constant item.")]
     ConfigTimeConstantNotAConstDecl { span: Span },
     #[error("Configuration-time constant value is not a literal.")]
     ConfigTimeConstantNotALiteral { span: Span },
+    #[error("ref mut parameters are not allowed for script or predicate main functions.")]
+    RefMutableNotAllowedInMain { param_name: Ident },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1231,9 +1231,9 @@ impl Spanned for CompileError {
             IntrinsicIncorrectNumTArgs { span, .. } => span.clone(),
             BreakOutsideLoop { span } => span.clone(),
             ContinueOutsideLoop { span } => span.clone(),
-            MainArgsNotYetSupported { span } => span.clone(),
             ConfigTimeConstantNotAConstDecl { span } => span.clone(),
             ConfigTimeConstantNotALiteral { span } => span.clone(),
+            RefMutableNotAllowedInMain { param_name } => param_name.span(),
         }
     }
 }

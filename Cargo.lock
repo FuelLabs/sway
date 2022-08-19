@@ -4075,6 +4075,7 @@ dependencies = [
  "fuel-tx",
  "fuel-vm",
  "gag",
+ "hex",
  "prettydiff 0.6.1",
  "rand 0.8.5",
  "regex",

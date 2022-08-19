@@ -1,0 +1,22 @@
+[
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "baba",
+        "type": "u64",
+        "typeArguments": null
+      }
+    ],
+    "name": "main",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
+  }
+]

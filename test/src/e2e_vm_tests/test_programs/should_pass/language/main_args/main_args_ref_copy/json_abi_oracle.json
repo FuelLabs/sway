@@ -1,0 +1,35 @@
+[
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "val",
+            "type": "u64",
+            "typeArguments": null
+          }
+        ],
+        "name": "baba",
+        "type": "struct TestStruct",
+        "typeArguments": null
+      },
+      {
+        "components": null,
+        "name": "keke",
+        "type": "u64",
+        "typeArguments": null
+      }
+    ],
+    "name": "main",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
+  }
+]
