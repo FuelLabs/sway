@@ -267,6 +267,7 @@ pub struct RunnableParams {}
 pub struct ShowAstParams {
     pub text_document: TextDocumentIdentifier,
     pub ast_kind: String,
+    pub save_path: std::path::PathBuf,
 }
 
 // Custom LSP-Server Methods
@@ -337,9 +338,8 @@ impl Backend {
                                             format!("{:#?}", submodule.module.tree.root_nodes);
                                     }
                                 }
-
-                                let tmp_ast_path = Path::new("/tmp/parsed_ast.rs");
-                                Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
+                                let parsed_ast_path = params.save_path.join("parsed.rs");
+                                Ok(write_ast_to_file(parsed_ast_path.as_path(), &formatted_ast))
                             }
                             _ => Ok(None),
                         }
@@ -360,8 +360,8 @@ impl Backend {
                                     }
                                 }
 
-                                let tmp_ast_path = Path::new("/tmp/typed_ast.rs");
-                                Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
+                                let typed_ast_path = params.save_path.join("typed.rs");
+                                Ok(write_ast_to_file(typed_ast_path.as_path(), &formatted_ast))
                             }
                             _ => Ok(None),
                         }
@@ -377,6 +377,7 @@ impl Backend {
 #[cfg(test)]
 mod tests {
     use serde_json::json;
+    use std::str::FromStr;
     use std::{env, fs, io::Read, path::PathBuf};
     use tower::{Service, ServiceExt};
 
@@ -392,7 +393,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("test/src/e2e_vm_tests/test_programs/should_pass/language")
-            .join("struct_field_access")
+            //.join("struct_field_access")
     }
 
     #[allow(dead_code)]
@@ -404,16 +405,19 @@ mod tests {
             .join("examples/storage_variables")
     }
 
-    fn load_sway_example() -> (Url, String) {
-        let manifest_dir = e2e_test_dir();
+    fn load_sway_example(manifest_dir: &PathBuf) -> Option<(Url, String)> {
+        //let manifest_dir = e2e_test_dir();
         let src_path = manifest_dir.join("src/main.sw");
-        let mut file = fs::File::open(&src_path).unwrap();
-        let mut sway_program = String::new();
-        file.read_to_string(&mut sway_program).unwrap();
-
-        let uri = Url::from_file_path(src_path).unwrap();
-
-        (uri, sway_program)
+        if let Ok(mut file) = fs::File::open(&src_path) {
+            let mut sway_program = String::new();
+            file.read_to_string(&mut sway_program).unwrap();
+    
+            let uri = Url::from_file_path(src_path).unwrap();
+    
+            Some((uri, sway_program))
+        } else {
+            None
+        }
     }
 
     async fn initialize_request(service: &mut LspService<Backend>) -> Request {
@@ -475,20 +479,21 @@ mod tests {
         assert_eq!(response, Ok(None));
     }
 
-    async fn show_ast_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+    async fn show_ast_request(service: &mut LspService<Backend>, uri: &Url, kind: String, save_dir: &Path) -> Request {
         let params = json!({
             "textDocument": {
                 "uri": uri
             },
-            "astKind": "typed",
+            "astKind": kind,
+            "savePath": save_dir,
         });
         let show_ast = Request::build("sway/show_ast")
             .params(params)
             .id(1)
             .finish();
         let response = service.ready().await.unwrap().call(show_ast.clone()).await;
-        let ok = Response::from_ok(1.into(), json!({"uri": "file:///tmp/typed_ast.rs"}));
-        assert_eq!(response, Ok(Some(ok)));
+        //let ok = Response::from_ok(1.into(), json!({"uri": "file:///tmp/typed_ast.rs"}));
+        //assert_eq!(response, Ok(Some(ok)));
         show_ast
     }
 
@@ -568,131 +573,11 @@ mod tests {
         assert_eq!(response, Ok(Some(err)));
     }
 
-    //#[tokio::test]
-    #[allow(dead_code)]
-    async fn did_open() {
-        let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
+    use tokio::time::timeout;
+    use tokio::time::{sleep, Duration};
 
-        // send "initialize" request
-        let _ = initialize_request(&mut service).await;
-
-        // send "initialized" notification
-        initialized_notification(&mut service).await;
-
-        // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-        messages.next().await.unwrap();
-
-        let (uri, sway_program) = load_sway_example();
-
-        // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, &sway_program).await;
-
-        // ignore the "textDocument/publishDiagnostics" notification
-        messages.next().await.unwrap();
-
-        // send "shutdown" request
-        let _ = shutdown_request(&mut service).await;
-
-        // send "exit" request
-        exit_notification(&mut service).await;
-    }
-
-    //#[tokio::test]
-    #[allow(dead_code)]
-    async fn did_close() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
-        let _ = initialize_request(&mut service).await;
-
-        // send "initialized" notification
-        initialized_notification(&mut service).await;
-
-        let (uri, sway_program) = load_sway_example();
-
-        // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, &sway_program).await;
-
-        // send "textDocument/didClose" notification for `uri`
-        did_close_notification(&mut service).await;
-
-        // send "shutdown" request
-        let _ = shutdown_request(&mut service).await;
-
-        // send "exit" request
-        exit_notification(&mut service).await;
-    }
-
-    //#[tokio::test]
-    #[allow(dead_code)]
-    async fn did_change() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
-        let _ = initialize_request(&mut service).await;
-
-        // send "initialized" notification
-        initialized_notification(&mut service).await;
-
-        let uri = Url::parse("inmemory:///test").unwrap();
-        let text = r#"script;
-
-        fn main() {
-        
-        }
-        "#;
-
-        // This just an example of the changes made
-        // In reality, the only text that needs to be sent to the language server
-        // is "let x = 0.0;"
-        let _new_text = r#"script;
-
-        fn main() {
-            let x = 0.0;
-        }
-        "#;
-
-        // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, text).await;
-
-        // send "textDocument/didChange" notification for `uri`
-        let params = json!({
-            "textDocument": {
-                "uri": uri,
-                "version": 1
-            },
-            "contentChanges": [
-                {
-                    "range": {
-                        "start": {
-                            "line": 3,
-                            "character": 4
-                        },
-                        "end": {
-                            "line": 3,
-                            "character": 4
-                        }
-                    },
-                    "rangeLength": 0,
-                    "text": "let x = 0.0;",
-                }
-            ]
-        });
-        let did_change = Request::build("textDocument/didChange")
-            .params(params)
-            .finish();
-        let response = service.ready().await.unwrap().call(did_change).await;
-        assert_eq!(response, Ok(None));
-
-        // send "shutdown" request
-        let _ = shutdown_request(&mut service).await;
-
-        // send "exit" request
-        exit_notification(&mut service).await;
-    }
-
-    //#[tokio::test]
-    #[allow(dead_code)]
+    #[tokio::test]
+    //#[allow(dead_code)]
     async fn show_ast() {
         let (mut service, mut messages) =
             LspService::build(|client| Backend::new(client, config()))
@@ -702,27 +587,80 @@ mod tests {
         // send "initialize" request
         let _ = initialize_request(&mut service).await;
 
+        sleep(Duration::from_millis(100)).await;
+
         // send "initialized" notification
         initialized_notification(&mut service).await;
 
+        sleep(Duration::from_millis(100)).await;
+
         // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-        messages.next().await.unwrap();
+        let _ = messages.next().await;
+        
+        let ast_folder = Path::new("/Users/joshuabatty/Desktop/sway_asts");
+        //fs::create_dir(ast_folder).unwrap();
 
-        let (uri, sway_program) = load_sway_example();
+        let e2e_dir = e2e_test_dir();
+        let mut entries = fs::read_dir(&e2e_dir).unwrap()
+            .map(|res| res.map(|e| e.path()))
+            .collect::<Result<Vec<_>, std::io::Error>>().unwrap();
 
-        // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, &sway_program).await;
+        // The order in which `read_dir` returns entries is not guaranteed. If reproducible
+        // ordering is required the entries should be explicitly sorted.
 
-        // ignore the "textDocument/publishDiagnostics" notification
-        messages.next().await.unwrap();
+        entries.sort();
+        
+        for entry in entries {
+            let manifest_dir = entry;
+            let example_name = manifest_dir.file_name().unwrap();
+            if manifest_dir.is_dir() {
+                let example_dir = ast_folder.join(example_name);
 
-        // send "sway/show_typed_ast" request
-        let _ = show_ast_request(&mut service, &uri).await;
+                let (uri, sway_program) = match load_sway_example(&manifest_dir) {
+                    Some((uri, sway_program)) => {
+                        match fs::create_dir(&example_dir) {
+                            Ok(_) => (),
+                            Err(_) => continue,
+                        }
+                        (uri, sway_program)
+                    },
+                    None => continue,
+                };
+
+                // send "textDocument/didOpen" notification for `uri`
+                let did_open = did_open_notification(&mut service, &uri, &sway_program);
+                if let Err(_) = timeout(Duration::from_millis(10), did_open).await {
+                    eprintln!("did_open: did not receive value within 10 ms");
+                }
+
+                // ignore the "textDocument/publishDiagnostics" notification
+                let _ = messages.next().await;
+
+                // send "sway/show_typed_ast" request
+                let print_parsed_ast = show_ast_request(&mut service, &uri, "parsed".to_string(), &example_dir);
+                if let Err(_) = timeout(Duration::from_millis(10), print_parsed_ast).await {
+                    eprintln!("print_parsed_ast: did not receive value within 10 ms");
+                }
+
+                let print_typed_ast = show_ast_request(&mut service, &uri, "typed".to_string(), &example_dir);
+                if let Err(_) = timeout(Duration::from_millis(10), print_typed_ast).await {
+                    eprintln!("print_typed_ast: did not receive value within 10 ms");
+                }
+
+                eprintln!("example_name = {:?}", example_name);
+            } 
+        }
 
         // send "shutdown" request
-        let _ = shutdown_request(&mut service).await;
+        let shutdown_request = shutdown_request(&mut service);
+        if let Err(_) = timeout(Duration::from_millis(10), shutdown_request).await {
+            eprintln!("shutdown_request: did not receive value within 10 ms");
+        }
 
         // send "exit" request
-        exit_notification(&mut service).await;
+        let exit_notification = exit_notification(&mut service);
+        if let Err(_) = timeout(Duration::from_millis(10), exit_notification).await {
+            eprintln!("exit_notification: did not receive value within 10 ms");
+        }
     }
 }
