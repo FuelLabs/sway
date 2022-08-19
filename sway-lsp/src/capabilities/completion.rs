@@ -29,6 +29,7 @@ pub(crate) fn completion_item_kind(symbol_kind: &SymbolKind) -> Option<Completio
         SymbolKind::Const => Some(CompletionItemKind::CONSTANT),
         SymbolKind::Struct => Some(CompletionItemKind::STRUCT),
         SymbolKind::Trait => Some(CompletionItemKind::INTERFACE),
+        SymbolKind::Module => Some(CompletionItemKind::MODULE),
         SymbolKind::Enum => Some(CompletionItemKind::ENUM),
         SymbolKind::Variant => Some(CompletionItemKind::ENUM_MEMBER),
         SymbolKind::BoolLiteral

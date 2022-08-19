@@ -201,7 +201,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                 to_ident_key(&abi_decl.name),
                 Token::from_parsed(
                     AstToken::Declaration(declaration.clone()),
-                    SymbolKind::Unknown,
+                    SymbolKind::Trait,
                 ),
             );
             for trait_fn in &abi_decl.interface_surface {
@@ -283,7 +283,7 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                         to_ident_key(ident),
                         Token::from_parsed(
                             AstToken::Expression(expression.clone()),
-                            SymbolKind::Unknown,
+                            SymbolKind::Module,
                         ),
                     );
                 }
@@ -291,7 +291,7 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                     to_ident_key(&call_path_binding.inner.suffix),
                     Token::from_parsed(
                         AstToken::Expression(expression.clone()),
-                        SymbolKind::Unknown,
+                        SymbolKind::Function,
                     ),
                 );
             }
@@ -447,7 +447,7 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                     to_ident_key(&method_name_binding.inner.easy_name()),
                     Token::from_parsed(
                         AstToken::Expression(expression.clone()),
-                        SymbolKind::Unknown,
+                        SymbolKind::Struct,
                     ),
                 );
             }
@@ -486,17 +486,14 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
             for ident in &call_path_binding.inner.prefixes {
                 tokens.insert(
                     to_ident_key(ident),
-                    Token::from_parsed(
-                        AstToken::Expression(expression.clone()),
-                        SymbolKind::Unknown,
-                    ),
+                    Token::from_parsed(AstToken::Expression(expression.clone()), SymbolKind::Enum),
                 );
             }
             tokens.insert(
                 to_ident_key(&call_path_binding.inner.suffix),
                 Token::from_parsed(
                     AstToken::Expression(expression.clone()),
-                    SymbolKind::Unknown,
+                    SymbolKind::Variant,
                 ),
             );
 
@@ -511,16 +508,13 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                     to_ident_key(ident),
                     Token::from_parsed(
                         AstToken::Expression(expression.clone()),
-                        SymbolKind::Unknown,
+                        SymbolKind::Module,
                     ),
                 );
             }
             tokens.insert(
                 to_ident_key(&abi_name.suffix),
-                Token::from_parsed(
-                    AstToken::Expression(expression.clone()),
-                    SymbolKind::Unknown,
-                ),
+                Token::from_parsed(AstToken::Expression(expression.clone()), SymbolKind::Trait),
             );
             handle_expression(address, tokens);
         }
