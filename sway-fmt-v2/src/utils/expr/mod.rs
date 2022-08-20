@@ -339,7 +339,19 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, " {} ", ampersand_token.span().as_str())?;
+                match formatter.shape.code_line.line_style {
+                    LineStyle::Multiline => {
+                        write!(
+                            formatted_code,
+                            "\n{}{} ",
+                            formatter.shape.indent.to_string(&formatter.config)?,
+                            ampersand_token.span().as_str()
+                        )?;
+                    }
+                    _ => {
+                        write!(formatted_code, " {} ", ampersand_token.span().as_str())?;
+                    }
+                }
                 rhs.format(formatted_code, formatter)?;
             }
             Self::BitXor {
@@ -348,7 +360,19 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, " {} ", caret_token.span().as_str())?;
+                match formatter.shape.code_line.line_style {
+                    LineStyle::Multiline => {
+                        write!(
+                            formatted_code,
+                            "\n{}{} ",
+                            formatter.shape.indent.to_string(&formatter.config)?,
+                            caret_token.span().as_str()
+                        )?;
+                    }
+                    _ => {
+                        write!(formatted_code, " {} ", caret_token.span().as_str())?;
+                    }
+                }
                 rhs.format(formatted_code, formatter)?;
             }
             Self::BitOr {
@@ -357,7 +381,19 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, " {} ", pipe_token.span().as_str())?;
+                match formatter.shape.code_line.line_style {
+                    LineStyle::Multiline => {
+                        write!(
+                            formatted_code,
+                            "\n{}{} ",
+                            formatter.shape.indent.to_string(&formatter.config)?,
+                            pipe_token.span().as_str()
+                        )?;
+                    }
+                    _ => {
+                        write!(formatted_code, " {} ", pipe_token.span().as_str())?;
+                    }
+                }
                 rhs.format(formatted_code, formatter)?;
             }
             Self::Equal {

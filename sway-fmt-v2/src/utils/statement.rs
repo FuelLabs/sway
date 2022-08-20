@@ -6,32 +6,54 @@ use std::fmt::Write;
 use sway_ast::{Statement, StatementLet};
 use sway_types::Spanned;
 
+use super::shape::LineStyle;
+
 impl Format for Statement {
     fn format(
         &self,
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(
-            formatted_code,
-            "{}",
-            formatter.shape.indent.to_string(&formatter.config)?
-        )?;
-        match self {
-            Self::Let(let_stmt) => let_stmt.format(formatted_code, formatter)?,
-            Self::Item(item) => item.format(formatted_code, formatter)?,
-            Self::Expr {
-                expr,
-                semicolon_token_opt,
-            } => {
-                expr.format(formatted_code, formatter)?;
-                if let Some(semicolon) = semicolon_token_opt {
+        match formatter.shape.code_line.line_style {
+            LineStyle::Inline => format_statement(self, formatted_code, formatter)?,
+            _ => {
+                write!(
+                    formatted_code,
+                    "{}",
+                    formatter.shape.indent.to_string(&formatter.config)?
+                )?;
+                format_statement(self, formatted_code, formatter)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+fn format_statement(
+    statement: &Statement,
+    formatted_code: &mut FormattedCode,
+    formatter: &mut Formatter,
+) -> Result<(), FormatterError> {
+    match statement {
+        Statement::Let(let_stmt) => let_stmt.format(formatted_code, formatter)?,
+        Statement::Item(item) => item.format(formatted_code, formatter)?,
+        Statement::Expr {
+            expr,
+            semicolon_token_opt,
+        } => {
+            expr.format(formatted_code, formatter)?;
+            if let Some(semicolon) = semicolon_token_opt {
+                if formatter.shape.code_line.line_style == LineStyle::Inline {
+                    write!(formatted_code, "{}", semicolon.span().as_str())?;
+                } else {
                     writeln!(formatted_code, "{}", semicolon.span().as_str())?;
                 }
             }
         }
-        Ok(())
     }
+
+    Ok(())
 }
 
 impl Format for StatementLet {

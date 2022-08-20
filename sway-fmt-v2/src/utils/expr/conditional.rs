@@ -10,6 +10,8 @@ use std::{fmt::Write, ops::ControlFlow};
 use sway_ast::{token::Delimiter, IfCondition, IfExpr, MatchBranch, MatchBranchKind};
 use sway_types::Spanned;
 
+use super::debug_expr;
+
 impl Format for IfExpr {
     fn format(
         &self,
@@ -21,41 +23,85 @@ impl Format for IfExpr {
             .shape
             .code_line
             .update_expr_kind(ExprKind::Conditional);
-
         let mut buf = FormattedCode::new();
         let mut temp_formatter = Formatter::default();
-        format_conditions(self, &mut buf, &mut temp_formatter)?;
+        temp_formatter
+            .shape
+            .code_line
+            .update_line_style(LineStyle::Inline);
+        format_if_expr(self, &mut buf, &mut temp_formatter)?;
+        let if_expr_width = buf.chars().count() as usize;
 
-        let expr_width = buf.chars().count() as usize;
-        formatter.shape.add_width(expr_width);
+        formatter.shape.add_width(if_expr_width);
         formatter
             .shape
             .get_line_style(None, None, &formatter.config);
 
-        format_conditions(self, formatted_code, formatter)?;
-        format_then_block(self, formatted_code, formatter)?;
+        format_if_expr(self, formatted_code, formatter)?;
+        debug_expr(buf, None, None, if_expr_width, formatter);
 
-        if let Some((else_token, control_flow)) = &self.else_opt {
-            write!(formatted_code, " {}", else_token.span().as_str())?;
-            match &control_flow {
-                ControlFlow::Continue(if_expr) => {
-                    write!(formatted_code, " ")?;
-                    if_expr.format(formatted_code, formatter)?
-                }
-                ControlFlow::Break(code_block_contents) => {
-                    IfExpr::open_curly_brace(formatted_code, formatter)?;
-                    code_block_contents
-                        .get()
-                        .format(formatted_code, formatter)?;
-                    IfExpr::close_curly_brace(formatted_code, formatter)?;
-                }
-            }
-        }
-
+        formatter.shape.sub_width(if_expr_width);
         formatter.shape.update_line_settings(prev_state);
 
         Ok(())
     }
+}
+
+fn format_if_expr(
+    if_expr: &IfExpr,
+    formatted_code: &mut FormattedCode,
+    formatter: &mut Formatter,
+) -> Result<(), FormatterError> {
+    format_if_condition(if_expr, formatted_code, formatter)?;
+    format_then_block(if_expr, formatted_code, formatter)?;
+
+    if let Some((else_token, control_flow)) = &if_expr.else_opt {
+        write!(formatted_code, " {}", else_token.span().as_str())?;
+        match &control_flow {
+            ControlFlow::Continue(if_expr) => {
+                write!(formatted_code, " ")?;
+                if_expr.format(formatted_code, formatter)?
+            }
+            ControlFlow::Break(code_block_contents) => {
+                IfExpr::open_curly_brace(formatted_code, formatter)?;
+                code_block_contents
+                    .get()
+                    .format(formatted_code, formatter)?;
+                IfExpr::close_curly_brace(formatted_code, formatter)?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn format_if_condition(
+    if_expr: &IfExpr,
+    formatted_code: &mut FormattedCode,
+    formatter: &mut Formatter,
+) -> Result<(), FormatterError> {
+    write!(formatted_code, "{} ", if_expr.if_token.span().as_str())?;
+    if formatter.shape.code_line.line_style == LineStyle::Multiline {
+        formatter.shape.block_indent(&formatter.config);
+        if_expr.condition.format(formatted_code, formatter)?;
+        formatter.shape.block_unindent(&formatter.config);
+    } else {
+        if_expr.condition.format(formatted_code, formatter)?;
+    }
+
+    Ok(())
+}
+
+fn format_then_block(
+    if_expr: &IfExpr,
+    formatted_code: &mut FormattedCode,
+    formatter: &mut Formatter,
+) -> Result<(), FormatterError> {
+    IfExpr::open_curly_brace(formatted_code, formatter)?;
+    if_expr.then_block.get().format(formatted_code, formatter)?;
+    IfExpr::close_curly_brace(formatted_code, formatter)?;
+
+    Ok(())
 }
 
 impl CurlyBrace for IfExpr {
@@ -122,35 +168,6 @@ impl Format for IfCondition {
 
         Ok(())
     }
-}
-
-fn format_conditions(
-    if_expr: &IfExpr,
-    formatted_code: &mut FormattedCode,
-    formatter: &mut Formatter,
-) -> Result<(), FormatterError> {
-    write!(formatted_code, "{} ", if_expr.if_token.span().as_str())?;
-    if formatter.shape.code_line.line_style == LineStyle::Multiline {
-        formatter.shape.block_indent(&formatter.config);
-        if_expr.condition.format(formatted_code, formatter)?;
-        formatter.shape.block_unindent(&formatter.config);
-    } else {
-        if_expr.condition.format(formatted_code, formatter)?;
-    }
-
-    Ok(())
-}
-
-fn format_then_block(
-    if_expr: &IfExpr,
-    formatted_code: &mut FormattedCode,
-    formatter: &mut Formatter,
-) -> Result<(), FormatterError> {
-    IfExpr::open_curly_brace(formatted_code, formatter)?;
-    if_expr.then_block.get().format(formatted_code, formatter)?;
-    IfExpr::close_curly_brace(formatted_code, formatter)?;
-
-    Ok(())
 }
 
 impl Format for MatchBranch {
