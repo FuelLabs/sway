@@ -91,7 +91,6 @@ fn main() -> bool {
         },
     });
 
-
     let eleven = ~U256::from(0, 0, 0, 11);
     let unwrapped = eleven.as_u64().unwrap();
     assert(unwrapped == 11);
