@@ -271,6 +271,14 @@ impl Shape {
                     self.code_line.update_line_style(LineStyle::Normal)
                 }
             }
+            ExprKind::Conditional => {
+                // TODO: Add if_else_max_single_line formatting
+                if self.width > config.whitespace.max_width {
+                    self.code_line.update_line_style(LineStyle::Multiline)
+                } else {
+                    self.code_line.update_line_style(LineStyle::Normal)
+                }
+            }
             _ => self.code_line.update_line_style(LineStyle::default()),
         }
     }

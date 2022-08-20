@@ -120,6 +120,22 @@ fmt_test!(  if_else_block           "if foo {\n    foo();\n} else if bar {\n    
             intermediate_whitespace "   if    foo  {   \n       foo( ) ; \n }    else  if   bar  { \n     bar( ) ; \n }  else  { \n    baz(\n) ; \n }\n\n"
 );
 
+fmt_test!(  long_conditional_stmt
+"if really_long_var_name > other_really_long_var
+    || really_long_var_name <= 0
+    && other_really_long_var != 0
+{
+    foo();
+} else {
+    bar();
+}",
+            intermediate_whitespace
+"   if really_long_var_name  >    
+other_really_long_var  
+||  really_long_var_name  <=    
+0  &&   other_really_long_var    !=    0 {  foo();  }else{bar();}"
+);
+
 fmt_test!(  if_else_control_flow    "if foo {\n    break;\n} else {\n    continue;\n}",
             intermediate_whitespace "if  foo { \n        break; \n}    else  {\n    continue;    \n}");
 
