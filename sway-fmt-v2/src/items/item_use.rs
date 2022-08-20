@@ -2,7 +2,7 @@ use crate::{
     fmt::*,
     utils::{bracket::CurlyBrace, shape::LineStyle},
     utils::{
-        comments::{ByteSpan, LeafSpans},
+        byte_span::{ByteSpan, LeafSpans},
         shape::ExprKind,
     },
 };

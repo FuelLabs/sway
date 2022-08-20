@@ -3,7 +3,7 @@ use crate::{
     fmt::*,
     utils::{
         bracket::{CurlyBrace, Parenthesis},
-        comments::{ByteSpan, LeafSpans},
+        byte_span::{ByteSpan, LeafSpans},
         shape::{ExprKind, LineStyle},
     },
 };
