@@ -10,8 +10,6 @@ use std::{fmt::Write, ops::ControlFlow};
 use sway_ast::{token::Delimiter, IfCondition, IfExpr, MatchBranch, MatchBranchKind};
 use sway_types::Spanned;
 
-use super::debug_expr;
-
 impl Format for IfExpr {
     fn format(
         &self,
@@ -38,7 +36,6 @@ impl Format for IfExpr {
             .get_line_style(None, None, &formatter.config);
 
         format_if_expr(self, formatted_code, formatter)?;
-        debug_expr(buf, None, None, if_expr_width, formatter);
 
         formatter.shape.sub_width(if_expr_width);
         formatter.shape.update_line_settings(prev_state);
