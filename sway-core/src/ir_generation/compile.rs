@@ -68,7 +68,6 @@ fn compile_constants(
         )?;
     }
 
-    dbg!(module_ns.get_logged_type());
     for submodule_ns in module_ns.submodules().values() {
         compile_constants(context, md_mgr, module, submodule_ns)?;
     }

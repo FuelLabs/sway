@@ -26,7 +26,6 @@ impl TypedModule {
         let mut submodules_res = ok(vec![], vec![], vec![]);
         for (name, submodule) in submodules {
             let submodule_res = TypedSubmodule::type_check(ctx.by_ref(), name.clone(), submodule);
-            dbg!(&submodules_res);
             submodules_res = submodules_res.flat_map(|mut submodules| {
                 submodule_res.map(|submodule| {
                     submodules.push((name.clone(), submodule));

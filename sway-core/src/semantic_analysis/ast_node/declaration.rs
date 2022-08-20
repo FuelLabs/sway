@@ -158,12 +158,16 @@ impl fmt::Display for TypedDeclaration {
 
 impl UnresolvedTypeCheck for TypedDeclaration {
     // this is only run on entry nodes, which must have all well-formed types
-    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+    fn check_for_unresolved_types(&self, logged_types: &mut Vec<TypeId>) -> Vec<CompileError> {
         use TypedDeclaration::*;
         match self {
             VariableDeclaration(decl) => {
-                let mut body = decl.body.check_for_unresolved_types();
-                body.append(&mut decl.type_ascription.check_for_unresolved_types());
+                let mut body = decl.body.check_for_unresolved_types(logged_types);
+                body.append(
+                    &mut decl
+                        .type_ascription
+                        .check_for_unresolved_types(logged_types),
+                );
                 body
             }
             FunctionDeclaration(decl) => {
@@ -171,15 +175,15 @@ impl UnresolvedTypeCheck for TypedDeclaration {
                     .body
                     .contents
                     .iter()
-                    .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                    .flat_map(|x| x.check_for_unresolved_types(logged_types))
                     .collect();
-                body.append(&mut decl.return_type.check_for_unresolved_types());
+                body.append(&mut decl.return_type.check_for_unresolved_types(logged_types));
                 body.append(
                     &mut decl
                         .type_parameters
                         .iter()
                         .map(|x| &x.type_id)
-                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .flat_map(|x| x.check_for_unresolved_types(logged_types))
                         .collect(),
                 );
                 body.append(
@@ -187,20 +191,22 @@ impl UnresolvedTypeCheck for TypedDeclaration {
                         .parameters
                         .iter()
                         .map(|x| &x.type_id)
-                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .flat_map(|x| x.check_for_unresolved_types(logged_types))
                         .collect(),
                 );
                 body
             }
             ConstantDeclaration(TypedConstantDeclaration { value, .. }) => {
-                value.check_for_unresolved_types()
+                value.check_for_unresolved_types(logged_types)
             }
             StorageReassignment(TypeCheckedStorageReassignment { fields, rhs, .. }) => fields
                 .iter()
-                .flat_map(|x| x.type_id.check_for_unresolved_types())
-                .chain(rhs.check_for_unresolved_types().into_iter())
+                .flat_map(|x| x.type_id.check_for_unresolved_types(logged_types))
+                .chain(rhs.check_for_unresolved_types(&mut vec![]).into_iter())
                 .collect(),
-            Reassignment(TypedReassignment { rhs, .. }) => rhs.check_for_unresolved_types(),
+            Reassignment(TypedReassignment { rhs, .. }) => {
+                rhs.check_for_unresolved_types(logged_types)
+            }
             ErrorRecovery
             | StorageDeclaration(_)
             | TraitDeclaration(_)

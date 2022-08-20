@@ -400,7 +400,7 @@ pub struct JsonABIFunction {
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonLoggedType {
-    pub log_id: Vec<JsonTypeApplication>,
+    pub log_id: usize,
     pub logged_type: JsonTypeApplication,
 }
 

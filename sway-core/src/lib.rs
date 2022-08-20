@@ -241,6 +241,7 @@ pub fn parsed_to_ast(
         warnings: new_warnings,
         errors: new_errors,
     } = TypedProgram::type_check(parse_program, initial_namespace);
+
     warnings.extend(new_warnings);
     errors.extend(new_errors);
     let typed_program = match typed_program_result {
@@ -279,8 +280,16 @@ pub fn parsed_to_ast(
         }
     };
 
+    let mut logged_types = vec![];
+    let typed_program_with_logged_types = check!(
+        typed_program_with_storage_slots.finalize_types(&mut logged_types),
+        return CompileAstResult::Failure { errors, warnings },
+        warnings,
+        errors
+    );
+
     CompileAstResult::Success {
-        typed_program: Box::new(typed_program_with_storage_slots),
+        typed_program: Box::new(typed_program_with_logged_types),
         warnings,
     }
 }
@@ -401,13 +410,6 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // though, so instead, we are just going to do a pass and throw any unresolved generics as
     // errors and then hold as a runtime invariant that none of the types will be unresolved in the
     // IR phase.
-
-    check!(
-        program.finalize_types(),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
 
     let tree_type = program.kind.tree_type();
     let mut ir = match ir_generation::compile_program(program) {

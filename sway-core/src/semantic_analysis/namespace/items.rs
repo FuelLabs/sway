@@ -28,8 +28,6 @@ pub struct Items {
     pub(crate) use_aliases: UseAliases,
     /// If there is a storage declaration (which are only valid in contracts), store it here.
     pub(crate) declared_storage: Option<TypedStorageDeclaration>,
-
-    pub(crate) logged_types: Vec<TypeId>,
 }
 
 impl Items {
@@ -58,7 +56,6 @@ impl Items {
         self.declared_storage = None;
     }
 
-
     pub fn set_storage_declaration(&mut self, decl: TypedStorageDeclaration) -> CompileResult<()> {
         if self.declared_storage.is_some() {
             return err(
@@ -72,14 +69,6 @@ impl Items {
 
     pub fn get_all_declared_symbols(&self) -> impl Iterator<Item = &Ident> {
         self.symbols().keys()
-    }
-
-    pub(crate) fn insert_logged_type(&mut self, ty: &TypeId) {
-        self.logged_types.push(ty.clone());
-    }
-
-    pub(crate) fn get_logged_type(&self) -> &Vec<TypeId> {
-        &self.logged_types
     }
 
     pub(crate) fn insert_symbol(

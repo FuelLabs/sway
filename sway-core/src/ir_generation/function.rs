@@ -241,7 +241,6 @@ impl FnCompiler {
         md_mgr: &mut MetadataManager,
         ast_expr: TypedExpression,
     ) -> Result<Value, CompileError> {
-        dbg!(&ast_expr);
         let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
         match ast_expr.expression {
             TypedExpressionVariant::Literal(l) => {
@@ -604,7 +603,11 @@ impl FnCompiler {
                     _ => unreachable!(),
                 }
             }
-            Intrinsic::Log => Ok(Constant::get_unit(context)),
+            Intrinsic::Log => Ok(Constant::get_uint(
+                context,
+                64,
+                *arguments[0].return_type as u64,
+            )),
         }
     }
 

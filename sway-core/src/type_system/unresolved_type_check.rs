@@ -4,9 +4,10 @@
 //! that is not the case.
 
 use crate::error::*;
+use crate::type_system::TypeId;
 
 /// If any types contained by this node are unresolved or have yet to be inferred, throw an
 /// error to signal to the user that more type information is needed.
 pub(crate) trait UnresolvedTypeCheck {
-    fn check_for_unresolved_types(&self) -> Vec<CompileError>;
+    fn check_for_unresolved_types(&self, logged_types: &mut Vec<TypeId>) -> Vec<CompileError>;
 }

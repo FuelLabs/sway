@@ -13,14 +13,17 @@ use crate::{
     types::ToJsonAbi,
 };
 use fuel_tx::StorageSlot;
-use sway_types::{span::Span, Ident, JsonABI, JsonABIProgram, JsonTypeDeclaration, Spanned};
+use sway_types::{
+    span::Span, Ident, JsonABI, JsonABIProgram, JsonLoggedType, JsonTypeApplication,
+    JsonTypeDeclaration, Spanned,
+};
 
 #[derive(Clone, Debug)]
 pub struct TypedProgram {
     pub kind: TypedProgramKind,
     pub root: TypedModule,
     pub storage_slots: Vec<StorageSlot>,
-    pub logged_types: Vec<(TypeId, TypeId)>,
+    pub logged_types: Vec<TypeId>,
 }
 
 impl TypedProgram {
@@ -37,7 +40,6 @@ impl TypedProgram {
         let ParseProgram { root, kind } = parsed;
         let mod_span = root.tree.span.clone();
         let mod_res = TypedModule::type_check(ctx, root);
-        dbg!(&mod_res);
         mod_res.flat_map(|root| {
             let kind_res = Self::validate_root(&root, kind.clone(), mod_span);
             kind_res.map(|kind| Self {
@@ -114,8 +116,6 @@ impl TypedProgram {
                 _ => (),
             };
         }
-
-        dbg!(&root.all_nodes);
 
         for ast_n in &root.all_nodes {
             check!(
@@ -212,8 +212,40 @@ impl TypedProgram {
         ok(typed_program_kind, warnings, errors)
     }
 
+    pub fn add_logged_types(&self, json_abi_program: &mut JsonABIProgram) {
+        // A list of all `JsonTypeDeclaration`s needed for inputs
+        let logged_types = self
+            .logged_types
+            .iter()
+            .map(|x| JsonTypeDeclaration {
+                type_id: **x,
+                type_field: x.get_json_type_str(*x),
+                components: x.get_json_type_components(&mut json_abi_program.types, *x),
+                type_parameters: x.get_json_type_parameters(&mut json_abi_program.types, *x),
+            })
+            .collect::<Vec<_>>();
+
+        // Add the new types to `types`
+        json_abi_program.types.extend(logged_types);
+
+        // Generate the JSON data for the function
+        json_abi_program.logged_types = self
+            .logged_types
+            .iter()
+            .map(|x| JsonLoggedType {
+                log_id: **x,
+                logged_type: JsonTypeApplication {
+                    name: "".to_string(),
+                    type_id: **x,
+                    type_arguments: x.get_json_type_arguments(&mut json_abi_program.types, *x),
+                },
+            })
+            .collect();
+    }
+
     /// Ensures there are no unresolved types or types awaiting resolution in the AST.
-    pub(crate) fn finalize_types(&self) -> CompileResult<()> {
+
+    pub(crate) fn finalize_types(&self, logged_types: &mut Vec<TypeId>) -> CompileResult<Self> {
         // Get all of the entry points for this tree type. For libraries, that's everything
         // public. For contracts, ABI entries. For scripts and predicates, any function named `main`.
         let errors: Vec<_> = match &self.kind {
@@ -222,31 +254,40 @@ impl TypedProgram {
                 .all_nodes
                 .iter()
                 .filter(|x| x.is_public())
-                .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                .flat_map(|x| x.check_for_unresolved_types(logged_types))
                 .collect(),
             TypedProgramKind::Script { .. } => self
                 .root
                 .all_nodes
                 .iter()
                 .filter(|x| x.is_main_function(TreeType::Script))
-                .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                .flat_map(|x| x.check_for_unresolved_types(logged_types))
                 .collect(),
             TypedProgramKind::Predicate { .. } => self
                 .root
                 .all_nodes
                 .iter()
                 .filter(|x| x.is_main_function(TreeType::Predicate))
-                .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                .flat_map(|x| x.check_for_unresolved_types(logged_types))
                 .collect(),
             TypedProgramKind::Contract { abi_entries, .. } => abi_entries
                 .iter()
                 .map(TypedAstNode::from)
-                .flat_map(|x| x.check_for_unresolved_types())
+                .flat_map(|x| x.check_for_unresolved_types(logged_types))
                 .collect(),
         };
 
         if errors.is_empty() {
-            ok((), vec![], errors)
+            ok(
+                Self {
+                    kind: self.kind.clone(),
+                    root: self.root.clone(),
+                    storage_slots: self.storage_slots.clone(),
+                    logged_types: logged_types.to_vec(),
+                },
+                vec![],
+                errors,
+            )
         } else {
             err(vec![], errors)
         }

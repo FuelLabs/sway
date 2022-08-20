@@ -35,7 +35,7 @@ impl From<usize> for TypeId {
 }
 
 impl UnresolvedTypeCheck for TypeId {
-    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+    fn check_for_unresolved_types(&self, _logged_types: &mut Vec<TypeId>) -> Vec<CompileError> {
         use TypeInfo::*;
         let span_override = if let TypeInfo::Ref(_, span) = look_up_type_id_raw(*self) {
             Some(span)

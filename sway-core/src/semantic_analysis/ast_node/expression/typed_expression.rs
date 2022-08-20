@@ -64,9 +64,9 @@ impl fmt::Display for TypedExpression {
 }
 
 impl UnresolvedTypeCheck for TypedExpression {
-    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+    fn check_for_unresolved_types(&self, logged_types: &mut Vec<TypeId>) -> Vec<CompileError> {
         use TypedExpressionVariant::*;
-        let mut res = self.return_type.check_for_unresolved_types();
+        let mut res = self.return_type.check_for_unresolved_types(logged_types);
         match &self.expression {
             FunctionApplication {
                 arguments,
@@ -77,7 +77,7 @@ impl UnresolvedTypeCheck for TypedExpression {
                     &mut arguments
                         .iter()
                         .map(|x| &x.1)
-                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .flat_map(|x| x.check_for_unresolved_types(logged_types))
                         .collect::<Vec<_>>(),
                 );
                 res.append(
@@ -85,7 +85,7 @@ impl UnresolvedTypeCheck for TypedExpression {
                         .body
                         .contents
                         .iter()
-                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .flat_map(|x| x.check_for_unresolved_types(logged_types))
                         .collect(),
                 );
             }
@@ -93,7 +93,7 @@ impl UnresolvedTypeCheck for TypedExpression {
                 res.append(
                     &mut fields
                         .iter()
-                        .flat_map(|x| x.check_for_unresolved_types())
+                        .flat_map(|x| x.check_for_unresolved_types(logged_types))
                         .collect(),
                 );
             }
@@ -102,7 +102,7 @@ impl UnresolvedTypeCheck for TypedExpression {
                     &mut registers
                         .iter()
                         .filter_map(|x| x.initializer.as_ref())
-                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .flat_map(|x| x.check_for_unresolved_types(logged_types))
                         .collect::<Vec<_>>(),
                 );
             }
@@ -110,32 +110,32 @@ impl UnresolvedTypeCheck for TypedExpression {
                 res.append(
                     &mut fields
                         .iter()
-                        .flat_map(|x| x.value.check_for_unresolved_types())
+                        .flat_map(|x| x.value.check_for_unresolved_types(logged_types))
                         .collect(),
                 );
             }
             LazyOperator { lhs, rhs, .. } => {
-                res.append(&mut lhs.check_for_unresolved_types());
-                res.append(&mut rhs.check_for_unresolved_types());
+                res.append(&mut lhs.check_for_unresolved_types(logged_types));
+                res.append(&mut rhs.check_for_unresolved_types(logged_types));
             }
             Array { contents } => {
                 res.append(
                     &mut contents
                         .iter()
-                        .flat_map(|x| x.check_for_unresolved_types())
+                        .flat_map(|x| x.check_for_unresolved_types(logged_types))
                         .collect(),
                 );
             }
             ArrayIndex { prefix, index } => {
-                res.append(&mut prefix.check_for_unresolved_types());
-                res.append(&mut index.check_for_unresolved_types());
+                res.append(&mut prefix.check_for_unresolved_types(logged_types));
+                res.append(&mut index.check_for_unresolved_types(logged_types));
             }
             CodeBlock(block) => {
                 res.append(
                     &mut block
                         .contents
                         .iter()
-                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .flat_map(|x| x.check_for_unresolved_types(logged_types))
                         .collect(),
                 );
             }
@@ -144,10 +144,10 @@ impl UnresolvedTypeCheck for TypedExpression {
                 then,
                 r#else,
             } => {
-                res.append(&mut condition.check_for_unresolved_types());
-                res.append(&mut then.check_for_unresolved_types());
+                res.append(&mut condition.check_for_unresolved_types(logged_types));
+                res.append(&mut then.check_for_unresolved_types(logged_types));
                 if let Some(r#else) = r#else {
-                    res.append(&mut r#else.check_for_unresolved_types());
+                    res.append(&mut r#else.check_for_unresolved_types(logged_types));
                 }
             }
             StructFieldAccess {
@@ -155,16 +155,16 @@ impl UnresolvedTypeCheck for TypedExpression {
                 resolved_type_of_parent,
                 ..
             } => {
-                res.append(&mut prefix.check_for_unresolved_types());
-                res.append(&mut resolved_type_of_parent.check_for_unresolved_types());
+                res.append(&mut prefix.check_for_unresolved_types(logged_types));
+                res.append(&mut resolved_type_of_parent.check_for_unresolved_types(logged_types));
             }
             TupleElemAccess {
                 prefix,
                 resolved_type_of_parent,
                 ..
             } => {
-                res.append(&mut prefix.check_for_unresolved_types());
-                res.append(&mut resolved_type_of_parent.check_for_unresolved_types());
+                res.append(&mut prefix.check_for_unresolved_types(logged_types));
+                res.append(&mut resolved_type_of_parent.check_for_unresolved_types(logged_types));
             }
             EnumInstantiation {
                 enum_decl,
@@ -172,43 +172,48 @@ impl UnresolvedTypeCheck for TypedExpression {
                 ..
             } => {
                 if let Some(contents) = contents {
-                    res.append(&mut contents.check_for_unresolved_types().into_iter().collect());
+                    res.append(
+                        &mut contents
+                            .check_for_unresolved_types(logged_types)
+                            .into_iter()
+                            .collect(),
+                    );
                 }
                 res.append(
                     &mut enum_decl
                         .variants
                         .iter()
-                        .flat_map(|x| x.type_id.check_for_unresolved_types())
+                        .flat_map(|x| x.type_id.check_for_unresolved_types(logged_types))
                         .collect(),
                 );
                 res.append(
                     &mut enum_decl
                         .type_parameters
                         .iter()
-                        .flat_map(|x| x.type_id.check_for_unresolved_types())
+                        .flat_map(|x| x.type_id.check_for_unresolved_types(logged_types))
                         .collect(),
                 );
             }
             AbiCast { address, .. } => {
-                res.append(&mut address.check_for_unresolved_types());
+                res.append(&mut address.check_for_unresolved_types(logged_types));
             }
             IntrinsicFunction(kind) => {
-                res.append(&mut kind.check_for_unresolved_types());
+                res.append(&mut kind.check_for_unresolved_types(logged_types));
             }
             EnumTag { exp } => {
-                res.append(&mut exp.check_for_unresolved_types());
+                res.append(&mut exp.check_for_unresolved_types(logged_types));
             }
             UnsafeDowncast { exp, variant } => {
-                res.append(&mut exp.check_for_unresolved_types());
-                res.append(&mut variant.type_id.check_for_unresolved_types());
+                res.append(&mut exp.check_for_unresolved_types(logged_types));
+                res.append(&mut variant.type_id.check_for_unresolved_types(logged_types));
             }
             WhileLoop { condition, body } => {
-                res.append(&mut condition.check_for_unresolved_types());
+                res.append(&mut condition.check_for_unresolved_types(logged_types));
                 res.append(
                     &mut body
                         .contents
                         .iter()
-                        .flat_map(TypedAstNode::check_for_unresolved_types)
+                        .flat_map(|x| x.check_for_unresolved_types(logged_types))
                         .collect(),
                 );
             }
@@ -543,7 +548,6 @@ impl TypedExpression {
         };
         let mut warnings = res.warnings;
         let mut errors = res.errors;
-        dbg!(ctx.namespace.get_logged_type());
         // if one of the expressions deterministically aborts, we don't want to type check it.
         if !typed_expression.deterministically_aborts() {
             // if the return type cannot be cast into the annotation type then it is a type error
@@ -1613,8 +1617,7 @@ impl TypedExpression {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let (intrinsic_function, return_type) =
-        { 
+        let (intrinsic_function, return_type) = {
             let ctx = ctx.by_ref();
             check!(
                 TypedIntrinsicFunctionKind::type_check(ctx, kind_binding, arguments, span.clone()),
@@ -1629,7 +1632,6 @@ impl TypedExpression {
             is_constant: IsConstant::No,
             span,
         };
-        dbg!(ctx.namespace.get_logged_type());
         ok(exp, warnings, errors)
     }
 

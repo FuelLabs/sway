@@ -40,13 +40,13 @@ pub enum TypedAstNodeContent {
 }
 
 impl UnresolvedTypeCheck for TypedAstNodeContent {
-    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+    fn check_for_unresolved_types(&self, logged_types: &mut Vec<TypeId>) -> Vec<CompileError> {
         use TypedAstNodeContent::*;
         match self {
-            ReturnStatement(stmt) => stmt.expr.check_for_unresolved_types(),
-            Declaration(decl) => decl.check_for_unresolved_types(),
-            Expression(expr) => expr.check_for_unresolved_types(),
-            ImplicitReturnExpression(expr) => expr.check_for_unresolved_types(),
+            ReturnStatement(stmt) => stmt.expr.check_for_unresolved_types(logged_types),
+            Declaration(decl) => decl.check_for_unresolved_types(logged_types),
+            Expression(expr) => expr.check_for_unresolved_types(logged_types),
+            ImplicitReturnExpression(expr) => expr.check_for_unresolved_types(logged_types),
             SideEffect => vec![],
         }
     }
@@ -93,8 +93,8 @@ impl CopyTypes for TypedAstNode {
 }
 
 impl UnresolvedTypeCheck for TypedAstNode {
-    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
-        self.content.check_for_unresolved_types()
+    fn check_for_unresolved_types(&self, logged_types: &mut Vec<TypeId>) -> Vec<CompileError> {
+        self.content.check_for_unresolved_types(logged_types)
     }
 }
 
