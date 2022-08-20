@@ -57,7 +57,7 @@ impl Format for IfExpr {
         write!(if_expr, "{then_block_width}")?;
         if_expr_width += then_block_width;
 
-        if let Some(_) = &self.else_opt {
+        if self.else_opt.is_some() {
             let mut else_expr = FormattedCode::new();
             temp_formatter
                 .shape
