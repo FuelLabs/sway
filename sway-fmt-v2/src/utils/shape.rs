@@ -272,10 +272,10 @@ impl Shape {
                 }
             }
             ExprKind::Conditional => {
-                if self.width > config.whitespace.max_width {
-                    self.code_line.update_line_style(LineStyle::Multiline)
-                } else if self.width < self.width_heuristics.single_line_if_else_max_width {
+                if self.width < self.width_heuristics.single_line_if_else_max_width {
                     self.code_line.update_line_style(LineStyle::Inline)
+                } else if dbg!(body_width.unwrap_or(0) > config.whitespace.max_width) {
+                    self.code_line.update_line_style(LineStyle::Multiline)
                 } else {
                     self.code_line.update_line_style(LineStyle::Normal)
                 }

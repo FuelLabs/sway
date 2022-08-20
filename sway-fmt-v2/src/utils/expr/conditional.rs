@@ -10,35 +10,83 @@ use std::{fmt::Write, ops::ControlFlow};
 use sway_ast::{token::Delimiter, IfCondition, IfExpr, MatchBranch, MatchBranchKind};
 use sway_types::Spanned;
 
+use super::debug_expr;
+
 impl Format for IfExpr {
     fn format(
         &self,
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let prev_state = formatter.shape.code_line;
         formatter
             .shape
             .code_line
             .update_expr_kind(ExprKind::Conditional);
-        let mut buf = FormattedCode::new();
+
+        let mut if_expr = FormattedCode::new();
+        let mut if_expr_width = 0;
+
+        let mut if_condition = FormattedCode::new();
         let mut temp_formatter = Formatter::default();
         temp_formatter
             .shape
             .code_line
             .update_line_style(LineStyle::Inline);
-        format_if_expr(self, &mut buf, &mut temp_formatter)?;
-        let if_expr_width = buf.chars().count() as usize;
+
+        write!(
+            if_condition,
+            "{}",
+            formatter.shape.indent.to_string(&formatter.config)?
+        )?;
+        format_if_condition(self, &mut if_condition, &mut temp_formatter)?;
+
+        let if_condition_width = if_condition.chars().count();
+        println!("if_condition: {if_condition}\nwidth: {if_condition_width}\n");
+        write!(if_expr, "{if_condition}")?;
+        if_expr_width += if_condition_width;
+
+        let mut then_block = FormattedCode::new();
+        temp_formatter
+            .shape
+            .code_line
+            .update_line_style(LineStyle::Inline);
+        format_then_block(self, &mut then_block, &mut temp_formatter)?;
+
+        let then_block_width = then_block.chars().count();
+        println!("then_block: {then_block}\nwidth: {then_block_width}\n");
+        write!(if_expr, "{then_block_width}")?;
+        if_expr_width += then_block_width;
+
+        if let Some(_) = &self.else_opt {
+            let mut else_expr = FormattedCode::new();
+            temp_formatter
+                .shape
+                .code_line
+                .update_line_style(LineStyle::Inline);
+            format_else_opt(self, &mut else_expr, &mut temp_formatter)?;
+
+            let else_expr_width = else_expr.chars().count();
+            println!("else_expr: {else_expr}\nwidth: {else_expr_width}\n");
+            write!(if_expr, "{else_expr}")?;
+            if_expr_width += else_expr_width;
+        }
 
         formatter.shape.add_width(if_expr_width);
-        formatter
-            .shape
-            .get_line_style(None, None, &formatter.config);
-
-        format_if_expr(self, formatted_code, formatter)?;
+        formatter.shape.get_line_style(
+            Some(if_condition_width), // the condition width
+            Some(then_block_width),   // the code block width
+            &formatter.config,
+        );
+        debug_expr(
+            if_expr,
+            Some(if_condition_width),
+            Some(then_block_width),
+            if_expr_width,
+            formatter,
+        );
 
         formatter.shape.sub_width(if_expr_width);
-        formatter.shape.update_line_settings(prev_state);
+        format_if_expr(self, formatted_code, formatter)?;
 
         Ok(())
     }
@@ -51,23 +99,7 @@ fn format_if_expr(
 ) -> Result<(), FormatterError> {
     format_if_condition(if_expr, formatted_code, formatter)?;
     format_then_block(if_expr, formatted_code, formatter)?;
-
-    if let Some((else_token, control_flow)) = &if_expr.else_opt {
-        write!(formatted_code, " {}", else_token.span().as_str())?;
-        match &control_flow {
-            ControlFlow::Continue(if_expr) => {
-                write!(formatted_code, " ")?;
-                if_expr.format(formatted_code, formatter)?
-            }
-            ControlFlow::Break(code_block_contents) => {
-                IfExpr::open_curly_brace(formatted_code, formatter)?;
-                code_block_contents
-                    .get()
-                    .format(formatted_code, formatter)?;
-                IfExpr::close_curly_brace(formatted_code, formatter)?;
-            }
-        }
-    }
+    format_else_opt(if_expr, formatted_code, formatter)?;
 
     Ok(())
 }
@@ -101,17 +133,45 @@ fn format_then_block(
     Ok(())
 }
 
+fn format_else_opt(
+    if_expr: &IfExpr,
+    formatted_code: &mut FormattedCode,
+    formatter: &mut Formatter,
+) -> Result<(), FormatterError> {
+    if let Some((else_token, control_flow)) = &if_expr.else_opt {
+        write!(formatted_code, " {}", else_token.span().as_str())?;
+        match &control_flow {
+            ControlFlow::Continue(if_expr) => {
+                write!(formatted_code, " ")?;
+                if_expr.format(formatted_code, formatter)?
+            }
+            ControlFlow::Break(code_block_contents) => {
+                IfExpr::open_curly_brace(formatted_code, formatter)?;
+                code_block_contents
+                    .get()
+                    .format(formatted_code, formatter)?;
+                IfExpr::close_curly_brace(formatted_code, formatter)?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
 impl CurlyBrace for IfExpr {
     fn open_curly_brace(
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        formatter.shape.block_indent(&formatter.config);
         let open_brace = Delimiter::Brace.as_open_char();
-
         match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
-                write!(line, "\n{open_brace}")?;
+                formatter.shape.reset_width();
+                write!(
+                    line,
+                    "\n{}{open_brace}",
+                    formatter.shape.indent.to_string(&formatter.config)?
+                )?;
                 formatter
                     .shape
                     .code_line
@@ -119,8 +179,10 @@ impl CurlyBrace for IfExpr {
             }
             _ => {
                 write!(line, " {open_brace}")?;
+                formatter.shape.add_width(2); // ` {`
             }
         }
+        formatter.shape.block_indent(&formatter.config);
 
         Ok(())
     }

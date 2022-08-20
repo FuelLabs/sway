@@ -563,11 +563,11 @@ pub(super) fn debug_expr(
     formatter: &mut Formatter,
 ) {
     println!(
-        "line: {buf}\nfield: {:?}, body: {:?}, expr: {expr_width}, width: {}",
+        "line: {buf}\nfield: {:?}, body: {:?}, expr: {expr_width}, Shape::width: {}",
         field_width, body_width, formatter.shape.width
     );
     println!("{:?}", formatter.shape.code_line);
-    println!("{:?}", formatter.shape.width_heuristics);
+    println!("{:?}\n", formatter.shape.width_heuristics);
 }
 
 fn format_expr_struct(

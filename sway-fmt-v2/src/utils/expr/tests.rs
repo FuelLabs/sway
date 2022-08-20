@@ -71,6 +71,7 @@ macro_rules! fmt_test_inner {
                         }
                     }
                 }
+                println!("{formatted_code}");
                 assert_eq!(&formatted_code, $desired_output)
             }
         }
@@ -141,6 +142,35 @@ fmt_test!(  if_else_control_flow    "if foo { break; } else { continue; }",
 
 fmt_test!(  small_if_else           "if foo { foo() } else { bar() }",
             intermediate_whitespace "if     foo    {    foo( )    }   else    {    bar(  )   }"
+);
+
+fmt_test!(  match_nested_conditional
+"match foo {
+    Foo::foo => {
+        if really_long_var > other_really_long_var {
+            foo();
+        } else if really_really_long_var_name > really_really_really_really_long_var_name1
+        {
+            bar();
+        } else {
+            baz();
+        }
+    }
+}",
+            intermediate_whitespace
+"match foo {
+    Foo::foo => {
+        if really_long_var > other_really_long_var
+        {
+            foo();
+        } else if really_really_long_var_name > really_really_really_really_long_var_name1
+        {
+            bar();
+        } else {
+            baz();
+        }
+    }
+}"
 );
 
 fmt_test!(  match_branch_kind
