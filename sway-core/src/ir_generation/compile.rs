@@ -49,7 +49,7 @@ pub(super) fn compile_contract(
     Ok(module)
 }
 
-fn compile_constants(
+pub fn compile_constants(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
