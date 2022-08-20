@@ -122,6 +122,30 @@ fmt_test!(  multiline_tuple         "(\n    \"reallyreallylongstring\",\n    \"y
             \"okaynowthatsjustaridiculouslylongstringrightthere\")"
 );
 
+fmt_test!(  nested_tuple
+"(
+    (
+        0x0000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000,
+    ),
+    (
+        0x0000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000,
+    ),
+)",
+            intermediate_whitespace
+"   (
+        (
+            0x0000000000000000000000000000000000000000000000000000000000 ,
+            0x0000000000000000000000000000000000000000000000000000000000 ,
+        ) ,
+(
+            0x0000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000 ,
+ ) ,
+)"
+);
+
 fmt_test!(  multiline_match_stmt    "match foo {\n    Foo::foo => {}\n    Foo::bar => {}\n}",
             intermediate_whitespace "  match   \n  foo  {   \n\n    Foo :: foo  => {        }\n     Foo :: bar  =>  { }   \n}\n"
 );
@@ -153,4 +177,46 @@ fmt_test!(  match_branch_kind
          ); \n    } \n    Foo::\nbar => 
          {\n        baz();\n        
 quux();\n    }\n\n\n}"
+);
+
+fmt_test!(  basic_array             "[1, 2, 3, 4, 5]",
+            intermediate_whitespace " \n [ 1 , 2 , 3 , 4 , 5 ]  \n"
+);
+
+fmt_test!(  long_array
+"[
+    \"hello_there_this_is_a_very_long_string\",
+    \"and_yet_another_very_long_string_just_because\",
+    \"would_you_look_at_that_another_long_string\",
+]",
+intermediate_whitespace
+"    [
+       \"hello_there_this_is_a_very_long_string\",
+     \"and_yet_another_very_long_string_just_because\"\n,
+         \"would_you_look_at_that_another_long_string\",
+ ]    \n"
+);
+
+fmt_test!(  nested_array
+"[
+    [
+        0x0000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000,
+    ],
+    [
+        0x0000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000,
+    ],
+]",
+            intermediate_whitespace
+"   [
+      [
+         0x0000000000000000000000000000000000000000000000000000000000 ,
+         0x0000000000000000000000000000000000000000000000000000000000 ,
+     ] ,
+[
+         0x0000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000 ,
+     ] ,
+  ]"
 );

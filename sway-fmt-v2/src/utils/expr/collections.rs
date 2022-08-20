@@ -91,6 +91,7 @@ impl Format for ExprArrayDescriptor {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        Self::open_square_bracket(formatted_code, formatter)?;
         match self {
             Self::Sequence(punct_expr) => {
                 punct_expr.format(formatted_code, formatter)?;
@@ -105,6 +106,7 @@ impl Format for ExprArrayDescriptor {
                 length.format(formatted_code, formatter)?;
             }
         }
+        Self::close_square_bracket(formatted_code, formatter)?;
 
         Ok(())
     }
@@ -118,7 +120,7 @@ impl SquareBracket for ExprArrayDescriptor {
         match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
                 formatter.shape.block_indent(&formatter.config);
-                writeln!(line, "{}", Delimiter::Bracket.as_open_char())?;
+                write!(line, "{}", Delimiter::Bracket.as_open_char())?;
             }
             _ => write!(line, "{}", Delimiter::Bracket.as_open_char())?,
         }
@@ -134,7 +136,7 @@ impl SquareBracket for ExprArrayDescriptor {
                 formatter.shape.block_unindent(&formatter.config);
                 write!(
                     line,
-                    "\n{}{}",
+                    "{}{}",
                     formatter.shape.indent.to_string(&formatter.config)?,
                     Delimiter::Bracket.as_close_char()
                 )?;
