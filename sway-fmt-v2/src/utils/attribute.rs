@@ -2,7 +2,7 @@ use crate::{
     fmt::*,
     utils::{
         bracket::{Parenthesis, SquareBracket},
-        comments::{ByteSpan, LeafSpans},
+        byte_span::{ByteSpan, LeafSpans},
     },
 };
 use std::fmt::Write;
@@ -28,11 +28,6 @@ impl<T: Parse + Format> Format for Annotated<T> {
             )?;
             attr.format(formatted_code, formatter)?;
         }
-        write!(
-            formatted_code,
-            "{}",
-            &formatter.shape.indent.to_string(&formatter.config)?,
-        )?;
         // format `ItemKind`
         self.value.format(formatted_code, formatter)
     }

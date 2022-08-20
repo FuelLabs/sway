@@ -2,7 +2,7 @@ use crate::{
     fmt::*,
     utils::{
         bracket::SquareBracket,
-        comments::{ByteSpan, LeafSpans},
+        byte_span::{ByteSpan, LeafSpans},
     },
 };
 use std::fmt::Write;
@@ -17,11 +17,6 @@ impl Format for Assignable {
     ) -> Result<(), FormatterError> {
         match self {
             Assignable::Var(name) => {
-                write!(
-                    formatted_code,
-                    "{}",
-                    formatter.shape.indent.to_string(&formatter.config)?
-                )?;
                 name.format(formatted_code, formatter)?;
             }
             Assignable::Index { target, arg } => {
