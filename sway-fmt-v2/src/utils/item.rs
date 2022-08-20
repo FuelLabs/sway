@@ -1,12 +1,12 @@
 use crate::{
     fmt::*,
-    utils::comments::{ByteSpan, LeafSpans},
+    utils::byte_span::{ByteSpan, LeafSpans},
 };
-use sway_ast::{Item, ItemKind::*};
+use sway_ast::ItemKind::{self, *};
 
-impl LeafSpans for Item {
+impl LeafSpans for ItemKind {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
-        match &self.value {
+        match self {
             Struct(item_struct) => item_struct.leaf_spans(),
             Enum(item_enum) => item_enum.leaf_spans(),
             Fn(item_fn) => item_fn.leaf_spans(),
@@ -16,19 +16,17 @@ impl LeafSpans for Item {
             Trait(item_trait) => item_trait.leaf_spans(),
             Impl(item_impl) => item_impl.leaf_spans(),
             Use(item_use) => item_use.leaf_spans(),
-            Break(_) => todo!(),
-            Continue(_) => todo!(),
         }
     }
 }
 
-impl Format for Item {
+impl Format for ItemKind {
     fn format(
         &self,
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        match &self.value {
+        match self {
             Use(item_use) => item_use.format(formatted_code, formatter),
             Struct(item_struct) => item_struct.format(formatted_code, formatter),
             Enum(item_enum) => item_enum.format(formatted_code, formatter),
@@ -38,8 +36,6 @@ impl Format for Item {
             Abi(item_abi) => item_abi.format(formatted_code, formatter),
             Const(item_const) => item_const.format(formatted_code, formatter),
             Storage(item_storage) => item_storage.format(formatted_code, formatter),
-            Break(_item_break) => todo!(),
-            Continue(_item_continue) => todo!(),
         }
     }
 }

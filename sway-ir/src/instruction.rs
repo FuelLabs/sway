@@ -70,7 +70,7 @@ pub enum Instruction {
     /// Return a pointer as a value.
     GetPointer {
         base_ptr: Pointer,
-        ptr_ty: Type,
+        ptr_ty: Pointer,
         offset: u64,
     },
     /// Writing a specific value to an array.
@@ -184,13 +184,13 @@ impl Instruction {
             Instruction::Gtf { .. } => Some(Type::Uint(64)),
             Instruction::InsertElement { array, .. } => array.get_type(context),
             Instruction::InsertValue { aggregate, .. } => aggregate.get_type(context),
-            Instruction::Load(ptr_val) => {
-                if let ValueDatum::Instruction(ins) = &context.values[ptr_val.0].value {
-                    ins.get_type(context)
-                } else {
-                    None
+            Instruction::Load(ptr_val) => match &context.values[ptr_val.0].value {
+                ValueDatum::Argument(ty) => Some(ty.strip_ptr_type(context)),
+                ValueDatum::Constant(cons) => Some(cons.ty.strip_ptr_type(context)),
+                ValueDatum::Instruction(ins) => {
+                    ins.get_type(context).map(|f| f.strip_ptr_type(context))
                 }
-            }
+            },
             Instruction::ReadRegister(_) => Some(Type::Uint(64)),
             Instruction::StateLoadWord(_) => Some(Type::Uint(64)),
             Instruction::Phi(alts) => {
@@ -200,7 +200,7 @@ impl Instruction {
             }
 
             // These can be recursed to via Load, so we return the pointer type.
-            Instruction::GetPointer { ptr_ty, .. } => Some(*ptr_ty),
+            Instruction::GetPointer { ptr_ty, .. } => Some(Type::Pointer(*ptr_ty)),
 
             // Used to re-interpret an integer as a pointer to some type so return the pointer type.
             Instruction::IntToPtr(_, ty) => Some(*ty),
@@ -210,11 +210,10 @@ impl Instruction {
             Instruction::ConditionalBranch { .. } => None,
             Instruction::Ret(..) => None,
 
-            // These write values but don't return one.  If we're explicit we could return Unit.
-            Instruction::StateLoadQuadWord { .. } => None,
-            Instruction::StateStoreQuadWord { .. } => None,
-            Instruction::StateStoreWord { .. } => None,
-            Instruction::Store { .. } => None,
+            Instruction::StateLoadQuadWord { .. } => Some(Type::Unit),
+            Instruction::StateStoreQuadWord { .. } => Some(Type::Unit),
+            Instruction::StateStoreWord { .. } => Some(Type::Unit),
+            Instruction::Store { .. } => Some(Type::Unit),
 
             // No-op is also no-type.
             Instruction::Nop => None,
@@ -229,7 +228,7 @@ impl Instruction {
                 Type::Struct(aggregate) => Some(*aggregate),
                 _otherwise => None,
             },
-            Instruction::GetPointer { ptr_ty, .. } => match ptr_ty {
+            Instruction::GetPointer { ptr_ty, .. } => match ptr_ty.get_type(context) {
                 Type::Array(aggregate) => Some(*aggregate),
                 Type::Struct(aggregate) => Some(*aggregate),
                 _otherwise => None,
@@ -564,11 +563,12 @@ impl<'a> InstructionInserter<'a> {
     }
 
     pub fn get_ptr(self, base_ptr: Pointer, ptr_ty: Type, offset: u64) -> Value {
+        let ptr = Pointer::new(self.context, ptr_ty, false, None);
         let get_ptr_val = Value::new_instruction(
             self.context,
             Instruction::GetPointer {
                 base_ptr,
-                ptr_ty,
+                ptr_ty: ptr,
                 offset,
             },
         );

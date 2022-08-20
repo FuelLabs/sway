@@ -202,6 +202,16 @@ impl UnresolvedTypeCheck for TypedExpression {
                 res.append(&mut exp.check_for_unresolved_types());
                 res.append(&mut variant.type_id.check_for_unresolved_types());
             }
+            WhileLoop { condition, body } => {
+                res.append(&mut condition.check_for_unresolved_types());
+                res.append(
+                    &mut body
+                        .contents
+                        .iter()
+                        .flat_map(TypedAstNode::check_for_unresolved_types)
+                        .collect(),
+                );
+            }
             // storage access can never be generic
             // variable expressions don't ever have return types themselves, they're stored in
             // `TypedExpression::return_type`. Variable expressions are just names of variables.
@@ -282,6 +292,9 @@ impl DeterministicallyAborts for TypedExpression {
             AbiName(_) => false,
             EnumTag { exp } => exp.deterministically_aborts(),
             UnsafeDowncast { exp, .. } => exp.deterministically_aborts(),
+            WhileLoop { condition, body } => {
+                condition.deterministically_aborts() || body.deterministically_aborts()
+            }
         }
     }
 }
@@ -367,6 +380,13 @@ impl TypedExpression {
                 }
                 buf
             }
+            TypedExpressionVariant::WhileLoop { condition, body } => {
+                let mut buf = condition.gather_return_statements();
+                for node in &body.contents {
+                    buf.append(&mut node.gather_return_statements())
+                }
+                buf
+            }
             // if it is impossible for an expression to contain a return _statement_ (not an
             // implicit return!), put it in the pattern below.
             TypedExpressionVariant::LazyOperator { .. }
@@ -388,6 +408,14 @@ impl TypedExpression {
             | TypedExpressionVariant::FunctionApplication { .. }
             | TypedExpressionVariant::EnumTag { .. }
             | TypedExpressionVariant::UnsafeDowncast { .. } => vec![],
+        }
+    }
+
+    /// gathers the mutability of the expressions within
+    pub(crate) fn gather_mutability(&self) -> VariableMutability {
+        match &self.expression {
+            TypedExpressionVariant::VariableExpression { mutability, .. } => *mutability,
+            _ => VariableMutability::Immutable,
         }
     }
 
@@ -505,6 +533,9 @@ impl TypedExpression {
                 kind_binding,
                 arguments,
             }) => Self::type_check_intrinsic_function(ctx.by_ref(), kind_binding, arguments, span),
+            ExpressionKind::WhileLoop(WhileLoopExpression { condition, body }) => {
+                Self::type_check_while_loop(ctx.by_ref(), *condition, body, span)
+            }
         };
         let mut typed_expression = match res.value {
             Some(r) => r,
@@ -590,21 +621,34 @@ impl TypedExpression {
         let mut errors = vec![];
         let exp = match namespace.resolve_symbol(&name).value {
             Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                body, ..
+                name: decl_name,
+                body,
+                mutability,
+                ..
             })) => TypedExpression {
                 return_type: body.return_type,
                 is_constant: body.is_constant,
-                expression: TypedExpressionVariant::VariableExpression { name: name.clone() },
+                expression: TypedExpressionVariant::VariableExpression {
+                    name: decl_name.clone(),
+                    span: name.span(),
+                    mutability: *mutability,
+                },
                 span,
             },
             Some(TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
-                value, ..
+                name: decl_name,
+                value,
+                ..
             })) => TypedExpression {
                 return_type: value.return_type,
                 is_constant: IsConstant::Yes,
                 // Although this isn't strictly a 'variable' expression we can treat it as one for
                 // this context.
-                expression: TypedExpressionVariant::VariableExpression { name: name.clone() },
+                expression: TypedExpressionVariant::VariableExpression {
+                    name: decl_name.clone(),
+                    span: name.span(),
+                    mutability: VariableMutability::Immutable,
+                },
                 span,
             },
             Some(TypedDeclaration::AbiDeclaration(decl)) => TypedExpression {
@@ -1088,6 +1132,7 @@ impl TypedExpression {
             }
             typed_field_types.push(TypeArgument {
                 type_id: typed_field.return_type,
+                initial_type_id: field_type.type_id,
                 span: typed_field.span.clone(),
             });
             typed_fields.push(typed_field);
@@ -1426,12 +1471,13 @@ impl TypedExpression {
         span: Span,
     ) -> CompileResult<Self> {
         if contents.is_empty() {
+            let unknown_type = insert_type(TypeInfo::Unknown);
             return ok(
                 TypedExpression {
                     expression: TypedExpressionVariant::Array {
                         contents: Vec::new(),
                     },
-                    return_type: insert_type(TypeInfo::Array(insert_type(TypeInfo::Unknown), 0)),
+                    return_type: insert_type(TypeInfo::Array(unknown_type, 0, unknown_type)),
                     is_constant: IsConstant::Yes,
                     span,
                 },
@@ -1482,7 +1528,7 @@ impl TypedExpression {
                 expression: TypedExpressionVariant::Array {
                     contents: typed_contents,
                 },
-                return_type: insert_type(TypeInfo::Array(elem_type, array_count)),
+                return_type: insert_type(TypeInfo::Array(elem_type, array_count, elem_type)),
                 is_constant: IsConstant::No, // Maybe?
                 span,
             },
@@ -1514,7 +1560,7 @@ impl TypedExpression {
         };
 
         // If the return type is a static array then create a TypedArrayIndex.
-        if let TypeInfo::Array(elem_type_id, _) = look_up_type_id(prefix_te.return_type) {
+        if let TypeInfo::Array(elem_type_id, _, _) = look_up_type_id(prefix_te.return_type) {
             let type_info_u64 = TypeInfo::UnsignedInteger(IntegerBits::SixtyFour);
             let ctx = ctx
                 .with_help_text("")
@@ -1577,6 +1623,51 @@ impl TypedExpression {
             expression: TypedExpressionVariant::IntrinsicFunction(intrinsic_function),
             return_type,
             is_constant: IsConstant::No,
+            span,
+        };
+        ok(exp, warnings, errors)
+    }
+
+    fn type_check_while_loop(
+        mut ctx: TypeCheckContext,
+        condition: Expression,
+        body: CodeBlock,
+        span: Span,
+    ) -> CompileResult<Self> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let typed_condition = {
+            let ctx = ctx
+                .by_ref()
+                .with_type_annotation(insert_type(TypeInfo::Boolean))
+                .with_help_text("A while loop's loop condition must be a boolean expression.");
+            check!(
+                TypedExpression::type_check(ctx, condition),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )
+        };
+
+        let unit_ty = insert_type(TypeInfo::Tuple(Vec::new()));
+        let ctx = ctx.with_type_annotation(unit_ty).with_help_text(
+            "A while loop's loop body cannot implicitly return a value. Try \
+                 assigning it to a mutable variable declared outside of the loop \
+                 instead.",
+        );
+        let (typed_body, _block_implicit_return) = check!(
+            TypedCodeBlock::type_check(ctx, body),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let exp = TypedExpression {
+            expression: TypedExpressionVariant::WhileLoop {
+                condition: Box::new(typed_condition),
+                body: typed_body,
+            },
+            return_type: unit_ty,
+            is_constant: IsConstant::Yes,
             span,
         };
         ok(exp, warnings, errors)
@@ -1681,7 +1772,11 @@ mod tests {
     fn do_type_check_for_boolx2(expr: Expression) -> CompileResult<TypedExpression> {
         do_type_check(
             expr,
-            insert_type(TypeInfo::Array(insert_type(TypeInfo::Boolean), 2)),
+            insert_type(TypeInfo::Array(
+                insert_type(TypeInfo::Boolean),
+                2,
+                insert_type(TypeInfo::Boolean),
+            )),
         )
     }
 
@@ -1789,7 +1884,11 @@ mod tests {
 
         let comp_res = do_type_check(
             expr,
-            insert_type(TypeInfo::Array(insert_type(TypeInfo::Boolean), 0)),
+            insert_type(TypeInfo::Array(
+                insert_type(TypeInfo::Boolean),
+                0,
+                insert_type(TypeInfo::Boolean),
+            )),
         );
         assert!(comp_res.warnings.is_empty() && comp_res.errors.is_empty());
     }

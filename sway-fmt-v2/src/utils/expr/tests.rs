@@ -1,24 +1,34 @@
+//! Specific tests for the expression module
+
 use crate::{Format, Formatter};
 use forc_util::{println_green, println_red};
 use paste::paste;
 use prettydiff::{basic::DiffOp, diff_lines};
 use sway_ast::Expr;
-use sway_parse::*;
+use sway_parse::{handler::Handler, *};
 
 fn format_code(input: &str) -> String {
-    let mut errors = vec![];
     let mut formatter: Formatter = Default::default();
     let input_arc = std::sync::Arc::from(input);
     let token_stream = lex(&input_arc, 0, input.len(), None).unwrap();
-    let mut parser = Parser::new(&token_stream, &mut errors);
-    let expression: Expr = Parse::parse(&mut parser).unwrap();
+    let handler = Handler::default();
+    let mut parser = Parser::new(&token_stream, &handler);
+    let expression: Expr = parser.parse().unwrap();
 
     let mut buf = Default::default();
     expression.format(&mut buf, &mut formatter).unwrap();
 
     buf
 }
-
+/// convenience macro for generating test cases
+/// provide a known good, and then some named test cases that should evaluate to
+/// that known good. e.g.:
+/// ```
+///       // test suite name          known good
+///fmt_test!(field_proj_foobar       "foo.bar.baz.quux",
+///       // test case name           should format to known good
+///          intermediate_whitespace "foo . bar . baz . quux");
+/// ```
 macro_rules! fmt_test {
     ($scope:ident $desired_output:expr, $($name:ident $y:expr),+) => {
         fmt_test_inner!($scope $desired_output,
@@ -71,43 +81,142 @@ macro_rules! fmt_test_inner {
                         }
                     }
                 }
-                assert_eq!(&formatted_code, $desired_output);
+                assert_eq!(&formatted_code, $desired_output)
             }
         }
     )+
 }
 }
 
-fmt_test!(literal "5", extra_whitespace "  5 "
+fmt_test!(  literal "5", extra_whitespace "  5 "
 );
 
-fmt_test!(  path_foo_bar "foo::bar::baz::quux::quuz",
+fmt_test!(  path_foo_bar            "foo::bar::baz::quux::quuz",
             intermediate_whitespace "foo :: bar :: baz :: quux :: quuz");
 
-fmt_test!(  field_proj_foobar "foo.bar.baz.quux",
+fmt_test!(  field_proj_foobar       "foo.bar.baz.quux",
             intermediate_whitespace "foo . bar . baz . quux");
 
-fmt_test!(  abi_cast "abi(MyAbi, 0x1111111111111111111111111111111111111111111111111111111111111111)",
+fmt_test!(  abi_cast                "abi(MyAbi, 0x1111111111111111111111111111111111111111111111111111111111111111)",
             intermediate_whitespace " abi (
-                  MyAbi  
-                   , 
+                  MyAbi
+                   ,
                                  0x1111111111111111111111111111111111111111111111111111111111111111
                                   )  "
 );
 
-fmt_test!(  basic_func_app "foo()",
+fmt_test!(  basic_func_app          "foo()",
             intermediate_whitespace " foo (
-                
+
             ) "
 );
 
-fmt_test!(  nested_args_func_app "foo(a_struct { hello: \"hi\" }, a_var, foo.bar.baz.quux)",
+fmt_test!(  nested_args_func_app    "foo(a_struct { hello: \"hi\" }, a_var, foo.bar.baz.quux)",
             intermediate_whitespace "foo(a_struct {
                     hello  :  \"hi\"
             }, a_var  , foo . bar . baz . quux)"
 );
 
-fmt_test!(  multiline_tuple "(\n    \"reallyreallylongstring\",\n    \"yetanotherreallyreallyreallylongstring\",\n    \"okaynowthatsjustaridiculouslylongstringrightthere\",\n)",
+fmt_test!(  multiline_tuple         "(\n    \"reallyreallylongstring\",\n    \"yetanotherreallyreallyreallylongstring\",\n    \"okaynowthatsjustaridiculouslylongstringrightthere\",\n)",
             intermediate_whitespace "(\"reallyreallylongstring\",             \"yetanotherreallyreallyreallylongstring\",
             \"okaynowthatsjustaridiculouslylongstringrightthere\")"
+);
+
+fmt_test!(  nested_tuple
+"(
+    (
+        0x0000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000,
+    ),
+    (
+        0x0000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000,
+    ),
+)",
+            intermediate_whitespace
+"   (
+        (
+            0x0000000000000000000000000000000000000000000000000000000000 ,
+            0x0000000000000000000000000000000000000000000000000000000000 ,
+        ) ,
+(
+            0x0000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000 ,
+ ) ,
+)"
+);
+
+fmt_test!(  multiline_match_stmt    "match foo {\n    Foo::foo => {}\n    Foo::bar => {}\n}",
+            intermediate_whitespace "  match   \n  foo  {   \n\n    Foo :: foo  => {        }\n     Foo :: bar  =>  { }   \n}\n"
+);
+
+fmt_test!(  if_else_block           "if foo {\n    foo();\n} else if bar {\n    bar();\n} else {\n    baz();\n}",
+            intermediate_whitespace "   if    foo  {   \n       foo( ) ; \n }    else  if   bar  { \n     bar( ) ; \n }  else  { \n    baz(\n) ; \n }\n\n"
+);
+
+fmt_test!(  if_else_control_flow    "if foo {\n    break;\n} else {\n    continue;\n}",
+            intermediate_whitespace "if  foo { \n        break; \n}    else  {\n    continue;    \n}");
+
+fmt_test!(  match_branch_kind
+"match foo {
+    Foo::foo => {
+        foo();
+        bar();
+    }
+    Foo::bar => {
+        baz();
+        quux();
+    }
+}",
+            intermediate_whitespace
+"match     foo
+            
+\n{\n\n    Foo::foo    
+     => {\n        foo() 
+        ;     \n        bar(
+         ); \n    } \n    Foo::\nbar => 
+         {\n        baz();\n        
+quux();\n    }\n\n\n}"
+);
+
+fmt_test!(  basic_array             "[1, 2, 3, 4, 5]",
+            intermediate_whitespace " \n [ 1 , 2 , 3 , 4 , 5 ]  \n"
+);
+
+fmt_test!(  long_array
+"[
+    \"hello_there_this_is_a_very_long_string\",
+    \"and_yet_another_very_long_string_just_because\",
+    \"would_you_look_at_that_another_long_string\",
+]",
+intermediate_whitespace
+"    [
+       \"hello_there_this_is_a_very_long_string\",
+     \"and_yet_another_very_long_string_just_because\"\n,
+         \"would_you_look_at_that_another_long_string\",
+ ]    \n"
+);
+
+fmt_test!(  nested_array
+"[
+    [
+        0x0000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000,
+    ],
+    [
+        0x0000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000,
+    ],
+]",
+            intermediate_whitespace
+"   [
+      [
+         0x0000000000000000000000000000000000000000000000000000000000 ,
+         0x0000000000000000000000000000000000000000000000000000000000 ,
+     ] ,
+[
+         0x0000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000 ,
+     ] ,
+  ]"
 );

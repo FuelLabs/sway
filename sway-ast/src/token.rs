@@ -119,6 +119,25 @@ impl Spanned for Comment {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
+pub enum DocStyle {
+    Outer,
+    Inner,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
+pub struct DocComment {
+    pub span: Span,
+    pub content_span: Span,
+    pub doc_style: DocStyle,
+}
+
+impl Spanned for DocComment {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
+
 /// Allows for generalizing over commented and uncommented token streams.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub enum GenericTokenTree<T> {
@@ -126,6 +145,7 @@ pub enum GenericTokenTree<T> {
     Ident(Ident),
     Group(GenericGroup<T>),
     Literal(Literal),
+    DocComment(DocComment),
 }
 
 pub type TokenTree = GenericTokenTree<TokenStream>;
@@ -154,6 +174,7 @@ impl<T> Spanned for GenericTokenTree<T> {
             Self::Ident(ident) => ident.span(),
             Self::Group(group) => group.span(),
             Self::Literal(literal) => literal.span(),
+            Self::DocComment(doc_comment) => doc_comment.span(),
         }
     }
 }
@@ -188,6 +209,12 @@ impl<T> From<GenericGroup<T>> for GenericTokenTree<T> {
 impl<T> From<Literal> for GenericTokenTree<T> {
     fn from(lit: Literal) -> Self {
         Self::Literal(lit)
+    }
+}
+
+impl<T> From<DocComment> for GenericTokenTree<T> {
+    fn from(doc_comment: DocComment) -> Self {
+        Self::DocComment(doc_comment)
     }
 }
 
@@ -307,6 +334,7 @@ impl CommentedTokenTree {
             CommentedTree::Ident(ident) => ident.into(),
             CommentedTree::Group(group) => group.strip_comments().into(),
             CommentedTree::Literal(lit) => lit.into(),
+            CommentedTree::DocComment(doc_comment) => doc_comment.into(),
         };
         Some(tt)
     }

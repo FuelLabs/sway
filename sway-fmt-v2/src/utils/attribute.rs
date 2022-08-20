@@ -1,6 +1,9 @@
 use crate::{
-    fmt::{Format, FormattedCode, Formatter},
-    FormatterError,
+    fmt::*,
+    utils::{
+        bracket::{Parenthesis, SquareBracket},
+        byte_span::{ByteSpan, LeafSpans},
+    },
 };
 use std::fmt::Write;
 use sway_ast::{
@@ -9,11 +12,6 @@ use sway_ast::{
 };
 use sway_parse::Parse;
 use sway_types::Spanned;
-
-use super::{
-    bracket::{Parenthesis, SquareBracket},
-    comments::{ByteSpan, LeafSpans},
-};
 
 impl<T: Parse + Format> Format for Annotated<T> {
     fn format(
@@ -30,11 +28,6 @@ impl<T: Parse + Format> Format for Annotated<T> {
             )?;
             attr.format(formatted_code, formatter)?;
         }
-        write!(
-            formatted_code,
-            "{}",
-            &formatter.shape.indent.to_string(&formatter.config)?,
-        )?;
         // format `ItemKind`
         self.value.format(formatted_code, formatter)
     }

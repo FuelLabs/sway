@@ -1,6 +1,9 @@
 use crate::{
-    fmt::{Format, FormattedCode, Formatter, FormatterError},
-    utils::comments::{ByteSpan, LeafSpans},
+    fmt::*,
+    utils::{
+        byte_span::{ByteSpan, LeafSpans},
+        shape::LineStyle,
+    },
 };
 use std::fmt::Write;
 use sway_ast::{
@@ -11,8 +14,6 @@ use sway_ast::{
     ty::{Ty, TyArrayDescriptor, TyTupleDescriptor},
 };
 use sway_types::Spanned;
-
-use super::shape::LineStyle;
 
 impl Format for Ty {
     fn format(

@@ -7,11 +7,11 @@ use crate::{
 use sway_core::{
     constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX},
     parse_tree::MethodName,
-    AbiCastExpression, ArrayIndexExpression, AstNode, AstNodeContent, Declaration,
+    AbiCastExpression, ArrayIndexExpression, AstNode, AstNodeContent, CodeBlock, Declaration,
     DelineatedPathExpression, Expression, ExpressionKind, FunctionApplicationExpression,
     FunctionDeclaration, IfExpression, IntrinsicFunctionExpression, LazyOperatorExpression,
     MatchExpression, MethodApplicationExpression, ReassignmentTarget, StorageAccessExpression,
-    StructExpression, SubfieldExpression, TupleIndexExpression, TypeInfo, WhileLoop,
+    StructExpression, SubfieldExpression, TupleIndexExpression, TypeInfo, WhileLoopExpression,
 };
 use sway_types::Ident;
 
@@ -25,7 +25,6 @@ pub fn traverse_node(node: &AstNode, tokens: &TokenMap) {
         AstNodeContent::ReturnStatement(return_statement) => {
             handle_expression(&return_statement.expr, tokens)
         }
-        AstNodeContent::WhileLoop(while_loop) => handle_while_loop(while_loop, tokens),
 
         // TODO
         // handle other content types
@@ -77,6 +76,13 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                     to_ident_key(&variable.name),
                     Token::from_parsed(AstToken::Declaration(declaration.clone())),
                 );
+
+                if let Some(type_ascription_span) = &variable.type_ascription_span {
+                    tokens.insert(
+                        to_ident_key(&Ident::new(type_ascription_span.clone())),
+                        Token::from_parsed(AstToken::Declaration(declaration.clone())),
+                    );
+                }
             }
             handle_expression(&variable.body, tokens);
         }
@@ -513,12 +519,15 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                 handle_expression(argument, tokens);
             }
         }
+        ExpressionKind::WhileLoop(WhileLoopExpression {
+            body, condition, ..
+        }) => handle_while_loop(body, condition, tokens),
     }
 }
 
-fn handle_while_loop(while_loop: &WhileLoop, tokens: &TokenMap) {
-    handle_expression(&while_loop.condition, tokens);
-    for node in &while_loop.body.contents {
+fn handle_while_loop(body: &CodeBlock, condition: &Expression, tokens: &TokenMap) {
+    handle_expression(condition, tokens);
+    for node in &body.contents {
         traverse_node(node, tokens);
     }
 }

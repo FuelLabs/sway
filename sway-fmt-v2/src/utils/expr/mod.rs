@@ -1,10 +1,14 @@
 use crate::{
     fmt::*,
-    utils::comments::{ByteSpan, LeafSpans},
+    utils::{
+        bracket::{CurlyBrace, Parenthesis, SquareBracket},
+        byte_span::{ByteSpan, LeafSpans},
+        shape::{ExprKind, LineStyle},
+    },
 };
 use std::fmt::Write;
 use sway_ast::{
-    brackets::Parens,
+    brackets::{Parens, SquareBrackets},
     keywords::{CommaToken, DotToken},
     punctuated::Punctuated,
     token::Delimiter,
@@ -12,11 +16,6 @@ use sway_ast::{
     MatchBranch, PathExpr,
 };
 use sway_types::{Ident, Spanned};
-
-use super::{
-    bracket::{CurlyBrace, Parenthesis, SquareBracket},
-    shape::{ExprKind, LineStyle},
-};
 
 pub(crate) mod abi_cast;
 pub(crate) mod asm_block;
@@ -64,9 +63,11 @@ impl Format for Expr {
                 // changes to the actual formatter
                 let expr_width = buf.chars().count() as usize;
                 formatter.shape.add_width(expr_width);
-                formatter
-                    .shape
-                    .get_line_style(Some(field_width), body_width, &formatter.config);
+                formatter.shape.get_line_style(
+                    Some(field_width),
+                    Some(body_width),
+                    &formatter.config,
+                );
                 debug_expr(buf, field_width, body_width, expr_width, formatter);
 
                 format_expr_struct(path, fields, formatted_code, formatter)?;
@@ -92,7 +93,7 @@ impl Format for Expr {
                 formatter.shape.add_width(body_width);
                 formatter
                     .shape
-                    .get_line_style(None, body_width, &formatter.config);
+                    .get_line_style(None, Some(body_width), &formatter.config);
 
                 format_tuple(tuple_descriptor, formatted_code, formatter)?;
 
@@ -111,9 +112,29 @@ impl Format for Expr {
                 CodeBlockContents::close_curly_brace(formatted_code, formatter)?;
             }
             Self::Array(array_descriptor) => {
-                ExprArrayDescriptor::open_square_bracket(formatted_code, formatter)?;
-                array_descriptor.get().format(formatted_code, formatter)?;
-                ExprArrayDescriptor::close_square_bracket(formatted_code, formatter)?;
+                // store previous state and update expr kind
+                let prev_state = formatter.shape.code_line;
+                formatter
+                    .shape
+                    .code_line
+                    .update_expr_kind(ExprKind::Collection);
+
+                // get the length in chars of the code_line in a normal line format
+                let mut buf = FormattedCode::new();
+                let mut temp_formatter = Formatter::default();
+                format_array(array_descriptor, &mut buf, &mut temp_formatter)?;
+                let body_width = buf.chars().count() as usize;
+
+                formatter.shape.add_width(body_width);
+                formatter
+                    .shape
+                    .get_line_style(None, Some(body_width), &formatter.config);
+
+                format_array(array_descriptor, formatted_code, formatter)?;
+
+                // revert to previous state
+                formatter.shape.sub_width(body_width);
+                formatter.shape.update_line_settings(prev_state);
             }
             Self::Asm(asm_block) => asm_block.format(formatted_code, formatter)?,
             Self::Return {
@@ -134,10 +155,17 @@ impl Format for Expr {
             } => {
                 write!(formatted_code, "{} ", match_token.span().as_str())?;
                 value.format(formatted_code, formatter)?;
+                write!(formatted_code, " ")?;
                 MatchBranch::open_curly_brace(formatted_code, formatter)?;
                 let branches = branches.get();
                 for match_branch in branches.iter() {
+                    write!(
+                        formatted_code,
+                        "{}",
+                        formatter.shape.indent.to_string(&formatter.config)?
+                    )?;
                     match_branch.format(formatted_code, formatter)?;
+                    writeln!(formatted_code)?;
                 }
                 MatchBranch::close_curly_brace(formatted_code, formatter)?;
             }
@@ -208,9 +236,11 @@ impl Format for Expr {
                 let expr_width = buf.chars().count() as usize;
                 formatter.shape.add_width(expr_width);
                 formatter.shape.code_line.update_expr_kind(ExprKind::Struct);
-                formatter
-                    .shape
-                    .get_line_style(Some(field_width), body_width, &formatter.config);
+                formatter.shape.get_line_style(
+                    Some(field_width),
+                    Some(body_width),
+                    &formatter.config,
+                );
 
                 format_method_call(
                     target,
@@ -440,6 +470,12 @@ impl Format for Expr {
                 reassignment_op.format(formatted_code, formatter)?;
                 expr.format(formatted_code, formatter)?;
             }
+            Self::Break { break_token } => {
+                write!(formatted_code, "{}", break_token.span().as_str())?;
+            }
+            Self::Continue { continue_token } => {
+                write!(formatted_code, "{}", continue_token.span().as_str())?;
+            }
         }
 
         Ok(())
@@ -520,6 +556,16 @@ fn format_tuple(
     formatter: &mut Formatter,
 ) -> Result<(), FormatterError> {
     tuple_descriptor.get().format(formatted_code, formatter)?;
+
+    Ok(())
+}
+
+fn format_array(
+    array_descriptor: &SquareBrackets<ExprArrayDescriptor>,
+    formatted_code: &mut FormattedCode,
+    formatter: &mut Formatter,
+) -> Result<(), FormatterError> {
+    array_descriptor.get().format(formatted_code, formatter)?;
 
     Ok(())
 }
@@ -926,6 +972,12 @@ fn expr_leaf_spans(expr: &Expr) -> Vec<ByteSpan> {
             collected_spans.push(ByteSpan::from(reassignment_op.span.clone()));
             collected_spans.append(&mut expr.leaf_spans());
             collected_spans
+        }
+        Expr::Break { break_token } => {
+            vec![ByteSpan::from(break_token.span())]
+        }
+        Expr::Continue { continue_token } => {
+            vec![ByteSpan::from(continue_token.span())]
         }
     }
 }

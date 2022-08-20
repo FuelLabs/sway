@@ -6,10 +6,10 @@ use core::ops::ControlFlow;
 use sway_ast::brackets::{Braces, Parens, SquareBrackets};
 use sway_ast::expr::{ReassignmentOp, ReassignmentOpVariant};
 use sway_ast::keywords::{
-    AbiToken, AddEqToken, AsmToken, BreakToken, CommaToken, ConstToken, ContinueToken, DivEqToken,
-    DoubleColonToken, EnumToken, EqToken, FalseToken, FnToken, IfToken, ImplToken, LetToken,
-    OpenAngleBracketToken, PubToken, SemicolonToken, ShlEqToken, ShrEqToken, StarEqToken,
-    StorageToken, StructToken, SubEqToken, TildeToken, TraitToken, TrueToken, UseToken,
+    AbiToken, AddEqToken, AsmToken, CommaToken, ConstToken, DivEqToken, DoubleColonToken,
+    EnumToken, EqToken, FalseToken, FnToken, IfToken, ImplToken, LetToken, OpenAngleBracketToken,
+    PubToken, SemicolonToken, ShlEqToken, ShrEqToken, StarEqToken, StorageToken, StructToken,
+    SubEqToken, TildeToken, TraitToken, TrueToken, UseToken,
 };
 use sway_ast::literal::{LitBool, LitBoolType};
 use sway_ast::punctuated::Punctuated;
@@ -155,8 +155,6 @@ fn parse_stmt<'a>(parser: &mut Parser<'a, '_>) -> ParseResult<StmtOrTail<'a>> {
         || parser.peek::<ImplToken>().is_some()
         || parser.peek::<(AbiToken, Ident)>().is_some()
         || parser.peek::<ConstToken>().is_some()
-        || parser.peek::<BreakToken>().is_some()
-        || parser.peek::<ContinueToken>().is_some()
         || matches!(
             parser.peek::<(StorageToken, Delimiter)>(),
             Some((_, Delimiter::Brace))
@@ -614,6 +612,12 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
     if let Some(asm_block) = parser.guarded_parse::<AsmToken, _>()? {
         return Ok(Expr::Asm(asm_block));
     }
+    if let Some(break_token) = parser.take() {
+        return Ok(Expr::Break { break_token });
+    }
+    if let Some(continue_token) = parser.take() {
+        return Ok(Expr::Continue { continue_token });
+    }
     if let Some(abi_token) = parser.take() {
         let args = parser.parse()?;
         return Ok(Expr::AbiCast { abi_token, args });
@@ -697,10 +701,7 @@ impl ParseToEnd for ExprArrayDescriptor {
         mut parser: Parser<'a, 'e>,
     ) -> ParseResult<(ExprArrayDescriptor, ParserConsumed<'a>)> {
         if let Some(consumed) = parser.check_empty() {
-            let punctuated = Punctuated {
-                value_separator_pairs: Vec::new(),
-                final_value_opt: None,
-            };
+            let punctuated = Punctuated::empty();
             let descriptor = ExprArrayDescriptor::Sequence(punctuated);
             return Ok((descriptor, consumed));
         }
@@ -729,10 +730,7 @@ impl ParseToEnd for ExprArrayDescriptor {
             return Ok((descriptor, consumed));
         }
         if let Some(consumed) = parser.check_empty() {
-            let punctuated = Punctuated {
-                value_separator_pairs: Vec::new(),
-                final_value_opt: Some(Box::new(value)),
-            };
+            let punctuated = Punctuated::single(value);
             let descriptor = ExprArrayDescriptor::Sequence(punctuated);
             return Ok((descriptor, consumed));
         }

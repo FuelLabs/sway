@@ -1,14 +1,13 @@
 use crate::utils::{
-    comments::handle_comments, newline_style::apply_newline_style,
+    comments::handle_comments, newline::handle_newlines, newline_style::apply_newline_style,
     program_type::insert_program_type, shape::Shape,
 };
-use std::{path::Path, sync::Arc};
-use sway_core::BuildConfig;
-
 pub use crate::{
     config::manifest::Config,
     error::{ConfigError, FormatterError},
 };
+use std::{path::Path, sync::Arc};
+use sway_core::BuildConfig;
 
 #[derive(Debug, Default, Clone)]
 pub struct Formatter {
@@ -50,7 +49,7 @@ impl Formatter {
                 .heuristics_pref
                 .to_width_heuristics(self.config.whitespace.max_width),
         );
-        let module = sway_parse::parse_file(src.clone(), path.clone())?;
+        let module = sway_parse::parse_file_standalone(src.clone(), path.clone())?;
 
         // Formatted code will be pushed here with raw newline stlye.
         // Which means newlines are not converted into system-specific versions until `apply_newline_style()`.
@@ -77,11 +76,20 @@ impl Formatter {
         let mut formatted_code = String::from(&raw_formatted_code);
         // Add comments
         handle_comments(
+            src.clone(),
+            &module,
+            Arc::from(formatted_code.clone()),
+            path.clone(),
+            &mut formatted_code,
+        )?;
+        // Add newline sequences
+        handle_newlines(
             src,
             &module,
             Arc::from(formatted_code.clone()),
             path,
             &mut formatted_code,
+            self,
         )?;
         // Replace newlines with specified `NewlineStyle`
         apply_newline_style(
@@ -108,7 +116,6 @@ mod tests {
         let sway_code_to_format = r#"contract;
 pub const TEST:u16=10;"#;
         let correct_sway_code = r#"contract;
-
 pub const TEST: u16 = 10;"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
@@ -125,7 +132,6 @@ pub struct Foo<T, P> {
 }
 "#;
         let correct_sway_code = r#"contract;
-
 pub struct Foo<T, P> {
     barbazfoo : u64,
     baz       : bool,
@@ -146,7 +152,6 @@ pub struct Foo {
 }
 "#;
         let correct_sway_code = r#"contract;
-
 pub struct Foo {
     bar: u64,
     baz: bool,
@@ -264,7 +269,7 @@ enum TestTy {
 example::
     type,
     TupleNil: (),
-    Tuple: (   u64, 
+    Tuple: (   u64,
         u32
     ),
 }"#;
@@ -289,24 +294,25 @@ enum TestTy {
         struct Type1 {
             foo: u64,
         }
-        
+
         struct Type2 {
             bar: u64,
         }
-        
+
         storage {
          var1: Type1=Type1{ foo: 8 },
               var2: Type2=Type2{ bar: 9 },
         }
         "#;
         let correct_sway_code = r#"contract;
-
 struct Type1 {
     foo: u64,
 }
+
 struct Type2 {
     bar: u64,
 }
+
 storage {
     var1: Type1 = Type1 { foo: 8 },
     var2: Type2 = Type2 { bar: 9 },
@@ -334,13 +340,14 @@ storage {
 }
 "#;
         let correct_sway_code = r#"contract;
-
 struct Type1 {
     foo : u64,
 }
+
 struct Type2 {
     bar : u64,
 }
+
 storage {
     long_var_name : Type1 = Type1 { foo: 8 },
     var2          : Type2 = Type2 { bar: 9 },
@@ -368,13 +375,13 @@ struct Type2 {
 
 storage {
     var1: Type1 = Type1 {
-        
-        
-        
+
+
+
         x: 0,
-        
-        y: 
-        0, 
+
+        y:
+        0,
         },
     var2: Type2 = Type2 { w: 0x0000000000000000000000000000000000000000000000000000000000000000,z: false,
     },
@@ -385,10 +392,12 @@ struct Type1 {
     x: u64,
     y: u64,
 }
+
 struct Type2 {
     w: b256,
     z: bool,
 }
+
 storage {
     var1: Type1 = Type1 { x: 0, y: 0 },
     var2: Type2 = Type2 {
@@ -457,15 +466,12 @@ trait Person {
 
     fn age(self) -> usize;
 }
-
 trait Student: Person {
     fn university(self) -> String;
 }
-
 trait Programmer {
     fn fav_language(self) -> String;
 }
-
 trait CompSciStudent: Programmer + Student {
     fn git_username(self) -> String;
 }"#;
@@ -489,7 +495,7 @@ fn  main(       ) -> bool{
 
     let balance_test_id = ~ContractId :: from( 0x597e5ddb1a6bec92a96a73e4f0bc6f6e3e7b21f5e03e1c812cd63cffac480463 ) ;
 
-    let fuel_coin = abi(    TestFuelCoin, fuelcoin_id.into(       ) ) ;               
+    let fuel_coin = abi(    TestFuelCoin, fuelcoin_id.into(       ) ) ;
 
     assert(fuelcoin_balance == 0);
 
@@ -530,23 +536,34 @@ struct Opts {
     coins: u64,
     id: ContractId,
 }
+
 fn main() -> bool {
     let default_gas = 1_000_000_000_000;
     let fuelcoin_id = ~ContractId::from(0x018f59fe434b323a5054e7bb41de983f4926a3c5d3e4e1f9f33b5f0f0e611889);
+
     let balance_test_id = ~ContractId::from(0x597e5ddb1a6bec92a96a73e4f0bc6f6e3e7b21f5e03e1c812cd63cffac480463);
+
     let fuel_coin = abi(TestFuelCoin, fuelcoin_id.into());
+
     assert(fuelcoin_balance == 0);
+
     fuel_coin.mint { gas: default_gas }(11);
+
     fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
     assert(fuelcoin_balance == 11);
+
     fuel_coin.burn { gas: default_gas }(7);
+
     fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
     assert(fuelcoin_balance == 4);
+
     fuel_coin.force_transfer { gas: default_gas }(3, fuelcoin_id, balance_test_id);
+
     fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
     let balance_test_contract_balance = balance_of(fuelcoin_id, balance_test_id);
     assert(fuelcoin_balance == 1);
     assert(balance_test_contract_balance == 3);
+
     true
 }"#;
         let mut formatter = Formatter::default();
@@ -583,7 +600,6 @@ pub struct Foo { // Here is a comment
 // This is a comment
 "#;
         let correct_sway_code = r#"contract;
-
 // This is a comment, for this one to be placed correctly we need to have Module visitor implemented
 pub struct Foo { // Here is a comment
 
@@ -624,7 +640,6 @@ pub enum Bazz { // Here is a comment
 }
 "#;
         let correct_sway_code = r#"contract;
-
 pub enum Bazz { // Here is a comment
     // Trying some ASCII art
     baz: (),
@@ -647,7 +662,6 @@ fn hello_world( baz: /* this is a comment */ u64) { // This is a comment inside 
 }
 "#;
         let correct_sway_code = r#"contract;
-
 // This is a comment before a fn
 // This is another comment before a fn
 fn hello_world(baz: /* this is a comment */ u64) { // This is a comment inside the block
@@ -670,7 +684,6 @@ abi StorageMapExample {
     // this is the last comment inside the StorageMapExample
 }"#;
         let correct_sway_code = r#"contract;
-
 // This is an abi
 abi StorageMapExample {
     // insert_into_map is blah blah
@@ -689,8 +702,7 @@ abi StorageMapExample {
         let sway_code_to_format = r#"contract;
 pub const /* TEST: blah blah tests */ TEST: u16 = 10; // This is a comment next to a const"#;
         let correct_sway_code = r#"contract;
-
-pub const /* TEST: blah blah tests */ TEST: u16 = 10;"#; // Comment next to const is not picked up by the lexer see: #2356
+pub const /* TEST: blah blah tests */ TEST: u16 = 10; // This is a comment next to a const"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
@@ -741,7 +753,6 @@ trait Programmer {
     fn fav_language(self) -> String;
 }"#;
         let correct_sway_code = r#"contract;
-
 // This is the programmer trait
 trait Programmer {
     // Returns fav languages of this Programmer.
@@ -786,8 +797,8 @@ trait Qux {
     fn is_baz_true(self) -> bool;
 }
 
-impl<A ,     B>    Qux<A, B> for 
-Foo 
+impl<A ,     B>    Qux<A, B> for
+Foo
 where
     A    : Qux,
     B: Qux    ,
@@ -800,6 +811,7 @@ struct Foo {
     bar: u64,
     baz: bool,
 }
+
 trait Qux {
     fn is_baz_true(self) -> bool;
 }
@@ -812,6 +824,79 @@ impl<A, B> Qux<A, B> for Foo where
         self.baz
     }
 }"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code)
+    }
+
+    #[test]
+    fn test_impl_without_generics() {
+        let sway_code_to_format = r#"script;
+
+struct Foo {
+    bar: u64,
+    baz: bool,
+}
+
+trait Qux {
+    fn is_baz_true(self) -> bool;
+}
+
+impl   Qux for 
+Foo 
+{fn is_baz_true(self) -> bool {
+        self.baz
+    }}"#;
+        let correct_sway_code = r#"script;
+
+struct Foo {
+    bar: u64,
+    baz: bool,
+}
+
+trait Qux {
+    fn is_baz_true(self) -> bool;
+}
+
+impl Qux for Foo {
+    fn is_baz_true(self) -> bool {
+        self.baz
+    }
+}"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code)
+    }
+
+    #[test]
+    fn test_newline_sequence_formatting() {
+        let sway_code_to_format = r#"script;
+
+fn main() {
+    let number: u64 = 10;
+
+    let number2: u64 = 20;
+
+
+
+    let number3: u64 = 30;
+
+
+
+}"#;
+
+        let correct_sway_code = r#"script;
+
+fn main() {
+    let number: u64 = 10;
+
+    let number2: u64 = 20;
+
+    let number3: u64 = 30;
+}"#;
+
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();

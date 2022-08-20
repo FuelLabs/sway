@@ -44,5 +44,160 @@
       }
     ],
     "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "key",
+        "type": "b256",
+        "typeArguments": null
+      }
+    ],
+    "name": "intrinsic_load_word",
+    "outputs": [
+      {
+        "components": null,
+        "name": "",
+        "type": "u64",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "key",
+        "type": "b256",
+        "typeArguments": null
+      },
+      {
+        "components": null,
+        "name": "value",
+        "type": "u64",
+        "typeArguments": null
+      }
+    ],
+    "name": "intrinsic_store_word",
+    "outputs": [
+      {
+        "components": [],
+        "name": "",
+        "type": "()",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "key",
+        "type": "b256",
+        "typeArguments": null
+      }
+    ],
+    "name": "intrinsic_load_quad",
+    "outputs": [
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "v1",
+            "type": "u64",
+            "typeArguments": null
+          },
+          {
+            "components": null,
+            "name": "v2",
+            "type": "u64",
+            "typeArguments": null
+          },
+          {
+            "components": null,
+            "name": "v3",
+            "type": "u64",
+            "typeArguments": null
+          },
+          {
+            "components": null,
+            "name": "v4",
+            "type": "u64",
+            "typeArguments": null
+          }
+        ],
+        "name": "",
+        "type": "struct Quad",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": null,
+        "name": "key",
+        "type": "b256",
+        "typeArguments": null
+      },
+      {
+        "components": [
+          {
+            "components": null,
+            "name": "v1",
+            "type": "u64",
+            "typeArguments": null
+          },
+          {
+            "components": null,
+            "name": "v2",
+            "type": "u64",
+            "typeArguments": null
+          },
+          {
+            "components": null,
+            "name": "v3",
+            "type": "u64",
+            "typeArguments": null
+          },
+          {
+            "components": null,
+            "name": "v4",
+            "type": "u64",
+            "typeArguments": null
+          }
+        ],
+        "name": "value",
+        "type": "struct Quad",
+        "typeArguments": null
+      }
+    ],
+    "name": "intrinsic_store_quad",
+    "outputs": [
+      {
+        "components": [],
+        "name": "",
+        "type": "()",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "test_storage_exhaustive",
+    "outputs": [
+      {
+        "components": [],
+        "name": "",
+        "type": "()",
+        "typeArguments": null
+      }
+    ],
+    "type": "function"
   }
 ]

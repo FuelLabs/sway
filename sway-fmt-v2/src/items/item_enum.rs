@@ -1,12 +1,11 @@
 use crate::{
     config::{items::ItemBraceStyle, user_def::FieldAlignment},
-    fmt::{Format, FormattedCode, Formatter},
+    fmt::*,
     utils::{
         bracket::CurlyBrace,
-        comments::{ByteSpan, LeafSpans},
+        byte_span::{ByteSpan, LeafSpans},
         shape::LineStyle,
     },
-    FormatterError,
 };
 use std::fmt::Write;
 use sway_ast::{token::Delimiter, ItemEnum};
@@ -46,7 +45,12 @@ impl Format for ItemEnum {
         match formatter.config.structures.field_alignment {
             FieldAlignment::AlignFields(enum_variant_align_threshold) => {
                 writeln!(formatted_code)?;
-                let value_pairs = &fields.value_separator_pairs;
+                let value_pairs = &fields
+                    .value_separator_pairs
+                    .iter()
+                    // TODO: Handle annotations instead of stripping them
+                    .map(|pair| (&pair.0.value, &pair.1))
+                    .collect::<Vec<_>>();
                 // In first iteration we are going to be collecting the lengths of the enum variants.
                 let variant_length: Vec<usize> = value_pairs
                     .iter()
@@ -94,6 +98,8 @@ impl Format for ItemEnum {
                     if value_pairs_iter.peek().is_some() {
                         writeln!(formatted_code, "{}", comma_token.span().as_str())?;
                     } else if let Some(final_value) = &fields.final_value_opt {
+                        // TODO: Handle annotation
+                        let final_value = &final_value.value;
                         write!(formatted_code, "{}", final_value.span().as_str())?;
                     }
                 }

@@ -1,7 +1,9 @@
-use crate::fmt::{FormattedCode, FormatterError};
+use crate::{
+    fmt::{FormattedCode, FormatterError},
+    utils::byte_span::{ByteSpan, LeafSpans},
+};
 use ropey::Rope;
 use std::{
-    cmp::Ordering,
     collections::BTreeMap,
     fmt::Write,
     ops::Bound::{Excluded, Included},
@@ -9,60 +11,11 @@ use std::{
     sync::Arc,
 };
 use sway_ast::{
-    attribute::Annotated,
-    brackets::{Parens, SquareBrackets},
-    keywords::{
-        AddToken, ColonToken, CommaToken, ForToken, ForwardSlashToken, RightArrowToken,
-        SemicolonToken,
-    },
     token::{Comment, CommentedTokenTree, CommentedTree},
-    Braces, Module, TypeField,
+    Module,
 };
-use sway_parse::{lex_commented, Parse};
-use sway_types::{Ident, Span, Spanned};
-
-/// Represents a span for the comments in a spesific file
-/// A stripped down version of sway-types::src::Span
-#[derive(PartialEq, Eq, Debug, Clone, Default)]
-pub struct ByteSpan {
-    // The byte position in the string of the start of the span.
-    pub start: usize,
-    // The byte position in the string of the end of the span.
-    pub end: usize,
-}
-
-impl From<Span> for ByteSpan {
-    /// Takes `start` and `end` from `sway::types::Span` and constructs a `ByteSpan`
-    fn from(span: Span) -> Self {
-        ByteSpan {
-            start: span.start(),
-            end: span.end(),
-        }
-    }
-}
-
-impl ByteSpan {
-    pub fn len(&self) -> usize {
-        self.end - self.start
-    }
-}
-
-impl Ord for ByteSpan {
-    fn cmp(&self, other: &Self) -> Ordering {
-        // If the starting position is the same encapsulatig span (i.e, wider one) should come
-        // first
-        match self.start.cmp(&other.start) {
-            Ordering::Equal => other.end.cmp(&self.end),
-            ord => ord,
-        }
-    }
-}
-
-impl PartialOrd for ByteSpan {
-    fn partial_cmp(&self, other: &ByteSpan) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
+use sway_parse::lex_commented;
+use sway_types::Spanned;
 
 pub type CommentMap = BTreeMap<ByteSpan, Comment>;
 
@@ -104,155 +57,6 @@ fn collect_comments_from_token_stream(
     }
 }
 
-impl<T> LeafSpans for Braces<T>
-where
-    T: LeafSpans + Clone,
-{
-    fn leaf_spans(&self) -> Vec<ByteSpan> {
-        let mut collected_spans = Vec::new();
-        let mut opening_brace_span = ByteSpan::from(self.span());
-        opening_brace_span.end = opening_brace_span.start + 1;
-        // Add opening brace's ByteSpan
-        collected_spans.push(opening_brace_span);
-        // Add T's collected ByteSpan
-        collected_spans.append(&mut self.get().leaf_spans());
-        let mut closing_brace_span = ByteSpan::from(self.span());
-        closing_brace_span.start = closing_brace_span.end - 1;
-        // Add closing brace's ByteSpan
-        collected_spans.push(closing_brace_span);
-        collected_spans
-    }
-}
-
-impl<T> LeafSpans for Parens<T>
-where
-    T: LeafSpans + Clone,
-{
-    fn leaf_spans(&self) -> Vec<ByteSpan> {
-        let mut collected_spans = Vec::new();
-        let mut opening_paren_span = ByteSpan::from(self.span());
-        opening_paren_span.end = opening_paren_span.start + 1;
-        // Add opening paren's span
-        collected_spans.push(opening_paren_span);
-        // Add T's collected ByteSpan
-        collected_spans.append(&mut self.get().leaf_spans());
-        let mut closing_paren_span = ByteSpan::from(self.span());
-        closing_paren_span.start = closing_paren_span.end - 1;
-        // Add closing paren's ByteSpan
-        collected_spans.push(closing_paren_span);
-        collected_spans
-    }
-}
-
-impl<T> LeafSpans for SquareBrackets<T>
-where
-    T: LeafSpans + Clone,
-{
-    fn leaf_spans(&self) -> Vec<ByteSpan> {
-        let mut collected_spans = Vec::new();
-        let mut opening_bracket_span = ByteSpan::from(self.span());
-        opening_bracket_span.end = opening_bracket_span.start + 1;
-        // Add opening bracket's span
-        collected_spans.push(opening_bracket_span);
-        // Add T's collected ByteSpan
-        collected_spans.append(&mut self.get().leaf_spans());
-        let mut closing_bracket_span = ByteSpan::from(self.span());
-        closing_bracket_span.start = closing_bracket_span.end - 1;
-        // Add closing bracket's ByteSpan
-        collected_spans.push(closing_bracket_span);
-        collected_spans
-    }
-}
-
-impl<T, P> LeafSpans for (T, P)
-where
-    T: LeafSpans,
-    P: LeafSpans,
-{
-    fn leaf_spans(&self) -> Vec<ByteSpan> {
-        let mut collected_spans = self.0.leaf_spans();
-        collected_spans.append(&mut self.1.leaf_spans());
-        collected_spans
-    }
-}
-impl<T> LeafSpans for Vec<T>
-where
-    T: LeafSpans,
-{
-    fn leaf_spans(&self) -> Vec<ByteSpan> {
-        let mut collected_spans = Vec::new();
-        for t in self {
-            collected_spans.append(&mut t.leaf_spans());
-        }
-        collected_spans
-    }
-}
-impl<T> LeafSpans for Annotated<T>
-where
-    T: LeafSpans + Parse,
-{
-    fn leaf_spans(&self) -> Vec<ByteSpan> {
-        let mut collected_spans = self.attribute_list.leaf_spans();
-        collected_spans.append(&mut self.value.leaf_spans());
-        collected_spans
-    }
-}
-
-impl LeafSpans for Ident {
-    fn leaf_spans(&self) -> Vec<ByteSpan> {
-        vec![ByteSpan::from(self.span())]
-    }
-}
-impl LeafSpans for CommaToken {
-    fn leaf_spans(&self) -> Vec<ByteSpan> {
-        vec![(ByteSpan::from(self.span()))]
-    }
-}
-
-impl LeafSpans for TypeField {
-    fn leaf_spans(&self) -> Vec<ByteSpan> {
-        let mut collected_spans = vec![ByteSpan::from(self.name.span())];
-        collected_spans.push(ByteSpan::from(self.colon_token.span()));
-        collected_spans.append(&mut self.ty.leaf_spans());
-        collected_spans
-    }
-}
-
-impl LeafSpans for AddToken {
-    fn leaf_spans(&self) -> Vec<ByteSpan> {
-        vec![ByteSpan::from(self.span())]
-    }
-}
-
-impl LeafSpans for SemicolonToken {
-    fn leaf_spans(&self) -> Vec<ByteSpan> {
-        vec![ByteSpan::from(self.span())]
-    }
-}
-
-impl LeafSpans for ColonToken {
-    fn leaf_spans(&self) -> Vec<ByteSpan> {
-        vec![ByteSpan::from(self.span())]
-    }
-}
-
-impl LeafSpans for RightArrowToken {
-    fn leaf_spans(&self) -> Vec<ByteSpan> {
-        vec![ByteSpan::from(self.span())]
-    }
-}
-
-impl LeafSpans for ForToken {
-    fn leaf_spans(&self) -> Vec<ByteSpan> {
-        vec![ByteSpan::from(self.span())]
-    }
-}
-
-impl LeafSpans for ForwardSlashToken {
-    fn leaf_spans(&self) -> Vec<ByteSpan> {
-        vec![ByteSpan::from(self.span())]
-    }
-}
 /// Handles comments by first creating the CommentMap which is used for fast seaching comments.
 /// Traverses items for finding a comment in unformatted input and placing it in correct place in formatted output.
 pub fn handle_comments(
@@ -262,19 +66,20 @@ pub fn handle_comments(
     path: Option<Arc<PathBuf>>,
     formatted_code: &mut FormattedCode,
 ) -> Result<(), FormatterError> {
-    // Collect Span -> Comment mapping from unformatted input
+    // Collect Span -> Comment mapping from unformatted input.
     let comment_map = comment_map_from_src(unformatted_input.clone())?;
+
     // After the formatting existing items should be the same (type of the item) but their spans will be changed since we applied formatting to them.
-    let formatted_module = sway_parse::parse_file(formatted_input, path)?;
-    // Actually find & insert the comments
+    let formatted_module = sway_parse::parse_file_standalone(formatted_input, path)?;
+
+    // Actually find & insert the comments.
     add_comments(
         comment_map,
         unformatted_module,
         &formatted_module,
         formatted_code,
         unformatted_input,
-    )?;
-    Ok(())
+    )
 }
 
 /// Adds the comments from comment_map to correct places in the formatted code. This requires us
@@ -409,30 +214,11 @@ fn insert_after_span(
 fn format_comment(comment: &Comment) -> String {
     comment.span().str()
 }
-/// While searching for a comment we need the possible places a comment can be placed in a structure
-/// `leaf_spans` collects all field's spans so that we can check in between them.
-pub trait LeafSpans {
-    fn leaf_spans(&self) -> Vec<ByteSpan>;
-}
 
 #[cfg(test)]
 mod tests {
     use super::{comment_map_from_src, ByteSpan};
     use std::{ops::Bound::Included, sync::Arc};
-
-    #[test]
-    fn test_comment_span_ordering() {
-        let first_span = ByteSpan { start: 2, end: 6 };
-        let second_span = ByteSpan { start: 2, end: 4 };
-        let third_span = ByteSpan { start: 4, end: 7 };
-
-        let mut vec = vec![second_span.clone(), third_span.clone(), first_span.clone()];
-        vec.sort();
-
-        assert_eq!(vec[0], first_span);
-        assert_eq!(vec[1], second_span);
-        assert_eq!(vec[2], third_span);
-    }
 
     #[test]
     fn test_comment_span_map_standalone_comment() {

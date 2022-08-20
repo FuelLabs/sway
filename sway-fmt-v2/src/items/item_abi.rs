@@ -1,15 +1,13 @@
 use crate::{
     config::items::ItemBraceStyle,
-    fmt::{Format, FormattedCode, Formatter},
+    fmt::*,
     utils::{
         bracket::CurlyBrace,
-        comments::{ByteSpan, LeafSpans},
+        byte_span::{ByteSpan, LeafSpans},
     },
-    FormatterError,
 };
 use std::fmt::Write;
-use sway_ast::keywords::Token;
-use sway_ast::{token::Delimiter, ItemAbi};
+use sway_ast::{keywords::Token, token::Delimiter, ItemAbi};
 use sway_types::Spanned;
 
 impl Format for ItemAbi {
@@ -28,8 +26,7 @@ impl Format for ItemAbi {
         Self::open_curly_brace(formatted_code, formatter)?;
 
         // abi_items
-        let mut abi_items_iter = self.abi_items.get().iter().peekable();
-        while let Some((fn_signature, semicolon)) = abi_items_iter.next() {
+        for (fn_signature, semicolon) in self.abi_items.get().iter() {
             // add indent + format item
             fn_signature.format(formatted_code, formatter)?;
             writeln!(
@@ -37,20 +34,13 @@ impl Format for ItemAbi {
                 "{}",
                 semicolon.ident().as_str() // SemicolonToken
             )?;
-            if abi_items_iter.peek().is_some() {
-                writeln!(formatted_code)?;
-            }
         }
 
         // abi_defs_opt
         if let Some(abi_defs) = self.abi_defs_opt.clone() {
-            let mut iter = abi_defs.get().iter().peekable();
-            while let Some(item) = iter.next() {
+            for item in abi_defs.get().iter() {
                 // add indent + format item
                 item.format(formatted_code, formatter)?;
-                if iter.peek().is_some() {
-                    writeln!(formatted_code)?;
-                }
             }
         }
         Self::close_curly_brace(formatted_code, formatter)?;

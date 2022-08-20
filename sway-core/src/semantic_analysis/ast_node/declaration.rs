@@ -104,15 +104,16 @@ impl fmt::Display for TypedDeclaration {
             self.friendly_name(),
             match self {
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                    is_mutable,
+                    mutability,
                     name,
                     type_ascription,
                     body,
                     ..
                 }) => {
                     let mut builder = String::new();
-                    match is_mutable {
+                    match mutability {
                         VariableMutability::Mutable => builder.push_str("mut"),
+                        VariableMutability::RefMutable => builder.push_str("ref mut"),
                         VariableMutability::Immutable => {}
                         VariableMutability::ExportedConst => builder.push_str("pub const"),
                     }
@@ -376,9 +377,10 @@ impl TypedDeclaration {
             | ErrorRecovery
             | Break { .. }
             | Continue { .. } => Visibility::Public,
-            VariableDeclaration(TypedVariableDeclaration { is_mutable, .. }) => {
-                is_mutable.visibility()
-            }
+            VariableDeclaration(TypedVariableDeclaration {
+                mutability: is_mutable,
+                ..
+            }) => is_mutable.visibility(),
             EnumDeclaration(TypedEnumDeclaration { visibility, .. })
             | ConstantDeclaration(TypedConstantDeclaration { visibility, .. })
             | FunctionDeclaration(TypedFunctionDeclaration { visibility, .. })
@@ -432,6 +434,7 @@ impl TypedTraitFn {
             parameters: self.parameters.clone(),
             span: self.name.span(),
             return_type: self.return_type,
+            initial_return_type: self.return_type,
             return_type_span: self.return_type_span.clone(),
             visibility: Visibility::Public,
             type_parameters: vec![],

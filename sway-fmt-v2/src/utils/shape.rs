@@ -143,6 +143,7 @@ pub(crate) enum ExprKind {
     Collection,
     MethodChain,
     Conditional,
+    Import,
     Undetermined,
 }
 
@@ -226,25 +227,16 @@ impl Shape {
     pub(crate) fn get_line_style(
         &mut self,
         field_width: Option<usize>,
-        body_width: usize,
+        body_width: Option<usize>,
         config: &Config,
     ) {
-        // we can maybe do this at the beginning and store it on shape since it won't change during formatting
-        // let width_heuristics = config
-        //     .heuristics
-        //     .heuristics_pref
-        //     .to_width_heuristics(config.whitespace.max_width);
         match self.code_line.expr_kind {
             ExprKind::Struct => {
                 // Get the width limit of a structure to be formatted into single line if `allow_inline_style` is true.
                 if config.structures.small_structures_single_line {
-                    if let Some(field_width) = field_width {
-                        if field_width > self.width_heuristics.structure_field_width {
-                            self.code_line.update_line_style(LineStyle::Multiline)
-                        }
-                    }
                     if self.width > config.whitespace.max_width
-                        || body_width > self.width_heuristics.structure_lit_width
+                        || field_width.unwrap_or(0) > self.width_heuristics.structure_field_width
+                        || body_width.unwrap_or(0) > self.width_heuristics.structure_lit_width
                     {
                         self.code_line.update_line_style(LineStyle::Multiline)
                     } else {
@@ -256,7 +248,23 @@ impl Shape {
             }
             ExprKind::Collection => {
                 if self.width > config.whitespace.max_width
-                    || body_width > self.width_heuristics.collection_width
+                    || body_width.unwrap_or(0) > self.width_heuristics.structure_lit_width
+                {
+                    self.code_line.update_line_style(LineStyle::Multiline)
+                } else {
+                    self.code_line.update_line_style(LineStyle::Normal)
+                }
+            }
+            ExprKind::Import => {
+                if self.width > config.whitespace.max_width {
+                    self.code_line.update_line_style(LineStyle::Multiline)
+                } else {
+                    self.code_line.update_line_style(LineStyle::Normal)
+                }
+            }
+            ExprKind::Function => {
+                if self.width > config.whitespace.max_width
+                    || body_width.unwrap_or(0) > self.width_heuristics.fn_call_width
                 {
                     self.code_line.update_line_style(LineStyle::Multiline)
                 } else {
@@ -339,12 +347,12 @@ mod test {
         formatter.shape.code_line.update_expr_kind(ExprKind::Struct);
         formatter
             .shape
-            .get_line_style(Some(9), 18, &formatter.config);
+            .get_line_style(Some(9), Some(18), &formatter.config);
         assert_eq!(LineStyle::Inline, formatter.shape.code_line.line_style);
 
         formatter
             .shape
-            .get_line_style(Some(10), 19, &formatter.config);
+            .get_line_style(Some(10), Some(19), &formatter.config);
         assert_eq!(LineStyle::Multiline, formatter.shape.code_line.line_style);
     }
 
@@ -359,7 +367,7 @@ mod test {
 
         formatter
             .shape
-            .get_line_style(Some(8), 18, &formatter.config);
+            .get_line_style(Some(8), Some(18), &formatter.config);
         assert_eq!(LineStyle::Inline, formatter.shape.code_line.line_style);
 
         formatter.shape.reset_line_settings();

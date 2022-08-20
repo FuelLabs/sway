@@ -1,12 +1,13 @@
 use crate::{
     fmt::*,
-    utils::comments::{ByteSpan, LeafSpans},
+    utils::{
+        bracket::{CurlyBrace, Parenthesis},
+        byte_span::{ByteSpan, LeafSpans},
+    },
 };
 use std::fmt::Write;
 use sway_ast::{token::Delimiter, Pattern, PatternStructField};
 use sway_types::Spanned;
-
-use super::bracket::{CurlyBrace, Parenthesis};
 
 impl Format for Pattern {
     fn format(
@@ -18,7 +19,14 @@ impl Format for Pattern {
             Self::Wildcard { underscore_token } => {
                 formatted_code.push_str(underscore_token.span().as_str())
             }
-            Self::Var { mutable, name } => {
+            Self::Var {
+                reference,
+                mutable,
+                name,
+            } => {
+                if let Some(ref_token) = reference {
+                    write!(formatted_code, "{} ", ref_token.span().as_str())?;
+                }
                 if let Some(mut_token) = mutable {
                     write!(formatted_code, "{} ", mut_token.span().as_str())?;
                 }
@@ -117,7 +125,14 @@ impl LeafSpans for Pattern {
             Pattern::Wildcard { underscore_token } => {
                 collected_spans.push(ByteSpan::from(underscore_token.span()));
             }
-            Pattern::Var { mutable, name } => {
+            Pattern::Var {
+                reference,
+                mutable,
+                name,
+            } => {
+                if let Some(reference) = reference {
+                    collected_spans.push(ByteSpan::from(reference.span()));
+                }
                 if let Some(mutable) = mutable {
                     collected_spans.push(ByteSpan::from(mutable.span()));
                 }
