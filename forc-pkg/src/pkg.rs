@@ -482,7 +482,7 @@ fn validate_dep_manifest(dep: &Pinned, dep_manifest: &ManifestFile) -> Result<()
     // Ensure that the dependency is a library.
     if !matches!(dep_manifest.program_type()?, TreeType::Library { .. }) {
         bail!(
-            "\"{}\" is not a library! Depending on a non-library packages is not supported.",
+            "\"{}\" is not a library! Depending on a non-library package is not supported.",
             dep.name
         );
     }
