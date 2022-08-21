@@ -1,3 +1,5 @@
+//! Specific tests for the expression module
+
 use crate::{Format, Formatter};
 use forc_util::{println_green, println_red};
 use paste::paste;
@@ -18,7 +20,15 @@ fn format_code(input: &str) -> String {
 
     buf
 }
-
+/// convenience macro for generating test cases
+/// provide a known good, and then some named test cases that should evaluate to
+/// that known good. e.g.:
+/// ```
+///       // test suite name          known good
+///fmt_test!(field_proj_foobar       "foo.bar.baz.quux",
+///       // test case name           should format to known good
+///          intermediate_whitespace "foo . bar . baz . quux");
+/// ```
 macro_rules! fmt_test {
     ($scope:ident $desired_output:expr, $($name:ident $y:expr),+) => {
         fmt_test_inner!($scope $desired_output,
