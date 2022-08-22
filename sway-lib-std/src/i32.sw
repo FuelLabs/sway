@@ -24,17 +24,17 @@ impl From for I32 {
 }
 
 impl core::ops::Eq for I32 {
-    pub fn eq(self, other: I32) -> bool {
+    fn eq(self, other: I32) -> bool {
         self.underlying == other.underlying
     }
 }
 
 impl core::ops::Ord for I32 {
-    pub fn gt(self, other: Self) -> bool {
+    fn gt(self, other: Self) -> bool {
         self.underlying > other.underlying
     }
 
-    pub fn lt(self, other: Self) -> bool {
+    fn lt(self, other: Self) -> bool {
         self.underlying < other.underlying
     }
 }
@@ -89,7 +89,7 @@ impl I32 {
 
 impl core::ops::Add for I32 {
     /// Add a I32 to a I32. Panics on overflow.
-    pub fn add(self, other: Self) -> Self {
+    fn add(self, other: Self) -> Self {
         // subtract 1 << 31 to avoid double move
         ~I32::from(self.underlying - ~I32::indent() + other.underlying)
     }
@@ -97,7 +97,7 @@ impl core::ops::Add for I32 {
 
 impl core::ops::Subtract for I32 {
     /// Subtract a I32 from a I32. Panics of overflow.
-    pub fn subtract(self, other: Self) -> Self {
+    fn subtract(self, other: Self) -> Self {
         let mut res = ~I32::new();
         if self > other {
             // add 1 << 31 to avoid loosing the move
@@ -112,7 +112,7 @@ impl core::ops::Subtract for I32 {
 
 impl core::ops::Multiply for I32 {
     /// Multiply a I32 with a I32. Panics of overflow.
-    pub fn multiply(self, other: Self) -> Self {
+    fn multiply(self, other: Self) -> Self {
         let mut res = ~I32::new();
         if self.underlying >= ~I32::indent() && other.underlying >= ~I32::indent() {
             res = ~I32::from((self.underlying - ~I32::indent()) * (other.underlying -~I32::indent()) + ~I32::indent());
@@ -129,7 +129,7 @@ impl core::ops::Multiply for I32 {
 
 impl core::ops::Divide for I32 {
     /// Divide a I32 by a I32. Panics if divisor is zero.
-    pub fn divide(self, divisor: Self) -> Self {
+    fn divide(self, divisor: Self) -> Self {
         assert(divisor != ~I32::new());
         let mut res = ~I32::new();
         if self.underlying >= ~I32::indent() && divisor.underlying > ~I32::indent() {
