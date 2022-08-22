@@ -18,78 +18,101 @@ impl Format for IfExpr {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        println!(
+            "1st line: \"{}\"\nwidth: {}",
+            formatted_code, formatter.shape.width
+        );
         formatter
             .shape
             .code_line
             .update_expr_kind(ExprKind::Conditional);
-
-        let mut if_expr = FormattedCode::new();
-        let mut if_expr_width = 0;
-
-        let mut if_condition = FormattedCode::new();
-        let mut temp_formatter = Formatter::default();
-        temp_formatter
-            .shape
-            .code_line
-            .update_line_style(LineStyle::Inline);
-
-        write!(
-            if_condition,
-            "{}",
-            formatter.shape.indent.to_string(&formatter.config)?
-        )?;
-        format_if_condition(self, &mut if_condition, &mut temp_formatter)?;
-
-        let if_condition_width = if_condition.chars().count();
-        println!("if_condition: {if_condition}\nwidth: {if_condition_width}\n");
-        write!(if_expr, "{if_condition}")?;
-        if_expr_width += if_condition_width;
-
-        let mut then_block = FormattedCode::new();
-        temp_formatter
-            .shape
-            .code_line
-            .update_line_style(LineStyle::Inline);
-        format_then_block(self, &mut then_block, &mut temp_formatter)?;
-
-        let then_block_width = then_block.chars().count();
-        println!("then_block: {then_block}\nwidth: {then_block_width}\n");
-        write!(if_expr, "{then_block_width}")?;
-        if_expr_width += then_block_width;
-
-        if self.else_opt.is_some() {
-            let mut else_expr = FormattedCode::new();
-            temp_formatter
+        // check if the entire expression could fit into a single line
+        let full_width_line_style = get_full_width_line_style(self, formatter)?;
+        if full_width_line_style == LineStyle::Inline {
+            formatter
                 .shape
                 .code_line
-                .update_line_style(LineStyle::Inline);
-            format_else_opt(self, &mut else_expr, &mut temp_formatter)?;
+                .update_line_style(full_width_line_style);
+            format_if_expr(self, formatted_code, formatter)?;
+        } else {
+            // if it can't then we must format one expression at a time
+            let if_cond_width = get_if_condition_width(self, formatter)?;
+            formatter
+                .shape
+                .get_line_style(None, Some(if_cond_width), &formatter.config);
+            format_if_condition(self, formatted_code, formatter)?;
+            format_then_block(self, formatted_code, formatter)?;
+            println!(
+                "2nd line: \"{}\"\nwidth: {}\n{:?}",
+                formatted_code, formatter.shape.width, formatter.shape.code_line.line_style
+            );
 
-            let else_expr_width = else_expr.chars().count();
-            println!("else_expr: {else_expr}\nwidth: {else_expr_width}\n");
-            write!(if_expr, "{else_expr}")?;
-            if_expr_width += else_expr_width;
+            if self.else_opt.is_some() {
+                format_else_opt(self, formatted_code, formatter)?;
+            }
         }
-
-        formatter.shape.add_width(if_expr_width);
-        formatter.shape.get_line_style(
-            Some(if_condition_width), // the condition width
-            Some(then_block_width),   // the code block width
-            &formatter.config,
-        );
-        debug_expr(
-            if_expr,
-            Some(if_condition_width),
-            Some(then_block_width),
-            if_expr_width,
-            formatter,
-        );
-
-        formatter.shape.sub_width(if_expr_width);
-        format_if_expr(self, formatted_code, formatter)?;
 
         Ok(())
     }
+}
+
+fn get_full_width_line_style(
+    if_expr: &IfExpr,
+    formatter: &mut Formatter,
+) -> Result<LineStyle, FormatterError> {
+    let mut temp_formatter = Formatter::default();
+    temp_formatter
+        .shape
+        .code_line
+        .update_expr_kind(ExprKind::Conditional);
+    temp_formatter
+        .shape
+        .code_line
+        .update_line_style(LineStyle::Inline);
+
+    let mut if_expr_str = FormattedCode::new();
+    format_if_expr(if_expr, &mut if_expr_str, &mut temp_formatter)?;
+    let if_expr_width = if_expr_str.chars().count();
+
+    temp_formatter.shape.update_width(if_expr_width);
+    formatter.shape.update_width(if_expr_width);
+    temp_formatter
+        .shape
+        .get_line_style(None, None, &temp_formatter.config);
+
+    Ok(temp_formatter.shape.code_line.line_style)
+}
+
+fn get_if_condition_width(
+    if_expr: &IfExpr,
+    // formatted_code: &mut FormattedCode,
+    formatter: &mut Formatter,
+) -> Result<usize, FormatterError> {
+    let mut temp_formatter = Formatter::default();
+    temp_formatter
+        .shape
+        .code_line
+        .update_expr_kind(ExprKind::Conditional);
+
+    let mut if_cond_str = FormattedCode::new();
+    write!(
+        if_cond_str,
+        "{}",
+        formatter.shape.indent.to_string(&formatter.config)?
+    )?;
+    format_if_condition(if_expr, &mut if_cond_str, &mut temp_formatter)?;
+    write!(if_cond_str, " {{")?;
+    let condition_width = if_cond_str.chars().count();
+
+    debug_expr(
+        if_cond_str,
+        None,
+        None,
+        condition_width,
+        &mut temp_formatter,
+    );
+
+    Ok(condition_width)
 }
 
 fn format_if_expr(
@@ -128,7 +151,9 @@ fn format_then_block(
 ) -> Result<(), FormatterError> {
     IfExpr::open_curly_brace(formatted_code, formatter)?;
     if_expr.then_block.get().format(formatted_code, formatter)?;
-    IfExpr::close_curly_brace(formatted_code, formatter)?;
+    if if_expr.else_opt.is_none() {
+        IfExpr::close_curly_brace(formatted_code, formatter)?;
+    }
 
     Ok(())
 }
@@ -139,20 +164,25 @@ fn format_else_opt(
     formatter: &mut Formatter,
 ) -> Result<(), FormatterError> {
     if let Some((else_token, control_flow)) = &if_expr.else_opt {
-        write!(formatted_code, " {}", else_token.span().as_str())?;
+        let mut else_if_str = FormattedCode::new();
+
+        IfExpr::close_curly_brace(&mut else_if_str, formatter)?;
+        write!(else_if_str, " {}", else_token.span().as_str())?;
         match &control_flow {
             ControlFlow::Continue(if_expr) => {
-                write!(formatted_code, " ")?;
-                if_expr.format(formatted_code, formatter)?
+                write!(else_if_str, " ")?;
+                if_expr.format(&mut else_if_str, formatter)?
             }
             ControlFlow::Break(code_block_contents) => {
-                IfExpr::open_curly_brace(formatted_code, formatter)?;
+                IfExpr::open_curly_brace(&mut else_if_str, formatter)?;
                 code_block_contents
                     .get()
-                    .format(formatted_code, formatter)?;
-                IfExpr::close_curly_brace(formatted_code, formatter)?;
+                    .format(&mut else_if_str, formatter)?;
+                IfExpr::close_curly_brace(&mut else_if_str, formatter)?;
             }
         }
+
+        write!(formatted_code, "{else_if_str}")?;
     }
 
     Ok(())
@@ -179,7 +209,6 @@ impl CurlyBrace for IfExpr {
             }
             _ => {
                 write!(line, " {open_brace}")?;
-                formatter.shape.add_width(2); // ` {`
             }
         }
         formatter.shape.block_indent(&formatter.config);
@@ -218,7 +247,7 @@ impl Format for IfCondition {
                 eq_token,
                 rhs,
             } => {
-                write!(formatted_code, " {} ", let_token.span().as_str())?;
+                write!(formatted_code, "{} ", let_token.span().as_str())?;
                 lhs.format(formatted_code, formatter)?;
                 write!(formatted_code, " {} ", eq_token.span().as_str())?;
                 rhs.format(formatted_code, formatter)?;
