@@ -24,17 +24,17 @@ impl From for I8 {
 }
 
 impl core::ops::Eq for I8 {
-    pub fn eq(self, other: I8) -> bool {
+    fn eq(self, other: I8) -> bool {
         self.underlying == other.underlying
     }
 }
 
 impl core::ops::Ord for I8 {
-    pub fn gt(self, other: Self) -> bool {
+    fn gt(self, other: Self) -> bool {
         self.underlying > other.underlying
     }
 
-    pub fn lt(self, other: Self) -> bool {
+    fn lt(self, other: Self) -> bool {
         self.underlying < other.underlying
     }
 }
@@ -88,14 +88,14 @@ impl I8 {
 
 impl core::ops::Add for I8 {
     /// Add a I8 to a I8. Panics on overflow.
-    pub fn add(self, other: Self) -> Self {
+    fn add(self, other: Self) -> Self {
         ~I8::from(self.underlying - ~I8::indent() + other.underlying) // subtract 1 << 7 to avoid double move
     }
 }
 
 impl core::ops::Subtract for I8 {
     /// Subtract a I8 from a I8. Panics of overflow.
-    pub fn subtract(self, other: Self) -> Self {
+    fn subtract(self, other: Self) -> Self {
         let mut res = ~I8::new();
         if self > other {
             res = ~I8::from(self.underlying - other.underlying + ~I8::indent()); // add 1 << 7 to avoid loosing the move
@@ -108,7 +108,7 @@ impl core::ops::Subtract for I8 {
 
 impl core::ops::Multiply for I8 {
     /// Multiply a I8 with a I8. Panics of overflow.
-    pub fn multiply(self, other: Self) -> Self {
+    fn multiply(self, other: Self) -> Self {
         let mut res = ~I8::new();
         if self.underlying >= ~I8::indent() && other.underlying >= ~I8::indent() {
             res = ~I8::from((self.underlying - ~I8::indent()) * (other.underlying -~I8::indent()) + ~I8::indent());
@@ -125,7 +125,7 @@ impl core::ops::Multiply for I8 {
 
 impl core::ops::Divide for I8 {
     /// Divide a I8 by a I8. Panics if divisor is zero.
-    pub fn divide(self, divisor: Self) -> Self {
+    fn divide(self, divisor: Self) -> Self {
         assert(divisor != ~I8::new());
         let mut res = ~I8::new();
         if self.underlying >= ~I8::indent() && divisor.underlying > ~I8::indent() {
