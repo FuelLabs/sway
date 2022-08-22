@@ -34,8 +34,8 @@ impl Format for IfExpr {
             // if it can't then we must format one expression at a time
             let if_cond_width = get_if_condition_width(self, formatter)?;
             formatter
-                .shape
-                .get_line_style(None, Some(if_cond_width), &formatter.config);
+                .shape // add an offest for now of 5, that represents a possible `else`
+                .get_line_style(None, Some(if_cond_width + 5), &formatter.config);
             format_if_condition(self, formatted_code, formatter)?;
             println!(
                 "2nd line: \"{}\"\nwidth: {}\n{:?}",
