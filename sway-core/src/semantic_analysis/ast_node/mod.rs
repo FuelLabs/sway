@@ -257,6 +257,7 @@ impl TypedAstNode {
                             type_ascription,
                             value,
                             visibility,
+                            ..
                         }) => {
                             let result =
                                 type_check_ascribed_expr(ctx.by_ref(), type_ascription, value);

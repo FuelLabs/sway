@@ -200,12 +200,17 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
             }
         }
         Declaration::ConstantDeclaration(const_decl) => {
-            tokens.insert(
-                to_ident_key(&const_decl.name),
-                Token::from_parsed(
-                    AstToken::Declaration(declaration.clone()),
-                    SymbolKind::Const,
-                ),
+            let token = Token::from_parsed(
+                AstToken::Declaration(declaration.clone()),
+                SymbolKind::Const,
+            );
+            tokens.insert(to_ident_key(&const_decl.name), token.clone());
+
+            collect_type_info_token(
+                tokens,
+                &token,
+                &const_decl.type_ascription,
+                const_decl.type_ascription_span.clone(),
             );
             handle_expression(&const_decl.value, tokens);
         }

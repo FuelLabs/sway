@@ -791,12 +791,23 @@ pub(crate) fn item_const_to_constant_declaration(
     ec: &mut ErrorContext,
     item_const: ItemConst,
 ) -> Result<ConstantDeclaration, ErrorEmitted> {
+    let (type_ascription, type_ascription_span) = match item_const.ty_opt {
+        Some((_colon_token, ty)) => {
+            let type_ascription = ty_to_type_info(ec, ty.clone())?;
+            let type_ascription_span = if let Ty::Path(path_type) = &ty {
+                path_type.prefix.name.span()
+            } else {
+                ty.span().clone()
+            };
+            (type_ascription, Some(type_ascription_span))
+        }
+        None => (TypeInfo::Unknown, None),
+    };
+
     Ok(ConstantDeclaration {
         name: item_const.name,
-        type_ascription: match item_const.ty_opt {
-            Some((_colon_token, ty)) => ty_to_type_info(ec, ty)?,
-            None => TypeInfo::Unknown,
-        },
+        type_ascription,
+        type_ascription_span,
         value: expr_to_expression(ec, item_const.expr)?,
         visibility: pub_token_opt_to_visibility(item_const.visibility),
     })
