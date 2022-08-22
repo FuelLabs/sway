@@ -67,21 +67,18 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                     .contains(MATCH_RETURN_VAR_NAME_PREFIX)
                 && !variable.name.as_str().contains(DESTRUCTURE_PREFIX)
             {
-                tokens.insert(
-                    to_ident_key(&variable.name),
-                    Token::from_parsed(
-                        AstToken::Declaration(declaration.clone()),
-                        SymbolKind::Variable,
-                    ),
+                let token = Token::from_parsed(
+                    AstToken::Declaration(declaration.clone()),
+                    SymbolKind::Variable,
                 );
+                tokens.insert(to_ident_key(&variable.name), token.clone());
 
                 if let Some(type_ascription_span) = &variable.type_ascription_span {
-                    tokens.insert(
-                        to_ident_key(&Ident::new(type_ascription_span.clone())),
-                        Token::from_parsed(
-                            AstToken::Declaration(declaration.clone()),
-                            type_info_to_symbol_kind(&variable.type_ascription),
-                        ),
+                    collect_type_info_token(
+                        tokens,
+                        &token,
+                        &variable.type_ascription,
+                        Some(type_ascription_span.clone()),
                     );
                 }
             }
