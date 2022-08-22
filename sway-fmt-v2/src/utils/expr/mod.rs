@@ -8,7 +8,7 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_ast::{
-    brackets::Parens,
+    brackets::{Parens, SquareBrackets},
     keywords::{CommaToken, DotToken},
     punctuated::Punctuated,
     token::Delimiter,
@@ -111,9 +111,29 @@ impl Format for Expr {
                 CodeBlockContents::close_curly_brace(formatted_code, formatter)?;
             }
             Self::Array(array_descriptor) => {
-                ExprArrayDescriptor::open_square_bracket(formatted_code, formatter)?;
-                array_descriptor.get().format(formatted_code, formatter)?;
-                ExprArrayDescriptor::close_square_bracket(formatted_code, formatter)?;
+                // store previous state and update expr kind
+                let prev_state = formatter.shape.code_line;
+                formatter
+                    .shape
+                    .code_line
+                    .update_expr_kind(ExprKind::Collection);
+
+                // get the length in chars of the code_line in a normal line format
+                let mut buf = FormattedCode::new();
+                let mut temp_formatter = Formatter::default();
+                format_array(array_descriptor, &mut buf, &mut temp_formatter)?;
+                let body_width = buf.chars().count() as usize;
+
+                formatter.shape.add_width(body_width);
+                formatter
+                    .shape
+                    .get_line_style(None, Some(body_width), &formatter.config);
+
+                format_array(array_descriptor, formatted_code, formatter)?;
+
+                // revert to previous state
+                formatter.shape.sub_width(body_width);
+                formatter.shape.update_line_settings(prev_state);
             }
             Self::Asm(asm_block) => asm_block.format(formatted_code, formatter)?,
             Self::Return {
@@ -595,6 +615,16 @@ fn format_tuple(
     formatter: &mut Formatter,
 ) -> Result<(), FormatterError> {
     tuple_descriptor.get().format(formatted_code, formatter)?;
+
+    Ok(())
+}
+
+fn format_array(
+    array_descriptor: &SquareBrackets<ExprArrayDescriptor>,
+    formatted_code: &mut FormattedCode,
+    formatter: &mut Formatter,
+) -> Result<(), FormatterError> {
+    array_descriptor.get().format(formatted_code, formatter)?;
 
     Ok(())
 }
