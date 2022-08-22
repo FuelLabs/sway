@@ -24,17 +24,17 @@ impl From for I64 {
 }
 
 impl core::ops::Eq for I64 {
-    pub fn eq(self, other: I64) -> bool {
+    fn eq(self, other: I64) -> bool {
         self.underlying == other.underlying
     }
 }
 
 impl core::ops::Ord for I64 {
-    pub fn gt(self, other: Self) -> bool {
+    fn gt(self, other: Self) -> bool {
         self.underlying > other.underlying
     }
 
-    pub fn lt(self, other: Self) -> bool {
+    fn lt(self, other: Self) -> bool {
         self.underlying < other.underlying
     }
 }
@@ -89,7 +89,7 @@ impl I64 {
 
 impl core::ops::Add for I64 {
     /// Add a I64 to a I64. Panics on overflow.
-    pub fn add(self, other: Self) -> Self {
+    fn add(self, other: Self) -> Self {
         // subtract 1 << 63 to avoid double move
         ~I64::from(self.underlying - ~I64::indent() + other.underlying)
     }
@@ -97,7 +97,7 @@ impl core::ops::Add for I64 {
 
 impl core::ops::Subtract for I64 {
     /// Subtract a I64 from a I64. Panics of overflow.
-    pub fn subtract(self, other: Self) -> Self {
+    fn subtract(self, other: Self) -> Self {
         let mut res = ~I64::new();
         if self > other {
             // add 1 << 63 to avoid loosing the move
@@ -112,7 +112,7 @@ impl core::ops::Subtract for I64 {
 
 impl core::ops::Multiply for I64 {
     /// Multiply a I64 with a I64. Panics of overflow.
-    pub fn multiply(self, other: Self) -> Self {
+    fn multiply(self, other: Self) -> Self {
         let mut res = ~I64::new();
         if self.underlying >= ~I64::indent() && other.underlying >= ~I64::indent() {
             res = ~I64::from((self.underlying - ~I64::indent()) * (other.underlying -~I64::indent()) + ~I64::indent());
@@ -129,7 +129,7 @@ impl core::ops::Multiply for I64 {
 
 impl core::ops::Divide for I64 {
     /// Divide a I64 by a I64. Panics if divisor is zero.
-    pub fn divide(self, divisor: Self) -> Self {
+    fn divide(self, divisor: Self) -> Self {
         assert(divisor != ~I64::new());
         let mut res = ~I64::new();
         if self.underlying >= ~I64::indent() && divisor.underlying > ~I64::indent() {
