@@ -64,7 +64,6 @@
     - [forc clean](./forc/commands/forc_clean.md)
     - [forc completions](./forc/commands/forc_completions.md)
     - [forc init](./forc/commands/forc_init.md)
-    - [forc json-abi](./forc/commands/forc_json-abi.md)
     - [forc new](./forc/commands/forc_new.md)
     - [forc parse-bytecode](./forc/commands/forc_parse-bytecode.md)
     - [forc plugins](./forc/commands/forc_plugins.md)

@@ -6,9 +6,9 @@ use sway_types::{span::Span, Spanned};
 
 use std::sync::Arc;
 
-type SymbolMap = im::OrdMap<Ident, TypedDeclaration>;
-type UseSynonyms = im::HashMap<Ident, Vec<Ident>>;
-type UseAliases = im::HashMap<String, Ident>;
+pub(super) type SymbolMap = im::OrdMap<Ident, TypedDeclaration>;
+pub(super) type UseSynonyms = im::HashMap<Ident, Vec<Ident>>;
+pub(super) type UseAliases = im::HashMap<String, Ident>;
 
 /// The set of items that exist within some lexical scope via declaration or importing.
 #[derive(Clone, Debug, Default, PartialEq)]

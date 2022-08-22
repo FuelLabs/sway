@@ -4,6 +4,7 @@ use super::{
 };
 use crate::{
     error::*,
+    metadata::MetadataManager,
     parse_tree::{ParseProgram, Purity, TreeType},
     semantic_analysis::{
         namespace::{self, Namespace},
@@ -13,7 +14,8 @@ use crate::{
     types::ToJsonAbi,
 };
 use fuel_tx::StorageSlot;
-use sway_types::{span::Span, Ident, JsonABI, Spanned};
+use sway_ir::{Context, Module};
+use sway_types::{span::Span, Ident, JsonABI, JsonABIProgram, JsonTypeDeclaration, Spanned};
 
 #[derive(Clone, Debug)]
 pub struct TypedProgram {
@@ -247,7 +249,12 @@ impl TypedProgram {
         }
     }
 
-    pub fn get_typed_program_with_initialized_storage_slots(&self) -> CompileResult<Self> {
+    pub(crate) fn get_typed_program_with_initialized_storage_slots(
+        &self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        module: Module,
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match &self.kind {
@@ -260,7 +267,7 @@ impl TypedProgram {
                 match storage_decl {
                     Some(TypedDeclaration::StorageDeclaration(decl)) => {
                         let mut storage_slots = check!(
-                            decl.get_initialized_storage_slots(),
+                            decl.get_initialized_storage_slots(context, md_mgr, module),
                             return err(warnings, errors),
                             warnings,
                             errors,
@@ -346,6 +353,35 @@ impl TypedProgramKind {
             TypedProgramKind::Library { name } => TreeType::Library { name: name.clone() },
             TypedProgramKind::Predicate { .. } => TreeType::Predicate,
             TypedProgramKind::Script { .. } => TreeType::Script,
+        }
+    }
+
+    pub fn generate_json_abi_program(
+        &self,
+        types: &mut Vec<JsonTypeDeclaration>,
+    ) -> JsonABIProgram {
+        match self {
+            TypedProgramKind::Contract { abi_entries, .. } => {
+                let result = abi_entries
+                    .iter()
+                    .map(|x| x.generate_json_abi_function(types))
+                    .collect();
+                JsonABIProgram {
+                    types: types.to_vec(),
+                    functions: result,
+                }
+            }
+            TypedProgramKind::Script { main_function, .. } => {
+                let result = vec![main_function.generate_json_abi_function(types)];
+                JsonABIProgram {
+                    types: types.to_vec(),
+                    functions: result,
+                }
+            }
+            _ => JsonABIProgram {
+                types: vec![],
+                functions: vec![],
+            },
         }
     }
 }

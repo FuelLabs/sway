@@ -46,6 +46,9 @@ fn generic_enum_resolution() {
         type_id: engine.insert_type(TypeInfo::UnknownGeneric {
             name: Ident::new_with_override("T", sp.clone()),
         }),
+        initial_type_id: engine.insert_type(TypeInfo::UnknownGeneric {
+            name: Ident::new_with_override("T", sp.clone()),
+        }),
         span: sp.clone(),
     }];
 
@@ -59,6 +62,7 @@ fn generic_enum_resolution() {
         name: Ident::new_with_override("a", sp.clone()),
         tag: 0,
         type_id: engine.insert_type(TypeInfo::Boolean),
+        initial_type_id: engine.insert_type(TypeInfo::Boolean),
         span: sp.clone(),
     }];
 
