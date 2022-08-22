@@ -116,6 +116,12 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
             for variant in &enum_decl.variants {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&variant.name)) {
                     token.typed = Some(TypedAstToken::TypedEnumVariant(variant.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(variant.type_id));
+                }
+
+                if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(variant.type_span.clone()))) {
+                    token.typed = Some(TypedAstToken::TypedEnumVariant(variant.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(variant.type_id));
                 }
             }
         }
