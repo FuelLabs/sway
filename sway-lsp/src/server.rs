@@ -323,6 +323,19 @@ impl Backend {
         match self.session.compiled_program.read() {
             std::sync::LockResult::Ok(program) => {
                 match params.ast_kind.as_str() {
+                    "module" => {
+                        match program.module {
+                            Some(ref module) => {
+                                // Initialize the string with the AST from the root
+                                let formatted_ast: String =
+                                    format!("{:#?}", module);
+
+                                let module_ast_path = params.save_path.join("module.rs");
+                                Ok(write_ast_to_file(module_ast_path.as_path(), &formatted_ast))
+                            }
+                            _ => Ok(None),
+                        }
+                    }
                     "parsed" => {
                         match program.parsed {
                             Some(ref parsed_program) => {
@@ -637,6 +650,11 @@ mod tests {
                 let _ = messages.next().await;
 
                 // send "sway/show_typed_ast" request
+                let print_module_ast = show_ast_request(&mut service, &uri, "module".to_string(), &example_dir);
+                if let Err(_) = timeout(Duration::from_millis(10), print_module_ast).await {
+                    eprintln!("print_module_ast: did not receive value within 10 ms");
+                }
+
                 let print_parsed_ast = show_ast_request(&mut service, &uri, "parsed".to_string(), &example_dir);
                 if let Err(_) = timeout(Duration::from_millis(10), print_parsed_ast).await {
                     eprintln!("print_parsed_ast: did not receive value within 10 ms");

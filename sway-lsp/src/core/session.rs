@@ -8,6 +8,7 @@ use crate::{
         document::{DocumentError, TextDocument},
         token::{Token, TokenMap, TypeDefinition},
         {traverse_parse_tree, traverse_typed_tree},
+        parse_items,
     },
     sway_config::SwayConfig,
     utils,
@@ -19,6 +20,7 @@ use std::{
     path::PathBuf,
     sync::{Arc, LockResult, RwLock},
 };
+use sway_ast::Module;
 use sway_core::{CompileAstResult, CompileResult, ParseProgram, TypedProgram, TypedProgramKind};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{
@@ -30,6 +32,7 @@ pub type Documents = DashMap<String, TextDocument>;
 
 #[derive(Default, Debug)]
 pub struct CompiledProgram {
+    pub module: Option<Module>,
     pub parsed: Option<ParseProgram>,
     pub typed: Option<TypedProgram>,
 }
@@ -156,6 +159,19 @@ impl Session {
         let silent_mode = true;
         let locked = false;
         let offline = false;
+
+        use std::io::Read;
+        if let Ok(mut file) = std::fs::File::open(&manifest_dir) {
+            let mut sway_program = String::new();
+            file.read_to_string(&mut sway_program).unwrap();
+
+            let p = Some(Arc::new(manifest_dir.clone()));
+            let module = sway_parse::parse_file_standalone(Arc::from(sway_program), p).unwrap();
+
+            if let LockResult::Ok(mut program) = self.compiled_program.write() {
+                program.module = Some(module);
+            }
+        }
 
         // TODO: match on any errors and report them back to the user in a future PR
         if let Ok(manifest) = pkg::ManifestFile::from_dir(&manifest_dir) {

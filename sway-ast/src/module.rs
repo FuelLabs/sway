@@ -1,5 +1,6 @@
 use crate::priv_prelude::*;
 
+#[derive(Debug)]
 pub struct Module {
     pub kind: ModuleKind,
     pub semicolon_token: SemicolonToken,
@@ -21,6 +22,7 @@ impl Spanned for Module {
     }
 }
 
+#[derive(Debug)]
 pub enum ModuleKind {
     Script {
         script_token: ScriptToken,
