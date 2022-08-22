@@ -1,4 +1,4 @@
-pub mod compile;
+pub(crate) mod compile;
 pub mod const_eval;
 mod convert;
 mod function;
