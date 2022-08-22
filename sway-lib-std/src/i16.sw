@@ -24,17 +24,17 @@ impl From for I16 {
 }
 
 impl core::ops::Eq for I16 {
-    pub fn eq(self, other: I16) -> bool {
+    fn eq(self, other: I16) -> bool {
         self.underlying == other.underlying
     }
 }
 
 impl core::ops::Ord for I16 {
-    pub fn gt(self, other: Self) -> bool {
+    fn gt(self, other: Self) -> bool {
         self.underlying > other.underlying
     }
 
-    pub fn lt(self, other: Self) -> bool {
+    fn lt(self, other: Self) -> bool {
         self.underlying < other.underlying
     }
 }
@@ -89,7 +89,7 @@ impl I16 {
 
 impl core::ops::Add for I16 {
     /// Add a I16 to a I16. Panics on overflow.
-    pub fn add(self, other: Self) -> Self {
+    fn add(self, other: Self) -> Self {
         // subtract 1 << 15 to avoid double move
         ~I16::from(self.underlying - ~I16::indent() + other.underlying)
     }
@@ -97,7 +97,7 @@ impl core::ops::Add for I16 {
 
 impl core::ops::Subtract for I16 {
     /// Subtract a I16 from a I16. Panics of overflow.
-    pub fn subtract(self, other: Self) -> Self {
+    fn subtract(self, other: Self) -> Self {
         let mut res = ~I16::new();
         if self > other {
             // add 1 << 15 to avoid loosing the move
@@ -112,7 +112,7 @@ impl core::ops::Subtract for I16 {
 
 impl core::ops::Multiply for I16 {
     /// Multiply a I16 with a I16. Panics of overflow.
-    pub fn multiply(self, other: Self) -> Self {
+    fn multiply(self, other: Self) -> Self {
         let mut res = ~I16::new();
         if self.underlying >= ~I16::indent() && other.underlying >= ~I16::indent() {
             res = ~I16::from((self.underlying - ~I16::indent()) * (other.underlying -~I16::indent()) + ~I16::indent());
@@ -129,7 +129,7 @@ impl core::ops::Multiply for I16 {
 
 impl core::ops::Divide for I16 {
     /// Divide a I16 by a I16. Panics if divisor is zero.
-    pub fn divide(self, divisor: Self) -> Self {
+    fn divide(self, divisor: Self) -> Self {
         assert(divisor != ~I16::new());
         let mut res = ~I16::new();
         if self.underlying >= ~I16::indent() && divisor.underlying > ~I16::indent() {
