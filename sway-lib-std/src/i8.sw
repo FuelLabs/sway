@@ -5,6 +5,7 @@ use ::assert::assert;
 
 /// The 8-bit signed integer type.
 /// Represented as an underlying u8 value.
+/// Actual value is underlying value minus 2 ^ 7
 /// Max value is 2 ^ 7 - 1, min value is - 2 ^ 7
 pub struct I8 {
     underlying: u8,
@@ -16,6 +17,7 @@ pub trait From {
 }
 
 impl From for I8 {
+    /// Helper function to get a signed number from with an underlying
     fn from(value: u8) -> I8 {
         I8 {
             underlying: value,
@@ -40,6 +42,7 @@ impl core::ops::Ord for I8 {
 }
 
 impl I8 {
+    /// The underlying value that corresponds to zero signed value
     pub fn indent() -> u8 {
         128u8
     }
@@ -72,12 +75,14 @@ impl I8 {
         8
     }
 
+    /// Helper function to get a negative value of unsigned number
     pub fn neg_from(value: u8) -> I8 {
         I8 {
             underlying: ~I8::indent() - value,
         }
     }
 
+    /// Helper function to get a positive value from unsigned number
     fn from_uint(value: u8) -> I8 {
         let underlying: u8 = value + ~I8::indent(); // as the minimal value of I8 is -~I8::indent() (1 << 7) we should add ~I8::indent() (1 << 7) 
         I8 {

@@ -5,6 +5,7 @@ use ::assert::assert;
 
 /// The 32-bit signed integer type.
 /// Represented as an underlying u32 value.
+/// Actual value is underlying value minus 2 ^ 31
 /// Max value is 2 ^ 31 - 1, min value is - 2 ^ 31
 pub struct I32 {
     underlying: u32,
@@ -16,6 +17,7 @@ pub trait From {
 }
 
 impl From for I32 {
+    /// Helper function to get a signed number from with an underlying
     fn from(value: u32) -> I32 {
         I32 {
             underlying: value,
@@ -40,6 +42,7 @@ impl core::ops::Ord for I32 {
 }
 
 impl I32 {
+    /// The underlying value that corresponds to zero signed value
     pub fn indent() -> u32 {
         2147483648u32
     }
@@ -72,12 +75,14 @@ impl I32 {
         32
     }
 
+    /// Helper function to get a negative value of unsigned numbers
     pub fn neg_from(value: u32) -> I32 {
         I32 {
             underlying: ~I32::indent() - value,
         }
     }
 
+    /// Helper function to get a positive value from unsigned number
     fn from_uint(value: u32) -> I32 {
         // as the minimal value of I32 is 2147483648 (1 << 31) we should add ~I32::indent() (1 << 31) 
         let underlying: u32 = value + ~I32::indent();

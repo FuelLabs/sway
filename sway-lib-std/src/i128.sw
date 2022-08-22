@@ -6,6 +6,7 @@ use ::u128::U128;
 
 /// The 128-bit signed integer type.
 /// Represented as an underlying U128 value.
+/// Actual value is underlying value minus 2 ^ 127
 /// Max value is 2 ^ 127 - 1, min value is - 2 ^ 127
 pub struct I128 {
     underlying: U128,
@@ -17,6 +18,7 @@ pub trait From {
 }
 
 impl From for I128 {
+    /// Helper function to get a signed number from with an underlying
     fn from(value: U128) -> I128 {
         I128 {
             underlying: value,
@@ -41,6 +43,7 @@ impl core::ops::Ord for I128 {
 }
 
 impl I128 {
+    /// The underlying value that corresponds to zero signed value
     pub fn indent() -> U128 {
         U128 {
             upper: 1,
@@ -76,12 +79,14 @@ impl I128 {
         128
     }
 
+    /// Helper function to get a negative value of unsigned number
     pub fn neg_from(value: U128) -> I128 {
         I128 {
             underlying: ~I128::indent() - value,
         }
     }
 
+    /// Helper function to get a positive value from unsigned number
     fn from_uint(value: U128) -> I128 {
         // as the minimal value of I128 is -~I128::indent() (1 << 63) we should add ~I128::indent() (1 << 63) 
         let underlying: U128 = value + ~I128::indent();

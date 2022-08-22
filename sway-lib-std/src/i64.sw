@@ -5,6 +5,7 @@ use ::assert::assert;
 
 /// The 64-bit signed integer type.
 /// Represented as an underlying u64 value.
+/// Actual value is underlying value minus 2 ^ 63
 /// Max value is 2 ^ 63 - 1, min value is - 2 ^ 63
 pub struct I64 {
     underlying: u64,
@@ -16,6 +17,7 @@ pub trait From {
 }
 
 impl From for I64 {
+    /// Helper function to get a signed number from with an underlying
     fn from(value: u64) -> I64 {
         I64 {
             underlying: value,
@@ -40,6 +42,7 @@ impl core::ops::Ord for I64 {
 }
 
 impl I64 {
+    /// The underlying value that corresponds to zero signed value
     pub fn indent() -> u64 {
         9223372036854775808u64
     }
@@ -72,12 +75,14 @@ impl I64 {
         64
     }
 
+    /// Helper function to get a negative value of unsigned number
     pub fn neg_from(value: u64) -> I64 {
         I64 {
             underlying: ~I64::indent() - value,
         }
     }
 
+    /// Helper function to get a positive value from unsigned number
     fn from_uint(value: u64) -> I64 {
         // as the minimal value of I64 is -~I64::indent() (1 << 63) we should add ~I64::indent() (1 << 63) 
         let underlying: u64 = value + ~I64::indent();

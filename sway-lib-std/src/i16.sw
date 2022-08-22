@@ -5,6 +5,7 @@ use ::assert::assert;
 
 /// The 16-bit signed integer type.
 /// Represented as an underlying u16 value.
+/// Actual value is underlying value minus 2 ^ 15
 /// Max value is 2 ^ 15 - 1, min value is - 2 ^ 15
 pub struct I16 {
     underlying: u16,
@@ -16,6 +17,7 @@ pub trait From {
 }
 
 impl From for I16 {
+    /// Helper function to get a signed number from with an underlying
     fn from(value: u16) -> I16 {
         I16 {
             underlying: value,
@@ -40,6 +42,7 @@ impl core::ops::Ord for I16 {
 }
 
 impl I16 {
+    /// The underlying value that corresponds to zero signed value
     pub fn indent() -> u16 {
         32768u16
     }
@@ -72,12 +75,14 @@ impl I16 {
         16
     }
 
+    /// Helper function to get a negative value of unsigned number
     pub fn neg_from(value: u16) -> I16 {
         I16 {
             underlying: ~I16::indent() - value,
         }
     }
 
+    /// Helper function to get a positive value from unsigned number
     fn from_uint(value: u16) -> I16 {
         // as the minimal value of I16 is -~I16::indent() (1 << 15) we should add ~I16::indent() (1 << 15)
         let underlying: u16 = value + ~I16::indent(); 
