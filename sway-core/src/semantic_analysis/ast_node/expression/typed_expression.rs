@@ -314,13 +314,9 @@ impl DeterministicallyAborts for TypedExpression {
             }
             Break => false,
             Continue => false,
-            Reassignment(_reassignment) => {
-                // FIXME: This seems very wrong. We should check rhs, no?
-                false
-            }
-            StorageReassignment(_storage_reassignment) => {
-                // FIXME: This seems very wrong. We should check rhs, no?
-                false
+            Reassignment(reassignment) => reassignment.rhs.deterministically_aborts(),
+            StorageReassignment(storage_reassignment) => {
+                storage_reassignment.rhs.deterministically_aborts()
             }
         }
     }
@@ -417,36 +413,75 @@ impl TypedExpression {
             TypedExpressionVariant::Reassignment(reassignment) => {
                 reassignment.rhs.gather_return_statements()
             }
-            TypedExpressionVariant::StorageReassignment(_storage_reassignment) => {
-                // FIXME: we should check rhs here too, no?
-                vec![]
+            TypedExpressionVariant::StorageReassignment(storage_reassignment) => {
+                storage_reassignment.rhs.gather_return_statements()
             }
+            TypedExpressionVariant::LazyOperator { lhs, rhs, .. } => [lhs, rhs]
+                .into_iter()
+                .flat_map(|expr| expr.gather_return_statements())
+                .collect(),
+            TypedExpressionVariant::Tuple { fields } => fields
+                .iter()
+                .flat_map(|expr| expr.gather_return_statements())
+                .collect(),
+            TypedExpressionVariant::Array { contents } => contents
+                .iter()
+                .flat_map(|expr| expr.gather_return_statements())
+                .collect(),
+            TypedExpressionVariant::ArrayIndex { prefix, index } => [prefix, index]
+                .into_iter()
+                .flat_map(|expr| expr.gather_return_statements())
+                .collect(),
+            TypedExpressionVariant::StructFieldAccess { prefix, .. } => {
+                prefix.gather_return_statements()
+            }
+            TypedExpressionVariant::TupleElemAccess { prefix, .. } => {
+                prefix.gather_return_statements()
+            }
+            TypedExpressionVariant::EnumInstantiation { contents, .. } => contents
+                .iter()
+                .flat_map(|expr| expr.gather_return_statements())
+                .collect(),
+            TypedExpressionVariant::AbiCast { address, .. } => address.gather_return_statements(),
+            TypedExpressionVariant::IntrinsicFunction(intrinsic_function_kind) => {
+                intrinsic_function_kind
+                    .arguments
+                    .iter()
+                    .flat_map(|expr| expr.gather_return_statements())
+                    .collect()
+            }
+            TypedExpressionVariant::StructExpression { fields, .. } => fields
+                .iter()
+                .flat_map(|field| field.value.gather_return_statements())
+                .collect(),
+            TypedExpressionVariant::FunctionApplication {
+                contract_call_params,
+                arguments,
+                selector,
+                ..
+            } => contract_call_params
+                .values()
+                .chain(arguments.iter().map(|(_name, expr)| expr))
+                .chain(
+                    selector
+                        .iter()
+                        .map(|contract_call_params| &*contract_call_params.contract_address),
+                )
+                .flat_map(|expr| expr.gather_return_statements())
+                .collect(),
+            TypedExpressionVariant::EnumTag { exp } => exp.gather_return_statements(),
+            TypedExpressionVariant::UnsafeDowncast { exp, .. } => exp.gather_return_statements(),
+
             // if it is impossible for an expression to contain a return _statement_ (not an
             // implicit return!), put it in the pattern below.
-
-            // FIXME: lots of these expression kinds can contain arbitrary sub-expressions. But
-            // we're not checking those for returns?
-            TypedExpressionVariant::LazyOperator { .. }
-            | TypedExpressionVariant::Literal(_)
-            | TypedExpressionVariant::Tuple { .. }
-            | TypedExpressionVariant::Array { .. }
-            | TypedExpressionVariant::ArrayIndex { .. }
+            TypedExpressionVariant::Literal(_)
             | TypedExpressionVariant::FunctionParameter { .. }
             | TypedExpressionVariant::AsmExpression { .. }
-            | TypedExpressionVariant::StructFieldAccess { .. }
-            | TypedExpressionVariant::TupleElemAccess { .. }
-            | TypedExpressionVariant::EnumInstantiation { .. }
-            | TypedExpressionVariant::AbiCast { .. }
-            | TypedExpressionVariant::IntrinsicFunction { .. }
-            | TypedExpressionVariant::StructExpression { .. }
             | TypedExpressionVariant::VariableExpression { .. }
             | TypedExpressionVariant::AbiName(_)
             | TypedExpressionVariant::StorageAccess { .. }
-            | TypedExpressionVariant::FunctionApplication { .. }
-            | TypedExpressionVariant::EnumTag { .. }
             | TypedExpressionVariant::Break
-            | TypedExpressionVariant::Continue
-            | TypedExpressionVariant::UnsafeDowncast { .. } => vec![],
+            | TypedExpressionVariant::Continue => vec![],
         }
     }
 

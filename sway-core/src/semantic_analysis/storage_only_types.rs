@@ -122,8 +122,16 @@ fn expr_validate(expr: &TypedExpression) -> CompileResult<()> {
             );
             check!(expr_validate(rhs), (), warnings, errors)
         }
-        TypedExpressionVariant::StorageReassignment(_storage_reassignment) => {
-            // FIXME: there's nothing to check here?
+        TypedExpressionVariant::StorageReassignment(storage_reassignment) => {
+            let span = storage_reassignment.span();
+            let rhs = &storage_reassignment.rhs;
+            check!(
+                check_type(rhs.return_type, span, false),
+                (),
+                warnings,
+                errors,
+            );
+            check!(expr_validate(rhs), (), warnings, errors)
         }
     }
     ok((), warnings, errors)
