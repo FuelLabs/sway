@@ -415,7 +415,8 @@ mod tests {
             .unwrap()
             .parent()
             .unwrap()
-            .join("examples/storage_variables")
+            .join("examples")
+            //.join("storage_variables")
     }
 
     fn load_sway_example(manifest_dir: &PathBuf) -> Option<(Url, String)> {
@@ -611,9 +612,9 @@ mod tests {
         let _ = messages.next().await;
         
         let ast_folder = Path::new("/Users/joshuabatty/Desktop/sway_asts");
-        //fs::create_dir(ast_folder).unwrap();
+        fs::create_dir(ast_folder).unwrap();
 
-        let e2e_dir = e2e_test_dir();
+        let e2e_dir = sway_example_dir();// e2e_test_dir();
         let mut entries = fs::read_dir(&e2e_dir).unwrap()
             .map(|res| res.map(|e| e.path()))
             .collect::<Result<Vec<_>, std::io::Error>>().unwrap();
