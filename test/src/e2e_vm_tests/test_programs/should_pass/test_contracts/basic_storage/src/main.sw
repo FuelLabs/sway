@@ -2,13 +2,17 @@ contract;
 use std::{storage::*, assert::assert, hash::sha256};
 use basic_storage_abi::*;
 
+const C1 = 1;
+const S5 = "aaaaa";
+
 storage {
+    c1: u64 = C1,
     str0: str[0] = "",
     str1: str[1] = "a",
     str2: str[2] = "aa",
     str3: str[3] = "aaa",
     str4: str[4] = "aaaa",
-    str5: str[5] = "aaaaa",
+    str5: str[5] = S5,
     str6: str[6] = "aaaaaa",
     str7: str[7] = "aaaaaaa",
     str8: str[8] = "aaaaaaaa",
