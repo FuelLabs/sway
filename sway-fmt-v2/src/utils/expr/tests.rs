@@ -149,7 +149,7 @@ fmt_test!(  match_nested_conditional
     Foo::foo => {
         if really_long_var > other_really_long_var {
             foo();
-        } else if really_really_long_var_name > really_really_really_really_long_var_name1
+        } else if really_really_long_var_name > really_really_really_really_long_var_name11111111111
         {
             bar();
         } else {
@@ -163,7 +163,7 @@ fmt_test!(  match_nested_conditional
         if really_long_var > other_really_long_var
         {
             foo();
-        } else if really_really_long_var_name > really_really_really_really_long_var_name1
+        } else if really_really_long_var_name > really_really_really_really_long_var_name11111111111
         {
             bar();
         } else {

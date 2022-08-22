@@ -18,10 +18,6 @@ impl Format for IfExpr {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        println!(
-            "1st line: \"{}\"\nwidth: {}",
-            formatted_code, formatter.shape.width
-        );
         formatter
             .shape
             .code_line
@@ -41,11 +37,11 @@ impl Format for IfExpr {
                 .shape
                 .get_line_style(None, Some(if_cond_width), &formatter.config);
             format_if_condition(self, formatted_code, formatter)?;
-            format_then_block(self, formatted_code, formatter)?;
             println!(
                 "2nd line: \"{}\"\nwidth: {}\n{:?}",
                 formatted_code, formatter.shape.width, formatter.shape.code_line.line_style
             );
+            format_then_block(self, formatted_code, formatter)?;
 
             if self.else_opt.is_some() {
                 format_else_opt(self, formatted_code, formatter)?;
