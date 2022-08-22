@@ -25,7 +25,7 @@ impl From for I128 {
 }
 
 impl core::ops::Eq for I128 {
-    pub fn eq(self, other: I128) -> bool {
+    fn eq(self, other: I128) -> bool {
         self.underlying == other.underlying
     }
 }
