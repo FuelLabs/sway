@@ -618,7 +618,7 @@ impl FnCompiler {
         }
 
         let ret_value = self.compile_expression(context, md_mgr, ast_expr.clone())?;
-        match ret_value.get_type(context) {
+        match ret_value.get_stripped_ptr_type(context) {
             None => Err(CompileError::Internal(
                 "Unable to determine type for return statement expression.",
                 ast_expr.span,
