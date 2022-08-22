@@ -11,8 +11,8 @@ use sway_core::{
     DelineatedPathExpression, Expression, ExpressionKind, FunctionApplicationExpression,
     FunctionDeclaration, FunctionParameter, IfExpression, IntrinsicFunctionExpression,
     LazyOperatorExpression, MatchExpression, MethodApplicationExpression, ReassignmentTarget,
-    StorageAccessExpression, StructExpression, SubfieldExpression, TupleIndexExpression, TypeInfo,
-    WhileLoopExpression,
+    StorageAccessExpression, StructExpression, SubfieldExpression, TraitFn, TupleIndexExpression,
+    TypeInfo, WhileLoopExpression,
 };
 use sway_types::{Ident, Span};
 
@@ -34,13 +34,11 @@ pub fn traverse_node(node: &AstNode, tokens: &TokenMap) {
 }
 
 fn handle_function_declation(func: &FunctionDeclaration, tokens: &TokenMap) {
-    tokens.insert(
-        to_ident_key(&func.name),
-        Token::from_parsed(
-            AstToken::FunctionDeclaration(func.clone()),
-            SymbolKind::Function,
-        ),
+    let token = Token::from_parsed(
+        AstToken::FunctionDeclaration(func.clone()),
+        SymbolKind::Function,
     );
+    tokens.insert(to_ident_key(&func.name), token.clone());
     for node in &func.body.contents {
         traverse_node(node, tokens);
     }
@@ -49,20 +47,12 @@ fn handle_function_declation(func: &FunctionDeclaration, tokens: &TokenMap) {
         collect_function_parameter(parameter, tokens);
     }
 
-    if let TypeInfo::Custom {
-        name,
-        type_arguments,
-    } = &func.return_type
-    {
-        let token = Token::from_parsed(
-            AstToken::FunctionDeclaration(func.clone()),
-            SymbolKind::Struct,
-        );
-        tokens.insert(to_ident_key(name), token.clone());
-        if let Some(args) = type_arguments {
-            collect_type_args(args, &token, tokens);
-        }
-    }
+    collect_type_info_token(
+        tokens,
+        &token,
+        &func.return_type,
+        Some(func.return_type_span.clone()),
+    );
 }
 
 fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
@@ -110,10 +100,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
             );
 
             for trait_fn in &trait_decl.interface_surface {
-                tokens.insert(
-                    to_ident_key(&trait_fn.name),
-                    Token::from_parsed(AstToken::TraitFn(trait_fn.clone()), SymbolKind::Method),
-                );
+                collect_trait_fn(trait_fn, tokens);
             }
 
             for func_dec in &trait_decl.methods {
@@ -210,28 +197,9 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                     SymbolKind::Trait,
                 ),
             );
+
             for trait_fn in &abi_decl.interface_surface {
-                tokens.insert(
-                    to_ident_key(&trait_fn.name),
-                    Token::from_parsed(AstToken::TraitFn(trait_fn.clone()), SymbolKind::Function),
-                );
-
-                for parameter in &trait_fn.parameters {
-                    collect_function_parameter(parameter, tokens);
-                }
-
-                if let TypeInfo::Custom {
-                    name,
-                    type_arguments,
-                } = &trait_fn.return_type
-                {
-                    let token =
-                        Token::from_parsed(AstToken::TraitFn(trait_fn.clone()), SymbolKind::Struct);
-                    tokens.insert(to_ident_key(name), token.clone());
-                    if let Some(args) = type_arguments {
-                        collect_type_args(args, &token, tokens);
-                    }
-                }
+                collect_trait_fn(trait_fn, tokens);
             }
         }
         Declaration::ConstantDeclaration(const_decl) => {
@@ -635,5 +603,21 @@ fn collect_function_parameter(parameter: &FunctionParameter, tokens: &TokenMap) 
         &token,
         &type_info,
         Some(parameter.type_span.clone()),
+    );
+}
+
+fn collect_trait_fn(trait_fn: &TraitFn, tokens: &TokenMap) {
+    let token = Token::from_parsed(AstToken::TraitFn(trait_fn.clone()), SymbolKind::Function);
+    tokens.insert(to_ident_key(&trait_fn.name), token.clone());
+
+    for parameter in &trait_fn.parameters {
+        collect_function_parameter(parameter, tokens);
+    }
+
+    collect_type_info_token(
+        tokens,
+        &token,
+        &trait_fn.return_type,
+        Some(trait_fn.return_type_span.clone()),
     );
 }

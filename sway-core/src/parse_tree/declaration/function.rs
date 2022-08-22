@@ -15,7 +15,7 @@ pub struct FunctionDeclaration {
     pub span: Span,
     pub return_type: TypeInfo,
     pub(crate) type_parameters: Vec<TypeParameter>,
-    pub(crate) return_type_span: Span,
+    pub return_type_span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
