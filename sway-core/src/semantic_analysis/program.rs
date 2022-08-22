@@ -249,7 +249,7 @@ impl TypedProgram {
         }
     }
 
-    pub fn get_typed_program_with_initialized_storage_slots(
+    pub(crate) fn get_typed_program_with_initialized_storage_slots(
         &self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,

@@ -14,7 +14,7 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 ///! indices repeatedly.
 
 #[derive(Default)]
-pub struct MetadataManager {
+pub(crate) struct MetadataManager {
     md_span_cache: HashMap<MetadataIndex, Span>,
     md_file_loc_cache: HashMap<MetadataIndex, (Arc<PathBuf>, Arc<str>)>,
     md_storage_op_cache: HashMap<MetadataIndex, StorageOperation>,

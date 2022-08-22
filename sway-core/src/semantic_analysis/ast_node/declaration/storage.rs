@@ -205,7 +205,7 @@ impl TypedStorageField {
         }
     }
 
-    pub fn get_initialized_storage_slots(
+    pub(crate) fn get_initialized_storage_slots(
         &self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
