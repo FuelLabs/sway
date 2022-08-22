@@ -930,9 +930,16 @@ fn type_field_to_enum_variant(
     tag: usize,
 ) -> Result<EnumVariant, ErrorEmitted> {
     let span = type_field.span();
+    let type_span = if let Ty::Path(path_type) = &type_field.ty {
+        path_type.prefix.name.span()
+    } else {
+        span.clone()
+    };
+
     let enum_variant = EnumVariant {
         name: type_field.name,
         type_info: ty_to_type_info(ec, type_field.ty)?,
+        type_span,
         tag,
         span,
     };

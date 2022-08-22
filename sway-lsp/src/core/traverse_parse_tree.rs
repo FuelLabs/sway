@@ -147,9 +147,15 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                 Token::from_parsed(AstToken::Declaration(declaration.clone()), SymbolKind::Enum),
             );
             for variant in &enum_decl.variants {
-                tokens.insert(
-                    to_ident_key(&variant.name),
-                    Token::from_parsed(AstToken::EnumVariant(variant.clone()), SymbolKind::Variant),
+                let token =
+                    Token::from_parsed(AstToken::EnumVariant(variant.clone()), SymbolKind::Variant);
+                tokens.insert(to_ident_key(&variant.name), token.clone());
+
+                collect_type_info_token(
+                    tokens,
+                    &token,
+                    &variant.type_info,
+                    Some(variant.type_span.clone()),
                 );
             }
         }
