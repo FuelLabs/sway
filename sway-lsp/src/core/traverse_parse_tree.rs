@@ -14,7 +14,7 @@ use sway_core::{
     Scrutinee, StorageAccessExpression, StructExpression, StructScrutineeField, SubfieldExpression,
     TraitFn, TupleIndexExpression, TypeInfo, WhileLoopExpression,
 };
-use sway_types::{Ident, Span};
+use sway_types::{Ident, Span, Spanned};
 
 pub fn traverse_node(node: &AstNode, tokens: &TokenMap) {
     match &node.content {
@@ -65,13 +65,22 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                     .name
                     .as_str()
                     .contains(MATCH_RETURN_VAR_NAME_PREFIX)
-                && !variable.name.as_str().contains(DESTRUCTURE_PREFIX)
             {
-                let token = Token::from_parsed(
-                    AstToken::Declaration(declaration.clone()),
-                    SymbolKind::Variable,
+                let symbol_kind = if variable.name.as_str().contains(DESTRUCTURE_PREFIX) {
+                    SymbolKind::Struct
+                } else {
+                    SymbolKind::Variable
+                };
+
+                let token =
+                    Token::from_parsed(AstToken::Declaration(declaration.clone()), symbol_kind);
+                // We want to use the span from variable.name to construct a
+                // new Ident as the name_override_opt can be set to one of the
+                // const prefixes and not the actual token name.
+                tokens.insert(
+                    to_ident_key(&Ident::new(variable.name.span().clone())),
+                    token.clone(),
                 );
-                tokens.insert(to_ident_key(&variable.name), token.clone());
 
                 if let Some(type_ascription_span) = &variable.type_ascription_span {
                     collect_type_info_token(
@@ -289,14 +298,16 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
         ExpressionKind::Variable(name) => {
             if !name.as_str().contains(TUPLE_NAME_PREFIX)
                 && !name.as_str().contains(MATCH_RETURN_VAR_NAME_PREFIX)
-                && !name.as_str().contains(DESTRUCTURE_PREFIX)
             {
+                let symbol_kind = if name.as_str().contains(DESTRUCTURE_PREFIX) {
+                    SymbolKind::Struct
+                } else {
+                    SymbolKind::Variable
+                };
+
                 tokens.insert(
                     to_ident_key(name),
-                    Token::from_parsed(
-                        AstToken::Expression(expression.clone()),
-                        SymbolKind::Variable,
-                    ),
+                    Token::from_parsed(AstToken::Expression(expression.clone()), symbol_kind),
                 );
             }
         }

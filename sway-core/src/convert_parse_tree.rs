@@ -2770,7 +2770,7 @@ fn statement_let_to_ast_nodes(
                 let error = ConvertParseTreeError::ConstructorPatternsNotSupportedHere { span };
                 return Err(ec.error(error));
             }
-            Pattern::Struct { fields, .. } => {
+            Pattern::Struct { path, fields, .. } => {
                 let mut ast_nodes = Vec::new();
 
                 // Generate a deterministic name for the destructured struct
@@ -2784,7 +2784,7 @@ fn statement_let_to_ast_nodes(
                 COUNTER.fetch_add(1, Ordering::SeqCst);
                 let destructure_name = Ident::new_with_override(
                     Box::leak(destructured_name.into_boxed_str()),
-                    span.clone(),
+                    path.prefix.name.span(),
                 );
 
                 // Parse the type ascription and the type ascription span.
