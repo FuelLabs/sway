@@ -11,8 +11,8 @@ use sway_core::{
     DelineatedPathExpression, Expression, ExpressionKind, FunctionApplicationExpression,
     FunctionDeclaration, FunctionParameter, IfExpression, IntrinsicFunctionExpression,
     LazyOperatorExpression, MatchExpression, MethodApplicationExpression, ReassignmentTarget,
-    StorageAccessExpression, StructExpression, SubfieldExpression, TraitFn, TupleIndexExpression,
-    TypeInfo, WhileLoopExpression,
+    Scrutinee, StorageAccessExpression, StructExpression, StructScrutineeField, SubfieldExpression,
+    TraitFn, TupleIndexExpression, TypeInfo, WhileLoopExpression,
 };
 use sway_types::{Ident, Span};
 
@@ -239,16 +239,7 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
     let span = &expression.span;
     match &expression.kind {
         ExpressionKind::Literal(value) => {
-            let symbol_kind = match &value {
-                Literal::U8(..)
-                | Literal::U16(..)
-                | Literal::U32(..)
-                | Literal::U64(..)
-                | Literal::Numeric(..) => SymbolKind::NumericLiteral,
-                Literal::String(..) => SymbolKind::StringLiteral,
-                Literal::Byte(..) | Literal::B256(..) => SymbolKind::ByteLiteral,
-                Literal::Boolean(..) => SymbolKind::BoolLiteral,
-            };
+            let symbol_kind = literal_to_symbol_kind(value);
 
             tokens.insert(
                 to_ident_key(&Ident::new(span.clone())),
@@ -383,7 +374,7 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
         }) => {
             handle_expression(value, tokens);
             for branch in branches {
-                // TODO: handle_scrutinee(branch.scrutinee, tokens);
+                collect_scrutinee(&branch.scrutinee, tokens);
                 handle_expression(&branch.result, tokens);
             }
         }
@@ -545,6 +536,19 @@ fn handle_while_loop(body: &CodeBlock, condition: &Expression, tokens: &TokenMap
     }
 }
 
+fn literal_to_symbol_kind(value: &Literal) -> SymbolKind {
+    match value {
+        Literal::U8(..)
+        | Literal::U16(..)
+        | Literal::U32(..)
+        | Literal::U64(..)
+        | Literal::Numeric(..) => SymbolKind::NumericLiteral,
+        Literal::String(..) => SymbolKind::StringLiteral,
+        Literal::Byte(..) | Literal::B256(..) => SymbolKind::ByteLiteral,
+        Literal::Boolean(..) => SymbolKind::BoolLiteral,
+    }
+}
+
 fn collect_type_args(type_arguments: &Vec<TypeArgument>, token: &Token, tokens: &TokenMap) {
     for arg in type_arguments {
         let mut token = token.clone();
@@ -557,6 +561,72 @@ fn collect_type_args(type_arguments: &Vec<TypeArgument>, token: &Token, tokens: 
         token.kind = symbol_kind;
         token.type_def = Some(TypeDefinition::TypeId(arg.type_id));
         tokens.insert(to_ident_key(&Ident::new(arg.span.clone())), token);
+    }
+}
+
+fn collect_scrutinee(scrutinee: &Scrutinee, tokens: &TokenMap) {
+    match scrutinee {
+        Scrutinee::CatchAll { .. } => (),
+        Scrutinee::Literal { ref value, span } => {
+            let token = Token::from_parsed(
+                AstToken::Scrutinee(scrutinee.clone()),
+                literal_to_symbol_kind(value),
+            );
+            tokens.insert(to_ident_key(&Ident::new(span.clone())), token);
+        }
+        Scrutinee::Variable { name, .. } => {
+            let token =
+                Token::from_parsed(AstToken::Scrutinee(scrutinee.clone()), SymbolKind::Variable);
+            tokens.insert(to_ident_key(&name), token);
+        }
+        Scrutinee::StructScrutinee {
+            struct_name,
+            fields,
+            ..
+        } => {
+            let token =
+                Token::from_parsed(AstToken::Scrutinee(scrutinee.clone()), SymbolKind::Struct);
+            tokens.insert(to_ident_key(&struct_name), token);
+
+            for field in fields {
+                let token = Token::from_parsed(
+                    AstToken::Scrutinee(scrutinee.clone()),
+                    SymbolKind::Field,
+                );
+                if let StructScrutineeField::Field {
+                    field, scrutinee, ..
+                } = field
+                {
+                    tokens.insert(to_ident_key(&field), token);
+
+                    if let Some(scrutinee) = scrutinee {
+                        collect_scrutinee(scrutinee, tokens);
+                    }
+                }
+            }
+        }
+        Scrutinee::EnumScrutinee {
+            call_path,
+            value,
+            ..
+        } => {
+            for ident in &call_path.prefixes {
+                let token =
+                    Token::from_parsed(AstToken::Scrutinee(scrutinee.clone()), SymbolKind::Enum);
+                tokens.insert(to_ident_key(ident), token);
+            }
+
+            let token =
+                Token::from_parsed(AstToken::Scrutinee(scrutinee.clone()), SymbolKind::Variant);
+            tokens.insert(to_ident_key(&call_path.suffix), token);
+
+            collect_scrutinee(&*value, tokens);
+        }
+        Scrutinee::Tuple { elems, .. } => {
+            for elem in elems {
+                collect_scrutinee(elem, tokens);
+            }
+        }
     }
 }
 
