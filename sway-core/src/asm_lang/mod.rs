@@ -1293,7 +1293,7 @@ impl fmt::Display for Op {
                 EXP(a, b, c) => format!("exp {} {} {}", a, b, c),
                 EXPI(a, b, c) => format!("expi {} {} {}", a, b, c),
                 GT(a, b, c) => format!("gt {} {} {}", a, b, c),
-                GTF(a, b, c) => format!("gt {} {} {}", a, b, c),
+                GTF(a, b, c) => format!("gtf {} {} {}", a, b, c),
                 LT(a, b, c) => format!("lt {} {} {}", a, b, c),
                 MLOG(a, b, c) => format!("mlog {} {} {}", a, b, c),
                 MROO(a, b, c) => format!("mroo {} {} {}", a, b, c),

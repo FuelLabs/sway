@@ -33,6 +33,7 @@ define_op_codes!(
     (Exp, ExpOpcode, "exp", (ret, base, power)),
     (Expi, ExpiOpcode, "expi", (ret, base, power)),
     (Gt, GtOpcode, "gt", (ret, lhs, rhs)),
+    (Gtf, GtfOpcode, "gtf", (ret, index, tx_field_id)),
     (Lt, LtOpcode, "lt", (ret, lhs, rhs)),
     (Mlog, MlogOpcode, "mlog", (ret, arg, base)),
     (Mod, ModOpcode, "mod", (ret, lhs, rhs)),
