@@ -155,6 +155,12 @@ define_op_codes!(
     (Exp, ExpOpcode, "exp", (ret: reg, base: reg, power: reg)),
     (Expi, ExpiOpcode, "expi", (ret: reg, base: reg, power: imm)),
     (Gt, GtOpcode, "gt", (ret: reg, lhs: reg, rhs: reg)),
+    (
+        Gtf,
+        GtfOpcode,
+        "gtf",
+        (ret: reg, index: reg, tx_field_id: imm)
+    ),
     (Lt, LtOpcode, "lt", (ret: reg, lhs: reg, rhs: reg)),
     (Mlog, MlogOpcode, "mlog", (ret: reg, arg: reg, base: reg)),
     (Mod, ModOpcode, "mod", (ret: reg, lhs: reg, rhs: reg)),

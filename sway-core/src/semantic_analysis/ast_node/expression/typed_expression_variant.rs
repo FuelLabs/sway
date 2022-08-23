@@ -118,6 +118,8 @@ pub enum TypedExpressionVariant {
         condition: Box<TypedExpression>,
         body: TypedCodeBlock,
     },
+    Break,
+    Continue,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -451,6 +453,8 @@ impl CopyTypes for TypedExpressionVariant {
                 condition.copy_types(type_mapping);
                 body.copy_types(type_mapping);
             }
+            Break => (),
+            Continue => (),
         }
     }
 }
@@ -540,6 +544,8 @@ impl fmt::Display for TypedExpressionVariant {
             TypedExpressionVariant::WhileLoop { condition, .. } => {
                 format!("while loop on {}", condition)
             }
+            TypedExpressionVariant::Break => "break".to_string(),
+            TypedExpressionVariant::Continue => "continue".to_string(),
         };
         write!(f, "{}", s)
     }
