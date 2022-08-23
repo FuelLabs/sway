@@ -87,7 +87,7 @@ fmt_test!(  annotated_enum
     bar: (),
 }",
             intermediate_whitespace
-            "pub enum Annotated{
+"pub enum Annotated{
                 #[   storage(write  )]\n    
                 foo    : (),
                 #[   storage(read  )   ]

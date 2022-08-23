@@ -87,7 +87,7 @@ fmt_test!(  annotated_struct
     bar: String,
 }",
             intermediate_whitespace
-            "struct Annotated{
+"struct Annotated{
                 #[   storage(write  )]\n    
                 foo    : u32,
                 #[   storage(read  )   ]
