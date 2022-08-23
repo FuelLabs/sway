@@ -10,6 +10,9 @@ use std::fmt::Write;
 use sway_ast::{token::Delimiter, ItemStruct};
 use sway_types::Spanned;
 
+#[cfg(test)]
+mod tests;
+
 impl Format for ItemStruct {
     fn format(
         &self,
@@ -48,7 +51,7 @@ impl Format for ItemStruct {
                     .value_separator_pairs
                     .iter()
                     // TODO: Handle annotations instead of stripping them
-                    .map(|pair| (&pair.0.value, &pair.1))
+                    .map(|(type_field, comma_token)| (&type_field.value, comma_token))
                     .collect::<Vec<_>>();
                 // In first iteration we are going to be collecting the lengths of the struct variants.
                 let variant_length: Vec<usize> = value_pairs
