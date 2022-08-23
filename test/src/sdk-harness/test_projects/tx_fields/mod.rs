@@ -1,5 +1,6 @@
 use fuel_types::bytes::WORD_SIZE;
 use fuel_vm::fuel_tx::ConsensusParameters;
+use fuels::contract::contract::ContractCallHandler;
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
 use fuels::tx::{Bytes32, ContractId};
@@ -45,7 +46,7 @@ async fn can_get_gas_price() {
 
     let result = contract_instance
         .get_tx_gas_price()
-        .tx_params(TxParameters::new(Some(gas_price), None, None, None))
+        .tx_params(TxParameters::new(Some(gas_price), None, None))
         .call()
         .await
         .unwrap();
@@ -59,7 +60,7 @@ async fn can_get_gas_limit() {
 
     let result = contract_instance
         .get_tx_gas_limit()
-        .tx_params(TxParameters::new(None, Some(gas_limit), None, None))
+        .tx_params(TxParameters::new(None, Some(gas_limit), None))
         .call()
         .await
         .unwrap();
@@ -262,7 +263,7 @@ async fn can_get_tx_id() {
     let (contract_instance, _, _) = get_contracts().await;
 
     let call_handler = contract_instance.get_tx_id(0);
-    let script = call_handler.get_script().await;
+    let script = call_handler.get_call_execution_script().await.unwrap();
     let tx_id = script.tx.id();
 
     let result = contract_instance.get_tx_id(0).call().await.unwrap();

@@ -5,7 +5,9 @@ use fuels::contract::script::Script;
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
 use fuels::test_helpers::Config;
-use fuels::tx::{Address, AssetId, Contract, Input, Output, Transaction, UtxoId};
+use fuels::tx::{Address, AssetId, Contract, Input, Output, Transaction, TxPointer, UtxoId};
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 use std::str::FromStr;
 
 async fn setup() -> (Vec<u8>, Address, Wallet, u64, AssetId) {
@@ -54,7 +56,6 @@ async fn create_predicate(
         1,
         1000000,
         1,
-        0,
         Opcode::RET(REG_ONE).to_bytes().to_vec(),
         vec![],
         wallet_coins,
@@ -89,12 +90,18 @@ async fn submit_to_predicate(
     let mut inputs = vec![];
     let mut total_amount_in_predicate = 0;
 
+    let block_height = u32::MAX >> 1;
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+    let tx_index = rng.gen();
+    let tx_pointer = TxPointer::new(block_height, tx_index);
+
     for coin in utxo_predicate_hash {
         let input_coin = Input::coin_predicate(
             UtxoId::from(coin.utxo_id),
             coin.owner.into(),
             coin.amount.0,
             asset_id,
+            tx_pointer,
             0,
             predicate_code.clone(),
             predicate_data.clone(),
@@ -108,7 +115,6 @@ async fn submit_to_predicate(
     let new_tx = Transaction::script(
         0,
         1000000,
-        0,
         0,
         vec![],
         vec![],
