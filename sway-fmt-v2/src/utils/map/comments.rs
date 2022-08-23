@@ -1,6 +1,6 @@
 use crate::{
-    fmt::{FormattedCode, FormatterError},
-    utils::byte_span::{ByteSpan, LeafSpans},
+    formatter::{FormattedCode, FormatterError},
+    utils::map::byte_span::{ByteSpan, LeafSpans},
 };
 use ropey::Rope;
 use std::{

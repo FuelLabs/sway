@@ -1,9 +1,6 @@
 use crate::{
-    fmt::*,
-    utils::{
-        byte_span::{ByteSpan, LeafSpans},
-        shape::LineStyle,
-    },
+    formatter::{shape::LineStyle, *},
+    utils::map::byte_span::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
 use sway_ast::{

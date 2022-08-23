@@ -1,8 +1,8 @@
 use crate::{
-    fmt::*,
+    formatter::*,
     utils::{
-        bracket::CurlyBrace,
-        byte_span::{ByteSpan, LeafSpans},
+        map::byte_span::{ByteSpan, LeafSpans},
+        CurlyBrace,
     },
 };
 use std::{fmt::Write, ops::ControlFlow};

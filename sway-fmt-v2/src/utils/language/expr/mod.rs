@@ -1,9 +1,11 @@
 use crate::{
-    fmt::*,
-    utils::{
-        bracket::{CurlyBrace, Parenthesis, SquareBracket},
-        byte_span::{ByteSpan, LeafSpans},
+    formatter::{
         shape::{ExprKind, LineStyle},
+        *,
+    },
+    utils::{
+        map::byte_span::{ByteSpan, LeafSpans},
+        {CurlyBrace, Parenthesis, SquareBracket},
     },
 };
 use std::fmt::Write;

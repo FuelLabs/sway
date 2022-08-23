@@ -1,6 +1,6 @@
 use crate::{
-    fmt::*,
-    utils::byte_span::{ByteSpan, LeafSpans},
+    formatter::*,
+    utils::map::byte_span::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
 use sway_ast::{WhereBound, WhereClause};

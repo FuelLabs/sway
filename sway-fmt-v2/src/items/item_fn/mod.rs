@@ -1,10 +1,12 @@
 use crate::{
     config::items::ItemBraceStyle,
-    fmt::*,
-    utils::{
-        bracket::{CurlyBrace, Parenthesis},
-        byte_span::{ByteSpan, LeafSpans},
+    formatter::{
         shape::{ExprKind, LineStyle},
+        *,
+    },
+    utils::{
+        map::byte_span::{ByteSpan, LeafSpans},
+        {CurlyBrace, Parenthesis},
     },
 };
 use std::fmt::Write;

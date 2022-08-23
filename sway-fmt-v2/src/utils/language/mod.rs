@@ -1,9 +1,17 @@
-//! The purpose of this file is to house the traits and associated functions for formatting opening and closing delimiters.
-//! This allows us to avoid matching a second time for the `ItemKind` and keeps the code pertaining to individual formatting
-//! contained to each item's file.
-use crate::fmt::*;
+use crate::formatter::*;
 use std::fmt::Write;
 use sway_ast::token::PunctKind;
+
+pub(crate) mod attribute;
+pub(crate) mod expr;
+pub(crate) mod generics;
+pub(crate) mod literal;
+pub(crate) mod path;
+pub(crate) mod pattern;
+pub(crate) mod punctuated;
+pub(crate) mod statement;
+pub(crate) mod ty;
+pub(crate) mod where_clause;
 
 pub(crate) trait CurlyBrace {
     /// Handles brace open scenerio. Checks the config for the placement of the brace.

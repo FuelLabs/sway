@@ -10,8 +10,8 @@ use std::{
 use sway_ast::Module;
 
 use crate::{
-    fmt::{FormattedCode, Formatter},
-    utils::byte_span::{ByteSpan, LeafSpans},
+    formatter::{FormattedCode, Formatter},
+    utils::map::byte_span::{ByteSpan, LeafSpans},
     FormatterError,
 };
 
