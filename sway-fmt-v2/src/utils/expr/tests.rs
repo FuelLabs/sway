@@ -207,6 +207,10 @@ fmt_test!(  match_nested_conditional
 }"
 );
 
+fmt_test!(  small_if_let "if let Result::Ok(x) = x { 100 } else { 1 };",
+            intermediate_whitespace "if let Result::Ok(x) = x { 100 } else { 1 };"
+);
+
 fmt_test!(  match_branch_kind
 "match foo {
     Foo::foo => {
