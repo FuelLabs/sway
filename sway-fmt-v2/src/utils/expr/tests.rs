@@ -190,8 +190,7 @@ fmt_test!(  match_nested_conditional
             intermediate_whitespace
 "match foo {
     Foo::foo => {
-        if really_long_var > other_really_long_var
-        {
+        if really_long_var > other_really_long_var {
             foo();
         } else if really_really_long_var_name > really_really_really_really_long_var_name111111111111
         {
@@ -201,10 +200,6 @@ fmt_test!(  match_nested_conditional
         }
     }
 }"
-);
-
-fmt_test!(  small_if_let "if let Result::Ok(x) = x { 100 } else { 1 };",
-            intermediate_whitespace "if let Result::Ok(x) = x { 100 } else { 1 };"
 );
 
 fmt_test!(  match_branch_kind
