@@ -162,6 +162,14 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                 ),
             );
 
+            tokens.insert(
+                to_ident_key(&Ident::new(impl_trait.type_implementing_for_span.clone())),
+                Token::from_parsed(
+                    AstToken::Declaration(declaration.clone()),
+                    type_info_to_symbol_kind(&impl_trait.type_implementing_for),
+                ),
+            );
+
             for func_dec in &impl_trait.functions {
                 handle_function_declation(func_dec, tokens);
             }
