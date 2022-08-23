@@ -397,7 +397,6 @@ fn connect_declaration(
             Ok(leaves.to_vec())
         }
         ErrorRecovery | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
-        Break { .. } | Continue { .. } => Ok(vec![]),
     }
 }
 
@@ -1100,6 +1099,20 @@ fn connect_expression(
                 graph.add_edge(leaf, while_loop_exit, "".into());
             }
             Ok(vec![while_loop_exit])
+        }
+        Break => {
+            let break_node = graph.add_node("break".to_string().into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, break_node, "".into());
+            }
+            Ok(vec![])
+        }
+        Continue => {
+            let continue_node = graph.add_node("continue".to_string().into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, continue_node, "".into());
+            }
+            Ok(vec![])
         }
     }
 }
