@@ -122,6 +122,7 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
             trait_name,
             methods,
             implementing_for_type_id,
+            type_implementing_for_span,
             ..
         }) => {
             for ident in &trait_name.prefixes {
@@ -131,6 +132,11 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
             }
 
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&trait_name.suffix)) {
+                token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                token.type_def = Some(TypeDefinition::TypeId(*implementing_for_type_id));
+            }
+
+            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(type_implementing_for_span.clone()))) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
                 token.type_def = Some(TypeDefinition::TypeId(*implementing_for_type_id));
             }
