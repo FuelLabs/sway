@@ -339,6 +339,8 @@ fn const_eval_typed_expr(
         | TypedExpressionVariant::AbiName(_)
         | TypedExpressionVariant::EnumTag { .. }
         | TypedExpressionVariant::UnsafeDowncast { .. }
+        | TypedExpressionVariant::Break
+        | TypedExpressionVariant::Continue
         | TypedExpressionVariant::WhileLoop { .. } => None,
     }
 }

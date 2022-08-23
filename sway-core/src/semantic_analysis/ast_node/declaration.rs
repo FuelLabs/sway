@@ -38,8 +38,6 @@ pub enum TypedDeclaration {
     ErrorRecovery,
     StorageDeclaration(TypedStorageDeclaration),
     StorageReassignment(TypeCheckedStorageReassignment),
-    Break { span: Span },
-    Continue { span: Span },
 }
 
 impl CopyTypes for TypedDeclaration {
@@ -61,9 +59,7 @@ impl CopyTypes for TypedDeclaration {
             | StorageDeclaration(..)
             | StorageReassignment(..)
             | GenericTypeForFunctionScope { .. }
-            | ErrorRecovery
-            | Break { .. }
-            | Continue { .. } => (),
+            | ErrorRecovery => (),
         }
     }
 }
@@ -89,7 +85,7 @@ impl Spanned for TypedDeclaration {
             ImplTrait(TypedImplTrait { span, .. }) => span.clone(),
             StorageDeclaration(decl) => decl.span(),
             StorageReassignment(decl) => decl.span(),
-            ErrorRecovery | GenericTypeForFunctionScope { .. } | Break { .. } | Continue { .. } => {
+            ErrorRecovery | GenericTypeForFunctionScope { .. } => {
                 unreachable!("No span exists for these ast node types")
             }
         }
@@ -208,9 +204,7 @@ impl UnresolvedTypeCheck for TypedDeclaration {
             | EnumDeclaration(_)
             | ImplTrait { .. }
             | AbiDeclaration(_)
-            | GenericTypeForFunctionScope { .. }
-            | Break { .. }
-            | Continue { .. } => vec![],
+            | GenericTypeForFunctionScope { .. } => vec![],
         }
     }
 }
@@ -323,8 +317,6 @@ impl TypedDeclaration {
             ErrorRecovery => "error",
             StorageDeclaration(_) => "contract storage declaration",
             StorageReassignment(_) => "contract storage reassignment",
-            Break { .. } => "break",
-            Continue { .. } => "continue",
         }
     }
 
@@ -374,9 +366,7 @@ impl TypedDeclaration {
             | StorageDeclaration { .. }
             | StorageReassignment { .. }
             | AbiDeclaration(..)
-            | ErrorRecovery
-            | Break { .. }
-            | Continue { .. } => Visibility::Public,
+            | ErrorRecovery => Visibility::Public,
             VariableDeclaration(TypedVariableDeclaration {
                 mutability: is_mutable,
                 ..
