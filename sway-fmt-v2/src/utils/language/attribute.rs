@@ -1,5 +1,5 @@
 use crate::{
-    formatter::*,
+    formatter::{shape::LineStyle, *},
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
         {Parenthesis, SquareBracket},
@@ -10,10 +10,9 @@ use sway_ast::{
     attribute::{Annotated, Attribute, AttributeDecl},
     token::Delimiter,
 };
-use sway_parse::Parse;
 use sway_types::Spanned;
 
-impl<T: Parse + Format> Format for Annotated<T> {
+impl<T: Format> Format for Annotated<T> {
     fn format(
         &self,
         formatted_code: &mut FormattedCode,
@@ -21,45 +20,50 @@ impl<T: Parse + Format> Format for Annotated<T> {
     ) -> Result<(), FormatterError> {
         // format each `Attribute`
         for attr in &self.attribute_list {
+            attr.format(formatted_code, formatter)?;
             write!(
                 formatted_code,
                 "{}",
                 &formatter.shape.indent.to_string(&formatter.config)?,
             )?;
-            attr.format(formatted_code, formatter)?;
         }
         // format `ItemKind`
-        self.value.format(formatted_code, formatter)
+        self.value.format(formatted_code, formatter)?;
+
+        Ok(())
     }
 }
 
-pub trait FormatDecl {
-    fn format(&self, line: &mut String, formatter: &mut Formatter) -> Result<(), FormatterError>;
-}
-
-impl FormatDecl for AttributeDecl {
-    fn format(&self, line: &mut String, formatter: &mut Formatter) -> Result<(), FormatterError> {
-        // At some point there will be enough attributes to warrant the need
-        // of formatting the list according to `config::lists::ListTactic`.
-        // For now the default implementation will be `Horizontal`.
-        //
+impl Format for AttributeDecl {
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        let prev_state = formatter.shape.code_line;
+        formatter
+            .shape
+            .code_line
+            .update_line_style(LineStyle::Normal);
         // `#`
-        write!(line, "{}", self.hash_token.span().as_str())?;
+        write!(formatted_code, "{}", self.hash_token.span().as_str())?;
         // `[`
-        Self::open_square_bracket(line, formatter)?;
+        Self::open_square_bracket(formatted_code, formatter)?;
         let attr = self.attribute.get();
         // name e.g. `storage`
-        write!(line, "{}", attr.name.span().as_str())?;
+        write!(formatted_code, "{}", attr.name.span().as_str())?;
         // `(`
-        Self::open_parenthesis(line, formatter)?;
+        Self::open_parenthesis(formatted_code, formatter)?;
         // format and add args e.g. `read, write`
         if let Some(args) = &attr.args {
-            args.get().format(line, formatter)?;
+            args.get().format(formatted_code, formatter)?;
         }
         // ')'
-        Self::close_parenthesis(line, formatter)?;
+        Self::close_parenthesis(formatted_code, formatter)?;
         // `]\n`
-        Self::close_square_bracket(line, formatter)?;
+        Self::close_square_bracket(formatted_code, formatter)?;
+        formatter.shape.update_line_settings(prev_state);
+
         Ok(())
     }
 }

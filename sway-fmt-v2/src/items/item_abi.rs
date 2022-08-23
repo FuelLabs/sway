@@ -27,6 +27,11 @@ impl Format for ItemAbi {
 
         // abi_items
         for (fn_signature, semicolon) in self.abi_items.get().iter() {
+            write!(
+                formatted_code,
+                "{}",
+                formatter.shape.indent.to_string(&formatter.config)?,
+            )?;
             // add indent + format item
             fn_signature.format(formatted_code, formatter)?;
             writeln!(
@@ -40,6 +45,11 @@ impl Format for ItemAbi {
         if let Some(abi_defs) = self.abi_defs_opt.clone() {
             for item in abi_defs.get().iter() {
                 // add indent + format item
+                write!(
+                    formatted_code,
+                    "{}",
+                    formatter.shape.indent.to_string(&formatter.config)?,
+                )?;
                 item.format(formatted_code, formatter)?;
             }
         }
