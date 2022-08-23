@@ -379,6 +379,7 @@ impl TypedAstNode {
                                 name,
                                 type_info,
                                 initializer,
+                                ..
                             } in fields
                             {
                                 let type_id = check!(

@@ -1995,9 +1995,15 @@ fn storage_field_to_storage_field(
     ec: &mut ErrorContext,
     storage_field: sway_ast::StorageField,
 ) -> Result<StorageField, ErrorEmitted> {
+    let type_info_span = if let Ty::Path(path_type) = &storage_field.ty {
+        path_type.prefix.name.span()
+    } else {
+        storage_field.ty.span().clone()
+    };
     let storage_field = StorageField {
         name: storage_field.name,
         type_info: ty_to_type_info(ec, storage_field.ty)?,
+        type_info_span,
         initializer: expr_to_expression(ec, storage_field.initializer)?,
     };
     Ok(storage_field)

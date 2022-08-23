@@ -228,7 +228,12 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                     Token::from_parsed(AstToken::StorageField(field.clone()), SymbolKind::Field);
                 tokens.insert(to_ident_key(&field.name), token.clone());
 
-                collect_type_info_token(tokens, &token, &field.type_info, None);
+                collect_type_info_token(
+                    tokens,
+                    &token,
+                    &field.type_info,
+                    Some(field.type_info_span.clone()),
+                );
                 handle_expression(&field.initializer, tokens);
             }
         }
@@ -589,10 +594,8 @@ fn collect_scrutinee(scrutinee: &Scrutinee, tokens: &TokenMap) {
             tokens.insert(to_ident_key(&struct_name), token);
 
             for field in fields {
-                let token = Token::from_parsed(
-                    AstToken::Scrutinee(scrutinee.clone()),
-                    SymbolKind::Field,
-                );
+                let token =
+                    Token::from_parsed(AstToken::Scrutinee(scrutinee.clone()), SymbolKind::Field);
                 if let StructScrutineeField::Field {
                     field, scrutinee, ..
                 } = field
@@ -606,9 +609,7 @@ fn collect_scrutinee(scrutinee: &Scrutinee, tokens: &TokenMap) {
             }
         }
         Scrutinee::EnumScrutinee {
-            call_path,
-            value,
-            ..
+            call_path, value, ..
         } => {
             for ident in &call_path.prefixes {
                 let token =
