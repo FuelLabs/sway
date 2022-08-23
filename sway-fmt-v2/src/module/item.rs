@@ -1,24 +1,8 @@
 use crate::{
-    fmt::*,
-    utils::byte_span::{ByteSpan, LeafSpans},
+    formatter::*,
+    utils::map::byte_span::{ByteSpan, LeafSpans},
 };
 use sway_ast::ItemKind::{self, *};
-
-impl LeafSpans for ItemKind {
-    fn leaf_spans(&self) -> Vec<ByteSpan> {
-        match self {
-            Struct(item_struct) => item_struct.leaf_spans(),
-            Enum(item_enum) => item_enum.leaf_spans(),
-            Fn(item_fn) => item_fn.leaf_spans(),
-            Abi(item_abi) => item_abi.leaf_spans(),
-            Const(item_const) => item_const.leaf_spans(),
-            Storage(item_storage) => item_storage.leaf_spans(),
-            Trait(item_trait) => item_trait.leaf_spans(),
-            Impl(item_impl) => item_impl.leaf_spans(),
-            Use(item_use) => item_use.leaf_spans(),
-        }
-    }
-}
 
 impl Format for ItemKind {
     fn format(
@@ -39,6 +23,23 @@ impl Format for ItemKind {
         }
     }
 }
+
+impl LeafSpans for ItemKind {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        match self {
+            Struct(item_struct) => item_struct.leaf_spans(),
+            Enum(item_enum) => item_enum.leaf_spans(),
+            Fn(item_fn) => item_fn.leaf_spans(),
+            Abi(item_abi) => item_abi.leaf_spans(),
+            Const(item_const) => item_const.leaf_spans(),
+            Storage(item_storage) => item_storage.leaf_spans(),
+            Trait(item_trait) => item_trait.leaf_spans(),
+            Impl(item_impl) => item_impl.leaf_spans(),
+            Use(item_use) => item_use.leaf_spans(),
+        }
+    }
+}
+
 pub trait ItemLenChars {
     fn len_chars(&self) -> Result<usize, FormatterError>;
 }

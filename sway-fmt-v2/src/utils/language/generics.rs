@@ -1,9 +1,6 @@
 use crate::{
-    fmt::*,
-    utils::{
-        bracket::{close_angle_bracket, open_angle_bracket},
-        shape::LineStyle,
-    },
+    formatter::{shape::LineStyle, *},
+    utils::{close_angle_bracket, open_angle_bracket},
 };
 use sway_ast::{GenericArgs, GenericParams};
 

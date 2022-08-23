@@ -294,7 +294,7 @@ impl Shape {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::fmt::Formatter;
+    use crate::formatter::Formatter;
 
     #[test]
     fn indent_add_sub() {

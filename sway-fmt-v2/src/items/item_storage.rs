@@ -1,10 +1,9 @@
 use crate::{
     config::{items::ItemBraceStyle, user_def::FieldAlignment},
-    fmt::*,
+    formatter::{shape::LineStyle, *},
     utils::{
-        bracket::CurlyBrace,
-        byte_span::{ByteSpan, LeafSpans},
-        shape::LineStyle,
+        map::byte_span::{ByteSpan, LeafSpans},
+        CurlyBrace,
     },
 };
 use std::fmt::Write;
