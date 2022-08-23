@@ -271,13 +271,15 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                         ),
                     );
                 }
-                tokens.insert(
-                    to_ident_key(&call_path_binding.inner.suffix),
-                    Token::from_parsed(
-                        AstToken::Expression(expression.clone()),
-                        SymbolKind::Function,
-                    ),
+
+                let token = Token::from_parsed(
+                    AstToken::Expression(expression.clone()),
+                    SymbolKind::Function,
                 );
+
+                tokens.insert(to_ident_key(&call_path_binding.inner.suffix), token.clone());
+
+                collect_type_args(&call_path_binding.type_arguments, &token, tokens);
             }
 
             for exp in arguments {
@@ -411,7 +413,6 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                     SymbolKind::Struct,
                 );
                 let (type_info, span) = &call_path_binding.inner.suffix;
-
                 collect_type_info_token(tokens, &token, &type_info, Some(span.clone()));
             }
 
