@@ -45,7 +45,6 @@ pub fn parsed_to_completion_kind(ast_token: &AstToken) -> Option<CompletionItemK
             | Declaration::AbiDeclaration(_)
             | Declaration::Reassignment(_)
             | Declaration::StorageDeclaration(_) => Some(CompletionItemKind::TEXT),
-            Declaration::Break { .. } | Declaration::Continue { .. } => None,
         },
         AstToken::Expression(exp) => match &exp.kind {
             ExpressionKind::Literal { .. } => Some(CompletionItemKind::VALUE),

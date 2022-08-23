@@ -1914,25 +1914,11 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             return Err(ec.error(error));
         }
         Expr::Break { .. } => Expression {
-            kind: ExpressionKind::CodeBlock(CodeBlock {
-                contents: vec![AstNode {
-                    content: AstNodeContent::Declaration(Declaration::Break { span: span.clone() }),
-                    span: span.clone(),
-                }],
-                whole_block_span: span.clone(),
-            }),
+            kind: ExpressionKind::Break,
             span,
         },
         Expr::Continue { .. } => Expression {
-            kind: ExpressionKind::CodeBlock(CodeBlock {
-                contents: vec![AstNode {
-                    content: AstNodeContent::Declaration(Declaration::Continue {
-                        span: span.clone(),
-                    }),
-                    span: span.clone(),
-                }],
-                whole_block_span: span.clone(),
-            }),
+            kind: ExpressionKind::Continue,
             span,
         },
     };

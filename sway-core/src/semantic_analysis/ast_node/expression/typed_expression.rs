@@ -219,6 +219,8 @@ impl UnresolvedTypeCheck for TypedExpression {
             | StorageAccess { .. }
             | Literal(_)
             | AbiName(_)
+            | Break
+            | Continue
             | FunctionParameter => {}
         }
         res
@@ -295,6 +297,8 @@ impl DeterministicallyAborts for TypedExpression {
             WhileLoop { condition, body } => {
                 condition.deterministically_aborts() || body.deterministically_aborts()
             }
+            Break => false,
+            Continue => false,
         }
     }
 }
@@ -407,6 +411,8 @@ impl TypedExpression {
             | TypedExpressionVariant::StorageAccess { .. }
             | TypedExpressionVariant::FunctionApplication { .. }
             | TypedExpressionVariant::EnumTag { .. }
+            | TypedExpressionVariant::Break
+            | TypedExpressionVariant::Continue
             | TypedExpressionVariant::UnsafeDowncast { .. } => vec![],
         }
     }
@@ -535,6 +541,24 @@ impl TypedExpression {
             }) => Self::type_check_intrinsic_function(ctx.by_ref(), kind_binding, arguments, span),
             ExpressionKind::WhileLoop(WhileLoopExpression { condition, body }) => {
                 Self::type_check_while_loop(ctx.by_ref(), *condition, body, span)
+            }
+            ExpressionKind::Break => {
+                let expr = TypedExpression {
+                    expression: TypedExpressionVariant::Break,
+                    return_type: insert_type(TypeInfo::Unknown),
+                    is_constant: IsConstant::No,
+                    span,
+                };
+                ok(expr, vec![], vec![])
+            }
+            ExpressionKind::Continue => {
+                let expr = TypedExpression {
+                    expression: TypedExpressionVariant::Continue,
+                    return_type: insert_type(TypeInfo::Unknown),
+                    is_constant: IsConstant::No,
+                    span,
+                };
+                ok(expr, vec![], vec![])
             }
         };
         let mut typed_expression = match res.value {
