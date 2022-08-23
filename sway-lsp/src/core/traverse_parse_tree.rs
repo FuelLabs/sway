@@ -549,6 +549,10 @@ fn collect_type_args(type_arguments: &Vec<TypeArgument>, token: &Token, tokens: 
     for arg in type_arguments {
         let mut token = token.clone();
         let type_info = sway_core::type_system::look_up_type_id(arg.type_id);
+        // TODO handle tuple and arrays in type_arguments
+        if let TypeInfo::Tuple(_) | TypeInfo::Array(_, _, _) = type_info {
+            continue;
+        }
         let symbol_kind = type_info_to_symbol_kind(&type_info);
         token.kind = symbol_kind;
         token.type_def = Some(TypeDefinition::TypeId(arg.type_id));
@@ -571,6 +575,9 @@ fn collect_type_info_token(
             if let Some(type_span) = type_span {
                 tokens.insert(to_ident_key(&Ident::new(type_span)), token);
             }
+        }
+        TypeInfo::Tuple(args) => {
+            collect_type_args(args, &token, tokens);
         }
         TypeInfo::Ref(type_id, span) => {
             token.type_def = Some(TypeDefinition::TypeId(*type_id));
