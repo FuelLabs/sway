@@ -35,7 +35,7 @@ impl Format for IfExpr {
             let if_cond_width = get_if_condition_width(self)?;
             formatter
                 .shape // add an offest for now of 5, that represents a possible `else`
-                .get_line_style(None, Some(if_cond_width), &formatter.config);
+                .get_line_style(None, Some(if_cond_width + 5), &formatter.config);
             format_if_condition(self, formatted_code, formatter)?;
             println!(
                 "2nd line: \"{}\"\nwidth: {}\n{:?}",
