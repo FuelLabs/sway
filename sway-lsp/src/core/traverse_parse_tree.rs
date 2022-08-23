@@ -406,23 +406,13 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                 call_path_binding, ..
             } = &method_name_binding.inner
             {
-                if let (
-                    TypeInfo::Custom {
-                        name,
-                        type_arguments,
-                    },
-                    ..,
-                ) = &call_path_binding.inner.suffix
-                {
-                    let token = Token::from_parsed(
-                        AstToken::Expression(expression.clone()),
-                        SymbolKind::Struct,
-                    );
-                    tokens.insert(to_ident_key(name), token.clone());
-                    if let Some(args) = type_arguments {
-                        collect_type_args(args, &token, tokens);
-                    }
-                }
+                let token = Token::from_parsed(
+                    AstToken::Expression(expression.clone()),
+                    SymbolKind::Struct,
+                );
+                let (type_info, span) = &call_path_binding.inner.suffix;
+
+                collect_type_info_token(tokens, &token, &type_info, Some(span.clone()));
             }
 
             // Don't collect applications of desugared operators due to mismatched ident lengths.
