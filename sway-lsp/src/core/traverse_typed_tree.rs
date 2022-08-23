@@ -226,8 +226,6 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
             }
             handle_expression(&storage_reassignment.rhs, tokens);
         }
-        TypedDeclaration::Break { .. } => {}
-        TypedDeclaration::Continue { .. } => {}
     }
 }
 
@@ -424,6 +422,8 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
         TypedExpressionVariant::WhileLoop {
             body, condition, ..
         } => handle_while_loop(body, condition, tokens),
+        TypedExpressionVariant::Break => (),
+        TypedExpressionVariant::Continue => (),
     }
 }
 
