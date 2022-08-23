@@ -83,7 +83,7 @@ impl Format for IfCondition {
                 eq_token,
                 rhs,
             } => {
-                write!(formatted_code, " {} ", let_token.span().as_str())?;
+                write!(formatted_code, "{} ", let_token.span().as_str())?;
                 lhs.format(formatted_code, formatter)?;
                 write!(formatted_code, " {} ", eq_token.span().as_str())?;
                 rhs.format(formatted_code, formatter)?;
