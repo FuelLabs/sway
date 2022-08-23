@@ -161,6 +161,8 @@ pub enum ExpressionKind {
     /// A control flow element which loops continually until some boolean expression evaluates as
     /// `false`.
     WhileLoop(WhileLoopExpression),
+    Break,
+    Continue,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
