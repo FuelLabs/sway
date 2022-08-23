@@ -379,7 +379,7 @@ impl TypedAstNode {
                                 name,
                                 type_info,
                                 initializer,
-                                ..
+                                type_info_span,
                             } in fields
                             {
                                 let type_id = check!(
@@ -404,6 +404,7 @@ impl TypedAstNode {
                                 fields_buf.push(TypedStorageField::new(
                                     name,
                                     type_id,
+                                    type_info_span,
                                     initializer,
                                     span.clone(),
                                 ));

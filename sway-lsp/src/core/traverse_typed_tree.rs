@@ -176,6 +176,13 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                     token.type_def = Some(TypeDefinition::TypeId(field.type_id));
                 }
 
+                if let Some(mut token) =
+                    tokens.get_mut(&to_ident_key(&Ident::new(field.type_span.clone())))
+                {
+                    token.typed = Some(TypedAstToken::TypedStorageField(field.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(field.type_id));
+                }
+
                 handle_expression(&field.initializer, tokens);
             }
         }
