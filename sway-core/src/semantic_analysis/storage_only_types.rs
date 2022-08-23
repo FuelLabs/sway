@@ -108,6 +108,8 @@ fn expr_validate(expr: &TypedExpression) -> CompileResult<()> {
                 errors
             );
         }
+        TypedExpressionVariant::Break => (),
+        TypedExpressionVariant::Continue => (),
     }
     ok((), warnings, errors)
 }
@@ -230,9 +232,7 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
         }
         TypedDeclaration::GenericTypeForFunctionScope { .. }
         | TypedDeclaration::ErrorRecovery
-        | TypedDeclaration::StorageReassignment(_)
-        | TypedDeclaration::Break { .. }
-        | TypedDeclaration::Continue { .. } => {}
+        | TypedDeclaration::StorageReassignment(_) => {}
     }
     ok((), warnings, errors)
 }

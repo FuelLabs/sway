@@ -1,7 +1,7 @@
 use crate::{
     fmt::*,
     utils::{
-        comments::{ByteSpan, LeafSpans},
+        byte_span::{ByteSpan, LeafSpans},
         shape::LineStyle,
     },
 };

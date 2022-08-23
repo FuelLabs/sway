@@ -815,7 +815,7 @@ fn item_storage_to_storage_declaration(
         .fields
         .into_inner()
         .into_iter()
-        .map(|storage_field| storage_field_to_storage_field(ec, storage_field))
+        .map(|storage_field| storage_field_to_storage_field(ec, storage_field.value))
         .collect::<Result<_, _>>()?;
 
     // Make sure each storage field is declared once
@@ -1914,25 +1914,11 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             return Err(ec.error(error));
         }
         Expr::Break { .. } => Expression {
-            kind: ExpressionKind::CodeBlock(CodeBlock {
-                contents: vec![AstNode {
-                    content: AstNodeContent::Declaration(Declaration::Break { span: span.clone() }),
-                    span: span.clone(),
-                }],
-                whole_block_span: span.clone(),
-            }),
+            kind: ExpressionKind::Break,
             span,
         },
         Expr::Continue { .. } => Expression {
-            kind: ExpressionKind::CodeBlock(CodeBlock {
-                contents: vec![AstNode {
-                    content: AstNodeContent::Declaration(Declaration::Continue {
-                        span: span.clone(),
-                    }),
-                    span: span.clone(),
-                }],
-                whole_block_span: span.clone(),
-            }),
+            kind: ExpressionKind::Continue,
             span,
         },
     };

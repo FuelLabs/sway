@@ -202,6 +202,8 @@ impl TypedImplTrait {
                 | TypedExpressionVariant::VariableExpression { .. }
                 | TypedExpressionVariant::FunctionParameter
                 | TypedExpressionVariant::AsmExpression { .. }
+                | TypedExpressionVariant::Break
+                | TypedExpressionVariant::Continue
                 | TypedExpressionVariant::StorageAccess(_)
                 | TypedExpressionVariant::AbiName(_) => false,
                 TypedExpressionVariant::FunctionApplication { arguments, .. } => arguments
@@ -282,9 +284,7 @@ impl TypedImplTrait {
                 | TypedDeclaration::GenericTypeForFunctionScope { .. }
                 | TypedDeclaration::ErrorRecovery
                 | TypedDeclaration::StorageDeclaration(_)
-                | TypedDeclaration::StorageReassignment(_)
-                | TypedDeclaration::Break { .. }
-                | TypedDeclaration::Continue { .. } => false,
+                | TypedDeclaration::StorageReassignment(_) => false,
             }
         }
         fn codeblock_contains_get_storage_index(cb: &semantic_analysis::TypedCodeBlock) -> bool {

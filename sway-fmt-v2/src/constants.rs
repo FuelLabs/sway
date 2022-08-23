@@ -57,3 +57,7 @@ pub(crate) const INDENT_BUFFER: &str =
 // 8096 is close enough to infinite according to `rustfmt`.
 pub(crate) const INFINITE_SHAPE_WIDTH: usize = 8096;
 pub(crate) const HARD_TAB: char = '\t';
+
+/// Default max number of newlines allowed in between statements before collapsing them to
+/// threshold
+pub const DEFAULT_NEWLINE_THRESHOLD: usize = 1;
