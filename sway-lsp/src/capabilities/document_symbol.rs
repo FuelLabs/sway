@@ -53,8 +53,9 @@ fn parsed_to_symbol_kind(ast_token: &AstToken) -> SymbolKind {
                 Declaration::ImplTrait { .. } => SymbolKind::INTERFACE,
                 Declaration::AbiDeclaration(_) => SymbolKind::INTERFACE,
                 // currently we return `variable` type as default
-                Declaration::ImplSelf { .. }
-                | Declaration::StorageDeclaration(_) => SymbolKind::VARIABLE,
+                Declaration::ImplSelf { .. } | Declaration::StorageDeclaration(_) => {
+                    SymbolKind::VARIABLE
+                }
             }
         }
         AstToken::Expression(exp) => {
@@ -96,8 +97,9 @@ fn typed_to_symbol_kind(typed_ast_token: &TypedAstToken) -> SymbolKind {
                 TypedDeclaration::AbiDeclaration(_) => SymbolKind::INTERFACE,
                 TypedDeclaration::GenericTypeForFunctionScope { .. } => SymbolKind::TYPE_PARAMETER,
                 // currently we return `variable` type as default
-                TypedDeclaration::ErrorRecovery
-                | TypedDeclaration::StorageDeclaration(_) => SymbolKind::VARIABLE,
+                TypedDeclaration::ErrorRecovery | TypedDeclaration::StorageDeclaration(_) => {
+                    SymbolKind::VARIABLE
+                }
             }
         }
         TypedAstToken::TypedExpression(exp) => {

@@ -248,8 +248,7 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
                 );
             }
         }
-        TypedDeclaration::GenericTypeForFunctionScope { .. }
-        | TypedDeclaration::ErrorRecovery => {}
+        TypedDeclaration::GenericTypeForFunctionScope { .. } | TypedDeclaration::ErrorRecovery => {}
     }
     ok((), warnings, errors)
 }
