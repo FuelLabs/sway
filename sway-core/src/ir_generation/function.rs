@@ -149,18 +149,6 @@ impl FnCompiler {
                             create_enum_aggregate(context, ted.variants).map(|_| ())?;
                             Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
                         }
-                        TypedDeclaration::Reassignment(tr) => {
-                            self.compile_reassignment(context, md_mgr, tr, span_md_idx)
-                        }
-                        TypedDeclaration::StorageReassignment(tr) => self
-                            .compile_storage_reassignment(
-                                context,
-                                md_mgr,
-                                &tr.fields,
-                                &tr.ix,
-                                &tr.rhs,
-                                span_md_idx,
-                            ),
                         TypedDeclaration::ImplTrait(TypedImplTrait { span, .. }) => {
                             // XXX What if we ignore the trait implementation???  Potentially since
                             // we currently inline everything and below we 'recreate' the functions
@@ -382,6 +370,18 @@ impl FnCompiler {
                     span: ast_expr.span,
                 }),
             },
+            TypedExpressionVariant::Reassignment(reassignment) => {
+                self.compile_reassignment(context, md_mgr, *reassignment, span_md_idx)
+            }
+            TypedExpressionVariant::StorageReassignment(storage_reassignment) => self
+                .compile_storage_reassignment(
+                    context,
+                    md_mgr,
+                    &storage_reassignment.fields,
+                    &storage_reassignment.ix,
+                    &storage_reassignment.rhs,
+                    span_md_idx,
+                ),
         }
     }
 
