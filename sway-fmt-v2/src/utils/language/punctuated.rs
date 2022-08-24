@@ -143,6 +143,7 @@ impl Format for TypeField {
             self.colon_token.span().as_str(),
         )?;
         self.ty.format(formatted_code, formatter)?;
+
         Ok(())
     }
 }

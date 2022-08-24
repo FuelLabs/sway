@@ -182,6 +182,11 @@ impl Format for Expr {
                 CodeBlockContents::close_curly_brace(formatted_code, formatter)?;
             }
             Self::FuncApp { func, args } => {
+                let prev_state = formatter.shape.code_line;
+                formatter
+                    .shape
+                    .code_line
+                    .update_line_style(LineStyle::Normal);
                 // don't indent unless on new line
                 if formatted_code.ends_with('\n') {
                     write!(
@@ -194,6 +199,7 @@ impl Format for Expr {
                 Self::open_parenthesis(formatted_code, formatter)?;
                 args.get().format(formatted_code, formatter)?;
                 Self::close_parenthesis(formatted_code, formatter)?;
+                formatter.shape.update_line_settings(prev_state);
             }
             Self::Index { target, arg } => {
                 target.format(formatted_code, formatter)?;
