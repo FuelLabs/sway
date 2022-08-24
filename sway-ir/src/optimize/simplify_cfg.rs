@@ -134,9 +134,7 @@ fn merge_blocks(
                     to_block.remove_instruction(context, phi_val);
                 }
             }
-            _otherwise => {
-                return Err(IrError::InvalidPhi);
-            }
+            _otherwise => return Err(IrError::InvalidPhi),
         };
 
         // Re-get the block contents mutably.

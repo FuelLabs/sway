@@ -114,6 +114,11 @@ impl Value {
         }
     }
 
+    /// Replace this value with another one, in-place.
+    pub fn replace(&self, context: &mut Context, other: ValueDatum) {
+        context.values[self.0].value = other;
+    }
+
     pub fn get_instruction_mut<'a>(&self, context: &'a mut Context) -> Option<&'a mut Instruction> {
         if let ValueDatum::Instruction(instruction) =
             &mut context.values.get_mut(self.0).unwrap().value

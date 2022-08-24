@@ -62,17 +62,14 @@ fn fold_cbr(context: &mut Context, function: &Function) -> Result<bool, IrError>
                 }
                 _ => None,
             },
-        );
+        )
+        .transpose()?;
 
-    match candidate {
-        Some(res) => {
-            let (cbr, from_block, dest, no_more_dest) = res?;
-            no_more_dest.remove_phi_val_coming_from(context, &from_block);
-            context.values[cbr.0].value = ValueDatum::Instruction(Instruction::Branch(dest));
-            Ok(true)
-        }
-        None => Ok(false),
-    }
+    candidate.map_or(Ok(false), |(cbr, from_block, dest, no_more_dest)| {
+        no_more_dest.remove_phi_val_coming_from(context, &from_block);
+        cbr.replace(context, ValueDatum::Instruction(Instruction::Branch(dest)));
+        Ok(true)
+    })
 }
 
 fn fold_cmp(context: &mut Context, function: &Function) -> bool {
