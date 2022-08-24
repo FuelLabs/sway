@@ -159,7 +159,7 @@ impl Constant {
                 (ConstantValue::String(l0), ConstantValue::String(r0)) => l0 == r0,
                 (ConstantValue::Array(l0), ConstantValue::Array(r0))
                 | (ConstantValue::Struct(l0), ConstantValue::Struct(r0)) => {
-                    l0.iter().zip(r0.iter()).all(|(l0, r0)| l0.eq(context, &r0))
+                    l0.iter().zip(r0.iter()).all(|(l0, r0)| l0.eq(context, r0))
                 }
                 _ => false,
             }

@@ -61,8 +61,7 @@ fn fold_cbr(context: &mut Context, function: &Function) -> Result<bool, IrError>
     match candidate {
         Some(res) => {
             let (cbr, dest) = res?;
-            context.values[cbr.0].value =
-                ValueDatum::Instruction(Instruction::Branch(dest.clone()));
+            context.values[cbr.0].value = ValueDatum::Instruction(Instruction::Branch(*dest));
             Ok(true)
         }
         None => Ok(false),
