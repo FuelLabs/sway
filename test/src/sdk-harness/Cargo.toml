@@ -24,3 +24,6 @@ name = "integration_tests"
 path = "test_projects/harness.rs"
 
 [workspace]
+
+[patch.crates-io]
+fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/bump-fuel-core"}
