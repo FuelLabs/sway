@@ -11,6 +11,7 @@ use crate::{
     function::Function,
     instruction::Instruction,
     value::{Value, ValueContent, ValueDatum},
+    Predicate,
 };
 
 /// Find constant expressions which can be reduced to fewer opterations.
@@ -22,10 +23,84 @@ pub fn combine_constants(context: &mut Context, function: &Function) -> Result<b
             continue;
         }
 
+        if fold_cmp(context, function) {
+            modified = true;
+            continue;
+        }
+
+        if fold_cbr(context, function)? {
+            modified = true;
+            continue;
+        }
+
         // Other passes here... always continue to the top if pass returns true.
         break;
     }
+
     Ok(modified)
+}
+
+fn fold_cbr(context: &mut Context, function: &Function) -> Result<bool, IrError> {
+    let candidate = function
+        .instruction_iter(context)
+        .find_map(|(_, inst_val)| match &context.values[inst_val.0].value {
+            ValueDatum::Instruction(Instruction::ConditionalBranch {
+                cond_value,
+                true_block,
+                false_block,
+            }) if cond_value.is_constant(context) => {
+                match cond_value.get_constant(context).unwrap().value {
+                    ConstantValue::Bool(true) => Some(Ok((inst_val, true_block))),
+                    ConstantValue::Bool(false) => Some(Ok((inst_val, false_block))),
+                    _ => Some(Err(IrError::VerifyConditionExprNotABool)),
+                }
+            }
+            _ => None,
+        });
+
+    match candidate {
+        Some(res) => {
+            let (cbr, dest) = res?;
+            context.values[cbr.0].value =
+                ValueDatum::Instruction(Instruction::Branch(dest.clone()));
+            Ok(true)
+        }
+        None => Ok(false),
+    }
+}
+
+fn fold_cmp(context: &mut Context, function: &Function) -> bool {
+    let candidate = function
+        .instruction_iter(context)
+        .find_map(
+            |(block, inst_val)| match &context.values[inst_val.0].value {
+                ValueDatum::Instruction(Instruction::Cmp(pred, val1, val2))
+                    if val1.is_constant(context) && val2.is_constant(context) =>
+                {
+                    let val1 = val1.get_constant(context).unwrap();
+                    let val2 = val2.get_constant(context).unwrap();
+                    match pred {
+                        Predicate::Equal => {
+                            if val1.eq(context, val2) {
+                                Some((inst_val, block, true))
+                            } else {
+                                Some((inst_val, block, false))
+                            }
+                        }
+                    }
+                }
+                _ => None,
+            },
+        );
+
+    candidate.map_or(false, |(inst_val, block, cn_replace)| {
+        let new_val = Value::new_constant(context, Constant::new_bool(cn_replace));
+        // Replace uses of this `cmp` instruction with a constant
+        function.replace_value(context, inst_val, new_val, None);
+        // Remove the `cmp` instruction.
+        block.remove_instruction(context, inst_val);
+        true
+    })
 }
 
 fn combine_const_insert_values(context: &mut Context, function: &Function) -> bool {

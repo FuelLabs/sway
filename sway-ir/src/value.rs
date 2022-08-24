@@ -124,6 +124,15 @@ impl Value {
         }
     }
 
+    /// Get reference to the Constant inside this value, if it's one.
+    pub fn get_constant<'a>(&self, context: &'a Context) -> Option<&'a Constant> {
+        if let ValueDatum::Constant(cn) = &context.values.get(self.0).unwrap().value {
+            Some(cn)
+        } else {
+            None
+        }
+    }
+
     /// Get the type for this value, if found.
     ///
     /// Arguments and constants always have a type, but only some instructions do.
