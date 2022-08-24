@@ -18,62 +18,65 @@ where
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        match formatter.shape.code_line.line_style {
-            LineStyle::Normal => {
-                let value_pairs = &self.value_separator_pairs;
-                for (type_field, punctuation) in value_pairs.iter() {
-                    type_field.format(formatted_code, formatter)?;
-                    punctuation.format(formatted_code, formatter)?;
-                    write!(formatted_code, " ")?;
-                }
-
-                if let Some(final_value) = &self.final_value_opt {
-                    final_value.format(formatted_code, formatter)?;
-                }
-            }
-            LineStyle::Inline => {
-                write!(formatted_code, " ")?;
-                let mut value_pairs_iter = self.value_separator_pairs.iter().peekable();
-                for (type_field, punctuation) in value_pairs_iter.clone() {
-                    type_field.format(formatted_code, formatter)?;
-                    punctuation.format(formatted_code, formatter)?;
-
-                    if value_pairs_iter.peek().is_some() {
+        if self.value_separator_pairs.is_empty() && self.final_value_opt.is_none() {
+        } else {
+            match formatter.shape.code_line.line_style {
+                LineStyle::Normal => {
+                    let value_pairs = &self.value_separator_pairs;
+                    for (type_field, punctuation) in value_pairs.iter() {
+                        type_field.format(formatted_code, formatter)?;
+                        punctuation.format(formatted_code, formatter)?;
                         write!(formatted_code, " ")?;
                     }
-                }
-                if let Some(final_value) = &self.final_value_opt {
-                    final_value.format(formatted_code, formatter)?;
-                } else {
-                    formatted_code.pop();
-                    formatted_code.pop();
-                }
-                write!(formatted_code, " ")?;
-            }
-            LineStyle::Multiline => {
-                writeln!(formatted_code)?;
-                let mut value_pairs_iter = self.value_separator_pairs.iter().peekable();
-                for (type_field, comma_token) in value_pairs_iter.clone() {
-                    write!(
-                        formatted_code,
-                        "{}",
-                        &formatter.shape.indent.to_string(&formatter.config)?
-                    )?;
-                    type_field.format(formatted_code, formatter)?;
 
-                    if value_pairs_iter.peek().is_some() {
-                        comma_token.format(formatted_code, formatter)?;
-                        writeln!(formatted_code)?;
+                    if let Some(final_value) = &self.final_value_opt {
+                        final_value.format(formatted_code, formatter)?;
                     }
                 }
-                if let Some(final_value) = &self.final_value_opt {
-                    write!(
-                        formatted_code,
-                        "{}",
-                        &formatter.shape.indent.to_string(&formatter.config)?
-                    )?;
-                    final_value.format(formatted_code, formatter)?;
-                    writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
+                LineStyle::Inline => {
+                    write!(formatted_code, " ")?;
+                    let mut value_pairs_iter = self.value_separator_pairs.iter().peekable();
+                    for (type_field, punctuation) in value_pairs_iter.clone() {
+                        type_field.format(formatted_code, formatter)?;
+                        punctuation.format(formatted_code, formatter)?;
+
+                        if value_pairs_iter.peek().is_some() {
+                            write!(formatted_code, " ")?;
+                        }
+                    }
+                    if let Some(final_value) = &self.final_value_opt {
+                        final_value.format(formatted_code, formatter)?;
+                    } else {
+                        formatted_code.pop();
+                        formatted_code.pop();
+                    }
+                    write!(formatted_code, " ")?;
+                }
+                LineStyle::Multiline => {
+                    writeln!(formatted_code)?;
+                    let mut value_pairs_iter = self.value_separator_pairs.iter().peekable();
+                    for (type_field, comma_token) in value_pairs_iter.clone() {
+                        write!(
+                            formatted_code,
+                            "{}",
+                            &formatter.shape.indent.to_string(&formatter.config)?
+                        )?;
+                        type_field.format(formatted_code, formatter)?;
+
+                        if value_pairs_iter.peek().is_some() {
+                            comma_token.format(formatted_code, formatter)?;
+                            writeln!(formatted_code)?;
+                        }
+                    }
+                    if let Some(final_value) = &self.final_value_opt {
+                        write!(
+                            formatted_code,
+                            "{}",
+                            &formatter.shape.indent.to_string(&formatter.config)?
+                        )?;
+                        final_value.format(formatted_code, formatter)?;
+                        writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
+                    }
                 }
             }
         }
@@ -150,6 +153,11 @@ impl Format for StorageField {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        let prev_state = formatter.shape.code_line;
+        formatter
+            .shape
+            .code_line
+            .update_line_style(LineStyle::Normal);
         write!(
             formatted_code,
             "{}{} ",
@@ -158,7 +166,10 @@ impl Format for StorageField {
         )?;
         self.ty.format(formatted_code, formatter)?;
         write!(formatted_code, " {} ", self.eq_token.span().as_str())?;
+
+        formatter.shape.update_line_settings(prev_state);
         self.initializer.format(formatted_code, formatter)?;
+
         Ok(())
     }
 }

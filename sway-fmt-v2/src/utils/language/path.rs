@@ -17,8 +17,8 @@ impl Format for PathExpr {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        if let Some((root, double_colon_token)) = &self.root_opt {
-            if let Some(root) = &root {
+        if let Some((qualified_path_root, double_colon_token)) = &self.root_opt {
+            if let Some(root) = &qualified_path_root {
                 open_angle_bracket(formatted_code)?;
                 root.clone()
                     .into_inner()
@@ -28,9 +28,9 @@ impl Format for PathExpr {
             write!(formatted_code, "{}", double_colon_token.ident().as_str())?;
         }
         self.prefix.format(formatted_code, formatter)?;
-        for suffix in self.suffix.iter() {
-            write!(formatted_code, "{}", suffix.0.span().as_str())?;
-            suffix.1.format(formatted_code, formatter)?;
+        for (double_colon_token, path_expr_segment) in self.suffix.iter() {
+            write!(formatted_code, "{}", double_colon_token.span().as_str())?;
+            path_expr_segment.format(formatted_code, formatter)?;
         }
 
         Ok(())
@@ -50,9 +50,9 @@ impl Format for PathExprSegment {
         // name
         write!(formatted_code, "{}", self.name.span().as_str())?;
         // generics `::<args>`
-        if let Some(generic_args) = &self.generics_opt {
-            write!(formatted_code, "{}", generic_args.0.span().as_str())?;
-            generic_args.1.format(formatted_code, formatter)?;
+        if let Some((double_colon_token, generic_args)) = &self.generics_opt {
+            write!(formatted_code, "{}", double_colon_token.span().as_str())?;
+            generic_args.format(formatted_code, formatter)?;
         }
 
         Ok(())
@@ -66,9 +66,9 @@ impl Format for QualifiedPathRoot {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         self.ty.format(formatted_code, formatter)?;
-        if let Some(as_trait) = &self.as_trait {
-            write!(formatted_code, " {} ", as_trait.0.span().as_str())?;
-            as_trait.1.format(formatted_code, formatter)?;
+        if let Some((as_token, path_type)) = &self.as_trait {
+            write!(formatted_code, " {} ", as_token.span().as_str())?;
+            path_type.format(formatted_code, formatter)?;
         }
 
         Ok(())
@@ -92,9 +92,9 @@ impl Format for PathType {
             write!(formatted_code, "{}", root_opt.1.span().as_str())?;
         }
         self.prefix.format(formatted_code, formatter)?;
-        for suffix in self.suffix.iter() {
-            write!(formatted_code, "{}", suffix.0.span().as_str())?;
-            suffix.1.format(formatted_code, formatter)?;
+        for (double_colon_token, path_type_segment) in self.suffix.iter() {
+            write!(formatted_code, "{}", double_colon_token.span().as_str())?;
+            path_type_segment.format(formatted_code, formatter)?;
         }
 
         Ok(())
@@ -114,11 +114,11 @@ impl Format for PathTypeSegment {
         // name
         write!(formatted_code, "{}", self.name.span().as_str())?;
         // generics `::<args>`
-        if let Some(generic_args) = &self.generics_opt {
-            if let Some(double_colon) = &generic_args.0 {
-                write!(formatted_code, "{}", double_colon.span().as_str())?;
+        if let Some((double_colon_opt, generic_args)) = &self.generics_opt {
+            if let Some(double_colon_token) = &double_colon_opt {
+                write!(formatted_code, "{}", double_colon_token.span().as_str())?;
             }
-            generic_args.1.format(formatted_code, formatter)?;
+            generic_args.format(formatted_code, formatter)?;
         }
 
         Ok(())
