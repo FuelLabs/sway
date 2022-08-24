@@ -79,11 +79,11 @@ macro_rules! fmt_test_inner {
 }
 }
 
-fmt_test!(  long_fn_name            "pub fn hello_this_is_a_really_long_fn_name_wow_so_long_ridiculous(\n    self,\n    foo: Foo,\n    bar: Bar,\n    baz: Baz,\n) {\n}",
+fmt_test!(  long_fn_name            "pub fn hello_this_is_a_really_long_fn_name_wow_so_long_ridiculous(\n    self,\n    foo: Foo,\n    bar: Bar,\n    baz: Baz,\n) {}",
             intermediate_whitespace "pub fn hello_this_is_a_really_long_fn_name_wow_so_long_ridiculous    ( self   , foo   : Foo    , bar : Bar  ,    baz:    Baz) {\n    }"
 );
 
-fmt_test!(  long_fn_args            "fn foo(\n    mut self,\n    this_is_a_really_long_variable: Foo,\n    hello_im_really_long: Bar,\n) -> String {\n}",
+fmt_test!(  long_fn_args            "fn foo(\n    mut self,\n    this_is_a_really_long_variable: Foo,\n    hello_im_really_long: Bar,\n) -> String {}",
             intermediate_whitespace "  fn  foo( \n        mut self , \n     this_is_a_really_long_variable : Foo ,\n    hello_im_really_long: Bar , \n ) ->    String { \n }     "
 );
 

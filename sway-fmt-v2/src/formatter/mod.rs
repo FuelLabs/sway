@@ -662,13 +662,14 @@ pub enum Bazz { // Here is a comment
         let sway_code_to_format = r#"contract;
 // This is a comment before a fn
 // This is another comment before a fn
-fn hello_world( baz: /* this is a comment */ u64) { // This is a comment inside the block
+fn hello_world( baz: /* this is a comment */ u64) { let x = 5; // This is a comment inside the block
 }
 "#;
         let correct_sway_code = r#"contract;
 // This is a comment before a fn
 // This is another comment before a fn
-fn hello_world(baz: /* this is a comment */ u64) { // This is a comment inside the block
+fn hello_world(baz: /* this is a comment */ u64) {
+    let x = 5; // This is a comment inside the block
 }
 "#;
 

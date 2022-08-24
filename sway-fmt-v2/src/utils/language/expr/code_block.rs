@@ -15,21 +15,24 @@ impl Format for CodeBlockContents {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        writeln!(formatted_code)?;
-        for statement in self.statements.iter() {
-            statement.format(formatted_code, formatter)?;
-            if !formatted_code.ends_with("\n") {
+        if self.statements.is_empty() && self.final_expr_opt.is_none() {
+        } else {
+            writeln!(formatted_code)?;
+            for statement in self.statements.iter() {
+                statement.format(formatted_code, formatter)?;
+                if !formatted_code.ends_with("\n") {
+                    writeln!(formatted_code)?;
+                }
+            }
+            if let Some(final_expr) = &self.final_expr_opt {
+                write!(
+                    formatted_code,
+                    "{}",
+                    formatter.shape.indent.to_string(&formatter.config)?
+                )?;
+                final_expr.format(formatted_code, formatter)?;
                 writeln!(formatted_code)?;
             }
-        }
-        if let Some(final_expr) = &self.final_expr_opt {
-            write!(
-                formatted_code,
-                "{}",
-                formatter.shape.indent.to_string(&formatter.config)?
-            )?;
-            final_expr.format(formatted_code, formatter)?;
-            writeln!(formatted_code)?;
         }
 
         Ok(())
