@@ -23,12 +23,12 @@ pub fn combine_constants(context: &mut Context, function: &Function) -> Result<b
             continue;
         }
 
-        if fold_cmp(context, function) {
+        if combine_cmp(context, function) {
             modified = true;
             continue;
         }
 
-        if fold_cbr(context, function)? {
+        if combine_cbr(context, function)? {
             modified = true;
             continue;
         }
@@ -40,7 +40,7 @@ pub fn combine_constants(context: &mut Context, function: &Function) -> Result<b
     Ok(modified)
 }
 
-fn fold_cbr(context: &mut Context, function: &Function) -> Result<bool, IrError> {
+fn combine_cbr(context: &mut Context, function: &Function) -> Result<bool, IrError> {
     let candidate = function
         .instruction_iter(context)
         .find_map(
@@ -72,7 +72,7 @@ fn fold_cbr(context: &mut Context, function: &Function) -> Result<bool, IrError>
     })
 }
 
-fn fold_cmp(context: &mut Context, function: &Function) -> bool {
+fn combine_cmp(context: &mut Context, function: &Function) -> bool {
     let candidate = function
         .instruction_iter(context)
         .find_map(
@@ -97,10 +97,11 @@ fn fold_cmp(context: &mut Context, function: &Function) -> bool {
         );
 
     candidate.map_or(false, |(inst_val, block, cn_replace)| {
-        let new_val = Value::new_constant(context, Constant::new_bool(cn_replace));
-        // Replace uses of this `cmp` instruction with a constant
-        function.replace_value(context, inst_val, new_val, None);
-        // Remove the `cmp` instruction.
+        // Replace this `cmp` instruction with a constant.
+        inst_val.replace(
+            context,
+            ValueDatum::Constant(Constant::new_bool(cn_replace)),
+        );
         block.remove_instruction(context, inst_val);
         true
     })
