@@ -421,7 +421,6 @@ pub fn hello(person: String) -> String {
     let greeting = 42;
     greeting.to_string()
 }
-
 fn goodbye() -> usize {
     let farewell: usize = 5;
     farewell

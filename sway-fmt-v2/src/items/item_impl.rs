@@ -49,6 +49,7 @@ impl Format for ItemImpl {
                 formatter.shape.indent.to_string(&formatter.config)?,
             )?;
             item.format(formatted_code, formatter)?;
+            writeln!(formatted_code)?;
         }
         Self::close_curly_brace(formatted_code, formatter)?;
 
