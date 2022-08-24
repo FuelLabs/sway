@@ -93,9 +93,8 @@ impl SemanticTokensBuilder {
     }
 }
 
-static TOKEN_RESULT_COUNTER: AtomicU32 = AtomicU32::new(1);
-
 pub(crate) fn semantic_tokens(tokens_sorted: &[(Span, Token)]) -> SemanticTokens {
+    static TOKEN_RESULT_COUNTER: AtomicU32 = AtomicU32::new(1);
     let id = TOKEN_RESULT_COUNTER
         .fetch_add(1, Ordering::SeqCst)
         .to_string();
