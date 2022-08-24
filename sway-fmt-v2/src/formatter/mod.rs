@@ -6,7 +6,7 @@ pub use crate::{
     config::manifest::Config,
     error::{ConfigError, FormatterError},
 };
-use std::{path::Path, sync::Arc};
+use std::{fmt::Write, path::Path, sync::Arc};
 use sway_core::BuildConfig;
 
 pub(crate) mod shape;
@@ -85,8 +85,8 @@ impl Formatter {
             &mut formatted_code,
             &raw_formatted_code,
         )?;
-        if formatted_code.ends_with('\n') {
-            formatted_code.pop();
+        if !formatted_code.ends_with('\n') {
+            writeln!(formatted_code)?;
         }
 
         Ok(formatted_code)
