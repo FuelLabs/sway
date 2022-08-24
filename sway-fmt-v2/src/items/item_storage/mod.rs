@@ -10,6 +10,9 @@ use std::fmt::Write;
 use sway_ast::{keywords::Token, token::Delimiter, ItemStorage, StorageField};
 use sway_types::Spanned;
 
+#[cfg(test)]
+mod tests;
+
 impl Format for ItemStorage {
     fn format(
         &self,
