@@ -19,12 +19,12 @@ use {
         ExpressionKind, FunctionApplicationExpression, FunctionDeclaration, FunctionParameter,
         IfExpression, ImplSelf, ImplTrait, ImportType, IncludeStatement,
         IntrinsicFunctionExpression, LazyOp, LazyOperatorExpression, Literal, MatchBranch,
-        MatchExpression, MethodApplicationExpression, MethodName, ParseTree, Purity, Reassignment,
-        ReassignmentTarget, ReturnStatement, Scrutinee, StorageAccessExpression,
-        StorageDeclaration, StorageField, StructDeclaration, StructExpression,
-        StructExpressionField, StructField, StructScrutineeField, SubfieldExpression, Supertrait,
-        TraitDeclaration, TraitFn, TreeType, TupleIndexExpression, TypeInfo, UseStatement,
-        VariableDeclaration, Visibility,
+        MatchExpression, MethodApplicationExpression, MethodName, ParseTree, Purity,
+        ReassignmentExpression, ReassignmentTarget, ReturnStatement, Scrutinee,
+        StorageAccessExpression, StorageDeclaration, StorageField, StructDeclaration,
+        StructExpression, StructExpressionField, StructField, StructScrutineeField,
+        SubfieldExpression, Supertrait, TraitDeclaration, TraitFn, TreeType, TupleIndexExpression,
+        TypeInfo, UseStatement, VariableDeclaration, Visibility,
     },
     std::{
         collections::HashMap,
@@ -118,8 +118,6 @@ pub enum ConvertParseTreeError {
     ShrNotImplemented { span: Span },
     #[error("bitwise xor expressions are not implemented")]
     BitXorNotImplemented { span: Span },
-    #[error("reassignment expressions outside of blocks are not implemented")]
-    ReassignmentOutsideOfBlock { span: Span },
     #[error("integer literals in this position cannot have a type suffix")]
     IntTySuffixNotSupported { span: Span },
     #[error("int literal out of range")]
@@ -206,7 +204,6 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::ShlNotImplemented { span } => span.clone(),
             ConvertParseTreeError::ShrNotImplemented { span } => span.clone(),
             ConvertParseTreeError::BitXorNotImplemented { span } => span.clone(),
-            ConvertParseTreeError::ReassignmentOutsideOfBlock { span } => span.clone(),
             ConvertParseTreeError::IntTySuffixNotSupported { span } => span.clone(),
             ConvertParseTreeError::IntLiteralOutOfRange { span } => span.clone(),
             ConvertParseTreeError::IntLiteralExpected { span } => span.clone(),
@@ -1163,41 +1160,6 @@ fn expr_to_ast_node(
                 span,
             }
         }
-        Expr::Reassignment {
-            assignable,
-            expr,
-            reassignment_op:
-                ReassignmentOp {
-                    variant: op_variant,
-                    span: op_span,
-                },
-        } => match op_variant {
-            ReassignmentOpVariant::Equals => AstNode {
-                content: AstNodeContent::Declaration(Declaration::Reassignment(Reassignment {
-                    lhs: assignable_to_reassignment_target(ec, assignable)?,
-                    rhs: expr_to_expression(ec, *expr)?,
-                    span: span.clone(),
-                })),
-                span,
-            },
-            op_variant => {
-                let lhs = assignable_to_reassignment_target(ec, assignable.clone())?;
-                let rhs = binary_op_call(
-                    op_variant.core_name(),
-                    op_span,
-                    span.clone(),
-                    assignable_to_expression(ec, assignable)?,
-                    expr_to_expression(ec, *expr)?,
-                )?;
-                let content =
-                    AstNodeContent::Declaration(Declaration::Reassignment(Reassignment {
-                        lhs,
-                        rhs,
-                        span: span.clone(),
-                    }));
-                AstNode { content, span }
-            }
-        },
         expr => {
             let expression = expr_to_expression(ec, expr)?;
             if !is_statement {
@@ -1909,10 +1871,37 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             }),
             span,
         },
-        Expr::Reassignment { .. } => {
-            let error = ConvertParseTreeError::ReassignmentOutsideOfBlock { span };
-            return Err(ec.error(error));
-        }
+        Expr::Reassignment {
+            assignable,
+            expr,
+            reassignment_op:
+                ReassignmentOp {
+                    variant: op_variant,
+                    span: op_span,
+                },
+        } => match op_variant {
+            ReassignmentOpVariant::Equals => Expression {
+                kind: ExpressionKind::Reassignment(ReassignmentExpression {
+                    lhs: assignable_to_reassignment_target(ec, assignable)?,
+                    rhs: Box::new(expr_to_expression(ec, *expr)?),
+                }),
+                span,
+            },
+            op_variant => {
+                let lhs = assignable_to_reassignment_target(ec, assignable.clone())?;
+                let rhs = Box::new(binary_op_call(
+                    op_variant.core_name(),
+                    op_span,
+                    span.clone(),
+                    assignable_to_expression(ec, assignable)?,
+                    expr_to_expression(ec, *expr)?,
+                )?);
+                Expression {
+                    kind: ExpressionKind::Reassignment(ReassignmentExpression { lhs, rhs }),
+                    span,
+                }
+            }
+        },
         Expr::Break { .. } => Expression {
             kind: ExpressionKind::Break,
             span,

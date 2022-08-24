@@ -125,11 +125,6 @@ fn format_fn_sig(
     formatted_code: &mut FormattedCode,
     formatter: &mut Formatter,
 ) -> Result<(), FormatterError> {
-    write!(
-        formatted_code,
-        "{}",
-        formatter.shape.indent.to_string(&formatter.config)?,
-    )?;
     // `pub `
     if let Some(visibility_token) = &fn_sig.visibility {
         write!(formatted_code, "{} ", visibility_token.span().as_str())?;

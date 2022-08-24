@@ -166,23 +166,6 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                 );
             }
         }
-        Declaration::Reassignment(reassignment) => {
-            handle_expression(&reassignment.rhs, tokens);
-
-            match &reassignment.lhs {
-                ReassignmentTarget::VariableExpression(exp) => {
-                    handle_expression(exp, tokens);
-                }
-                ReassignmentTarget::StorageField(idents) => {
-                    for ident in idents {
-                        tokens.insert(
-                            to_ident_key(ident),
-                            Token::from_parsed(AstToken::Reassignment(reassignment.clone())),
-                        );
-                    }
-                }
-            }
-        }
         Declaration::ImplTrait(impl_trait) => {
             for ident in &impl_trait.trait_name.prefixes {
                 tokens.insert(
@@ -522,6 +505,23 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
         }) => handle_while_loop(body, condition, tokens),
         // TODO: collect these tokens as keywords once the compiler returns the span
         ExpressionKind::Break | ExpressionKind::Continue => (),
+        ExpressionKind::Reassignment(reassignment) => {
+            handle_expression(&reassignment.rhs, tokens);
+
+            match &reassignment.lhs {
+                ReassignmentTarget::VariableExpression(exp) => {
+                    handle_expression(exp, tokens);
+                }
+                ReassignmentTarget::StorageField(idents) => {
+                    for ident in idents {
+                        tokens.insert(
+                            to_ident_key(ident),
+                            Token::from_parsed(AstToken::Reassignment(reassignment.clone())),
+                        );
+                    }
+                }
+            }
+        }
     }
 }
 

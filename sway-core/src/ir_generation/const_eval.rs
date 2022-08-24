@@ -330,6 +330,8 @@ fn const_eval_typed_expr(
         TypedExpressionVariant::ArrayIndex { .. }
         | TypedExpressionVariant::IntrinsicFunction(_)
         | TypedExpressionVariant::CodeBlock(_)
+        | TypedExpressionVariant::Reassignment(_)
+        | TypedExpressionVariant::StorageReassignment(_)
         | TypedExpressionVariant::FunctionParameter
         | TypedExpressionVariant::IfExp { .. }
         | TypedExpressionVariant::AsmExpression { .. }

@@ -38,7 +38,7 @@ impl Format for ItemStorage {
                     .value_separator_pairs
                     .iter()
                     // TODO: Handle annotations instead of stripping them
-                    .map(|pair| (&pair.0.value, &pair.1))
+                    .map(|(storage_field, comma_token)| (&storage_field.value, comma_token))
                     .collect::<Vec<_>>();
                 // In first iteration we are going to be collecting the lengths of the struct fields.
                 let field_length: Vec<usize> = value_pairs

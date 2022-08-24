@@ -6,8 +6,8 @@ use sway_core::{
         TypedReassignment, TypedStorageField, TypedStructField, TypedTraitFn,
     },
     type_system::TypeId,
-    Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter, Reassignment,
-    StorageField, StructField, TraitFn,
+    Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
+    ReassignmentExpression, StorageField, StructField, TraitFn,
 };
 use sway_types::{Ident, Span};
 
@@ -45,7 +45,7 @@ pub enum AstToken {
     StructField(StructField),
     EnumVariant(EnumVariant),
     TraitFn(TraitFn),
-    Reassignment(Reassignment),
+    Reassignment(ReassignmentExpression),
     StorageField(StorageField),
 }
 
