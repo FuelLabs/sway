@@ -110,3 +110,37 @@ fmt_test!(  non_self_fn
         }
 }"
 );
+
+fmt_test!(  fn_with_nested_items
+"fn returns_msg_sender(expected_id: ContractId) -> bool {
+    let result: Result<Identity, AuthError> = msg_sender();
+    let mut ret = false;
+    if result.is_err() {
+        ret = false;
+    }
+    let unwrapped = result.unwrap();
+    match unwrapped {
+        Identity::ContractId(v) => {
+            ret = true
+        }
+        _ => {
+            ret = false
+        }
+    }
+    ret
+}\n",
+            intermediate_whitespace
+"fn returns_msg_sender(expected_id: ContractId) -> bool {
+    let result: Result<Identity, AuthError> = msg_sender();
+    let mut ret = false;
+    if result.is_err() {
+        ret = false;
+    }
+    let unwrapped = result.unwrap();
+    match unwrapped {
+        Identity::ContractId(v) => {ret = true}
+        _ => {ret = false}
+    }
+    ret
+}"
+);

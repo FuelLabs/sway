@@ -18,6 +18,9 @@ impl Format for CodeBlockContents {
         writeln!(formatted_code)?;
         for statement in self.statements.iter() {
             statement.format(formatted_code, formatter)?;
+            if !formatted_code.ends_with("\n") {
+                writeln!(formatted_code)?;
+            }
         }
         if let Some(final_expr) = &self.final_expr_opt {
             write!(

@@ -10,6 +10,9 @@ use std::fmt::Write;
 use sway_ast::{token::Delimiter, ItemImpl};
 use sway_types::Spanned;
 
+#[cfg(test)]
+mod tests;
+
 impl Format for ItemImpl {
     fn format(
         &self,

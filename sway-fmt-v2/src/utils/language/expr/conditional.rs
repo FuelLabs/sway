@@ -35,6 +35,8 @@ impl Format for IfExpr {
                     Self::close_curly_brace(formatted_code, formatter)?;
                 }
             }
+        } else {
+            writeln!(formatted_code)?;
         }
 
         Ok(())
