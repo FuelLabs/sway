@@ -7,10 +7,13 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{token::Delimiter, ItemStruct};
+use sway_ast::{token::Delimiter, ItemEnum};
 use sway_types::Spanned;
 
-impl Format for ItemStruct {
+#[cfg(test)]
+mod tests;
+
+impl Format for ItemEnum {
     fn format(
         &self,
         formatted_code: &mut FormattedCode,
@@ -24,12 +27,12 @@ impl Format for ItemStruct {
         if let Some(visibility) = &self.visibility {
             write!(formatted_code, "{} ", visibility.span().as_str())?;
         }
-        // Add struct token and name
+        // Add enum token and name
         write!(
             formatted_code,
             "{} {}",
-            self.struct_token.span().as_str(),
-            self.name.as_str(),
+            self.enum_token.span().as_str(),
+            self.name.as_str()
         )?;
         // Format `GenericParams`, if any
         if let Some(generics) = &self.generics {
@@ -39,7 +42,7 @@ impl Format for ItemStruct {
         let fields = self.fields.get();
 
         // Handle openning brace
-        Self::open_curly_brace(formatted_code, formatter)?;
+        ItemEnum::open_curly_brace(formatted_code, formatter)?;
         // Determine alignment tactic
         match formatter.config.structures.field_alignment {
             FieldAlignment::AlignFields(enum_variant_align_threshold) => {
@@ -50,13 +53,13 @@ impl Format for ItemStruct {
                     // TODO: Handle annotations instead of stripping them
                     .map(|pair| (&pair.0.value, &pair.1))
                     .collect::<Vec<_>>();
-                // In first iteration we are going to be collecting the lengths of the struct variants.
+                // In first iteration we are going to be collecting the lengths of the enum variants.
                 let variant_length: Vec<usize> = value_pairs
                     .iter()
                     .map(|(type_field, _)| type_field.name.as_str().len())
                     .collect();
 
-                // Find the maximum length in the variant_length vector that is still smaller than struct_field_align_threshold.
+                // Find the maximum length in the variant_length vector that is still smaller than enum_field_align_threshold.
                 let mut max_valid_variant_length = 0;
                 variant_length.iter().for_each(|length| {
                     if *length > max_valid_variant_length && *length < enum_variant_align_threshold
@@ -103,59 +106,56 @@ impl Format for ItemStruct {
                     }
                 }
             }
-            FieldAlignment::Off => {
-                fields.format(formatted_code, formatter)?;
-            }
+            FieldAlignment::Off => fields.format(formatted_code, formatter)?,
         }
         // Handle closing brace
-        Self::close_curly_brace(formatted_code, formatter)?;
+        ItemEnum::close_curly_brace(formatted_code, formatter)?;
         formatter.shape.reset_line_settings();
 
         Ok(())
     }
 }
 
-impl CurlyBrace for ItemStruct {
+impl CurlyBrace for ItemEnum {
     fn open_curly_brace(
         line: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
+        let open_brace = Delimiter::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
-                write!(line, "\n{}", Delimiter::Brace.as_open_char())?;
+                writeln!(line, "\n{}", open_brace)?;
                 formatter.shape.block_indent(&formatter.config);
             }
             _ => {
                 // Add opening brace to the same line
-                write!(line, " {}", Delimiter::Brace.as_open_char())?;
+                write!(line, " {}", open_brace)?;
                 formatter.shape.block_indent(&formatter.config);
             }
         }
 
         Ok(())
     }
-
     fn close_curly_brace(
         line: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         write!(line, "{}", Delimiter::Brace.as_close_char())?;
-        // If shape is becoming left-most alligned or - indent just have the defualt shape
+        // If shape is becoming left-most aligned or - indent just have the defualt shape
         formatter.shape.block_unindent(&formatter.config);
 
         Ok(())
     }
 }
-
-impl LeafSpans for ItemStruct {
+impl LeafSpans for ItemEnum {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         if let Some(visibility) = &self.visibility {
             collected_spans.push(ByteSpan::from(visibility.span()));
         }
-        collected_spans.push(ByteSpan::from(self.struct_token.span()));
+        collected_spans.push(ByteSpan::from(self.enum_token.span()));
         collected_spans.push(ByteSpan::from(self.name.span()));
         if let Some(generics) = &self.generics {
             collected_spans.push(ByteSpan::from(generics.parameters.span()))
