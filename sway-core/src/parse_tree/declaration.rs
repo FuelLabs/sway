@@ -3,7 +3,6 @@ mod constant;
 mod r#enum;
 pub mod function;
 mod impl_trait;
-mod reassignment;
 mod storage;
 mod r#struct;
 mod r#trait;
@@ -16,7 +15,6 @@ pub(crate) use impl_trait::*;
 pub use r#enum::*;
 pub use r#struct::*;
 pub use r#trait::*;
-pub use reassignment::*;
 pub use storage::*;
 pub use variable::*;
 
@@ -27,7 +25,6 @@ pub enum Declaration {
     TraitDeclaration(TraitDeclaration),
     StructDeclaration(StructDeclaration),
     EnumDeclaration(EnumDeclaration),
-    Reassignment(Reassignment),
     ImplTrait(ImplTrait),
     ImplSelf(ImplSelf),
     AbiDeclaration(AbiDeclaration),

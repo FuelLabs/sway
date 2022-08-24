@@ -3,7 +3,7 @@ use crate::{parse_tree::*, semantic_analysis::*, type_system::*};
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
 use derivative::Derivative;
-use std::{collections::HashMap, fmt};
+use std::{collections::HashMap, fmt, fmt::Write};
 
 #[derive(Clone, Debug)]
 pub struct ContractCallParams {
@@ -120,6 +120,8 @@ pub enum TypedExpressionVariant {
     },
     Break,
     Continue,
+    Reassignment(Box<TypedReassignment>),
+    StorageReassignment(Box<TypeCheckedStorageReassignment>),
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -455,6 +457,8 @@ impl CopyTypes for TypedExpressionVariant {
             }
             Break => (),
             Continue => (),
+            Reassignment(reassignment) => reassignment.copy_types(type_mapping),
+            StorageReassignment(..) => (),
         }
     }
 }
@@ -546,6 +550,29 @@ impl fmt::Display for TypedExpressionVariant {
             }
             TypedExpressionVariant::Break => "break".to_string(),
             TypedExpressionVariant::Continue => "continue".to_string(),
+            TypedExpressionVariant::Reassignment(reassignment) => {
+                let mut place = reassignment.lhs_base_name.to_string();
+                for index in &reassignment.lhs_indices {
+                    place.push('.');
+                    match index {
+                        ProjectionKind::StructField { name } => place.push_str(name.as_str()),
+                        ProjectionKind::TupleField { index, .. } => {
+                            write!(&mut place, "{}", index).unwrap();
+                        }
+                    }
+                }
+                format!("reassignment to {}", place)
+            }
+            TypedExpressionVariant::StorageReassignment(storage_reassignment) => {
+                let place: String = {
+                    storage_reassignment
+                        .fields
+                        .iter()
+                        .map(|field| field.name.as_str())
+                        .collect()
+                };
+                format!("storage reassignment to {}", place)
+            }
         };
         write!(f, "{}", s)
     }
