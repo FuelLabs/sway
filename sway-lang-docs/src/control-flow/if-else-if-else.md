@@ -1,4 +1,4 @@
-# if else if else
+# if expressions
 
 Sway supports _if_, _else_, and _else if_ expressions that allow you to branch your code depending on conditions.
 
@@ -17,3 +17,5 @@ fn main() {
     }
 }
 ```
+
+Note that each conditional expression must evaluate to a boolean (true or false). This means that you cannot do something like `if 7 { ... }` or `if <some vector variable> { ... }`.

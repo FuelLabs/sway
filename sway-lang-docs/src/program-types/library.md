@@ -1,7 +1,5 @@
 # Libraries
 
-> **TODO** remove code and import from file
-
 Libraries are defined using the `library` keyword at the beginning of a file, followed by a name so that they can be imported.
 
 ```sway

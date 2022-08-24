@@ -1,20 +1,34 @@
 # Functions
 
-Functions in Sway are declared with the `fn` keyword. Let's take a look:
+In this section we will define a function that takes two numerical inputs and returns a boolean value indicating whether they are equal. We will also take a look at how to use the function.
+
+### Declaration
+
+The following function is called `equals` and it takes two parameters of type `u64` (64-bit unsigned integers). It performs a comparison and [implicitly](./return/implicit.md) returns the result of that comparison.
 
 ```sway
-fn equals(first_param: u64, second_param: u64) -> bool {
-    first_param == second_param
+fn equals(first_parameter: u64, second_parameter: u64) -> bool {
+    first_parameter == second_parameter
 }
 ```
 
-We have just declared a function named `equals` which takes two parameters: `first_param` and `second_param`. The parameters must both be 64-bit unsigned integers.
+The `equals` function is currently private therefore if we want to have the ability to call the function in a different program we must add the `pub` keyword before the `fn` keyword.
 
-This function also returns a `bool` value, i.e. either `true` or `false`. This function returns `true` if the two given parameters are equal, and `false` if they are not. If we want to use this function, we can do so like this:
+```sway
+pub fn equals(first_parameter: u64, second_parameter: u64) -> bool {
+    first_parameter == second_parameter
+}
+```
+
+> This is not enough to use the function externally. Refer to [libraries](../program-types/library.md) for more info.
+
+### Usage
+
+The following is a way to use the function defined above.
 
 ```sway
 fn main() {
-    equals(5, 5); // evaluates to `true`
-    equals(5, 6); // evaluates to `false`
+    let result_one = equals(5, 5);  // evaluates to `true`
+    let result_two = equals(5, 6);  // evaluates to `false`
 }
 ```

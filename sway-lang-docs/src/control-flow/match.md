@@ -3,6 +3,26 @@
 Sway supports advanced pattern matching through exhaustive `match` expressions.
 
 ```sway
+enum Foo {
+    One: (),
+    Two: (),
+    Three: (),
+}
+
+fn main() {
+    let one = Foo::One;
+    let two = Foo::Two;
+    let three = Foo::Three;
+
+    let mut result = 0;
+    
+    if let Foo::One = one {
+        result = 1;
+    }
+}
+```
+
+```sway
 {{#include ../../../examples/match_statements/src/main.sw}}
 ```
 

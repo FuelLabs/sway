@@ -1,9 +1,12 @@
-# if let
+# Using if & let together
 
-Like Rust, `if`s are expressions in Sway. What this means is you can use `if` expressions on the right side of a `let` statement to assign the outcome to a variable.
+`if`s are expressions in Sway. This means that you can use `if` expressions on the right side of a `let` statement to assign the outcome to a variable.
 
 ```sway
-let my_data = if some_bool < 10 { foo() } else { bar() };
+fn compute(input: u64) {
+    let data = if input < 10 { foo() } else { bar() };
+    // code
+}
 ```
 
-Note that all branches of the `if` expression must return a value of the same type.
+All branches of the `if` expression must return a value of the same type.
