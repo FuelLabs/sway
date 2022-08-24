@@ -31,7 +31,7 @@ impl MethodsContract for Contract {
         let identity = bogus();
         let identity2 = bogus2();
         storage.stored_struct = MyStruct {
-            int_option: Option::Some(99u64)
+            int_option: Option::Some(99u64), 
         };
         let stored_struct = storage.stored_struct;
         let stored_option_in_struct = stored_struct.int_option;
