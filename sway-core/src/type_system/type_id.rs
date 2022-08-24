@@ -6,7 +6,7 @@ use crate::types::*;
 use super::*;
 
 /// A identifier to uniquely refer to our type terms
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Default)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub struct TypeId(usize);
 
 impl std::ops::Deref for TypeId {

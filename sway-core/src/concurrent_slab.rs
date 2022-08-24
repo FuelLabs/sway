@@ -1,9 +1,21 @@
 use std::{marker::PhantomData, sync::RwLock};
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(crate) struct ConcurrentSlab<I, T> {
     indexer: PhantomData<I>,
     inner: RwLock<Vec<T>>,
+}
+
+impl<I, T> Default for ConcurrentSlab<I, T>
+where
+    T: Default,
+{
+    fn default() -> Self {
+        Self {
+            indexer: PhantomData,
+            inner: Default::default(),
+        }
+    }
 }
 
 impl<I, T> ConcurrentSlab<I, T>
