@@ -63,7 +63,7 @@ fn main() {
         }
     }
     ); // The function `update_color()` modifies the color to Blue
-    // ANCHOR: call_tuple_and_enum
+    // ANCHOR_END: call_tuple_and_enum
 
     // ANCHOR: call_move_right
     let mut point = Coordinates {
