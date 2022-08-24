@@ -11,8 +11,8 @@ lazy_static! {
 
 #[derive(Debug, Default)]
 pub(crate) struct TypeEngine {
-    slab: ConcurrentSlab<TypeInfo>,
-    storage_only_types: ConcurrentSlab<TypeInfo>,
+    slab: ConcurrentSlab<TypeId, TypeInfo>,
+    storage_only_types: ConcurrentSlab<TypeId, TypeInfo>,
 }
 
 impl TypeEngine {
