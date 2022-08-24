@@ -1,12 +1,9 @@
-use std::{
-    marker::PhantomData,
-    sync::{Arc, RwLock},
-};
+use std::{marker::PhantomData, sync::RwLock};
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default)]
 pub(crate) struct ConcurrentSlab<I, T> {
     indexer: PhantomData<I>,
-    inner: Arc<RwLock<Vec<T>>>,
+    inner: RwLock<Vec<T>>,
 }
 
 impl<I, T> ConcurrentSlab<I, T>
