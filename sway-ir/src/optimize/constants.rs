@@ -43,25 +43,32 @@ pub fn combine_constants(context: &mut Context, function: &Function) -> Result<b
 fn fold_cbr(context: &mut Context, function: &Function) -> Result<bool, IrError> {
     let candidate = function
         .instruction_iter(context)
-        .find_map(|(_, inst_val)| match &context.values[inst_val.0].value {
-            ValueDatum::Instruction(Instruction::ConditionalBranch {
-                cond_value,
-                true_block,
-                false_block,
-            }) if cond_value.is_constant(context) => {
-                match cond_value.get_constant(context).unwrap().value {
-                    ConstantValue::Bool(true) => Some(Ok((inst_val, true_block))),
-                    ConstantValue::Bool(false) => Some(Ok((inst_val, false_block))),
-                    _ => Some(Err(IrError::VerifyConditionExprNotABool)),
+        .find_map(
+            |(in_block, inst_val)| match &context.values[inst_val.0].value {
+                ValueDatum::Instruction(Instruction::ConditionalBranch {
+                    cond_value,
+                    true_block,
+                    false_block,
+                }) if cond_value.is_constant(context) => {
+                    match cond_value.get_constant(context).unwrap().value {
+                        ConstantValue::Bool(true) => {
+                            Some(Ok((inst_val, in_block, *true_block, *false_block)))
+                        }
+                        ConstantValue::Bool(false) => {
+                            Some(Ok((inst_val, in_block, *false_block, *true_block)))
+                        }
+                        _ => Some(Err(IrError::VerifyConditionExprNotABool)),
+                    }
                 }
-            }
-            _ => None,
-        });
+                _ => None,
+            },
+        );
 
     match candidate {
         Some(res) => {
-            let (cbr, dest) = res?;
-            context.values[cbr.0].value = ValueDatum::Instruction(Instruction::Branch(*dest));
+            let (cbr, from_block, dest, no_more_dest) = res?;
+            no_more_dest.remove_phi_val_coming_from(context, &from_block);
+            context.values[cbr.0].value = ValueDatum::Instruction(Instruction::Branch(dest));
             Ok(true)
         }
         None => Ok(false),
