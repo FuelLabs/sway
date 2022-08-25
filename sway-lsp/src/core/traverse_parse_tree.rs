@@ -551,7 +551,10 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                     for ident in idents {
                         tokens.insert(
                             to_ident_key(ident),
-                            Token::from_parsed(AstToken::Reassignment(reassignment.clone()), SymbolKind::Field),
+                            Token::from_parsed(
+                                AstToken::Reassignment(reassignment.clone()),
+                                SymbolKind::Field,
+                            ),
                         );
                     }
                 }
