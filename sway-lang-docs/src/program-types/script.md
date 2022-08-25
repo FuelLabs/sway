@@ -37,4 +37,4 @@ Scripts, similar to predicates, rely on a `main()` function as an entry point. Y
 
 ## Scripts and the SDKs
 
-Unlike EVM transactions which can call a contract directly (but can only call a single contract), Fuel transactions execute a script, which may call zero or more contracts. The Rust and TypeScript SDKs provide functions to call contract methods as if they were calling contracts directly. Under the hood, the SDKs wrap all contract calls with scripts that contain minimal code to simply make the call and forward script data as call parameters.
+Unlike EVM transactions which can call a contract directly (but can only call a single contract), Fuel transactions execute a script, which may call zero or more contracts. The [Rust](https://github.com/FuelLabs/fuels-rs) and [TypeScript](https://github.com/FuelLabs/fuels-ts) SDKs provide functions to call contract methods as if they were calling contracts directly. Under the hood, the SDKs wrap all contract calls with scripts that contain minimal code to simply make the call and forward script data as call parameters.

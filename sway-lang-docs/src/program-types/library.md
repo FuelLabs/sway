@@ -117,4 +117,4 @@ name = "my_library"
 my_other_library = { path = "../my_other_library" }
 ```
 
-> **NOTE** Only libraries can be included in the manifest file. Other program types will error.
+> Only libraries can be included in the manifest file. Other program types will error.
