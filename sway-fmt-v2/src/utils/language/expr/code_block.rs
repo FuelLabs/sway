@@ -31,7 +31,9 @@ impl Format for CodeBlockContents {
                     formatter.shape.indent.to_string(&formatter.config)?
                 )?;
                 final_expr.format(formatted_code, formatter)?;
-                writeln!(formatted_code)?;
+                if !formatted_code.ends_with('\n') {
+                    writeln!(formatted_code)?;
+                }
             }
         }
 
