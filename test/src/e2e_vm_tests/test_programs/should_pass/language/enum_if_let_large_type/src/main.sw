@@ -44,7 +44,7 @@ fn sell_product(product: Product) -> Result<Product, SaleError> {
     let mut product = product;
     if product.number_available < 1 {
         return Result::Err::<Product, SaleError>(SaleError::NotEnoughInventory("noo"));
-    }
+    };
     product.number_sold = product.number_sold + 1;
     product.number_available = product.number_available - 1;
     return Result::Ok(product);
