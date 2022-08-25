@@ -28,12 +28,8 @@ impl Format for ItemStruct {
             write!(formatted_code, "{} ", visibility.span().as_str())?;
         }
         // Add struct token and name
-        write!(
-            formatted_code,
-            "{} {}",
-            self.struct_token.span().as_str(),
-            self.name.as_str(),
-        )?;
+        write!(formatted_code, "{} ", self.struct_token.span().as_str(),)?;
+        self.name.format(formatted_code, formatter)?;
         // Format `GenericParams`, if any
         if let Some(generics) = &self.generics {
             generics.format(formatted_code, formatter)?;
@@ -77,7 +73,7 @@ impl Format for ItemStruct {
                     )?;
 
                     // Add name
-                    write!(formatted_code, "{}", type_field.name.as_str())?;
+                    type_field.name.format(formatted_code, formatter)?;
                     let current_variant_length = variant_length[var_index];
                     if current_variant_length < max_valid_variant_length {
                         // We need to add alignment between : and ty

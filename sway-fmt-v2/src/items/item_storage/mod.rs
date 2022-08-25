@@ -64,7 +64,7 @@ impl Format for ItemStorage {
                     )?;
 
                     // Add name
-                    write!(formatted_code, "{}", storage_field.name.as_str())?;
+                    storage_field.name.format(formatted_code, formatter)?;
 
                     // `current_field_length`: the length of the current field that we are trying to format.
                     let current_field_length = field_length[field_index];

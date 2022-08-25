@@ -17,12 +17,8 @@ impl Format for ItemAbi {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         // `abi name`
-        write!(
-            formatted_code,
-            "{} {}",
-            self.abi_token.span().as_str(),
-            self.name.as_str()
-        )?;
+        write!(formatted_code, "{} ", self.abi_token.span().as_str())?;
+        self.name.format(formatted_code, formatter)?;
         Self::open_curly_brace(formatted_code, formatter)?;
 
         // abi_items
