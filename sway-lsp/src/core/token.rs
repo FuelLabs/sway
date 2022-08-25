@@ -72,7 +72,6 @@ pub enum SymbolKind {
     Field,
     ValueParam,
     Function,
-    Method,
     Const,
     Struct,
     Trait,
