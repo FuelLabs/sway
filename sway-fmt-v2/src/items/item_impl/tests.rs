@@ -98,7 +98,7 @@ fmt_test!(  impl_with_nested_items
         }
         ret
     }
-}\n",
+}",
             intermediate_whitespace
 "impl AuthTesting for Contract {
     fn returns_msg_sender(expected_id: ContractId) -> bool {

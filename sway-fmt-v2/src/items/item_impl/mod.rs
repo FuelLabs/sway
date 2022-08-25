@@ -94,7 +94,7 @@ impl CurlyBrace for ItemImpl {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        writeln!(line, "{}", Delimiter::Brace.as_close_char())?;
+        write!(line, "{}", Delimiter::Brace.as_close_char())?;
         formatter.shape.block_unindent(&formatter.config);
         Ok(())
     }
