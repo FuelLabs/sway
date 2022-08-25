@@ -50,6 +50,7 @@ fn generic_enum_resolution() {
             name: Ident::new_with_override("T", sp.clone()),
         }),
         span: sp.clone(),
+        type_span: sp.clone(),
     }];
 
     let ty_1 = engine.insert_type(TypeInfo::Enum {
@@ -64,6 +65,7 @@ fn generic_enum_resolution() {
         type_id: engine.insert_type(TypeInfo::Boolean),
         initial_type_id: engine.insert_type(TypeInfo::Boolean),
         span: sp.clone(),
+        type_span: sp.clone(),
     }];
 
     let ty_2 = engine.insert_type(TypeInfo::Enum {
