@@ -6,8 +6,8 @@ use sway_core::{
         TypedReassignment, TypedStorageField, TypedStructField, TypedTraitFn,
     },
     type_system::TypeId,
-    Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter, ReassignmentExpression,
-    Scrutinee, StorageField, StructExpressionField, StructField, TraitFn,
+    Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
+    ReassignmentExpression, Scrutinee, StorageField, StructExpressionField, StructField, TraitFn,
 };
 use sway_types::{Ident, Span};
 

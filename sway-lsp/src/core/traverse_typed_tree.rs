@@ -136,7 +136,9 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                 token.type_def = Some(TypeDefinition::TypeId(*implementing_for_type_id));
             }
 
-            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(type_implementing_for_span.clone()))) {
+            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(
+                type_implementing_for_span.clone(),
+            ))) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
                 token.type_def = Some(TypeDefinition::TypeId(*implementing_for_type_id));
             }
