@@ -114,17 +114,16 @@ impl CurlyBrace for ItemStorage {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
+        formatter.shape.block_indent(&formatter.config);
         let open_brace = Delimiter::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add opening brace to the next line.
                 write!(line, "\n{}", open_brace)?;
-                formatter.shape.block_indent(&formatter.config);
             }
             _ => {
                 // Add opening brace to the same line
                 write!(line, " {}", open_brace)?;
-                formatter.shape.block_indent(&formatter.config);
             }
         }
 
@@ -134,10 +133,15 @@ impl CurlyBrace for ItemStorage {
         line: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Brace.as_close_char())?;
         // shrink_left would return error if the current indentation level is becoming < 0, in that
         // case we should use the Shape::default() which has 0 indentation level.
         formatter.shape.block_unindent(&formatter.config);
+        write!(
+            line,
+            "{}{}",
+            formatter.shape.indent.to_string(&formatter.config)?,
+            Delimiter::Brace.as_close_char()
+        )?;
 
         Ok(())
     }

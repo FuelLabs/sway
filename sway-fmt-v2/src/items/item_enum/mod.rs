@@ -138,9 +138,14 @@ impl CurlyBrace for ItemEnum {
         line: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Brace.as_close_char())?;
         // If shape is becoming left-most aligned or - indent just have the defualt shape
         formatter.shape.block_unindent(&formatter.config);
+        write!(
+            line,
+            "{}{}",
+            formatter.shape.indent.to_string(&formatter.config)?,
+            Delimiter::Brace.as_close_char()
+        )?;
 
         Ok(())
     }

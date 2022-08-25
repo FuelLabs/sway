@@ -19,12 +19,7 @@ impl Format for ItemImpl {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(
-            formatted_code,
-            "{}{}",
-            formatter.shape.indent.to_string(&formatter.config)?,
-            self.impl_token.span().as_str()
-        )?;
+        write!(formatted_code, "{}", self.impl_token.span().as_str())?;
         if let Some(generic_params) = &self.generic_params_opt {
             generic_params.format(formatted_code, formatter)?;
         }
@@ -63,28 +58,25 @@ impl CurlyBrace for ItemImpl {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
+        formatter.shape.block_indent(&formatter.config);
         let open_brace = Delimiter::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add opening brace to the next line.
                 writeln!(line, "\n{}", open_brace)?;
-                formatter.shape.block_indent(&formatter.config);
             }
             ItemBraceStyle::SameLineWhere => match formatter.shape.has_where_clause {
                 true => {
                     writeln!(line, "{}", open_brace)?;
                     formatter.shape.update_where_clause();
-                    formatter.shape.block_indent(&formatter.config);
                 }
                 false => {
                     writeln!(line, " {}", open_brace)?;
-                    formatter.shape.block_indent(&formatter.config);
                 }
             },
             _ => {
                 // TODO: implement PreferSameLine
                 writeln!(line, " {}", open_brace)?;
-                formatter.shape.block_indent(&formatter.config);
             }
         }
 
@@ -94,8 +86,14 @@ impl CurlyBrace for ItemImpl {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Brace.as_close_char())?;
         formatter.shape.block_unindent(&formatter.config);
+        write!(
+            line,
+            "{}{}",
+            formatter.shape.indent.to_string(&formatter.config)?,
+            Delimiter::Brace.as_close_char()
+        )?;
+
         Ok(())
     }
 }
