@@ -1918,6 +1918,20 @@ impl<'ir> AsmBuilder<'ir> {
         constant: &Constant,
         span: Option<Span>,
     ) -> VirtualRegister {
+        let value_size = ir_type_size_in_bytes(self.context, &constant.ty);
+        if size_bytes_in_words!(value_size) == 1 {
+            match constant.value {
+                ConstantValue::Unit | ConstantValue::Bool(false) | ConstantValue::Uint(0) => {
+                    return VirtualRegister::Constant(ConstantRegister::Zero)
+                }
+
+                ConstantValue::Bool(true) | ConstantValue::Uint(1) => {
+                    return VirtualRegister::Constant(ConstantRegister::One)
+                }
+                _ => (),
+            }
+        }
+
         // Get the constant into the namespace.
         let lit = ir_constant_to_ast_literal(constant);
         let data_id = self.data_section.insert_data_value(&lit);
