@@ -1,14 +1,14 @@
 /// `swayfmt` file name.
 pub const SWAY_FORMAT_FILE_NAME: &str = "swayfmt.toml";
 
-/////FUNDAMENTALS/////
+//FUNDAMENTALS
 
 /// Default max width of each line.
 pub const DEFAULT_MAX_LINE_WIDTH: usize = 100;
 /// Default tab size as spaces.
 pub const DEFAULT_TAB_SPACES: usize = 4;
 
-/////HEURISTICS/////
+//HEURISTICS
 
 /// Default max width of the args of a function call before falling back to vertical formatting.
 pub const DEFAULT_FN_CALL_WIDTH: usize = 60;
@@ -27,7 +27,7 @@ pub const DEFAULT_CHAIN_WIDTH: usize = 60;
 /// Default max line length for single line if-else expression.
 pub const DEFAULT_SINGLE_LINE_IF_ELSE_WIDTH: usize = 50;
 
-/////ITEMS/////
+//ITEMS
 
 /// Default max number of blank lines which can be put between items.
 pub const DEFAULT_BLANK_LINES_UPPER_BOUND: usize = 1;
@@ -36,19 +36,19 @@ pub const DEFAULT_BLANK_LINES_LOWER_BOUND: usize = 0;
 /// Write an items and its attribute on the same line if their combined width is below a threshold.
 pub const DEFAULT_INLINE_ATTR_WIDTH: usize = 0;
 
-/////COMMENTS/////
+//COMMENTS
 
 /// Default max length of comments.
 pub const DEFAULT_MAX_COMMENT_WIDTH: usize = 80;
 
-/////NEWLINE_STYLE/////
+//NEWLINE_STYLE
 
 pub(crate) const LINE_FEED: char = '\n';
 pub(crate) const CARRIAGE_RETURN: char = '\r';
 pub(crate) const WINDOWS_NEWLINE: &str = "\r\n";
 pub(crate) const UNIX_NEWLINE: &str = "\n";
 
-/////INDENT_STYLE/////
+//INDENT_STYLE
 
 // INDENT_BUFFER.len() = 81
 pub(crate) const INDENT_BUFFER_LEN: usize = 80;
@@ -61,3 +61,6 @@ pub(crate) const HARD_TAB: char = '\t';
 /// Default max number of newlines allowed in between statements before collapsing them to
 /// threshold
 pub const DEFAULT_NEWLINE_THRESHOLD: usize = 1;
+
+//IDENT
+pub(crate) const RAW_MODIFIER: &str = "r#";

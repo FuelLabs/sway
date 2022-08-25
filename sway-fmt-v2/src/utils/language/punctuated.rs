@@ -1,4 +1,5 @@
 use crate::{
+    constants::RAW_MODIFIER,
     formatter::{shape::LineStyle, *},
     utils::map::byte_span::{ByteSpan, LeafSpans},
 };
@@ -125,7 +126,11 @@ impl Format for Ident {
         formatted_code: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(formatted_code, "{}", self.span().as_str())?;
+        match self.is_raw_ident() {
+            true => write!(formatted_code, "{}{}", RAW_MODIFIER, self.span().as_str())?,
+            false => write!(formatted_code, "{}", self.span().as_str())?,
+        }
+
         Ok(())
     }
 }
@@ -182,6 +187,7 @@ impl Format for CommaToken {
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         write!(formatted_code, "{}", self.span().as_str())?;
+
         Ok(())
     }
 }
