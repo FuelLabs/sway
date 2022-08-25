@@ -84,5 +84,6 @@ pub enum SymbolKind {
     Variable,
     BuiltinType,
     Module,
+    TypeParameter,
     Unknown,
 }

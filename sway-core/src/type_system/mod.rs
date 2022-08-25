@@ -25,7 +25,7 @@ pub use type_engine::*;
 pub use type_id::*;
 pub use type_info::*;
 pub(crate) use type_mapping::*;
-pub(crate) use type_parameter::*;
+pub use type_parameter::*;
 pub(crate) use unresolved_type_check::*;
 
 use crate::error::*;

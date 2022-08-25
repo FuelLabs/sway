@@ -43,6 +43,7 @@ pub(crate) fn symbol_kind(symbol_kind: &SymbolKind) -> lsp_types::SymbolKind {
         SymbolKind::BoolLiteral => lsp_types::SymbolKind::BOOLEAN,
         SymbolKind::StringLiteral => lsp_types::SymbolKind::STRING,
         SymbolKind::NumericLiteral => lsp_types::SymbolKind::NUMBER,
+        SymbolKind::TypeParameter => lsp_types::SymbolKind::TYPE_PARAMETER,
         SymbolKind::ValueParam
         | SymbolKind::ByteLiteral
         | SymbolKind::Variable

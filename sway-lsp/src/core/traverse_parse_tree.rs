@@ -6,7 +6,7 @@ use crate::{
 use sway_core::{
     constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX},
     parse_tree::{Literal, MethodName},
-    type_system::TypeArgument,
+    type_system::{TypeArgument, TypeParameter},
     AbiCastExpression, ArrayIndexExpression, AstNode, AstNodeContent, CodeBlock, Declaration,
     DelineatedPathExpression, Expression, ExpressionKind, FunctionApplicationExpression,
     FunctionDeclaration, FunctionParameter, IfExpression, IntrinsicFunctionExpression,
@@ -139,6 +139,15 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                 to_ident_key(&enum_decl.name),
                 Token::from_parsed(AstToken::Declaration(declaration.clone()), SymbolKind::Enum),
             );
+
+            for type_param in &enum_decl.type_parameters {
+                collect_type_parameter(
+                    &type_param,
+                    tokens,
+                    AstToken::Declaration(declaration.clone()),
+                );
+            }
+
             for variant in &enum_decl.variants {
                 let token =
                     Token::from_parsed(AstToken::EnumVariant(variant.clone()), SymbolKind::Variant);
@@ -709,5 +718,12 @@ fn collect_trait_fn(trait_fn: &TraitFn, tokens: &TokenMap) {
         &token,
         &trait_fn.return_type,
         Some(trait_fn.return_type_span.clone()),
+    );
+}
+
+fn collect_type_parameter(type_param: &TypeParameter, tokens: &TokenMap, token: AstToken) {
+    tokens.insert(
+        to_ident_key(&type_param.name_ident),
+        Token::from_parsed(token, SymbolKind::TypeParameter),
     );
 }

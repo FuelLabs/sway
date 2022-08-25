@@ -15,7 +15,7 @@ use sway_types::{Ident, Property, Span, Spanned};
 #[derive(Clone, Debug, Eq)]
 pub struct TypedEnumDeclaration {
     pub name: Ident,
-    pub(crate) type_parameters: Vec<TypeParameter>,
+    pub type_parameters: Vec<TypeParameter>,
     pub variants: Vec<TypedEnumVariant>,
     pub(crate) span: Span,
     pub visibility: Visibility,
