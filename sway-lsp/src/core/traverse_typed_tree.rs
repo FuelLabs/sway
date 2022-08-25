@@ -10,7 +10,7 @@ use sway_core::semantic_analysis::ast_node::{
         typed_expression::TypedExpression, typed_expression_variant::TypedExpressionVariant,
         TypedIntrinsicFunctionKind,
     },
-    ProjectionKind, TypedFunctionParameter, TypedImplTrait, TypedTraitFn,
+    ProjectionKind, TypedFunctionDeclaration, TypedFunctionParameter, TypedImplTrait, TypedTraitFn,
     {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
 };
 use sway_types::ident::Ident;
@@ -52,24 +52,8 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
             }
             handle_expression(&const_decl.value, tokens);
         }
-        TypedDeclaration::FunctionDeclaration(func) => {
-            if let Some(mut token) = tokens.get_mut(&to_ident_key(&func.name)) {
-                token.typed = Some(TypedAstToken::TypedFunctionDeclaration(func.clone()));
-            }
-
-            for node in &func.body.contents {
-                traverse_node(node, tokens);
-            }
-            for parameter in &func.parameters {
-                collect_typed_fn_param_token(parameter, tokens);
-            }
-
-            if let Some(mut token) =
-                tokens.get_mut(&to_ident_key(&Ident::new(func.return_type_span.clone())))
-            {
-                token.typed = Some(TypedAstToken::TypedFunctionDeclaration(func.clone()));
-                token.type_def = Some(TypeDefinition::TypeId(func.return_type));
-            }
+        TypedDeclaration::FunctionDeclaration(func_decl) => {
+            collect_typed_fn_decl(func_decl, tokens);
         }
         TypedDeclaration::TraitDeclaration(trait_decl) => {
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&trait_decl.name)) {
@@ -96,6 +80,13 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                 {
                     token.typed = Some(TypedAstToken::TypedStructField(field.clone()));
                     token.type_def = Some(TypeDefinition::TypeId(field.type_id));
+                }
+            }
+
+            for type_param in &struct_dec.type_parameters {
+                if let Some(mut token) = tokens.get_mut(&to_ident_key(&type_param.name_ident)) {
+                    token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
                 }
             }
         }
@@ -151,22 +142,7 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
             }
 
             for method in methods {
-                if let Some(mut token) = tokens.get_mut(&to_ident_key(&method.name)) {
-                    token.typed = Some(TypedAstToken::TypedFunctionDeclaration(method.clone()));
-                }
-
-                for node in &method.body.contents {
-                    traverse_node(node, tokens);
-                }
-                for parameter in &method.parameters {
-                    collect_typed_fn_param_token(parameter, tokens);
-                }
-
-                let return_type_ident = Ident::new(method.return_type_span.clone());
-                if let Some(mut token) = tokens.get_mut(&to_ident_key(&return_type_ident)) {
-                    token.typed = Some(TypedAstToken::TypedFunctionDeclaration(method.clone()));
-                    token.type_def = Some(TypeDefinition::TypeId(method.return_type));
-                }
+                collect_typed_fn_decl(method, tokens);
             }
         }
         TypedDeclaration::AbiDeclaration(abi_decl) => {
@@ -478,7 +454,33 @@ fn collect_typed_fn_param_token(param: &TypedFunctionParameter, tokens: &TokenMa
     }
 
     if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(param.type_span.clone()))) {
-        token.typed = Some(typed_token.clone());
+        token.typed = Some(typed_token);
         token.type_def = Some(TypeDefinition::TypeId(param.type_id));
+    }
+}
+
+fn collect_typed_fn_decl(func_decl: &TypedFunctionDeclaration, tokens: &TokenMap) {
+    if let Some(mut token) = tokens.get_mut(&to_ident_key(&func_decl.name)) {
+        token.typed = Some(TypedAstToken::TypedFunctionDeclaration(func_decl.clone()));
+    }
+
+    for node in &func_decl.body.contents {
+        traverse_node(node, tokens);
+    }
+    for parameter in &func_decl.parameters {
+        collect_typed_fn_param_token(parameter, tokens);
+    }
+
+    for type_param in &func_decl.type_parameters {
+        if let Some(mut token) = tokens.get_mut(&to_ident_key(&type_param.name_ident)) {
+            token.typed = Some(TypedAstToken::TypedFunctionDeclaration(func_decl.clone()));
+            token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
+        }
+    }
+
+    let return_type_ident = Ident::new(func_decl.return_type_span.clone());
+    if let Some(mut token) = tokens.get_mut(&to_ident_key(&return_type_ident)) {
+        token.typed = Some(TypedAstToken::TypedFunctionDeclaration(func_decl.clone()));
+        token.type_def = Some(TypeDefinition::TypeId(func_decl.return_type));
     }
 }

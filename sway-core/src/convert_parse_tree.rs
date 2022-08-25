@@ -797,7 +797,7 @@ pub(crate) fn item_const_to_constant_declaration(
             let type_ascription_span = if let Ty::Path(path_type) = &ty {
                 path_type.prefix.name.span()
             } else {
-                ty.span().clone()
+                ty.span()
             };
             (type_ascription, Some(type_ascription_span))
         }
@@ -1998,7 +1998,7 @@ fn storage_field_to_storage_field(
     let type_info_span = if let Ty::Path(path_type) = &storage_field.ty {
         path_type.prefix.name.span()
     } else {
-        storage_field.ty.span().clone()
+        storage_field.ty.span()
     };
     let storage_field = StorageField {
         name: storage_field.name,

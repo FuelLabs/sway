@@ -47,11 +47,20 @@ fn handle_function_declation(func: &FunctionDeclaration, tokens: &TokenMap) {
         collect_function_parameter(parameter, tokens);
     }
 
+    for type_param in &func.type_parameters {
+        collect_type_parameter(
+            type_param,
+            tokens,
+            AstToken::FunctionDeclaration(func.clone()),
+        );
+    }
+
     collect_type_info_token(
         tokens,
         &token,
         &func.return_type,
         Some(func.return_type_span.clone()),
+        None,
     );
 }
 
@@ -78,7 +87,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                 // new Ident as the name_override_opt can be set to one of the
                 // const prefixes and not the actual token name.
                 tokens.insert(
-                    to_ident_key(&Ident::new(variable.name.span().clone())),
+                    to_ident_key(&Ident::new(variable.name.span())),
                     token.clone(),
                 );
 
@@ -88,6 +97,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                         &token,
                         &variable.type_ascription,
                         Some(type_ascription_span.clone()),
+                        None,
                     );
                 }
             }
@@ -131,6 +141,15 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                     &token,
                     &field.type_info,
                     Some(field.type_span.clone()),
+                    None,
+                );
+            }
+
+            for type_param in &struct_dec.type_parameters {
+                collect_type_parameter(
+                    type_param,
+                    tokens,
+                    AstToken::Declaration(declaration.clone()),
                 );
             }
         }
@@ -142,7 +161,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
 
             for type_param in &enum_decl.type_parameters {
                 collect_type_parameter(
-                    &type_param,
+                    type_param,
                     tokens,
                     AstToken::Declaration(declaration.clone()),
                 );
@@ -158,6 +177,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                     &token,
                     &variant.type_info,
                     Some(variant.type_span.clone()),
+                    Some(SymbolKind::Variant),
                 );
             }
         }
@@ -188,6 +208,14 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                 ),
             );
 
+            for type_param in &impl_trait.type_parameters {
+                collect_type_parameter(
+                    type_param,
+                    tokens,
+                    AstToken::Declaration(declaration.clone()),
+                );
+            }
+
             for func_dec in &impl_trait.functions {
                 handle_function_declation(func_dec, tokens);
             }
@@ -206,6 +234,14 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                 if let Some(args) = type_arguments {
                     collect_type_args(args, &token, tokens);
                 }
+            }
+
+            for type_param in &impl_self.type_parameters {
+                collect_type_parameter(
+                    type_param,
+                    tokens,
+                    AstToken::Declaration(declaration.clone()),
+                );
             }
 
             for func_dec in &impl_self.functions {
@@ -237,6 +273,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                 &token,
                 &const_decl.type_ascription,
                 const_decl.type_ascription_span.clone(),
+                None,
             );
             handle_expression(&const_decl.value, tokens);
         }
@@ -251,6 +288,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                     &token,
                     &field.type_info,
                     Some(field.type_info_span.clone()),
+                    None,
                 );
                 handle_expression(&field.initializer, tokens);
             }
@@ -429,7 +467,7 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                     SymbolKind::Struct,
                 );
                 let (type_info, span) = &call_path_binding.inner.suffix;
-                collect_type_info_token(tokens, &token, &type_info, Some(span.clone()));
+                collect_type_info_token(tokens, &token, type_info, Some(span.clone()), None);
             }
 
             // Don't collect applications of desugared operators due to mismatched ident lengths.
@@ -486,10 +524,7 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                 SymbolKind::Variant,
             );
 
-            tokens.insert(
-                to_ident_key(&call_path_binding.inner.suffix),
-                token.clone(),
-            );
+            tokens.insert(to_ident_key(&call_path_binding.inner.suffix), token.clone());
 
             collect_type_args(&call_path_binding.type_arguments, &token, tokens);
 
@@ -607,7 +642,7 @@ fn collect_scrutinee(scrutinee: &Scrutinee, tokens: &TokenMap) {
         Scrutinee::Variable { name, .. } => {
             let token =
                 Token::from_parsed(AstToken::Scrutinee(scrutinee.clone()), SymbolKind::Variable);
-            tokens.insert(to_ident_key(&name), token);
+            tokens.insert(to_ident_key(name), token);
         }
         Scrutinee::StructScrutinee {
             struct_name,
@@ -616,7 +651,7 @@ fn collect_scrutinee(scrutinee: &Scrutinee, tokens: &TokenMap) {
         } => {
             let token =
                 Token::from_parsed(AstToken::Scrutinee(scrutinee.clone()), SymbolKind::Struct);
-            tokens.insert(to_ident_key(&struct_name), token);
+            tokens.insert(to_ident_key(struct_name), token);
 
             for field in fields {
                 let token =
@@ -625,7 +660,7 @@ fn collect_scrutinee(scrutinee: &Scrutinee, tokens: &TokenMap) {
                     field, scrutinee, ..
                 } = field
                 {
-                    tokens.insert(to_ident_key(&field), token);
+                    tokens.insert(to_ident_key(field), token);
 
                     if let Some(scrutinee) = scrutinee {
                         collect_scrutinee(scrutinee, tokens);
@@ -661,10 +696,13 @@ fn collect_type_info_token(
     token: &Token,
     type_info: &TypeInfo,
     type_span: Option<Span>,
+    symbol_kind: Option<SymbolKind>,
 ) {
     let mut token = token.clone();
-    let symbol_kind = type_info_to_symbol_kind(type_info);
-    token.kind = symbol_kind;
+    match symbol_kind {
+        Some(kind) => token.kind = kind,
+        None => token.kind = type_info_to_symbol_kind(type_info),
+    }
 
     match type_info {
         TypeInfo::UnsignedInteger(..) | TypeInfo::Boolean | TypeInfo::Byte | TypeInfo::B256 => {
@@ -707,6 +745,7 @@ fn collect_function_parameter(parameter: &FunctionParameter, tokens: &TokenMap) 
         &token,
         &type_info,
         Some(parameter.type_span.clone()),
+        None,
     );
 }
 
@@ -723,6 +762,7 @@ fn collect_trait_fn(trait_fn: &TraitFn, tokens: &TokenMap) {
         &token,
         &trait_fn.return_type,
         Some(trait_fn.return_type_span.clone()),
+        None,
     );
 }
 
