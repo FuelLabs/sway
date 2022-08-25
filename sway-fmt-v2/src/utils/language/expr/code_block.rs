@@ -20,7 +20,7 @@ impl Format for CodeBlockContents {
             writeln!(formatted_code)?;
             for statement in self.statements.iter() {
                 statement.format(formatted_code, formatter)?;
-                if !formatted_code.ends_with("\n") {
+                if !formatted_code.ends_with('\n') {
                     writeln!(formatted_code)?;
                 }
             }
