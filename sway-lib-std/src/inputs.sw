@@ -4,6 +4,7 @@ library inputs;
 
 use ::address::Address;
 use ::mem::read;
+use ::logging::log;
 use ::option::Option;
 use ::revert::revert;
 use ::tx::{
@@ -188,14 +189,17 @@ pub fn input_predicate_data<T>(index: u64) -> T {
 
 /// Get the transaction inputs count for either tx type
 /// (transaction-script or transaction-create).
-pub fn input_count() -> u64 {
+pub fn input_count() -> u8 {
     let type = tx_type();
     match type {
         Transaction::Script => {
-            __gtf::<u64>(0, GTF_SCRIPT_INPUTS_COUNT)
+            log(17);
+            __gtf::<u8>(0, GTF_SCRIPT_INPUTS_COUNT)
+
         },
         Transaction::Create => {
-            __gtf::<u64>(0, GTF_CREATE_INPUTS_COUNT)
+            log(19);
+            __gtf::<u8>(0, GTF_CREATE_INPUTS_COUNT)
         },
     }
 }
