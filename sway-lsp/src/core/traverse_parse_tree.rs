@@ -681,7 +681,7 @@ fn collect_scrutinee(scrutinee: &Scrutinee, tokens: &TokenMap) {
                 Token::from_parsed(AstToken::Scrutinee(scrutinee.clone()), SymbolKind::Variant);
             tokens.insert(to_ident_key(&call_path.suffix), token);
 
-            collect_scrutinee(&*value, tokens);
+            collect_scrutinee(value, tokens);
         }
         Scrutinee::Tuple { elems, .. } => {
             for elem in elems {
