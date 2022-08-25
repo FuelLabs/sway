@@ -6,6 +6,7 @@ use ::assert::assert;
 use ::b512::B512;
 use ::contract_id::ContractId;
 use ::identity::Identity;
+use ::logging::log;
 use ::option::Option;
 use ::result::Result;
 use ::inputs::{Input, input_owner, input_type, input_count};
@@ -48,11 +49,13 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
 /// TransactionScript if they all share the same owner.
 fn inputs_owner() -> Result<Identity, AuthError> {
     let inputs = input_count();
+    log((6, inputs));
     let mut candidate = Option::None::<Address>();
-    let mut i = 0;
+    let mut i = 0u8;
 
     // Note: `inputs_count` is guaranteed to be at least 1 for any valid tx.
     while i < inputs {
+        log(33);
         let type_of_input = input_type(i);
         match type_of_input {
             Input::Coin => {
@@ -63,7 +66,7 @@ fn inputs_owner() -> Result<Identity, AuthError> {
             },
             _ => {
                 // type != InputCoin or InputMessage, continue looping.
-                i += 1;
+                i += 1u8;
                 continue;
             }
         }
@@ -73,7 +76,7 @@ fn inputs_owner() -> Result<Identity, AuthError> {
         if candidate.is_none() {
             // This is the first input seen of the correct type.
             candidate = owner_of_input;
-            i += 1;
+            i += 1u8;
             continue;
         }
 
@@ -82,7 +85,7 @@ fn inputs_owner() -> Result<Identity, AuthError> {
         // at this point, so we can unwrap safely.
         if owner_of_input.unwrap() == candidate.unwrap() {
             // Owners are a match, continue looping.
-            i += 1;
+            i += 1u8;
             continue;
         }
 
