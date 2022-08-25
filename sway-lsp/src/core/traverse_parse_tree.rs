@@ -480,13 +480,18 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                     Token::from_parsed(AstToken::Expression(expression.clone()), SymbolKind::Enum),
                 );
             }
+
+            let token = Token::from_parsed(
+                AstToken::Expression(expression.clone()),
+                SymbolKind::Variant,
+            );
+
             tokens.insert(
                 to_ident_key(&call_path_binding.inner.suffix),
-                Token::from_parsed(
-                    AstToken::Expression(expression.clone()),
-                    SymbolKind::Variant,
-                ),
+                token.clone(),
             );
+
+            collect_type_args(&call_path_binding.type_arguments, &token, tokens);
 
             for exp in args {
                 handle_expression(exp, tokens);
