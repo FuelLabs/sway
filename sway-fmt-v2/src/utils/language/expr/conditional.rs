@@ -36,7 +36,12 @@ impl Format for IfExpr {
                 }
             }
         } else {
-            writeln!(formatted_code)?;
+            match self.condition {
+                IfCondition::Let { .. } => {}
+                _ => {
+                    writeln!(formatted_code)?;
+                }
+            }
         }
 
         Ok(())
