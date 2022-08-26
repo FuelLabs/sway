@@ -880,6 +880,16 @@ impl<'ir> AsmBuilder<'ir> {
 
         // Index value is the array element index, not byte nor word offset.
         let index_reg = self.value_to_register(index_val);
+        let rel_offset_reg = match index_reg {
+            VirtualRegister::Virtual(_) => {
+                // We can reuse the register.
+                index_reg.clone()
+            }
+            VirtualRegister::Constant(_) => {
+                // We have a constant register, cannot reuse it.
+                self.reg_seqr.next()
+            }
+        };
 
         // We could put the OOB check here, though I'm now thinking it would be too wasteful.
         // See compile_bounds_assertion() in expression/array.rs (or look in Git history).
@@ -891,8 +901,8 @@ impl<'ir> AsmBuilder<'ir> {
         if elem_type.is_copy_type() {
             self.bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::MULI(
-                    index_reg.clone(),
-                    index_reg.clone(),
+                    rel_offset_reg.clone(),
+                    index_reg,
                     VirtualImmediate12 { value: 8 },
                 )),
                 comment: "extract_element relative offset".into(),
@@ -900,7 +910,11 @@ impl<'ir> AsmBuilder<'ir> {
             });
             let elem_offs_reg = self.reg_seqr.next();
             self.bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::ADD(elem_offs_reg.clone(), base_reg, index_reg)),
+                opcode: Either::Left(VirtualOp::ADD(
+                    elem_offs_reg.clone(),
+                    base_reg,
+                    rel_offset_reg,
+                )),
                 comment: "extract_element absolute offset".into(),
                 owning_span: owning_span.clone(),
             });
@@ -1173,6 +1187,16 @@ impl<'ir> AsmBuilder<'ir> {
 
         // Index value is the array element index, not byte nor word offset.
         let index_reg = self.value_to_register(index_val);
+        let rel_offset_reg = match index_reg {
+            VirtualRegister::Virtual(_) => {
+                // We can reuse the register.
+                index_reg.clone()
+            }
+            VirtualRegister::Constant(_) => {
+                // We have a constant register, cannot reuse it.
+                self.reg_seqr.next()
+            }
+        };
 
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
 
@@ -1181,8 +1205,8 @@ impl<'ir> AsmBuilder<'ir> {
         if elem_type.is_copy_type() {
             self.bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::MULI(
-                    index_reg.clone(),
-                    index_reg.clone(),
+                    rel_offset_reg.clone(),
+                    index_reg,
                     VirtualImmediate12 { value: 8 },
                 )),
                 comment: "insert_element relative offset".into(),
@@ -1193,7 +1217,7 @@ impl<'ir> AsmBuilder<'ir> {
                 opcode: Either::Left(VirtualOp::ADD(
                     elem_offs_reg.clone(),
                     base_reg.clone(),
-                    index_reg,
+                    rel_offset_reg,
                 )),
                 comment: "insert_element absolute offset".into(),
                 owning_span: owning_span.clone(),
@@ -1918,6 +1942,20 @@ impl<'ir> AsmBuilder<'ir> {
         constant: &Constant,
         span: Option<Span>,
     ) -> VirtualRegister {
+        let value_size = ir_type_size_in_bytes(self.context, &constant.ty);
+        if size_bytes_in_words!(value_size) == 1 {
+            match constant.value {
+                ConstantValue::Unit | ConstantValue::Bool(false) | ConstantValue::Uint(0) => {
+                    return VirtualRegister::Constant(ConstantRegister::Zero)
+                }
+
+                ConstantValue::Bool(true) | ConstantValue::Uint(1) => {
+                    return VirtualRegister::Constant(ConstantRegister::One)
+                }
+                _ => (),
+            }
+        }
+
         // Get the constant into the namespace.
         let lit = ir_constant_to_ast_literal(constant);
         let data_id = self.data_section.insert_data_value(&lit);
