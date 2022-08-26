@@ -101,7 +101,7 @@ impl Format for ExprArrayDescriptor {
                 length,
             } => {
                 value.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", semicolon_token.span().as_str())?;
+                write!(formatted_code, "{} ", semicolon_token.span().as_str())?;
                 length.format(formatted_code, formatter)?;
             }
         }

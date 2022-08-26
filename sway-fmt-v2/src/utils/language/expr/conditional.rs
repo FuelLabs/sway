@@ -35,6 +35,13 @@ impl Format for IfExpr {
                     Self::close_curly_brace(formatted_code, formatter)?;
                 }
             }
+        } else {
+            match self.condition {
+                IfCondition::Let { .. } => {}
+                _ => {
+                    writeln!(formatted_code)?;
+                }
+            }
         }
 
         Ok(())

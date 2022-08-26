@@ -81,15 +81,16 @@ impl Format for PathType {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        if let Some(root_opt) = &self.root_opt {
-            if let Some(root) = &root_opt.0 {
+        if let Some((root_opt, double_colon_token)) = &self.root_opt {
+            if let Some(qualified_path_root) = &root_opt {
                 open_angle_bracket(formatted_code)?;
-                root.clone()
+                qualified_path_root
+                    .clone()
                     .into_inner()
                     .format(formatted_code, formatter)?;
                 close_angle_bracket(formatted_code)?;
             }
-            write!(formatted_code, "{}", root_opt.1.span().as_str())?;
+            write!(formatted_code, "{}", double_colon_token.span().as_str())?;
         }
         self.prefix.format(formatted_code, formatter)?;
         for (double_colon_token, path_type_segment) in self.suffix.iter() {

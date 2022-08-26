@@ -53,12 +53,10 @@ impl Format for ModuleKind {
             ModuleKind::Library {
                 library_token,
                 name,
-            } => write!(
-                formatted_code,
-                "{} {}",
-                library_token.span().as_str(),
-                name.as_str()
-            )?,
+            } => {
+                write!(formatted_code, "{} ", library_token.span().as_str())?;
+                name.format(formatted_code, _formatter)?;
+            }
         };
 
         Ok(())
