@@ -2,4 +2,10 @@ category = "fail"
 
 # check: $()fn main() {
 # nextln: $()break;
+# nextln: $()not assigned to anything
+
+# check: $()This code is unreachable
+
+# check: $()fn main() {
+# nextln: $()break;
 # nextln: $()"break" used outside of a loop

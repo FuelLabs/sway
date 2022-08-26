@@ -119,31 +119,6 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                 }
             }
         }
-        TypedDeclaration::Reassignment(reassignment) => {
-            handle_expression(&reassignment.rhs, tokens);
-
-            if let Some(mut token) = tokens.get_mut(&to_ident_key(&reassignment.lhs_base_name)) {
-                token.typed = Some(TypedAstToken::TypedReassignment(reassignment.clone()));
-            }
-
-            for proj_kind in &reassignment.lhs_indices {
-                if let ProjectionKind::StructField { name } = proj_kind {
-                    if let Some(mut token) = tokens.get_mut(&to_ident_key(name)) {
-                        token.typed = Some(TypedAstToken::TypedReassignment(reassignment.clone()));
-                        if let Some(struct_decl) =
-                            &struct_declaration_of_type_id(&reassignment.lhs_type, tokens)
-                        {
-                            for decl_field in &struct_decl.fields {
-                                if &decl_field.name == name {
-                                    token.type_def =
-                                        Some(TypeDefinition::Ident(decl_field.name.clone()));
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
         TypedDeclaration::ImplTrait(TypedImplTrait {
             trait_name,
             methods,
@@ -216,18 +191,6 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                 handle_expression(&field.initializer, tokens);
             }
         }
-        TypedDeclaration::StorageReassignment(storage_reassignment) => {
-            for field in &storage_reassignment.fields {
-                if let Some(mut token) = tokens.get_mut(&to_ident_key(&field.name)) {
-                    token.typed = Some(TypedAstToken::TypeCheckedStorageReassignDescriptor(
-                        field.clone(),
-                    ));
-                }
-            }
-            handle_expression(&storage_reassignment.rhs, tokens);
-        }
-        TypedDeclaration::Break { .. } => {}
-        TypedDeclaration::Continue { .. } => {}
     }
 }
 
@@ -424,6 +387,44 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
         TypedExpressionVariant::WhileLoop {
             body, condition, ..
         } => handle_while_loop(body, condition, tokens),
+        TypedExpressionVariant::Break => (),
+        TypedExpressionVariant::Continue => (),
+        TypedExpressionVariant::Reassignment(reassignment) => {
+            handle_expression(&reassignment.rhs, tokens);
+
+            if let Some(mut token) = tokens.get_mut(&to_ident_key(&reassignment.lhs_base_name)) {
+                token.typed = Some(TypedAstToken::TypedReassignment((**reassignment).clone()));
+            }
+
+            for proj_kind in &reassignment.lhs_indices {
+                if let ProjectionKind::StructField { name } = proj_kind {
+                    if let Some(mut token) = tokens.get_mut(&to_ident_key(name)) {
+                        token.typed =
+                            Some(TypedAstToken::TypedReassignment((**reassignment).clone()));
+                        if let Some(struct_decl) =
+                            &struct_declaration_of_type_id(&reassignment.lhs_type, tokens)
+                        {
+                            for decl_field in &struct_decl.fields {
+                                if &decl_field.name == name {
+                                    token.type_def =
+                                        Some(TypeDefinition::Ident(decl_field.name.clone()));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        TypedExpressionVariant::StorageReassignment(storage_reassignment) => {
+            for field in &storage_reassignment.fields {
+                if let Some(mut token) = tokens.get_mut(&to_ident_key(&field.name)) {
+                    token.typed = Some(TypedAstToken::TypeCheckedStorageReassignDescriptor(
+                        field.clone(),
+                    ));
+                }
+            }
+            handle_expression(&storage_reassignment.rhs, tokens);
+        }
     }
 }
 

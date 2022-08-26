@@ -112,6 +112,18 @@ impl Block {
         }
     }
 
+    /// Remove the value in the phi instruction which correlates to `from_block`.
+    pub fn remove_phi_val_coming_from(&self, context: &mut Context, from_block: &Block) {
+        let phi_val = self.get_phi(context);
+        if let ValueDatum::Instruction(Instruction::Phi(pairs)) =
+            &mut context.values[phi_val.0].value
+        {
+            pairs.retain(|(block, _value)| block != from_block);
+        } else {
+            unreachable!("Phi value must be a PHI instruction.");
+        }
+    }
+
     /// Replace a block reference in the phi instruction.
     ///
     /// Any reference to `old_source` will be replace with `new_source` in the list of phi values.

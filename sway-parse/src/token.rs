@@ -274,7 +274,7 @@ pub fn lex_commented(
                     } else {
                         Spacing::Alone
                     };
-                    let span = Span::new(src.clone(), start, end, path.clone()).unwrap();
+                    let span = Span::new(src.clone(), index, end, path.clone()).unwrap();
                     let punct = Punct {
                         kind: PunctKind::ForwardSlash,
                         spacing,

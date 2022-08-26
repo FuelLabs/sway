@@ -129,14 +129,10 @@ fn compile_declarations(
             | TypedDeclaration::EnumDeclaration(_)
             | TypedDeclaration::TraitDeclaration(_)
             | TypedDeclaration::VariableDeclaration(_)
-            | TypedDeclaration::Reassignment(_)
-            | TypedDeclaration::StorageReassignment(_)
             | TypedDeclaration::AbiDeclaration(_)
             | TypedDeclaration::GenericTypeForFunctionScope { .. }
             | TypedDeclaration::StorageDeclaration(_)
-            | TypedDeclaration::ErrorRecovery
-            | TypedDeclaration::Break { .. }
-            | TypedDeclaration::Continue { .. } => (),
+            | TypedDeclaration::ErrorRecovery => (),
         }
     }
     Ok(())
