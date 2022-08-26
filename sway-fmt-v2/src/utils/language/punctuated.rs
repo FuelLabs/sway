@@ -19,8 +19,7 @@ where
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        if self.value_separator_pairs.is_empty() && self.final_value_opt.is_none() {
-        } else {
+        if !self.value_separator_pairs.is_empty() || self.final_value_opt.is_some() {
             match formatter.shape.code_line.line_style {
                 LineStyle::Normal => {
                     let value_pairs = &self.value_separator_pairs;
