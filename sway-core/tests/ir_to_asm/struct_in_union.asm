@@ -17,22 +17,19 @@ lw   $r1 data_1               ; literal instantiation for aggregate field
 sw   $r2 $r1 i0               ; initialise aggregate field
 addi $r1 $r2 i8               ; get struct field(s) 1 offset
 mcpi $r1 $r0 i8               ; store struct field value
-lw   $r1 $r2 i0               ; extract_value @ 0
-lw   $r0 data_1               ; literal instantiation
-eq   $r0 $r1 $r0
-jnzi $r0 i23
-ji   i30
-addi $r1 $r2 i8               ; extract address
-addi $r0 $r3 i0               ; get offset reg for get_ptr
-addi $r0 $r3 i0               ; get store offset
-mcpi $r0 $r1 i8               ; store value
+lw   $r0 $r2 i0               ; extract_value @ 0
+eq   $r0 $r0 $one
+jnzi $r0 i22
+ji   i29
+addi $r0 $r2 i8               ; extract address
+addi $r1 $r3 i0               ; get offset reg for get_ptr
+addi $r1 $r3 i0               ; get store offset
+mcpi $r1 $r0 i8               ; store value
 addi $r0 $r3 i0               ; get offset reg for get_ptr
 lw   $r0 $r0 i0               ; extract_value @ 0
-ji   i31
-lw   $r0 data_2               ; literal instantiation
+ji   i30
+move $r0 $zero                ; branch to phi value
 ret  $r0
-noop                          ; word-alignment of data section
 .data:
 data_0 .u64 0x2a
 data_1 .u64 0x01
-data_2 .u64 0x00
