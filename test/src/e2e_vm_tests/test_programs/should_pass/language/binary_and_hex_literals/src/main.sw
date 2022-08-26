@@ -1,6 +1,6 @@
 script;
 
-fn main() -> true {
+fn main() -> u64 {
     // Hex
     let x = 0xF;
     let x = 0xFF;

@@ -6,7 +6,8 @@
       {
         "components": null,
         "name": "",
-        "type": "bool"
+        "type": "u64",
+        "typeArguments": null
       }
     ],
     "type": "function"
