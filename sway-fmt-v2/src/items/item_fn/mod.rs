@@ -130,7 +130,7 @@ fn format_fn_sig(
         write!(formatted_code, "{} ", visibility_token.span().as_str())?;
     }
     // `fn ` + name
-    write!(formatted_code, "{} ", fn_sig.fn_token.span().as_str(),)?;
+    write!(formatted_code, "{} ", fn_sig.fn_token.span().as_str())?;
     fn_sig.name.format(formatted_code, formatter)?;
     // `<T>`
     if let Some(generics) = &fn_sig.generics {

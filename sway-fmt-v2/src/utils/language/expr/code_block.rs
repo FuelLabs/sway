@@ -15,8 +15,7 @@ impl Format for CodeBlockContents {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        if self.statements.is_empty() && self.final_expr_opt.is_none() {
-        } else {
+        if !self.statements.is_empty() || self.final_expr_opt.is_some() {
             writeln!(formatted_code)?;
             for statement in self.statements.iter() {
                 statement.format(formatted_code, formatter)?;

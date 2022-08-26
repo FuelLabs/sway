@@ -28,7 +28,7 @@ impl Format for ItemEnum {
             write!(formatted_code, "{} ", visibility.span().as_str())?;
         }
         // Add enum token and name
-        write!(formatted_code, "{} ", self.enum_token.span().as_str(),)?;
+        write!(formatted_code, "{} ", self.enum_token.span().as_str())?;
         self.name.format(formatted_code, formatter)?;
         // Format `GenericParams`, if any
         if let Some(generics) = &self.generics {
