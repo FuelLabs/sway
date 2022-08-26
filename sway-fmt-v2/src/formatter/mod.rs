@@ -1,7 +1,5 @@
 use self::shape::Shape;
-use crate::utils::map::{
-    comments::handle_comments, newline::handle_newlines, newline_style::apply_newline_style,
-};
+use crate::utils::map::{comments::handle_comments, newline_style::apply_newline_style};
 pub use crate::{
     config::manifest::Config,
     error::{ConfigError, FormatterError},
