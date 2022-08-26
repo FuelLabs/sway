@@ -70,7 +70,6 @@ impl Format for Expr {
                     Some(body_width),
                     &formatter.config,
                 );
-                debug_expr(buf, field_width, body_width, expr_width, formatter);
 
                 format_expr_struct(path, fields, formatted_code, formatter)?;
 
