@@ -9,7 +9,7 @@ use crate::{
 /// as a means of placing all declaration types into the same type.
 #[derive(Clone)]
 pub(crate) enum DeclarationWrapper {
-    // no-op variant to fufill the default trait
+    // no-op variant to fulfill the default trait
     Default,
     Function(TypedFunctionDeclaration),
     Trait(TypedTraitDeclaration),

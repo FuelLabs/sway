@@ -8,13 +8,11 @@ use crate::{
 
 use super::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper};
 
-// TODO: will need to use concurrent structure like https://github.com/xacrimon/dashmaps or im::HashMap
-
 /// Used inside of type inference to store declarations.
-pub(crate) struct DeclarationEngine {
-    slab: ConcurrentSlab<DeclarationWrapper>,
+pub struct DeclarationEngine {
+    slab: ConcurrentSlab<DeclarationId, DeclarationWrapper>,
     // *declaration_id -> vec of monomorphized copies
-    // where the declaration_id is the original declartion
+    // where the declaration_id is the original declaration
     monomorphized_copies: im::HashMap<usize, Vec<DeclarationId>>,
 }
 
@@ -50,20 +48,9 @@ impl DeclarationEngine {
         original_id: DeclarationId,
     ) -> Vec<DeclarationWrapper> {
         match self.monomorphized_copies.get(&*original_id).cloned() {
-            Some(copies) => copies
-                .into_iter()
-                .map(|copy| self.slab.get(&*copy))
-                .collect(),
+            Some(copies) => copies.into_iter().map(|copy| self.slab.get(copy)).collect(),
             None => vec![],
         }
-    }
-
-    #[allow(dead_code)]
-    pub fn debug_print(&self) {
-        println!(
-            "\n\n~~~~~~~~~~\n\nDeclaration Engine:\n{}\n\n~~~~~~~~~~",
-            self.slab.pretty_print(self)
-        );
     }
 
     pub(crate) fn insert_function(&self, function: TypedFunctionDeclaration) -> DeclarationId {
@@ -77,7 +64,6 @@ impl DeclarationEngine {
         self.slab.get(index).expect_function()
     }
 
-    // TODO(joao): consider only adding unique copies, if you get a non unique copy, throw it away
     pub(crate) fn add_monomorphized_function_copy(
         &mut self,
         original_id: DeclarationId,
@@ -132,7 +118,6 @@ impl DeclarationEngine {
         self.slab.get(index).expect_struct()
     }
 
-    // TODO(joao): consider only adding unique copies, if you get a non unique copy, throw it away
     pub(crate) fn add_monomorphized_struct_copy(
         &mut self,
         original_id: DeclarationId,

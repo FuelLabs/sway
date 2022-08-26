@@ -22,6 +22,7 @@ pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
 pub use build_config::BuildConfig;
 use control_flow_analysis::ControlFlowGraph;
+use declaration_engine::declaration_engine::DeclarationEngine;
 use metadata::MetadataManager;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -239,11 +240,13 @@ pub fn parsed_to_ast(
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
 
+    let mut declaration_engine = DeclarationEngine::new();
+
     let CompileResult {
         value: typed_program_result,
         warnings: new_warnings,
         errors: new_errors,
-    } = TypedProgram::type_check(parse_program, initial_namespace);
+    } = TypedProgram::type_check(parse_program, initial_namespace, &mut declaration_engine);
     warnings.extend(new_warnings);
     errors.extend(new_errors);
     let typed_program = match typed_program_result {
