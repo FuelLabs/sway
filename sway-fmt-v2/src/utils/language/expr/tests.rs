@@ -174,6 +174,10 @@ other_really_long_var
 fmt_test!(  if_else_control_flow    "if foo { break; } else { continue; }",
             intermediate_whitespace "if  foo { \n        break; \n}    else  {\n    continue;    \n}");
 
+fmt_test!(  small_if_let "if let Result::Ok(x) = x { 100 } else { 1 }",
+            intermediate_whitespace "if let Result::Ok(x) = x { 100 } else { 1 }"
+);
+
 fmt_test!(  match_nested_conditional
 "match foo {
     Foo::foo => {

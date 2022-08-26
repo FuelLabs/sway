@@ -1,5 +1,5 @@
 use crate::{
-    formatter::*,
+    formatter::{shape::LineStyle, *},
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
         {CurlyBrace, Parenthesis},
@@ -35,22 +35,26 @@ impl Format for Pattern {
             Self::Literal(lit) => lit.format(formatted_code, formatter)?,
             Self::Constant(path) => path.format(formatted_code, formatter)?,
             Self::Constructor { path, args } => {
+                // TODO: add a check for width of whether to be normal or multiline
+                let prev_state = formatter.shape.code_line;
+                formatter
+                    .shape
+                    .code_line
+                    .update_line_style(LineStyle::Normal);
                 path.format(formatted_code, formatter)?;
                 Self::open_parenthesis(formatted_code, formatter)?;
-                // need to add `<Pattern, CommaToken>` to `Punctuated::format()`
                 args.get().format(formatted_code, formatter)?;
                 Self::close_parenthesis(formatted_code, formatter)?;
+                formatter.shape.update_line_settings(prev_state);
             }
             Self::Struct { path, fields } => {
                 path.format(formatted_code, formatter)?;
                 Self::open_curly_brace(formatted_code, formatter)?;
-                // need to add `<PatternStructField, CommaToken>` to `Punctuated::format()`
                 fields.get().format(formatted_code, formatter)?;
                 Self::close_curly_brace(formatted_code, formatter)?;
             }
             Self::Tuple(args) => {
                 Self::open_parenthesis(formatted_code, formatter)?;
-                // need to add `<Pattern, CommaToken>` to `Punctuated::format()`
                 args.get().format(formatted_code, formatter)?;
                 Self::close_parenthesis(formatted_code, formatter)?;
             }
@@ -108,12 +112,13 @@ impl Format for PatternStructField {
                 pattern_opt,
             } => {
                 write!(formatted_code, "{}", field_name.span().as_str())?;
-                if let Some(pattern) = pattern_opt {
-                    write!(formatted_code, "{}", pattern.0.span().as_str())?;
-                    pattern.1.format(formatted_code, formatter)?;
+                if let Some((colon_token, pattern)) = pattern_opt {
+                    write!(formatted_code, "{}", colon_token.span().as_str())?;
+                    pattern.format(formatted_code, formatter)?;
                 }
             }
         }
+
         Ok(())
     }
 }
