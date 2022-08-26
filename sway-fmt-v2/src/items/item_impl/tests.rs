@@ -150,3 +150,4 @@ fmt_test!(  normal_with_generics
                 }
             }"
 );
+// the above impl test gets rid of the nested unit in `Option::None::<T>(())`
