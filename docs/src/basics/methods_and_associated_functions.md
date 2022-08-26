@@ -70,8 +70,9 @@ enum Make {
     BMW: (),
     // etc...
 }
+
 struct Car {
-    make: CarMake,
+    make: Make,
     color: Color,
 }
 ```

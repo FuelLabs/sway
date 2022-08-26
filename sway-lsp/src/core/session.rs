@@ -23,7 +23,7 @@ use sway_core::{CompileAstResult, CompileResult, ParseProgram, TypedProgram, Typ
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, GotoDefinitionParams, GotoDefinitionResponse, Location, Position,
-    Range, SemanticToken, SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
+    Range, SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
 };
 
 pub type Documents = DashMap<String, TextDocument>;
@@ -335,11 +335,6 @@ impl Session {
         Some(capabilities::completion::to_completion_items(
             self.token_map(),
         ))
-    }
-
-    pub fn semantic_tokens(&self, url: &Url) -> Option<Vec<SemanticToken>> {
-        let tokens = self.tokens_for_file(url);
-        Some(capabilities::semantic_tokens::to_semantic_tokens(&tokens))
     }
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {

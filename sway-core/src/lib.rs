@@ -481,15 +481,28 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         errors
     );
 
-    // The only other optimisation we have at the moment is constant combining.  In lieu of a
-    // forthcoming pass manager we can just call it here now.
+    // TODO: Experiment with putting combine-constants and simplify-cfg
+    // in a loop, but per function.
     check!(
         combine_constants(&mut ir, &entry_point_functions),
         return err(warnings, errors),
         warnings,
         errors
     );
-
+    check!(
+        simplify_cfg(&mut ir, &entry_point_functions),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    // Simplify-CFG helps combine constants.
+    check!(
+        combine_constants(&mut ir, &entry_point_functions),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    // And that in-turn enables more simplify-cfg.
     check!(
         simplify_cfg(&mut ir, &entry_point_functions),
         return err(warnings, errors),

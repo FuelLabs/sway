@@ -57,6 +57,11 @@ fn remove_dead_blocks(context: &mut Context, function: &Function) -> Result<bool
     for block in function.block_iter(context) {
         if !reachable.contains(&block) {
             modified = true;
+
+            for succ in block.successors(context) {
+                succ.remove_phi_val_coming_from(context, &block);
+            }
+
             function.remove_block(context, &block)?;
         }
     }
