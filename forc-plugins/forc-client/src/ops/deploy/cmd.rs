@@ -69,4 +69,7 @@ pub struct DeployCommand {
     /// Output the time elapsed over each part of the compilation process.
     #[clap(long)]
     pub time_phases: bool,
+    /// Do not sign the transaction
+    #[clap(long)]
+    pub not_sign: bool,
 }
