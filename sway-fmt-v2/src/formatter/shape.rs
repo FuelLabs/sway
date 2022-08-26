@@ -274,7 +274,7 @@ impl Shape {
             ExprKind::Conditional => {
                 if self.width < self.width_heuristics.single_line_if_else_max_width {
                     self.code_line.update_line_style(LineStyle::Inline)
-                } else if dbg!(body_width.unwrap_or(0) > config.whitespace.max_width) {
+                } else if body_width.unwrap_or(0) > self.width_heuristics.chain_width {
                     self.code_line.update_line_style(LineStyle::Multiline)
                 } else {
                     self.code_line.update_line_style(LineStyle::Normal)

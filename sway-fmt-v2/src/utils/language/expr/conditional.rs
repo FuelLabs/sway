@@ -34,15 +34,11 @@ impl Format for IfExpr {
             format_if_expr(self, formatted_code, formatter)?;
         } else {
             // if it can't then we must format one expression at a time
-            let if_cond_width = get_if_condition_width(self, formatter)?;
+            let if_cond_width = get_if_condition_width(self)?;
             formatter
-                .shape // add an offest for now of 5, that represents a possible `else`
-                .get_line_style(None, Some(if_cond_width + 5), &formatter.config);
+                .shape
+                .get_line_style(None, Some(if_cond_width), &formatter.config);
             format_if_condition(self, formatted_code, formatter)?;
-            println!(
-                "actual formatting: \"{}\"\nwidth: {}\n{:?}",
-                formatted_code, formatter.shape.width, formatter.shape.code_line.line_style
-            );
             format_then_block(self, formatted_code, formatter)?;
 
             if self.else_opt.is_some() {
@@ -81,10 +77,7 @@ fn get_full_width_line_style(
     Ok(temp_formatter.shape.code_line.line_style)
 }
 
-fn get_if_condition_width(
-    if_expr: &IfExpr,
-    formatter: &mut Formatter,
-) -> Result<usize, FormatterError> {
+fn get_if_condition_width(if_expr: &IfExpr) -> Result<usize, FormatterError> {
     let mut temp_formatter = Formatter::default();
     temp_formatter
         .shape
@@ -92,11 +85,6 @@ fn get_if_condition_width(
         .update_expr_kind(ExprKind::Conditional);
 
     let mut if_cond_str = FormattedCode::new();
-    write!(
-        if_cond_str,
-        "{}",
-        formatter.shape.indent.to_string(&formatter.config)?
-    )?;
     format_if_condition(if_expr, &mut if_cond_str, &mut temp_formatter)?;
     write!(if_cond_str, " {{")?;
     let condition_width = if_cond_str.chars().count();
