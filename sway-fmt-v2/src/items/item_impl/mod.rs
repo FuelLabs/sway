@@ -26,9 +26,8 @@ impl Format for ItemImpl {
         write!(formatted_code, " ")?;
         if let Some((path_type, for_token)) = &self.trait_opt {
             path_type.format(formatted_code, formatter)?;
-            write!(formatted_code, " {}", for_token.span().as_str())?;
+            write!(formatted_code, " {} ", for_token.span().as_str())?;
         }
-        write!(formatted_code, " ")?;
         self.ty.format(formatted_code, formatter)?;
         if let Some(where_clause) = &self.where_clause_opt {
             write!(formatted_code, " ")?;

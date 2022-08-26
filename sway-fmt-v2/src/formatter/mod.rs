@@ -71,14 +71,14 @@ impl Formatter {
             &mut formatted_code,
         )?;
         // Add newline sequences
-        handle_newlines(
-            src,
-            &module,
-            Arc::from(formatted_code.clone()),
-            path,
-            &mut formatted_code,
-            self,
-        )?;
+        // handle_newlines(
+        //     src,
+        //     &module,
+        //     Arc::from(formatted_code.clone()),
+        //     path,
+        //     &mut formatted_code,
+        //     self,
+        // )?;
         // Replace newlines with specified `NewlineStyle`
         apply_newline_style(
             self.config.whitespace.newline_style,

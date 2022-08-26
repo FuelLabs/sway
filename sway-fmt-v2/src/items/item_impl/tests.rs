@@ -116,3 +116,37 @@ fmt_test!(  impl_with_nested_items
     }
 }"
 );
+
+fmt_test!(  normal_with_generics
+"impl<T> Option<T> {
+    fn some(value: T) -> Self {
+        Option::Some::<T>(value)
+    }
+    fn none() -> Self {
+        Option::None::<T>(())
+    }
+    fn to_result(self) -> Result<T> {
+        if let Option::Some(value) = self {
+        ~Result::<T>::ok(value)
+        } else {
+        ~Result::<T>::err(99u8)
+        }
+    }
+}",
+            intermediate_whitespace
+            "impl<T> Option<T> {
+                fn some(value: T) -> Self {
+                    Option::Some::<T>(value)
+                }
+                fn none() -> Self {
+                    Option::None::<T>(())
+                }
+                fn to_result(self) -> Result<T> {
+                    if let Option::Some(value) = self {
+                    ~Result::<T>::ok(value)
+                    } else {
+                    ~Result::<T>::err(99u8)
+                    }
+                }
+            }"
+);
