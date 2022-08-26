@@ -1,14 +1,11 @@
 use crate::{
-    formatter::*,
-    utils::{
-<<<<<<< HEAD:sway-fmt-v2/src/utils/expr/conditional.rs
-        bracket::CurlyBrace,
-        byte_span::{ByteSpan, LeafSpans},
+    formatter::{
         shape::{ExprKind, LineStyle},
-=======
+        *,
+    },
+    utils::{
         map::byte_span::{ByteSpan, LeafSpans},
         CurlyBrace,
->>>>>>> master:sway-fmt-v2/src/utils/language/expr/conditional.rs
     },
 };
 use std::{fmt::Write, ops::ControlFlow};

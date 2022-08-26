@@ -1,15 +1,9 @@
 use crate::{
     config::items::ItemBraceStyle,
-    formatter::*,
+    formatter::{shape::LineStyle, *},
     utils::{
-<<<<<<< HEAD:sway-fmt-v2/src/utils/expr/code_block.rs
-        bracket::CurlyBrace,
-        byte_span::{ByteSpan, LeafSpans},
-        shape::LineStyle,
-=======
         map::byte_span::{ByteSpan, LeafSpans},
         CurlyBrace,
->>>>>>> master:sway-fmt-v2/src/utils/language/expr/code_block.rs
     },
 };
 use std::fmt::Write;

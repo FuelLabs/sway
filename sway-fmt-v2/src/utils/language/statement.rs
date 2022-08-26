@@ -1,12 +1,10 @@
 use crate::{
-    formatter::*,
+    formatter::{shape::LineStyle, *},
     utils::map::byte_span::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
 use sway_ast::{Statement, StatementLet};
 use sway_types::Spanned;
-
-use super::shape::LineStyle;
 
 impl Format for Statement {
     fn format(
