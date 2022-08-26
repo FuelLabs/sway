@@ -19,7 +19,7 @@ pub use integer_bits::*;
 pub(crate) use replace_self_type::*;
 pub(crate) use resolved_type::*;
 pub(crate) use trait_constraint::*;
-pub(crate) use type_argument::*;
+pub use type_argument::*;
 pub(crate) use type_binding::*;
 pub use type_engine::*;
 pub use type_id::*;
