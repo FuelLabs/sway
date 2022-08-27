@@ -5,17 +5,14 @@ use fuel_gql_client::client::FuelClient;
 use fuel_tx::{Output, Salt, StorageSlot, Transaction};
 use fuel_vm::prelude::*;
 use fuels_core::constants::{BASE_ASSET_ID, DEFAULT_SPENDABLE_COIN_AMOUNT};
-use fuels_signers::{
-    provider::Provider,
-    wallet::{Locked, Wallet},
-};
+use fuels_signers::{provider::Provider, wallet::Wallet};
 use fuels_types::bech32::Bech32Address;
 use std::{io::Write, path::PathBuf, str::FromStr};
 use sway_core::TreeType;
 use sway_utils::constants::DEFAULT_NODE_URL;
 use tracing::info;
 
-use crate::ops::deploy::cmd::DeployCommand;
+use crate::ops::{deploy::cmd::DeployCommand, parameters::TxParameters};
 
 pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
     let curr_dir = if let Some(ref path) = command.path {
@@ -45,6 +42,9 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         release,
         time_phases,
         not_sign,
+        byte_price,
+        gas_limit,
+        gas_price,
     } = command;
 
     let build_options = BuildOptions {
@@ -92,9 +92,9 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         std::io::stdout().flush()?;
         std::io::stdin().read_line(&mut wallet_address)?;
         let address = Bech32Address::from_str(wallet_address.trim())?;
-        let locked_wallet =
-            Wallet::<Locked>::from_address(address, Some(Provider::new(client.clone())));
-        create_signed_contract_tx(compiled, locked_wallet, 0, 0, 0).await?
+        let locked_wallet = Wallet::from_address(address, Some(Provider::new(client.clone())));
+        let tx_parameters = TxParameters::new(byte_price, gas_limit, gas_price);
+        create_signed_contract_tx(compiled, locked_wallet, tx_parameters).await?
     };
 
     if !not_sign {
@@ -129,10 +129,8 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
 
 async fn create_signed_contract_tx(
     compiled_contract: Compiled,
-    signer_wallet: Wallet<Locked>,
-    gas_price: u64,
-    byte_price: u64,
-    gas_limit: u64,
+    signer_wallet: Wallet,
+    tx_parameters: TxParameters,
 ) -> Result<(Transaction, fuel_tx::ContractId)> {
     let maturity = 0;
     let bytecode_witness_index = 0;
@@ -167,9 +165,9 @@ async fn create_signed_contract_tx(
         )
         .await?;
     let tx = Transaction::create(
-        gas_price,
-        gas_limit,
-        byte_price,
+        tx_parameters.gas_price,
+        tx_parameters.gas_limit,
+        tx_parameters.byte_price,
         maturity,
         bytecode_witness_index,
         salt,
