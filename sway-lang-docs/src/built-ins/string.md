@@ -1,9 +1,42 @@
 # String Type
 
-In Sway, static-length strings are a primitive type. This means that when you declare a string, its size is a part of its type. This is necessary for the compiler to know how much memory to give for the storage of that data. The size of the string is denoted with square brackets. Let's take a look:
+A string is a collection of characters (letters, numbers etc.).
+
+Sway has one string type and it's a fixed length string which has the following implications:
+
+- A string must have a hardcoded length
+- A string cannot be grown or shrunk during execution
+- The content of the string must meet its length
+  - This could be via a legitimate value that takes up the entire length or through padding
+
+The reason for this is that the compiler must know the size of the type and the length is a part of the type.
+
+## Examples
+
+The following three variables show how a string can be instantiated. The length of each string is placed inside the `[]` to let the compiler know that the type is a string of length `[<length>]`.
 
 ```sway
-let my_string: str[4] = "fuel";
+let fuel: str[4] = "fuel";
+let blockchain: str[10] = "blockchain";
+let crypto: str[6] = "crypto";
 ```
 
-Because the string literal `"fuel"` is four letters, the type is `str[4]`, denoting a static length of 4 characters. Strings default to UTF-8 in Sway.
+It can be seen that the variable `fuel` is a string of length four because "fuel" has four characters (f, e, u and l).
+
+The example above is a demonstration which emphasizes the fixed-length aspect of strings however the compiler is smart enough to infer the size and thus the string type (and length) does not need to be specified.
+
+```sway
+let fuel = "fuel";
+let blockchain = "blockchain";
+let crypto = "crypto";
+```
+
+Similarly, the double quotes `"` can be replaced with single quotes `'`.
+
+```sway
+let fuel = 'fuel';
+let blockchain = 'blockchain';
+let crypto = 'crypto';
+```
+
+> Strings default to UTF-8 in Sway.

@@ -4,10 +4,10 @@ A Sway program is a file ending with the extension `.sw`, e.g. `main.sw`, and th
 
 A Sway program can be one of four types: 
 
-- contract
-- predicate
-- script
-- library 
+- [contract](contract.md)
+- [predicate](predicate.md)
+- [script](script.md)
+- [library](library.md)
 
 The first three are all deployable to the blockchain while a _library_ is a project designed for code reuse and is never directly deployed to the chain.
 

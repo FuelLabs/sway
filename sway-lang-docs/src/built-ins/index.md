@@ -25,6 +25,8 @@ All other types in Sway are built up of these primitive types, or references to 
 
 You may notice that there are no signed integers - this is by design. In the blockchain domain that Sway occupies, floating-point values and negative numbers have smaller utility, so their implementation has been left up to libraries for specific use cases.
 
+> The default numeric type is `u64`. The FuelVM's word size is 64 bits, and the cases where using a smaller numeric type saves space are minimal.
+
 ## Compound Types
 
 Compound types are types that group multiple values into one type. 
