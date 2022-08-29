@@ -110,6 +110,12 @@ pub struct WhileLoopExpression {
 }
 
 #[derive(Debug, Clone)]
+pub struct ReassignmentExpression {
+    pub lhs: ReassignmentTarget,
+    pub rhs: Box<Expression>,
+}
+
+#[derive(Debug, Clone)]
 pub enum ExpressionKind {
     Literal(Literal),
     FunctionApplication(Box<FunctionApplicationExpression>),
@@ -163,6 +169,16 @@ pub enum ExpressionKind {
     WhileLoop(WhileLoopExpression),
     Break,
     Continue,
+    Reassignment(ReassignmentExpression),
+}
+
+/// Represents the left hand side of a reassignment, which could either be a regular variable
+/// expression, denoted by [ReassignmentTarget::VariableExpression], or, a storage field, denoted
+/// by [ReassignmentTarget::StorageField].
+#[derive(Debug, Clone)]
+pub enum ReassignmentTarget {
+    VariableExpression(Box<Expression>),
+    StorageField(Vec<Ident>),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
