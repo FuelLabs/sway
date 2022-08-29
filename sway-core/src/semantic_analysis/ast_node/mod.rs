@@ -13,13 +13,16 @@ pub(crate) use mode::*;
 pub(crate) use return_statement::*;
 
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::*, style::*, type_system::*,
-    types::DeterministicallyAborts, AstNode, AstNodeContent, Ident, ReturnStatement,
+    error::*,
+    parse_tree::*,
+    semantic_analysis::*,
+    style::*,
+    type_system::*,
+    types::{CompileWrapper, DeterministicallyAborts, ToCompileWrapper},
+    AstNode, AstNodeContent, Ident, ReturnStatement,
 };
 
 use sway_types::{span::Span, state::StateIndex, Spanned};
-
-use derivative::Derivative;
 
 /// whether or not something is constantly evaluatable (if the result is known at compile
 /// time)
@@ -29,7 +32,7 @@ pub(crate) enum IsConstant {
     No,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub enum TypedAstNodeContent {
     ReturnStatement(TypedReturnStatement),
     Declaration(TypedDeclaration),
@@ -37,6 +40,33 @@ pub enum TypedAstNodeContent {
     ImplicitReturnExpression(TypedExpression),
     // a no-op node used for something that just issues a side effect, like an import statement.
     SideEffect,
+}
+
+impl PartialEq for CompileWrapper<'_, TypedAstNodeContent> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        match (me, them) {
+            (TypedAstNodeContent::ReturnStatement(l), TypedAstNodeContent::ReturnStatement(r)) => {
+                l.wrap(de) == r.wrap(de)
+            }
+            (TypedAstNodeContent::Declaration(l), TypedAstNodeContent::Declaration(r)) => {
+                l.wrap(de) == r.wrap(de)
+            }
+            (TypedAstNodeContent::Expression(l), TypedAstNodeContent::Expression(r)) => {
+                l.wrap(de) == r.wrap(de)
+            }
+            (
+                TypedAstNodeContent::ImplicitReturnExpression(l),
+                TypedAstNodeContent::ImplicitReturnExpression(r),
+            ) => l.wrap(de) == r.wrap(de),
+            (TypedAstNodeContent::SideEffect, TypedAstNodeContent::SideEffect) => true,
+            _ => false,
+        }
+    }
 }
 
 impl UnresolvedTypeCheck for TypedAstNodeContent {
@@ -52,12 +82,39 @@ impl UnresolvedTypeCheck for TypedAstNodeContent {
     }
 }
 
-#[derive(Clone, Debug, Eq, Derivative)]
-#[derivative(PartialEq)]
+#[derive(Clone, Debug)]
 pub struct TypedAstNode {
     pub content: TypedAstNodeContent,
-    #[derivative(PartialEq = "ignore")]
     pub(crate) span: Span,
+}
+
+impl PartialEq for CompileWrapper<'_, TypedAstNode> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        (**me).wrap(de) == (**them).wrap(de)
+    }
+}
+
+impl PartialEq for CompileWrapper<'_, Vec<TypedAstNode>> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        if me.len() != them.len() {
+            return false;
+        }
+        me.iter()
+            .map(|elem| elem.wrap(de))
+            .zip(other.inner.iter().map(|elem| elem.wrap(de)))
+            .map(|(left, right)| left == right)
+            .all(|elem| elem)
+    }
 }
 
 impl fmt::Display for TypedAstNode {
@@ -482,7 +539,9 @@ impl TypedAstNode {
                 r#type: Box::new(node.type_info()),
             };
             assert_or_warn!(
-                node.type_info().is_unit() || node.type_info() == TypeInfo::ErrorRecovery,
+                node.type_info().is_unit()
+                    || node.type_info().wrap(ctx.declaration_engine)
+                        == TypeInfo::ErrorRecovery.wrap(ctx.declaration_engine),
                 warnings,
                 node.span.clone(),
                 warning
@@ -765,11 +824,24 @@ fn error_recovery_function_declaration(decl: FunctionDeclaration) -> TypedFuncti
 }
 
 /// Describes each field being drilled down into in storage and its type.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct TypeCheckedStorageReassignment {
     pub fields: Vec<TypeCheckedStorageReassignDescriptor>,
     pub(crate) ix: StateIndex,
     pub rhs: TypedExpression,
+}
+
+impl PartialEq for CompileWrapper<'_, TypeCheckedStorageReassignment> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        me.fields.wrap(de) == them.fields.wrap(de)
+            && me.ix == them.ix
+            && me.rhs.wrap(de) == them.rhs.wrap(de)
+    }
 }
 
 impl Spanned for TypeCheckedStorageReassignment {
@@ -793,19 +865,40 @@ impl TypeCheckedStorageReassignment {
 
 /// Describes a single subfield access in the sequence when reassigning to a subfield within
 /// storage.
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug)]
 pub struct TypeCheckedStorageReassignDescriptor {
     pub name: Ident,
     pub type_id: TypeId,
     pub(crate) span: Span,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypeCheckedStorageReassignDescriptor {
+impl PartialEq for CompileWrapper<'_, TypeCheckedStorageReassignDescriptor> {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        me.name == them.name
+            && look_up_type_id(me.type_id).wrap(de) == look_up_type_id(them.type_id).wrap(de)
+    }
+}
+
+impl PartialEq for CompileWrapper<'_, Vec<TypeCheckedStorageReassignDescriptor>> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        if me.len() != them.len() {
+            return false;
+        }
+        me.iter()
+            .map(|elem| elem.wrap(de))
+            .zip(other.inner.iter().map(|elem| elem.wrap(de)))
+            .map(|(left, right)| left == right)
+            .all(|elem| elem)
     }
 }
 

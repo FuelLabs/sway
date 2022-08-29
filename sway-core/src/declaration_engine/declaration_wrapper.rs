@@ -2,6 +2,7 @@ use crate::{
     semantic_analysis::{
         TypedImplTrait, TypedStructDeclaration, TypedTraitDeclaration, TypedTraitFn,
     },
+    types::{CompileWrapper, ToCompileWrapper},
     TypedFunctionDeclaration,
 };
 
@@ -16,6 +17,30 @@ pub(crate) enum DeclarationWrapper {
     TraitFn(TypedTraitFn),
     TraitImpl(TypedImplTrait),
     Struct(TypedStructDeclaration),
+}
+
+impl PartialEq for CompileWrapper<'_, DeclarationWrapper> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self.inner, other.inner) {
+            (DeclarationWrapper::Default, DeclarationWrapper::Default) => true,
+            (DeclarationWrapper::Function(l), DeclarationWrapper::Function(r)) => {
+                l.wrap(self.declaration_engine) == r.wrap(self.declaration_engine)
+            }
+            (DeclarationWrapper::Trait(l), DeclarationWrapper::Trait(r)) => l == r,
+            (DeclarationWrapper::TraitFn(l), DeclarationWrapper::TraitFn(r)) => l == r,
+            (DeclarationWrapper::TraitImpl(l), DeclarationWrapper::TraitImpl(r)) => {
+                l.wrap(self.declaration_engine) == r.wrap(self.declaration_engine)
+            }
+            (DeclarationWrapper::Struct(l), DeclarationWrapper::Struct(r)) => {
+                l.wrap(self.declaration_engine) == r.wrap(self.declaration_engine)
+            }
+            _ => false,
+        }
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        !self.eq(other)
+    }
 }
 
 impl Default for DeclarationWrapper {

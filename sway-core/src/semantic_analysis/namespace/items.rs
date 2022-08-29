@@ -11,7 +11,7 @@ pub(super) type UseSynonyms = im::HashMap<Ident, Vec<Ident>>;
 pub(super) type UseAliases = im::HashMap<String, Ident>;
 
 /// The set of items that exist within some lexical scope via declaration or importing.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default)]
 pub struct Items {
     /// An ordered map from `Ident`s to their associated typed declarations.
     pub(crate) symbols: SymbolMap,

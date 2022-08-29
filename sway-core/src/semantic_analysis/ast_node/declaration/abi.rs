@@ -1,4 +1,3 @@
-use derivative::Derivative;
 use sway_types::{Ident, Span};
 
 use crate::{
@@ -8,14 +7,14 @@ use crate::{
         TypeCheckContext,
     },
     type_system::{insert_type, AbiName, TypeId},
+    types::{CompileWrapper, ToCompileWrapper},
     AbiDeclaration, CompileError, CompileResult, FunctionDeclaration, TypeInfo,
 };
 
 use super::{CreateTypeId, TypedTraitFn};
 
 /// A `TypedAbiDeclaration` contains the type-checked version of the parse tree's `AbiDeclaration`.
-#[derive(Clone, Debug, Derivative)]
-#[derivative(PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct TypedAbiDeclaration {
     /// The name of the abi trait (also known as a "contract trait")
     pub name: Ident,
@@ -23,12 +22,19 @@ pub struct TypedAbiDeclaration {
     pub interface_surface: Vec<TypedTraitFn>,
     /// The methods provided to a contract "for free" upon opting in to this interface
     // NOTE: It may be important in the future to include this component
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Eq(bound = ""))]
     pub(crate) methods: Vec<FunctionDeclaration>,
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Eq(bound = ""))]
     pub(crate) span: Span,
+}
+
+impl PartialEq for CompileWrapper<'_, TypedAbiDeclaration> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        me.name == them.name && me.interface_surface.wrap(de) == them.interface_surface.wrap(de)
+    }
 }
 
 impl CreateTypeId for TypedAbiDeclaration {

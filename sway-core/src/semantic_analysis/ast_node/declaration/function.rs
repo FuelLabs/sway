@@ -8,7 +8,7 @@ use sway_types::{
     Spanned,
 };
 
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug)]
 pub struct TypedFunctionDeclaration {
     pub name: Ident,
     pub body: TypedCodeBlock,
@@ -26,6 +26,43 @@ pub struct TypedFunctionDeclaration {
     pub(crate) purity: Purity,
 }
 
+impl PartialEq for CompileWrapper<'_, TypedFunctionDeclaration> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        me.name == them.name
+            && me.body.wrap(de) == them.body.wrap(de)
+            && me.parameters.wrap(de) == them.parameters.wrap(de)
+            && look_up_type_id(me.return_type).wrap(de)
+                == look_up_type_id(them.return_type).wrap(de)
+            && me.type_parameters == them.type_parameters
+            && me.visibility == them.visibility
+            && me.is_contract_call == them.is_contract_call
+            && me.purity == them.purity
+    }
+}
+
+impl PartialEq for CompileWrapper<'_, Vec<TypedFunctionDeclaration>> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        if me.len() != them.len() {
+            return false;
+        }
+        me.iter()
+            .map(|elem| elem.wrap(de))
+            .zip(other.inner.iter().map(|elem| elem.wrap(de)))
+            .map(|(left, right)| left == right)
+            .all(|elem| elem)
+    }
+}
+
 impl From<&TypedFunctionDeclaration> for TypedAstNode {
     fn from(o: &TypedFunctionDeclaration) -> Self {
         let span = o.span.clone();
@@ -35,22 +72,6 @@ impl From<&TypedFunctionDeclaration> for TypedAstNode {
             )),
             span,
         }
-    }
-}
-
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedFunctionDeclaration {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && self.body == other.body
-            && self.parameters == other.parameters
-            && look_up_type_id(self.return_type) == look_up_type_id(other.return_type)
-            && self.type_parameters == other.type_parameters
-            && self.visibility == other.visibility
-            && self.is_contract_call == other.is_contract_call
-            && self.purity == other.purity
     }
 }
 

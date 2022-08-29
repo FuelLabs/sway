@@ -5,12 +5,13 @@ use crate::{
         TypedExpressionVariant, TypedVariableDeclaration, VariableMutability,
     },
     type_system::*,
+    types::{CompileWrapper, ToCompileWrapper},
     CompileError, CompileResult, FunctionParameter, Ident, TypedDeclaration,
 };
 
 use sway_types::{span::Span, Spanned};
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone)]
 pub struct TypedFunctionParameter {
     pub name: Ident,
     pub is_reference: bool,
@@ -20,14 +21,34 @@ pub struct TypedFunctionParameter {
     pub type_span: Span,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedFunctionParameter {
+impl PartialEq for CompileWrapper<'_, TypedFunctionParameter> {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
-            && self.is_mutable == other.is_mutable
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        me.name == them.name
+            && look_up_type_id(me.type_id).wrap(de) == look_up_type_id(them.type_id).wrap(de)
+            && me.is_mutable == them.is_mutable
+    }
+}
+
+impl PartialEq for CompileWrapper<'_, Vec<TypedFunctionParameter>> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        if me.len() != them.len() {
+            return false;
+        }
+        me.iter()
+            .map(|elem| elem.wrap(de))
+            .zip(other.inner.iter().map(|elem| elem.wrap(de)))
+            .map(|(left, right)| left == right)
+            .all(|elem| elem)
     }
 }
 

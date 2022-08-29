@@ -1,9 +1,20 @@
 use super::*;
 use crate::CodeBlock;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct TypedCodeBlock {
     pub contents: Vec<TypedAstNode>,
+}
+
+impl PartialEq for CompileWrapper<'_, TypedCodeBlock> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        me.contents.wrap(de) == them.contents.wrap(de)
+    }
 }
 
 impl CopyTypes for TypedCodeBlock {

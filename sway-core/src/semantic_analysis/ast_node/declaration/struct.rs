@@ -2,7 +2,7 @@ use crate::{error::*, parse_tree::*, semantic_analysis::*, type_system::*, types
 use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Property, Span, Spanned};
 
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug)]
 pub struct TypedStructDeclaration {
     pub name: Ident,
     pub fields: Vec<TypedStructField>,
@@ -11,15 +11,17 @@ pub struct TypedStructDeclaration {
     pub(crate) span: Span,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedStructDeclaration {
+impl PartialEq for CompileWrapper<'_, TypedStructDeclaration> {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && self.fields == other.fields
-            && self.type_parameters == other.type_parameters
-            && self.visibility == other.visibility
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        me.name == them.name
+            && me.fields.wrap(de) == them.fields.wrap(de)
+            && me.type_parameters == them.type_parameters
+            && me.visibility == them.visibility
     }
 }
 
@@ -141,13 +143,43 @@ impl TypedStructDeclaration {
     }
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone)]
 pub struct TypedStructField {
     pub name: Ident,
     pub type_id: TypeId,
     pub initial_type_id: TypeId,
     pub(crate) span: Span,
     pub type_span: Span,
+}
+
+impl PartialEq for CompileWrapper<'_, TypedStructField> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        me.name == them.name
+            && look_up_type_id(me.type_id).wrap(de) == look_up_type_id(them.type_id).wrap(de)
+    }
+}
+
+impl PartialEq for CompileWrapper<'_, Vec<TypedStructField>> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        if me.len() != them.len() {
+            return false;
+        }
+        me.iter()
+            .map(|elem| elem.wrap(de))
+            .zip(other.inner.iter().map(|elem| elem.wrap(de)))
+            .map(|(left, right)| left == right)
+            .all(|elem| elem)
+    }
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -157,15 +189,6 @@ impl Hash for TypedStructField {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.name.hash(state);
         look_up_type_id(self.type_id).hash(state);
-    }
-}
-
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedStructField {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
     }
 }
 

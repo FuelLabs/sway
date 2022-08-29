@@ -12,18 +12,32 @@ use crate::{
         insert_type, look_up_type_id, resolve_type, set_type_as_storage_only, unify_with_self,
         CopyTypes, TypeId, TypeMapping, TypeParameter,
     },
+    types::{CompileWrapper, ToCompileWrapper},
     CallPath, CompileError, CompileResult, FunctionDeclaration, ImplSelf, ImplTrait, Purity,
     TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use super::TypedTraitFn;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct TypedImplTrait {
     pub trait_name: CallPath,
     pub(crate) span: Span,
     pub methods: Vec<TypedFunctionDeclaration>,
     pub implementing_for_type_id: TypeId,
+}
+
+impl PartialEq for CompileWrapper<'_, TypedImplTrait> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        me.trait_name == them.trait_name
+            && me.methods.wrap(de) == them.methods.wrap(de)
+            && me.implementing_for_type_id == them.implementing_for_type_id
+    }
 }
 
 impl CopyTypes for TypedImplTrait {
@@ -138,7 +152,9 @@ impl TypedImplTrait {
                 // there are no type arguments here because we don't support generic types
                 // in contract ABIs yet (or ever?) due to the complexity of communicating
                 // the ABI layout in the descriptor file.
-                if look_up_type_id(implementing_for_type_id) != TypeInfo::Contract {
+                if look_up_type_id(implementing_for_type_id).wrap(&ctx.declaration_engine)
+                    != TypeInfo::Contract.wrap(&ctx.declaration_engine)
+                {
                     errors.push(CompileError::ImplAbiForNonContract {
                         span: type_implementing_for_span.clone(),
                         ty: implementing_for_type_id.to_string(),

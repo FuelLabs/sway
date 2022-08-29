@@ -1,4 +1,9 @@
-use crate::{semantic_analysis::*, type_system::*, Ident, Visibility};
+use crate::{
+    semantic_analysis::*,
+    type_system::*,
+    types::{CompileWrapper, ToCompileWrapper},
+    Ident, Visibility,
+};
 use sway_types::Span;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -50,7 +55,7 @@ pub fn convert_to_variable_immutability(
     }
 }
 
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug)]
 pub struct TypedVariableDeclaration {
     pub name: Ident,
     pub body: TypedExpression,
@@ -59,15 +64,18 @@ pub struct TypedVariableDeclaration {
     pub type_ascription_span: Option<Span>,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedVariableDeclaration {
+impl PartialEq for CompileWrapper<'_, TypedVariableDeclaration> {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && self.body == other.body
-            && self.mutability == other.mutability
-            && look_up_type_id(self.type_ascription) == look_up_type_id(other.type_ascription)
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        me.name == them.name
+            && me.body.wrap(de) == them.body.wrap(de)
+            && me.mutability == them.mutability
+            && look_up_type_id(me.type_ascription).wrap(de)
+                == look_up_type_id(them.type_ascription).wrap(de)
     }
 }
 

@@ -8,18 +8,31 @@ use crate::{
     error::{err, ok},
     semantic_analysis::TypeCheckContext,
     type_system::*,
-    types::DeterministicallyAborts,
+    types::{CompileWrapper, DeterministicallyAborts, ToCompileWrapper},
     CompileError, CompileResult, Expression, Hint,
 };
 
 use super::TypedExpression;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct TypedIntrinsicFunctionKind {
     pub kind: Intrinsic,
     pub arguments: Vec<TypedExpression>,
     pub type_arguments: Vec<TypeArgument>,
     pub span: Span,
+}
+
+impl PartialEq for CompileWrapper<'_, TypedIntrinsicFunctionKind> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        me.kind == them.kind
+            && me.arguments.wrap(de) == them.arguments.wrap(de)
+            && me.type_arguments == them.type_arguments
+    }
 }
 
 impl CopyTypes for TypedIntrinsicFunctionKind {
@@ -400,7 +413,9 @@ impl TypedIntrinsicFunctionKind {
                     errors
                 );
                 let key_ty = resolve_type(exp.return_type, &span).unwrap();
-                if key_ty != TypeInfo::B256 {
+                if key_ty.wrap(&ctx.declaration_engine)
+                    != TypeInfo::B256.wrap(&ctx.declaration_engine)
+                {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,
@@ -446,7 +461,9 @@ impl TypedIntrinsicFunctionKind {
                     errors
                 );
                 let key_ty = resolve_type(key_exp.return_type, &span).unwrap();
-                if key_ty != TypeInfo::B256 {
+                if key_ty.wrap(&ctx.declaration_engine)
+                    != TypeInfo::B256.wrap(&ctx.declaration_engine)
+                {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,

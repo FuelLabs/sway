@@ -1,10 +1,12 @@
 use super::*;
 
-use crate::{semantic_analysis::*, types::*, CallPath, Ident};
+use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine, semantic_analysis::*, types::*,
+    CallPath, Ident,
+};
 
 use sway_types::{span::Span, Spanned};
 
-use derivative::Derivative;
 use std::{
     collections::HashSet,
     fmt,
@@ -30,8 +32,7 @@ impl fmt::Display for AbiName {
 
 /// Type information without an associated value, used for type inferencing and definition.
 // TODO use idents instead of Strings when we have arena spans
-#[derive(Derivative)]
-#[derivative(Debug, Clone)]
+#[derive(Debug, Clone)]
 pub enum TypeInfo {
     Unknown,
     UnknownGeneric {
@@ -88,6 +89,111 @@ pub enum TypeInfo {
     Storage {
         fields: Vec<TypedStructField>,
     },
+}
+
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl PartialEq for CompileWrapper<'_, TypeInfo> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper {
+            inner: them,
+            declaration_engine: _,
+        } = other;
+        match (me, them) {
+            (TypeInfo::Unknown, TypeInfo::Unknown) => true,
+            (TypeInfo::Boolean, TypeInfo::Boolean) => true,
+            (TypeInfo::SelfType, TypeInfo::SelfType) => true,
+            (TypeInfo::Byte, TypeInfo::Byte) => true,
+            (TypeInfo::B256, TypeInfo::B256) => true,
+            (TypeInfo::Numeric, TypeInfo::Numeric) => true,
+            (TypeInfo::Contract, TypeInfo::Contract) => true,
+            (TypeInfo::ErrorRecovery, TypeInfo::ErrorRecovery) => true,
+            (TypeInfo::UnknownGeneric { name: l }, TypeInfo::UnknownGeneric { name: r }) => l == r,
+            (
+                TypeInfo::Custom {
+                    name: l_name,
+                    type_arguments: l_type_args,
+                },
+                TypeInfo::Custom {
+                    name: r_name,
+                    type_arguments: r_type_args,
+                },
+            ) => l_name == r_name && l_type_args == r_type_args,
+            (TypeInfo::Str(l), TypeInfo::Str(r)) => l == r,
+            (TypeInfo::UnsignedInteger(l), TypeInfo::UnsignedInteger(r)) => l == r,
+            (
+                TypeInfo::Enum {
+                    name: l_name,
+                    variant_types: l_variant_types,
+                    type_parameters: l_type_parameters,
+                },
+                TypeInfo::Enum {
+                    name: r_name,
+                    variant_types: r_variant_types,
+                    type_parameters: r_type_parameters,
+                },
+            ) => {
+                l_name == r_name
+                    && l_variant_types.wrap(de) == r_variant_types.wrap(de)
+                    && l_type_parameters.wrap(de) == r_type_parameters.wrap(de)
+            }
+            (
+                TypeInfo::Struct {
+                    name: l_name,
+                    fields: l_fields,
+                    type_parameters: l_type_parameters,
+                },
+                TypeInfo::Struct {
+                    name: r_name,
+                    fields: r_fields,
+                    type_parameters: r_type_parameters,
+                },
+            ) => {
+                l_name == r_name
+                    && l_fields.wrap(de) == r_fields.wrap(de)
+                    && l_type_parameters.wrap(de) == r_type_parameters.wrap(de)
+            }
+            (TypeInfo::Ref(l, _sp1), TypeInfo::Ref(r, _sp2)) => {
+                look_up_type_id(*l).wrap(de) == look_up_type_id(*r).wrap(de)
+            }
+            (TypeInfo::Tuple(l), TypeInfo::Tuple(r)) => l
+                .iter()
+                .zip(r.iter())
+                .map(|(l, r)| {
+                    look_up_type_id(l.type_id).wrap(de) == look_up_type_id(r.type_id).wrap(de)
+                })
+                .all(|x| x),
+            (
+                TypeInfo::ContractCaller {
+                    abi_name: l_abi_name,
+                    address: l_address,
+                },
+                TypeInfo::ContractCaller {
+                    abi_name: r_abi_name,
+                    address: r_address,
+                },
+            ) => {
+                l_abi_name == r_abi_name
+                    && if let (Some(l_address), Some(r_address)) = (l_address, r_address) {
+                        (**l_address).wrap(de) == (**r_address).wrap(de)
+                    } else {
+                        true
+                    }
+            }
+            (TypeInfo::Array(l0, l1, _), TypeInfo::Array(r0, r1, _)) => {
+                look_up_type_id(*l0).wrap(de) == look_up_type_id(*r0).wrap(de) && l1 == r1
+            }
+            (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
+                l_fields.wrap(de) == r_fields.wrap(de)
+            }
+            _ => false,
+        }
+    }
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -189,90 +295,6 @@ impl Hash for TypeInfo {
         }
     }
 }
-
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypeInfo {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Unknown, Self::Unknown) => true,
-            (Self::Boolean, Self::Boolean) => true,
-            (Self::SelfType, Self::SelfType) => true,
-            (Self::Byte, Self::Byte) => true,
-            (Self::B256, Self::B256) => true,
-            (Self::Numeric, Self::Numeric) => true,
-            (Self::Contract, Self::Contract) => true,
-            (Self::ErrorRecovery, Self::ErrorRecovery) => true,
-            (Self::UnknownGeneric { name: l }, Self::UnknownGeneric { name: r }) => l == r,
-            (
-                Self::Custom {
-                    name: l_name,
-                    type_arguments: l_type_args,
-                },
-                Self::Custom {
-                    name: r_name,
-                    type_arguments: r_type_args,
-                },
-            ) => l_name == r_name && l_type_args == r_type_args,
-            (Self::Str(l), Self::Str(r)) => l == r,
-            (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l == r,
-            (
-                Self::Enum {
-                    name: l_name,
-                    variant_types: l_variant_types,
-                    type_parameters: l_type_parameters,
-                },
-                Self::Enum {
-                    name: r_name,
-                    variant_types: r_variant_types,
-                    type_parameters: r_type_parameters,
-                },
-            ) => {
-                l_name == r_name
-                    && l_variant_types == r_variant_types
-                    && l_type_parameters == r_type_parameters
-            }
-            (
-                Self::Struct {
-                    name: l_name,
-                    fields: l_fields,
-                    type_parameters: l_type_parameters,
-                },
-                Self::Struct {
-                    name: r_name,
-                    fields: r_fields,
-                    type_parameters: r_type_parameters,
-                },
-            ) => l_name == r_name && l_fields == r_fields && l_type_parameters == r_type_parameters,
-            (Self::Ref(l, _sp1), Self::Ref(r, _sp2)) => look_up_type_id(*l) == look_up_type_id(*r),
-            (Self::Tuple(l), Self::Tuple(r)) => l
-                .iter()
-                .zip(r.iter())
-                .map(|(l, r)| look_up_type_id(l.type_id) == look_up_type_id(r.type_id))
-                .all(|x| x),
-            (
-                Self::ContractCaller {
-                    abi_name: l_abi_name,
-                    address: l_address,
-                },
-                Self::ContractCaller {
-                    abi_name: r_abi_name,
-                    address: r_address,
-                },
-            ) => l_abi_name == r_abi_name && l_address == r_address,
-            (Self::Array(l0, l1, _), Self::Array(r0, r1, _)) => {
-                look_up_type_id(*l0) == look_up_type_id(*r0) && l1 == r1
-            }
-            (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
-                l_fields == r_fields
-            }
-            _ => false,
-        }
-    }
-}
-
-impl Eq for TypeInfo {}
 
 impl Default for TypeInfo {
     fn default() -> Self {
@@ -682,12 +704,16 @@ impl TypeInfo {
         }
     }
 
-    pub(crate) fn matches_type_parameter(&self, mapping: &TypeMapping) -> Option<TypeId> {
+    pub(crate) fn matches_type_parameter(
+        &self,
+        mapping: &TypeMapping,
+        de: &DeclarationEngine,
+    ) -> Option<TypeId> {
         use TypeInfo::*;
         match self {
             TypeInfo::Custom { .. } => {
                 for (param, ty_id) in mapping.iter() {
-                    if look_up_type_id(*param) == *self {
+                    if look_up_type_id(*param).wrap(de) == (*self).wrap(de) {
                         return Some(*ty_id);
                     }
                 }
@@ -695,7 +721,7 @@ impl TypeInfo {
             }
             TypeInfo::UnknownGeneric { .. } => {
                 for (param, ty_id) in mapping.iter() {
-                    if look_up_type_id(*param) == *self {
+                    if look_up_type_id(*param).wrap(de) == (*self).wrap(de) {
                         return Some(*ty_id);
                     }
                 }
@@ -709,7 +735,7 @@ impl TypeInfo {
                 let mut new_fields = fields.clone();
                 for new_field in new_fields.iter_mut() {
                     if let Some(matching_id) =
-                        look_up_type_id(new_field.type_id).matches_type_parameter(mapping)
+                        look_up_type_id(new_field.type_id).matches_type_parameter(mapping, de)
                     {
                         new_field.type_id =
                             insert_type(TypeInfo::Ref(matching_id, new_field.span.clone()));
@@ -718,7 +744,7 @@ impl TypeInfo {
                 let mut new_type_parameters = type_parameters.clone();
                 for new_param in new_type_parameters.iter_mut() {
                     if let Some(matching_id) =
-                        look_up_type_id(new_param.type_id).matches_type_parameter(mapping)
+                        look_up_type_id(new_param.type_id).matches_type_parameter(mapping, de)
                     {
                         new_param.type_id =
                             insert_type(TypeInfo::Ref(matching_id, new_param.span().clone()));
@@ -738,7 +764,7 @@ impl TypeInfo {
                 let mut new_variants = variant_types.clone();
                 for new_variant in new_variants.iter_mut() {
                     if let Some(matching_id) =
-                        look_up_type_id(new_variant.type_id).matches_type_parameter(mapping)
+                        look_up_type_id(new_variant.type_id).matches_type_parameter(mapping, de)
                     {
                         new_variant.type_id =
                             insert_type(TypeInfo::Ref(matching_id, new_variant.span.clone()));
@@ -747,7 +773,7 @@ impl TypeInfo {
                 let mut new_type_parameters = type_parameters.clone();
                 for new_param in new_type_parameters.iter_mut() {
                     if let Some(matching_id) =
-                        look_up_type_id(new_param.type_id).matches_type_parameter(mapping)
+                        look_up_type_id(new_param.type_id).matches_type_parameter(mapping, de)
                     {
                         new_param.type_id =
                             insert_type(TypeInfo::Ref(matching_id, new_param.span().clone()));
@@ -760,7 +786,7 @@ impl TypeInfo {
                 }))
             }
             TypeInfo::Array(ary_ty_id, count, initial_elem_ty) => look_up_type_id(*ary_ty_id)
-                .matches_type_parameter(mapping)
+                .matches_type_parameter(mapping, de)
                 .map(|matching_id| {
                     insert_type(TypeInfo::Array(matching_id, *count, *initial_elem_ty))
                 }),
@@ -769,7 +795,7 @@ impl TypeInfo {
                 let mut index = 0;
                 while index < fields.len() {
                     let new_field_id_opt =
-                        look_up_type_id(fields[index].type_id).matches_type_parameter(mapping);
+                        look_up_type_id(fields[index].type_id).matches_type_parameter(mapping, de);
                     if let Some(new_field_id) = new_field_id_opt {
                         new_fields.extend(fields[..index].iter().cloned());
                         let type_id =
@@ -786,7 +812,7 @@ impl TypeInfo {
                 }
                 while index < fields.len() {
                     let new_field = match look_up_type_id(fields[index].type_id)
-                        .matches_type_parameter(mapping)
+                        .matches_type_parameter(mapping, de)
                     {
                         Some(new_field_id) => {
                             let type_id = insert_type(TypeInfo::Ref(

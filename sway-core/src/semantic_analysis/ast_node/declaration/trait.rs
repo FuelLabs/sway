@@ -1,4 +1,3 @@
-use derivative::Derivative;
 use sway_types::{Ident, Spanned};
 
 use crate::{
@@ -9,25 +8,37 @@ use crate::{
     },
     style::is_upper_camel_case,
     type_system::{insert_type, CopyTypes, TypeMapping},
+    types::{CompileWrapper, ToCompileWrapper},
     CallPath, CompileError, CompileResult, FunctionDeclaration, FunctionParameter, Namespace,
     Supertrait, TraitDeclaration, TypeInfo, TypedDeclaration, TypedFunctionDeclaration, Visibility,
 };
 
 use super::{EnforceTypeArguments, TypedFunctionParameter, TypedTraitFn};
 
-#[derive(Clone, Debug, Derivative)]
-#[derivative(PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct TypedTraitDeclaration {
     pub name: Ident,
     pub interface_surface: Vec<TypedTraitFn>,
     // NOTE: deriving partialeq and hash on this element may be important in the
     // future, but I am not sure. For now, adding this would 2x the amount of
     // work, so I am just going to exclude it
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Eq(bound = ""))]
     pub(crate) methods: Vec<FunctionDeclaration>,
     pub(crate) supertraits: Vec<Supertrait>,
     pub visibility: Visibility,
+}
+
+impl PartialEq for CompileWrapper<'_, TypedTraitDeclaration> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        me.name == them.name
+            && me.interface_surface.wrap(de) == them.interface_surface.wrap(de)
+            && me.supertraits == them.supertraits
+            && me.visibility == them.visibility
+    }
 }
 
 impl CopyTypes for TypedTraitDeclaration {

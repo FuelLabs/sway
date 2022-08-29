@@ -6,13 +6,13 @@ use crate::{
         insert_type, look_up_type_id, CopyTypes, CreateTypeId, EnforceTypeArguments,
         MonomorphizeHelper, ReplaceSelfType, TypeId, TypeMapping, TypeParameter,
     },
-    types::{JsonAbiString, ToJsonAbi},
+    types::{CompileWrapper, JsonAbiString, ToCompileWrapper, ToJsonAbi},
     TypeInfo,
 };
 use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Property, Span, Spanned};
 
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug)]
 pub struct TypedEnumDeclaration {
     pub name: Ident,
     pub(crate) type_parameters: Vec<TypeParameter>,
@@ -21,15 +21,17 @@ pub struct TypedEnumDeclaration {
     pub visibility: Visibility,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedEnumDeclaration {
+impl PartialEq for CompileWrapper<'_, TypedEnumDeclaration> {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && self.type_parameters == other.type_parameters
-            && self.variants == other.variants
-            && self.visibility == other.visibility
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        me.name == them.name
+            && me.type_parameters == them.type_parameters
+            && me.variants.wrap(de) == them.variants.wrap(de)
+            && me.visibility == them.visibility
     }
 }
 
@@ -145,13 +147,45 @@ impl TypedEnumDeclaration {
     }
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone)]
 pub struct TypedEnumVariant {
     pub name: Ident,
     pub type_id: TypeId,
     pub initial_type_id: TypeId,
     pub(crate) tag: usize,
     pub(crate) span: Span,
+}
+
+impl PartialEq for CompileWrapper<'_, TypedEnumVariant> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        me.name == them.name
+            && look_up_type_id(me.type_id).wrap(declaration_engine)
+                == look_up_type_id(them.type_id).wrap(declaration_engine)
+            && me.tag == them.tag
+    }
+}
+
+impl PartialEq for CompileWrapper<'_, Vec<TypedEnumVariant>> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        if me.len() != them.len() {
+            return false;
+        }
+        me.iter()
+            .map(|elem| elem.wrap(de))
+            .zip(other.inner.iter().map(|elem| elem.wrap(de)))
+            .map(|(left, right)| left == right)
+            .all(|elem| elem)
+    }
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -162,17 +196,6 @@ impl Hash for TypedEnumVariant {
         self.name.hash(state);
         look_up_type_id(self.type_id).hash(state);
         self.tag.hash(state);
-    }
-}
-
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedEnumVariant {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
-            && self.tag == other.tag
     }
 }
 

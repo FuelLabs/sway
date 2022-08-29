@@ -1,5 +1,7 @@
 use std::fmt;
 
+use crate::types::{CompileWrapper, ToCompileWrapper};
+
 /// An ID used to refer to an item in the [DeclarationEngine]
 #[derive(Clone, Copy, Debug)]
 pub struct DeclarationId(usize);
@@ -20,5 +22,21 @@ impl std::ops::Deref for DeclarationId {
 impl From<usize> for DeclarationId {
     fn from(o: usize) -> Self {
         DeclarationId(o)
+    }
+}
+
+impl PartialEq for CompileWrapper<'_, DeclarationId> {
+    fn eq(&self, other: &Self) -> bool {
+        self.declaration_engine
+            .look_up_decl_id(*self.inner)
+            .wrap(self.declaration_engine)
+            == self
+                .declaration_engine
+                .look_up_decl_id(*other.inner)
+                .wrap(self.declaration_engine)
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        !self.eq(other)
     }
 }

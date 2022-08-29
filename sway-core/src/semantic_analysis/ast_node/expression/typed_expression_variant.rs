@@ -1,8 +1,12 @@
-use crate::{parse_tree::*, semantic_analysis::*, type_system::*};
+use crate::{
+    parse_tree::*,
+    semantic_analysis::*,
+    type_system::*,
+    types::{CompileWrapper, ToCompileWrapper},
+};
 
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
-use derivative::Derivative;
 use std::{collections::HashMap, fmt, fmt::Write};
 
 #[derive(Clone, Debug)]
@@ -11,24 +15,20 @@ pub struct ContractCallParams {
     pub(crate) contract_address: Box<TypedExpression>,
 }
 
-#[derive(Clone, Debug, Derivative)]
-#[derivative(Eq)]
+#[derive(Clone, Debug)]
 pub enum TypedExpressionVariant {
     Literal(Literal),
     FunctionApplication {
         call_path: CallPath,
-        #[derivative(Eq(bound = ""))]
         contract_call_params: HashMap<String, TypedExpression>,
         arguments: Vec<(Ident, TypedExpression)>,
         function_decl: TypedFunctionDeclaration,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
         self_state_idx: Option<StateIndex>,
-        #[derivative(Eq(bound = ""))]
         selector: Option<ContractCallParams>,
     },
     LazyOperator {
-        #[derivative(Eq(bound = ""))]
         op: LazyOp,
         lhs: Box<TypedExpression>,
         rhs: Box<TypedExpression>,
@@ -124,21 +124,23 @@ pub enum TypedExpressionVariant {
     StorageReassignment(Box<TypeCheckedStorageReassignment>),
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedExpressionVariant {
+impl PartialEq for CompileWrapper<'_, TypedExpressionVariant> {
     fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Literal(l0), Self::Literal(r0)) => l0 == r0,
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        match (me, them) {
+            (TypedExpressionVariant::Literal(l0), TypedExpressionVariant::Literal(r0)) => l0 == r0,
             (
-                Self::FunctionApplication {
+                TypedExpressionVariant::FunctionApplication {
                     call_path: l_name,
                     arguments: l_arguments,
                     function_decl: l_function_decl,
                     ..
                 },
-                Self::FunctionApplication {
+                TypedExpressionVariant::FunctionApplication {
                     call_path: r_name,
                     arguments: r_arguments,
                     function_decl: r_function_decl,
@@ -146,156 +148,178 @@ impl PartialEq for TypedExpressionVariant {
                 },
             ) => {
                 l_name == r_name
-                    && l_arguments == r_arguments
-                    && l_function_decl.body == r_function_decl.body
+                    && l_arguments.len() == r_arguments.len()
+                    && l_arguments.iter().map(|(name, _)| name).collect::<Vec<_>>()
+                        == r_arguments.iter().map(|(name, _)| name).collect::<Vec<_>>()
+                    && l_arguments
+                        .iter()
+                        .map(|(_, exp)| exp.clone())
+                        .collect::<Vec<_>>()
+                        .wrap(de)
+                        == r_arguments
+                            .iter()
+                            .map(|(_, exp)| exp.clone())
+                            .collect::<Vec<_>>()
+                            .wrap(de)
+                    && l_function_decl.body.wrap(de) == r_function_decl.body.wrap(de)
             }
             (
-                Self::LazyOperator {
+                TypedExpressionVariant::LazyOperator {
                     op: l_op,
                     lhs: l_lhs,
                     rhs: l_rhs,
                 },
-                Self::LazyOperator {
+                TypedExpressionVariant::LazyOperator {
                     op: r_op,
                     lhs: r_lhs,
                     rhs: r_rhs,
                 },
-            ) => l_op == r_op && (**l_lhs) == (**r_lhs) && (**l_rhs) == (**r_rhs),
+            ) => {
+                l_op == r_op
+                    && (**l_lhs).wrap(de) == (**r_lhs).wrap(de)
+                    && (**l_rhs).wrap(de) == (**r_rhs).wrap(de)
+            }
             (
-                Self::VariableExpression {
+                TypedExpressionVariant::VariableExpression {
                     name: l_name,
                     span: l_span,
                     mutability: l_mutability,
                 },
-                Self::VariableExpression {
+                TypedExpressionVariant::VariableExpression {
                     name: r_name,
                     span: r_span,
                     mutability: r_mutability,
                 },
             ) => l_name == r_name && l_span == r_span && l_mutability == r_mutability,
-            (Self::Tuple { fields: l_fields }, Self::Tuple { fields: r_fields }) => {
-                l_fields == r_fields
-            }
             (
-                Self::Array {
+                TypedExpressionVariant::Tuple { fields: l_fields },
+                TypedExpressionVariant::Tuple { fields: r_fields },
+            ) => l_fields.wrap(de) == r_fields.wrap(de),
+            (
+                TypedExpressionVariant::Array {
                     contents: l_contents,
                 },
-                Self::Array {
+                TypedExpressionVariant::Array {
                     contents: r_contents,
                 },
-            ) => l_contents == r_contents,
+            ) => l_contents.wrap(de) == r_contents.wrap(de),
             (
-                Self::ArrayIndex {
+                TypedExpressionVariant::ArrayIndex {
                     prefix: l_prefix,
                     index: l_index,
                 },
-                Self::ArrayIndex {
+                TypedExpressionVariant::ArrayIndex {
                     prefix: r_prefix,
                     index: r_index,
                 },
-            ) => (**l_prefix) == (**r_prefix) && (**l_index) == (**r_index),
+            ) => {
+                (**l_prefix).wrap(de) == (**r_prefix).wrap(de)
+                    && (**l_index).wrap(de) == (**r_index).wrap(de)
+            }
             (
-                Self::StructExpression {
+                TypedExpressionVariant::StructExpression {
                     struct_name: l_struct_name,
                     fields: l_fields,
                     span: l_span,
                 },
-                Self::StructExpression {
+                TypedExpressionVariant::StructExpression {
                     struct_name: r_struct_name,
                     fields: r_fields,
                     span: r_span,
                 },
             ) => {
                 l_struct_name == r_struct_name
-                    && l_fields.clone() == r_fields.clone()
+                    && l_fields.wrap(de) == r_fields.wrap(de)
                     && l_span == r_span
             }
-            (Self::CodeBlock(l0), Self::CodeBlock(r0)) => l0 == r0,
+            (TypedExpressionVariant::CodeBlock(l), TypedExpressionVariant::CodeBlock(r)) => {
+                l.wrap(de) == r.wrap(de)
+            }
             (
-                Self::IfExp {
+                TypedExpressionVariant::IfExp {
                     condition: l_condition,
                     then: l_then,
                     r#else: l_r,
                 },
-                Self::IfExp {
+                TypedExpressionVariant::IfExp {
                     condition: r_condition,
                     then: r_then,
                     r#else: r_r,
                 },
             ) => {
-                (**l_condition) == (**r_condition)
-                    && (**l_then) == (**r_then)
+                (**l_condition).wrap(de) == (**r_condition).wrap(de)
+                    && (**l_then).wrap(de) == (**r_then).wrap(de)
                     && if let (Some(l), Some(r)) = (l_r, r_r) {
-                        (**l) == (**r)
+                        (**l).wrap(de) == (**r).wrap(de)
                     } else {
                         true
                     }
             }
             (
-                Self::AsmExpression {
+                TypedExpressionVariant::AsmExpression {
                     registers: l_registers,
                     body: l_body,
                     returns: l_returns,
                     ..
                 },
-                Self::AsmExpression {
+                TypedExpressionVariant::AsmExpression {
                     registers: r_registers,
                     body: r_body,
                     returns: r_returns,
                     ..
                 },
             ) => {
-                l_registers.clone() == r_registers.clone()
+                l_registers.wrap(de) == r_registers.wrap(de)
                     && l_body.clone() == r_body.clone()
                     && l_returns == r_returns
             }
             (
-                Self::StructFieldAccess {
+                TypedExpressionVariant::StructFieldAccess {
                     prefix: l_prefix,
                     field_to_access: l_field_to_access,
                     resolved_type_of_parent: l_resolved_type_of_parent,
                     ..
                 },
-                Self::StructFieldAccess {
+                TypedExpressionVariant::StructFieldAccess {
                     prefix: r_prefix,
                     field_to_access: r_field_to_access,
                     resolved_type_of_parent: r_resolved_type_of_parent,
                     ..
                 },
             ) => {
-                (**l_prefix) == (**r_prefix)
-                    && l_field_to_access == r_field_to_access
-                    && look_up_type_id(*l_resolved_type_of_parent)
-                        == look_up_type_id(*r_resolved_type_of_parent)
+                (**l_prefix).wrap(de) == (**r_prefix).wrap(de)
+                    && l_field_to_access.wrap(de) == r_field_to_access.wrap(de)
+                    && look_up_type_id(*l_resolved_type_of_parent).wrap(de)
+                        == look_up_type_id(*r_resolved_type_of_parent).wrap(de)
             }
             (
-                Self::TupleElemAccess {
+                TypedExpressionVariant::TupleElemAccess {
                     prefix: l_prefix,
                     elem_to_access_num: l_elem_to_access_num,
                     resolved_type_of_parent: l_resolved_type_of_parent,
                     ..
                 },
-                Self::TupleElemAccess {
+                TypedExpressionVariant::TupleElemAccess {
                     prefix: r_prefix,
                     elem_to_access_num: r_elem_to_access_num,
                     resolved_type_of_parent: r_resolved_type_of_parent,
                     ..
                 },
             ) => {
-                (**l_prefix) == (**r_prefix)
+                (**l_prefix).wrap(de) == (**r_prefix).wrap(de)
                     && l_elem_to_access_num == r_elem_to_access_num
-                    && look_up_type_id(*l_resolved_type_of_parent)
-                        == look_up_type_id(*r_resolved_type_of_parent)
+                    && look_up_type_id(*l_resolved_type_of_parent).wrap(de)
+                        == look_up_type_id(*r_resolved_type_of_parent).wrap(de)
             }
             (
-                Self::EnumInstantiation {
+                TypedExpressionVariant::EnumInstantiation {
                     enum_decl: l_enum_decl,
                     variant_name: l_variant_name,
                     tag: l_tag,
                     contents: l_contents,
                     ..
                 },
-                Self::EnumInstantiation {
+                TypedExpressionVariant::EnumInstantiation {
                     enum_decl: r_enum_decl,
                     variant_name: r_variant_name,
                     tag: r_tag,
@@ -303,50 +327,64 @@ impl PartialEq for TypedExpressionVariant {
                     ..
                 },
             ) => {
-                l_enum_decl == r_enum_decl
+                l_enum_decl.wrap(de) == r_enum_decl.wrap(de)
                     && l_variant_name == r_variant_name
                     && l_tag == r_tag
                     && if let (Some(l_contents), Some(r_contents)) = (l_contents, r_contents) {
-                        (**l_contents) == (**r_contents)
+                        (**l_contents).wrap(de) == (**r_contents).wrap(de)
                     } else {
                         true
                     }
             }
             (
-                Self::AbiCast {
+                TypedExpressionVariant::AbiCast {
                     abi_name: l_abi_name,
                     address: l_address,
                     ..
                 },
-                Self::AbiCast {
+                TypedExpressionVariant::AbiCast {
                     abi_name: r_abi_name,
                     address: r_address,
                     ..
                 },
-            ) => l_abi_name == r_abi_name && (**l_address) == (**r_address),
-            (Self::IntrinsicFunction(l_kind), Self::IntrinsicFunction(r_kind)) => l_kind == r_kind,
+            ) => l_abi_name == r_abi_name && (**l_address).wrap(de) == (**r_address).wrap(de),
             (
-                Self::UnsafeDowncast {
+                TypedExpressionVariant::IntrinsicFunction(l_kind),
+                TypedExpressionVariant::IntrinsicFunction(r_kind),
+            ) => l_kind.wrap(de) == r_kind.wrap(de),
+            (
+                TypedExpressionVariant::UnsafeDowncast {
                     exp: l_exp,
                     variant: l_variant,
                 },
-                Self::UnsafeDowncast {
+                TypedExpressionVariant::UnsafeDowncast {
                     exp: r_exp,
                     variant: r_variant,
                 },
-            ) => *l_exp == *r_exp && l_variant == r_variant,
-            (Self::EnumTag { exp: l_exp }, Self::EnumTag { exp: r_exp }) => *l_exp == *r_exp,
-            (Self::StorageAccess(l_exp), Self::StorageAccess(r_exp)) => *l_exp == *r_exp,
+            ) => {
+                (**l_exp).wrap(de) == (**r_exp).wrap(de) && l_variant.wrap(de) == r_variant.wrap(de)
+            }
             (
-                Self::WhileLoop {
+                TypedExpressionVariant::EnumTag { exp: l_exp },
+                TypedExpressionVariant::EnumTag { exp: r_exp },
+            ) => (**l_exp).wrap(de) == (**r_exp).wrap(de),
+            (
+                TypedExpressionVariant::StorageAccess(l_exp),
+                TypedExpressionVariant::StorageAccess(r_exp),
+            ) => *l_exp == *r_exp,
+            (
+                TypedExpressionVariant::WhileLoop {
                     body: l_body,
                     condition: l_condition,
                 },
-                Self::WhileLoop {
+                TypedExpressionVariant::WhileLoop {
                     body: r_body,
                     condition: r_condition,
                 },
-            ) => *l_body == *r_body && l_condition == r_condition,
+            ) => {
+                l_body.wrap(de) == r_body.wrap(de)
+                    && (**l_condition).wrap(de) == (**r_condition).wrap(de)
+            }
             _ => false,
         }
     }
@@ -615,17 +653,37 @@ pub struct TypedAsmRegisterDeclaration {
     pub(crate) name: Ident,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedAsmRegisterDeclaration {
+impl PartialEq for CompileWrapper<'_, TypedAsmRegisterDeclaration> {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && if let (Some(l), Some(r)) = (self.initializer.clone(), other.initializer.clone()) {
-                l == r
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        me.name == them.name
+            && if let (Some(l), Some(r)) = (me.initializer.clone(), them.initializer.clone()) {
+                l.wrap(de) == r.wrap(de)
             } else {
                 true
             }
+    }
+}
+
+impl PartialEq for CompileWrapper<'_, Vec<TypedAsmRegisterDeclaration>> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        if me.len() != them.len() {
+            return false;
+        }
+        me.iter()
+            .map(|elem| elem.wrap(de))
+            .zip(other.inner.iter().map(|elem| elem.wrap(de)))
+            .map(|(left, right)| left == right)
+            .all(|elem| elem)
     }
 }
 

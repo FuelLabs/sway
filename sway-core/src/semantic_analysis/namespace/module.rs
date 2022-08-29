@@ -29,7 +29,7 @@ use sway_types::{span::Span, ConfigTimeConstant, Spanned};
 ///
 /// A `Module` contains a set of all items that exist within the lexical scope via declaration or
 /// importing, along with a map of each of its submodules.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default)]
 pub struct Module {
     /// Submodules of the current module represented as an ordered map from each submodule's name
     /// to the associated `Module`.

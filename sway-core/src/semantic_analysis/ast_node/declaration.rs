@@ -16,12 +16,17 @@ pub use r#trait::*;
 pub use storage::*;
 pub use variable::*;
 
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_system::*};
-use derivative::Derivative;
+use crate::{
+    error::*,
+    parse_tree::*,
+    semantic_analysis::*,
+    type_system::*,
+    types::{CompileWrapper, ToCompileWrapper},
+};
 use std::{borrow::Cow, fmt};
 use sway_types::{Ident, Span, Spanned};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub enum TypedDeclaration {
     VariableDeclaration(TypedVariableDeclaration),
     ConstantDeclaration(TypedConstantDeclaration),
@@ -36,6 +41,60 @@ pub enum TypedDeclaration {
     GenericTypeForFunctionScope { name: Ident, type_id: TypeId },
     ErrorRecovery,
     StorageDeclaration(TypedStorageDeclaration),
+}
+
+impl PartialEq for CompileWrapper<'_, TypedDeclaration> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        match (me, them) {
+            (
+                TypedDeclaration::VariableDeclaration(l),
+                TypedDeclaration::VariableDeclaration(r),
+            ) => l.wrap(de) == r.wrap(de),
+            (
+                TypedDeclaration::ConstantDeclaration(l),
+                TypedDeclaration::ConstantDeclaration(r),
+            ) => l.wrap(de) == r.wrap(de),
+            (
+                TypedDeclaration::FunctionDeclaration(l),
+                TypedDeclaration::FunctionDeclaration(r),
+            ) => l.wrap(de) == r.wrap(de),
+            (TypedDeclaration::TraitDeclaration(l), TypedDeclaration::TraitDeclaration(r)) => {
+                l.wrap(de) == r.wrap(de)
+            }
+            (TypedDeclaration::StructDeclaration(l), TypedDeclaration::StructDeclaration(r)) => {
+                l.wrap(de) == r.wrap(de)
+            }
+            (TypedDeclaration::EnumDeclaration(l), TypedDeclaration::EnumDeclaration(r)) => {
+                l.wrap(de) == r.wrap(de)
+            }
+            (TypedDeclaration::ImplTrait(l), TypedDeclaration::ImplTrait(r)) => {
+                l.wrap(de) == r.wrap(de)
+            }
+            (TypedDeclaration::AbiDeclaration(l), TypedDeclaration::AbiDeclaration(r)) => {
+                l.wrap(de) == r.wrap(de)
+            }
+            (
+                TypedDeclaration::GenericTypeForFunctionScope {
+                    name: l_name,
+                    type_id: l_type_id,
+                },
+                TypedDeclaration::GenericTypeForFunctionScope {
+                    name: r_name,
+                    type_id: r_type_id,
+                },
+            ) => l_name == r_name && l_type_id == r_type_id,
+            (TypedDeclaration::ErrorRecovery, TypedDeclaration::ErrorRecovery) => true,
+            (TypedDeclaration::StorageDeclaration(l), TypedDeclaration::StorageDeclaration(r)) => {
+                l.wrap(de) == r.wrap(de)
+            }
+            _ => false,
+        }
+    }
 }
 
 impl CopyTypes for TypedDeclaration {
@@ -344,11 +403,24 @@ impl TypedDeclaration {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct TypedConstantDeclaration {
     pub name: Ident,
     pub value: TypedExpression,
     pub(crate) visibility: Visibility,
+}
+
+impl PartialEq for CompileWrapper<'_, TypedConstantDeclaration> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        me.name == them.name
+            && me.value.wrap(de) == them.value.wrap(other.declaration_engine)
+            && me.visibility == them.visibility
+    }
 }
 
 impl CopyTypes for TypedConstantDeclaration {
@@ -357,16 +429,45 @@ impl CopyTypes for TypedConstantDeclaration {
     }
 }
 
-#[derive(Clone, Debug, Derivative)]
-#[derivative(PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct TypedTraitFn {
     pub name: Ident,
     pub(crate) purity: Purity,
     pub(crate) parameters: Vec<TypedFunctionParameter>,
     pub return_type: TypeId,
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Eq(bound = ""))]
     pub return_type_span: Span,
+}
+
+impl PartialEq for CompileWrapper<'_, TypedTraitFn> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        me.name == them.name
+            && me.purity == them.purity
+            && me.parameters.wrap(de) == them.parameters.wrap(de)
+            && me.return_type == them.return_type
+    }
+}
+
+impl PartialEq for CompileWrapper<'_, Vec<TypedTraitFn>> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        if me.len() != them.len() {
+            return false;
+        }
+        me.iter()
+            .map(|elem| elem.wrap(de))
+            .zip(other.inner.iter().map(|elem| elem.wrap(de)))
+            .map(|(left, right)| left == right)
+            .all(|elem| elem)
+    }
 }
 
 impl CopyTypes for TypedTraitFn {
@@ -400,18 +501,21 @@ impl TypedTraitFn {
 /// Represents the left hand side of a reassignment -- a name to locate it in the
 /// namespace, and the type that the name refers to. The type is used for memory layout
 /// in asm generation.
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug)]
 pub struct ReassignmentLhs {
     pub kind: ProjectionKind,
     pub type_id: TypeId,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for ReassignmentLhs {
+impl PartialEq for CompileWrapper<'_, ReassignmentLhs> {
     fn eq(&self, other: &Self) -> bool {
-        self.kind == other.kind && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        me.kind == them.kind
+            && look_up_type_id(me.type_id).wrap(de) == look_up_type_id(them.type_id).wrap(de)
     }
 }
 
@@ -439,7 +543,7 @@ impl ProjectionKind {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct TypedReassignment {
     // either a direct variable, so length of 1, or
     // at series of struct fields/array indices (array syntax)
@@ -447,6 +551,20 @@ pub struct TypedReassignment {
     pub lhs_type: TypeId,
     pub lhs_indices: Vec<ProjectionKind>,
     pub rhs: TypedExpression,
+}
+
+impl PartialEq for CompileWrapper<'_, TypedReassignment> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        me.lhs_base_name == them.lhs_base_name
+            && me.lhs_type == them.lhs_type
+            && me.lhs_indices == them.lhs_indices
+            && me.rhs.wrap(declaration_engine) == them.rhs.wrap(declaration_engine)
+    }
 }
 
 impl CopyTypes for TypedReassignment {

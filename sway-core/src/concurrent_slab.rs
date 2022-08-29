@@ -1,6 +1,9 @@
 use std::{marker::PhantomData, sync::RwLock};
 
-use crate::{type_system::TypeId, TypeInfo};
+use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine, type_system::TypeId,
+    types::ToCompileWrapper, TypeInfo,
+};
 
 #[derive(Debug)]
 pub(crate) struct ConcurrentSlab<I, T> {
@@ -54,6 +57,7 @@ impl ConcurrentSlab<TypeId, TypeInfo> {
         index: TypeId,
         prev_value: &TypeInfo,
         new_value: TypeInfo,
+        declaration_engine: &DeclarationEngine,
     ) -> Option<TypeInfo> {
         // The comparison below ends up calling functions in the slab, which
         // can lead to deadlocks if we used a single read/write lock.
@@ -63,7 +67,7 @@ impl ConcurrentSlab<TypeId, TypeInfo> {
         {
             let inner = self.inner.read().unwrap();
             let actual_prev_value = &inner[*index];
-            if actual_prev_value != prev_value {
+            if actual_prev_value.wrap(declaration_engine) != prev_value.wrap(declaration_engine) {
                 return Some(actual_prev_value.clone());
             }
         }

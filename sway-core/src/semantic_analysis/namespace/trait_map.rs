@@ -30,7 +30,7 @@ type TraitName = CallPath;
 type TraitMapInner = im::Vector<((TraitName, TypeId), TraitMethods)>;
 type TraitMethods = im::HashMap<String, TypedFunctionDeclaration>;
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct TraitMap {
     trait_map: TraitMapInner,
 }

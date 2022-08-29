@@ -13,7 +13,11 @@ pub(crate) use self::{
 };
 
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::*, type_system::*, types::DeterministicallyAborts,
+    error::*,
+    parse_tree::*,
+    semantic_analysis::*,
+    type_system::*,
+    types::{CompileWrapper, DeterministicallyAborts, ToCompileWrapper},
 };
 
 use sway_ast::intrinsics::Intrinsic;
@@ -24,7 +28,7 @@ use std::{
     fmt,
 };
 
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug)]
 pub struct TypedExpression {
     pub expression: TypedExpressionVariant,
     pub return_type: TypeId,
@@ -34,14 +38,35 @@ pub struct TypedExpression {
     pub span: Span,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedExpression {
+impl PartialEq for CompileWrapper<'_, TypedExpression> {
     fn eq(&self, other: &Self) -> bool {
-        self.expression == other.expression
-            && look_up_type_id(self.return_type) == look_up_type_id(other.return_type)
-            && self.is_constant == other.is_constant
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        me.expression.wrap(de) == them.expression.wrap(de)
+            && look_up_type_id(me.return_type).wrap(de)
+                == look_up_type_id(them.return_type).wrap(de)
+            && me.is_constant == them.is_constant
+    }
+}
+
+impl PartialEq for CompileWrapper<'_, Vec<TypedExpression>> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        if me.len() != them.len() {
+            return false;
+        }
+        me.iter()
+            .map(|elem| elem.wrap(de))
+            .zip(other.inner.iter().map(|elem| elem.wrap(de)))
+            .map(|(left, right)| left == right)
+            .all(|elem| elem)
     }
 }
 

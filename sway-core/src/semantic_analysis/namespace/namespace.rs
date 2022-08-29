@@ -10,7 +10,7 @@ use sway_types::span::Span;
 use std::collections::VecDeque;
 
 /// The set of items that represent the namespace context passed throughout type checking.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Namespace {
     /// An immutable namespace that consists of the names that should always be present, no matter
     /// what module or scope we are currently checking.
