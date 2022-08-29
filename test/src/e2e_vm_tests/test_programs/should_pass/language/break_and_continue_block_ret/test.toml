@@ -1,0 +1,3 @@
+category = "compile"
+
+# not: $()This returns a value of type unknown, which is not assigned to anything and is ignored.

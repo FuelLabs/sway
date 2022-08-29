@@ -18,11 +18,12 @@ use fuel_tx::StorageSlot;
 use sway_ir::{Context, Module};
 use sway_types::{span::Span, Ident, JsonABI, JsonABIProgram, JsonTypeDeclaration, Spanned};
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct TypedProgram {
     pub kind: TypedProgramKind,
     pub root: TypedModule,
     pub storage_slots: Vec<StorageSlot>,
+    pub declaration_engine: DeclarationEngine,
 }
 
 impl TypedProgram {
@@ -33,10 +34,10 @@ impl TypedProgram {
     pub fn type_check(
         parsed: &ParseProgram,
         initial_namespace: namespace::Module,
-        declaration_engine: &mut DeclarationEngine,
+        mut declaration_engine: DeclarationEngine,
     ) -> CompileResult<Self> {
         let mut namespace = Namespace::init_root(initial_namespace);
-        let ctx = TypeCheckContext::from_root(&mut namespace, declaration_engine);
+        let ctx = TypeCheckContext::from_root(&mut namespace, &mut declaration_engine);
         let ParseProgram { root, kind } = parsed;
         let mod_span = root.tree.span.clone();
         let mod_res = TypedModule::type_check(ctx, root);
@@ -46,6 +47,7 @@ impl TypedProgram {
                 kind,
                 root,
                 storage_slots: vec![],
+                declaration_engine,
             })
         })
     }
@@ -259,6 +261,7 @@ impl TypedProgram {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let declaration_engine = DeclarationEngine::new();
         match &self.kind {
             TypedProgramKind::Contract { declarations, .. } => {
                 let storage_decl = declarations
@@ -282,6 +285,7 @@ impl TypedProgram {
                                 kind: self.kind.clone(),
                                 root: self.root.clone(),
                                 storage_slots,
+                                declaration_engine,
                             },
                             warnings,
                             errors,
@@ -292,6 +296,7 @@ impl TypedProgram {
                             kind: self.kind.clone(),
                             root: self.root.clone(),
                             storage_slots: vec![],
+                            declaration_engine,
                         },
                         warnings,
                         errors,
@@ -303,6 +308,7 @@ impl TypedProgram {
                     kind: self.kind.clone(),
                     root: self.root.clone(),
                     storage_slots: vec![],
+                    declaration_engine,
                 },
                 warnings,
                 errors,
