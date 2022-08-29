@@ -72,14 +72,9 @@ pub struct DeployCommand {
     /// Do not sign the transaction
     #[clap(long)]
     pub not_sign: bool,
-    /// Set the transaction byte price. Defaults to 0.
-    #[clap(long)]
-    pub byte_price: Option<u64>,
-
     /// Set the transaction gas limit. Defaults to the maximum gas limit.
     #[clap(long)]
     pub gas_limit: Option<u64>,
-
     /// Set the transaction gas price. Defaults to 0.
     #[clap(long)]
     pub gas_price: Option<u64>,

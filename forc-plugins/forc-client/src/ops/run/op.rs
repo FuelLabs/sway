@@ -52,7 +52,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         script_data,
         inputs,
         outputs,
-        TxParameters::new(command.byte_price, command.gas_limit, command.gas_price),
+        TxParameters::new(command.gas_limit, command.gas_price),
     );
 
     let node_url = command.node_url.unwrap_or_else(|| match &manifest.network {

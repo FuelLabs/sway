@@ -42,7 +42,6 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         release,
         time_phases,
         not_sign,
-        byte_price,
         gas_limit,
         gas_price,
     } = command;
@@ -93,7 +92,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         std::io::stdin().read_line(&mut wallet_address)?;
         let address = Bech32Address::from_str(wallet_address.trim())?;
         let locked_wallet = Wallet::from_address(address, Some(Provider::new(client.clone())));
-        let tx_parameters = TxParameters::new(byte_price, gas_limit, gas_price);
+        let tx_parameters = TxParameters::new(gas_limit, gas_price);
         create_signed_contract_tx(compiled, locked_wallet, tx_parameters).await?
     };
 
