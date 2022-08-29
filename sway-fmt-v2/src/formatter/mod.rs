@@ -6,7 +6,7 @@ pub use crate::{
     config::manifest::Config,
     error::{ConfigError, FormatterError},
 };
-use std::{path::Path, sync::Arc};
+use std::{fmt::Write, path::Path, sync::Arc};
 use sway_core::BuildConfig;
 
 pub(crate) mod shape;
@@ -85,8 +85,8 @@ impl Formatter {
             &mut formatted_code,
             &raw_formatted_code,
         )?;
-        if formatted_code.ends_with('\n') {
-            formatted_code.pop();
+        if !formatted_code.ends_with('\n') {
+            writeln!(formatted_code)?;
         }
 
         Ok(formatted_code)
@@ -104,7 +104,8 @@ mod tests {
         let sway_code_to_format = r#"contract;
 pub const TEST:u16=10;"#;
         let correct_sway_code = r#"contract;
-pub const TEST: u16 = 10;"#;
+pub const TEST: u16 = 10;
+"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
@@ -123,7 +124,8 @@ pub struct Foo<T, P> {
 pub struct Foo<T, P> {
     barbazfoo : u64,
     baz       : bool,
-}"#;
+}
+"#;
 
         let mut formatter = Formatter::default();
         formatter.config.structures.field_alignment = FieldAlignment::AlignFields(40);
@@ -143,7 +145,8 @@ pub struct Foo {
 pub struct Foo {
     bar: u64,
     baz: bool,
-}"#;
+}
+"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
@@ -168,7 +171,8 @@ enum Color {
     Red: (),
     Silver: (),
     Grey: (),
-}"#;
+}
+"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
@@ -192,7 +196,8 @@ enum Color {
     Red    : (),
     Silver : (),
     Grey   : (),
-}"#;
+}
+"#;
 
         // Creating a config with enum_variant_align_threshold that exceeds longest variant length
         let mut formatter = Formatter::default();
@@ -218,7 +223,8 @@ abi StorageMapExample {
     fn insert_into_map1(key: u64, value: u64);
 
     fn hello(key: u64, value: u64);
-}"#;
+}
+"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
@@ -234,7 +240,8 @@ pub const TEST1: u16 = 10;"#;
         let correct_sway_code = r#"contract;
 
 pub const TEST: u16 = 10;
-pub const TEST1: u16 = 10;"#;
+pub const TEST1: u16 = 10;
+"#;
 
         let mut formatter = Formatter::default();
         let formatted_sway_code =
@@ -270,7 +277,8 @@ enum TestTy {
     PathType: root::example::type,
     TupleNil: (),
     Tuple: (u64, u32),
-}"#;
+}
+"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
@@ -304,7 +312,8 @@ struct Type2 {
 storage {
     var1: Type1 = Type1 { foo: 8 },
     var2: Type2 = Type2 { bar: 9 },
-}"#;
+}
+"#;
 
         let mut formatter = Formatter::default();
         let formatted_sway_code =
@@ -339,7 +348,8 @@ struct Type2 {
 storage {
     long_var_name : Type1 = Type1 { foo: 8 },
     var2          : Type2 = Type2 { bar: 9 },
-}"#;
+}
+"#;
 
         let mut formatter = Formatter::default();
         formatter.config.structures.field_alignment = FieldAlignment::AlignFields(50);
@@ -392,7 +402,8 @@ storage {
         w: 0x0000000000000000000000000000000000000000000000000000000000000000,
         z: false,
     },
-}"#;
+}
+"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
@@ -410,11 +421,11 @@ pub fn hello(person: String) -> String {
     let greeting = 42;
     greeting.to_string()
 }
-
 fn goodbye() -> usize {
     let farewell: usize = 5;
     farewell
-}"#;
+}
+"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
@@ -433,7 +444,8 @@ where
 {
     let greeting = 42;
     greeting.to_string()
-}"#;
+}
+"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
@@ -462,7 +474,8 @@ trait Programmer {
 }
 trait CompSciStudent: Programmer + Student {
     fn git_username(self) -> String;
-}"#;
+}
+"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
@@ -553,7 +566,8 @@ fn main() -> bool {
     assert(balance_test_contract_balance == 3);
 
     true
-}"#;
+}
+"#;
         let mut formatter = Formatter::default();
         formatter.config.structures.small_structures_single_line = true;
         formatter.config.whitespace.max_width = 220;
@@ -604,7 +618,8 @@ pub struct Foo { // Here is a comment
              //     \|__|    \|_______|\|_______|\|_______|        \|_______|\|__|\|__|\|_______|\_________\
              //                                                                                  \|_________|
 }
-// This is a comment"#;
+// This is a comment
+"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
@@ -634,7 +649,8 @@ pub enum Bazz { // Here is a comment
     bazzz: (),//-----
               //--D--
               //-----
-}"#;
+}
+"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
@@ -646,14 +662,16 @@ pub enum Bazz { // Here is a comment
         let sway_code_to_format = r#"contract;
 // This is a comment before a fn
 // This is another comment before a fn
-fn hello_world( baz: /* this is a comment */ u64) { // This is a comment inside the block
+fn hello_world( baz: /* this is a comment */ u64) { let x = 5; // This is a comment inside the block
 }
 "#;
         let correct_sway_code = r#"contract;
 // This is a comment before a fn
 // This is another comment before a fn
-fn hello_world(baz: /* this is a comment */ u64) { // This is a comment inside the block
-}"#;
+fn hello_world(baz: /* this is a comment */ u64) {
+    let x = 5; // This is a comment inside the block
+}
+"#;
 
         let mut formatter = Formatter::default();
         let formatted_sway_code =
@@ -678,7 +696,8 @@ abi StorageMapExample {
     #[storage(write)] // this is some other comment
     fn insert_into_map(key: u64, value: u64);
     // this is the last comment inside the StorageMapExample
-}"#;
+}
+"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
@@ -690,7 +709,8 @@ abi StorageMapExample {
         let sway_code_to_format = r#"contract;
 pub const /* TEST: blah blah tests */ TEST: u16 = 10; // This is a comment next to a const"#;
         let correct_sway_code = r#"contract;
-pub const /* TEST: blah blah tests */ TEST: u16 = 10; // This is a comment next to a const"#;
+pub const /* TEST: blah blah tests */ TEST: u16 = 10; // This is a comment next to a const
+"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
@@ -725,7 +745,8 @@ storage {
     long_var_name: Type1 = Type1 { foo: 8 },
     // Testing another comment
     var2: Type2 = Type2 { bar: 9 }, // This is the last comment
-}"#;
+}
+"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
@@ -745,7 +766,8 @@ trait Programmer {
 trait Programmer {
     // Returns fav languages of this Programmer.
     fn fav_language(self) -> String;
-}"#;
+}
+"#;
 
         let mut formatter = Formatter::default();
         let formatted_sway_code =
@@ -766,7 +788,8 @@ where /* This is next to where */
 {
     let greeting = 42;
     greeting.to_string()
-}"#;
+}
+"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
@@ -811,7 +834,8 @@ impl<A, B> Qux<A, B> for Foo where
     fn is_baz_true(self) -> bool {
         self.baz
     }
-}"#;
+}
+"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
@@ -851,7 +875,8 @@ impl Qux for Foo {
     fn is_baz_true(self) -> bool {
         self.baz
     }
-}"#;
+}
+"#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
@@ -883,7 +908,8 @@ fn main() {
     let number2: u64 = 20;
 
     let number3: u64 = 30;
-}"#;
+}
+"#;
 
         let mut formatter = Formatter::default();
         let formatted_sway_code =

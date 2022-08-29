@@ -26,7 +26,7 @@ impl Format for IfExpr {
             .update_expr_kind(ExprKind::Conditional);
         // check if the entire expression could fit into a single line
         let full_width_line_style = get_full_width_line_style(self, formatter)?;
-        if full_width_line_style == LineStyle::Inline {
+        if full_width_line_style == LineStyle::Inline && self.else_opt.is_some() {
             formatter
                 .shape
                 .code_line
@@ -38,6 +38,12 @@ impl Format for IfExpr {
             formatter
                 .shape
                 .get_line_style(None, Some(if_cond_width), &formatter.config);
+            if formatter.shape.code_line.line_style == LineStyle::Inline {
+                formatter
+                    .shape
+                    .code_line
+                    .update_line_style(LineStyle::Normal)
+            }
             format_if_condition(self, formatted_code, formatter)?;
             format_then_block(self, formatted_code, formatter)?;
 

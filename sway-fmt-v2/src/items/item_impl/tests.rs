@@ -2,7 +2,7 @@ use crate::{Format, Formatter};
 use forc_util::{println_green, println_red};
 use paste::paste;
 use prettydiff::{basic::DiffOp, diff_lines};
-use sway_ast::ItemFn;
+use sway_ast::ItemImpl;
 use sway_parse::{handler::Handler, *};
 
 fn format_code(input: &str) -> String {
@@ -11,7 +11,7 @@ fn format_code(input: &str) -> String {
     let token_stream = lex(&input_arc, 0, input.len(), None).unwrap();
     let handler = Handler::default();
     let mut parser = Parser::new(&token_stream, &handler);
-    let expression: ItemFn = parser.parse().unwrap();
+    let expression: ItemImpl = parser.parse().unwrap();
 
     let mut buf = Default::default();
     expression.format(&mut buf, &mut formatter).unwrap();
@@ -79,68 +79,75 @@ macro_rules! fmt_test_inner {
 }
 }
 
-fmt_test!(  long_fn_name            "pub fn hello_this_is_a_really_long_fn_name_wow_so_long_ridiculous(\n    self,\n    foo: Foo,\n    bar: Bar,\n    baz: Baz,\n) {}",
-            intermediate_whitespace "pub fn hello_this_is_a_really_long_fn_name_wow_so_long_ridiculous    ( self   , foo   : Foo    , bar : Bar  ,    baz:    Baz) {\n    }"
-);
-
-fmt_test!(  long_fn_args            "fn foo(\n    mut self,\n    this_is_a_really_long_variable: Foo,\n    hello_im_really_long: Bar,\n) -> String {}",
-            intermediate_whitespace "  fn  foo( \n        mut self , \n     this_is_a_really_long_variable : Foo ,\n    hello_im_really_long: Bar , \n ) ->    String { \n }     "
-);
-
-fmt_test!(  non_self_fn
-"fn test_function(
-    helloitsverylong: String,
-    whatisgoingonthisistoolong: String,
-    yetanotherlongboy: String,
-) -> bool {
-    match foo {
-        Foo::foo => true,
-        _ => false,
+fmt_test!(  impl_with_nested_items
+"impl AuthTesting for Contract {
+    fn returns_msg_sender(expected_id: ContractId) -> bool {
+        let result: Result<Identity, AuthError> = msg_sender();
+        let mut ret = false;
+        if result.is_err() {
+            ret = false;
+        }
+        let unwrapped = result.unwrap();
+        match unwrapped {
+            Identity::ContractId(v) => {
+                ret = true
+            }
+            _ => {
+                ret = false
+            }
+        }
+        ret
     }
 }",
             intermediate_whitespace
-"fn   test_function   (\n\n
-    helloitsverylong : String ,
-    whatisgoingonthisistoolong   : String    ,
-    yetanotherlongboy   : String   ,\n
-) -> bool {
-    match  foo  {
-        Foo :: foo => true ,
-         _    => false  ,
+"impl AuthTesting for Contract {
+    fn returns_msg_sender(expected_id: ContractId) -> bool {
+        let result: Result<Identity, AuthError> = msg_sender();
+        let mut ret = false;
+        if result.is_err() {
+            ret = false;
         }
+        let unwrapped = result.unwrap();
+        match unwrapped {
+            Identity::ContractId(v) => {ret = true}
+            _ => {ret = false}
+        }
+        ret
+    }
 }"
 );
 
-fmt_test!(  fn_with_nested_items
-"fn returns_msg_sender(expected_id: ContractId) -> bool {
-    let result: Result<Identity, AuthError> = msg_sender();
-    let mut ret = false;
-    if result.is_err() {
-        ret = false;
+fmt_test!(  normal_with_generics
+"impl<T> Option<T> {
+    fn some(value: T) -> Self {
+        Option::Some::<T>(value)
     }
-    let unwrapped = result.unwrap();
-    match unwrapped {
-        Identity::ContractId(v) => {
-            ret = true
-        }
-        _ => {
-            ret = false
+    fn none() -> Self {
+        Option::None::<T>()
+    }
+    fn to_result(self) -> Result<T> {
+        if let Option::Some(value) = self {
+            ~Result::<T>::ok(value)
+        } else {
+            ~Result::<T>::err(99u8)
         }
     }
-    ret
 }",
             intermediate_whitespace
-"fn returns_msg_sender(expected_id: ContractId) -> bool {
-    let result: Result<Identity, AuthError> = msg_sender();
-    let mut ret = false;
-    if result.is_err() {
-        ret = false;
-    }
-    let unwrapped = result.unwrap();
-    match unwrapped {
-        Identity::ContractId(v) => {ret = true}
-        _ => {ret = false}
-    }
-    ret
-}"
+            "impl<T> Option<T> {
+                fn some(value: T) -> Self {
+                    Option::Some::<T>(value)
+                }
+                fn none() -> Self {
+                    Option::None::<T>(())
+                }
+                fn to_result(self) -> Result<T> {
+                    if let Option::Some(value) = self {
+                    ~Result::<T>::ok(value)
+                    } else {
+                    ~Result::<T>::err(99u8)
+                    }
+                }
+            }"
 );
+// the above impl test gets rid of the nested unit in `Option::None::<T>(())`
