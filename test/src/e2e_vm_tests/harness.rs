@@ -75,7 +75,6 @@ pub(crate) fn runs_in_vm(file_name: &str, locked: bool) -> (ProgramState, Compil
     let script = compile_to_bytes(file_name, locked).unwrap();
     let gas_price = 10;
     let gas_limit = fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx;
-    let byte_price = 0;
     let maturity = 0;
     let script_data = vec![];
     let inputs = vec![];
@@ -84,7 +83,6 @@ pub(crate) fn runs_in_vm(file_name: &str, locked: bool) -> (ProgramState, Compil
     let tx_to_test = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script.bytecode.clone(),
         script_data,
@@ -96,8 +94,9 @@ pub(crate) fn runs_in_vm(file_name: &str, locked: bool) -> (ProgramState, Compil
     tx_to_test
         .validate(block_height, &Default::default())
         .unwrap();
+    let checked_tx = tx_to_test.check(block_height, &Default::default()).unwrap();
     let mut i = Interpreter::with_storage(storage, Default::default());
-    (*i.transact(tx_to_test).unwrap().state(), script)
+    (*i.transact(checked_tx).unwrap().state(), script)
 }
 
 /// Compiles the code and captures the output of forc and the compilation.

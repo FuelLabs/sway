@@ -14,12 +14,12 @@ clap = { version = "3", features = ["derive", "env"] }
 forc-pkg = { version = "0.20.2", path = "../../forc-pkg" }
 forc-util = { version = "0.20.2", path = "../../forc-util" }
 fuel-crypto = { version = "0.6" }
-fuel-gql-client = { version = "0.9", default-features = false }
-fuel-tx = "0.13"
-fuel-vm = "0.12"
-fuels-core = { git = "https://github.com/FuelLabs/fuels-rs/" }
-fuels-signers = { git = "https://github.com/FuelLabs/fuels-rs/" }
-fuels-types = { git = "https://github.com/FuelLabs/fuels-rs/" }
+fuel-gql-client = { version = "0.10", default-features = false }
+fuel-tx = "0.18"
+fuel-vm = "0.15"
+fuels-core = { version = "0.21.0" }
+fuels-signers = { version = "0.21.0" }
+fuels-types = { version = "0.21.0" }
 futures = "0.3"
 hex = "0.4.3"
 serde = { version = "1.0" }

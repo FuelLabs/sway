@@ -137,7 +137,6 @@ async fn create_signed_contract_tx(
     let witnesses = vec![compiled_contract.bytecode.clone().into()];
 
     let salt = Salt::new([0; 32]);
-    let static_contracts = vec![];
 
     let contract = Contract::from(compiled_contract.bytecode);
     let root = contract.root();
@@ -167,11 +166,9 @@ async fn create_signed_contract_tx(
     let tx = Transaction::create(
         tx_parameters.gas_price,
         tx_parameters.gas_limit,
-        tx_parameters.byte_price,
         maturity,
         bytecode_witness_index,
         salt,
-        static_contracts,
         storage_slots,
         inputs,
         outputs,
@@ -190,13 +187,11 @@ fn create_contract_tx(
 ) -> (Transaction, fuel_tx::ContractId) {
     let gas_price = 0;
     let gas_limit = fuel_tx::ConsensusParameters::default().max_gas_per_tx;
-    let byte_price = 0;
     let maturity = 0;
     let bytecode_witness_index = 0;
     let witnesses = vec![compiled_contract.clone().into()];
 
     let salt = Salt::new([0; 32]);
-    let static_contracts = vec![];
 
     let contract = Contract::from(compiled_contract);
     let root = contract.root();
@@ -222,11 +217,9 @@ fn create_contract_tx(
         Transaction::create(
             gas_price,
             gas_limit,
-            byte_price,
             maturity,
             bytecode_witness_index,
             salt,
-            static_contracts,
             storage_slots,
             inputs,
             outputs,
