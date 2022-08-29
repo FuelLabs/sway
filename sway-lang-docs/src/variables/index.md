@@ -1,28 +1,33 @@
 # Variables
 
-Variables in Sway are _immutable by default_. This means that, by default, once a variable is declared, its value cannot change. This is one of the ways how Sway encourages safe programming, and many modern languages have this same default. Let's take a look at variables in detail.
+Sway has two types of variables:
+
+- [immutable](#immutable)
+  - Can be read but cannot be changed after it has been declared
+- [mutable](#mutable)
+  - Can be read and have its value changed but only if the type is the same
+
+By default all variables in Sway are immutable unless declared as mutable. This is one of the ways how Sway encourages safe programming, and many modern languages have the same default.
 
 ## Declaring a Variable
 
-Let's look at a variable declaration:
+### Immutable
+
+Let's declare a variable that cannot be changed and it has the value of `5`.
 
 ```sway
 let foo = 5;
 ```
 
-Great! We have just declared a variable, `foo`. What do we know about `foo`?
+By default `foo` is an immutable `u64` (more info [here](../built-ins/index.md#primitive-types)) with the value of `5`. This means that we can pass `foo` around and its value can be read however it cannot have its value changed from `5` to any other number.
 
-1. It is immutable.
-1. Its value is `5`.
-1. Its type is `u64`, a 64-bit unsigned integer.
+### Mutable
 
-`u64` is the default numeric type, and represents a 64-bit unsigned integer. See the section [Built-in Types](./built_in_types.md) for more details.
-
-We can also make a mutable variable. Let's take a look:
+This time we want to declare a variable that can have its value changed. Let's also give it the value of `5` and then change it to `6`.
 
 ```sway
 let mut foo = 5;
 foo = 6;
 ```
 
-Now, `foo` is mutable, and the reassignment to the number `6` is valid. That is, we are allowed to _mutate_ the variable `foo` to change its value.
+Using the `mut` keyword marks the variable `foo` as mutable which means we can change its value to another value of the same type, in this case from `5` to `6`.
