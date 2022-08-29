@@ -6,7 +6,7 @@
       {
         "components": null,
         "name": "",
-        "type": "u64",
+        "type": "bool",
         "typeArguments": null
       }
     ],
