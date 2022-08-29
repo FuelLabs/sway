@@ -48,7 +48,7 @@ async fn get_contracts() -> (
     ContractId,
     AuthCallerContract,
     ContractId,
-    LocalWallet,
+    Wallet,
 ) {
     let wallet = launch_provider_and_get_wallet().await;
 
@@ -80,5 +80,5 @@ async fn get_contracts() -> (
     let instance_1 = AuthContractBuilder::new(id_1.to_string(), wallet.clone()).build();
     let instance_2 = AuthCallerContractBuilder::new(id_2.to_string(), wallet.clone()).build();
 
-    (instance_1, id_1.into(), instance_2, id_2.into(), wallet)
+    (instance_1, id_1.into(), instance_2, id_2.into(), wallet.lock())
 }

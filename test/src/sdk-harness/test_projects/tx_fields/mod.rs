@@ -1,7 +1,6 @@
 use fuel_types::bytes::WORD_SIZE;
 use fuel_vm::fuel_tx::ConsensusParameters;
 use fuels::prelude::*;
-use fuels::signers::wallet::Wallet;
 use fuels::tx::{Bytes32, ContractId};
 use std::str::FromStr;
 
@@ -10,7 +9,7 @@ abigen!(
     "test_artifacts/tx_contract/out/debug/tx_contract-abi.json",
 );
 
-async fn get_contracts() -> (TxContractTest, ContractId, Wallet) {
+async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked) {
     let wallet = launch_provider_and_get_wallet().await;
 
     let contract_id = Contract::deploy(

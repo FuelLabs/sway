@@ -10,7 +10,7 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::str::FromStr;
 
-async fn setup() -> (Vec<u8>, Address, Wallet, u64, AssetId) {
+async fn setup() -> (Vec<u8>, Address, WalletUnlocked, u64, AssetId) {
     let predicate_code =
         std::fs::read("test_projects/predicate_data_struct/out/debug/predicate_data_struct.bin")
             .unwrap();
@@ -37,7 +37,7 @@ async fn setup() -> (Vec<u8>, Address, Wallet, u64, AssetId) {
 
 async fn create_predicate(
     predicate_address: Address,
-    wallet: &Wallet,
+    wallet: &WalletUnlocked,
     amount_to_predicate: u64,
     asset_id: AssetId,
 ) {
