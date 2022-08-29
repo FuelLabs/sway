@@ -1767,7 +1767,7 @@ dependencies = [
 [[package]]
 name = "fuels-core"
 version = "0.20.0"
-source = "git+https://github.com/FuelLabs/fuels-rs/?branch=mitchmindtree/wallet-locked-unlocked#176de570ffc875fab8bed9adf32c89bbee4e5787"
+source = "git+https://github.com/FuelLabs/fuels-rs/#f0f21b57a8a9102de4a59b9c6a2bf37e5b3c46bd"
 dependencies = [
  "Inflector",
  "anyhow",
@@ -1792,7 +1792,7 @@ dependencies = [
 [[package]]
 name = "fuels-signers"
 version = "0.20.0"
-source = "git+https://github.com/FuelLabs/fuels-rs/?branch=mitchmindtree/wallet-locked-unlocked#176de570ffc875fab8bed9adf32c89bbee4e5787"
+source = "git+https://github.com/FuelLabs/fuels-rs/#f0f21b57a8a9102de4a59b9c6a2bf37e5b3c46bd"
 dependencies = [
  "async-trait",
  "bytes",
@@ -1814,7 +1814,7 @@ dependencies = [
 [[package]]
 name = "fuels-types"
 version = "0.20.0"
-source = "git+https://github.com/FuelLabs/fuels-rs/?branch=mitchmindtree/wallet-locked-unlocked#176de570ffc875fab8bed9adf32c89bbee4e5787"
+source = "git+https://github.com/FuelLabs/fuels-rs/#f0f21b57a8a9102de4a59b9c6a2bf37e5b3c46bd"
 dependencies = [
  "anyhow",
  "bech32 0.9.1",
