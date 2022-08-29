@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     concurrent_slab::ConcurrentSlab,
     semantic_analysis::{
@@ -9,18 +11,19 @@ use crate::{
 use super::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper};
 
 /// Used inside of type inference to store declarations.
+#[derive(Debug)]
 pub struct DeclarationEngine {
     slab: ConcurrentSlab<DeclarationId, DeclarationWrapper>,
     // *declaration_id -> vec of monomorphized copies
     // where the declaration_id is the original declaration
-    monomorphized_copies: im::HashMap<usize, Vec<DeclarationId>>,
+    monomorphized_copies: HashMap<usize, Vec<DeclarationId>>,
 }
 
 impl DeclarationEngine {
     pub(crate) fn new() -> DeclarationEngine {
         DeclarationEngine {
             slab: ConcurrentSlab::default(),
-            monomorphized_copies: im::HashMap::new(),
+            monomorphized_copies: HashMap::new(),
         }
     }
 
