@@ -1,5 +1,7 @@
 use std::{marker::PhantomData, sync::RwLock};
 
+use crate::{type_system::TypeId, TypeInfo};
+
 #[derive(Debug)]
 pub(crate) struct ConcurrentSlab<I, T> {
     indexer: PhantomData<I>,
@@ -20,7 +22,7 @@ where
 
 impl<I, T> ConcurrentSlab<I, T>
 where
-    T: Clone + PartialEq,
+    T: Clone,
     I: From<usize> + std::ops::Deref<Target = usize>,
 {
     pub fn insert(&self, value: T) -> I {
@@ -35,7 +37,24 @@ where
         inner[*index].clone()
     }
 
-    pub fn replace(&self, index: I, prev_value: &T, new_value: T) -> Option<T> {
+    pub fn clear(&self) {
+        let mut inner = self.inner.write().unwrap();
+        *inner = Vec::new();
+    }
+
+    pub fn exists<F: Fn(&T) -> bool>(&self, f: F) -> bool {
+        let inner = self.inner.read().unwrap();
+        inner.iter().any(f)
+    }
+}
+
+impl ConcurrentSlab<TypeId, TypeInfo> {
+    pub fn replace(
+        &self,
+        index: TypeId,
+        prev_value: &TypeInfo,
+        new_value: TypeInfo,
+    ) -> Option<TypeInfo> {
         // The comparison below ends up calling functions in the slab, which
         // can lead to deadlocks if we used a single read/write lock.
         // So we split the operation: we do the read only operations with
@@ -52,15 +71,5 @@ where
         let mut inner = self.inner.write().unwrap();
         inner[*index] = new_value;
         None
-    }
-
-    pub fn clear(&self) {
-        let mut inner = self.inner.write().unwrap();
-        *inner = Vec::new();
-    }
-
-    pub fn exists<F: Fn(&T) -> bool>(&self, f: F) -> bool {
-        let inner = self.inner.read().unwrap();
-        inner.iter().any(f)
     }
 }

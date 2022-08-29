@@ -3,6 +3,7 @@ use super::{
     TypedFunctionDeclaration, TypedImplTrait, TypedStorageDeclaration,
 };
 use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine,
     error::*,
     metadata::MetadataManager,
     parse_tree::{ParseProgram, Purity, TreeType},
@@ -32,9 +33,10 @@ impl TypedProgram {
     pub fn type_check(
         parsed: &ParseProgram,
         initial_namespace: namespace::Module,
+        declaration_engine: &mut DeclarationEngine,
     ) -> CompileResult<Self> {
         let mut namespace = Namespace::init_root(initial_namespace);
-        let ctx = TypeCheckContext::from_root(&mut namespace);
+        let ctx = TypeCheckContext::from_root(&mut namespace, declaration_engine);
         let ParseProgram { root, kind } = parsed;
         let mod_span = root.tree.span.clone();
         let mod_res = TypedModule::type_check(ctx, root);
