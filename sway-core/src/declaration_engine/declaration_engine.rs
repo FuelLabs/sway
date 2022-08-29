@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     concurrent_slab::ConcurrentSlab,
     semantic_analysis::{
@@ -13,14 +15,14 @@ pub struct DeclarationEngine {
     slab: ConcurrentSlab<DeclarationId, DeclarationWrapper>,
     // *declaration_id -> vec of monomorphized copies
     // where the declaration_id is the original declaration
-    monomorphized_copies: im::HashMap<usize, Vec<DeclarationId>>,
+    monomorphized_copies: HashMap<usize, Vec<DeclarationId>>,
 }
 
 impl DeclarationEngine {
     pub(crate) fn new() -> DeclarationEngine {
         DeclarationEngine {
             slab: ConcurrentSlab::default(),
-            monomorphized_copies: im::HashMap::new(),
+            monomorphized_copies: HashMap::new(),
         }
     }
 
@@ -60,7 +62,7 @@ impl DeclarationEngine {
     pub(crate) fn get_function(
         &self,
         index: DeclarationId,
-    ) -> Result<TypedFunctionDeclaration, String> {
+    ) -> Result<TypedFunctionDeclaration, DeclarationWrapper> {
         self.slab.get(index).expect_function()
     }
 
@@ -76,7 +78,7 @@ impl DeclarationEngine {
     pub(crate) fn get_monomorphized_function_copies(
         &self,
         original_id: DeclarationId,
-    ) -> Result<Vec<TypedFunctionDeclaration>, String> {
+    ) -> Result<Vec<TypedFunctionDeclaration>, DeclarationWrapper> {
         self.get_monomorphized_copies(original_id)
             .into_iter()
             .map(|x| x.expect_function())
@@ -87,7 +89,10 @@ impl DeclarationEngine {
         self.slab.insert(DeclarationWrapper::Trait(r#trait))
     }
 
-    pub(crate) fn get_trait(&self, index: DeclarationId) -> Result<TypedTraitDeclaration, String> {
+    pub(crate) fn get_trait(
+        &self,
+        index: DeclarationId,
+    ) -> Result<TypedTraitDeclaration, DeclarationWrapper> {
         self.slab.get(index).expect_trait()
     }
 
@@ -95,7 +100,10 @@ impl DeclarationEngine {
         self.slab.insert(DeclarationWrapper::TraitFn(trait_fn))
     }
 
-    pub(crate) fn get_trait_fn(&self, index: DeclarationId) -> Result<TypedTraitFn, String> {
+    pub(crate) fn get_trait_fn(
+        &self,
+        index: DeclarationId,
+    ) -> Result<TypedTraitFn, DeclarationWrapper> {
         self.slab.get(index).expect_trait_fn()
     }
 
@@ -103,7 +111,10 @@ impl DeclarationEngine {
         self.slab.insert(DeclarationWrapper::TraitImpl(trait_impl))
     }
 
-    pub(crate) fn get_trait_impl(&self, index: DeclarationId) -> Result<TypedImplTrait, String> {
+    pub(crate) fn get_trait_impl(
+        &self,
+        index: DeclarationId,
+    ) -> Result<TypedImplTrait, DeclarationWrapper> {
         self.slab.get(index).expect_trait_impl()
     }
 
@@ -114,7 +125,7 @@ impl DeclarationEngine {
     pub(crate) fn get_struct(
         &self,
         index: DeclarationId,
-    ) -> Result<TypedStructDeclaration, String> {
+    ) -> Result<TypedStructDeclaration, DeclarationWrapper> {
         self.slab.get(index).expect_struct()
     }
 
@@ -130,7 +141,7 @@ impl DeclarationEngine {
     pub(crate) fn get_monomorphized_struct_copies(
         &self,
         original_id: DeclarationId,
-    ) -> Result<Vec<TypedStructDeclaration>, String> {
+    ) -> Result<Vec<TypedStructDeclaration>, DeclarationWrapper> {
         self.get_monomorphized_copies(original_id)
             .into_iter()
             .map(|x| x.expect_struct())

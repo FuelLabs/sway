@@ -25,38 +25,38 @@ impl Default for DeclarationWrapper {
 }
 
 impl DeclarationWrapper {
-    pub(super) fn expect_function(self) -> Result<TypedFunctionDeclaration, String> {
+    pub(super) fn expect_function(self) -> Result<TypedFunctionDeclaration, DeclarationWrapper> {
         match self {
             DeclarationWrapper::Function(decl) => Ok(decl),
-            _ => Err("expected to find function declaration".to_string()),
+            actually => Err(actually),
         }
     }
 
-    pub(super) fn expect_trait(self) -> Result<TypedTraitDeclaration, String> {
+    pub(super) fn expect_trait(self) -> Result<TypedTraitDeclaration, DeclarationWrapper> {
         match self {
             DeclarationWrapper::Trait(decl) => Ok(decl),
-            _ => Err("expected to find trait declaration".to_string()),
+            actually => Err(actually),
         }
     }
 
-    pub(super) fn expect_trait_fn(self) -> Result<TypedTraitFn, String> {
+    pub(super) fn expect_trait_fn(self) -> Result<TypedTraitFn, DeclarationWrapper> {
         match self {
             DeclarationWrapper::TraitFn(decl) => Ok(decl),
-            _ => Err("expected to find trait fn".to_string()),
+            actually => Err(actually),
         }
     }
 
-    pub(super) fn expect_trait_impl(self) -> Result<TypedImplTrait, String> {
+    pub(super) fn expect_trait_impl(self) -> Result<TypedImplTrait, DeclarationWrapper> {
         match self {
             DeclarationWrapper::TraitImpl(decl) => Ok(decl),
-            _ => Err("expected to find trait impl".to_string()),
+            actually => Err(actually),
         }
     }
 
-    pub(super) fn expect_struct(self) -> Result<TypedStructDeclaration, String> {
+    pub(super) fn expect_struct(self) -> Result<TypedStructDeclaration, DeclarationWrapper> {
         match self {
             DeclarationWrapper::Struct(decl) => Ok(decl),
-            _ => Err("expected to find struct declaration".to_string()),
+            actually => Err(actually),
         }
     }
 }
