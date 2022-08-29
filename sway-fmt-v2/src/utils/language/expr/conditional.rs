@@ -211,12 +211,19 @@ impl CurlyBrace for IfExpr {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         formatter.shape.block_unindent(&formatter.config);
-        write!(
-            line,
-            "{}{}",
-            formatter.shape.indent.to_string(&formatter.config)?,
-            Delimiter::Brace.as_close_char()
-        )?;
+        match formatter.shape.code_line.line_style {
+            LineStyle::Inline => {
+                write!(line, "{}", Delimiter::Brace.as_close_char())?;
+            }
+            _ => {
+                write!(
+                    line,
+                    "{}{}",
+                    formatter.shape.indent.to_string(&formatter.config)?,
+                    Delimiter::Brace.as_close_char()
+                )?;
+            }
+        }
 
         Ok(())
     }

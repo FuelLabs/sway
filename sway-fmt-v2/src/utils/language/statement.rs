@@ -12,17 +12,8 @@ impl Format for Statement {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        match formatter.shape.code_line.line_style {
-            LineStyle::Inline => format_statement(self, formatted_code, formatter)?,
-            _ => {
-                write!(
-                    formatted_code,
-                    "{}",
-                    formatter.shape.indent.to_string(&formatter.config)?
-                )?;
-                format_statement(self, formatted_code, formatter)?;
-            }
-        }
+        // later we need to decide if a statement is long enough to go on next line
+        format_statement(self, formatted_code, formatter)?;
 
         Ok(())
     }

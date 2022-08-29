@@ -26,11 +26,16 @@ impl Format for CodeBlockContents {
                         final_expr.format(formatted_code, formatter)?;
                     }
                     write!(formatted_code, " ")?;
-                    println!("{}", formatted_code);
+                    println!("Code: {}\n", formatted_code);
                 }
                 _ => {
                     writeln!(formatted_code)?;
                     for statement in self.statements.iter() {
+                        write!(
+                            formatted_code,
+                            "{}",
+                            formatter.shape.indent.to_string(&formatter.config)?
+                        )?;
                         statement.format(formatted_code, formatter)?;
                         if !formatted_code.ends_with('\n') {
                             writeln!(formatted_code)?;
