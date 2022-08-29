@@ -25,6 +25,9 @@ impl Format for Statement {
                 semicolon_token_opt,
             } => {
                 expr.format(formatted_code, formatter)?;
+                if formatted_code.ends_with('\n') {
+                    formatted_code.pop();
+                }
                 if let Some(semicolon) = semicolon_token_opt {
                     writeln!(formatted_code, "{}", semicolon.span().as_str())?;
                 }
