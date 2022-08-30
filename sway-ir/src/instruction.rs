@@ -180,7 +180,7 @@ impl Instruction {
     pub fn get_type(&self, context: &Context) -> Option<Type> {
         match self {
             Instruction::AddrOf(_) => Some(Type::Uint(64)),
-            Instruction::AsmBlock(asm_block, _) => asm_block.get_type(context),
+            Instruction::AsmBlock(asm_block, _) => Some(asm_block.get_type(context)),
             Instruction::BitCast(_, ty) => Some(*ty),
             Instruction::Call(function, _) => Some(context.functions[function.0].return_type),
             Instruction::Cmp(..) => Some(Type::Bool),

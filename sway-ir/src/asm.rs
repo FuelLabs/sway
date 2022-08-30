@@ -65,8 +65,8 @@ impl AsmBlock {
     }
 
     /// Return the [`AsmBlock`] return type.
-    pub fn get_type(&self, context: &Context) -> Option<Type> {
+    pub fn get_type(&self, context: &Context) -> Type {
         // The type is a named register, which will be a u64.
-        Some(context.asm_blocks[self.0].return_type)
+        context.asm_blocks[self.0].return_type
     }
 }
