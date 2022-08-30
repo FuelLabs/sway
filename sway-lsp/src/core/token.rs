@@ -7,7 +7,7 @@ use sway_core::{
     },
     type_system::TypeId,
     Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
-    ReassignmentExpression, StorageField, StructExpressionField, StructField, TraitFn,
+    ReassignmentExpression, Scrutinee, StorageField, StructExpressionField, StructField, TraitFn,
 };
 use sway_types::{Ident, Span};
 
@@ -50,6 +50,7 @@ pub enum AstToken {
     TraitFn(TraitFn),
     Reassignment(ReassignmentExpression),
     StorageField(StorageField),
+    Scrutinee(Scrutinee),
 }
 
 #[derive(Debug, Clone)]
@@ -71,7 +72,6 @@ pub enum SymbolKind {
     Field,
     ValueParam,
     Function,
-    Method,
     Const,
     Struct,
     Trait,
@@ -84,5 +84,6 @@ pub enum SymbolKind {
     Variable,
     BuiltinType,
     Module,
+    TypeParameter,
     Unknown,
 }
