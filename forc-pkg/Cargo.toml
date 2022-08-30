@@ -1,6 +1,6 @@
 [package]
 name = "forc-pkg"
-version = "0.20.2"
+version = "0.21.0"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -19,9 +19,9 @@ semver = { version = "1.0", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_ignored = "0.1"
 serde_json = "1.0"
-sway-core = { version = "0.20.2", path = "../sway-core" }
-sway-types = { version = "0.20.2", path = "../sway-types" }
-sway-utils = { version = "0.20.2", path = "../sway-utils" }
+sway-core = { version = "0.21.0", path = "../sway-core" }
+sway-types = { version = "0.21.0", path = "../sway-types" }
+sway-utils = { version = "0.21.0", path = "../sway-utils" }
 toml = "0.5"
 tracing = "0.1"
 url = { version = "2.2", features = ["serde"] }
