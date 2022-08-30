@@ -8,6 +8,8 @@ use forc_util::{
     default_output_directory, find_file_name, git_checkouts_directory, kebab_to_snake_case,
     print_on_failure, print_on_success, print_on_success_library,
 };
+// Using `fuel_tx` directly instead of `fuel_gql_client` transitively is causing some weird issue.
+// See https://github.com/FuelLabs/sway/issues/2659 
 use fuel_gql_client::fuel_tx::{Contract, StorageSlot};
 use petgraph::{
     self,
