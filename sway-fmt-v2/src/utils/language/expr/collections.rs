@@ -15,37 +15,32 @@ impl Format for ExprTupleDescriptor {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        Self::open_parenthesis(formatted_code, formatter)?;
         match self {
-            Self::Nil => {
-                Self::open_parenthesis(formatted_code, formatter)?;
-                Self::close_parenthesis(formatted_code, formatter)?;
-            }
+            Self::Nil => {}
             Self::Cons {
                 head,
                 comma_token,
                 tail,
-            } => {
-                Self::open_parenthesis(formatted_code, formatter)?;
-                match formatter.shape.code_line.line_style {
-                    LineStyle::Multiline => {
-                        write!(
-                            formatted_code,
-                            "{}",
-                            formatter.shape.indent.to_string(&formatter.config)?
-                        )?;
-                        head.format(formatted_code, formatter)?;
-                        write!(formatted_code, "{}", comma_token.span().as_str())?;
-                        tail.format(formatted_code, formatter)?;
-                    }
-                    _ => {
-                        head.format(formatted_code, formatter)?;
-                        write!(formatted_code, "{} ", comma_token.span().as_str())?;
-                        tail.format(formatted_code, formatter)?;
-                    }
+            } => match formatter.shape.code_line.line_style {
+                LineStyle::Multiline => {
+                    write!(
+                        formatted_code,
+                        "{}",
+                        formatter.shape.indent.to_string(&formatter.config)?
+                    )?;
+                    head.format(formatted_code, formatter)?;
+                    write!(formatted_code, "{}", comma_token.span().as_str())?;
+                    tail.format(formatted_code, formatter)?;
                 }
-                Self::close_parenthesis(formatted_code, formatter)?;
-            }
+                _ => {
+                    head.format(formatted_code, formatter)?;
+                    write!(formatted_code, "{} ", comma_token.span().as_str())?;
+                    tail.format(formatted_code, formatter)?;
+                }
+            },
         }
+        Self::close_parenthesis(formatted_code, formatter)?;
 
         Ok(())
     }
