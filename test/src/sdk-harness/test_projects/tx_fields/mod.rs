@@ -1,4 +1,3 @@
-use fuel_types::bytes::WORD_SIZE;
 use fuel_vm::fuel_tx::ConsensusParameters;
 use fuels::prelude::*;
 use fuels::tx::{Bytes32, ContractId};
@@ -160,20 +159,9 @@ async fn can_get_receipts_root() {
 #[tokio::test]
 async fn can_get_script_start_offset() {
     let (contract_instance, _, _) = get_contracts().await;
-    // TODO https://github.com/FuelLabs/fuel-tx/issues/98
-    const TRANSACTION_SCRIPT_FIXED_SIZE: usize = WORD_SIZE // Identifier
-    + WORD_SIZE // Gas price
-    + WORD_SIZE // Gas limit
-    + WORD_SIZE // Byte price
-    + WORD_SIZE // Maturity
-    + WORD_SIZE // Script size
-    + WORD_SIZE // Script data size
-    + WORD_SIZE // Inputs size
-    + WORD_SIZE // Outputs size
-    + WORD_SIZE // Witnesses size
-    + Bytes32::LEN; // Receipts root
-    let script_start_offset =
-        ConsensusParameters::DEFAULT.tx_offset() + TRANSACTION_SCRIPT_FIXED_SIZE;
+
+    let script_start_offset = ConsensusParameters::DEFAULT.tx_offset()
+        + fuel_vm::fuel_tx::consts::TRANSACTION_SCRIPT_FIXED_SIZE;
 
     let result = contract_instance
         .get_tx_script_start_pointer()
@@ -187,18 +175,10 @@ async fn can_get_script_start_offset() {
 async fn can_get_input_type() {
     let (contract_instance, _, _) = get_contracts().await;
 
-    let result = contract_instance
-        .get_input_type(0)
-        .call()
-        .await
-        .unwrap();
+    let result = contract_instance.get_input_type(0).call().await.unwrap();
     assert_eq!(result.value, Input::Contract());
 
-    let result = contract_instance
-        .get_input_type(1)
-        .call()
-        .await
-        .unwrap();
+    let result = contract_instance.get_input_type(1).call().await.unwrap();
 
     assert_eq!(result.value, Input::Coin());
 }
@@ -209,7 +189,7 @@ async fn can_get_tx_input_coin_owner() {
     let (contract_instance, _, wallet) = get_contracts().await;
 
     let owner_result = contract_instance
-    // @review "InputNotFound" !
+        // @review "InputNotFound" !
         .get_tx_input_coin_owner(0)
         .call()
         .await
