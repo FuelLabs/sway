@@ -6,7 +6,7 @@ use sway_types::{Ident, Property, Span, Spanned};
 pub struct TypedStructDeclaration {
     pub name: Ident,
     pub fields: Vec<TypedStructField>,
-    pub(crate) type_parameters: Vec<TypeParameter>,
+    pub type_parameters: Vec<TypeParameter>,
     pub visibility: Visibility,
     pub(crate) span: Span,
 }

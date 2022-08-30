@@ -11,6 +11,7 @@ use crate::{
 use super::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper};
 
 /// Used inside of type inference to store declarations.
+#[derive(Debug)]
 pub struct DeclarationEngine {
     slab: ConcurrentSlab<DeclarationId, DeclarationWrapper>,
     // *declaration_id -> vec of monomorphized copies
