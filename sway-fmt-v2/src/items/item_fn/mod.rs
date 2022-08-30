@@ -167,9 +167,7 @@ fn format_fn_args(
 ) -> Result<(), FormatterError> {
     match fn_args {
         FnArgs::Static(args) => {
-            if !args.value_separator_pairs.is_empty() || args.final_value_opt.is_some() {
-                args.format(formatted_code, formatter)?;
-            }
+            args.format(formatted_code, formatter)?;
         }
         FnArgs::NonStatic {
             self_token,
