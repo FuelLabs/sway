@@ -123,7 +123,7 @@ fmt_test!(  normal_with_generics
         Option::Some::<T>(value)
     }
     fn none() -> Self {
-        Option::None::<T>()
+        Option::None::<T>(())
     }
     fn to_result(self) -> Result<T> {
         if let Option::Some(value) = self {
@@ -150,4 +150,3 @@ fmt_test!(  normal_with_generics
                 }
             }"
 );
-// the above impl test gets rid of the nested unit in `Option::None::<T>(())`

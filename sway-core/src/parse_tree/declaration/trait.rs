@@ -29,7 +29,7 @@ pub struct TraitFn {
     pub purity: Purity,
     pub parameters: Vec<FunctionParameter>,
     pub return_type: TypeInfo,
-    pub(crate) return_type_span: Span,
+    pub return_type_span: Span,
 }
 
 impl PartialEq for CompileWrapper<'_, TraitFn> {

@@ -434,7 +434,7 @@ impl CopyTypes for TypedConstantDeclaration {
 pub struct TypedTraitFn {
     pub name: Ident,
     pub(crate) purity: Purity,
-    pub(crate) parameters: Vec<TypedFunctionParameter>,
+    pub parameters: Vec<TypedFunctionParameter>,
     pub return_type: TypeId,
     pub return_type_span: Span,
 }

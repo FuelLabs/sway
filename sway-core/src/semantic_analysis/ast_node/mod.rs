@@ -306,6 +306,7 @@ impl TypedAstNode {
                             type_ascription,
                             value,
                             visibility,
+                            ..
                         }) => {
                             let result =
                                 type_check_ascribed_expr(ctx.by_ref(), type_ascription, value);
@@ -429,6 +430,7 @@ impl TypedAstNode {
                                 name,
                                 type_info,
                                 initializer,
+                                type_info_span,
                             } in fields
                             {
                                 let type_id = check!(
@@ -453,6 +455,7 @@ impl TypedAstNode {
                                 fields_buf.push(TypedStorageField::new(
                                     name,
                                     type_id,
+                                    type_info_span,
                                     initializer,
                                     span.clone(),
                                 ));

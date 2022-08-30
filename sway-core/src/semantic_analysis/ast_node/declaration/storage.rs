@@ -192,6 +192,7 @@ impl TypedStorageDeclaration {
 pub struct TypedStorageField {
     pub name: Ident,
     pub type_id: TypeId,
+    pub type_span: Span,
     pub initializer: TypedExpression,
     pub(crate) span: Span,
 }
@@ -210,10 +211,17 @@ impl PartialEq for CompileWrapper<'_, TypedStorageField> {
 }
 
 impl TypedStorageField {
-    pub fn new(name: Ident, r#type: TypeId, initializer: TypedExpression, span: Span) -> Self {
+    pub fn new(
+        name: Ident,
+        r#type: TypeId,
+        type_span: Span,
+        initializer: TypedExpression,
+        span: Span,
+    ) -> Self {
         TypedStorageField {
             name,
             type_id: r#type,
+            type_span,
             initializer,
             span,
         }

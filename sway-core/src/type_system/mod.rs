@@ -25,7 +25,7 @@ pub use type_engine::*;
 pub use type_id::*;
 pub use type_info::*;
 pub(crate) use type_mapping::*;
-pub(crate) use type_parameter::*;
+pub use type_parameter::*;
 pub(crate) use unresolved_type_check::*;
 
 use crate::error::*;
@@ -52,6 +52,7 @@ fn generic_enum_resolution() {
             name: Ident::new_with_override("T", sp.clone()),
         }),
         span: sp.clone(),
+        type_span: sp.clone(),
     }];
 
     let ty_1 = type_engine.insert_type(TypeInfo::Enum {
@@ -66,6 +67,7 @@ fn generic_enum_resolution() {
         type_id: type_engine.insert_type(TypeInfo::Boolean),
         initial_type_id: type_engine.insert_type(TypeInfo::Boolean),
         span: sp.clone(),
+        type_span: sp.clone(),
     }];
 
     let ty_2 = type_engine.insert_type(TypeInfo::Enum {
