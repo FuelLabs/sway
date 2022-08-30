@@ -496,24 +496,19 @@ impl TypedAstNode {
         };
 
         if let TypedAstNode {
-            content: TypedAstNodeContent::Expression(TypedExpression { ref expression, .. }),
+            content: TypedAstNodeContent::Expression(TypedExpression { .. }),
             ..
         } = node
         {
-            if !matches!(
-                expression,
-                TypedExpressionVariant::Break | TypedExpressionVariant::Continue,
-            ) {
-                let warning = Warning::UnusedReturnValue {
-                    r#type: Box::new(node.type_info()),
-                };
-                assert_or_warn!(
-                    node.type_info().is_unit() || node.type_info() == TypeInfo::ErrorRecovery,
-                    warnings,
-                    node.span.clone(),
-                    warning
-                );
-            }
+            let warning = Warning::UnusedReturnValue {
+                r#type: Box::new(node.type_info()),
+            };
+            assert_or_warn!(
+                node.type_info().can_safely_ignore(),
+                warnings,
+                node.span.clone(),
+                warning
+            );
         }
 
         ok(node, warnings, errors)

@@ -609,6 +609,15 @@ impl TypeInfo {
         }
     }
 
+    pub fn can_safely_ignore(&self) -> bool {
+        match self {
+            TypeInfo::Tuple(fields) => fields.is_empty(),
+            TypeInfo::ErrorRecovery => true,
+            TypeInfo::Unknown => true,
+            _ => false,
+        }
+    }
+
     pub fn is_unit(&self) -> bool {
         match self {
             TypeInfo::Tuple(fields) => fields.is_empty(),

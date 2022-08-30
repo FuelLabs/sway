@@ -639,14 +639,11 @@ impl TypedExpression {
         let mut warnings = res.warnings;
         let mut errors = res.errors;
 
-        // if one of the expressions deterministically aborts, we don't want to type check it.
-        if !typed_expression.deterministically_aborts() {
-            // if the return type cannot be cast into the annotation type then it is a type error
-            let (mut new_warnings, new_errors) =
-                ctx.unify_with_self(typed_expression.return_type, &expr_span);
-            warnings.append(&mut new_warnings);
-            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-        }
+        // if the return type cannot be cast into the annotation type then it is a type error
+        let (mut new_warnings, new_errors) =
+            ctx.unify_with_self(typed_expression.return_type, &expr_span);
+        warnings.append(&mut new_warnings);
+        errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
 
         // The annotation may result in a cast, which is handled in the type engine.
         typed_expression.return_type = check!(

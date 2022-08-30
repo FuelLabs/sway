@@ -114,7 +114,7 @@ impl TypedMatchBranch {
             }
             typed_result_expression_variant => {
                 code_block_contents.push(TypedAstNode {
-                    content: TypedAstNodeContent::Expression(TypedExpression {
+                    content: TypedAstNodeContent::ImplicitReturnExpression(TypedExpression {
                         expression: typed_result_expression_variant,
                         return_type: typed_result_return_type,
                         is_constant: typed_result_is_constant,
