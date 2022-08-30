@@ -16,6 +16,7 @@ pub struct TypedFunctionParameter {
     pub is_reference: bool,
     pub is_mutable: bool,
     pub type_id: TypeId,
+    pub initial_type_id: TypeId,
     pub type_span: Span,
 }
 
@@ -78,6 +79,7 @@ impl TypedFunctionParameter {
                 },
                 mutability,
                 type_ascription: type_id,
+                type_ascription_span: None,
             }),
         );
         let parameter = TypedFunctionParameter {
@@ -85,6 +87,7 @@ impl TypedFunctionParameter {
             is_reference: parameter.is_reference,
             is_mutable: parameter.is_mutable,
             type_id,
+            initial_type_id: parameter.type_id,
             type_span: parameter.type_span,
         };
         ok(parameter, warnings, errors)

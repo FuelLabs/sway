@@ -1,4 +1,4 @@
-mod compile;
+pub(crate) mod compile;
 pub mod const_eval;
 mod convert;
 mod function;
@@ -18,7 +18,12 @@ use sway_types::span::Span;
 pub(crate) use purity::PurityChecker;
 
 pub fn compile_program(program: TypedProgram) -> Result<Context, CompileError> {
-    let TypedProgram { kind, root, .. } = program;
+    let TypedProgram {
+        kind,
+        root,
+        declaration_engine,
+        ..
+    } = program;
 
     let mut ctx = Context::default();
     match kind {
@@ -31,11 +36,23 @@ pub fn compile_program(program: TypedProgram) -> Result<Context, CompileError> {
             declarations,
             // predicates and scripts have the same codegen, their only difference is static
             // type-check time checks.
-        } => compile::compile_script(&mut ctx, main_function, &root.namespace, declarations),
+        } => compile::compile_script(
+            &mut ctx,
+            main_function,
+            &root.namespace,
+            &declaration_engine,
+            declarations,
+        ),
         TypedProgramKind::Contract {
             abi_entries,
             declarations,
-        } => compile::compile_contract(&mut ctx, abi_entries, &root.namespace, declarations),
+        } => compile::compile_contract(
+            &mut ctx,
+            abi_entries,
+            &root.namespace,
+            &declaration_engine,
+            declarations,
+        ),
         TypedProgramKind::Library { .. } => unimplemented!("compile library to ir"),
     }?;
     ctx.verify()

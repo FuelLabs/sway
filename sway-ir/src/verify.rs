@@ -562,8 +562,6 @@ impl<'a> InstructionVerifier<'a> {
             } else {
                 Ok(())
             }
-        } else if !self.is_local_pointer(src_ptr.as_ref().unwrap()) {
-            Err(IrError::VerifyLoadNonExistentPointer)
         } else {
             Ok(())
         }
@@ -691,6 +689,7 @@ impl<'a> InstructionVerifier<'a> {
             ValueDatum::Instruction(Instruction::GetPointer { ptr_ty, .. }) => {
                 Some(*ptr_ty.get_type(self.context))
             }
+            ValueDatum::Instruction(Instruction::IntToPtr(_, ty)) => Some(*ty),
             ValueDatum::Argument(Type::Pointer(ptr)) => Some(*ptr.get_type(self.context)),
             ValueDatum::Argument(arg_ty) => match arg_ty.is_copy_type() && !arg_ty.is_ptr_type() {
                 true => None,

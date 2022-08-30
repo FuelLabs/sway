@@ -9,7 +9,7 @@ use sway_types::{ident::Ident, span::Span};
 pub struct StructDeclaration {
     pub name: Ident,
     pub fields: Vec<StructField>,
-    pub(crate) type_parameters: Vec<TypeParameter>,
+    pub type_parameters: Vec<TypeParameter>,
     pub visibility: Visibility,
     pub(crate) span: Span,
 }

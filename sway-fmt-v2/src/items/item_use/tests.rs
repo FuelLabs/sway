@@ -3,15 +3,15 @@ use forc_util::{println_green, println_red};
 use paste::paste;
 use prettydiff::{basic::DiffOp, diff_lines};
 use sway_ast::ItemUse;
-use sway_parse::*;
+use sway_parse::{handler::Handler, *};
 
 fn format_code(input: &str) -> String {
-    let mut errors = vec![];
     let mut formatter: Formatter = Default::default();
     let input_arc = std::sync::Arc::from(input);
     let token_stream = lex(&input_arc, 0, input.len(), None).unwrap();
-    let mut parser = Parser::new(&token_stream, &mut errors);
-    let expression: ItemUse = Parse::parse(&mut parser).unwrap();
+    let handler = Handler::default();
+    let mut parser = Parser::new(&token_stream, &handler);
+    let expression: ItemUse = parser.parse().unwrap();
 
     let mut buf = Default::default();
     expression.format(&mut buf, &mut formatter).unwrap();

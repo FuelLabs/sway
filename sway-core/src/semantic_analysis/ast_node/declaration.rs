@@ -29,7 +29,6 @@ pub enum TypedDeclaration {
     TraitDeclaration(TypedTraitDeclaration),
     StructDeclaration(TypedStructDeclaration),
     EnumDeclaration(TypedEnumDeclaration),
-    Reassignment(TypedReassignment),
     ImplTrait(TypedImplTrait),
     AbiDeclaration(TypedAbiDeclaration),
     // If type parameters are defined for a function, they are put in the namespace just for
@@ -37,9 +36,6 @@ pub enum TypedDeclaration {
     GenericTypeForFunctionScope { name: Ident, type_id: TypeId },
     ErrorRecovery,
     StorageDeclaration(TypedStorageDeclaration),
-    StorageReassignment(TypeCheckedStorageReassignment),
-    Break { span: Span },
-    Continue { span: Span },
 }
 
 impl CopyTypes for TypedDeclaration {
@@ -54,16 +50,12 @@ impl CopyTypes for TypedDeclaration {
             TraitDeclaration(ref mut trait_decl) => trait_decl.copy_types(type_mapping),
             StructDeclaration(ref mut struct_decl) => struct_decl.copy_types(type_mapping),
             EnumDeclaration(ref mut enum_decl) => enum_decl.copy_types(type_mapping),
-            Reassignment(ref mut reassignment) => reassignment.copy_types(type_mapping),
             ImplTrait(impl_trait) => impl_trait.copy_types(type_mapping),
             // generics in an ABI is unsupported by design
             AbiDeclaration(..)
             | StorageDeclaration(..)
-            | StorageReassignment(..)
             | GenericTypeForFunctionScope { .. }
-            | ErrorRecovery
-            | Break { .. }
-            | Continue { .. } => (),
+            | ErrorRecovery => (),
         }
     }
 }
@@ -78,18 +70,10 @@ impl Spanned for TypedDeclaration {
             TraitDeclaration(TypedTraitDeclaration { name, .. }) => name.span(),
             StructDeclaration(TypedStructDeclaration { name, .. }) => name.span(),
             EnumDeclaration(TypedEnumDeclaration { span, .. }) => span.clone(),
-            Reassignment(TypedReassignment {
-                lhs_base_name,
-                lhs_indices,
-                ..
-            }) => lhs_indices.iter().fold(lhs_base_name.span(), |acc, this| {
-                Span::join(acc, this.span())
-            }),
             AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
             ImplTrait(TypedImplTrait { span, .. }) => span.clone(),
             StorageDeclaration(decl) => decl.span(),
-            StorageReassignment(decl) => decl.span(),
-            ErrorRecovery | GenericTypeForFunctionScope { .. } | Break { .. } | Continue { .. } => {
+            ErrorRecovery | GenericTypeForFunctionScope { .. } => {
                 unreachable!("No span exists for these ast node types")
             }
         }
@@ -137,19 +121,6 @@ impl fmt::Display for TypedDeclaration {
                     name.as_str().into(),
                 TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. }) =>
                     name.as_str().into(),
-                TypedDeclaration::Reassignment(TypedReassignment {
-                    lhs_base_name,
-                    lhs_indices,
-                    ..
-                }) => {
-                    std::iter::once(Cow::Borrowed(lhs_base_name.as_str()))
-                        .chain(
-                            lhs_indices
-                                .iter()
-                                .flat_map(|x| [Cow::Borrowed("."), x.pretty_print()]),
-                        )
-                        .collect::<String>()
-                }
                 _ => String::new(),
             }
         )
@@ -195,12 +166,6 @@ impl UnresolvedTypeCheck for TypedDeclaration {
             ConstantDeclaration(TypedConstantDeclaration { value, .. }) => {
                 value.check_for_unresolved_types()
             }
-            StorageReassignment(TypeCheckedStorageReassignment { fields, rhs, .. }) => fields
-                .iter()
-                .flat_map(|x| x.type_id.check_for_unresolved_types())
-                .chain(rhs.check_for_unresolved_types().into_iter())
-                .collect(),
-            Reassignment(TypedReassignment { rhs, .. }) => rhs.check_for_unresolved_types(),
             ErrorRecovery
             | StorageDeclaration(_)
             | TraitDeclaration(_)
@@ -208,9 +173,7 @@ impl UnresolvedTypeCheck for TypedDeclaration {
             | EnumDeclaration(_)
             | ImplTrait { .. }
             | AbiDeclaration(_)
-            | GenericTypeForFunctionScope { .. }
-            | Break { .. }
-            | Continue { .. } => vec![],
+            | GenericTypeForFunctionScope { .. } => vec![],
         }
     }
 }
@@ -316,15 +279,11 @@ impl TypedDeclaration {
             TraitDeclaration(_) => "trait",
             StructDeclaration(_) => "struct",
             EnumDeclaration(_) => "enum",
-            Reassignment(_) => "reassignment",
             ImplTrait { .. } => "impl trait",
             AbiDeclaration(..) => "abi",
             GenericTypeForFunctionScope { .. } => "generic type parameter",
             ErrorRecovery => "error",
             StorageDeclaration(_) => "contract storage declaration",
-            StorageReassignment(_) => "contract storage reassignment",
-            Break { .. } => "break",
-            Continue { .. } => "continue",
         }
     }
 
@@ -344,7 +303,6 @@ impl TypedDeclaration {
             }
             TypedDeclaration::StructDeclaration(decl) => decl.create_type_id(),
             TypedDeclaration::EnumDeclaration(decl) => decl.create_type_id(),
-            TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => rhs.return_type,
             TypedDeclaration::StorageDeclaration(decl) => insert_type(TypeInfo::Storage {
                 fields: decl.fields_as_typed_struct_fields(),
             }),
@@ -369,14 +327,10 @@ impl TypedDeclaration {
         use TypedDeclaration::*;
         match self {
             GenericTypeForFunctionScope { .. }
-            | Reassignment(..)
             | ImplTrait { .. }
             | StorageDeclaration { .. }
-            | StorageReassignment { .. }
             | AbiDeclaration(..)
-            | ErrorRecovery
-            | Break { .. }
-            | Continue { .. } => Visibility::Public,
+            | ErrorRecovery => Visibility::Public,
             VariableDeclaration(TypedVariableDeclaration {
                 mutability: is_mutable,
                 ..
@@ -408,7 +362,7 @@ impl CopyTypes for TypedConstantDeclaration {
 pub struct TypedTraitFn {
     pub name: Ident,
     pub(crate) purity: Purity,
-    pub(crate) parameters: Vec<TypedFunctionParameter>,
+    pub parameters: Vec<TypedFunctionParameter>,
     pub return_type: TypeId,
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
@@ -434,6 +388,7 @@ impl TypedTraitFn {
             parameters: self.parameters.clone(),
             span: self.name.span(),
             return_type: self.return_type,
+            initial_return_type: self.return_type,
             return_type_span: self.return_type_span.clone(),
             visibility: Visibility::Public,
             type_parameters: vec![],

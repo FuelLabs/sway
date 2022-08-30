@@ -8,6 +8,7 @@ mod concurrent_slab;
 pub mod constants;
 mod control_flow_analysis;
 mod convert_parse_tree;
+mod declaration_engine;
 pub mod ir_generation;
 mod metadata;
 pub mod parse_tree;
@@ -21,9 +22,13 @@ pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
 pub use build_config::BuildConfig;
 use control_flow_analysis::ControlFlowGraph;
+use declaration_engine::declaration_engine::DeclarationEngine;
+use metadata::MetadataManager;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use sway_ast::Dependency;
+use sway_ir::{Kind, Module};
 
 pub use semantic_analysis::{
     namespace::{self, Namespace},
@@ -58,17 +63,31 @@ pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<Par
     }
 }
 
+/// Parse a file with contents `src` at `path`.
+fn parse_file(src: Arc<str>, path: Option<Arc<PathBuf>>) -> CompileResult<sway_ast::Module> {
+    let handler = sway_parse::handler::Handler::default();
+    match sway_parse::parse_file(&handler, src, path) {
+        Ok(module) => ok(
+            module,
+            vec![],
+            parse_file_error_to_compile_errors(handler, None),
+        ),
+        Err(error) => err(
+            vec![],
+            parse_file_error_to_compile_errors(handler, Some(error)),
+        ),
+    }
+}
+
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
 fn parse_in_memory(src: Arc<str>) -> CompileResult<ParseProgram> {
-    let module = match sway_parse::parse_file(src, None) {
-        Ok(module) => module,
-        Err(error) => return err(vec![], parse_file_error_to_compile_errors(error)),
-    };
-    convert_parse_tree::convert_parse_tree(module).flat_map(|(kind, tree)| {
-        let submodules = Default::default();
-        let root = ParseModule { tree, submodules };
-        let program = ParseProgram { kind, root };
-        ok(program, vec![], vec![])
+    parse_file(src, None).flat_map(|module| {
+        convert_parse_tree::convert_parse_tree(module).flat_map(|(kind, tree)| {
+            let submodules = Default::default();
+            let root = ParseModule { tree, submodules };
+            let program = ParseProgram { kind, root };
+            ok(program, vec![], vec![])
+        })
     })
 }
 
@@ -82,19 +101,13 @@ fn parse_files(src: Arc<str>, config: &BuildConfig) -> CompileResult<ParseProgra
     })
 }
 
-/// Given the source of the module along with its path, parse this module including all of its
-/// submodules.
-fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeType, ParseModule)> {
-    // Parse this module first.
-    let module = match sway_parse::parse_file(src, Some(path.clone())) {
-        Ok(module) => module,
-        Err(error) => return err(vec![], parse_file_error_to_compile_errors(error)),
-    };
-    let module_dir = path.parent().expect("module file has no parent directory");
-
-    // Parse all submodules before converting to the `ParseTree`.
+/// Parse all dependencies `deps` as submodules.
+fn parse_submodules(
+    deps: &[Dependency],
+    module_dir: &Path,
+) -> CompileResult<Vec<(Ident, ParseSubmodule)>> {
     let init_res = ok(vec![], vec![], vec![]);
-    let submodules_res = module.dependencies.iter().fold(init_res, |res, dep| {
+    deps.iter().fold(init_res, |res, dep| {
         let dep_path = Arc::new(module_path(module_dir, dep));
         let dep_str: Arc<str> = match std::fs::read_to_string(&*dep_path) {
             Ok(s) => Arc::from(s),
@@ -130,13 +143,25 @@ fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeTy
                 ok(submods, vec![], vec![])
             })
         })
-    });
+    })
+}
 
-    // Convert from the raw parsed module to the `ParseTree` ready for type-check.
-    convert_parse_tree::convert_parse_tree(module).flat_map(|(prog_kind, tree)| {
-        submodules_res.flat_map(|submodules| {
-            let parse_module = ParseModule { tree, submodules };
-            ok((prog_kind, parse_module), vec![], vec![])
+/// Given the source of the module along with its path, parse this module including all of its
+/// submodules.
+fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeType, ParseModule)> {
+    // Parse this module first.
+    parse_file(src, Some(path.clone())).flat_map(|module| {
+        let module_dir = path.parent().expect("module file has no parent directory");
+
+        // Parse all submodules before converting to the `ParseTree`.
+        let submodules_res = parse_submodules(&module.dependencies, module_dir);
+
+        // Convert from the raw parsed module to the `ParseTree` ready for type-check.
+        convert_parse_tree::convert_parse_tree(module).flat_map(|(prog_kind, tree)| {
+            submodules_res.flat_map(|submodules| {
+                let parse_module = ParseModule { tree, submodules };
+                ok((prog_kind, parse_module), vec![], vec![])
+            })
         })
     })
 }
@@ -149,10 +174,14 @@ fn module_path(parent_module_dir: &Path, dep: &sway_ast::Dependency) -> PathBuf 
         .with_extension(crate::constants::DEFAULT_FILE_EXTENSION)
 }
 
-fn parse_file_error_to_compile_errors(error: sway_parse::ParseFileError) -> Vec<CompileError> {
+fn parse_file_error_to_compile_errors(
+    handler: sway_parse::handler::Handler,
+    error: Option<sway_parse::ParseFileError>,
+) -> Vec<CompileError> {
     match error {
-        sway_parse::ParseFileError::Lex(error) => vec![CompileError::Lex { error }],
-        sway_parse::ParseFileError::Parse(errors) => errors
+        Some(sway_parse::ParseFileError::Lex(error)) => vec![CompileError::Lex { error }],
+        Some(sway_parse::ParseFileError::Parse(_)) | None => handler
+            .into_errors()
             .into_iter()
             .map(|error| CompileError::Parse { error })
             .collect(),
@@ -215,7 +244,7 @@ pub fn parsed_to_ast(
         value: typed_program_result,
         warnings: new_warnings,
         errors: new_errors,
-    } = TypedProgram::type_check(parse_program, initial_namespace);
+    } = TypedProgram::type_check(parse_program, initial_namespace, DeclarationEngine::new());
     warnings.extend(new_warnings);
     errors.extend(new_errors);
     let typed_program = match typed_program_result {
@@ -237,12 +266,34 @@ pub fn parsed_to_ast(
         return CompileAstResult::Failure { errors, warnings };
     }
 
+    // Evaluate const declarations,
+    // to allow storage slots initializion with consts.
+    let mut ctx = Context::default();
+    let mut md_mgr = MetadataManager::default();
+    let module = Module::new(&mut ctx, Kind::Contract);
+    match ir_generation::compile::compile_constants(
+        &mut ctx,
+        &mut md_mgr,
+        module,
+        &typed_program.root.namespace,
+    ) {
+        Ok(()) => (),
+        Err(e) => {
+            errors.push(e);
+            return CompileAstResult::Failure { warnings, errors };
+        }
+    }
+
     // Check that all storage initializers can be evaluated at compile time.
     let CompileResult {
         value: typed_program_with_storage_slots_result,
         warnings: new_warnings,
         errors: new_errors,
-    } = typed_program.get_typed_program_with_initialized_storage_slots();
+    } = typed_program.get_typed_program_with_initialized_storage_slots(
+        &mut ctx,
+        &mut md_mgr,
+        module,
+    );
     warnings.extend(new_warnings);
     errors.extend(new_errors);
     let typed_program_with_storage_slots = match typed_program_with_storage_slots_result {
@@ -431,10 +482,30 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         errors
     );
 
-    // The only other optimisation we have at the moment is constant combining.  In lieu of a
-    // forthcoming pass manager we can just call it here now.
+    // TODO: Experiment with putting combine-constants and simplify-cfg
+    // in a loop, but per function.
     check!(
         combine_constants(&mut ir, &entry_point_functions),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    check!(
+        simplify_cfg(&mut ir, &entry_point_functions),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    // Simplify-CFG helps combine constants.
+    check!(
+        combine_constants(&mut ir, &entry_point_functions),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    // And that in-turn enables more simplify-cfg.
+    check!(
+        simplify_cfg(&mut ir, &entry_point_functions),
         return err(warnings, errors),
         warnings,
         errors
@@ -465,6 +536,21 @@ fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileRes
 fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
     for function in functions {
         if let Err(ir_error) = sway_ir::optimize::combine_constants(ir, function) {
+            return err(
+                Vec::new(),
+                vec![CompileError::InternalOwned(
+                    ir_error.to_string(),
+                    span::Span::dummy(),
+                )],
+            );
+        }
+    }
+    ok((), Vec::new(), Vec::new())
+}
+
+fn simplify_cfg(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
+    for function in functions {
+        if let Err(ir_error) = sway_ir::optimize::simplify_cfg(ir, function) {
             return err(
                 Vec::new(),
                 vec![CompileError::InternalOwned(

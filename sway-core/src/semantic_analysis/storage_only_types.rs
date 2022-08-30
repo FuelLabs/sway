@@ -6,7 +6,7 @@ use crate::{TypedDeclaration, TypedFunctionDeclaration};
 
 use crate::semantic_analysis::{
     TypedAbiDeclaration, TypedAstNodeContent, TypedExpression, TypedExpressionVariant,
-    TypedIntrinsicFunctionKind, TypedReturnStatement,
+    TypedIntrinsicFunctionKind, TypedReassignment, TypedReturnStatement,
 };
 
 use super::{
@@ -108,6 +108,31 @@ fn expr_validate(expr: &TypedExpression) -> CompileResult<()> {
                 errors
             );
         }
+        TypedExpressionVariant::Break => (),
+        TypedExpressionVariant::Continue => (),
+        TypedExpressionVariant::Reassignment(reassignment) => {
+            let TypedReassignment {
+                lhs_base_name, rhs, ..
+            } = &**reassignment;
+            check!(
+                check_type(rhs.return_type, lhs_base_name.span(), false),
+                (),
+                warnings,
+                errors,
+            );
+            check!(expr_validate(rhs), (), warnings, errors)
+        }
+        TypedExpressionVariant::StorageReassignment(storage_reassignment) => {
+            let span = storage_reassignment.span();
+            let rhs = &storage_reassignment.rhs;
+            check!(
+                check_type(rhs.return_type, span, false),
+                (),
+                warnings,
+                errors,
+            );
+            check!(expr_validate(rhs), (), warnings, errors)
+        }
     }
     ok((), warnings, errors)
 }
@@ -149,11 +174,6 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
         | TypedDeclaration::ConstantDeclaration(semantic_analysis::TypedConstantDeclaration {
             value: expr,
             name,
-            ..
-        })
-        | TypedDeclaration::Reassignment(semantic_analysis::TypedReassignment {
-            rhs: expr,
-            lhs_base_name: name,
             ..
         }) => {
             check!(
@@ -228,11 +248,7 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
                 );
             }
         }
-        TypedDeclaration::GenericTypeForFunctionScope { .. }
-        | TypedDeclaration::ErrorRecovery
-        | TypedDeclaration::StorageReassignment(_)
-        | TypedDeclaration::Break { .. }
-        | TypedDeclaration::Continue { .. } => {}
+        TypedDeclaration::GenericTypeForFunctionScope { .. } | TypedDeclaration::ErrorRecovery => {}
     }
     ok((), warnings, errors)
 }

@@ -1,9 +1,9 @@
 use crate::{
     config::items::ItemBraceStyle,
-    fmt::*,
+    formatter::*,
     utils::{
-        bracket::CurlyBrace,
-        comments::{ByteSpan, LeafSpans},
+        map::byte_span::{ByteSpan, LeafSpans},
+        CurlyBrace,
     },
 };
 use std::fmt::Write;
@@ -36,6 +36,11 @@ impl Format for ItemTrait {
         Self::open_curly_brace(formatted_code, formatter)?;
         for (fn_signature, semicolon_token) in self.trait_items.get() {
             // format `Annotated<FnSignature>`
+            write!(
+                formatted_code,
+                "{}",
+                formatter.shape.indent.to_string(&formatter.config)?,
+            )?;
             fn_signature.format(formatted_code, formatter)?;
             writeln!(formatted_code, "{}\n", semicolon_token.ident().as_str())?;
         }
@@ -65,16 +70,15 @@ impl CurlyBrace for ItemTrait {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
+        formatter.shape.block_indent(&formatter.config);
         let open_brace = Delimiter::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
                 writeln!(line, "\n{}", open_brace)?;
-                formatter.shape.block_indent(&formatter.config);
             }
             _ => {
                 writeln!(line, "{}", open_brace)?;
-                formatter.shape.block_indent(&formatter.config);
             }
         }
 
@@ -84,8 +88,8 @@ impl CurlyBrace for ItemTrait {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        writeln!(line, "{}", Delimiter::Brace.as_close_char())?;
         formatter.shape.block_unindent(&formatter.config);
+        write!(line, "{}", Delimiter::Brace.as_close_char())?;
         Ok(())
     }
 }

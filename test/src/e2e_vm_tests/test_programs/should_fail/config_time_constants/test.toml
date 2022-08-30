@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()hex literals must have 1..16 or 64 digits

@@ -203,7 +203,7 @@ fn const_eval_typed_expr(
             }
             res
         }
-        TypedExpressionVariant::VariableExpression { name } => match known_consts.get(name) {
+        TypedExpressionVariant::VariableExpression { name, .. } => match known_consts.get(name) {
             // 1. Check if name is in known_consts.
             Some(cvs) => Some(cvs.clone()),
             None => {
@@ -330,6 +330,8 @@ fn const_eval_typed_expr(
         TypedExpressionVariant::ArrayIndex { .. }
         | TypedExpressionVariant::IntrinsicFunction(_)
         | TypedExpressionVariant::CodeBlock(_)
+        | TypedExpressionVariant::Reassignment(_)
+        | TypedExpressionVariant::StorageReassignment(_)
         | TypedExpressionVariant::FunctionParameter
         | TypedExpressionVariant::IfExp { .. }
         | TypedExpressionVariant::AsmExpression { .. }
@@ -339,6 +341,8 @@ fn const_eval_typed_expr(
         | TypedExpressionVariant::AbiName(_)
         | TypedExpressionVariant::EnumTag { .. }
         | TypedExpressionVariant::UnsafeDowncast { .. }
+        | TypedExpressionVariant::Break
+        | TypedExpressionVariant::Continue
         | TypedExpressionVariant::WhileLoop { .. } => None,
     }
 }

@@ -1,11 +1,9 @@
 use crate::{
-    fmt::{Format, FormattedCode, Formatter},
-    utils::comments::{ByteSpan, LeafSpans},
-    FormatterError,
+    formatter::*,
+    utils::map::byte_span::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
-use sway_ast::keywords::Token;
-use sway_ast::ItemConst;
+use sway_ast::{keywords::Token, ItemConst};
 use sway_types::Spanned;
 
 impl Format for ItemConst {
@@ -23,7 +21,7 @@ impl Format for ItemConst {
         write!(formatted_code, "{} ", self.const_token.span().as_str())?;
 
         // Add name of the const
-        write!(formatted_code, "{}", self.name.as_str())?;
+        self.name.format(formatted_code, formatter)?;
 
         // Check if ty exists
         if let Some((colon_token, ty)) = &self.ty_opt {

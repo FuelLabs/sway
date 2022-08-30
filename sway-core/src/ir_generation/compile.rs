@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::declaration_engine,
     error::CompileError,
     metadata::MetadataManager,
     parse_tree::Visibility,
@@ -19,13 +20,21 @@ pub(super) fn compile_script(
     context: &mut Context,
     main_function: TypedFunctionDeclaration,
     namespace: &namespace::Module,
+    declaration_engine: &declaration_engine::DeclarationEngine,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
 
     compile_constants(context, &mut md_mgr, module, namespace)?;
-    compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
+    compile_declarations(
+        context,
+        &mut md_mgr,
+        module,
+        namespace,
+        declaration_engine,
+        declarations,
+    )?;
     compile_function(context, &mut md_mgr, module, main_function)?;
 
     Ok(module)
@@ -35,13 +44,21 @@ pub(super) fn compile_contract(
     context: &mut Context,
     abi_entries: Vec<TypedFunctionDeclaration>,
     namespace: &namespace::Module,
+    declaration_engine: &declaration_engine::DeclarationEngine,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
     let mut md_mgr = MetadataManager::default();
 
     compile_constants(context, &mut md_mgr, module, namespace)?;
-    compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
+    compile_declarations(
+        context,
+        &mut md_mgr,
+        module,
+        namespace,
+        declaration_engine,
+        declarations,
+    )?;
     for decl in abi_entries {
         compile_abi_method(context, &mut md_mgr, module, decl)?;
     }
@@ -49,7 +66,7 @@ pub(super) fn compile_contract(
     Ok(module)
 }
 
-fn compile_constants(
+pub(crate) fn compile_constants(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -84,12 +101,12 @@ fn compile_constants(
 // And for structs and enums in particular, we must ignore those with embedded generic types as
 // they are monomorphised only at the instantation site.  We must ignore the generic declarations
 // altogether anyway.
-
 fn compile_declarations(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
     namespace: &namespace::Module,
+    _declaration_engine: &declaration_engine::DeclarationEngine,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<(), CompileError> {
     for declaration in declarations {
@@ -129,14 +146,10 @@ fn compile_declarations(
             | TypedDeclaration::EnumDeclaration(_)
             | TypedDeclaration::TraitDeclaration(_)
             | TypedDeclaration::VariableDeclaration(_)
-            | TypedDeclaration::Reassignment(_)
-            | TypedDeclaration::StorageReassignment(_)
             | TypedDeclaration::AbiDeclaration(_)
             | TypedDeclaration::GenericTypeForFunctionScope { .. }
             | TypedDeclaration::StorageDeclaration(_)
-            | TypedDeclaration::ErrorRecovery
-            | TypedDeclaration::Break { .. }
-            | TypedDeclaration::Continue { .. } => (),
+            | TypedDeclaration::ErrorRecovery => (),
         }
     }
     Ok(())

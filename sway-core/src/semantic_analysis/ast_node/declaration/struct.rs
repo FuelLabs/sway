@@ -6,7 +6,7 @@ use sway_types::{Ident, Property, Span, Spanned};
 pub struct TypedStructDeclaration {
     pub name: Ident,
     pub fields: Vec<TypedStructField>,
-    pub(crate) type_parameters: Vec<TypeParameter>,
+    pub type_parameters: Vec<TypeParameter>,
     pub visibility: Visibility,
     pub(crate) span: Span,
 }
@@ -145,6 +145,7 @@ impl TypedStructDeclaration {
 pub struct TypedStructField {
     pub name: Ident,
     pub type_id: TypeId,
+    pub initial_type_id: TypeId,
     pub(crate) span: Span,
     pub type_span: Span,
 }
@@ -200,9 +201,10 @@ impl TypedStructField {
     pub(crate) fn type_check(mut ctx: TypeCheckContext, field: StructField) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let initial_type_id = insert_type(field.type_info);
         let r#type = check!(
             ctx.resolve_type_with_self(
-                insert_type(field.type_info),
+                initial_type_id,
                 &field.type_span,
                 EnforceTypeArguments::Yes,
                 None
@@ -214,6 +216,7 @@ impl TypedStructField {
         let field = TypedStructField {
             name: field.name,
             type_id: r#type,
+            initial_type_id,
             span: field.span,
             type_span: field.type_span,
         };

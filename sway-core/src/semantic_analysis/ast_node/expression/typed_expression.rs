@@ -219,7 +219,24 @@ impl UnresolvedTypeCheck for TypedExpression {
             | StorageAccess { .. }
             | Literal(_)
             | AbiName(_)
+            | Break
+            | Continue
             | FunctionParameter => {}
+            Reassignment(reassignment) => {
+                res.append(&mut reassignment.rhs.check_for_unresolved_types())
+            }
+            StorageReassignment(storage_reassignment) => res.extend(
+                storage_reassignment
+                    .fields
+                    .iter()
+                    .flat_map(|x| x.type_id.check_for_unresolved_types())
+                    .chain(
+                        storage_reassignment
+                            .rhs
+                            .check_for_unresolved_types()
+                            .into_iter(),
+                    ),
+            ),
         }
         res
     }
@@ -294,6 +311,12 @@ impl DeterministicallyAborts for TypedExpression {
             UnsafeDowncast { exp, .. } => exp.deterministically_aborts(),
             WhileLoop { condition, body } => {
                 condition.deterministically_aborts() || body.deterministically_aborts()
+            }
+            Break => false,
+            Continue => false,
+            Reassignment(reassignment) => reassignment.rhs.deterministically_aborts(),
+            StorageReassignment(storage_reassignment) => {
+                storage_reassignment.rhs.deterministically_aborts()
             }
         }
     }
@@ -387,27 +410,86 @@ impl TypedExpression {
                 }
                 buf
             }
+            TypedExpressionVariant::Reassignment(reassignment) => {
+                reassignment.rhs.gather_return_statements()
+            }
+            TypedExpressionVariant::StorageReassignment(storage_reassignment) => {
+                storage_reassignment.rhs.gather_return_statements()
+            }
+            TypedExpressionVariant::LazyOperator { lhs, rhs, .. } => [lhs, rhs]
+                .into_iter()
+                .flat_map(|expr| expr.gather_return_statements())
+                .collect(),
+            TypedExpressionVariant::Tuple { fields } => fields
+                .iter()
+                .flat_map(|expr| expr.gather_return_statements())
+                .collect(),
+            TypedExpressionVariant::Array { contents } => contents
+                .iter()
+                .flat_map(|expr| expr.gather_return_statements())
+                .collect(),
+            TypedExpressionVariant::ArrayIndex { prefix, index } => [prefix, index]
+                .into_iter()
+                .flat_map(|expr| expr.gather_return_statements())
+                .collect(),
+            TypedExpressionVariant::StructFieldAccess { prefix, .. } => {
+                prefix.gather_return_statements()
+            }
+            TypedExpressionVariant::TupleElemAccess { prefix, .. } => {
+                prefix.gather_return_statements()
+            }
+            TypedExpressionVariant::EnumInstantiation { contents, .. } => contents
+                .iter()
+                .flat_map(|expr| expr.gather_return_statements())
+                .collect(),
+            TypedExpressionVariant::AbiCast { address, .. } => address.gather_return_statements(),
+            TypedExpressionVariant::IntrinsicFunction(intrinsic_function_kind) => {
+                intrinsic_function_kind
+                    .arguments
+                    .iter()
+                    .flat_map(|expr| expr.gather_return_statements())
+                    .collect()
+            }
+            TypedExpressionVariant::StructExpression { fields, .. } => fields
+                .iter()
+                .flat_map(|field| field.value.gather_return_statements())
+                .collect(),
+            TypedExpressionVariant::FunctionApplication {
+                contract_call_params,
+                arguments,
+                selector,
+                ..
+            } => contract_call_params
+                .values()
+                .chain(arguments.iter().map(|(_name, expr)| expr))
+                .chain(
+                    selector
+                        .iter()
+                        .map(|contract_call_params| &*contract_call_params.contract_address),
+                )
+                .flat_map(|expr| expr.gather_return_statements())
+                .collect(),
+            TypedExpressionVariant::EnumTag { exp } => exp.gather_return_statements(),
+            TypedExpressionVariant::UnsafeDowncast { exp, .. } => exp.gather_return_statements(),
+
             // if it is impossible for an expression to contain a return _statement_ (not an
             // implicit return!), put it in the pattern below.
-            TypedExpressionVariant::LazyOperator { .. }
-            | TypedExpressionVariant::Literal(_)
-            | TypedExpressionVariant::Tuple { .. }
-            | TypedExpressionVariant::Array { .. }
-            | TypedExpressionVariant::ArrayIndex { .. }
+            TypedExpressionVariant::Literal(_)
             | TypedExpressionVariant::FunctionParameter { .. }
             | TypedExpressionVariant::AsmExpression { .. }
-            | TypedExpressionVariant::StructFieldAccess { .. }
-            | TypedExpressionVariant::TupleElemAccess { .. }
-            | TypedExpressionVariant::EnumInstantiation { .. }
-            | TypedExpressionVariant::AbiCast { .. }
-            | TypedExpressionVariant::IntrinsicFunction { .. }
-            | TypedExpressionVariant::StructExpression { .. }
             | TypedExpressionVariant::VariableExpression { .. }
             | TypedExpressionVariant::AbiName(_)
             | TypedExpressionVariant::StorageAccess { .. }
-            | TypedExpressionVariant::FunctionApplication { .. }
-            | TypedExpressionVariant::EnumTag { .. }
-            | TypedExpressionVariant::UnsafeDowncast { .. } => vec![],
+            | TypedExpressionVariant::Break
+            | TypedExpressionVariant::Continue => vec![],
+        }
+    }
+
+    /// gathers the mutability of the expressions within
+    pub(crate) fn gather_mutability(&self) -> VariableMutability {
+        match &self.expression {
+            TypedExpressionVariant::VariableExpression { mutability, .. } => *mutability,
+            _ => VariableMutability::Immutable,
         }
     }
 
@@ -528,6 +610,27 @@ impl TypedExpression {
             ExpressionKind::WhileLoop(WhileLoopExpression { condition, body }) => {
                 Self::type_check_while_loop(ctx.by_ref(), *condition, body, span)
             }
+            ExpressionKind::Break => {
+                let expr = TypedExpression {
+                    expression: TypedExpressionVariant::Break,
+                    return_type: insert_type(TypeInfo::Unknown),
+                    is_constant: IsConstant::No,
+                    span,
+                };
+                ok(expr, vec![], vec![])
+            }
+            ExpressionKind::Continue => {
+                let expr = TypedExpression {
+                    expression: TypedExpressionVariant::Continue,
+                    return_type: insert_type(TypeInfo::Unknown),
+                    is_constant: IsConstant::No,
+                    span,
+                };
+                ok(expr, vec![], vec![])
+            }
+            ExpressionKind::Reassignment(ReassignmentExpression { lhs, rhs }) => {
+                Self::type_check_reassignment(ctx.by_ref(), lhs, *rhs, span)
+            }
         };
         let mut typed_expression = match res.value {
             Some(r) => r,
@@ -613,21 +716,34 @@ impl TypedExpression {
         let mut errors = vec![];
         let exp = match namespace.resolve_symbol(&name).value {
             Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                body, ..
+                name: decl_name,
+                body,
+                mutability,
+                ..
             })) => TypedExpression {
                 return_type: body.return_type,
                 is_constant: body.is_constant,
-                expression: TypedExpressionVariant::VariableExpression { name: name.clone() },
+                expression: TypedExpressionVariant::VariableExpression {
+                    name: decl_name.clone(),
+                    span: name.span(),
+                    mutability: *mutability,
+                },
                 span,
             },
             Some(TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
-                value, ..
+                name: decl_name,
+                value,
+                ..
             })) => TypedExpression {
                 return_type: value.return_type,
                 is_constant: IsConstant::Yes,
                 // Although this isn't strictly a 'variable' expression we can treat it as one for
                 // this context.
-                expression: TypedExpressionVariant::VariableExpression { name: name.clone() },
+                expression: TypedExpressionVariant::VariableExpression {
+                    name: decl_name.clone(),
+                    span: name.span(),
+                    mutability: VariableMutability::Immutable,
+                },
                 span,
             },
             Some(TypedDeclaration::AbiDeclaration(decl)) => TypedExpression {
@@ -1111,6 +1227,7 @@ impl TypedExpression {
             }
             typed_field_types.push(TypeArgument {
                 type_id: typed_field.return_type,
+                initial_type_id: field_type.type_id,
                 span: typed_field.span.clone(),
             });
             typed_fields.push(typed_field);
@@ -1449,12 +1566,13 @@ impl TypedExpression {
         span: Span,
     ) -> CompileResult<Self> {
         if contents.is_empty() {
+            let unknown_type = insert_type(TypeInfo::Unknown);
             return ok(
                 TypedExpression {
                     expression: TypedExpressionVariant::Array {
                         contents: Vec::new(),
                     },
-                    return_type: insert_type(TypeInfo::Array(insert_type(TypeInfo::Unknown), 0)),
+                    return_type: insert_type(TypeInfo::Array(unknown_type, 0, unknown_type)),
                     is_constant: IsConstant::Yes,
                     span,
                 },
@@ -1505,7 +1623,7 @@ impl TypedExpression {
                 expression: TypedExpressionVariant::Array {
                     contents: typed_contents,
                 },
-                return_type: insert_type(TypeInfo::Array(elem_type, array_count)),
+                return_type: insert_type(TypeInfo::Array(elem_type, array_count, elem_type)),
                 is_constant: IsConstant::No, // Maybe?
                 span,
             },
@@ -1537,7 +1655,7 @@ impl TypedExpression {
         };
 
         // If the return type is a static array then create a TypedArrayIndex.
-        if let TypeInfo::Array(elem_type_id, _) = look_up_type_id(prefix_te.return_type) {
+        if let TypeInfo::Array(elem_type_id, _, _) = look_up_type_id(prefix_te.return_type) {
             let type_info_u64 = TypeInfo::UnsignedInteger(IntegerBits::SixtyFour);
             let ctx = ctx
                 .with_help_text("")
@@ -1650,6 +1768,131 @@ impl TypedExpression {
         ok(exp, warnings, errors)
     }
 
+    fn type_check_reassignment(
+        ctx: TypeCheckContext,
+        lhs: ReassignmentTarget,
+        rhs: Expression,
+        span: Span,
+    ) -> CompileResult<Self> {
+        let mut errors = vec![];
+        let mut warnings = vec![];
+        let ctx = ctx
+            .with_type_annotation(insert_type(TypeInfo::Unknown))
+            .with_help_text("");
+        // ensure that the lhs is a variable expression or struct field access
+        match lhs {
+            ReassignmentTarget::VariableExpression(var) => {
+                let mut expr = var;
+                let mut names_vec = Vec::new();
+                let (base_name, final_return_type) = loop {
+                    match expr.kind {
+                        ExpressionKind::Variable(name) => {
+                            // check that the reassigned name exists
+                            let unknown_decl = check!(
+                                ctx.namespace.resolve_symbol(&name).cloned(),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            let variable_decl = check!(
+                                unknown_decl.expect_variable().cloned(),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            if !variable_decl.mutability.is_mutable() {
+                                errors.push(CompileError::AssignmentToNonMutable { name });
+                                return err(warnings, errors);
+                            }
+                            break (name, variable_decl.body.return_type);
+                        }
+                        ExpressionKind::Subfield(SubfieldExpression {
+                            prefix,
+                            field_to_access,
+                            ..
+                        }) => {
+                            names_vec.push(ProjectionKind::StructField {
+                                name: field_to_access,
+                            });
+                            expr = prefix;
+                        }
+                        ExpressionKind::TupleIndex(TupleIndexExpression {
+                            prefix,
+                            index,
+                            index_span,
+                            ..
+                        }) => {
+                            names_vec.push(ProjectionKind::TupleField { index, index_span });
+                            expr = prefix;
+                        }
+                        _ => {
+                            errors.push(CompileError::InvalidExpressionOnLhs { span });
+                            return err(warnings, errors);
+                        }
+                    }
+                };
+                let names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
+                let (ty_of_field, _ty_of_parent) = check!(
+                    ctx.namespace.find_subfield_type(&base_name, &names_vec),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                // type check the reassignment
+                let ctx = ctx.with_type_annotation(ty_of_field).with_help_text("");
+                let rhs_span = rhs.span();
+                let rhs = check!(
+                    TypedExpression::type_check(ctx, rhs),
+                    error_recovery_expr(rhs_span),
+                    warnings,
+                    errors
+                );
+
+                ok(
+                    TypedExpression {
+                        expression: TypedExpressionVariant::Reassignment(Box::new(
+                            TypedReassignment {
+                                lhs_base_name: base_name,
+                                lhs_type: final_return_type,
+                                lhs_indices: names_vec,
+                                rhs,
+                            },
+                        )),
+                        return_type: crate::type_system::insert_type(TypeInfo::Tuple(Vec::new())),
+                        // TODO: if the rhs is constant then this should be constant, no?
+                        is_constant: IsConstant::No,
+                        span,
+                    },
+                    warnings,
+                    errors,
+                )
+            }
+            ReassignmentTarget::StorageField(fields) => {
+                let ctx = ctx
+                    .with_type_annotation(insert_type(TypeInfo::Unknown))
+                    .with_help_text("");
+                let reassignment = check!(
+                    reassign_storage_subfield(ctx, fields, rhs, span.clone()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors,
+                );
+                ok(
+                    TypedExpression {
+                        expression: TypedExpressionVariant::StorageReassignment(Box::new(
+                            reassignment,
+                        )),
+                        return_type: crate::type_system::insert_type(TypeInfo::Tuple(Vec::new())),
+                        is_constant: IsConstant::No,
+                        span,
+                    },
+                    warnings,
+                    errors,
+                )
+            }
+        }
+    }
+
     fn resolve_numeric_literal(
         lit: Literal,
         span: Span,
@@ -1738,18 +1981,26 @@ impl TypedExpression {
 
 #[cfg(test)]
 mod tests {
+    use crate::declaration_engine::declaration_engine::DeclarationEngine;
+
     use super::*;
 
     fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<TypedExpression> {
+        let mut declaration_engine = DeclarationEngine::new();
         let mut namespace = Namespace::init_root(namespace::Module::default());
-        let ctx = TypeCheckContext::from_root(&mut namespace).with_type_annotation(type_annotation);
+        let ctx = TypeCheckContext::from_root(&mut namespace, &mut declaration_engine)
+            .with_type_annotation(type_annotation);
         TypedExpression::type_check(ctx, expr)
     }
 
     fn do_type_check_for_boolx2(expr: Expression) -> CompileResult<TypedExpression> {
         do_type_check(
             expr,
-            insert_type(TypeInfo::Array(insert_type(TypeInfo::Boolean), 2)),
+            insert_type(TypeInfo::Array(
+                insert_type(TypeInfo::Boolean),
+                2,
+                insert_type(TypeInfo::Boolean),
+            )),
         )
     }
 
@@ -1857,7 +2108,11 @@ mod tests {
 
         let comp_res = do_type_check(
             expr,
-            insert_type(TypeInfo::Array(insert_type(TypeInfo::Boolean), 0)),
+            insert_type(TypeInfo::Array(
+                insert_type(TypeInfo::Boolean),
+                0,
+                insert_type(TypeInfo::Boolean),
+            )),
         );
         assert!(comp_res.warnings.is_empty() && comp_res.errors.is_empty());
     }

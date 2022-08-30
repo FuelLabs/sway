@@ -1,6 +1,6 @@
 use crate::{
     lock::Lock,
-    manifest::{BuildProfile, Dependency, Manifest, ManifestFile},
+    manifest::{BuildProfile, ConfigTimeConstant, Dependency, Manifest, ManifestFile},
     CORE, STD,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
@@ -16,7 +16,7 @@ use petgraph::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{hash_map, BTreeSet, HashMap, HashSet},
+    collections::{hash_map, BTreeMap, BTreeSet, HashMap, HashSet},
     fmt,
     fs::{self, File},
     hash::{Hash, Hasher},
@@ -27,7 +27,7 @@ use sway_core::{
     semantic_analysis::namespace, source_map::SourceMap, types::*, BytecodeCompilationResult,
     CompileAstResult, CompileError, CompileResult, ParseProgram, TreeType,
 };
-use sway_types::JsonABI;
+use sway_types::{JsonABI, JsonABIProgram, JsonTypeApplication, JsonTypeDeclaration};
 use sway_utils::constants;
 use tracing::{info, warn};
 use url::Url;
@@ -48,7 +48,10 @@ pub struct PinnedId(u64);
 
 /// The result of successfully compiling a package.
 pub struct Compiled {
+    // `json_abi` is going to be deprecated and replaced with `json_abi_program` below which
+    // represents the ABI in a cleaner way
     pub json_abi: JsonABI,
+    pub json_abi_program: JsonABIProgram,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: Vec<u8>,
     pub tree_type: TreeType,
@@ -476,6 +479,14 @@ fn validate_dep(
 }
 /// Part of dependency validation, any checks related to the depenency's manifest content.
 fn validate_dep_manifest(dep: &Pinned, dep_manifest: &ManifestFile) -> Result<()> {
+    // Ensure that the dependency is a library.
+    if !matches!(dep_manifest.program_type()?, TreeType::Library { .. }) {
+        bail!(
+            "\"{}\" is not a library! Depending on a non-library package is not supported.",
+            dep.name
+        );
+    }
+
     // Ensure the name matches the manifest project name.
     if dep.name != dep_manifest.project.name {
         bail!(
@@ -1476,8 +1487,9 @@ pub fn dependency_namespace(
     namespace_map: &HashMap<NodeIx, namespace::Module>,
     graph: &Graph,
     node: NodeIx,
-) -> namespace::Module {
-    let mut namespace = namespace::Module::default();
+    constants: BTreeMap<String, ConfigTimeConstant>,
+) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
+    let mut namespace = namespace::Module::default_with_constants(constants)?;
 
     // Add direct dependencies.
     let mut core_added = false;
@@ -1500,7 +1512,7 @@ pub fn dependency_namespace(
         }
     }
 
-    namespace
+    Ok(namespace)
 }
 
 /// Find the `core` dependency (whether direct or transitive) for the given node if it exists.
@@ -1598,14 +1610,14 @@ pub fn compile(
     let entry_path = manifest.entry_path();
     let sway_build_config = time_expr!(
         "produce `sway_core::BuildConfig`",
-        sway_build_config(manifest.dir(), &entry_path, build_profile)?
+        sway_build_config(manifest.dir(), &entry_path, build_profile,)?
     );
     let silent_mode = build_profile.silent;
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
         "compile to ast",
-        compile_ast(manifest, build_profile, namespace)?
+        compile_ast(manifest, build_profile, namespace,)?
     );
     match &ast_res {
         CompileAstResult::Failure { warnings, errors } => {
@@ -1621,6 +1633,12 @@ pub fn compile(
             }
 
             let json_abi = time_expr!("generate JSON ABI", typed_program.kind.generate_json_abi());
+            let mut types = vec![];
+            let json_abi_program = time_expr!(
+                "generate JSON ABI program",
+                typed_program.kind.generate_json_abi_program(&mut types)
+            );
+
             let storage_slots = typed_program.storage_slots.clone();
             let tree_type = typed_program.kind.tree_type();
             match tree_type {
@@ -1632,6 +1650,7 @@ pub fn compile(
                     let lib_namespace = typed_program.root.namespace.clone();
                     let compiled = Compiled {
                         json_abi,
+                        json_abi_program,
                         storage_slots,
                         bytecode,
                         tree_type,
@@ -1655,6 +1674,7 @@ pub fn compile(
                             let bytecode = bytes;
                             let compiled = Compiled {
                                 json_abi,
+                                json_abi_program,
                                 storage_slots,
                                 bytecode,
                                 tree_type,
@@ -1840,6 +1860,18 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
             serde_json::to_writer_pretty(&file, &compiled.json_abi)
         };
         res?;
+
+        let json_abi_program_stem = format!("{}-flat-abi", manifest.project.name);
+        let json_abi_program_path = output_dir
+            .join(&json_abi_program_stem)
+            .with_extension("json");
+        let file = File::create(json_abi_program_path)?;
+        let res = if minify_json_abi {
+            serde_json::to_writer(&file, &compiled.json_abi_program)
+        } else {
+            serde_json::to_writer_pretty(&file, &compiled.json_abi_program)
+        };
+        res?;
     }
 
     info!("  Bytecode size is {} bytes.", compiled.bytecode.len());
@@ -1894,33 +1926,173 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
     let mut namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     let mut json_abi = vec![];
+    let mut json_abi_program = JsonABIProgram {
+        types: vec![],
+        functions: vec![],
+    };
     let mut storage_slots = vec![];
     let mut bytecode = vec![];
     let mut tree_type = None;
     for &node in &plan.compilation_order {
-        let dep_namespace = dependency_namespace(&namespace_map, &plan.graph, node);
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
+        let constants = manifest.config_time_constants();
+        let dep_namespace = match dependency_namespace(&namespace_map, &plan.graph, node, constants)
+        {
+            Ok(o) => o,
+            Err(errs) => {
+                print_on_failure(profile.silent, &[], &errs);
+                bail!("Failed to compile {}", pkg.name);
+            }
+        };
+
         let res = compile(pkg, manifest, profile, dep_namespace, &mut source_map)?;
         let (compiled, maybe_namespace) = res;
         if let Some(namespace) = maybe_namespace {
             namespace_map.insert(node, namespace.into());
         }
         json_abi.extend(compiled.json_abi);
+        json_abi_program
+            .types
+            .extend(compiled.json_abi_program.types);
+        json_abi_program
+            .functions
+            .extend(compiled.json_abi_program.functions);
         storage_slots.extend(compiled.storage_slots);
         bytecode = compiled.bytecode;
         tree_type = Some(compiled.tree_type);
         source_map.insert_dependency(manifest.dir());
     }
+
+    standardize_json_abi_types(&mut json_abi_program);
+
     let tree_type =
         tree_type.ok_or_else(|| anyhow!("build plan must contain at least one package"))?;
     let compiled = Compiled {
         bytecode,
         json_abi,
+        json_abi_program,
         storage_slots,
         tree_type,
     };
     Ok((compiled, source_map))
+}
+
+/// Standardize the JSON ABI data structure by eliminating duplicate types. This is an iterative
+/// process because every time two types are merged, new opportunities for more merging arise.
+fn standardize_json_abi_types(json_abi_program: &mut JsonABIProgram) {
+    loop {
+        // If type with id_1 is a duplicate of type with id_2, then keep track of the mapping
+        // between id_1 and id_2 in the HashMap below.
+        let mut old_to_new_id: HashMap<usize, usize> = HashMap::new();
+
+        // HashSet to eliminate duplicate type declarations.
+        let mut types_set: HashSet<JsonTypeDeclaration> = HashSet::new();
+
+        // Insert values in the HashSet `types_set` if they haven't been inserted before.
+        // Otherwise, create an appropriate mapping in the HashMap `old_to_new_id`.
+        for decl in json_abi_program.types.iter_mut() {
+            if let Some(ty) = types_set.get(decl) {
+                old_to_new_id.insert(decl.type_id, ty.type_id);
+            } else {
+                types_set.insert(decl.clone());
+            }
+        }
+
+        // Nothing to do if the hash map is empty as there are not merge opportunities. We can now
+        // exit the loop.
+        if old_to_new_id.is_empty() {
+            break;
+        }
+
+        // Convert the set into a vector and store it back in `json_abi_program.types`. We could
+        // convert the HashSet *directly* into a vector using `collect()`, but the order would not
+        // be deterministic. We could use `BTreeSet` instead of `HashSet` but the ordering in the
+        // BTreeSet would have to depend on the original type ID and we're trying to avoid that.
+        let mut filtered_types = vec![];
+        for t in json_abi_program.types.iter() {
+            if let Some(ty) = types_set.get(t) {
+                if ty.type_id == t.type_id {
+                    filtered_types.push((*ty).clone());
+                    types_set.remove(t);
+                }
+            }
+        }
+        json_abi_program.types = filtered_types;
+
+        // Update all `JsonTypeApplication`s and all `JsonTypeDeclaration`s
+        update_all_types(json_abi_program, &old_to_new_id);
+    }
+
+    // Sort the `JsonTypeDeclaration`s
+    json_abi_program
+        .types
+        .sort_by(|t1, t2| t1.type_field.cmp(&t2.type_field));
+
+    // Standardize IDs (i.e. change them to 0,1,2,... according to the alphabetical order above
+    let mut old_to_new_id: HashMap<usize, usize> = HashMap::new();
+    for (ix, decl) in json_abi_program.types.iter_mut().enumerate() {
+        old_to_new_id.insert(decl.type_id, ix);
+        decl.type_id = ix;
+    }
+
+    // Update all `JsonTypeApplication`s and all `JsonTypeDeclaration`s
+    update_all_types(json_abi_program, &old_to_new_id);
+}
+
+/// Recursively updates the type IDs used in a JsonABIProgram
+fn update_all_types(json_abi_program: &mut JsonABIProgram, old_to_new_id: &HashMap<usize, usize>) {
+    // Update all `JsonTypeApplication`s in every function
+    for func in json_abi_program.functions.iter_mut() {
+        for input in func.inputs.iter_mut() {
+            update_json_type_application(input, old_to_new_id);
+        }
+
+        update_json_type_application(&mut func.output, old_to_new_id);
+    }
+
+    // Update all `JsonTypeDeclaration`
+    for decl in json_abi_program.types.iter_mut() {
+        update_json_type_declaration(decl, old_to_new_id);
+    }
+}
+
+/// Recursively updates the type IDs used in a `JsonTypeApplication` given a HashMap from old to
+/// new IDs
+fn update_json_type_application(
+    type_application: &mut JsonTypeApplication,
+    old_to_new_id: &HashMap<usize, usize>,
+) {
+    if let Some(new_id) = old_to_new_id.get(&type_application.type_id) {
+        type_application.type_id = *new_id;
+    }
+
+    if let Some(args) = &mut type_application.type_arguments {
+        for arg in args.iter_mut() {
+            update_json_type_application(arg, old_to_new_id);
+        }
+    }
+}
+
+/// Recursively updates the type IDs used in a `JsonTypeDeclaration` given a HashMap from old to
+/// new IDs
+fn update_json_type_declaration(
+    type_declaration: &mut JsonTypeDeclaration,
+    old_to_new_id: &HashMap<usize, usize>,
+) {
+    if let Some(params) = &mut type_declaration.type_parameters {
+        for param in params.iter_mut() {
+            if let Some(new_id) = old_to_new_id.get(param) {
+                *param = *new_id;
+            }
+        }
+    }
+
+    if let Some(components) = &mut type_declaration.components {
+        for component in components.iter_mut() {
+            update_json_type_application(component, old_to_new_id);
+        }
+    }
 }
 
 /// Compile the entire forc package and return a CompileAstResult.
@@ -1933,9 +2105,11 @@ pub fn check(
     let mut namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     for (i, &node) in plan.compilation_order.iter().enumerate() {
-        let dep_namespace = dependency_namespace(&namespace_map, &plan.graph, node);
         let pkg = &plan.graph[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
+        let constants = manifest.config_time_constants();
+        let dep_namespace =
+            dependency_namespace(&namespace_map, &plan.graph, node, constants).expect("TODO");
         let parsed_result = parse(manifest, silent_mode)?;
 
         let parse_program = match &parsed_result.value {

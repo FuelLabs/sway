@@ -3,7 +3,7 @@ use crate::priv_prelude::*;
 #[derive(Clone, Debug)]
 pub struct ItemStorage {
     pub storage_token: StorageToken,
-    pub fields: Braces<Punctuated<StorageField, CommaToken>>,
+    pub fields: Braces<Punctuated<Annotated<StorageField>, CommaToken>>,
 }
 
 impl Spanned for ItemStorage {

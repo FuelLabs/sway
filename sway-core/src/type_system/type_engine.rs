@@ -11,8 +11,8 @@ lazy_static! {
 
 #[derive(Debug, Default)]
 pub(crate) struct TypeEngine {
-    slab: ConcurrentSlab<TypeInfo>,
-    storage_only_types: ConcurrentSlab<TypeInfo>,
+    slab: ConcurrentSlab<TypeId, TypeInfo>,
+    storage_only_types: ConcurrentSlab<TypeId, TypeInfo>,
 }
 
 impl TypeEngine {
@@ -373,7 +373,7 @@ impl TypeEngine {
                 }
             }
 
-            (Array(a_elem, a_count), Array(b_elem, b_count)) if a_count == b_count => {
+            (Array(a_elem, a_count, _), Array(b_elem, b_count, _)) if a_count == b_count => {
                 let (warnings, new_errors) = self.unify(a_elem, b_elem, span, help_text.clone());
 
                 // If there was an error then we want to report the array types as mismatching, not

@@ -32,9 +32,12 @@ To add elements to a storage vector, we can use the `push` method, as shown belo
 
 Note two details here. First, in order to use `push`, we need to first access the vector using the `storage` keyword. Second, because `push` requires accessing storage, a `storage` annotation is required on the ABI function that calls `push`. While it may seem that `#[storage(write)]` should be enough here, the `read` annotation is also required because each call to `push` requires _reading_ (and then updating) the length of the storage vector which is also stored in persistent storage.
 
-> **Note**: The storage annotation is also required for any private function defined in the contract that tries to push into the vector.
+> **Note**
+> The storage annotation is also required for any private function defined in the contract that tries to push into the vector.
 
-> **Note**: There is no need to add the `mut` keyword when declaring a `StorageVec<T>`. All storage variables are mutable by default.
+<!-- markdownlint-disable-line MD028 -->
+> **Note**
+> There is no need to add the `mut` keyword when declaring a `StorageVec<T>`. All storage variables are mutable by default.
 
 ## Reading Elements of Storage Vectors
 

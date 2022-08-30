@@ -24,6 +24,7 @@ pub struct TypedImplTrait {
     pub(crate) span: Span,
     pub methods: Vec<TypedFunctionDeclaration>,
     pub implementing_for_type_id: TypeId,
+    pub type_implementing_for_span: Span,
 }
 
 impl CopyTypes for TypedImplTrait {
@@ -121,6 +122,7 @@ impl TypedImplTrait {
                     span: block_span,
                     methods: functions_buf,
                     implementing_for_type_id,
+                    type_implementing_for_span: type_implementing_for_span.clone(),
                 };
                 let implementing_for_type_id = insert_type(
                     match resolve_type(implementing_for_type_id, &type_implementing_for_span) {
@@ -166,6 +168,7 @@ impl TypedImplTrait {
                     span: block_span,
                     methods: functions_buf,
                     implementing_for_type_id,
+                    type_implementing_for_span,
                 };
                 (impl_trait, implementing_for_type_id)
             }
@@ -202,6 +205,8 @@ impl TypedImplTrait {
                 | TypedExpressionVariant::VariableExpression { .. }
                 | TypedExpressionVariant::FunctionParameter
                 | TypedExpressionVariant::AsmExpression { .. }
+                | TypedExpressionVariant::Break
+                | TypedExpressionVariant::Continue
                 | TypedExpressionVariant::StorageAccess(_)
                 | TypedExpressionVariant::AbiName(_) => false,
                 TypedExpressionVariant::FunctionApplication { arguments, .. } => arguments
@@ -257,6 +262,12 @@ impl TypedImplTrait {
                     expr_contains_get_storage_index(condition)
                         || codeblock_contains_get_storage_index(body)
                 }
+                TypedExpressionVariant::Reassignment(reassignment) => {
+                    expr_contains_get_storage_index(&reassignment.rhs)
+                }
+                TypedExpressionVariant::StorageReassignment(storage_reassignment) => {
+                    expr_contains_get_storage_index(&storage_reassignment.rhs)
+                }
             }
         }
         fn decl_contains_get_storage_index(decl: &TypedDeclaration) -> bool {
@@ -266,11 +277,7 @@ impl TypedImplTrait {
                 )
                 | TypedDeclaration::ConstantDeclaration(
                     semantic_analysis::TypedConstantDeclaration { value: expr, .. },
-                )
-                | TypedDeclaration::Reassignment(semantic_analysis::TypedReassignment {
-                    rhs: expr,
-                    ..
-                }) => expr_contains_get_storage_index(expr),
+                ) => expr_contains_get_storage_index(expr),
                 // We're already inside a type's impl. So we can't have these
                 // nested functions etc. We just ignore them.
                 TypedDeclaration::FunctionDeclaration(_)
@@ -281,10 +288,7 @@ impl TypedImplTrait {
                 | TypedDeclaration::AbiDeclaration(_)
                 | TypedDeclaration::GenericTypeForFunctionScope { .. }
                 | TypedDeclaration::ErrorRecovery
-                | TypedDeclaration::StorageDeclaration(_)
-                | TypedDeclaration::StorageReassignment(_)
-                | TypedDeclaration::Break { .. }
-                | TypedDeclaration::Continue { .. } => false,
+                | TypedDeclaration::StorageDeclaration(_) => false,
             }
         }
         fn codeblock_contains_get_storage_index(cb: &semantic_analysis::TypedCodeBlock) -> bool {
@@ -388,6 +392,7 @@ impl TypedImplTrait {
             span: block_span,
             methods,
             implementing_for_type_id,
+            type_implementing_for_span,
         };
         ok(impl_trait, warnings, errors)
     }
