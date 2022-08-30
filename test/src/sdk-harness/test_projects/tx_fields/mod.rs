@@ -190,7 +190,7 @@ async fn can_get_tx_input_coin_owner() {
 
     let owner_result = contract_instance
         // @review "InputNotFound" !
-        .get_tx_input_coin_owner(0)
+        .get_tx_input_coin_owner(1)
         .call()
         .await
         .unwrap();
