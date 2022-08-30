@@ -1,5 +1,7 @@
 use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine,
     type_system::{create_type_mapping, look_up_type_id, CopyTypes, TypeId},
+    types::ToCompileWrapper,
     CallPath, TypeInfo, TypedFunctionDeclaration,
 };
 
@@ -63,10 +65,11 @@ impl TraitMap {
     pub(crate) fn get_call_path_and_type_info(
         &self,
         incoming_type_id: TypeId,
+        de: &DeclarationEngine,
     ) -> Vec<((TraitName, TypeId), Vec<TypedFunctionDeclaration>)> {
         let mut ret = vec![];
         for ((call_path, map_type_id), methods) in self.trait_map.iter() {
-            if look_up_type_id(incoming_type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
+            if look_up_type_id(incoming_type_id).is_subset_of(&look_up_type_id(*map_type_id), de) {
                 ret.push((
                     (call_path.clone(), *map_type_id),
                     methods.values().cloned().collect(),
@@ -79,19 +82,20 @@ impl TraitMap {
     pub(crate) fn get_methods_for_type(
         &self,
         incoming_type_id: TypeId,
+        de: &DeclarationEngine,
     ) -> Vec<TypedFunctionDeclaration> {
         let mut methods = vec![];
         // small performance gain in bad case
-        if look_up_type_id(incoming_type_id) == TypeInfo::ErrorRecovery {
+        if look_up_type_id(incoming_type_id).wrap(de) == TypeInfo::ErrorRecovery.wrap(de) {
             return methods;
         }
         for ((_, map_type_id), trait_methods) in self.trait_map.iter() {
-            if look_up_type_id(incoming_type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
+            if look_up_type_id(incoming_type_id).is_subset_of(&look_up_type_id(*map_type_id), de) {
                 let type_mapping = create_type_mapping(*map_type_id, incoming_type_id);
                 let mut trait_methods = trait_methods.values().cloned().collect::<Vec<_>>();
                 trait_methods
                     .iter_mut()
-                    .for_each(|x| x.copy_types(&type_mapping));
+                    .for_each(|x| x.copy_types(&type_mapping, de));
                 methods.append(&mut trait_methods);
             }
         }

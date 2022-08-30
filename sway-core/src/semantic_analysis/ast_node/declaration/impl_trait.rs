@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine,
     error::{err, ok},
     semantic_analysis::{
         Mode, TypeCheckContext, TypedAstNodeContent, TypedExpression, TypedExpressionVariant,
@@ -41,10 +42,10 @@ impl PartialEq for CompileWrapper<'_, TypedImplTrait> {
 }
 
 impl CopyTypes for TypedImplTrait {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types(&mut self, type_mapping: &TypeMapping, de: &DeclarationEngine) {
         self.methods
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_mapping, de));
     }
 }
 
@@ -97,9 +98,10 @@ impl TypedImplTrait {
         // check for unconstrained type parameters
         check!(
             check_for_unconstrained_type_parameters(
+                ctx.by_ref(),
                 &new_type_parameters,
                 implementing_for_type_id,
-                &type_implementing_for_span
+                &type_implementing_for_span,
             ),
             return err(warnings, errors),
             warnings,
@@ -373,9 +375,10 @@ impl TypedImplTrait {
         // check for unconstrained type parameters
         check!(
             check_for_unconstrained_type_parameters(
+                ctx.by_ref(),
                 &new_type_parameters,
                 implementing_for_type_id,
-                &type_implementing_for_span
+                &type_implementing_for_span,
             ),
             return err(warnings, errors),
             warnings,
@@ -495,6 +498,7 @@ fn type_check_trait_implementation(
             let (mut new_warnings, new_errors) = unify_with_self(
                 fn_decl_param_type,
                 fn_signature_param_type,
+                &ctx.declaration_engine,
                 ctx.self_type(),
                 &fn_signature_param.type_span,
                 ctx.help_text(),
@@ -535,6 +539,7 @@ fn type_check_trait_implementation(
         let (mut new_warnings, new_errors) = unify_with_self(
             fn_decl.return_type,
             fn_signature.return_type,
+            &ctx.declaration_engine,
             ctx.self_type(),
             &fn_decl.return_type_span,
             ctx.help_text(),
@@ -618,6 +623,7 @@ fn type_check_trait_implementation(
 }
 
 fn check_for_unconstrained_type_parameters(
+    ctx: TypeCheckContext,
     type_parameters: &[TypeParameter],
     self_type: TypeId,
     self_type_span: &Span,
@@ -627,13 +633,15 @@ fn check_for_unconstrained_type_parameters(
 
     // check to see that all of the generics that are defined for
     // the impl block are actually used in the signature of the block
-    let mut defined_generics: HashMap<TypeInfo, Span> = HashMap::from_iter(
-        type_parameters
-            .iter()
-            .map(|x| (look_up_type_id(x.type_id), x.span())),
-    );
+    let mut defined_generics: HashMap<CompileWrapper<'_, TypeInfo>, Span> =
+        HashMap::from_iter(type_parameters.iter().map(|x| {
+            (
+                look_up_type_id(x.type_id).wrap(ctx.declaration_engine),
+                x.span(),
+            )
+        }));
     let generics_in_use = check!(
-        look_up_type_id(self_type).extract_nested_generics(self_type_span),
+        look_up_type_id(self_type).extract_nested_generics(ctx.declaration_engine, self_type_span),
         HashSet::new(),
         warnings,
         errors
@@ -645,7 +653,7 @@ fn check_for_unconstrained_type_parameters(
     }
     for (k, v) in defined_generics.into_iter() {
         errors.push(CompileError::UnconstrainedGenericParameter {
-            ty: format!("{}", k),
+            ty: format!("{}", k.inner),
             span: v,
         });
     }

@@ -1,6 +1,8 @@
 use sway_types::{Span, Spanned};
 
+use crate::declaration_engine::declaration_engine::DeclarationEngine;
 use crate::type_system::{is_type_info_storage_only, resolve_type, TypeId};
+use crate::types::ToCompileWrapper;
 use crate::{error::ok, semantic_analysis, CompileError, CompileResult, CompileWarning};
 use crate::{TypedDeclaration, TypedFunctionDeclaration};
 
@@ -14,19 +16,19 @@ use super::{
     TypedTraitDeclaration,
 };
 
-fn ast_node_validate(x: &TypedAstNodeContent) -> CompileResult<()> {
+fn ast_node_validate(x: &TypedAstNodeContent, de: &DeclarationEngine) -> CompileResult<()> {
     let errors: Vec<CompileError> = vec![];
     let warnings: Vec<CompileWarning> = vec![];
     match x {
         TypedAstNodeContent::ReturnStatement(TypedReturnStatement { expr })
         | TypedAstNodeContent::Expression(expr)
-        | TypedAstNodeContent::ImplicitReturnExpression(expr) => expr_validate(expr),
-        TypedAstNodeContent::Declaration(decl) => decl_validate(decl),
+        | TypedAstNodeContent::ImplicitReturnExpression(expr) => expr_validate(expr, de),
+        TypedAstNodeContent::Declaration(decl) => decl_validate(decl, de),
         TypedAstNodeContent::SideEffect => ok((), warnings, errors),
     }
 }
 
-fn expr_validate(expr: &TypedExpression) -> CompileResult<()> {
+fn expr_validate(expr: &TypedExpression, de: &DeclarationEngine) -> CompileResult<()> {
     let mut errors: Vec<CompileError> = vec![];
     let mut warnings: Vec<CompileWarning> = vec![];
     match &expr.expression {
@@ -38,7 +40,7 @@ fn expr_validate(expr: &TypedExpression) -> CompileResult<()> {
         | TypedExpressionVariant::AbiName(_) => (),
         TypedExpressionVariant::FunctionApplication { arguments, .. } => {
             for f in arguments {
-                check!(expr_validate(&f.1), continue, warnings, errors);
+                check!(expr_validate(&f.1, de), continue, warnings, errors);
             }
         }
         TypedExpressionVariant::LazyOperator {
@@ -50,8 +52,8 @@ fn expr_validate(expr: &TypedExpression) -> CompileResult<()> {
             prefix: expr1,
             index: expr2,
         } => {
-            check!(expr_validate(expr1), (), warnings, errors);
-            check!(expr_validate(expr2), (), warnings, errors);
+            check!(expr_validate(expr1, de), (), warnings, errors);
+            check!(expr_validate(expr2, de), (), warnings, errors);
         }
         TypedExpressionVariant::IntrinsicFunction(TypedIntrinsicFunctionKind {
             arguments: exprvec,
@@ -60,17 +62,17 @@ fn expr_validate(expr: &TypedExpression) -> CompileResult<()> {
         | TypedExpressionVariant::Tuple { fields: exprvec }
         | TypedExpressionVariant::Array { contents: exprvec } => {
             for f in exprvec {
-                check!(expr_validate(f), continue, warnings, errors)
+                check!(expr_validate(f, de), continue, warnings, errors)
             }
         }
         TypedExpressionVariant::StructExpression { fields, .. } => {
             for f in fields {
-                check!(expr_validate(&f.value), continue, warnings, errors);
+                check!(expr_validate(&f.value, de), continue, warnings, errors);
             }
         }
         TypedExpressionVariant::CodeBlock(cb) => {
             check!(
-                validate_decls_for_storage_only_types_in_codeblock(cb),
+                validate_decls_for_storage_only_types_in_codeblock(cb, de),
                 (),
                 warnings,
                 errors
@@ -81,10 +83,10 @@ fn expr_validate(expr: &TypedExpression) -> CompileResult<()> {
             then,
             r#else,
         } => {
-            check!(expr_validate(condition), (), warnings, errors);
-            check!(expr_validate(then), (), warnings, errors);
+            check!(expr_validate(condition, de), (), warnings, errors);
+            check!(expr_validate(then, de), (), warnings, errors);
             if let Some(r#else) = r#else {
-                check!(expr_validate(r#else), (), warnings, errors);
+                check!(expr_validate(r#else, de), (), warnings, errors);
             }
         }
         TypedExpressionVariant::StructFieldAccess { prefix: exp, .. }
@@ -92,17 +94,17 @@ fn expr_validate(expr: &TypedExpression) -> CompileResult<()> {
         | TypedExpressionVariant::AbiCast { address: exp, .. }
         | TypedExpressionVariant::EnumTag { exp }
         | TypedExpressionVariant::UnsafeDowncast { exp, .. } => {
-            check!(expr_validate(exp), (), warnings, errors)
+            check!(expr_validate(exp, de), (), warnings, errors)
         }
         TypedExpressionVariant::EnumInstantiation { contents, .. } => {
             if let Some(f) = contents {
-                check!(expr_validate(f), (), warnings, errors);
+                check!(expr_validate(f, de), (), warnings, errors);
             }
         }
         TypedExpressionVariant::WhileLoop { condition, body } => {
-            check!(expr_validate(condition), (), warnings, errors);
+            check!(expr_validate(condition, de), (), warnings, errors);
             check!(
-                validate_decls_for_storage_only_types_in_codeblock(body),
+                validate_decls_for_storage_only_types_in_codeblock(body, de),
                 (),
                 warnings,
                 errors
@@ -115,29 +117,34 @@ fn expr_validate(expr: &TypedExpression) -> CompileResult<()> {
                 lhs_base_name, rhs, ..
             } = &**reassignment;
             check!(
-                check_type(rhs.return_type, lhs_base_name.span(), false),
+                check_type(rhs.return_type, lhs_base_name.span(), false, de),
                 (),
                 warnings,
                 errors,
             );
-            check!(expr_validate(rhs), (), warnings, errors)
+            check!(expr_validate(rhs, de), (), warnings, errors)
         }
         TypedExpressionVariant::StorageReassignment(storage_reassignment) => {
             let span = storage_reassignment.span();
             let rhs = &storage_reassignment.rhs;
             check!(
-                check_type(rhs.return_type, span, false),
+                check_type(rhs.return_type, span, false, de),
                 (),
                 warnings,
                 errors,
             );
-            check!(expr_validate(rhs), (), warnings, errors)
+            check!(expr_validate(rhs, de), (), warnings, errors)
         }
     }
     ok((), warnings, errors)
 }
 
-fn check_type(ty: TypeId, span: Span, ignore_self: bool) -> CompileResult<()> {
+fn check_type(
+    ty: TypeId,
+    span: Span,
+    ignore_self: bool,
+    de: &DeclarationEngine,
+) -> CompileResult<()> {
     let mut warnings: Vec<CompileWarning> = vec![];
     let mut errors: Vec<CompileError> = vec![];
 
@@ -149,10 +156,10 @@ fn check_type(ty: TypeId, span: Span, ignore_self: bool) -> CompileResult<()> {
         errors
     );
     for ty in nested_types {
-        if ignore_self && ty == ti {
+        if ignore_self && ty.wrap(de) == ti.wrap(de) {
             continue;
         }
-        if is_type_info_storage_only(&ty) {
+        if is_type_info_storage_only(&ty, de) {
             errors.push(CompileError::InvalidStorageOnlyTypeDecl {
                 ty: ty.to_string(),
                 span: span.clone(),
@@ -162,7 +169,7 @@ fn check_type(ty: TypeId, span: Span, ignore_self: bool) -> CompileResult<()> {
     ok((), warnings, errors)
 }
 
-fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
+fn decl_validate(decl: &TypedDeclaration, de: &DeclarationEngine) -> CompileResult<()> {
     let mut warnings: Vec<CompileWarning> = vec![];
     let mut errors: Vec<CompileError> = vec![];
     match decl {
@@ -177,12 +184,12 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
             ..
         }) => {
             check!(
-                check_type(expr.return_type, name.span(), false),
+                check_type(expr.return_type, name.span(), false, de),
                 (),
                 warnings,
                 errors
             );
-            check!(expr_validate(expr), (), warnings, errors)
+            check!(expr_validate(expr, de), (), warnings, errors)
         }
         TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
             body,
@@ -190,14 +197,14 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
             ..
         }) => {
             check!(
-                validate_decls_for_storage_only_types_in_codeblock(body),
+                validate_decls_for_storage_only_types_in_codeblock(body, de),
                 (),
                 warnings,
                 errors
             );
             for param in parameters {
                 check!(
-                    check_type(param.type_id, param.type_span.clone(), false),
+                    check_type(param.type_id, param.type_span.clone(), false, de),
                     continue,
                     warnings,
                     errors
@@ -211,7 +218,7 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
         TypedDeclaration::ImplTrait(TypedImplTrait { methods, .. }) => {
             for method in methods {
                 check!(
-                    validate_decls_for_storage_only_types_in_codeblock(&method.body),
+                    validate_decls_for_storage_only_types_in_codeblock(&method.body, de),
                     continue,
                     warnings,
                     errors
@@ -221,7 +228,7 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
         TypedDeclaration::StructDeclaration(TypedStructDeclaration { fields, .. }) => {
             for field in fields {
                 check!(
-                    check_type(field.type_id, field.span.clone(), false),
+                    check_type(field.type_id, field.span.clone(), false, de),
                     continue,
                     warnings,
                     errors
@@ -231,7 +238,7 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
         TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { variants, .. }) => {
             for variant in variants {
                 check!(
-                    check_type(variant.type_id, variant.span.clone(), false),
+                    check_type(variant.type_id, variant.span.clone(), false, de),
                     continue,
                     warnings,
                     errors
@@ -241,7 +248,7 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
         TypedDeclaration::StorageDeclaration(TypedStorageDeclaration { fields, .. }) => {
             for field in fields {
                 check!(
-                    check_type(field.type_id, field.name.span().clone(), true),
+                    check_type(field.type_id, field.name.span().clone(), true, de),
                     continue,
                     warnings,
                     errors
@@ -255,17 +262,24 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
 
 pub fn validate_decls_for_storage_only_types_in_ast(
     ast_n: &TypedAstNodeContent,
+    de: &DeclarationEngine,
 ) -> CompileResult<()> {
-    ast_node_validate(ast_n)
+    ast_node_validate(ast_n, de)
 }
 
 pub fn validate_decls_for_storage_only_types_in_codeblock(
     cb: &semantic_analysis::TypedCodeBlock,
+    de: &DeclarationEngine,
 ) -> CompileResult<()> {
     let mut warnings: Vec<CompileWarning> = vec![];
     let mut errors: Vec<CompileError> = vec![];
     for x in &cb.contents {
-        check!(ast_node_validate(&x.content), continue, warnings, errors)
+        check!(
+            ast_node_validate(&x.content, de),
+            continue,
+            warnings,
+            errors
+        )
     }
     ok((), warnings, errors)
 }

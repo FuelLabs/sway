@@ -13,6 +13,7 @@ pub(crate) use mode::*;
 pub(crate) use return_statement::*;
 
 use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine,
     error::*,
     parse_tree::*,
     semantic_analysis::*,
@@ -134,16 +135,16 @@ impl fmt::Display for TypedAstNode {
 }
 
 impl CopyTypes for TypedAstNode {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types(&mut self, type_mapping: &TypeMapping, de: &DeclarationEngine) {
         match self.content {
             TypedAstNodeContent::ReturnStatement(ref mut ret_stmt) => {
-                ret_stmt.copy_types(type_mapping)
+                ret_stmt.copy_types(type_mapping, de)
             }
             TypedAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.copy_types(type_mapping)
+                exp.copy_types(type_mapping, de)
             }
-            TypedAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping),
-            TypedAstNodeContent::Expression(ref mut expr) => expr.copy_types(type_mapping),
+            TypedAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping, de),
+            TypedAstNodeContent::Expression(ref mut expr) => expr.copy_types(type_mapping, de),
             TypedAstNodeContent::SideEffect => (),
         }
     }
@@ -263,8 +264,14 @@ impl TypedAstNode {
                     };
                     let mut res = match a.import_type {
                         ImportType::Star => ctx.namespace.star_import(&path),
-                        ImportType::SelfImport => ctx.namespace.self_import(&path, a.alias),
-                        ImportType::Item(s) => ctx.namespace.item_import(&path, &s, a.alias),
+                        ImportType::SelfImport => {
+                            ctx.namespace
+                                .self_import(&path, a.alias, &ctx.declaration_engine)
+                        }
+                        ImportType::Item(s) => {
+                            ctx.namespace
+                                .item_import(&path, &s, a.alias, &ctx.declaration_engine)
+                        }
                     };
                     warnings.append(&mut res.warnings);
                     errors.append(&mut res.errors);
@@ -536,7 +543,7 @@ impl TypedAstNode {
         } = node
         {
             let warning = Warning::UnusedReturnValue {
-                r#type: Box::new(node.type_info()),
+                r#type: node.type_info().to_string(),
             };
             assert_or_warn!(
                 node.type_info().is_unit()

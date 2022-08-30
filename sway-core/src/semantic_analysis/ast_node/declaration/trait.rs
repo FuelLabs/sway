@@ -1,6 +1,7 @@
 use sway_types::{Ident, Spanned};
 
 use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine,
     error::{err, ok},
     semantic_analysis::{
         ast_node::{type_check_interface_surface, type_check_trait_methods},
@@ -42,10 +43,10 @@ impl PartialEq for CompileWrapper<'_, TypedTraitDeclaration> {
 }
 
 impl CopyTypes for TypedTraitDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types(&mut self, type_mapping: &TypeMapping, de: &DeclarationEngine) {
         self.interface_surface
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_mapping, de));
         // we don't have to type check the methods because it hasn't been type checked yet
     }
 }

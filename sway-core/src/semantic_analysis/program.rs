@@ -41,7 +41,7 @@ impl TypedProgram {
         let mod_span = root.tree.span.clone();
         let mod_res = TypedModule::type_check(ctx, root);
         mod_res.flat_map(|root| {
-            let kind_res = Self::validate_root(&root, kind.clone(), mod_span);
+            let kind_res = Self::validate_root(&root, kind.clone(), mod_span, declaration_engine);
             kind_res.map(|kind| Self {
                 kind,
                 root,
@@ -55,6 +55,7 @@ impl TypedProgram {
         root: &TypedModule,
         kind: TreeType,
         module_span: Span,
+        declaration_engine: &DeclarationEngine,
     ) -> CompileResult<TypedProgramKind> {
         // Extract program-kind-specific properties from the root nodes.
         let mut errors = vec![];
@@ -69,6 +70,7 @@ impl TypedProgram {
                         name: submodule.library_name.clone(),
                     },
                     submodule.library_name.span().clone(),
+                    declaration_engine
                 ),
                 continue,
                 warnings,
@@ -118,7 +120,10 @@ impl TypedProgram {
 
         for ast_n in &root.all_nodes {
             check!(
-                storage_only_types::validate_decls_for_storage_only_types_in_ast(&ast_n.content),
+                storage_only_types::validate_decls_for_storage_only_types_in_ast(
+                    &ast_n.content,
+                    declaration_engine
+                ),
                 continue,
                 warnings,
                 errors

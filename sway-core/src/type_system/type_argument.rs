@@ -15,18 +15,45 @@ pub struct TypeArgument {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl Hash for TypeArgument {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        look_up_type_id(self.type_id).hash(state);
+impl PartialEq for CompileWrapper<'_, TypeArgument> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        look_up_type_id(me.type_id).wrap(de) == look_up_type_id(them.type_id).wrap(de)
+    }
+}
+
+impl PartialEq for CompileWrapper<'_, Vec<TypeArgument>> {
+    fn eq(&self, other: &Self) -> bool {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        let CompileWrapper { inner: them, .. } = other;
+        if me.len() != them.len() {
+            return false;
+        }
+        me.iter()
+            .map(|elem| elem.wrap(de))
+            .zip(other.inner.iter().map(|elem| elem.wrap(de)))
+            .map(|(left, right)| left == right)
+            .all(|elem| elem)
     }
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypeArgument {
-    fn eq(&self, other: &Self) -> bool {
-        look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
+impl Hash for CompileWrapper<'_, TypeArgument> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        look_up_type_id(me.type_id).wrap(de).hash(state);
     }
 }
 

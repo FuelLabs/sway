@@ -1,5 +1,6 @@
 use crate::{
-    error::*, semantic_analysis::*, type_system::*, CallPath, CompileResult, Ident, TypeInfo,
+    declaration_engine::declaration_engine::DeclarationEngine, error::*, semantic_analysis::*,
+    type_system::*, types::ToCompileWrapper, CallPath, CompileResult, Ident, TypeInfo,
     TypedDeclaration, TypedFunctionDeclaration,
 };
 
@@ -199,6 +200,7 @@ impl Root {
         method_name: &Ident,
         self_type: TypeId,
         args_buf: &VecDeque<TypedExpression>,
+        declaration_engine: &DeclarationEngine,
     ) -> CompileResult<TypedFunctionDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -212,7 +214,7 @@ impl Root {
         );
 
         // grab the local methods from the local module
-        let local_methods = local_module.get_methods_for_type(type_id);
+        let local_methods = local_module.get_methods_for_type(type_id, declaration_engine);
 
         type_id.replace_self_type(self_type);
 
@@ -239,7 +241,7 @@ impl Root {
         );
 
         // grab the methods from where the type is declared
-        let mut type_methods = type_module.get_methods_for_type(type_id);
+        let mut type_methods = type_module.get_methods_for_type(type_id, declaration_engine);
 
         let mut methods = local_methods;
         methods.append(&mut type_methods);
@@ -250,8 +252,10 @@ impl Root {
         {
             Some(o) => ok(o, warnings, errors),
             None => {
-                if args_buf.get(0).map(|x| look_up_type_id(x.return_type))
-                    != Some(TypeInfo::ErrorRecovery)
+                if args_buf
+                    .get(0)
+                    .map(|x| look_up_type_id(x.return_type).wrap(declaration_engine))
+                    != Some(TypeInfo::ErrorRecovery.wrap(declaration_engine))
                 {
                     errors.push(CompileError::MethodNotFound {
                         method_name: method_name.clone(),

@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine,
     semantic_analysis::ast_node::TypedExpression, type_system::*, CallPath, CompileResult, Ident,
     TypedDeclaration, TypedFunctionDeclaration,
 };
@@ -140,6 +141,7 @@ impl Namespace {
         method_name: &Ident,
         self_type: TypeId,
         args_buf: &VecDeque<TypedExpression>,
+        de: &DeclarationEngine,
     ) -> CompileResult<TypedFunctionDeclaration> {
         self.root.find_method_for_type(
             &self.mod_path,
@@ -148,6 +150,7 @@ impl Namespace {
             method_name,
             self_type,
             args_buf,
+            de,
         )
     }
 
@@ -157,8 +160,13 @@ impl Namespace {
     }
 
     /// Short-hand for performing a [Module::self_import] with `mod_path` as the destination.
-    pub(crate) fn self_import(&mut self, src: &Path, alias: Option<Ident>) -> CompileResult<()> {
-        self.root.self_import(src, &self.mod_path, alias)
+    pub(crate) fn self_import(
+        &mut self,
+        src: &Path,
+        alias: Option<Ident>,
+        de: &DeclarationEngine,
+    ) -> CompileResult<()> {
+        self.root.self_import(src, &self.mod_path, alias, de)
     }
 
     /// Short-hand for performing a [Module::item_import] with `mod_path` as the destination.
@@ -167,8 +175,9 @@ impl Namespace {
         src: &Path,
         item: &Ident,
         alias: Option<Ident>,
+        de: &DeclarationEngine,
     ) -> CompileResult<()> {
-        self.root.item_import(src, item, &self.mod_path, alias)
+        self.root.item_import(src, item, &self.mod_path, alias, de)
     }
 
     /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].

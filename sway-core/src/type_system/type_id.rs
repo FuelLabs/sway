@@ -1,7 +1,7 @@
 use std::fmt;
 use sway_types::{JsonTypeApplication, JsonTypeDeclaration, Span, Spanned};
 
-use crate::types::*;
+use crate::{declaration_engine::declaration_engine::DeclarationEngine, types::*};
 
 use super::*;
 
@@ -155,14 +155,20 @@ impl ReplaceSelfType for TypeId {
 }
 
 impl TypeId {
-    pub(crate) fn update_type(&mut self, type_mapping: &TypeMapping, span: &Span) {
-        *self = match look_up_type_id(*self).matches_type_parameter(type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, span.clone())),
-            None => {
-                let ty = TypeInfo::Ref(insert_type(look_up_type_id_raw(*self)), span.clone());
-                insert_type(ty)
-            }
-        };
+    pub(crate) fn update_type(
+        &mut self,
+        type_mapping: &TypeMapping,
+        declaration_engine: &DeclarationEngine,
+        span: &Span,
+    ) {
+        *self =
+            match look_up_type_id(*self).matches_type_parameter(type_mapping, declaration_engine) {
+                Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, span.clone())),
+                None => {
+                    let ty = TypeInfo::Ref(insert_type(look_up_type_id_raw(*self)), span.clone());
+                    insert_type(ty)
+                }
+            };
     }
 
     pub(crate) fn get_type_parameters(&self) -> Option<Vec<TypeParameter>> {

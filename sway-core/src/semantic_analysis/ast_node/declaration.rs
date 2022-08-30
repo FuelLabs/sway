@@ -17,6 +17,7 @@ pub use storage::*;
 pub use variable::*;
 
 use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine,
     error::*,
     parse_tree::*,
     semantic_analysis::*,
@@ -100,16 +101,16 @@ impl PartialEq for CompileWrapper<'_, TypedDeclaration> {
 impl CopyTypes for TypedDeclaration {
     /// The entry point to monomorphizing typed declarations. Instantiates all new type ids,
     /// assuming `self` has already been copied.
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types(&mut self, type_mapping: &TypeMapping, de: &DeclarationEngine) {
         use TypedDeclaration::*;
         match self {
-            VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_mapping),
-            ConstantDeclaration(ref mut const_decl) => const_decl.copy_types(type_mapping),
-            FunctionDeclaration(ref mut fn_decl) => fn_decl.copy_types(type_mapping),
-            TraitDeclaration(ref mut trait_decl) => trait_decl.copy_types(type_mapping),
-            StructDeclaration(ref mut struct_decl) => struct_decl.copy_types(type_mapping),
-            EnumDeclaration(ref mut enum_decl) => enum_decl.copy_types(type_mapping),
-            ImplTrait(impl_trait) => impl_trait.copy_types(type_mapping),
+            VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_mapping, de),
+            ConstantDeclaration(ref mut const_decl) => const_decl.copy_types(type_mapping, de),
+            FunctionDeclaration(ref mut fn_decl) => fn_decl.copy_types(type_mapping, de),
+            TraitDeclaration(ref mut trait_decl) => trait_decl.copy_types(type_mapping, de),
+            StructDeclaration(ref mut struct_decl) => struct_decl.copy_types(type_mapping, de),
+            EnumDeclaration(ref mut enum_decl) => enum_decl.copy_types(type_mapping, de),
+            ImplTrait(impl_trait) => impl_trait.copy_types(type_mapping, de),
             // generics in an ABI is unsupported by design
             AbiDeclaration(..)
             | StorageDeclaration(..)
@@ -424,8 +425,8 @@ impl PartialEq for CompileWrapper<'_, TypedConstantDeclaration> {
 }
 
 impl CopyTypes for TypedConstantDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.value.copy_types(type_mapping);
+    fn copy_types(&mut self, type_mapping: &TypeMapping, de: &DeclarationEngine) {
+        self.value.copy_types(type_mapping, de);
     }
 }
 
@@ -471,9 +472,9 @@ impl PartialEq for CompileWrapper<'_, Vec<TypedTraitFn>> {
 }
 
 impl CopyTypes for TypedTraitFn {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types(&mut self, type_mapping: &TypeMapping, de: &DeclarationEngine) {
         self.return_type
-            .update_type(type_mapping, &self.return_type_span);
+            .update_type(type_mapping, de, &self.return_type_span);
     }
 }
 
@@ -568,9 +569,9 @@ impl PartialEq for CompileWrapper<'_, TypedReassignment> {
 }
 
 impl CopyTypes for TypedReassignment {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.rhs.copy_types(type_mapping);
+    fn copy_types(&mut self, type_mapping: &TypeMapping, de: &DeclarationEngine) {
+        self.rhs.copy_types(type_mapping, de);
         self.lhs_type
-            .update_type(type_mapping, &self.lhs_base_name.span());
+            .update_type(type_mapping, de, &self.lhs_base_name.span());
     }
 }

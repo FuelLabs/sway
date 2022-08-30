@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine,
     error::{err, ok},
     semantic_analysis::{
         convert_to_variable_immutability, IsConstant, TypeCheckContext, TypedExpression,
@@ -53,8 +54,8 @@ impl PartialEq for CompileWrapper<'_, Vec<TypedFunctionParameter>> {
 }
 
 impl CopyTypes for TypedFunctionParameter {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.type_id.update_type(type_mapping, &self.type_span);
+    fn copy_types(&mut self, type_mapping: &TypeMapping, de: &DeclarationEngine) {
+        self.type_id.update_type(type_mapping, de, &self.type_span);
     }
 }
 

@@ -13,6 +13,7 @@ pub(crate) use self::{
 };
 
 use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine,
     error::*,
     parse_tree::*,
     semantic_analysis::*,
@@ -71,9 +72,9 @@ impl PartialEq for CompileWrapper<'_, Vec<TypedExpression>> {
 }
 
 impl CopyTypes for TypedExpression {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.return_type.update_type(type_mapping, &self.span);
-        self.expression.copy_types(type_mapping);
+    fn copy_types(&mut self, type_mapping: &TypeMapping, de: &DeclarationEngine) {
+        self.return_type.update_type(type_mapping, de, &self.span);
+        self.expression.copy_types(type_mapping, de);
     }
 }
 

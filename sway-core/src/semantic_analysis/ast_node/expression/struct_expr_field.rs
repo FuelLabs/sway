@@ -1,3 +1,4 @@
+use crate::declaration_engine::declaration_engine::DeclarationEngine;
 use crate::types::{CompileWrapper, ToCompileWrapper};
 use crate::Ident;
 use crate::{semantic_analysis::*, type_system::*};
@@ -38,7 +39,7 @@ impl PartialEq for CompileWrapper<'_, Vec<TypedStructExpressionField>> {
 }
 
 impl CopyTypes for TypedStructExpressionField {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.value.copy_types(type_mapping);
+    fn copy_types(&mut self, type_mapping: &TypeMapping, de: &DeclarationEngine) {
+        self.value.copy_types(type_mapping, de);
     }
 }

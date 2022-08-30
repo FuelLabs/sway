@@ -1,4 +1,7 @@
-use crate::{error::*, namespace::*, parse_tree::*, semantic_analysis::*, type_system::*};
+use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine, error::*, namespace::*,
+    parse_tree::*, semantic_analysis::*, type_system::*,
+};
 
 use super::TraitMap;
 
@@ -129,9 +132,10 @@ impl Items {
     pub(crate) fn get_methods_for_type(
         &self,
         implementing_for_type_id: TypeId,
+        declaration_engine: &DeclarationEngine,
     ) -> Vec<TypedFunctionDeclaration> {
         self.implemented_traits
-            .get_methods_for_type(implementing_for_type_id)
+            .get_methods_for_type(implementing_for_type_id, declaration_engine)
     }
 
     pub(crate) fn get_canonical_path(&self, symbol: &Ident) -> &[Ident] {

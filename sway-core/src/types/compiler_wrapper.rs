@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::declaration_engine::declaration_engine::DeclarationEngine;
 
 pub(crate) struct CompileWrapper<'a, T> {
@@ -26,5 +28,14 @@ impl<'a, T> ToCompileWrapper<'a, T> for &T {
             inner: self,
             declaration_engine,
         }
+    }
+}
+
+impl<'a, T> fmt::Debug for CompileWrapper<'a, T>
+where
+    T: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.inner)
     }
 }

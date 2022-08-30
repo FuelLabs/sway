@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine,
     semantic_analysis::*,
     type_system::*,
     types::{CompileWrapper, ToCompileWrapper},
@@ -80,9 +81,9 @@ impl PartialEq for CompileWrapper<'_, TypedVariableDeclaration> {
 }
 
 impl CopyTypes for TypedVariableDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types(&mut self, type_mapping: &TypeMapping, de: &DeclarationEngine) {
         self.type_ascription
-            .update_type(type_mapping, &self.body.span);
-        self.body.copy_types(type_mapping)
+            .update_type(type_mapping, de, &self.body.span);
+        self.body.copy_types(type_mapping, de)
     }
 }

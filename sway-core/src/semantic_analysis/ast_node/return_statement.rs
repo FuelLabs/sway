@@ -1,4 +1,7 @@
-use crate::types::{CompileWrapper, ToCompileWrapper};
+use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine,
+    types::{CompileWrapper, ToCompileWrapper},
+};
 
 use super::{CopyTypes, TypeMapping, TypedExpression};
 
@@ -23,7 +26,7 @@ impl PartialEq for CompileWrapper<'_, TypedReturnStatement> {
 
 impl CopyTypes for TypedReturnStatement {
     /// Makes a fresh copy of all types contained in this statement.
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.expr.copy_types(type_mapping);
+    fn copy_types(&mut self, type_mapping: &TypeMapping, de: &DeclarationEngine) {
+        self.expr.copy_types(type_mapping, de);
     }
 }

@@ -123,7 +123,14 @@ impl PartialEq for CompileWrapper<'_, TypeInfo> {
                     name: r_name,
                     type_arguments: r_type_args,
                 },
-            ) => l_name == r_name && l_type_args == r_type_args,
+            ) => {
+                l_name == r_name
+                    && if let (Some(l_type_args), Some(r_type_args)) = (l_type_args, r_type_args) {
+                        l_type_args.wrap(de) == r_type_args.wrap(de)
+                    } else {
+                        true
+                    }
+            }
             (TypeInfo::Str(l), TypeInfo::Str(r)) => l == r,
             (TypeInfo::UnsignedInteger(l), TypeInfo::UnsignedInteger(r)) => l == r,
             (
@@ -199,9 +206,13 @@ impl PartialEq for CompileWrapper<'_, TypeInfo> {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl Hash for TypeInfo {
+impl Hash for CompileWrapper<'_, TypeInfo> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        match self {
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        match me {
             TypeInfo::Str(len) => {
                 state.write_u8(1);
                 len.hash(state);
@@ -218,7 +229,8 @@ impl Hash for TypeInfo {
             }
             TypeInfo::Tuple(fields) => {
                 state.write_u8(5);
-                fields.hash(state);
+                fields.len().hash(state);
+                fields.iter().for_each(|x| x.wrap(de).hash(state));
             }
             TypeInfo::Byte => {
                 state.write_u8(6);
@@ -233,8 +245,10 @@ impl Hash for TypeInfo {
             } => {
                 state.write_u8(8);
                 name.hash(state);
-                variant_types.hash(state);
-                type_parameters.hash(state);
+                variant_types.len().hash(state);
+                variant_types.iter().for_each(|x| x.wrap(de).hash(state));
+                type_parameters.len().hash(state);
+                type_parameters.iter().for_each(|x| x.wrap(de).hash(state));
             }
             TypeInfo::Struct {
                 name,
@@ -243,8 +257,10 @@ impl Hash for TypeInfo {
             } => {
                 state.write_u8(9);
                 name.hash(state);
-                fields.hash(state);
-                type_parameters.hash(state);
+                fields.len().hash(state);
+                fields.iter().for_each(|x| x.wrap(de).hash(state));
+                type_parameters.len().hash(state);
+                type_parameters.iter().for_each(|x| x.wrap(de).hash(state));
             }
             TypeInfo::ContractCaller { abi_name, address } => {
                 state.write_u8(10);
@@ -277,20 +293,24 @@ impl Hash for TypeInfo {
             } => {
                 state.write_u8(16);
                 name.hash(state);
-                type_arguments.hash(state);
+                if let Some(type_arguments) = type_arguments {
+                    type_arguments.len().hash(state);
+                    type_arguments.iter().for_each(|x| x.wrap(de).hash(state));
+                }
             }
             TypeInfo::Ref(id, _sp) => {
                 state.write_u8(17);
-                look_up_type_id(*id).hash(state);
+                look_up_type_id(*id).wrap(de).hash(state);
             }
             TypeInfo::Array(elem_ty, count, _) => {
                 state.write_u8(18);
-                look_up_type_id(*elem_ty).hash(state);
+                look_up_type_id(*elem_ty).wrap(de).hash(state);
                 count.hash(state);
             }
             TypeInfo::Storage { fields } => {
                 state.write_u8(19);
-                fields.hash(state);
+                fields.len().hash(state);
+                fields.iter().for_each(|x| x.wrap(de).hash(state));
             }
         }
     }
@@ -1008,7 +1028,11 @@ impl TypeInfo {
         ok(all_nested_types, warnings, errors)
     }
 
-    pub(crate) fn extract_nested_generics(&self, span: &Span) -> CompileResult<HashSet<TypeInfo>> {
+    pub(crate) fn extract_nested_generics(
+        &self,
+        declaration_engine: &DeclarationEngine,
+        span: &Span,
+    ) -> CompileResult<HashSet<CompileWrapper<'_, TypeInfo>>> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let nested_types = check!(
@@ -1020,7 +1044,8 @@ impl TypeInfo {
         let generics = HashSet::from_iter(
             nested_types
                 .into_iter()
-                .filter(|x| matches!(x, TypeInfo::UnknownGeneric { .. })),
+                .filter(|x| matches!(x, TypeInfo::UnknownGeneric { .. }))
+                .map(|x| x.wrap(declaration_engine)),
         );
         ok(generics, warnings, errors)
     }
@@ -1089,15 +1114,20 @@ impl TypeInfo {
     /// | `Data<bool, u64>` | `Data<T, F>`, any generic type               | `Data<T, T>`        |
     /// | `Data<u8, u8>`    | `Data<T, T>`, `Data<T, F>`, any generic type |                     |
     ///
-    pub(crate) fn is_subset_of(&self, other: &TypeInfo) -> bool {
+    pub(crate) fn is_subset_of(
+        &self,
+        other: &TypeInfo,
+        declaration_engine: &DeclarationEngine,
+    ) -> bool {
         match (self, other) {
             // any type is the subset of a generic
             (_, Self::UnknownGeneric { .. }) => true,
             (Self::Ref(l, _), Self::Ref(r, _)) => {
-                look_up_type_id(*l).is_subset_of(&look_up_type_id(*r))
+                look_up_type_id(*l).is_subset_of(&look_up_type_id(*r), declaration_engine)
             }
             (Self::Array(l0, l1, _), Self::Array(r0, r1, _)) => {
-                look_up_type_id(*l0).is_subset_of(&look_up_type_id(*r0)) && l1 == r1
+                look_up_type_id(*l0).is_subset_of(&look_up_type_id(*r0), declaration_engine)
+                    && l1 == r1
             }
             (
                 Self::Custom {
@@ -1121,7 +1151,7 @@ impl TypeInfo {
                     .iter()
                     .map(|x| look_up_type_id(x.type_id))
                     .collect::<Vec<_>>();
-                l_name == r_name && types_are_subset_of(&l_types, &r_types)
+                l_name == r_name && types_are_subset_of(&l_types, &r_types, declaration_engine)
             }
             (
                 Self::Enum {
@@ -1151,7 +1181,9 @@ impl TypeInfo {
                     .iter()
                     .map(|x| look_up_type_id(x.type_id))
                     .collect::<Vec<_>>();
-                l_name == r_name && l_names == r_names && types_are_subset_of(&l_types, &r_types)
+                l_name == r_name
+                    && l_names == r_names
+                    && types_are_subset_of(&l_types, &r_types, declaration_engine)
             }
             (
                 Self::Struct {
@@ -1175,7 +1207,9 @@ impl TypeInfo {
                     .iter()
                     .map(|x| look_up_type_id(x.type_id))
                     .collect::<Vec<_>>();
-                l_name == r_name && l_names == r_names && types_are_subset_of(&l_types, &r_types)
+                l_name == r_name
+                    && l_names == r_names
+                    && types_are_subset_of(&l_types, &r_types, declaration_engine)
             }
             (Self::Tuple(l_types), Self::Tuple(r_types)) => {
                 let l_types = l_types
@@ -1186,9 +1220,9 @@ impl TypeInfo {
                     .iter()
                     .map(|x| look_up_type_id(x.type_id))
                     .collect::<Vec<_>>();
-                types_are_subset_of(&l_types, &r_types)
+                types_are_subset_of(&l_types, &r_types, declaration_engine)
             }
-            (a, b) => a == b,
+            (a, b) => a.wrap(declaration_engine) == b.wrap(declaration_engine),
         }
     }
 
@@ -1399,7 +1433,11 @@ impl TypeInfo {
 ///
 /// `left` is a subset of `right`.
 ///
-fn types_are_subset_of(left: &[TypeInfo], right: &[TypeInfo]) -> bool {
+fn types_are_subset_of(
+    left: &[TypeInfo],
+    right: &[TypeInfo],
+    declaration_engine: &DeclarationEngine,
+) -> bool {
     // invariant 1. `left` and and `right` are of the same length _n_
     if left.len() != right.len() {
         return false;
@@ -1412,7 +1450,7 @@ fn types_are_subset_of(left: &[TypeInfo], right: &[TypeInfo]) -> bool {
 
     // invariant 2. For every _i_ in [0, n), `left`ᵢ is a subset of `right`ᵢ
     for (l, r) in left.iter().zip(right.iter()) {
-        if !l.is_subset_of(r) {
+        if !l.is_subset_of(r, declaration_engine) {
             return false;
         }
     }
@@ -1423,7 +1461,7 @@ fn types_are_subset_of(left: &[TypeInfo], right: &[TypeInfo]) -> bool {
         for j in (i + 1)..right.len() {
             let a = right.get(i).unwrap();
             let b = right.get(j).unwrap();
-            if a == b {
+            if a.wrap(declaration_engine) == b.wrap(declaration_engine) {
                 // if a and b are the same type
                 constraints.push((i, j));
             }
@@ -1432,7 +1470,7 @@ fn types_are_subset_of(left: &[TypeInfo], right: &[TypeInfo]) -> bool {
     for (i, j) in constraints.into_iter() {
         let a = left.get(i).unwrap();
         let b = left.get(j).unwrap();
-        if a != b {
+        if a.wrap(declaration_engine) != b.wrap(declaration_engine) {
             return false;
         }
     }

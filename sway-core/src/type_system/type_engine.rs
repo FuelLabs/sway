@@ -1,5 +1,6 @@
 use super::*;
 use crate::concurrent_slab::ConcurrentSlab;
+use crate::declaration_engine::declaration_engine::DeclarationEngine;
 use crate::namespace::{Path, Root};
 use lazy_static::lazy_static;
 use sway_types::span::Span;
@@ -35,13 +36,13 @@ impl TypeEngine {
         self.storage_only_types.insert(self.look_up_type_id(id));
     }
 
-    pub fn is_type_storage_only(&self, id: TypeId) -> bool {
+    pub fn is_type_storage_only(&self, id: TypeId, de: &DeclarationEngine) -> bool {
         let ti = &self.look_up_type_id(id);
-        self.is_type_info_storage_only(ti)
+        self.is_type_info_storage_only(ti, de)
     }
 
-    pub fn is_type_info_storage_only(&self, ti: &TypeInfo) -> bool {
-        self.storage_only_types.exists(|x| ti.is_subset_of(x))
+    pub fn is_type_info_storage_only(&self, ti: &TypeInfo, de: &DeclarationEngine) -> bool {
+        self.storage_only_types.exists(|x| ti.is_subset_of(x, de))
     }
 
     fn monomorphize<T>(
@@ -52,6 +53,7 @@ impl TypeEngine {
         call_site_span: &Span,
         namespace: &Root,
         mod_path: &Path,
+        de: &DeclarationEngine,
     ) -> CompileResult<()>
     where
         T: MonomorphizeHelper + CopyTypes,
@@ -72,7 +74,7 @@ impl TypeEngine {
                     return err(warnings, errors);
                 }
                 let type_mapping = insert_type_parameters(value.type_parameters());
-                value.copy_types(&type_mapping);
+                value.copy_types(&type_mapping, de);
                 ok((), warnings, errors)
             }
             (true, false) => {
@@ -122,13 +124,14 @@ impl TypeEngine {
                     let (mut new_warnings, new_errors) = unify(
                         *interim_type,
                         type_argument.type_id,
+                        de,
                         &type_argument.span,
                         "Type argument is not assignable to generic type parameter.",
                     );
                     warnings.append(&mut new_warnings);
                     errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
                 }
-                value.copy_types(&type_mapping);
+                value.copy_types(&type_mapping, de);
                 ok((), warnings, errors)
             }
         }
@@ -142,6 +145,7 @@ impl TypeEngine {
         &self,
         received: TypeId,
         expected: TypeId,
+        de: &DeclarationEngine,
         span: &Span,
         help_text: impl Into<String>,
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
@@ -172,29 +176,33 @@ impl TypeEngine {
 
             // Follow any references
             (Ref(received, _sp1), Ref(expected, _sp2)) if received == expected => (vec![], vec![]),
-            (Ref(received, _sp), _) => self.unify(received, expected, span, help_text),
-            (_, Ref(expected, _sp)) => self.unify(received, expected, span, help_text),
+            (Ref(received, _sp), _) => self.unify(received, expected, de, span, help_text),
+            (_, Ref(expected, _sp)) => self.unify(received, expected, de, span, help_text),
 
             // When we don't know anything about either term, assume that
             // they match and make the one we know nothing about reference the
             // one we may know something about
             (Unknown, Unknown) => (vec![], vec![]),
             (Unknown, _) => {
-                match self
-                    .slab
-                    .replace(received, &Unknown, TypeInfo::Ref(expected, span.clone()))
-                {
+                match self.slab.replace(
+                    received,
+                    &Unknown,
+                    TypeInfo::Ref(expected, span.clone()),
+                    de,
+                ) {
                     None => (vec![], vec![]),
-                    Some(_) => self.unify(received, expected, span, help_text),
+                    Some(_) => self.unify(received, expected, de, span, help_text),
                 }
             }
             (_, Unknown) => {
-                match self
-                    .slab
-                    .replace(expected, &Unknown, TypeInfo::Ref(received, span.clone()))
-                {
+                match self.slab.replace(
+                    expected,
+                    &Unknown,
+                    TypeInfo::Ref(received, span.clone()),
+                    de,
+                ) {
                     None => (vec![], vec![]),
-                    Some(_) => self.unify(received, expected, span, help_text),
+                    Some(_) => self.unify(received, expected, de, span, help_text),
                 }
             }
 
@@ -205,6 +213,7 @@ impl TypeEngine {
                     let (new_warnings, new_errors) = self.unify(
                         field_a.type_id,
                         field_b.type_id,
+                        de,
                         &field_a.span,
                         help_text.clone(),
                     );
@@ -249,6 +258,7 @@ impl TypeEngine {
                     received,
                     received_info,
                     TypeInfo::Ref(expected, span.clone()),
+                    de,
                 );
                 (vec![], vec![])
             }
@@ -258,6 +268,7 @@ impl TypeEngine {
                     expected,
                     expected_info,
                     TypeInfo::Ref(received, span.clone()),
+                    de,
                 );
                 (vec![], vec![])
             }
@@ -285,7 +296,7 @@ impl TypeEngine {
                 {
                     a_fields.iter().zip(b_fields.iter()).for_each(|(a, b)| {
                         let (new_warnings, new_errors) =
-                            self.unify(a.type_id, b.type_id, &a.span, help_text.clone());
+                            self.unify(a.type_id, b.type_id, de, &a.span, help_text.clone());
                         warnings.extend(new_warnings);
                         errors.extend(new_errors);
                     });
@@ -296,6 +307,7 @@ impl TypeEngine {
                             let (new_warnings, new_errors) = self.unify(
                                 a.type_id,
                                 b.type_id,
+                                de,
                                 &a.name_ident.span(),
                                 help_text.clone(),
                             );
@@ -332,7 +344,7 @@ impl TypeEngine {
                 {
                     a_variants.iter().zip(b_variants.iter()).for_each(|(a, b)| {
                         let (new_warnings, new_errors) =
-                            self.unify(a.type_id, b.type_id, &a.span, help_text.clone());
+                            self.unify(a.type_id, b.type_id, de, &a.span, help_text.clone());
                         warnings.extend(new_warnings);
                         errors.extend(new_errors);
                     });
@@ -343,6 +355,7 @@ impl TypeEngine {
                             let (new_warnings, new_errors) = self.unify(
                                 a.type_id,
                                 b.type_id,
+                                de,
                                 &a.name_ident.span(),
                                 help_text.clone(),
                             );
@@ -361,20 +374,21 @@ impl TypeEngine {
             }
 
             (Numeric, expected_info @ UnsignedInteger(_)) => {
-                match self.slab.replace(received, &Numeric, expected_info) {
+                match self.slab.replace(received, &Numeric, expected_info, de) {
                     None => (vec![], vec![]),
-                    Some(_) => self.unify(received, expected, span, help_text),
+                    Some(_) => self.unify(received, expected, de, span, help_text),
                 }
             }
             (received_info @ UnsignedInteger(_), Numeric) => {
-                match self.slab.replace(expected, &Numeric, received_info) {
+                match self.slab.replace(expected, &Numeric, received_info, de) {
                     None => (vec![], vec![]),
-                    Some(_) => self.unify(received, expected, span, help_text),
+                    Some(_) => self.unify(received, expected, de, span, help_text),
                 }
             }
 
             (Array(a_elem, a_count, _), Array(b_elem, b_count, _)) if a_count == b_count => {
-                let (warnings, new_errors) = self.unify(a_elem, b_elem, span, help_text.clone());
+                let (warnings, new_errors) =
+                    self.unify(a_elem, b_elem, de, span, help_text.clone());
 
                 // If there was an error then we want to report the array types as mismatching, not
                 // the elem types.
@@ -403,9 +417,12 @@ impl TypeEngine {
                 || matches!(abi_name_a, AbiName::Deferred) =>
             {
                 // if one address is empty, coerce to the other one
-                match self.slab.replace(expected, e, look_up_type_id(expected)) {
+                match self
+                    .slab
+                    .replace(expected, e, look_up_type_id(expected), de)
+                {
                     None => (vec![], vec![]),
-                    Some(_) => self.unify(received, expected, span, help_text),
+                    Some(_) => self.unify(received, expected, de, span, help_text),
                 }
             }
             (
@@ -421,9 +438,12 @@ impl TypeEngine {
                 || matches!(abi_name_b, AbiName::Deferred) =>
             {
                 // if one address is empty, coerce to the other one
-                match self.slab.replace(received, r, look_up_type_id(expected)) {
+                match self
+                    .slab
+                    .replace(received, r, look_up_type_id(expected), de)
+                {
                     None => (vec![], vec![]),
-                    Some(_) => self.unify(received, expected, span, help_text),
+                    Some(_) => self.unify(received, expected, de, span, help_text),
                 }
             }
             // When unifying complex types, we must check their sub-types. This
@@ -453,13 +473,14 @@ impl TypeEngine {
         &self,
         mut received: TypeId,
         mut expected: TypeId,
+        de: &DeclarationEngine,
         self_type: TypeId,
         span: &Span,
         help_text: impl Into<String>,
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
         received.replace_self_type(self_type);
         expected.replace_self_type(self_type);
-        self.unify(received, expected, span, help_text)
+        self.unify(received, expected, de, span, help_text)
     }
 
     pub fn resolve_type(&self, id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
@@ -493,12 +514,12 @@ pub fn set_type_as_storage_only(id: TypeId) {
     TYPE_ENGINE.set_type_as_storage_only(id);
 }
 
-pub fn is_type_storage_only(id: TypeId) -> bool {
-    TYPE_ENGINE.is_type_storage_only(id)
+pub fn is_type_storage_only(id: TypeId, de: &DeclarationEngine) -> bool {
+    TYPE_ENGINE.is_type_storage_only(id, de)
 }
 
-pub fn is_type_info_storage_only(ti: &TypeInfo) -> bool {
-    TYPE_ENGINE.is_type_info_storage_only(ti)
+pub fn is_type_info_storage_only(ti: &TypeInfo, de: &DeclarationEngine) -> bool {
+    TYPE_ENGINE.is_type_info_storage_only(ti, de)
 }
 
 pub(crate) fn monomorphize<T>(
@@ -508,6 +529,7 @@ pub(crate) fn monomorphize<T>(
     call_site_span: &Span,
     namespace: &Root,
     module_path: &Path,
+    de: &DeclarationEngine,
 ) -> CompileResult<()>
 where
     T: MonomorphizeHelper + CopyTypes,
@@ -519,26 +541,29 @@ where
         call_site_span,
         namespace,
         module_path,
+        de,
     )
 }
 
 pub fn unify_with_self(
     a: TypeId,
     b: TypeId,
+    de: &DeclarationEngine,
     self_type: TypeId,
     span: &Span,
     help_text: impl Into<String>,
 ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-    TYPE_ENGINE.unify_with_self(a, b, self_type, span, help_text)
+    TYPE_ENGINE.unify_with_self(a, b, de, self_type, span, help_text)
 }
 
 pub(crate) fn unify(
     a: TypeId,
     b: TypeId,
+    de: &DeclarationEngine,
     span: &Span,
     help_text: impl Into<String>,
 ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-    TYPE_ENGINE.unify(a, b, span, help_text)
+    TYPE_ENGINE.unify(a, b, de, span, help_text)
 }
 
 pub fn resolve_type(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {

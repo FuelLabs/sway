@@ -5,6 +5,7 @@ use sway_ast::intrinsics::Intrinsic;
 use sway_types::Span;
 
 use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine,
     error::{err, ok},
     semantic_analysis::TypeCheckContext,
     type_system::*,
@@ -31,17 +32,17 @@ impl PartialEq for CompileWrapper<'_, TypedIntrinsicFunctionKind> {
         let CompileWrapper { inner: them, .. } = other;
         me.kind == them.kind
             && me.arguments.wrap(de) == them.arguments.wrap(de)
-            && me.type_arguments == them.type_arguments
+            && me.type_arguments.wrap(de) == them.type_arguments.wrap(de)
     }
 }
 
 impl CopyTypes for TypedIntrinsicFunctionKind {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types(&mut self, type_mapping: &TypeMapping, de: &DeclarationEngine) {
         for arg in &mut self.arguments {
-            arg.copy_types(type_mapping);
+            arg.copy_types(type_mapping, de);
         }
         for targ in &mut self.type_arguments {
-            targ.type_id.update_type(type_mapping, &targ.span);
+            targ.type_id.update_type(type_mapping, de, &targ.span);
         }
     }
 }

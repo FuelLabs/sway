@@ -1,5 +1,5 @@
 use super::*;
-use crate::CodeBlock;
+use crate::{declaration_engine::declaration_engine::DeclarationEngine, CodeBlock};
 
 #[derive(Clone, Debug)]
 pub struct TypedCodeBlock {
@@ -18,10 +18,10 @@ impl PartialEq for CompileWrapper<'_, TypedCodeBlock> {
 }
 
 impl CopyTypes for TypedCodeBlock {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types(&mut self, type_mapping: &TypeMapping, de: &DeclarationEngine) {
         self.contents
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_mapping, de));
     }
 }
 

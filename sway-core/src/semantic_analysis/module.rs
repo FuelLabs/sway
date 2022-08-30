@@ -1,4 +1,7 @@
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_system::*};
+use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine, error::*, parse_tree::*,
+    semantic_analysis::*, type_system::*, types::ToCompileWrapper,
+};
 
 use sway_types::{Ident, Spanned};
 
@@ -42,7 +45,7 @@ impl TypedModule {
             .flat_map(|ordered_nodes| Self::type_check_nodes(ctx.by_ref(), ordered_nodes));
 
         let validated_nodes_res = typed_nodes_res.flat_map(|typed_nodes| {
-            let errors = check_supertraits(&typed_nodes, ctx.namespace);
+            let errors = check_supertraits(&typed_nodes, ctx.namespace, &ctx.declaration_engine);
             ok(typed_nodes, vec![], errors)
         });
 
@@ -105,6 +108,7 @@ impl TypedSubmodule {
 fn check_supertraits(
     typed_tree_nodes: &[TypedAstNode],
     namespace: &Namespace,
+    declaration_engine: &DeclarationEngine,
 ) -> Vec<CompileError> {
     let mut errors = vec![];
     for node in typed_tree_nodes {
@@ -145,7 +149,9 @@ fn check_supertraits(
                             ) {
                                 return (tr1.name == tr2.name)
                                     && (look_up_type_id(*implementing_for_type_id)
-                                        == look_up_type_id(*search_node_type_implementing_for));
+                                        .wrap(declaration_engine)
+                                        == look_up_type_id(*search_node_type_implementing_for)
+                                            .wrap(declaration_engine));
                             }
                         }
                         false

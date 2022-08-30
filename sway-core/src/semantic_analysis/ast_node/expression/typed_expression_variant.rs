@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine,
     parse_tree::*,
     semantic_analysis::*,
     type_system::*,
@@ -391,7 +392,7 @@ impl PartialEq for CompileWrapper<'_, TypedExpressionVariant> {
 }
 
 impl CopyTypes for TypedExpressionVariant {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types(&mut self, type_mapping: &TypeMapping, de: &DeclarationEngine) {
         use TypedExpressionVariant::*;
         match self {
             Literal(..) => (),
@@ -402,25 +403,29 @@ impl CopyTypes for TypedExpressionVariant {
             } => {
                 arguments
                     .iter_mut()
-                    .for_each(|(_ident, expr)| expr.copy_types(type_mapping));
-                function_decl.copy_types(type_mapping);
+                    .for_each(|(_ident, expr)| expr.copy_types(type_mapping, de));
+                function_decl.copy_types(type_mapping, de);
             }
             LazyOperator { lhs, rhs, .. } => {
-                (*lhs).copy_types(type_mapping);
-                (*rhs).copy_types(type_mapping);
+                (*lhs).copy_types(type_mapping, de);
+                (*rhs).copy_types(type_mapping, de);
             }
             VariableExpression { .. } => (),
-            Tuple { fields } => fields.iter_mut().for_each(|x| x.copy_types(type_mapping)),
-            Array { contents } => contents.iter_mut().for_each(|x| x.copy_types(type_mapping)),
+            Tuple { fields } => fields
+                .iter_mut()
+                .for_each(|x| x.copy_types(type_mapping, de)),
+            Array { contents } => contents
+                .iter_mut()
+                .for_each(|x| x.copy_types(type_mapping, de)),
             ArrayIndex { prefix, index } => {
-                (*prefix).copy_types(type_mapping);
-                (*index).copy_types(type_mapping);
+                (*prefix).copy_types(type_mapping, de);
+                (*index).copy_types(type_mapping, de);
             }
-            StructExpression { fields, .. } => {
-                fields.iter_mut().for_each(|x| x.copy_types(type_mapping))
-            }
+            StructExpression { fields, .. } => fields
+                .iter_mut()
+                .for_each(|x| x.copy_types(type_mapping, de)),
             CodeBlock(block) => {
-                block.copy_types(type_mapping);
+                block.copy_types(type_mapping, de);
             }
             FunctionParameter => (),
             IfExp {
@@ -428,10 +433,10 @@ impl CopyTypes for TypedExpressionVariant {
                 then,
                 r#else,
             } => {
-                condition.copy_types(type_mapping);
-                then.copy_types(type_mapping);
+                condition.copy_types(type_mapping, de);
+                then.copy_types(type_mapping, de);
                 if let Some(ref mut r#else) = r#else {
-                    r#else.copy_types(type_mapping);
+                    r#else.copy_types(type_mapping, de);
                 }
             }
             AsmExpression {
@@ -440,7 +445,7 @@ impl CopyTypes for TypedExpressionVariant {
             } => {
                 registers
                     .iter_mut()
-                    .for_each(|x| x.copy_types(type_mapping));
+                    .for_each(|x| x.copy_types(type_mapping, de));
             }
             // like a variable expression but it has multiple parts,
             // like looking up a field in a struct
@@ -450,52 +455,52 @@ impl CopyTypes for TypedExpressionVariant {
                 ref mut resolved_type_of_parent,
                 ..
             } => {
-                resolved_type_of_parent.update_type(type_mapping, &field_to_access.span);
-                field_to_access.copy_types(type_mapping);
-                prefix.copy_types(type_mapping);
+                resolved_type_of_parent.update_type(type_mapping, de, &field_to_access.span);
+                field_to_access.copy_types(type_mapping, de);
+                prefix.copy_types(type_mapping, de);
             }
             TupleElemAccess {
                 prefix,
                 ref mut resolved_type_of_parent,
                 ..
             } => {
-                resolved_type_of_parent.update_type(type_mapping, &prefix.span);
-                prefix.copy_types(type_mapping);
+                resolved_type_of_parent.update_type(type_mapping, de, &prefix.span);
+                prefix.copy_types(type_mapping, de);
             }
             EnumInstantiation {
                 enum_decl,
                 contents,
                 ..
             } => {
-                enum_decl.copy_types(type_mapping);
+                enum_decl.copy_types(type_mapping, de);
                 if let Some(ref mut contents) = contents {
-                    contents.copy_types(type_mapping)
+                    contents.copy_types(type_mapping, de)
                 };
             }
-            AbiCast { address, .. } => address.copy_types(type_mapping),
+            AbiCast { address, .. } => address.copy_types(type_mapping, de),
             // storage is never generic and cannot be monomorphized
             StorageAccess { .. } => (),
             IntrinsicFunction(kind) => {
-                kind.copy_types(type_mapping);
+                kind.copy_types(type_mapping, de);
             }
             EnumTag { exp } => {
-                exp.copy_types(type_mapping);
+                exp.copy_types(type_mapping, de);
             }
             UnsafeDowncast { exp, variant } => {
-                exp.copy_types(type_mapping);
-                variant.copy_types(type_mapping);
+                exp.copy_types(type_mapping, de);
+                variant.copy_types(type_mapping, de);
             }
             AbiName(_) => (),
             WhileLoop {
                 ref mut condition,
                 ref mut body,
             } => {
-                condition.copy_types(type_mapping);
-                body.copy_types(type_mapping);
+                condition.copy_types(type_mapping, de);
+                body.copy_types(type_mapping, de);
             }
             Break => (),
             Continue => (),
-            Reassignment(reassignment) => reassignment.copy_types(type_mapping),
+            Reassignment(reassignment) => reassignment.copy_types(type_mapping, de),
             StorageReassignment(..) => (),
         }
     }
@@ -688,9 +693,9 @@ impl PartialEq for CompileWrapper<'_, Vec<TypedAsmRegisterDeclaration>> {
 }
 
 impl CopyTypes for TypedAsmRegisterDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types(&mut self, type_mapping: &TypeMapping, de: &DeclarationEngine) {
         if let Some(ref mut initializer) = self.initializer {
-            initializer.copy_types(type_mapping)
+            initializer.copy_types(type_mapping, de)
         }
     }
 }

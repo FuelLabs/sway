@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine,
     error::*,
     semantic_analysis::*,
     type_system::*,
@@ -57,17 +58,22 @@ impl PartialEq for CompileWrapper<'_, Vec<TypeParameter>> {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl Hash for TypeParameter {
+impl Hash for CompileWrapper<'_, TypeParameter> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        look_up_type_id(self.type_id).hash(state);
-        self.name_ident.hash(state);
-        self.trait_constraints.hash(state);
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        look_up_type_id(me.type_id).wrap(de).hash(state);
+        me.name_ident.hash(state);
+        me.trait_constraints.hash(state);
     }
 }
 
 impl CopyTypes for TypeParameter {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.type_id = match look_up_type_id(self.type_id).matches_type_parameter(type_mapping) {
+    fn copy_types(&mut self, type_mapping: &TypeMapping, de: &DeclarationEngine) {
+        self.type_id = match look_up_type_id(self.type_id).matches_type_parameter(type_mapping, de)
+        {
             Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, self.name_ident.span())),
             None => {
                 let ty = TypeInfo::Ref(insert_type(look_up_type_id_raw(self.type_id)), self.span());

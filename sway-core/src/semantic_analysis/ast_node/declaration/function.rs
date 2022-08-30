@@ -1,7 +1,10 @@
 mod function_parameter;
 pub use function_parameter::*;
 
-use crate::{error::*, parse_tree::*, semantic_analysis::*, style::*, type_system::*, types::*};
+use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine, error::*, parse_tree::*,
+    semantic_analysis::*, style::*, type_system::*, types::*,
+};
 use sha2::{Digest, Sha256};
 use sway_types::{
     Function, Ident, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaration, Property, Span,
@@ -38,7 +41,7 @@ impl PartialEq for CompileWrapper<'_, TypedFunctionDeclaration> {
             && me.parameters.wrap(de) == them.parameters.wrap(de)
             && look_up_type_id(me.return_type).wrap(de)
                 == look_up_type_id(them.return_type).wrap(de)
-            && me.type_parameters == them.type_parameters
+            && me.type_parameters.wrap(de) == them.type_parameters.wrap(de)
             && me.visibility == them.visibility
             && me.is_contract_call == them.is_contract_call
             && me.purity == them.purity
@@ -76,16 +79,16 @@ impl From<&TypedFunctionDeclaration> for TypedAstNode {
 }
 
 impl CopyTypes for TypedFunctionDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types(&mut self, type_mapping: &TypeMapping, de: &DeclarationEngine) {
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_mapping, de));
         self.parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_mapping, de));
         self.return_type
-            .update_type(type_mapping, &self.return_type_span);
-        self.body.copy_types(type_mapping);
+            .update_type(type_mapping, de, &self.return_type_span);
+        self.body.copy_types(type_mapping, de);
     }
 }
 

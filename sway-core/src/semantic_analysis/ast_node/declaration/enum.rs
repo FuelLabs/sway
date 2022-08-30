@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine,
     error::*,
     parse_tree::*,
     semantic_analysis::*,
@@ -29,20 +30,20 @@ impl PartialEq for CompileWrapper<'_, TypedEnumDeclaration> {
         } = self;
         let CompileWrapper { inner: them, .. } = other;
         me.name == them.name
-            && me.type_parameters == them.type_parameters
+            && me.type_parameters.wrap(de) == them.type_parameters.wrap(de)
             && me.variants.wrap(de) == them.variants.wrap(de)
             && me.visibility == them.visibility
     }
 }
 
 impl CopyTypes for TypedEnumDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types(&mut self, type_mapping: &TypeMapping, de: &DeclarationEngine) {
         self.variants
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_mapping, de));
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_mapping, de));
     }
 }
 
@@ -191,17 +192,21 @@ impl PartialEq for CompileWrapper<'_, Vec<TypedEnumVariant>> {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl Hash for TypedEnumVariant {
+impl Hash for CompileWrapper<'_, TypedEnumVariant> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
-        look_up_type_id(self.type_id).hash(state);
-        self.tag.hash(state);
+        let CompileWrapper {
+            inner: me,
+            declaration_engine: de,
+        } = self;
+        me.name.hash(state);
+        look_up_type_id(me.type_id).wrap(de).hash(state);
+        me.tag.hash(state);
     }
 }
 
 impl CopyTypes for TypedEnumVariant {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.type_id.update_type(type_mapping, &self.span);
+    fn copy_types(&mut self, type_mapping: &TypeMapping, de: &DeclarationEngine) {
+        self.type_id.update_type(type_mapping, de, &self.span);
     }
 }
 
