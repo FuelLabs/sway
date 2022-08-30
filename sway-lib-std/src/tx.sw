@@ -53,13 +53,7 @@ pub enum Transaction {
 /// Get the type of the current transaction.
 /// Either 0 (transaction-script) or 1 (transaction-create)
 pub fn tx_type() -> Transaction {
-    // @review !!! intrinsic returns wrong value here !!!
-    // let type = __gtf::<u8>(0, GTF_TYPE);
-    let type = asm(r1, r2: 0) {
-        gtf r1 r2 i1;
-        r1: u8
-    };
-    // log(type);
+    let type = __gtf::<u8>(0, GTF_TYPE);
     match type {
         0u8 => {
             Transaction::Script
