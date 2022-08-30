@@ -17,10 +17,11 @@ use crate::{
     function::Function,
     irtype::{Aggregate, Type},
     pointer::Pointer,
+    pretty::DebugWithContext,
     value::{Value, ValueDatum},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, DebugWithContext)]
 pub enum Instruction {
     /// Address of a non-copy (memory) value
     AddrOf(Value),
