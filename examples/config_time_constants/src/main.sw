@@ -9,5 +9,9 @@ fn main() -> u64 {
 
     let string = some_string;
 
-    return if true_bool { some_num } else { 0 } ;
+    return if true_bool {
+        some_num
+    } else {
+        0
+    };
 }

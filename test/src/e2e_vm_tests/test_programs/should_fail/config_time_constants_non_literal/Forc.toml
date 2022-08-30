@@ -1,9 +1,9 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
-license = "Apache-2.0"
-name = "config_time_constants_non_literal"
 entry = "main.sw"
 implicit-std = false
+license = "Apache-2.0"
+name = "config_time_constants_non_literal"
 
 
 [constants]
