@@ -916,4 +916,36 @@ fn main() {
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert_eq!(correct_sway_code, formatted_sway_code)
     }
+
+    #[test]
+    fn test_doc_comments() {
+        let sway_code_to_format = r#"script;
+
+enum Color {
+    /// Blue color
+    blue: (),
+    /// Red color
+    red: ()
+}
+/// This is the main function
+fn main() {
+}"#;
+
+        let correct_sway_code = r#"script;
+
+enum Color {
+    /// Blue color
+    blue: (),
+    /// Red color
+    red: (),
+}
+/// This is the main function
+fn main() {}
+"#;
+
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code)
+    }
 }
