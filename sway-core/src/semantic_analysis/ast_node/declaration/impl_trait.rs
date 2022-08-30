@@ -36,7 +36,8 @@ impl PartialEq for CompileWrapper<'_, TypedImplTrait> {
         } = self;
         let CompileWrapper { inner: them, .. } = other;
         me.trait_name == them.trait_name
-            && me.methods.wrap(de) == them.methods.wrap(de)
+            && me.methods.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+                == them.methods.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
             && me.implementing_for_type_id == them.implementing_for_type_id
     }
 }

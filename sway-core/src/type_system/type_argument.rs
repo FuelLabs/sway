@@ -26,24 +26,6 @@ impl PartialEq for CompileWrapper<'_, TypeArgument> {
     }
 }
 
-impl PartialEq for CompileWrapper<'_, Vec<TypeArgument>> {
-    fn eq(&self, other: &Self) -> bool {
-        let CompileWrapper {
-            inner: me,
-            declaration_engine: de,
-        } = self;
-        let CompileWrapper { inner: them, .. } = other;
-        if me.len() != them.len() {
-            return false;
-        }
-        me.iter()
-            .map(|elem| elem.wrap(de))
-            .zip(other.inner.iter().map(|elem| elem.wrap(de)))
-            .map(|(left, right)| left == right)
-            .all(|elem| elem)
-    }
-}
-
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html

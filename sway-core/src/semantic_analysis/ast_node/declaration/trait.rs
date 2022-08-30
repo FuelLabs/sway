@@ -36,7 +36,16 @@ impl PartialEq for CompileWrapper<'_, TypedTraitDeclaration> {
         } = self;
         let CompileWrapper { inner: them, .. } = other;
         me.name == them.name
-            && me.interface_surface.wrap(de) == them.interface_surface.wrap(de)
+            && me
+                .interface_surface
+                .iter()
+                .map(|x| x.wrap(de))
+                .collect::<Vec<_>>()
+                == them
+                    .interface_surface
+                    .iter()
+                    .map(|x| x.wrap(de))
+                    .collect::<Vec<_>>()
             && me.supertraits == them.supertraits
             && me.visibility == them.visibility
     }

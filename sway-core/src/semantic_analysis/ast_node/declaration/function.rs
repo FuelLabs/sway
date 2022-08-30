@@ -38,31 +38,27 @@ impl PartialEq for CompileWrapper<'_, TypedFunctionDeclaration> {
         let CompileWrapper { inner: them, .. } = other;
         me.name == them.name
             && me.body.wrap(de) == them.body.wrap(de)
-            && me.parameters.wrap(de) == them.parameters.wrap(de)
+            && me.parameters.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+                == them
+                    .parameters
+                    .iter()
+                    .map(|x| x.wrap(de))
+                    .collect::<Vec<_>>()
             && look_up_type_id(me.return_type).wrap(de)
                 == look_up_type_id(them.return_type).wrap(de)
-            && me.type_parameters.wrap(de) == them.type_parameters.wrap(de)
+            && me
+                .type_parameters
+                .iter()
+                .map(|x| x.wrap(de))
+                .collect::<Vec<_>>()
+                == them
+                    .type_parameters
+                    .iter()
+                    .map(|x| x.wrap(de))
+                    .collect::<Vec<_>>()
             && me.visibility == them.visibility
             && me.is_contract_call == them.is_contract_call
             && me.purity == them.purity
-    }
-}
-
-impl PartialEq for CompileWrapper<'_, Vec<TypedFunctionDeclaration>> {
-    fn eq(&self, other: &Self) -> bool {
-        let CompileWrapper {
-            inner: me,
-            declaration_engine: de,
-        } = self;
-        let CompileWrapper { inner: them, .. } = other;
-        if me.len() != them.len() {
-            return false;
-        }
-        me.iter()
-            .map(|elem| elem.wrap(de))
-            .zip(other.inner.iter().map(|elem| elem.wrap(de)))
-            .map(|(left, right)| left == right)
-            .all(|elem| elem)
     }
 }
 

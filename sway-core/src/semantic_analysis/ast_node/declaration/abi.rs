@@ -33,7 +33,17 @@ impl PartialEq for CompileWrapper<'_, TypedAbiDeclaration> {
             declaration_engine: de,
         } = self;
         let CompileWrapper { inner: them, .. } = other;
-        me.name == them.name && me.interface_surface.wrap(de) == them.interface_surface.wrap(de)
+        me.name == them.name
+            && me
+                .interface_surface
+                .iter()
+                .map(|x| x.wrap(de))
+                .collect::<Vec<_>>()
+                == them
+                    .interface_surface
+                    .iter()
+                    .map(|x| x.wrap(de))
+                    .collect::<Vec<_>>()
     }
 }
 

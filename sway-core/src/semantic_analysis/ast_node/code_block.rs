@@ -13,7 +13,8 @@ impl PartialEq for CompileWrapper<'_, TypedCodeBlock> {
             declaration_engine: de,
         } = self;
         let CompileWrapper { inner: them, .. } = other;
-        me.contents.wrap(de) == them.contents.wrap(de)
+        me.contents.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+            == them.contents.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
     }
 }
 

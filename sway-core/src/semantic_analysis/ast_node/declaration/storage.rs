@@ -31,7 +31,8 @@ impl PartialEq for CompileWrapper<'_, TypedStorageDeclaration> {
             declaration_engine: de,
         } = self;
         let CompileWrapper { inner: them, .. } = other;
-        me.fields.wrap(de) == them.fields.wrap(de)
+        me.fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+            == them.fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
     }
 }
 
@@ -205,24 +206,6 @@ impl PartialEq for CompileWrapper<'_, TypedStorageField> {
         me.name == them.name
             && look_up_type_id(me.type_id).wrap(de) == look_up_type_id(them.type_id).wrap(de)
             && me.initializer.wrap(de) == them.initializer.wrap(de)
-    }
-}
-
-impl PartialEq for CompileWrapper<'_, Vec<TypedStorageField>> {
-    fn eq(&self, other: &Self) -> bool {
-        let CompileWrapper {
-            inner: me,
-            declaration_engine: de,
-        } = self;
-        let CompileWrapper { inner: them, .. } = other;
-        if me.len() != them.len() {
-            return false;
-        }
-        me.iter()
-            .map(|elem| elem.wrap(de))
-            .zip(other.inner.iter().map(|elem| elem.wrap(de)))
-            .map(|(left, right)| left == right)
-            .all(|elem| elem)
     }
 }
 

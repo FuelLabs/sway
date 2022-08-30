@@ -66,7 +66,11 @@ impl PartialEq for CompileWrapper<'_, ResolvedType> {
                     name: r_name,
                     fields: r_fields,
                 },
-            ) => l_name == r_name && l_fields.wrap(de) == r_fields.wrap(de),
+            ) => {
+                l_name == r_name
+                    && l_fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+                        == r_fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+            }
             (
                 ResolvedType::Enum {
                     name: l_name,

@@ -448,26 +448,13 @@ impl PartialEq for CompileWrapper<'_, TypedTraitFn> {
         let CompileWrapper { inner: them, .. } = other;
         me.name == them.name
             && me.purity == them.purity
-            && me.parameters.wrap(de) == them.parameters.wrap(de)
+            && me.parameters.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+                == them
+                    .parameters
+                    .iter()
+                    .map(|x| x.wrap(de))
+                    .collect::<Vec<_>>()
             && me.return_type == them.return_type
-    }
-}
-
-impl PartialEq for CompileWrapper<'_, Vec<TypedTraitFn>> {
-    fn eq(&self, other: &Self) -> bool {
-        let CompileWrapper {
-            inner: me,
-            declaration_engine: de,
-        } = self;
-        let CompileWrapper { inner: them, .. } = other;
-        if me.len() != them.len() {
-            return false;
-        }
-        me.iter()
-            .map(|elem| elem.wrap(de))
-            .zip(other.inner.iter().map(|elem| elem.wrap(de)))
-            .map(|(left, right)| left == right)
-            .all(|elem| elem)
     }
 }
 

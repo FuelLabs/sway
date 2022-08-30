@@ -30,8 +30,18 @@ impl PartialEq for CompileWrapper<'_, TypedEnumDeclaration> {
         } = self;
         let CompileWrapper { inner: them, .. } = other;
         me.name == them.name
-            && me.type_parameters.wrap(de) == them.type_parameters.wrap(de)
-            && me.variants.wrap(de) == them.variants.wrap(de)
+            && me
+                .type_parameters
+                .iter()
+                .map(|x| x.wrap(de))
+                .collect::<Vec<_>>()
+                == them
+                    .type_parameters
+                    .iter()
+                    .map(|x| x.wrap(de))
+                    .collect::<Vec<_>>()
+            && me.variants.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+                == them.variants.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
             && me.visibility == them.visibility
     }
 }
@@ -168,24 +178,6 @@ impl PartialEq for CompileWrapper<'_, TypedEnumVariant> {
             && look_up_type_id(me.type_id).wrap(declaration_engine)
                 == look_up_type_id(them.type_id).wrap(declaration_engine)
             && me.tag == them.tag
-    }
-}
-
-impl PartialEq for CompileWrapper<'_, Vec<TypedEnumVariant>> {
-    fn eq(&self, other: &Self) -> bool {
-        let CompileWrapper {
-            inner: me,
-            declaration_engine: de,
-        } = self;
-        let CompileWrapper { inner: them, .. } = other;
-        if me.len() != them.len() {
-            return false;
-        }
-        me.iter()
-            .map(|elem| elem.wrap(de))
-            .zip(other.inner.iter().map(|elem| elem.wrap(de)))
-            .map(|(left, right)| left == right)
-            .all(|elem| elem)
     }
 }
 

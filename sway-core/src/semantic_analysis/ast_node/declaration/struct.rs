@@ -22,8 +22,18 @@ impl PartialEq for CompileWrapper<'_, TypedStructDeclaration> {
         } = self;
         let CompileWrapper { inner: them, .. } = other;
         me.name == them.name
-            && me.fields.wrap(de) == them.fields.wrap(de)
-            && me.type_parameters.wrap(de) == them.type_parameters.wrap(de)
+            && me.fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+                == them.fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+            && me
+                .type_parameters
+                .iter()
+                .map(|x| x.wrap(de))
+                .collect::<Vec<_>>()
+                == them
+                    .type_parameters
+                    .iter()
+                    .map(|x| x.wrap(de))
+                    .collect::<Vec<_>>()
             && me.visibility == them.visibility
     }
 }
@@ -155,6 +165,9 @@ pub struct TypedStructField {
     pub type_span: Span,
 }
 
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEq for CompileWrapper<'_, TypedStructField> {
     fn eq(&self, other: &Self) -> bool {
         let CompileWrapper {
@@ -164,24 +177,6 @@ impl PartialEq for CompileWrapper<'_, TypedStructField> {
         let CompileWrapper { inner: them, .. } = other;
         me.name == them.name
             && look_up_type_id(me.type_id).wrap(de) == look_up_type_id(them.type_id).wrap(de)
-    }
-}
-
-impl PartialEq for CompileWrapper<'_, Vec<TypedStructField>> {
-    fn eq(&self, other: &Self) -> bool {
-        let CompileWrapper {
-            inner: me,
-            declaration_engine: de,
-        } = self;
-        let CompileWrapper { inner: them, .. } = other;
-        if me.len() != them.len() {
-            return false;
-        }
-        me.iter()
-            .map(|elem| elem.wrap(de))
-            .zip(other.inner.iter().map(|elem| elem.wrap(de)))
-            .map(|(left, right)| left == right)
-            .all(|elem| elem)
     }
 }
 

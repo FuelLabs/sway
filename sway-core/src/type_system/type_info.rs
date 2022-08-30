@@ -126,7 +126,8 @@ impl PartialEq for CompileWrapper<'_, TypeInfo> {
             ) => {
                 l_name == r_name
                     && if let (Some(l_type_args), Some(r_type_args)) = (l_type_args, r_type_args) {
-                        l_type_args.wrap(de) == r_type_args.wrap(de)
+                        l_type_args.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+                            == r_type_args.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
                     } else {
                         true
                     }
@@ -146,8 +147,22 @@ impl PartialEq for CompileWrapper<'_, TypeInfo> {
                 },
             ) => {
                 l_name == r_name
-                    && l_variant_types.wrap(de) == r_variant_types.wrap(de)
-                    && l_type_parameters.wrap(de) == r_type_parameters.wrap(de)
+                    && l_variant_types
+                        .iter()
+                        .map(|x| x.wrap(de))
+                        .collect::<Vec<_>>()
+                        == r_variant_types
+                            .iter()
+                            .map(|x| x.wrap(de))
+                            .collect::<Vec<_>>()
+                    && l_type_parameters
+                        .iter()
+                        .map(|x| x.wrap(de))
+                        .collect::<Vec<_>>()
+                        == r_type_parameters
+                            .iter()
+                            .map(|x| x.wrap(de))
+                            .collect::<Vec<_>>()
             }
             (
                 TypeInfo::Struct {
@@ -162,8 +177,16 @@ impl PartialEq for CompileWrapper<'_, TypeInfo> {
                 },
             ) => {
                 l_name == r_name
-                    && l_fields.wrap(de) == r_fields.wrap(de)
-                    && l_type_parameters.wrap(de) == r_type_parameters.wrap(de)
+                    && l_fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+                        == r_fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+                    && l_type_parameters
+                        .iter()
+                        .map(|x| x.wrap(de))
+                        .collect::<Vec<_>>()
+                        == r_type_parameters
+                            .iter()
+                            .map(|x| x.wrap(de))
+                            .collect::<Vec<_>>()
             }
             (TypeInfo::Ref(l, _sp1), TypeInfo::Ref(r, _sp2)) => {
                 look_up_type_id(*l).wrap(de) == look_up_type_id(*r).wrap(de)
@@ -196,7 +219,8 @@ impl PartialEq for CompileWrapper<'_, TypeInfo> {
                 look_up_type_id(*l0).wrap(de) == look_up_type_id(*r0).wrap(de) && l1 == r1
             }
             (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
-                l_fields.wrap(de) == r_fields.wrap(de)
+                l_fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+                    == r_fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
             }
             _ => false,
         }

@@ -35,24 +35,6 @@ impl PartialEq for CompileWrapper<'_, TypedFunctionParameter> {
     }
 }
 
-impl PartialEq for CompileWrapper<'_, Vec<TypedFunctionParameter>> {
-    fn eq(&self, other: &Self) -> bool {
-        let CompileWrapper {
-            inner: me,
-            declaration_engine: de,
-        } = self;
-        let CompileWrapper { inner: them, .. } = other;
-        if me.len() != them.len() {
-            return false;
-        }
-        me.iter()
-            .map(|elem| elem.wrap(de))
-            .zip(other.inner.iter().map(|elem| elem.wrap(de)))
-            .map(|(left, right)| left == right)
-            .all(|elem| elem)
-    }
-}
-
 impl CopyTypes for TypedFunctionParameter {
     fn copy_types(&mut self, type_mapping: &TypeMapping, de: &DeclarationEngine) {
         self.type_id.update_type(type_mapping, de, &self.type_span);

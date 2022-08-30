@@ -234,7 +234,8 @@ impl PartialEq for CompileWrapper<'_, TypedExpressionVariant> {
                 },
             ) => {
                 l_struct_name == r_struct_name
-                    && l_fields.wrap(de) == r_fields.wrap(de)
+                    && l_fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+                        == r_fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
                     && l_span == r_span
             }
             (TypedExpressionVariant::CodeBlock(l), TypedExpressionVariant::CodeBlock(r)) => {
@@ -274,7 +275,8 @@ impl PartialEq for CompileWrapper<'_, TypedExpressionVariant> {
                     ..
                 },
             ) => {
-                l_registers.wrap(de) == r_registers.wrap(de)
+                l_registers.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+                    == r_registers.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
                     && l_body.clone() == r_body.clone()
                     && l_returns == r_returns
             }
@@ -675,24 +677,6 @@ impl PartialEq for CompileWrapper<'_, TypedAsmRegisterDeclaration> {
             } else {
                 true
             }
-    }
-}
-
-impl PartialEq for CompileWrapper<'_, Vec<TypedAsmRegisterDeclaration>> {
-    fn eq(&self, other: &Self) -> bool {
-        let CompileWrapper {
-            inner: me,
-            declaration_engine: de,
-        } = self;
-        let CompileWrapper { inner: them, .. } = other;
-        if me.len() != them.len() {
-            return false;
-        }
-        me.iter()
-            .map(|elem| elem.wrap(de))
-            .zip(other.inner.iter().map(|elem| elem.wrap(de)))
-            .map(|(left, right)| left == right)
-            .all(|elem| elem)
     }
 }
 
