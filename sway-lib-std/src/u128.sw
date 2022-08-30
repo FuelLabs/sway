@@ -337,7 +337,7 @@ impl Root for U128 {
 }
 
 impl Exponentiate for U128 {
-    pub fn pow(self, exponent: Self) -> Self {
+    fn pow(self, exponent: Self) -> Self {
         let mut s = self;
         let mut exp: U128 = exponent;
         let one: U128 = ~U128::from(0, 1);
@@ -369,7 +369,7 @@ impl Exponentiate for U128 {
 }
 
 impl BinaryLogarithm for U128 {
-    pub fn log2(self) -> Self {
+    fn log2(self) -> Self {
         let zero = ~U128::from(0, 0);
         let one = ~U128::from(0, 1);
         let mut res = zero;

@@ -14,7 +14,7 @@ pub trait From {
 }
 
 impl From for UFP128 {
-    pub fn from(int_part: u64, fract_part: u64) -> UFP128 {
+    fn from(int_part: u64, fract_part: u64) -> UFP128 {
         UFP128{
             value: ~U128::from(int_part, fract_part)
         } 
@@ -49,24 +49,24 @@ impl UFP128 {
 }
 
 impl core::ops::Eq for UFP128 {
-    pub fn eq(self, other: Self) -> bool {
+    fn eq(self, other: Self) -> bool {
         self.value == other.value
     }
 }
 
 impl core::ops::Ord for UFP128 {
-    pub fn gt(self, other: Self) -> bool {
+    fn gt(self, other: Self) -> bool {
         self.value > other.value
     }
 
-    pub fn lt(self, other: Self) -> bool {
+    fn lt(self, other: Self) -> bool {
         self.value < other.value
     }
 }
 
 impl core::ops::Add for UFP128 {
     /// Add a UFP128 to a UFP128. Panics on overflow.
-    pub fn add(self, other: Self) -> Self {
+    fn add(self, other: Self) -> Self {
         UFP128 {
             value: self.value + other.value
         }
@@ -75,7 +75,7 @@ impl core::ops::Add for UFP128 {
 
 impl core::ops::Subtract for UFP128 {
     /// Subtract a UFP128 from a UFP128. Panics of overflow.
-    pub fn subtract(self, other: Self) -> Self {
+    fn subtract(self, other: Self) -> Self {
         // If trying to subtract a larger number, panic.
         assert(!(self.value < other.value));
 
@@ -87,7 +87,7 @@ impl core::ops::Subtract for UFP128 {
 
 impl core::ops::Multiply for UFP128 {
     /// Multiply a UFP128 with a UFP128. Panics of overflow.
-    pub fn multiply(self, other: Self) -> Self {
+    fn multiply(self, other: Self) -> Self {
 
         let base = ~U128::from(1,0);
 
@@ -113,7 +113,7 @@ impl core::ops::Multiply for UFP128 {
 
 impl core::ops::Divide for UFP128 {
     /// Divide a UFP128 by a UFP128. Panics if divisor is zero.
-    pub fn divide(self, divisor: Self) -> Self {
+    fn divide(self, divisor: Self) -> Self {
         let mut s = self;
         let zero = ~UFP128::zero();
         let u128_max = ~U128::max();
@@ -211,7 +211,7 @@ impl Root for UFP128 {
 }
 
 impl Exponentiate for UFP128 {
-    pub fn pow(self, exponent: Self) -> Self {
+    fn pow(self, exponent: Self) -> Self {
         let nominator_pow = self.value.pow(exponent.value);
         let one_u128 = ~U128::from(0, 1);
         let two_u128 = ~U128::from(0, 2);
@@ -234,7 +234,7 @@ impl Exponentiate for UFP128 {
 // }
 
 impl Exponent for UFP128 {
-    pub fn exp(exponent: Self) -> Self {
+    fn exp(exponent: Self) -> Self {
         let one = ~UFP128::from(1, 0);
         let p2 = one / ~UFP128::from(2, 0);
         let p3 = one / ~UFP128::from(6, 0);
