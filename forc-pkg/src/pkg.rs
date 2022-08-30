@@ -9,7 +9,7 @@ use forc_util::{
     print_on_failure, print_on_success, print_on_success_library,
 };
 // Using `fuel_tx` directly instead of `fuel_gql_client` transitively is causing some weird issue.
-// See https://github.com/FuelLabs/sway/issues/2659 
+// See https://github.com/FuelLabs/sway/issues/2659
 use fuel_gql_client::fuel_tx::{Contract, StorageSlot};
 use petgraph::{
     self,
