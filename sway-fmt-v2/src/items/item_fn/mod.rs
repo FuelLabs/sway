@@ -103,9 +103,7 @@ impl Format for FnSignature {
         format_fn_sig(self, &mut fn_sig, &mut temp_formatter)?;
         format_fn_args(self.arguments.get(), &mut fn_args, &mut temp_formatter)?;
 
-        println!("{}", fn_sig);
         let fn_sig_width = fn_sig.chars().count() as usize + 2; // add two for opening brace + space
-        println!("{}", fn_args);
         let fn_args_width = fn_args.chars().count() as usize;
 
         formatter.shape.update_width(fn_sig_width);
