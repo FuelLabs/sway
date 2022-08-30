@@ -5,6 +5,7 @@ library outputs;
 use ::contract_id::ContractId;
 use ::mem::read;
 use ::revert::revert;
+use ::logging::log;
 use ::tx::{
     GTF_CREATE_OUTPUTS_COUNT,
     GTF_CREATE_OUTPUT_AT_INDEX,
@@ -49,9 +50,13 @@ pub enum Output {
 /// Get the type of an output at `index`.
 pub fn output_type(index: u64) -> Output {
     let type = __gtf::<u64>(index, GTF_OUTPUT_TYPE);
+    log(type);
     match type {
         0u8 => {
             Output::Coin
+        },
+        1u8 => {
+            Output::Contract
         },
         2u8 => {
             Output::Message

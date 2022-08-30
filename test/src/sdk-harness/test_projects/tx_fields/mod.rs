@@ -206,14 +206,14 @@ async fn can_get_tx_output_type() {
         .call()
         .await
         .unwrap();
-    assert_eq!(result.value, Output::Coin());
+    assert_eq!(result.value, Output::Contract());
 
     let result = contract_instance
         .get_tx_output_type(1)
         .call()
         .await
         .unwrap();
-    assert_eq!(result.value, Output::Coin());
+    assert_eq!(result.value, Output::Change());
 }
 
 #[tokio::test]
