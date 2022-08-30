@@ -37,7 +37,7 @@ abi TxContractTest {
 
     fn get_tx_output_pointer(index: u64) -> u64;
     fn get_tx_output_type(ptr: u64) -> Output;
-    fn get_tx_id(index: u64) -> Option<b256>;
+    fn get_tx_id() -> b256;
 }
 
 impl TxContractTest for Contract {
@@ -93,7 +93,7 @@ impl TxContractTest for Contract {
     fn get_tx_output_type(ptr: u64) -> Output {
         output_type(ptr)
     }
-    fn get_tx_id(index: u64) -> Option<b256> {
-        input_tx_id(index)
+    fn get_tx_id() -> b256 {
+        tx_id()
     }
 }

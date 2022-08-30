@@ -6,12 +6,12 @@ use ::contract_id::ContractId;
 use ::mem::read;
 use ::revert::revert;
 use ::tx::{
-    tx_type,
-    Transaction,
-    GTF_SCRIPT_OUTPUT_AT_INDEX,
+    GTF_CREATE_OUTPUTS_COUNT,
     GTF_CREATE_OUTPUT_AT_INDEX,
     GTF_SCRIPT_OUTPUTS_COUNT,
-    GTF_CREATE_OUTPUTS_COUNT,
+    GTF_SCRIPT_OUTPUT_AT_INDEX,
+    Transaction,
+    tx_type,
 };
 
 ////////////////////////////////////////

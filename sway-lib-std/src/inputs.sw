@@ -8,12 +8,12 @@ use ::logging::log;
 use ::option::Option;
 use ::revert::revert;
 use ::tx::{
-    tx_type,
-    Transaction,
-    GTF_SCRIPT_INPUT_AT_INDEX,
+    GTF_CREATE_INPUTS_COUNT,
     GTF_CREATE_INPUT_AT_INDEX,
     GTF_SCRIPT_INPUTS_COUNT,
-    GTF_CREATE_INPUTS_COUNT,
+    GTF_SCRIPT_INPUT_AT_INDEX,
+    Transaction,
+    tx_type,
 };
 
 const GTF_INPUT_TYPE = 0x101;
@@ -195,7 +195,6 @@ pub fn input_count() -> u8 {
         Transaction::Script => {
             log(17);
             __gtf::<u8>(0, GTF_SCRIPT_INPUTS_COUNT)
-
         },
         Transaction::Create => {
             log(19);

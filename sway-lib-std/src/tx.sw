@@ -45,6 +45,8 @@ const GTF_CREATE_WITNESS_AT_INDEX = 0x01D;
 const GTF_WITNESS_DATA_LENGTH = 0x301;
 const GTF_WITNESS_DATA = 0x302;
 
+const TX_ID_OFFSET = 0;
+
 pub enum Transaction {
     Script: (),
     Create: (),
@@ -79,7 +81,6 @@ pub fn tx_gas_price() -> u64 {
             __gtf::<u64>(0, GTF_CREATE_GAS_PRICE)
         },
     }
-
 }
 
 /// Get the transaction-script gas limit for either tx type
@@ -232,4 +233,9 @@ pub fn tx_script_data<T>() -> T {
 /// Bytecode will be padded to next whole word.
 pub fn tx_script_bytecode<T>() -> T {
     read::<T>(tx_script_start_pointer())
+}
+
+/// Get the id of the current transaction.
+pub fn tx_id() -> b256 {
+    read(TX_ID_OFFSET)
 }
