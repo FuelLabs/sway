@@ -112,6 +112,7 @@ impl Value {
                 | Instruction::ConditionalBranch { .. }
                 | Instruction::Ret(..) => true,
                 Instruction::Phi(alts) => alts.is_empty(),
+                Instruction::AsmBlock(asm_block, ..) => asm_block.is_diverging(context),
                 _ => false,
             },
             ValueDatum::Argument(..) | ValueDatum::Constant(..) => false,

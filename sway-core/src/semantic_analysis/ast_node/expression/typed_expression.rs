@@ -1013,17 +1013,25 @@ impl TypedExpression {
             .clone()
             .map(|x| x.1)
             .unwrap_or_else(|| asm.whole_block_span.clone());
-        let return_type = check!(
-            ctx.resolve_type_with_self(
-                insert_type(asm.return_type.clone()),
-                &asm_span,
-                EnforceTypeArguments::No,
-                None
-            ),
-            insert_type(TypeInfo::ErrorRecovery),
-            warnings,
-            errors,
-        );
+        let diverges = asm
+            .body
+            .iter()
+            .any(|asm_op| matches!(asm_op.op_name.as_str(), "rvrt" | "ret"));
+        let return_type = if diverges {
+            insert_type(TypeInfo::Unknown)
+        } else {
+            check!(
+                ctx.resolve_type_with_self(
+                    insert_type(asm.return_type.clone()),
+                    &asm_span,
+                    EnforceTypeArguments::No,
+                    None
+                ),
+                insert_type(TypeInfo::ErrorRecovery),
+                warnings,
+                errors,
+            )
+        };
         // type check the initializers
         let typed_registers = asm
             .registers

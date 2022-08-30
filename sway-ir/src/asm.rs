@@ -16,15 +16,17 @@
 
 use sway_types::ident::Ident;
 
-use crate::{context::Context, irtype::Type, metadata::MetadataIndex, value::Value};
+use crate::{
+    context::Context, irtype::Type, metadata::MetadataIndex, pretty::DebugWithContext, value::Value,
+};
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
 /// [`Context`].
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct AsmBlock(pub generational_arena::Index);
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
+pub struct AsmBlock(#[in_context(asm_blocks)] pub generational_arena::Index);
 
 #[doc(hidden)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, DebugWithContext)]
 pub struct AsmBlockContent {
     pub args_names: Vec<Ident>,
     pub body: Vec<AsmInstruction>,
@@ -68,5 +70,13 @@ impl AsmBlock {
     pub fn get_type(&self, context: &Context) -> Type {
         // The type is a named register, which will be a u64.
         context.asm_blocks[self.0].return_type
+    }
+
+    pub fn is_diverging(&self, context: &Context) -> bool {
+        let content = &context.asm_blocks[self.0];
+        content
+            .body
+            .iter()
+            .any(|asm_instruction| matches!(asm_instruction.name.as_str(), "rvrt" | "ret"))
     }
 }
