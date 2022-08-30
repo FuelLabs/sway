@@ -17,7 +17,8 @@ impl Format for ExprTupleDescriptor {
     ) -> Result<(), FormatterError> {
         match self {
             Self::Nil => {
-                write!(formatted_code, "()")?;
+                Self::open_parenthesis(formatted_code, formatter)?;
+                Self::close_parenthesis(formatted_code, formatter)?;
             }
             Self::Cons {
                 head,
