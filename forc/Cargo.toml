@@ -25,9 +25,6 @@ forc-pkg = { version = "0.21.0", path = "../forc-pkg" }
 forc-util = { version = "0.21.0", path = "../forc-util" }
 fs_extra = "1.2"
 fuel-asm = "0.8"
-fuel-crypto = "0.6"
-fuel-tx = "0.18"
-fuel-vm = "0.15"
 hex = "0.4.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.73"
