@@ -106,7 +106,7 @@ async fn can_get_script_data_length() {
 #[tokio::test]
 async fn can_get_inputs_count() {
     let (contract_instance, _, _) = get_contracts().await;
-    let inputs_count = 0;
+    let inputs_count = 2;
 
     let result = contract_instance
         .get_tx_inputs_count()
@@ -119,7 +119,7 @@ async fn can_get_inputs_count() {
 #[tokio::test]
 async fn can_get_outputs_count() {
     let (contract_instance, _, _) = get_contracts().await;
-    let outputs_count = 0;
+    let outputs_count = 2;
 
     let result = contract_instance
         .get_tx_outputs_count()
@@ -132,7 +132,7 @@ async fn can_get_outputs_count() {
 #[tokio::test]
 async fn can_get_witnesses_count() {
     let (contract_instance, _, _) = get_contracts().await;
-    let witnesses_count = 0;
+    let witnesses_count = 1;
 
     let result = contract_instance
         .get_tx_witnesses_count()
@@ -192,7 +192,7 @@ async fn can_get_input_type() {
         .call()
         .await
         .unwrap();
-    assert_eq!(result.value, Input::Coin());
+    assert_eq!(result.value, Input::Contract());
 
     let result = contract_instance
         .get_input_type(1)
