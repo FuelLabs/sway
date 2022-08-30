@@ -105,6 +105,19 @@ impl Value {
         }
     }
 
+    pub fn is_diverging(&self, context: &Context) -> bool {
+        match &context.values[self.0].value {
+            ValueDatum::Instruction(ins) => match ins {
+                Instruction::Branch(..)
+                | Instruction::ConditionalBranch { .. }
+                | Instruction::Ret(..) => true,
+                Instruction::Phi(alts) => alts.is_empty(),
+                _ => false,
+            },
+            ValueDatum::Argument(..) | ValueDatum::Constant(..) => false,
+        }
+    }
+
     /// If this value is an instruction and if any of its parameters is `old_val` then replace them
     /// with `new_val`.
     pub fn replace_instruction_value(&self, context: &mut Context, old_val: Value, new_val: Value) {
