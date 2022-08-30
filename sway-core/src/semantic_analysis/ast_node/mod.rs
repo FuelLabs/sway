@@ -550,7 +550,9 @@ impl TypedAstNode {
                     r#type: node.type_info().to_string(),
                 };
                 assert_or_warn!(
-                    node.type_info().is_unit() || node.type_info() == TypeInfo::ErrorRecovery,
+                    node.type_info().is_unit()
+                        || node.type_info().wrap(ctx.declaration_engine)
+                            == TypeInfo::ErrorRecovery.wrap(ctx.declaration_engine),
                     warnings,
                     node.span.clone(),
                     warning

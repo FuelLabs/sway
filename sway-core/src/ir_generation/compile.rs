@@ -20,21 +20,14 @@ pub(super) fn compile_script(
     context: &mut Context,
     main_function: TypedFunctionDeclaration,
     namespace: &namespace::Module,
-    declaration_engine: &declaration_engine::DeclarationEngine,
+    de: &declaration_engine::DeclarationEngine,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(context, &mut md_mgr, module, namespace)?;
-    compile_declarations(
-        context,
-        &mut md_mgr,
-        module,
-        namespace,
-        declaration_engine,
-        declarations,
-    )?;
+    compile_constants(context, &mut md_mgr, module, namespace, de)?;
+    compile_declarations(context, &mut md_mgr, module, namespace, de, declarations)?;
     compile_function(context, &mut md_mgr, module, main_function)?;
 
     Ok(module)
@@ -44,21 +37,14 @@ pub(super) fn compile_contract(
     context: &mut Context,
     abi_entries: Vec<TypedFunctionDeclaration>,
     namespace: &namespace::Module,
-    declaration_engine: &declaration_engine::DeclarationEngine,
+    de: &declaration_engine::DeclarationEngine,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(context, &mut md_mgr, module, namespace)?;
-    compile_declarations(
-        context,
-        &mut md_mgr,
-        module,
-        namespace,
-        declaration_engine,
-        declarations,
-    )?;
+    compile_constants(context, &mut md_mgr, module, namespace, de)?;
+    compile_declarations(context, &mut md_mgr, module, namespace, de, declarations)?;
     for decl in abi_entries {
         compile_abi_method(context, &mut md_mgr, module, decl)?;
     }
@@ -71,6 +57,7 @@ pub(crate) fn compile_constants(
     md_mgr: &mut MetadataManager,
     module: Module,
     module_ns: &namespace::Module,
+    de: &declaration_engine::DeclarationEngine,
 ) -> Result<(), CompileError> {
     for decl_name in module_ns.get_all_declared_symbols() {
         compile_const_decl(
@@ -80,13 +67,14 @@ pub(crate) fn compile_constants(
                 module,
                 module_ns: Some(module_ns),
                 lookup: compile_const_decl,
+                declaration_engine: de,
             },
             decl_name,
         )?;
     }
 
     for submodule_ns in module_ns.submodules().values() {
-        compile_constants(context, md_mgr, module, submodule_ns)?;
+        compile_constants(context, md_mgr, module, submodule_ns, de)?;
     }
 
     Ok(())
@@ -106,7 +94,7 @@ fn compile_declarations(
     md_mgr: &mut MetadataManager,
     module: Module,
     namespace: &namespace::Module,
-    _declaration_engine: &declaration_engine::DeclarationEngine,
+    de: &declaration_engine::DeclarationEngine,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<(), CompileError> {
     for declaration in declarations {
@@ -119,6 +107,7 @@ fn compile_declarations(
                         module,
                         module_ns: Some(namespace),
                         lookup: compile_const_decl,
+                        declaration_engine: de,
                     },
                     &decl.name,
                 )?;

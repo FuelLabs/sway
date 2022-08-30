@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine,
     error::CompileError,
     metadata::MetadataManager,
     semantic_analysis::{
@@ -6,6 +7,7 @@ use crate::{
         TypedConstantDeclaration, TypedDeclaration, TypedExpression, TypedExpressionVariant,
         TypedStructExpressionField,
     },
+    types::ToCompileWrapper,
 };
 
 use super::{convert::convert_literal_to_constant, types::*};
@@ -26,6 +28,7 @@ pub(crate) struct LookupEnv<'a> {
     pub(crate) md_mgr: &'a mut MetadataManager,
     pub(crate) module: Module,
     pub(crate) module_ns: Option<&'a namespace::Module>,
+    pub(crate) declaration_engine: &'a DeclarationEngine,
     pub(crate) lookup: fn(&mut LookupEnv, &Ident) -> Result<Option<Value>, CompileError>,
 }
 
@@ -56,6 +59,7 @@ pub(crate) fn compile_const_decl(
                     env.md_mgr,
                     env.module,
                     env.module_ns,
+                    env.declaration_engine,
                     value,
                 )?;
                 env.module
@@ -74,12 +78,14 @@ pub(super) fn compile_constant_expression(
     md_mgr: &mut MetadataManager,
     module: Module,
     module_ns: Option<&namespace::Module>,
+    de: &DeclarationEngine,
     const_expr: &TypedExpression,
 ) -> Result<Value, CompileError> {
     let span_id_idx = md_mgr.span_to_md(context, &const_expr.span);
 
-    let constant_evaluated =
-        compile_constant_expression_to_constant(context, md_mgr, module, module_ns, const_expr)?;
+    let constant_evaluated = compile_constant_expression_to_constant(
+        context, md_mgr, module, module_ns, de, const_expr,
+    )?;
     Ok(Value::new_constant(context, constant_evaluated).add_metadatum(context, span_id_idx))
 }
 
@@ -88,6 +94,7 @@ pub(crate) fn compile_constant_expression_to_constant(
     md_mgr: &mut MetadataManager,
     module: Module,
     module_ns: Option<&namespace::Module>,
+    de: &DeclarationEngine,
     const_expr: &TypedExpression,
 ) -> Result<Constant, CompileError> {
     let lookup = &mut LookupEnv {
@@ -95,6 +102,7 @@ pub(crate) fn compile_constant_expression_to_constant(
         md_mgr,
         module,
         module_ns,
+        declaration_engine: de,
         lookup: compile_const_decl,
     };
 
@@ -262,8 +270,9 @@ fn const_eval_typed_expr(
             let mut element_iter = element_typs.iter();
             let element_type_id = *element_iter.next().unwrap();
             if !element_iter.all(|tid| {
-                crate::type_system::look_up_type_id(*tid)
+                crate::type_system::look_up_type_id(*tid).wrap(lookup.declaration_engine)
                     == crate::type_system::look_up_type_id(element_type_id)
+                        .wrap(lookup.declaration_engine)
             }) {
                 // This shouldn't happen if the type checker did its job.
                 return None;

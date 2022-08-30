@@ -42,7 +42,7 @@ impl TypedProgram {
         let mod_span = root.tree.span.clone();
         let mod_res = TypedModule::type_check(ctx, root);
         mod_res.flat_map(|root| {
-            let kind_res = Self::validate_root(&root, kind.clone(), mod_span, declaration_engine);
+            let kind_res = Self::validate_root(&root, kind.clone(), mod_span, &declaration_engine);
             kind_res.map(|kind| Self {
                 kind,
                 root,
