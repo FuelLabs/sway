@@ -404,11 +404,12 @@ impl TypedIntrinsicFunctionKind {
                     });
                     return err(warnings, errors);
                 }
-                let ctx = ctx
+                let mut ctx = ctx
+                    .by_ref()
                     .with_help_text("")
                     .with_type_annotation(insert_type(TypeInfo::Unknown));
                 let exp = check!(
-                    TypedExpression::type_check(ctx, arguments[0].clone()),
+                    TypedExpression::type_check(ctx.by_ref(), arguments[0].clone()),
                     return err(warnings, errors),
                     warnings,
                     errors

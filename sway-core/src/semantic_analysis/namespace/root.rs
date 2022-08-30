@@ -73,6 +73,7 @@ impl Root {
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
         mod_path: &Path,
+        de: &DeclarationEngine,
     ) -> CompileResult<TypeId> {
         type_id.replace_self_type(self_type);
         self.resolve_type(
@@ -81,6 +82,7 @@ impl Root {
             enforce_type_arguments,
             type_info_prefix,
             mod_path,
+            de,
         )
     }
 
@@ -91,6 +93,7 @@ impl Root {
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
         mod_path: &Path,
+        de: &DeclarationEngine,
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -116,7 +119,8 @@ impl Root {
                                 enforce_type_arguments,
                                 span,
                                 self,
-                                mod_path
+                                mod_path,
+                                de
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -132,7 +136,8 @@ impl Root {
                                 enforce_type_arguments,
                                 span,
                                 self,
-                                mod_path
+                                mod_path,
+                                de
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -155,7 +160,7 @@ impl Root {
             TypeInfo::Ref(id, _) => id,
             TypeInfo::Array(type_id, n, initial_type_id) => {
                 let new_type_id = check!(
-                    self.resolve_type(type_id, span, enforce_type_arguments, None, mod_path),
+                    self.resolve_type(type_id, span, enforce_type_arguments, None, mod_path, de),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
                     errors
@@ -170,7 +175,8 @@ impl Root {
                             span,
                             enforce_type_arguments,
                             None,
-                            mod_path
+                            mod_path,
+                            de
                         ),
                         insert_type(TypeInfo::ErrorRecovery),
                         warnings,
@@ -200,7 +206,7 @@ impl Root {
         method_name: &Ident,
         self_type: TypeId,
         args_buf: &VecDeque<TypedExpression>,
-        declaration_engine: &DeclarationEngine,
+        de: &DeclarationEngine,
     ) -> CompileResult<TypedFunctionDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -214,7 +220,7 @@ impl Root {
         );
 
         // grab the local methods from the local module
-        let local_methods = local_module.get_methods_for_type(type_id, declaration_engine);
+        let local_methods = local_module.get_methods_for_type(type_id, de);
 
         type_id.replace_self_type(self_type);
 
@@ -225,7 +231,8 @@ impl Root {
                 &method_name.span(),
                 EnforceTypeArguments::No,
                 None,
-                method_prefix
+                method_prefix,
+                de
             ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
@@ -241,7 +248,7 @@ impl Root {
         );
 
         // grab the methods from where the type is declared
-        let mut type_methods = type_module.get_methods_for_type(type_id, declaration_engine);
+        let mut type_methods = type_module.get_methods_for_type(type_id, de);
 
         let mut methods = local_methods;
         methods.append(&mut type_methods);
@@ -254,8 +261,8 @@ impl Root {
             None => {
                 if args_buf
                     .get(0)
-                    .map(|x| look_up_type_id(x.return_type).wrap(declaration_engine))
-                    != Some(TypeInfo::ErrorRecovery.wrap(declaration_engine))
+                    .map(|x| look_up_type_id(x.return_type).wrap(de))
+                    != Some(TypeInfo::ErrorRecovery.wrap(de))
                 {
                     errors.push(CompileError::MethodNotFound {
                         method_name: method_name.clone(),

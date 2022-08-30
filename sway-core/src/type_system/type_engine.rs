@@ -110,7 +110,8 @@ impl TypeEngine {
                             &type_argument.span,
                             enforce_type_arguments,
                             None,
-                            mod_path
+                            mod_path,
+                            de
                         ),
                         insert_type(TypeInfo::ErrorRecovery),
                         warnings,

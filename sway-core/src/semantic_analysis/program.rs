@@ -263,6 +263,7 @@ impl TypedProgram {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
+        de: &DeclarationEngine,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -277,7 +278,7 @@ impl TypedProgram {
                 match storage_decl {
                     Some(TypedDeclaration::StorageDeclaration(decl)) => {
                         let mut storage_slots = check!(
-                            decl.get_initialized_storage_slots(context, md_mgr, module),
+                            decl.get_initialized_storage_slots(context, md_mgr, module, de),
                             return err(warnings, errors),
                             warnings,
                             errors,

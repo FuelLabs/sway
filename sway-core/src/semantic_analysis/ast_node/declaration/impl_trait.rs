@@ -640,8 +640,9 @@ fn check_for_unconstrained_type_parameters(
                 x.span(),
             )
         }));
+    let type_info = look_up_type_id(self_type);
     let generics_in_use = check!(
-        look_up_type_id(self_type).extract_nested_generics(ctx.declaration_engine, self_type_span),
+        type_info.extract_nested_generics(ctx.declaration_engine, self_type_span),
         HashSet::new(),
         warnings,
         errors

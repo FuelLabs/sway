@@ -47,7 +47,7 @@ impl TypedMatchBranch {
 
         // calculate the requirements map and the declarations map
         let (match_req_map, match_decl_map) = check!(
-            matcher(typed_value, typed_scrutinee, ctx.namespace),
+            matcher(ctx.by_ref(), typed_value, typed_scrutinee),
             return err(warnings, errors),
             warnings,
             errors

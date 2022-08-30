@@ -28,7 +28,7 @@ pub(super) fn compile_script(
 
     compile_constants(context, &mut md_mgr, module, namespace, de)?;
     compile_declarations(context, &mut md_mgr, module, namespace, de, declarations)?;
-    compile_function(context, &mut md_mgr, module, main_function)?;
+    compile_function(context, &mut md_mgr, module, de, main_function)?;
 
     Ok(module)
 }
@@ -46,7 +46,7 @@ pub(super) fn compile_contract(
     compile_constants(context, &mut md_mgr, module, namespace, de)?;
     compile_declarations(context, &mut md_mgr, module, namespace, de, declarations)?;
     for decl in abi_entries {
-        compile_abi_method(context, &mut md_mgr, module, decl)?;
+        compile_abi_method(context, &mut md_mgr, module, de, decl)?;
     }
 
     Ok(module)
@@ -148,6 +148,7 @@ pub(super) fn compile_function(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
+    de: &declaration_engine::DeclarationEngine,
     ast_fn_decl: TypedFunctionDeclaration,
 ) -> Result<Option<Function>, CompileError> {
     // Currently monomorphisation of generics is inlined into main() and the functions with generic
@@ -161,7 +162,7 @@ pub(super) fn compile_function(
             .map(|param| convert_fn_param(context, param))
             .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
-        compile_fn_with_args(context, md_mgr, module, ast_fn_decl, args, None).map(&Some)
+        compile_fn_with_args(context, md_mgr, module, de, ast_fn_decl, args, None).map(&Some)
     }
 }
 
@@ -186,6 +187,7 @@ fn compile_fn_with_args(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
+    de: &declaration_engine::DeclarationEngine,
     ast_fn_decl: TypedFunctionDeclaration,
     args: Vec<(String, Type, Span)>,
     selector: Option<[u8; 4]>,
@@ -224,7 +226,7 @@ fn compile_fn_with_args(
     // may remain within the function scope.
     let mut compiler = FnCompiler::new(context, module, func);
 
-    let mut ret_val = compiler.compile_code_block(context, md_mgr, body)?;
+    let mut ret_val = compiler.compile_code_block(context, md_mgr, de, body)?;
 
     // Special case: if the return type is unit but the return value type is not, then we have an
     // implicit return from the last expression in the code block having a semi-colon.  This isn't
@@ -291,6 +293,7 @@ fn compile_abi_method(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
+    de: &declaration_engine::DeclarationEngine,
     ast_fn_decl: TypedFunctionDeclaration,
 ) -> Result<Function, CompileError> {
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
@@ -323,5 +326,13 @@ fn compile_abi_method(
         })
         .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
-    compile_fn_with_args(context, md_mgr, module, ast_fn_decl, args, Some(selector))
+    compile_fn_with_args(
+        context,
+        md_mgr,
+        module,
+        de,
+        ast_fn_decl,
+        args,
+        Some(selector),
+    )
 }

@@ -213,6 +213,7 @@ impl<'ns, 'de> TypeCheckContext<'ns, 'de> {
             call_site_span,
             &self.namespace.root,
             &self.namespace.mod_path,
+            &self.declaration_engine,
         )
     }
 
@@ -231,6 +232,7 @@ impl<'ns, 'de> TypeCheckContext<'ns, 'de> {
             span,
             enforce_type_args,
             type_info_prefix,
+            &self.declaration_engine,
         )
     }
 
@@ -241,8 +243,12 @@ impl<'ns, 'de> TypeCheckContext<'ns, 'de> {
         span: &Span,
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
-        self.namespace
-            .resolve_type_without_self(type_id, span, type_info_prefix)
+        self.namespace.resolve_type_without_self(
+            type_id,
+            span,
+            type_info_prefix,
+            &self.declaration_engine,
+        )
     }
 
     /// Short-hand around `type_system::unify_with_self`, where the `TypeCheckContext` provides the
@@ -255,6 +261,7 @@ impl<'ns, 'de> TypeCheckContext<'ns, 'de> {
         unify_with_self(
             ty,
             self.type_annotation(),
+            &self.declaration_engine,
             self.self_type(),
             span,
             self.help_text(),

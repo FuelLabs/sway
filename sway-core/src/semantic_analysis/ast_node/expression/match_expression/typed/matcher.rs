@@ -5,8 +5,7 @@ use crate::{
             instantiate_struct_field_access, instantiate_tuple_index_access,
             instantiate_unsafe_downcast,
         },
-        namespace::Namespace,
-        IsConstant, TypedEnumVariant, TypedExpression, TypedExpressionVariant,
+        IsConstant, TypeCheckContext, TypedEnumVariant, TypedExpression, TypedExpressionVariant,
     },
     type_system::unify,
     CompileResult, Ident, Literal,
@@ -64,9 +63,9 @@ pub(crate) type MatcherResult = (MatchReqMap, MatchDeclMap);
 /// ]
 /// ```
 pub(crate) fn matcher(
+    ctx: TypeCheckContext,
     exp: &TypedExpression,
     scrutinee: TypedScrutinee,
-    namespace: &mut Namespace,
 ) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -75,7 +74,8 @@ pub(crate) fn matcher(
         type_id,
         span,
     } = scrutinee;
-    let (mut new_warnings, new_errors) = unify(type_id, exp.return_type, &span, "");
+    let (mut new_warnings, new_errors) =
+        unify(type_id, exp.return_type, &ctx.declaration_engine, &span, "");
     warnings.append(&mut new_warnings);
     errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
     if !errors.is_empty() {
@@ -85,11 +85,11 @@ pub(crate) fn matcher(
         TypedScrutineeVariant::CatchAll => ok((vec![], vec![]), warnings, errors),
         TypedScrutineeVariant::Literal(value) => match_literal(exp, value, span),
         TypedScrutineeVariant::Variable(name) => match_variable(exp, name, span),
-        TypedScrutineeVariant::StructScrutinee(fields) => match_struct(exp, fields, namespace),
+        TypedScrutineeVariant::StructScrutinee(fields) => match_struct(ctx, exp, fields),
         TypedScrutineeVariant::EnumScrutinee { value, variant } => {
-            match_enum(exp, variant, *value, span, namespace)
+            match_enum(ctx, exp, variant, *value, span)
         }
-        TypedScrutineeVariant::Tuple(elems) => match_tuple(exp, elems, span, namespace),
+        TypedScrutineeVariant::Tuple(elems) => match_tuple(ctx, exp, elems, span),
     }
 }
 
@@ -122,9 +122,9 @@ fn match_variable(
 }
 
 fn match_struct(
+    mut ctx: TypeCheckContext,
     exp: &TypedExpression,
     fields: Vec<TypedStructScrutineeField>,
-    namespace: &mut Namespace,
 ) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -150,7 +150,7 @@ fn match_struct(
             // or if the scrutinee has a more complex agenda
             Some(scrutinee) => {
                 let (mut new_match_req_map, mut new_match_decl_map) = check!(
-                    matcher(&subfield, scrutinee, namespace),
+                    matcher(ctx.by_ref(), &subfield, scrutinee),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -165,17 +165,17 @@ fn match_struct(
 }
 
 fn match_enum(
+    ctx: TypeCheckContext,
     exp: &TypedExpression,
     variant: TypedEnumVariant,
     scrutinee: TypedScrutinee,
     span: Span,
-    namespace: &mut Namespace,
 ) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let (mut match_req_map, unsafe_downcast) = instantiate_unsafe_downcast(exp, variant, span);
     let (mut new_match_req_map, match_decl_map) = check!(
-        matcher(&unsafe_downcast, scrutinee, namespace),
+        matcher(ctx, &unsafe_downcast, scrutinee),
         return err(warnings, errors),
         warnings,
         errors
@@ -185,10 +185,10 @@ fn match_enum(
 }
 
 fn match_tuple(
+    mut ctx: TypeCheckContext,
     exp: &TypedExpression,
     elems: Vec<TypedScrutinee>,
     span: Span,
-    namespace: &mut Namespace,
 ) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -202,7 +202,7 @@ fn match_tuple(
             errors
         );
         let (mut new_match_req_map, mut new_match_decl_map) = check!(
-            matcher(&tuple_index_access, elem, namespace),
+            matcher(ctx.by_ref(), &tuple_index_access, elem),
             return err(warnings, errors),
             warnings,
             errors

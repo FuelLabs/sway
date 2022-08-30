@@ -106,6 +106,7 @@ impl Namespace {
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
+        de: &DeclarationEngine,
     ) -> CompileResult<TypeId> {
         self.root.resolve_type_with_self(
             type_id,
@@ -114,6 +115,7 @@ impl Namespace {
             enforce_type_arguments,
             type_info_prefix,
             &self.mod_path,
+            de,
         )
     }
 
@@ -123,6 +125,7 @@ impl Namespace {
         type_id: TypeId,
         span: &Span,
         type_info_prefix: Option<&Path>,
+        de: &DeclarationEngine,
     ) -> CompileResult<TypeId> {
         self.root.resolve_type(
             type_id,
@@ -130,6 +133,7 @@ impl Namespace {
             EnforceTypeArguments::Yes,
             type_info_prefix,
             &self.mod_path,
+            de,
         )
     }
 

@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine,
     error::*,
     ir_generation::{
         const_eval::compile_constant_expression_to_constant, storage::serialize_to_storage_slots,
@@ -165,6 +166,7 @@ impl TypedStorageDeclaration {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
+        de: &DeclarationEngine,
     ) -> CompileResult<Vec<StorageSlot>> {
         let mut errors = vec![];
         let storage_slots = self
@@ -172,7 +174,7 @@ impl TypedStorageDeclaration {
             .iter()
             .enumerate()
             .map(|(i, f)| {
-                f.get_initialized_storage_slots(context, md_mgr, module, &StateIndex::new(i))
+                f.get_initialized_storage_slots(context, md_mgr, module, de, &StateIndex::new(i))
             })
             .filter_map(|s| s.map_err(|e| errors.push(e)).ok())
             .flatten()
@@ -239,9 +241,17 @@ impl TypedStorageField {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
+        de: &DeclarationEngine,
         ix: &StateIndex,
     ) -> Result<Vec<StorageSlot>, CompileError> {
-        compile_constant_expression_to_constant(context, md_mgr, module, None, &self.initializer)
-            .map(|constant| serialize_to_storage_slots(&constant, context, ix, &constant.ty, &[]))
+        compile_constant_expression_to_constant(
+            context,
+            md_mgr,
+            module,
+            None,
+            de,
+            &self.initializer,
+        )
+        .map(|constant| serialize_to_storage_slots(&constant, context, ix, &constant.ty, &[]))
     }
 }

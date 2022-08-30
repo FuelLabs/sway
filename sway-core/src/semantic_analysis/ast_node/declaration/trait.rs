@@ -63,7 +63,11 @@ impl TypedTraitDeclaration {
 
         // type check the interface surface
         let interface_surface = check!(
-            type_check_interface_surface(trait_decl.interface_surface.to_vec(), ctx.namespace),
+            type_check_interface_surface(
+                trait_decl.interface_surface.to_vec(),
+                ctx.namespace,
+                ctx.declaration_engine
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -75,7 +79,11 @@ impl TypedTraitDeclaration {
 
         // Recursively handle supertraits: make their interfaces and methods available to this trait
         check!(
-            handle_supertraits(&trait_decl.supertraits, ctx.namespace),
+            handle_supertraits(
+                &trait_decl.supertraits,
+                ctx.namespace,
+                ctx.declaration_engine
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -119,6 +127,7 @@ impl TypedTraitDeclaration {
 fn handle_supertraits(
     supertraits: &[Supertrait],
     trait_namespace: &mut Namespace,
+    de: &DeclarationEngine,
 ) -> CompileResult<()> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
@@ -147,7 +156,7 @@ fn handle_supertraits(
 
                 // insert dummy versions of the methods of all of the supertraits
                 let dummy_funcs = check!(
-                    convert_trait_methods_to_dummy_funcs(methods, trait_namespace),
+                    convert_trait_methods_to_dummy_funcs(methods, trait_namespace, de),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -161,7 +170,7 @@ fn handle_supertraits(
                 // Recurse to insert dummy versions of interfaces and methods of the *super*
                 // supertraits
                 check!(
-                    handle_supertraits(supertraits, trait_namespace),
+                    handle_supertraits(supertraits, trait_namespace, de),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -186,6 +195,7 @@ fn handle_supertraits(
 fn convert_trait_methods_to_dummy_funcs(
     methods: &[FunctionDeclaration],
     trait_namespace: &mut Namespace,
+    de: &DeclarationEngine,
 ) -> CompileResult<Vec<TypedFunctionDeclaration>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -223,7 +233,8 @@ fn convert_trait_methods_to_dummy_funcs(
                                         insert_type(TypeInfo::SelfType),
                                         type_span,
                                         EnforceTypeArguments::Yes,
-                                        None
+                                        None,
+                                        de
                                     ),
                                     insert_type(TypeInfo::ErrorRecovery),
                                     warnings,
@@ -241,7 +252,8 @@ fn convert_trait_methods_to_dummy_funcs(
                             insert_type(TypeInfo::SelfType),
                             return_type_span,
                             EnforceTypeArguments::Yes,
-                            None
+                            None,
+                            de
                         ),
                         insert_type(TypeInfo::ErrorRecovery),
                         warnings,

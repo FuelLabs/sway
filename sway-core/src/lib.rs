@@ -276,6 +276,7 @@ pub fn parsed_to_ast(
         &mut md_mgr,
         module,
         &typed_program.root.namespace,
+        &typed_program.declaration_engine,
     ) {
         Ok(()) => (),
         Err(e) => {
@@ -293,6 +294,7 @@ pub fn parsed_to_ast(
         &mut ctx,
         &mut md_mgr,
         module,
+        &typed_program.declaration_engine,
     );
     warnings.extend(new_warnings);
     errors.extend(new_errors);

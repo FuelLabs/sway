@@ -108,14 +108,14 @@ impl TypedMatchExpression {
             typed_if_exp = Some(match (typed_if_exp.clone(), conditional) {
                 (None, None) => result,
                 (None, Some(conditional)) => {
+                    let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
                     check!(
                         instantiate_if_expression(
+                            ctx,
                             conditional,
                             result.clone(),
                             Some(result), // TODO: this is a really bad hack and we should not do this
                             result_span,
-                            self.return_type_id, // TODO: figure out if this argument matters or not
-                            ctx.self_type()
                         ),
                         continue,
                         warnings,
@@ -129,14 +129,14 @@ impl TypedMatchExpression {
                         is_constant: IsConstant::No,
                         span: result_span.clone(),
                     };
+                    let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
                     check!(
                         instantiate_if_expression(
+                            ctx,
                             conditional,
                             result,
                             Some(prev_if_exp),
                             result_span,
-                            self.return_type_id,
-                            ctx.self_type()
                         ),
                         continue,
                         warnings,
@@ -144,14 +144,14 @@ impl TypedMatchExpression {
                     )
                 }
                 (Some(prev_if_exp), Some(conditional)) => {
+                    let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
                     check!(
                         instantiate_if_expression(
+                            ctx,
                             conditional,
                             result,
                             Some(prev_if_exp),
                             result_span,
-                            self.return_type_id,
-                            ctx.self_type()
                         ),
                         continue,
                         warnings,

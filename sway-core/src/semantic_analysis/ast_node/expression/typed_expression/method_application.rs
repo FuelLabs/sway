@@ -348,7 +348,8 @@ pub(crate) fn resolve_method_name(
                     &type_info_prefix,
                     method_name,
                     ctx.self_type(),
-                    &arguments
+                    &arguments,
+                    &ctx.declaration_engine
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -372,7 +373,8 @@ pub(crate) fn resolve_method_name(
                     &module_path,
                     &call_path.suffix,
                     ctx.self_type(),
-                    &arguments
+                    &arguments,
+                    &ctx.declaration_engine
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -396,7 +398,8 @@ pub(crate) fn resolve_method_name(
                     &module_path,
                     method_name,
                     ctx.self_type(),
-                    &arguments
+                    &arguments,
+                    &ctx.declaration_engine
                 ),
                 return err(warnings, errors),
                 warnings,

@@ -298,10 +298,13 @@ impl TypedAstNode {
                                 warnings,
                                 errors
                             );
-                            let mut ctx = ctx.with_type_annotation(type_ascription).with_help_text(
-                                "Variable declaration's type annotation does not match up \
+                            let mut ctx = ctx
+                                .by_ref()
+                                .with_type_annotation(type_ascription)
+                                .with_help_text(
+                                    "Variable declaration's type annotation does not match up \
                                     with the assigned expression's type.",
-                            );
+                                );
                             let result = TypedExpression::type_check(ctx.by_ref(), body);
                             let body =
                                 check!(result, error_recovery_expr(name.span()), warnings, errors);
@@ -354,7 +357,9 @@ impl TypedAstNode {
                             decl
                         }
                         Declaration::FunctionDeclaration(fn_decl) => {
-                            let mut ctx = ctx.with_type_annotation(insert_type(TypeInfo::Unknown));
+                            let mut ctx = ctx
+                                .by_ref()
+                                .with_type_annotation(insert_type(TypeInfo::Unknown));
                             let fn_decl = check!(
                                 TypedFunctionDeclaration::type_check(ctx.by_ref(), fn_decl.clone()),
                                 error_recovery_function_declaration(fn_decl),
@@ -487,6 +492,7 @@ impl TypedAstNode {
                 }
                 AstNodeContent::Expression(expr) => {
                     let ctx = ctx
+                        .by_ref()
                         .with_type_annotation(insert_type(TypeInfo::Unknown))
                         .with_help_text("");
                     let inner = check!(
@@ -499,6 +505,7 @@ impl TypedAstNode {
                 }
                 AstNodeContent::ReturnStatement(ReturnStatement { expr }) => {
                     let ctx = ctx
+                        .by_ref()
                         // we use "unknown" here because return statements do not
                         // necessarily follow the type annotation of their immediate
                         // surrounding context. Because a return statement is control flow
@@ -523,8 +530,9 @@ impl TypedAstNode {
                     })
                 }
                 AstNodeContent::ImplicitReturnExpression(expr) => {
-                    let ctx =
-                        ctx.with_help_text("Implicit return must match up with block's type.");
+                    let ctx = ctx
+                        .by_ref()
+                        .with_help_text("Implicit return must match up with block's type.");
                     let typed_expr = check!(
                         TypedExpression::type_check(ctx, expr.clone()),
                         error_recovery_expr(expr.span()),
@@ -567,6 +575,7 @@ impl TypedAstNode {
 fn type_check_interface_surface(
     interface_surface: Vec<TraitFn>,
     namespace: &mut Namespace,
+    de: &DeclarationEngine,
 ) -> CompileResult<Vec<TypedTraitFn>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -602,7 +611,8 @@ fn type_check_interface_surface(
                                     insert_type(TypeInfo::SelfType),
                                     &type_span,
                                     EnforceTypeArguments::Yes,
-                                    None
+                                    None,
+                                    de
                                 ),
                                 insert_type(TypeInfo::ErrorRecovery),
                                 warnings,
@@ -619,7 +629,8 @@ fn type_check_interface_surface(
                         insert_type(TypeInfo::SelfType),
                         &return_type_span,
                         EnforceTypeArguments::Yes,
-                        None
+                        None,
+                        de
                     ),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,

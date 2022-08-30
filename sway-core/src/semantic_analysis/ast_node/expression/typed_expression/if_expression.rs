@@ -5,12 +5,11 @@ use crate::{error::*, semantic_analysis::*, type_system::*, types::Deterministic
 use super::TypedExpression;
 
 pub(crate) fn instantiate_if_expression(
+    ctx: TypeCheckContext,
     condition: TypedExpression,
     then: TypedExpression,
     r#else: Option<TypedExpression>,
     span: Span,
-    type_annotation: TypeId,
-    self_type: TypeId,
 ) -> CompileResult<TypedExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -20,14 +19,15 @@ pub(crate) fn instantiate_if_expression(
     if !then_deterministically_aborts {
         // if this does not deterministically_abort, check the block return type
         let ty_to_check = if r#else.is_some() {
-            type_annotation
+            ctx.type_annotation()
         } else {
             insert_type(TypeInfo::Tuple(vec![]))
         };
         let (mut new_warnings, new_errors) = unify_with_self(
             then.return_type,
             ty_to_check,
-            self_type,
+            &ctx.declaration_engine,
+            ctx.self_type(),
             &then.span,
             "`then` branch must return expected type.",
         );
@@ -38,7 +38,7 @@ pub(crate) fn instantiate_if_expression(
     let r#else = r#else.map(|r#else| {
         else_deterministically_aborts = r#else.deterministically_aborts();
         let ty_to_check = if then_deterministically_aborts {
-            type_annotation
+            ctx.type_annotation()
         } else {
             then.return_type
         };
@@ -47,7 +47,8 @@ pub(crate) fn instantiate_if_expression(
             let (mut new_warnings, new_errors) = unify_with_self(
                 r#else.return_type,
                 ty_to_check,
-                self_type,
+                &ctx.declaration_engine,
+                ctx.self_type(),
                 &r#else.span,
                 "`else` branch must return expected type.",
             );
@@ -66,7 +67,8 @@ pub(crate) fn instantiate_if_expression(
         let (mut new_warnings, new_errors) = unify_with_self(
             then.return_type,
             r#else_ret_ty,
-            self_type,
+            &ctx.declaration_engine,
+            ctx.self_type(),
             &span,
             "The two branches of an if expression must return the same type.",
         );
@@ -75,7 +77,7 @@ pub(crate) fn instantiate_if_expression(
             if !look_up_type_id(r#else_ret_ty).is_unit() && r#else.is_none() {
                 errors.push(CompileError::NoElseBranch {
                     span: span.clone(),
-                    r#type: look_up_type_id(type_annotation).to_string(),
+                    r#type: look_up_type_id(ctx.type_annotation()).to_string(),
                 });
             }
         } else {

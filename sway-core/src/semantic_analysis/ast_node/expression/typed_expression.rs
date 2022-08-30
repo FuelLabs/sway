@@ -933,14 +933,7 @@ impl TypedExpression {
             )
         });
         let exp = check!(
-            instantiate_if_expression(
-                condition,
-                then,
-                r#else,
-                span,
-                ctx.type_annotation(),
-                ctx.self_type(),
-            ),
+            instantiate_if_expression(ctx, condition, then, r#else, span,),
             return err(warnings, errors),
             warnings,
             errors

@@ -1028,11 +1028,11 @@ impl TypeInfo {
         ok(all_nested_types, warnings, errors)
     }
 
-    pub(crate) fn extract_nested_generics(
-        &self,
-        declaration_engine: &DeclarationEngine,
+    pub(crate) fn extract_nested_generics<'a>(
+        &'a self,
+        declaration_engine: &'a DeclarationEngine,
         span: &Span,
-    ) -> CompileResult<HashSet<CompileWrapper<'_, TypeInfo>>> {
+    ) -> CompileResult<HashSet<CompileWrapper<'a, TypeInfo>>> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let nested_types = check!(

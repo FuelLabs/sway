@@ -75,7 +75,7 @@ fn generic_enum_resolution() {
     });
 
     // Unify them together...
-    let (_, errors) = type_engine.unify(ty_1, ty_2, &sp, "");
+    let (_, errors) = type_engine.unify(ty_1, ty_2, &declaration_engine, &sp, "");
     assert!(errors.is_empty());
 
     if let TypeInfo::Enum {
@@ -110,7 +110,7 @@ fn basic_numeric_unknown() {
     let id2 = type_engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    let (_, errors) = type_engine.unify(id, id2, &sp, "");
+    let (_, errors) = type_engine.unify(id, id2, &declaration_engine, &sp, "");
     assert!(errors.is_empty());
 
     assert_eq!(
@@ -136,7 +136,7 @@ fn chain_of_refs() {
     let id4 = type_engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    let (_, errors) = type_engine.unify(id4, id2, &sp, "");
+    let (_, errors) = type_engine.unify(id4, id2, &declaration_engine, &sp, "");
     assert!(errors.is_empty());
 
     assert_eq!(
@@ -162,7 +162,7 @@ fn chain_of_refs_2() {
     let id4 = type_engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    let (_, errors) = type_engine.unify(id2, id4, &sp, "");
+    let (_, errors) = type_engine.unify(id2, id4, &declaration_engine, &sp, "");
     assert!(errors.is_empty());
 
     assert_eq!(
