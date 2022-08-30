@@ -791,12 +791,23 @@ pub(crate) fn item_const_to_constant_declaration(
     ec: &mut ErrorContext,
     item_const: ItemConst,
 ) -> Result<ConstantDeclaration, ErrorEmitted> {
+    let (type_ascription, type_ascription_span) = match item_const.ty_opt {
+        Some((_colon_token, ty)) => {
+            let type_ascription = ty_to_type_info(ec, ty.clone())?;
+            let type_ascription_span = if let Ty::Path(path_type) = &ty {
+                path_type.prefix.name.span()
+            } else {
+                ty.span()
+            };
+            (type_ascription, Some(type_ascription_span))
+        }
+        None => (TypeInfo::Unknown, None),
+    };
+
     Ok(ConstantDeclaration {
         name: item_const.name,
-        type_ascription: match item_const.ty_opt {
-            Some((_colon_token, ty)) => ty_to_type_info(ec, ty)?,
-            None => TypeInfo::Unknown,
-        },
+        type_ascription,
+        type_ascription_span,
         value: expr_to_expression(ec, item_const.expr)?,
         visibility: pub_token_opt_to_visibility(item_const.visibility),
     })
@@ -930,9 +941,16 @@ fn type_field_to_enum_variant(
     tag: usize,
 ) -> Result<EnumVariant, ErrorEmitted> {
     let span = type_field.span();
+    let type_span = if let Ty::Path(path_type) = &type_field.ty {
+        path_type.prefix.name.span()
+    } else {
+        span.clone()
+    };
+
     let enum_variant = EnumVariant {
         name: type_field.name,
         type_info: ty_to_type_info(ec, type_field.ty)?,
+        type_span,
         tag,
         span,
     };
@@ -1977,9 +1995,15 @@ fn storage_field_to_storage_field(
     ec: &mut ErrorContext,
     storage_field: sway_ast::StorageField,
 ) -> Result<StorageField, ErrorEmitted> {
+    let type_info_span = if let Ty::Path(path_type) = &storage_field.ty {
+        path_type.prefix.name.span()
+    } else {
+        storage_field.ty.span()
+    };
     let storage_field = StorageField {
         name: storage_field.name,
         type_info: ty_to_type_info(ec, storage_field.ty)?,
+        type_info_span,
         initializer: expr_to_expression(ec, storage_field.initializer)?,
     };
     Ok(storage_field)
@@ -2746,7 +2770,7 @@ fn statement_let_to_ast_nodes(
                 let error = ConvertParseTreeError::ConstructorPatternsNotSupportedHere { span };
                 return Err(ec.error(error));
             }
-            Pattern::Struct { fields, .. } => {
+            Pattern::Struct { path, fields, .. } => {
                 let mut ast_nodes = Vec::new();
 
                 // Generate a deterministic name for the destructured struct
@@ -2760,7 +2784,7 @@ fn statement_let_to_ast_nodes(
                 COUNTER.fetch_add(1, Ordering::SeqCst);
                 let destructure_name = Ident::new_with_override(
                     Box::leak(destructured_name.into_boxed_str()),
-                    span.clone(),
+                    path.prefix.name.span(),
                 );
 
                 // Parse the type ascription and the type ascription span.

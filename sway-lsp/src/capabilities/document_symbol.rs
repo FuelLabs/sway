@@ -33,7 +33,7 @@ pub(crate) fn symbol_kind(symbol_kind: &SymbolKind) -> lsp_types::SymbolKind {
     match symbol_kind {
         SymbolKind::Field => lsp_types::SymbolKind::FIELD,
         SymbolKind::BuiltinType => lsp_types::SymbolKind::TYPE_PARAMETER,
-        SymbolKind::Function | SymbolKind::Method => lsp_types::SymbolKind::FUNCTION,
+        SymbolKind::Function => lsp_types::SymbolKind::FUNCTION,
         SymbolKind::Const => lsp_types::SymbolKind::CONSTANT,
         SymbolKind::Struct => lsp_types::SymbolKind::STRUCT,
         SymbolKind::Trait => lsp_types::SymbolKind::INTERFACE,
@@ -43,6 +43,7 @@ pub(crate) fn symbol_kind(symbol_kind: &SymbolKind) -> lsp_types::SymbolKind {
         SymbolKind::BoolLiteral => lsp_types::SymbolKind::BOOLEAN,
         SymbolKind::StringLiteral => lsp_types::SymbolKind::STRING,
         SymbolKind::NumericLiteral => lsp_types::SymbolKind::NUMBER,
+        SymbolKind::TypeParameter => lsp_types::SymbolKind::TYPE_PARAMETER,
         SymbolKind::ValueParam
         | SymbolKind::ByteLiteral
         | SymbolKind::Variable
