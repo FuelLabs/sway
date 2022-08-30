@@ -65,4 +65,3 @@ The constants defined above can now be used in a Sway program that uses the mani
 
 > **Note**
 > Currently, it is only possible to define configuration-time constants that have [primitive types](built_in_types.md#primitive-types) and that are initialized using literals. This will change in the future.
-

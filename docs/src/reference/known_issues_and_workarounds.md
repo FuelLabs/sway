@@ -14,7 +14,6 @@
 
 * [#2647](https://github.com/FuelLabs/sway/issues/2647): Currently, it is only possible to define configuration-time constants that have [primitive types](built_in_types.md#primitive-types) and that are initialized using literals.
 
-
 ## General
 
 * No compiler optimization passes have been implemented yet, therefore bytecode will be more expensive and larger than it would be in production. Note that eventually the optimizer will support zero-cost abstractions, avoiding the need for developers to go down to inline assembly to produce optimal code.
