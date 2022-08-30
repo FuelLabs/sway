@@ -104,9 +104,11 @@ pub fn transfer_to_output(amount: u64, asset_id: ContractId, to: Address) {
         log(type_of_output);
         match type_of_output {
             Output::Variable => {
-                output_index = index;
-                output_found = true;
-                break; // break early and use the output we found
+                if output_amount(index) == 0 {
+                    output_index = index;
+                    output_found = true;
+                    break; // break early and use the output we found
+                }
             },
             _ => {
                 ();

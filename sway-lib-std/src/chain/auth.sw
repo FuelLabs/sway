@@ -6,10 +6,9 @@ use ::assert::assert;
 use ::b512::B512;
 use ::contract_id::ContractId;
 use ::identity::Identity;
-use ::logging::log;
 use ::option::Option;
 use ::result::Result;
-use ::inputs::{Input, input_owner, input_type, input_count};
+use ::inputs::{Input, input_count, input_owner, input_type};
 
 pub enum AuthError {
     InputsNotAllOwnedBySameAddress: (),
@@ -49,13 +48,11 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
 /// TransactionScript if they all share the same owner.
 fn inputs_owner() -> Result<Identity, AuthError> {
     let inputs = input_count();
-    log((6, inputs));
     let mut candidate = Option::None::<Address>();
     let mut i = 0u8;
 
     // Note: `inputs_count` is guaranteed to be at least 1 for any valid tx.
     while i < inputs {
-        log(33);
         let type_of_input = input_type(i);
         match type_of_input {
             Input::Coin => {

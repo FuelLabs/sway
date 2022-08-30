@@ -10,7 +10,7 @@ description = "Building, locking, fetching and updating Sway projects as Forc pa
 
 [dependencies]
 anyhow = "1"
-forc-util = { version = "0.21", path = "../forc-util" }
+forc-util = { version = "0.21.0", path = "../forc-util" }
 fuel-crypto = "0.6"
 fuel-gql-client = { version = "0.10", default-features = false }
 git2 = { version = "0.14", features = ["vendored-libgit2", "vendored-openssl"] }

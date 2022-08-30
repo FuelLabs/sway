@@ -3,7 +3,6 @@ library tx;
 
 use ::address::Address;
 use ::mem::read;
-use ::logging::log;
 use ::option::Option;
 use ::revert::revert;
 
@@ -44,8 +43,6 @@ const GTF_CREATE_WITNESS_AT_INDEX = 0x01D;
 
 const GTF_WITNESS_DATA_LENGTH = 0x301;
 const GTF_WITNESS_DATA = 0x302;
-
-const TX_ID_OFFSET = 0;
 
 pub enum Transaction {
     Script: (),
@@ -234,6 +231,8 @@ pub fn tx_script_data<T>() -> T {
 pub fn tx_script_bytecode<T>() -> T {
     read::<T>(tx_script_start_pointer())
 }
+
+const TX_ID_OFFSET = 0;
 
 /// Get the id of the current transaction.
 pub fn tx_id() -> b256 {

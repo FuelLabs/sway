@@ -116,13 +116,19 @@ pub fn output_amount(index: u64) -> u64 {
         Output::Message => {
             __gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT)
         },
-        // ues GTF_OUTPUT_MESSAGE_AMOUNT as there's no simlar const for OutputChange
+        // Output changes are always guaranteed to have an amount of zero since
+        // they're only set after execution terminates
         Output::Change => {
-            __gtf::<u64>(index, GTF_OUTPUT_COIN_AMOUNT)
-        },
-        // use GTF_OUTPUT_MESSAGE_AMOUNT as there's no simlar const for OutputVariable
-        Output::Variable => {
             0
+        },
+        // use `__gtf` when GTF_OUTPUT_VARIABLE_AMOUNT is available
+        Output::Variable => {
+            let ptr = output_pointer(index);
+            asm(r1, r2, r3: ptr) {
+                addi r2 r3 i40;
+                lw r1 r2 i0;
+                r1: u64
+            }
         },
     }
 }

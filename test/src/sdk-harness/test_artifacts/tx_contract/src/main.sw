@@ -9,7 +9,6 @@ use std::inputs::{
     input_owner,
     input_pointer,
     input_type,
-    input_tx_id,
 };
 use std::outputs::{
     Output,
