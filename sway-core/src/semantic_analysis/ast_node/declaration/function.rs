@@ -16,7 +16,7 @@ pub struct TypedFunctionDeclaration {
     pub span: Span,
     pub return_type: TypeId,
     pub initial_return_type: TypeId,
-    pub(crate) type_parameters: Vec<TypeParameter>,
+    pub type_parameters: Vec<TypeParameter>,
     /// Used for error messages -- the span pointing to the return type
     /// annotation of the function
     pub return_type_span: Span,
