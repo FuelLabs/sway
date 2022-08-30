@@ -94,8 +94,7 @@ pub fn input_pointer(index: u64) -> u64 {
     }
 }
 
-/// If the input's type is `InputCoin` or `InputMessage`,
-/// return the owner as an Option::Some(owner).
+/// If the input's type is `InputCoin` the owner as an Option::Some(owner).
 /// Otherwise, returns Option::None.
 pub fn input_owner(index: u64) -> Option<Address> {
     let type = input_type(index);
