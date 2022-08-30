@@ -47,7 +47,7 @@ impl Format for AttributeDecl {
                 .as_ref()
                 .map(|args| args.inner.final_value_opt.as_ref())
             {
-                write!(formatted_code, "/// {}\n", doc_comment.as_str().trim())?;
+                writeln!(formatted_code, "/// {}", doc_comment.as_str().trim())?;
             }
         } else {
             let prev_state = formatter.shape.code_line;
