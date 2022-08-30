@@ -315,7 +315,7 @@ impl core::ops::Divide for U128 {
 }
 
 impl Exponentiate for U128 {
-    pub fn pow(mut self, exponent: Self) -> Self {
+    fn pow(ref mut self, exponent: Self) -> Self {
         let mut exp = exponent;
         let one = ~U128::from(0, 1);
         let zero = ~U128::from(0, 0);

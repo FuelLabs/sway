@@ -51,24 +51,24 @@ impl UFP64 {
 }
 
 impl core::ops::Eq for UFP64 {
-    pub fn eq(self, other: Self) -> bool {
+    fn eq(self, other: Self) -> bool {
         self.value == other.value
     }
 }
 
 impl core::ops::Ord for UFP64 {
-    pub fn gt(self, other: Self) -> bool {
+    fn gt(self, other: Self) -> bool {
         self.value > other.value
     }
 
-    pub fn lt(self, other: Self) -> bool {
+    fn lt(self, other: Self) -> bool {
         self.value < other.value
     }
 }
 
 impl core::ops::Add for UFP64 {
     /// Add a UFP64 to a UFP64. Panics on overflow.
-    pub fn add(self, other: Self) -> Self {
+    fn add(self, other: Self) -> Self {
         UFP64 {
             value: self.value + other.value,
         }
@@ -77,7 +77,7 @@ impl core::ops::Add for UFP64 {
 
 impl core::ops::Subtract for UFP64 {
     /// Subtract a UFP64 from a UFP64. Panics of overflow.
-    pub fn subtract(self, other: Self) -> Self {
+    fn subtract(self, other: Self) -> Self {
         // If trying to subtract a larger number, panic.
         assert(self.value >= other.value);
 
@@ -89,7 +89,7 @@ impl core::ops::Subtract for UFP64 {
 
 impl core::ops::Multiply for UFP64 {
     /// Multiply a UFP64 with a UFP64. Panics of overflow.
-    pub fn multiply(self, other: Self) -> Self {
+    fn multiply(self, other: Self) -> Self {
         let self_u128 = ~U128::from(0, self.value);
         let other_u128 = ~U128::from(0, other.value);
 
@@ -108,7 +108,7 @@ impl core::ops::Multiply for UFP64 {
 
 impl core::ops::Divide for UFP64 {
     /// Divide a UFP64 by a UFP64. Panics if divisor is zero.
-    pub fn divide(self, divisor: Self) -> Self {
+    fn divide(self, divisor: Self) -> Self {
         let zero = ~UFP64::zero();
         assert(divisor != zero);
 
@@ -225,7 +225,7 @@ impl Root for UFP64 {
 
 impl Exponentiate for UFP64 {
     /// Power function. x ^ exponent
-    pub fn pow(self, exponent: Self) -> Self {
+    fn pow(self, exponent: Self) -> Self {
         let demoninator_power = ~UFP64::denominator();
         let exponent_int = exponent.value >> 32;
         let nominator_pow = ~U128::from(0, self.value).pow(~U128::from(0, exponent_int));
@@ -247,7 +247,7 @@ impl Exponentiate for UFP64 {
 
 impl Exponent for UFP64 {
     /// Exponent function. e ^ x
-    pub fn exp(exponent: Self) -> Self {
+    fn exp(exponent: Self) -> Self {
         let one = ~UFP64::from_uint(1);
 
         //coefficients in the Taylor series up to the seventh power
