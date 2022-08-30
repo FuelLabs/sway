@@ -221,26 +221,15 @@ async fn can_get_tx_input_coin_owner() {
 #[tokio::test]
 async fn can_get_tx_output_type() {
     let (contract_instance, _, _) = get_contracts().await;
-
-    let result_ptr = contract_instance
-        .get_tx_output_pointer(0)
-        .call()
-        .await
-        .unwrap();
     let result = contract_instance
-        .get_tx_output_type(result_ptr.value)
+        .get_tx_output_type(0)
         .call()
         .await
         .unwrap();
     assert_eq!(result.value, Output::Coin());
 
-    let result_ptr = contract_instance
-        .get_tx_output_pointer(1)
-        .call()
-        .await
-        .unwrap();
     let result = contract_instance
-        .get_tx_output_type(result_ptr.value)
+        .get_tx_output_type(1)
         .call()
         .await
         .unwrap();
