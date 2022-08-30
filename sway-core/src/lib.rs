@@ -240,13 +240,11 @@ pub fn parsed_to_ast(
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
 
-    let mut declaration_engine = DeclarationEngine::new();
-
     let CompileResult {
         value: typed_program_result,
         warnings: new_warnings,
         errors: new_errors,
-    } = TypedProgram::type_check(parse_program, initial_namespace, &mut declaration_engine);
+    } = TypedProgram::type_check(parse_program, initial_namespace, DeclarationEngine::new());
     warnings.extend(new_warnings);
     errors.extend(new_errors);
     let typed_program = match typed_program_result {

@@ -538,21 +538,24 @@ impl TypedAstNode {
         };
 
         if let TypedAstNode {
-            content: TypedAstNodeContent::Expression(TypedExpression { .. }),
+            content: TypedAstNodeContent::Expression(TypedExpression { ref expression, .. }),
             ..
         } = node
         {
-            let warning = Warning::UnusedReturnValue {
-                r#type: node.type_info().to_string(),
-            };
-            assert_or_warn!(
-                node.type_info().is_unit()
-                    || node.type_info().wrap(ctx.declaration_engine)
-                        == TypeInfo::ErrorRecovery.wrap(ctx.declaration_engine),
-                warnings,
-                node.span.clone(),
-                warning
-            );
+            if !matches!(
+                expression,
+                TypedExpressionVariant::Break | TypedExpressionVariant::Continue,
+            ) {
+                let warning = Warning::UnusedReturnValue {
+                    r#type: node.type_info().to_string(),
+                };
+                assert_or_warn!(
+                    node.type_info().is_unit() || node.type_info() == TypeInfo::ErrorRecovery,
+                    warnings,
+                    node.span.clone(),
+                    warning
+                );
+            }
         }
 
         ok(node, warnings, errors)
