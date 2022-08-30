@@ -6,7 +6,9 @@ use ::context::call_frames::contract_id;
 use ::contract_id::ContractId;
 use ::identity::Identity;
 use ::revert::revert;
-use ::outputs::{Output, output_amount, output_type, output_count};
+use ::outputs::{Output, output_amount, output_count, output_type};
+
+use ::logging::log;
 
 /// Mint `amount` coins of the current contract's `asset_id` and transfer them
 /// to `to` by calling either force_transfer_to_contract() or
@@ -96,15 +98,15 @@ pub fn transfer_to_output(amount: u64, asset_id: ContractId, to: Address) {
     // zero. As one cannot transfer zero coins to an output without a panic, a
     // variable output with a value of zero is by definition unused.
     let outputs = output_count();
+    //log(outputs);
     while index < outputs {
         let type_of_output = output_type(index);
+        log(type_of_output);
         match type_of_output {
             Output::Variable => {
-                if output_amount(index) == 0 {
-                    output_index = index;
-                    output_found = true;
-                    break; // break early and use the output we found
-                }
+                output_index = index;
+                output_found = true;
+                break; // break early and use the output we found
             },
             _ => {
                 ();

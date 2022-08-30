@@ -118,11 +118,11 @@ pub fn output_amount(index: u64) -> u64 {
         },
         // ues GTF_OUTPUT_MESSAGE_AMOUNT as there's no simlar const for OutputChange
         Output::Change => {
-            __gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT)
+            __gtf::<u64>(index, GTF_OUTPUT_COIN_AMOUNT)
         },
         // use GTF_OUTPUT_MESSAGE_AMOUNT as there's no simlar const for OutputVariable
         Output::Variable => {
-            __gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT)
+            0
         },
     }
 }
