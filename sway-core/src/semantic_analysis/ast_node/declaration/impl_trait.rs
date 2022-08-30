@@ -24,6 +24,7 @@ pub struct TypedImplTrait {
     pub(crate) span: Span,
     pub methods: Vec<TypedFunctionDeclaration>,
     pub implementing_for_type_id: TypeId,
+    pub type_implementing_for_span: Span,
 }
 
 impl CopyTypes for TypedImplTrait {
@@ -121,6 +122,7 @@ impl TypedImplTrait {
                     span: block_span,
                     methods: functions_buf,
                     implementing_for_type_id,
+                    type_implementing_for_span: type_implementing_for_span.clone(),
                 };
                 let implementing_for_type_id = insert_type(
                     match resolve_type(implementing_for_type_id, &type_implementing_for_span) {
@@ -166,6 +168,7 @@ impl TypedImplTrait {
                     span: block_span,
                     methods: functions_buf,
                     implementing_for_type_id,
+                    type_implementing_for_span,
                 };
                 (impl_trait, implementing_for_type_id)
             }
@@ -389,6 +392,7 @@ impl TypedImplTrait {
             span: block_span,
             methods,
             implementing_for_type_id,
+            type_implementing_for_span,
         };
         ok(impl_trait, warnings, errors)
     }
