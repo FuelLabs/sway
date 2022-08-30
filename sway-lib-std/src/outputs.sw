@@ -31,14 +31,6 @@ const GTF_OUTPUT_MESSAGE_AMOUNT = 0x209;
 // const GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID = 0x20A;
 // const GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT = 0x20B;
 
-// Output types
-pub const OUTPUT_COIN = 0u8;
-pub const OUTPUT_CONTRACT = 1u8;
-pub const OUTPUT_MESSAGE = 2u8;
-pub const OUTPUT_CHANGE = 3u8;
-pub const OUTPUT_VARIABLE = 4u8;
-pub const OUTPUT_CONTRACT_CREATED = 5u8;
-
 pub enum Output {
     Coin: (),
     Contract: (),

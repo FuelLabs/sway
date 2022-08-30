@@ -56,11 +56,6 @@ const GTF_INPUT_MESSAGE_RECIPIENT = 0x116;
 // const GTF_INPUT_MESSAGE_PREDICATE = 0x11E;
 const GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x11F;
 
-// Input types
-pub const INPUT_COIN = 0u8;
-pub const INPUT_CONTRACT = 1u8;
-pub const INPUT_MESSAGE = 2u8;
-
 pub enum Input {
     Coin: (),
     Contract: (),
