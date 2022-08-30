@@ -1,0 +1,17 @@
+[[package]]
+name = 'contract_caller_as_ret'
+source = 'root'
+dependencies = [
+    'core',
+    'std',
+]
+
+[[package]]
+name = 'core'
+source = 'path+from-root-277F468596DF2097'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'path+from-root-277F468596DF2097'
+dependencies = ['core']

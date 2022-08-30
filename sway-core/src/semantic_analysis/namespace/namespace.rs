@@ -1,5 +1,5 @@
 use crate::{
-    semantic_analysis::ast_node::TypedExpression, type_engine::*, CallPath, CompileResult, Ident,
+    semantic_analysis::ast_node::TypedExpression, type_system::*, CallPath, CompileResult, Ident,
     TypedDeclaration, TypedFunctionDeclaration,
 };
 

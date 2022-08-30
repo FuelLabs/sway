@@ -1,9 +1,10 @@
 use crate::{
     error::*,
+    metadata::{MetadataManager, StorageOperation},
     parse_tree::{promote_purity, Purity},
 };
 
-use sway_ir::{Context, Function, Instruction, Metadatum, StorageOperation, ValueDatum};
+use sway_ir::{Context, Function, Instruction, ValueDatum};
 use sway_types::span::Span;
 
 use std::collections::HashMap;
@@ -25,6 +26,7 @@ impl PurityChecker {
     pub(crate) fn check_function(
         &mut self,
         context: &Context,
+        md_mgr: &mut MetadataManager,
         function: &Function,
     ) -> (bool, bool) {
         // Iterate for each instruction in the function and gather whether we have read and/or
@@ -58,7 +60,7 @@ impl PurityChecker {
                 ValueDatum::Instruction(Instruction::Call(callee, _args)) => {
                     let (called_fn_reads, called_fn_writes) =
                         self.memos.get(callee).copied().unwrap_or_else(|| {
-                            let r_w = self.check_function(context, callee);
+                            let r_w = self.check_function(context, md_mgr, callee);
                             self.memos.insert(*callee, r_w);
                             r_w
                         });
@@ -70,16 +72,9 @@ impl PurityChecker {
         );
 
         let function = &context.functions[function.0];
-        let attributed_purity =
-            function
-                .storage_md_idx
-                .and_then(|idx| match &context.metadata[idx.0] {
-                    Metadatum::StorageAttribute(storage_op) => Some(storage_op),
-                    _otherwise => None,
-                });
-        let span = function
-            .span_md_idx
-            .and_then(|idx| idx.to_span(context).ok())
+        let attributed_purity = md_mgr.md_to_storage_op(context, function.metadata);
+        let span = md_mgr
+            .md_to_span(context, function.metadata)
             .unwrap_or_else(Span::dummy);
 
         // Simple macros for each of the error types, which also grab `span`.

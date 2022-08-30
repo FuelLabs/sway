@@ -7,9 +7,10 @@
 pub mod config;
 mod constants;
 mod error;
-mod fmt;
+mod formatter;
 mod items;
+mod module;
 mod utils;
 
-pub use crate::fmt::Formatter;
+pub use crate::formatter::{Format, Formatter};
 pub use error::FormatterError;

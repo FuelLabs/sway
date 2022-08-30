@@ -7,8 +7,8 @@ use crate::{
         ast_node::{type_check_interface_surface, type_check_trait_methods},
         TypeCheckContext,
     },
-    type_engine::{insert_type, AbiName, TypeId},
-    AbiDeclaration, CompileResult, FunctionDeclaration, TypeInfo,
+    type_system::{insert_type, AbiName, TypeId},
+    AbiDeclaration, CompileError, CompileResult, FunctionDeclaration, TypeInfo,
 };
 
 use super::{CreateTypeId, TypedTraitFn};
@@ -67,6 +67,16 @@ impl TypedAbiDeclaration {
             warnings,
             errors
         );
+        for typed_fn in &interface_surface {
+            for param in &typed_fn.parameters {
+                if param.is_reference && param.is_mutable {
+                    errors.push(CompileError::RefMutableNotAllowedInContractAbi {
+                        param_name: param.name.clone(),
+                    })
+                }
+            }
+        }
+
         // type check these for errors but don't actually use them yet -- the real
         // ones will be type checked with proper symbols when the ABI is implemented
         let _methods = check!(
@@ -75,6 +85,16 @@ impl TypedAbiDeclaration {
             warnings,
             errors
         );
+        for typed_fn in &methods {
+            for param in &typed_fn.parameters {
+                if param.is_reference && param.is_mutable {
+                    errors.push(CompileError::RefMutableNotAllowedInContractAbi {
+                        param_name: param.name.clone(),
+                    })
+                }
+            }
+        }
+
         let abi_decl = TypedAbiDeclaration {
             interface_surface,
             methods,

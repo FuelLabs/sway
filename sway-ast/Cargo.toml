@@ -1,0 +1,15 @@
+[package]
+name = "sway-ast"
+version = "0.21.0"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+edition = "2021"
+homepage = "https://fuel.network/"
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/sway"
+description = "Sway's parser"
+
+[dependencies]
+extension-trait = "1.0.1"
+num-bigint = "0.4.3"
+num-traits = "0.2.14"
+sway-types = { version = "0.21.0", path = "../sway-types" }

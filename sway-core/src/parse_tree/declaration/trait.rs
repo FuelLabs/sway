@@ -3,7 +3,7 @@ use super::{FunctionDeclaration, FunctionParameter};
 use crate::{
     function::Purity,
     parse_tree::{CallPath, Visibility},
-    type_engine::TypeInfo,
+    type_system::TypeInfo,
 };
 
 use sway_types::{ident::Ident, span::Span};
@@ -28,5 +28,5 @@ pub struct TraitFn {
     pub purity: Purity,
     pub parameters: Vec<FunctionParameter>,
     pub return_type: TypeInfo,
-    pub(crate) return_type_span: Span,
+    pub return_type_span: Span,
 }

@@ -3,7 +3,6 @@
 use crate::{
     context::Context,
     irtype::{Aggregate, Type},
-    metadata::MetadataIndex,
     value::Value,
 };
 
@@ -99,53 +98,32 @@ impl Constant {
         }
     }
 
-    pub fn get_undef(context: &mut Context, ty: Type, span_md_idx: Option<MetadataIndex>) -> Value {
-        Value::new_constant(context, Constant::new_undef(context, ty), span_md_idx)
+    pub fn get_undef(context: &mut Context, ty: Type) -> Value {
+        Value::new_constant(context, Constant::new_undef(context, ty))
     }
 
-    pub fn get_unit(context: &mut Context, span_md_idx: Option<MetadataIndex>) -> Value {
-        Value::new_constant(context, Constant::new_unit(), span_md_idx)
+    pub fn get_unit(context: &mut Context) -> Value {
+        Value::new_constant(context, Constant::new_unit())
     }
 
-    pub fn get_bool(
-        context: &mut Context,
-        value: bool,
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Value {
-        Value::new_constant(context, Constant::new_bool(value), span_md_idx)
+    pub fn get_bool(context: &mut Context, value: bool) -> Value {
+        Value::new_constant(context, Constant::new_bool(value))
     }
 
-    pub fn get_uint(
-        context: &mut Context,
-        nbits: u8,
-        value: u64,
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Value {
-        Value::new_constant(context, Constant::new_uint(nbits, value), span_md_idx)
+    pub fn get_uint(context: &mut Context, nbits: u8, value: u64) -> Value {
+        Value::new_constant(context, Constant::new_uint(nbits, value))
     }
 
-    pub fn get_b256(
-        context: &mut Context,
-        value: [u8; 32],
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Value {
-        Value::new_constant(context, Constant::new_b256(value), span_md_idx)
+    pub fn get_b256(context: &mut Context, value: [u8; 32]) -> Value {
+        Value::new_constant(context, Constant::new_b256(value))
     }
 
-    pub fn get_string(
-        context: &mut Context,
-        value: Vec<u8>,
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Value {
-        Value::new_constant(context, Constant::new_string(value), span_md_idx)
+    pub fn get_string(context: &mut Context, value: Vec<u8>) -> Value {
+        Value::new_constant(context, Constant::new_string(value))
     }
 
     /// `value` must be created as an array constant first, using [`Constant::new_array()`].
-    pub fn get_array(
-        context: &mut Context,
-        value: Constant,
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Value {
+    pub fn get_array(context: &mut Context, value: Constant) -> Value {
         assert!(matches!(
             value,
             Constant {
@@ -153,15 +131,11 @@ impl Constant {
                 ..
             }
         ));
-        Value::new_constant(context, value, span_md_idx)
+        Value::new_constant(context, value)
     }
 
     /// `value` must be created as a struct constant first, using [`Constant::new_struct()`].
-    pub fn get_struct(
-        context: &mut Context,
-        value: Constant,
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Value {
+    pub fn get_struct(context: &mut Context, value: Constant) -> Value {
         assert!(matches!(
             value,
             Constant {
@@ -169,6 +143,25 @@ impl Constant {
                 ..
             }
         ));
-        Value::new_constant(context, value, span_md_idx)
+        Value::new_constant(context, value)
+    }
+
+    /// Compare two Constant values. Can't impl PartialOrder because of context.
+    pub fn eq(&self, context: &Context, other: &Self) -> bool {
+        self.ty.eq(context, &other.ty)
+            && match (&self.value, &other.value) {
+                // Two Undefs are *NOT* equal (PartialEq allows this).
+                (ConstantValue::Undef, _) | (_, ConstantValue::Undef) => false,
+                (ConstantValue::Unit, ConstantValue::Unit) => true,
+                (ConstantValue::Bool(l0), ConstantValue::Bool(r0)) => l0 == r0,
+                (ConstantValue::Uint(l0), ConstantValue::Uint(r0)) => l0 == r0,
+                (ConstantValue::B256(l0), ConstantValue::B256(r0)) => l0 == r0,
+                (ConstantValue::String(l0), ConstantValue::String(r0)) => l0 == r0,
+                (ConstantValue::Array(l0), ConstantValue::Array(r0))
+                | (ConstantValue::Struct(l0), ConstantValue::Struct(r0)) => {
+                    l0.iter().zip(r0.iter()).all(|(l0, r0)| l0.eq(context, r0))
+                }
+                _ => false,
+            }
     }
 }

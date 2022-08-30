@@ -1,4 +1,4 @@
-use crate::{parse_tree::*, type_engine::*};
+use crate::{parse_tree::*, type_system::*};
 
 use sway_types::{ident::Ident, span::Span};
 
@@ -14,14 +14,15 @@ pub struct FunctionDeclaration {
     pub parameters: Vec<FunctionParameter>,
     pub span: Span,
     pub return_type: TypeInfo,
-    pub(crate) type_parameters: Vec<TypeParameter>,
-    pub(crate) return_type_span: Span,
+    pub type_parameters: Vec<TypeParameter>,
+    pub return_type_span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionParameter {
     pub name: Ident,
+    pub is_reference: bool,
     pub is_mutable: bool,
-    pub(crate) type_id: TypeId,
-    pub(crate) type_span: Span,
+    pub type_id: TypeId,
+    pub type_span: Span,
 }

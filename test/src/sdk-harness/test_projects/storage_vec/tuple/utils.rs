@@ -24,9 +24,9 @@ pub mod setup {
         .await
         .unwrap();
 
-        let instance = MyContract::new(id.to_string(), wallet);
+        let instance = MyContractBuilder::new(id.to_string(), wallet).build();
 
-        (instance, id)
+        (instance, id.into())
     }
 }
 

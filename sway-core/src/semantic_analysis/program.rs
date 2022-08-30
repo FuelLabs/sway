@@ -1,25 +1,29 @@
 use super::{
-    TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration, TypedImplTrait,
-    TypedStorageDeclaration,
+    storage_only_types, TypedAstNode, TypedAstNodeContent, TypedDeclaration,
+    TypedFunctionDeclaration, TypedImplTrait, TypedStorageDeclaration,
 };
 use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine,
     error::*,
+    metadata::MetadataManager,
     parse_tree::{ParseProgram, Purity, TreeType},
     semantic_analysis::{
         namespace::{self, Namespace},
         TypeCheckContext, TypedModule,
     },
-    type_engine::*,
+    type_system::*,
     types::ToJsonAbi,
 };
 use fuel_tx::StorageSlot;
-use sway_types::{span::Span, Ident, JsonABI, Spanned};
+use sway_ir::{Context, Module};
+use sway_types::{span::Span, Ident, JsonABI, JsonABIProgram, JsonTypeDeclaration, Spanned};
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct TypedProgram {
     pub kind: TypedProgramKind,
     pub root: TypedModule,
     pub storage_slots: Vec<StorageSlot>,
+    pub declaration_engine: DeclarationEngine,
 }
 
 impl TypedProgram {
@@ -30,9 +34,10 @@ impl TypedProgram {
     pub fn type_check(
         parsed: &ParseProgram,
         initial_namespace: namespace::Module,
+        mut declaration_engine: DeclarationEngine,
     ) -> CompileResult<Self> {
         let mut namespace = Namespace::init_root(initial_namespace);
-        let ctx = TypeCheckContext::from_root(&mut namespace);
+        let ctx = TypeCheckContext::from_root(&mut namespace, &mut declaration_engine);
         let ParseProgram { root, kind } = parsed;
         let mod_span = root.tree.span.clone();
         let mod_res = TypedModule::type_check(ctx, root);
@@ -42,6 +47,7 @@ impl TypedProgram {
                 kind,
                 root,
                 storage_slots: vec![],
+                declaration_engine,
             })
         })
     }
@@ -110,6 +116,15 @@ impl TypedProgram {
                 }
                 _ => (),
             };
+        }
+
+        for ast_n in &root.all_nodes {
+            check!(
+                storage_only_types::validate_decls_for_storage_only_types_in_ast(&ast_n.content),
+                continue,
+                warnings,
+                errors
+            );
         }
 
         // Some checks that are specific to non-contracts
@@ -183,8 +198,19 @@ impl TypedProgram {
                 }
             }
         };
-
-        ok(typed_program_kind, vec![], errors)
+        // check if no arguments passed to a `main()` in a `script` or `predicate`.
+        match &typed_program_kind {
+            TypedProgramKind::Script { main_function, .. }
+            | TypedProgramKind::Predicate { main_function, .. } => {
+                if !main_function.parameters.is_empty() {
+                    errors.push(CompileError::MainArgsNotYetSupported {
+                        span: main_function.span.clone(),
+                    })
+                }
+            }
+            _ => (),
+        }
+        ok(typed_program_kind, warnings, errors)
     }
 
     /// Ensures there are no unresolved types or types awaiting resolution in the AST.
@@ -227,9 +253,15 @@ impl TypedProgram {
         }
     }
 
-    pub fn get_typed_program_with_initialized_storage_slots(&self) -> CompileResult<Self> {
+    pub(crate) fn get_typed_program_with_initialized_storage_slots(
+        &self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        module: Module,
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let declaration_engine = DeclarationEngine::new();
         match &self.kind {
             TypedProgramKind::Contract { declarations, .. } => {
                 let storage_decl = declarations
@@ -240,7 +272,7 @@ impl TypedProgram {
                 match storage_decl {
                     Some(TypedDeclaration::StorageDeclaration(decl)) => {
                         let mut storage_slots = check!(
-                            decl.get_initialized_storage_slots(),
+                            decl.get_initialized_storage_slots(context, md_mgr, module),
                             return err(warnings, errors),
                             warnings,
                             errors,
@@ -253,6 +285,7 @@ impl TypedProgram {
                                 kind: self.kind.clone(),
                                 root: self.root.clone(),
                                 storage_slots,
+                                declaration_engine,
                             },
                             warnings,
                             errors,
@@ -263,6 +296,7 @@ impl TypedProgram {
                             kind: self.kind.clone(),
                             root: self.root.clone(),
                             storage_slots: vec![],
+                            declaration_engine,
                         },
                         warnings,
                         errors,
@@ -274,6 +308,7 @@ impl TypedProgram {
                     kind: self.kind.clone(),
                     root: self.root.clone(),
                     storage_slots: vec![],
+                    declaration_engine,
                 },
                 warnings,
                 errors,
@@ -326,6 +361,35 @@ impl TypedProgramKind {
             TypedProgramKind::Library { name } => TreeType::Library { name: name.clone() },
             TypedProgramKind::Predicate { .. } => TreeType::Predicate,
             TypedProgramKind::Script { .. } => TreeType::Script,
+        }
+    }
+
+    pub fn generate_json_abi_program(
+        &self,
+        types: &mut Vec<JsonTypeDeclaration>,
+    ) -> JsonABIProgram {
+        match self {
+            TypedProgramKind::Contract { abi_entries, .. } => {
+                let result = abi_entries
+                    .iter()
+                    .map(|x| x.generate_json_abi_function(types))
+                    .collect();
+                JsonABIProgram {
+                    types: types.to_vec(),
+                    functions: result,
+                }
+            }
+            TypedProgramKind::Script { main_function, .. } => {
+                let result = vec![main_function.generate_json_abi_function(types)];
+                JsonABIProgram {
+                    types: types.to_vec(),
+                    functions: result,
+                }
+            }
+            _ => JsonABIProgram {
+                types: vec![],
+                functions: vec![],
+            },
         }
     }
 }

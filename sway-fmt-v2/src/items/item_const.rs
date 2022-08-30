@@ -1,9 +1,9 @@
 use crate::{
-    fmt::{Format, FormattedCode, Formatter},
-    FormatterError,
+    formatter::*,
+    utils::map::byte_span::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
-use sway_parse::ItemConst;
+use sway_ast::{keywords::Token, ItemConst};
 use sway_types::Spanned;
 
 impl Format for ItemConst {
@@ -21,26 +21,39 @@ impl Format for ItemConst {
         write!(formatted_code, "{} ", self.const_token.span().as_str())?;
 
         // Add name of the const
-        write!(formatted_code, "{}", self.name.as_str())?;
+        self.name.format(formatted_code, formatter)?;
 
         // Check if ty exists
-        if let Some(ty) = &self.ty_opt {
+        if let Some((colon_token, ty)) = &self.ty_opt {
             // Add colon
-            write!(formatted_code, "{} ", ty.0.span().as_str())?;
-            ty.1.format(formatted_code, formatter)?;
+            write!(formatted_code, "{} ", colon_token.ident().as_str())?;
+            ty.format(formatted_code, formatter)?;
         }
 
         // ` = `
         write!(formatted_code, " {} ", self.eq_token.ident().as_str())?;
 
-        // TODO: We are not applying any custom formatting to expr, probably we will need to in the future.
-        write!(
-            formatted_code,
-            "{}{}",
-            self.expr.span().as_str(),
-            self.semicolon_token.ident().as_str()
-        )?;
+        self.expr.format(formatted_code, formatter)?;
+        write!(formatted_code, "{}", self.semicolon_token.ident().as_str())?;
 
         Ok(())
+    }
+}
+
+impl LeafSpans for ItemConst {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = Vec::new();
+        if let Some(visibility) = &self.visibility {
+            collected_spans.push(ByteSpan::from(visibility.span()));
+        }
+        collected_spans.push(ByteSpan::from(self.const_token.span()));
+        collected_spans.push(ByteSpan::from(self.name.span()));
+        if let Some(ty) = &self.ty_opt {
+            collected_spans.append(&mut ty.leaf_spans());
+        }
+        collected_spans.push(ByteSpan::from(self.eq_token.span()));
+        collected_spans.append(&mut self.expr.leaf_spans());
+        collected_spans.push(ByteSpan::from(self.semicolon_token.span()));
+        collected_spans
     }
 }

@@ -96,9 +96,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.57"
+version = "1.0.62"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08f9b8508dccb7687a1d6c4ce66b2b0ecef467c94667de27d8d7fe1f8d2a9cdc"
+checksum = "1485d4d2cc45e7b201ee3767015c96faa5904387c9d87c6efdd0fb511f12d305"
 
 [[package]]
 name = "arrayref"
@@ -117,6 +117,12 @@ name = "ascii"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eab1c04a571841102f5345a8fc0f6bb3d31c315dec879b5c6e42e40ce7ffa34e"
+
+[[package]]
+name = "assert_matches"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b34d609dfbaf33d6889b2b7106d3ca345eacad44200913df5ba02bfd31d2ba9"
 
 [[package]]
 name = "async-channel"
@@ -542,9 +548,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.2.5"
+version = "3.2.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d53da17d37dba964b9b3ecb5c5a1f193a2762c700e6829201e645b9381c99dc7"
+checksum = "b15f2ea93df33549dbe2e8eecd1ca55269d63ae0b3ba1f55db030817d1c2867f"
 dependencies = [
  "atty",
  "bitflags",
@@ -563,14 +569,14 @@ version = "3.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f6ebaab5f25e4f0312dfa07cb30a755204b96e6531457c2cfdecfdf5f2adf40"
 dependencies = [
- "clap 3.2.5",
+ "clap 3.2.18",
 ]
 
 [[package]]
 name = "clap_derive"
-version = "3.2.5"
+version = "3.2.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c11d40217d16aee8508cc8e5fde8b4ff24639758608e5374e731b53f85749fb9"
+checksum = "ea0c8bce528c4be4da13ea6fead8965e95b6073585a2f05204bd8f4119f82a65"
 dependencies = [
  "heck 0.4.0",
  "proc-macro-error",
@@ -1032,7 +1038,7 @@ name = "examples-checker"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "clap 3.2.5",
+ "clap 3.2.18",
 ]
 
 [[package]]
@@ -1108,21 +1114,16 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.18.1"
+version = "0.21.0"
 dependencies = [
  "annotate-snippets",
  "anyhow",
- "clap 3.2.5",
+ "clap 3.2.18",
  "clap_complete",
  "forc-pkg",
  "forc-util",
  "fs_extra",
  "fuel-asm 0.6.0",
- "fuel-crypto",
- "fuel-gql-client",
- "fuel-tx",
- "fuel-vm",
- "futures",
  "hex",
  "serde",
  "serde_json",
@@ -1141,11 +1142,33 @@ dependencies = [
 ]
 
 [[package]]
-name = "forc-explore"
-version = "0.18.1"
+name = "forc-client"
+version = "0.21.0"
 dependencies = [
  "anyhow",
- "clap 3.2.5",
+ "clap 3.2.18",
+ "forc-pkg",
+ "forc-util",
+ "fuel-gql-client",
+ "fuel-tx",
+ "fuel-vm",
+ "futures",
+ "hex",
+ "serde",
+ "serde_json",
+ "sway-core",
+ "sway-types",
+ "sway-utils",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "forc-explore"
+version = "0.21.0"
+dependencies = [
+ "anyhow",
+ "clap 3.2.18",
  "forc-util",
  "reqwest",
  "serde",
@@ -1157,10 +1180,10 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.18.1"
+version = "0.21.0"
 dependencies = [
  "anyhow",
- "clap 3.2.5",
+ "clap 3.2.18",
  "forc-util",
  "prettydiff 0.5.1",
  "sway-core",
@@ -1172,10 +1195,10 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt-v2"
-version = "0.18.1"
+version = "0.21.0"
 dependencies = [
  "anyhow",
- "clap 3.2.5",
+ "clap 3.2.18",
  "forc-util",
  "prettydiff 0.5.1",
  "sway-core",
@@ -1186,46 +1209,42 @@ dependencies = [
 ]
 
 [[package]]
-name = "forc-gm"
-version = "0.18.1"
-dependencies = [
- "clap 3.2.5",
-]
-
-[[package]]
 name = "forc-lsp"
-version = "0.18.1"
+version = "0.21.0"
 dependencies = [
  "anyhow",
- "clap 3.2.5",
+ "clap 3.2.18",
  "sway-lsp",
  "tokio",
 ]
 
 [[package]]
 name = "forc-pkg"
-version = "0.18.1"
+version = "0.21.0"
 dependencies = [
  "anyhow",
  "forc-util",
+ "fuel-crypto",
  "fuel-tx",
  "git2",
  "petgraph",
  "semver 1.0.10",
  "serde",
  "serde_ignored",
+ "serde_json",
  "sway-core",
  "sway-types",
  "sway-utils",
  "toml",
  "tracing",
  "url",
+ "vec1",
  "walkdir",
 ]
 
 [[package]]
 name = "forc-util"
-version = "0.18.1"
+version = "0.21.0"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -1304,7 +1323,7 @@ checksum = "70c53c43a395fe5bafb3502e4a87c4d7b64a8cba1ea12e6a2ce33ff95c2a5016"
 dependencies = [
  "anyhow",
  "chrono",
- "clap 3.2.5",
+ "clap 3.2.18",
  "cynic",
  "derive_more",
  "fuel-tx",
@@ -2147,7 +2166,7 @@ source = "git+https://github.com/mitchmindtree/mdBook?branch=nightly-borrowcheck
 dependencies = [
  "anyhow",
  "chrono",
- "clap 3.2.5",
+ "clap 3.2.18",
  "clap_complete",
  "env_logger",
  "handlebars",
@@ -2170,7 +2189,7 @@ name = "mdbook-forc-documenter"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "clap 3.2.5",
+ "clap 3.2.18",
  "mdbook",
  "semver 1.0.10",
  "serde",
@@ -2402,6 +2421,12 @@ dependencies = [
  "smallvec",
  "windows-sys",
 ]
+
+[[package]]
+name = "paste"
+version = "1.0.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9423e2b32f7a043629287a536f21951e8c6a82482d0acb1eeebfc90bc2225b22"
 
 [[package]]
 name = "peg"
@@ -3623,10 +3648,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "sway-core"
-version = "0.18.1"
+name = "sway-ast"
+version = "0.21.0"
 dependencies = [
- "clap 3.2.5",
+ "extension-trait",
+ "num-bigint",
+ "num-traits",
+ "sway-types",
+]
+
+[[package]]
+name = "sway-core"
+version = "0.21.0"
+dependencies = [
+ "clap 3.2.18",
  "derivative",
  "dirs 3.0.2",
  "either",
@@ -3644,6 +3679,7 @@ dependencies = [
  "serde",
  "sha2 0.9.9",
  "smallvec",
+ "sway-ast",
  "sway-ir",
  "sway-parse",
  "sway-types",
@@ -3651,11 +3687,12 @@ dependencies = [
  "thiserror",
  "tracing",
  "uint",
+ "vec1",
 ]
 
 [[package]]
 name = "sway-fmt"
-version = "0.18.1"
+version = "0.21.0"
 dependencies = [
  "ropey",
  "sway-core",
@@ -3664,12 +3701,16 @@ dependencies = [
 
 [[package]]
 name = "sway-fmt-v2"
-version = "0.18.1"
+version = "0.21.0"
 dependencies = [
  "anyhow",
  "forc-util",
+ "paste",
+ "prettydiff 0.6.1",
+ "ropey",
  "serde",
  "serde_ignored",
+ "sway-ast",
  "sway-core",
  "sway-parse",
  "sway-types",
@@ -3679,7 +3720,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.18.1"
+version = "0.21.0"
 dependencies = [
  "anyhow",
  "filecheck",
@@ -3690,15 +3731,15 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.18.1"
+version = "0.21.0"
 dependencies = [
  "async-trait",
  "dashmap 5.3.4",
- "forc",
  "forc-pkg",
  "forc-util",
  "futures",
  "ropey",
+ "serde",
  "serde_json",
  "sway-core",
  "sway-fmt",
@@ -3712,12 +3753,14 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.18.1"
+version = "0.21.0"
 dependencies = [
+ "assert_matches",
  "extension-trait",
  "num-bigint",
  "num-traits",
  "phf",
+ "sway-ast",
  "sway-types",
  "thiserror",
  "unicode-xid",
@@ -3725,7 +3768,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.18.1"
+version = "0.21.0"
 dependencies = [
  "fuel-asm 0.6.0",
  "fuel-crypto",
@@ -3736,7 +3779,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.18.1"
+version = "0.21.0"
 
 [[package]]
 name = "syn"
@@ -3827,8 +3870,10 @@ name = "test"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "clap 3.2.18",
  "filecheck",
  "forc",
+ "forc-client",
  "forc-pkg",
  "forc-util",
  "fuel-asm 0.6.0",
@@ -4414,6 +4459,12 @@ name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
+
+[[package]]
+name = "vec1"
+version = "1.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5fc1631c774f0f9570797191e01247cbefde789eebfbf128074cb934115a6133"
 
 [[package]]
 name = "vec_map"

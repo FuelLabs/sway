@@ -1,9 +1,12 @@
-use crate::{semantic_analysis::*, type_engine::*, Ident, Visibility};
+use crate::{semantic_analysis::*, type_system::*, Ident, Visibility};
+use sway_types::Span;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum VariableMutability {
     // private + mutable
     Mutable,
+    // private + referenceable + mutable
+    RefMutable,
     // private + immutable
     Immutable,
     // public + immutable
@@ -18,7 +21,10 @@ impl Default for VariableMutability {
 }
 impl VariableMutability {
     pub fn is_mutable(&self) -> bool {
-        matches!(self, VariableMutability::Mutable)
+        matches!(
+            self,
+            VariableMutability::Mutable | VariableMutability::RefMutable
+        )
     }
     pub fn visibility(&self) -> Visibility {
         match self {
@@ -31,27 +37,26 @@ impl VariableMutability {
     }
 }
 
-impl From<bool> for VariableMutability {
-    fn from(o: bool) -> Self {
-        if o {
-            VariableMutability::Mutable
-        } else {
-            VariableMutability::Immutable
-        }
+pub fn convert_to_variable_immutability(
+    is_reference: bool,
+    is_mutable: bool,
+) -> VariableMutability {
+    if is_reference {
+        VariableMutability::RefMutable
+    } else if is_mutable {
+        VariableMutability::Mutable
+    } else {
+        VariableMutability::Immutable
     }
 }
-// as a bool, true means mutable
-impl From<VariableMutability> for bool {
-    fn from(o: VariableMutability) -> bool {
-        o.is_mutable()
-    }
-}
+
 #[derive(Clone, Debug, Eq)]
 pub struct TypedVariableDeclaration {
     pub name: Ident,
     pub body: TypedExpression,
-    pub is_mutable: VariableMutability,
+    pub mutability: VariableMutability,
     pub type_ascription: TypeId,
+    pub type_ascription_span: Option<Span>,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -61,7 +66,7 @@ impl PartialEq for TypedVariableDeclaration {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
             && self.body == other.body
-            && self.is_mutable == other.is_mutable
+            && self.mutability == other.mutability
             && look_up_type_id(self.type_ascription) == look_up_type_id(other.type_ascription)
     }
 }

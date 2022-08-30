@@ -52,6 +52,14 @@ pub(crate) fn instantiate_function_application(
                 warnings,
                 errors
             );
+
+            // check for matching mutability
+            let param_mutability =
+                convert_to_variable_immutability(param.is_reference, param.is_mutable);
+            if exp.gather_mutability().is_immutable() && param_mutability.is_mutable() {
+                errors.push(CompileError::ImmutableArgumentToMutableParameter { span: arg.span() });
+            }
+
             (param.name.clone(), exp)
         })
         .collect();
@@ -76,7 +84,7 @@ pub(crate) fn instantiate_function_application_simple(
     contract_call_params: HashMap<String, TypedExpression, RandomState>,
     arguments: VecDeque<TypedExpression>,
     function_decl: TypedFunctionDeclaration,
-    selector: Option<ContractCallMetadata>,
+    selector: Option<ContractCallParams>,
     is_constant: IsConstant,
     self_state_idx: Option<StateIndex>,
     span: Span,
@@ -148,7 +156,7 @@ fn instantiate_function_application_inner(
     contract_call_params: HashMap<String, TypedExpression, RandomState>,
     arguments: Vec<(Ident, TypedExpression)>,
     function_decl: TypedFunctionDeclaration,
-    selector: Option<ContractCallMetadata>,
+    selector: Option<ContractCallParams>,
     is_constant: IsConstant,
     self_state_idx: Option<StateIndex>,
     span: Span,

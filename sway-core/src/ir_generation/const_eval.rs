@@ -1,5 +1,6 @@
 use crate::{
     error::CompileError,
+    metadata::MetadataManager,
     semantic_analysis::{
         declaration::ProjectionKind, namespace, TypedAstNode, TypedAstNodeContent,
         TypedConstantDeclaration, TypedDeclaration, TypedExpression, TypedExpressionVariant,
@@ -12,7 +13,6 @@ use super::{convert::convert_literal_to_constant, types::*};
 use sway_ir::{
     constant::{Constant, ConstantValue},
     context::Context,
-    metadata::MetadataIndex,
     module::Module,
     value::Value,
 };
@@ -21,15 +21,15 @@ use sway_types::{ident::Ident, span::Spanned};
 
 use std::collections::HashMap;
 
-pub struct LookupEnv<'a> {
-    pub context: &'a mut Context,
-    pub module: Module,
-    pub module_ns: Option<&'a namespace::Module>,
-    pub public_only: bool,
-    pub lookup: fn(&mut LookupEnv, &Ident) -> Result<Option<Value>, CompileError>,
+pub(crate) struct LookupEnv<'a> {
+    pub(crate) context: &'a mut Context,
+    pub(crate) md_mgr: &'a mut MetadataManager,
+    pub(crate) module: Module,
+    pub(crate) module_ns: Option<&'a namespace::Module>,
+    pub(crate) lookup: fn(&mut LookupEnv, &Ident) -> Result<Option<Value>, CompileError>,
 }
 
-pub fn compile_const_decl(
+pub(crate) fn compile_const_decl(
     env: &mut LookupEnv,
     name: &Ident,
 ) -> Result<Option<Value>, CompileError> {
@@ -51,8 +51,13 @@ pub fn compile_const_decl(
                 _otherwise => None,
             };
             if let Some((name, value)) = decl_name_value {
-                let const_val =
-                    compile_constant_expression(env.context, env.module, env.module_ns, value)?;
+                let const_val = compile_constant_expression(
+                    env.context,
+                    env.md_mgr,
+                    env.module,
+                    env.module_ns,
+                    value,
+                )?;
                 env.module
                     .add_global_constant(env.context, name.as_str().to_owned(), const_val);
                 Ok(Some(const_val))
@@ -66,32 +71,30 @@ pub fn compile_const_decl(
 
 pub(super) fn compile_constant_expression(
     context: &mut Context,
+    md_mgr: &mut MetadataManager,
     module: Module,
     module_ns: Option<&namespace::Module>,
     const_expr: &TypedExpression,
 ) -> Result<Value, CompileError> {
-    let span_id_idx = MetadataIndex::from_span(context, &const_expr.span);
+    let span_id_idx = md_mgr.span_to_md(context, &const_expr.span);
 
     let constant_evaluated =
-        compile_constant_expression_to_constant(context, module, module_ns, const_expr)?;
-    Ok(Value::new_constant(
-        context,
-        constant_evaluated,
-        span_id_idx,
-    ))
+        compile_constant_expression_to_constant(context, md_mgr, module, module_ns, const_expr)?;
+    Ok(Value::new_constant(context, constant_evaluated).add_metadatum(context, span_id_idx))
 }
 
 pub(crate) fn compile_constant_expression_to_constant(
     context: &mut Context,
+    md_mgr: &mut MetadataManager,
     module: Module,
     module_ns: Option<&namespace::Module>,
     const_expr: &TypedExpression,
 ) -> Result<Constant, CompileError> {
     let lookup = &mut LookupEnv {
         context,
+        md_mgr,
         module,
         module_ns,
-        public_only: false,
         lookup: compile_const_decl,
     };
 
@@ -200,7 +203,7 @@ fn const_eval_typed_expr(
             }
             res
         }
-        TypedExpressionVariant::VariableExpression { name } => match known_consts.get(name) {
+        TypedExpressionVariant::VariableExpression { name, .. } => match known_consts.get(name) {
             // 1. Check if name is in known_consts.
             Some(cvs) => Some(cvs.clone()),
             None => {
@@ -259,8 +262,8 @@ fn const_eval_typed_expr(
             let mut element_iter = element_typs.iter();
             let element_type_id = *element_iter.next().unwrap();
             if !element_iter.all(|tid| {
-                crate::type_engine::look_up_type_id(*tid)
-                    == crate::type_engine::look_up_type_id(element_type_id)
+                crate::type_system::look_up_type_id(*tid)
+                    == crate::type_system::look_up_type_id(element_type_id)
             }) {
                 // This shouldn't happen if the type checker did its job.
                 return None;
@@ -284,7 +287,7 @@ fn const_eval_typed_expr(
             let tag_value = Constant::new_uint(64, *tag as u64);
             let mut fields: Vec<Constant> = vec![tag_value];
             contents.iter().for_each(|subexpr| {
-                const_eval_typed_expr(lookup, known_consts, &*subexpr)
+                const_eval_typed_expr(lookup, known_consts, subexpr)
                     .into_iter()
                     .for_each(|enum_val| {
                         fields.push(enum_val);
@@ -296,7 +299,8 @@ fn const_eval_typed_expr(
             prefix,
             field_to_access,
             resolved_type_of_parent,
-        } => match const_eval_typed_expr(lookup, known_consts, &*prefix) {
+            ..
+        } => match const_eval_typed_expr(lookup, known_consts, prefix) {
             Some(Constant {
                 value: ConstantValue::Struct(fields),
                 ..
@@ -316,7 +320,7 @@ fn const_eval_typed_expr(
             prefix,
             elem_to_access_num,
             ..
-        } => match const_eval_typed_expr(lookup, known_consts, &*prefix) {
+        } => match const_eval_typed_expr(lookup, known_consts, prefix) {
             Some(Constant {
                 value: ConstantValue::Struct(fields),
                 ..
@@ -326,6 +330,8 @@ fn const_eval_typed_expr(
         TypedExpressionVariant::ArrayIndex { .. }
         | TypedExpressionVariant::IntrinsicFunction(_)
         | TypedExpressionVariant::CodeBlock(_)
+        | TypedExpressionVariant::Reassignment(_)
+        | TypedExpressionVariant::StorageReassignment(_)
         | TypedExpressionVariant::FunctionParameter
         | TypedExpressionVariant::IfExp { .. }
         | TypedExpressionVariant::AsmExpression { .. }
@@ -334,7 +340,10 @@ fn const_eval_typed_expr(
         | TypedExpressionVariant::StorageAccess(_)
         | TypedExpressionVariant::AbiName(_)
         | TypedExpressionVariant::EnumTag { .. }
-        | TypedExpressionVariant::UnsafeDowncast { .. } => None,
+        | TypedExpressionVariant::UnsafeDowncast { .. }
+        | TypedExpressionVariant::Break
+        | TypedExpressionVariant::Continue
+        | TypedExpressionVariant::WhileLoop { .. } => None,
     }
 }
 
@@ -354,6 +363,6 @@ fn const_eval_typed_ast_node(
         TypedAstNodeContent::Expression(e) | TypedAstNodeContent::ImplicitReturnExpression(e) => {
             const_eval_typed_expr(lookup, known_consts, e)
         }
-        TypedAstNodeContent::WhileLoop(_) | TypedAstNodeContent::SideEffect => None,
+        TypedAstNodeContent::SideEffect => None,
     }
 }

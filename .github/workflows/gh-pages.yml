@@ -28,6 +28,7 @@ jobs:
           cargo install --debug --path ./forc-plugins/forc-fmt 
           cargo install --debug --path ./forc-plugins/forc-lsp 
           cargo install --debug --path ./forc-plugins/forc-explore
+          cargo install --debug --path ./forc-plugins/forc-client
       - name: Install mdbook-forc-documenter
         uses: actions-rs/cargo@v1
         with:

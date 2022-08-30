@@ -1,0 +1,38 @@
+// regex: ID=[[:alpha:]0-9]+
+
+script {
+    fn main() -> bool {
+        entry:
+// check: const u64 11
+        v0 = const u64 11
+        v1 = const u64 0
+        v2 = cmp eq v0 v1
+// not: br
+        br block0
+
+        block0:
+// not: phi(entry: v2)
+        v3 = phi(entry: v2)
+// check: const u64 22
+        v4 = const u64 22
+        v5 = cmp eq v4 v1
+// not: br
+        br block1
+
+// not: block1:
+        block1:
+// not: phi(block0: v5)
+        v6 = phi(block0: v5)
+// check: const u64 33
+        v7 = const u64 33
+        v8 = cmp eq v7 v1
+// not: br
+        br block2
+
+        block2:
+// not: phi(block1: v8)
+        v9 = phi(block1: v8)
+        ret bool v9
+    }
+}
+

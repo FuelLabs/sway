@@ -1,4 +1,4 @@
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_engine::*};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_system::*};
 
 use sway_types::{Ident, Spanned};
 
@@ -8,6 +8,7 @@ use sway_types::{Ident, Spanned};
 pub(crate) fn instantiate_enum(
     ctx: TypeCheckContext,
     enum_decl: TypedEnumDeclaration,
+    enum_name: Ident,
     enum_variant_name: Ident,
     args: Vec<Expression>,
 ) -> CompileResult<TypedExpression> {
@@ -35,7 +36,8 @@ pub(crate) fn instantiate_enum(
                     contents: None,
                     enum_decl,
                     variant_name: enum_variant.name,
-                    instantiation_span: enum_variant_name.span(),
+                    enum_instantiation_span: enum_name.span(),
+                    variant_instantiation_span: enum_variant_name.span(),
                 },
                 is_constant: IsConstant::No,
                 span: enum_variant_name.span(),
@@ -65,7 +67,8 @@ pub(crate) fn instantiate_enum(
                         contents: Some(Box::new(typed_expr)),
                         enum_decl,
                         variant_name: enum_variant.name,
-                        instantiation_span: enum_variant_name.span(),
+                        enum_instantiation_span: enum_name.span(),
+                        variant_instantiation_span: enum_variant_name.span(),
                     },
                     is_constant: IsConstant::No,
                     span: enum_variant_name.span(),

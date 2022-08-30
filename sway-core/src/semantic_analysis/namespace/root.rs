@@ -1,5 +1,5 @@
 use crate::{
-    error::*, semantic_analysis::*, type_engine::*, CallPath, CompileResult, Ident, TypeInfo,
+    error::*, semantic_analysis::*, type_system::*, CallPath, CompileResult, Ident, TypeInfo,
     TypedDeclaration, TypedFunctionDeclaration,
 };
 
@@ -152,14 +152,14 @@ impl Root {
                 }
             }
             TypeInfo::Ref(id, _) => id,
-            TypeInfo::Array(type_id, n) => {
+            TypeInfo::Array(type_id, n, initial_type_id) => {
                 let new_type_id = check!(
                     self.resolve_type(type_id, span, enforce_type_arguments, None, mod_path),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
                     errors
                 );
-                insert_type(TypeInfo::Array(new_type_id, n))
+                insert_type(TypeInfo::Array(new_type_id, n, initial_type_id))
             }
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {

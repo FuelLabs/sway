@@ -1,8 +1,9 @@
 use crate::{
+    declaration_engine::declaration_engine::DeclarationEngine,
     namespace::Path,
     parse_tree::declaration::Purity,
     semantic_analysis::{ast_node::Mode, Namespace},
-    type_engine::{
+    type_system::{
         insert_type, monomorphize, unify_with_self, CopyTypes, EnforceTypeArguments,
         MonomorphizeHelper, TypeArgument, TypeId, TypeInfo,
     },
@@ -11,7 +12,7 @@ use crate::{
 use sway_types::{span::Span, Ident};
 
 /// Contextual state tracked and accumulated throughout type-checking.
-pub struct TypeCheckContext<'ns> {
+pub struct TypeCheckContext<'ns, 'de> {
     /// The namespace context accumulated throughout type-checking.
     ///
     /// Internally, this includes:
@@ -21,6 +22,9 @@ pub struct TypeCheckContext<'ns> {
     /// - A `mod_path` that represents the current module being type-checked. This is automatically
     ///   updated upon entering/exiting submodules via the `enter_submodule` method.
     pub(crate) namespace: &'ns mut Namespace,
+
+    /// The declaration engine used during type checking
+    pub(crate) declaration_engine: &'de mut DeclarationEngine,
 
     // The following set of fields are intentionally private. When a `TypeCheckContext` is passed
     // into a new node during type checking, these fields should be updated using the `with_*`
@@ -48,7 +52,7 @@ pub struct TypeCheckContext<'ns> {
     purity: Purity,
 }
 
-impl<'ns> TypeCheckContext<'ns> {
+impl<'ns, 'de> TypeCheckContext<'ns, 'de> {
     /// Initialise a context at the top-level of a module with its namespace.
     ///
     /// Initializes with:
@@ -57,13 +61,20 @@ impl<'ns> TypeCheckContext<'ns> {
     /// - mode: NoneAbi
     /// - help_text: ""
     /// - purity: Pure
-    pub fn from_root(root_namespace: &'ns mut Namespace) -> Self {
-        Self::from_module_namespace(root_namespace)
+    pub fn from_root(
+        root_namespace: &'ns mut Namespace,
+        declaration_engine: &'de mut DeclarationEngine,
+    ) -> Self {
+        Self::from_module_namespace(root_namespace, declaration_engine)
     }
 
-    fn from_module_namespace(namespace: &'ns mut Namespace) -> Self {
+    fn from_module_namespace(
+        namespace: &'ns mut Namespace,
+        declaration_engine: &'de mut DeclarationEngine,
+    ) -> Self {
         Self {
             namespace,
+            declaration_engine,
             type_annotation: insert_type(TypeInfo::Unknown),
             help_text: "",
             // TODO: Contract? Should this be passed in based on program kind (aka TreeType)?
@@ -81,9 +92,14 @@ impl<'ns> TypeCheckContext<'ns> {
     /// rather than the original namespace reference, we instead restrict the returned context to
     /// the local scope and avoid consuming the original context when providing context to the
     /// first visited child node.
-    pub fn by_ref(&mut self) -> TypeCheckContext {
-        TypeCheckContext {
+    pub fn by_ref<'a>(&'a mut self) -> TypeCheckContext<'a, 'a>
+    where
+        'ns: 'a,
+        'de: 'a,
+    {
+        TypeCheckContext::<'a, 'a> {
             namespace: self.namespace,
+            declaration_engine: self.declaration_engine,
             type_annotation: self.type_annotation,
             self_type: self.self_type,
             mode: self.mode,
@@ -93,9 +109,13 @@ impl<'ns> TypeCheckContext<'ns> {
     }
 
     /// Scope the `TypeCheckContext` with the given `Namespace`.
-    pub fn scoped(self, namespace: &mut Namespace) -> TypeCheckContext {
-        TypeCheckContext {
+    pub fn scoped<'a>(self, namespace: &'a mut Namespace) -> TypeCheckContext<'a, 'de>
+    where
+        'de: 'a,
+    {
+        TypeCheckContext::<'a, 'de> {
             namespace,
+            declaration_engine: self.declaration_engine,
             type_annotation: self.type_annotation,
             self_type: self.self_type,
             mode: self.mode,
@@ -117,7 +137,8 @@ impl<'ns> TypeCheckContext<'ns> {
         // engine here once they're added.
         let Self { namespace, .. } = self;
         let mut submod_ns = namespace.enter_submodule(dep_name);
-        let submod_ctx = TypeCheckContext::from_module_namespace(&mut submod_ns);
+        let submod_ctx =
+            TypeCheckContext::from_module_namespace(&mut submod_ns, self.declaration_engine);
         with_submod_ctx(submod_ctx)
     }
 
@@ -224,7 +245,7 @@ impl<'ns> TypeCheckContext<'ns> {
             .resolve_type_without_self(type_id, span, type_info_prefix)
     }
 
-    /// Short-hand around `type_engine::unify_with_self`, where the `TypeCheckContext` provides the
+    /// Short-hand around `type_system::unify_with_self`, where the `TypeCheckContext` provides the
     /// type annotation, self type and help text.
     pub(crate) fn unify_with_self(
         &self,

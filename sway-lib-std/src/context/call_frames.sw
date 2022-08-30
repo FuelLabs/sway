@@ -1,12 +1,12 @@
 //! Helper functions for accessing data from call frames.
-/// Call frames store metadata across untrusted inter-contract calls:
-/// https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#call-frames
+//! Call frames store metadata across untrusted inter-contract calls:
+//! https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#call-frames
 library call_frames;
 
-use ::contract_id::ContractId;
-use ::mem::read;
 use ::context::registers::frame_ptr;
+use ::contract_id::ContractId;
 use ::intrinsics::is_reference_type;
+use ::mem::read;
 
 // Note that everything when serialized is padded to word length.
 //
@@ -58,8 +58,7 @@ pub fn first_param() -> u64 {
 pub fn second_param<T>() -> T {
     if !is_reference_type::<T>() {
         read::<T>(frame_ptr() + SECOND_PARAMETER_OFFSET)
-    }
-    else {
+    } else {
         read::<T>(read::<u64>(frame_ptr() + SECOND_PARAMETER_OFFSET))
     }
 }

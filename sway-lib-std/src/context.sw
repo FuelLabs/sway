@@ -4,7 +4,7 @@ dep context/registers;
 dep context/call_frames;
 
 use ::contract_id::ContractId;
-use ::context::call_frames::*;
+use ::context::call_frames::contract_id;
 use ::context::registers::balance;
 
 /// Get the balance of coin `asset_id` for the current contract.

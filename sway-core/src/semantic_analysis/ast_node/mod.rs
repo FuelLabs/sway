@@ -1,9 +1,8 @@
-mod code_block;
+pub mod code_block;
 pub mod declaration;
 pub mod expression;
 pub mod mode;
 mod return_statement;
-pub mod while_loop;
 
 use std::fmt;
 
@@ -12,10 +11,9 @@ pub use declaration::*;
 pub(crate) use expression::*;
 pub(crate) use mode::*;
 pub(crate) use return_statement::*;
-pub(crate) use while_loop::*;
 
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*,
+    error::*, parse_tree::*, semantic_analysis::*, style::*, type_system::*,
     types::DeterministicallyAborts, AstNode, AstNodeContent, Ident, ReturnStatement,
 };
 
@@ -37,7 +35,6 @@ pub enum TypedAstNodeContent {
     Declaration(TypedDeclaration),
     Expression(TypedExpression),
     ImplicitReturnExpression(TypedExpression),
-    WhileLoop(TypedWhileLoop),
     // a no-op node used for something that just issues a side effect, like an import statement.
     SideEffect,
 }
@@ -50,17 +47,6 @@ impl UnresolvedTypeCheck for TypedAstNodeContent {
             Declaration(decl) => decl.check_for_unresolved_types(),
             Expression(expr) => expr.check_for_unresolved_types(),
             ImplicitReturnExpression(expr) => expr.check_for_unresolved_types(),
-            WhileLoop(lo) => {
-                let mut condition = lo.condition.check_for_unresolved_types();
-                let mut body = lo
-                    .body
-                    .contents
-                    .iter()
-                    .flat_map(TypedAstNode::check_for_unresolved_types)
-                    .collect();
-                condition.append(&mut body);
-                condition
-            }
             SideEffect => vec![],
         }
     }
@@ -84,7 +70,6 @@ impl fmt::Display for TypedAstNode {
             Declaration(ref typed_decl) => typed_decl.to_string(),
             Expression(exp) => exp.to_string(),
             ImplicitReturnExpression(exp) => format!("return {}", exp),
-            WhileLoop(w_loop) => w_loop.to_string(),
             SideEffect => "".into(),
         };
         f.write_str(&text)
@@ -102,13 +87,6 @@ impl CopyTypes for TypedAstNode {
             }
             TypedAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping),
             TypedAstNodeContent::Expression(ref mut expr) => expr.copy_types(type_mapping),
-            TypedAstNodeContent::WhileLoop(TypedWhileLoop {
-                ref mut condition,
-                ref mut body,
-            }) => {
-                condition.copy_types(type_mapping);
-                body.copy_types(type_mapping);
-            }
             TypedAstNodeContent::SideEffect => (),
         }
     }
@@ -127,9 +105,6 @@ impl DeterministicallyAborts for TypedAstNode {
             ReturnStatement(_) => true,
             Declaration(_) => false,
             Expression(exp) | ImplicitReturnExpression(exp) => exp.deterministically_aborts(),
-            WhileLoop(TypedWhileLoop { condition, body }) => {
-                condition.deterministically_aborts() || body.deterministically_aborts()
-            }
             SideEffect => false,
         }
     }
@@ -141,11 +116,7 @@ impl TypedAstNode {
         use TypedAstNodeContent::*;
         match &self.content {
             Declaration(decl) => decl.visibility().is_public(),
-            ReturnStatement(_)
-            | Expression(_)
-            | WhileLoop(_)
-            | SideEffect
-            | ImplicitReturnExpression(_) => false,
+            ReturnStatement(_) | Expression(_) | SideEffect | ImplicitReturnExpression(_) => false,
         }
     }
 
@@ -176,24 +147,10 @@ impl TypedAstNode {
             TypedAstNodeContent::ImplicitReturnExpression(ref exp) => {
                 exp.gather_return_statements()
             }
-            TypedAstNodeContent::WhileLoop(TypedWhileLoop {
-                ref condition,
-                ref body,
-                ..
-            }) => {
-                let mut buf = condition.gather_return_statements();
-                for node in &body.contents {
-                    buf.append(&mut node.gather_return_statements())
-                }
-                buf
-            }
             // assignments and  reassignments can happen during control flow and can abort
             TypedAstNodeContent::Declaration(TypedDeclaration::VariableDeclaration(
                 TypedVariableDeclaration { body, .. },
             )) => body.gather_return_statements(),
-            TypedAstNodeContent::Declaration(TypedDeclaration::Reassignment(
-                TypedReassignment { rhs, .. },
-            )) => rhs.gather_return_statements(),
             TypedAstNodeContent::Expression(exp) => exp.gather_return_statements(),
             TypedAstNodeContent::SideEffect | TypedAstNodeContent::Declaration(_) => vec![],
         }
@@ -205,12 +162,12 @@ impl TypedAstNode {
         match &self.content {
             ReturnStatement(_) | Declaration(_) => TypeInfo::Tuple(Vec::new()),
             Expression(TypedExpression { return_type, .. }) => {
-                crate::type_engine::look_up_type_id(*return_type)
+                crate::type_system::look_up_type_id(*return_type)
             }
             ImplicitReturnExpression(TypedExpression { return_type, .. }) => {
-                crate::type_engine::look_up_type_id(*return_type)
+                crate::type_system::look_up_type_id(*return_type)
             }
-            WhileLoop(_) | SideEffect => TypeInfo::Tuple(Vec::new()),
+            SideEffect => TypeInfo::Tuple(Vec::new()),
         }
     }
 
@@ -266,12 +223,10 @@ impl TypedAstNode {
                             body,
                             is_mutable,
                         }) => {
-                            let type_ascription_span =
-                                type_ascription_span.unwrap_or_else(|| name.span());
                             let type_ascription = check!(
                                 ctx.resolve_type_with_self(
                                     insert_type(type_ascription),
-                                    &type_ascription_span,
+                                    &type_ascription_span.clone().unwrap_or_else(|| name.span()),
                                     EnforceTypeArguments::Yes,
                                     None
                                 ),
@@ -290,8 +245,9 @@ impl TypedAstNode {
                                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                                     name: name.clone(),
                                     body,
-                                    is_mutable: is_mutable.into(),
+                                    mutability: convert_to_variable_immutability(false, is_mutable),
                                     type_ascription,
+                                    type_ascription_span,
                                 });
                             ctx.namespace.insert_symbol(name, typed_var_decl.clone());
                             typed_var_decl
@@ -301,6 +257,7 @@ impl TypedAstNode {
                             type_ascription,
                             value,
                             visibility,
+                            ..
                         }) => {
                             let result =
                                 type_check_ascribed_expr(ctx.by_ref(), type_ascription, value);
@@ -357,17 +314,6 @@ impl TypedAstNode {
                             let decl = TypedDeclaration::TraitDeclaration(trait_decl);
                             ctx.namespace.insert_symbol(name, decl.clone());
                             decl
-                        }
-                        Declaration::Reassignment(Reassignment { lhs, rhs, span }) => {
-                            let ctx = ctx
-                                .with_type_annotation(insert_type(TypeInfo::Unknown))
-                                .with_help_text("");
-                            check!(
-                                reassignment(ctx, lhs, rhs, span),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            )
                         }
                         Declaration::ImplTrait(impl_trait) => {
                             let (impl_trait, implementing_for_type_id) = check!(
@@ -433,6 +379,7 @@ impl TypedAstNode {
                                 name,
                                 type_info,
                                 initializer,
+                                type_info_span,
                             } in fields
                             {
                                 let type_id = check!(
@@ -457,6 +404,7 @@ impl TypedAstNode {
                                 fields_buf.push(TypedStorageField::new(
                                     name,
                                     type_id,
+                                    type_info_span,
                                     initializer,
                                     span.clone(),
                                 ));
@@ -474,8 +422,6 @@ impl TypedAstNode {
                             );
                             TypedDeclaration::StorageDeclaration(decl)
                         }
-                        Declaration::Break { span } => TypedDeclaration::Break { span },
-                        Declaration::Continue { span } => TypedDeclaration::Continue { span },
                     })
                 }
                 AstNodeContent::Expression(expr) => {
@@ -526,161 +472,32 @@ impl TypedAstNode {
                     );
                     TypedAstNodeContent::ImplicitReturnExpression(typed_expr)
                 }
-                AstNodeContent::WhileLoop(WhileLoop { condition, body }) => {
-                    let typed_condition = {
-                        let ctx = ctx
-                            .by_ref()
-                            .with_type_annotation(insert_type(TypeInfo::Boolean))
-                            .with_help_text(
-                                "A while loop's loop condition must be a boolean expression.",
-                            );
-                        check!(
-                            TypedExpression::type_check(ctx, condition),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        )
-                    };
-
-                    let ctx = ctx
-                        .with_type_annotation(insert_type(TypeInfo::Tuple(Vec::new())))
-                        .with_help_text(
-                            "A while loop's loop body cannot implicitly return a value. Try \
-                             assigning it to a mutable variable declared outside of the loop \
-                             instead.",
-                        );
-                    let (typed_body, _block_implicit_return) = check!(
-                        TypedCodeBlock::type_check(ctx, body),
-                        (
-                            TypedCodeBlock { contents: vec![] },
-                            insert_type(TypeInfo::Tuple(Vec::new()))
-                        ),
-                        warnings,
-                        errors
-                    );
-                    TypedAstNodeContent::WhileLoop(TypedWhileLoop {
-                        condition: typed_condition,
-                        body: typed_body,
-                    })
-                }
             },
             span: node.span.clone(),
         };
 
         if let TypedAstNode {
-            content: TypedAstNodeContent::Expression(TypedExpression { .. }),
+            content: TypedAstNodeContent::Expression(TypedExpression { ref expression, .. }),
             ..
         } = node
         {
-            let warning = Warning::UnusedReturnValue {
-                r#type: Box::new(node.type_info()),
-            };
-            assert_or_warn!(
-                node.type_info().is_unit() || node.type_info() == TypeInfo::ErrorRecovery,
-                warnings,
-                node.span.clone(),
-                warning
-            );
+            if !matches!(
+                expression,
+                TypedExpressionVariant::Break | TypedExpressionVariant::Continue,
+            ) {
+                let warning = Warning::UnusedReturnValue {
+                    r#type: Box::new(node.type_info()),
+                };
+                assert_or_warn!(
+                    node.type_info().is_unit() || node.type_info() == TypeInfo::ErrorRecovery,
+                    warnings,
+                    node.span.clone(),
+                    warning
+                );
+            }
         }
 
         ok(node, warnings, errors)
-    }
-}
-
-fn reassignment(
-    ctx: TypeCheckContext,
-    lhs: ReassignmentTarget,
-    rhs: Expression,
-    span: Span,
-) -> CompileResult<TypedDeclaration> {
-    let mut errors = vec![];
-    let mut warnings = vec![];
-    // ensure that the lhs is a variable expression or struct field access
-    match lhs {
-        ReassignmentTarget::VariableExpression(var) => {
-            let mut expr = var;
-            let mut names_vec = Vec::new();
-            let (base_name, final_return_type) = loop {
-                match *expr {
-                    Expression::VariableExpression { name, .. } => {
-                        // check that the reassigned name exists
-                        let unknown_decl = check!(
-                            ctx.namespace.resolve_symbol(&name).cloned(),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        let variable_decl = check!(
-                            unknown_decl.expect_variable().cloned(),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        if !variable_decl.is_mutable.is_mutable() {
-                            errors.push(CompileError::AssignmentToNonMutable { name });
-                            return err(warnings, errors);
-                        }
-                        break (name, variable_decl.body.return_type);
-                    }
-                    Expression::SubfieldExpression {
-                        prefix,
-                        field_to_access,
-                        ..
-                    } => {
-                        names_vec.push(ProjectionKind::StructField {
-                            name: field_to_access,
-                        });
-                        expr = prefix;
-                    }
-                    Expression::TupleIndex {
-                        prefix,
-                        index,
-                        index_span,
-                        ..
-                    } => {
-                        names_vec.push(ProjectionKind::TupleField { index, index_span });
-                        expr = prefix;
-                    }
-                    _ => {
-                        errors.push(CompileError::InvalidExpressionOnLhs { span });
-                        return err(warnings, errors);
-                    }
-                }
-            };
-            let names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
-            let (ty_of_field, _ty_of_parent) = check!(
-                ctx.namespace.find_subfield_type(&base_name, &names_vec),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            // type check the reassignment
-            let ctx = ctx.with_type_annotation(ty_of_field).with_help_text("");
-            let rhs = check!(
-                TypedExpression::type_check(ctx, rhs),
-                error_recovery_expr(span),
-                warnings,
-                errors
-            );
-
-            ok(
-                TypedDeclaration::Reassignment(TypedReassignment {
-                    lhs_base_name: base_name,
-                    lhs_type: final_return_type,
-                    lhs_indices: names_vec,
-                    rhs,
-                }),
-                warnings,
-                errors,
-            )
-        }
-        ReassignmentTarget::StorageField(fields) => {
-            let ctx = ctx
-                .with_type_annotation(insert_type(TypeInfo::Unknown))
-                .with_help_text("");
-            reassign_storage_subfield(ctx, fields, rhs, span)
-                .map(TypedDeclaration::StorageReassignment)
-        }
     }
 }
 
@@ -708,11 +525,13 @@ fn type_check_interface_surface(
                     .map(
                         |FunctionParameter {
                              name,
+                             is_reference,
                              is_mutable,
                              type_id,
                              type_span,
                          }| TypedFunctionParameter {
                             name,
+                            is_reference,
                             is_mutable,
                             type_id: check!(
                                 namespace.resolve_type_with_self(
@@ -726,6 +545,7 @@ fn type_check_interface_surface(
                                 warnings,
                                 errors,
                             ),
+                            initial_type_id: type_id,
                             type_span,
                         },
                     )
@@ -771,7 +591,11 @@ fn type_check_trait_methods(
         let mut sig_ctx = ctx.by_ref().with_self_type(insert_type(TypeInfo::SelfType));
         parameters.clone().into_iter().for_each(
             |FunctionParameter {
-                 name, ref type_id, ..
+                 name,
+                 is_reference,
+                 is_mutable,
+                 ref type_id,
+                 ..
              }| {
                 let r#type = check!(
                     sig_ctx.resolve_type_with_self(
@@ -794,9 +618,9 @@ fn type_check_trait_methods(
                             is_constant: IsConstant::No,
                             span: name.span(),
                         },
-                        // TODO allow mutable function params?
-                        is_mutable: VariableMutability::Immutable,
+                        mutability: convert_to_variable_immutability(is_reference, is_mutable),
                         type_ascription: r#type,
+                        type_ascription_span: None,
                     }),
                 );
             },
@@ -846,11 +670,13 @@ fn type_check_trait_methods(
                 |FunctionParameter {
                      name,
                      type_id,
+                     is_reference,
                      is_mutable,
                      type_span,
                  }| {
                     TypedFunctionParameter {
                         name,
+                        is_reference,
                         is_mutable,
                         type_id: check!(
                             sig_ctx.resolve_type_with_self(
@@ -863,6 +689,7 @@ fn type_check_trait_methods(
                             warnings,
                             errors,
                         ),
+                        initial_type_id: type_id,
                         type_span,
                     }
                 },
@@ -870,9 +697,10 @@ fn type_check_trait_methods(
             .collect::<Vec<_>>();
 
         // TODO check code block implicit return
+        let initial_return_type = insert_type(return_type);
         let return_type = check!(
             ctx.resolve_type_with_self(
-                insert_type(return_type),
+                initial_return_type,
                 &return_type_span,
                 EnforceTypeArguments::Yes,
                 None
@@ -902,6 +730,7 @@ fn type_check_trait_methods(
             parameters,
             span,
             return_type,
+            initial_return_type,
             type_parameters,
             // For now, any method declared is automatically public.
             // We can tweak that later if we want.
@@ -925,6 +754,7 @@ fn error_recovery_function_declaration(decl: FunctionDeclaration) -> TypedFuncti
         visibility,
         ..
     } = decl;
+    let initial_return_type = insert_type(return_type);
     TypedFunctionDeclaration {
         purity: Default::default(),
         name,
@@ -936,7 +766,8 @@ fn error_recovery_function_declaration(decl: FunctionDeclaration) -> TypedFuncti
         return_type_span,
         parameters: Default::default(),
         visibility,
-        return_type: insert_type(return_type),
+        return_type: initial_return_type,
+        initial_return_type,
         type_parameters: Default::default(),
     }
 }
@@ -986,7 +817,7 @@ impl PartialEq for TypeCheckedStorageReassignDescriptor {
     }
 }
 
-fn reassign_storage_subfield(
+pub(crate) fn reassign_storage_subfield(
     ctx: TypeCheckContext,
     fields: Vec<Ident>,
     rhs: Expression,

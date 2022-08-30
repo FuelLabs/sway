@@ -40,7 +40,7 @@ impl Block {
     /// is optional and is used only when printing the IR.
     pub fn new(context: &mut Context, function: Function, label: Option<String>) -> Block {
         let label = function.get_unique_label(context, label);
-        let phi = Value::new_instruction(context, Instruction::Phi(Vec::new()), None, None);
+        let phi = Value::new_instruction(context, Instruction::Phi(Vec::new()));
         let content = BlockContent {
             label,
             function,
@@ -112,6 +112,18 @@ impl Block {
         }
     }
 
+    /// Remove the value in the phi instruction which correlates to `from_block`.
+    pub fn remove_phi_val_coming_from(&self, context: &mut Context, from_block: &Block) {
+        let phi_val = self.get_phi(context);
+        if let ValueDatum::Instruction(Instruction::Phi(pairs)) =
+            &mut context.values[phi_val.0].value
+        {
+            pairs.retain(|(block, _value)| block != from_block);
+        } else {
+            unreachable!("Phi value must be a PHI instruction.");
+        }
+    }
+
     /// Replace a block reference in the phi instruction.
     ///
     /// Any reference to `old_source` will be replace with `new_source` in the list of phi values.
@@ -138,7 +150,7 @@ impl Block {
     /// Get a reference to the block terminator.
     ///
     /// Returns `None` if block is empty.
-    pub fn get_term_inst<'a>(&self, context: &'a Context) -> Option<&'a Instruction> {
+    pub fn get_terminator<'a>(&self, context: &'a Context) -> Option<&'a Instruction> {
         context.blocks[self.0].instructions.last().and_then(|val| {
             // It's guaranteed to be an instruction value.
             if let ValueDatum::Instruction(term_inst) = &context.values[val.0].value {
@@ -147,6 +159,21 @@ impl Block {
                 None
             }
         })
+    }
+
+    /// Get the CFG successors of this block.
+    pub(super) fn successors<'a>(&'a self, context: &'a Context) -> Vec<Block> {
+        match self.get_terminator(context) {
+            Some(Instruction::ConditionalBranch {
+                true_block,
+                false_block,
+                ..
+            }) => vec![*true_block, *false_block],
+
+            Some(Instruction::Branch(block)) => vec![*block],
+
+            _otherwise => Vec::new(),
+        }
     }
 
     /// Return whether this block is already terminated.  Checks if the final instruction, if it
@@ -160,7 +187,7 @@ impl Block {
 
     /// Return whether this block is already terminated specifically by a Ret instruction.
     pub fn is_terminated_by_ret(&self, context: &Context) -> bool {
-        self.get_term_inst(context)
+        self.get_terminator(context)
             .map_or(false, |i| matches!(i, Instruction::Ret { .. }))
     }
 
@@ -244,7 +271,7 @@ impl Block {
             //
             // Copying the candidate blocks and putting them in a vector to avoid borrowing context
             // as immutable and then mutable in the loop body.
-            for to_block in match new_block.get_term_inst(context) {
+            for to_block in match new_block.get_terminator(context) {
                 Some(Instruction::Branch(to_block)) => {
                     vec![*to_block]
                 }
@@ -273,26 +300,31 @@ impl Block {
 
 #[doc(hidden)]
 impl BlockContent {
-    pub(super) fn num_predecessors(&self, context: &Context) -> usize {
-        self.function
-            .instruction_iter(context)
-            .filter(
-                |(_block, ins_value)| match &context.values[ins_value.0].value {
-                    ValueDatum::Instruction(Instruction::ConditionalBranch {
+    pub(super) fn predecessors<'a>(
+        &'a self,
+        context: &'a Context,
+    ) -> impl Iterator<Item = Block> + 'a {
+        self.function.block_iter(context).filter(|block| {
+            let has_label = |b: &Block| b.get_label(context) == self.label;
+            block
+                .get_terminator(context)
+                .map(|term_inst| match term_inst {
+                    Instruction::ConditionalBranch {
                         true_block,
                         false_block,
                         ..
-                    }) => {
-                        true_block.get_label(context) == self.label
-                            || false_block.get_label(context) == self.label
-                    }
-                    ValueDatum::Instruction(Instruction::Branch(block)) => {
-                        block.get_label(context) == self.label
-                    }
+                    } => has_label(true_block) || has_label(false_block),
+
+                    Instruction::Branch(block) => has_label(block),
+
                     _otherwise => false,
-                },
-            )
-            .count()
+                })
+                .unwrap_or(false)
+        })
+    }
+
+    pub(super) fn num_predecessors(&self, context: &Context) -> usize {
+        self.predecessors(context).count()
     }
 }
 

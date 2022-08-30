@@ -1,4 +1,4 @@
-use crate::{parse_tree::Expression, type_engine::*};
+use crate::{parse_tree::Expression, type_system::*};
 
 use sway_types::{ident::Ident, span::Span};
 
@@ -18,5 +18,6 @@ pub struct StorageDeclaration {
 pub struct StorageField {
     pub name: Ident,
     pub type_info: TypeInfo,
+    pub type_info_span: Span,
     pub initializer: Expression,
 }

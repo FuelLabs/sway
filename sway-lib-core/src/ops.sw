@@ -353,11 +353,7 @@ impl Ord for b256 {
 // Should this be a trait eventually? Do we want to allow people to customize what `!` does?
 // Scala says yes, Rust says perhaps...
 pub fn not(a: bool) -> bool {
-    // using direct asm for perf
-    asm(r1: a, r2) {
-        eq r2 r1 zero;
-        r2: bool
-    }
+    __eq(a, false)
 }
 
 impl b256 {
@@ -411,7 +407,7 @@ impl BitwiseXor for u64 {
 }
 
 impl BitwiseAnd for b256 {
-    pub fn binary_and(val: self, other: Self) -> Self {
+    fn binary_and(val: self, other: Self) -> Self {
         let(value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
         let(other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
         let word_1 = value_word_1.binary_and(other_word_1);
@@ -424,7 +420,7 @@ impl BitwiseAnd for b256 {
 }
 
 impl BitwiseOr for b256 {
-    pub fn binary_or(val: self, other: Self) -> Self {
+    fn binary_or(val: self, other: Self) -> Self {
         let(value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
         let(other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
         let word_1 = value_word_1.binary_or(other_word_1);
@@ -437,7 +433,7 @@ impl BitwiseOr for b256 {
 }
 
 impl BitwiseXor for b256 {
-    pub fn binary_xor(val: self, other: Self) -> Self {
+    fn binary_xor(val: self, other: Self) -> Self {
         let(value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
         let(other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
         let word_1 = value_word_1.binary_xor(other_word_1);

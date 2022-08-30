@@ -34,6 +34,7 @@ struct TestDescription {
     expected_result: Option<TestResult>,
     contract_paths: Vec<String>,
     validate_abi: bool,
+    validate_abi_flat: bool,
     validate_storage_slots: bool,
     checker: filecheck::Checker,
 }
@@ -57,6 +58,7 @@ pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {
         expected_result,
         contract_paths,
         validate_abi,
+        validate_abi_flat,
         validate_storage_slots,
         checker,
     } in configured_tests
@@ -86,15 +88,29 @@ pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {
                 if validate_abi {
                     assert!(crate::e2e_vm_tests::harness::test_json_abi(&name, &result.1).is_ok());
                 }
+                if validate_abi_flat {
+                    assert!(
+                        crate::e2e_vm_tests::harness::test_json_abi_flat(&name, &result.1).is_ok()
+                    );
+                }
                 number_of_tests_executed += 1;
             }
 
             TestCategory::Compiles => {
-                let result = crate::e2e_vm_tests::harness::compile_to_bytes(&name, locked);
+                let (result, output) =
+                    crate::e2e_vm_tests::harness::compile_and_capture_output(&name, locked);
+
                 assert!(result.is_ok());
+                check_file_checker(checker, &name, &output);
+
                 let compiled = result.unwrap();
                 if validate_abi {
                     assert!(crate::e2e_vm_tests::harness::test_json_abi(&name, &compiled).is_ok());
+                }
+                if validate_abi_flat {
+                    assert!(
+                        crate::e2e_vm_tests::harness::test_json_abi_flat(&name, &compiled).is_ok()
+                    );
                 }
                 if validate_storage_slots {
                     assert!(crate::e2e_vm_tests::harness::test_json_storage_slots(
@@ -106,18 +122,14 @@ pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {
             }
 
             TestCategory::FailsToCompile => {
-                match crate::e2e_vm_tests::harness::does_not_compile(&name, locked) {
-                    Ok(output) => match checker.explain(&output, filecheck::NO_VARIABLES) {
-                        Ok((success, report)) if !success => {
-                            panic!("For {name}:\nFilecheck failed:\n{report}");
-                        }
-                        Err(e) => {
-                            panic!("For {name}:\nFilecheck directive error: {e}");
-                        }
-                        _ => (),
-                    },
-                    Err(_) => {
+                let (result, output) =
+                    crate::e2e_vm_tests::harness::compile_and_capture_output(&name, locked);
+                match result {
+                    Ok(_) => {
                         panic!("For {name}:\nFailing test did not fail.");
+                    }
+                    Err(_) => {
+                        check_file_checker(checker, &name, &output);
                     }
                 }
                 number_of_tests_executed += 1;
@@ -233,6 +245,22 @@ fn build_file_checker(content: &str) -> Result<filecheck::Checker, String> {
     Ok(checker.finish())
 }
 
+/// This functions gets passed the previously built FileCheck-based file checker,
+/// along with the output of the compilation, and checks the output for the
+/// FileCheck directives that were found in the test.toml file, panicking
+/// if the checking fails.
+fn check_file_checker(checker: filecheck::Checker, name: &String, output: &str) {
+    match checker.explain(output, filecheck::NO_VARIABLES) {
+        Ok((success, report)) if !success => {
+            panic!("For {name}:\nFilecheck failed:\n{report}");
+        }
+        Err(e) => {
+            panic!("For {name}:\nFilecheck directive error: {e}");
+        }
+        _ => (),
+    }
+}
+
 fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
     let toml_content_str = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
 
@@ -294,6 +322,11 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
         .map(|v| v.as_bool().unwrap_or(false))
         .unwrap_or(false);
 
+    let validate_abi_flat = toml_content
+        .get("validate_abi_flat")
+        .map(|v| v.as_bool().unwrap_or(false))
+        .unwrap_or(false);
+
     let validate_storage_slots = toml_content
         .get("validate_storage_slots")
         .map(|v| v.as_bool().unwrap_or(false))
@@ -320,6 +353,7 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
         expected_result,
         contract_paths,
         validate_abi,
+        validate_abi_flat,
         validate_storage_slots,
         checker,
     })

@@ -18,7 +18,5 @@ pub fn require<T>(condition: bool, value: T) {
     if !condition {
         log(value);
         revert(FAILED_REQUIRE_SIGNAL)
-    } else {
-        ()
     }
 }

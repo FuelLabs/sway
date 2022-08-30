@@ -8,16 +8,17 @@ use super::{
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     constants,
-    error::CompileError,
+    error::{CompileError, Hint},
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
     },
+    metadata::MetadataManager,
     parse_tree::{AsmOp, AsmRegister, LazyOp, Literal},
     semantic_analysis::*,
-    type_engine::{resolve_type, TypeId, TypeInfo},
+    type_system::{look_up_type_id, resolve_type, IntegerBits, TypeId, TypeInfo},
 };
+use sway_ast::intrinsics::Intrinsic;
 use sway_ir::{Context, *};
-use sway_parse::intrinsics::Intrinsic;
 use sway_types::{
     ident::Ident,
     span::{Span, Spanned},
@@ -32,7 +33,9 @@ pub(super) struct FnCompiler {
     pub(super) current_block: Block,
     pub(super) block_to_break_to: Option<Block>,
     pub(super) block_to_continue_to: Option<Block>,
+    pub(super) current_fn_param: Option<TypedFunctionParameter>,
     lexical_map: LexicalMap,
+    recreated_fns: HashMap<(Span, Vec<TypeId>, Vec<TypeId>), Function>,
 }
 
 pub(super) enum StateAccessType {
@@ -54,6 +57,8 @@ impl FnCompiler {
             block_to_break_to: None,
             block_to_continue_to: None,
             lexical_map,
+            recreated_fns: HashMap::new(),
+            current_fn_param: None,
         }
     }
 
@@ -70,27 +75,33 @@ impl FnCompiler {
     pub(super) fn compile_code_block(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         ast_block: TypedCodeBlock,
     ) -> Result<Value, CompileError> {
         self.compile_with_new_scope(|fn_compiler| {
-            fn_compiler.compile_code_block_inner(context, ast_block)
+            fn_compiler.compile_code_block_inner(context, md_mgr, ast_block)
         })
     }
 
     fn compile_code_block_inner(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         ast_block: TypedCodeBlock,
     ) -> Result<Value, CompileError> {
         self.lexical_map.enter_scope();
-        let index_of_first_break_or_continue =
-            ast_block.contents.clone().into_iter().position(|r| {
+        let index_of_first_break_or_continue = {
+            ast_block.contents.iter().position(|r| {
                 matches!(
                     r.content,
-                    TypedAstNodeContent::Declaration(TypedDeclaration::Break { .. })
-                        | TypedAstNodeContent::Declaration(TypedDeclaration::Continue { .. })
+                    TypedAstNodeContent::Expression(TypedExpression {
+                        expression: TypedExpressionVariant::Break
+                            | TypedExpressionVariant::Continue,
+                        ..
+                    })
                 )
-            });
+            })
+        };
 
         // Filter out all ast nodes *after* a `break` statement. Those nodes are essentially dead.
         let value = ast_block
@@ -103,17 +114,17 @@ impl FnCompiler {
             })
             .map(|(_, ast_node)| ast_node)
             .map(|ast_node| {
-                let span_md_idx = MetadataIndex::from_span(context, &ast_node.span);
+                let span_md_idx = md_mgr.span_to_md(context, &ast_node.span);
                 match ast_node.content {
                     TypedAstNodeContent::ReturnStatement(trs) => {
-                        self.compile_return_statement(context, trs.expr)
+                        self.compile_return_statement(context, md_mgr, trs.expr)
                     }
                     TypedAstNodeContent::Declaration(td) => match td {
                         TypedDeclaration::VariableDeclaration(tvd) => {
-                            self.compile_var_decl(context, tvd, span_md_idx)
+                            self.compile_var_decl(context, md_mgr, tvd, span_md_idx)
                         }
                         TypedDeclaration::ConstantDeclaration(tcd) => {
-                            self.compile_const_decl(context, tcd, span_md_idx)
+                            self.compile_const_decl(context, md_mgr, tcd, span_md_idx)
                         }
                         TypedDeclaration::FunctionDeclaration(_) => {
                             Err(CompileError::UnexpectedDeclaration {
@@ -134,29 +145,18 @@ impl FnCompiler {
                             })
                         }
                         TypedDeclaration::EnumDeclaration(ted) => {
-                            let span_md_idx = MetadataIndex::from_span(context, &ted.span);
+                            let span_md_idx = md_mgr.span_to_md(context, &ted.span);
                             create_enum_aggregate(context, ted.variants).map(|_| ())?;
-                            Ok(Constant::get_unit(context, span_md_idx))
+                            Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
                         }
-                        TypedDeclaration::Reassignment(tr) => {
-                            self.compile_reassignment(context, tr, span_md_idx)
-                        }
-                        TypedDeclaration::StorageReassignment(tr) => self
-                            .compile_storage_reassignment(
-                                context,
-                                &tr.fields,
-                                &tr.ix,
-                                &tr.rhs,
-                                span_md_idx,
-                            ),
                         TypedDeclaration::ImplTrait(TypedImplTrait { span, .. }) => {
                             // XXX What if we ignore the trait implementation???  Potentially since
                             // we currently inline everything and below we 'recreate' the functions
                             // lazily as they are called, nothing needs to be done here.  BUT!
                             // This is obviously not really correct, and eventually we want to
                             // compile and then call these properly.
-                            let span_md_idx = MetadataIndex::from_span(context, &span);
-                            Ok(Constant::get_unit(context, span_md_idx))
+                            let span_md_idx = md_mgr.span_to_md(context, &span);
+                            Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
                         }
                         TypedDeclaration::AbiDeclaration(_) => {
                             Err(CompileError::UnexpectedDeclaration {
@@ -176,31 +176,6 @@ impl FnCompiler {
                                 span: ast_node.span,
                             })
                         }
-                        TypedDeclaration::Break { .. } => match self.block_to_break_to {
-                            // If `self.block_to_break_to` is not None, then it has been set inside
-                            // a loop and the use of `break` here is legal, so create a branch
-                            // instruction. Error out otherwise.
-                            Some(block_to_break_to) => Ok(self.current_block.ins(context).branch(
-                                block_to_break_to,
-                                None,
-                                None,
-                            )),
-                            None => Err(CompileError::BreakOutsideLoop {
-                                span: ast_node.span,
-                            }),
-                        },
-                        TypedDeclaration::Continue { .. } => match self.block_to_continue_to {
-                            // If `self.block_to_continue_to` is not None, then it has been set inside
-                            // a loop and the use of `continue` here is legal, so create a branch
-                            // instruction. Error out otherwise.
-                            Some(block_to_continue_to) => Ok(self
-                                .current_block
-                                .ins(context)
-                                .branch(block_to_continue_to, None, None)),
-                            None => Err(CompileError::ContinueOutsideLoop {
-                                span: ast_node.span,
-                            }),
-                        },
                         TypedDeclaration::StorageDeclaration(_) => {
                             Err(CompileError::UnexpectedDeclaration {
                                 decl_type: "storage",
@@ -210,23 +185,20 @@ impl FnCompiler {
                     },
                     TypedAstNodeContent::Expression(te) => {
                         // An expression with an ignored return value... I assume.
-                        self.compile_expression(context, te)
+                        self.compile_expression(context, md_mgr, te)
                     }
                     TypedAstNodeContent::ImplicitReturnExpression(te) => {
-                        self.compile_expression(context, te)
-                    }
-                    TypedAstNodeContent::WhileLoop(twl) => {
-                        self.compile_while_loop(context, twl, span_md_idx)
+                        self.compile_expression(context, md_mgr, te)
                     }
                     // a side effect can be () because it just impacts the type system/namespacing.
                     // There should be no new IR generated.
-                    TypedAstNodeContent::SideEffect => Ok(Constant::get_unit(context, None)),
+                    TypedAstNodeContent::SideEffect => Ok(Constant::get_unit(context)),
                 }
             })
             .collect::<Result<Vec<_>, CompileError>>()
             .map(|vals| vals.last().cloned())
             .transpose()
-            .unwrap_or_else(|| Ok(Constant::get_unit(context, None)));
+            .unwrap_or_else(|| Ok(Constant::get_unit(context)));
         self.lexical_map.leave_scope();
         value
     }
@@ -234,12 +206,13 @@ impl FnCompiler {
     fn compile_expression(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         ast_expr: TypedExpression,
     ) -> Result<Value, CompileError> {
-        let span_md_idx = MetadataIndex::from_span(context, &ast_expr.span);
+        let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
         match ast_expr.expression {
             TypedExpressionVariant::Literal(l) => {
-                Ok(convert_literal_to_value(context, &l, span_md_idx))
+                Ok(convert_literal_to_value(context, &l).add_metadatum(context, span_md_idx))
             }
             TypedExpressionVariant::FunctionApplication {
                 call_path: name,
@@ -251,9 +224,10 @@ impl FnCompiler {
             } => {
                 if let Some(metadata) = selector {
                     self.compile_contract_call(
+                        context,
+                        md_mgr,
                         &metadata,
                         &contract_call_params,
-                        context,
                         name.suffix.as_str(),
                         arguments,
                         ast_expr.return_type,
@@ -262,6 +236,7 @@ impl FnCompiler {
                 } else {
                     self.compile_fn_call(
                         context,
+                        md_mgr,
                         arguments,
                         function_decl,
                         self_state_idx,
@@ -270,21 +245,21 @@ impl FnCompiler {
                 }
             }
             TypedExpressionVariant::LazyOperator { op, lhs, rhs } => {
-                self.compile_lazy_op(context, op, *lhs, *rhs, span_md_idx)
+                self.compile_lazy_op(context, md_mgr, op, *lhs, *rhs, span_md_idx)
             }
-            TypedExpressionVariant::VariableExpression { name } => {
+            TypedExpressionVariant::VariableExpression { name, .. } => {
                 self.compile_var_expr(context, name.as_str(), span_md_idx)
             }
             TypedExpressionVariant::Array { contents } => {
-                self.compile_array_expr(context, contents, span_md_idx)
+                self.compile_array_expr(context, md_mgr, contents, span_md_idx)
             }
             TypedExpressionVariant::ArrayIndex { prefix, index } => {
-                self.compile_array_index(context, *prefix, *index, span_md_idx)
+                self.compile_array_index(context, md_mgr, *prefix, *index, span_md_idx)
             }
             TypedExpressionVariant::StructExpression { fields, .. } => {
-                self.compile_struct_expr(context, fields, span_md_idx)
+                self.compile_struct_expr(context, md_mgr, fields, span_md_idx)
             }
-            TypedExpressionVariant::CodeBlock(cb) => self.compile_code_block(context, cb),
+            TypedExpressionVariant::CodeBlock(cb) => self.compile_code_block(context, md_mgr, cb),
             TypedExpressionVariant::FunctionParameter => Err(CompileError::Internal(
                 "Unexpected function parameter declaration.",
                 ast_expr.span,
@@ -293,16 +268,17 @@ impl FnCompiler {
                 condition,
                 then,
                 r#else,
-            } => self.compile_if(context, *condition, *then, r#else),
+            } => self.compile_if(context, md_mgr, *condition, *then, r#else),
             TypedExpressionVariant::AsmExpression {
                 registers,
                 body,
                 returns,
                 whole_block_span,
             } => {
-                let span_md_idx = MetadataIndex::from_span(context, &whole_block_span);
+                let span_md_idx = md_mgr.span_to_md(context, &whole_block_span);
                 self.compile_asm_expr(
                     context,
+                    md_mgr,
                     registers,
                     body,
                     ast_expr.return_type,
@@ -314,10 +290,12 @@ impl FnCompiler {
                 prefix,
                 field_to_access,
                 resolved_type_of_parent,
+                ..
             } => {
-                let span_md_idx = MetadataIndex::from_span(context, &field_to_access.span);
+                let span_md_idx = md_mgr.span_to_md(context, &field_to_access.span);
                 self.compile_struct_field_expr(
                     context,
+                    md_mgr,
                     *prefix,
                     resolved_type_of_parent,
                     field_to_access,
@@ -329,40 +307,88 @@ impl FnCompiler {
                 tag,
                 contents,
                 ..
-            } => self.compile_enum_expr(context, enum_decl, tag, contents),
+            } => self.compile_enum_expr(context, md_mgr, enum_decl, tag, contents),
             TypedExpressionVariant::Tuple { fields } => {
-                self.compile_tuple_expr(context, fields, span_md_idx)
+                self.compile_tuple_expr(context, md_mgr, fields, span_md_idx)
             }
             TypedExpressionVariant::TupleElemAccess {
                 prefix,
                 elem_to_access_num: idx,
                 elem_to_access_span: span,
                 resolved_type_of_parent: tuple_type,
-            } => self.compile_tuple_elem_expr(context, *prefix, tuple_type, idx, span),
+            } => self.compile_tuple_elem_expr(context, md_mgr, *prefix, tuple_type, idx, span),
             TypedExpressionVariant::AbiCast { span, .. } => {
-                let span_md_idx = MetadataIndex::from_span(context, &span);
-                Ok(Constant::get_unit(context, span_md_idx))
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+                Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
             }
             TypedExpressionVariant::StorageAccess(access) => {
-                let span_md_idx = MetadataIndex::from_span(context, &access.span());
-                self.compile_storage_access(context, &access.fields, &access.ix, span_md_idx)
+                let span_md_idx = md_mgr.span_to_md(context, &access.span());
+                self.compile_storage_access(
+                    context,
+                    md_mgr,
+                    &access.fields,
+                    &access.ix,
+                    span_md_idx,
+                )
             }
             TypedExpressionVariant::IntrinsicFunction(kind) => {
-                self.compile_intrinsic_function(context, kind, ast_expr.span)
+                self.compile_intrinsic_function(context, md_mgr, kind, ast_expr.span)
             }
             TypedExpressionVariant::AbiName(_) => {
-                Ok(Value::new_constant(context, Constant::new_unit(), None))
+                Ok(Value::new_constant(context, Constant::new_unit()))
             }
             TypedExpressionVariant::UnsafeDowncast { exp, variant } => {
-                self.compile_unsafe_downcast(context, exp, variant)
+                self.compile_unsafe_downcast(context, md_mgr, exp, variant)
             }
-            TypedExpressionVariant::EnumTag { exp } => self.compile_enum_tag(context, exp),
+            TypedExpressionVariant::EnumTag { exp } => self.compile_enum_tag(context, md_mgr, exp),
+            TypedExpressionVariant::WhileLoop { body, condition } => {
+                self.compile_while_loop(context, md_mgr, body, *condition, span_md_idx)
+            }
+            TypedExpressionVariant::Break => {
+                match self.block_to_break_to {
+                    // If `self.block_to_break_to` is not None, then it has been set inside
+                    // a loop and the use of `break` here is legal, so create a branch
+                    // instruction. Error out otherwise.
+                    Some(block_to_break_to) => Ok(self
+                        .current_block
+                        .ins(context)
+                        .branch(block_to_break_to, None)),
+                    None => Err(CompileError::BreakOutsideLoop {
+                        span: ast_expr.span,
+                    }),
+                }
+            }
+            TypedExpressionVariant::Continue { .. } => match self.block_to_continue_to {
+                // If `self.block_to_continue_to` is not None, then it has been set inside
+                // a loop and the use of `continue` here is legal, so create a branch
+                // instruction. Error out otherwise.
+                Some(block_to_continue_to) => Ok(self
+                    .current_block
+                    .ins(context)
+                    .branch(block_to_continue_to, None)),
+                None => Err(CompileError::ContinueOutsideLoop {
+                    span: ast_expr.span,
+                }),
+            },
+            TypedExpressionVariant::Reassignment(reassignment) => {
+                self.compile_reassignment(context, md_mgr, *reassignment, span_md_idx)
+            }
+            TypedExpressionVariant::StorageReassignment(storage_reassignment) => self
+                .compile_storage_reassignment(
+                    context,
+                    md_mgr,
+                    &storage_reassignment.fields,
+                    &storage_reassignment.ix,
+                    &storage_reassignment.rhs,
+                    span_md_idx,
+                ),
         }
     }
 
     fn compile_intrinsic_function(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         TypedIntrinsicFunctionKind {
             kind,
             arguments,
@@ -371,6 +397,41 @@ impl FnCompiler {
         }: TypedIntrinsicFunctionKind,
         span: Span,
     ) -> Result<Value, CompileError> {
+        fn store_key_in_local_mem(
+            compiler: &mut FnCompiler,
+            context: &mut Context,
+            value: Value,
+            span_md_idx: Option<MetadataIndex>,
+        ) -> Result<Value, CompileError> {
+            // New name for the key
+            let key_name = "key_for_storage".to_string();
+            let alias_key_name = compiler.lexical_map.insert(key_name.as_str().to_owned());
+
+            // Local pointer for the key
+            let key_ptr = compiler
+                .function
+                .new_local_ptr(context, alias_key_name, Type::B256, true, None)
+                .map_err(|ir_error| {
+                    CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                })?;
+
+            // Convert the key pointer to a value using get_ptr
+            let key_ptr_ty = *key_ptr.get_type(context);
+            let key_ptr_val = compiler
+                .current_block
+                .ins(context)
+                .get_ptr(key_ptr, key_ptr_ty, 0)
+                .add_metadatum(context, span_md_idx);
+
+            // Store the value to the key pointer value
+            compiler
+                .current_block
+                .ins(context)
+                .store(key_ptr_val, value)
+                .add_metadatum(context, span_md_idx);
+            Ok(key_ptr_val)
+        }
+
         // We safely index into arguments and type_arguments arrays below
         // because the type-checker ensures that the arguments are all there.
         match kind {
@@ -378,12 +439,11 @@ impl FnCompiler {
                 let exp = arguments[0].clone();
                 // Compile the expression in case of side-effects but ignore its value.
                 let ir_type = convert_resolved_typeid(context, &exp.return_type, &exp.span)?;
-                self.compile_expression(context, exp)?;
+                self.compile_expression(context, md_mgr, exp)?;
                 Ok(Constant::get_uint(
                     context,
                     64,
                     ir_type_size_in_bytes(context, &ir_type),
-                    None,
                 ))
             }
             Intrinsic::SizeOfType => {
@@ -393,41 +453,40 @@ impl FnCompiler {
                     context,
                     64,
                     ir_type_size_in_bytes(context, &ir_type),
-                    None,
                 ))
             }
             Intrinsic::IsReferenceType => {
                 let targ = type_arguments[0].clone();
                 let ir_type = convert_resolved_typeid(context, &targ.type_id, &targ.span)?;
-                Ok(Constant::get_bool(context, !ir_type.is_copy_type(), None))
+                Ok(Constant::get_bool(context, !ir_type.is_copy_type()))
             }
             Intrinsic::GetStorageKey => {
-                let span_md_idx = MetadataIndex::from_span(context, &span);
+                let span_md_idx = md_mgr.span_to_md(context, &span);
                 Ok(self
                     .current_block
                     .ins(context)
-                    .get_storage_key(span_md_idx, None))
+                    .get_storage_key()
+                    .add_metadatum(context, span_md_idx))
             }
             Intrinsic::Eq => {
                 let lhs = arguments[0].clone();
                 let rhs = arguments[1].clone();
-                let lhs_value = self.compile_expression(context, lhs)?;
-                let rhs_value = self.compile_expression(context, rhs)?;
-                Ok(self.current_block.ins(context).cmp(
-                    Predicate::Equal,
-                    lhs_value,
-                    rhs_value,
-                    None,
-                ))
+                let lhs_value = self.compile_expression(context, md_mgr, lhs)?;
+                let rhs_value = self.compile_expression(context, md_mgr, rhs)?;
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .cmp(Predicate::Equal, lhs_value, rhs_value))
             }
             Intrinsic::Gtf => {
                 // The index is just a Value
-                let index = self.compile_expression(context, arguments[0].clone())?;
+                let index = self.compile_expression(context, md_mgr, arguments[0].clone())?;
 
                 // The tx field ID has to be a compile-time constant because it becomes an
                 // immediate
                 let tx_field_id_constant = compile_constant_expression_to_constant(
                     context,
+                    md_mgr,
                     self.module,
                     None,
                     &arguments[1],
@@ -448,24 +507,106 @@ impl FnCompiler {
                 let target_ir_type =
                     convert_resolved_typeid(context, &target_type.type_id, &target_type.span)?;
 
-                let span_md_idx = MetadataIndex::from_span(context, &span);
+                let span_md_idx = md_mgr.span_to_md(context, &span);
 
                 // The `gtf` instruction
                 let gtf_reg = self
                     .current_block
                     .ins(context)
-                    .gtf(index, tx_field_id, span_md_idx);
+                    .gtf(index, tx_field_id)
+                    .add_metadatum(context, span_md_idx);
 
                 // Reinterpret the result of th `gtf` instruction (which is always `u64`) as type
                 // `T`. This requires an `int_to_ptr` instruction if `T` is a reference type.
                 if target_ir_type.is_copy_type() {
                     Ok(gtf_reg)
                 } else {
-                    Ok(self.current_block.ins(context).int_to_ptr(
-                        gtf_reg,
-                        target_ir_type,
-                        span_md_idx,
-                    ))
+                    Ok(self
+                        .current_block
+                        .ins(context)
+                        .int_to_ptr(gtf_reg, target_ir_type)
+                        .add_metadatum(context, span_md_idx))
+                }
+            }
+            Intrinsic::AddrOf => {
+                let exp = arguments[0].clone();
+                let value = self.compile_expression(context, md_mgr, exp)?;
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .addr_of(value)
+                    .add_metadatum(context, span_md_idx))
+            }
+            Intrinsic::StateLoadWord => {
+                let exp = arguments[0].clone();
+                let value = self.compile_expression(context, md_mgr, exp)?;
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+                let key_ptr_val = store_key_in_local_mem(self, context, value, span_md_idx)?;
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .state_load_word(key_ptr_val)
+                    .add_metadatum(context, span_md_idx))
+            }
+            Intrinsic::StateStoreWord => {
+                let key_exp = arguments[0].clone();
+                let val_exp = arguments[1].clone();
+                // Validate that the val_exp is of the right type. We couldn't do it
+                // earlier during type checking as the type arguments may not have been resolved.
+                let val_ty = resolve_type(val_exp.return_type, &span).unwrap();
+                if !val_ty.is_copy_type() {
+                    return Err(CompileError::IntrinsicUnsupportedArgType {
+                        name: kind.to_string(),
+                        span,
+                        hint: Hint::new("This argument must be a copy type".to_string()),
+                    });
+                }
+                let key_value = self.compile_expression(context, md_mgr, key_exp)?;
+                let val_value = self.compile_expression(context, md_mgr, val_exp)?;
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+                let key_ptr_val = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .state_store_word(val_value, key_ptr_val)
+                    .add_metadatum(context, span_md_idx))
+            }
+            Intrinsic::StateLoadQuad | Intrinsic::StateStoreQuad => {
+                let key_exp = arguments[0].clone();
+                let val_exp = arguments[1].clone();
+                // Validate that the val_exp is of the right type. We couldn't do it
+                // earlier during type checking as the type arguments may not have been resolved.
+                let val_ty = resolve_type(val_exp.return_type, &span).unwrap();
+                if val_ty != TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) {
+                    return Err(CompileError::IntrinsicUnsupportedArgType {
+                        name: kind.to_string(),
+                        span,
+                        hint: Hint::new("This argument must be u64".to_string()),
+                    });
+                }
+                let key_value = self.compile_expression(context, md_mgr, key_exp)?;
+                let val_value = self.compile_expression(context, md_mgr, val_exp)?;
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+                let key_ptr_val = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
+                // For quad word, the IR instructions take in a pointer rather than a raw u64.
+                let val_ptr = self
+                    .current_block
+                    .ins(context)
+                    .int_to_ptr(val_value, Type::B256)
+                    .add_metadatum(context, span_md_idx);
+                match kind {
+                    Intrinsic::StateLoadQuad => Ok(self
+                        .current_block
+                        .ins(context)
+                        .state_load_quad_word(val_ptr, key_ptr_val)
+                        .add_metadatum(context, span_md_idx)),
+                    Intrinsic::StateStoreQuad => Ok(self
+                        .current_block
+                        .ins(context)
+                        .state_store_quad_word(val_ptr, key_ptr_val)
+                        .add_metadatum(context, span_md_idx)),
+                    _ => unreachable!(),
                 }
             }
         }
@@ -474,25 +615,27 @@ impl FnCompiler {
     fn compile_return_statement(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         ast_expr: TypedExpression,
     ) -> Result<Value, CompileError> {
         // Nothing to do if the current block already has a terminator
         if self.current_block.is_terminated(context) {
-            return Ok(Constant::get_unit(context, None));
+            return Ok(Constant::get_unit(context));
         }
 
-        let ret_value = self.compile_expression(context, ast_expr.clone())?;
-        match ret_value.get_type(context) {
+        let ret_value = self.compile_expression(context, md_mgr, ast_expr.clone())?;
+        match ret_value.get_stripped_ptr_type(context) {
             None => Err(CompileError::Internal(
                 "Unable to determine type for return statement expression.",
                 ast_expr.span,
             )),
             Some(ret_ty) => {
-                let span_md_idx = MetadataIndex::from_span(context, &ast_expr.span);
+                let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
                 self.current_block
                     .ins(context)
-                    .ret(ret_value, ret_ty, span_md_idx);
-                Ok(Constant::get_unit(context, span_md_idx))
+                    .ret(ret_value, ret_ty)
+                    .add_metadatum(context, span_md_idx);
+                Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
             }
         }
     }
@@ -500,6 +643,7 @@ impl FnCompiler {
     fn compile_lazy_op(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         ast_op: LazyOp,
         ast_lhs: TypedExpression,
         ast_rhs: TypedExpression,
@@ -507,36 +651,30 @@ impl FnCompiler {
     ) -> Result<Value, CompileError> {
         // Short-circuit: if LHS is true for AND we still must eval the RHS block; for OR we can
         // skip the RHS block, and vice-versa.
-        let lhs_val = self.compile_expression(context, ast_lhs)?;
+        let lhs_val = self.compile_expression(context, md_mgr, ast_lhs)?;
         let rhs_block = self.function.create_block(context, None);
         let final_block = self.function.create_block(context, None);
         if !self.current_block.is_terminated(context) {
             let cond_builder = self.current_block.ins(context);
             match ast_op {
-                LazyOp::And => cond_builder.conditional_branch(
-                    lhs_val,
-                    rhs_block,
-                    final_block,
-                    Some(lhs_val),
-                    span_md_idx,
-                ),
-                LazyOp::Or => cond_builder.conditional_branch(
-                    lhs_val,
-                    final_block,
-                    rhs_block,
-                    Some(lhs_val),
-                    span_md_idx,
-                ),
-            };
+                LazyOp::And => {
+                    cond_builder.conditional_branch(lhs_val, rhs_block, final_block, Some(lhs_val))
+                }
+                LazyOp::Or => {
+                    cond_builder.conditional_branch(lhs_val, final_block, rhs_block, Some(lhs_val))
+                }
+            }
+            .add_metadatum(context, span_md_idx);
         }
 
         self.current_block = rhs_block;
-        let rhs_val = self.compile_expression(context, ast_rhs)?;
+        let rhs_val = self.compile_expression(context, md_mgr, ast_rhs)?;
 
         if !self.current_block.is_terminated(context) {
             self.current_block
                 .ins(context)
-                .branch(final_block, Some(rhs_val), span_md_idx);
+                .branch(final_block, Some(rhs_val))
+                .add_metadatum(context, span_md_idx);
         }
 
         self.current_block = final_block;
@@ -546,9 +684,10 @@ impl FnCompiler {
     #[allow(clippy::too_many_arguments)]
     fn compile_contract_call(
         &mut self,
-        metadata: &ContractCallMetadata,
-        contract_call_parameters: &HashMap<String, TypedExpression>,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        call_params: &ContractCallParams,
+        contract_call_parameters: &HashMap<String, TypedExpression>,
         ast_name: &str,
         ast_args: Vec<(Ident, TypedExpression)>,
         return_type: TypeId,
@@ -557,22 +696,20 @@ impl FnCompiler {
         // Compile each user argument
         let compiled_args = ast_args
             .into_iter()
-            .map(|(_, expr)| self.compile_expression(context, expr))
+            .map(|(_, expr)| self.compile_expression(context, md_mgr, expr))
             .collect::<Result<Vec<Value>, CompileError>>()?;
 
         let user_args_val = match compiled_args.len() {
-            0 => Constant::get_uint(context, 64, 0, None),
+            0 => Constant::get_uint(context, 64, 0),
             1 => {
                 // The single arg doesn't need to be put into a struct.
                 let arg0 = compiled_args[0];
-
-                // We're still undecided as to whether this should be decided by type or size.
-                // Going with type for now.
-                let arg0_type = arg0.get_type(context).unwrap();
+                let arg0_type = arg0.get_stripped_ptr_type(context).unwrap();
                 if arg0_type.is_copy_type() {
                     self.current_block
                         .ins(context)
-                        .bitcast(arg0, Type::Uint(64), span_md_idx)
+                        .bitcast(arg0, Type::Uint(64))
+                        .add_metadatum(context, span_md_idx)
                 } else {
                     // Copy this value to a new location.  This is quite inefficient but we need to
                     // pass by reference rather than by value.  Optimisation passes can remove all
@@ -589,29 +726,25 @@ impl FnCompiler {
                             CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                         })?;
 
-                    let arg0_ptr = self.current_block.ins(context).get_ptr(
-                        by_reference_arg,
-                        arg0_type,
-                        0,
-                        None,
-                    );
-                    self.current_block.ins(context).store(arg0_ptr, arg0, None);
+                    let arg0_ptr =
+                        self.current_block
+                            .ins(context)
+                            .get_ptr(by_reference_arg, arg0_type, 0);
+                    self.current_block.ins(context).store(arg0_ptr, arg0);
 
                     // NOTE: Here we're fetching the original stack pointer, cast to u64.
                     // TODO: Instead of casting here, we should use an `ptrtoint` instruction.
-                    self.current_block.ins(context).get_ptr(
-                        by_reference_arg,
-                        Type::Uint(64),
-                        0,
-                        span_md_idx,
-                    )
+                    self.current_block
+                        .ins(context)
+                        .get_ptr(by_reference_arg, Type::Uint(64), 0)
+                        .add_metadatum(context, span_md_idx)
                 }
             }
             _ => {
                 // New struct type to hold the user arguments bundled together.
                 let field_types = compiled_args
                     .iter()
-                    .map(|val| val.get_type(context).unwrap())
+                    .filter_map(|val| val.get_stripped_ptr_type(context))
                     .collect::<Vec<_>>();
                 let user_args_struct_aggregate = Aggregate::new_struct(context, field_types);
 
@@ -634,30 +767,32 @@ impl FnCompiler {
 
                 // Initialise each of the fields in the user args struct.
                 compiled_args.into_iter().enumerate().fold(
-                    self.current_block.ins(context).get_ptr(
-                        user_args_struct_ptr,
-                        Type::Struct(user_args_struct_aggregate),
-                        0,
-                        span_md_idx,
-                    ),
-                    |user_args_struct_ptr_val, (insert_idx, insert_val)| {
-                        self.current_block.ins(context).insert_value(
-                            user_args_struct_ptr_val,
-                            user_args_struct_aggregate,
-                            insert_val,
-                            vec![insert_idx as u64],
-                            span_md_idx,
+                    self.current_block
+                        .ins(context)
+                        .get_ptr(
+                            user_args_struct_ptr,
+                            Type::Struct(user_args_struct_aggregate),
+                            0,
                         )
+                        .add_metadatum(context, span_md_idx),
+                    |user_args_struct_ptr_val, (insert_idx, insert_val)| {
+                        self.current_block
+                            .ins(context)
+                            .insert_value(
+                                user_args_struct_ptr_val,
+                                user_args_struct_aggregate,
+                                insert_val,
+                                vec![insert_idx as u64],
+                            )
+                            .add_metadatum(context, span_md_idx)
                     },
                 );
 
                 // NOTE: Here we're fetching the original stack pointer, cast to u64.
-                self.current_block.ins(context).get_ptr(
-                    user_args_struct_ptr,
-                    Type::Uint(64),
-                    0,
-                    span_md_idx,
-                )
+                self.current_block
+                    .ins(context)
+                    .get_ptr(user_args_struct_ptr, Type::Uint(64), 0)
+                    .add_metadatum(context, span_md_idx)
             }
         };
 
@@ -668,155 +803,191 @@ impl FnCompiler {
             [Type::B256, Type::Uint(64), Type::Uint(64)].to_vec(),
         );
 
-        let addr = self.compile_expression(context, *metadata.contract_address.clone())?;
-        let mut ra_struct_val =
-            Constant::get_undef(context, Type::Struct(ra_struct_aggregate), span_md_idx);
+        let addr =
+            self.compile_expression(context, md_mgr, *call_params.contract_address.clone())?;
+        let mut ra_struct_val = Constant::get_undef(context, Type::Struct(ra_struct_aggregate))
+            .add_metadatum(context, span_md_idx);
 
         // Insert the contract address
-        ra_struct_val = self.current_block.ins(context).insert_value(
-            ra_struct_val,
-            ra_struct_aggregate,
-            addr,
-            vec![0],
-            span_md_idx,
-        );
+        ra_struct_val = self
+            .current_block
+            .ins(context)
+            .insert_value(ra_struct_val, ra_struct_aggregate, addr, vec![0])
+            .add_metadatum(context, span_md_idx);
 
         // Convert selector to U64 and then insert it
-        let sel = metadata.func_selector;
+        let sel = call_params.func_selector;
         let sel_val = convert_literal_to_value(
             context,
             &Literal::U64(
                 sel[3] as u64 + 256 * (sel[2] as u64 + 256 * (sel[1] as u64 + 256 * sel[0] as u64)),
             ),
-            span_md_idx,
-        );
-        ra_struct_val = self.current_block.ins(context).insert_value(
-            ra_struct_val,
-            ra_struct_aggregate,
-            sel_val,
-            vec![1],
-            span_md_idx,
-        );
+        )
+        .add_metadatum(context, span_md_idx);
+        ra_struct_val = self
+            .current_block
+            .ins(context)
+            .insert_value(ra_struct_val, ra_struct_aggregate, sel_val, vec![1])
+            .add_metadatum(context, span_md_idx);
 
         // Insert the user args value.
 
-        ra_struct_val = self.current_block.ins(context).insert_value(
-            ra_struct_val,
-            ra_struct_aggregate,
-            user_args_val,
-            vec![2],
-            span_md_idx,
-        );
+        ra_struct_val = self
+            .current_block
+            .ins(context)
+            .insert_value(ra_struct_val, ra_struct_aggregate, user_args_val, vec![2])
+            .add_metadatum(context, span_md_idx);
 
-        // Compile all other metadata parameters
+        // Compile all other call parameters
         let coins = match contract_call_parameters
             .get(&constants::CONTRACT_CALL_COINS_PARAMETER_NAME.to_string())
         {
-            Some(coins_expr) => self.compile_expression(context, coins_expr.clone())?,
+            Some(coins_expr) => self.compile_expression(context, md_mgr, coins_expr.clone())?,
             None => convert_literal_to_value(
                 context,
                 &Literal::U64(constants::CONTRACT_CALL_COINS_PARAMETER_DEFAULT_VALUE),
-                span_md_idx,
-            ),
+            )
+            .add_metadatum(context, span_md_idx),
         };
 
         let asset_id = match contract_call_parameters
             .get(&constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME.to_string())
         {
-            Some(asset_id_expr) => self.compile_expression(context, asset_id_expr.clone())?,
+            Some(asset_id_expr) => {
+                self.compile_expression(context, md_mgr, asset_id_expr.clone())?
+            }
             None => convert_literal_to_value(
                 context,
                 &Literal::B256(constants::CONTRACT_CALL_ASSET_ID_PARAMETER_DEFAULT_VALUE),
-                span_md_idx,
-            ),
+            )
+            .add_metadatum(context, span_md_idx),
         };
 
         let gas = match contract_call_parameters
             .get(&constants::CONTRACT_CALL_GAS_PARAMETER_NAME.to_string())
         {
-            Some(gas_expr) => self.compile_expression(context, gas_expr.clone())?,
+            Some(gas_expr) => self.compile_expression(context, md_mgr, gas_expr.clone())?,
             None => self
                 .current_block
                 .ins(context)
-                .read_register(sway_ir::Register::Cgas, span_md_idx),
+                .read_register(sway_ir::Register::Cgas)
+                .add_metadatum(context, span_md_idx),
         };
 
         let return_type = convert_resolved_typeid_no_span(context, &return_type)?;
 
         // Insert the contract_call instruction
-        Ok(self.current_block.ins(context).contract_call(
-            return_type,
-            ast_name.to_string(),
-            ra_struct_val,
-            coins,
-            asset_id,
-            gas,
-            span_md_idx,
-        ))
+        Ok(self
+            .current_block
+            .ins(context)
+            .contract_call(
+                return_type,
+                ast_name.to_string(),
+                ra_struct_val,
+                coins,
+                asset_id,
+                gas,
+            )
+            .add_metadatum(context, span_md_idx))
     }
 
     #[allow(clippy::too_many_arguments)]
     fn compile_fn_call(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         ast_args: Vec<(Ident, TypedExpression)>,
         callee: TypedFunctionDeclaration,
         self_state_idx: Option<StateIndex>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
-        // XXX OK, now, the old compiler inlines everything very lazily.  Function calls include
-        // the body of the callee (i.e., the callee_body arg above) and so codegen just pulled it
-        // straight in, no questions asked.  Library functions are provided in an initial namespace
-        // from Forc and when the parser builds the AST (or is it during type checking?) these
-        // function bodies are embedded.
+        // The compiler inlines everything very lazily.  Function calls include the body of the
+        // callee (i.e., the callee_body arg above). Library functions are provided in an initial
+        // namespace from Forc and when the parser builds the AST (or is it during type checking?)
+        // these function bodies are embedded.
         //
-        // We're going to build little single-use instantiations of the callee and then call them.
-        // For now if they're called in multiple places they'll be redundantly recreated, but also
-        // at present we are still inlining everything so it actually makes little difference.
+        // Here we build little single-use instantiations of the callee and then call them.  Naming
+        // is not yet absolute so we must ensure the function names are unique.
         //
-        // Eventually we need to Do It Properly and inline only when necessary, and compile the
-        // standard library to an actual module.
 
-        {
-            let callee_name = format!("{}_{}", callee.name, context.get_unique_id());
+        // Eventually we need to Do It Properly and inline into the AST only when necessary, and
+        // compile the standard library to an actual module.
 
-            let mut callee_fn_decl = callee;
-            callee_fn_decl.type_parameters.clear();
-            callee_fn_decl.name = Ident::new(Span::from_string(callee_name));
+        // Get the callee from the cache if we've already compiled it.  We can't insert it with
+        // .entry() since `compile_function()` returns a Result we need to handle.  The key to our
+        // cache, to uniquely identify a function instance, is the span and the type IDs of any
+        // args and type parameters.  It's using the Sway types rather than IR types, which would
+        // be more accurate but also more fiddly.
+        let fn_key = (
+            callee.span(),
+            callee.parameters.iter().map(|p| p.type_id).collect(),
+            callee.type_parameters.iter().map(|tp| tp.type_id).collect(),
+        );
+        let new_callee = match self.recreated_fns.get(&fn_key).copied() {
+            Some(func) => func,
+            None => {
+                let callee_fn_decl = TypedFunctionDeclaration {
+                    type_parameters: Vec::new(),
+                    name: Ident::new(Span::from_string(format!(
+                        "{}_{}",
+                        callee.name,
+                        context.get_unique_id()
+                    ))),
+                    parameters: callee.parameters.clone(),
+                    ..callee
+                };
+                let new_func =
+                    compile_function(context, md_mgr, self.module, callee_fn_decl)?.unwrap();
+                self.recreated_fns.insert(fn_key, new_func);
+                new_func
+            }
+        };
 
-            let callee = compile_function(context, self.module, callee_fn_decl)?;
+        // Now actually call the new function.
+        let args = ast_args
+            .into_iter()
+            .zip(callee.parameters.into_iter())
+            .map(|((_, expr), param)| self.compile_fn_arg(context, md_mgr, &param, expr))
+            .collect::<Result<Vec<Value>, CompileError>>()?;
+        let state_idx_md_idx = match self_state_idx {
+            Some(self_state_idx) => {
+                md_mgr.storage_key_to_md(context, self_state_idx.to_usize() as u64)
+            }
+            None => None,
+        };
+        Ok(self
+            .current_block
+            .ins(context)
+            .call(new_callee, &args)
+            .add_metadatum(context, span_md_idx)
+            .add_metadatum(context, state_idx_md_idx))
+    }
 
-            // Now actually call the new function.
-            let args = ast_args
-                .into_iter()
-                .map(|(_, expr)| self.compile_expression(context, expr))
-                .collect::<Result<Vec<Value>, CompileError>>()?;
-            let state_idx_md_idx = match self_state_idx {
-                Some(self_state_idx) => {
-                    MetadataIndex::from_state_idx(context, self_state_idx.to_usize())
-                }
-                None => None,
-            };
-            Ok(self.current_block.ins(context).call(
-                callee.unwrap(),
-                &args,
-                span_md_idx,
-                state_idx_md_idx,
-            ))
-        }
+    fn compile_fn_arg(
+        &mut self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        fn_param: &TypedFunctionParameter,
+        ast_expr: TypedExpression,
+    ) -> Result<Value, CompileError> {
+        self.current_fn_param = Some(fn_param.clone());
+        let ret = self.compile_expression(context, md_mgr, ast_expr);
+        self.current_fn_param = None;
+        ret
     }
 
     fn compile_if(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         ast_condition: TypedExpression,
         ast_then: TypedExpression,
         ast_else: Option<Box<TypedExpression>>,
     ) -> Result<Value, CompileError> {
         // Compile the condition expression in the entry block.  Then save the current block so we
         // can jump to the true and false blocks after we've created them.
-        let cond_span_md_idx = MetadataIndex::from_span(context, &ast_condition.span);
-        let cond_value = self.compile_expression(context, ast_condition)?;
+        let cond_span_md_idx = md_mgr.span_to_md(context, &ast_condition.span);
+        let cond_value = self.compile_expression(context, md_mgr, ast_condition)?;
         let cond_block = self.current_block;
 
         // To keep the blocks in a nice order we create them only as we populate them.  It's
@@ -834,43 +1005,40 @@ impl FnCompiler {
 
         let true_block_begin = self.function.create_block(context, None);
         self.current_block = true_block_begin;
-        let true_value = self.compile_expression(context, ast_then)?;
+        let true_value = self.compile_expression(context, md_mgr, ast_then)?;
         let true_block_end = self.current_block;
 
         let false_block_begin = self.function.create_block(context, None);
         self.current_block = false_block_begin;
         let false_value = match ast_else {
-            None => Constant::get_unit(context, None),
-            Some(expr) => self.compile_expression(context, *expr)?,
+            None => Constant::get_unit(context),
+            Some(expr) => self.compile_expression(context, md_mgr, *expr)?,
         };
         let false_block_end = self.current_block;
 
         if !cond_block.is_terminated(context) {
-            cond_block.ins(context).conditional_branch(
-                cond_value,
-                true_block_begin,
-                false_block_begin,
-                None,
-                cond_span_md_idx,
-            );
+            cond_block
+                .ins(context)
+                .conditional_branch(cond_value, true_block_begin, false_block_begin, None)
+                .add_metadatum(context, cond_span_md_idx);
         }
 
         // If both the blocks are already terminated (by break, continue or return) then we don't
         // need a merge block and can finish here.
         if true_block_end.is_terminated(context) && false_block_end.is_terminated(context) {
-            return Ok(Constant::get_unit(context, None));
+            return Ok(Constant::get_unit(context));
         }
 
         let merge_block = self.function.create_block(context, None);
         if !true_block_end.is_terminated(context) {
             true_block_end
                 .ins(context)
-                .branch(merge_block, Some(true_value), None);
+                .branch(merge_block, Some(true_value));
         }
         if !false_block_end.is_terminated(context) {
             false_block_end
                 .ins(context)
-                .branch(merge_block, Some(false_value), None);
+                .branch(merge_block, Some(false_value));
         }
 
         self.current_block = merge_block;
@@ -880,6 +1048,7 @@ impl FnCompiler {
     fn compile_unsafe_downcast(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         exp: Box<TypedExpression>,
         variant: TypedEnumVariant,
     ) -> Result<Value, CompileError> {
@@ -894,41 +1063,42 @@ impl FnCompiler {
             }
         };
         // compile the expression to asm
-        let compiled_value = self.compile_expression(context, *exp)?;
+        let compiled_value = self.compile_expression(context, md_mgr, *exp)?;
         // retrieve the value minus the tag
         Ok(self.current_block.ins(context).extract_value(
             compiled_value,
             enum_aggregate,
             vec![1, variant.tag as u64],
-            None,
         ))
     }
 
     fn compile_enum_tag(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         exp: Box<TypedExpression>,
     ) -> Result<Value, CompileError> {
-        let tag_span_md_idx = MetadataIndex::from_span(context, &exp.span);
+        let tag_span_md_idx = md_mgr.span_to_md(context, &exp.span);
         let enum_aggregate = match convert_resolved_typeid(context, &exp.return_type, &exp.span)? {
             Type::Struct(aggregate) => aggregate,
             _ => {
                 return Err(CompileError::Internal("Expected enum type here.", exp.span));
             }
         };
-        let exp = self.compile_expression(context, *exp)?;
-        Ok(self.current_block.ins(context).extract_value(
-            exp,
-            enum_aggregate,
-            vec![0],
-            tag_span_md_idx,
-        ))
+        let exp = self.compile_expression(context, md_mgr, *exp)?;
+        Ok(self
+            .current_block
+            .ins(context)
+            .extract_value(exp, enum_aggregate, vec![0])
+            .add_metadatum(context, tag_span_md_idx))
     }
 
     fn compile_while_loop(
         &mut self,
         context: &mut Context,
-        ast_while_loop: TypedWhileLoop,
+        md_mgr: &mut MetadataManager,
+        body: TypedCodeBlock,
+        condition: TypedExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         // We're dancing around a bit here to make the blocks sit in the right order.  Ideally we
@@ -939,9 +1109,7 @@ impl FnCompiler {
         let cond_block = self.function.create_block(context, Some("while".into()));
 
         if !self.current_block.is_terminated(context) {
-            self.current_block
-                .ins(context)
-                .branch(cond_block, None, None);
+            self.current_block.ins(context).branch(cond_block, None);
         }
 
         // Fill in the body block now, jump unconditionally to the cond block at its end.
@@ -967,11 +1135,9 @@ impl FnCompiler {
         // Compile the body and a branch to the condition block if no branch is already present in
         // the body block
         self.current_block = body_block;
-        self.compile_code_block(context, ast_while_loop.body)?;
+        self.compile_code_block(context, md_mgr, body)?;
         if !self.current_block.is_terminated(context) {
-            self.current_block
-                .ins(context)
-                .branch(cond_block, None, None);
+            self.current_block.ins(context).branch(cond_block, None);
         }
 
         // Restore the blocks to jump to now that we're done with the current loop
@@ -980,19 +1146,18 @@ impl FnCompiler {
 
         // Add the conditional which jumps into the body or out to the final block.
         self.current_block = cond_block;
-        let cond_value = self.compile_expression(context, ast_while_loop.condition)?;
+        let cond_value = self.compile_expression(context, md_mgr, condition)?;
         if !self.current_block.is_terminated(context) {
             self.current_block.ins(context).conditional_branch(
                 cond_value,
                 body_block,
                 final_block,
                 None,
-                None,
             );
         }
 
         self.current_block = final_block;
-        Ok(Constant::get_unit(context, span_md_idx))
+        Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
     }
 
     fn compile_var_expr(
@@ -1012,14 +1177,32 @@ impl FnCompiler {
             let ptr_val = self
                 .current_block
                 .ins(context)
-                .get_ptr(ptr, ptr_ty, 0, span_md_idx);
-            Ok(if ptr.is_aggregate_ptr(context) {
+                .get_ptr(ptr, ptr_ty, 0)
+                .add_metadatum(context, span_md_idx);
+            let fn_param = self.current_fn_param.as_ref();
+            let is_ref_primitive = fn_param.is_some()
+                && look_up_type_id(fn_param.unwrap().type_id).is_copy_type()
+                && fn_param.unwrap().is_reference
+                && fn_param.unwrap().is_mutable;
+            Ok(if ptr.is_aggregate_ptr(context) || is_ref_primitive {
                 ptr_val
             } else {
-                self.current_block.ins(context).load(ptr_val, span_md_idx)
+                self.current_block
+                    .ins(context)
+                    .load(ptr_val)
+                    .add_metadatum(context, span_md_idx)
             })
         } else if let Some(val) = self.function.get_arg(context, name) {
-            Ok(val)
+            let is_ptr = val.get_type(context).filter(|f| f.is_ptr_type()).is_some();
+            if is_ptr {
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .load(val)
+                    .add_metadatum(context, span_md_idx))
+            } else {
+                Ok(val)
+            }
         } else if let Some(const_val) = self.module.get_global_constant(context, name) {
             Ok(const_val)
         } else {
@@ -1033,13 +1216,14 @@ impl FnCompiler {
     fn compile_var_decl(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         ast_var_decl: TypedVariableDeclaration,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         let TypedVariableDeclaration {
             name,
             body,
-            is_mutable,
+            mutability,
             ..
         } = ast_var_decl;
         // Nothing to do for an abi cast declarations. The address specified in them is already
@@ -1050,7 +1234,7 @@ impl FnCompiler {
             })?,
             TypeInfo::ContractCaller { .. }
         ) {
-            return Ok(Constant::get_unit(context, span_md_idx));
+            return Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx));
         }
 
         // Grab these before we move body into compilation.
@@ -1058,11 +1242,17 @@ impl FnCompiler {
 
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
-        let init_val = self.compile_expression(context, body)?;
+        let init_val = self.compile_expression(context, md_mgr, body)?;
         let local_name = self.lexical_map.insert(name.as_str().to_owned());
         let ptr = self
             .function
-            .new_local_ptr(context, local_name, return_type, is_mutable.into(), None)
+            .new_local_ptr(
+                context,
+                local_name,
+                return_type,
+                mutability.is_mutable(),
+                None,
+            )
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
 
         // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
@@ -1072,10 +1262,12 @@ impl FnCompiler {
             let ptr_val = self
                 .current_block
                 .ins(context)
-                .get_ptr(ptr, ptr_ty, 0, span_md_idx);
+                .get_ptr(ptr, ptr_ty, 0)
+                .add_metadatum(context, span_md_idx);
             self.current_block
                 .ins(context)
-                .store(ptr_val, init_val, span_md_idx);
+                .store(ptr_val, init_val)
+                .add_metadatum(context, span_md_idx);
         }
         Ok(init_val)
     }
@@ -1083,13 +1275,15 @@ impl FnCompiler {
     fn compile_const_decl(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         ast_const_decl: TypedConstantDeclaration,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
         let TypedConstantDeclaration { name, value, .. } = ast_const_decl;
-        let const_expr_val = compile_constant_expression(context, self.module, None, &value)?;
+        let const_expr_val =
+            compile_constant_expression(context, md_mgr, self.module, None, &value)?;
         let local_name = self.lexical_map.insert(name.as_str().to_owned());
         let return_type = convert_resolved_typeid(context, &value.return_type, &value.span)?;
 
@@ -1110,10 +1304,12 @@ impl FnCompiler {
             let ptr_val = self
                 .current_block
                 .ins(context)
-                .get_ptr(ptr, ptr_ty, 0, span_md_idx);
+                .get_ptr(ptr, ptr_ty, 0)
+                .add_metadatum(context, span_md_idx);
             self.current_block
                 .ins(context)
-                .store(ptr_val, const_expr_val, span_md_idx);
+                .store(ptr_val, const_expr_val)
+                .add_metadatum(context, span_md_idx);
         }
         Ok(const_expr_val)
     }
@@ -1121,6 +1317,7 @@ impl FnCompiler {
     fn compile_reassignment(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         ast_reassignment: TypedReassignment,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
@@ -1135,7 +1332,8 @@ impl FnCompiler {
                 let ptr_ty = *ptr.get_type(context);
                 self.current_block
                     .ins(context)
-                    .get_ptr(ptr, ptr_ty, 0, span_md_idx)
+                    .get_ptr(ptr, ptr_ty, 0)
+                    .add_metadatum(context, span_md_idx)
             }
             None => {
                 // Now look for an argument with the required name
@@ -1152,13 +1350,14 @@ impl FnCompiler {
             }
         };
 
-        let reassign_val = self.compile_expression(context, ast_reassignment.rhs)?;
+        let reassign_val = self.compile_expression(context, md_mgr, ast_reassignment.rhs)?;
 
         if ast_reassignment.lhs_indices.is_empty() {
             // A non-aggregate; use a `store`.
             self.current_block
                 .ins(context)
-                .store(val, reassign_val, span_md_idx);
+                .store(val, reassign_val)
+                .add_metadatum(context, span_md_idx);
         } else {
             // An aggregate.  Iterate over the field names from the left hand side and collect
             // field indices.  The struct type from the previous iteration is used to determine the
@@ -1168,7 +1367,7 @@ impl FnCompiler {
                 &ast_reassignment.lhs_indices,
             )?;
 
-            let ty = match val.get_type(context).unwrap() {
+            let ty = match val.get_stripped_ptr_type(context).unwrap() {
                 Type::Struct(aggregate) => aggregate,
                 _otherwise => {
                     let spans = ast_reassignment
@@ -1184,13 +1383,10 @@ impl FnCompiler {
                 }
             };
 
-            self.current_block.ins(context).insert_value(
-                val,
-                ty,
-                reassign_val,
-                field_idcs,
-                span_md_idx,
-            );
+            self.current_block
+                .ins(context)
+                .insert_value(val, ty, reassign_val, field_idcs)
+                .add_metadatum(context, span_md_idx);
         }
 
         // This shouldn't really return a value, it doesn't make sense to return the `store` or
@@ -1201,13 +1397,14 @@ impl FnCompiler {
     fn compile_storage_reassignment(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         fields: &[TypeCheckedStorageReassignDescriptor],
         ix: &StateIndex,
         rhs: &TypedExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         // Compile the RHS into a value
-        let rhs = self.compile_expression(context, rhs.clone())?;
+        let rhs = self.compile_expression(context, md_mgr, rhs.clone())?;
 
         // Get the type of the access which can be a subfield
         let access_type = convert_resolved_typeid_no_span(
@@ -1224,6 +1421,7 @@ impl FnCompiler {
         // to store each primitive type in the storage field in its own storage slot.
         self.compile_storage_read_or_write(
             context,
+            md_mgr,
             &StateAccessType::Write,
             ix,
             field_idcs,
@@ -1236,6 +1434,7 @@ impl FnCompiler {
     fn compile_array_expr(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         contents: Vec<TypedExpression>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
@@ -1250,7 +1449,8 @@ impl FnCompiler {
         let aggregate = Aggregate::new_array(context, elem_type, contents.len() as u64);
 
         // Compile each element and insert it immediately.
-        let array_value = Constant::get_undef(context, Type::Array(aggregate), span_md_idx);
+        let array_value = Constant::get_undef(context, Type::Array(aggregate))
+            .add_metadatum(context, span_md_idx);
         contents
             .into_iter()
             .enumerate()
@@ -1259,16 +1459,14 @@ impl FnCompiler {
                 match array_value {
                     Err(_) => array_value,
                     Ok(array_value) => {
-                        let index_val = Constant::get_uint(context, 64, idx as u64, span_md_idx);
-                        self.compile_expression(context, elem_expr)
+                        let index_val = Constant::get_uint(context, 64, idx as u64)
+                            .add_metadatum(context, span_md_idx);
+                        self.compile_expression(context, md_mgr, elem_expr)
                             .map(|elem_value| {
-                                self.current_block.ins(context).insert_element(
-                                    array_value,
-                                    aggregate,
-                                    elem_value,
-                                    index_val,
-                                    span_md_idx,
-                                )
+                                self.current_block
+                                    .ins(context)
+                                    .insert_element(array_value, aggregate, elem_value, index_val)
+                                    .add_metadatum(context, span_md_idx)
                             })
                     }
                 }
@@ -1278,12 +1476,13 @@ impl FnCompiler {
     fn compile_array_index(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         array_expr: TypedExpression,
         index_expr: TypedExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         let array_expr_span = array_expr.span.clone();
-        let array_val = self.compile_expression(context, array_expr)?;
+        let array_val = self.compile_expression(context, md_mgr, array_expr)?;
         let aggregate = match &context.values[array_val.0].value {
             ValueDatum::Instruction(instruction) => {
                 instruction.get_aggregate(context).ok_or_else(|| {
@@ -1315,19 +1514,19 @@ impl FnCompiler {
             }
         }
 
-        let index_val = self.compile_expression(context, index_expr)?;
+        let index_val = self.compile_expression(context, md_mgr, index_expr)?;
 
-        Ok(self.current_block.ins(context).extract_element(
-            array_val,
-            aggregate,
-            index_val,
-            span_md_idx,
-        ))
+        Ok(self
+            .current_block
+            .ins(context)
+            .extract_element(array_val, aggregate, index_val)
+            .add_metadatum(context, span_md_idx))
     }
 
     fn compile_struct_expr(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         fields: Vec<TypedStructExpressionField>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
@@ -1343,7 +1542,7 @@ impl FnCompiler {
             .enumerate()
             .map(|(insert_idx, struct_field)| {
                 let field_ty = struct_field.value.return_type;
-                self.compile_expression(context, struct_field.value)
+                self.compile_expression(context, md_mgr, struct_field.value)
                     .map(|insert_val| ((insert_val, insert_idx as u64), field_ty))
             })
             .collect::<Result<Vec<_>, CompileError>>()?;
@@ -1352,17 +1551,15 @@ impl FnCompiler {
 
         // Start with a constant empty struct and then fill in the values.
         let aggregate = get_aggregate_for_types(context, &field_types)?;
-        let agg_value = Constant::get_undef(context, Type::Struct(aggregate), span_md_idx);
+        let agg_value = Constant::get_undef(context, Type::Struct(aggregate))
+            .add_metadatum(context, span_md_idx);
         Ok(inserted_values_indices.into_iter().fold(
             agg_value,
             |agg_value, (insert_val, insert_idx)| {
-                self.current_block.ins(context).insert_value(
-                    agg_value,
-                    aggregate,
-                    insert_val,
-                    vec![insert_idx],
-                    span_md_idx,
-                )
+                self.current_block
+                    .ins(context)
+                    .insert_value(agg_value, aggregate, insert_val, vec![insert_idx])
+                    .add_metadatum(context, span_md_idx)
             },
         ))
     }
@@ -1370,13 +1567,14 @@ impl FnCompiler {
     fn compile_struct_field_expr(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         ast_struct_expr: TypedExpression,
         struct_type_id: TypeId,
         ast_field: TypedStructField,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         let ast_struct_expr_span = ast_struct_expr.span.clone();
-        let struct_val = self.compile_expression(context, ast_struct_expr)?;
+        let struct_val = self.compile_expression(context, md_mgr, ast_struct_expr)?;
         let aggregate = match &context.values[struct_val.0].value {
             ValueDatum::Instruction(instruction) => {
                 instruction.get_aggregate(context).ok_or_else(|| {
@@ -1420,17 +1618,17 @@ impl FnCompiler {
             },
         }?;
 
-        Ok(self.current_block.ins(context).extract_value(
-            struct_val,
-            aggregate,
-            vec![field_idx],
-            span_md_idx,
-        ))
+        Ok(self
+            .current_block
+            .ins(context)
+            .extract_value(struct_val, aggregate, vec![field_idx])
+            .add_metadatum(context, span_md_idx))
     }
 
     fn compile_enum_expr(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         enum_decl: TypedEnumDeclaration,
         tag: usize,
         contents: Option<Box<TypedExpression>>,
@@ -1441,19 +1639,19 @@ impl FnCompiler {
         // the name, and if not add a new aggregate... OTOH the naming seems a little fragile and
         // we could potentially use the wrong aggregate with the same name, different module...
         // dunno.
-        let span_md_idx = MetadataIndex::from_span(context, &enum_decl.span);
+        let span_md_idx = md_mgr.span_to_md(context, &enum_decl.span);
         let aggregate = create_enum_aggregate(context, enum_decl.variants)?;
-        let tag_value = Constant::get_uint(context, 64, tag as u64, span_md_idx);
+        let tag_value =
+            Constant::get_uint(context, 64, tag as u64).add_metadatum(context, span_md_idx);
 
         // Start with the undef and insert the tag.
-        let agg_value = Constant::get_undef(context, Type::Struct(aggregate), span_md_idx);
-        let agg_value = self.current_block.ins(context).insert_value(
-            agg_value,
-            aggregate,
-            tag_value,
-            vec![0],
-            span_md_idx,
-        );
+        let agg_value = Constant::get_undef(context, Type::Struct(aggregate))
+            .add_metadatum(context, span_md_idx);
+        let agg_value = self
+            .current_block
+            .ins(context)
+            .insert_value(agg_value, aggregate, tag_value, vec![0])
+            .add_metadatum(context, span_md_idx);
 
         // If the struct representing the enum has only one field, then that field is basically the
         // tag and all the variants must have unit types, hence the absence of the union.
@@ -1467,14 +1665,11 @@ impl FnCompiler {
                         None => agg_value,
                         Some(te) => {
                             // Insert the value too.
-                            let contents_value = self.compile_expression(context, *te)?;
-                            self.current_block.ins(context).insert_value(
-                                agg_value,
-                                aggregate,
-                                contents_value,
-                                vec![1],
-                                span_md_idx,
-                            )
+                            let contents_value = self.compile_expression(context, md_mgr, *te)?;
+                            self.current_block
+                                .ins(context)
+                                .insert_value(agg_value, aggregate, contents_value, vec![1])
+                                .add_metadatum(context, span_md_idx)
                         }
                     }
                 })
@@ -1486,20 +1681,21 @@ impl FnCompiler {
     fn compile_tuple_expr(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         fields: Vec<TypedExpression>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         if fields.is_empty() {
             // This is a Unit.  We're still debating whether Unit should just be an empty tuple in
             // the IR or not... it is a special case for now.
-            Ok(Constant::get_unit(context, span_md_idx))
+            Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
         } else {
             let (init_values, init_types): (Vec<Value>, Vec<Type>) = fields
                 .into_iter()
                 .map(|field_expr| {
                     convert_resolved_typeid_no_span(context, &field_expr.return_type).and_then(
                         |init_type| {
-                            self.compile_expression(context, field_expr)
+                            self.compile_expression(context, md_mgr, field_expr)
                                 .map(|init_value| (init_value, init_type))
                         },
                     )
@@ -1509,18 +1705,16 @@ impl FnCompiler {
                 .unzip();
 
             let aggregate = Aggregate::new_struct(context, init_types);
-            let agg_value = Constant::get_undef(context, Type::Struct(aggregate), span_md_idx);
+            let agg_value = Constant::get_undef(context, Type::Struct(aggregate))
+                .add_metadatum(context, span_md_idx);
 
             Ok(init_values.into_iter().enumerate().fold(
                 agg_value,
                 |agg_value, (insert_idx, insert_val)| {
-                    self.current_block.ins(context).insert_value(
-                        agg_value,
-                        aggregate,
-                        insert_val,
-                        vec![insert_idx as u64],
-                        span_md_idx,
-                    )
+                    self.current_block
+                        .ins(context)
+                        .insert_value(agg_value, aggregate, insert_val, vec![insert_idx as u64])
+                        .add_metadatum(context, span_md_idx)
                 },
             ))
         }
@@ -1529,20 +1723,20 @@ impl FnCompiler {
     fn compile_tuple_elem_expr(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         tuple: TypedExpression,
         tuple_type: TypeId,
         idx: usize,
         span: Span,
     ) -> Result<Value, CompileError> {
-        let tuple_value = self.compile_expression(context, tuple)?;
+        let tuple_value = self.compile_expression(context, md_mgr, tuple)?;
         if let Type::Struct(aggregate) = convert_resolved_typeid(context, &tuple_type, &span)? {
-            let span_md_idx = MetadataIndex::from_span(context, &span);
-            Ok(self.current_block.ins(context).extract_value(
-                tuple_value,
-                aggregate,
-                vec![idx as u64],
-                span_md_idx,
-            ))
+            let span_md_idx = md_mgr.span_to_md(context, &span);
+            Ok(self
+                .current_block
+                .ins(context)
+                .extract_value(tuple_value, aggregate, vec![idx as u64])
+                .add_metadatum(context, span_md_idx))
         } else {
             Err(CompileError::Internal(
                 "Invalid (non-aggregate?) tuple type for TupleElemAccess.",
@@ -1554,6 +1748,7 @@ impl FnCompiler {
     fn compile_storage_access(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         fields: &[TypeCheckedStorageAccessDescriptor],
         ix: &StateIndex,
         span_md_idx: Option<MetadataIndex>,
@@ -1574,6 +1769,7 @@ impl FnCompiler {
         // to load each primitive type in the storage field in its own storage slot.
         self.compile_storage_read_or_write(
             context,
+            md_mgr,
             &StateAccessType::Read,
             ix,
             field_idcs,
@@ -1583,9 +1779,11 @@ impl FnCompiler {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn compile_asm_expr(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         registers: Vec<TypedAsmRegisterDeclaration>,
         body: Vec<AsmOp>,
         return_type: TypeId,
@@ -1601,7 +1799,7 @@ impl FnCompiler {
                     // Take the optional initialiser, map it to an Option<Result<Value>>,
                     // transpose that to Result<Option<Value>> and map that to an AsmArg.
                     initializer
-                        .map(|init_expr| self.compile_expression(context, init_expr))
+                        .map(|init_expr| self.compile_expression(context, md_mgr, init_expr))
                         .transpose()
                         .map(|init| AsmArg {
                             name,
@@ -1622,7 +1820,7 @@ impl FnCompiler {
                     name: op_name,
                     args: op_args,
                     immediate,
-                    span_md_idx: MetadataIndex::from_span(context, &span),
+                    metadata: md_mgr.span_to_md(context, &span),
                 },
             )
             .collect();
@@ -1630,19 +1828,18 @@ impl FnCompiler {
             .as_ref()
             .map(|(_, asm_reg_span)| Ident::new(asm_reg_span.clone()));
         let return_type = convert_resolved_typeid_no_span(context, &return_type)?;
-        Ok(self.current_block.ins(context).asm_block(
-            registers,
-            body,
-            return_type,
-            returns,
-            whole_block_span_md_idx,
-        ))
+        Ok(self
+            .current_block
+            .ins(context)
+            .asm_block(registers, body, return_type, returns)
+            .add_metadatum(context, whole_block_span_md_idx))
     }
 
     #[allow(clippy::too_many_arguments)]
     fn compile_storage_read_or_write(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         access_type: &StateAccessType,
         ix: &StateIndex,
         indices: Vec<u64>,
@@ -1652,8 +1849,8 @@ impl FnCompiler {
     ) -> Result<Value, CompileError> {
         match r#type {
             Type::Struct(aggregate) => {
-                let mut struct_val =
-                    Constant::get_undef(context, Type::Struct(*aggregate), span_md_idx);
+                let mut struct_val = Constant::get_undef(context, Type::Struct(*aggregate))
+                    .add_metadatum(context, span_md_idx);
 
                 let fields = context.aggregates[aggregate.0].field_types().clone();
                 for (field_idx, field_type) in fields.into_iter().enumerate() {
@@ -1667,6 +1864,7 @@ impl FnCompiler {
                         StateAccessType::Read => {
                             let val_to_insert = self.compile_storage_read_or_write(
                                 context,
+                                md_mgr,
                                 access_type,
                                 ix,
                                 new_indices,
@@ -1676,25 +1874,32 @@ impl FnCompiler {
                             )?;
 
                             //  Insert the loaded value to the aggregate at the given index
-                            struct_val = self.current_block.ins(context).insert_value(
-                                struct_val,
-                                *aggregate,
-                                val_to_insert,
-                                vec![field_idx],
-                                span_md_idx,
-                            );
+                            struct_val = self
+                                .current_block
+                                .ins(context)
+                                .insert_value(
+                                    struct_val,
+                                    *aggregate,
+                                    val_to_insert,
+                                    vec![field_idx],
+                                )
+                                .add_metadatum(context, span_md_idx);
                         }
                         StateAccessType::Write => {
                             // Extract the value from the aggregate at the given index
-                            let rhs = self.current_block.ins(context).extract_value(
-                                rhs.expect("expecting a rhs for write"),
-                                *aggregate,
-                                vec![field_idx],
-                                span_md_idx,
-                            );
+                            let rhs = self
+                                .current_block
+                                .ins(context)
+                                .extract_value(
+                                    rhs.expect("expecting a rhs for write"),
+                                    *aggregate,
+                                    vec![field_idx],
+                                )
+                                .add_metadatum(context, span_md_idx);
 
                             self.compile_storage_read_or_write(
                                 context,
+                                md_mgr,
                                 access_type,
                                 ix,
                                 new_indices,
@@ -1726,27 +1931,31 @@ impl FnCompiler {
                     })?;
 
                 // Const value for the key from the hash
-                let const_key = convert_literal_to_value(
-                    context,
-                    &Literal::B256(storage_key.into()),
-                    span_md_idx,
-                );
+                let const_key =
+                    convert_literal_to_value(context, &Literal::B256(storage_key.into()))
+                        .add_metadatum(context, span_md_idx);
 
                 // Convert the key pointer to a value using get_ptr
                 let key_ptr_ty = *key_ptr.get_type(context);
-                let mut key_ptr_val =
-                    self.current_block
-                        .ins(context)
-                        .get_ptr(key_ptr, key_ptr_ty, 0, span_md_idx);
+                let mut key_ptr_val = self
+                    .current_block
+                    .ins(context)
+                    .get_ptr(key_ptr, key_ptr_ty, 0)
+                    .add_metadatum(context, span_md_idx);
 
                 // Store the const hash value to the key pointer value
                 self.current_block
                     .ins(context)
-                    .store(key_ptr_val, const_key, span_md_idx);
+                    .store(key_ptr_val, const_key)
+                    .add_metadatum(context, span_md_idx);
 
                 match r#type {
                     Type::Array(_) => Err(CompileError::Internal(
                         "Arrays in storage have not been implemented yet.",
+                        Span::dummy(),
+                    )),
+                    Type::Pointer(_) => Err(CompileError::Internal(
+                        "Pointers in storage have not been implemented yet.",
                         Span::dummy(),
                     )),
                     Type::B256 => self.compile_b256_storage(
@@ -1780,7 +1989,9 @@ impl FnCompiler {
                         span_md_idx,
                     ),
                     Type::Struct(_) => unreachable!("structs are already handled!"),
-                    Type::Unit => Ok(Constant::get_unit(context, span_md_idx)),
+                    Type::Unit => {
+                        Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
+                    }
                 }
             }
         }
@@ -1802,24 +2013,25 @@ impl FnCompiler {
                 let load_val = self
                     .current_block
                     .ins(context)
-                    .state_load_word(*key_ptr_val, span_md_idx);
+                    .state_load_word(*key_ptr_val)
+                    .add_metadatum(context, span_md_idx);
                 self.current_block
                     .ins(context)
-                    .bitcast(load_val, *r#type, span_md_idx)
+                    .bitcast(load_val, *r#type)
+                    .add_metadatum(context, span_md_idx)
             }
             StateAccessType::Write => {
                 // `state_store_word` requires a `u64`. Cast the value to store to
                 // `u64` first before actually storing.
-                let rhs_u64 = self.current_block.ins(context).bitcast(
-                    rhs.expect("expecting a rhs for write"),
-                    Type::Uint(64),
-                    span_md_idx,
-                );
-                self.current_block.ins(context).state_store_word(
-                    rhs_u64,
-                    *key_ptr_val,
-                    span_md_idx,
-                );
+                let rhs_u64 = self
+                    .current_block
+                    .ins(context)
+                    .bitcast(rhs.expect("expecting a rhs for write"), Type::Uint(64))
+                    .add_metadatum(context, span_md_idx);
+                self.current_block
+                    .ins(context)
+                    .state_store_word(rhs_u64, *key_ptr_val)
+                    .add_metadatum(context, span_md_idx);
                 rhs.expect("expecting a rhs for write")
             }
         })
@@ -1852,34 +2064,32 @@ impl FnCompiler {
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
 
         // Convert the local pointer created to a value using get_ptr
-        let value_ptr_val =
-            self.current_block
-                .ins(context)
-                .get_ptr(value_ptr, *r#type, 0, span_md_idx);
+        let value_ptr_val = self
+            .current_block
+            .ins(context)
+            .get_ptr(value_ptr, *r#type, 0)
+            .add_metadatum(context, span_md_idx);
 
         match access_type {
             StateAccessType::Read => {
-                self.current_block.ins(context).state_load_quad_word(
-                    value_ptr_val,
-                    *key_ptr_val,
-                    span_md_idx,
-                );
+                self.current_block
+                    .ins(context)
+                    .state_load_quad_word(value_ptr_val, *key_ptr_val)
+                    .add_metadatum(context, span_md_idx);
                 Ok(value_ptr_val)
             }
             StateAccessType::Write => {
                 // Store the value to the local pointer created for rhs
-                self.current_block.ins(context).store(
-                    value_ptr_val,
-                    rhs.expect("expecting a rhs for write"),
-                    span_md_idx,
-                );
+                self.current_block
+                    .ins(context)
+                    .store(value_ptr_val, rhs.expect("expecting a rhs for write"))
+                    .add_metadatum(context, span_md_idx);
 
                 // Finally, just call state_load_quad_word/state_store_quad_word
-                self.current_block.ins(context).state_store_quad_word(
-                    value_ptr_val,
-                    *key_ptr_val,
-                    span_md_idx,
-                );
+                self.current_block
+                    .ins(context)
+                    .state_store_quad_word(value_ptr_val, *key_ptr_val)
+                    .add_metadatum(context, span_md_idx);
                 Ok(rhs.expect("expecting a rhs for write"))
             }
         }
@@ -1931,18 +2141,18 @@ impl FnCompiler {
 
         // Convert the local pointer created to a value of the original type using
         // get_ptr.
-        let value_ptr_val =
-            self.current_block
-                .ins(context)
-                .get_ptr(value_ptr, *r#type, 0, span_md_idx);
+        let value_ptr_val = self
+            .current_block
+            .ins(context)
+            .get_ptr(value_ptr, *r#type, 0)
+            .add_metadatum(context, span_md_idx);
 
         if rhs.is_some() {
             // Store the value to the local pointer created for rhs
-            self.current_block.ins(context).store(
-                value_ptr_val,
-                rhs.expect("expecting a rhs for write"),
-                span_md_idx,
-            );
+            self.current_block
+                .ins(context)
+                .store(value_ptr_val, rhs.expect("expecting a rhs for write"))
+                .add_metadatum(context, span_md_idx);
         }
 
         for array_index in 0..number_of_elements {
@@ -1953,45 +2163,44 @@ impl FnCompiler {
                 let const_key = convert_literal_to_value(
                     context,
                     &Literal::B256(*add_to_b256(*storage_key, array_index)),
-                    span_md_idx,
-                );
+                )
+                .add_metadatum(context, span_md_idx);
 
                 // Convert the key pointer to a value using get_ptr
                 let key_ptr_ty = *key_ptr.get_type(context);
-                *key_ptr_val =
-                    self.current_block
-                        .ins(context)
-                        .get_ptr(*key_ptr, key_ptr_ty, 0, span_md_idx);
+                *key_ptr_val = self
+                    .current_block
+                    .ins(context)
+                    .get_ptr(*key_ptr, key_ptr_ty, 0)
+                    .add_metadatum(context, span_md_idx);
 
                 // Store the const hash value to the key pointer value
                 self.current_block
                     .ins(context)
-                    .store(*key_ptr_val, const_key, span_md_idx);
+                    .store(*key_ptr_val, const_key)
+                    .add_metadatum(context, span_md_idx);
             }
 
             // Get the b256 from the array at index iter
-            let value_ptr_val_b256 = self.current_block.ins(context).get_ptr(
-                value_ptr,
-                Type::B256,
-                array_index,
-                span_md_idx,
-            );
+            let value_ptr_val_b256 = self
+                .current_block
+                .ins(context)
+                .get_ptr(value_ptr, Type::B256, array_index)
+                .add_metadatum(context, span_md_idx);
 
             match access_type {
                 StateAccessType::Read => {
-                    self.current_block.ins(context).state_load_quad_word(
-                        value_ptr_val_b256,
-                        *key_ptr_val,
-                        span_md_idx,
-                    );
+                    self.current_block
+                        .ins(context)
+                        .state_load_quad_word(value_ptr_val_b256, *key_ptr_val)
+                        .add_metadatum(context, span_md_idx);
                 }
                 StateAccessType::Write => {
                     // Finally, just call state_load_quad_word/state_store_quad_word
-                    self.current_block.ins(context).state_store_quad_word(
-                        value_ptr_val_b256,
-                        *key_ptr_val,
-                        span_md_idx,
-                    );
+                    self.current_block
+                        .ins(context)
+                        .state_store_quad_word(value_ptr_val_b256, *key_ptr_val)
+                        .add_metadatum(context, span_md_idx);
                 }
             }
         }

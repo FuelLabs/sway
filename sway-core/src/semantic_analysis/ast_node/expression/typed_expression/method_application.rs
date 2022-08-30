@@ -1,10 +1,9 @@
 use crate::constants;
-use crate::Expression::StorageAccess;
 use crate::{
     error::*,
     parse_tree::*,
     semantic_analysis::{TypedExpressionVariant::VariableExpression, *},
-    type_engine::*,
+    type_system::*,
 };
 use std::collections::{HashMap, VecDeque};
 use sway_types::Spanned;
@@ -82,22 +81,21 @@ pub(crate) fn type_check_method_application(
         }
 
         for param in contract_call_params {
-            let type_annotation = match param.name.span().as_str() {
-                constants::CONTRACT_CALL_GAS_PARAMETER_NAME
-                | constants::CONTRACT_CALL_COINS_PARAMETER_NAME => {
-                    insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour))
-                }
-                constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME => insert_type(TypeInfo::B256),
-                _ => unreachable!(),
-            };
-            let ctx = ctx
-                .by_ref()
-                .with_help_text("")
-                .with_type_annotation(type_annotation);
             match param.name.span().as_str() {
                 constants::CONTRACT_CALL_GAS_PARAMETER_NAME
                 | constants::CONTRACT_CALL_COINS_PARAMETER_NAME
                 | constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME => {
+                    let type_annotation = if param.name.span().as_str()
+                        != constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME
+                    {
+                        insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour))
+                    } else {
+                        insert_type(TypeInfo::B256)
+                    };
+                    let ctx = ctx
+                        .by_ref()
+                        .with_help_text("")
+                        .with_type_annotation(type_annotation);
                     contract_call_params_map.insert(
                         param.name.to_string(),
                         check!(
@@ -129,8 +127,8 @@ pub(crate) fn type_check_method_application(
             errors
         );
 
-        self_state_idx = match arguments.first() {
-            Some(StorageAccess { field_names, .. }) => {
+        self_state_idx = match arguments.first().map(|expr| &expr.kind) {
+            Some(ExpressionKind::StorageAccess(StorageAccessExpression { field_names })) => {
                 let first_field = field_names[0].clone();
                 let self_state_idx = match storage_fields
                     .iter()
@@ -196,7 +194,7 @@ pub(crate) fn type_check_method_application(
                     warnings,
                     errors
                 );
-                variable_decl.is_mutable.is_mutable()
+                variable_decl.mutability.is_mutable()
             }
         };
 
@@ -215,11 +213,19 @@ pub(crate) fn type_check_method_application(
         MethodName::FromType {
             call_path_binding,
             method_name,
-        } => CallPath {
-            prefixes: call_path_binding.inner.prefixes,
-            suffix: method_name,
-            is_absolute: call_path_binding.inner.is_absolute,
-        },
+        } => {
+            let prefixes =
+                if let (TypeInfo::Custom { name, .. }, ..) = &call_path_binding.inner.suffix {
+                    vec![name.clone()]
+                } else {
+                    call_path_binding.inner.prefixes
+                };
+            CallPath {
+                prefixes,
+                suffix: method_name,
+                is_absolute: call_path_binding.inner.is_absolute,
+            }
+        }
         MethodName::FromModule { method_name } => CallPath {
             prefixes: vec![],
             suffix: method_name,
@@ -250,7 +256,7 @@ pub(crate) fn type_check_method_application(
             return err(warnings, errors);
         };
         let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
-        Some(ContractCallMetadata {
+        Some(ContractCallParams {
             func_selector,
             contract_address,
         })

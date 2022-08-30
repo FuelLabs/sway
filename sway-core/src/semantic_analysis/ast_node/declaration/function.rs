@@ -1,9 +1,12 @@
 mod function_parameter;
 pub use function_parameter::*;
 
-use crate::{error::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*, types::*};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, style::*, type_system::*, types::*};
 use sha2::{Digest, Sha256};
-use sway_types::{Function, Ident, Property, Span, Spanned};
+use sway_types::{
+    Function, Ident, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaration, Property, Span,
+    Spanned,
+};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedFunctionDeclaration {
@@ -11,8 +14,9 @@ pub struct TypedFunctionDeclaration {
     pub body: TypedCodeBlock,
     pub parameters: Vec<TypedFunctionParameter>,
     pub span: Span,
-    pub(crate) return_type: TypeId,
-    pub(crate) type_parameters: Vec<TypeParameter>,
+    pub return_type: TypeId,
+    pub initial_return_type: TypeId,
+    pub type_parameters: Vec<TypeParameter>,
     /// Used for error messages -- the span pointing to the return type
     /// annotation of the function
     pub return_type_span: Span,
@@ -162,9 +166,10 @@ impl TypedFunctionDeclaration {
         }
 
         // type check the return type
+        let initial_return_type = insert_type(return_type);
         let return_type = check!(
             ctx.resolve_type_with_self(
-                insert_type(return_type),
+                initial_return_type,
                 &return_type_span,
                 EnforceTypeArguments::Yes,
                 None
@@ -219,6 +224,7 @@ impl TypedFunctionDeclaration {
             parameters: new_parameters,
             span,
             return_type,
+            initial_return_type,
             type_parameters: new_type_parameters,
             return_type_span,
             visibility,
@@ -299,11 +305,65 @@ impl TypedFunctionDeclaration {
             errors,
         )
     }
+
+    pub(crate) fn generate_json_abi_function(
+        &self,
+        types: &mut Vec<JsonTypeDeclaration>,
+    ) -> JsonABIFunction {
+        // A list of all `JsonTypeDeclaration`s needed for inputs
+        let input_types = self
+            .parameters
+            .iter()
+            .map(|x| JsonTypeDeclaration {
+                type_id: *x.initial_type_id,
+                type_field: x.initial_type_id.get_json_type_str(x.type_id),
+                components: x.initial_type_id.get_json_type_components(types, x.type_id),
+                type_parameters: x.type_id.get_json_type_parameters(types, x.type_id),
+            })
+            .collect::<Vec<_>>();
+
+        // The single `JsonTypeDeclaration` needed for the output
+        let output_type = JsonTypeDeclaration {
+            type_id: *self.initial_return_type,
+            type_field: self.initial_return_type.get_json_type_str(self.return_type),
+            components: self
+                .return_type
+                .get_json_type_components(types, self.return_type),
+            type_parameters: self
+                .return_type
+                .get_json_type_parameters(types, self.return_type),
+        };
+
+        // Add the new types to `types`
+        types.extend(input_types);
+        types.push(output_type);
+
+        // Generate the JSON data for the function
+        JsonABIFunction {
+            name: self.name.as_str().to_string(),
+            inputs: self
+                .parameters
+                .iter()
+                .map(|x| JsonTypeApplication {
+                    name: x.name.to_string(),
+                    type_id: *x.initial_type_id,
+                    type_arguments: x.initial_type_id.get_json_type_arguments(types, x.type_id),
+                })
+                .collect(),
+            output: JsonTypeApplication {
+                name: "".to_string(),
+                type_id: *self.initial_return_type,
+                type_arguments: self
+                    .initial_return_type
+                    .get_json_type_arguments(types, self.return_type),
+            },
+        }
+    }
 }
 
 #[test]
 fn test_function_selector_behavior() {
-    use crate::type_engine::IntegerBits;
+    use crate::type_system::IntegerBits;
     let decl = TypedFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_no_span("foo"),
@@ -311,6 +371,7 @@ fn test_function_selector_behavior() {
         parameters: vec![],
         span: Span::dummy(),
         return_type: 0.into(),
+        initial_return_type: 0.into(),
         type_parameters: vec![],
         return_type_span: Span::dummy(),
         visibility: Visibility::Public,
@@ -331,19 +392,24 @@ fn test_function_selector_behavior() {
         parameters: vec![
             TypedFunctionParameter {
                 name: Ident::new_no_span("foo"),
+                is_reference: false,
                 is_mutable: false,
-                type_id: crate::type_engine::insert_type(TypeInfo::Str(5)),
+                type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
+                initial_type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
                 type_span: Span::dummy(),
             },
             TypedFunctionParameter {
                 name: Ident::new_no_span("baz"),
+                is_reference: false,
                 is_mutable: false,
                 type_id: insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
+                initial_type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
                 type_span: Span::dummy(),
             },
         ],
         span: Span::dummy(),
         return_type: 0.into(),
+        initial_return_type: 0.into(),
         type_parameters: vec![],
         return_type_span: Span::dummy(),
         visibility: Visibility::Public,

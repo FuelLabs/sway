@@ -1,7 +1,5 @@
 //! All of the user-facing configuration options stored in [ConfigOptions].
-use serde::{Deserialize, Serialize};
-
-use super::{
+use crate::config::{
     expr::{ExprBraceStyle, MatchArmLeadingPipe, TypeCombinatorLayout},
     heuristics::HeuristicsPreferences,
     imports::{GroupImports, ImportGranularity},
@@ -11,6 +9,7 @@ use super::{
     user_def::FieldAlignment,
     whitespace::{IndentStyle, NewlineStyle},
 };
+use serde::{Deserialize, Serialize};
 /// See parent struct [Whitespace].
 #[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub struct WhitespaceOptions {
@@ -19,6 +18,7 @@ pub struct WhitespaceOptions {
     pub tab_spaces: Option<usize>,
     pub newline_style: Option<NewlineStyle>,
     pub indent_style: Option<IndentStyle>,
+    pub newline_threshold: Option<usize>,
 }
 /// See parent struct [Imports].
 #[derive(Serialize, Deserialize, Debug, Copy, Clone)]

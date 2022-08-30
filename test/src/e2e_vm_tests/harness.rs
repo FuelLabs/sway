@@ -1,5 +1,9 @@
 use anyhow::{bail, Result};
-use forc::test::{forc_build, forc_deploy, forc_run, BuildCommand, DeployCommand, RunCommand};
+use forc::test::{forc_build, BuildCommand};
+use forc_client::ops::{
+    deploy::{cmd::DeployCommand, op::deploy},
+    run::{cmd::RunCommand, op::run},
+};
 use forc_pkg::Compiled;
 use fuel_tx::Transaction;
 use fuel_vm::interpreter::Interpreter;
@@ -16,7 +20,7 @@ pub(crate) fn deploy_contract(file_name: &str, locked: bool) -> ContractId {
 
     tokio::runtime::Runtime::new()
         .unwrap()
-        .block_on(forc_deploy::deploy(DeployCommand {
+        .block_on(deploy(DeployCommand {
             path: Some(format!(
                 "{}/src/e2e_vm_tests/test_programs/{}",
                 manifest_dir, file_name
@@ -58,7 +62,7 @@ pub(crate) fn runs_on_node(
     };
     tokio::runtime::Runtime::new()
         .unwrap()
-        .block_on(forc_run::run(command))
+        .block_on(run(command))
         .unwrap()
 }
 
@@ -95,52 +99,52 @@ pub(crate) fn runs_in_vm(file_name: &str, locked: bool) -> (ProgramState, Compil
     (*i.transact(tx_to_test).unwrap().state(), script)
 }
 
-/// Returns Err(()) if code _does_ compile, used for test cases where the source
-/// code should have been rejected by the compiler.  When it fails to compile the
-/// captured stdout is returned.
-pub(crate) fn does_not_compile(file_name: &str, locked: bool) -> Result<String, ()> {
-    use std::io::Read;
-
+/// Compiles the code and captures the output of forc and the compilation.
+/// Returns a tuple with the result of the compilation, as well as the output.
+pub(crate) fn compile_and_capture_output(
+    file_name: &str,
+    locked: bool,
+) -> (Result<Compiled>, String) {
     tracing::info!(" Compiling {}", file_name);
 
-    // Capture stdout to a buffer, compile the test and save stdout to a string.
-    let mut buf = gag::BufferRedirect::stdout().unwrap();
-    let result = compile_to_bytes_verbose(file_name, locked, true);
-    let mut output = String::new();
-    buf.read_to_string(&mut output).unwrap();
-    drop(buf);
+    let (result, mut output) = compile_to_bytes_verbose(file_name, locked, true, true);
 
     // If verbosity is requested then print it out.
     if get_test_config_from_env() {
         tracing::info!("{output}");
     }
 
-    // Invert the result; if it succeeds then return an Err.
-    match result {
-        Ok(_) => Err(()),
-        Err(e) => {
-            // Capture the result of the compilation (i.e., any errors Forc produces) and append to
-            // the stdout from the compiler.
-            write!(output, "\n{}", e).map_err(|_| ())?;
-            Ok(output)
-        }
+    // Capture the result of the compilation (i.e., any errors Forc produces) and append to
+    // the stdout from the compiler.
+    if let Err(ref e) = result {
+        write!(output, "\n{}", e).expect("error writing output");
     }
+
+    (result, output)
 }
 
-/// Returns `true` if a file compiled without any errors or warnings,
-/// and `false` if it did not.
+/// Compiles the code and returns a result of the compilation,
 pub(crate) fn compile_to_bytes(file_name: &str, locked: bool) -> Result<Compiled> {
-    compile_to_bytes_verbose(file_name, locked, get_test_config_from_env())
+    compile_to_bytes_verbose(file_name, locked, get_test_config_from_env(), false).0
 }
 
 pub(crate) fn compile_to_bytes_verbose(
     file_name: &str,
     locked: bool,
     verbose: bool,
-) -> Result<Compiled> {
+    capture_output: bool,
+) -> (Result<Compiled>, String) {
+    use std::io::Read;
     tracing::info!(" Compiling {}", file_name);
+
+    let mut buf: Option<gag::BufferRedirect> = None;
+    if capture_output {
+        // Capture stdout to a buffer, compile the test and save stdout to a string.
+        buf = Some(gag::BufferRedirect::stdout().unwrap());
+    }
+
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    forc_build::build(BuildCommand {
+    let compiled = forc_build::build(BuildCommand {
         path: Some(format!(
             "{}/src/e2e_vm_tests/test_programs/{}",
             manifest_dir, file_name
@@ -148,7 +152,16 @@ pub(crate) fn compile_to_bytes_verbose(
         locked,
         silent_mode: !verbose,
         ..Default::default()
-    })
+    });
+
+    let mut output = String::new();
+    if capture_output {
+        let mut buf = buf.unwrap();
+        buf.read_to_string(&mut output).unwrap();
+        drop(buf);
+    }
+
+    (compiled, output)
 }
 
 pub(crate) fn test_json_abi(file_name: &str, compiled: &Compiled) -> Result<()> {
@@ -178,6 +191,33 @@ pub(crate) fn test_json_abi(file_name: &str, compiled: &Compiled) -> Result<()> 
     Ok(())
 }
 
+pub(crate) fn test_json_abi_flat(file_name: &str, compiled: &Compiled) -> Result<()> {
+    emit_json_abi_flat(file_name, compiled)?;
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let oracle_path = format!(
+        "{}/src/e2e_vm_tests/test_programs/{}/{}",
+        manifest_dir, file_name, "json_abi_oracle_flat.json"
+    );
+    let output_path = format!(
+        "{}/src/e2e_vm_tests/test_programs/{}/{}",
+        manifest_dir, file_name, "json_abi_output_flat.json"
+    );
+    if fs::metadata(oracle_path.clone()).is_err() {
+        bail!("JSON ABI flat oracle file does not exist for this test.");
+    }
+    if fs::metadata(output_path.clone()).is_err() {
+        bail!("JSON ABI flat output file does not exist for this test.");
+    }
+    let oracle_contents =
+        fs::read_to_string(oracle_path).expect("Something went wrong reading the file.");
+    let output_contents =
+        fs::read_to_string(output_path).expect("Something went wrong reading the file.");
+    if oracle_contents != output_contents {
+        bail!("Mismatched ABI JSON output.");
+    }
+    Ok(())
+}
+
 fn emit_json_abi(file_name: &str, compiled: &Compiled) -> Result<()> {
     tracing::info!("   ABI gen {}", file_name);
     let json_abi = serde_json::json!(compiled.json_abi);
@@ -185,6 +225,19 @@ fn emit_json_abi(file_name: &str, compiled: &Compiled) -> Result<()> {
     let file = std::fs::File::create(format!(
         "{}/src/e2e_vm_tests/test_programs/{}/{}",
         manifest_dir, file_name, "json_abi_output.json"
+    ))?;
+    let res = serde_json::to_writer_pretty(&file, &json_abi);
+    res?;
+    Ok(())
+}
+
+fn emit_json_abi_flat(file_name: &str, compiled: &Compiled) -> Result<()> {
+    tracing::info!("   ABI gen flat {}", file_name);
+    let json_abi = serde_json::json!(compiled.json_abi_program);
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let file = std::fs::File::create(format!(
+        "{}/src/e2e_vm_tests/test_programs/{}/{}",
+        manifest_dir, file_name, "json_abi_output_flat.json"
     ))?;
     let res = serde_json::to_writer_pretty(&file, &json_abi);
     res?;
