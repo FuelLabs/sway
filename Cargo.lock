@@ -2834,11 +2834,7 @@ version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "899b00b9c8ab553c743b3e11e87c5c7d423b2a2de229ba95b24a756344748011"
 dependencies = [
-<<<<<<< HEAD
  "autocfg",
-=======
- "autocfg 1.1.0",
->>>>>>> master
  "cfg-if 1.0.0",
  "libc",
  "log",
