@@ -37,8 +37,16 @@ impl PartialEq for CompileWrapper<'_, TypedImplTrait> {
         } = self;
         let CompileWrapper { inner: them, .. } = other;
         me.trait_name == them.trait_name
-            && me.methods.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
-                == them.methods.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+            && me
+                .methods
+                .iter()
+                .map(|x| x.wrap_ref(de))
+                .collect::<Vec<_>>()
+                == them
+                    .methods
+                    .iter()
+                    .map(|x| x.wrap_ref(de))
+                    .collect::<Vec<_>>()
             && me.implementing_for_type_id == them.implementing_for_type_id
     }
 }
@@ -157,8 +165,8 @@ impl TypedImplTrait {
                 // there are no type arguments here because we don't support generic types
                 // in contract ABIs yet (or ever?) due to the complexity of communicating
                 // the ABI layout in the descriptor file.
-                if look_up_type_id(implementing_for_type_id).wrap(&ctx.declaration_engine)
-                    != TypeInfo::Contract.wrap(&ctx.declaration_engine)
+                if look_up_type_id(implementing_for_type_id).wrap_ref(ctx.declaration_engine)
+                    != TypeInfo::Contract.wrap_ref(ctx.declaration_engine)
                 {
                     errors.push(CompileError::ImplAbiForNonContract {
                         span: type_implementing_for_span.clone(),
@@ -503,7 +511,7 @@ fn type_check_trait_implementation(
             let (mut new_warnings, new_errors) = unify_with_self(
                 fn_decl_param_type,
                 fn_signature_param_type,
-                &ctx.declaration_engine,
+                ctx.declaration_engine,
                 ctx.self_type(),
                 &fn_signature_param.type_span,
                 ctx.help_text(),
@@ -544,7 +552,7 @@ fn type_check_trait_implementation(
         let (mut new_warnings, new_errors) = unify_with_self(
             fn_decl.return_type,
             fn_signature.return_type,
-            &ctx.declaration_engine,
+            ctx.declaration_engine,
             ctx.self_type(),
             &fn_decl.return_type_span,
             ctx.help_text(),

@@ -270,9 +270,9 @@ fn const_eval_typed_expr(
             let mut element_iter = element_typs.iter();
             let element_type_id = *element_iter.next().unwrap();
             if !element_iter.all(|tid| {
-                crate::type_system::look_up_type_id(*tid).wrap(lookup.declaration_engine)
+                crate::type_system::look_up_type_id(*tid).wrap_ref(lookup.declaration_engine)
                     == crate::type_system::look_up_type_id(element_type_id)
-                        .wrap(lookup.declaration_engine)
+                        .wrap_ref(lookup.declaration_engine)
             }) {
                 // This shouldn't happen if the type checker did its job.
                 return None;

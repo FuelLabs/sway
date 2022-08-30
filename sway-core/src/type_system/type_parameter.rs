@@ -31,7 +31,7 @@ impl PartialEq for CompileWrapper<'_, TypeParameter> {
             declaration_engine: de,
         } = self;
         let CompileWrapper { inner: them, .. } = other;
-        look_up_type_id(me.type_id).wrap(de) == look_up_type_id(them.type_id).wrap(de)
+        look_up_type_id(me.type_id).wrap_ref(de) == look_up_type_id(them.type_id).wrap_ref(de)
             && me.name_ident == them.name_ident
             && me.trait_constraints == them.trait_constraints
     }
@@ -46,7 +46,7 @@ impl Hash for CompileWrapper<'_, TypeParameter> {
             inner: me,
             declaration_engine: de,
         } = self;
-        look_up_type_id(me.type_id).wrap(de).hash(state);
+        look_up_type_id(me.type_id).wrap_ref(de).hash(state);
         me.name_ident.hash(state);
         me.trait_constraints.hash(state);
     }

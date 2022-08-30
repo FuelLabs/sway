@@ -8,6 +8,7 @@ use crate::{
 use sway_types::{span::Span, Spanned};
 
 use std::{
+    borrow::Borrow,
     collections::HashSet,
     fmt,
     hash::{Hash, Hasher},
@@ -100,11 +101,8 @@ impl PartialEq for CompileWrapper<'_, TypeInfo> {
             inner: me,
             declaration_engine: de,
         } = self;
-        let CompileWrapper {
-            inner: them,
-            declaration_engine: _,
-        } = other;
-        match (me, them) {
+        let CompileWrapper { inner: them, .. } = other;
+        match (me.borrow(), them.borrow()) {
             (TypeInfo::Unknown, TypeInfo::Unknown) => true,
             (TypeInfo::Boolean, TypeInfo::Boolean) => true,
             (TypeInfo::SelfType, TypeInfo::SelfType) => true,
@@ -126,8 +124,14 @@ impl PartialEq for CompileWrapper<'_, TypeInfo> {
             ) => {
                 l_name == r_name
                     && if let (Some(l_type_args), Some(r_type_args)) = (l_type_args, r_type_args) {
-                        l_type_args.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
-                            == r_type_args.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+                        l_type_args
+                            .iter()
+                            .map(|x| x.wrap_ref(de))
+                            .collect::<Vec<_>>()
+                            == r_type_args
+                                .iter()
+                                .map(|x| x.wrap_ref(de))
+                                .collect::<Vec<_>>()
                     } else {
                         true
                     }
@@ -149,19 +153,19 @@ impl PartialEq for CompileWrapper<'_, TypeInfo> {
                 l_name == r_name
                     && l_variant_types
                         .iter()
-                        .map(|x| x.wrap(de))
+                        .map(|x| x.wrap_ref(de))
                         .collect::<Vec<_>>()
                         == r_variant_types
                             .iter()
-                            .map(|x| x.wrap(de))
+                            .map(|x| x.wrap_ref(de))
                             .collect::<Vec<_>>()
                     && l_type_parameters
                         .iter()
-                        .map(|x| x.wrap(de))
+                        .map(|x| x.wrap_ref(de))
                         .collect::<Vec<_>>()
                         == r_type_parameters
                             .iter()
-                            .map(|x| x.wrap(de))
+                            .map(|x| x.wrap_ref(de))
                             .collect::<Vec<_>>()
             }
             (
@@ -177,25 +181,26 @@ impl PartialEq for CompileWrapper<'_, TypeInfo> {
                 },
             ) => {
                 l_name == r_name
-                    && l_fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
-                        == r_fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+                    && l_fields.iter().map(|x| x.wrap_ref(de)).collect::<Vec<_>>()
+                        == r_fields.iter().map(|x| x.wrap_ref(de)).collect::<Vec<_>>()
                     && l_type_parameters
                         .iter()
-                        .map(|x| x.wrap(de))
+                        .map(|x| x.wrap_ref(de))
                         .collect::<Vec<_>>()
                         == r_type_parameters
                             .iter()
-                            .map(|x| x.wrap(de))
+                            .map(|x| x.wrap_ref(de))
                             .collect::<Vec<_>>()
             }
             (TypeInfo::Ref(l, _sp1), TypeInfo::Ref(r, _sp2)) => {
-                look_up_type_id(*l).wrap(de) == look_up_type_id(*r).wrap(de)
+                look_up_type_id(*l).wrap_ref(de) == look_up_type_id(*r).wrap_ref(de)
             }
             (TypeInfo::Tuple(l), TypeInfo::Tuple(r)) => l
                 .iter()
                 .zip(r.iter())
                 .map(|(l, r)| {
-                    look_up_type_id(l.type_id).wrap(de) == look_up_type_id(r.type_id).wrap(de)
+                    look_up_type_id(l.type_id).wrap_ref(de)
+                        == look_up_type_id(r.type_id).wrap_ref(de)
                 })
                 .all(|x| x),
             (
@@ -210,17 +215,17 @@ impl PartialEq for CompileWrapper<'_, TypeInfo> {
             ) => {
                 l_abi_name == r_abi_name
                     && if let (Some(l_address), Some(r_address)) = (l_address, r_address) {
-                        (**l_address).wrap(de) == (**r_address).wrap(de)
+                        (**l_address).wrap_ref(de) == (**r_address).wrap_ref(de)
                     } else {
                         true
                     }
             }
             (TypeInfo::Array(l0, l1, _), TypeInfo::Array(r0, r1, _)) => {
-                look_up_type_id(*l0).wrap(de) == look_up_type_id(*r0).wrap(de) && l1 == r1
+                look_up_type_id(*l0).wrap_ref(de) == look_up_type_id(*r0).wrap_ref(de) && l1 == r1
             }
             (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
-                l_fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
-                    == r_fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+                l_fields.iter().map(|x| x.wrap_ref(de)).collect::<Vec<_>>()
+                    == r_fields.iter().map(|x| x.wrap_ref(de)).collect::<Vec<_>>()
             }
             _ => false,
         }
@@ -236,7 +241,7 @@ impl Hash for CompileWrapper<'_, TypeInfo> {
             inner: me,
             declaration_engine: de,
         } = self;
-        match me {
+        match me.borrow() {
             TypeInfo::Str(len) => {
                 state.write_u8(1);
                 len.hash(state);
@@ -255,7 +260,7 @@ impl Hash for CompileWrapper<'_, TypeInfo> {
                 state.write_u8(5);
                 fields
                     .iter()
-                    .map(|x| x.wrap(de))
+                    .map(|x| x.wrap_ref(de))
                     .collect::<Vec<_>>()
                     .hash(state);
             }
@@ -274,12 +279,12 @@ impl Hash for CompileWrapper<'_, TypeInfo> {
                 name.hash(state);
                 variant_types
                     .iter()
-                    .map(|x| x.wrap(de))
+                    .map(|x| x.wrap_ref(de))
                     .collect::<Vec<_>>()
                     .hash(state);
                 type_parameters
                     .iter()
-                    .map(|x| x.wrap(de))
+                    .map(|x| x.wrap_ref(de))
                     .collect::<Vec<_>>()
                     .hash(state);
             }
@@ -292,12 +297,12 @@ impl Hash for CompileWrapper<'_, TypeInfo> {
                 name.hash(state);
                 fields
                     .iter()
-                    .map(|x| x.wrap(de))
+                    .map(|x| x.wrap_ref(de))
                     .collect::<Vec<_>>()
                     .hash(state);
                 type_parameters
                     .iter()
-                    .map(|x| x.wrap(de))
+                    .map(|x| x.wrap_ref(de))
                     .collect::<Vec<_>>()
                     .hash(state);
             }
@@ -335,25 +340,25 @@ impl Hash for CompileWrapper<'_, TypeInfo> {
                 if let Some(type_arguments) = type_arguments {
                     type_arguments
                         .iter()
-                        .map(|x| x.wrap(de))
+                        .map(|x| x.wrap_ref(de))
                         .collect::<Vec<_>>()
                         .hash(state);
                 }
             }
             TypeInfo::Ref(id, _sp) => {
                 state.write_u8(17);
-                look_up_type_id(*id).wrap(de).hash(state);
+                look_up_type_id(*id).wrap_ref(de).hash(state);
             }
             TypeInfo::Array(elem_ty, count, _) => {
                 state.write_u8(18);
-                look_up_type_id(*elem_ty).wrap(de).hash(state);
+                look_up_type_id(*elem_ty).wrap_ref(de).hash(state);
                 count.hash(state);
             }
             TypeInfo::Storage { fields } => {
                 state.write_u8(19);
                 fields
                     .iter()
-                    .map(|x| x.wrap(de))
+                    .map(|x| x.wrap_ref(de))
                     .collect::<Vec<_>>()
                     .hash(state);
             }
@@ -778,7 +783,7 @@ impl TypeInfo {
         match self {
             TypeInfo::Custom { .. } => {
                 for (param, ty_id) in mapping.iter() {
-                    if look_up_type_id(*param).wrap(de) == (*self).wrap(de) {
+                    if look_up_type_id(*param).wrap_ref(de) == (*self).wrap_ref(de) {
                         return Some(*ty_id);
                     }
                 }
@@ -786,7 +791,7 @@ impl TypeInfo {
             }
             TypeInfo::UnknownGeneric { .. } => {
                 for (param, ty_id) in mapping.iter() {
-                    if look_up_type_id(*param).wrap(de) == (*self).wrap(de) {
+                    if look_up_type_id(*param).wrap_ref(de) == (*self).wrap_ref(de) {
                         return Some(*ty_id);
                     }
                 }
@@ -1267,7 +1272,7 @@ impl TypeInfo {
                     .collect::<Vec<_>>();
                 types_are_subset_of(&l_types, &r_types, declaration_engine)
             }
-            (a, b) => a.wrap(declaration_engine) == b.wrap(declaration_engine),
+            (a, b) => a.wrap_ref(declaration_engine) == b.wrap_ref(declaration_engine),
         }
     }
 
@@ -1506,7 +1511,7 @@ fn types_are_subset_of(
         for j in (i + 1)..right.len() {
             let a = right.get(i).unwrap();
             let b = right.get(j).unwrap();
-            if a.wrap(declaration_engine) == b.wrap(declaration_engine) {
+            if a.wrap_ref(declaration_engine) == b.wrap_ref(declaration_engine) {
                 // if a and b are the same type
                 constraints.push((i, j));
             }
@@ -1515,7 +1520,7 @@ fn types_are_subset_of(
     for (i, j) in constraints.into_iter() {
         let a = left.get(i).unwrap();
         let b = left.get(j).unwrap();
-        if a.wrap(declaration_engine) != b.wrap(declaration_engine) {
+        if a.wrap_ref(declaration_engine) != b.wrap_ref(declaration_engine) {
             return false;
         }
     }

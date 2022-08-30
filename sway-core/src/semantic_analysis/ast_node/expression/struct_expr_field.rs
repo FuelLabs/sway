@@ -16,7 +16,7 @@ impl PartialEq for CompileWrapper<'_, TypedStructExpressionField> {
             declaration_engine: de,
         } = self;
         let CompileWrapper { inner: them, .. } = other;
-        me.name == them.name && me.value.wrap(de) == them.value.wrap(de)
+        me.name == them.name && me.value.wrap_ref(de) == them.value.wrap_ref(de)
     }
 }
 

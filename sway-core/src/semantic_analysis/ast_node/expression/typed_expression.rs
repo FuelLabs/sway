@@ -46,9 +46,9 @@ impl PartialEq for CompileWrapper<'_, TypedExpression> {
             declaration_engine: de,
         } = self;
         let CompileWrapper { inner: them, .. } = other;
-        me.expression.wrap(de) == them.expression.wrap(de)
-            && look_up_type_id(me.return_type).wrap(de)
-                == look_up_type_id(them.return_type).wrap(de)
+        me.expression.wrap_ref(de) == them.expression.wrap_ref(de)
+            && look_up_type_id(me.return_type).wrap_ref(de)
+                == look_up_type_id(them.return_type).wrap_ref(de)
             && me.is_constant == them.is_constant
     }
 }

@@ -31,21 +31,25 @@ impl PartialEq for CompileWrapper<'_, TypedIntrinsicFunctionKind> {
         } = self;
         let CompileWrapper { inner: them, .. } = other;
         me.kind == them.kind
-            && me.arguments.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+            && me
+                .arguments
+                .iter()
+                .map(|x| x.wrap_ref(de))
+                .collect::<Vec<_>>()
                 == them
                     .arguments
                     .iter()
-                    .map(|x| x.wrap(de))
+                    .map(|x| x.wrap_ref(de))
                     .collect::<Vec<_>>()
             && me
                 .type_arguments
                 .iter()
-                .map(|x| x.wrap(de))
+                .map(|x| x.wrap_ref(de))
                 .collect::<Vec<_>>()
                 == them
                     .type_arguments
                     .iter()
-                    .map(|x| x.wrap(de))
+                    .map(|x| x.wrap_ref(de))
                     .collect::<Vec<_>>()
     }
 }
@@ -429,8 +433,8 @@ impl TypedIntrinsicFunctionKind {
                     errors
                 );
                 let key_ty = resolve_type(exp.return_type, &span).unwrap();
-                if key_ty.wrap(&ctx.declaration_engine)
-                    != TypeInfo::B256.wrap(&ctx.declaration_engine)
+                if key_ty.wrap_ref(&ctx.declaration_engine)
+                    != TypeInfo::B256.wrap_ref(&ctx.declaration_engine)
                 {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
@@ -477,8 +481,8 @@ impl TypedIntrinsicFunctionKind {
                     errors
                 );
                 let key_ty = resolve_type(key_exp.return_type, &span).unwrap();
-                if key_ty.wrap(&ctx.declaration_engine)
-                    != TypeInfo::B256.wrap(&ctx.declaration_engine)
+                if key_ty.wrap_ref(&ctx.declaration_engine)
+                    != TypeInfo::B256.wrap_ref(&ctx.declaration_engine)
                 {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),

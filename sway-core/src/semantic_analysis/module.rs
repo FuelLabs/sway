@@ -45,7 +45,7 @@ impl TypedModule {
             .flat_map(|ordered_nodes| Self::type_check_nodes(ctx.by_ref(), ordered_nodes));
 
         let validated_nodes_res = typed_nodes_res.flat_map(|typed_nodes| {
-            let errors = check_supertraits(&typed_nodes, ctx.namespace, &ctx.declaration_engine);
+            let errors = check_supertraits(&typed_nodes, ctx.namespace, ctx.declaration_engine);
             ok(typed_nodes, vec![], errors)
         });
 
@@ -149,9 +149,9 @@ fn check_supertraits(
                             ) {
                                 return (tr1.name == tr2.name)
                                     && (look_up_type_id(*implementing_for_type_id)
-                                        .wrap(declaration_engine)
+                                        .wrap_ref(declaration_engine)
                                         == look_up_type_id(*search_node_type_implementing_for)
-                                            .wrap(declaration_engine));
+                                            .wrap_ref(declaration_engine));
                             }
                         }
                         false

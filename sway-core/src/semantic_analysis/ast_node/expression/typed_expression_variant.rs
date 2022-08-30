@@ -8,7 +8,7 @@ use crate::{
 
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
-use std::{collections::HashMap, fmt, fmt::Write};
+use std::{borrow::Borrow, collections::HashMap, fmt, fmt::Write};
 
 #[derive(Clone, Debug)]
 pub struct ContractCallParams {
@@ -132,7 +132,7 @@ impl PartialEq for CompileWrapper<'_, TypedExpressionVariant> {
             declaration_engine: de,
         } = self;
         let CompileWrapper { inner: them, .. } = other;
-        match (me, them) {
+        match (me.borrow(), them.borrow()) {
             (TypedExpressionVariant::Literal(l0), TypedExpressionVariant::Literal(r0)) => l0 == r0,
             (
                 TypedExpressionVariant::FunctionApplication {
@@ -154,13 +154,13 @@ impl PartialEq for CompileWrapper<'_, TypedExpressionVariant> {
                         == r_arguments.iter().map(|(name, _)| name).collect::<Vec<_>>()
                     && l_arguments
                         .iter()
-                        .map(|(_, exp)| exp.wrap(de))
+                        .map(|(_, exp)| exp.wrap_ref(de))
                         .collect::<Vec<_>>()
                         == r_arguments
                             .iter()
-                            .map(|(_, exp)| exp.wrap(de))
+                            .map(|(_, exp)| exp.wrap_ref(de))
                             .collect::<Vec<_>>()
-                    && l_function_decl.body.wrap(de) == r_function_decl.body.wrap(de)
+                    && l_function_decl.body.wrap_ref(de) == r_function_decl.body.wrap_ref(de)
             }
             (
                 TypedExpressionVariant::LazyOperator {
@@ -175,8 +175,8 @@ impl PartialEq for CompileWrapper<'_, TypedExpressionVariant> {
                 },
             ) => {
                 l_op == r_op
-                    && (**l_lhs).wrap(de) == (**r_lhs).wrap(de)
-                    && (**l_rhs).wrap(de) == (**r_rhs).wrap(de)
+                    && (**l_lhs).wrap_ref(de) == (**r_lhs).wrap_ref(de)
+                    && (**l_rhs).wrap_ref(de) == (**r_rhs).wrap_ref(de)
             }
             (
                 TypedExpressionVariant::VariableExpression {
@@ -194,8 +194,8 @@ impl PartialEq for CompileWrapper<'_, TypedExpressionVariant> {
                 TypedExpressionVariant::Tuple { fields: l_fields },
                 TypedExpressionVariant::Tuple { fields: r_fields },
             ) => {
-                l_fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
-                    == r_fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+                l_fields.iter().map(|x| x.wrap_ref(de)).collect::<Vec<_>>()
+                    == r_fields.iter().map(|x| x.wrap_ref(de)).collect::<Vec<_>>()
             }
             (
                 TypedExpressionVariant::Array {
@@ -205,8 +205,14 @@ impl PartialEq for CompileWrapper<'_, TypedExpressionVariant> {
                     contents: r_contents,
                 },
             ) => {
-                l_contents.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
-                    == r_contents.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+                l_contents
+                    .iter()
+                    .map(|x| x.wrap_ref(de))
+                    .collect::<Vec<_>>()
+                    == r_contents
+                        .iter()
+                        .map(|x| x.wrap_ref(de))
+                        .collect::<Vec<_>>()
             }
             (
                 TypedExpressionVariant::ArrayIndex {
@@ -218,8 +224,8 @@ impl PartialEq for CompileWrapper<'_, TypedExpressionVariant> {
                     index: r_index,
                 },
             ) => {
-                (**l_prefix).wrap(de) == (**r_prefix).wrap(de)
-                    && (**l_index).wrap(de) == (**r_index).wrap(de)
+                (**l_prefix).wrap_ref(de) == (**r_prefix).wrap_ref(de)
+                    && (**l_index).wrap_ref(de) == (**r_index).wrap_ref(de)
             }
             (
                 TypedExpressionVariant::StructExpression {
@@ -234,12 +240,12 @@ impl PartialEq for CompileWrapper<'_, TypedExpressionVariant> {
                 },
             ) => {
                 l_struct_name == r_struct_name
-                    && l_fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
-                        == r_fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+                    && l_fields.iter().map(|x| x.wrap_ref(de)).collect::<Vec<_>>()
+                        == r_fields.iter().map(|x| x.wrap_ref(de)).collect::<Vec<_>>()
                     && l_span == r_span
             }
             (TypedExpressionVariant::CodeBlock(l), TypedExpressionVariant::CodeBlock(r)) => {
-                l.wrap(de) == r.wrap(de)
+                l.wrap_ref(de) == r.wrap_ref(de)
             }
             (
                 TypedExpressionVariant::IfExp {
@@ -253,10 +259,10 @@ impl PartialEq for CompileWrapper<'_, TypedExpressionVariant> {
                     r#else: r_r,
                 },
             ) => {
-                (**l_condition).wrap(de) == (**r_condition).wrap(de)
-                    && (**l_then).wrap(de) == (**r_then).wrap(de)
+                (**l_condition).wrap_ref(de) == (**r_condition).wrap_ref(de)
+                    && (**l_then).wrap_ref(de) == (**r_then).wrap_ref(de)
                     && if let (Some(l), Some(r)) = (l_r, r_r) {
-                        (**l).wrap(de) == (**r).wrap(de)
+                        (**l).wrap_ref(de) == (**r).wrap_ref(de)
                     } else {
                         true
                     }
@@ -275,8 +281,14 @@ impl PartialEq for CompileWrapper<'_, TypedExpressionVariant> {
                     ..
                 },
             ) => {
-                l_registers.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
-                    == r_registers.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+                l_registers
+                    .iter()
+                    .map(|x| x.wrap_ref(de))
+                    .collect::<Vec<_>>()
+                    == r_registers
+                        .iter()
+                        .map(|x| x.wrap_ref(de))
+                        .collect::<Vec<_>>()
                     && l_body.clone() == r_body.clone()
                     && l_returns == r_returns
             }
@@ -294,10 +306,10 @@ impl PartialEq for CompileWrapper<'_, TypedExpressionVariant> {
                     ..
                 },
             ) => {
-                (**l_prefix).wrap(de) == (**r_prefix).wrap(de)
-                    && l_field_to_access.wrap(de) == r_field_to_access.wrap(de)
-                    && look_up_type_id(*l_resolved_type_of_parent).wrap(de)
-                        == look_up_type_id(*r_resolved_type_of_parent).wrap(de)
+                (**l_prefix).wrap_ref(de) == (**r_prefix).wrap_ref(de)
+                    && l_field_to_access.wrap_ref(de) == r_field_to_access.wrap_ref(de)
+                    && look_up_type_id(*l_resolved_type_of_parent).wrap_ref(de)
+                        == look_up_type_id(*r_resolved_type_of_parent).wrap_ref(de)
             }
             (
                 TypedExpressionVariant::TupleElemAccess {
@@ -313,10 +325,10 @@ impl PartialEq for CompileWrapper<'_, TypedExpressionVariant> {
                     ..
                 },
             ) => {
-                (**l_prefix).wrap(de) == (**r_prefix).wrap(de)
+                (**l_prefix).wrap_ref(de) == (**r_prefix).wrap_ref(de)
                     && l_elem_to_access_num == r_elem_to_access_num
-                    && look_up_type_id(*l_resolved_type_of_parent).wrap(de)
-                        == look_up_type_id(*r_resolved_type_of_parent).wrap(de)
+                    && look_up_type_id(*l_resolved_type_of_parent).wrap_ref(de)
+                        == look_up_type_id(*r_resolved_type_of_parent).wrap_ref(de)
             }
             (
                 TypedExpressionVariant::EnumInstantiation {
@@ -334,11 +346,11 @@ impl PartialEq for CompileWrapper<'_, TypedExpressionVariant> {
                     ..
                 },
             ) => {
-                l_enum_decl.wrap(de) == r_enum_decl.wrap(de)
+                l_enum_decl.wrap_ref(de) == r_enum_decl.wrap_ref(de)
                     && l_variant_name == r_variant_name
                     && l_tag == r_tag
                     && if let (Some(l_contents), Some(r_contents)) = (l_contents, r_contents) {
-                        (**l_contents).wrap(de) == (**r_contents).wrap(de)
+                        (**l_contents).wrap_ref(de) == (**r_contents).wrap_ref(de)
                     } else {
                         true
                     }
@@ -354,11 +366,13 @@ impl PartialEq for CompileWrapper<'_, TypedExpressionVariant> {
                     address: r_address,
                     ..
                 },
-            ) => l_abi_name == r_abi_name && (**l_address).wrap(de) == (**r_address).wrap(de),
+            ) => {
+                l_abi_name == r_abi_name && (**l_address).wrap_ref(de) == (**r_address).wrap_ref(de)
+            }
             (
                 TypedExpressionVariant::IntrinsicFunction(l_kind),
                 TypedExpressionVariant::IntrinsicFunction(r_kind),
-            ) => l_kind.wrap(de) == r_kind.wrap(de),
+            ) => l_kind.wrap_ref(de) == r_kind.wrap_ref(de),
             (
                 TypedExpressionVariant::UnsafeDowncast {
                     exp: l_exp,
@@ -369,12 +383,13 @@ impl PartialEq for CompileWrapper<'_, TypedExpressionVariant> {
                     variant: r_variant,
                 },
             ) => {
-                (**l_exp).wrap(de) == (**r_exp).wrap(de) && l_variant.wrap(de) == r_variant.wrap(de)
+                (**l_exp).wrap_ref(de) == (**r_exp).wrap_ref(de)
+                    && l_variant.wrap_ref(de) == r_variant.wrap_ref(de)
             }
             (
                 TypedExpressionVariant::EnumTag { exp: l_exp },
                 TypedExpressionVariant::EnumTag { exp: r_exp },
-            ) => (**l_exp).wrap(de) == (**r_exp).wrap(de),
+            ) => (**l_exp).wrap_ref(de) == (**r_exp).wrap_ref(de),
             (
                 TypedExpressionVariant::StorageAccess(l_exp),
                 TypedExpressionVariant::StorageAccess(r_exp),
@@ -389,8 +404,8 @@ impl PartialEq for CompileWrapper<'_, TypedExpressionVariant> {
                     condition: r_condition,
                 },
             ) => {
-                l_body.wrap(de) == r_body.wrap(de)
-                    && (**l_condition).wrap(de) == (**r_condition).wrap(de)
+                l_body.wrap_ref(de) == r_body.wrap_ref(de)
+                    && (**l_condition).wrap_ref(de) == (**r_condition).wrap_ref(de)
             }
             _ => false,
         }
@@ -673,7 +688,7 @@ impl PartialEq for CompileWrapper<'_, TypedAsmRegisterDeclaration> {
         let CompileWrapper { inner: them, .. } = other;
         me.name == them.name
             && if let (Some(l), Some(r)) = (me.initializer.clone(), them.initializer.clone()) {
-                l.wrap(de) == r.wrap(de)
+                l.wrap_ref(de) == r.wrap_ref(de)
             } else {
                 true
             }

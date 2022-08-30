@@ -37,24 +37,28 @@ impl PartialEq for CompileWrapper<'_, TypedFunctionDeclaration> {
         } = self;
         let CompileWrapper { inner: them, .. } = other;
         me.name == them.name
-            && me.body.wrap(de) == them.body.wrap(de)
-            && me.parameters.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+            && me.body.wrap_ref(de) == them.body.wrap_ref(de)
+            && me
+                .parameters
+                .iter()
+                .map(|x| x.wrap_ref(de))
+                .collect::<Vec<_>>()
                 == them
                     .parameters
                     .iter()
-                    .map(|x| x.wrap(de))
+                    .map(|x| x.wrap_ref(de))
                     .collect::<Vec<_>>()
-            && look_up_type_id(me.return_type).wrap(de)
-                == look_up_type_id(them.return_type).wrap(de)
+            && look_up_type_id(me.return_type).wrap_ref(de)
+                == look_up_type_id(them.return_type).wrap_ref(de)
             && me
                 .type_parameters
                 .iter()
-                .map(|x| x.wrap(de))
+                .map(|x| x.wrap_ref(de))
                 .collect::<Vec<_>>()
                 == them
                     .type_parameters
                     .iter()
-                    .map(|x| x.wrap(de))
+                    .map(|x| x.wrap_ref(de))
                     .collect::<Vec<_>>()
             && me.visibility == them.visibility
             && me.is_contract_call == them.is_contract_call

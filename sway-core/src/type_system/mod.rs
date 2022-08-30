@@ -90,8 +90,8 @@ fn generic_enum_resolution() {
         assert_eq!(
             type_engine
                 .look_up_type_id(variant_types[0].type_id)
-                .wrap(&declaration_engine),
-            TypeInfo::Boolean.wrap(&declaration_engine)
+                .wrap_ref(&declaration_engine),
+            TypeInfo::Boolean.wrap_ref(&declaration_engine)
         );
     } else {
         panic!()
@@ -119,8 +119,8 @@ fn basic_numeric_unknown() {
         type_engine
             .resolve_type(id, &Span::dummy())
             .unwrap()
-            .wrap(&declaration_engine),
-        TypeInfo::UnsignedInteger(IntegerBits::Eight).wrap(&declaration_engine)
+            .wrap_ref(&declaration_engine),
+        TypeInfo::UnsignedInteger(IntegerBits::Eight).wrap_ref(&declaration_engine)
     );
 }
 #[test]
@@ -145,8 +145,8 @@ fn chain_of_refs() {
         type_engine
             .resolve_type(id3, &Span::dummy())
             .unwrap()
-            .wrap(&declaration_engine),
-        TypeInfo::UnsignedInteger(IntegerBits::Eight).wrap(&declaration_engine)
+            .wrap_ref(&declaration_engine),
+        TypeInfo::UnsignedInteger(IntegerBits::Eight).wrap_ref(&declaration_engine)
     );
 }
 #[test]
@@ -171,7 +171,7 @@ fn chain_of_refs_2() {
         type_engine
             .resolve_type(id3, &Span::dummy())
             .unwrap()
-            .wrap(&declaration_engine),
-        TypeInfo::UnsignedInteger(IntegerBits::Eight).wrap(&declaration_engine)
+            .wrap_ref(&declaration_engine),
+        TypeInfo::UnsignedInteger(IntegerBits::Eight).wrap_ref(&declaration_engine)
     );
 }

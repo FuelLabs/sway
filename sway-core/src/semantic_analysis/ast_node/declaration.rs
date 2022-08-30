@@ -24,7 +24,10 @@ use crate::{
     type_system::*,
     types::{CompileWrapper, ToCompileWrapper},
 };
-use std::{borrow::Cow, fmt};
+use std::{
+    borrow::{Borrow, Cow},
+    fmt,
+};
 use sway_types::{Ident, Span, Spanned};
 
 #[derive(Clone, Debug)]
@@ -51,33 +54,33 @@ impl PartialEq for CompileWrapper<'_, TypedDeclaration> {
             declaration_engine: de,
         } = self;
         let CompileWrapper { inner: them, .. } = other;
-        match (me, them) {
+        match (me.borrow(), them.borrow()) {
             (
                 TypedDeclaration::VariableDeclaration(l),
                 TypedDeclaration::VariableDeclaration(r),
-            ) => l.wrap(de) == r.wrap(de),
+            ) => l.wrap_ref(de) == r.wrap_ref(de),
             (
                 TypedDeclaration::ConstantDeclaration(l),
                 TypedDeclaration::ConstantDeclaration(r),
-            ) => l.wrap(de) == r.wrap(de),
+            ) => l.wrap_ref(de) == r.wrap_ref(de),
             (
                 TypedDeclaration::FunctionDeclaration(l),
                 TypedDeclaration::FunctionDeclaration(r),
-            ) => l.wrap(de) == r.wrap(de),
+            ) => l.wrap_ref(de) == r.wrap_ref(de),
             (TypedDeclaration::TraitDeclaration(l), TypedDeclaration::TraitDeclaration(r)) => {
-                l.wrap(de) == r.wrap(de)
+                l.wrap_ref(de) == r.wrap_ref(de)
             }
             (TypedDeclaration::StructDeclaration(l), TypedDeclaration::StructDeclaration(r)) => {
-                l.wrap(de) == r.wrap(de)
+                l.wrap_ref(de) == r.wrap_ref(de)
             }
             (TypedDeclaration::EnumDeclaration(l), TypedDeclaration::EnumDeclaration(r)) => {
-                l.wrap(de) == r.wrap(de)
+                l.wrap_ref(de) == r.wrap_ref(de)
             }
             (TypedDeclaration::ImplTrait(l), TypedDeclaration::ImplTrait(r)) => {
-                l.wrap(de) == r.wrap(de)
+                l.wrap_ref(de) == r.wrap_ref(de)
             }
             (TypedDeclaration::AbiDeclaration(l), TypedDeclaration::AbiDeclaration(r)) => {
-                l.wrap(de) == r.wrap(de)
+                l.wrap_ref(de) == r.wrap_ref(de)
             }
             (
                 TypedDeclaration::GenericTypeForFunctionScope {
@@ -91,7 +94,7 @@ impl PartialEq for CompileWrapper<'_, TypedDeclaration> {
             ) => l_name == r_name && l_type_id == r_type_id,
             (TypedDeclaration::ErrorRecovery, TypedDeclaration::ErrorRecovery) => true,
             (TypedDeclaration::StorageDeclaration(l), TypedDeclaration::StorageDeclaration(r)) => {
-                l.wrap(de) == r.wrap(de)
+                l.wrap_ref(de) == r.wrap_ref(de)
             }
             _ => false,
         }
@@ -419,7 +422,7 @@ impl PartialEq for CompileWrapper<'_, TypedConstantDeclaration> {
         } = self;
         let CompileWrapper { inner: them, .. } = other;
         me.name == them.name
-            && me.value.wrap(de) == them.value.wrap(other.declaration_engine)
+            && me.value.wrap_ref(de) == them.value.wrap_ref(other.declaration_engine)
             && me.visibility == them.visibility
     }
 }
@@ -448,11 +451,15 @@ impl PartialEq for CompileWrapper<'_, TypedTraitFn> {
         let CompileWrapper { inner: them, .. } = other;
         me.name == them.name
             && me.purity == them.purity
-            && me.parameters.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+            && me
+                .parameters
+                .iter()
+                .map(|x| x.wrap_ref(de))
+                .collect::<Vec<_>>()
                 == them
                     .parameters
                     .iter()
-                    .map(|x| x.wrap(de))
+                    .map(|x| x.wrap_ref(de))
                     .collect::<Vec<_>>()
             && me.return_type == them.return_type
     }
@@ -503,7 +510,8 @@ impl PartialEq for CompileWrapper<'_, ReassignmentLhs> {
         } = self;
         let CompileWrapper { inner: them, .. } = other;
         me.kind == them.kind
-            && look_up_type_id(me.type_id).wrap(de) == look_up_type_id(them.type_id).wrap(de)
+            && look_up_type_id(me.type_id).wrap_ref(de)
+                == look_up_type_id(them.type_id).wrap_ref(de)
     }
 }
 
@@ -551,7 +559,7 @@ impl PartialEq for CompileWrapper<'_, TypedReassignment> {
         me.lhs_base_name == them.lhs_base_name
             && me.lhs_type == them.lhs_type
             && me.lhs_indices == them.lhs_indices
-            && me.rhs.wrap(declaration_engine) == them.rhs.wrap(declaration_engine)
+            && me.rhs.wrap_ref(declaration_engine) == them.rhs.wrap_ref(declaration_engine)
     }
 }
 

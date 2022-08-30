@@ -1,3 +1,5 @@
+use std::borrow::Borrow;
+
 use crate::semantic_analysis::TypedExpression;
 use crate::type_system::*;
 use crate::types::{CompileWrapper, ToCompileWrapper};
@@ -50,7 +52,7 @@ impl PartialEq for CompileWrapper<'_, ResolvedType> {
             declaration_engine: de,
         } = self;
         let CompileWrapper { inner: them, .. } = other;
-        match (me, them) {
+        match (me.borrow(), them.borrow()) {
             (ResolvedType::Str(l), ResolvedType::Str(r)) => l == r,
             (ResolvedType::UnsignedInteger(l), ResolvedType::UnsignedInteger(r)) => l == r,
             (ResolvedType::Boolean, ResolvedType::Boolean) => true,
@@ -68,8 +70,8 @@ impl PartialEq for CompileWrapper<'_, ResolvedType> {
                 },
             ) => {
                 l_name == r_name
-                    && l_fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
-                        == r_fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+                    && l_fields.iter().map(|x| x.wrap_ref(de)).collect::<Vec<_>>()
+                        == r_fields.iter().map(|x| x.wrap_ref(de)).collect::<Vec<_>>()
             }
             (
                 ResolvedType::Enum {
@@ -84,11 +86,11 @@ impl PartialEq for CompileWrapper<'_, ResolvedType> {
                 l_name == r_name
                     && l_variant_types
                         .iter()
-                        .map(|x| x.wrap(de))
+                        .map(|x| x.wrap_ref(de))
                         .collect::<Vec<_>>()
                         == r_variant_types
                             .iter()
-                            .map(|x| x.wrap(de))
+                            .map(|x| x.wrap_ref(de))
                             .collect::<Vec<_>>()
             }
             (ResolvedType::Contract, ResolvedType::Contract) => todo!(),
@@ -110,7 +112,8 @@ impl PartialEq for CompileWrapper<'_, ResolvedType> {
                     to: r_to,
                 },
             ) => {
-                (**l_from).wrap(de) == (**r_from).wrap(de) && (**l_to).wrap(de) == (**r_to).wrap(de)
+                (**l_from).wrap_ref(de) == (**r_from).wrap_ref(de)
+                    && (**l_to).wrap_ref(de) == (**r_to).wrap_ref(de)
             }
             (ResolvedType::ErrorRecovery, ResolvedType::ErrorRecovery) => true,
             _ => false,

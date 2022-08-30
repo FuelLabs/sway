@@ -67,7 +67,9 @@ impl ConcurrentSlab<TypeId, TypeInfo> {
         {
             let inner = self.inner.read().unwrap();
             let actual_prev_value = &inner[*index];
-            if actual_prev_value.wrap(declaration_engine) != prev_value.wrap(declaration_engine) {
+            if actual_prev_value.wrap_ref(declaration_engine)
+                != prev_value.wrap_ref(declaration_engine)
+            {
                 return Some(actual_prev_value.clone());
             }
         }

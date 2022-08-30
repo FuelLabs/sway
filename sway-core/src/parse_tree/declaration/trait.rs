@@ -42,6 +42,6 @@ impl PartialEq for CompileWrapper<'_, TraitFn> {
         me.name == them.name
             && me.purity == them.purity
             && me.parameters == them.parameters
-            && me.return_type.wrap(de) == them.return_type.wrap(de)
+            && me.return_type.wrap_ref(de) == them.return_type.wrap_ref(de)
     }
 }

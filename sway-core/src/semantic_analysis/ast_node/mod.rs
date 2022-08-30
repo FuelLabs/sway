@@ -4,7 +4,7 @@ pub mod expression;
 pub mod mode;
 mod return_statement;
 
-use std::fmt;
+use std::{borrow::Borrow, fmt};
 
 pub(crate) use code_block::*;
 pub use declaration::*;
@@ -50,20 +50,20 @@ impl PartialEq for CompileWrapper<'_, TypedAstNodeContent> {
             declaration_engine: de,
         } = self;
         let CompileWrapper { inner: them, .. } = other;
-        match (me, them) {
+        match (me.borrow(), them.borrow()) {
             (TypedAstNodeContent::ReturnStatement(l), TypedAstNodeContent::ReturnStatement(r)) => {
-                l.wrap(de) == r.wrap(de)
+                l.wrap_ref(de) == r.wrap_ref(de)
             }
             (TypedAstNodeContent::Declaration(l), TypedAstNodeContent::Declaration(r)) => {
-                l.wrap(de) == r.wrap(de)
+                l.wrap_ref(de) == r.wrap_ref(de)
             }
             (TypedAstNodeContent::Expression(l), TypedAstNodeContent::Expression(r)) => {
-                l.wrap(de) == r.wrap(de)
+                l.wrap_ref(de) == r.wrap_ref(de)
             }
             (
                 TypedAstNodeContent::ImplicitReturnExpression(l),
                 TypedAstNodeContent::ImplicitReturnExpression(r),
-            ) => l.wrap(de) == r.wrap(de),
+            ) => l.wrap_ref(de) == r.wrap_ref(de),
             (TypedAstNodeContent::SideEffect, TypedAstNodeContent::SideEffect) => true,
             _ => false,
         }
@@ -96,7 +96,7 @@ impl PartialEq for CompileWrapper<'_, TypedAstNode> {
             declaration_engine: de,
         } = self;
         let CompileWrapper { inner: them, .. } = other;
-        (**me).wrap(de) == (**them).wrap(de)
+        (**me).wrap_ref(de) == (**them).wrap_ref(de)
     }
 }
 
@@ -248,11 +248,11 @@ impl TypedAstNode {
                         ImportType::Star => ctx.namespace.star_import(&path),
                         ImportType::SelfImport => {
                             ctx.namespace
-                                .self_import(&path, a.alias, &ctx.declaration_engine)
+                                .self_import(&path, a.alias, ctx.declaration_engine)
                         }
                         ImportType::Item(s) => {
                             ctx.namespace
-                                .item_import(&path, &s, a.alias, &ctx.declaration_engine)
+                                .item_import(&path, &s, a.alias, ctx.declaration_engine)
                         }
                     };
                     warnings.append(&mut res.warnings);
@@ -544,8 +544,8 @@ impl TypedAstNode {
                 };
                 assert_or_warn!(
                     node.type_info().is_unit()
-                        || node.type_info().wrap(ctx.declaration_engine)
-                            == TypeInfo::ErrorRecovery.wrap(ctx.declaration_engine),
+                        || node.type_info().wrap_ref(ctx.declaration_engine)
+                            == TypeInfo::ErrorRecovery.wrap_ref(ctx.declaration_engine),
                     warnings,
                     node.span.clone(),
                     warning
@@ -846,10 +846,14 @@ impl PartialEq for CompileWrapper<'_, TypeCheckedStorageReassignment> {
             declaration_engine: de,
         } = self;
         let CompileWrapper { inner: them, .. } = other;
-        me.fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
-            == them.fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+        me.fields.iter().map(|x| x.wrap_ref(de)).collect::<Vec<_>>()
+            == them
+                .fields
+                .iter()
+                .map(|x| x.wrap_ref(de))
+                .collect::<Vec<_>>()
             && me.ix == them.ix
-            && me.rhs.wrap(de) == them.rhs.wrap(de)
+            && me.rhs.wrap_ref(de) == them.rhs.wrap_ref(de)
     }
 }
 
@@ -889,7 +893,8 @@ impl PartialEq for CompileWrapper<'_, TypeCheckedStorageReassignDescriptor> {
         } = self;
         let CompileWrapper { inner: them, .. } = other;
         me.name == them.name
-            && look_up_type_id(me.type_id).wrap(de) == look_up_type_id(them.type_id).wrap(de)
+            && look_up_type_id(me.type_id).wrap_ref(de)
+                == look_up_type_id(them.type_id).wrap_ref(de)
     }
 }
 

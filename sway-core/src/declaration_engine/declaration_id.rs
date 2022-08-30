@@ -29,14 +29,10 @@ impl PartialEq for CompileWrapper<'_, DeclarationId> {
     fn eq(&self, other: &Self) -> bool {
         self.declaration_engine
             .look_up_decl_id(*self.inner)
-            .wrap(self.declaration_engine)
+            .wrap_ref(self.declaration_engine)
             == self
                 .declaration_engine
                 .look_up_decl_id(*other.inner)
-                .wrap(self.declaration_engine)
-    }
-
-    fn ne(&self, other: &Self) -> bool {
-        !self.eq(other)
+                .wrap_ref(self.declaration_engine)
     }
 }

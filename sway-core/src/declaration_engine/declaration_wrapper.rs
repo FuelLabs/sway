@@ -1,3 +1,5 @@
+use std::borrow::Borrow;
+
 use crate::{
     semantic_analysis::{
         TypedImplTrait, TypedStructDeclaration, TypedTraitDeclaration, TypedTraitFn,
@@ -26,29 +28,25 @@ impl PartialEq for CompileWrapper<'_, DeclarationWrapper> {
             declaration_engine: de,
         } = self;
         let CompileWrapper { inner: them, .. } = other;
-        match (me, them) {
+        match (me.borrow(), them.borrow()) {
             (DeclarationWrapper::Default, DeclarationWrapper::Default) => true,
             (DeclarationWrapper::Function(l), DeclarationWrapper::Function(r)) => {
-                l.wrap(de) == r.wrap(de)
+                l.wrap_ref(de) == r.wrap_ref(de)
             }
             (DeclarationWrapper::Trait(l), DeclarationWrapper::Trait(r)) => {
-                l.wrap(de) == r.wrap(de)
+                l.wrap_ref(de) == r.wrap_ref(de)
             }
             (DeclarationWrapper::TraitFn(l), DeclarationWrapper::TraitFn(r)) => {
-                l.wrap(de) == r.wrap(de)
+                l.wrap_ref(de) == r.wrap_ref(de)
             }
             (DeclarationWrapper::TraitImpl(l), DeclarationWrapper::TraitImpl(r)) => {
-                l.wrap(de) == r.wrap(de)
+                l.wrap_ref(de) == r.wrap_ref(de)
             }
             (DeclarationWrapper::Struct(l), DeclarationWrapper::Struct(r)) => {
-                l.wrap(de) == r.wrap(de)
+                l.wrap_ref(de) == r.wrap_ref(de)
             }
             _ => false,
         }
-    }
-
-    fn ne(&self, other: &Self) -> bool {
-        !self.eq(other)
     }
 }
 

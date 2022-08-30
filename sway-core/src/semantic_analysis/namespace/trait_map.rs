@@ -86,7 +86,7 @@ impl TraitMap {
     ) -> Vec<TypedFunctionDeclaration> {
         let mut methods = vec![];
         // small performance gain in bad case
-        if look_up_type_id(incoming_type_id).wrap(de) == TypeInfo::ErrorRecovery.wrap(de) {
+        if look_up_type_id(incoming_type_id).wrap_ref(de) == TypeInfo::ErrorRecovery.wrap_ref(de) {
             return methods;
         }
         for ((_, map_type_id), trait_methods) in self.trait_map.iter() {

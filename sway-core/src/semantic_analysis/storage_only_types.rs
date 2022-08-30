@@ -156,7 +156,7 @@ fn check_type(
         errors
     );
     for ty in nested_types {
-        if ignore_self && ty.wrap(de) == ti.wrap(de) {
+        if ignore_self && ty.wrap_ref(de) == ti.wrap_ref(de) {
             continue;
         }
         if is_type_info_storage_only(&ty, de) {

@@ -30,7 +30,8 @@ impl PartialEq for CompileWrapper<'_, TypedFunctionParameter> {
         } = self;
         let CompileWrapper { inner: them, .. } = other;
         me.name == them.name
-            && look_up_type_id(me.type_id).wrap(de) == look_up_type_id(them.type_id).wrap(de)
+            && look_up_type_id(me.type_id).wrap_ref(de)
+                == look_up_type_id(them.type_id).wrap_ref(de)
             && me.is_mutable == them.is_mutable
     }
 }

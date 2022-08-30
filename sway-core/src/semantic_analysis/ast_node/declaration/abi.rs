@@ -37,12 +37,12 @@ impl PartialEq for CompileWrapper<'_, TypedAbiDeclaration> {
             && me
                 .interface_surface
                 .iter()
-                .map(|x| x.wrap(de))
+                .map(|x| x.wrap_ref(de))
                 .collect::<Vec<_>>()
                 == them
                     .interface_surface
                     .iter()
-                    .map(|x| x.wrap(de))
+                    .map(|x| x.wrap_ref(de))
                     .collect::<Vec<_>>()
     }
 }

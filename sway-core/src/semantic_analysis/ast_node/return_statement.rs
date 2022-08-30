@@ -20,7 +20,7 @@ impl PartialEq for CompileWrapper<'_, TypedReturnStatement> {
             inner: them,
             declaration_engine: _,
         } = other;
-        me.expr.wrap(de) == them.expr.wrap(de)
+        me.expr.wrap_ref(de) == them.expr.wrap_ref(de)
     }
 }
 

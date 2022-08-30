@@ -73,10 +73,10 @@ impl PartialEq for CompileWrapper<'_, TypedVariableDeclaration> {
         } = self;
         let CompileWrapper { inner: them, .. } = other;
         me.name == them.name
-            && me.body.wrap(de) == them.body.wrap(de)
+            && me.body.wrap_ref(de) == them.body.wrap_ref(de)
             && me.mutability == them.mutability
-            && look_up_type_id(me.type_ascription).wrap(de)
-                == look_up_type_id(them.type_ascription).wrap(de)
+            && look_up_type_id(me.type_ascription).wrap_ref(de)
+                == look_up_type_id(them.type_ascription).wrap_ref(de)
     }
 }
 

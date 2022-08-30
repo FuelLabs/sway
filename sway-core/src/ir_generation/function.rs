@@ -594,7 +594,9 @@ impl FnCompiler {
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
                 let val_ty = resolve_type(val_exp.return_type, &span).unwrap();
-                if val_ty.wrap(de) != TypeInfo::UnsignedInteger(IntegerBits::SixtyFour).wrap(de) {
+                if val_ty.wrap_ref(de)
+                    != TypeInfo::UnsignedInteger(IntegerBits::SixtyFour).wrap_ref(de)
+                {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,
@@ -657,6 +659,7 @@ impl FnCompiler {
         }
     }
 
+    #[warn(clippy::too_many_arguments)]
     fn compile_lazy_op(
         &mut self,
         context: &mut Context,

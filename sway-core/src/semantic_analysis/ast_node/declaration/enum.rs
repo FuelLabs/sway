@@ -33,15 +33,23 @@ impl PartialEq for CompileWrapper<'_, TypedEnumDeclaration> {
             && me
                 .type_parameters
                 .iter()
-                .map(|x| x.wrap(de))
+                .map(|x| x.wrap_ref(de))
                 .collect::<Vec<_>>()
                 == them
                     .type_parameters
                     .iter()
-                    .map(|x| x.wrap(de))
+                    .map(|x| x.wrap_ref(de))
                     .collect::<Vec<_>>()
-            && me.variants.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
-                == them.variants.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+            && me
+                .variants
+                .iter()
+                .map(|x| x.wrap_ref(de))
+                .collect::<Vec<_>>()
+                == them
+                    .variants
+                    .iter()
+                    .map(|x| x.wrap_ref(de))
+                    .collect::<Vec<_>>()
             && me.visibility == them.visibility
     }
 }
@@ -176,8 +184,8 @@ impl PartialEq for CompileWrapper<'_, TypedEnumVariant> {
         } = self;
         let CompileWrapper { inner: them, .. } = other;
         me.name == them.name
-            && look_up_type_id(me.type_id).wrap(declaration_engine)
-                == look_up_type_id(them.type_id).wrap(declaration_engine)
+            && look_up_type_id(me.type_id).wrap_ref(declaration_engine)
+                == look_up_type_id(them.type_id).wrap_ref(declaration_engine)
             && me.tag == them.tag
     }
 }
@@ -192,7 +200,7 @@ impl Hash for CompileWrapper<'_, TypedEnumVariant> {
             declaration_engine: de,
         } = self;
         me.name.hash(state);
-        look_up_type_id(me.type_id).wrap(de).hash(state);
+        look_up_type_id(me.type_id).wrap_ref(de).hash(state);
         me.tag.hash(state);
     }
 }

@@ -22,17 +22,21 @@ impl PartialEq for CompileWrapper<'_, TypedStructDeclaration> {
         } = self;
         let CompileWrapper { inner: them, .. } = other;
         me.name == them.name
-            && me.fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
-                == them.fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+            && me.fields.iter().map(|x| x.wrap_ref(de)).collect::<Vec<_>>()
+                == them
+                    .fields
+                    .iter()
+                    .map(|x| x.wrap_ref(de))
+                    .collect::<Vec<_>>()
             && me
                 .type_parameters
                 .iter()
-                .map(|x| x.wrap(de))
+                .map(|x| x.wrap_ref(de))
                 .collect::<Vec<_>>()
                 == them
                     .type_parameters
                     .iter()
-                    .map(|x| x.wrap(de))
+                    .map(|x| x.wrap_ref(de))
                     .collect::<Vec<_>>()
             && me.visibility == them.visibility
     }
@@ -176,7 +180,8 @@ impl PartialEq for CompileWrapper<'_, TypedStructField> {
         } = self;
         let CompileWrapper { inner: them, .. } = other;
         me.name == them.name
-            && look_up_type_id(me.type_id).wrap(de) == look_up_type_id(them.type_id).wrap(de)
+            && look_up_type_id(me.type_id).wrap_ref(de)
+                == look_up_type_id(them.type_id).wrap_ref(de)
     }
 }
 
@@ -190,7 +195,7 @@ impl Hash for CompileWrapper<'_, TypedStructField> {
             declaration_engine: de,
         } = self;
         me.name.hash(state);
-        look_up_type_id(me.type_id).wrap(de).hash(state);
+        look_up_type_id(me.type_id).wrap_ref(de).hash(state);
     }
 }
 
