@@ -147,6 +147,7 @@ async fn can_mint_and_send_to_contract() {
     assert_eq!(result.value, amount)
 }
 
+#[ignore]
 #[tokio::test]
 async fn can_mint_and_send_to_address() {
     let wallet = launch_provider_and_get_wallet().await;
@@ -175,6 +176,7 @@ async fn can_mint_and_send_to_address() {
     );
 }
 
+#[ignore]
 #[tokio::test]
 async fn can_perform_generic_mint_to_with_address() {
     let wallet = launch_provider_and_get_wallet().await;
@@ -237,6 +239,7 @@ async fn can_perform_generic_mint_to_with_contract_id() {
     assert_eq!(result.value, amount)
 }
 
+#[ignore]
 #[tokio::test]
 async fn can_perform_generic_transfer_to_address() {
     let wallet = launch_provider_and_get_wallet().await;

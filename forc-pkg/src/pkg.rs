@@ -8,7 +8,7 @@ use forc_util::{
     default_output_directory, find_file_name, git_checkouts_directory, kebab_to_snake_case,
     print_on_failure, print_on_success, print_on_success_library,
 };
-use fuel_tx::{Contract, StorageSlot};
+use fuel_gql_client::fuel_tx::{Contract, StorageSlot};
 use petgraph::{
     self,
     visit::{Bfs, Dfs, EdgeRef, Walker},
