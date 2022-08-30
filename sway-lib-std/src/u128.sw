@@ -315,7 +315,8 @@ impl core::ops::Divide for U128 {
 }
 
 impl Exponentiate for U128 {
-    fn pow(ref mut self, exponent: Self) -> Self {
+    fn pow(self, exponent: Self) -> Self {
+        let mut value = self;
         let mut exp = exponent;
         let one = ~U128::from(0, 1);
         let zero = ~U128::from(0, 0);
@@ -325,7 +326,7 @@ impl Exponentiate for U128 {
         }
 
         while exp & one == zero {
-            self = self * self;
+            value = value * value;
             exp >>= 1;
         }
 
@@ -333,12 +334,12 @@ impl Exponentiate for U128 {
             return self;
         }
 
-        let mut acc = self;
+        let mut acc = value;
         while exp > one {
             exp >>= 1;
-            self = self * self;
+            value = value * value;
             if exp & one == one {
-                acc = acc * self;
+                acc = acc * value;
             }
         }
         acc
