@@ -2,11 +2,11 @@ use fuels::{prelude::*, tx::ContractId};
 
 abigen!(
     AuthContract,
-    "test_artifacts/auth_testing_contract/out/debug/auth_testing_contract-abi.json"
+    "test_artifacts/auth_testing_contract/out/debug/auth_testing_contract-flat-abi.json"
 );
 abigen!(
     AuthCallerContract,
-    "test_artifacts/auth_caller_contract/out/debug/auth_caller_contract-abi.json"
+    "test_artifacts/auth_caller_contract/out/debug/auth_caller_contract-flat-abi.json"
 );
 
 #[tokio::test]

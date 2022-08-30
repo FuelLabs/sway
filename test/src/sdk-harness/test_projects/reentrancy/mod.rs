@@ -4,12 +4,12 @@ use fuels::tx::ContractId;
 
 abigen!(
     AttackerContract,
-    "test_artifacts/reentrancy_attacker_contract/out/debug/reentrancy_attacker_contract-abi.json",
+    "test_artifacts/reentrancy_attacker_contract/out/debug/reentrancy_attacker_contract-flat-abi.json",
 );
 
 abigen!(
     TargetContract,
-    "test_artifacts/reentrancy_target_contract/out/debug/reentrancy_target_contract-abi.json",
+    "test_artifacts/reentrancy_target_contract/out/debug/reentrancy_target_contract-flat-abi.json",
 );
 
 #[tokio::test]

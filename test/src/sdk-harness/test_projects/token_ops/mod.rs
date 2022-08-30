@@ -4,7 +4,7 @@ use fuels::tx::{AssetId, ContractId};
 
 abigen!(
     TestFuelCoinContract,
-    "test_projects/token_ops/out/debug/token_ops-abi.json"
+    "test_projects/token_ops/out/debug/token_ops-flat-abi.json"
 );
 
 #[tokio::test]
