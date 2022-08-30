@@ -229,8 +229,11 @@ impl Hash for CompileWrapper<'_, TypeInfo> {
             }
             TypeInfo::Tuple(fields) => {
                 state.write_u8(5);
-                fields.len().hash(state);
-                fields.iter().for_each(|x| x.wrap(de).hash(state));
+                fields
+                    .iter()
+                    .map(|x| x.wrap(de))
+                    .collect::<Vec<_>>()
+                    .hash(state);
             }
             TypeInfo::Byte => {
                 state.write_u8(6);
@@ -245,10 +248,16 @@ impl Hash for CompileWrapper<'_, TypeInfo> {
             } => {
                 state.write_u8(8);
                 name.hash(state);
-                variant_types.len().hash(state);
-                variant_types.iter().for_each(|x| x.wrap(de).hash(state));
-                type_parameters.len().hash(state);
-                type_parameters.iter().for_each(|x| x.wrap(de).hash(state));
+                variant_types
+                    .iter()
+                    .map(|x| x.wrap(de))
+                    .collect::<Vec<_>>()
+                    .hash(state);
+                type_parameters
+                    .iter()
+                    .map(|x| x.wrap(de))
+                    .collect::<Vec<_>>()
+                    .hash(state);
             }
             TypeInfo::Struct {
                 name,
@@ -257,10 +266,16 @@ impl Hash for CompileWrapper<'_, TypeInfo> {
             } => {
                 state.write_u8(9);
                 name.hash(state);
-                fields.len().hash(state);
-                fields.iter().for_each(|x| x.wrap(de).hash(state));
-                type_parameters.len().hash(state);
-                type_parameters.iter().for_each(|x| x.wrap(de).hash(state));
+                fields
+                    .iter()
+                    .map(|x| x.wrap(de))
+                    .collect::<Vec<_>>()
+                    .hash(state);
+                type_parameters
+                    .iter()
+                    .map(|x| x.wrap(de))
+                    .collect::<Vec<_>>()
+                    .hash(state);
             }
             TypeInfo::ContractCaller { abi_name, address } => {
                 state.write_u8(10);
@@ -294,8 +309,11 @@ impl Hash for CompileWrapper<'_, TypeInfo> {
                 state.write_u8(16);
                 name.hash(state);
                 if let Some(type_arguments) = type_arguments {
-                    type_arguments.len().hash(state);
-                    type_arguments.iter().for_each(|x| x.wrap(de).hash(state));
+                    type_arguments
+                        .iter()
+                        .map(|x| x.wrap(de))
+                        .collect::<Vec<_>>()
+                        .hash(state);
                 }
             }
             TypeInfo::Ref(id, _sp) => {
@@ -309,8 +327,11 @@ impl Hash for CompileWrapper<'_, TypeInfo> {
             }
             TypeInfo::Storage { fields } => {
                 state.write_u8(19);
-                fields.len().hash(state);
-                fields.iter().for_each(|x| x.wrap(de).hash(state));
+                fields
+                    .iter()
+                    .map(|x| x.wrap(de))
+                    .collect::<Vec<_>>()
+                    .hash(state);
             }
         }
     }

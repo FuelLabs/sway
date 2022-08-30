@@ -31,7 +31,12 @@ impl PartialEq for CompileWrapper<'_, TypedIntrinsicFunctionKind> {
         } = self;
         let CompileWrapper { inner: them, .. } = other;
         me.kind == them.kind
-            && me.arguments.wrap(de) == them.arguments.wrap(de)
+            && me.arguments.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+                == them
+                    .arguments
+                    .iter()
+                    .map(|x| x.wrap(de))
+                    .collect::<Vec<_>>()
             && me.type_arguments.wrap(de) == them.type_arguments.wrap(de)
     }
 }

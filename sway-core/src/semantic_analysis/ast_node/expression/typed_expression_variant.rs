@@ -154,14 +154,12 @@ impl PartialEq for CompileWrapper<'_, TypedExpressionVariant> {
                         == r_arguments.iter().map(|(name, _)| name).collect::<Vec<_>>()
                     && l_arguments
                         .iter()
-                        .map(|(_, exp)| exp.clone())
+                        .map(|(_, exp)| exp.wrap(de))
                         .collect::<Vec<_>>()
-                        .wrap(de)
                         == r_arguments
                             .iter()
-                            .map(|(_, exp)| exp.clone())
+                            .map(|(_, exp)| exp.wrap(de))
                             .collect::<Vec<_>>()
-                            .wrap(de)
                     && l_function_decl.body.wrap(de) == r_function_decl.body.wrap(de)
             }
             (
@@ -195,7 +193,10 @@ impl PartialEq for CompileWrapper<'_, TypedExpressionVariant> {
             (
                 TypedExpressionVariant::Tuple { fields: l_fields },
                 TypedExpressionVariant::Tuple { fields: r_fields },
-            ) => l_fields.wrap(de) == r_fields.wrap(de),
+            ) => {
+                l_fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+                    == r_fields.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+            }
             (
                 TypedExpressionVariant::Array {
                     contents: l_contents,
@@ -203,7 +204,10 @@ impl PartialEq for CompileWrapper<'_, TypedExpressionVariant> {
                 TypedExpressionVariant::Array {
                     contents: r_contents,
                 },
-            ) => l_contents.wrap(de) == r_contents.wrap(de),
+            ) => {
+                l_contents.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+                    == r_contents.iter().map(|x| x.wrap(de)).collect::<Vec<_>>()
+            }
             (
                 TypedExpressionVariant::ArrayIndex {
                     prefix: l_prefix,
