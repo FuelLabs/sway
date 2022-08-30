@@ -16,7 +16,9 @@ impl Format for ExprTupleDescriptor {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         match self {
-            Self::Nil => {}
+            Self::Nil => {
+                write!(formatted_code, "()")?;
+            }
             Self::Cons {
                 head,
                 comma_token,
