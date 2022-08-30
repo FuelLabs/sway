@@ -618,7 +618,7 @@ fn collect_type_args(type_arguments: &Vec<TypeArgument>, token: &Token, tokens: 
     for arg in type_arguments {
         let mut token = token.clone();
         let type_info = sway_core::type_system::look_up_type_id(arg.type_id);
-        // TODO handle tuple and arrays in type_arguments
+        // TODO handle tuple and arrays in type_arguments - https://github.com/FuelLabs/sway/issues/2486
         if let TypeInfo::Tuple(_) | TypeInfo::Array(_, _, _) = type_info {
             continue;
         }
