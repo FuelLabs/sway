@@ -12,7 +12,7 @@
 
 * [#1796](https://github.com/FuelLabs/sway/issues/2465): It is not yet allowed to use `StorageMap<K, V>` as a component of a complex type such as a struct or an enum.
 
-* [#2647](https://github.com/FuelLabs/sway/issues/2647): Currently, it is only possible to define configuration-time constants that have [primitive types](built_in_types.md#primitive-types) and that are initialized using literals.
+* [#2647](https://github.com/FuelLabs/sway/issues/2647): Currently, it is only possible to define configuration-time constants that have [primitive types](../basics/built_in_types.md#primitive-types) and that are initialized using literals.
 
 ## General
 
