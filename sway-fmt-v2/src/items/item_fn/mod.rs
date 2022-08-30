@@ -103,17 +103,18 @@ impl Format for FnSignature {
         format_fn_sig(self, &mut fn_sig, &mut temp_formatter)?;
         format_fn_args(self.arguments.get(), &mut fn_args, &mut temp_formatter)?;
 
+        println!("{}", fn_sig);
         let fn_sig_width = fn_sig.chars().count() as usize + 2; // add two for opening brace + space
+        println!("{}", fn_args);
         let fn_args_width = fn_args.chars().count() as usize;
 
-        formatter.shape.add_width(fn_sig_width);
+        formatter.shape.update_width(fn_sig_width);
         formatter
             .shape
             .get_line_style(None, Some(fn_args_width), &formatter.config);
 
         format_fn_sig(self, formatted_code, formatter)?;
 
-        formatter.shape.sub_width(fn_sig_width);
         formatter.shape.update_line_settings(prev_state);
 
         Ok(())
@@ -168,7 +169,9 @@ fn format_fn_args(
 ) -> Result<(), FormatterError> {
     match fn_args {
         FnArgs::Static(args) => {
-            args.format(formatted_code, formatter)?;
+            if !args.value_separator_pairs.is_empty() || args.final_value_opt.is_some() {
+                args.format(formatted_code, formatter)?;
+            }
         }
         FnArgs::NonStatic {
             self_token,
