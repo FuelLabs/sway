@@ -108,12 +108,17 @@ pub fn output_amount(index: u64) -> u64 {
         Output::Message => {
             __gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT)
         },
-        // Output changes are always guaranteed to have an amount of zero since
-        // they're only set after execution terminates
+        // For now, output changes are always guaranteed to have an amount of
+        // zero since they're only set after execution terminates.
+        // use `__gtf` when GTF_OUTPUT_CHANGE_AMOUNT is available.
+        // See https://github.com/FuelLabs/fuel-specs/issues/402
+        // and https://github.com/FuelLabs/sway/issues/2671.
         Output::Change => {
             0
         },
-        // use `__gtf` when GTF_OUTPUT_VARIABLE_AMOUNT is available
+        // use `__gtf` when GTF_OUTPUT_VARIABLE_AMOUNT is available.
+        // See https://github.com/FuelLabs/fuel-specs/issues/402
+        // and https://github.com/FuelLabs/sway/issues/2671.
         Output::Variable => {
             let ptr = output_pointer(index);
             asm(r1, r2, r3: ptr) {
