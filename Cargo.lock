@@ -77,9 +77,9 @@ dependencies = [
 
 [[package]]
 name = "android_system_properties"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7ed72e1635e121ca3e79420540282af22da58be50de153d36f81ddc6b83aa9e"
+checksum = "819e7219dbd41043ac279b19830f2efc897156490d7fd6ea916720117ee66311"
 dependencies = [
  "libc",
 ]
@@ -105,9 +105,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.62"
+version = "1.0.63"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1485d4d2cc45e7b201ee3767015c96faa5904387c9d87c6efdd0fb511f12d305"
+checksum = "a26fa4d7e3f2eebadf743988fc8aec9fa9a9e82611acafd77c1462ed6262440a"
 
 [[package]]
 name = "arrayref"
@@ -532,9 +532,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.2.18"
+version = "3.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b15f2ea93df33549dbe2e8eecd1ca55269d63ae0b3ba1f55db030817d1c2867f"
+checksum = "68d43934757334b5c0519ff882e1ab9647ac0258b47c24c4f490d78e42697fd5"
 dependencies = [
  "atty",
  "bitflags",
@@ -553,7 +553,7 @@ version = "3.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e4179da71abd56c26b54dd0c248cc081c1f43b0a1a7e8448e28e57a29baa993d"
 dependencies = [
- "clap 3.2.18",
+ "clap 3.2.19",
 ]
 
 [[package]]
@@ -856,13 +856,14 @@ dependencies = [
 
 [[package]]
 name = "dashmap"
-version = "5.3.4"
+version = "5.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3495912c9c1ccf2e18976439f4443f3fee0fd61f424ff99fde6a66b15ecb448f"
+checksum = "907076dfda823b0b36d2a1bb5f90c96660a5bbcd7729e10727f07858f22c4edc"
 dependencies = [
  "cfg-if 1.0.0",
  "hashbrown 0.12.3",
  "lock_api",
+ "once_cell",
  "parking_lot_core 0.9.3",
 ]
 
@@ -1009,7 +1010,7 @@ name = "examples-checker"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "clap 3.2.18",
+ "clap 3.2.19",
 ]
 
 [[package]]
@@ -1079,11 +1080,11 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "annotate-snippets",
  "anyhow",
- "clap 3.2.18",
+ "clap 3.2.19",
  "clap_complete",
  "forc-pkg",
  "forc-util",
@@ -1108,10 +1109,10 @@ dependencies = [
 
 [[package]]
 name = "forc-client"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "anyhow",
- "clap 3.2.18",
+ "clap 3.2.19",
  "forc-pkg",
  "forc-util",
  "fuel-gql-client",
@@ -1130,10 +1131,10 @@ dependencies = [
 
 [[package]]
 name = "forc-explore"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "anyhow",
- "clap 3.2.18",
+ "clap 3.2.19",
  "forc-util",
  "reqwest",
  "serde",
@@ -1145,10 +1146,10 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "anyhow",
- "clap 3.2.18",
+ "clap 3.2.19",
  "forc-util",
  "prettydiff 0.5.1",
  "sway-core",
@@ -1160,10 +1161,10 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt-v2"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "anyhow",
- "clap 3.2.18",
+ "clap 3.2.19",
  "forc-util",
  "prettydiff 0.5.1",
  "sway-core",
@@ -1175,17 +1176,17 @@ dependencies = [
 
 [[package]]
 name = "forc-lsp"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "anyhow",
- "clap 3.2.18",
+ "clap 3.2.19",
  "sway-lsp",
  "tokio",
 ]
 
 [[package]]
 name = "forc-pkg"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "anyhow",
  "forc-util",
@@ -1209,7 +1210,7 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -1288,7 +1289,7 @@ checksum = "f1749b9410bcdbcaa17a8aa233b6db84eaadf4c68b3930333fc6cb4996db07ee"
 dependencies = [
  "anyhow",
  "chrono",
- "clap 3.2.18",
+ "clap 3.2.19",
  "cynic",
  "derive_more",
  "fuel-tx",
@@ -1329,7 +1330,7 @@ dependencies = [
  "digest 0.10.3",
  "fuel-storage 0.2.0",
  "hex",
- "sha2 0.10.2",
+ "sha2 0.10.3",
  "thiserror",
 ]
 
@@ -1784,9 +1785,9 @@ dependencies = [
 
 [[package]]
 name = "httparse"
-version = "1.7.1"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "496ce29bb5a52785b44e0f7ca2847ae0bb839c9bd28f69acac9b99d461c0c04c"
+checksum = "d897f394bad6a705d5f4104762e116a75639e470d80901eed05a860a95cb1904"
 
 [[package]]
 name = "httpdate"
@@ -1839,13 +1840,14 @@ dependencies = [
 
 [[package]]
 name = "iana-time-zone"
-version = "0.1.46"
+version = "0.1.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad2bfd338099682614d3ee3fe0cd72e0b6a41ca6a87f6a74a3bd593c91650501"
+checksum = "4c495f162af0bf17656d0014a0eded5f3cd2f365fdd204548c2869db89359dc7"
 dependencies = [
  "android_system_properties",
  "core-foundation-sys",
  "js-sys",
+ "once_cell",
  "wasm-bindgen",
  "winapi",
 ]
@@ -2129,7 +2131,7 @@ source = "git+https://github.com/mitchmindtree/mdBook?branch=nightly-borrowcheck
 dependencies = [
  "anyhow",
  "chrono",
- "clap 3.2.18",
+ "clap 3.2.19",
  "clap_complete",
  "env_logger",
  "handlebars",
@@ -2152,7 +2154,7 @@ name = "mdbook-forc-documenter"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "clap 3.2.18",
+ "clap 3.2.19",
  "mdbook",
  "semver 1.0.13",
  "serde",
@@ -2381,9 +2383,9 @@ dependencies = [
 
 [[package]]
 name = "paste"
-version = "1.0.8"
+version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9423e2b32f7a043629287a536f21951e8c6a82482d0acb1eeebfc90bc2225b22"
+checksum = "b1de2e551fb905ac83f73f7aedf2f0cb4a0da7e35efa24a202a936269f1f18e1"
 
 [[package]]
 name = "peg"
@@ -3352,9 +3354,9 @@ dependencies = [
 
 [[package]]
 name = "sha2"
-version = "0.10.2"
+version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "55deaec60f81eefe3cce0dc50bda92d6d8e88f2a27df7c5033b42afeb1ed2676"
+checksum = "899bf02746a2c92bf1053d9327dadb252b01af1f81f90cdb902411f518bc7215"
 dependencies = [
  "cfg-if 1.0.0",
  "cpufeatures",
@@ -3599,7 +3601,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ast"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -3609,9 +3611,9 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
- "clap 3.2.18",
+ "clap 3.2.19",
  "derivative",
  "dirs 3.0.2",
  "either",
@@ -3642,7 +3644,7 @@ dependencies = [
 
 [[package]]
 name = "sway-fmt"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "ropey",
  "sway-core",
@@ -3651,7 +3653,7 @@ dependencies = [
 
 [[package]]
 name = "sway-fmt-v2"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "anyhow",
  "forc-util",
@@ -3670,7 +3672,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "anyhow",
  "filecheck",
@@ -3681,7 +3683,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "async-trait",
  "dashmap",
@@ -3703,7 +3705,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "assert_matches",
  "extension-trait",
@@ -3718,7 +3720,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "fuel-asm 0.6.0",
  "fuel-crypto",
@@ -3729,7 +3731,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.21.0"
+version = "0.22.0"
 
 [[package]]
 name = "syn"
@@ -3820,7 +3822,7 @@ name = "test"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "clap 3.2.18",
+ "clap 3.2.19",
  "filecheck",
  "forc",
  "forc-client",
@@ -3879,18 +3881,18 @@ checksum = "b1141d4d61095b28419e22cb0bbf02755f5e54e0526f97f1e3d1d160e60885fb"
 
 [[package]]
 name = "thiserror"
-version = "1.0.32"
+version = "1.0.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5f6586b7f764adc0231f4c79be7b920e766bb2f3e51b3661cdb263828f19994"
+checksum = "3d0a539a918745651435ac7db7a18761589a94cd7e94cd56999f828bf73c8a57"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.32"
+version = "1.0.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12bafc5b54507e0149cdf1b145a5d80ab80a90bcd9275df43d4fff68460f6c21"
+checksum = "c251e90f708e16c49a16f4917dc2131e75222b72edfa9cb7f7c58ae56aae0c09"
 dependencies = [
  "proc-macro2",
  "quote",
