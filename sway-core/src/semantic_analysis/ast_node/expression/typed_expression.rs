@@ -1259,7 +1259,7 @@ impl TypedExpression {
         }
 
         let storage_fields = check!(
-            ctx.namespace.get_storage_field_descriptors(),
+            ctx.namespace.get_storage_field_descriptors(span),
             return err(warnings, errors),
             warnings,
             errors
@@ -1267,7 +1267,8 @@ impl TypedExpression {
 
         // Do all namespace checking here!
         let (storage_access, return_type) = check!(
-            ctx.namespace.apply_storage_load(checkee, &storage_fields),
+            ctx.namespace
+                .apply_storage_load(checkee, &storage_fields, span),
             return err(warnings, errors),
             warnings,
             errors
