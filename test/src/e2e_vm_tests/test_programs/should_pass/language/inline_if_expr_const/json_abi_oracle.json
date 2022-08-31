@@ -1,15 +1,21 @@
-[
-  {
-    "inputs": [],
-    "name": "main",
-    "outputs": [
-      {
-        "components": [],
+{
+  "functions": [
+    {
+      "inputs": [],
+      "name": "main",
+      "output": {
         "name": "",
-        "type": "()",
+        "type": 0,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  }
-]
+    }
+  ],
+  "types": [
+    {
+      "components": [],
+      "type": "()",
+      "typeId": 0,
+      "typeParameters": null
+    }
+  ]
+}
