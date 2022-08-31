@@ -1,6 +1,6 @@
 use lazy_static::lazy_static;
 use std::{collections::HashMap, sync::RwLock};
-use sway_types::Span;
+use sway_types::{Span, Spanned};
 
 use crate::{
     concurrent_slab::ConcurrentSlab,
@@ -19,7 +19,7 @@ lazy_static! {
 /// Used inside of type inference to store declarations.
 #[derive(Debug, Default)]
 pub(crate) struct DeclarationEngine {
-    slab: ConcurrentSlab<DeclarationId, DeclarationWrapper>,
+    slab: ConcurrentSlab<DeclarationWrapper>,
     // *declaration_id -> vec of monomorphized copies
     // where the declaration_id is the original declaration
     monomorphized_copies: RwLock<HashMap<usize, Vec<DeclarationId>>>,
@@ -33,7 +33,7 @@ impl DeclarationEngine {
     }
 
     fn de_look_up_decl_id(&self, index: DeclarationId) -> DeclarationWrapper {
-        self.slab.get(index)
+        self.slab.get(*index)
     }
 
     fn de_add_monomorphized_copy(&self, original_id: DeclarationId, new_id: DeclarationId) {
@@ -51,13 +51,20 @@ impl DeclarationEngine {
     fn de_get_monomorphized_copies(&self, original_id: DeclarationId) -> Vec<DeclarationWrapper> {
         let monomorphized_copies = self.monomorphized_copies.write().unwrap();
         match monomorphized_copies.get(&*original_id).cloned() {
-            Some(copies) => copies.into_iter().map(|copy| self.slab.get(copy)).collect(),
+            Some(copies) => copies
+                .into_iter()
+                .map(|copy| self.slab.get(*copy))
+                .collect(),
             None => vec![],
         }
     }
 
     fn de_insert_function(&self, function: TypedFunctionDeclaration) -> DeclarationId {
-        self.slab.insert(DeclarationWrapper::Function(function))
+        let span = function.span();
+        DeclarationId::new(
+            self.slab.insert(DeclarationWrapper::Function(function)),
+            span,
+        )
     }
 
     fn de_get_function(
@@ -65,7 +72,7 @@ impl DeclarationEngine {
         index: DeclarationId,
         span: &Span,
     ) -> Result<TypedFunctionDeclaration, CompileError> {
-        self.slab.get(index).expect_function(span)
+        self.slab.get(*index).expect_function(span)
     }
 
     fn de_add_monomorphized_function_copy(
@@ -73,7 +80,11 @@ impl DeclarationEngine {
         original_id: DeclarationId,
         new_copy: TypedFunctionDeclaration,
     ) {
-        let new_id = self.slab.insert(DeclarationWrapper::Function(new_copy));
+        let span = new_copy.span();
+        let new_id = DeclarationId::new(
+            self.slab.insert(DeclarationWrapper::Function(new_copy)),
+            span,
+        );
         self.de_add_monomorphized_copy(original_id, new_id)
     }
 
@@ -89,7 +100,8 @@ impl DeclarationEngine {
     }
 
     fn de_insert_trait(&self, r#trait: TypedTraitDeclaration) -> DeclarationId {
-        self.slab.insert(DeclarationWrapper::Trait(r#trait))
+        let span = r#trait.name.span();
+        DeclarationId::new(self.slab.insert(DeclarationWrapper::Trait(r#trait)), span)
     }
 
     fn de_get_trait(
@@ -97,11 +109,15 @@ impl DeclarationEngine {
         index: DeclarationId,
         span: &Span,
     ) -> Result<TypedTraitDeclaration, CompileError> {
-        self.slab.get(index).expect_trait(span)
+        self.slab.get(*index).expect_trait(span)
     }
 
     fn de_insert_trait_fn(&self, trait_fn: TypedTraitFn) -> DeclarationId {
-        self.slab.insert(DeclarationWrapper::TraitFn(trait_fn))
+        let span = trait_fn.name.span();
+        DeclarationId::new(
+            self.slab.insert(DeclarationWrapper::TraitFn(trait_fn)),
+            span,
+        )
     }
 
     fn de_get_trait_fn(
@@ -109,11 +125,15 @@ impl DeclarationEngine {
         index: DeclarationId,
         span: &Span,
     ) -> Result<TypedTraitFn, CompileError> {
-        self.slab.get(index).expect_trait_fn(span)
+        self.slab.get(*index).expect_trait_fn(span)
     }
 
     fn insert_trait_impl(&self, trait_impl: TypedImplTrait) -> DeclarationId {
-        self.slab.insert(DeclarationWrapper::TraitImpl(trait_impl))
+        let span = trait_impl.span.clone();
+        DeclarationId::new(
+            self.slab.insert(DeclarationWrapper::TraitImpl(trait_impl)),
+            span,
+        )
     }
 
     fn de_get_trait_impl(
@@ -121,11 +141,12 @@ impl DeclarationEngine {
         index: DeclarationId,
         span: &Span,
     ) -> Result<TypedImplTrait, CompileError> {
-        self.slab.get(index).expect_trait_impl(span)
+        self.slab.get(*index).expect_trait_impl(span)
     }
 
     fn de_insert_struct(&self, r#struct: TypedStructDeclaration) -> DeclarationId {
-        self.slab.insert(DeclarationWrapper::Struct(r#struct))
+        let span = r#struct.span();
+        DeclarationId::new(self.slab.insert(DeclarationWrapper::Struct(r#struct)), span)
     }
 
     fn de_get_struct(
@@ -133,7 +154,7 @@ impl DeclarationEngine {
         index: DeclarationId,
         span: &Span,
     ) -> Result<TypedStructDeclaration, CompileError> {
-        self.slab.get(index).expect_struct(span)
+        self.slab.get(*index).expect_struct(span)
     }
 
     fn de_add_monomorphized_struct_copy(
@@ -141,7 +162,9 @@ impl DeclarationEngine {
         original_id: DeclarationId,
         new_copy: TypedStructDeclaration,
     ) {
-        let new_id = self.slab.insert(DeclarationWrapper::Struct(new_copy));
+        let span = new_copy.span();
+        let new_id =
+            DeclarationId::new(self.slab.insert(DeclarationWrapper::Struct(new_copy)), span);
         self.de_add_monomorphized_copy(original_id, new_id)
     }
 

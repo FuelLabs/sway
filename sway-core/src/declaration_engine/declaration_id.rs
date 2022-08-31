@@ -1,14 +1,31 @@
 use std::fmt;
 
+use sway_types::{Span, Spanned};
+
 use super::declaration_engine::de_look_up_decl_id;
 
-/// An ID used to refer to an item in the [DeclarationEngine]
-#[derive(Clone, Copy, Debug, Eq)]
-pub struct DeclarationId(usize);
+/// An ID used to refer to an item in the [DeclarationEngine](super::declaration_engine::DeclarationEngine)
+#[derive(Debug, Eq)]
+pub struct DeclarationId(usize, Span);
+
+impl Clone for DeclarationId {
+    fn clone(&self) -> Self {
+        Self(self.0, self.1.clone())
+    }
+}
+
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl PartialEq for DeclarationId {
+    fn eq(&self, other: &Self) -> bool {
+        de_look_up_decl_id(self.clone()) == de_look_up_decl_id(other.clone())
+    }
+}
 
 impl fmt::Display for DeclarationId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&de_look_up_decl_id(*self).to_string())
+        f.write_str(&de_look_up_decl_id(self.clone()).to_string())
     }
 }
 
@@ -19,14 +36,21 @@ impl std::ops::Deref for DeclarationId {
     }
 }
 
-impl From<usize> for DeclarationId {
-    fn from(o: usize) -> Self {
-        DeclarationId(o)
+#[allow(clippy::from_over_into)]
+impl Into<usize> for DeclarationId {
+    fn into(self) -> usize {
+        self.0
     }
 }
 
-impl PartialEq for DeclarationId {
-    fn eq(&self, other: &Self) -> bool {
-        de_look_up_decl_id(*self) == de_look_up_decl_id(*other)
+impl Spanned for DeclarationId {
+    fn span(&self) -> Span {
+        self.1.clone()
+    }
+}
+
+impl DeclarationId {
+    pub(super) fn new(index: usize, span: Span) -> DeclarationId {
+        DeclarationId(index, span)
     }
 }

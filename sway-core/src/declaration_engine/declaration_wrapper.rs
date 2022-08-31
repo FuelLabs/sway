@@ -28,6 +28,9 @@ impl Default for DeclarationWrapper {
     }
 }
 
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEq for DeclarationWrapper {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
