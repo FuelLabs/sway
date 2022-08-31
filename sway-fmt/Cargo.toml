@@ -6,10 +6,22 @@ edition = "2021"
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
-description = "Sway sway-fmt."
+description = "Sway language formatter."
 
 [dependencies]
-ropey = "1.2"
+anyhow = "1"
+forc-util = { version = "0.21.0", path = "../forc-util" }
+ropey = "1.5"
+serde = { version = "1.0", features = ["derive"] }
+serde_ignored = "0.1"
+sway-ast = { version = "0.21.0", path = "../sway-ast" }
 sway-core = { version = "0.21.0", path = "../sway-core" }
+sway-parse = { version = "0.21.0", path = "../sway-parse" }
 sway-types = { version = "0.21.0", path = "../sway-types" }
+thiserror = "1.0.30"
+toml = "0.5"
 
+[dev-dependencies]
+forc-util = { path = "../forc-util" }
+paste = "1.0"
+prettydiff = "0.6"
