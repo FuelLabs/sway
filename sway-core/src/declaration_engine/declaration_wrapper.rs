@@ -6,7 +6,7 @@ use crate::{
     semantic_analysis::{
         TypedImplTrait, TypedStructDeclaration, TypedTraitDeclaration, TypedTraitFn,
     },
-    CompileError, TypedFunctionDeclaration,
+    CompileError, TypedFunctionDeclaration, type_system::{CopyTypes, TypeMapping},
 };
 
 /// The [DeclarationWrapper] type is used in the [DeclarationEngine]
@@ -48,6 +48,19 @@ impl PartialEq for DeclarationWrapper {
 impl fmt::Display for DeclarationWrapper {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "decl({})", self.friendly_name())
+    }
+}
+
+impl CopyTypes for DeclarationWrapper {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        match self {
+            DeclarationWrapper::Unknown => {},
+            DeclarationWrapper::Function(decl) => decl.copy_types(type_mapping),
+            DeclarationWrapper::Trait(decl) => decl.copy_types(type_mapping),
+            DeclarationWrapper::TraitFn(decl) => decl.copy_types(type_mapping),
+            DeclarationWrapper::TraitImpl(decl) => decl.copy_types(type_mapping),
+            DeclarationWrapper::Struct(decl) => decl.copy_types(type_mapping),
+        }
     }
 }
 
