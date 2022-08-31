@@ -153,3 +153,77 @@ pub(crate) fn de_clear() {
 pub(crate) fn de_look_up_decl_id(index: DeclarationId) -> DeclarationWrapper {
     DECLARATION_ENGINE.de_look_up_decl_id(index)
 }
+
+pub(crate) fn de_insert_function(function: TypedFunctionDeclaration) -> DeclarationId {
+    DECLARATION_ENGINE.de_insert_function(function)
+}
+
+pub(crate) fn de_get_function(
+    index: DeclarationId,
+) -> Result<TypedFunctionDeclaration, DeclarationWrapper> {
+    DECLARATION_ENGINE.de_get_function(index)
+}
+
+pub(crate) fn de_add_monomorphized_function_copy(
+    original_id: DeclarationId,
+    new_copy: TypedFunctionDeclaration,
+) {
+    DECLARATION_ENGINE.de_add_monomorphized_function_copy(original_id, new_copy);
+}
+
+pub(crate) fn de_get_monomorphized_function_copies(
+    original_id: DeclarationId,
+) -> Result<Vec<TypedFunctionDeclaration>, DeclarationWrapper> {
+    DECLARATION_ENGINE.de_get_monomorphized_function_copies(original_id)
+}
+
+pub(crate) fn de_insert_trait(r#trait: TypedTraitDeclaration) -> DeclarationId {
+    DECLARATION_ENGINE.de_insert_trait(r#trait)
+}
+
+pub(crate) fn de_get_trait(
+    index: DeclarationId,
+) -> Result<TypedTraitDeclaration, DeclarationWrapper> {
+    DECLARATION_ENGINE.de_get_trait(index)
+}
+
+pub(crate) fn de_insert_trait_fn(trait_fn: TypedTraitFn) -> DeclarationId {
+    DECLARATION_ENGINE.de_insert_trait_fn(trait_fn)
+}
+
+pub(crate) fn de_get_trait_fn(index: DeclarationId) -> Result<TypedTraitFn, DeclarationWrapper> {
+    DECLARATION_ENGINE.de_get_trait_fn(index)
+}
+
+pub(crate) fn insert_trait_impl(trait_impl: TypedImplTrait) -> DeclarationId {
+    DECLARATION_ENGINE.insert_trait_impl(trait_impl)
+}
+
+pub(crate) fn de_get_trait_impl(
+    index: DeclarationId,
+) -> Result<TypedImplTrait, DeclarationWrapper> {
+    DECLARATION_ENGINE.de_get_trait_impl(index)
+}
+
+pub(crate) fn de_insert_struct(r#struct: TypedStructDeclaration) -> DeclarationId {
+    DECLARATION_ENGINE.de_insert_struct(r#struct)
+}
+
+pub(crate) fn de_get_struct(
+    index: DeclarationId,
+) -> Result<TypedStructDeclaration, DeclarationWrapper> {
+    DECLARATION_ENGINE.de_get_struct(index)
+}
+
+pub(crate) fn de_add_monomorphized_struct_copy(
+    original_id: DeclarationId,
+    new_copy: TypedStructDeclaration,
+) {
+    DECLARATION_ENGINE.de_add_monomorphized_struct_copy(original_id, new_copy);
+}
+
+pub(crate) fn de_get_monomorphized_struct_copies(
+    original_id: DeclarationId,
+) -> Result<Vec<TypedStructDeclaration>, DeclarationWrapper> {
+    DECLARATION_ENGINE.de_get_monomorphized_struct_copies(original_id)
+}
