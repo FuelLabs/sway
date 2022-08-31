@@ -203,8 +203,10 @@ fn get_newline_sequences_between_spans(
     newline_map: &NewlineMap,
 ) -> Vec<NewlineSequence> {
     let mut newline_sequences: Vec<NewlineSequence> = Vec::new();
-    for (_, newline_sequence) in newline_map.range((Included(from), Excluded(to))) {
-        newline_sequences.push(newline_sequence.clone());
+    if from < to {
+        for (_, newline_sequence) in newline_map.range((Included(from), Excluded(to))) {
+            newline_sequences.push(newline_sequence.clone());
+        }
     }
     newline_sequences
 }
