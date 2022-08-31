@@ -71,7 +71,7 @@ pub struct DeployCommand {
     pub time_phases: bool,
     /// Do not sign the transaction
     #[clap(long)]
-    pub not_sign: bool,
+    pub unsigned: bool,
     /// Set the transaction gas limit. Defaults to the maximum gas limit.
     #[clap(long)]
     pub gas_limit: Option<u64>,

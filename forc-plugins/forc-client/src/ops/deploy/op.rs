@@ -41,7 +41,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         build_profile,
         release,
         time_phases,
-        not_sign,
+        unsigned,
         gas_limit,
         gas_price,
     } = command;
@@ -76,7 +76,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
 
     let client = FuelClient::new(node_url)?;
 
-    let (mut tx, contract_id) = if not_sign {
+    let (mut tx, contract_id) = if unsigned {
         create_contract_tx(
             compiled.bytecode,
             Vec::<fuel_tx::Input>::new(),
@@ -96,8 +96,8 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         create_signed_contract_tx(compiled, locked_wallet, tx_parameters).await?
     };
 
-    if !not_sign {
-        // Ask for signature and add it as a witness
+    if !unsigned {
+        // Ask for the signature and add it as a witness
         let mut signature = String::new();
         print!("Please provide the signature for this transaction:");
         std::io::stdout().flush()?;
