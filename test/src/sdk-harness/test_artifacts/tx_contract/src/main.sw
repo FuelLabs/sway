@@ -1,21 +1,23 @@
 contract;
 
-use std::address::Address;
-use std::option::Option;
-use std::tx::*;
-use std::inputs::{
-    Input,
-    input_count,
-    input_owner,
-    input_pointer,
-    input_type,
-};
-use std::outputs::{
-    Output,
-    output_count,
-    output_pointer,
-    output_type,
-};
+use std::{
+    address::Address,
+    option::Option,
+    inputs::{
+        Input,
+        input_count,
+        input_owner,
+        input_pointer,
+        input_type,
+    },
+    outputs::{
+        Output,
+        output_count,
+        output_pointer,
+        output_type,
+    },
+    tx::*,
+    };
 
 abi TxContractTest {
     fn get_tx_type() -> Transaction;
