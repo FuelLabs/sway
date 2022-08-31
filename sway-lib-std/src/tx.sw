@@ -231,8 +231,6 @@ pub fn tx_script_data<T>() -> T {
 pub fn tx_script_bytecode<T>() -> T {
     read::<T>(tx_script_start_pointer())
 }
-<<<<<<< HEAD
-=======
 
 const TX_ID_OFFSET = 0;
 

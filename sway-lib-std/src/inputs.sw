@@ -4,7 +4,6 @@ library inputs;
 
 use ::address::Address;
 use ::mem::read;
-use ::logging::log;
 use ::option::Option;
 use ::revert::revert;
 use ::tx::{
