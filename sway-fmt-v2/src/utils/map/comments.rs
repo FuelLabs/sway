@@ -159,21 +159,23 @@ fn get_comments_between_spans(
     unformatted_code: &Arc<str>,
 ) -> Vec<CommentWithContext> {
     let mut comments_with_context: Vec<CommentWithContext> = Vec::new();
-    for (index, (comment_span, comment)) in comment_map
-        .range((Included(from), Excluded(to)))
-        .enumerate()
-    {
-        let starting_position_for_context = if index == 0 {
-            // This is the first comment in the current range the context should be collected between from's end and comment's beginning
-            from.end
-        } else {
-            // There is a comment before this one, so we should get the context starting from the last comment's end to the beginning of the current comment
-            comments_with_context[index - 1].0.span.end()
-        };
-        comments_with_context.push((
-            comment.clone(),
-            unformatted_code[starting_position_for_context..comment_span.start].to_string(),
-        ));
+    if from < to {
+        for (index, (comment_span, comment)) in comment_map
+            .range((Included(from), Excluded(to)))
+            .enumerate()
+        {
+            let starting_position_for_context = if index == 0 {
+                // This is the first comment in the current range the context should be collected between from's end and comment's beginning
+                from.end
+            } else {
+                // There is a comment before this one, so we should get the context starting from the last comment's end to the beginning of the current comment
+                comments_with_context[index - 1].0.span.end()
+            };
+            comments_with_context.push((
+                comment.clone(),
+                unformatted_code[starting_position_for_context..comment_span.start].to_string(),
+            ));
+        }
     }
     comments_with_context
 }
