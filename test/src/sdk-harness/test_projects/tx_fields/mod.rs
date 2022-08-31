@@ -38,7 +38,6 @@ async fn can_get_tx_type() {
 #[tokio::test]
 async fn can_get_gas_price() {
     let (contract_instance, _, _) = get_contracts().await;
-    // TODO set this to a non-zero value once SDK supports spending coins.
     let gas_price = 3;
 
     let result = contract_instance
