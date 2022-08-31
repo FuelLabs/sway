@@ -79,11 +79,11 @@ macro_rules! fmt_test_inner {
 }
 }
 
-fmt_test!(  long_fn_name            "pub fn hello_this_is_a_really_long_fn_name_wow_so_long_ridiculous(\n    self,\n    foo: Foo,\n    bar: Bar,\n    baz: Baz,\n) {\n}\n",
+fmt_test!(  long_fn_name            "pub fn hello_this_is_a_really_long_fn_name_wow_so_long_ridiculous(\n    self,\n    foo: Foo,\n    bar: Bar,\n    baz: Baz,\n) {}",
             intermediate_whitespace "pub fn hello_this_is_a_really_long_fn_name_wow_so_long_ridiculous    ( self   , foo   : Foo    , bar : Bar  ,    baz:    Baz) {\n    }"
 );
 
-fmt_test!(  long_fn_args            "fn foo(\n    mut self,\n    this_is_a_really_long_variable: Foo,\n    hello_im_really_long: Bar,\n) -> String {\n}\n",
+fmt_test!(  long_fn_args            "fn foo(\n    mut self,\n    this_is_a_really_long_variable: Foo,\n    hello_im_really_long: Bar,\n) -> String {}",
             intermediate_whitespace "  fn  foo( \n        mut self , \n     this_is_a_really_long_variable : Foo ,\n    hello_im_really_long: Bar , \n ) ->    String { \n }     "
 );
 
@@ -97,7 +97,7 @@ fmt_test!(  non_self_fn
         Foo::foo => true,
         _ => false,
     }
-}\n",
+}",
             intermediate_whitespace
 "fn   test_function   (\n\n
     helloitsverylong : String ,
@@ -108,5 +108,59 @@ fmt_test!(  non_self_fn
         Foo :: foo => true ,
          _    => false  ,
         }
+}"
+);
+
+fmt_test!(  fn_with_nested_items
+"fn returns_msg_sender(expected_id: ContractId) -> bool {
+    let result: Result<Identity, AuthError> = msg_sender();
+    let mut ret = false;
+    if result.is_err() {
+        ret = false;
+    }
+    let unwrapped = result.unwrap();
+    match unwrapped {
+        Identity::ContractId(v) => {
+            ret = true
+        }
+        _ => {
+            ret = false
+        }
+    }
+    ret
+}",
+            intermediate_whitespace
+"fn returns_msg_sender(expected_id: ContractId) -> bool {
+    let result: Result<Identity, AuthError> = msg_sender();
+    let mut ret = false;
+    if result.is_err() {
+        ret = false;
+    }
+    let unwrapped = result.unwrap();
+    match unwrapped {
+        Identity::ContractId(v) => {ret = true}
+        _ => {ret = false}
+    }
+    ret
+}"
+);
+
+fmt_test!(  fn_nested_if_lets
+"fn has_nested_if_let() {
+    let result_1 = if let Result::Ok(x) = x { 100 } else { 1 };
+    let result_2 = if let Result::Err(x) = x { 3 } else { 43 };
+}",
+            intermediate_whitespace
+"fn has_nested_if_let() {
+    let result_1 = if let Result::Ok(x) = x {
+        100
+    } else {
+        1
+    };
+    let result_2 = if let Result::Err(x) = x {
+        3
+    } else {
+        43
+    };
 }"
 );

@@ -8,6 +8,7 @@ mod concurrent_slab;
 pub mod constants;
 mod control_flow_analysis;
 mod convert_parse_tree;
+mod declaration_engine;
 pub mod ir_generation;
 mod metadata;
 pub mod parse_tree;
@@ -21,10 +22,13 @@ pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
 pub use build_config::BuildConfig;
 use control_flow_analysis::ControlFlowGraph;
+use declaration_engine::declaration_engine::DeclarationEngine;
+use metadata::MetadataManager;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sway_ast::Dependency;
+use sway_ir::{Kind, Module};
 
 pub use semantic_analysis::{
     namespace::{self, Namespace},
@@ -240,7 +244,7 @@ pub fn parsed_to_ast(
         value: typed_program_result,
         warnings: new_warnings,
         errors: new_errors,
-    } = TypedProgram::type_check(parse_program, initial_namespace);
+    } = TypedProgram::type_check(parse_program, initial_namespace, DeclarationEngine::new());
     warnings.extend(new_warnings);
     errors.extend(new_errors);
     let typed_program = match typed_program_result {
@@ -262,12 +266,34 @@ pub fn parsed_to_ast(
         return CompileAstResult::Failure { errors, warnings };
     }
 
+    // Evaluate const declarations,
+    // to allow storage slots initializion with consts.
+    let mut ctx = Context::default();
+    let mut md_mgr = MetadataManager::default();
+    let module = Module::new(&mut ctx, Kind::Contract);
+    match ir_generation::compile::compile_constants(
+        &mut ctx,
+        &mut md_mgr,
+        module,
+        &typed_program.root.namespace,
+    ) {
+        Ok(()) => (),
+        Err(e) => {
+            errors.push(e);
+            return CompileAstResult::Failure { warnings, errors };
+        }
+    }
+
     // Check that all storage initializers can be evaluated at compile time.
     let CompileResult {
         value: typed_program_with_storage_slots_result,
         warnings: new_warnings,
         errors: new_errors,
-    } = typed_program.get_typed_program_with_initialized_storage_slots();
+    } = typed_program.get_typed_program_with_initialized_storage_slots(
+        &mut ctx,
+        &mut md_mgr,
+        module,
+    );
     warnings.extend(new_warnings);
     errors.extend(new_errors);
     let typed_program_with_storage_slots = match typed_program_with_storage_slots_result {
@@ -456,15 +482,28 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         errors
     );
 
-    // The only other optimisation we have at the moment is constant combining.  In lieu of a
-    // forthcoming pass manager we can just call it here now.
+    // TODO: Experiment with putting combine-constants and simplify-cfg
+    // in a loop, but per function.
     check!(
         combine_constants(&mut ir, &entry_point_functions),
         return err(warnings, errors),
         warnings,
         errors
     );
-
+    check!(
+        simplify_cfg(&mut ir, &entry_point_functions),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    // Simplify-CFG helps combine constants.
+    check!(
+        combine_constants(&mut ir, &entry_point_functions),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    // And that in-turn enables more simplify-cfg.
     check!(
         simplify_cfg(&mut ir, &entry_point_functions),
         return err(warnings, errors),

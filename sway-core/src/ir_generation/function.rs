@@ -90,14 +90,18 @@ impl FnCompiler {
         ast_block: TypedCodeBlock,
     ) -> Result<Value, CompileError> {
         self.lexical_map.enter_scope();
-        let index_of_first_break_or_continue =
-            ast_block.contents.clone().into_iter().position(|r| {
+        let index_of_first_break_or_continue = {
+            ast_block.contents.iter().position(|r| {
                 matches!(
                     r.content,
-                    TypedAstNodeContent::Declaration(TypedDeclaration::Break { .. })
-                        | TypedAstNodeContent::Declaration(TypedDeclaration::Continue { .. })
+                    TypedAstNodeContent::Expression(TypedExpression {
+                        expression: TypedExpressionVariant::Break
+                            | TypedExpressionVariant::Continue,
+                        ..
+                    })
                 )
-            });
+            })
+        };
 
         // Filter out all ast nodes *after* a `break` statement. Those nodes are essentially dead.
         let value = ast_block
@@ -145,18 +149,6 @@ impl FnCompiler {
                             create_enum_aggregate(context, ted.variants).map(|_| ())?;
                             Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
                         }
-                        TypedDeclaration::Reassignment(tr) => {
-                            self.compile_reassignment(context, md_mgr, tr, span_md_idx)
-                        }
-                        TypedDeclaration::StorageReassignment(tr) => self
-                            .compile_storage_reassignment(
-                                context,
-                                md_mgr,
-                                &tr.fields,
-                                &tr.ix,
-                                &tr.rhs,
-                                span_md_idx,
-                            ),
                         TypedDeclaration::ImplTrait(TypedImplTrait { span, .. }) => {
                             // XXX What if we ignore the trait implementation???  Potentially since
                             // we currently inline everything and below we 'recreate' the functions
@@ -184,30 +176,6 @@ impl FnCompiler {
                                 span: ast_node.span,
                             })
                         }
-                        TypedDeclaration::Break { .. } => match self.block_to_break_to {
-                            // If `self.block_to_break_to` is not None, then it has been set inside
-                            // a loop and the use of `break` here is legal, so create a branch
-                            // instruction. Error out otherwise.
-                            Some(block_to_break_to) => Ok(self
-                                .current_block
-                                .ins(context)
-                                .branch(block_to_break_to, None)),
-                            None => Err(CompileError::BreakOutsideLoop {
-                                span: ast_node.span,
-                            }),
-                        },
-                        TypedDeclaration::Continue { .. } => match self.block_to_continue_to {
-                            // If `self.block_to_continue_to` is not None, then it has been set inside
-                            // a loop and the use of `continue` here is legal, so create a branch
-                            // instruction. Error out otherwise.
-                            Some(block_to_continue_to) => Ok(self
-                                .current_block
-                                .ins(context)
-                                .branch(block_to_continue_to, None)),
-                            None => Err(CompileError::ContinueOutsideLoop {
-                                span: ast_node.span,
-                            }),
-                        },
                         TypedDeclaration::StorageDeclaration(_) => {
                             Err(CompileError::UnexpectedDeclaration {
                                 decl_type: "storage",
@@ -376,6 +344,44 @@ impl FnCompiler {
             TypedExpressionVariant::WhileLoop { body, condition } => {
                 self.compile_while_loop(context, md_mgr, body, *condition, span_md_idx)
             }
+            TypedExpressionVariant::Break => {
+                match self.block_to_break_to {
+                    // If `self.block_to_break_to` is not None, then it has been set inside
+                    // a loop and the use of `break` here is legal, so create a branch
+                    // instruction. Error out otherwise.
+                    Some(block_to_break_to) => Ok(self
+                        .current_block
+                        .ins(context)
+                        .branch(block_to_break_to, None)),
+                    None => Err(CompileError::BreakOutsideLoop {
+                        span: ast_expr.span,
+                    }),
+                }
+            }
+            TypedExpressionVariant::Continue { .. } => match self.block_to_continue_to {
+                // If `self.block_to_continue_to` is not None, then it has been set inside
+                // a loop and the use of `continue` here is legal, so create a branch
+                // instruction. Error out otherwise.
+                Some(block_to_continue_to) => Ok(self
+                    .current_block
+                    .ins(context)
+                    .branch(block_to_continue_to, None)),
+                None => Err(CompileError::ContinueOutsideLoop {
+                    span: ast_expr.span,
+                }),
+            },
+            TypedExpressionVariant::Reassignment(reassignment) => {
+                self.compile_reassignment(context, md_mgr, *reassignment, span_md_idx)
+            }
+            TypedExpressionVariant::StorageReassignment(storage_reassignment) => self
+                .compile_storage_reassignment(
+                    context,
+                    md_mgr,
+                    &storage_reassignment.fields,
+                    &storage_reassignment.ix,
+                    &storage_reassignment.rhs,
+                    span_md_idx,
+                ),
         }
     }
 
@@ -618,7 +624,7 @@ impl FnCompiler {
         }
 
         let ret_value = self.compile_expression(context, md_mgr, ast_expr.clone())?;
-        match ret_value.get_type(context) {
+        match ret_value.get_stripped_ptr_type(context) {
             None => Err(CompileError::Internal(
                 "Unable to determine type for return statement expression.",
                 ast_expr.span,

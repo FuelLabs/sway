@@ -9,9 +9,9 @@ use sway_types::span::Span;
 #[derive(Debug, Clone)]
 pub struct ImplTrait {
     pub trait_name: CallPath,
-    pub(crate) type_implementing_for: TypeInfo,
-    pub(crate) type_implementing_for_span: Span,
-    pub(crate) type_parameters: Vec<TypeParameter>,
+    pub type_implementing_for: TypeInfo,
+    pub type_implementing_for_span: Span,
+    pub type_parameters: Vec<TypeParameter>,
     pub functions: Vec<FunctionDeclaration>,
     // the span of the whole impl trait and block
     pub(crate) block_span: Span,
@@ -23,7 +23,7 @@ pub struct ImplTrait {
 pub struct ImplSelf {
     pub type_implementing_for: TypeInfo,
     pub(crate) type_implementing_for_span: Span,
-    pub(crate) type_parameters: Vec<TypeParameter>,
+    pub type_parameters: Vec<TypeParameter>,
     pub functions: Vec<FunctionDeclaration>,
     // the span of the whole impl trait and block
     pub(crate) block_span: Span,

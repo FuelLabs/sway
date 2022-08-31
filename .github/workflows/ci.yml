@@ -369,6 +369,7 @@ jobs:
         run: |
           cargo install toml-cli
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-client/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-explore/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-fmt/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-lsp/Cargo.toml
@@ -625,7 +626,7 @@ jobs:
           ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
-          for binary in forc forc-fmt forc-lsp forc-explore forc-client; do
+          for binary in forc forc-fmt forc-lsp forc-explore forc-deploy forc-run; do
             cp $(which ${binary}) ./forc-binaries
           done
           tar -czvf $ZIP_FILE_NAME ./forc-binaries

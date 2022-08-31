@@ -19,12 +19,12 @@ use {
         ExpressionKind, FunctionApplicationExpression, FunctionDeclaration, FunctionParameter,
         IfExpression, ImplSelf, ImplTrait, ImportType, IncludeStatement,
         IntrinsicFunctionExpression, LazyOp, LazyOperatorExpression, Literal, MatchBranch,
-        MatchExpression, MethodApplicationExpression, MethodName, ParseTree, Purity, Reassignment,
-        ReassignmentTarget, ReturnStatement, Scrutinee, StorageAccessExpression,
-        StorageDeclaration, StorageField, StructDeclaration, StructExpression,
-        StructExpressionField, StructField, StructScrutineeField, SubfieldExpression, Supertrait,
-        TraitDeclaration, TraitFn, TreeType, TupleIndexExpression, TypeInfo, UseStatement,
-        VariableDeclaration, Visibility,
+        MatchExpression, MethodApplicationExpression, MethodName, ParseTree, Purity,
+        ReassignmentExpression, ReassignmentTarget, ReturnStatement, Scrutinee,
+        StorageAccessExpression, StorageDeclaration, StorageField, StructDeclaration,
+        StructExpression, StructExpressionField, StructField, StructScrutineeField,
+        SubfieldExpression, Supertrait, TraitDeclaration, TraitFn, TreeType, TupleIndexExpression,
+        TypeInfo, UseStatement, VariableDeclaration, Visibility,
     },
     std::{
         collections::HashMap,
@@ -118,8 +118,6 @@ pub enum ConvertParseTreeError {
     ShrNotImplemented { span: Span },
     #[error("bitwise xor expressions are not implemented")]
     BitXorNotImplemented { span: Span },
-    #[error("reassignment expressions outside of blocks are not implemented")]
-    ReassignmentOutsideOfBlock { span: Span },
     #[error("integer literals in this position cannot have a type suffix")]
     IntTySuffixNotSupported { span: Span },
     #[error("int literal out of range")]
@@ -206,7 +204,6 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::ShlNotImplemented { span } => span.clone(),
             ConvertParseTreeError::ShrNotImplemented { span } => span.clone(),
             ConvertParseTreeError::BitXorNotImplemented { span } => span.clone(),
-            ConvertParseTreeError::ReassignmentOutsideOfBlock { span } => span.clone(),
             ConvertParseTreeError::IntTySuffixNotSupported { span } => span.clone(),
             ConvertParseTreeError::IntLiteralOutOfRange { span } => span.clone(),
             ConvertParseTreeError::IntLiteralExpected { span } => span.clone(),
@@ -794,12 +791,23 @@ pub(crate) fn item_const_to_constant_declaration(
     ec: &mut ErrorContext,
     item_const: ItemConst,
 ) -> Result<ConstantDeclaration, ErrorEmitted> {
+    let (type_ascription, type_ascription_span) = match item_const.ty_opt {
+        Some((_colon_token, ty)) => {
+            let type_ascription = ty_to_type_info(ec, ty.clone())?;
+            let type_ascription_span = if let Ty::Path(path_type) = &ty {
+                path_type.prefix.name.span()
+            } else {
+                ty.span()
+            };
+            (type_ascription, Some(type_ascription_span))
+        }
+        None => (TypeInfo::Unknown, None),
+    };
+
     Ok(ConstantDeclaration {
         name: item_const.name,
-        type_ascription: match item_const.ty_opt {
-            Some((_colon_token, ty)) => ty_to_type_info(ec, ty)?,
-            None => TypeInfo::Unknown,
-        },
+        type_ascription,
+        type_ascription_span,
         value: expr_to_expression(ec, item_const.expr)?,
         visibility: pub_token_opt_to_visibility(item_const.visibility),
     })
@@ -815,7 +823,7 @@ fn item_storage_to_storage_declaration(
         .fields
         .into_inner()
         .into_iter()
-        .map(|storage_field| storage_field_to_storage_field(ec, storage_field))
+        .map(|storage_field| storage_field_to_storage_field(ec, storage_field.value))
         .collect::<Result<_, _>>()?;
 
     // Make sure each storage field is declared once
@@ -933,9 +941,16 @@ fn type_field_to_enum_variant(
     tag: usize,
 ) -> Result<EnumVariant, ErrorEmitted> {
     let span = type_field.span();
+    let type_span = if let Ty::Path(path_type) = &type_field.ty {
+        path_type.prefix.name.span()
+    } else {
+        span.clone()
+    };
+
     let enum_variant = EnumVariant {
         name: type_field.name,
         type_info: ty_to_type_info(ec, type_field.ty)?,
+        type_span,
         tag,
         span,
     };
@@ -1163,41 +1178,6 @@ fn expr_to_ast_node(
                 span,
             }
         }
-        Expr::Reassignment {
-            assignable,
-            expr,
-            reassignment_op:
-                ReassignmentOp {
-                    variant: op_variant,
-                    span: op_span,
-                },
-        } => match op_variant {
-            ReassignmentOpVariant::Equals => AstNode {
-                content: AstNodeContent::Declaration(Declaration::Reassignment(Reassignment {
-                    lhs: assignable_to_reassignment_target(ec, assignable)?,
-                    rhs: expr_to_expression(ec, *expr)?,
-                    span: span.clone(),
-                })),
-                span,
-            },
-            op_variant => {
-                let lhs = assignable_to_reassignment_target(ec, assignable.clone())?;
-                let rhs = binary_op_call(
-                    op_variant.core_name(),
-                    op_span,
-                    span.clone(),
-                    assignable_to_expression(ec, assignable)?,
-                    expr_to_expression(ec, *expr)?,
-                )?;
-                let content =
-                    AstNodeContent::Declaration(Declaration::Reassignment(Reassignment {
-                        lhs,
-                        rhs,
-                        span: span.clone(),
-                    }));
-                AstNode { content, span }
-            }
-        },
         expr => {
             let expression = expr_to_expression(ec, expr)?;
             if !is_statement {
@@ -1909,30 +1889,43 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
             }),
             span,
         },
-        Expr::Reassignment { .. } => {
-            let error = ConvertParseTreeError::ReassignmentOutsideOfBlock { span };
-            return Err(ec.error(error));
-        }
+        Expr::Reassignment {
+            assignable,
+            expr,
+            reassignment_op:
+                ReassignmentOp {
+                    variant: op_variant,
+                    span: op_span,
+                },
+        } => match op_variant {
+            ReassignmentOpVariant::Equals => Expression {
+                kind: ExpressionKind::Reassignment(ReassignmentExpression {
+                    lhs: assignable_to_reassignment_target(ec, assignable)?,
+                    rhs: Box::new(expr_to_expression(ec, *expr)?),
+                }),
+                span,
+            },
+            op_variant => {
+                let lhs = assignable_to_reassignment_target(ec, assignable.clone())?;
+                let rhs = Box::new(binary_op_call(
+                    op_variant.core_name(),
+                    op_span,
+                    span.clone(),
+                    assignable_to_expression(ec, assignable)?,
+                    expr_to_expression(ec, *expr)?,
+                )?);
+                Expression {
+                    kind: ExpressionKind::Reassignment(ReassignmentExpression { lhs, rhs }),
+                    span,
+                }
+            }
+        },
         Expr::Break { .. } => Expression {
-            kind: ExpressionKind::CodeBlock(CodeBlock {
-                contents: vec![AstNode {
-                    content: AstNodeContent::Declaration(Declaration::Break { span: span.clone() }),
-                    span: span.clone(),
-                }],
-                whole_block_span: span.clone(),
-            }),
+            kind: ExpressionKind::Break,
             span,
         },
         Expr::Continue { .. } => Expression {
-            kind: ExpressionKind::CodeBlock(CodeBlock {
-                contents: vec![AstNode {
-                    content: AstNodeContent::Declaration(Declaration::Continue {
-                        span: span.clone(),
-                    }),
-                    span: span.clone(),
-                }],
-                whole_block_span: span.clone(),
-            }),
+            kind: ExpressionKind::Continue,
             span,
         },
     };
@@ -2002,9 +1995,15 @@ fn storage_field_to_storage_field(
     ec: &mut ErrorContext,
     storage_field: sway_ast::StorageField,
 ) -> Result<StorageField, ErrorEmitted> {
+    let type_info_span = if let Ty::Path(path_type) = &storage_field.ty {
+        path_type.prefix.name.span()
+    } else {
+        storage_field.ty.span()
+    };
     let storage_field = StorageField {
         name: storage_field.name,
         type_info: ty_to_type_info(ec, storage_field.ty)?,
+        type_info_span,
         initializer: expr_to_expression(ec, storage_field.initializer)?,
     };
     Ok(storage_field)
@@ -2771,7 +2770,7 @@ fn statement_let_to_ast_nodes(
                 let error = ConvertParseTreeError::ConstructorPatternsNotSupportedHere { span };
                 return Err(ec.error(error));
             }
-            Pattern::Struct { fields, .. } => {
+            Pattern::Struct { path, fields, .. } => {
                 let mut ast_nodes = Vec::new();
 
                 // Generate a deterministic name for the destructured struct
@@ -2785,7 +2784,7 @@ fn statement_let_to_ast_nodes(
                 COUNTER.fetch_add(1, Ordering::SeqCst);
                 let destructure_name = Ident::new_with_override(
                     Box::leak(destructured_name.into_boxed_str()),
-                    span.clone(),
+                    path.prefix.name.span(),
                 );
 
                 // Parse the type ascription and the type ascription span.

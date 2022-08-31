@@ -4,7 +4,6 @@ pub mod check;
 pub mod clean;
 pub mod completions;
 pub mod init;
-pub mod json_abi;
 pub mod new;
 pub mod parse_bytecode;
 pub mod plugins;
