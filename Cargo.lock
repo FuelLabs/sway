@@ -683,7 +683,7 @@ dependencies = [
  "k256",
  "lazy_static",
  "serde",
- "sha2 0.10.2",
+ "sha2 0.10.3",
  "thiserror",
 ]
 
@@ -700,7 +700,7 @@ dependencies = [
  "hmac 0.12.1",
  "pbkdf2",
  "rand 0.8.5",
- "sha2 0.10.2",
+ "sha2 0.10.3",
  "thiserror",
 ]
 
@@ -720,7 +720,7 @@ dependencies = [
  "ripemd",
  "serde",
  "serde_derive",
- "sha2 0.10.2",
+ "sha2 0.10.3",
  "sha3",
  "thiserror",
 ]
@@ -1488,7 +1488,7 @@ dependencies = [
  "rand 0.8.5",
  "secp256k1 0.24.0",
  "serde",
- "sha2 0.10.2",
+ "sha2 0.10.3",
 ]
 
 [[package]]
@@ -2198,7 +2198,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "ecdsa",
  "elliptic-curve",
- "sha2 0.10.2",
+ "sha2 0.10.3",
 ]
 
 [[package]]
@@ -2650,7 +2650,7 @@ dependencies = [
  "digest 0.10.3",
  "hmac 0.12.1",
  "password-hash",
- "sha2 0.10.2",
+ "sha2 0.10.3",
 ]
 
 [[package]]
@@ -3680,9 +3680,9 @@ checksum = "2fd0db749597d91ff862fd1d55ea87f7855a744a8425a64695b6fca237d1dad1"
 
 [[package]]
 name = "socket2"
-version = "0.4.6"
+version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10c98bba371b9b22a71a9414e420f92ddeb2369239af08200816169d5e2dd7aa"
+checksum = "02e2d2db9033d13a1567121ddd7a095ee144db4e1ca1b1bda3419bc0da294ebd"
 dependencies = [
  "libc",
  "winapi",
