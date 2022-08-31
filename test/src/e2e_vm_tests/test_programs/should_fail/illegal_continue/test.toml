@@ -1,9 +1,5 @@
 category = "fail"
 
-# check: $()fn main() {
-# nextln: $()continue;
-# nextln: $()not assigned to anything
-
 # check: $()This code is unreachable
 
 # check: $()fn main() {

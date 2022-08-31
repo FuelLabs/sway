@@ -5,9 +5,11 @@ use forc_client::ops::{
     run::{cmd::RunCommand, op::run},
 };
 use forc_pkg::Compiled;
-use fuel_tx::Transaction;
+use fuel_tx::TransactionBuilder;
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 use std::{fmt::Write, fs};
 
 pub(crate) fn deploy_contract(file_name: &str, locked: bool) -> ContractId {
@@ -72,31 +74,20 @@ pub(crate) fn runs_on_node(
 pub(crate) fn runs_in_vm(file_name: &str, locked: bool) -> (ProgramState, Compiled) {
     let storage = MemoryStorage::default();
 
+    let rng = &mut StdRng::seed_from_u64(2322u64);
     let script = compile_to_bytes(file_name, locked).unwrap();
-    let gas_price = 10;
-    let gas_limit = fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx;
-    let maturity = 0;
-    let script_data = vec![];
-    let inputs = vec![];
-    let outputs = vec![];
-    let witness = vec![];
-    let tx_to_test = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script.bytecode.clone(),
-        script_data,
-        inputs,
-        outputs,
-        witness,
-    );
+    let maturity = 1;
     let block_height = (u32::MAX >> 1) as u64;
-    tx_to_test
-        .validate(block_height, &Default::default())
-        .unwrap();
-    let checked_tx = tx_to_test.check(block_height, &Default::default()).unwrap();
+    let params = &ConsensusParameters::DEFAULT;
+
+    let tx = TransactionBuilder::script(script.bytecode.clone(), Default::default())
+        .add_unsigned_coin_input(rng.gen(), rng.gen(), 1, Default::default(), rng.gen(), 0)
+        .gas_limit(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
+        .maturity(maturity)
+        .finalize_checked(block_height as Word, params);
+
     let mut i = Interpreter::with_storage(storage, Default::default());
-    (*i.transact(checked_tx).unwrap().state(), script)
+    (*i.transact(tx).unwrap().state(), script)
 }
 
 /// Compiles the code and captures the output of forc and the compilation.

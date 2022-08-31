@@ -182,6 +182,11 @@ impl Format for Expr {
                 CodeBlockContents::close_curly_brace(formatted_code, formatter)?;
             }
             Self::FuncApp { func, args } => {
+                let prev_state = formatter.shape.code_line;
+                formatter
+                    .shape
+                    .code_line
+                    .update_line_style(LineStyle::Normal);
                 // don't indent unless on new line
                 if formatted_code.ends_with('\n') {
                     write!(
@@ -194,6 +199,7 @@ impl Format for Expr {
                 Self::open_parenthesis(formatted_code, formatter)?;
                 args.get().format(formatted_code, formatter)?;
                 Self::close_parenthesis(formatted_code, formatter)?;
+                formatter.shape.update_line_settings(prev_state);
             }
             Self::Index { target, arg } => {
                 target.format(formatted_code, formatter)?;
@@ -361,7 +367,19 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, " {} ", ampersand_token.span().as_str())?;
+                match formatter.shape.code_line.line_style {
+                    LineStyle::Multiline => {
+                        write!(
+                            formatted_code,
+                            "\n{}{} ",
+                            formatter.shape.indent.to_string(&formatter.config)?,
+                            ampersand_token.span().as_str()
+                        )?;
+                    }
+                    _ => {
+                        write!(formatted_code, " {} ", ampersand_token.span().as_str())?;
+                    }
+                }
                 rhs.format(formatted_code, formatter)?;
             }
             Self::BitXor {
@@ -370,7 +388,19 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, " {} ", caret_token.span().as_str())?;
+                match formatter.shape.code_line.line_style {
+                    LineStyle::Multiline => {
+                        write!(
+                            formatted_code,
+                            "\n{}{} ",
+                            formatter.shape.indent.to_string(&formatter.config)?,
+                            caret_token.span().as_str()
+                        )?;
+                    }
+                    _ => {
+                        write!(formatted_code, " {} ", caret_token.span().as_str())?;
+                    }
+                }
                 rhs.format(formatted_code, formatter)?;
             }
             Self::BitOr {
@@ -379,7 +409,19 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, " {} ", pipe_token.span().as_str())?;
+                match formatter.shape.code_line.line_style {
+                    LineStyle::Multiline => {
+                        write!(
+                            formatted_code,
+                            "\n{}{} ",
+                            formatter.shape.indent.to_string(&formatter.config)?,
+                            pipe_token.span().as_str()
+                        )?;
+                    }
+                    _ => {
+                        write!(formatted_code, " {} ", pipe_token.span().as_str())?;
+                    }
+                }
                 rhs.format(formatted_code, formatter)?;
             }
             Self::Equal {
@@ -446,11 +488,23 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(
-                    formatted_code,
-                    " {} ",
-                    double_ampersand_token.span().as_str()
-                )?;
+                match formatter.shape.code_line.line_style {
+                    LineStyle::Multiline => {
+                        write!(
+                            formatted_code,
+                            "\n{}{} ",
+                            formatter.shape.indent.to_string(&formatter.config)?,
+                            double_ampersand_token.span().as_str()
+                        )?;
+                    }
+                    _ => {
+                        write!(
+                            formatted_code,
+                            " {} ",
+                            double_ampersand_token.span().as_str()
+                        )?;
+                    }
+                }
                 rhs.format(formatted_code, formatter)?;
             }
             Self::LogicalOr {
@@ -459,7 +513,19 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, " {} ", double_pipe_token.span().as_str())?;
+                match formatter.shape.code_line.line_style {
+                    LineStyle::Multiline => {
+                        write!(
+                            formatted_code,
+                            "\n{}{} ",
+                            formatter.shape.indent.to_string(&formatter.config)?,
+                            double_pipe_token.span().as_str()
+                        )?;
+                    }
+                    _ => {
+                        write!(formatted_code, " {} ", double_pipe_token.span().as_str())?;
+                    }
+                }
                 rhs.format(formatted_code, formatter)?;
             }
             Self::Reassignment {
@@ -519,17 +585,17 @@ impl SquareBracket for Expr {
 
 pub(super) fn debug_expr(
     buf: FormattedCode,
-    field_width: usize,
-    body_width: usize,
+    field_width: Option<usize>,
+    body_width: Option<usize>,
     expr_width: usize,
     formatter: &mut Formatter,
 ) {
     println!(
-        "line: {buf}\nfield: {field_width}, body: {body_width}, expr: {expr_width}, width: {}",
-        formatter.shape.width
+        "DEBUG:\nline: {buf}\nfield: {:?}, body: {:?}, expr: {expr_width}, Shape::width: {}",
+        field_width, body_width, formatter.shape.width
     );
     println!("{:?}", formatter.shape.code_line);
-    println!("{:?}", formatter.shape.width_heuristics);
+    println!("{:?}\n", formatter.shape.width_heuristics);
 }
 
 fn format_expr_struct(

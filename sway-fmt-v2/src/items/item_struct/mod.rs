@@ -28,12 +28,8 @@ impl Format for ItemStruct {
             write!(formatted_code, "{} ", visibility.span().as_str())?;
         }
         // Add struct token and name
-        write!(
-            formatted_code,
-            "{} {}",
-            self.struct_token.span().as_str(),
-            self.name.as_str(),
-        )?;
+        write!(formatted_code, "{} ", self.struct_token.span().as_str())?;
+        self.name.format(formatted_code, formatter)?;
         // Format `GenericParams`, if any
         if let Some(generics) = &self.generics {
             generics.format(formatted_code, formatter)?;
@@ -77,7 +73,7 @@ impl Format for ItemStruct {
                     )?;
 
                     // Add name
-                    write!(formatted_code, "{}", type_field.name.as_str())?;
+                    type_field.name.format(formatted_code, formatter)?;
                     let current_variant_length = variant_length[var_index];
                     if current_variant_length < max_valid_variant_length {
                         // We need to add alignment between : and ty
@@ -123,17 +119,16 @@ impl CurlyBrace for ItemStruct {
         line: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        formatter.shape.block_indent(&formatter.config);
         let brace_style = formatter.config.items.item_brace_style;
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
                 write!(line, "\n{}", Delimiter::Brace.as_open_char())?;
-                formatter.shape.block_indent(&formatter.config);
             }
             _ => {
                 // Add opening brace to the same line
                 write!(line, " {}", Delimiter::Brace.as_open_char())?;
-                formatter.shape.block_indent(&formatter.config);
             }
         }
 
@@ -144,9 +139,14 @@ impl CurlyBrace for ItemStruct {
         line: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Brace.as_close_char())?;
         // If shape is becoming left-most alligned or - indent just have the defualt shape
         formatter.shape.block_unindent(&formatter.config);
+        write!(
+            line,
+            "{}{}",
+            formatter.shape.indent.to_string(&formatter.config)?,
+            Delimiter::Brace.as_close_char()
+        )?;
 
         Ok(())
     }

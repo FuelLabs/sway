@@ -14,9 +14,9 @@ use std::{
 
 #[derive(Debug, Clone, Eq)]
 pub struct TypeParameter {
-    pub(crate) type_id: TypeId,
+    pub type_id: TypeId,
     pub(crate) initial_type_id: TypeId,
-    pub(crate) name_ident: Ident,
+    pub name_ident: Ident,
     pub(crate) trait_constraints: Vec<TraitConstraint>,
 }
 

@@ -146,6 +146,7 @@ fn construct_input_from_contract((_idx, contract): (usize, &String)) -> fuel_tx:
         utxo_id: fuel_tx::UtxoId::new(fuel_tx::Bytes32::zeroed(), 0),
         balance_root: fuel_tx::Bytes32::zeroed(),
         state_root: fuel_tx::Bytes32::zeroed(),
+        tx_pointer: fuel_tx::TxPointer::new(0, 0),
         contract_id: fuel_tx::ContractId::from_str(contract).unwrap(),
         tx_pointer: fuel_tx::TxPointer::default(),
     }

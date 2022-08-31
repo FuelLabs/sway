@@ -18,5 +18,6 @@ pub struct StorageDeclaration {
 pub struct StorageField {
     pub name: Ident,
     pub type_info: TypeInfo,
+    pub type_info_span: Span,
     pub initializer: Expression,
 }

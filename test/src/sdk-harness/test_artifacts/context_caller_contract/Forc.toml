@@ -5,5 +5,5 @@ license = "Apache-2.0"
 name = "context_caller_contract"
 
 [dependencies]
+context_testing_abi = { path = "../context_testing_abi" }
 std = { path = "../../../../../sway-lib-std" }
-context_testing_abi = { path = "../context_testing_abi"}

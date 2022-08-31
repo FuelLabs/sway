@@ -1,8 +1,8 @@
 use crate::{
-    formatter::*,
+    formatter::{shape::LineStyle, *},
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
-        {Parenthesis, SquareBracket},
+        CurlyBrace, Parenthesis,
     },
 };
 use std::fmt::Write;
@@ -19,16 +19,50 @@ impl Format for AsmBlock {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(formatted_code, "{} ", self.asm_token.span().as_str())?;
-        Self::open_parenthesis(formatted_code, formatter)?;
-        self.registers.get().format(formatted_code, formatter)?;
-        Self::close_parenthesis(formatted_code, formatter)?;
-        Self::open_square_bracket(formatted_code, formatter)?;
-        self.contents.get().format(formatted_code, formatter)?;
-        Self::close_square_bracket(formatted_code, formatter)?;
+        let prev_state = formatter.shape.code_line;
+        let contents = self.contents.get();
+        if contents.instructions.is_empty() && contents.final_expr_opt.is_some() {
+            formatter
+                .shape
+                .code_line
+                .update_line_style(LineStyle::Inline)
+        } else {
+            formatter
+                .shape
+                .code_line
+                .update_line_style(LineStyle::Multiline)
+        }
+        format_asm_block(self, formatted_code, formatter)?;
+
+        formatter.shape.update_line_settings(prev_state);
 
         Ok(())
     }
+}
+
+fn format_asm_block(
+    asm_block: &AsmBlock,
+    formatted_code: &mut FormattedCode,
+    formatter: &mut Formatter,
+) -> Result<(), FormatterError> {
+    write!(formatted_code, "{}", asm_block.asm_token.span().as_str())?;
+    let prev_state = formatter.shape.code_line;
+    formatter
+        .shape
+        .code_line
+        .update_line_style(LineStyle::Normal);
+    AsmBlock::open_parenthesis(formatted_code, formatter)?;
+    asm_block
+        .registers
+        .get()
+        .format(formatted_code, formatter)?;
+    AsmBlock::close_parenthesis(formatted_code, formatter)?;
+    formatter.shape.update_line_settings(prev_state);
+    AsmBlock::open_curly_brace(formatted_code, formatter)?;
+    asm_block.contents.get().format(formatted_code, formatter)?;
+    AsmBlock::close_curly_brace(formatted_code, formatter)?;
+
+    Ok(())
 }
 
 impl Parenthesis for AsmBlock {
@@ -48,19 +82,40 @@ impl Parenthesis for AsmBlock {
     }
 }
 
-impl SquareBracket for AsmBlock {
-    fn open_square_bracket(
+impl CurlyBrace for AsmBlock {
+    fn open_curly_brace(
         line: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Bracket.as_open_char())?;
+        formatter.shape.block_indent(&formatter.config);
+        match formatter.shape.code_line.line_style {
+            LineStyle::Inline => {
+                write!(line, " {} ", Delimiter::Brace.as_open_char())?;
+            }
+            _ => {
+                writeln!(line, " {}", Delimiter::Brace.as_open_char())?;
+            }
+        }
         Ok(())
     }
-    fn close_square_bracket(
+    fn close_curly_brace(
         line: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Bracket.as_close_char())?;
+        formatter.shape.block_unindent(&formatter.config);
+        match formatter.shape.code_line.line_style {
+            LineStyle::Inline => {
+                write!(line, " {}", Delimiter::Brace.as_close_char())?;
+            }
+            _ => {
+                write!(
+                    line,
+                    "{}{}",
+                    formatter.shape.indent.to_string(&formatter.config)?,
+                    Delimiter::Brace.as_close_char()
+                )?;
+            }
+        }
         Ok(())
     }
 }
@@ -72,9 +127,9 @@ impl Format for AsmRegisterDeclaration {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         self.register.format(formatted_code, formatter)?;
-        if let Some(value) = &self.value_opt {
-            write!(formatted_code, "{} ", value.0.span().as_str())?;
-            value.1.format(formatted_code, formatter)?;
+        if let Some((colon_token, expr)) = &self.value_opt {
+            write!(formatted_code, "{} ", colon_token.span().as_str())?;
+            expr.format(formatted_code, formatter)?;
         }
 
         Ok(())
@@ -87,16 +142,27 @@ impl Format for AsmBlockContents {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        for pair in self.instructions.iter() {
+        for (instruction, semicolon_token) in self.instructions.iter() {
             writeln!(
                 formatted_code,
-                "{}{}",
-                pair.0.span().as_str(),
-                pair.1.span().as_str()
+                "{}{}{}",
+                formatter.shape.indent.to_string(&formatter.config)?,
+                instruction.span().as_str(),
+                semicolon_token.span().as_str()
             )?;
         }
         if let Some(final_expr) = &self.final_expr_opt {
-            final_expr.format(formatted_code, formatter)?;
+            if formatter.shape.code_line.line_style == LineStyle::Multiline {
+                write!(
+                    formatted_code,
+                    "{}",
+                    formatter.shape.indent.to_string(&formatter.config)?
+                )?;
+                final_expr.format(formatted_code, formatter)?;
+                writeln!(formatted_code)?;
+            } else {
+                final_expr.format(formatted_code, formatter)?;
+            }
         }
 
         Ok(())
@@ -110,9 +176,9 @@ impl Format for AsmFinalExpr {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         self.register.format(formatted_code, formatter)?;
-        if let Some(value) = &self.ty_opt {
-            write!(formatted_code, "{} ", value.0.span().as_str())?;
-            value.1.format(formatted_code, formatter)?;
+        if let Some((colon_token, ty)) = &self.ty_opt {
+            write!(formatted_code, "{} ", colon_token.span().as_str())?;
+            ty.format(formatted_code, formatter)?;
         }
 
         Ok(())

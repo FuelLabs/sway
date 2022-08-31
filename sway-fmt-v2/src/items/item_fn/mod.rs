@@ -74,7 +74,7 @@ impl CurlyBrace for ItemFn {
     ) -> Result<(), FormatterError> {
         // If shape is becoming left-most alligned or - indent just have the defualt shape
         formatter.shape.block_unindent(&formatter.config);
-        writeln!(
+        write!(
             line,
             "{}{}",
             formatter.shape.indent.to_string(&formatter.config)?,
@@ -106,14 +106,13 @@ impl Format for FnSignature {
         let fn_sig_width = fn_sig.chars().count() as usize + 2; // add two for opening brace + space
         let fn_args_width = fn_args.chars().count() as usize;
 
-        formatter.shape.add_width(fn_sig_width);
+        formatter.shape.update_width(fn_sig_width);
         formatter
             .shape
             .get_line_style(None, Some(fn_args_width), &formatter.config);
 
         format_fn_sig(self, formatted_code, formatter)?;
 
-        formatter.shape.sub_width(fn_sig_width);
         formatter.shape.update_line_settings(prev_state);
 
         Ok(())
@@ -130,12 +129,8 @@ fn format_fn_sig(
         write!(formatted_code, "{} ", visibility_token.span().as_str())?;
     }
     // `fn ` + name
-    write!(
-        formatted_code,
-        "{} {}",
-        fn_sig.fn_token.span().as_str(),
-        fn_sig.name.as_str()
-    )?;
+    write!(formatted_code, "{} ", fn_sig.fn_token.span().as_str())?;
+    fn_sig.name.format(formatted_code, formatter)?;
     // `<T>`
     if let Some(generics) = &fn_sig.generics {
         generics.format(formatted_code, formatter)?;
