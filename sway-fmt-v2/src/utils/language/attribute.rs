@@ -40,30 +40,39 @@ impl Format for AttributeDecl {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let prev_state = formatter.shape.code_line;
-        formatter
-            .shape
-            .code_line
-            .update_line_style(LineStyle::Normal);
-        // `#`
-        write!(formatted_code, "{}", self.hash_token.span().as_str())?;
-        // `[`
-        Self::open_square_bracket(formatted_code, formatter)?;
         let attr = self.attribute.get();
-        // name e.g. `storage`
-        write!(formatted_code, "{}", attr.name.span().as_str())?;
-        // `(`
-        Self::open_parenthesis(formatted_code, formatter)?;
-        // format and add args e.g. `read, write`
-        if let Some(args) = &attr.args {
-            args.get().format(formatted_code, formatter)?;
+        if attr.name.as_str() == "doc" {
+            if let Some(Some(doc_comment)) = attr
+                .args
+                .as_ref()
+                .map(|args| args.inner.final_value_opt.as_ref())
+            {
+                writeln!(formatted_code, "/// {}", doc_comment.as_str().trim())?;
+            }
+        } else {
+            let prev_state = formatter.shape.code_line;
+            formatter
+                .shape
+                .code_line
+                .update_line_style(LineStyle::Normal);
+            // `#`
+            write!(formatted_code, "{}", self.hash_token.span().as_str())?;
+            // `[`
+            Self::open_square_bracket(formatted_code, formatter)?;
+            // name e.g. `storage`
+            write!(formatted_code, "{}", attr.name.span().as_str())?;
+            // `(`
+            Self::open_parenthesis(formatted_code, formatter)?;
+            // format and add args e.g. `read, write`
+            if let Some(args) = &attr.args {
+                args.get().format(formatted_code, formatter)?;
+            }
+            // ')'
+            Self::close_parenthesis(formatted_code, formatter)?;
+            // `]\n`
+            Self::close_square_bracket(formatted_code, formatter)?;
+            formatter.shape.update_line_settings(prev_state);
         }
-        // ')'
-        Self::close_parenthesis(formatted_code, formatter)?;
-        // `]\n`
-        Self::close_square_bracket(formatted_code, formatter)?;
-        formatter.shape.update_line_settings(prev_state);
-
         Ok(())
     }
 }
