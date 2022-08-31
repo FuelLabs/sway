@@ -1,5 +1,7 @@
 category = "fail"
 
+# check: $()This code is unreachable
+
 # check: $()fn main() {
 # nextln: $()continue;
 # nextln: $()"continue" used outside of a loop

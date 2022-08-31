@@ -4,7 +4,7 @@
 //! refer to each other and to constants via the [`Value`] wrapper.
 //!
 //! Like most IR data structures they are `Copy` and cheap to pass around by value.  They are
-//! therefore also easy to replace, a common practise for optimization passes.
+//! therefore also easy to replace, a common practice for optimization passes.
 
 use crate::{
     constant::Constant,
@@ -114,11 +114,25 @@ impl Value {
         }
     }
 
+    /// Replace this value with another one, in-place.
+    pub fn replace(&self, context: &mut Context, other: ValueDatum) {
+        context.values[self.0].value = other;
+    }
+
     pub fn get_instruction_mut<'a>(&self, context: &'a mut Context) -> Option<&'a mut Instruction> {
         if let ValueDatum::Instruction(instruction) =
             &mut context.values.get_mut(self.0).unwrap().value
         {
             Some(instruction)
+        } else {
+            None
+        }
+    }
+
+    /// Get reference to the Constant inside this value, if it's one.
+    pub fn get_constant<'a>(&self, context: &'a Context) -> Option<&'a Constant> {
+        if let ValueDatum::Constant(cn) = &context.values.get(self.0).unwrap().value {
+            Some(cn)
         } else {
             None
         }
@@ -133,5 +147,10 @@ impl Value {
             ValueDatum::Constant(c) => Some(c.ty),
             ValueDatum::Instruction(ins) => ins.get_type(context),
         }
+    }
+
+    /// Get the type for this value with any pointer stripped, if found.
+    pub fn get_stripped_ptr_type(&self, context: &Context) -> Option<Type> {
+        self.get_type(context).map(|f| f.strip_ptr_type(context))
     }
 }

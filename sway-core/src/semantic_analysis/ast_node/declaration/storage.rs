@@ -13,7 +13,7 @@ use crate::{
 };
 use derivative::Derivative;
 use fuel_tx::StorageSlot;
-use sway_ir::{Context, Kind, Module};
+use sway_ir::{Context, Module};
 use sway_types::{state::StateIndex, Span, Spanned};
 
 #[derive(Clone, Debug, Derivative)]
@@ -143,6 +143,7 @@ impl TypedStorageDeclaration {
                  }| TypedStructField {
                     name: name.clone(),
                     type_id: *r#type,
+                    initial_type_id: *r#type,
                     span: span.clone(),
                     type_span: initializer.span.clone(),
                 },
@@ -150,13 +151,20 @@ impl TypedStorageDeclaration {
             .collect()
     }
 
-    pub(crate) fn get_initialized_storage_slots(&self) -> CompileResult<Vec<StorageSlot>> {
+    pub(crate) fn get_initialized_storage_slots(
+        &self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        module: Module,
+    ) -> CompileResult<Vec<StorageSlot>> {
         let mut errors = vec![];
         let storage_slots = self
             .fields
             .iter()
             .enumerate()
-            .map(|(i, f)| f.get_initialized_storage_slots(&StateIndex::new(i)))
+            .map(|(i, f)| {
+                f.get_initialized_storage_slots(context, md_mgr, module, &StateIndex::new(i))
+            })
             .filter_map(|s| s.map_err(|e| errors.push(e)).ok())
             .flatten()
             .collect::<Vec<_>>();
@@ -172,6 +180,7 @@ impl TypedStorageDeclaration {
 pub struct TypedStorageField {
     pub name: Ident,
     pub type_id: TypeId,
+    pub type_span: Span,
     pub initializer: TypedExpression,
     pub(crate) span: Span,
 }
@@ -188,29 +197,30 @@ impl PartialEq for TypedStorageField {
 }
 
 impl TypedStorageField {
-    pub fn new(name: Ident, r#type: TypeId, initializer: TypedExpression, span: Span) -> Self {
+    pub fn new(
+        name: Ident,
+        r#type: TypeId,
+        type_span: Span,
+        initializer: TypedExpression,
+        span: Span,
+    ) -> Self {
         TypedStorageField {
             name,
             type_id: r#type,
+            type_span,
             initializer,
             span,
         }
     }
 
-    pub fn get_initialized_storage_slots(
+    pub(crate) fn get_initialized_storage_slots(
         &self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        module: Module,
         ix: &StateIndex,
     ) -> Result<Vec<StorageSlot>, CompileError> {
-        let mut context = Context::default();
-        let module = Module::new(&mut context, Kind::Contract);
-        let mut md_mgr = MetadataManager::default();
-        compile_constant_expression_to_constant(
-            &mut context,
-            &mut md_mgr,
-            module,
-            None,
-            &self.initializer,
-        )
-        .map(|constant| serialize_to_storage_slots(&constant, &context, ix, &constant.ty, &[]))
+        compile_constant_expression_to_constant(context, md_mgr, module, None, &self.initializer)
+            .map(|constant| serialize_to_storage_slots(&constant, context, ix, &constant.ty, &[]))
     }
 }

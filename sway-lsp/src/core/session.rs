@@ -19,14 +19,20 @@ use std::{
     path::PathBuf,
     sync::{Arc, LockResult, RwLock},
 };
-use sway_core::{CompileAstResult, CompileResult, ParseProgram, TypedProgramKind};
+use sway_core::{CompileAstResult, CompileResult, ParseProgram, TypedProgram, TypedProgramKind};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, GotoDefinitionParams, GotoDefinitionResponse, Location, Position,
-    Range, SemanticToken, SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
+    Range, SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
 };
 
 pub type Documents = DashMap<String, TextDocument>;
+
+#[derive(Default, Debug)]
+pub struct CompiledProgram {
+    pub parsed: Option<ParseProgram>,
+    pub typed: Option<TypedProgram>,
+}
 
 #[derive(Debug)]
 pub struct Session {
@@ -34,6 +40,7 @@ pub struct Session {
     pub config: RwLock<SwayConfig>,
     pub token_map: TokenMap,
     pub runnables: DashMap<RunnableType, Runnable>,
+    pub compiled_program: RwLock<CompiledProgram>,
 }
 
 impl Session {
@@ -43,6 +50,7 @@ impl Session {
             config: RwLock::new(SwayConfig::default()),
             token_map: DashMap::new(),
             runnables: DashMap::new(),
+            compiled_program: RwLock::new(Default::default()),
         }
     }
 
@@ -189,6 +197,10 @@ impl Session {
                     }
                 }
 
+                if let LockResult::Ok(mut program) = self.compiled_program.write() {
+                    program.parsed = Some(parse_program);
+                }
+
                 Ok(capabilities::diagnostic::get_diagnostics(
                     parsed_result.warnings,
                     parsed_result.errors,
@@ -212,9 +224,6 @@ impl Session {
             } => {
                 if let TypedProgramKind::Script {
                     ref main_function, ..
-                }
-                | TypedProgramKind::Predicate {
-                    ref main_function, ..
                 } = typed_program.kind
                 {
                     let main_fn_location =
@@ -231,6 +240,10 @@ impl Session {
                     for node in &submodule.module.all_nodes {
                         traverse_typed_tree::traverse_node(node, &self.token_map);
                     }
+                }
+
+                if let LockResult::Ok(mut program) = self.compiled_program.write() {
+                    program.typed = Some(*typed_program);
                 }
 
                 Ok(capabilities::diagnostic::get_diagnostics(warnings, vec![]))
@@ -322,11 +335,6 @@ impl Session {
         Some(capabilities::completion::to_completion_items(
             self.token_map(),
         ))
-    }
-
-    pub fn semantic_tokens(&self, url: &Url) -> Option<Vec<SemanticToken>> {
-        let tokens = self.tokens_for_file(url);
-        Some(capabilities::semantic_tokens::to_semantic_tokens(&tokens))
     }
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {

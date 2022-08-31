@@ -1,8 +1,10 @@
 use crate::{
+    declaration_engine::declaration_engine,
     error::CompileError,
     metadata::MetadataManager,
     parse_tree::Visibility,
     semantic_analysis::{ast_node::*, namespace},
+    type_system::look_up_type_id,
 };
 
 use super::{
@@ -18,13 +20,21 @@ pub(super) fn compile_script(
     context: &mut Context,
     main_function: TypedFunctionDeclaration,
     namespace: &namespace::Module,
+    declaration_engine: &declaration_engine::DeclarationEngine,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
 
     compile_constants(context, &mut md_mgr, module, namespace)?;
-    compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
+    compile_declarations(
+        context,
+        &mut md_mgr,
+        module,
+        namespace,
+        declaration_engine,
+        declarations,
+    )?;
     compile_function(context, &mut md_mgr, module, main_function)?;
 
     Ok(module)
@@ -34,13 +44,21 @@ pub(super) fn compile_contract(
     context: &mut Context,
     abi_entries: Vec<TypedFunctionDeclaration>,
     namespace: &namespace::Module,
+    declaration_engine: &declaration_engine::DeclarationEngine,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
     let mut md_mgr = MetadataManager::default();
 
     compile_constants(context, &mut md_mgr, module, namespace)?;
-    compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
+    compile_declarations(
+        context,
+        &mut md_mgr,
+        module,
+        namespace,
+        declaration_engine,
+        declarations,
+    )?;
     for decl in abi_entries {
         compile_abi_method(context, &mut md_mgr, module, decl)?;
     }
@@ -48,7 +66,7 @@ pub(super) fn compile_contract(
     Ok(module)
 }
 
-fn compile_constants(
+pub(crate) fn compile_constants(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -83,12 +101,12 @@ fn compile_constants(
 // And for structs and enums in particular, we must ignore those with embedded generic types as
 // they are monomorphised only at the instantation site.  We must ignore the generic declarations
 // altogether anyway.
-
 fn compile_declarations(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
     namespace: &namespace::Module,
+    _declaration_engine: &declaration_engine::DeclarationEngine,
     declarations: Vec<TypedDeclaration>,
 ) -> Result<(), CompileError> {
     for declaration in declarations {
@@ -128,14 +146,10 @@ fn compile_declarations(
             | TypedDeclaration::EnumDeclaration(_)
             | TypedDeclaration::TraitDeclaration(_)
             | TypedDeclaration::VariableDeclaration(_)
-            | TypedDeclaration::Reassignment(_)
-            | TypedDeclaration::StorageReassignment(_)
             | TypedDeclaration::AbiDeclaration(_)
             | TypedDeclaration::GenericTypeForFunctionScope { .. }
             | TypedDeclaration::StorageDeclaration(_)
-            | TypedDeclaration::ErrorRecovery
-            | TypedDeclaration::Break { .. }
-            | TypedDeclaration::Continue { .. } => (),
+            | TypedDeclaration::ErrorRecovery => (),
         }
     }
     Ok(())
@@ -155,14 +169,28 @@ pub(super) fn compile_function(
         let args = ast_fn_decl
             .parameters
             .iter()
-            .map(|param| {
-                convert_resolved_typeid(context, &param.type_id, &param.type_span)
-                    .map(|ty| (param.name.as_str().into(), ty, param.name.span()))
-            })
+            .map(|param| convert_fn_param(context, param))
             .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
         compile_fn_with_args(context, md_mgr, module, ast_fn_decl, args, None).map(&Some)
     }
+}
+
+fn convert_fn_param(
+    context: &mut Context,
+    param: &TypedFunctionParameter,
+) -> Result<(String, Type, Span), CompileError> {
+    convert_resolved_typeid(context, &param.type_id, &param.type_span).map(|ty| {
+        (
+            param.name.as_str().into(),
+            if param.is_reference && look_up_type_id(param.type_id).is_copy_type() {
+                Type::Pointer(Pointer::new(context, ty, param.is_mutable, None))
+            } else {
+                ty
+            },
+            param.name.span(),
+        )
+    })
 }
 
 fn compile_fn_with_args(

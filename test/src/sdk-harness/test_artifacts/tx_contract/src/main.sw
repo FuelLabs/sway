@@ -1,8 +1,23 @@
 contract;
 
-use std::address::Address;
-use std::option::Option;
-use std::tx::*;
+use std::{
+    address::Address,
+    option::Option,
+    inputs::{
+        Input,
+        input_count,
+        input_owner,
+        input_pointer,
+        input_type,
+    },
+    outputs::{
+        Output,
+        output_count,
+        output_pointer,
+        output_type,
+    },
+    tx::*,
+    };
 
 abi TxContractTest {
     fn get_tx_type() -> Transaction;
@@ -17,13 +32,13 @@ abi TxContractTest {
     fn get_tx_receipts_root() -> b256;
     fn get_tx_script_start_pointer() -> u64;
 
-    fn get_tx_input_type_from_ptr(ptr: u64) -> Input;
+    fn get_input_type(index: u64) -> Input;
     fn get_tx_input_pointer(index: u64) -> u64;
     fn get_tx_input_coin_owner(index: u64) -> Address;
 
     fn get_tx_output_pointer(index: u64) -> u64;
     fn get_tx_output_type(ptr: u64) -> Output;
-    fn get_tx_id(index: u64) -> Option<b256>;
+    fn get_tx_id() -> b256;
 }
 
 impl TxContractTest for Contract {
@@ -46,10 +61,10 @@ impl TxContractTest for Contract {
         tx_script_data_length()
     }
     fn get_tx_inputs_count() -> u64 {
-        tx_inputs_count()
+        input_count()
     }
     fn get_tx_outputs_count() -> u64 {
-        tx_outputs_count()
+        output_count()
     }
     fn get_tx_witnesses_count() -> u64 {
         tx_witnesses_count()
@@ -61,25 +76,25 @@ impl TxContractTest for Contract {
         tx_script_start_pointer()
     }
     fn get_tx_input_pointer(index: u64) -> u64 {
-        tx_input_pointer(index)
+        input_pointer(index)
     }
-    fn get_tx_input_type_from_ptr(ptr: u64) -> Input {
-        tx_input_type(ptr)
+    fn get_input_type(index: u64) -> Input {
+        input_type(index)
     }
     // TODO: Add test for getting InputMessage owner when we have InputMessages
     // fn get_tx_input_message_owner(index: u64) -> Address {
     //     tx_input_owner(index)
     // }
     fn get_tx_input_coin_owner(index: u64) -> Address {
-        tx_input_owner(index).unwrap()
+        input_owner(index).unwrap()
     }
     fn get_tx_output_pointer(index: u64) -> u64 {
-        tx_output_pointer(index)
+        output_pointer(index)
     }
     fn get_tx_output_type(ptr: u64) -> Output {
-        tx_output_type(ptr)
+        output_type(ptr)
     }
-    fn get_tx_id(index: u64) -> Option<b256> {
-        tx_id(index)
+    fn get_tx_id() -> b256 {
+        tx_id()
     }
 }

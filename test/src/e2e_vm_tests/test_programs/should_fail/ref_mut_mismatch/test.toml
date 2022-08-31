@@ -1,0 +1,8 @@
+category = "fail"
+
+# check: $()foo(x);
+# nextln: $()Cannot pass immutable argument to mutable parameter.
+# check: $()foo(0);
+
+# check: $()foo(0);
+# nextln: $()Cannot pass immutable argument to mutable parameter.

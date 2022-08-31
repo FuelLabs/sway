@@ -8,7 +8,7 @@ use ::contract_id::ContractId;
 use ::identity::Identity;
 use ::option::Option;
 use ::result::Result;
-use ::inputs::{Input, input_owner, input_type, inputs_count};
+use ::inputs::{Input, input_count, input_owner, input_type};
 
 pub enum AuthError {
     InputsNotAllOwnedBySameAddress: (),
@@ -47,12 +47,12 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
 /// Get the owner of the inputs (of type `InputCoin` or `InputMessage`) to a
 /// TransactionScript if they all share the same owner.
 fn inputs_owner() -> Result<Identity, AuthError> {
-    let input_count = inputs_count();
+    let inputs = input_count();
     let mut candidate = Option::None::<Address>();
-    let mut i = 0;
+    let mut i = 0u8;
 
     // Note: `inputs_count` is guaranteed to be at least 1 for any valid tx.
-    while i < input_count {
+    while i < inputs {
         let type_of_input = input_type(i);
         match type_of_input {
             Input::Coin => {
@@ -63,23 +63,17 @@ fn inputs_owner() -> Result<Identity, AuthError> {
             },
             _ => {
                 // type != InputCoin or InputMessage, continue looping.
-                i += 1;
+                i += 1u8;
                 continue;
             }
         }
-
-        // if input_type != Input::Coin && input_type != Input::Message {
-        //     // type != InputCoin or InputMessage, continue looping.
-        //     i += 1;
-        //     continue;
-        // }
 
         // type == InputCoin or InputMessage
         let owner_of_input = input_owner(i);
         if candidate.is_none() {
             // This is the first input seen of the correct type.
             candidate = owner_of_input;
-            i += 1;
+            i += 1u8;
             continue;
         }
 
@@ -88,7 +82,7 @@ fn inputs_owner() -> Result<Identity, AuthError> {
         // at this point, so we can unwrap safely.
         if owner_of_input.unwrap() == candidate.unwrap() {
             // Owners are a match, continue looping.
-            i += 1;
+            i += 1u8;
             continue;
         }
 

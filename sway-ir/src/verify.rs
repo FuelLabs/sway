@@ -216,7 +216,7 @@ impl<'a> InstructionVerifier<'a> {
 
     fn verify_addr_of(&self, value: &Value) -> Result<(), IrError> {
         let val_ty = value
-            .get_type(self.context)
+            .get_stripped_ptr_type(self.context)
             .ok_or(IrError::VerifyAddrOfUnknownSourceType)?;
         if val_ty.is_copy_type() {
             return Err(IrError::VerifyAddrOfCopyType);
@@ -246,9 +246,12 @@ impl<'a> InstructionVerifier<'a> {
                 Type::Uint(to_nbits) => from_nbits == *to_nbits,
                 _otherwise => false,
             },
-            Type::B256 | Type::String(_) | Type::Array(_) | Type::Union(_) | Type::Struct(_) => {
-                false
-            }
+            Type::B256
+            | Type::String(_)
+            | Type::Array(_)
+            | Type::Union(_)
+            | Type::Struct(_)
+            | Type::Pointer(_) => false,
         };
         if !is_valid {
             Err(IrError::VerifyBitcastBetweenInvalidTypes(
@@ -299,11 +302,10 @@ impl<'a> InstructionVerifier<'a> {
                 if opt_caller_arg_type.is_none() {
                     return Err(IrError::VerifyUntypedValuePassedToFunction);
                 }
-                if !opt_caller_arg_type
-                    .as_ref()
-                    .unwrap()
-                    .eq(self.context, callee_arg_type)
-                {
+
+                let caller_arg_type = opt_caller_arg_type.as_ref().unwrap();
+                let is_ref_call = !callee_arg_type.is_copy_type() && caller_arg_type.is_ptr_type();
+                if !caller_arg_type.eq(self.context, callee_arg_type) && !is_ref_call {
                     return Err(IrError::VerifyCallArgTypeMismatch(
                         callee_content.name.clone(),
                     ));
@@ -421,7 +423,7 @@ impl<'a> InstructionVerifier<'a> {
         ty: &Aggregate,
         index_val: &Value,
     ) -> Result<(), IrError> {
-        match array.get_type(self.context) {
+        match array.get_stripped_ptr_type(self.context) {
             Some(Type::Array(ary_ty)) => {
                 if !ary_ty.is_equivalent(self.context, ty) {
                     Err(IrError::VerifyAccessElementInconsistentTypes)
@@ -441,7 +443,7 @@ impl<'a> InstructionVerifier<'a> {
         ty: &Aggregate,
         indices: &[u64],
     ) -> Result<(), IrError> {
-        match aggregate.get_type(self.context) {
+        match aggregate.get_stripped_ptr_type(self.context) {
             Some(Type::Struct(agg_ty)) | Some(Type::Union(agg_ty)) => {
                 if !agg_ty.is_equivalent(self.context, ty) {
                     Err(IrError::VerifyAccessValueInconsistentTypes)
@@ -458,7 +460,7 @@ impl<'a> InstructionVerifier<'a> {
     fn verify_get_ptr(
         &self,
         base_ptr: &Pointer,
-        _ptr_ty: &Type,
+        _ptr_ty: &Pointer,
         _offset: &u64,
     ) -> Result<(), IrError> {
         // We should perhaps verify that the offset and the casted type fit within the base type.
@@ -485,7 +487,7 @@ impl<'a> InstructionVerifier<'a> {
         value: &Value,
         index_val: &Value,
     ) -> Result<(), IrError> {
-        match array.get_type(self.context) {
+        match array.get_stripped_ptr_type(self.context) {
             Some(Type::Array(ary_ty)) => {
                 if !ary_ty.is_equivalent(self.context, ty) {
                     Err(IrError::VerifyAccessElementInconsistentTypes)
@@ -511,7 +513,7 @@ impl<'a> InstructionVerifier<'a> {
         value: &Value,
         idcs: &[u64],
     ) -> Result<(), IrError> {
-        match aggregate.get_type(self.context) {
+        match aggregate.get_stripped_ptr_type(self.context) {
             Some(Type::Struct(str_ty)) => {
                 if !str_ty.is_equivalent(self.context, ty) {
                     Err(IrError::VerifyAccessValueInconsistentTypes)
@@ -519,7 +521,9 @@ impl<'a> InstructionVerifier<'a> {
                     let field_ty = ty.get_field_type(self.context, idcs);
                     if field_ty.is_none() {
                         Err(IrError::VerifyAccessValueInvalidIndices)
-                    } else if self.opt_ty_not_eq(&field_ty, &value.get_type(self.context)) {
+                    } else if self
+                        .opt_ty_not_eq(&field_ty, &value.get_stripped_ptr_type(self.context))
+                    {
                         Err(IrError::VerifyInsertValueOfIncorrectType)
                     } else {
                         Ok(())
@@ -558,8 +562,6 @@ impl<'a> InstructionVerifier<'a> {
             } else {
                 Ok(())
             }
-        } else if !self.is_local_pointer(src_ptr.as_ref().unwrap()) {
-            Err(IrError::VerifyLoadNonExistentPointer)
         } else {
             Ok(())
         }
@@ -603,7 +605,7 @@ impl<'a> InstructionVerifier<'a> {
         ty: &Type,
     ) -> Result<(), IrError> {
         if !function.return_type.eq(self.context, ty)
-            || self.opt_ty_not_eq(&val.get_type(self.context), &Some(*ty))
+            || self.opt_ty_not_eq(&val.get_stripped_ptr_type(self.context), &Some(*ty))
         {
             Err(IrError::VerifyMismatchedReturnTypes(function.name.clone()))
         } else {
@@ -650,33 +652,20 @@ impl<'a> InstructionVerifier<'a> {
 
     fn verify_store(&self, dst_val: &Value, stored_val: &Value) -> Result<(), IrError> {
         let dst_ty = self.get_pointer_type(dst_val);
+        let stored_ty = stored_val.get_stripped_ptr_type(self.context);
         if dst_ty.is_none() {
             Err(IrError::VerifyStoreToNonPointer)
-        } else if self.opt_ty_not_eq(&dst_ty, &stored_val.get_type(self.context)) {
+        } else if self.opt_ty_not_eq(&dst_ty, &stored_ty) {
             Err(IrError::VerifyStoreMismatchedTypes)
         } else {
-            match self.get_pointer(dst_val) {
-                None => {
-                    if !self.is_ptr_argument(dst_val) {
-                        Err(IrError::VerifyStoreToNonPointer) // Should've been caught already.
-                    } else {
-                        Ok(())
-                    }
-                }
-                Some(dst_ptr) => {
-                    if !self.is_local_pointer(&dst_ptr) {
-                        Err(IrError::VerifyStoreNonExistentPointer)
-                    } else {
-                        Ok(())
-                    }
-                }
-            }
+            Ok(())
         }
     }
 
     fn get_pointer(&self, ptr_val: &Value) -> Option<Pointer> {
         match &self.context.values[ptr_val.0].value {
             ValueDatum::Instruction(Instruction::GetPointer { base_ptr, .. }) => Some(*base_ptr),
+            ValueDatum::Argument(Type::Pointer(ptr)) => Some(*ptr),
             _otherwise => None,
         }
     }
@@ -697,8 +686,12 @@ impl<'a> InstructionVerifier<'a> {
 
     fn get_pointer_type(&self, ptr_val: &Value) -> Option<Type> {
         match &self.context.values[ptr_val.0].value {
-            ValueDatum::Instruction(Instruction::GetPointer { ptr_ty, .. }) => Some(*ptr_ty),
-            ValueDatum::Argument(arg_ty) => match arg_ty.is_copy_type() {
+            ValueDatum::Instruction(Instruction::GetPointer { ptr_ty, .. }) => {
+                Some(*ptr_ty.get_type(self.context))
+            }
+            ValueDatum::Instruction(Instruction::IntToPtr(_, ty)) => Some(*ty),
+            ValueDatum::Argument(Type::Pointer(ptr)) => Some(*ptr.get_type(self.context)),
+            ValueDatum::Argument(arg_ty) => match arg_ty.is_copy_type() && !arg_ty.is_ptr_type() {
                 true => None,
                 false => Some(*arg_ty),
             },

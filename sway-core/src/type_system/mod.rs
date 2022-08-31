@@ -19,13 +19,13 @@ pub use integer_bits::*;
 pub(crate) use replace_self_type::*;
 pub(crate) use resolved_type::*;
 pub(crate) use trait_constraint::*;
-pub(crate) use type_argument::*;
+pub use type_argument::*;
 pub(crate) use type_binding::*;
 pub use type_engine::*;
 pub use type_id::*;
 pub use type_info::*;
 pub(crate) use type_mapping::*;
-pub(crate) use type_parameter::*;
+pub use type_parameter::*;
 pub(crate) use unresolved_type_check::*;
 
 use crate::error::*;
@@ -46,7 +46,11 @@ fn generic_enum_resolution() {
         type_id: engine.insert_type(TypeInfo::UnknownGeneric {
             name: Ident::new_with_override("T", sp.clone()),
         }),
+        initial_type_id: engine.insert_type(TypeInfo::UnknownGeneric {
+            name: Ident::new_with_override("T", sp.clone()),
+        }),
         span: sp.clone(),
+        type_span: sp.clone(),
     }];
 
     let ty_1 = engine.insert_type(TypeInfo::Enum {
@@ -59,7 +63,9 @@ fn generic_enum_resolution() {
         name: Ident::new_with_override("a", sp.clone()),
         tag: 0,
         type_id: engine.insert_type(TypeInfo::Boolean),
+        initial_type_id: engine.insert_type(TypeInfo::Boolean),
         span: sp.clone(),
+        type_span: sp.clone(),
     }];
 
     let ty_2 = engine.insert_type(TypeInfo::Enum {

@@ -1,177 +1,173 @@
 use crate::core::{
     session::Session,
-    token::{AstToken, TokenMap},
+    token::{SymbolKind, Token},
 };
 use crate::utils::common::get_range_from_span;
-use sway_core::{Declaration, Expression, Literal};
+use std::sync::atomic::{AtomicU32, Ordering};
 use sway_types::Span;
 use tower_lsp::lsp_types::{
-    SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens,
-    SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions, SemanticTokensResult,
-    SemanticTokensServerCapabilities, Url,
+    Range, SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens,
+    SemanticTokensResult, Url,
 };
 
 // https://github.com/microsoft/vscode-extension-samples/blob/5ae1f7787122812dcc84e37427ca90af5ee09f14/semantic-tokens-sample/vscode.proposed.d.ts#L71
 pub fn semantic_tokens_full(session: &Session, url: &Url) -> Option<SemanticTokensResult> {
-    match session.semantic_tokens(url) {
-        Some(semantic_tokens) => {
-            if semantic_tokens.is_empty() {
-                return None;
-            }
+    let tokens = session.tokens_for_file(url);
 
-            Some(SemanticTokensResult::Tokens(SemanticTokens {
-                result_id: None,
-                data: semantic_tokens,
-            }))
+    // The tokens need sorting by thier span so each token is sequential
+    // If this step isn't done, then the bit offsets used for the lsp_types::SemanticToken are incorrect.
+    let mut tokens_sorted: Vec<_> = tokens
+        .iter()
+        .map(|item| {
+            let ((_, span), token) = item.pair();
+            (span.clone(), token.clone())
+        })
+        .collect();
+
+    tokens_sorted.sort_by(|(a_span, _), (b_span, _)| {
+        let a = (a_span.start(), a_span.end());
+        let b = (b_span.start(), b_span.end());
+        a.cmp(&b)
+    });
+
+    let semantic_tokens = semantic_tokens(&tokens_sorted);
+
+    Some(semantic_tokens.into())
+}
+
+//-------------------------------
+/// Tokens are encoded relative to each other.
+///
+/// This is taken from rust-analyzer which is also a direct port of <https://github.com/microsoft/vscode-languageserver-node/blob/f425af9de46a0187adb78ec8a46b9b2ce80c5412/server/src/sematicTokens.proposed.ts#L45>
+pub(crate) struct SemanticTokensBuilder {
+    id: String,
+    prev_line: u32,
+    prev_char: u32,
+    data: Vec<SemanticToken>,
+}
+
+impl SemanticTokensBuilder {
+    pub(crate) fn new(id: String) -> Self {
+        SemanticTokensBuilder {
+            id,
+            prev_line: 0,
+            prev_char: 0,
+            data: Default::default(),
         }
-        _ => None,
-    }
-}
-
-pub fn to_semantic_tokens(token_map: &TokenMap) -> Vec<SemanticToken> {
-    let mut semantic_tokens: Vec<SemanticToken> = Vec::new();
-
-    let mut prev_token_span = None;
-    for item in token_map.iter() {
-        let ((_, span), token) = item.pair();
-        let token_type_idx = type_idx(&token.parsed);
-        let semantic_token = semantic_token(token_type_idx, span, prev_token_span);
-
-        semantic_tokens.push(semantic_token);
-        prev_token_span = Some(span.clone());
     }
 
-    semantic_tokens
-}
+    /// Push a new token onto the builder
+    pub(crate) fn push(&mut self, range: Range, token_index: u32, modifier_bitset: u32) {
+        let mut push_line = range.start.line as u32;
+        let mut push_char = range.start.character as u32;
 
-fn semantic_token(
-    token_type_idx: u32,
-    next_token_span: &Span,
-    prev_token_span: Option<Span>,
-) -> SemanticToken {
-    let next_token_range = get_range_from_span(next_token_span);
-    let next_token_line_start = next_token_range.start.line;
+        if !self.data.is_empty() {
+            push_line -= self.prev_line;
+            if push_line == 0 {
+                push_char -= self.prev_char;
+            }
+        }
 
-    // TODO - improve with modifiers
-    let token_modifiers_bitset = 0;
-    let length = next_token_range.end.character - next_token_range.start.character;
+        // A token cannot be multiline
+        let token_len = range.end.character - range.start.character;
 
-    let next_token_start_char = next_token_range.start.character;
-
-    let (delta_line, delta_start) = if let Some(prev_token_span) = prev_token_span {
-        let prev_token_range = get_range_from_span(&prev_token_span);
-        let prev_token_line_start = prev_token_range.start.line;
-        let delta_start = if next_token_line_start == prev_token_line_start {
-            next_token_start_char - prev_token_range.start.character
-        } else {
-            next_token_start_char
+        let token = SemanticToken {
+            delta_line: push_line,
+            delta_start: push_char,
+            length: token_len as u32,
+            token_type: token_index,
+            token_modifiers_bitset: modifier_bitset,
         };
-        (next_token_line_start - prev_token_line_start, delta_start)
-    } else {
-        (next_token_line_start, next_token_start_char)
-    };
 
-    SemanticToken {
-        token_modifiers_bitset,
-        token_type: token_type_idx,
-        length,
-        delta_line,
-        delta_start,
+        self.data.push(token);
+
+        self.prev_line = range.start.line as u32;
+        self.prev_char = range.start.character as u32;
+    }
+
+    pub(crate) fn build(self) -> SemanticTokens {
+        SemanticTokens {
+            result_id: Some(self.id),
+            data: self.data,
+        }
     }
 }
 
-/// these values should reflect indexes in `token_types`
-#[repr(u32)]
-enum TokenTypeIndex {
-    Function = 1,
-    Parameter = 5,
-    String = 6,
-    Variable = 9,
-    Enum = 10,
-    Struct = 11,
-    Interface = 12,
+pub(crate) fn semantic_tokens(tokens_sorted: &[(Span, Token)]) -> SemanticTokens {
+    static TOKEN_RESULT_COUNTER: AtomicU32 = AtomicU32::new(1);
+    let id = TOKEN_RESULT_COUNTER
+        .fetch_add(1, Ordering::SeqCst)
+        .to_string();
+    let mut builder = SemanticTokensBuilder::new(id);
+
+    for (span, token) in tokens_sorted.iter() {
+        let ty = semantic_token_type(&token.kind);
+        let token_index = type_index(ty);
+        // TODO - improve with modifiers
+        let modifier_bitset = 0;
+        let range = get_range_from_span(span);
+
+        builder.push(range, token_index, modifier_bitset);
+    }
+    builder.build()
 }
 
-fn type_idx(ast_token: &AstToken) -> u32 {
-    match ast_token {
-        AstToken::Declaration(dec) => {
-            match dec {
-                Declaration::VariableDeclaration(_) => TokenTypeIndex::Variable as u32,
-                Declaration::FunctionDeclaration(_) => TokenTypeIndex::Function as u32,
-                Declaration::TraitDeclaration(_) | Declaration::ImplTrait { .. } => {
-                    TokenTypeIndex::Interface as u32
-                }
-                Declaration::StructDeclaration(_) => TokenTypeIndex::Struct as u32,
-                Declaration::EnumDeclaration(_) => TokenTypeIndex::Enum as u32,
-                // currently we return `variable` type as default
-                _ => TokenTypeIndex::Variable as u32,
-            }
-        }
-        AstToken::Expression(exp) => {
-            match &exp {
-                Expression::Literal {
-                    value: Literal::String(_),
-                    ..
-                } => TokenTypeIndex::String as u32,
-                Expression::FunctionApplication { .. } => TokenTypeIndex::Function as u32,
-                Expression::VariableExpression { .. } => TokenTypeIndex::Variable as u32,
-                Expression::StructExpression { .. } => TokenTypeIndex::Struct as u32,
-                // currently we return `variable` type as default
-                _ => TokenTypeIndex::Variable as u32,
-            }
-        }
-        AstToken::FunctionDeclaration(_) => TokenTypeIndex::Function as u32,
-        AstToken::FunctionParameter(_) => TokenTypeIndex::Parameter as u32,
-        AstToken::TraitFn(_) => TokenTypeIndex::Function as u32,
-        // currently we return `variable` type as default
-        _ => TokenTypeIndex::Variable as u32,
+fn semantic_token_type(kind: &SymbolKind) -> SemanticTokenType {
+    match kind {
+        SymbolKind::Field => SemanticTokenType::PROPERTY,
+        SymbolKind::ValueParam => SemanticTokenType::PARAMETER,
+        SymbolKind::Variable => SemanticTokenType::VARIABLE,
+        SymbolKind::Function => SemanticTokenType::FUNCTION,
+        SymbolKind::Const => SemanticTokenType::VARIABLE,
+        SymbolKind::Struct => SemanticTokenType::STRUCT,
+        SymbolKind::Enum => SemanticTokenType::ENUM,
+        SymbolKind::Variant => SemanticTokenType::ENUM_MEMBER,
+        SymbolKind::Trait => SemanticTokenType::INTERFACE,
+        SymbolKind::TypeParameter => SemanticTokenType::TYPE_PARAMETER,
+        SymbolKind::BoolLiteral => SemanticTokenType::new("boolean"),
+        SymbolKind::ByteLiteral | SymbolKind::NumericLiteral => SemanticTokenType::NUMBER,
+        SymbolKind::StringLiteral => SemanticTokenType::STRING,
+        SymbolKind::BuiltinType => SemanticTokenType::new("builtinType"),
+        SymbolKind::Module => SemanticTokenType::NAMESPACE,
+        SymbolKind::Unknown => SemanticTokenType::new("generic"),
     }
 }
 
-pub fn semantic_tokens() -> Option<SemanticTokensServerCapabilities> {
-    let token_types = vec![
-        SemanticTokenType::CLASS,          // 0
-        SemanticTokenType::FUNCTION,       // 1
-        SemanticTokenType::KEYWORD,        // 2
-        SemanticTokenType::NAMESPACE,      // 3
-        SemanticTokenType::OPERATOR,       // 4
-        SemanticTokenType::PARAMETER,      // 5
-        SemanticTokenType::STRING,         // 6
-        SemanticTokenType::TYPE,           // 7
-        SemanticTokenType::TYPE_PARAMETER, // 8
-        SemanticTokenType::VARIABLE,       // 9
-        SemanticTokenType::ENUM,           // 10
-        SemanticTokenType::STRUCT,         // 11
-        SemanticTokenType::INTERFACE,      // 12
-    ];
-
-    let token_modifiers: Vec<SemanticTokenModifier> = vec![
-        // declaration of symbols
-        SemanticTokenModifier::DECLARATION,
-        // definition of symbols as in header files
-        SemanticTokenModifier::DEFINITION,
-        SemanticTokenModifier::READONLY,
-        SemanticTokenModifier::STATIC,
-        // for variable references where the variable is assigned to
-        SemanticTokenModifier::MODIFICATION,
-        SemanticTokenModifier::DOCUMENTATION,
-        // for symbols that are part of stdlib
-        SemanticTokenModifier::DEFAULT_LIBRARY,
-    ];
-
-    let legend = SemanticTokensLegend {
-        token_types,
-        token_modifiers,
-    };
-
-    let options = SemanticTokensOptions {
-        legend,
-        range: None,
-        full: Some(SemanticTokensFullOptions::Bool(true)),
-        ..Default::default()
-    };
-
-    Some(SemanticTokensServerCapabilities::SemanticTokensOptions(
-        options,
-    ))
+pub(crate) fn type_index(ty: SemanticTokenType) -> u32 {
+    SUPPORTED_TYPES.iter().position(|it| *it == ty).unwrap() as u32
 }
+
+pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
+    SemanticTokenType::STRING,
+    SemanticTokenType::NUMBER,
+    SemanticTokenType::NAMESPACE,
+    SemanticTokenType::TYPE,
+    SemanticTokenType::STRUCT,
+    SemanticTokenType::CLASS,
+    SemanticTokenType::INTERFACE,
+    SemanticTokenType::ENUM,
+    SemanticTokenType::ENUM_MEMBER,
+    SemanticTokenType::TYPE_PARAMETER,
+    SemanticTokenType::FUNCTION,
+    SemanticTokenType::METHOD,
+    SemanticTokenType::PROPERTY,
+    SemanticTokenType::VARIABLE,
+    SemanticTokenType::PARAMETER,
+    SemanticTokenType::new("generic"),
+    SemanticTokenType::new("boolean"),
+    SemanticTokenType::new("builtinType"),
+];
+
+pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
+    // declaration of symbols
+    SemanticTokenModifier::DECLARATION,
+    // definition of symbols as in header files
+    SemanticTokenModifier::DEFINITION,
+    SemanticTokenModifier::READONLY,
+    SemanticTokenModifier::STATIC,
+    // for variable references where the variable is assigned to
+    SemanticTokenModifier::MODIFICATION,
+    SemanticTokenModifier::DOCUMENTATION,
+    // for symbols that are part of stdlib
+    SemanticTokenModifier::DEFAULT_LIBRARY,
+];

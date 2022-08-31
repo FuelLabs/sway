@@ -57,7 +57,7 @@ fn hover_format(token: &Token, ident: &Ident) -> Hover {
             TypedAstToken::TypedDeclaration(decl) => match decl {
                 TypedDeclaration::VariableDeclaration(var_decl) => {
                     let type_name = format!("{}", var_decl.type_ascription);
-                    format_variable_hover(var_decl.is_mutable.is_mutable(), type_name)
+                    format_variable_hover(var_decl.mutability.is_mutable(), type_name)
                 }
                 TypedDeclaration::FunctionDeclaration(func) => extract_fn_signature(&func.span()),
                 TypedDeclaration::StructDeclaration(ref struct_decl) => {

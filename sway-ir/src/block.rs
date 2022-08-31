@@ -112,6 +112,18 @@ impl Block {
         }
     }
 
+    /// Remove the value in the phi instruction which correlates to `from_block`.
+    pub fn remove_phi_val_coming_from(&self, context: &mut Context, from_block: &Block) {
+        let phi_val = self.get_phi(context);
+        if let ValueDatum::Instruction(Instruction::Phi(pairs)) =
+            &mut context.values[phi_val.0].value
+        {
+            pairs.retain(|(block, _value)| block != from_block);
+        } else {
+            unreachable!("Phi value must be a PHI instruction.");
+        }
+    }
+
     /// Replace a block reference in the phi instruction.
     ///
     /// Any reference to `old_source` will be replace with `new_source` in the list of phi values.
@@ -147,6 +159,21 @@ impl Block {
                 None
             }
         })
+    }
+
+    /// Get the CFG successors of this block.
+    pub(super) fn successors<'a>(&'a self, context: &'a Context) -> Vec<Block> {
+        match self.get_terminator(context) {
+            Some(Instruction::ConditionalBranch {
+                true_block,
+                false_block,
+                ..
+            }) => vec![*true_block, *false_block],
+
+            Some(Instruction::Branch(block)) => vec![*block],
+
+            _otherwise => Vec::new(),
+        }
     }
 
     /// Return whether this block is already terminated.  Checks if the final instruction, if it
@@ -298,28 +325,6 @@ impl BlockContent {
 
     pub(super) fn num_predecessors(&self, context: &Context) -> usize {
         self.predecessors(context).count()
-    }
-
-    pub(super) fn successors<'a>(
-        &'a self,
-        context: &'a Context,
-    ) -> impl Iterator<Item = Block> + 'a {
-        self.function.block_iter(context).flat_map(|block| {
-            block
-                .get_terminator(context)
-                .map(|term_inst| match term_inst {
-                    Instruction::ConditionalBranch {
-                        true_block,
-                        false_block,
-                        ..
-                    } => vec![*true_block, *false_block],
-
-                    Instruction::Branch(block) => vec![*block],
-
-                    _otherwise => Vec::new(),
-                })
-                .unwrap_or_default()
-        })
     }
 }
 

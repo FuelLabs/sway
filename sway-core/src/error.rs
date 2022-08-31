@@ -191,7 +191,7 @@ where
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Hint {
     msg: Option<String>,
 }
@@ -213,7 +213,7 @@ impl Display for Hint {
 
 // TODO: since moving to using Idents instead of strings the warning_content will usually contain a
 // duplicate of the span.
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CompileWarning {
     pub span: Span,
     pub warning_content: Warning,
@@ -258,7 +258,7 @@ impl From<(usize, usize)> for LineCol {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Warning {
     NonClassCaseStructName {
         struct_name: Ident,
@@ -318,6 +318,9 @@ pub enum Warning {
         unneeded_attrib: String,
     },
     MatchExpressionUnreachableArm,
+    UnrecognizedAttribute {
+        attrib_name: Ident,
+    },
 }
 
 impl fmt::Display for Warning {
@@ -441,13 +444,14 @@ impl fmt::Display for Warning {
                 and can be removed."
             ),
             MatchExpressionUnreachableArm => write!(f, "This match arm is unreachable."),
+            UnrecognizedAttribute {attrib_name} => write!(f, "Unknown attribute: \"{attrib_name}\"."),
         }
     }
 }
 
 // TODO: since moving to using Idents instead of strings, there are a lot of redundant spans in
 // this type.
-#[derive(Error, Debug, Clone, PartialEq, Hash)]
+#[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CompileError {
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
     UnknownVariable { var_name: Ident },
@@ -538,6 +542,14 @@ pub enum CompileError {
         variable_name: Ident,
         span: Span,
     },
+    #[error(
+        "This parameter was declared as mutable, which is not supported yet, did you mean to use ref mut?"
+    )]
+    MutableParameterNotSupported { param_name: Ident },
+    #[error("Cannot pass immutable argument to mutable parameter.")]
+    ImmutableArgumentToMutableParameter { span: Span },
+    #[error("ref mut parameter is not allowed for contract ABI function.")]
+    RefMutableNotAllowedInContractAbi { param_name: Ident },
     #[error(
         "Cannot call associated function \"{fn_name}\" as a method. Use associated function \
         syntax instead."
@@ -1048,6 +1060,10 @@ pub enum CompileError {
     ContinueOutsideLoop { span: Span },
     #[error("arguments to \"main()\" are not yet supported. See the issue here: github.com/FuelLabs/sway/issues/845")]
     MainArgsNotYetSupported { span: Span },
+    #[error("Configuration-time constant value is not a constant item.")]
+    ConfigTimeConstantNotAConstDecl { span: Span },
+    #[error("Configuration-time constant value is not a literal.")]
+    ConfigTimeConstantNotALiteral { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1082,6 +1098,9 @@ impl Spanned for CompileError {
             MultipleDefinitionsOfFunction { name } => name.span(),
             ReassignmentToNonVariable { span, .. } => span.clone(),
             AssignmentToNonMutable { name } => name.span(),
+            MutableParameterNotSupported { param_name } => param_name.span(),
+            ImmutableArgumentToMutableParameter { span } => span.clone(),
+            RefMutableNotAllowedInContractAbi { param_name } => param_name.span(),
             MethodRequiresMutableSelf { span, .. } => span.clone(),
             AssociatedFunctionCalledAsMethod { span, .. } => span.clone(),
             TypeParameterNotInTypeScope { span, .. } => span.clone(),
@@ -1213,6 +1232,8 @@ impl Spanned for CompileError {
             BreakOutsideLoop { span } => span.clone(),
             ContinueOutsideLoop { span } => span.clone(),
             MainArgsNotYetSupported { span } => span.clone(),
+            ConfigTimeConstantNotAConstDecl { span } => span.clone(),
+            ConfigTimeConstantNotALiteral { span } => span.clone(),
         }
     }
 }
@@ -1231,7 +1252,7 @@ impl CompileError {
     }
 }
 
-#[derive(Error, Debug, Clone, PartialEq, Hash)]
+#[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeError {
     #[error(
         "Mismatched types.\n\

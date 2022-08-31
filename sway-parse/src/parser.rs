@@ -1,24 +1,27 @@
+use crate::handler::Handler;
 use crate::{Parse, ParseError, ParseErrorKind, ParseToEnd, Peek};
 
 use core::marker::PhantomData;
 use sway_ast::keywords::Keyword;
 use sway_ast::literal::Literal;
-use sway_ast::token::{Delimiter, Group, Punct, PunctKind, Spacing, TokenStream, TokenTree};
+use sway_ast::token::{
+    Delimiter, DocComment, Group, Punct, PunctKind, Spacing, TokenStream, TokenTree,
+};
 use sway_ast::PubToken;
 use sway_types::{Ident, Span, Spanned};
 
 pub struct Parser<'a, 'e> {
     token_trees: &'a [TokenTree],
     full_span: Span,
-    errors: &'e mut Vec<ParseError>,
+    handler: &'e Handler,
 }
 
 impl<'a, 'e> Parser<'a, 'e> {
-    pub fn new(token_stream: &'a TokenStream, errors: &'e mut Vec<ParseError>) -> Parser<'a, 'e> {
+    pub fn new(token_stream: &'a TokenStream, handler: &'e Handler) -> Parser<'a, 'e> {
         Parser {
             token_trees: token_stream.token_trees(),
             full_span: token_stream.span(),
-            errors,
+            handler,
         }
     }
 
@@ -43,7 +46,7 @@ impl<'a, 'e> Parser<'a, 'e> {
 
     pub fn emit_error_with_span(&mut self, kind: ParseErrorKind, span: Span) -> ErrorEmitted {
         let error = ParseError { span, kind };
-        self.errors.push(error);
+        self.handler.emit_err(error);
         ErrorEmitted { _priv: () }
     }
 
@@ -104,7 +107,7 @@ impl<'a, 'e> Parser<'a, 'e> {
                 let parser = Parser {
                     token_trees: token_stream.token_trees(),
                     full_span: token_stream.span(),
-                    errors: self.errors,
+                    handler: self.handler,
                 };
                 Some((parser, span.clone()))
             }
@@ -235,9 +238,19 @@ impl<'a> Peeker<'a> {
             _ => Err(self),
         }
     }
+
+    pub fn peek_doc_comment(self) -> Result<&'a DocComment, Self> {
+        match self.token_trees {
+            [TokenTree::DocComment(doc_comment), ..] => {
+                *self.num_tokens = 1;
+                Ok(doc_comment)
+            }
+            _ => Err(self),
+        }
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ErrorEmitted {
     _priv: (),
 }

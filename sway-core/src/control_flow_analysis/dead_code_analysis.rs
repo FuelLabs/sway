@@ -5,12 +5,12 @@ use crate::{
         ast_node::{
             TypedAbiDeclaration, TypedCodeBlock, TypedConstantDeclaration, TypedDeclaration,
             TypedEnumDeclaration, TypedExpression, TypedExpressionVariant,
-            TypedFunctionDeclaration, TypedReassignment, TypedReturnStatement,
-            TypedStructDeclaration, TypedStructExpressionField, TypedTraitDeclaration,
-            TypedVariableDeclaration, TypedWhileLoop, VariableMutability,
+            TypedFunctionDeclaration, TypedReturnStatement, TypedStructDeclaration,
+            TypedStructExpressionField, TypedTraitDeclaration, TypedVariableDeclaration,
+            VariableMutability,
         },
-        TypeCheckedStorageReassignment, TypedAsmRegisterDeclaration, TypedAstNode,
-        TypedAstNodeContent, TypedImplTrait, TypedIntrinsicFunctionKind, TypedStorageDeclaration,
+        TypedAsmRegisterDeclaration, TypedAstNode, TypedAstNodeContent, TypedImplTrait,
+        TypedIntrinsicFunctionKind, TypedStorageDeclaration,
     },
     type_system::{resolve_type, TypeInfo},
     CompileError, CompileWarning, Ident, TreeType, Warning,
@@ -262,38 +262,6 @@ fn connect_node(
             }
             (return_contents, None)
         }
-        TypedAstNodeContent::WhileLoop(TypedWhileLoop { body, .. }) => {
-            // a while loop can loop back to the beginning,
-            // or it can terminate.
-            // so we connect the _end_ of the while loop _both_ to its beginning and the next node.
-            // the loop could also be entirely skipped
-
-            let entry = graph.add_node(node.into());
-            let while_loop_exit = graph.add_node("while loop exit".to_string().into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, entry, "".into());
-            }
-            // it is possible for a whole while loop to be skipped so add edge from
-            // beginning of while loop straight to exit
-            graph.add_edge(
-                entry,
-                while_loop_exit,
-                "condition is initially false".into(),
-            );
-            let mut leaves = vec![entry];
-            let (l_leaves, _l_exit_node) =
-                depth_first_insertion_code_block(body, graph, &leaves, exit_node, tree_type)?;
-            // insert edges from end of block back to beginning of it
-            for leaf in &l_leaves {
-                graph.add_edge(*leaf, entry, "loop repeats".into());
-            }
-
-            leaves = l_leaves;
-            for leaf in leaves {
-                graph.add_edge(leaf, while_loop_exit, "".into());
-            }
-            (vec![while_loop_exit], exit_node)
-        }
         TypedAstNodeContent::Expression(TypedExpression {
             expression: expr_variant,
             span,
@@ -348,7 +316,7 @@ fn connect_declaration(
         VariableDeclaration(TypedVariableDeclaration {
             name,
             body,
-            is_mutable,
+            mutability: is_mutable,
             ..
         }) => {
             if matches!(is_mutable, VariableMutability::ExportedConst) {
@@ -398,24 +366,6 @@ fn connect_declaration(
             connect_enum_declaration(enum_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
-        StorageReassignment(TypeCheckedStorageReassignment { rhs, .. }) => connect_expression(
-            &rhs.expression,
-            graph,
-            &[entry_node],
-            exit_node,
-            "variable reassignment",
-            tree_type,
-            rhs.span.clone(),
-        ),
-        Reassignment(TypedReassignment { rhs, .. }) => connect_expression(
-            &rhs.expression,
-            graph,
-            &[entry_node],
-            exit_node,
-            "variable reassignment",
-            tree_type,
-            rhs.clone().span,
-        ),
         ImplTrait(TypedImplTrait {
             trait_name,
             methods,
@@ -429,7 +379,6 @@ fn connect_declaration(
             Ok(leaves.to_vec())
         }
         ErrorRecovery | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
-        Break { .. } | Continue { .. } => Ok(vec![]),
     }
 }
 
@@ -1103,6 +1052,68 @@ fn connect_expression(
             tree_type,
             exp.span.clone(),
         ),
+        WhileLoop { body, .. } => {
+            // a while loop can loop back to the beginning,
+            // or it can terminate.
+            // so we connect the _end_ of the while loop _both_ to its beginning and the next node.
+            // the loop could also be entirely skipped
+
+            let entry = leaves[0];
+            let while_loop_exit = graph.add_node("while loop exit".to_string().into());
+
+            // it is possible for a whole while loop to be skipped so add edge from
+            // beginning of while loop straight to exit
+            graph.add_edge(
+                entry,
+                while_loop_exit,
+                "condition is initially false".into(),
+            );
+            let mut leaves = vec![entry];
+            let (l_leaves, _l_exit_node) =
+                depth_first_insertion_code_block(body, graph, &leaves, exit_node, tree_type)?;
+            // insert edges from end of block back to beginning of it
+            for leaf in &l_leaves {
+                graph.add_edge(*leaf, entry, "loop repeats".into());
+            }
+
+            leaves = l_leaves;
+            for leaf in leaves {
+                graph.add_edge(leaf, while_loop_exit, "".into());
+            }
+            Ok(vec![while_loop_exit])
+        }
+        Break => {
+            let break_node = graph.add_node("break".to_string().into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, break_node, "".into());
+            }
+            Ok(vec![])
+        }
+        Continue => {
+            let continue_node = graph.add_node("continue".to_string().into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, continue_node, "".into());
+            }
+            Ok(vec![])
+        }
+        Reassignment(typed_reassignment) => connect_expression(
+            &typed_reassignment.rhs.expression,
+            graph,
+            leaves,
+            exit_node,
+            "variable reassignment",
+            tree_type,
+            typed_reassignment.rhs.clone().span,
+        ),
+        StorageReassignment(typed_storage_reassignment) => connect_expression(
+            &typed_storage_reassignment.rhs.expression,
+            graph,
+            leaves,
+            exit_node,
+            "variable reassignment",
+            tree_type,
+            typed_storage_reassignment.rhs.clone().span,
+        ),
     }
 }
 
@@ -1285,8 +1296,7 @@ fn construct_dead_code_warning_from_node(node: &TypedAstNode) -> Option<CompileW
                 TypedAstNodeContent::ReturnStatement(_)
                 | TypedAstNodeContent::ImplicitReturnExpression(_)
                 | TypedAstNodeContent::Expression(_)
-                | TypedAstNodeContent::SideEffect
-                | TypedAstNodeContent::WhileLoop(_),
+                | TypedAstNodeContent::SideEffect,
         } => CompileWarning {
             span: span.clone(),
             warning_content: Warning::UnreachableCode,

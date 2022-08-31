@@ -4,15 +4,16 @@ library inputs;
 
 use ::address::Address;
 use ::mem::read;
+use ::logging::log;
 use ::option::Option;
 use ::revert::revert;
 use ::tx::{
-    tx_type,
-    Transaction,
-    GTF_SCRIPT_INPUT_AT_INDEX,
+    GTF_CREATE_INPUTS_COUNT,
     GTF_CREATE_INPUT_AT_INDEX,
     GTF_SCRIPT_INPUTS_COUNT,
-    GTF_CREATE_INPUTS_COUNT,
+    GTF_SCRIPT_INPUT_AT_INDEX,
+    Transaction,
+    tx_type,
 };
 
 const GTF_INPUT_TYPE = 0x101;
@@ -21,10 +22,10 @@ const GTF_INPUT_TYPE = 0x101;
 // GTF Opcode const selectors
 ////////////////////////////////////////
 
-const GTF_INPUT_COIN_TX_ID = 0x102;
-const GTF_INPUT_COIN_OUTPUT_INDEX = 0x103;
+// const GTF_INPUT_COIN_TX_ID = 0x102;
+// const GTF_INPUT_COIN_OUTPUT_INDEX = 0x103;
 const GTF_INPUT_COIN_OWNER = 0x104;
-const GTF_INPUT_COIN_AMOUNT = 0x105;
+// const GTF_INPUT_COIN_AMOUNT = 0x105;
 // const GTF_INPUT_COIN_ASSET_ID = 0x106;
 // const GTF_INPUT_COIN_TX_POINTER = 0x107;
 // const GTF_INPUT_COIN_WITNESS_INDEX = 0x108;
@@ -34,8 +35,8 @@ const GTF_INPUT_COIN_AMOUNT = 0x105;
 // const GTF_INPUT_COIN_PREDICATE = 0x10C;
 const GTF_INPUT_COIN_PREDICATE_DATA = 0x10D;
 
-const GTF_INPUT_CONTRACT_TX_ID = 0x10E;
-const GTF_INPUT_CONTRACT_OUTPUT_INDEX = 0x10F;
+// const GTF_INPUT_CONTRACT_TX_ID = 0x10E;
+// const GTF_INPUT_CONTRACT_OUTPUT_INDEX = 0x10F;
 // const GTF_INPUT_CONTRACT_BALANCE_ROOT = 0x110;
 // const GTF_INPUT_CONTRACT_STATE_ROOT = 0x111;
 // const GTF_INPUT_CONTRACT_TX_POINTER = 0x112;
@@ -55,10 +56,13 @@ const GTF_INPUT_MESSAGE_DATA = 0x11E;
 const GTF_INPUT_MESSAGE_PREDICATE = 0x11F;
 const GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x120;
 
-// Input types
-pub const INPUT_COIN = 0u8;
-pub const INPUT_CONTRACT = 1u8;
-pub const INPUT_MESSAGE = 2u8;
+// const GTF_INPUT_MESSAGE_WITNESS_INDEX = 0x119;
+// const GTF_INPUT_MESSAGE_DATA_LENGTH = 0x11A;
+// const GTF_INPUT_MESSAGE_PREDICATE_LENGTH = 0x11B;
+// const GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH = 0x11C;
+// const GTF_INPUT_MESSAGE_DATA = 0x11D;
+// const GTF_INPUT_MESSAGE_PREDICATE = 0x11E;
+const GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x11F;
 
 pub enum Input {
     Coin: (),
@@ -141,17 +145,13 @@ pub fn input_pointer(index: u64) -> u64 {
     }
 }
 
-/// If the input's type is `InputCoin` or `InputMessage`,
-/// return the owner as an Option::Some(owner).
+/// If the input's type is `InputCoin` the owner as an Option::Some(owner).
 /// Otherwise, returns Option::None.
 pub fn input_owner(index: u64) -> Option<Address> {
     let type = input_type(index);
     match type {
         Input::Coin => {
-            Option::Some(~Address::from(read(__gtf::<u64>(index, GTF_INPUT_COIN_OWNER))))
-        },
-        Input::Message => {
-            Option::Some(~Address::from(read(__gtf::<u64>(index, GTF_INPUT_MESSAGE_OWNER))))
+            Option::Some(~Address::from(__gtf::<b256>(index, GTF_INPUT_COIN_OWNER)))
         },
         _ => {
             return Option::None;
@@ -182,7 +182,7 @@ pub fn input_predicate_data<T>(index: u64) -> T {
     let data = input_predicate_data_pointer(index);
     match data {
         Option::Some(d) => {
-            read(d)
+            read::<T>(d)
         },
         Option::None => {
             revert(0)
@@ -192,11 +192,12 @@ pub fn input_predicate_data<T>(index: u64) -> T {
 
 /// Get the transaction inputs count for either tx type
 /// (transaction-script or transaction-create).
-pub fn inputs_count() -> u64 {
+pub fn input_count() -> u8 {
     let type = tx_type();
     match type {
         Transaction::Script => {
-            __gtf::<u64>(0, GTF_SCRIPT_INPUTS_COUNT)
+            log(17);
+            __gtf::<u8>(0, GTF_SCRIPT_INPUTS_COUNT)
         },
         Transaction::Create => {
             __gtf::<u64>(0, GTF_CREATE_INPUTS_COUNT)

@@ -2,7 +2,6 @@ use crate::priv_prelude::*;
 
 pub mod item_abi;
 pub mod item_const;
-pub mod item_control_flow;
 pub mod item_enum;
 pub mod item_fn;
 pub mod item_impl;
@@ -34,8 +33,6 @@ pub enum ItemKind {
     Abi(ItemAbi),
     Const(ItemConst),
     Storage(ItemStorage),
-    Break(ItemBreak),
-    Continue(ItemContinue),
 }
 
 impl Spanned for ItemKind {
@@ -50,8 +47,6 @@ impl Spanned for ItemKind {
             ItemKind::Abi(item_abi) => item_abi.span(),
             ItemKind::Const(item_const) => item_const.span(),
             ItemKind::Storage(item_storage) => item_storage.span(),
-            ItemKind::Break(item_break) => item_break.span(),
-            ItemKind::Continue(item_continue) => item_continue.span(),
         }
     }
 }
@@ -74,6 +69,7 @@ pub enum FnArgs {
     Static(Punctuated<FnArg, CommaToken>),
     NonStatic {
         self_token: SelfToken,
+        ref_self: Option<RefToken>,
         mutable_self: Option<MutToken>,
         args_opt: Option<(CommaToken, Punctuated<FnArg, CommaToken>)>,
     },

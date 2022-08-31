@@ -2,15 +2,17 @@
 //! This includes OutputCoins, OutputContracts and OutputMessages.
 library outputs;
 
+use ::contract_id::ContractId;
 use ::mem::read;
 use ::revert::revert;
+use ::logging::log;
 use ::tx::{
-    tx_type,
-    Transaction,
-    GTF_SCRIPT_OUTPUT_AT_INDEX,
+    GTF_CREATE_OUTPUTS_COUNT,
     GTF_CREATE_OUTPUT_AT_INDEX,
     GTF_SCRIPT_OUTPUTS_COUNT,
-    GTF_CREATE_OUTPUTS_COUNT,
+    GTF_SCRIPT_OUTPUT_AT_INDEX,
+    Transaction,
+    tx_type,
 };
 
 ////////////////////////////////////////
@@ -29,14 +31,6 @@ const GTF_OUTPUT_MESSAGE_AMOUNT = 0x209;
 // const GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID = 0x20A;
 // const GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT = 0x20B;
 
-// Output types
-pub const OUTPUT_COIN = 0u8;
-pub const OUTPUT_CONTRACT = 1u8;
-pub const OUTPUT_MESSAGE = 2u8;
-pub const OUTPUT_CHANGE = 3u8;
-pub const OUTPUT_VARIABLE = 4u8;
-pub const OUTPUT_CONTRACT_CREATED = 5u8;
-
 pub enum Output {
     Coin: (),
     Contract: (),
@@ -48,9 +42,13 @@ pub enum Output {
 /// Get the type of an output at `index`.
 pub fn output_type(index: u64) -> Output {
     let type = __gtf::<u64>(index, GTF_OUTPUT_TYPE);
+    log(type);
     match type {
         0u8 => {
             Output::Coin
+        },
+        1u8 => {
+            Output::Contract
         },
         2u8 => {
             Output::Message
@@ -83,7 +81,7 @@ pub fn output_pointer(index: u64) -> u64 {
 
 /// Get the transaction outputs count for either tx type
 /// (transaction-script or transaction-create).
-pub fn outputs_count() -> u64 {
+pub fn output_count() -> u64 {
     let type = tx_type();
     match type {
         Transaction::Script => {
@@ -110,12 +108,19 @@ pub fn output_amount(index: u64) -> u64 {
         Output::Message => {
             __gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT)
         },
-        // reuse GTF_OUTPUT_MESSAGE_AMOUNT for Output::Change & Output::Variable
+        // Output changes are always guaranteed to have an amount of zero since
+        // they're only set after execution terminates
         Output::Change => {
-            __gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT)
+            0
         },
+        // use `__gtf` when GTF_OUTPUT_VARIABLE_AMOUNT is available
         Output::Variable => {
-            __gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT)
+            let ptr = output_pointer(index);
+            asm(r1, r2, r3: ptr) {
+                addi r2 r3 i40;
+                lw r1 r2 i0;
+                r1: u64
+            }
         },
     }
 }

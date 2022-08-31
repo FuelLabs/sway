@@ -1,7 +1,6 @@
 //! Configuration options related to rewriting a list.
+use crate::config::{user_opts::ListsOptions, whitespace::IndentStyle};
 use serde::{Deserialize, Serialize};
-
-use super::{user_opts::ListsOptions, whitespace::IndentStyle};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Lists {
@@ -78,7 +77,7 @@ impl SeparatorTactic {
 }
 
 /// Where to put separator.
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum SeparatorPlace {
     Front,
     Back,

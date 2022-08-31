@@ -6,7 +6,7 @@ use crate::{
     error::{err, ok},
     semantic_analysis::{
         Mode, TypeCheckContext, TypedAstNodeContent, TypedExpression, TypedExpressionVariant,
-        TypedIntrinsicFunctionKind, TypedReturnStatement, TypedWhileLoop,
+        TypedIntrinsicFunctionKind, TypedReturnStatement,
     },
     type_system::{
         insert_type, look_up_type_id, resolve_type, set_type_as_storage_only, unify_with_self,
@@ -24,6 +24,7 @@ pub struct TypedImplTrait {
     pub(crate) span: Span,
     pub methods: Vec<TypedFunctionDeclaration>,
     pub implementing_for_type_id: TypeId,
+    pub type_implementing_for_span: Span,
 }
 
 impl CopyTypes for TypedImplTrait {
@@ -121,6 +122,7 @@ impl TypedImplTrait {
                     span: block_span,
                     methods: functions_buf,
                     implementing_for_type_id,
+                    type_implementing_for_span: type_implementing_for_span.clone(),
                 };
                 let implementing_for_type_id = insert_type(
                     match resolve_type(implementing_for_type_id, &type_implementing_for_span) {
@@ -166,6 +168,7 @@ impl TypedImplTrait {
                     span: block_span,
                     methods: functions_buf,
                     implementing_for_type_id,
+                    type_implementing_for_span,
                 };
                 (impl_trait, implementing_for_type_id)
             }
@@ -193,10 +196,6 @@ impl TypedImplTrait {
                     expr_contains_get_storage_index(expr)
                 }
                 TypedAstNodeContent::Declaration(decl) => decl_contains_get_storage_index(decl),
-                TypedAstNodeContent::WhileLoop(TypedWhileLoop { condition, body }) => {
-                    expr_contains_get_storage_index(condition)
-                        || codeblock_contains_get_storage_index(body)
-                }
                 TypedAstNodeContent::SideEffect => false,
             }
         }
@@ -206,6 +205,8 @@ impl TypedImplTrait {
                 | TypedExpressionVariant::VariableExpression { .. }
                 | TypedExpressionVariant::FunctionParameter
                 | TypedExpressionVariant::AsmExpression { .. }
+                | TypedExpressionVariant::Break
+                | TypedExpressionVariant::Continue
                 | TypedExpressionVariant::StorageAccess(_)
                 | TypedExpressionVariant::AbiName(_) => false,
                 TypedExpressionVariant::FunctionApplication { arguments, .. } => arguments
@@ -220,8 +221,7 @@ impl TypedImplTrait {
                     prefix: expr1,
                     index: expr2,
                 } => {
-                    expr_contains_get_storage_index(&*expr1)
-                        || expr_contains_get_storage_index(&*expr2)
+                    expr_contains_get_storage_index(expr1) || expr_contains_get_storage_index(expr2)
                 }
                 TypedExpressionVariant::Tuple { fields: exprvec }
                 | TypedExpressionVariant::Array { contents: exprvec } => {
@@ -237,27 +237,37 @@ impl TypedImplTrait {
                     then,
                     r#else,
                 } => {
-                    expr_contains_get_storage_index(&*condition)
-                        || expr_contains_get_storage_index(&*then)
+                    expr_contains_get_storage_index(condition)
+                        || expr_contains_get_storage_index(then)
                         || r#else
                             .as_ref()
-                            .map_or(false, |r#else| expr_contains_get_storage_index(&*r#else))
+                            .map_or(false, |r#else| expr_contains_get_storage_index(r#else))
                 }
                 TypedExpressionVariant::StructFieldAccess { prefix: exp, .. }
                 | TypedExpressionVariant::TupleElemAccess { prefix: exp, .. }
                 | TypedExpressionVariant::AbiCast { address: exp, .. }
                 | TypedExpressionVariant::EnumTag { exp }
                 | TypedExpressionVariant::UnsafeDowncast { exp, .. } => {
-                    expr_contains_get_storage_index(&*exp)
+                    expr_contains_get_storage_index(exp)
                 }
                 TypedExpressionVariant::EnumInstantiation { contents, .. } => contents
                     .as_ref()
-                    .map_or(false, |f| expr_contains_get_storage_index(&*f)),
+                    .map_or(false, |f| expr_contains_get_storage_index(f)),
 
                 TypedExpressionVariant::IntrinsicFunction(TypedIntrinsicFunctionKind {
                     kind,
                     ..
                 }) => matches!(kind, sway_ast::intrinsics::Intrinsic::GetStorageKey),
+                TypedExpressionVariant::WhileLoop { condition, body } => {
+                    expr_contains_get_storage_index(condition)
+                        || codeblock_contains_get_storage_index(body)
+                }
+                TypedExpressionVariant::Reassignment(reassignment) => {
+                    expr_contains_get_storage_index(&reassignment.rhs)
+                }
+                TypedExpressionVariant::StorageReassignment(storage_reassignment) => {
+                    expr_contains_get_storage_index(&storage_reassignment.rhs)
+                }
             }
         }
         fn decl_contains_get_storage_index(decl: &TypedDeclaration) -> bool {
@@ -267,11 +277,7 @@ impl TypedImplTrait {
                 )
                 | TypedDeclaration::ConstantDeclaration(
                     semantic_analysis::TypedConstantDeclaration { value: expr, .. },
-                )
-                | TypedDeclaration::Reassignment(semantic_analysis::TypedReassignment {
-                    rhs: expr,
-                    ..
-                }) => expr_contains_get_storage_index(expr),
+                ) => expr_contains_get_storage_index(expr),
                 // We're already inside a type's impl. So we can't have these
                 // nested functions etc. We just ignore them.
                 TypedDeclaration::FunctionDeclaration(_)
@@ -282,10 +288,7 @@ impl TypedImplTrait {
                 | TypedDeclaration::AbiDeclaration(_)
                 | TypedDeclaration::GenericTypeForFunctionScope { .. }
                 | TypedDeclaration::ErrorRecovery
-                | TypedDeclaration::StorageDeclaration(_)
-                | TypedDeclaration::StorageReassignment(_)
-                | TypedDeclaration::Break { .. }
-                | TypedDeclaration::Continue { .. } => false,
+                | TypedDeclaration::StorageDeclaration(_) => false,
             }
         }
         fn codeblock_contains_get_storage_index(cb: &semantic_analysis::TypedCodeBlock) -> bool {
@@ -389,6 +392,7 @@ impl TypedImplTrait {
             span: block_span,
             methods,
             implementing_for_type_id,
+            type_implementing_for_span,
         };
         ok(impl_trait, warnings, errors)
     }

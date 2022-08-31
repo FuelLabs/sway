@@ -78,7 +78,6 @@ pub fn tx_gas_price() -> u64 {
             __gtf::<u64>(0, GTF_CREATE_GAS_PRICE)
         },
     }
-
 }
 
 /// Get the transaction-script gas limit for either tx type
@@ -172,7 +171,7 @@ pub fn tx_witness_data_length(index: u64) -> u64 {
 
 // Get the witness data at `index`.
 pub fn tx_witness_data<T>(index: u64) -> T {
-    read(__gtf::<u64>(index, GTF_WITNESS_DATA))
+    read::<T>(__gtf::<u64>(index, GTF_WITNESS_DATA))
 }
 
 /// Get the transaction receipts root.
@@ -181,8 +180,7 @@ pub fn tx_receipts_root() -> b256 {
     let type = tx_type();
     match type {
         Transaction::Script => {
-            let val: b256 = read(__gtf::<u64>(0, GTF_SCRIPT_RECEIPTS_ROOT));
-            val
+            read::<b256>(__gtf::<u64>(0, GTF_SCRIPT_RECEIPTS_ROOT))
         },
         _ => {
             revert(0);
@@ -224,12 +222,21 @@ pub fn tx_script_data_start_pointer() -> u64 {
 pub fn tx_script_data<T>() -> T {
     let ptr = tx_script_data_start_pointer();
     // TODO some safety checks on the input data? We are going to assume it is the right type for now.
-    read(tx_script_data_start_pointer())
+    read::<T>(tx_script_data_start_pointer())
 }
 
 /// Get the script bytecode
 /// Must be cast to a u64 array, with sufficient length to contain the bytecode.
 /// Bytecode will be padded to next whole word.
 pub fn tx_script_bytecode<T>() -> T {
-    read(tx_script_start_pointer())
+    read::<T>(tx_script_start_pointer())
+}
+<<<<<<< HEAD
+=======
+
+const TX_ID_OFFSET = 0;
+
+/// Get the id of the current transaction.
+pub fn tx_id() -> b256 {
+    read(TX_ID_OFFSET)
 }
