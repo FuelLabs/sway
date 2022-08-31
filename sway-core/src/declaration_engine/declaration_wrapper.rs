@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::{
     semantic_analysis::{
         TypedImplTrait, TypedStructDeclaration, TypedTraitDeclaration, TypedTraitFn,
@@ -21,6 +23,33 @@ pub(crate) enum DeclarationWrapper {
 impl Default for DeclarationWrapper {
     fn default() -> Self {
         DeclarationWrapper::Default
+    }
+}
+
+impl PartialEq for DeclarationWrapper {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (DeclarationWrapper::Default, DeclarationWrapper::Default) => true,
+            (DeclarationWrapper::Function(l), DeclarationWrapper::Function(r)) => l == r,
+            (DeclarationWrapper::Trait(l), DeclarationWrapper::Trait(r)) => l == r,
+            (DeclarationWrapper::TraitFn(l), DeclarationWrapper::TraitFn(r)) => l == r,
+            (DeclarationWrapper::TraitImpl(l), DeclarationWrapper::TraitImpl(r)) => l == r,
+            (DeclarationWrapper::Struct(l), DeclarationWrapper::Struct(r)) => l == r,
+            _ => false,
+        }
+    }
+}
+
+impl fmt::Display for DeclarationWrapper {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DeclarationWrapper::Default => write!(f, "decl(DEFAULT)"),
+            DeclarationWrapper::Function(_) => write!(f, "decl(function)"),
+            DeclarationWrapper::Trait(_) => write!(f, "decl(trait)"),
+            DeclarationWrapper::TraitFn(_) => write!(f, "decl(trait fn)"),
+            DeclarationWrapper::TraitImpl(_) => write!(f, "decl(trait impl)"),
+            DeclarationWrapper::Struct(_) => write!(f, "decl(decl)"),
+        }
     }
 }
 
