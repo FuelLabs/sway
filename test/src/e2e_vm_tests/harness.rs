@@ -60,6 +60,7 @@ pub(crate) fn runs_on_node(
         silent_mode: !verbose,
         contract: Some(contracts),
         locked,
+        unsigned: true,
         ..Default::default()
     };
     tokio::runtime::Runtime::new()
