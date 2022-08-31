@@ -1459,6 +1459,7 @@ dependencies = [
  "clap 3.2.19",
  "forc-pkg",
  "forc-util",
+ "fuel-crypto",
  "fuel-gql-client",
  "fuel-tx",
  "fuel-vm",
