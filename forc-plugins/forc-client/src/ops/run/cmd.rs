@@ -113,4 +113,8 @@ pub struct RunCommand {
     /// in the node's view of the blockchain, (i.e. it does not affect the chain state).
     #[clap(long)]
     pub simulate: bool,
+
+    /// Do not sign the transaction
+    #[clap(long)]
+    pub unsigned: bool,
 }
