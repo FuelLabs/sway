@@ -1,12 +1,13 @@
 use lazy_static::lazy_static;
 use std::{collections::HashMap, sync::RwLock};
+use sway_types::Span;
 
 use crate::{
     concurrent_slab::ConcurrentSlab,
     semantic_analysis::{
         TypedImplTrait, TypedStructDeclaration, TypedTraitDeclaration, TypedTraitFn,
     },
-    TypedFunctionDeclaration,
+    CompileError, TypedFunctionDeclaration,
 };
 
 use super::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper};
@@ -17,7 +18,7 @@ lazy_static! {
 
 /// Used inside of type inference to store declarations.
 #[derive(Debug, Default)]
-pub struct DeclarationEngine {
+pub(crate) struct DeclarationEngine {
     slab: ConcurrentSlab<DeclarationId, DeclarationWrapper>,
     // *declaration_id -> vec of monomorphized copies
     // where the declaration_id is the original declaration
@@ -62,8 +63,9 @@ impl DeclarationEngine {
     fn de_get_function(
         &self,
         index: DeclarationId,
-    ) -> Result<TypedFunctionDeclaration, DeclarationWrapper> {
-        self.slab.get(index).expect_function()
+        span: &Span,
+    ) -> Result<TypedFunctionDeclaration, CompileError> {
+        self.slab.get(index).expect_function(span)
     }
 
     fn de_add_monomorphized_function_copy(
@@ -78,10 +80,11 @@ impl DeclarationEngine {
     fn de_get_monomorphized_function_copies(
         &self,
         original_id: DeclarationId,
-    ) -> Result<Vec<TypedFunctionDeclaration>, DeclarationWrapper> {
+        span: &Span,
+    ) -> Result<Vec<TypedFunctionDeclaration>, CompileError> {
         self.de_get_monomorphized_copies(original_id)
             .into_iter()
-            .map(|x| x.expect_function())
+            .map(|x| x.expect_function(span))
             .collect::<Result<_, _>>()
     }
 
@@ -92,16 +95,21 @@ impl DeclarationEngine {
     fn de_get_trait(
         &self,
         index: DeclarationId,
-    ) -> Result<TypedTraitDeclaration, DeclarationWrapper> {
-        self.slab.get(index).expect_trait()
+        span: &Span,
+    ) -> Result<TypedTraitDeclaration, CompileError> {
+        self.slab.get(index).expect_trait(span)
     }
 
     fn de_insert_trait_fn(&self, trait_fn: TypedTraitFn) -> DeclarationId {
         self.slab.insert(DeclarationWrapper::TraitFn(trait_fn))
     }
 
-    fn de_get_trait_fn(&self, index: DeclarationId) -> Result<TypedTraitFn, DeclarationWrapper> {
-        self.slab.get(index).expect_trait_fn()
+    fn de_get_trait_fn(
+        &self,
+        index: DeclarationId,
+        span: &Span,
+    ) -> Result<TypedTraitFn, CompileError> {
+        self.slab.get(index).expect_trait_fn(span)
     }
 
     fn insert_trait_impl(&self, trait_impl: TypedImplTrait) -> DeclarationId {
@@ -111,8 +119,9 @@ impl DeclarationEngine {
     fn de_get_trait_impl(
         &self,
         index: DeclarationId,
-    ) -> Result<TypedImplTrait, DeclarationWrapper> {
-        self.slab.get(index).expect_trait_impl()
+        span: &Span,
+    ) -> Result<TypedImplTrait, CompileError> {
+        self.slab.get(index).expect_trait_impl(span)
     }
 
     fn de_insert_struct(&self, r#struct: TypedStructDeclaration) -> DeclarationId {
@@ -122,8 +131,9 @@ impl DeclarationEngine {
     fn de_get_struct(
         &self,
         index: DeclarationId,
-    ) -> Result<TypedStructDeclaration, DeclarationWrapper> {
-        self.slab.get(index).expect_struct()
+        span: &Span,
+    ) -> Result<TypedStructDeclaration, CompileError> {
+        self.slab.get(index).expect_struct(span)
     }
 
     fn de_add_monomorphized_struct_copy(
@@ -138,10 +148,11 @@ impl DeclarationEngine {
     fn de_get_monomorphized_struct_copies(
         &self,
         original_id: DeclarationId,
-    ) -> Result<Vec<TypedStructDeclaration>, DeclarationWrapper> {
+        span: &Span,
+    ) -> Result<Vec<TypedStructDeclaration>, CompileError> {
         self.de_get_monomorphized_copies(original_id)
             .into_iter()
-            .map(|x| x.expect_struct())
+            .map(|x| x.expect_struct(span))
             .collect::<Result<_, _>>()
     }
 }
@@ -160,8 +171,9 @@ pub(crate) fn de_insert_function(function: TypedFunctionDeclaration) -> Declarat
 
 pub(crate) fn de_get_function(
     index: DeclarationId,
-) -> Result<TypedFunctionDeclaration, DeclarationWrapper> {
-    DECLARATION_ENGINE.de_get_function(index)
+    span: &Span,
+) -> Result<TypedFunctionDeclaration, CompileError> {
+    DECLARATION_ENGINE.de_get_function(index, span)
 }
 
 pub(crate) fn de_add_monomorphized_function_copy(
@@ -173,8 +185,9 @@ pub(crate) fn de_add_monomorphized_function_copy(
 
 pub(crate) fn de_get_monomorphized_function_copies(
     original_id: DeclarationId,
-) -> Result<Vec<TypedFunctionDeclaration>, DeclarationWrapper> {
-    DECLARATION_ENGINE.de_get_monomorphized_function_copies(original_id)
+    span: &Span,
+) -> Result<Vec<TypedFunctionDeclaration>, CompileError> {
+    DECLARATION_ENGINE.de_get_monomorphized_function_copies(original_id, span)
 }
 
 pub(crate) fn de_insert_trait(r#trait: TypedTraitDeclaration) -> DeclarationId {
@@ -183,16 +196,20 @@ pub(crate) fn de_insert_trait(r#trait: TypedTraitDeclaration) -> DeclarationId {
 
 pub(crate) fn de_get_trait(
     index: DeclarationId,
-) -> Result<TypedTraitDeclaration, DeclarationWrapper> {
-    DECLARATION_ENGINE.de_get_trait(index)
+    span: &Span,
+) -> Result<TypedTraitDeclaration, CompileError> {
+    DECLARATION_ENGINE.de_get_trait(index, span)
 }
 
 pub(crate) fn de_insert_trait_fn(trait_fn: TypedTraitFn) -> DeclarationId {
     DECLARATION_ENGINE.de_insert_trait_fn(trait_fn)
 }
 
-pub(crate) fn de_get_trait_fn(index: DeclarationId) -> Result<TypedTraitFn, DeclarationWrapper> {
-    DECLARATION_ENGINE.de_get_trait_fn(index)
+pub(crate) fn de_get_trait_fn(
+    index: DeclarationId,
+    span: &Span,
+) -> Result<TypedTraitFn, CompileError> {
+    DECLARATION_ENGINE.de_get_trait_fn(index, span)
 }
 
 pub(crate) fn insert_trait_impl(trait_impl: TypedImplTrait) -> DeclarationId {
@@ -201,8 +218,9 @@ pub(crate) fn insert_trait_impl(trait_impl: TypedImplTrait) -> DeclarationId {
 
 pub(crate) fn de_get_trait_impl(
     index: DeclarationId,
-) -> Result<TypedImplTrait, DeclarationWrapper> {
-    DECLARATION_ENGINE.de_get_trait_impl(index)
+    span: &Span,
+) -> Result<TypedImplTrait, CompileError> {
+    DECLARATION_ENGINE.de_get_trait_impl(index, span)
 }
 
 pub(crate) fn de_insert_struct(r#struct: TypedStructDeclaration) -> DeclarationId {
@@ -211,8 +229,9 @@ pub(crate) fn de_insert_struct(r#struct: TypedStructDeclaration) -> DeclarationI
 
 pub(crate) fn de_get_struct(
     index: DeclarationId,
-) -> Result<TypedStructDeclaration, DeclarationWrapper> {
-    DECLARATION_ENGINE.de_get_struct(index)
+    span: &Span,
+) -> Result<TypedStructDeclaration, CompileError> {
+    DECLARATION_ENGINE.de_get_struct(index, span)
 }
 
 pub(crate) fn de_add_monomorphized_struct_copy(
@@ -224,6 +243,7 @@ pub(crate) fn de_add_monomorphized_struct_copy(
 
 pub(crate) fn de_get_monomorphized_struct_copies(
     original_id: DeclarationId,
-) -> Result<Vec<TypedStructDeclaration>, DeclarationWrapper> {
-    DECLARATION_ENGINE.de_get_monomorphized_struct_copies(original_id)
+    span: &Span,
+) -> Result<Vec<TypedStructDeclaration>, CompileError> {
+    DECLARATION_ENGINE.de_get_monomorphized_struct_copies(original_id, span)
 }

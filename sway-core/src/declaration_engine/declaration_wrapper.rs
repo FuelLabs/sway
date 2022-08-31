@@ -1,10 +1,12 @@
 use std::fmt;
 
+use sway_types::Span;
+
 use crate::{
     semantic_analysis::{
         TypedImplTrait, TypedStructDeclaration, TypedTraitDeclaration, TypedTraitFn,
     },
-    TypedFunctionDeclaration,
+    CompileError, TypedFunctionDeclaration,
 };
 
 /// The [DeclarationWrapper] type is used in the [DeclarationEngine]
@@ -12,7 +14,7 @@ use crate::{
 #[derive(Clone, Debug)]
 pub(crate) enum DeclarationWrapper {
     // no-op variant to fulfill the default trait
-    Default,
+    Unknown,
     Function(TypedFunctionDeclaration),
     Trait(TypedTraitDeclaration),
     TraitFn(TypedTraitFn),
@@ -22,14 +24,14 @@ pub(crate) enum DeclarationWrapper {
 
 impl Default for DeclarationWrapper {
     fn default() -> Self {
-        DeclarationWrapper::Default
+        DeclarationWrapper::Unknown
     }
 }
 
 impl PartialEq for DeclarationWrapper {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (DeclarationWrapper::Default, DeclarationWrapper::Default) => true,
+            (DeclarationWrapper::Unknown, DeclarationWrapper::Unknown) => true,
             (DeclarationWrapper::Function(l), DeclarationWrapper::Function(r)) => l == r,
             (DeclarationWrapper::Trait(l), DeclarationWrapper::Trait(r)) => l == r,
             (DeclarationWrapper::TraitFn(l), DeclarationWrapper::TraitFn(r)) => l == r,
@@ -42,50 +44,93 @@ impl PartialEq for DeclarationWrapper {
 
 impl fmt::Display for DeclarationWrapper {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            DeclarationWrapper::Default => write!(f, "decl(DEFAULT)"),
-            DeclarationWrapper::Function(_) => write!(f, "decl(function)"),
-            DeclarationWrapper::Trait(_) => write!(f, "decl(trait)"),
-            DeclarationWrapper::TraitFn(_) => write!(f, "decl(trait fn)"),
-            DeclarationWrapper::TraitImpl(_) => write!(f, "decl(trait impl)"),
-            DeclarationWrapper::Struct(_) => write!(f, "decl(decl)"),
-        }
+        write!(f, "decl({})", self.friendly_name())
     }
 }
 
 impl DeclarationWrapper {
-    pub(super) fn expect_function(self) -> Result<TypedFunctionDeclaration, DeclarationWrapper> {
+    /// friendly name string used for error reporting.
+    fn friendly_name(&self) -> &'static str {
+        match self {
+            DeclarationWrapper::Unknown => "unknown",
+            DeclarationWrapper::Function(_) => "function",
+            DeclarationWrapper::Trait(_) => "trait",
+            DeclarationWrapper::Struct(_) => "struct",
+            DeclarationWrapper::TraitImpl(_) => "impl trait",
+            DeclarationWrapper::TraitFn(_) => "trait function",
+        }
+    }
+
+    pub(super) fn expect_function(
+        self,
+        span: &Span,
+    ) -> Result<TypedFunctionDeclaration, CompileError> {
         match self {
             DeclarationWrapper::Function(decl) => Ok(decl),
-            actually => Err(actually),
+            DeclarationWrapper::Unknown => Err(CompileError::Internal(
+                "did not expect to find unknown declaration",
+                span.clone(),
+            )),
+            actually => Err(CompileError::DeclIsNotAFunction {
+                actually: actually.friendly_name().to_string(),
+                span: span.clone(),
+            }),
         }
     }
 
-    pub(super) fn expect_trait(self) -> Result<TypedTraitDeclaration, DeclarationWrapper> {
+    pub(super) fn expect_trait(self, span: &Span) -> Result<TypedTraitDeclaration, CompileError> {
         match self {
             DeclarationWrapper::Trait(decl) => Ok(decl),
-            actually => Err(actually),
+            DeclarationWrapper::Unknown => Err(CompileError::Internal(
+                "did not expect to find unknown declaration",
+                span.clone(),
+            )),
+            actually => Err(CompileError::DeclIsNotATrait {
+                actually: actually.friendly_name().to_string(),
+                span: span.clone(),
+            }),
         }
     }
 
-    pub(super) fn expect_trait_fn(self) -> Result<TypedTraitFn, DeclarationWrapper> {
+    pub(super) fn expect_trait_fn(self, span: &Span) -> Result<TypedTraitFn, CompileError> {
         match self {
             DeclarationWrapper::TraitFn(decl) => Ok(decl),
-            actually => Err(actually),
+            DeclarationWrapper::Unknown => Err(CompileError::Internal(
+                "did not expect to find unknown declaration",
+                span.clone(),
+            )),
+            actually => Err(CompileError::DeclIsNotATraitFn {
+                actually: actually.friendly_name().to_string(),
+                span: span.clone(),
+            }),
         }
     }
 
-    pub(super) fn expect_trait_impl(self) -> Result<TypedImplTrait, DeclarationWrapper> {
+    pub(super) fn expect_trait_impl(self, span: &Span) -> Result<TypedImplTrait, CompileError> {
         match self {
             DeclarationWrapper::TraitImpl(decl) => Ok(decl),
-            actually => Err(actually),
+            DeclarationWrapper::Unknown => Err(CompileError::Internal(
+                "did not expect to find unknown declaration",
+                span.clone(),
+            )),
+            actually => Err(CompileError::DeclIsNotAnImplTrait {
+                actually: actually.friendly_name().to_string(),
+                span: span.clone(),
+            }),
         }
     }
 
-    pub(super) fn expect_struct(self) -> Result<TypedStructDeclaration, DeclarationWrapper> {
+    pub(super) fn expect_struct(self, span: &Span) -> Result<TypedStructDeclaration, CompileError> {
         match self {
             DeclarationWrapper::Struct(decl) => Ok(decl),
-            actually => Err(actually),
+            DeclarationWrapper::Unknown => Err(CompileError::Internal(
+                "did not expect to find unknown declaration",
+                span.clone(),
+            )),
+            actually => Err(CompileError::DeclIsNotAStruct {
+                actually: actually.friendly_name().to_string(),
+                span: span.clone(),
+            }),
         }
     }
 }
