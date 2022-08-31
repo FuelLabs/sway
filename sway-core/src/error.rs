@@ -1062,6 +1062,8 @@ pub enum CompileError {
     MainArgsNotYetSupported { span: Span },
     #[error("Configuration-time constant value is not a constant item.")]
     ConfigTimeConstantNotAConstDecl { span: Span },
+    #[error("Configuration-time constant value is not a literal.")]
+    ConfigTimeConstantNotALiteral { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1231,6 +1233,7 @@ impl Spanned for CompileError {
             ContinueOutsideLoop { span } => span.clone(),
             MainArgsNotYetSupported { span } => span.clone(),
             ConfigTimeConstantNotAConstDecl { span } => span.clone(),
+            ConfigTimeConstantNotALiteral { span } => span.clone(),
         }
     }
 }

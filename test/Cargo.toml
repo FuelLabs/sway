@@ -13,9 +13,9 @@ forc = { path = "../forc", features = ["test"], default-features = false }
 forc-client = { path = "../forc-plugins/forc-client" }
 forc-pkg = { path = "../forc-pkg" }
 forc-util = { path = "../forc-util" }
-fuel-asm = "0.6"
-fuel-tx = "0.13"
-fuel-vm = { version = "0.12", features = ["random"] }
+fuel-asm = "0.8"
+fuel-tx = { version = "0.18", features = ["builder"]}
+fuel-vm = { version = "0.15", features = ["random"] }
 gag = "1.0"
 prettydiff = "0.6"
 rand = "0.8"

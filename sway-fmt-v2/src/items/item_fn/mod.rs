@@ -106,14 +106,13 @@ impl Format for FnSignature {
         let fn_sig_width = fn_sig.chars().count() as usize + 2; // add two for opening brace + space
         let fn_args_width = fn_args.chars().count() as usize;
 
-        formatter.shape.add_width(fn_sig_width);
+        formatter.shape.update_width(fn_sig_width);
         formatter
             .shape
             .get_line_style(None, Some(fn_args_width), &formatter.config);
 
         format_fn_sig(self, formatted_code, formatter)?;
 
-        formatter.shape.sub_width(fn_sig_width);
         formatter.shape.update_line_settings(prev_state);
 
         Ok(())

@@ -1,6 +1,6 @@
 predicate;
 
-use std::tx::get_predicate_data;
+use std::inputs::input_predicate_data;
 
 struct Validation {
     has_account: bool,
@@ -8,6 +8,6 @@ struct Validation {
 }
 
 fn main() -> bool {
-    let validation:Validation = get_predicate_data();
+    let validation:Validation = input_predicate_data(0);
     validation.total_complete == 100 && validation.has_account
 }
