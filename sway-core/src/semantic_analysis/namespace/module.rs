@@ -1,7 +1,7 @@
 use crate::{
     declaration_engine::declaration_engine::DeclarationEngine,
     error::*,
-    parse_tree::{Declaration, Visibility},
+    parse_tree::{Declaration, ExpressionKind, Visibility},
     semantic_analysis::{
         ast_node::{TypedAstNode, TypedAstNodeContent, TypedVariableDeclaration},
         declaration::VariableMutability,
@@ -110,6 +110,15 @@ impl Module {
                         return err(warnings, errors);
                     }
                 };
+
+            // Temporarily disallow non-literals. See https://github.com/FuelLabs/sway/issues/2647.
+            if !matches!(const_decl.value.kind, ExpressionKind::Literal(_)) {
+                errors.push(CompileError::ConfigTimeConstantNotALiteral {
+                    span: const_item_span,
+                });
+                return err(warnings, errors);
+            }
+
             let ast_node = AstNode {
                 content: AstNodeContent::Declaration(Declaration::ConstantDeclaration(const_decl)),
                 span: const_item_span.clone(),
