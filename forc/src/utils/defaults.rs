@@ -30,7 +30,7 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-fuels = {{ version = "0.20", features = ["fuel-core-lib"] }}
+fuels = {{ version = "0.21", features = ["fuel-core-lib"] }}
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
 
 [[test]]

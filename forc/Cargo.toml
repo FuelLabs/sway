@@ -24,7 +24,7 @@ clap_complete = "3.1"
 forc-pkg = { version = "0.22.0", path = "../forc-pkg" }
 forc-util = { version = "0.22.0", path = "../forc-util" }
 fs_extra = "1.2"
-fuel-asm = "0.6"
+fuel-asm = "0.8"
 hex = "0.4.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.73"
