@@ -6,7 +6,8 @@ use crate::{
     semantic_analysis::{
         TypedImplTrait, TypedStructDeclaration, TypedTraitDeclaration, TypedTraitFn,
     },
-    CompileError, TypedFunctionDeclaration, type_system::{CopyTypes, TypeMapping},
+    type_system::{CopyTypes, TypeMapping},
+    CompileError, TypedFunctionDeclaration,
 };
 
 /// The [DeclarationWrapper] type is used in the [DeclarationEngine]
@@ -54,7 +55,7 @@ impl fmt::Display for DeclarationWrapper {
 impl CopyTypes for DeclarationWrapper {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         match self {
-            DeclarationWrapper::Unknown => {},
+            DeclarationWrapper::Unknown => {}
             DeclarationWrapper::Function(decl) => decl.copy_types(type_mapping),
             DeclarationWrapper::Trait(decl) => decl.copy_types(type_mapping),
             DeclarationWrapper::TraitFn(decl) => decl.copy_types(type_mapping),
