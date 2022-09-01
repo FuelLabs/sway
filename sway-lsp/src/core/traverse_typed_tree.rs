@@ -4,16 +4,19 @@ use crate::{
     core::token::{TokenMap, TypeDefinition, TypedAstToken},
     utils::token::{struct_declaration_of_type_id, to_ident_key},
 };
-use sway_core::semantic_analysis::ast_node::{
-    code_block::TypedCodeBlock,
-    expression::{
-        typed_expression::TypedExpression, typed_expression_variant::TypedExpressionVariant,
-        TypedIntrinsicFunctionKind,
+use sway_core::{
+    declaration_engine,
+    semantic_analysis::ast_node::{
+        code_block::TypedCodeBlock,
+        expression::{
+            typed_expression::TypedExpression, typed_expression_variant::TypedExpressionVariant,
+            TypedIntrinsicFunctionKind,
+        },
+        ProjectionKind, TypedFunctionDeclaration, TypedFunctionParameter, TypedImplTrait,
+        TypedTraitFn, {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
     },
-    ProjectionKind, TypedFunctionDeclaration, TypedFunctionParameter, TypedImplTrait, TypedTraitFn,
-    {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
 };
-use sway_types::ident::Ident;
+use sway_types::{ident::Ident, Spanned};
 
 pub fn traverse_node(node: &TypedAstNode, tokens: &TokenMap) {
     match &node.content {
@@ -55,7 +58,10 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
         TypedDeclaration::FunctionDeclaration(func_decl) => {
             collect_typed_fn_decl(func_decl, tokens);
         }
-        TypedDeclaration::TraitDeclaration(trait_decl) => {
+        TypedDeclaration::TraitDeclaration(decl_id) => {
+            // TODO: do not use unwrap
+            let trait_decl =
+                declaration_engine::de_get_trait(decl_id.clone(), &decl_id.span()).unwrap();
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&trait_decl.name)) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
             }

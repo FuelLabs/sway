@@ -214,17 +214,18 @@ impl Module {
             errors
         );
         let implemented_traits = src_ns.implemented_traits.clone();
-        let symbols = src_ns
-            .symbols
-            .iter()
-            .filter_map(|(symbol, decl)| {
-                if decl.visibility() == Visibility::Public {
-                    Some(symbol.clone())
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
+        let mut symbols = vec![];
+        for (symbol, decl) in src_ns.symbols.iter() {
+            let visibility = check!(
+                decl.visibility(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            if visibility == Visibility::Public {
+                symbols.push(symbol.clone());
+            }
+        }
 
         let dst_ns = &mut self[dst];
         dst_ns.implemented_traits.extend(implemented_traits);
@@ -274,7 +275,13 @@ impl Module {
         let mut impls_to_insert = vec![];
         match src_ns.symbols.get(item).cloned() {
             Some(decl) => {
-                if decl.visibility() != Visibility::Public {
+                let visibility = check!(
+                    decl.visibility(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                if visibility != Visibility::Public {
                     errors.push(CompileError::ImportPrivateSymbol { name: item.clone() });
                 }
                 // if this is a const, insert it into the local namespace directly

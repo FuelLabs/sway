@@ -11,7 +11,6 @@ use crate::semantic_analysis::{
 
 use super::{
     TypedEnumDeclaration, TypedImplTrait, TypedStorageDeclaration, TypedStructDeclaration,
-    TypedTraitDeclaration,
 };
 
 fn ast_node_validate(x: &TypedAstNodeContent) -> CompileResult<()> {
@@ -205,7 +204,7 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
             }
         }
         TypedDeclaration::AbiDeclaration(TypedAbiDeclaration { methods: _, .. })
-        | TypedDeclaration::TraitDeclaration(TypedTraitDeclaration { methods: _, .. }) => {
+        | TypedDeclaration::TraitDeclaration(_) => {
             // These methods are not typed. They are however handled from ImplTrait.
         }
         TypedDeclaration::ImplTrait(TypedImplTrait { methods, .. }) => {

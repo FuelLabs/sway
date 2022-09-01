@@ -13,8 +13,9 @@ pub(crate) use mode::*;
 pub(crate) use return_statement::*;
 
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::*, style::*, type_system::*,
-    types::DeterministicallyAborts, AstNode, AstNodeContent, Ident, ReturnStatement,
+    declaration_engine::declaration_engine::de_insert_trait, error::*, parse_tree::*,
+    semantic_analysis::*, style::*, type_system::*, types::DeterministicallyAborts, AstNode,
+    AstNodeContent, Ident, ReturnStatement,
 };
 
 use sway_types::{span::Span, state::StateIndex, Spanned};
@@ -112,12 +113,23 @@ impl DeterministicallyAborts for TypedAstNode {
 
 impl TypedAstNode {
     /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
-    pub(crate) fn is_public(&self) -> bool {
+    pub(crate) fn is_public(&self) -> CompileResult<bool> {
         use TypedAstNodeContent::*;
-        match &self.content {
-            Declaration(decl) => decl.visibility().is_public(),
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let public = match &self.content {
+            Declaration(decl) => {
+                let visibility = check!(
+                    decl.visibility(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                visibility.is_public()
+            }
             ReturnStatement(_) | Expression(_) | SideEffect | ImplicitReturnExpression(_) => false,
-        }
+        };
+        ok(public, warnings, errors)
     }
 
     /// Naive check to see if this node is a function declaration of a function called `main` if
@@ -311,7 +323,8 @@ impl TypedAstNode {
                                 errors
                             );
                             let name = trait_decl.name.clone();
-                            let decl = TypedDeclaration::TraitDeclaration(trait_decl);
+                            let decl_id = de_insert_trait(trait_decl);
+                            let decl = TypedDeclaration::TraitDeclaration(decl_id);
                             ctx.namespace.insert_symbol(name, decl.clone());
                             decl
                         }

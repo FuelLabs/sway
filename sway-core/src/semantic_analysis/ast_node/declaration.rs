@@ -16,7 +16,13 @@ pub use r#trait::*;
 pub use storage::*;
 pub use variable::*;
 
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_system::*};
+use crate::{
+    declaration_engine::{declaration_engine::de_get_trait, declaration_id::DeclarationId},
+    error::*,
+    parse_tree::*,
+    semantic_analysis::*,
+    type_system::*,
+};
 use derivative::Derivative;
 use std::{borrow::Cow, fmt};
 use sway_types::{Ident, Span, Spanned};
@@ -26,7 +32,7 @@ pub enum TypedDeclaration {
     VariableDeclaration(TypedVariableDeclaration),
     ConstantDeclaration(TypedConstantDeclaration),
     FunctionDeclaration(TypedFunctionDeclaration),
-    TraitDeclaration(TypedTraitDeclaration),
+    TraitDeclaration(DeclarationId),
     StructDeclaration(TypedStructDeclaration),
     EnumDeclaration(TypedEnumDeclaration),
     ImplTrait(TypedImplTrait),
@@ -67,7 +73,7 @@ impl Spanned for TypedDeclaration {
             VariableDeclaration(TypedVariableDeclaration { name, .. }) => name.span(),
             ConstantDeclaration(TypedConstantDeclaration { name, .. }) => name.span(),
             FunctionDeclaration(TypedFunctionDeclaration { span, .. }) => span.clone(),
-            TraitDeclaration(TypedTraitDeclaration { name, .. }) => name.span(),
+            TraitDeclaration(decl_id) => decl_id.span(),
             StructDeclaration(TypedStructDeclaration { name, .. }) => name.span(),
             EnumDeclaration(TypedEnumDeclaration { span, .. }) => span.clone(),
             AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
@@ -115,8 +121,12 @@ impl fmt::Display for TypedDeclaration {
                 }) => {
                     name.as_str().into()
                 }
-                TypedDeclaration::TraitDeclaration(TypedTraitDeclaration { name, .. }) =>
-                    name.as_str().into(),
+                TypedDeclaration::TraitDeclaration(decl_id) => {
+                    match de_get_trait(decl_id.clone(), &decl_id.span()) {
+                        Ok(TypedTraitDeclaration { name, .. }) => name.as_str().into(),
+                        Err(_) => "unknown trait".into(),
+                    }
+                }
                 TypedDeclaration::StructDeclaration(TypedStructDeclaration { name, .. }) =>
                     name.as_str().into(),
                 TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. }) =>
@@ -323,9 +333,20 @@ impl TypedDeclaration {
         ok(type_id, vec![], vec![])
     }
 
-    pub(crate) fn visibility(&self) -> Visibility {
+    pub(crate) fn visibility(&self) -> CompileResult<Visibility> {
         use TypedDeclaration::*;
-        match self {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let visibility = match self {
+            TraitDeclaration(decl_id) => {
+                let TypedTraitDeclaration { visibility, .. } = check!(
+                    res!(de_get_trait(decl_id.clone(), &decl_id.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                visibility
+            }
             GenericTypeForFunctionScope { .. }
             | ImplTrait { .. }
             | StorageDeclaration { .. }
@@ -338,9 +359,9 @@ impl TypedDeclaration {
             EnumDeclaration(TypedEnumDeclaration { visibility, .. })
             | ConstantDeclaration(TypedConstantDeclaration { visibility, .. })
             | FunctionDeclaration(TypedFunctionDeclaration { visibility, .. })
-            | TraitDeclaration(TypedTraitDeclaration { visibility, .. })
             | StructDeclaration(TypedStructDeclaration { visibility, .. }) => *visibility,
-        }
+        };
+        ok(visibility, warnings, errors)
     }
 }
 

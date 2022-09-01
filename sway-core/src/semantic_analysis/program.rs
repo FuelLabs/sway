@@ -211,16 +211,26 @@ impl TypedProgram {
 
     /// Ensures there are no unresolved types or types awaiting resolution in the AST.
     pub(crate) fn finalize_types(&self) -> CompileResult<()> {
+        let mut prob_warnings = vec![];
+        let mut prob_errors = vec![];
         // Get all of the entry points for this tree type. For libraries, that's everything
         // public. For contracts, ABI entries. For scripts and predicates, any function named `main`.
         let errors: Vec<_> = match &self.kind {
-            TypedProgramKind::Library { .. } => self
-                .root
-                .all_nodes
-                .iter()
-                .filter(|x| x.is_public())
-                .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
-                .collect(),
+            TypedProgramKind::Library { .. } => {
+                let mut ret = vec![];
+                for node in self.root.all_nodes.iter() {
+                    let public = check!(
+                        node.is_public(),
+                        return err(prob_warnings, prob_errors),
+                        prob_warnings,
+                        prob_errors
+                    );
+                    if public {
+                        ret.append(&mut node.check_for_unresolved_types());
+                    }
+                }
+                ret
+            }
             TypedProgramKind::Script { .. } => self
                 .root
                 .all_nodes

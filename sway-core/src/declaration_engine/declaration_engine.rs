@@ -217,7 +217,7 @@ pub(crate) fn de_insert_trait(r#trait: TypedTraitDeclaration) -> DeclarationId {
     DECLARATION_ENGINE.de_insert_trait(r#trait)
 }
 
-pub(crate) fn de_get_trait(
+pub fn de_get_trait(
     index: DeclarationId,
     span: &Span,
 ) -> Result<TypedTraitDeclaration, CompileError> {
