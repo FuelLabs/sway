@@ -17,7 +17,10 @@ pub use storage::*;
 pub use variable::*;
 
 use crate::{
-    declaration_engine::{declaration_engine::de_get_trait, declaration_id::DeclarationId},
+    declaration_engine::{
+        declaration_engine::{de_get_storage, de_get_trait},
+        declaration_id::DeclarationId,
+    },
     error::*,
     parse_tree::*,
     semantic_analysis::*,
@@ -41,7 +44,7 @@ pub enum TypedDeclaration {
     // the body of that function.
     GenericTypeForFunctionScope { name: Ident, type_id: TypeId },
     ErrorRecovery,
-    StorageDeclaration(TypedStorageDeclaration),
+    StorageDeclaration(DeclarationId),
 }
 
 impl CopyTypes for TypedDeclaration {
@@ -298,39 +301,45 @@ impl TypedDeclaration {
     }
 
     pub(crate) fn return_type(&self) -> CompileResult<TypeId> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
         let type_id = match self {
             TypedDeclaration::VariableDeclaration(TypedVariableDeclaration { body, .. }) => {
                 body.return_type
             }
             TypedDeclaration::FunctionDeclaration { .. } => {
-                return err(
-                    vec![],
-                    vec![CompileError::Unimplemented(
-                        "Function pointers have not yet been implemented.",
-                        self.span(),
-                    )],
-                )
+                errors.push(CompileError::Unimplemented(
+                    "Function pointers have not yet been implemented.",
+                    self.span(),
+                ));
+                return err(warnings, errors);
             }
             TypedDeclaration::StructDeclaration(decl) => decl.create_type_id(),
             TypedDeclaration::EnumDeclaration(decl) => decl.create_type_id(),
-            TypedDeclaration::StorageDeclaration(decl) => insert_type(TypeInfo::Storage {
-                fields: decl.fields_as_typed_struct_fields(),
-            }),
+            TypedDeclaration::StorageDeclaration(decl_id) => {
+                let storage_decl = check!(
+                    CompileResult::from(de_get_storage(decl_id.clone(), &self.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                insert_type(TypeInfo::Storage {
+                    fields: storage_decl.fields_as_typed_struct_fields(),
+                })
+            }
             TypedDeclaration::GenericTypeForFunctionScope { name, type_id } => {
                 insert_type(TypeInfo::Ref(*type_id, name.span()))
             }
             decl => {
-                return err(
-                    vec![],
-                    vec![CompileError::NotAType {
-                        span: decl.span(),
-                        name: decl.to_string(),
-                        actually_is: decl.friendly_name(),
-                    }],
-                )
+                errors.push(CompileError::NotAType {
+                    span: decl.span(),
+                    name: decl.to_string(),
+                    actually_is: decl.friendly_name(),
+                });
+                return err(warnings, errors);
             }
         };
-        ok(type_id, vec![], vec![])
+        ok(type_id, warnings, errors)
     }
 
     pub(crate) fn visibility(&self) -> CompileResult<Visibility> {

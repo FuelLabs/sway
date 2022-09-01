@@ -166,7 +166,9 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
             }
         }
         TypedDeclaration::ErrorRecovery => {}
-        TypedDeclaration::StorageDeclaration(storage_decl) => {
+        TypedDeclaration::StorageDeclaration(decl_id) => {
+            let storage_decl =
+                declaration_engine::de_get_storage(decl_id.clone(), &decl_id.span()).unwrap();
             for field in &storage_decl.fields {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&field.name)) {
                     token.typed = Some(TypedAstToken::TypedStorageField(field.clone()));

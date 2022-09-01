@@ -5,7 +5,8 @@ use sway_types::{Span, Spanned};
 use crate::{
     concurrent_slab::ConcurrentSlab,
     semantic_analysis::{
-        TypedImplTrait, TypedStructDeclaration, TypedTraitDeclaration, TypedTraitFn,
+        TypedImplTrait, TypedStorageDeclaration, TypedStructDeclaration, TypedTraitDeclaration,
+        TypedTraitFn,
     },
     CompileError, TypedFunctionDeclaration,
 };
@@ -178,6 +179,19 @@ impl DeclarationEngine {
             .map(|x| x.expect_struct(span))
             .collect::<Result<_, _>>()
     }
+
+    fn de_insert_storage(&self, storage: TypedStorageDeclaration) -> DeclarationId {
+        let span = storage.span();
+        DeclarationId::new(self.slab.insert(DeclarationWrapper::Storage(storage)), span)
+    }
+
+    fn de_get_storage(
+        &self,
+        index: DeclarationId,
+        span: &Span,
+    ) -> Result<TypedStorageDeclaration, CompileError> {
+        self.slab.get(*index).expect_storage(span)
+    }
 }
 
 pub(crate) fn de_clear() {
@@ -269,4 +283,15 @@ pub(crate) fn de_get_monomorphized_struct_copies(
     span: &Span,
 ) -> Result<Vec<TypedStructDeclaration>, CompileError> {
     DECLARATION_ENGINE.de_get_monomorphized_struct_copies(original_id, span)
+}
+
+pub(crate) fn de_insert_storage(storage: TypedStorageDeclaration) -> DeclarationId {
+    DECLARATION_ENGINE.de_insert_storage(storage)
+}
+
+pub fn de_get_storage(
+    index: DeclarationId,
+    span: &Span,
+) -> Result<TypedStorageDeclaration, CompileError> {
+    DECLARATION_ENGINE.de_get_storage(index, span)
 }

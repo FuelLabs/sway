@@ -3,6 +3,7 @@ use super::{
     TypedFunctionDeclaration, TypedImplTrait, TypedStorageDeclaration,
 };
 use crate::{
+    declaration_engine::declaration_engine::de_get_storage,
     error::*,
     metadata::MetadataManager,
     parse_tree::{ParseProgram, Purity, TreeType},
@@ -134,14 +135,16 @@ impl TypedProgram {
                 .iter()
                 .find(|decl| matches!(decl, TypedDeclaration::StorageDeclaration(_)));
 
-            if let Some(TypedDeclaration::StorageDeclaration(TypedStorageDeclaration {
-                span,
-                ..
-            })) = storage_decl
-            {
+            if let Some(TypedDeclaration::StorageDeclaration(decl_id)) = storage_decl {
+                let TypedStorageDeclaration { span, .. } = check!(
+                    CompileResult::from(de_get_storage(decl_id.clone(), &decl_id.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
                 errors.push(CompileError::StorageDeclarationInNonContract {
                     program_kind: format!("{kind}"),
-                    span: span.clone(),
+                    span,
                 });
             }
         }
@@ -274,7 +277,13 @@ impl TypedProgram {
 
                 // Expecting at most a single storage declaration
                 match storage_decl {
-                    Some(TypedDeclaration::StorageDeclaration(decl)) => {
+                    Some(TypedDeclaration::StorageDeclaration(decl_id)) => {
+                        let decl = check!(
+                            CompileResult::from(de_get_storage(decl_id.clone(), &decl_id.span())),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
                         let mut storage_slots = check!(
                             decl.get_initialized_storage_slots(context, md_mgr, module),
                             return err(warnings, errors),

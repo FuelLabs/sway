@@ -149,11 +149,9 @@ pub fn input_count() -> u8 {
     let type = tx_type();
     match type {
         Transaction::Script => {
-            log(17);
             __gtf::<u8>(0, GTF_SCRIPT_INPUTS_COUNT)
         },
         Transaction::Create => {
-            log(19);
             __gtf::<u8>(0, GTF_CREATE_INPUTS_COUNT)
         },
     }

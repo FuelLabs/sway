@@ -13,9 +13,14 @@ pub(crate) use mode::*;
 pub(crate) use return_statement::*;
 
 use crate::{
-    declaration_engine::declaration_engine::de_insert_trait, error::*, parse_tree::*,
-    semantic_analysis::*, style::*, type_system::*, types::DeterministicallyAborts, AstNode,
-    AstNodeContent, Ident, ReturnStatement,
+    declaration_engine::declaration_engine::{de_insert_storage, de_insert_trait},
+    error::*,
+    parse_tree::*,
+    semantic_analysis::*,
+    style::*,
+    type_system::*,
+    types::DeterministicallyAborts,
+    AstNode, AstNodeContent, Ident, ReturnStatement,
 };
 
 use sway_types::{span::Span, state::StateIndex, Spanned};
@@ -423,17 +428,18 @@ impl TypedAstNode {
                                 ));
                             }
                             let decl = TypedStorageDeclaration::new(fields_buf, span);
+                            let decl_id = de_insert_storage(decl);
                             // insert the storage declaration into the symbols
                             // if there already was one, return an error that duplicate storage
 
                             // declarations are not allowed
                             check!(
-                                ctx.namespace.set_storage_declaration(decl.clone()),
+                                ctx.namespace.set_storage_declaration(decl_id.clone()),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
                             );
-                            TypedDeclaration::StorageDeclaration(decl)
+                            TypedDeclaration::StorageDeclaration(decl_id)
                         }
                     })
                 }
@@ -845,7 +851,7 @@ pub(crate) fn reassign_storage_subfield(
     }
 
     let storage_fields = check!(
-        ctx.namespace.get_storage_field_descriptors(),
+        ctx.namespace.get_storage_field_descriptors(&span),
         return err(warnings, errors),
         warnings,
         errors

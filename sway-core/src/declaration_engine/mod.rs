@@ -17,4 +17,4 @@ pub(crate) mod declaration_engine;
 pub(crate) mod declaration_id;
 pub(crate) mod declaration_wrapper;
 
-pub use declaration_engine::de_get_trait;
+pub use declaration_engine::{de_get_storage, de_get_trait};

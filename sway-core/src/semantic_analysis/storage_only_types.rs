@@ -1,5 +1,7 @@
 use sway_types::{Span, Spanned};
 
+use crate::declaration_engine::declaration_engine::de_get_storage;
+use crate::error::err;
 use crate::type_system::{is_type_info_storage_only, resolve_type, TypeId};
 use crate::{error::ok, semantic_analysis, CompileError, CompileResult, CompileWarning};
 use crate::{TypedDeclaration, TypedFunctionDeclaration};
@@ -237,7 +239,13 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
                 );
             }
         }
-        TypedDeclaration::StorageDeclaration(TypedStorageDeclaration { fields, .. }) => {
+        TypedDeclaration::StorageDeclaration(decl_id) => {
+            let TypedStorageDeclaration { fields, .. } = check!(
+                CompileResult::from(de_get_storage(decl_id.clone(), &decl.span())),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
             for field in fields {
                 check!(
                     check_type(field.type_id, field.name.span().clone(), true),
