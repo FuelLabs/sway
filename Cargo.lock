@@ -1384,24 +1384,6 @@ dependencies = [
 ]
 
 [[package]]
-<<<<<<< HEAD
-=======
-name = "forc-fmt-v2"
-version = "0.22.1"
-dependencies = [
- "anyhow",
- "clap 3.2.19",
- "forc-util",
- "prettydiff 0.5.1",
- "sway-core",
- "sway-fmt-v2",
- "sway-utils",
- "taplo",
- "tracing",
-]
-
-[[package]]
->>>>>>> master
 name = "forc-lsp"
 version = "0.22.1"
 dependencies = [
@@ -3888,18 +3870,6 @@ dependencies = [
 name = "sway-fmt"
 version = "0.22.1"
 dependencies = [
-<<<<<<< HEAD
-=======
- "ropey",
- "sway-core",
- "sway-types",
-]
-
-[[package]]
-name = "sway-fmt-v2"
-version = "0.22.1"
-dependencies = [
->>>>>>> master
  "anyhow",
  "forc-util",
  "paste",
