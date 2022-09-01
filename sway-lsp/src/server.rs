@@ -79,7 +79,7 @@ fn capabilities() -> ServerCapabilities {
             trigger_characters: None,
             ..Default::default()
         }),
-        document_formatting_provider: Some(OneOf::Left(true)),
+        // document_formatting_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
         ..ServerCapabilities::default()
     }
