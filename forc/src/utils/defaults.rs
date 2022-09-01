@@ -30,7 +30,7 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-fuels = {{ version = "0.20", features = ["fuel-core-lib"] }}
+fuels = {{ version = "0.21", features = ["fuel-core-lib"] }}
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
 
 [[test]]
@@ -96,7 +96,7 @@ pub(crate) fn default_test_program(project_name: &str) -> String {
 // Load abi from json
 abigen!(MyContract, "out/debug/"#,
         project_name,
-        r#"-abi.json");
+        r#"-flat-abi.json");
 
 async fn get_contract_instance() -> (MyContract, ContractId) {
     // Launch a local network and deploy the contract

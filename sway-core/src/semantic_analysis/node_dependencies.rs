@@ -314,7 +314,6 @@ impl Dependencies {
                     deps.gather_from_typeinfo(&variant.type_info)
                 })
                 .gather_from_type_parameters(type_parameters),
-            Declaration::Reassignment(decl) => self.gather_from_expr(&decl.rhs),
             Declaration::TraitDeclaration(TraitDeclaration {
                 interface_surface,
                 methods,
@@ -496,6 +495,7 @@ impl Dependencies {
             }) => self.gather_from_expr(condition).gather_from_block(body),
             ExpressionKind::Break => self,
             ExpressionKind::Continue => self,
+            ExpressionKind::Reassignment(reassignment) => self.gather_from_expr(&reassignment.rhs),
         }
     }
 
@@ -716,7 +716,6 @@ fn decl_name(decl: &Declaration) -> Option<DependentSymbol> {
 
         // These don't have declaration dependencies.
         Declaration::VariableDeclaration(_) => None,
-        Declaration::Reassignment(_) => None,
         // Storage cannot be depended upon or exported
         Declaration::StorageDeclaration(_) => None,
     }

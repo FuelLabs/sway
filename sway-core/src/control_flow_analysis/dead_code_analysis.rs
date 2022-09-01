@@ -1,16 +1,17 @@
 use super::*;
 use crate::{
+    declaration_engine::declaration_engine::de_get_storage,
     parse_tree::{CallPath, Visibility},
     semantic_analysis::{
         ast_node::{
             TypedAbiDeclaration, TypedCodeBlock, TypedConstantDeclaration, TypedDeclaration,
             TypedEnumDeclaration, TypedExpression, TypedExpressionVariant,
-            TypedFunctionDeclaration, TypedReassignment, TypedReturnStatement,
-            TypedStructDeclaration, TypedStructExpressionField, TypedTraitDeclaration,
-            TypedVariableDeclaration, VariableMutability,
+            TypedFunctionDeclaration, TypedReturnStatement, TypedStructDeclaration,
+            TypedStructExpressionField, TypedTraitDeclaration, TypedVariableDeclaration,
+            VariableMutability,
         },
-        TypeCheckedStorageReassignment, TypedAsmRegisterDeclaration, TypedAstNode,
-        TypedAstNodeContent, TypedImplTrait, TypedIntrinsicFunctionKind, TypedStorageDeclaration,
+        TypedAsmRegisterDeclaration, TypedAstNode, TypedAstNodeContent, TypedImplTrait,
+        TypedIntrinsicFunctionKind, TypedStorageDeclaration,
     },
     type_system::{resolve_type, TypeInfo},
     CompileError, CompileWarning, Ident, TreeType, Warning,
@@ -366,24 +367,6 @@ fn connect_declaration(
             connect_enum_declaration(enum_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
-        StorageReassignment(TypeCheckedStorageReassignment { rhs, .. }) => connect_expression(
-            &rhs.expression,
-            graph,
-            &[entry_node],
-            exit_node,
-            "variable reassignment",
-            tree_type,
-            rhs.span.clone(),
-        ),
-        Reassignment(TypedReassignment { rhs, .. }) => connect_expression(
-            &rhs.expression,
-            graph,
-            &[entry_node],
-            exit_node,
-            "variable reassignment",
-            tree_type,
-            rhs.clone().span,
-        ),
         ImplTrait(TypedImplTrait {
             trait_name,
             methods,
@@ -392,8 +375,9 @@ fn connect_declaration(
             connect_impl_trait(trait_name, graph, methods, entry_node, tree_type)?;
             Ok(leaves.to_vec())
         }
-        StorageDeclaration(storage) => {
-            connect_storage_declaration(storage, graph, entry_node, tree_type);
+        StorageDeclaration(decl_id) => {
+            let storage = de_get_storage(decl_id.clone(), &span)?;
+            connect_storage_declaration(&storage, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
         ErrorRecovery | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
@@ -1114,6 +1098,24 @@ fn connect_expression(
             }
             Ok(vec![])
         }
+        Reassignment(typed_reassignment) => connect_expression(
+            &typed_reassignment.rhs.expression,
+            graph,
+            leaves,
+            exit_node,
+            "variable reassignment",
+            tree_type,
+            typed_reassignment.rhs.clone().span,
+        ),
+        StorageReassignment(typed_storage_reassignment) => connect_expression(
+            &typed_storage_reassignment.rhs.expression,
+            graph,
+            leaves,
+            exit_node,
+            "variable reassignment",
+            tree_type,
+            typed_storage_reassignment.rhs.clone().span,
+        ),
     }
 }
 

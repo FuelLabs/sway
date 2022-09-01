@@ -3,7 +3,7 @@ use fuels::prelude::*;
 
 abigen!(
     TestRegistersContract,
-    "test_projects/registers/out/debug/registers-abi.json",
+    "test_projects/registers/out/debug/registers-flat-abi.json",
 );
 
 // Compile contract, create node and deploy contract, returning TestRegistersContract contract instance

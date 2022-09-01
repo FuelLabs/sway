@@ -3,15 +3,15 @@ use fuels::{prelude::*, tx::ContractId};
 
 abigen!(
     TestContextContract,
-    "test_projects/context/out/debug/context-abi.json",
+    "test_projects/context/out/debug/context-flat-abi.json",
 );
 abigen!(
     TestContextCallerContract,
-    "test_artifacts/context_caller_contract/out/debug/context_caller_contract-abi.json",
+    "test_artifacts/context_caller_contract/out/debug/context_caller_contract-flat-abi.json",
 );
 abigen!(
     FuelCoin,
-    "test_projects/token_ops/out/debug/token_ops-abi.json"
+    "test_projects/token_ops/out/debug/token_ops-flat-abi.json"
 );
 
 async fn get_contracts() -> (
@@ -63,7 +63,7 @@ async fn can_get_this_balance() {
     caller_instance
         .call_receive_coins(send_amount, context_id)
         .set_contracts(&[context_id.into()])
-        .tx_params(TxParameters::new(None, Some(1_000_000), None, None))
+        .tx_params(TxParameters::new(None, Some(1_000_000), None))
         .call()
         .await
         .unwrap();
@@ -133,7 +133,7 @@ async fn can_get_msg_id() {
     let result = caller_instance
         .call_get_asset_id_with_coins(send_amount, context_id)
         .set_contracts(&[context_id.into()])
-        .tx_params(TxParameters::new(None, Some(1_000_000), None, None))
+        .tx_params(TxParameters::new(None, Some(1_000_000), None))
         .call()
         .await
         .unwrap();
@@ -155,7 +155,7 @@ async fn can_get_msg_gas() {
     let result = caller_instance
         .call_get_gas_with_coins(send_amount, context_id)
         .set_contracts(&[context_id.into()])
-        .tx_params(TxParameters::new(Some(0), Some(1_000_000), None, None))
+        .tx_params(TxParameters::new(Some(0), Some(1_000_000), None))
         .call()
         .await
         .unwrap();
@@ -170,7 +170,7 @@ async fn can_get_global_gas() {
 
     caller_instance
         .mint_coins(send_amount)
-        .tx_params(TxParameters::new(None, Some(1_000_000), None, None))
+        .tx_params(TxParameters::new(None, Some(1_000_000), None))
         .call()
         .await
         .unwrap();
@@ -178,7 +178,7 @@ async fn can_get_global_gas() {
     let result = caller_instance
         .call_get_global_gas_with_coins(send_amount, context_id)
         .set_contracts(&[context_id.into()])
-        .tx_params(TxParameters::new(None, Some(1_000_000), None, None))
+        .tx_params(TxParameters::new(None, Some(1_000_000), None))
         .call()
         .await
         .unwrap();
