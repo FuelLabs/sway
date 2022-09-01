@@ -13,7 +13,7 @@ pub(crate) mod shape;
 
 #[derive(Debug, Default, Clone)]
 pub struct Formatter {
-    pub(crate) shape: Shape,
+    pub shape: Shape,
     pub config: Config,
 }
 
