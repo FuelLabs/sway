@@ -1062,7 +1062,7 @@ pub enum CompileError {
     ConfigTimeConstantNotAConstDecl { span: Span },
     #[error("Configuration-time constant value is not a literal.")]
     ConfigTimeConstantNotALiteral { span: Span },
-    #[error("ref mut parameters are not allowed for script or predicate main functions.")]
+    #[error("ref mut parameter not allowed for main()")]
     RefMutableNotAllowedInMain { param_name: Ident },
 }
 
