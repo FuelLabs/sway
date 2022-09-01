@@ -11,11 +11,10 @@ use crate::{
         TypeCheckContext, TypedModule,
     },
     type_system::*,
-    types::ToJsonAbi,
 };
 use fuel_tx::StorageSlot;
 use sway_ir::{Context, Module};
-use sway_types::{span::Span, Ident, JsonABI, JsonABIProgram, JsonTypeDeclaration, Spanned};
+use sway_types::{span::Span, Ident, JsonABIProgram, JsonTypeDeclaration, Spanned};
 
 #[derive(Debug)]
 pub struct TypedProgram {
@@ -336,23 +335,6 @@ pub enum TypedProgramKind {
         main_function: TypedFunctionDeclaration,
         declarations: Vec<TypedDeclaration>,
     },
-}
-
-impl ToJsonAbi for TypedProgramKind {
-    type Output = JsonABI;
-
-    // TODO: Update this to match behaviour described in the `compile` doc comment above.
-    fn generate_json_abi(&self) -> Self::Output {
-        match self {
-            TypedProgramKind::Contract { abi_entries, .. } => {
-                abi_entries.iter().map(|x| x.generate_json_abi()).collect()
-            }
-            TypedProgramKind::Script { main_function, .. } => {
-                vec![main_function.generate_json_abi()]
-            }
-            _ => vec![],
-        }
-    }
 }
 
 impl TypedProgramKind {
