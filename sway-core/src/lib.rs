@@ -258,26 +258,6 @@ pub fn parsed_to_ast(
     // Collect information about the types used in this program
     let types_metadata = typed_program.collect_types_metadata();
 
-    // All unresolved types lead to compile errors
-    let unresolved_types_errors = types_metadata
-        .iter()
-        .filter_map(|m| match m {
-            TypeMetadata::UnresolvedType {
-                name,
-                span_override,
-            } => Some(CompileError::UnableToInferGeneric {
-                ty: name.as_str().to_string(),
-                span: span_override.clone().unwrap_or_else(|| name.span()),
-            }),
-            _ => None,
-        })
-        .collect::<Vec<_>>();
-    errors.extend(unresolved_types_errors);
-    if !errors.is_empty() {
-        errors = dedup_unsorted(errors);
-        return CompileAstResult::Failure { errors, warnings };
-    }
-
     // Collect all the types of logged values. These are required when generating the JSON ABI.
     typed_program.logged_types.extend(
         types_metadata
@@ -337,6 +317,26 @@ pub fn parsed_to_ast(
             return CompileAstResult::Failure { errors, warnings };
         }
     };
+
+    // All unresolved types lead to compile errors
+    let unresolved_types_errors = types_metadata
+        .iter()
+        .filter_map(|m| match m {
+            TypeMetadata::UnresolvedType {
+                name,
+                span_override,
+            } => Some(CompileError::UnableToInferGeneric {
+                ty: name.as_str().to_string(),
+                span: span_override.clone().unwrap_or_else(|| name.span()),
+            }),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    errors.extend(unresolved_types_errors);
+    if !errors.is_empty() {
+        errors = dedup_unsorted(errors);
+        return CompileAstResult::Failure { errors, warnings };
+    }
 
     CompileAstResult::Success {
         typed_program: Box::new(typed_program_with_storage_slots),
