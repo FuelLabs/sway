@@ -4,7 +4,8 @@ use sway_types::Span;
 
 use crate::{
     semantic_analysis::{
-        TypedImplTrait, TypedStructDeclaration, TypedTraitDeclaration, TypedTraitFn,
+        TypedImplTrait, TypedStorageDeclaration, TypedStructDeclaration, TypedTraitDeclaration,
+        TypedTraitFn,
     },
     CompileError, TypedFunctionDeclaration,
 };
@@ -20,6 +21,7 @@ pub(crate) enum DeclarationWrapper {
     TraitFn(TypedTraitFn),
     TraitImpl(TypedImplTrait),
     Struct(TypedStructDeclaration),
+    Storage(TypedStorageDeclaration),
 }
 
 impl Default for DeclarationWrapper {
@@ -40,6 +42,7 @@ impl PartialEq for DeclarationWrapper {
             (DeclarationWrapper::TraitFn(l), DeclarationWrapper::TraitFn(r)) => l == r,
             (DeclarationWrapper::TraitImpl(l), DeclarationWrapper::TraitImpl(r)) => l == r,
             (DeclarationWrapper::Struct(l), DeclarationWrapper::Struct(r)) => l == r,
+            (DeclarationWrapper::Storage(l), DeclarationWrapper::Storage(r)) => l == r,
             _ => false,
         }
     }
@@ -61,6 +64,7 @@ impl DeclarationWrapper {
             DeclarationWrapper::Struct(_) => "struct",
             DeclarationWrapper::TraitImpl(_) => "impl trait",
             DeclarationWrapper::TraitFn(_) => "trait function",
+            DeclarationWrapper::Storage(_) => "storage",
         }
     }
 
@@ -131,6 +135,23 @@ impl DeclarationWrapper {
                 span.clone(),
             )),
             actually => Err(CompileError::DeclIsNotAStruct {
+                actually: actually.friendly_name().to_string(),
+                span: span.clone(),
+            }),
+        }
+    }
+
+    pub(super) fn expect_storage(
+        self,
+        span: &Span,
+    ) -> Result<TypedStorageDeclaration, CompileError> {
+        match self {
+            DeclarationWrapper::Storage(decl) => Ok(decl),
+            DeclarationWrapper::Unknown => Err(CompileError::Internal(
+                "did not expect to find unknown declaration",
+                span.clone(),
+            )),
+            actually => Err(CompileError::DeclIsNotStorage {
                 actually: actually.friendly_name().to_string(),
                 span: span.clone(),
             }),

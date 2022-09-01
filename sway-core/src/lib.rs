@@ -8,7 +8,7 @@ mod concurrent_slab;
 pub mod constants;
 mod control_flow_analysis;
 mod convert_parse_tree;
-mod declaration_engine;
+pub mod declaration_engine;
 pub mod ir_generation;
 mod metadata;
 pub mod parse_tree;
