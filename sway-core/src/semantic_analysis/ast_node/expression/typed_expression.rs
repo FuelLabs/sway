@@ -1981,15 +1981,11 @@ impl TypedExpression {
 
 #[cfg(test)]
 mod tests {
-    use crate::declaration_engine::declaration_engine::DeclarationEngine;
-
     use super::*;
 
     fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<TypedExpression> {
-        let mut declaration_engine = DeclarationEngine::new();
         let mut namespace = Namespace::init_root(namespace::Module::default());
-        let ctx = TypeCheckContext::from_root(&mut namespace, &mut declaration_engine)
-            .with_type_annotation(type_annotation);
+        let ctx = TypeCheckContext::from_root(&mut namespace).with_type_annotation(type_annotation);
         TypedExpression::type_check(ctx, expr)
     }
 

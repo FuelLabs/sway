@@ -118,6 +118,10 @@ impl ReplaceSelfType for TypeId {
 }
 
 impl TypeId {
+    pub(super) fn new(index: usize) -> TypeId {
+        TypeId(index)
+    }
+
     pub(crate) fn update_type(&mut self, type_mapping: &TypeMapping, span: &Span) {
         *self = match look_up_type_id(*self).matches_type_parameter(type_mapping) {
             Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, span.clone())),
