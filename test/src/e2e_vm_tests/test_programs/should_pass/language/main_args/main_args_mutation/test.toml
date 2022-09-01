@@ -1,4 +1,4 @@
 category = "fail"
 
 # check: fn main(ref mut baba: TestStruct) -> u64 {
-# nextln: $()ref mut parameters are not allowed for script or predicate main functions.
+# nextln: $()ref mut parameter not allowed for main()
