@@ -1,9 +1,6 @@
+use super::*;
 use std::fmt;
 use sway_types::{JsonTypeApplication, JsonTypeDeclaration, Span, Spanned};
-
-use crate::types::*;
-
-use super::*;
 
 /// A identifier to uniquely refer to our type terms
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
@@ -48,40 +45,6 @@ impl UnresolvedTypeCheck for TypeId {
                 span: span_override.unwrap_or_else(|| name.span()),
             }],
             _ => vec![],
-        }
-    }
-}
-
-impl JsonAbiString for TypeId {
-    fn json_abi_str(&self) -> String {
-        look_up_type_id(*self).json_abi_str()
-    }
-}
-
-impl ToJsonAbi for TypeId {
-    type Output = Option<Vec<Property>>;
-
-    fn generate_json_abi(&self) -> Self::Output {
-        match look_up_type_id(*self) {
-            TypeInfo::Array(type_id, _, _) => Some(vec![Property {
-                name: "__array_element".to_string(),
-                type_field: type_id.json_abi_str(),
-                components: type_id.generate_json_abi(),
-                type_arguments: type_id
-                    .get_type_parameters()
-                    .map(|v| v.iter().map(TypeParameter::generate_json_abi).collect()),
-            }]),
-            TypeInfo::Enum { variant_types, .. } => Some(
-                variant_types
-                    .iter()
-                    .map(|x| x.generate_json_abi())
-                    .collect(),
-            ),
-            TypeInfo::Struct { fields, .. } => {
-                Some(fields.iter().map(|x| x.generate_json_abi()).collect())
-            }
-            TypeInfo::Tuple(fields) => Some(fields.iter().map(|x| x.generate_json_abi()).collect()),
-            _ => None,
         }
     }
 }
@@ -429,6 +392,10 @@ impl TypeId {
             }),
             _ => None,
         }
+    }
+
+    pub fn json_abi_str(&self) -> String {
+        look_up_type_id(*self).json_abi_str()
     }
 
     /// Gives back a string that represents the type, considering what it resolves to
