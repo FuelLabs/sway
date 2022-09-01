@@ -271,6 +271,15 @@ impl Shape {
                     self.code_line.update_line_style(LineStyle::Normal)
                 }
             }
+            ExprKind::Conditional => {
+                if self.width < self.width_heuristics.single_line_if_else_max_width {
+                    self.code_line.update_line_style(LineStyle::Inline)
+                } else if body_width.unwrap_or(0) > self.width_heuristics.chain_width {
+                    self.code_line.update_line_style(LineStyle::Multiline)
+                } else {
+                    self.code_line.update_line_style(LineStyle::Normal)
+                }
+            }
             _ => self.code_line.update_line_style(LineStyle::default()),
         }
     }

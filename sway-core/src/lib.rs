@@ -8,6 +8,7 @@ mod concurrent_slab;
 pub mod constants;
 mod control_flow_analysis;
 mod convert_parse_tree;
+mod declaration_engine;
 pub mod ir_generation;
 mod metadata;
 pub mod parse_tree;
@@ -635,6 +636,7 @@ pub fn asm_to_bytecode(
 
 pub fn clear_lazy_statics() {
     type_system::clear_type_engine();
+    declaration_engine::declaration_engine::de_clear();
 }
 
 /// Given a [TypedProgram], which is type-checked Sway source, construct a graph to analyze

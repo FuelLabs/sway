@@ -92,13 +92,11 @@ fn create_contract_tx(
 ) -> (Transaction, fuel_tx::ContractId) {
     let gas_price = 0;
     let gas_limit = fuel_tx::ConsensusParameters::default().max_gas_per_tx;
-    let byte_price = 0;
     let maturity = 0;
     let bytecode_witness_index = 0;
     let witnesses = vec![compiled_contract.clone().into()];
 
     let salt = Salt::new([0; 32]);
-    let static_contracts = vec![];
 
     let contract = Contract::from(compiled_contract);
     let root = contract.root();
@@ -124,11 +122,9 @@ fn create_contract_tx(
         Transaction::create(
             gas_price,
             gas_limit,
-            byte_price,
             maturity,
             bytecode_witness_index,
             salt,
-            static_contracts,
             storage_slots,
             inputs,
             outputs,

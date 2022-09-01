@@ -1,12 +1,12 @@
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_system::*, types::*};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, type_system::*};
 use std::hash::{Hash, Hasher};
-use sway_types::{Ident, Property, Span, Spanned};
+use sway_types::{Ident, Span, Spanned};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedStructDeclaration {
     pub name: Ident,
     pub fields: Vec<TypedStructField>,
-    pub(crate) type_parameters: Vec<TypeParameter>,
+    pub type_parameters: Vec<TypeParameter>,
     pub visibility: Visibility,
     pub(crate) span: Span,
 }
@@ -172,22 +172,6 @@ impl PartialEq for TypedStructField {
 impl CopyTypes for TypedStructField {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.type_id.update_type(type_mapping, &self.span);
-    }
-}
-
-impl ToJsonAbi for TypedStructField {
-    type Output = Property;
-
-    fn generate_json_abi(&self) -> Self::Output {
-        Property {
-            name: self.name.to_string(),
-            type_field: self.type_id.json_abi_str(),
-            components: self.type_id.generate_json_abi(),
-            type_arguments: self
-                .type_id
-                .get_type_parameters()
-                .map(|v| v.iter().map(TypeParameter::generate_json_abi).collect()),
-        }
     }
 }
 

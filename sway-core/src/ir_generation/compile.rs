@@ -84,7 +84,6 @@ pub(crate) fn compile_constants(
 // And for structs and enums in particular, we must ignore those with embedded generic types as
 // they are monomorphised only at the instantation site.  We must ignore the generic declarations
 // altogether anyway.
-
 fn compile_declarations(
     context: &mut Context,
     md_mgr: &mut MetadataManager,

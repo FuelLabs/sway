@@ -1162,7 +1162,7 @@ impl<'ir> AsmBuilder<'ir> {
         let index_reg = self.value_to_register(index);
         self.bytecode.push(Op {
             opcode: either::Either::Left(VirtualOp::GTF(
-                instr_reg,
+                instr_reg.clone(),
                 index_reg,
                 VirtualImmediate12 {
                     value: tx_field_id as u16,
@@ -1171,6 +1171,7 @@ impl<'ir> AsmBuilder<'ir> {
             comment: "get transaction field".into(),
             owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
         });
+        self.reg_map.insert(*instr_val, instr_reg);
     }
 
     fn compile_insert_element(
