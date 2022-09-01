@@ -64,6 +64,7 @@ impl CopyTypes for DeclarationWrapper {
             DeclarationWrapper::TraitFn(decl) => decl.copy_types(type_mapping),
             DeclarationWrapper::TraitImpl(decl) => decl.copy_types(type_mapping),
             DeclarationWrapper::Struct(decl) => decl.copy_types(type_mapping),
+            DeclarationWrapper::Storage(_) => {}
         }
     }
 }
