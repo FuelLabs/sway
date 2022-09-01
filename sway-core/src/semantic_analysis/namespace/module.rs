@@ -1,5 +1,4 @@
 use crate::{
-    declaration_engine::declaration_engine::DeclarationEngine,
     error::*,
     parse_tree::{Declaration, ExpressionKind, Visibility},
     semantic_analysis::{
@@ -123,9 +122,8 @@ impl Module {
                 content: AstNodeContent::Declaration(Declaration::ConstantDeclaration(const_decl)),
                 span: const_item_span.clone(),
             };
-            let mut declaration_engine = DeclarationEngine::new();
             let mut ns = Namespace::init_root(Default::default());
-            let type_check_ctx = TypeCheckContext::from_root(&mut ns, &mut declaration_engine);
+            let type_check_ctx = TypeCheckContext::from_root(&mut ns);
             let typed_node =
                 TypedAstNode::type_check(type_check_ctx, ast_node).unwrap(&mut vec![], &mut vec![]);
             // get the decl out of the typed node:

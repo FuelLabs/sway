@@ -1,22 +1,27 @@
-[
-  {
-    "inputs": [
-      {
-        "components": null,
-        "name": "baba",
-        "type": "u64",
-        "typeArguments": null
-      }
-    ],
-    "name": "main",
-    "outputs": [
-      {
-        "components": null,
+{
+  "functions": [
+    {
+      "inputs": [
+        {
+          "name": "baba",
+          "type": 0,
+          "typeArguments": null
+        }
+      ],
+      "name": "main",
+      "output": {
         "name": "",
-        "type": "u64",
+        "type": 0,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  }
-]
+    }
+  ],
+  "types": [
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 0,
+      "typeParameters": null
+    }
+  ]
+}

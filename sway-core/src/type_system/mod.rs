@@ -30,7 +30,6 @@ pub(crate) use unresolved_type_check::*;
 
 use crate::error::*;
 use std::fmt::Debug;
-use sway_types::Property;
 
 #[test]
 fn generic_enum_resolution() {

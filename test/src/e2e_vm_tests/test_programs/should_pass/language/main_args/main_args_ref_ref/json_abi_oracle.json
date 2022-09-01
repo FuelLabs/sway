@@ -1,42 +1,44 @@
-[
-  {
-    "inputs": [
-      {
-        "components": [
-          {
-            "components": null,
-            "name": "val",
-            "type": "u64",
-            "typeArguments": null
-          }
-        ],
-        "name": "baba",
-        "type": "struct TestStruct",
-        "typeArguments": null
-      },
-      {
-        "components": [
-          {
-            "components": null,
-            "name": "val",
-            "type": "u64",
-            "typeArguments": null
-          }
-        ],
-        "name": "keke",
-        "type": "struct TestStruct",
-        "typeArguments": null
-      }
-    ],
-    "name": "main",
-    "outputs": [
-      {
-        "components": null,
+{
+  "functions": [
+    {
+      "inputs": [
+        {
+          "name": "baba",
+          "type": 0,
+          "typeArguments": null
+        },
+        {
+          "name": "keke",
+          "type": 0,
+          "typeArguments": null
+        }
+      ],
+      "name": "main",
+      "output": {
         "name": "",
-        "type": "u64",
+        "type": 1,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  }
-]
+    }
+  ],
+  "types": [
+    {
+      "components": [
+        {
+          "name": "val",
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct TestStruct",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 1,
+      "typeParameters": null
+    }
+  ]
+}

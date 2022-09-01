@@ -1,12 +1,9 @@
 mod function_parameter;
 pub use function_parameter::*;
 
-use crate::{error::*, parse_tree::*, semantic_analysis::*, style::*, type_system::*, types::*};
+use crate::{error::*, parse_tree::*, semantic_analysis::*, style::*, type_system::*};
 use sha2::{Digest, Sha256};
-use sway_types::{
-    Function, Ident, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaration, Property, Span,
-    Spanned,
-};
+use sway_types::{Ident, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaration, Span, Spanned};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedFunctionDeclaration {
@@ -81,39 +78,6 @@ impl MonomorphizeHelper for TypedFunctionDeclaration {
 
     fn name(&self) -> &Ident {
         &self.name
-    }
-}
-
-impl ToJsonAbi for TypedFunctionDeclaration {
-    type Output = Function;
-
-    fn generate_json_abi(&self) -> Self::Output {
-        Function {
-            name: self.name.as_str().to_string(),
-            type_field: "function".to_string(),
-            inputs: self
-                .parameters
-                .iter()
-                .map(|x| Property {
-                    name: x.name.as_str().to_string(),
-                    type_field: x.type_id.json_abi_str(),
-                    components: x.type_id.generate_json_abi(),
-                    type_arguments: x
-                        .type_id
-                        .get_type_parameters()
-                        .map(|v| v.iter().map(TypeParameter::generate_json_abi).collect()),
-                })
-                .collect(),
-            outputs: vec![Property {
-                name: "".to_string(),
-                type_field: self.return_type.json_abi_str(),
-                components: self.return_type.generate_json_abi(),
-                type_arguments: self
-                    .return_type
-                    .get_type_parameters()
-                    .map(|v| v.iter().map(TypeParameter::generate_json_abi).collect()),
-            }],
-        }
     }
 }
 

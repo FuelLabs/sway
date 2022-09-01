@@ -4,7 +4,7 @@ use sha3::Keccak256;
 
 abigen!(
     HashingTestContract,
-    "test_projects/hashing/out/debug/hashing-abi.json"
+    "test_projects/hashing/out/debug/hashing-flat-abi.json"
 );
 
 enum Hash {
