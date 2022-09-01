@@ -99,17 +99,12 @@ pub fn transfer_to_output(amount: u64, asset_id: ContractId, to: Address) {
     let outputs = output_count();
     while index < outputs {
         let type_of_output = output_type(index);
-        match type_of_output {
-            Output::Variable => {
-                if output_amount(index) == 0 {
-                    output_index = index;
-                    output_found = true;
-                    break; // break early and use the output we found
-                }
-            },
-            _ => {
-                ();
-            },
+        if let Output::Variable = type_of_output {
+            if output_amount(index) == 0 {
+                output_index = index;
+                output_found = true;
+                break; // break early and use the output we found
+            }
         }
         index += 1;
     }

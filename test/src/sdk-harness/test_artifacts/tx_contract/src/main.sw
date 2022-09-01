@@ -82,6 +82,7 @@ impl TxContractTest for Contract {
         input_type(index)
     }
     // TODO: Add test for getting InputMessage owner when we have InputMessages
+    // See https://github.com/FuelLabs/sway/issues/2672
     // fn get_tx_input_message_owner(index: u64) -> Address {
     //     tx_input_owner(index)
     // }
