@@ -1,7 +1,7 @@
 script;
 
 use std::assert::assert;
-use std::I8::*;
+use std::I8;
 
 fn main() -> bool {
     let one = ~I8::from_uint(1u8);
