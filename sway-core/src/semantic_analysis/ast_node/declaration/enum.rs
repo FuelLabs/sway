@@ -6,11 +6,10 @@ use crate::{
         insert_type, look_up_type_id, CopyTypes, CreateTypeId, EnforceTypeArguments,
         MonomorphizeHelper, ReplaceSelfType, TypeId, TypeMapping, TypeParameter,
     },
-    types::{JsonAbiString, ToJsonAbi},
     TypeInfo,
 };
 use std::hash::{Hash, Hasher};
-use sway_types::{Ident, Property, Span, Spanned};
+use sway_types::{Ident, Span, Spanned};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedEnumDeclaration {
@@ -180,22 +179,6 @@ impl PartialEq for TypedEnumVariant {
 impl CopyTypes for TypedEnumVariant {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.type_id.update_type(type_mapping, &self.span);
-    }
-}
-
-impl ToJsonAbi for TypedEnumVariant {
-    type Output = Property;
-
-    fn generate_json_abi(&self) -> Self::Output {
-        Property {
-            name: self.name.to_string(),
-            type_field: self.type_id.json_abi_str(),
-            components: self.type_id.generate_json_abi(),
-            type_arguments: self
-                .type_id
-                .get_type_parameters()
-                .map(|v| v.iter().map(TypeParameter::generate_json_abi).collect()),
-        }
     }
 }
 
