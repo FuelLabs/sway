@@ -1,5 +1,6 @@
 library basic_enum;
 
+
 // Declare the enum
 enum Color {
     Blue: (),

@@ -1,10 +1,12 @@
 library data_structures;
 
+
 // Declare a struct type
 pub struct Foo {
     bar: u64,
     baz: bool,
 }
+
 
 // Struct types for destructuring
 pub struct Point {
@@ -18,6 +20,5 @@ pub struct Line {
 }
 
 pub struct TupleInStruct {
-    nested_tuple: (u64,
-    (u32, (bool, str[2]))), 
+    nested_tuple: (u64, (u32, (bool, str[2]))),
 }

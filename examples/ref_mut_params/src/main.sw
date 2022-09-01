@@ -7,6 +7,7 @@ enum Color {
     Blue: (),
 }
 
+
 // ANCHOR: increment
 fn increment(ref mut num: u32) {
     let prev = num;
@@ -38,7 +39,6 @@ impl Coordinates {
     }
 }
 // ANCHOR_END: move_right
-
 fn main() {
     // ANCHOR: call_increment
     let mut num: u32 = 0;
@@ -51,7 +51,6 @@ fn main() {
     swap_tuple(tuple);
     assert(tuple.0 == 24); // The function `swap_tuple()` modifies `tuple.0`
     assert(tuple.1 == 42); // The function `swap_tuple()` modifies `tuple.1`
-
     let mut color = Color::Red;
     update_color(color, Color::Blue);
     assert(match color {
@@ -61,15 +60,11 @@ fn main() {
         _ => {
             false
         }
-    }
-    ); // The function `update_color()` modifies the color to Blue
+    }); // The function `update_color()` modifies the color to Blue
     // ANCHOR_END: call_tuple_and_enum
 
     // ANCHOR: call_move_right
-    let mut point = Coordinates {
-        x: 1,
-        y: 1,
-    };
+    let mut point = Coordinates { x: 1, y: 1 };
     point.move_right(5);
     assert(point.x == 6);
     assert(point.y == 1);
