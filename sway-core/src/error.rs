@@ -692,6 +692,8 @@ pub enum CompileError {
     DeclIsNotAnImplTrait { actually: String, span: Span },
     #[error("This is a {actually}, not a trait function.")]
     DeclIsNotATraitFn { actually: String, span: Span },
+    #[error("This is a {actually}, not storage.")]
+    DeclIsNotStorage { actually: String, span: Span },
     #[error(
         "Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n \
          {available_fields}"
@@ -1207,6 +1209,7 @@ impl Spanned for CompileError {
             DeclIsNotATrait { span, .. } => span.clone(),
             DeclIsNotAnImplTrait { span, .. } => span.clone(),
             DeclIsNotATraitFn { span, .. } => span.clone(),
+            DeclIsNotStorage { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
             ImpureInPureContext { span, .. } => span.clone(),
             IntegerTooLarge { span, .. } => span.clone(),
