@@ -1,7 +1,10 @@
 mod function_parameter;
 pub use function_parameter::*;
 
-use crate::{error::*, parse_tree::*, semantic_analysis::*, style::*, type_system::*};
+use crate::{
+    declaration_engine::declaration_wrapper::DeclarationWrapper, error::*, parse_tree::*,
+    semantic_analysis::*, style::*, type_system::*,
+};
 use sha2::{Digest, Sha256};
 use sway_types::{Ident, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaration, Span, Spanned};
 
@@ -78,6 +81,10 @@ impl MonomorphizeHelper for TypedFunctionDeclaration {
 
     fn name(&self) -> &Ident {
         &self.name
+    }
+
+    fn to_wrapper(&self) -> DeclarationWrapper {
+        DeclarationWrapper::Function(self.clone())
     }
 }
 

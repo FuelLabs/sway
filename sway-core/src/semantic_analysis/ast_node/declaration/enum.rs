@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::declaration_wrapper::DeclarationWrapper,
     error::*,
     parse_tree::*,
     semantic_analysis::*,
@@ -66,6 +67,10 @@ impl MonomorphizeHelper for TypedEnumDeclaration {
 
     fn name(&self) -> &Ident {
         &self.name
+    }
+
+    fn to_wrapper(&self) -> DeclarationWrapper {
+        DeclarationWrapper::Enum(self.clone())
     }
 }
 

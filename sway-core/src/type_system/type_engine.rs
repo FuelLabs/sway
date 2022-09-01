@@ -1,5 +1,6 @@
 use super::*;
 use crate::concurrent_slab::ConcurrentSlab;
+use crate::declaration_engine::declaration_wrapper::DeclarationWrapper;
 use crate::namespace::{Path, Root};
 use lazy_static::lazy_static;
 use sway_types::span::Span;
@@ -577,6 +578,7 @@ enum NumericCastCompatResult {
 pub(crate) trait MonomorphizeHelper {
     fn name(&self) -> &Ident;
     fn type_parameters(&self) -> &[TypeParameter];
+    fn to_wrapper(&self) -> DeclarationWrapper;
 }
 
 /// This type is used to denote if, during monomorphization, the compiler

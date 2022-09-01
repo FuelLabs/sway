@@ -1,14 +1,14 @@
 use std::fmt;
 
-use sway_types::Span;
+use sway_types::{Ident, Span};
 
 use crate::{
     semantic_analysis::{
-        TypedImplTrait, TypedStorageDeclaration, TypedStructDeclaration, TypedTraitDeclaration,
-        TypedTraitFn,
+        TypedEnumDeclaration, TypedImplTrait, TypedStorageDeclaration, TypedStructDeclaration,
+        TypedTraitDeclaration, TypedTraitFn,
     },
     type_system::{CopyTypes, TypeMapping},
-    CompileError, TypedFunctionDeclaration,
+    CompileError, MonomorphizeHelper, TypeParameter, TypedFunctionDeclaration,
 };
 
 /// The [DeclarationWrapper] type is used in the [DeclarationEngine]
@@ -17,6 +17,7 @@ use crate::{
 pub(crate) enum DeclarationWrapper {
     // no-op variant to fulfill the default trait
     Unknown,
+    Enum(TypedEnumDeclaration),
     Function(TypedFunctionDeclaration),
     Trait(TypedTraitDeclaration),
     TraitFn(TypedTraitFn),
@@ -59,6 +60,7 @@ impl CopyTypes for DeclarationWrapper {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         match self {
             DeclarationWrapper::Unknown => {}
+            DeclarationWrapper::Enum(decl) => decl.copy_types(type_mapping),
             DeclarationWrapper::Function(decl) => decl.copy_types(type_mapping),
             DeclarationWrapper::Trait(decl) => decl.copy_types(type_mapping),
             DeclarationWrapper::TraitFn(decl) => decl.copy_types(type_mapping),
@@ -69,11 +71,47 @@ impl CopyTypes for DeclarationWrapper {
     }
 }
 
+impl MonomorphizeHelper for DeclarationWrapper {
+    fn type_parameters(&self) -> &[TypeParameter] {
+        match self {
+            DeclarationWrapper::Trait(_)
+            | DeclarationWrapper::TraitFn(_)
+            | DeclarationWrapper::TraitImpl(_)
+            | DeclarationWrapper::Storage(_)
+            | DeclarationWrapper::Unknown => {
+                panic!("declaration type does not support type parameters")
+            }
+            DeclarationWrapper::Enum(decl) => decl.type_parameters(),
+            DeclarationWrapper::Function(decl) => decl.type_parameters(),
+            DeclarationWrapper::Struct(decl) => decl.type_parameters(),
+        }
+    }
+
+    fn name(&self) -> &Ident {
+        match self {
+            DeclarationWrapper::Storage(_) | DeclarationWrapper::Unknown => {
+                panic!("declaration type is not named")
+            }
+            DeclarationWrapper::Enum(decl) => decl.name(),
+            DeclarationWrapper::Function(decl) => decl.name(),
+            DeclarationWrapper::Trait(decl) => &decl.name,
+            DeclarationWrapper::TraitFn(decl) => &decl.name,
+            DeclarationWrapper::TraitImpl(decl) => &decl.trait_name.suffix,
+            DeclarationWrapper::Struct(decl) => decl.name(),
+        }
+    }
+
+    fn to_wrapper(&self) -> DeclarationWrapper {
+        panic!("not expected to be called for DeclarationWrapper")
+    }
+}
+
 impl DeclarationWrapper {
     /// friendly name string used for error reporting.
     fn friendly_name(&self) -> &'static str {
         match self {
             DeclarationWrapper::Unknown => "unknown",
+            DeclarationWrapper::Enum(_) => "enum",
             DeclarationWrapper::Function(_) => "function",
             DeclarationWrapper::Trait(_) => "trait",
             DeclarationWrapper::Struct(_) => "struct",

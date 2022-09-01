@@ -7,7 +7,7 @@ mod resolved_type;
 mod trait_constraint;
 mod type_argument;
 mod type_binding;
-mod type_engine;
+pub(crate) mod type_engine;
 mod type_id;
 mod type_info;
 mod type_mapping;

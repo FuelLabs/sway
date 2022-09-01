@@ -30,6 +30,12 @@ impl PartialEq for TypeArgument {
     }
 }
 
+impl PartialEq<TypeParameter> for TypeArgument {
+    fn eq(&self, other: &TypeParameter) -> bool {
+        self.type_id == other.type_id
+    }
+}
+
 impl Default for TypeArgument {
     fn default() -> Self {
         let initial_type_id = insert_type(TypeInfo::Unknown);

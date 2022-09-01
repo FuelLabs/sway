@@ -1,4 +1,7 @@
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_system::*};
+use crate::{
+    declaration_engine::declaration_wrapper::DeclarationWrapper, error::*, parse_tree::*,
+    semantic_analysis::*, type_system::*,
+};
 use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Span, Spanned};
 
@@ -57,6 +60,10 @@ impl MonomorphizeHelper for TypedStructDeclaration {
 
     fn name(&self) -> &Ident {
         &self.name
+    }
+
+    fn to_wrapper(&self) -> DeclarationWrapper {
+        DeclarationWrapper::Struct(self.clone())
     }
 }
 

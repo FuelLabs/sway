@@ -4,11 +4,15 @@ use sway_types::{Span, Spanned};
 
 use crate::{
     concurrent_slab::ConcurrentSlab,
+    error::{err, ok},
+    namespace::{Path, Root},
     semantic_analysis::{
         TypedImplTrait, TypedStorageDeclaration, TypedStructDeclaration, TypedTraitDeclaration,
         TypedTraitFn,
     },
-    CompileError, TypedFunctionDeclaration,
+    type_system::TypeArgument,
+    type_system::{type_engine::monomorphize, EnforceTypeArguments},
+    CompileError, CompileResult, MonomorphizeHelper, TypedFunctionDeclaration,
 };
 
 use super::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper};
@@ -24,6 +28,7 @@ pub(crate) struct DeclarationEngine {
     // *declaration_id -> vec of monomorphized copies
     // where the declaration_id is the original declaration
     monomorphized_copies: RwLock<HashMap<usize, Vec<DeclarationId>>>,
+    is_monomorph_cache_enabled: bool,
 }
 
 impl DeclarationEngine {
@@ -39,14 +44,10 @@ impl DeclarationEngine {
 
     fn de_add_monomorphized_copy(&self, original_id: DeclarationId, new_id: DeclarationId) {
         let mut monomorphized_copies = self.monomorphized_copies.write().unwrap();
-        match monomorphized_copies.get_mut(&*original_id) {
-            Some(prev) => {
-                prev.push(new_id);
-            }
-            None => {
-                monomorphized_copies.insert(*original_id, vec![new_id]);
-            }
-        }
+        monomorphized_copies
+            .entry(*original_id)
+            .and_modify(|f| f.push(new_id.clone()))
+            .or_insert_with(|| vec![new_id.clone()]);
     }
 
     fn de_get_monomorphized_copies(&self, original_id: DeclarationId) -> Vec<DeclarationWrapper> {
@@ -74,30 +75,6 @@ impl DeclarationEngine {
         span: &Span,
     ) -> Result<TypedFunctionDeclaration, CompileError> {
         self.slab.get(*index).expect_function(span)
-    }
-
-    fn de_add_monomorphized_function_copy(
-        &self,
-        original_id: DeclarationId,
-        new_copy: TypedFunctionDeclaration,
-    ) {
-        let span = new_copy.span();
-        let new_id = DeclarationId::new(
-            self.slab.insert(DeclarationWrapper::Function(new_copy)),
-            span,
-        );
-        self.de_add_monomorphized_copy(original_id, new_id)
-    }
-
-    fn de_get_monomorphized_function_copies(
-        &self,
-        original_id: DeclarationId,
-        span: &Span,
-    ) -> Result<Vec<TypedFunctionDeclaration>, CompileError> {
-        self.de_get_monomorphized_copies(original_id)
-            .into_iter()
-            .map(|x| x.expect_function(span))
-            .collect::<Result<_, _>>()
     }
 
     fn de_insert_trait(&self, r#trait: TypedTraitDeclaration) -> DeclarationId {
@@ -129,7 +106,7 @@ impl DeclarationEngine {
         self.slab.get(*index).expect_trait_fn(span)
     }
 
-    fn insert_trait_impl(&self, trait_impl: TypedImplTrait) -> DeclarationId {
+    fn de_insert_trait_impl(&self, trait_impl: TypedImplTrait) -> DeclarationId {
         let span = trait_impl.span.clone();
         DeclarationId::new(
             self.slab.insert(DeclarationWrapper::TraitImpl(trait_impl)),
@@ -158,26 +135,78 @@ impl DeclarationEngine {
         self.slab.get(*index).expect_struct(span)
     }
 
-    fn de_add_monomorphized_struct_copy(
+    pub(crate) fn de_get_monomorphized_decl(
         &self,
         original_id: DeclarationId,
-        new_copy: TypedStructDeclaration,
-    ) {
-        let span = new_copy.span();
-        let new_id =
-            DeclarationId::new(self.slab.insert(DeclarationWrapper::Struct(new_copy)), span);
-        self.de_add_monomorphized_copy(original_id, new_id)
+        type_arguments: &Vec<TypeArgument>,
+        span: &Span,
+    ) -> Result<DeclarationWrapper, CompileError> {
+        for monomorphized_decl in self
+            .de_get_monomorphized_copies(original_id)
+            .iter()
+            .cloned()
+        {
+            if monomorphized_decl.type_parameters() == type_arguments {
+                return Ok(monomorphized_decl);
+            }
+        }
+        Err(CompileError::Internal(
+            "could not find monomorphized decl",
+            span.clone(),
+        ))
     }
 
-    fn de_get_monomorphized_struct_copies(
+    pub(crate) fn de_get_or_create_monomorphized_decl<T>(
         &self,
-        original_id: DeclarationId,
-        span: &Span,
-    ) -> Result<Vec<TypedStructDeclaration>, CompileError> {
-        self.de_get_monomorphized_copies(original_id)
-            .into_iter()
-            .map(|x| x.expect_struct(span))
-            .collect::<Result<_, _>>()
+        decl_id: DeclarationId,
+        type_arguments: &mut Vec<TypeArgument>,
+        enforce_type_arguments: EnforceTypeArguments,
+        call_site_span: &Span,
+        namespace: &Root,
+        module_path: &Path,
+    ) -> CompileResult<DeclarationWrapper>
+    where
+        T: MonomorphizeHelper,
+    {
+        let mut warnings = Vec::new();
+        let mut errors = Vec::new();
+
+        if self.is_monomorph_cache_enabled {
+            let cached_decl = check!(
+                CompileResult::from(self.de_get_monomorphized_decl(
+                    decl_id,
+                    type_arguments,
+                    call_site_span
+                )),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            return ok(cached_decl, warnings, errors);
+        }
+
+        // monomorphize the declaration into a new copy
+        let mut typed_declaration = self.slab.get(*decl_id);
+
+        check!(
+            monomorphize(
+                &mut typed_declaration,
+                type_arguments,
+                enforce_type_arguments,
+                call_site_span,
+                namespace,
+                module_path,
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        // add the new copy to the declaration engine
+        let new_id = self.slab.insert(typed_declaration.to_wrapper());
+        self.de_add_monomorphized_copy(decl_id, DeclarationId::new(new_id, call_site_span.clone()));
+
+        ok(typed_declaration, warnings, errors)
     }
 
     fn de_insert_storage(&self, storage: TypedStorageDeclaration) -> DeclarationId {
@@ -213,20 +242,6 @@ pub(crate) fn de_get_function(
     DECLARATION_ENGINE.de_get_function(index, span)
 }
 
-pub(crate) fn de_add_monomorphized_function_copy(
-    original_id: DeclarationId,
-    new_copy: TypedFunctionDeclaration,
-) {
-    DECLARATION_ENGINE.de_add_monomorphized_function_copy(original_id, new_copy);
-}
-
-pub(crate) fn de_get_monomorphized_function_copies(
-    original_id: DeclarationId,
-    span: &Span,
-) -> Result<Vec<TypedFunctionDeclaration>, CompileError> {
-    DECLARATION_ENGINE.de_get_monomorphized_function_copies(original_id, span)
-}
-
 pub(crate) fn de_insert_trait(r#trait: TypedTraitDeclaration) -> DeclarationId {
     DECLARATION_ENGINE.de_insert_trait(r#trait)
 }
@@ -249,8 +264,8 @@ pub(crate) fn de_get_trait_fn(
     DECLARATION_ENGINE.de_get_trait_fn(index, span)
 }
 
-pub(crate) fn insert_trait_impl(trait_impl: TypedImplTrait) -> DeclarationId {
-    DECLARATION_ENGINE.insert_trait_impl(trait_impl)
+pub(crate) fn de_insert_trait_impl(trait_impl: TypedImplTrait) -> DeclarationId {
+    DECLARATION_ENGINE.de_insert_trait_impl(trait_impl)
 }
 
 pub(crate) fn de_get_trait_impl(
@@ -264,25 +279,11 @@ pub(crate) fn de_insert_struct(r#struct: TypedStructDeclaration) -> DeclarationI
     DECLARATION_ENGINE.de_insert_struct(r#struct)
 }
 
-pub(crate) fn de_get_struct(
+pub fn de_get_struct(
     index: DeclarationId,
     span: &Span,
 ) -> Result<TypedStructDeclaration, CompileError> {
     DECLARATION_ENGINE.de_get_struct(index, span)
-}
-
-pub(crate) fn de_add_monomorphized_struct_copy(
-    original_id: DeclarationId,
-    new_copy: TypedStructDeclaration,
-) {
-    DECLARATION_ENGINE.de_add_monomorphized_struct_copy(original_id, new_copy);
-}
-
-pub(crate) fn de_get_monomorphized_struct_copies(
-    original_id: DeclarationId,
-    span: &Span,
-) -> Result<Vec<TypedStructDeclaration>, CompileError> {
-    DECLARATION_ENGINE.de_get_monomorphized_struct_copies(original_id, span)
 }
 
 pub(crate) fn de_insert_storage(storage: TypedStorageDeclaration) -> DeclarationId {
@@ -294,4 +295,25 @@ pub fn de_get_storage(
     span: &Span,
 ) -> Result<TypedStorageDeclaration, CompileError> {
     DECLARATION_ENGINE.de_get_storage(index, span)
+}
+
+pub(crate) fn de_get_or_create_monomorphized_decl<T>(
+    decl_id: DeclarationId,
+    type_arguments: &mut Vec<TypeArgument>,
+    enforce_type_arguments: EnforceTypeArguments,
+    call_site_span: &Span,
+    namespace: &Root,
+    module_path: &Path,
+) -> CompileResult<DeclarationWrapper>
+where
+    T: MonomorphizeHelper,
+{
+    DECLARATION_ENGINE.de_get_or_create_monomorphized_decl::<T>(
+        decl_id,
+        type_arguments,
+        enforce_type_arguments,
+        call_site_span,
+        namespace,
+        module_path,
+    )
 }

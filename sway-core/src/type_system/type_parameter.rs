@@ -37,6 +37,12 @@ impl PartialEq for TypeParameter {
     }
 }
 
+impl PartialEq<TypeArgument> for TypeParameter {
+    fn eq(&self, other: &TypeArgument) -> bool {
+        self.type_id == other.type_id
+    }
+}
+
 impl CopyTypes for TypeParameter {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.type_id = match look_up_type_id(self.type_id).matches_type_parameter(type_mapping) {
