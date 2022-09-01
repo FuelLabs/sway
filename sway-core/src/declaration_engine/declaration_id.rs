@@ -2,6 +2,8 @@ use std::fmt;
 
 use sway_types::{Span, Spanned};
 
+use crate::type_system::{CopyTypes, TypeMapping};
+
 use super::declaration_engine::de_look_up_decl_id;
 
 /// An ID used to refer to an item in the [DeclarationEngine](super::declaration_engine::DeclarationEngine)
@@ -46,6 +48,12 @@ impl Into<usize> for DeclarationId {
 impl Spanned for DeclarationId {
     fn span(&self) -> Span {
         self.1.clone()
+    }
+}
+
+impl CopyTypes for DeclarationId {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        de_look_up_decl_id(self.clone()).copy_types(type_mapping)
     }
 }
 
