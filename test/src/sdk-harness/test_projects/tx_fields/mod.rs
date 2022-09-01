@@ -5,7 +5,7 @@ use std::str::FromStr;
 
 abigen!(
     TxContractTest,
-    "test_artifacts/tx_contract/out/debug/tx_contract-abi.json",
+    "test_artifacts/tx_contract/out/debug/tx_contract-flat-abi.json",
 );
 
 async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked) {
