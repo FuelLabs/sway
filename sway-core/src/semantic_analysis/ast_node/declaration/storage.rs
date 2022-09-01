@@ -13,7 +13,7 @@ use crate::{
 };
 use derivative::Derivative;
 use fuel_tx::StorageSlot;
-use sway_ir::{Context, Kind, Module};
+use sway_ir::{Context, Module};
 use sway_types::{state::StateIndex, Span, Spanned};
 
 #[derive(Clone, Debug, Derivative)]
@@ -151,13 +151,20 @@ impl TypedStorageDeclaration {
             .collect()
     }
 
-    pub(crate) fn get_initialized_storage_slots(&self) -> CompileResult<Vec<StorageSlot>> {
+    pub(crate) fn get_initialized_storage_slots(
+        &self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        module: Module,
+    ) -> CompileResult<Vec<StorageSlot>> {
         let mut errors = vec![];
         let storage_slots = self
             .fields
             .iter()
             .enumerate()
-            .map(|(i, f)| f.get_initialized_storage_slots(&StateIndex::new(i)))
+            .map(|(i, f)| {
+                f.get_initialized_storage_slots(context, md_mgr, module, &StateIndex::new(i))
+            })
             .filter_map(|s| s.map_err(|e| errors.push(e)).ok())
             .flatten()
             .collect::<Vec<_>>();
@@ -198,20 +205,14 @@ impl TypedStorageField {
         }
     }
 
-    pub fn get_initialized_storage_slots(
+    pub(crate) fn get_initialized_storage_slots(
         &self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        module: Module,
         ix: &StateIndex,
     ) -> Result<Vec<StorageSlot>, CompileError> {
-        let mut context = Context::default();
-        let module = Module::new(&mut context, Kind::Contract);
-        let mut md_mgr = MetadataManager::default();
-        compile_constant_expression_to_constant(
-            &mut context,
-            &mut md_mgr,
-            module,
-            None,
-            &self.initializer,
-        )
-        .map(|constant| serialize_to_storage_slots(&constant, &context, ix, &constant.ty, &[]))
+        compile_constant_expression_to_constant(context, md_mgr, module, None, &self.initializer)
+            .map(|constant| serialize_to_storage_slots(&constant, context, ix, &constant.ty, &[]))
     }
 }

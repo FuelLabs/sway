@@ -55,9 +55,7 @@ fn parsed_to_symbol_kind(ast_token: &AstToken) -> SymbolKind {
                 // currently we return `variable` type as default
                 Declaration::Reassignment(_)
                 | Declaration::ImplSelf { .. }
-                | Declaration::StorageDeclaration(_)
-                | Declaration::Break { .. }
-                | Declaration::Continue { .. } => SymbolKind::VARIABLE,
+                | Declaration::StorageDeclaration(_) => SymbolKind::VARIABLE,
             }
         }
         AstToken::Expression(exp) => {
@@ -102,9 +100,7 @@ fn typed_to_symbol_kind(typed_ast_token: &TypedAstToken) -> SymbolKind {
                 TypedDeclaration::Reassignment(_)
                 | TypedDeclaration::ErrorRecovery
                 | TypedDeclaration::StorageDeclaration(_)
-                | TypedDeclaration::StorageReassignment(_)
-                | TypedDeclaration::Break { .. }
-                | TypedDeclaration::Continue { .. } => SymbolKind::VARIABLE,
+                | TypedDeclaration::StorageReassignment(_) => SymbolKind::VARIABLE,
             }
         }
         TypedAstToken::TypedExpression(exp) => {

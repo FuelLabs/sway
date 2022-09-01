@@ -373,9 +373,6 @@ impl Dependencies {
                 .gather_from_iter(fields.iter(), |deps, StorageField { ref type_info, .. }| {
                     deps.gather_from_typeinfo(type_info)
                 }),
-            // Nothing to do for `break` and `continue`
-            Declaration::Break { .. } => self,
-            Declaration::Continue { .. } => self,
         }
     }
 
@@ -497,6 +494,8 @@ impl Dependencies {
             ExpressionKind::WhileLoop(WhileLoopExpression {
                 condition, body, ..
             }) => self.gather_from_expr(condition).gather_from_block(body),
+            ExpressionKind::Break => self,
+            ExpressionKind::Continue => self,
         }
     }
 
@@ -720,9 +719,6 @@ fn decl_name(decl: &Declaration) -> Option<DependentSymbol> {
         Declaration::Reassignment(_) => None,
         // Storage cannot be depended upon or exported
         Declaration::StorageDeclaration(_) => None,
-        // Nothing depends on a `break` and `continue`
-        Declaration::Break { .. } => None,
-        Declaration::Continue { .. } => None,
     }
 }
 
