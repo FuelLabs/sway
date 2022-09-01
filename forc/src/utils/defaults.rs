@@ -96,7 +96,7 @@ pub(crate) fn default_test_program(project_name: &str) -> String {
 // Load abi from json
 abigen!(MyContract, "out/debug/"#,
         project_name,
-        r#"-abi.json");
+        r#"-flat-abi.json");
 
 async fn get_contract_instance() -> (MyContract, ContractId) {
     // Launch a local network and deploy the contract
