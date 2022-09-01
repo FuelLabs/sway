@@ -42,7 +42,6 @@ pub enum Output {
 /// Get the type of an output at `index`.
 pub fn output_type(index: u64) -> Output {
     let type = __gtf::<u64>(index, GTF_OUTPUT_TYPE);
-    log(type);
     match type {
         0u8 => {
             Output::Coin

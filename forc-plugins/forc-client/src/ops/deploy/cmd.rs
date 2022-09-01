@@ -69,4 +69,13 @@ pub struct DeployCommand {
     /// Output the time elapsed over each part of the compilation process.
     #[clap(long)]
     pub time_phases: bool,
+    /// Do not sign the transaction
+    #[clap(long)]
+    pub unsigned: bool,
+    /// Set the transaction gas limit. Defaults to the maximum gas limit.
+    #[clap(long)]
+    pub gas_limit: Option<u64>,
+    /// Set the transaction gas price. Defaults to 0.
+    #[clap(long)]
+    pub gas_price: Option<u64>,
 }

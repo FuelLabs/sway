@@ -8,7 +8,7 @@ mod concurrent_slab;
 pub mod constants;
 mod control_flow_analysis;
 mod convert_parse_tree;
-mod declaration_engine;
+pub mod declaration_engine;
 pub mod ir_generation;
 mod metadata;
 pub mod parse_tree;
@@ -22,7 +22,6 @@ pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
 pub use build_config::BuildConfig;
 use control_flow_analysis::ControlFlowGraph;
-use declaration_engine::declaration_engine::DeclarationEngine;
 use metadata::MetadataManager;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -244,7 +243,7 @@ pub fn parsed_to_ast(
         value: typed_program_result,
         warnings: new_warnings,
         errors: new_errors,
-    } = TypedProgram::type_check(parse_program, initial_namespace, DeclarationEngine::new());
+    } = TypedProgram::type_check(parse_program, initial_namespace);
     warnings.extend(new_warnings);
     errors.extend(new_errors);
     let typed_program = match typed_program_result {
@@ -511,6 +510,14 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         errors
     );
 
+    // Remove dead definitions.
+    check!(
+        dce(&mut ir, &entry_point_functions),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
     if build_config.print_ir {
         tracing::info!("{}", ir);
     }
@@ -536,6 +543,21 @@ fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileRes
 fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
     for function in functions {
         if let Err(ir_error) = sway_ir::optimize::combine_constants(ir, function) {
+            return err(
+                Vec::new(),
+                vec![CompileError::InternalOwned(
+                    ir_error.to_string(),
+                    span::Span::dummy(),
+                )],
+            );
+        }
+    }
+    ok((), Vec::new(), Vec::new())
+}
+
+fn dce(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
+    for function in functions {
+        if let Err(ir_error) = sway_ir::optimize::dce(ir, function) {
             return err(
                 Vec::new(),
                 vec![CompileError::InternalOwned(
@@ -614,6 +636,7 @@ pub fn asm_to_bytecode(
 
 pub fn clear_lazy_statics() {
     type_system::clear_type_engine();
+    declaration_engine::declaration_engine::de_clear();
 }
 
 /// Given a [TypedProgram], which is type-checked Sway source, construct a graph to analyze

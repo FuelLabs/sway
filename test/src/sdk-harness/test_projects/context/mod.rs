@@ -3,15 +3,15 @@ use fuels::{prelude::*, tx::ContractId};
 
 abigen!(
     TestContextContract,
-    "test_projects/context/out/debug/context-abi.json",
+    "test_projects/context/out/debug/context-flat-abi.json",
 );
 abigen!(
     TestContextCallerContract,
-    "test_artifacts/context_caller_contract/out/debug/context_caller_contract-abi.json",
+    "test_artifacts/context_caller_contract/out/debug/context_caller_contract-flat-abi.json",
 );
 abigen!(
     FuelCoin,
-    "test_projects/token_ops/out/debug/token_ops-abi.json"
+    "test_projects/token_ops/out/debug/token_ops-flat-abi.json"
 );
 
 async fn get_contracts() -> (

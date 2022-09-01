@@ -91,10 +91,6 @@ pub struct RunCommand {
     #[clap(long)]
     pub minify_json_storage_slots: bool,
 
-    /// Set the transaction byte price. Defaults to 0.
-    #[clap(long)]
-    pub byte_price: Option<u64>,
-
     /// Set the transaction gas limit. Defaults to the maximum gas limit.
     #[clap(long)]
     pub gas_limit: Option<u64>,
