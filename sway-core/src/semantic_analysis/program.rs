@@ -137,7 +137,7 @@ impl TypedProgram {
 
             if let Some(TypedDeclaration::StorageDeclaration(decl_id)) = storage_decl {
                 let TypedStorageDeclaration { span, .. } = check!(
-                    res!(de_get_storage(decl_id.clone(), &decl_id.span())),
+                    CompileResult::from(de_get_storage(decl_id.clone(), &decl_id.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -269,7 +269,7 @@ impl TypedProgram {
                 match storage_decl {
                     Some(TypedDeclaration::StorageDeclaration(decl_id)) => {
                         let decl = check!(
-                            res!(de_get_storage(decl_id.clone(), &decl_id.span())),
+                            CompileResult::from(de_get_storage(decl_id.clone(), &decl_id.span())),
                             return err(warnings, errors),
                             warnings,
                             errors

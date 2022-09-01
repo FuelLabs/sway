@@ -54,7 +54,7 @@ impl Items {
         match self.declared_storage {
             Some(ref decl_id) => {
                 let storage = check!(
-                    res!(de_get_storage(decl_id.clone(), access_span)),
+                    CompileResult::from(de_get_storage(decl_id.clone(), access_span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -171,7 +171,7 @@ impl Items {
         match self.declared_storage {
             Some(ref decl_id) => {
                 let storage = check!(
-                    res!(de_get_storage(decl_id.clone(), access_span)),
+                    CompileResult::from(de_get_storage(decl_id.clone(), access_span)),
                     return err(warnings, errors),
                     warnings,
                     errors

@@ -29,27 +29,6 @@ macro_rules! check {
     }};
 }
 
-/// This macro transforms a `Result<T, CompileError>` into a `CompileResult<T>`.
-#[allow(unused_macros)]
-macro_rules! res {
-    ($fn_expr: expr$(,)?) => {{
-        use crate::error::CompileResult;
-        #[allow(clippy::manual_unwrap_or)]
-        match $fn_expr {
-            Ok(value) => CompileResult {
-                value: Some(value),
-                warnings: vec![],
-                errors: vec![],
-            },
-            Err(e) => CompileResult {
-                value: None,
-                warnings: vec![],
-                errors: vec![e],
-            },
-        }
-    }};
-}
-
 macro_rules! assert_or_warn {
     ($bool_expr: expr, $warnings: ident, $span: expr, $warning: expr $(,)?) => {{
         if !$bool_expr {

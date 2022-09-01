@@ -311,7 +311,7 @@ impl TypedDeclaration {
             TypedDeclaration::EnumDeclaration(decl) => decl.create_type_id(),
             TypedDeclaration::StorageDeclaration(decl_id) => {
                 let storage_decl = check!(
-                    res!(de_get_storage(decl_id.clone(), &self.span())),
+                    CompileResult::from(de_get_storage(decl_id.clone(), &self.span())),
                     return err(warnings, errors),
                     warnings,
                     errors

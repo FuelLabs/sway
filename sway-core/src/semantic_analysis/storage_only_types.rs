@@ -242,7 +242,7 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
         }
         TypedDeclaration::StorageDeclaration(decl_id) => {
             let TypedStorageDeclaration { fields, .. } = check!(
-                res!(de_get_storage(decl_id.clone(), &decl.span())),
+                CompileResult::from(de_get_storage(decl_id.clone(), &decl.span())),
                 return err(warnings, errors),
                 warnings,
                 errors
