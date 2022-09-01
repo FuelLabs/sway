@@ -46,7 +46,10 @@ const GTF_INPUT_MESSAGE_SENDER = 0x115;
 const GTF_INPUT_MESSAGE_RECIPIENT = 0x116;
 const GTF_INPUT_MESSAGE_AMOUNT = 0x117;
 const GTF_INPUT_MESSAGE_NONCE = 0x118;
-const GTF_INPUT_MESSAGE_OWNER = 0x119;
+// These are based on the old spec (before
+// https://github.com/FuelLabs/fuel-specs/pull/400) because that's what's
+// currently implemented in `fuel-core`, `fuel-asm`, and `fuel-tx. They should
+// eventually be updated.
 const GTF_INPUT_MESSAGE_WITNESS_INDEX = 0x11A;
 const GTF_INPUT_MESSAGE_DATA_LENGTH = 0x11B;
 const GTF_INPUT_MESSAGE_PREDICATE_LENGTH = 0x11C;
@@ -54,14 +57,6 @@ const GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH = 0x11D;
 const GTF_INPUT_MESSAGE_DATA = 0x11E;
 const GTF_INPUT_MESSAGE_PREDICATE = 0x11F;
 const GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x120;
-
-// const GTF_INPUT_MESSAGE_WITNESS_INDEX = 0x119;
-// const GTF_INPUT_MESSAGE_DATA_LENGTH = 0x11A;
-// const GTF_INPUT_MESSAGE_PREDICATE_LENGTH = 0x11B;
-// const GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH = 0x11C;
-// const GTF_INPUT_MESSAGE_DATA = 0x11D;
-// const GTF_INPUT_MESSAGE_PREDICATE = 0x11E;
-const GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x11F;
 
 pub enum Input {
     Coin: (),
@@ -144,9 +139,9 @@ pub fn input_pointer(index: u64) -> u64 {
     }
 }
 
-/// If the input's type is `InputCoin` the owner as an Option::Some(owner).
+/// If the input's type is `InputCoin` return the owner as an Option::Some(owner).
 /// Otherwise, returns Option::None.
-pub fn input_owner(index: u64) -> Option<Address> {
+pub fn input_coin_owner(index: u64) -> Option<Address> {
     let type = input_type(index);
     match type {
         Input::Coin => {
