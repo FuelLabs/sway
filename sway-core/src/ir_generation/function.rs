@@ -609,6 +609,11 @@ impl FnCompiler {
                     _ => unreachable!(),
                 }
             }
+            Intrinsic::Log => Ok(Constant::get_uint(
+                context,
+                64,
+                *arguments[0].return_type as u64,
+            )),
         }
     }
 

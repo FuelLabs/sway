@@ -40,7 +40,7 @@ pub use crate::parse_tree::{
 
 pub use error::{CompileError, CompileResult, CompileWarning};
 use sway_types::{ident::Ident, span, Spanned};
-pub use type_system::TypeInfo;
+pub use type_system::*;
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
@@ -246,7 +246,7 @@ pub fn parsed_to_ast(
     } = TypedProgram::type_check(parse_program, initial_namespace);
     warnings.extend(new_warnings);
     errors.extend(new_errors);
-    let typed_program = match typed_program_result {
+    let mut typed_program = match typed_program_result {
         Some(typed_program) => typed_program,
         None => {
             errors = dedup_unsorted(errors);
@@ -254,6 +254,40 @@ pub fn parsed_to_ast(
             return CompileAstResult::Failure { errors, warnings };
         }
     };
+
+    // Collect information about the types used in this program
+    let types_metadata = typed_program.collect_types_metadata();
+
+    // All unresolved types lead to compile errors
+    let unresolved_types_errors = types_metadata
+        .iter()
+        .filter_map(|m| match m {
+            TypeMetadata::UnresolvedType {
+                name,
+                span_override,
+            } => Some(CompileError::UnableToInferGeneric {
+                ty: name.as_str().to_string(),
+                span: span_override.clone().unwrap_or_else(|| name.span()),
+            }),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    errors.extend(unresolved_types_errors);
+    if !errors.is_empty() {
+        errors = dedup_unsorted(errors);
+        return CompileAstResult::Failure { errors, warnings };
+    }
+
+    // Collect all the types of logged values. These are required when generating the JSON ABI.
+    typed_program.logged_types.extend(
+        types_metadata
+            .iter()
+            .filter_map(|m| match m {
+                TypeMetadata::LoggedType(type_id) => Some(*type_id),
+                _ => None,
+            })
+            .collect::<Vec<_>>(),
+    );
 
     let mut cfa_res = perform_control_flow_analysis(&typed_program);
 
@@ -426,13 +460,6 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // though, so instead, we are just going to do a pass and throw any unresolved generics as
     // errors and then hold as a runtime invariant that none of the types will be unresolved in the
     // IR phase.
-
-    check!(
-        program.finalize_types(),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
 
     let tree_type = program.kind.tree_type();
     let mut ir = match ir_generation::compile_program(program) {
