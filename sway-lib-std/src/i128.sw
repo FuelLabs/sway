@@ -19,9 +19,9 @@ pub trait From {
 
 impl From for I128 {
     /// Helper function to get a signed number from with an underlying
-    fn from(value: U128) -> I128 {
-        I128 {
-            underlying: value,
+    fn from(underlying: U128) -> Self {
+        Self {
+            underlying
         }
     }
 }
