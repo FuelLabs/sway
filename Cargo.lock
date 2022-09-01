@@ -757,11 +757,7 @@ dependencies = [
  "ripemd",
  "serde",
  "serde_derive",
-<<<<<<< HEAD
- "sha2 0.10.2",
-=======
  "sha2 0.10.3",
->>>>>>> master
  "sha3 0.10.2",
  "thiserror",
 ]
@@ -2404,11 +2400,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "ecdsa",
  "elliptic-curve 0.12.3",
-<<<<<<< HEAD
- "sha2 0.10.2",
-=======
  "sha2 0.10.3",
->>>>>>> master
 ]
 
 [[package]]
@@ -2887,19 +2879,6 @@ dependencies = [
 
 [[package]]
 name = "pbkdf2"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d95f5254224e617595d2cc3cc73ff0a5eaf2637519e25f03388154e9378b6ffa"
-dependencies = [
- "base64ct",
- "crypto-mac 0.11.1",
- "hmac 0.11.0",
- "password-hash 0.2.3",
- "sha2 0.9.9",
-]
-
-[[package]]
-name = "pbkdf2"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "83a0692ec44e4cf1ef28ca317f14f8f07da2d95ec3fa01f86e4467b725e60917"
@@ -2907,11 +2886,7 @@ dependencies = [
  "digest 0.10.3",
  "hmac 0.12.1",
  "password-hash 0.4.2",
-<<<<<<< HEAD
- "sha2 0.10.2",
-=======
  "sha2 0.10.3",
->>>>>>> master
 ]
 
 [[package]]
