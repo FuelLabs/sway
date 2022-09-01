@@ -686,6 +686,12 @@ pub enum CompileError {
     DeclIsNotAVariable { actually: String, span: Span },
     #[error("This is a {actually}, not an ABI.")]
     DeclIsNotAnAbi { actually: String, span: Span },
+    #[error("This is a {actually}, not a trait.")]
+    DeclIsNotATrait { actually: String, span: Span },
+    #[error("This is a {actually}, not an impl block.")]
+    DeclIsNotAnImplTrait { actually: String, span: Span },
+    #[error("This is a {actually}, not a trait function.")]
+    DeclIsNotATraitFn { actually: String, span: Span },
     #[error(
         "Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n \
          {available_fields}"
@@ -1198,6 +1204,9 @@ impl Spanned for CompileError {
             DeclIsNotAFunction { span, .. } => span.clone(),
             DeclIsNotAVariable { span, .. } => span.clone(),
             DeclIsNotAnAbi { span, .. } => span.clone(),
+            DeclIsNotATrait { span, .. } => span.clone(),
+            DeclIsNotAnImplTrait { span, .. } => span.clone(),
+            DeclIsNotATraitFn { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
             ImpureInPureContext { span, .. } => span.clone(),
             IntegerTooLarge { span, .. } => span.clone(),
