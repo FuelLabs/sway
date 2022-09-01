@@ -154,6 +154,7 @@ impl TypeEngine {
             (Byte, Byte) => (vec![], vec![]),
             (B256, B256) => (vec![], vec![]),
             (Numeric, Numeric) => (vec![], vec![]),
+            (RawUntypedPtr, RawUntypedPtr) => (vec![], vec![]),
             (Contract, Contract) => (vec![], vec![]),
             (Str(l), Str(r)) => {
                 let warnings = vec![];
