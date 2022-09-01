@@ -114,16 +114,14 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
         }
     }
 
-    let mut worklist: Vec<(Value, Block)> = Vec::new();
-    for (block, inst) in function.instruction_iter(context) {
-        if num_uses.get(&inst).is_none() {
-            worklist.push((inst, block));
-        }
-    }
+    let mut worklist = function
+        .instruction_iter(context)
+        .filter(|(_block, inst)| num_uses.get(inst).is_none())
+        .collect::<Vec<_>>();
 
     let mut modified = false;
     while !worklist.is_empty() {
-        let (dead, in_block) = worklist.pop().unwrap();
+        let (in_block, dead) = worklist.pop().unwrap();
         if !can_eliminate_instruction(context, dead) {
             continue;
         }
@@ -136,7 +134,7 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
                     let (block, nu) = num_uses.get_mut(&v).unwrap();
                     *nu -= 1;
                     if *nu == 0 {
-                        worklist.push((v, *block));
+                        worklist.push((*block, v));
                     }
                 }
                 ValueDatum::Constant(_) | ValueDatum::Argument(_) => (),
