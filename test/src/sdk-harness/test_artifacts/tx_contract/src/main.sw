@@ -6,7 +6,7 @@ use std::{
     inputs::{
         Input,
         input_count,
-        input_owner,
+        input_coin_owner,
         input_pointer,
         input_type,
     },
@@ -81,13 +81,8 @@ impl TxContractTest for Contract {
     fn get_input_type(index: u64) -> Input {
         input_type(index)
     }
-    // TODO: Add test for getting InputMessage owner when we have InputMessages
-    // See https://github.com/FuelLabs/sway/issues/2672
-    // fn get_tx_input_message_owner(index: u64) -> Address {
-    //     tx_input_owner(index)
-    // }
     fn get_tx_input_coin_owner(index: u64) -> Address {
-        input_owner(index).unwrap()
+        input_coin_owner(index).unwrap()
     }
     fn get_tx_output_pointer(index: u64) -> u64 {
         output_pointer(index)

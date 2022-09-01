@@ -24,7 +24,7 @@ const GTF_INPUT_TYPE = 0x101;
 // const GTF_INPUT_COIN_TX_ID = 0x102;
 // const GTF_INPUT_COIN_OUTPUT_INDEX = 0x103;
 const GTF_INPUT_COIN_OWNER = 0x104;
-// const GTF_INPUT_COIN_AMOUNT = 0x105;
+const GTF_INPUT_COIN_AMOUNT = 0x105;
 // const GTF_INPUT_COIN_ASSET_ID = 0x106;
 // const GTF_INPUT_COIN_TX_POINTER = 0x107;
 // const GTF_INPUT_COIN_WITNESS_INDEX = 0x108;
@@ -84,25 +84,6 @@ pub fn input_type(index: u64) -> Input {
         _ => {
             revert(0);
         }
-    }
-}
-
-/// Get output index of coin at `index`.
-/// If the input's type is `InputCoin` or `InputContract`,
-/// return the amount as an Option::Some(u64).
-/// Otherwise, returns Option::None.
-pub fn input_output_index(index: u64) -> Option<u64> {
-    let type = input_type(index);
-    match type {
-        Input::Coin => {
-            Option::Some(__gtf::<u64>(index, GTF_INPUT_COIN_OUTPUT_INDEX))
-        },
-        Input::Contract => {
-            Option::Some(__gtf::<u64>(index, GTF_INPUT_CONTRACT_OUTPUT_INDEX))
-        },
-        _ => {
-            return Option::None;
-        },
     }
 }
 
@@ -190,32 +171,10 @@ pub fn input_count() -> u8 {
     let type = tx_type();
     match type {
         Transaction::Script => {
-            log(17);
             __gtf::<u8>(0, GTF_SCRIPT_INPUTS_COUNT)
         },
         Transaction::Create => {
             __gtf::<u64>(0, GTF_CREATE_INPUTS_COUNT)
-        },
-    }
-}
-
-/// Get the id of the current transaction.
-/// If the input's type is `InputCoin` or `InputContract`,
-/// return the data as an Option::Some(b256).
-/// Otherwise, returns Option::None.
-pub fn input_tx_id(index: u64) -> Option<b256> {
-    let type = input_type(index);
-    match type {
-        Input::Coin => {
-            let val: b256 = read(__gtf::<u64>(index, GTF_INPUT_COIN_TX_ID));
-            Option::Some(val)
-        },
-        Input::Contract => {
-            let val: b256 = read(__gtf::<u64>(index, GTF_INPUT_CONTRACT_TX_ID));
-            Option::Some(val)
-        },
-        _ => {
-            Option::None
         },
     }
 }

@@ -8,7 +8,7 @@ use ::contract_id::ContractId;
 use ::identity::Identity;
 use ::option::Option;
 use ::result::Result;
-use ::inputs::{Input, input_count, input_owner, input_type};
+use ::inputs::{Input, input_count, input_coin_owner, input_type};
 
 pub enum AuthError {
     InputsNotAllOwnedBySameAddress: (),
@@ -44,7 +44,7 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
     }
 }
 
-/// Get the owner of the inputs (of type `InputCoin` or `InputMessage`) to a
+/// Get the owner of the Coin Inputs to a
 /// TransactionScript if they all share the same owner.
 fn inputs_owner() -> Result<Identity, AuthError> {
     let inputs = input_count();
@@ -58,9 +58,6 @@ fn inputs_owner() -> Result<Identity, AuthError> {
             Input::Coin => {
                 ();
             },
-            Input::Message => {
-                ();
-            },
             _ => {
                 // type != InputCoin or InputMessage, continue looping.
                 i += 1u8;
@@ -68,8 +65,8 @@ fn inputs_owner() -> Result<Identity, AuthError> {
             }
         }
 
-        // type == InputCoin or InputMessage
-        let owner_of_input = input_owner(i);
+        // type == InputCoin
+        let owner_of_input = input_coin_owner(i);
         if candidate.is_none() {
             // This is the first input seen of the correct type.
             candidate = owner_of_input;
