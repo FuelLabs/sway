@@ -1,7 +1,7 @@
 script;
 
 use std::assert::assert;
-use std::I32::*;
+use std::I32;
 
 fn main() -> bool {
     let one = ~I32::from_uint(1u32);

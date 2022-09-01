@@ -1,7 +1,7 @@
 script;
 
 use std::assert::assert;
-use std::I64::*;
+use std::I64;
 
 fn main() -> bool {
     let one = ~I64::from_uint(1u64);

@@ -1,7 +1,7 @@
 script;
 
 use std::assert::assert;
-use std::I16::*;
+use std::I16;
 
 fn main() -> bool {
     let one = ~I16::from_uint(1u16);
