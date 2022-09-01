@@ -1,15 +1,21 @@
-[
-  {
-    "inputs": [],
-    "name": "test_function",
-    "outputs": [
-      {
-        "components": null,
+{
+  "functions": [
+    {
+      "inputs": [],
+      "name": "test_function",
+      "output": {
         "name": "",
-        "type": "bool",
+        "type": 0,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  }
-]
+    }
+  ],
+  "types": [
+    {
+      "components": null,
+      "type": "bool",
+      "typeId": 0,
+      "typeParameters": null
+    }
+  ]
+}

@@ -2,7 +2,7 @@ use fuels::prelude::*;
 
 abigen!(
     MethodsContract,
-    "test_artifacts/methods_contract/out/debug/methods_contract-abi.json",
+    "test_artifacts/methods_contract/out/debug/methods_contract-flat-abi.json",
 );
 
 #[tokio::test]

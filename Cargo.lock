@@ -224,9 +224,9 @@ dependencies = [
 
 [[package]]
 name = "async-io"
-version = "1.8.0"
+version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ab006897723d9352f63e2b13047177c3982d8d79709d713ce7747a8f19fd1b0"
+checksum = "83e21f3a490c72b3b0cf44962180e60045de2925d8dff97918f7ee43c8f637c7"
 dependencies = [
  "autocfg",
  "concurrent-queue",
@@ -1424,7 +1424,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.21.0"
+version = "0.22.1"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -1453,7 +1453,7 @@ dependencies = [
 
 [[package]]
 name = "forc-client"
-version = "0.21.0"
+version = "0.22.1"
 dependencies = [
  "anyhow",
  "clap 3.2.19",
@@ -1479,7 +1479,7 @@ dependencies = [
 
 [[package]]
 name = "forc-explore"
-version = "0.21.0"
+version = "0.22.1"
 dependencies = [
  "anyhow",
  "clap 3.2.19",
@@ -1494,7 +1494,7 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.21.0"
+version = "0.22.1"
 dependencies = [
  "anyhow",
  "clap 3.2.19",
@@ -1509,7 +1509,7 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt-v2"
-version = "0.21.0"
+version = "0.22.1"
 dependencies = [
  "anyhow",
  "clap 3.2.19",
@@ -1524,7 +1524,7 @@ dependencies = [
 
 [[package]]
 name = "forc-lsp"
-version = "0.21.0"
+version = "0.22.1"
 dependencies = [
  "anyhow",
  "clap 3.2.19",
@@ -1534,7 +1534,7 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.21.0"
+version = "0.22.1"
 dependencies = [
  "anyhow",
  "forc-util",
@@ -1558,7 +1558,7 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.21.0"
+version = "0.22.1"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -4129,7 +4129,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ast"
-version = "0.21.0"
+version = "0.22.1"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -4139,7 +4139,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.21.0"
+version = "0.22.1"
 dependencies = [
  "clap 3.2.19",
  "derivative",
@@ -4172,7 +4172,7 @@ dependencies = [
 
 [[package]]
 name = "sway-fmt"
-version = "0.21.0"
+version = "0.22.1"
 dependencies = [
  "ropey",
  "sway-core",
@@ -4181,7 +4181,7 @@ dependencies = [
 
 [[package]]
 name = "sway-fmt-v2"
-version = "0.21.0"
+version = "0.22.1"
 dependencies = [
  "anyhow",
  "forc-util",
@@ -4200,7 +4200,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.21.0"
+version = "0.22.1"
 dependencies = [
  "anyhow",
  "filecheck",
@@ -4211,7 +4211,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.21.0"
+version = "0.22.1"
 dependencies = [
  "async-trait",
  "dashmap",
@@ -4233,7 +4233,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.21.0"
+version = "0.22.1"
 dependencies = [
  "assert_matches",
  "extension-trait",
@@ -4248,7 +4248,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.21.0"
+version = "0.22.1"
 dependencies = [
  "fuel-asm",
  "fuel-crypto",
@@ -4259,7 +4259,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.21.0"
+version = "0.22.1"
 
 [[package]]
 name = "syn"

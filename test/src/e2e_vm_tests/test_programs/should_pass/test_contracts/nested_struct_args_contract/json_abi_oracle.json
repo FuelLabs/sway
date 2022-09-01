@@ -1,49 +1,68 @@
-[
-  {
-    "inputs": [
-      {
-        "components": [
-          {
-            "components": [
-              {
-                "components": null,
-                "name": "foo",
-                "type": "u64",
-                "typeArguments": null
-              }
-            ],
-            "name": "inn",
-            "type": "struct Inner",
-            "typeArguments": null
-          }
-        ],
-        "name": "input1",
-        "type": "struct StructOne",
-        "typeArguments": null
-      },
-      {
-        "components": [
-          {
-            "components": null,
-            "name": "foo",
-            "type": "u64",
-            "typeArguments": null
-          }
-        ],
-        "name": "input2",
-        "type": "struct StructTwo",
-        "typeArguments": null
-      }
-    ],
-    "name": "foo",
-    "outputs": [
-      {
-        "components": null,
+{
+  "functions": [
+    {
+      "inputs": [
+        {
+          "name": "input1",
+          "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "input2",
+          "type": 2,
+          "typeArguments": null
+        }
+      ],
+      "name": "foo",
+      "output": {
         "name": "",
-        "type": "u64",
+        "type": 3,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  }
-]
+    }
+  ],
+  "types": [
+    {
+      "components": [
+        {
+          "name": "foo",
+          "type": 3,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct Inner",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "inn",
+          "type": 0,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct StructOne",
+      "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "foo",
+          "type": 3,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct StructTwo",
+      "typeId": 2,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 3,
+      "typeParameters": null
+    }
+  ]
+}
