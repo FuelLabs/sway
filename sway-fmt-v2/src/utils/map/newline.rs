@@ -172,6 +172,23 @@ fn format_newline_sequnce(newline_sequence: &NewlineSequence, threshold: usize) 
     }
 }
 
+/// Checks for newlines that are already in the source code.
+fn find_already_present_extra_newlines(from: usize, src: String) -> usize {
+    let mut number_of_newlines_present = 0;
+    for char in src.chars().skip(from) {
+        if char == '\n' {
+            number_of_newlines_present += 1;
+        } else {
+            break;
+        }
+    }
+    if number_of_newlines_present == 0 {
+        0
+    } else {
+        number_of_newlines_present - 1
+    }
+}
+
 /// Inserts after given span and returns the offset.
 fn insert_after_span(
     from: &ByteSpan,
@@ -182,12 +199,18 @@ fn insert_after_span(
 ) -> Result<usize, FormatterError> {
     let iter = newline_sequences_to_insert.iter();
     let mut sequence_string = String::new();
+    let mut newlines_to_skip =
+        find_already_present_extra_newlines(from.end, formatted_code.to_string());
     for newline_sequence in iter {
-        write!(
-            sequence_string,
-            "{}",
-            format_newline_sequnce(newline_sequence, threshold)
-        )?;
+        if newlines_to_skip != 0 {
+            newlines_to_skip -= 1;
+        } else {
+            write!(
+                sequence_string,
+                "{}",
+                format_newline_sequnce(newline_sequence, threshold)
+            )?;
+        }
     }
     let mut src_rope = Rope::from_str(formatted_code);
     src_rope.insert(from.end + offset, &sequence_string);
