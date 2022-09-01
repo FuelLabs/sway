@@ -3715,6 +3715,10 @@ Server::run{addr=127.0.0.1:3030}: listening on http://127.0.0.1:3030
 profile</p>
 <p><code>-g</code>, <code>--debug-outfile</code> &lt;<em>DEBUG_OUTFILE</em>&gt;</p>
 <p>If set, outputs source file mapping in JSON format</p>
+<p><code>--gas-limit</code> &lt;<em>GAS_LIMIT</em>&gt;</p>
+<p>Set the transaction gas limit. Defaults to the maximum gas limit</p>
+<p><code>--gas-price</code> &lt;<em>GAS_PRICE</em>&gt;</p>
+<p>Set the transaction gas price. Defaults to 0</p>
 <p><code>-h</code>, <code>--help</code> </p>
 <p>Print help information</p>
 <p><code>--locked</code> </p>
@@ -3760,6 +3764,8 @@ build-profile.</p>
 <p><code>-u</code>, <code>--url</code> &lt;<em>URL</em>&gt;</p>
 <p>The node url to deploy, if not specified uses DEFAULT_NODE_URL. If url is specified
 overrides network url in manifest file (if there is one)</p>
+<p><code>--unsigned</code> </p>
+<p>Do not sign the transaction</p>
 <p><code>-V</code>, <code>--version</code> </p>
 <p>Print version information<!-- markdownlint-disable MD041 --></p>
 <h2 id="example-8"><a class="header" href="#example-8">EXAMPLE</a></h2>
@@ -3775,8 +3781,6 @@ overrides network url in manifest file (if there is one)</p>
 URL of the Fuel Client Node</p>
 <p>[env: FUEL_NODE_URL=]</p>
 <h2 id="options-13"><a class="header" href="#options-13">OPTIONS:</a></h2>
-<p><code>--byte-price</code> &lt;<em>BYTE_PRICE</em>&gt;</p>
-<p>Set the transaction byte price. Defaults to 0</p>
 <p><code>--contract</code> &lt;<em>CONTRACT</em>&gt;</p>
 <p>32-byte contract ID that will be called during the transaction</p>
 <p><code>-d</code>, <code>--data</code> &lt;<em>DATA</em>&gt;</p>
