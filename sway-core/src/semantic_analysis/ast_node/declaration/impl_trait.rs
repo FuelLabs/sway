@@ -105,7 +105,7 @@ impl TypedImplTrait {
         {
             Some(TypedDeclaration::TraitDeclaration(decl_id)) => {
                 let tr = check!(
-                    res!(de_get_trait(decl_id, &trait_name.span())),
+                    CompileResult::from(de_get_trait(decl_id, &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
                     errors

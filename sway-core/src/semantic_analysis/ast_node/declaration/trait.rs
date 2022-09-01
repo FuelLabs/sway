@@ -125,7 +125,7 @@ fn handle_supertraits(
                     ref supertraits,
                     ..
                 } = check!(
-                    res!(de_get_trait(decl_id.clone(), &supertrait.span())),
+                    CompileResult::from(de_get_trait(decl_id.clone(), &supertrait.span())),
                     return err(warnings, errors),
                     warnings,
                     errors

@@ -340,7 +340,7 @@ impl TypedDeclaration {
         let visibility = match self {
             TraitDeclaration(decl_id) => {
                 let TypedTraitDeclaration { visibility, .. } = check!(
-                    res!(de_get_trait(decl_id.clone(), &decl_id.span())),
+                    CompileResult::from(de_get_trait(decl_id.clone(), &decl_id.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
