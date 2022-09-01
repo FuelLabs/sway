@@ -13,14 +13,14 @@ pub struct I16 {
 
 pub trait From {
     /// Function for creating I16 from u16
-    fn from(value: u16) -> Self;
+    fn from(underlying: u16) -> Self;
 }
 
 impl From for I16 {
     /// Helper function to get a signed number from with an underlying
-    fn from(value: u16) -> I16 {
+    fn from(underlying: u16) -> Self {
         I16 {
-            underlying: value,
+            underlying
         }
     }
 }

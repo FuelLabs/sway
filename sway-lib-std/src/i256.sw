@@ -14,14 +14,14 @@ pub struct I256 {
 
 pub trait From {
     /// Function for creating I256 from U256
-    fn from(value: U256) -> Self;
+    fn from(underlying: U256) -> Self;
 }
 
 impl From for I256 {
     /// Helper function to get a signed number from with an underlying
-    fn from(value: U256) -> I256 {
+    fn from(underlying: U256) -> Self {
         I256 {
-            underlying: value,
+            underlying,
         }
     }
 }

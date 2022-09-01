@@ -13,14 +13,14 @@ pub struct I8 {
 
 pub trait From {
     /// Function for creating I8 from u8
-    fn from(value: u8) -> Self;
+    fn from(underlying: u8) -> Self;
 }
 
 impl From for I8 {
     /// Helper function to get a signed number from with an underlying
-    fn from(value: u8) -> I8 {
+    fn from(underlying: u8) -> Self {
         I8 {
-            underlying: value,
+            underlying
         }
     }
 }

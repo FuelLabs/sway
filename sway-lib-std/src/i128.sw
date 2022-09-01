@@ -14,7 +14,7 @@ pub struct I128 {
 
 pub trait From {
     /// Function for creating I128 from U128
-    fn from(value: U128) -> Self;
+    fn from(underlying: U128) -> Self;
 }
 
 impl From for I128 {
