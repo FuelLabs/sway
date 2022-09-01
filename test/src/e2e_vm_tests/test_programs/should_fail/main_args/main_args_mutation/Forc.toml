@@ -6,4 +6,4 @@ name = "main_args_mutation"
 implicit-std = false
 
 [dependencies]
-core = { path = "../../../../../../../../sway-lib-core" }
+core = { path = "../../../../../../../sway-lib-core" }
