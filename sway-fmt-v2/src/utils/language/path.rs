@@ -48,7 +48,7 @@ impl Format for PathExprSegment {
             write!(formatted_code, "{}", tilde.span().as_str())?;
         }
         // name
-        write!(formatted_code, "{}", self.name.span().as_str())?;
+        self.name.format(formatted_code, formatter)?;
         // generics `::<args>`
         if let Some((double_colon_token, generic_args)) = &self.generics_opt {
             write!(formatted_code, "{}", double_colon_token.span().as_str())?;

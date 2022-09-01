@@ -144,3 +144,23 @@ fmt_test!(  fn_with_nested_items
     ret
 }"
 );
+
+fmt_test!(  fn_nested_if_lets
+"fn has_nested_if_let() {
+    let result_1 = if let Result::Ok(x) = x { 100 } else { 1 };
+    let result_2 = if let Result::Err(x) = x { 3 } else { 43 };
+}",
+            intermediate_whitespace
+"fn has_nested_if_let() {
+    let result_1 = if let Result::Ok(x) = x {
+        100
+    } else {
+        1
+    };
+    let result_2 = if let Result::Err(x) = x {
+        3
+    } else {
+        43
+    };
+}"
+);

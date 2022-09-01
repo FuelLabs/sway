@@ -108,7 +108,7 @@ impl CurlyBrace for AsmBlock {
                 write!(line, " {}", Delimiter::Brace.as_close_char())?;
             }
             _ => {
-                writeln!(
+                write!(
                     line,
                     "{}{}",
                     formatter.shape.indent.to_string(&formatter.config)?,
