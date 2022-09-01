@@ -29,6 +29,7 @@ pub(crate) fn deploy_contract(file_name: &str, locked: bool) -> ContractId {
             )),
             silent_mode: !verbose,
             locked,
+            unsigned: true,
             ..Default::default()
         }))
         .unwrap()
