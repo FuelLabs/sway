@@ -17,7 +17,6 @@ async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>, fuels::prelud
         gas_price: 0,
         gas_limit: ConsensusParameters::DEFAULT.max_gas_per_tx,
         maturity: 0,
-        byte_price: 0,
         receipts_root: Default::default(),
         script: bin.unwrap(),
         script_data,

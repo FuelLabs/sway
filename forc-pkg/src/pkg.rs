@@ -8,7 +8,9 @@ use forc_util::{
     default_output_directory, find_file_name, git_checkouts_directory, kebab_to_snake_case,
     print_on_failure, print_on_success, print_on_success_library,
 };
-use fuel_tx::{Contract, StorageSlot};
+// Using `fuel_tx` directly instead of `fuel_gql_client` transitively is causing some weird issue.
+// See https://github.com/FuelLabs/sway/issues/2659
+use fuel_gql_client::fuel_tx::{Contract, StorageSlot};
 use petgraph::{
     self,
     visit::{Bfs, Dfs, EdgeRef, Walker},
@@ -24,10 +26,10 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
-    semantic_analysis::namespace, source_map::SourceMap, types::*, BytecodeCompilationResult,
+    semantic_analysis::namespace, source_map::SourceMap, BytecodeCompilationResult,
     CompileAstResult, CompileError, CompileResult, ParseProgram, TreeType,
 };
-use sway_types::{JsonABI, JsonABIProgram, JsonTypeApplication, JsonTypeDeclaration};
+use sway_types::{JsonABIProgram, JsonTypeApplication, JsonTypeDeclaration};
 use sway_utils::constants;
 use tracing::{info, warn};
 use url::Url;
@@ -48,9 +50,6 @@ pub struct PinnedId(u64);
 
 /// The result of successfully compiling a package.
 pub struct Compiled {
-    // `json_abi` is going to be deprecated and replaced with `json_abi_program` below which
-    // represents the ABI in a cleaner way
-    pub json_abi: JsonABI,
     pub json_abi_program: JsonABIProgram,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: Vec<u8>,
@@ -1632,7 +1631,6 @@ pub fn compile(
                 tracing::info!("{:#?}", typed_program);
             }
 
-            let json_abi = time_expr!("generate JSON ABI", typed_program.kind.generate_json_abi());
             let mut types = vec![];
             let json_abi_program = time_expr!(
                 "generate JSON ABI program",
@@ -1649,7 +1647,6 @@ pub fn compile(
                     let bytecode = vec![];
                     let lib_namespace = typed_program.root.namespace.clone();
                     let compiled = Compiled {
-                        json_abi,
                         json_abi_program,
                         storage_slots,
                         bytecode,
@@ -1673,7 +1670,6 @@ pub fn compile(
                             print_on_success(silent_mode, &pkg.name, &warnings, &tree_type);
                             let bytecode = bytes;
                             let compiled = Compiled {
-                                json_abi,
                                 json_abi_program,
                                 storage_slots,
                                 bytecode,
@@ -1850,17 +1846,7 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
         .join(&manifest.project.name)
         .with_extension("bin");
     fs::write(&bin_path, &compiled.bytecode)?;
-    if !compiled.json_abi.is_empty() {
-        let json_abi_stem = format!("{}-abi", manifest.project.name);
-        let json_abi_path = output_dir.join(&json_abi_stem).with_extension("json");
-        let file = File::create(json_abi_path)?;
-        let res = if minify_json_abi {
-            serde_json::to_writer(&file, &compiled.json_abi)
-        } else {
-            serde_json::to_writer_pretty(&file, &compiled.json_abi)
-        };
-        res?;
-
+    if !compiled.json_abi_program.functions.is_empty() {
         let json_abi_program_stem = format!("{}-flat-abi", manifest.project.name);
         let json_abi_program_path = output_dir
             .join(&json_abi_program_stem)
@@ -1925,7 +1911,6 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
 
     let mut namespace_map = Default::default();
     let mut source_map = SourceMap::new();
-    let mut json_abi = vec![];
     let mut json_abi_program = JsonABIProgram {
         types: vec![],
         functions: vec![],
@@ -1951,7 +1936,6 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
         if let Some(namespace) = maybe_namespace {
             namespace_map.insert(node, namespace.into());
         }
-        json_abi.extend(compiled.json_abi);
         json_abi_program
             .types
             .extend(compiled.json_abi_program.types);
@@ -1970,7 +1954,6 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
         tree_type.ok_or_else(|| anyhow!("build plan must contain at least one package"))?;
     let compiled = Compiled {
         bytecode,
-        json_abi,
         json_abi_program,
         storage_slots,
         tree_type,

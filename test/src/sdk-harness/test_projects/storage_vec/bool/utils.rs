@@ -2,7 +2,7 @@ use fuels::{prelude::*, tx::ContractId};
 // Load abi from json
 abigen!(
     MyContract,
-    "test_artifacts/storage_vec/svec_bool/out/debug/svec_bool-abi.json"
+    "test_artifacts/storage_vec/svec_bool/out/debug/svec_bool-flat-abi.json"
 );
 
 pub mod setup {
