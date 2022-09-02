@@ -30,7 +30,7 @@ abi TxContractTest {
     fn get_tx_outputs_count() -> u64;
     fn get_tx_witnesses_count() -> u64;
     fn get_tx_receipts_root() -> b256;
-    fn get_tx_script_start_pointer() -> u64;
+    fn get_tx_script_start_pointer() -> raw_ptr;
 
     fn get_input_type(index: u64) -> Input;
     fn get_tx_input_pointer(index: u64) -> u64;
@@ -72,7 +72,7 @@ impl TxContractTest for Contract {
     fn get_tx_receipts_root() -> b256 {
         tx_receipts_root()
     }
-    fn get_tx_script_start_pointer() -> u64 {
+    fn get_tx_script_start_pointer() -> raw_ptr {
         tx_script_start_pointer()
     }
     fn get_tx_input_pointer(index: u64) -> u64 {

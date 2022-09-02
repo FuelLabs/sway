@@ -26,7 +26,7 @@ fn main() -> bool {
     // Get a pointer to it
     let foo_ptr = addr_of(foo);
     assert(foo_ptr == asm(r1: foo) {
-        r1: u64
+        r1: raw_ptr
     });
 
     // Get another pointer to it and compare
@@ -48,17 +48,17 @@ fn main() -> bool {
     assert(foo.uwu == 42);
 
     // Read fields of the struct
-    let uwu_ptr = buf_ptr + size_of::<bool>();
+    let uwu_ptr = ptr_offset(buf_ptr, size_of::<bool>());
     let uwu: u64 = read(uwu_ptr);
     assert(uwu == 42);
-    let boo_ptr = uwu_ptr - size_of::<bool>();
+    let boo_ptr = buf_ptr;
     let boo: bool = read(boo_ptr);
     assert(boo == true);
 
     // Write values into a buffer
     let buf_ptr = alloc(16);
     write(buf_ptr, true);
-    write(buf_ptr + size_of::<bool>(), 42);
+    write(ptr_offset(buf_ptr, size_of::<bool>()), 42);
     let foo: TestStruct = read(buf_ptr);
     assert(foo.boo == true);
     assert(foo.uwu == 42);
@@ -66,7 +66,7 @@ fn main() -> bool {
     // Write structs into a buffer
     let buf_ptr = alloc(32);
     write(buf_ptr, foo);
-    write(buf_ptr + size_of::<TestStruct>(), foo);
+    write(ptr_offset(buf_ptr, size_of::<TestStruct>()), foo);
     let bar: ExtendedTestStruct = read(buf_ptr);
     assert(bar.boo == true);
     assert(bar.uwu == 42);
