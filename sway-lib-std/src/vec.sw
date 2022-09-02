@@ -3,11 +3,11 @@ library vec;
 use ::alloc::{alloc, realloc};
 use ::assert::assert;
 use ::intrinsics::size_of;
-use ::mem::{copy, read, write};
+use ::mem::{copy, ptr_offset, read, write};
 use ::option::Option;
 
 struct RawVec<T> {
-    ptr: u64,
+    ptr: raw_ptr,
     cap: u64,
 }
 
@@ -31,7 +31,7 @@ impl<T> RawVec<T> {
     }
 
     /// Gets the pointer of the allocation.
-    fn ptr(self) -> u64 {
+    fn ptr(self) -> raw_ptr {
         self.ptr
     }
 
@@ -95,7 +95,7 @@ impl<T> Vec<T> {
 
         // Get a pointer to the end of the buffer, where the new element will
         // be inserted.
-        let end = self.buf.ptr() + self.len * size_of::<T>();
+        let end = ptr_offset(self.buf.ptr(), self.len * size_of::<T>());
 
         // Write `value` at pointer `end`
         write(end, value);
@@ -126,7 +126,7 @@ impl<T> Vec<T> {
         };
 
         // Get a pointer to the desired element using `index`
-        let ptr = self.buf.ptr() + index * size_of::<T>();
+        let ptr = ptr_offset(self.buf.ptr(), index * size_of::<T>());
 
         // Read from `ptr`
         Option::Some(read(ptr))
@@ -151,16 +151,17 @@ impl<T> Vec<T> {
 
         let val_size = size_of::<T>();
         let buf_start = self.buf.ptr();
-        let mut ptr = buf_start + val_size * index;
+        let mut ptr = ptr_offset(buf_start, val_size * index);
 
         // Read from `ptr`
         let ret = read(ptr);
 
         // Shift everything down to fill in that spot.
-        let end = buf_start + val_size * self.len;
-        while ptr < end {
-            copy(ptr + val_size, ptr, val_size);
-            ptr += val_size;
+        let end = ptr_offset(buf_start, val_size * self.len);
+        while ptr != end {
+            let next_ptr = ptr_offset(ptr, val_size);
+            copy(next_ptr, ptr, val_size);
+            ptr = next_ptr;
         }
 
         // Decrease length.
@@ -182,15 +183,18 @@ impl<T> Vec<T> {
         let val_size = size_of::<T>();
         let buf_start = self.buf.ptr();
 
-        // The spot to put the new value
-        let index_ptr = buf_start + index * val_size;
-
         // Shift everything over to make space.
-        let mut curr_ptr = buf_start + self.len * val_size;
-        while curr_ptr > index_ptr {
-            copy(curr_ptr - val_size, curr_ptr, val_size);
-            curr_ptr -= val_size;
+        let mut dst_index = self.len;
+        while dst_index != index {
+            let src_index = dst_index - 1;
+            let dst_ptr = ptr_offset(buf_start, dst_index * val_size);
+            let src_ptr = ptr_offset(buf_start, src_index * val_size);
+            copy(src_ptr, dst_ptr, val_size);
+            dst_index = src_index;
         }
+
+        // The spot to put the new value
+        let index_ptr = ptr_offset(buf_start, index * val_size);
 
         // Write `element` at pointer `index`
         write(index_ptr, element);
@@ -206,7 +210,7 @@ impl<T> Vec<T> {
             return Option::None;
         }
         self.len -= 1;
-        Option::Some(read(self.buf.ptr() + self.len * size_of::<T>()))
+        Option::Some(read(ptr_offset(self.buf.ptr(), self.len * size_of::<T>())))
     }
 
     /// Swaps two elements.
@@ -229,8 +233,8 @@ impl<T> Vec<T> {
 
         let val_size = size_of::<T>();
 
-        let element1_ptr = self.buf.ptr() + element1_index * val_size;
-        let element2_ptr = self.buf.ptr() + element2_index * val_size;
+        let element1_ptr = ptr_offset(self.buf.ptr(), element1_index * val_size);
+        let element2_ptr = ptr_offset(self.buf.ptr(), element2_index * val_size);
 
         let element1_val = read(element1_ptr);
         copy(element2_ptr, element1_ptr, val_size);

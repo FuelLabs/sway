@@ -6,7 +6,7 @@ library call_frames;
 use ::context::registers::frame_ptr;
 use ::contract_id::ContractId;
 use ::intrinsics::is_reference_type;
-use ::mem::read;
+use ::mem::{ptr_offset, read};
 
 // Note that everything when serialized is padded to word length.
 //
@@ -51,15 +51,15 @@ pub fn code_size() -> u64 {
 
 /// Get the first parameter from the current call frame.
 pub fn first_param() -> u64 {
-    read(frame_ptr() + FIRST_PARAMETER_OFFSET)
+    read(ptr_offset(frame_ptr(), FIRST_PARAMETER_OFFSET))
 }
 
 /// Get the second parameter from the current call frame.
 pub fn second_param<T>() -> T {
     if !is_reference_type::<T>() {
-        read::<T>(frame_ptr() + SECOND_PARAMETER_OFFSET)
+        read::<T>(ptr_offset(frame_ptr(), SECOND_PARAMETER_OFFSET))
     } else {
-        read::<T>(read::<u64>(frame_ptr() + SECOND_PARAMETER_OFFSET))
+        read::<T>(read::<raw_ptr>(ptr_offset(frame_ptr(), SECOND_PARAMETER_OFFSET)))
     }
 }
 
@@ -68,16 +68,16 @@ pub fn second_param<T>() -> T {
 ///////////////////////////////////////////////////////////
 
 /// get a pointer to the previous (relative to the 'frame_pointer' param) call frame using offsets from a pointer.
-pub fn get_previous_frame_pointer(frame_pointer: u64) -> u64 {
-    let offset = frame_pointer + SAVED_REGISTERS_OFFSET + PREV_FRAME_POINTER_OFFSET;
+pub fn get_previous_frame_pointer(frame_pointer: raw_ptr) -> raw_ptr {
+    let offset = ptr_offset(frame_pointer, SAVED_REGISTERS_OFFSET + PREV_FRAME_POINTER_OFFSET);
     asm(res, ptr: offset) {
         lw res ptr i0;
-        res: u64
+        res: raw_ptr
     }
 }
 
 /// get the value of `ContractId` from any call frame on the stack.
-pub fn get_contract_id_from_call_frame(frame_pointer: u64) -> ContractId {
+pub fn get_contract_id_from_call_frame(frame_pointer: raw_ptr) -> ContractId {
     ~ContractId::from(asm(res, ptr: frame_pointer) {
         ptr: b256
     })

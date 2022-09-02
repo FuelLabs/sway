@@ -23,18 +23,18 @@ use ::mem::copy;
 ///
 /// See: https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#vm-initialization
 /// See: https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/opcodes.md#aloc-allocate-memory
-pub fn alloc(size: u64) -> u64 {
+pub fn alloc(size: u64) -> raw_ptr {
     asm(size: size, ptr) {
         aloc size;
         // `$hp` points to unallocated space and heap grows downward so
         // our newly allocated space will be right after it
         addi ptr hp i1;
-        ptr: u64
+        ptr: raw_ptr
     }
 }
 
 /// Reallocates the given area of memory
-pub fn realloc(ptr: u64, size: u64, new_size: u64) -> u64 {
+pub fn realloc(ptr: raw_ptr, size: u64, new_size: u64) -> raw_ptr {
     if new_size > size {
         let new_ptr = alloc(new_size);
         if size > 0 {

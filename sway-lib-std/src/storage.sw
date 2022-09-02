@@ -3,6 +3,7 @@ library r#storage;
 use ::assert::assert;
 use ::context::registers::stack_ptr;
 use ::hash::sha256;
+use ::mem::ptr_offset;
 use ::option::Option;
 use ::result::Result;
 
@@ -23,7 +24,7 @@ use ::result::Result;
         // Cast the pointer to `value` to a u64. This lets us increment
         // this pointer later on to iterate over 32 byte chunks of `value`.
         let mut ptr_to_value = asm(v: value) {
-            v
+            v: raw_ptr
         };
 
         while size_left > 32 {
@@ -31,7 +32,7 @@ use ::result::Result;
             __state_store_quad(local_key, ptr_to_value);
 
             // Move by 32 bytes
-            ptr_to_value = ptr_to_value + 32;
+            ptr_to_value = ptr_offset(ptr_to_value, 32);
             size_left -= 32;
 
             // Generate a new key for each 32 byte chunk TODO Should eventually
