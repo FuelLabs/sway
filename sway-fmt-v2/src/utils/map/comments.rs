@@ -181,13 +181,13 @@ fn get_comments_between_spans(
 }
 
 fn format_context(context: &str, threshold: usize) -> String {
-    let mut remaning_newlines = threshold;
+    let mut remaining_newlines = threshold;
     let mut formatted_context = String::new();
     for char in context.chars() {
         if char == '\n' {
-            if remaning_newlines > 0 {
+            if remaining_newlines > 0 {
                 formatted_context.push('\n');
-                remaning_newlines -= 1;
+                remaining_newlines -= 1;
             }
         } else {
             formatted_context.push(char);
