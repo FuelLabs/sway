@@ -31,6 +31,7 @@ enum TestResult {
 struct TestDescription {
     name: String,
     category: TestCategory,
+    script_data: Option<Vec<u8>>,
     expected_result: Option<TestResult>,
     contract_paths: Vec<String>,
     validate_abi: bool,
@@ -54,6 +55,7 @@ pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {
     for TestDescription {
         name,
         category,
+        script_data,
         expected_result,
         contract_paths,
         validate_abi,
@@ -81,7 +83,7 @@ pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {
                     ),
                 };
 
-                let result = crate::e2e_vm_tests::harness::runs_in_vm(&name, locked);
+                let result = crate::e2e_vm_tests::harness::runs_in_vm(&name, script_data, locked);
                 assert_eq!(result.0, res);
                 if validate_abi {
                     assert!(crate::e2e_vm_tests::harness::test_json_abi(&name, &result.1).is_ok());
@@ -282,6 +284,23 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
         return Err("'fail' tests must contain some FileCheck verification directives.".to_owned());
     }
 
+    let script_data = match &category {
+        TestCategory::Runs | TestCategory::RunsWithContract => {
+            match toml_content.get("script_data") {
+                Some(toml::Value::String(v)) => {
+                    let decoded = hex::decode(v)
+                        .map_err(|e| format!("Invalid hex value for 'script_data': {}", e))?;
+                    Some(decoded)
+                }
+                Some(_) => {
+                    return Err("Expected 'script_data' to be a hex string.".to_owned());
+                }
+                _ => None,
+            }
+        }
+        TestCategory::Compiles | TestCategory::FailsToCompile | TestCategory::Disabled => None,
+    };
+
     let expected_result = match &category {
         TestCategory::Runs | TestCategory::RunsWithContract => {
             Some(get_expected_result(&toml_content)?)
@@ -333,6 +352,7 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
     Ok(TestDescription {
         name,
         category,
+        script_data,
         expected_result,
         contract_paths,
         validate_abi,
