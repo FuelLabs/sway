@@ -13,7 +13,8 @@ pub(crate) use self::{
 };
 
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::*, type_system::*, types::DeterministicallyAborts,
+    declaration_engine::declaration_engine::de_get_abi, error::*, parse_tree::*,
+    semantic_analysis::*, type_system::*, types::DeterministicallyAborts,
 };
 
 use sway_ast::intrinsics::Intrinsic;
@@ -713,6 +714,7 @@ impl TypedExpression {
         name: Ident,
         span: Span,
     ) -> CompileResult<TypedExpression> {
+        let mut warnings = vec![];
         let mut errors = vec![];
         let exp = match namespace.resolve_symbol(&name).value {
             Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -746,14 +748,20 @@ impl TypedExpression {
                 },
                 span,
             },
-            Some(TypedDeclaration::AbiDeclaration(decl)) => TypedExpression {
-                return_type: decl.create_type_id(),
-                is_constant: IsConstant::Yes,
-                expression: TypedExpressionVariant::AbiName(AbiName::Known(
-                    decl.name.clone().into(),
-                )),
-                span,
-            },
+            Some(TypedDeclaration::AbiDeclaration(decl_id)) => {
+                let decl = check!(
+                    CompileResult::from(de_get_abi(decl_id.clone(), &span)),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                TypedExpression {
+                    return_type: decl.create_type_id(),
+                    is_constant: IsConstant::Yes,
+                    expression: TypedExpressionVariant::AbiName(AbiName::Known(decl.name.into())),
+                    span,
+                }
+            }
             Some(a) => {
                 errors.push(CompileError::NotAVariable {
                     name: name.clone(),
@@ -768,7 +776,7 @@ impl TypedExpression {
                 error_recovery_expr(name.span())
             }
         };
-        ok(exp, vec![], errors)
+        ok(exp, warnings, errors)
     }
 
     fn type_check_function_application(
@@ -1459,7 +1467,14 @@ impl TypedExpression {
             errors
         );
         let abi = match abi {
-            TypedDeclaration::AbiDeclaration(abi) => abi,
+            TypedDeclaration::AbiDeclaration(decl_id) => {
+                check!(
+                    CompileResult::from(de_get_abi(decl_id, &span)),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
             TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                 body: ref expr,
                 ..
@@ -1485,12 +1500,11 @@ impl TypedExpression {
                             errors
                         );
                         check!(
-                            unknown_decl.expect_abi(),
+                            unknown_decl.expect_abi(&span),
                             return err(warnings, errors),
                             warnings,
                             errors
                         )
-                        .clone()
                     }
                     AbiName::Deferred => {
                         return ok(

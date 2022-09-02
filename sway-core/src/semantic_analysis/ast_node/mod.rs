@@ -13,7 +13,7 @@ pub(crate) use mode::*;
 pub(crate) use return_statement::*;
 
 use crate::{
-    declaration_engine::declaration_engine::{de_insert_storage, de_insert_trait},
+    declaration_engine::declaration_engine::{de_insert_abi, de_insert_storage, de_insert_trait},
     error::*,
     parse_tree::*,
     semantic_analysis::*,
@@ -387,7 +387,7 @@ impl TypedAstNode {
                                 errors
                             );
                             let name = abi_decl.name.clone();
-                            let decl = TypedDeclaration::AbiDeclaration(abi_decl);
+                            let decl = TypedDeclaration::AbiDeclaration(de_insert_abi(abi_decl));
                             ctx.namespace.insert_symbol(name, decl.clone());
                             decl
                         }
