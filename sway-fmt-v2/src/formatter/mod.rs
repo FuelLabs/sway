@@ -99,6 +99,14 @@ mod tests {
     use crate::config::user_def::FieldAlignment;
     use std::sync::Arc;
 
+    /// Checks if the formatter is producing the same output when given it's output.
+    fn test_stability(formatted_input: String, formatter: Formatter) -> bool {
+        let mut formatter = formatter;
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(formatted_input.clone()), None).unwrap();
+        formatted_input == formatted_sway_code
+    }
+
     #[test]
     fn test_const() {
         let sway_code_to_format = r#"contract;
@@ -975,11 +983,23 @@ fn main() {}
         assert!(test_stability(formatted_sway_code, formatter));
     }
 
-    /// Checks if the formatter is producing the same output when given it's output.
-    fn test_stability(formatted_input: String, formatter: Formatter) -> bool {
-        let mut formatter = formatter;
+    #[test]
+    fn test_newline_comment_handler_interaction() {
+        let sway_code_to_format = r#"script;
+
+// use statements
+use std::*;"#;
+
+        let correct_sway_code = r#"script;
+
+// use statements
+use std::*;
+"#;
+
+        let mut formatter = Formatter::default();
         let formatted_sway_code =
-            Formatter::format(&mut formatter, Arc::from(formatted_input.clone()), None).unwrap();
-        formatted_input == formatted_sway_code
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+        assert!(test_stability(formatted_sway_code, formatter));
     }
 }
