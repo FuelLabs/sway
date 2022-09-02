@@ -249,7 +249,7 @@ async fn can_get_tx_input_coin_owner() {
 
 #[tokio::test]
 #[should_panic(expected = "Revert(0)")]
-async fn can_get_tx_input_predicate_data_pointer() {
+async fn can_handle_no_input_predicate_data_pointer() {
     let (contract_instance, _, _) = get_contracts().await;
     let call_params = CallParameters::default();
     let result = contract_instance
