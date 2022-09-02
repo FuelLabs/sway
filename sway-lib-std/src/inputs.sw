@@ -100,7 +100,7 @@ pub fn input_amount(index: u64) -> Option<u64> {
         Input::Message => {
             Option::Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_AMOUNT))
         },
-        _ => {
+        Input::Contract => {
             return Option::None;
         },
     }
@@ -124,13 +124,10 @@ pub fn input_pointer(index: u64) -> u64 {
 /// Otherwise, returns Option::None.
 pub fn input_coin_owner(index: u64) -> Option<Address> {
     let type = input_type(index);
-    match type {
-        Input::Coin => {
-            Option::Some(~Address::from(__gtf::<b256>(index, GTF_INPUT_COIN_OWNER)))
-        },
-        _ => {
-            return Option::None;
-        },
+    if let type == Input::Coin {
+        Option::Some(~Address::from(__gtf::<b256>(index, GTF_INPUT_COIN_OWNER)))
+    } else {
+        return Option::None;
     }
 }
 
@@ -147,7 +144,7 @@ pub fn input_predicate_data_pointer(index: u64) -> Option<u64> {
         Input::Message => {
             Option::Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA))
         },
-        _ => {
+        Input::Contract => {
             Option::None
         }
     }
