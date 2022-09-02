@@ -161,8 +161,7 @@ pub struct Line {
 }
 
 pub struct TupleInStruct {
-    nested_tuple: (u64,
-    (u32, (bool, str[2]))), 
+    nested_tuple: (u64, (u32, (bool, str[2]))),
 }
 </code></pre>
 <p>In order to instantiate the struct we use <em>struct instantiation syntax</em>, which is very similar to the declaration syntax except with expressions in place of types.</p>
@@ -215,9 +214,7 @@ fn shorthand_instantiation() -&gt; Foo {
     let baz = false;
 
     // Instantiate `foo` as `Foo`
-    let mut foo = Foo {
-        bar, baz, 
-    };
+    let mut foo = Foo { bar, baz };
 
     // Access and write to &quot;baz&quot;
     foo.baz = true;
@@ -227,62 +224,40 @@ fn shorthand_instantiation() -&gt; Foo {
 }
 
 fn struct_destructuring() {
-    let point1 = Point {
-        x: 0,
-        y: 0,
-    };
+    let point1 = Point { x: 0, y: 0 };
     // Destructure the values from the struct into variables
-    let Point {
-        x, y
-    }
-    = point1;
+    let Point{x, y} = point1;
 
-    let point2 = Point {
-        x: 1,
-        y: 1,
-    };
+    let point2 = Point { x: 1, y: 1 };
     // If you do not care about specific struct fields then use &quot;..&quot; at the end of your variable list
-    let Point {
-        x, ..
-    }
-    = point2;
+    let Point{x, ..} = point2;
 
     let line = Line {
         p1: point1,
         p2: point2,
     };
     // Destructure the values from the nested structs into variables
-    let Line {
-        p1: Point {
-            x: x0, y: y0
-        },
-        p2: Point {
-            x: x1, y: y1
-        }
-    }
-    = line;
+    let Line{p1:Point{x:x0, y:y0}, p2:Point{x:x1, y:y1}} = line;
     // You may also destructure tuples nested in structs and structs nested in tuples
     let tuple_in_struct = TupleInStruct {
-        nested_tuple: (42u64,
-        (42u32, (true, &quot;ok&quot;))), 
+        nested_tuple: (
+            42u64,
+            (
+                42u32,
+                (
+                    true,
+                    &quot;ok&quot;,
+                ),
+            ),
+        ),
     };
-    let TupleInStruct {
-        nested_tuple: (a, (b, (c, d)))
-    }
-    = tuple_in_struct;
+    let TupleInStruct{nested_tuple:(a, (b, (c, d)))} = tuple_in_struct;
 
-    let struct_in_tuple = (Point {
-        x: 2, y: 4, 
-    },
-    Point {
-        x: 3, y: 6, 
-    });
-    let(Point {
-        x: x0, y: y0, 
-    },
-    Point {
-        x: x1, y: y1, 
-    }) = struct_in_tuple;
+    let struct_in_tuple = (
+        Point { x: 2, y: 4 },
+        Point { x: 3, y: 6 },
+    );
+    let (Point{x:x0, y:y0, }, Point{x:x1, y:y1, }) = struct_in_tuple;
 }
 </code></pre>
 <blockquote>
@@ -304,26 +279,38 @@ This information is not vital if you are new to the language, or programming in 
 
 fn tuple() {
     // You can declare the types youself
-    let tuple1: (u8, bool, u64) = (100, false, 10000);
+    let tuple1: (u8, bool, u64) = (
+        100,
+        false,
+        10000,
+    );
 
     // Or have the types be inferred
-    let mut tuple2 = (5, true, (&quot;Sway&quot;, 8));
+    let mut tuple2 = (
+        5,
+        true,
+        (&quot;Sway&quot;, 8),
+    );
 
     // Retrieve values from tuples
     let number = tuple1.0;
     let sway = tuple2.2.1;
 
     // Destructure the values from the tuple into variables
-    let(n1, truthness, n2) = tuple1;
+    let (n1, truthness, n2) = tuple1;
 
     // If you do not care about specific values then use &quot;_&quot;
-    let(_, truthness, _) = tuple2;
+    let (_, truthness, _) = tuple2;
 
     // Internally mutate the tuple
     tuple2.1 = false;
 
     // Or change the values all at once (must keep the same data types)
-    tuple2 = (9, false, (&quot;Fuel&quot;, 99));
+    tuple2 = (
+        9,
+        false,
+        (&quot;Fuel&quot;, 99),
+    );
 }
 </code></pre>
 <h2 id="enums"><a class="header" href="#enums">Enums</a></h2>
@@ -366,7 +353,9 @@ enum MyEnum {
 
 fn main() {
     let my_enum = MyEnum::Item(Item {
-        price: 5, amount: 2, id: 42
+        price: 5,
+        amount: 2,
+        id: 42,
     });
 }
 </code></pre>

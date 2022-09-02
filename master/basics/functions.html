@@ -183,7 +183,6 @@ fn update_color(ref mut color: Color, new_color: Color) {
     swap_tuple(tuple);
     assert(tuple.0 == 24); // The function `swap_tuple()` modifies `tuple.0`
     assert(tuple.1 == 42); // The function `swap_tuple()` modifies `tuple.1`
-
     let mut color = Color::Red;
     update_color(color, Color::Blue);
     assert(match color {
@@ -193,8 +192,7 @@ fn update_color(ref mut color: Color, new_color: Color) {
         _ =&gt; {
             false
         }
-    }
-    ); // The function `update_color()` modifies the color to Blue
+    }); // The function `update_color()` modifies the color to Blue
 </code></pre>
 <blockquote>
 <p><strong>Note</strong>

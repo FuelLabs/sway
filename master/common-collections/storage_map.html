@@ -146,15 +146,14 @@
 </code></pre>
 <h2 id="creating-a-new-storage-map"><a class="header" href="#creating-a-new-storage-map">Creating a New Storage Map</a></h2>
 <p>To create a new empty storage map, we have to declare the map in a <code>storage</code> block as follows:</p>
-<pre><code class="language-sway">    map: StorageMap&lt;Address,
-    u64&gt; = StorageMap {
-    },
+<pre><code class="language-sway">    map: StorageMap&lt;Address, u64&gt; = StorageMap {},
 </code></pre>
 <p>Just like any other storage variable, two things are required when declaring a <code>StorageMap</code>: a type annotation and an initializer. The initializer is just an empty struct of type <code>StorageMap</code> because <code>StorageMap&lt;K, V&gt;</code> itself is an empty struct! Everything that is interesting about <code>StorageMap&lt;K, V&gt;</code> is implemented in its methods.</p>
 <p>Storage maps, just like <code>Vec&lt;T&gt;</code> and <code>StorageVec&lt;T&gt;</code>, are implemented using generics which means that the <code>StorageMap&lt;K, V&gt;</code> type provided by the standard library can map keys of any type <code>K</code> to values of any type <code>V</code>. In the example above, we’ve told the Sway compiler that the <code>StorageMap&lt;K, V&gt;</code> in <code>map</code> will map keys of type <code>Address</code> to values of type <code>u64</code>.</p>
 <h2 id="updating-a-storage-map"><a class="header" href="#updating-a-storage-map">Updating a Storage Map</a></h2>
 <p>To insert key-value pairs into a storage map, we can use the <code>insert</code> method, as shown below:</p>
-<pre><code class="language-sway">    #[storage(write)]fn insert_into_storage_map() {
+<pre><code class="language-sway">    #[storage(write)]
+    fn insert_into_storage_map() {
         let addr1 = 0x0101010101010101010101010101010101010101010101010101010101010101;
         let addr2 = 0x0202020202020202020202020202020202020202020202020202020202020202;
 
@@ -174,7 +173,8 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
 </blockquote>
 <h2 id="accessing-values-in-a-storage-map"><a class="header" href="#accessing-values-in-a-storage-map">Accessing Values in a Storage Map</a></h2>
 <p>We can get a value out of the storage map by providing its <code>key</code> to the <code>get</code> method, as shown below:</p>
-<pre><code class="language-sway">    #[storage(read, write)]fn get_from_storage_map() {
+<pre><code class="language-sway">    #[storage(read, write)]
+    fn get_from_storage_map() {
         let addr1 = 0x0101010101010101010101010101010101010101010101010101010101010101;
         let addr2 = 0x0202020202020202020202020202020202020202020202020202020202020202;
 
@@ -196,9 +196,7 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
 </ul>
 <h2 id="storage-maps-with-multiple-keys"><a class="header" href="#storage-maps-with-multiple-keys">Storage maps with multiple keys</a></h2>
 <p>You might find yourself needing a <code>StorageMap&lt;K1, V1&gt;</code> where the type <code>V1</code> is itself another <code>StorageMap&lt;K2, V2&gt;</code>. This is not allowed in Sway. The right approach is to use a single <code>StorageMap&lt;K, V&gt;</code> where <code>K</code> is a tuple <code>(K1, K2)</code>. For example:</p>
-<pre><code class="language-sway">    map_two_keys: StorageMap&lt;(b256,
-    bool), b256&gt; = StorageMap {
-    },
+<pre><code class="language-sway">    map_two_keys: StorageMap&lt;(b256, bool), b256&gt; = StorageMap {},
 </code></pre>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
 <p>It is not currently allowed to have a <code>StorageMap&lt;K, V&gt;</code> as a component of a complex type such as a struct or an enum. For example, the code below is not legal:</p>

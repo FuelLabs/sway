@@ -145,14 +145,14 @@
 <p>Another major difference between <code>Vec&lt;T&gt;</code> and <code>StorageVec&lt;T&gt;</code> is that <code>StorageVec&lt;T&gt;</code> can only be used in a contract because only contracts are allowed to access persistent storage.</p>
 <h2 id="creating-a-new-storage-vector"><a class="header" href="#creating-a-new-storage-vector">Creating a New Storage Vector</a></h2>
 <p>To create a new empty storage vector, we have to declare the vector in a <code>storage</code> block as follows:</p>
-<pre><code class="language-sway">    v: StorageVec&lt;u64&gt; = StorageVec {
-    },
+<pre><code class="language-sway">    v: StorageVec&lt;u64&gt; = StorageVec {},
 </code></pre>
 <p>Just like any other storage variable, two things are required when declaring a <code>StorageVec</code>: a type annotation and an initializer. The initializer is just an empty struct of type <code>StorageVec</code> because <code>StorageVec&lt;T&gt;</code> itself is an empty struct! Everything that is interesting about <code>StorageVec&lt;T&gt;</code> is implemented in its methods.</p>
 <p>Storage vectors, just like <code>Vec&lt;T&gt;</code>, are implemented using generics which means that the <code>StorageVec&lt;T&gt;</code> type provided by the standard library can hold any type. When we create a storage vector to hold a specific type, we can specify the type within angle brackets. In the example above, we’ve told the Sway compiler that the <code>StorageVec&lt;T&gt;</code> in <code>v</code> will hold elements of the <code>u64</code> type.</p>
 <h2 id="updating-a-storage-vector"><a class="header" href="#updating-a-storage-vector">Updating a Storage Vector</a></h2>
 <p>To add elements to a storage vector, we can use the <code>push</code> method, as shown below:</p>
-<pre><code class="language-sway">    #[storage(read, write)]fn push_to_storage_vec() {
+<pre><code class="language-sway">    #[storage(read, write)]
+    fn push_to_storage_vec() {
         storage.v.push(5);
         storage.v.push(6);
         storage.v.push(7);
@@ -171,7 +171,8 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
 </blockquote>
 <h2 id="reading-elements-of-storage-vectors"><a class="header" href="#reading-elements-of-storage-vectors">Reading Elements of Storage Vectors</a></h2>
 <p>To read a value stored in a vector at a particular index, you can use the <code>get</code> method as shown below:</p>
-<pre><code class="language-sway">    #[storage(read)]fn read_from_storage_vec() {
+<pre><code class="language-sway">    #[storage(read)]
+    fn read_from_storage_vec() {
         let third = storage.v.get(2);
         match third {
             Option::Some(third) =&gt; {
@@ -187,7 +188,8 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
 <p>When the <code>get</code> method is passed an index that is outside the vector, it returns <code>None</code> without panicking. This is particularly useful if accessing an element beyond the range of the vector may happen occasionally under normal circumstances. Your code will then have logic to handle having either <code>Some(element)</code> or <code>None</code>. For example, the index could be coming as a contract method argument. If the argument passed is too large, the method <code>get</code> will return a <code>None</code> value, and the contract method may then decide to revert when that happens or return a meaningful error that tells the user how many items are in the current vector and give them another chance to pass a valid value.</p>
 <h2 id="iterating-over-the-values-in-a-vector"><a class="header" href="#iterating-over-the-values-in-a-vector">Iterating over the Values in a Vector</a></h2>
 <p>To access each element in a vector in turn, we would iterate through all of the valid indices using a <code>while</code> loop and the <code>len</code> method as shown below:</p>
-<pre><code class="language-sway">    #[storage(read)]fn iterate_over_a_storage_vec() {
+<pre><code class="language-sway">    #[storage(read)]
+    fn iterate_over_a_storage_vec() {
         let mut i = 0;
         while i &lt; storage.v.len() {
             log(storage.v.get(i).unwrap());
@@ -205,11 +207,11 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
 }
 </code></pre>
 <p>Then we can declare a storage vector in a <code>storage</code> block to hold that enum and so, ultimately, holds different types:</p>
-<pre><code class="language-sway">    row: StorageVec&lt;TableCell&gt; = StorageVec {
-    },
+<pre><code class="language-sway">    row: StorageVec&lt;TableCell&gt; = StorageVec {},
 </code></pre>
 <p>We can now push different enum variants to the storage vector as follows:</p>
-<pre><code class="language-sway">    #[storage(read, write)]fn push_to_multiple_types_storage_vec() {
+<pre><code class="language-sway">    #[storage(read, write)]
+    fn push_to_multiple_types_storage_vec() {
         storage.row.push(TableCell::Int(3));
         storage.row.push(TableCell::B256(0x0101010101010101010101010101010101010101010101010101010101010101));
         storage.row.push(TableCell::Boolean(true));

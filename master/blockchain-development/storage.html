@@ -154,10 +154,7 @@ struct Type2 {
 }
 
 storage {
-    var1: Type1 = Type1 {
-        x: 0,
-        y: 0,
-    },
+    var1: Type1 = Type1 { x: 0, y: 0 },
     var2: Type2 = Type2 {
         w: 0x0000000000000000000000000000000000000000000000000000000000000000,
         z: false,
@@ -165,7 +162,8 @@ storage {
 }
 </code></pre>
 <p>To write into a storage variable, you need to use the <code>storage</code> keyword as follows:</p>
-<pre><code class="language-sway">    #[storage(write)]fn store_something() {
+<pre><code class="language-sway">    #[storage(write)]
+    fn store_something() {
         storage.var1.x = 42;
         storage.var1.y = 77;
         storage.var2.w = 0x1111111111111111111111111111111111111111111111111111111111111111;
@@ -173,8 +171,14 @@ storage {
     }
 </code></pre>
 <p>To read a storage variable, you also need to use the <code>storage</code> keyword as follows:</p>
-<pre><code class="language-sway">    #[storage(read)]fn get_something() -&gt; (u64, u64, b256, bool) {
-        (storage.var1.x, storage.var1.y, storage.var2.w, storage.var2.z)
+<pre><code class="language-sway">    #[storage(read)]
+    fn get_something() -&gt; (u64, u64, b256, bool) {
+        (
+            storage.var1.x,
+            storage.var1.y,
+            storage.var2.w,
+            storage.var2.z,
+        )
     }
 </code></pre>
 <h2 id="storage-maps"><a class="header" href="#storage-maps">Storage Maps</a></h2>
@@ -186,18 +190,22 @@ storage {
 use std::storage::{get, store};
 
 abi StorageExample {
-    #[storage(write)]fn store_something(amount: u64);
-    #[storage(read)]fn get_something() -&gt; u64;
+    #[storage(write)]
+    fn store_something(amount: u64);
+    #[storage(read)]
+    fn get_something() -&gt; u64;
 }
 
 const STORAGE_KEY: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
 impl StorageExample for Contract {
-    #[storage(write)]fn store_something(amount: u64) {
+    #[storage(write)]
+    fn store_something(amount: u64) {
         store(STORAGE_KEY, amount);
     }
 
-    #[storage(read)]fn get_something() -&gt; u64 {
+    #[storage(read)]
+    fn get_something() -&gt; u64 {
         let value = get::&lt;u64&gt;(STORAGE_KEY);
         value
     }

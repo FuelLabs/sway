@@ -496,8 +496,10 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 <pre><code class="language-sway">contract;
 
 abi TestContract {
-    #[storage(write)]fn initialize_counter(value: u64) -&gt; u64;
-    #[storage(read, write)]fn increment_counter(amount: u64) -&gt; u64;
+    #[storage(write)]
+    fn initialize_counter(value: u64) -&gt; u64;
+    #[storage(read, write)]
+    fn increment_counter(amount: u64) -&gt; u64;
 }
 
 storage {
@@ -505,12 +507,14 @@ storage {
 }
 
 impl TestContract for Contract {
-    #[storage(write)]fn initialize_counter(value: u64) -&gt; u64 {
+    #[storage(write)]
+    fn initialize_counter(value: u64) -&gt; u64 {
         storage.counter = value;
         value
     }
 
-    #[storage(read, write)]fn increment_counter(amount: u64) -&gt; u64 {
+    #[storage(read, write)]
+    fn increment_counter(amount: u64) -&gt; u64 {
         let incremented = storage.counter + amount;
         storage.counter = incremented;
         incremented
@@ -520,119 +524,7 @@ impl TestContract for Contract {
 <div style="break-before: page; page-break-before: always;"></div><h1 id="subcurrency"><a class="header" href="#subcurrency">Subcurrency</a></h1>
 <p>The following is a simple example of a subcurrency which implements functionality to mint and send token. It is a ledger-based token, i.e. the contract maintains a ledger of user account balances.</p>
 <p>Being a ledger-based token, this example does not use Fuel's <a href="examples/../blockchain-development/native_assets.html">native asset system</a>. It is not recommended to actually use ledger-based tokens in production; this example is here purely for illustrative purposes.</p>
-<pre><code class="language-sway">contract;
-
-use std::{
-    address::Address,
-    assert::assert,
-    chain::auth::{AuthError, msg_sender},
-    hash::sha256,
-    identity::Identity,
-    logging::log,
-    result::Result,
-    revert::revert,
-    storage::StorageMap,
-};
-
-////////////////////////////////////////
-// Event declarations
-////////////////////////////////////////
-
-// Events allow clients to react to changes in the contract.
-// Unlike Solidity, events are simply structs.
-// Note: Logging of arbitrary stack types is supported, however they cannot yet
-//  be decoded on the SDK side.
-
-/// Emitted when a token is sent.
-struct Sent {
-    from: Address,
-    to: Address,
-    amount: u64,
-}
-
-////////////////////////////////////////
-// ABI method declarations
-////////////////////////////////////////
-
-/// ABI for a subcurrency.
-abi Token {
-    // Mint new tokens and send to an address.
-    // Can only be called by the contract creator.
-    #[storage(read, write)]fn mint(receiver: Address, amount: u64);
-
-    // Sends an amount of an existing token.
-    // Can be called from any address.
-    #[storage(read, write)]fn send(receiver: Address, amount: u64);
-}
-
-////////////////////////////////////////
-// Constants
-////////////////////////////////////////
-
-/// Address of contract creator.
-const MINTER: b256 = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
-
-////////////////////////////////////////
-// Contract storage
-////////////////////////////////////////
-
-// Contract storage persists across transactions.
-storage {
-    balances: StorageMap&lt;Address,
-    u64&gt; = StorageMap {
-    },
-}
-
-////////////////////////////////////////
-// ABI definitions
-////////////////////////////////////////
-
-/// Contract implements the `Token` ABI.
-impl Token for Contract {
-    #[storage(read, write)]fn mint(receiver: Address, amount: u64) {
-        // Note: The return type of `msg_sender()` can be inferred by the
-        // compiler. It is shown here for explicitness.
-        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
-        let sender: Address = match sender.unwrap() {
-            Identity::Address(addr) =&gt; {
-                assert(addr == ~Address::from(MINTER));
-                addr
-            },
-            _ =&gt; {
-                revert(0);
-            },
-        };
-
-        // Increase the balance of receiver
-        storage.balances.insert(receiver, storage.balances.get(receiver) + amount)
-    }
-
-    #[storage(read, write)]fn send(receiver: Address, amount: u64) {
-        // Note: The return type of `msg_sender()` can be inferred by the
-        // compiler. It is shown here for explicitness.
-        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
-        let sender: Address = match sender.unwrap() {
-            Identity::Address(addr) =&gt; {
-                addr
-            },
-            _ =&gt; {
-                revert(0);
-            },
-        };
-
-        // Reduce the balance of sender
-        let sender_amount = storage.balances.get(sender);
-        assert(sender_amount &gt; amount);
-        storage.balances.insert(sender, sender_amount - amount);
-
-        // Increase the balance of receiver
-        storage.balances.insert(receiver, storage.balances.get(receiver) + amount);
-
-        log(Sent {
-            from: sender, to: receiver, amount: amount
-        });
-    }
-}
+<pre><code class="language-sway">
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="fizzbuzz"><a class="header" href="#fizzbuzz">FizzBuzz</a></h1>
 <p>This example is not the traditional <a href="https://en.wikipedia.org/wiki/Fizz_buzz#Programming">FizzBuzz</a>; instead it is the smart contract version! A script can call the <code>fizzbuzz</code> ABI method of this contract with some <code>u64</code> value and receive back its fizzbuzzability as an <code>enum</code>.</p>
@@ -666,72 +558,10 @@ impl FizzBuzz for Contract {
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="wallet-smart-contract"><a class="header" href="#wallet-smart-contract">Wallet Smart Contract</a></h1>
 <h2 id="abi-declaration"><a class="header" href="#abi-declaration">ABI Declaration</a></h2>
-<pre><code class="language-sway">library wallet_abi;
-
-use std::address::Address;
-
-abi Wallet {
-    #[storage(read, write)]fn receive_funds();
-    #[storage(read, write)]fn send_funds(amount_to_send: u64, recipient_address: Address);
-}
+<pre><code class="language-sway">
 </code></pre>
 <h2 id="abi-implementation"><a class="header" href="#abi-implementation">ABI Implementation</a></h2>
-<pre><code class="language-sway">contract;
-
-use std::{
-    address::Address,
-    assert::assert,
-    chain::auth::{AuthError, msg_sender},
-    constants::BASE_ASSET_ID,
-    context::{call_frames::msg_asset_id, msg_amount},
-    contract_id::ContractId,
-    identity::Identity,
-    result::Result,
-    revert::revert,
-    token::transfer_to_output,
-};
-
-use wallet_abi::Wallet;
-
-const OWNER_ADDRESS: b256 = 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861;
-
-storage {
-    balance: u64 = 0,
-}
-
-impl Wallet for Contract {
-    #[storage(read, write)]fn receive_funds() {
-        if msg_asset_id() == BASE_ASSET_ID {
-            // If we received `BASE_ASSET_ID` then keep track of the balance.
-            // Otherwise, we're receiving other native assets and don't care
-            // about our balance of tokens.
-            storage.balance = storage.balance + msg_amount();
-        }
-    }
-
-    #[storage(read, write)]fn send_funds(amount_to_send: u64, recipient_address: Address) {
-        // Note: The return type of `msg_sender()` can be inferred by the
-        // compiler. It is shown here for explicitness.
-        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
-        match sender.unwrap() {
-            Identity::Address(addr) =&gt; {
-                assert(addr == ~Address::from(OWNER_ADDRESS));
-            },
-            _ =&gt; {
-                revert(0);
-            },
-        };
-
-        let current_balance = storage.balance;
-        assert(current_balance &gt;= amount_to_send);
-
-        storage.balance = current_balance - amount_to_send;
-        // Note: `transfer_to_output()` is not a call and thus not an
-        // interaction. Regardless, this code conforms to
-        // checks-effects-interactions to avoid re-entrancy.
-        transfer_to_output(amount_to_send, BASE_ASSET_ID, recipient_address);
-    }
-}
+<pre><code class="language-sway">
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="sway-program-types"><a class="header" href="#sway-program-types">Sway Program Types</a></h1>
 <p>A Sway program itself has a type: it is either a <em>contract</em>, a <em>predicate</em>, a <em>script</em>, or a <em>library</em>. The first three of these things are all deployable to the blockchain. A <em>library</em> is simply a project designed for code reuse and is never directly deployed to the chain.</p>
@@ -749,20 +579,15 @@ impl Wallet for Contract {
 <p>A smart contract is no different than a script or predicate in that it is a piece of bytecode that is deployed to the blockchain via a <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md">transaction</a>. The main features of a smart contract that differentiate it from scripts or predicates are that it is <em>callable</em> and <em>stateful</em>. Put another way, a smart contract is analogous to a deployed API with some database state. The interface of a smart contract, also just called a contract, must be defined strictly with an <a href="sway-program-types/smart_contracts.html#the-abi-declaration">ABI declaration</a>. See <a href="sway-program-types/../examples/subcurrency.html">this contract</a> for an example.</p>
 <h2 id="syntax-of-a-smart-contract"><a class="header" href="#syntax-of-a-smart-contract">Syntax of a Smart Contract</a></h2>
 <p>As with any Sway program, the program starts with a declaration of what <a href="sway-program-types/./index.html">program type</a> it is. A contract must also either define or import an <a href="sway-program-types/smart_contracts.html#the-abi-declaration">ABI declaration</a> and implement it. It is considered good practice to define your ABI in a separate library and import it into your contract. This allows callers of your contract to simply import the ABI directly and use it in their scripts to call your contract. Let's take a look at an ABI declaration in a library:</p>
-<pre><code class="language-sway">library wallet_abi;
-
-use std::address::Address;
-
-abi Wallet {
-    #[storage(read, write)]fn receive_funds();
-    #[storage(read, write)]fn send_funds(amount_to_send: u64, recipient_address: Address);
-}
+<pre><code class="language-sway">
 </code></pre>
 <p>Let's focus on the ABI declaration and inspect it line-by-line.</p>
 <h3 id="the-abi-declaration"><a class="header" href="#the-abi-declaration">The ABI Declaration</a></h3>
 <pre><code class="language-sway">abi Wallet {
-    #[storage(read, write)]fn receive_funds();
-    #[storage(read, write)]fn send_funds(amount_to_send: u64, recipient_address: Address);
+    #[storage(read, write)]
+    fn receive_funds();
+    #[storage(read, write)]
+    fn send_funds(amount_to_send: u64, recipient_address: Address);
 }
 </code></pre>
 <hr />
@@ -771,12 +596,14 @@ abi Wallet {
 </code></pre>
 <hr />
 <p>In the second line,</p>
-<pre><code class="language-sway">    #[storage(read, write)]fn receive_funds();
+<pre><code class="language-sway">    #[storage(read, write)]
+    fn receive_funds();
 </code></pre>
 <p>we are declaring an ABI method called <code>receive_funds</code> which, when called, should receive funds into this wallet. Note that we are simply defining an interface here, so there is no <em>function body</em> or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to <a href="sway-program-types/../advanced/traits.html">trait declarations</a>. This particular ABI method does not take any parameters.</p>
 <hr />
 <p>In the third line,</p>
-<pre><code class="language-sway">    #[storage(read, write)]fn send_funds(amount_to_send: u64, recipient_address: Address);
+<pre><code class="language-sway">    #[storage(read, write)]
+    fn send_funds(amount_to_send: u64, recipient_address: Address);
 </code></pre>
 <p>we are declaring another ABI method, this time called <code>send_funds</code>. It takes two parameters: the amount to send, and the address to send the funds to.</p>
 <blockquote>
@@ -786,7 +613,8 @@ abi Wallet {
 <p>Now that we've discussed how to define the interface, let's discuss how to use it. We will start by implementing the above ABI for a specific contract.</p>
 <p>Implementing an ABI for a contract is accomplished with <code>impl &lt;ABI name&gt; for Contract</code> syntax. The <code>for Contract</code> syntax can only be used to implement an ABI for a contract; implementing methods for a struct should use <code>impl Foo</code> syntax.</p>
 <pre><code class="language-sway">impl Wallet for Contract {
-    #[storage(read, write)]fn receive_funds() {
+    #[storage(read, write)]
+    fn receive_funds() {
         if msg_asset_id() == BASE_ASSET_ID {
             // If we received `BASE_ASSET_ID` then keep track of the balance.
             // Otherwise, we're receiving other native assets and don't care
@@ -795,7 +623,8 @@ abi Wallet {
         }
     }
 
-    #[storage(read, write)]fn send_funds(amount_to_send: u64, recipient_address: Address) {
+    #[storage(read, write)]
+    fn send_funds(amount_to_send: u64, recipient_address: Address) {
         // Note: The return type of `msg_sender()` can be inferred by the
         // compiler. It is shown here for explicitness.
         let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
@@ -837,9 +666,10 @@ fn main() {
     let amount_to_send = 200;
     let recipient_address = ~Address::from(0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b);
     caller.send_funds {
-        gas: 10000, coins: 0, asset_id: ZERO_B256
-    }
-    (amount_to_send, recipient_address);
+        gas: 10000,
+        coins: 0,
+        asset_id: ZERO_B256,
+    }(amount_to_send, recipient_address);
 }
 </code></pre>
 <p>The main new concept is the <em>abi cast</em>: <code>abi(AbiName, contract_address)</code>. This returns a <code>ContractCaller</code> type which can be used to call contracts. The methods of the ABI become the methods available on this contract caller: <code>send_funds</code> and <code>receive_funds</code>. We then directly call the contract ABI method as if it was just a regular method. You also have the option of specifying the following special parameters inside curly braces right before the main list of parameters:</p>
@@ -1034,11 +864,7 @@ fn main() -&gt; u64 {
 
     let string = some_string;
 
-    return if true_bool {
-        some_num
-    } else {
-        0
-    };
+    return if true_bool { some_num } else { 0 };
 }
 </code></pre>
 <blockquote>
@@ -1122,25 +948,29 @@ struct Foo {
 
 fn main() {
     // Array of integers with type ascription
-    let array_of_integers: [u8;
-    5] = [1, 2, 3, 4, 5];
+    let array_of_integers: [u8; 5] = [1, 2, 3, 4, 5];
 
     // Array of strings
-    let array_of_strings = [ &quot;Bob&quot;, &quot;Jan&quot;, &quot;Ron&quot;];
+    let array_of_strings = [
+        &quot;Bob&quot;,
+        &quot;Jan&quot;,
+        &quot;Ron&quot;,
+    ];
 
     // Array of structs
-    let array_of_structs: [Foo;
-    2] = [Foo {
-        f1: 11, f2: 0x1111111111111111111111111111111111111111111111111111111111111111, 
-    },
-    Foo {
-        f1: 22, f2: 0x2222222222222222222222222222222222222222222222222222222222222222, 
-    }
+    let array_of_structs: [Foo; 2] = [
+        Foo {
+            f1: 11,
+            f2: 0x1111111111111111111111111111111111111111111111111111111111111111,
+        },
+        Foo {
+            f1: 22,
+            f2: 0x2222222222222222222222222222222222222222222222222222222222222222,
+        },
     ];
 
     // Accessing an element of an array
-    let array_of_bools: [bool;
-    2] = [true, false];
+    let array_of_bools: [bool; 2] = [true, false];
     assert(array_of_bools[0]);
 }
 </code></pre>
@@ -1255,7 +1085,6 @@ fn update_color(ref mut color: Color, new_color: Color) {
     swap_tuple(tuple);
     assert(tuple.0 == 24); // The function `swap_tuple()` modifies `tuple.0`
     assert(tuple.1 == 42); // The function `swap_tuple()` modifies `tuple.1`
-
     let mut color = Color::Red;
     update_color(color, Color::Blue);
     assert(match color {
@@ -1265,8 +1094,7 @@ fn update_color(ref mut color: Color, new_color: Color) {
         _ =&gt; {
             false
         }
-    }
-    ); // The function `update_color()` modifies the color to Blue
+    }); // The function `update_color()` modifies the color to Blue
 </code></pre>
 <blockquote>
 <p><strong>Note</strong>
@@ -1296,8 +1124,7 @@ pub struct Line {
 }
 
 pub struct TupleInStruct {
-    nested_tuple: (u64,
-    (u32, (bool, str[2]))), 
+    nested_tuple: (u64, (u32, (bool, str[2]))),
 }
 </code></pre>
 <p>In order to instantiate the struct we use <em>struct instantiation syntax</em>, which is very similar to the declaration syntax except with expressions in place of types.</p>
@@ -1350,9 +1177,7 @@ fn shorthand_instantiation() -&gt; Foo {
     let baz = false;
 
     // Instantiate `foo` as `Foo`
-    let mut foo = Foo {
-        bar, baz, 
-    };
+    let mut foo = Foo { bar, baz };
 
     // Access and write to &quot;baz&quot;
     foo.baz = true;
@@ -1362,62 +1187,40 @@ fn shorthand_instantiation() -&gt; Foo {
 }
 
 fn struct_destructuring() {
-    let point1 = Point {
-        x: 0,
-        y: 0,
-    };
+    let point1 = Point { x: 0, y: 0 };
     // Destructure the values from the struct into variables
-    let Point {
-        x, y
-    }
-    = point1;
+    let Point{x, y} = point1;
 
-    let point2 = Point {
-        x: 1,
-        y: 1,
-    };
+    let point2 = Point { x: 1, y: 1 };
     // If you do not care about specific struct fields then use &quot;..&quot; at the end of your variable list
-    let Point {
-        x, ..
-    }
-    = point2;
+    let Point{x, ..} = point2;
 
     let line = Line {
         p1: point1,
         p2: point2,
     };
     // Destructure the values from the nested structs into variables
-    let Line {
-        p1: Point {
-            x: x0, y: y0
-        },
-        p2: Point {
-            x: x1, y: y1
-        }
-    }
-    = line;
+    let Line{p1:Point{x:x0, y:y0}, p2:Point{x:x1, y:y1}} = line;
     // You may also destructure tuples nested in structs and structs nested in tuples
     let tuple_in_struct = TupleInStruct {
-        nested_tuple: (42u64,
-        (42u32, (true, &quot;ok&quot;))), 
+        nested_tuple: (
+            42u64,
+            (
+                42u32,
+                (
+                    true,
+                    &quot;ok&quot;,
+                ),
+            ),
+        ),
     };
-    let TupleInStruct {
-        nested_tuple: (a, (b, (c, d)))
-    }
-    = tuple_in_struct;
+    let TupleInStruct{nested_tuple:(a, (b, (c, d)))} = tuple_in_struct;
 
-    let struct_in_tuple = (Point {
-        x: 2, y: 4, 
-    },
-    Point {
-        x: 3, y: 6, 
-    });
-    let(Point {
-        x: x0, y: y0, 
-    },
-    Point {
-        x: x1, y: y1, 
-    }) = struct_in_tuple;
+    let struct_in_tuple = (
+        Point { x: 2, y: 4 },
+        Point { x: 3, y: 6 },
+    );
+    let (Point{x:x0, y:y0, }, Point{x:x1, y:y1, }) = struct_in_tuple;
 }
 </code></pre>
 <blockquote>
@@ -1439,26 +1242,38 @@ This information is not vital if you are new to the language, or programming in 
 
 fn tuple() {
     // You can declare the types youself
-    let tuple1: (u8, bool, u64) = (100, false, 10000);
+    let tuple1: (u8, bool, u64) = (
+        100,
+        false,
+        10000,
+    );
 
     // Or have the types be inferred
-    let mut tuple2 = (5, true, (&quot;Sway&quot;, 8));
+    let mut tuple2 = (
+        5,
+        true,
+        (&quot;Sway&quot;, 8),
+    );
 
     // Retrieve values from tuples
     let number = tuple1.0;
     let sway = tuple2.2.1;
 
     // Destructure the values from the tuple into variables
-    let(n1, truthness, n2) = tuple1;
+    let (n1, truthness, n2) = tuple1;
 
     // If you do not care about specific values then use &quot;_&quot;
-    let(_, truthness, _) = tuple2;
+    let (_, truthness, _) = tuple2;
 
     // Internally mutate the tuple
     tuple2.1 = false;
 
     // Or change the values all at once (must keep the same data types)
-    tuple2 = (9, false, (&quot;Fuel&quot;, 99));
+    tuple2 = (
+        9,
+        false,
+        (&quot;Fuel&quot;, 99),
+    );
 }
 </code></pre>
 <h2 id="enums"><a class="header" href="#enums">Enums</a></h2>
@@ -1501,7 +1316,9 @@ enum MyEnum {
 
 fn main() {
     let my_enum = MyEnum::Item(Item {
-        price: 5, amount: 2, id: 42
+        price: 5,
+        amount: 2,
+        id: 42,
     });
 }
 </code></pre>
@@ -1607,10 +1424,7 @@ impl Coordinates {
 }
 </code></pre>
 <p>and when called:</p>
-<pre><code class="language-sway">    let mut point = Coordinates {
-        x: 1,
-        y: 1,
-    };
+<pre><code class="language-sway">    let mut point = Coordinates { x: 1, y: 1 };
     point.move_right(5);
     assert(point.x == 6);
     assert(point.y == 1);
@@ -1716,13 +1530,11 @@ struct Car {
 <p>Sway supports advanced pattern matching through exhaustive <code>match</code> expressions.</p>
 <pre><code class="language-sway">script;
 
-fn foo() {
+fn foo() {}
     // do something
-}
-fn bar() {
-    // do something
-}
+fn bar() {}
 
+    // do something
 enum SomeEnum {
     A: u64,
     B: bool,
@@ -1868,9 +1680,8 @@ struct Person {
     alive: bool,
     location: Location,
     stats: Stats,
-    some_tuple: (bool,
-    u64), some_array: [u64;
-    2],
+    some_tuple: (bool, u64),
+    some_array: [u64; 2],
     some_b256: b256,
 }
 
@@ -1907,10 +1718,23 @@ fn main() {
 
     // Complex structs are not a problem
     let sha_hashed_struct = sha256(Person {
-        name: &quot;John&quot;, age: 9000, alive: true, location: Location::Mars, stats: Stats {
-            strength: 10, agility: 9
+        name: &quot;John&quot;,
+        age: 9000,
+        alive: true,
+        location: Location::Mars,
+        stats: Stats {
+            strength: 10,
+            agility: 9,
         },
-        some_tuple: (true, 8), some_array: [17, 76], some_b256: zero
+        some_tuple: (
+            true,
+            8,
+        ),
+        some_array: [
+            17,
+            76,
+        ],
+        some_b256: zero,
     });
 
     log(sha_hashed_u8);
@@ -1951,10 +1775,23 @@ fn main() {
 
     // Complex structs are not a problem
     let keccak_hashed_struct = keccak256(Person {
-        name: &quot;John&quot;, age: 9000, alive: true, location: Location::Mars, stats: Stats {
-            strength: 10, agility: 9
+        name: &quot;John&quot;,
+        age: 9000,
+        alive: true,
+        location: Location::Mars,
+        stats: Stats {
+            strength: 10,
+            agility: 9,
         },
-        some_tuple: (true, 8), some_array: [17, 76], some_b256: zero
+        some_tuple: (
+            true,
+            8,
+        ),
+        some_array: [
+            17,
+            76,
+        ],
+        some_b256: zero,
     });
 
     log(keccak_hashed_u8);
@@ -1977,7 +1814,7 @@ use std::result::Result;
 use std::b512::B512;
 use std::revert::revert;
 use std::logging::log;
-use std::ecr::{EcRecoverError, ec_recover, ec_recover_address};
+use std::ecr::{ec_recover, ec_recover_address, EcRecoverError};
 use std::address::Address;
 
 const MSG_HASH = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
@@ -2019,10 +1856,7 @@ struct Type2 {
 }
 
 storage {
-    var1: Type1 = Type1 {
-        x: 0,
-        y: 0,
-    },
+    var1: Type1 = Type1 { x: 0, y: 0 },
     var2: Type2 = Type2 {
         w: 0x0000000000000000000000000000000000000000000000000000000000000000,
         z: false,
@@ -2030,7 +1864,8 @@ storage {
 }
 </code></pre>
 <p>To write into a storage variable, you need to use the <code>storage</code> keyword as follows:</p>
-<pre><code class="language-sway">    #[storage(write)]fn store_something() {
+<pre><code class="language-sway">    #[storage(write)]
+    fn store_something() {
         storage.var1.x = 42;
         storage.var1.y = 77;
         storage.var2.w = 0x1111111111111111111111111111111111111111111111111111111111111111;
@@ -2038,8 +1873,14 @@ storage {
     }
 </code></pre>
 <p>To read a storage variable, you also need to use the <code>storage</code> keyword as follows:</p>
-<pre><code class="language-sway">    #[storage(read)]fn get_something() -&gt; (u64, u64, b256, bool) {
-        (storage.var1.x, storage.var1.y, storage.var2.w, storage.var2.z)
+<pre><code class="language-sway">    #[storage(read)]
+    fn get_something() -&gt; (u64, u64, b256, bool) {
+        (
+            storage.var1.x,
+            storage.var1.y,
+            storage.var2.w,
+            storage.var2.z,
+        )
     }
 </code></pre>
 <h2 id="storage-maps"><a class="header" href="#storage-maps">Storage Maps</a></h2>
@@ -2051,18 +1892,22 @@ storage {
 use std::storage::{get, store};
 
 abi StorageExample {
-    #[storage(write)]fn store_something(amount: u64);
-    #[storage(read)]fn get_something() -&gt; u64;
+    #[storage(write)]
+    fn store_something(amount: u64);
+    #[storage(read)]
+    fn get_something() -&gt; u64;
 }
 
 const STORAGE_KEY: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
 impl StorageExample for Contract {
-    #[storage(write)]fn store_something(amount: u64) {
+    #[storage(write)]
+    fn store_something(amount: u64) {
         store(STORAGE_KEY, amount);
     }
 
-    #[storage(read)]fn get_something() -&gt; u64 {
+    #[storage(read)]
+    fn get_something() -&gt; u64 {
         let value = get::&lt;u64&gt;(STORAGE_KEY);
         value
     }
@@ -2108,10 +1953,16 @@ fn increment_amount(increment: u64) -&gt; u64 {
 use std::{
     address::Address,
     assert::assert,
-    context::call_frames::{contract_id, msg_asset_id},
+    context::call_frames::{
+        contract_id,
+        msg_asset_id,
+    },
     context::msg_amount,
     contract_id::ContractId,
-    token::{mint_to_address, transfer_to_output}
+    token::{
+        mint_to_address,
+        transfer_to_output,
+    },
 };
 
 abi LiquidityPool {
@@ -2213,7 +2064,10 @@ impl NativeAssetToken for Contract {
 use std::{
     address::Address,
     assert::assert,
-    chain::auth::{AuthError, msg_sender},
+    chain::auth::{
+        AuthError,
+        msg_sender,
+    },
     identity::Identity,
     result::Result,
     revert::revert,
@@ -2247,12 +2101,14 @@ impl MyOwnedContract for Contract {
 <h2 id="contract-ownership"><a class="header" href="#contract-ownership">Contract Ownership</a></h2>
 <p>Many contracts require some form of ownership for access control. To accomplish this, it is recommended that a storage variable of type <code>Option&lt;Identity&gt;</code> is used to keep track of the owner. This allows setting and revoking ownership using the variants <code>Some(..)</code> and <code>None</code> respectively. This is better, safer, and more readable than using the <code>Identity</code> type directly where revoking ownership has to be done using some magic value such as <code>std::constants::ZERO_B256</code> or otherwise.</p>
 <p>The following is an example of how to properly set ownership of a contract:</p>
-<pre><code class="language-sway">    #[storage(write)]fn set_owner(identity: Identity) {
+<pre><code class="language-sway">    #[storage(write)]
+    fn set_owner(identity: Identity) {
         storage.owner = Option::Some(identity);
     }
 </code></pre>
 <p>The following is an example of how to properly revoke ownership of a contract:</p>
-<pre><code class="language-sway">    #[storage(write)]fn revoke_ownership() {
+<pre><code class="language-sway">    #[storage(write)]
+    fn revoke_ownership() {
         storage.owner = Option::None();
     }
 </code></pre>
@@ -2682,14 +2538,14 @@ fn main() -&gt; bool {
 <p>Another major difference between <code>Vec&lt;T&gt;</code> and <code>StorageVec&lt;T&gt;</code> is that <code>StorageVec&lt;T&gt;</code> can only be used in a contract because only contracts are allowed to access persistent storage.</p>
 <h2 id="creating-a-new-storage-vector"><a class="header" href="#creating-a-new-storage-vector">Creating a New Storage Vector</a></h2>
 <p>To create a new empty storage vector, we have to declare the vector in a <code>storage</code> block as follows:</p>
-<pre><code class="language-sway">    v: StorageVec&lt;u64&gt; = StorageVec {
-    },
+<pre><code class="language-sway">    v: StorageVec&lt;u64&gt; = StorageVec {},
 </code></pre>
 <p>Just like any other storage variable, two things are required when declaring a <code>StorageVec</code>: a type annotation and an initializer. The initializer is just an empty struct of type <code>StorageVec</code> because <code>StorageVec&lt;T&gt;</code> itself is an empty struct! Everything that is interesting about <code>StorageVec&lt;T&gt;</code> is implemented in its methods.</p>
 <p>Storage vectors, just like <code>Vec&lt;T&gt;</code>, are implemented using generics which means that the <code>StorageVec&lt;T&gt;</code> type provided by the standard library can hold any type. When we create a storage vector to hold a specific type, we can specify the type within angle brackets. In the example above, we’ve told the Sway compiler that the <code>StorageVec&lt;T&gt;</code> in <code>v</code> will hold elements of the <code>u64</code> type.</p>
 <h2 id="updating-a-storage-vector"><a class="header" href="#updating-a-storage-vector">Updating a Storage Vector</a></h2>
 <p>To add elements to a storage vector, we can use the <code>push</code> method, as shown below:</p>
-<pre><code class="language-sway">    #[storage(read, write)]fn push_to_storage_vec() {
+<pre><code class="language-sway">    #[storage(read, write)]
+    fn push_to_storage_vec() {
         storage.v.push(5);
         storage.v.push(6);
         storage.v.push(7);
@@ -2708,7 +2564,8 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
 </blockquote>
 <h2 id="reading-elements-of-storage-vectors"><a class="header" href="#reading-elements-of-storage-vectors">Reading Elements of Storage Vectors</a></h2>
 <p>To read a value stored in a vector at a particular index, you can use the <code>get</code> method as shown below:</p>
-<pre><code class="language-sway">    #[storage(read)]fn read_from_storage_vec() {
+<pre><code class="language-sway">    #[storage(read)]
+    fn read_from_storage_vec() {
         let third = storage.v.get(2);
         match third {
             Option::Some(third) =&gt; {
@@ -2724,7 +2581,8 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
 <p>When the <code>get</code> method is passed an index that is outside the vector, it returns <code>None</code> without panicking. This is particularly useful if accessing an element beyond the range of the vector may happen occasionally under normal circumstances. Your code will then have logic to handle having either <code>Some(element)</code> or <code>None</code>. For example, the index could be coming as a contract method argument. If the argument passed is too large, the method <code>get</code> will return a <code>None</code> value, and the contract method may then decide to revert when that happens or return a meaningful error that tells the user how many items are in the current vector and give them another chance to pass a valid value.</p>
 <h2 id="iterating-over-the-values-in-a-vector-1"><a class="header" href="#iterating-over-the-values-in-a-vector-1">Iterating over the Values in a Vector</a></h2>
 <p>To access each element in a vector in turn, we would iterate through all of the valid indices using a <code>while</code> loop and the <code>len</code> method as shown below:</p>
-<pre><code class="language-sway">    #[storage(read)]fn iterate_over_a_storage_vec() {
+<pre><code class="language-sway">    #[storage(read)]
+    fn iterate_over_a_storage_vec() {
         let mut i = 0;
         while i &lt; storage.v.len() {
             log(storage.v.get(i).unwrap());
@@ -2742,11 +2600,11 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
 }
 </code></pre>
 <p>Then we can declare a storage vector in a <code>storage</code> block to hold that enum and so, ultimately, holds different types:</p>
-<pre><code class="language-sway">    row: StorageVec&lt;TableCell&gt; = StorageVec {
-    },
+<pre><code class="language-sway">    row: StorageVec&lt;TableCell&gt; = StorageVec {},
 </code></pre>
 <p>We can now push different enum variants to the storage vector as follows:</p>
-<pre><code class="language-sway">    #[storage(read, write)]fn push_to_multiple_types_storage_vec() {
+<pre><code class="language-sway">    #[storage(read, write)]
+    fn push_to_multiple_types_storage_vec() {
         storage.row.push(TableCell::Int(3));
         storage.row.push(TableCell::B256(0x0101010101010101010101010101010101010101010101010101010101010101));
         storage.row.push(TableCell::Boolean(true));
@@ -2762,15 +2620,14 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
 </code></pre>
 <h2 id="creating-a-new-storage-map"><a class="header" href="#creating-a-new-storage-map">Creating a New Storage Map</a></h2>
 <p>To create a new empty storage map, we have to declare the map in a <code>storage</code> block as follows:</p>
-<pre><code class="language-sway">    map: StorageMap&lt;Address,
-    u64&gt; = StorageMap {
-    },
+<pre><code class="language-sway">    map: StorageMap&lt;Address, u64&gt; = StorageMap {},
 </code></pre>
 <p>Just like any other storage variable, two things are required when declaring a <code>StorageMap</code>: a type annotation and an initializer. The initializer is just an empty struct of type <code>StorageMap</code> because <code>StorageMap&lt;K, V&gt;</code> itself is an empty struct! Everything that is interesting about <code>StorageMap&lt;K, V&gt;</code> is implemented in its methods.</p>
 <p>Storage maps, just like <code>Vec&lt;T&gt;</code> and <code>StorageVec&lt;T&gt;</code>, are implemented using generics which means that the <code>StorageMap&lt;K, V&gt;</code> type provided by the standard library can map keys of any type <code>K</code> to values of any type <code>V</code>. In the example above, we’ve told the Sway compiler that the <code>StorageMap&lt;K, V&gt;</code> in <code>map</code> will map keys of type <code>Address</code> to values of type <code>u64</code>.</p>
 <h2 id="updating-a-storage-map"><a class="header" href="#updating-a-storage-map">Updating a Storage Map</a></h2>
 <p>To insert key-value pairs into a storage map, we can use the <code>insert</code> method, as shown below:</p>
-<pre><code class="language-sway">    #[storage(write)]fn insert_into_storage_map() {
+<pre><code class="language-sway">    #[storage(write)]
+    fn insert_into_storage_map() {
         let addr1 = 0x0101010101010101010101010101010101010101010101010101010101010101;
         let addr2 = 0x0202020202020202020202020202020202020202020202020202020202020202;
 
@@ -2790,7 +2647,8 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
 </blockquote>
 <h2 id="accessing-values-in-a-storage-map"><a class="header" href="#accessing-values-in-a-storage-map">Accessing Values in a Storage Map</a></h2>
 <p>We can get a value out of the storage map by providing its <code>key</code> to the <code>get</code> method, as shown below:</p>
-<pre><code class="language-sway">    #[storage(read, write)]fn get_from_storage_map() {
+<pre><code class="language-sway">    #[storage(read, write)]
+    fn get_from_storage_map() {
         let addr1 = 0x0101010101010101010101010101010101010101010101010101010101010101;
         let addr2 = 0x0202020202020202020202020202020202020202020202020202020202020202;
 
@@ -2812,9 +2670,7 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
 </ul>
 <h2 id="storage-maps-with-multiple-keys"><a class="header" href="#storage-maps-with-multiple-keys">Storage maps with multiple keys</a></h2>
 <p>You might find yourself needing a <code>StorageMap&lt;K1, V1&gt;</code> where the type <code>V1</code> is itself another <code>StorageMap&lt;K2, V2&gt;</code>. This is not allowed in Sway. The right approach is to use a single <code>StorageMap&lt;K, V&gt;</code> where <code>K</code> is a tuple <code>(K1, K2)</code>. For example:</p>
-<pre><code class="language-sway">    map_two_keys: StorageMap&lt;(b256,
-    bool), b256&gt; = StorageMap {
-    },
+<pre><code class="language-sway">    map_two_keys: StorageMap&lt;(b256, bool), b256&gt; = StorageMap {},
 </code></pre>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
 <p>It is not currently allowed to have a <code>StorageMap&lt;K, V&gt;</code> as a component of a complex type such as a struct or an enum. For example, the code below is not legal:</p>
@@ -2853,8 +2709,10 @@ $ tree .
 <pre><code class="language-sway">contract;
 
 abi TestContract {
-    #[storage(write)]fn initialize_counter(value: u64) -&gt; u64;
-    #[storage(read, write)]fn increment_counter(amount: u64) -&gt; u64;
+    #[storage(write)]
+    fn initialize_counter(value: u64) -&gt; u64;
+    #[storage(read, write)]
+    fn increment_counter(amount: u64) -&gt; u64;
 }
 
 storage {
@@ -2862,12 +2720,14 @@ storage {
 }
 
 impl TestContract for Contract {
-    #[storage(write)]fn initialize_counter(value: u64) -&gt; u64 {
+    #[storage(write)]
+    fn initialize_counter(value: u64) -&gt; u64 {
         storage.counter = value;
         value
     }
 
-    #[storage(read, write)]fn increment_counter(amount: u64) -&gt; u64 {
+    #[storage(read, write)]
+    fn increment_counter(amount: u64) -&gt; u64 {
         let incremented = storage.counter + amount;
         storage.counter = incremented;
         incremented

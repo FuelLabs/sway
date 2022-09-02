@@ -183,10 +183,7 @@ impl Coordinates {
 }
 </code></pre>
 <p>and when called:</p>
-<pre><code class="language-sway">    let mut point = Coordinates {
-        x: 1,
-        y: 1,
-    };
+<pre><code class="language-sway">    let mut point = Coordinates { x: 1, y: 1 };
     point.move_right(5);
     assert(point.x == 6);
     assert(point.y == 1);

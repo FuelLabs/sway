@@ -141,20 +141,15 @@
 <p>A smart contract is no different than a script or predicate in that it is a piece of bytecode that is deployed to the blockchain via a <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md">transaction</a>. The main features of a smart contract that differentiate it from scripts or predicates are that it is <em>callable</em> and <em>stateful</em>. Put another way, a smart contract is analogous to a deployed API with some database state. The interface of a smart contract, also just called a contract, must be defined strictly with an <a href="#the-abi-declaration">ABI declaration</a>. See <a href="../examples/subcurrency.html">this contract</a> for an example.</p>
 <h2 id="syntax-of-a-smart-contract"><a class="header" href="#syntax-of-a-smart-contract">Syntax of a Smart Contract</a></h2>
 <p>As with any Sway program, the program starts with a declaration of what <a href="./index.html">program type</a> it is. A contract must also either define or import an <a href="#the-abi-declaration">ABI declaration</a> and implement it. It is considered good practice to define your ABI in a separate library and import it into your contract. This allows callers of your contract to simply import the ABI directly and use it in their scripts to call your contract. Let's take a look at an ABI declaration in a library:</p>
-<pre><code class="language-sway">library wallet_abi;
-
-use std::address::Address;
-
-abi Wallet {
-    #[storage(read, write)]fn receive_funds();
-    #[storage(read, write)]fn send_funds(amount_to_send: u64, recipient_address: Address);
-}
+<pre><code class="language-sway">
 </code></pre>
 <p>Let's focus on the ABI declaration and inspect it line-by-line.</p>
 <h3 id="the-abi-declaration"><a class="header" href="#the-abi-declaration">The ABI Declaration</a></h3>
 <pre><code class="language-sway">abi Wallet {
-    #[storage(read, write)]fn receive_funds();
-    #[storage(read, write)]fn send_funds(amount_to_send: u64, recipient_address: Address);
+    #[storage(read, write)]
+    fn receive_funds();
+    #[storage(read, write)]
+    fn send_funds(amount_to_send: u64, recipient_address: Address);
 }
 </code></pre>
 <hr />
@@ -163,12 +158,14 @@ abi Wallet {
 </code></pre>
 <hr />
 <p>In the second line,</p>
-<pre><code class="language-sway">    #[storage(read, write)]fn receive_funds();
+<pre><code class="language-sway">    #[storage(read, write)]
+    fn receive_funds();
 </code></pre>
 <p>we are declaring an ABI method called <code>receive_funds</code> which, when called, should receive funds into this wallet. Note that we are simply defining an interface here, so there is no <em>function body</em> or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to <a href="../advanced/traits.html">trait declarations</a>. This particular ABI method does not take any parameters.</p>
 <hr />
 <p>In the third line,</p>
-<pre><code class="language-sway">    #[storage(read, write)]fn send_funds(amount_to_send: u64, recipient_address: Address);
+<pre><code class="language-sway">    #[storage(read, write)]
+    fn send_funds(amount_to_send: u64, recipient_address: Address);
 </code></pre>
 <p>we are declaring another ABI method, this time called <code>send_funds</code>. It takes two parameters: the amount to send, and the address to send the funds to.</p>
 <blockquote>
@@ -178,7 +175,8 @@ abi Wallet {
 <p>Now that we've discussed how to define the interface, let's discuss how to use it. We will start by implementing the above ABI for a specific contract.</p>
 <p>Implementing an ABI for a contract is accomplished with <code>impl &lt;ABI name&gt; for Contract</code> syntax. The <code>for Contract</code> syntax can only be used to implement an ABI for a contract; implementing methods for a struct should use <code>impl Foo</code> syntax.</p>
 <pre><code class="language-sway">impl Wallet for Contract {
-    #[storage(read, write)]fn receive_funds() {
+    #[storage(read, write)]
+    fn receive_funds() {
         if msg_asset_id() == BASE_ASSET_ID {
             // If we received `BASE_ASSET_ID` then keep track of the balance.
             // Otherwise, we're receiving other native assets and don't care
@@ -187,7 +185,8 @@ abi Wallet {
         }
     }
 
-    #[storage(read, write)]fn send_funds(amount_to_send: u64, recipient_address: Address) {
+    #[storage(read, write)]
+    fn send_funds(amount_to_send: u64, recipient_address: Address) {
         // Note: The return type of `msg_sender()` can be inferred by the
         // compiler. It is shown here for explicitness.
         let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
@@ -229,9 +228,10 @@ fn main() {
     let amount_to_send = 200;
     let recipient_address = ~Address::from(0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b);
     caller.send_funds {
-        gas: 10000, coins: 0, asset_id: ZERO_B256
-    }
-    (amount_to_send, recipient_address);
+        gas: 10000,
+        coins: 0,
+        asset_id: ZERO_B256,
+    }(amount_to_send, recipient_address);
 }
 </code></pre>
 <p>The main new concept is the <em>abi cast</em>: <code>abi(AbiName, contract_address)</code>. This returns a <code>ContractCaller</code> type which can be used to call contracts. The methods of the ABI become the methods available on this contract caller: <code>send_funds</code> and <code>receive_funds</code>. We then directly call the contract ABI method as if it was just a regular method. You also have the option of specifying the following special parameters inside curly braces right before the main list of parameters:</p>
