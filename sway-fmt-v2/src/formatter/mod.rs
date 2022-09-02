@@ -627,8 +627,6 @@ pub struct Foo { // Here is a comment
 // This is a comment, for this one to be placed correctly we need to have Module visitor implemented
 pub struct Foo { // Here is a comment
 
-
-
     // Trying some ASCII art
     baz: u64,
     bazzz: u64,//  ________ ___  ___  _______   ___               ___       ________  ________  ________
