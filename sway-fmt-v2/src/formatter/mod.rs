@@ -627,8 +627,6 @@ pub struct Foo { // Here is a comment
 // This is a comment, for this one to be placed correctly we need to have Module visitor implemented
 pub struct Foo { // Here is a comment
 
-
-
     // Trying some ASCII art
     baz: u64,
     bazzz: u64,//  ________ ___  ___  _______   ___               ___       ________  ________  ________
@@ -988,12 +986,36 @@ fn main() {}
         let sway_code_to_format = r#"script;
 
 // use statements
-use std::*;"#;
+use std::*;
+
+fn main() {
+    // Array of integers with type ascription
+let array_of_integers: [u8;
+5] = [1, 2, 3, 4, 5];
+
+
+    // Array of strings
+    let array_of_strings = [ "Bob", "Jan", "Ron"];
+}
+"#;
 
         let correct_sway_code = r#"script;
 
 // use statements
 use std::*;
+
+fn main() {
+    // Array of integers with type ascription
+    let array_of_integers: [u8; 5] = [1, 2, 3, 4, 5];
+
+
+    // Array of strings
+    let array_of_strings = [
+        "Bob",
+        "Jan",
+        "Ron",
+    ];
+}
 "#;
 
         let mut formatter = Formatter::default();
