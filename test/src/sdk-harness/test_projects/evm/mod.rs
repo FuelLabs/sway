@@ -1,6 +1,6 @@
 use fuels::{prelude::*, tx::ContractId};
 
-abigen!(EvmTestContract, "test_projects/evm/out/debug/evm-flat-abi.json");
+abigen!(EvmTestContract, "test_projects/evm/out/debug/evm-abi.json");
 
 async fn get_evm_test_instance() -> (EvmTestContract, ContractId) {
     let wallet = launch_provider_and_get_wallet().await;
