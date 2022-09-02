@@ -8,6 +8,7 @@ use super::{
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     constants,
+    declaration_engine::declaration_engine::de_get_enum,
     error::{CompileError, Hint},
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
@@ -144,7 +145,8 @@ impl FnCompiler {
                                 span: ast_node.span,
                             })
                         }
-                        TypedDeclaration::EnumDeclaration(ted) => {
+                        TypedDeclaration::EnumDeclaration(decl_id) => {
+                            let ted = de_get_enum(decl_id, &ast_node.span)?;
                             let span_md_idx = md_mgr.span_to_md(context, &ted.span);
                             create_enum_aggregate(context, ted.variants).map(|_| ())?;
                             Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))

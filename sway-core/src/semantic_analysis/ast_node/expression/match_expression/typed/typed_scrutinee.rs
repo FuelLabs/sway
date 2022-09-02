@@ -170,7 +170,7 @@ impl TypedScrutinee {
                     errors
                 );
                 let mut enum_decl = check!(
-                    unknown_decl.expect_enum().cloned(),
+                    unknown_decl.expect_enum(&enum_name.span()),
                     return err(warnings, errors),
                     warnings,
                     errors

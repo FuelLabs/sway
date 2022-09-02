@@ -18,7 +18,7 @@ pub use variable::*;
 
 use crate::{
     declaration_engine::{
-        declaration_engine::{de_get_storage, de_get_trait},
+        declaration_engine::{de_get_enum, de_get_storage, de_get_trait},
         declaration_id::DeclarationId,
     },
     error::*,
@@ -37,7 +37,7 @@ pub enum TypedDeclaration {
     FunctionDeclaration(TypedFunctionDeclaration),
     TraitDeclaration(DeclarationId),
     StructDeclaration(TypedStructDeclaration),
-    EnumDeclaration(TypedEnumDeclaration),
+    EnumDeclaration(DeclarationId),
     ImplTrait(TypedImplTrait),
     AbiDeclaration(TypedAbiDeclaration),
     // If type parameters are defined for a function, they are put in the namespace just for
@@ -78,7 +78,7 @@ impl Spanned for TypedDeclaration {
             FunctionDeclaration(TypedFunctionDeclaration { span, .. }) => span.clone(),
             TraitDeclaration(decl_id) => decl_id.span(),
             StructDeclaration(TypedStructDeclaration { name, .. }) => name.span(),
-            EnumDeclaration(TypedEnumDeclaration { span, .. }) => span.clone(),
+            EnumDeclaration(decl_id) => decl_id.span(),
             AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
             ImplTrait(TypedImplTrait { span, .. }) => span.clone(),
             StorageDeclaration(decl) => decl.span(),
@@ -132,8 +132,12 @@ impl fmt::Display for TypedDeclaration {
                 }
                 TypedDeclaration::StructDeclaration(TypedStructDeclaration { name, .. }) =>
                     name.as_str().into(),
-                TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. }) =>
-                    name.as_str().into(),
+                TypedDeclaration::EnumDeclaration(decl_id) => {
+                    match de_get_enum(decl_id.clone(), &decl_id.span()) {
+                        Ok(TypedEnumDeclaration { name, .. }) => name.as_str().into(),
+                        Err(_) => "unknown enum".into(),
+                    }
+                }
                 _ => String::new(),
             }
         )
@@ -195,18 +199,18 @@ impl TypedDeclaration {
     /// Retrieves the declaration as an enum declaration.
     ///
     /// Returns an error if `self` is not a `TypedEnumDeclaration`.
-    pub(crate) fn expect_enum(&self) -> CompileResult<&TypedEnumDeclaration> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn expect_enum(&self, access_span: &Span) -> CompileResult<TypedEnumDeclaration> {
         match self {
-            TypedDeclaration::EnumDeclaration(decl) => ok(decl, warnings, errors),
-            decl => {
-                errors.push(CompileError::DeclIsNotAnEnum {
+            TypedDeclaration::EnumDeclaration(decl_id) => {
+                CompileResult::from(de_get_enum(decl_id.clone(), access_span))
+            }
+            decl => err(
+                vec![],
+                vec![CompileError::DeclIsNotAnEnum {
                     actually: decl.friendly_name().to_string(),
                     span: decl.span(),
-                });
-                err(warnings, errors)
-            }
+                }],
+            ),
         }
     }
 
@@ -300,7 +304,7 @@ impl TypedDeclaration {
         }
     }
 
-    pub(crate) fn return_type(&self) -> CompileResult<TypeId> {
+    pub(crate) fn return_type(&self, access_span: &Span) -> CompileResult<TypeId> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_id = match self {
@@ -315,7 +319,15 @@ impl TypedDeclaration {
                 return err(warnings, errors);
             }
             TypedDeclaration::StructDeclaration(decl) => decl.create_type_id(),
-            TypedDeclaration::EnumDeclaration(decl) => decl.create_type_id(),
+            TypedDeclaration::EnumDeclaration(decl_id) => {
+                let decl = check!(
+                    CompileResult::from(de_get_enum(decl_id.clone(), access_span)),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                decl.create_type_id()
+            }
             TypedDeclaration::StorageDeclaration(decl_id) => {
                 let storage_decl = check!(
                     CompileResult::from(de_get_storage(decl_id.clone(), &self.span())),
@@ -356,6 +368,15 @@ impl TypedDeclaration {
                 );
                 visibility
             }
+            EnumDeclaration(decl_id) => {
+                let TypedEnumDeclaration { visibility, .. } = check!(
+                    CompileResult::from(de_get_enum(decl_id.clone(), &decl_id.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                visibility
+            }
             GenericTypeForFunctionScope { .. }
             | ImplTrait { .. }
             | StorageDeclaration { .. }
@@ -365,8 +386,7 @@ impl TypedDeclaration {
                 mutability: is_mutable,
                 ..
             }) => is_mutable.visibility(),
-            EnumDeclaration(TypedEnumDeclaration { visibility, .. })
-            | ConstantDeclaration(TypedConstantDeclaration { visibility, .. })
+            ConstantDeclaration(TypedConstantDeclaration { visibility, .. })
             | FunctionDeclaration(TypedFunctionDeclaration { visibility, .. })
             | StructDeclaration(TypedStructDeclaration { visibility, .. }) => *visibility,
         };

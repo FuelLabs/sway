@@ -1366,7 +1366,7 @@ impl TypedExpression {
                 span: call_path_binding.span,
             };
             TypeBinding::type_check_with_ident(&mut call_path_binding, &ctx)
-                .flat_map(|unknown_decl| unknown_decl.expect_enum().cloned())
+                .flat_map(|unknown_decl| unknown_decl.expect_enum(&call_path_binding.span()))
                 .ok(&mut enum_probe_warnings, &mut enum_probe_errors)
                 .map(|enum_decl| (enum_decl, enum_name, variant_name))
         };

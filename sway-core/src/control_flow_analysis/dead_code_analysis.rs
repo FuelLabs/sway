@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
-    declaration_engine::declaration_engine::de_get_storage,
     declaration_engine::declaration_engine::de_get_trait,
+    declaration_engine::declaration_engine::{de_get_enum, de_get_storage},
     parse_tree::{CallPath, Visibility},
     semantic_analysis::{
         ast_node::{
@@ -373,8 +373,9 @@ fn connect_declaration(
             connect_struct_declaration(struct_decl, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
-        EnumDeclaration(enum_decl) => {
-            connect_enum_declaration(enum_decl, graph, entry_node);
+        EnumDeclaration(decl_id) => {
+            let enum_decl = de_get_enum(decl_id.clone(), &span)?;
+            connect_enum_declaration(&enum_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
         ImplTrait(TypedImplTrait {

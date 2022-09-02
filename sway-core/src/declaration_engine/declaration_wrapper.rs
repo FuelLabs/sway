@@ -4,8 +4,8 @@ use sway_types::Span;
 
 use crate::{
     semantic_analysis::{
-        TypedImplTrait, TypedStorageDeclaration, TypedStructDeclaration, TypedTraitDeclaration,
-        TypedTraitFn,
+        TypedEnumDeclaration, TypedImplTrait, TypedStorageDeclaration, TypedStructDeclaration,
+        TypedTraitDeclaration, TypedTraitFn,
     },
     type_system::{CopyTypes, TypeMapping},
     CompileError, TypedFunctionDeclaration,
@@ -23,6 +23,7 @@ pub(crate) enum DeclarationWrapper {
     TraitImpl(TypedImplTrait),
     Struct(TypedStructDeclaration),
     Storage(TypedStorageDeclaration),
+    Enum(TypedEnumDeclaration),
 }
 
 impl Default for DeclarationWrapper {
@@ -44,6 +45,7 @@ impl PartialEq for DeclarationWrapper {
             (DeclarationWrapper::TraitImpl(l), DeclarationWrapper::TraitImpl(r)) => l == r,
             (DeclarationWrapper::Struct(l), DeclarationWrapper::Struct(r)) => l == r,
             (DeclarationWrapper::Storage(l), DeclarationWrapper::Storage(r)) => l == r,
+            (DeclarationWrapper::Enum(l), DeclarationWrapper::Enum(r)) => l == r,
             _ => false,
         }
     }
@@ -65,6 +67,7 @@ impl CopyTypes for DeclarationWrapper {
             DeclarationWrapper::TraitImpl(decl) => decl.copy_types(type_mapping),
             DeclarationWrapper::Struct(decl) => decl.copy_types(type_mapping),
             DeclarationWrapper::Storage(_) => {}
+            DeclarationWrapper::Enum(decl) => decl.copy_types(type_mapping),
         }
     }
 }
@@ -80,6 +83,7 @@ impl DeclarationWrapper {
             DeclarationWrapper::TraitImpl(_) => "impl trait",
             DeclarationWrapper::TraitFn(_) => "trait function",
             DeclarationWrapper::Storage(_) => "storage",
+            DeclarationWrapper::Enum(_) => "enum",
         }
     }
 
@@ -167,6 +171,20 @@ impl DeclarationWrapper {
                 span.clone(),
             )),
             actually => Err(CompileError::DeclIsNotStorage {
+                actually: actually.friendly_name().to_string(),
+                span: span.clone(),
+            }),
+        }
+    }
+
+    pub(super) fn expect_enum(self, span: &Span) -> Result<TypedEnumDeclaration, CompileError> {
+        match self {
+            DeclarationWrapper::Enum(decl) => Ok(decl),
+            DeclarationWrapper::Unknown => Err(CompileError::Internal(
+                "did not expect to find unknown declaration",
+                span.clone(),
+            )),
+            actually => Err(CompileError::DeclIsNotAnEnum {
                 actually: actually.friendly_name().to_string(),
                 span: span.clone(),
             }),

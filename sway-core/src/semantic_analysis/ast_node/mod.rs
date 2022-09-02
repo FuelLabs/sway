@@ -13,7 +13,7 @@ pub(crate) use mode::*;
 pub(crate) use return_statement::*;
 
 use crate::{
-    declaration_engine::declaration_engine::{de_insert_storage, de_insert_trait},
+    declaration_engine::declaration_engine::{de_insert_enum, de_insert_storage, de_insert_trait},
     error::*,
     parse_tree::*,
     semantic_analysis::*,
@@ -298,7 +298,7 @@ impl TypedAstNode {
                                 errors
                             );
                             let name = enum_decl.name.clone();
-                            let decl = TypedDeclaration::EnumDeclaration(enum_decl);
+                            let decl = TypedDeclaration::EnumDeclaration(de_insert_enum(enum_decl));
                             check!(
                                 ctx.namespace.insert_symbol(name, decl.clone()),
                                 return err(warnings, errors),

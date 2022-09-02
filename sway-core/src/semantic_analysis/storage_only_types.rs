@@ -1,6 +1,6 @@
 use sway_types::{Span, Spanned};
 
-use crate::declaration_engine::declaration_engine::de_get_storage;
+use crate::declaration_engine::declaration_engine::{de_get_enum, de_get_storage};
 use crate::error::err;
 use crate::type_system::{is_type_info_storage_only, resolve_type, TypeId};
 use crate::{error::ok, semantic_analysis, CompileError, CompileResult, CompileWarning};
@@ -229,7 +229,13 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
                 );
             }
         }
-        TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { variants, .. }) => {
+        TypedDeclaration::EnumDeclaration(decl_id) => {
+            let TypedEnumDeclaration { variants, .. } = check!(
+                CompileResult::from(de_get_enum(decl_id.clone(), &decl.span())),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
             for variant in variants {
                 check!(
                     check_type(variant.type_id, variant.span.clone(), false),
