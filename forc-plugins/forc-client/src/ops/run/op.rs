@@ -7,7 +7,7 @@ use std::{path::PathBuf, str::FromStr};
 use sway_core::TreeType;
 use tracing::info;
 
-use super::{cmd::RunCommand, parameters::TxParameters};
+use crate::ops::{parameters::TxParameters, run::cmd::RunCommand};
 
 pub const NODE_URL: &str = "http://127.0.0.1:4000";
 

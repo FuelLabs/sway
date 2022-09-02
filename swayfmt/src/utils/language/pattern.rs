@@ -48,7 +48,6 @@ impl Format for Pattern {
                 formatter.shape.update_line_settings(prev_state);
             }
             Self::Struct { path, fields } => {
-                println!("hello");
                 path.format(formatted_code, formatter)?;
                 Self::open_curly_brace(formatted_code, formatter)?;
                 fields.get().format(formatted_code, formatter)?;

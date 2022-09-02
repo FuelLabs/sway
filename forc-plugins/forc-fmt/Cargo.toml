@@ -14,7 +14,7 @@ clap = { version = "3", features = ["derive"] }
 forc-util = { version = "0.22.1", path = "../../forc-util" }
 prettydiff = "0.5"
 sway-core = { version = "0.22.1", path = "../../sway-core" }
-sway-fmt = { version = "0.22.1", path = "../../sway-fmt" }
 sway-utils = { version = "0.22.1", path = "../../sway-utils" }
+swayfmt = { version = "0.22.1", path = "../../swayfmt" }
 taplo = "0.7"
 tracing = "0.1"
