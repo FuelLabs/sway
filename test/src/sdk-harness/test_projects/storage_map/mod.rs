@@ -2,7 +2,7 @@ use fuels::prelude::*;
 
 abigen!(
     TestStorageMapContract,
-    "test_projects/storage_map/out/debug/storage_map-flat-abi.json",
+    "test_projects/storage_map/out/debug/storage_map-abi.json",
 );
 
 async fn test_storage_map_instance() -> TestStorageMapContract {

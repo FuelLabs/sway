@@ -2,7 +2,7 @@ use fuels::prelude::*;
 
 abigen!(
     TestStorageContract,
-    "test_projects/storage/out/debug/storage-flat-abi.json",
+    "test_projects/storage/out/debug/storage-abi.json",
 );
 
 async fn get_test_storage_instance() -> TestStorageContract {
