@@ -3,7 +3,7 @@ use super::{
     TypedFunctionDeclaration, TypedImplTrait, TypedStorageDeclaration,
 };
 use crate::{
-    declaration_engine::declaration_engine::de_get_storage,
+    declaration_engine::declaration_engine::{de_get_impl_trait, de_get_storage},
     error::*,
     metadata::MetadataManager,
     parse_tree::{ParseProgram, Purity, TreeType},
@@ -83,20 +83,27 @@ impl TypedProgram {
                 TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(func))
                     if func.name.as_str() == "main" =>
                 {
-                    mains.push(func.clone())
+                    mains.push(func.clone());
                 }
                 // ABI entries are all functions declared in impl_traits on the contract type
                 // itself.
-                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(TypedImplTrait {
-                    methods,
-                    implementing_for_type_id,
-                    ..
-                })) if matches!(
-                    look_up_type_id(*implementing_for_type_id),
-                    TypeInfo::Contract
-                ) =>
-                {
-                    abi_entries.extend(methods.clone())
+                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(decl_id)) => {
+                    let TypedImplTrait {
+                        methods,
+                        implementing_for_type_id,
+                        ..
+                    } = check!(
+                        CompileResult::from(de_get_impl_trait(decl_id.clone(), &node.span)),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if matches!(
+                        look_up_type_id(implementing_for_type_id),
+                        TypeInfo::Contract
+                    ) {
+                        abi_entries.extend(methods.clone());
+                    }
                 }
                 // XXX we're excluding the above ABI methods, is that OK?
                 TypedAstNodeContent::Declaration(decl) => {
@@ -108,9 +115,9 @@ impl TypedProgram {
                             errors.push(CompileError::MultipleDefinitionsOfFunction { name });
                         }
                     }
-                    declarations.push(decl.clone())
+                    declarations.push(decl.clone());
                 }
-                _ => (),
+                _ => {}
             };
         }
 

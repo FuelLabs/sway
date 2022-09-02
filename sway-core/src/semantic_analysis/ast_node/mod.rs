@@ -13,14 +13,9 @@ pub(crate) use mode::*;
 pub(crate) use return_statement::*;
 
 use crate::{
-    declaration_engine::declaration_engine::{de_insert_storage, de_insert_trait},
-    error::*,
-    parse_tree::*,
-    semantic_analysis::*,
-    style::*,
-    type_system::*,
-    types::DeterministicallyAborts,
-    AstNode, AstNodeContent, Ident, ReturnStatement,
+    declaration_engine::declaration_engine::*, error::*, parse_tree::*, semantic_analysis::*,
+    style::*, type_system::*, types::DeterministicallyAborts, AstNode, AstNodeContent, Ident,
+    ReturnStatement,
 };
 
 use sway_types::{span::Span, state::StateIndex, Spanned};
@@ -345,7 +340,7 @@ impl TypedAstNode {
                                 implementing_for_type_id,
                                 impl_trait.methods.clone(),
                             );
-                            TypedDeclaration::ImplTrait(impl_trait)
+                            TypedDeclaration::ImplTrait(de_insert_impl_trait(impl_trait))
                         }
                         Declaration::ImplSelf(impl_self) => {
                             let impl_trait = check!(
@@ -359,7 +354,7 @@ impl TypedAstNode {
                                 impl_trait.implementing_for_type_id,
                                 impl_trait.methods.clone(),
                             );
-                            TypedDeclaration::ImplTrait(impl_trait)
+                            TypedDeclaration::ImplTrait(de_insert_impl_trait(impl_trait))
                         }
                         Declaration::StructDeclaration(decl) => {
                             let decl = check!(

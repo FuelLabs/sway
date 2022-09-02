@@ -1,6 +1,9 @@
 use crate::{
-    declaration_engine::declaration_engine::de_get_trait, error::*, parse_tree::*,
-    semantic_analysis::*, type_system::*,
+    declaration_engine::declaration_engine::{de_get_impl_trait, de_get_trait},
+    error::*,
+    parse_tree::*,
+    semantic_analysis::*,
+    type_system::*,
 };
 
 use sway_types::{Ident, Spanned};
@@ -111,7 +114,7 @@ fn check_supertraits(
 ) -> Vec<CompileError> {
     let mut errors = vec![];
     for node in typed_tree_nodes {
-        if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(impl_trait)) =
+        if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(decl_id)) =
             &node.content
         {
             let TypedImplTrait {
@@ -119,11 +122,17 @@ fn check_supertraits(
                 span,
                 implementing_for_type_id,
                 ..
-            } = impl_trait;
+            } = match de_get_impl_trait(decl_id.clone(), &node.span) {
+                Ok(impl_trait) => impl_trait,
+                Err(e) => {
+                    errors.push(e);
+                    return errors;
+                }
+            };
             if let CompileResult {
                 value: Some(TypedDeclaration::TraitDeclaration(decl_id)),
                 ..
-            } = namespace.resolve_call_path(trait_name)
+            } = namespace.resolve_call_path(&trait_name)
             {
                 let tr = match de_get_trait(decl_id.clone(), &trait_name.span()) {
                     Ok(tr) => tr,
@@ -135,14 +144,20 @@ fn check_supertraits(
                 for supertrait in &tr.supertraits {
                     if !typed_tree_nodes.iter().any(|search_node| {
                         if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(
-                            impl_trait,
+                            decl_id,
                         )) = &search_node.content
                         {
                             let TypedImplTrait {
                                 trait_name: search_node_trait_name,
                                 implementing_for_type_id: search_node_type_implementing_for,
                                 ..
-                            } = impl_trait;
+                            } = match de_get_impl_trait(decl_id.clone(), &search_node.span) {
+                                Ok(impl_trait) => impl_trait,
+                                Err(e) => {
+                                    errors.push(e);
+                                    return false;
+                                }
+                            };
                             if let (
                                 CompileResult {
                                     value: Some(TypedDeclaration::TraitDeclaration(decl_id1)),
@@ -153,7 +168,7 @@ fn check_supertraits(
                                     ..
                                 },
                             ) = (
-                                namespace.resolve_call_path(search_node_trait_name),
+                                namespace.resolve_call_path(&search_node_trait_name),
                                 namespace.resolve_call_path(&supertrait.name),
                             ) {
                                 let tr1 = match de_get_trait(
@@ -175,8 +190,8 @@ fn check_supertraits(
                                         }
                                     };
                                 return (tr1.name == tr2.name)
-                                    && (look_up_type_id(*implementing_for_type_id)
-                                        == look_up_type_id(*search_node_type_implementing_for));
+                                    && (look_up_type_id(implementing_for_type_id)
+                                        == look_up_type_id(search_node_type_implementing_for));
                             }
                         }
                         false

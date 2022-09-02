@@ -38,7 +38,7 @@ pub enum TypedDeclaration {
     TraitDeclaration(DeclarationId),
     StructDeclaration(TypedStructDeclaration),
     EnumDeclaration(TypedEnumDeclaration),
-    ImplTrait(TypedImplTrait),
+    ImplTrait(DeclarationId),
     AbiDeclaration(TypedAbiDeclaration),
     // If type parameters are defined for a function, they are put in the namespace just for
     // the body of that function.
@@ -80,7 +80,7 @@ impl Spanned for TypedDeclaration {
             StructDeclaration(TypedStructDeclaration { name, .. }) => name.span(),
             EnumDeclaration(TypedEnumDeclaration { span, .. }) => span.clone(),
             AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
-            ImplTrait(TypedImplTrait { span, .. }) => span.clone(),
+            ImplTrait(decl_id) => decl_id.span(),
             StorageDeclaration(decl) => decl.span(),
             ErrorRecovery | GenericTypeForFunctionScope { .. } => {
                 unreachable!("No span exists for these ast node types")
