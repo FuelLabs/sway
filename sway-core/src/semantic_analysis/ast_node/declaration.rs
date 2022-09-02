@@ -18,7 +18,7 @@ pub use variable::*;
 
 use crate::{
     declaration_engine::{
-        declaration_engine::{de_get_storage, de_get_trait},
+        declaration_engine::{de_get_constant, de_get_storage, de_get_trait},
         declaration_id::DeclarationId,
     },
     error::*,
@@ -32,8 +32,8 @@ use sway_types::{Ident, Span, Spanned};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TypedDeclaration {
-    VariableDeclaration(TypedVariableDeclaration),
-    ConstantDeclaration(TypedConstantDeclaration),
+    VariableDeclaration(Box<TypedVariableDeclaration>),
+    ConstantDeclaration(DeclarationId),
     FunctionDeclaration(TypedFunctionDeclaration),
     TraitDeclaration(DeclarationId),
     StructDeclaration(TypedStructDeclaration),
@@ -54,7 +54,6 @@ impl CopyTypes for TypedDeclaration {
         use TypedDeclaration::*;
         match self {
             VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_mapping),
-            ConstantDeclaration(ref mut const_decl) => const_decl.copy_types(type_mapping),
             FunctionDeclaration(ref mut fn_decl) => fn_decl.copy_types(type_mapping),
             TraitDeclaration(ref mut trait_decl) => trait_decl.copy_types(type_mapping),
             StructDeclaration(ref mut struct_decl) => struct_decl.copy_types(type_mapping),
@@ -62,6 +61,7 @@ impl CopyTypes for TypedDeclaration {
             ImplTrait(impl_trait) => impl_trait.copy_types(type_mapping),
             // generics in an ABI is unsupported by design
             AbiDeclaration(..)
+            | ConstantDeclaration(_)
             | StorageDeclaration(..)
             | GenericTypeForFunctionScope { .. }
             | ErrorRecovery => (),
@@ -73,8 +73,8 @@ impl Spanned for TypedDeclaration {
     fn span(&self) -> Span {
         use TypedDeclaration::*;
         match self {
-            VariableDeclaration(TypedVariableDeclaration { name, .. }) => name.span(),
-            ConstantDeclaration(TypedConstantDeclaration { name, .. }) => name.span(),
+            VariableDeclaration(decl) => decl.name.span(),
+            ConstantDeclaration(decl_id) => decl_id.span(),
             FunctionDeclaration(TypedFunctionDeclaration { span, .. }) => span.clone(),
             TraitDeclaration(decl_id) => decl_id.span(),
             StructDeclaration(TypedStructDeclaration { name, .. }) => name.span(),
@@ -96,13 +96,14 @@ impl fmt::Display for TypedDeclaration {
             "{} declaration ({})",
             self.friendly_name(),
             match self {
-                TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                    mutability,
-                    name,
-                    type_ascription,
-                    body,
-                    ..
-                }) => {
+                TypedDeclaration::VariableDeclaration(decl) => {
+                    let TypedVariableDeclaration {
+                        mutability,
+                        name,
+                        type_ascription,
+                        body,
+                        ..
+                    } = &**decl;
                     let mut builder = String::new();
                     match mutability {
                         VariableMutability::Mutable => builder.push_str("mut"),
@@ -176,8 +177,13 @@ impl UnresolvedTypeCheck for TypedDeclaration {
                 );
                 body
             }
-            ConstantDeclaration(TypedConstantDeclaration { value, .. }) => {
-                value.check_for_unresolved_types()
+            ConstantDeclaration(decl_id) => {
+                match de_get_constant(decl_id.clone(), &decl_id.span()) {
+                    Ok(TypedConstantDeclaration { value, .. }) => {
+                        value.check_for_unresolved_types()
+                    }
+                    Err(e) => vec![e],
+                }
             }
             ErrorRecovery
             | StorageDeclaration(_)
@@ -304,9 +310,7 @@ impl TypedDeclaration {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_id = match self {
-            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration { body, .. }) => {
-                body.return_type
-            }
+            TypedDeclaration::VariableDeclaration(decl) => decl.body.return_type,
             TypedDeclaration::FunctionDeclaration { .. } => {
                 errors.push(CompileError::Unimplemented(
                     "Function pointers have not yet been implemented.",
@@ -356,17 +360,22 @@ impl TypedDeclaration {
                 );
                 visibility
             }
+            ConstantDeclaration(decl_id) => {
+                let TypedConstantDeclaration { visibility, .. } = check!(
+                    CompileResult::from(de_get_constant(decl_id.clone(), &decl_id.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                visibility
+            }
             GenericTypeForFunctionScope { .. }
             | ImplTrait { .. }
             | StorageDeclaration { .. }
             | AbiDeclaration(..)
             | ErrorRecovery => Visibility::Public,
-            VariableDeclaration(TypedVariableDeclaration {
-                mutability: is_mutable,
-                ..
-            }) => is_mutable.visibility(),
+            VariableDeclaration(decl) => decl.mutability.visibility(),
             EnumDeclaration(TypedEnumDeclaration { visibility, .. })
-            | ConstantDeclaration(TypedConstantDeclaration { visibility, .. })
             | FunctionDeclaration(TypedFunctionDeclaration { visibility, .. })
             | StructDeclaration(TypedStructDeclaration { visibility, .. }) => *visibility,
         };
@@ -379,12 +388,6 @@ pub struct TypedConstantDeclaration {
     pub name: Ident,
     pub value: TypedExpression,
     pub(crate) visibility: Visibility,
-}
-
-impl CopyTypes for TypedConstantDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.value.copy_types(type_mapping);
-    }
 }
 
 #[derive(Clone, Debug, Derivative)]

@@ -13,7 +13,8 @@ pub(crate) use self::{
 };
 
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::*, type_system::*, types::DeterministicallyAborts,
+    declaration_engine::declaration_engine::de_get_constant, error::*, parse_tree::*,
+    semantic_analysis::*, type_system::*, types::DeterministicallyAborts,
 };
 
 use sway_ast::intrinsics::Intrinsic;
@@ -713,39 +714,51 @@ impl TypedExpression {
         name: Ident,
         span: Span,
     ) -> CompileResult<TypedExpression> {
+        let mut warnings = vec![];
         let mut errors = vec![];
         let exp = match namespace.resolve_symbol(&name).value {
-            Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                name: decl_name,
-                body,
-                mutability,
-                ..
-            })) => TypedExpression {
-                return_type: body.return_type,
-                is_constant: body.is_constant,
-                expression: TypedExpressionVariant::VariableExpression {
-                    name: decl_name.clone(),
-                    span: name.span(),
-                    mutability: *mutability,
-                },
-                span,
-            },
-            Some(TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
-                name: decl_name,
-                value,
-                ..
-            })) => TypedExpression {
-                return_type: value.return_type,
-                is_constant: IsConstant::Yes,
-                // Although this isn't strictly a 'variable' expression we can treat it as one for
-                // this context.
-                expression: TypedExpressionVariant::VariableExpression {
-                    name: decl_name.clone(),
-                    span: name.span(),
-                    mutability: VariableMutability::Immutable,
-                },
-                span,
-            },
+            Some(TypedDeclaration::VariableDeclaration(decl)) => {
+                let TypedVariableDeclaration {
+                    name: decl_name,
+                    body,
+                    mutability,
+                    ..
+                } = &**decl;
+                TypedExpression {
+                    return_type: body.return_type,
+                    is_constant: body.is_constant,
+                    expression: TypedExpressionVariant::VariableExpression {
+                        name: decl_name.clone(),
+                        span: name.span(),
+                        mutability: *mutability,
+                    },
+                    span,
+                }
+            }
+            Some(TypedDeclaration::ConstantDeclaration(decl_id)) => {
+                let TypedConstantDeclaration {
+                    name: decl_name,
+                    value,
+                    ..
+                } = check!(
+                    CompileResult::from(de_get_constant(decl_id.clone(), &span)),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                TypedExpression {
+                    return_type: value.return_type,
+                    is_constant: IsConstant::Yes,
+                    // Although this isn't strictly a 'variable' expression we can treat it as one for
+                    // this context.
+                    expression: TypedExpressionVariant::VariableExpression {
+                        name: decl_name,
+                        span: name.span(),
+                        mutability: VariableMutability::Immutable,
+                    },
+                    span,
+                }
+            }
             Some(TypedDeclaration::AbiDeclaration(decl)) => TypedExpression {
                 return_type: decl.create_type_id(),
                 is_constant: IsConstant::Yes,
@@ -768,7 +781,7 @@ impl TypedExpression {
                 error_recovery_expr(name.span())
             }
         };
-        ok(exp, vec![], errors)
+        ok(exp, warnings, errors)
     }
 
     fn type_check_function_application(
@@ -1460,10 +1473,8 @@ impl TypedExpression {
         );
         let abi = match abi {
             TypedDeclaration::AbiDeclaration(abi) => abi,
-            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                body: ref expr,
-                ..
-            }) => {
+            TypedDeclaration::VariableDeclaration(ref decl) => {
+                let TypedVariableDeclaration { body: expr, .. } = &**decl;
                 let ret_ty = look_up_type_id(expr.return_type);
                 let abi_name = match ret_ty {
                     TypeInfo::ContractCaller { abi_name, .. } => abi_name,
