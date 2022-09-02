@@ -42,7 +42,7 @@ impl Format for ItemTrait {
                 formatter.shape.indent.to_string(&formatter.config)?,
             )?;
             fn_signature.format(formatted_code, formatter)?;
-            writeln!(formatted_code, "{}\n", semicolon_token.ident().as_str())?;
+            writeln!(formatted_code, "{}", semicolon_token.ident().as_str())?;
         }
         formatted_code.pop(); // pop last ending newline
         if let Some(trait_defs) = &self.trait_defs_opt {
@@ -89,7 +89,7 @@ impl CurlyBrace for ItemTrait {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         formatter.shape.block_unindent(&formatter.config);
-        write!(line, "{}", Delimiter::Brace.as_close_char())?;
+        write!(line, "\n{}", Delimiter::Brace.as_close_char())?;
         Ok(())
     }
 }
