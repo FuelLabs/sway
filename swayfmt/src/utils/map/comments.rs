@@ -256,7 +256,12 @@ fn insert_after_span(
 /// Applies formatting to the comment.
 /// Currently does not apply any formatting and directly returns the raw comment str
 fn format_comment(comment: &Comment) -> String {
-    comment.span().str()
+    let mut comment_str = comment.span().str();
+    if comment.span.start() == 0 {
+        // If this comment is at the beginning we need to insert a `\n` after it so that program king go to the next line
+        comment_str.push('\n');
+    }
+    comment_str
 }
 
 #[cfg(test)]
