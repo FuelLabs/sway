@@ -549,15 +549,6 @@ fn instruction_to_doc<'a>(
                 ))
                 .append(md_namer.md_idx_to_doc(context, metadata)),
             ),
-
-            //                maybe_constant_to_doc(context, md_namer, namer, v).append(Doc::line(
-            //                    Doc::text(format!(
-            //                        "ret {} {}",
-            //                        t.as_string(context),
-            //                        namer.name(context, v),
-            //                    ))
-            //                    .append(md_namer.md_idx_to_doc(context, metadata)),
-            //                ))
             Instruction::Log {
                 log_val,
                 log_ty,

@@ -140,6 +140,7 @@ mod ir_builder {
                 / op_insert_value()
                 / op_int_to_ptr()
                 / op_load()
+                / op_log()
                 / op_nop()
                 / op_phi()
                 / op_read_register()
@@ -249,6 +250,11 @@ mod ir_builder {
             rule op_load() -> IrAstOperation
                 = "load" _ ptr() src:id() {
                     IrAstOperation::Load(src)
+                }
+
+            rule op_log() -> IrAstOperation
+                = "log" _ log_ty:ast_ty() log_val:id() comma() _ log_id:id() {
+                    IrAstOperation::Log(log_ty, log_val, log_id)
                 }
 
             rule op_nop() -> IrAstOperation
@@ -612,6 +618,7 @@ mod ir_builder {
         InsertValue(String, IrAstTy, String, Vec<u64>),
         IntToPtr(String, IrAstTy),
         Load(String),
+        Log(IrAstTy, String, String),
         Nop,
         Phi(Vec<(String, String)>),
         ReadRegister(String),
@@ -1074,6 +1081,17 @@ mod ir_builder {
                         .ins(context)
                         .load(*val_map.get(&src_name).unwrap())
                         .add_metadatum(context, opt_metadata),
+                    IrAstOperation::Log(log_ty, log_val, log_id) => {
+                        let log_ty = log_ty.to_ir_type(context);
+                        block
+                            .ins(context)
+                            .log(
+                                *val_map.get(&log_val).unwrap(),
+                                log_ty,
+                                *val_map.get(&log_id).unwrap(),
+                            )
+                            .add_metadatum(context, opt_metadata)
+                    }
                     IrAstOperation::Nop => block.ins(context).nop(),
                     IrAstOperation::Phi(pairs) => {
                         for (block_name, val_name) in pairs {
