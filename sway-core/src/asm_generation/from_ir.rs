@@ -1499,7 +1499,51 @@ impl<'ir> AsmBuilder<'ir> {
         ok((), Vec::new(), Vec::new())
     }
 
-    fn compile_log(&mut self, instr_val: &Value, log_val: &Value, log_id: &Value) {}
+    fn compile_log(&mut self, instr_val: &Value, log_val: &Value, log_id: &Value) {
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+        let log_val_reg = self.value_to_register(log_val);
+        let log_id_reg = self.value_to_register(log_id);
+
+        let log_val_type = log_val.get_type(self.context).unwrap();
+
+        if log_val_type.is_copy_type() {
+            self.bytecode.push(Op {
+                owning_span,
+                opcode: Either::Left(VirtualOp::LOG(
+                    log_val_reg,
+                    log_id_reg,
+                    VirtualRegister::Constant(ConstantRegister::Zero),
+                    VirtualRegister::Constant(ConstantRegister::Zero),
+                )),
+                comment: "".into(),
+            });
+        } else {
+            // If the type not a reference type then we use LOGD to log the data. First put the
+            // size into the data section, then add a LW to get it, then add a LOGD which uses
+            // it.
+            let size_reg = self.reg_seqr.next();
+            let size_in_bytes = ir_type_size_in_bytes(self.context, &log_val_type);
+            let size_data_id = self
+                .data_section
+                .insert_data_value(&Literal::U64(size_in_bytes));
+
+            self.bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
+                owning_span: owning_span.clone(),
+                comment: "loading size for LOGD".into(),
+            });
+            self.bytecode.push(Op {
+                owning_span,
+                opcode: Either::Left(VirtualOp::LOGD(
+                    VirtualRegister::Constant(ConstantRegister::Zero),
+                    log_id_reg,
+                    log_val_reg,
+                    size_reg,
+                )),
+                comment: "".into(),
+            });
+        }
+    }
 
     fn compile_read_register(&mut self, instr_val: &Value, reg: &sway_ir::Register) {
         let instr_reg = self.reg_seqr.next();

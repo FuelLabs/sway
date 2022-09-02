@@ -358,6 +358,7 @@ impl Instruction {
             Instruction::AsmBlock(_, _)
                 | Instruction::Call(_, _)
                 | Instruction::ContractCall { .. }
+                | Instruction::Log { .. }
                 | Instruction::StateLoadQuadWord { .. }
                 | Instruction::StateStoreQuadWord { .. }
                 | Instruction::StateStoreWord { .. }
