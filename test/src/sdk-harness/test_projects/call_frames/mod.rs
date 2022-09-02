@@ -5,7 +5,7 @@ use sha2::{Digest, Sha256};
 
 abigen!(
     CallFramesTestContract,
-    "test_projects/call_frames/out/debug/call_frames-flat-abi.json"
+    "test_projects/call_frames/out/debug/call_frames-abi.json"
 );
 
 async fn get_call_frames_instance() -> (CallFramesTestContract, ContractId) {

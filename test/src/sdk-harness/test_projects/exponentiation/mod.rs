@@ -1,7 +1,7 @@
 use fuels::prelude::*;
 use fuels::tx::ContractId;
 
-abigen!(TestPowContract, "test_artifacts/pow/out/debug/pow-flat-abi.json");
+abigen!(TestPowContract, "test_artifacts/pow/out/debug/pow-abi.json");
 
 #[tokio::test]
 #[should_panic(expected = "ArithmeticOverflow")]
