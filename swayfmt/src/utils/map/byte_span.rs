@@ -11,6 +11,11 @@ use sway_ast::{
 use sway_parse::Parse;
 use sway_types::{Ident, Span, Spanned};
 
+/// This represents the beginning of the file and if during searching we found STARTING_BYTE_SPAN, a custom logic is needed.
+/// Because if there are comments in between at the beginning before program kind, we will be searching between {start: 0, end:0} to {start:0, end:x}.
+/// Searching in that range would never return a comment since the way we order ByteSpans ensures that encapsulating spans are always coming later than the smaller ones.
+pub(crate) const STARTING_BYTE_SPAN: ByteSpan = ByteSpan { start: 0, end: 0 };
+
 /// A stripped down version of sway-types::src::Span
 #[derive(PartialEq, Eq, Debug, Clone, Default)]
 pub struct ByteSpan {
