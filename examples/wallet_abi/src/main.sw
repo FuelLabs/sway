@@ -1,3 +1,4 @@
+// ANCHOR: abi_library
 library wallet_abi;
 
 use std::address::Address;
