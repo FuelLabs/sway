@@ -1,12 +1,14 @@
 use sway_types::{Span, Spanned};
 
+use crate::declaration_engine::declaration_engine::de_get_storage;
+use crate::error::err;
 use crate::type_system::{is_type_info_storage_only, resolve_type, TypeId};
 use crate::{error::ok, semantic_analysis, CompileError, CompileResult, CompileWarning};
 use crate::{TypedDeclaration, TypedFunctionDeclaration};
 
 use crate::semantic_analysis::{
     TypedAbiDeclaration, TypedAstNodeContent, TypedExpression, TypedExpressionVariant,
-    TypedIntrinsicFunctionKind, TypedReturnStatement,
+    TypedIntrinsicFunctionKind, TypedReassignment, TypedReturnStatement,
 };
 
 use super::{
@@ -110,6 +112,29 @@ fn expr_validate(expr: &TypedExpression) -> CompileResult<()> {
         }
         TypedExpressionVariant::Break => (),
         TypedExpressionVariant::Continue => (),
+        TypedExpressionVariant::Reassignment(reassignment) => {
+            let TypedReassignment {
+                lhs_base_name, rhs, ..
+            } = &**reassignment;
+            check!(
+                check_type(rhs.return_type, lhs_base_name.span(), false),
+                (),
+                warnings,
+                errors,
+            );
+            check!(expr_validate(rhs), (), warnings, errors)
+        }
+        TypedExpressionVariant::StorageReassignment(storage_reassignment) => {
+            let span = storage_reassignment.span();
+            let rhs = &storage_reassignment.rhs;
+            check!(
+                check_type(rhs.return_type, span, false),
+                (),
+                warnings,
+                errors,
+            );
+            check!(expr_validate(rhs), (), warnings, errors)
+        }
     }
     ok((), warnings, errors)
 }
@@ -151,11 +176,6 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
         | TypedDeclaration::ConstantDeclaration(semantic_analysis::TypedConstantDeclaration {
             value: expr,
             name,
-            ..
-        })
-        | TypedDeclaration::Reassignment(semantic_analysis::TypedReassignment {
-            rhs: expr,
-            lhs_base_name: name,
             ..
         }) => {
             check!(
@@ -220,7 +240,13 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
                 );
             }
         }
-        TypedDeclaration::StorageDeclaration(TypedStorageDeclaration { fields, .. }) => {
+        TypedDeclaration::StorageDeclaration(decl_id) => {
+            let TypedStorageDeclaration { fields, .. } = check!(
+                CompileResult::from(de_get_storage(decl_id.clone(), &decl.span())),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
             for field in fields {
                 check!(
                     check_type(field.type_id, field.name.span().clone(), true),
@@ -230,9 +256,7 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
                 );
             }
         }
-        TypedDeclaration::GenericTypeForFunctionScope { .. }
-        | TypedDeclaration::ErrorRecovery
-        | TypedDeclaration::StorageReassignment(_) => {}
+        TypedDeclaration::GenericTypeForFunctionScope { .. } | TypedDeclaration::ErrorRecovery => {}
     }
     ok((), warnings, errors)
 }

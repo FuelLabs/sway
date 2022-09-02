@@ -1,22 +1,33 @@
-[
-  {
-    "inputs": [],
-    "name": "main",
-    "outputs": [
-      {
-        "components": [
-          {
-            "components": null,
-            "name": "__array_element",
-            "type": "u32",
-            "typeArguments": null
-          }
-        ],
+{
+  "functions": [
+    {
+      "inputs": [],
+      "name": "main",
+      "output": {
         "name": "",
-        "type": "[u32; 1]",
+        "type": 0,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  }
-]
+    }
+  ],
+  "types": [
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "type": "[_; 1]",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u32",
+      "typeId": 1,
+      "typeParameters": null
+    }
+  ]
+}

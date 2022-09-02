@@ -8,6 +8,7 @@ mod concurrent_slab;
 pub mod constants;
 mod control_flow_analysis;
 mod convert_parse_tree;
+pub mod declaration_engine;
 pub mod ir_generation;
 mod metadata;
 pub mod parse_tree;
@@ -480,17 +481,38 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         errors
     );
 
-    // The only other optimisation we have at the moment is constant combining.  In lieu of a
-    // forthcoming pass manager we can just call it here now.
+    // TODO: Experiment with putting combine-constants and simplify-cfg
+    // in a loop, but per function.
     check!(
         combine_constants(&mut ir, &entry_point_functions),
         return err(warnings, errors),
         warnings,
         errors
     );
-
     check!(
         simplify_cfg(&mut ir, &entry_point_functions),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    // Simplify-CFG helps combine constants.
+    check!(
+        combine_constants(&mut ir, &entry_point_functions),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    // And that in-turn enables more simplify-cfg.
+    check!(
+        simplify_cfg(&mut ir, &entry_point_functions),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    // Remove dead definitions.
+    check!(
+        dce(&mut ir, &entry_point_functions),
         return err(warnings, errors),
         warnings,
         errors
@@ -521,6 +543,21 @@ fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileRes
 fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
     for function in functions {
         if let Err(ir_error) = sway_ir::optimize::combine_constants(ir, function) {
+            return err(
+                Vec::new(),
+                vec![CompileError::InternalOwned(
+                    ir_error.to_string(),
+                    span::Span::dummy(),
+                )],
+            );
+        }
+    }
+    ok((), Vec::new(), Vec::new())
+}
+
+fn dce(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
+    for function in functions {
+        if let Err(ir_error) = sway_ir::optimize::dce(ir, function) {
             return err(
                 Vec::new(),
                 vec![CompileError::InternalOwned(
@@ -599,6 +636,7 @@ pub fn asm_to_bytecode(
 
 pub fn clear_lazy_statics() {
     type_system::clear_type_engine();
+    declaration_engine::declaration_engine::de_clear();
 }
 
 /// Given a [TypedProgram], which is type-checked Sway source, construct a graph to analyze

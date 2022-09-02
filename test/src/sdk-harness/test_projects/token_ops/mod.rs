@@ -1,10 +1,9 @@
 use fuels::prelude::*;
-use fuels::signers::wallet::Wallet;
 use fuels::tx::{AssetId, ContractId};
 
 abigen!(
     TestFuelCoinContract,
-    "test_projects/token_ops/out/debug/token_ops-abi.json"
+    "test_projects/token_ops/out/debug/token_ops-flat-abi.json"
 );
 
 #[tokio::test]
@@ -304,7 +303,7 @@ async fn can_perform_generic_transfer_to_contract() {
     assert_eq!(result.value, amount)
 }
 
-async fn get_fuelcoin_instance(wallet: Wallet) -> (TestFuelCoinContract, ContractId) {
+async fn get_fuelcoin_instance(wallet: WalletUnlocked) -> (TestFuelCoinContract, ContractId) {
     let fuelcoin_id = Contract::deploy(
         "test_projects/token_ops/out/debug/token_ops.bin",
         &wallet,
@@ -322,7 +321,7 @@ async fn get_fuelcoin_instance(wallet: Wallet) -> (TestFuelCoinContract, Contrac
     (fuelcoin_instance, fuelcoin_id.into())
 }
 
-async fn get_balance_contract_id(wallet: Wallet) -> ContractId {
+async fn get_balance_contract_id(wallet: WalletUnlocked) -> ContractId {
     let balance_id = Contract::deploy(
         "test_artifacts/balance_contract/out/debug/balance_contract.bin",
         &wallet,

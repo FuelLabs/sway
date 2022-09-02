@@ -1,9 +1,8 @@
 use fuels::prelude::*;
-use fuels::signers::wallet::Wallet;
 
 abigen!(
     MethodsContract,
-    "test_artifacts/methods_contract/out/debug/methods_contract-abi.json",
+    "test_artifacts/methods_contract/out/debug/methods_contract-flat-abi.json",
 );
 
 #[tokio::test]
@@ -15,7 +14,7 @@ async fn run_methods_test() {
     assert_eq!(result.value, true);
 }
 
-async fn get_methods_instance(wallet: Wallet) -> MethodsContract {
+async fn get_methods_instance(wallet: WalletUnlocked) -> MethodsContract {
     let id = Contract::deploy(
         "test_artifacts/methods_contract/out/debug/methods_contract.bin",
         &wallet,

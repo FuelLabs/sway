@@ -1,6 +1,6 @@
 [package]
 name = "sway-ast"
-version = "0.20.2"
+version = "0.22.1"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -12,4 +12,4 @@ description = "Sway's parser"
 extension-trait = "1.0.1"
 num-bigint = "0.4.3"
 num-traits = "0.2.14"
-sway-types = { version = "0.20.2", path = "../sway-types" }
+sway-types = { version = "0.22.1", path = "../sway-types" }

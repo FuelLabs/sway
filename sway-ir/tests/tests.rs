@@ -138,6 +138,19 @@ fn simplify_cfg() {
 
 // -------------------------------------------------------------------------------------------------
 
+#[allow(clippy::needless_collect)]
+#[test]
+fn dce() {
+    run_tests("dce", |_first_line, ir: &mut Context| {
+        let fn_idcs: Vec<_> = ir.functions.iter().map(|func| func.0).collect();
+        fn_idcs.into_iter().fold(false, |acc, fn_idx| {
+            sway_ir::optimize::dce(ir, &sway_ir::function::Function(fn_idx)).unwrap() || acc
+        })
+    })
+}
+
+// -------------------------------------------------------------------------------------------------
+
 #[test]
 fn serialize() {
     // This isn't running a pass, it's just confirming that the IR can be loaded and printed, and

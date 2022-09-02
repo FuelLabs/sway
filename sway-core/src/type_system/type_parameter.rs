@@ -1,9 +1,4 @@
-use crate::{
-    error::*,
-    semantic_analysis::*,
-    type_system::*,
-    types::{JsonAbiString, ToJsonAbi},
-};
+use crate::{error::*, semantic_analysis::*, type_system::*};
 
 use sway_types::{ident::Ident, span::Span, JsonTypeDeclaration, Spanned};
 
@@ -14,9 +9,9 @@ use std::{
 
 #[derive(Debug, Clone, Eq)]
 pub struct TypeParameter {
-    pub(crate) type_id: TypeId,
+    pub type_id: TypeId,
     pub(crate) initial_type_id: TypeId,
-    pub(crate) name_ident: Ident,
+    pub name_ident: Ident,
     pub(crate) trait_constraints: Vec<TraitConstraint>,
 }
 
@@ -69,22 +64,6 @@ impl ReplaceSelfType for TypeParameter {
 impl fmt::Display for TypeParameter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}: {}", self.name_ident, self.type_id)
-    }
-}
-
-impl ToJsonAbi for TypeParameter {
-    type Output = Property;
-
-    fn generate_json_abi(&self) -> Self::Output {
-        Property {
-            name: self.name_ident.to_string(),
-            type_field: self.type_id.json_abi_str(),
-            components: self.type_id.generate_json_abi(),
-            type_arguments: self
-                .type_id
-                .get_type_parameters()
-                .map(|v| v.iter().map(TypeParameter::generate_json_abi).collect()),
-        }
     }
 }
 
