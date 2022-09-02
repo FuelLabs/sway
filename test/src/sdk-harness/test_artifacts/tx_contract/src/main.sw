@@ -6,10 +6,11 @@ use std::{
     option::Option,
     inputs::{
         Input,
-        input_count,
-        input_coin_owner,
         input_amount,
+        input_coin_owner,
+        input_count,
         input_pointer,
+        input_predicate_data_pointer,
         input_type,
     },
     outputs::{
@@ -61,6 +62,7 @@ abi TxContractTest {
     fn get_tx_input_pointer(index: u64) -> u64;
     fn get_tx_input_coin_owner(index: u64) -> Address;
     fn get_tx_input_amount(index: u64) -> u64;
+    fn get_tx_input_predicate_data_pointer(index: u64) -> u64;
 
     fn get_tx_output_pointer(index: u64) -> u64;
     fn get_tx_output_type(ptr: u64) -> Output;
@@ -131,6 +133,17 @@ impl TxContractTest for Contract {
             v
         } else {
             99
+        }
+    }
+    fn get_tx_input_predicate_data_pointer(index: u64) -> u64 {
+        let opt = input_predicate_data_pointer(index);
+        match opt {
+            Option::Some(v) => {
+                v
+            },
+            Option::None => {
+                revert(0);
+            },
         }
     }
     fn get_tx_output_pointer(index: u64) -> u64 {

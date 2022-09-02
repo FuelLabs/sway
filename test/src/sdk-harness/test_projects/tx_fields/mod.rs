@@ -248,6 +248,20 @@ async fn can_get_tx_input_coin_owner() {
 }
 
 #[tokio::test]
+#[should_panic(expected = "Revert(0)")]
+async fn can_get_tx_input_predicate_data_pointer() {
+    let (contract_instance, _, _) = get_contracts().await;
+    let call_params = CallParameters::default();
+    let result = contract_instance
+        .get_tx_input_predicate_data_pointer(0)
+        .call_params(call_params)
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(result.value, 7);
+}
+
+#[tokio::test]
 async fn can_get_tx_output_type() {
     let (contract_instance, _, _) = get_contracts().await;
     let result = contract_instance
@@ -273,10 +287,10 @@ async fn can_get_tx_output_amount() {
 }
 
 #[tokio::test]
-#[should_panic(expected = "RevertTransactionError")]
-async fn tx_output_amount_for_output_contract() {
+#[should_panic(expected = "Revert(0)")]
+async fn can_handle_no_tx_output_amount_for_output_contract() {
     let (contract_instance, _, _) = get_contracts().await;
-    let _result = contract_instance.get_tx_output_amount(0).call().await;
+    let _result = contract_instance.get_tx_output_amount(0).call().await.unwrap();
 }
 
 #[tokio::test]
