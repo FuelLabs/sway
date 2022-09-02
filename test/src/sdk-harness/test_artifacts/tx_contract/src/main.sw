@@ -20,7 +20,23 @@ use std::{
         output_type,
     },
     revert::revert,
-    tx::*,
+    tx::{
+        Transaction,
+        tx_gas_limit,
+        tx_gas_price,
+        tx_id,
+        tx_maturity,
+        tx_receipts_root,
+        tx_script_data_length,
+        tx_script_data_start_pointer,
+        tx_script_length,
+        tx_script_start_pointer,
+        tx_type,
+        tx_witnesses_count,
+        tx_witness_data,
+        tx_witness_data_length,
+        tx_witness_pointer,
+    },
     };
 
 abi TxContractTest {
@@ -38,6 +54,7 @@ abi TxContractTest {
     fn get_tx_witness_data(index: u64) -> B512;
     fn get_tx_receipts_root() -> b256;
     fn get_tx_script_start_pointer() -> u64;
+    fn get_tx_script_data_start_pointer() -> u64;
     fn get_tx_id() -> b256;
 
     fn get_input_type(index: u64) -> Input;
@@ -92,6 +109,9 @@ impl TxContractTest for Contract {
     }
     fn get_tx_script_start_pointer() -> u64 {
         tx_script_start_pointer()
+    }
+    fn get_tx_script_data_start_pointer() -> u64 {
+        tx_script_data_start_pointer()
     }
     fn get_tx_id() -> b256 {
         tx_id()

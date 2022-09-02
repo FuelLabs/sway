@@ -293,3 +293,11 @@ async fn can_get_tx_id() {
 
     assert_eq!(result.value, byte_array);
 }
+
+#[tokio::test]
+async fn can_get_get_tx_script_data_start_pointer() {
+    let (contract_instance, _, _) = get_contracts().await;
+    let result = contract_instance.get_tx_script_data_start_pointer().call().await.unwrap();
+    assert_eq!(result.value, 7)
+
+}
