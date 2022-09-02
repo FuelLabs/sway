@@ -180,6 +180,25 @@ fn get_comments_between_spans(
     comments_with_context
 }
 
+fn format_context(context: &str, threshold: usize) -> String {
+    let mut remaining_newlines = threshold;
+    let mut formatted_context = String::new();
+    for char in context.chars() {
+        if char == '\n' {
+            if remaining_newlines > 0 {
+                formatted_context.push('\n');
+                remaining_newlines -= 1;
+            }
+        } else {
+            formatted_context.push(char);
+        }
+    }
+    if formatted_context.starts_with("\n\n") {
+        formatted_context.remove(0);
+    }
+    formatted_context
+}
+
 /// Inserts after given span and returns the offset. While inserting comments this also inserts Context of the comments so that the alignment whitespaces/newlines are intact
 fn insert_after_span(
     from: &ByteSpan,
@@ -195,7 +214,7 @@ fn insert_after_span(
         write!(
             comment_str,
             "{}{}",
-            comment_context,
+            format_context(comment_context, 2),
             &format_comment(comment_value)
         )?;
     }

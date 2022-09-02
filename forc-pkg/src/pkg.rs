@@ -1847,7 +1847,7 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
         .with_extension("bin");
     fs::write(&bin_path, &compiled.bytecode)?;
     if !compiled.json_abi_program.functions.is_empty() {
-        let json_abi_program_stem = format!("{}-flat-abi", manifest.project.name);
+        let json_abi_program_stem = format!("{}-abi", manifest.project.name);
         let json_abi_program_path = output_dir
             .join(&json_abi_program_stem)
             .with_extension("json");
