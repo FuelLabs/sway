@@ -4,6 +4,7 @@ fn foo() {}
     // do something
 fn bar() {}
 
+
     // do something
 enum SomeEnum {
     A: u64,
