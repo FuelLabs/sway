@@ -1,4 +1,0 @@
-[[package]]
-name = 'main_should_not_have_args'
-source = 'root'
-dependencies = []

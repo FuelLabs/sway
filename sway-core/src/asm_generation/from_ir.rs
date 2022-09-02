@@ -7,6 +7,7 @@
 // But this is not ideal and needs to be refactored:
 // - AsmNamespace is tied to data structures from other stages like Ident and Literal.
 
+use fuel_asm::GTFArgs;
 use fuel_crypto::Hasher;
 use std::{collections::HashMap, sync::Arc};
 
@@ -237,10 +238,8 @@ impl<'ir> AsmBuilder<'ir> {
 
     // Handle loading the arguments of a contract call
     fn compile_fn_args(&mut self, function: Function) {
-        // Do this only for contract methods. Contract methods have selectors.
-        if !function.has_selector(self.context) {
-            return;
-        }
+        // We treat contract methods differently. Contract methods have selectors.
+        let is_contract_method = function.has_selector(self.context);
 
         match function.args_iter(self.context).count() {
             // Nothing to do if there are no arguments
@@ -251,13 +250,35 @@ impl<'ir> AsmBuilder<'ir> {
             1 => {
                 let (_, val) = function.args_iter(self.context).next().unwrap();
                 let single_arg_reg = self.value_to_register(val);
-                self.read_args_value_from_frame(&single_arg_reg);
+
+                if is_contract_method {
+                    self.read_args_value_from_frame(&single_arg_reg);
+                } else {
+                    self.read_args_value_from_script_data(&single_arg_reg);
+
+                    if val.get_type(self.context).unwrap().is_copy_type() {
+                        self.bytecode.push(Op {
+                            opcode: either::Either::Left(VirtualOp::LW(
+                                single_arg_reg.clone(),
+                                single_arg_reg.clone(),
+                                VirtualImmediate12 { value: 0 },
+                            )),
+                            comment: "Load main fn parameter".into(),
+                            owning_span: None,
+                        });
+                    }
+                }
             }
 
             // Otherwise, the args are bundled together and pointed to by the base register.
             _ => {
                 let args_base_reg = self.reg_seqr.next();
-                self.read_args_value_from_frame(&args_base_reg);
+
+                if is_contract_method {
+                    self.read_args_value_from_frame(&args_base_reg);
+                } else {
+                    self.read_args_value_from_script_data(&args_base_reg);
+                }
 
                 // Successively load each argument. The asm generated depends on the arg type size
                 // and whether the offset fits in a 12-bit immediate.
@@ -342,6 +363,21 @@ impl<'ir> AsmBuilder<'ir> {
                 VirtualImmediate12 { value: 74 },
             )),
             comment: "Base register for method parameter".into(),
+            owning_span: None,
+        });
+    }
+
+    // Read the argument(s) base from the script data.
+    fn read_args_value_from_script_data(&mut self, reg: &VirtualRegister) {
+        self.bytecode.push(Op {
+            opcode: either::Either::Left(VirtualOp::GTF(
+                reg.clone(),
+                VirtualRegister::Constant(ConstantRegister::Zero),
+                VirtualImmediate12 {
+                    value: GTFArgs::ScriptData as u16,
+                },
+            )),
+            comment: "Base register for main fn parameter".into(),
             owning_span: None,
         });
     }
