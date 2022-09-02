@@ -298,6 +298,6 @@ async fn can_get_tx_id() {
 async fn can_get_get_tx_script_data_start_pointer() {
     let (contract_instance, _, _) = get_contracts().await;
     let result = contract_instance.get_tx_script_data_start_pointer().call().await.unwrap();
-    assert_eq!(result.value, 7)
+    assert_eq!(result.value, 10376)
 
 }
