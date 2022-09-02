@@ -12,8 +12,7 @@ description = "Macros for sway's intermediate representation."
 proc-macro = true
 
 [dependencies]
-syn = { version = "1.0.99", features = ["derive"] }
-quote = "1.0.21"
-proc-macro2 = "1.0.43"
 itertools = "0.10.3"
-
+proc-macro2 = "1.0.43"
+quote = "1.0.21"
+syn = { version = "1.0.99", features = ["derive"] }

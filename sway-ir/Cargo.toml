@@ -13,5 +13,5 @@ anyhow = "1.0"
 filecheck = "0.5"
 generational-arena = "0.2"
 peg = "0.7"
-sway-types = { version = "0.24.0", path = "../sway-types" }
 sway-ir-macros = { version = "0.24.0", path = "sway-ir-macros" }
+sway-types = { version = "0.24.0", path = "../sway-types" }
