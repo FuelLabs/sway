@@ -17,7 +17,31 @@ use sway_ast::{
 use sway_parse::lex_commented;
 use sway_types::Spanned;
 
+use super::byte_span;
+
 pub type CommentMap = BTreeMap<ByteSpan, Comment>;
+
+trait CommentRange {
+    /// Get comments in between given ByteSpans. This is wrapper around BtreeMap::range with a custom logic for beginning of the file.
+    fn comments_in_range(&self, from: &ByteSpan, to: &ByteSpan) -> Vec<(ByteSpan, Comment)>;
+}
+
+impl CommentRange for CommentMap {
+    fn comments_in_range(&self, from: &ByteSpan, to: &ByteSpan) -> Vec<(ByteSpan, Comment)> {
+        // While searching for comments with given range, comment handler needs to check if the beginning of the range is actually the beginning of the file.
+        // If that is the case we need to collect all the comments until the provided `to` ByteSpan. BtreeMap::range((Inclusive(from), Excluded(to))) won't be able to find comments
+        // since both beginning of the file and first byte span have their start = 0. If we are looking from STARTING_BYTE_SPAN to `to`, we need to collect all until `to` byte span.
+        if from == &byte_span::STARTING_BYTE_SPAN {
+            self.range(..to)
+                .map(|items| (items.0.clone(), items.1.clone()))
+                .collect()
+        } else {
+            self.range((Included(from), Excluded(to)))
+                .map(|items| (items.0.clone(), items.1.clone()))
+                .collect()
+        }
+    }
+}
 
 /// Get the CommentedTokenStream and collect the spans -> Comment mapping for the input source
 /// code.
@@ -160,9 +184,8 @@ fn get_comments_between_spans(
 ) -> Vec<CommentWithContext> {
     let mut comments_with_context: Vec<CommentWithContext> = Vec::new();
     if from < to {
-        for (index, (comment_span, comment)) in comment_map
-            .range((Included(from), Excluded(to)))
-            .enumerate()
+        for (index, (comment_span, comment)) in
+            comment_map.comments_in_range(from, to).iter().enumerate()
         {
             let starting_position_for_context = if index == 0 {
                 // This is the first comment in the current range the context should be collected between from's end and comment's beginning
@@ -238,6 +261,8 @@ fn format_comment(comment: &Comment) -> String {
 
 #[cfg(test)]
 mod tests {
+    use crate::utils::map::comments::CommentRange;
+
     use super::{comment_map_from_src, ByteSpan};
     use std::{ops::Bound::Included, sync::Arc};
 
@@ -318,5 +343,16 @@ mod tests {
             found_comment.1.span.as_str(),
             "/* multi-\n             * line-\n             * comment */"
         );
+    }
+    #[test]
+    fn test_comment_map_range_from_start() {
+        let range_start_span = ByteSpan { start: 0, end: 0 };
+        let range_end_span = ByteSpan { start: 8, end: 16 };
+        let input = r#"// test
+contract;"#;
+        let map = comment_map_from_src(Arc::from(input)).unwrap();
+        assert!(!map.is_empty());
+        let found_comments = map.comments_in_range(&range_start_span, &range_end_span);
+        assert_eq!(found_comments[0].1.span.as_str(), "// test");
     }
 }
