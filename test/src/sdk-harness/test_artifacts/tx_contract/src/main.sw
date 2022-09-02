@@ -2,6 +2,7 @@ contract;
 
 use std::{
     address::Address,
+    b512::B512,
     option::Option,
     inputs::{
         Input,
@@ -29,6 +30,9 @@ abi TxContractTest {
     fn get_tx_inputs_count() -> u64;
     fn get_tx_outputs_count() -> u64;
     fn get_tx_witnesses_count() -> u64;
+    fn get_tx_witness_pointer(index: u64) -> u64;
+    fn get_tx_witness_data_length(index: u64) -> u64;
+    fn get_tx_witness_data(index: u64) -> B512;
     fn get_tx_receipts_root() -> b256;
     fn get_tx_script_start_pointer() -> u64;
     fn get_tx_id() -> b256;
@@ -69,11 +73,23 @@ impl TxContractTest for Contract {
     fn get_tx_witnesses_count() -> u64 {
         tx_witnesses_count()
     }
+    fn get_tx_witness_pointer(index: u64) -> u64 {
+        tx_witness_pointer(index)
+    }
+    fn get_tx_witness_data_length(index: u64) -> u64 {
+        tx_witness_data_length(index)
+    }
+    fn get_tx_witness_data(index: u64) -> B512 {
+        tx_witness_data(index)
+    }
     fn get_tx_receipts_root() -> b256 {
         tx_receipts_root()
     }
     fn get_tx_script_start_pointer() -> u64 {
         tx_script_start_pointer()
+    }
+    fn get_tx_id() -> b256 {
+        tx_id()
     }
     fn get_tx_input_pointer(index: u64) -> u64 {
         input_pointer(index)
@@ -89,8 +105,5 @@ impl TxContractTest for Contract {
     }
     fn get_tx_output_type(ptr: u64) -> Output {
         output_type(ptr)
-    }
-    fn get_tx_id() -> b256 {
-        tx_id()
     }
 }
