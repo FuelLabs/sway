@@ -1,3 +1,4 @@
+// ANCHOR: body
 contract;
 
 use std::{
