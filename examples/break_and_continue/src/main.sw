@@ -15,7 +15,6 @@ fn break_example() -> u64 {
     sum // 1 + 2 + .. + 10 = 55
 }
 // ANCHOR_END: break_example
-
 // ANCHOR: continue_example
 fn continue_example() -> u64 {
     let mut counter = 0;
@@ -31,7 +30,6 @@ fn continue_example() -> u64 {
     sum // 1 + 3 + .. + 9 = 25
 }
 // ANCHOR_END: continue_example
-
 fn main() -> u64 {
     break_example() + continue_example() // 55 + 25 = 80
 }

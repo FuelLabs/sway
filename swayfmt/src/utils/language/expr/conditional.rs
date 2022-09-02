@@ -12,8 +12,6 @@ use std::{fmt::Write, ops::ControlFlow};
 use sway_ast::{token::Delimiter, IfCondition, IfExpr, MatchBranch, MatchBranchKind};
 use sway_types::Spanned;
 
-use super::debug_expr;
-
 impl Format for IfExpr {
     fn format(
         &self,
@@ -94,14 +92,6 @@ fn get_if_condition_width(if_expr: &IfExpr) -> Result<usize, FormatterError> {
     format_if_condition(if_expr, &mut if_cond_str, &mut temp_formatter)?;
     write!(if_cond_str, " {{")?;
     let condition_width = if_cond_str.chars().count();
-
-    debug_expr(
-        if_cond_str,
-        None,
-        None,
-        condition_width,
-        &mut temp_formatter,
-    );
 
     Ok(condition_width)
 }
