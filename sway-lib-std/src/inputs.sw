@@ -220,8 +220,8 @@ pub fn input_message_predicate_data_length(index: u64) -> u64 {
     __gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH)
 }
 
-/// Get the predicate data of the input message at `index`.
-pub fn input_message_predicate_data<T>(index: u64) -> T {
+/// Get the data of the input message at `index`.
+pub fn input_message_data<T>(index: u64) -> T {
     read::<T>(__gtf::<u64>(index, GTF_INPUT_MESSAGE_DATA))
 }
 
