@@ -199,18 +199,14 @@ fn insert_after_span(
 ) -> Result<usize, FormatterError> {
     let iter = newline_sequences_to_insert.iter();
     let mut sequence_string = String::new();
-    let mut newlines_to_skip =
+    let newlines_to_skip =
         find_already_present_extra_newlines(from.end, formatted_code.to_string());
-    for newline_sequence in iter {
-        if newlines_to_skip != 0 {
-            newlines_to_skip -= 1;
-        } else {
-            write!(
-                sequence_string,
-                "{}",
-                format_newline_sequnce(newline_sequence, threshold)
-            )?;
-        }
+    for newline_sequence in iter.skip(newlines_to_skip) {
+        write!(
+            sequence_string,
+            "{}",
+            format_newline_sequnce(newline_sequence, threshold)
+        )?;
     }
     let mut src_rope = Rope::from_str(formatted_code);
     src_rope.insert(from.end + offset, &sequence_string);
