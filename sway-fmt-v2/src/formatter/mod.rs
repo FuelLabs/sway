@@ -986,12 +986,36 @@ fn main() {}
         let sway_code_to_format = r#"script;
 
 // use statements
-use std::*;"#;
+use std::*;
+
+fn main() {
+    // Array of integers with type ascription
+let array_of_integers: [u8;
+5] = [1, 2, 3, 4, 5];
+
+
+    // Array of strings
+    let array_of_strings = [ "Bob", "Jan", "Ron"];
+}
+"#;
 
         let correct_sway_code = r#"script;
 
 // use statements
 use std::*;
+
+fn main() {
+    // Array of integers with type ascription
+    let array_of_integers: [u8; 5] = [1, 2, 3, 4, 5];
+
+
+    // Array of strings
+    let array_of_strings = [
+        "Bob",
+        "Jan",
+        "Ron",
+    ];
+}
 "#;
 
         let mut formatter = Formatter::default();
