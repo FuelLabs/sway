@@ -141,7 +141,16 @@
 <p>A smart contract is no different than a script or predicate in that it is a piece of bytecode that is deployed to the blockchain via a <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md">transaction</a>. The main features of a smart contract that differentiate it from scripts or predicates are that it is <em>callable</em> and <em>stateful</em>. Put another way, a smart contract is analogous to a deployed API with some database state. The interface of a smart contract, also just called a contract, must be defined strictly with an <a href="#the-abi-declaration">ABI declaration</a>. See <a href="../examples/subcurrency.html">this contract</a> for an example.</p>
 <h2 id="syntax-of-a-smart-contract"><a class="header" href="#syntax-of-a-smart-contract">Syntax of a Smart Contract</a></h2>
 <p>As with any Sway program, the program starts with a declaration of what <a href="./index.html">program type</a> it is. A contract must also either define or import an <a href="#the-abi-declaration">ABI declaration</a> and implement it. It is considered good practice to define your ABI in a separate library and import it into your contract. This allows callers of your contract to simply import the ABI directly and use it in their scripts to call your contract. Let's take a look at an ABI declaration in a library:</p>
-<pre><code class="language-sway">
+<pre><code class="language-sway">library wallet_abi;
+
+use std::address::Address;
+
+abi Wallet {
+    #[storage(read, write)]
+    fn receive_funds();
+    #[storage(read, write)]
+    fn send_funds(amount_to_send: u64, recipient_address: Address);
+}
 </code></pre>
 <p>Let's focus on the ABI declaration and inspect it line-by-line.</p>
 <h3 id="the-abi-declaration"><a class="header" href="#the-abi-declaration">The ABI Declaration</a></h3>

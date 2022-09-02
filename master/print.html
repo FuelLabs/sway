@@ -524,7 +524,120 @@ impl TestContract for Contract {
 <div style="break-before: page; page-break-before: always;"></div><h1 id="subcurrency"><a class="header" href="#subcurrency">Subcurrency</a></h1>
 <p>The following is a simple example of a subcurrency which implements functionality to mint and send token. It is a ledger-based token, i.e. the contract maintains a ledger of user account balances.</p>
 <p>Being a ledger-based token, this example does not use Fuel's <a href="examples/../blockchain-development/native_assets.html">native asset system</a>. It is not recommended to actually use ledger-based tokens in production; this example is here purely for illustrative purposes.</p>
-<pre><code class="language-sway">
+<pre><code class="language-sway">contract;
+
+use std::{
+    address::Address,
+    assert::assert,
+    chain::auth::{
+        AuthError,
+        msg_sender,
+    },
+    hash::sha256,
+    identity::Identity,
+    logging::log,
+    result::Result,
+    revert::revert,
+    storage::StorageMap,
+};
+
+////////////////////////////////////////
+// Event declarations
+////////////////////////////////////////
+// Events allow clients to react to changes in the contract.
+// Unlike Solidity, events are simply structs.
+// Note: Logging of arbitrary stack types is supported, however they cannot yet
+//  be decoded on the SDK side.
+/// Emitted when a token is sent.
+struct Sent {
+    from: Address,
+    to: Address,
+    amount: u64,
+}
+
+////////////////////////////////////////
+// ABI method declarations
+////////////////////////////////////////
+/// ABI for a subcurrency.
+abi Token {
+    // Mint new tokens and send to an address.
+    // Can only be called by the contract creator.
+    #[storage(read, write)]
+    fn mint(receiver: Address, amount: u64);
+
+    // Sends an amount of an existing token.
+    // Can be called from any address.
+    #[storage(read, write)]
+    fn send(receiver: Address, amount: u64);
+}
+
+////////////////////////////////////////
+// Constants
+////////////////////////////////////////
+/// Address of contract creator.
+const MINTER: b256 = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
+
+////////////////////////////////////////
+// Contract storage
+////////////////////////////////////////
+// Contract storage persists across transactions.
+storage {
+    balances: StorageMap&lt;Address, u64&gt; = StorageMap {},
+}
+
+////////////////////////////////////////
+// ABI definitions
+////////////////////////////////////////
+/// Contract implements the `Token` ABI.
+impl Token for Contract {
+    #[storage(read, write)]
+    fn mint(receiver: Address, amount: u64) {
+        // Note: The return type of `msg_sender()` can be inferred by the
+        // compiler. It is shown here for explicitness.
+        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
+        let sender: Address = match sender.unwrap() {
+            Identity::Address(addr) =&gt; {
+                assert(addr == ~Address::from(MINTER));
+                addr
+            },
+            _ =&gt; {
+                revert(0);
+            },
+        };
+
+        // Increase the balance of receiver
+        storage.balances.insert(receiver, storage.balances.get(receiver) + amount)
+    }
+
+    #[storage(read, write)]
+    fn send(receiver: Address, amount: u64) {
+        // Note: The return type of `msg_sender()` can be inferred by the
+        // compiler. It is shown here for explicitness.
+        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
+        let sender: Address = match sender.unwrap() {
+            Identity::Address(addr) =&gt; {
+                addr
+            },
+            _ =&gt; {
+                revert(0);
+            },
+        };
+
+        // Reduce the balance of sender
+        let sender_amount = storage.balances.get(sender);
+        assert(sender_amount &gt; amount);
+        storage.balances.insert(sender, sender_amount - amount);
+
+        // Increase the balance of receiver
+        storage.balances.insert(receiver, storage.balances.get(receiver) + amount);
+
+        log(Sent {
+            from: sender,
+            to: receiver,
+            amount: amount,
+        });
+    }
+}
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="fizzbuzz"><a class="header" href="#fizzbuzz">FizzBuzz</a></h1>
 <p>This example is not the traditional <a href="https://en.wikipedia.org/wiki/Fizz_buzz#Programming">FizzBuzz</a>; instead it is the smart contract version! A script can call the <code>fizzbuzz</code> ABI method of this contract with some <code>u64</code> value and receive back its fizzbuzzability as an <code>enum</code>.</p>
@@ -558,10 +671,81 @@ impl FizzBuzz for Contract {
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="wallet-smart-contract"><a class="header" href="#wallet-smart-contract">Wallet Smart Contract</a></h1>
 <h2 id="abi-declaration"><a class="header" href="#abi-declaration">ABI Declaration</a></h2>
-<pre><code class="language-sway">
+<pre><code class="language-sway">library wallet_abi;
+
+use std::address::Address;
+
+abi Wallet {
+    #[storage(read, write)]
+    fn receive_funds();
+    #[storage(read, write)]
+    fn send_funds(amount_to_send: u64, recipient_address: Address);
+}
 </code></pre>
 <h2 id="abi-implementation"><a class="header" href="#abi-implementation">ABI Implementation</a></h2>
-<pre><code class="language-sway">
+<pre><code class="language-sway">contract;
+
+use std::{
+    address::Address,
+    assert::assert,
+    chain::auth::{
+        AuthError,
+        msg_sender,
+    },
+    constants::BASE_ASSET_ID,
+    context::{
+        call_frames::msg_asset_id,
+        msg_amount,
+    },
+    contract_id::ContractId,
+    identity::Identity,
+    result::Result,
+    revert::revert,
+    token::transfer_to_output,
+};
+
+use wallet_abi::Wallet;
+const OWNER_ADDRESS: b256 = 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861;
+
+storage {
+    balance: u64 = 0,
+}
+
+impl Wallet for Contract {
+    #[storage(read, write)]
+    fn receive_funds() {
+        if msg_asset_id() == BASE_ASSET_ID {
+            // If we received `BASE_ASSET_ID` then keep track of the balance.
+            // Otherwise, we're receiving other native assets and don't care
+            // about our balance of tokens.
+            storage.balance = storage.balance + msg_amount();
+        }
+    }
+
+    #[storage(read, write)]
+    fn send_funds(amount_to_send: u64, recipient_address: Address) {
+        // Note: The return type of `msg_sender()` can be inferred by the
+        // compiler. It is shown here for explicitness.
+        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
+        match sender.unwrap() {
+            Identity::Address(addr) =&gt; {
+                assert(addr == ~Address::from(OWNER_ADDRESS));
+            },
+            _ =&gt; {
+                revert(0);
+            },
+        };
+
+        let current_balance = storage.balance;
+        assert(current_balance &gt;= amount_to_send);
+
+        storage.balance = current_balance - amount_to_send;
+        // Note: `transfer_to_output()` is not a call and thus not an
+        // interaction. Regardless, this code conforms to
+        // checks-effects-interactions to avoid re-entrancy.
+        transfer_to_output(amount_to_send, BASE_ASSET_ID, recipient_address);
+    }
+}
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="sway-program-types"><a class="header" href="#sway-program-types">Sway Program Types</a></h1>
 <p>A Sway program itself has a type: it is either a <em>contract</em>, a <em>predicate</em>, a <em>script</em>, or a <em>library</em>. The first three of these things are all deployable to the blockchain. A <em>library</em> is simply a project designed for code reuse and is never directly deployed to the chain.</p>
@@ -579,7 +763,16 @@ impl FizzBuzz for Contract {
 <p>A smart contract is no different than a script or predicate in that it is a piece of bytecode that is deployed to the blockchain via a <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md">transaction</a>. The main features of a smart contract that differentiate it from scripts or predicates are that it is <em>callable</em> and <em>stateful</em>. Put another way, a smart contract is analogous to a deployed API with some database state. The interface of a smart contract, also just called a contract, must be defined strictly with an <a href="sway-program-types/smart_contracts.html#the-abi-declaration">ABI declaration</a>. See <a href="sway-program-types/../examples/subcurrency.html">this contract</a> for an example.</p>
 <h2 id="syntax-of-a-smart-contract"><a class="header" href="#syntax-of-a-smart-contract">Syntax of a Smart Contract</a></h2>
 <p>As with any Sway program, the program starts with a declaration of what <a href="sway-program-types/./index.html">program type</a> it is. A contract must also either define or import an <a href="sway-program-types/smart_contracts.html#the-abi-declaration">ABI declaration</a> and implement it. It is considered good practice to define your ABI in a separate library and import it into your contract. This allows callers of your contract to simply import the ABI directly and use it in their scripts to call your contract. Let's take a look at an ABI declaration in a library:</p>
-<pre><code class="language-sway">
+<pre><code class="language-sway">library wallet_abi;
+
+use std::address::Address;
+
+abi Wallet {
+    #[storage(read, write)]
+    fn receive_funds();
+    #[storage(read, write)]
+    fn send_funds(amount_to_send: u64, recipient_address: Address);
+}
 </code></pre>
 <p>Let's focus on the ABI declaration and inspect it line-by-line.</p>
 <h3 id="the-abi-declaration"><a class="header" href="#the-abi-declaration">The ABI Declaration</a></h3>
