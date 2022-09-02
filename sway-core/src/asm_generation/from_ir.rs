@@ -1558,7 +1558,7 @@ impl<'ir> AsmBuilder<'ir> {
             // size into the data section, then add a LW to get it, then add a LOGD which uses
             // it.
             let size_reg = self.reg_seqr.next();
-            let size_in_bytes = ir_type_size_in_bytes(self.context, &log_ty);
+            let size_in_bytes = ir_type_size_in_bytes(self.context, log_ty);
             let size_data_id = self
                 .data_section
                 .insert_data_value(&Literal::U64(size_in_bytes));
