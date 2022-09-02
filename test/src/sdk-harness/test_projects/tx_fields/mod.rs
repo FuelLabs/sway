@@ -276,7 +276,7 @@ async fn can_get_tx_output_amount() {
 #[should_panic(expected = "RevertTransactionError")]
 async fn tx_output_amount_for_output_contract() {
     let (contract_instance, _, _) = get_contracts().await;
-    let result = contract_instance.get_tx_output_amount(0).call().await;
+    let _result = contract_instance.get_tx_output_amount(0).call().await;
 }
 
 #[tokio::test]
