@@ -8,15 +8,18 @@ use std::{
         Input,
         input_count,
         input_coin_owner,
+        input_amount,
         input_pointer,
         input_type,
     },
     outputs::{
         Output,
         output_count,
+        output_amount,
         output_pointer,
         output_type,
     },
+    revert::revert,
     tx::*,
     };
 
@@ -40,9 +43,11 @@ abi TxContractTest {
     fn get_input_type(index: u64) -> Input;
     fn get_tx_input_pointer(index: u64) -> u64;
     fn get_tx_input_coin_owner(index: u64) -> Address;
+    fn get_tx_input_amount(index: u64) -> u64;
 
     fn get_tx_output_pointer(index: u64) -> u64;
     fn get_tx_output_type(ptr: u64) -> Output;
+    fn get_tx_output_amount(index: u64) -> u64;
 }
 
 impl TxContractTest for Contract {
@@ -100,10 +105,21 @@ impl TxContractTest for Contract {
     fn get_tx_input_coin_owner(index: u64) -> Address {
         input_coin_owner(index).unwrap()
     }
+    fn get_tx_input_amount(index: u64) -> u64 {
+        let opt = input_amount(index);
+        if let Option::Some(v) = opt {
+            v
+        } else {
+            99
+        }
+    }
     fn get_tx_output_pointer(index: u64) -> u64 {
         output_pointer(index)
     }
     fn get_tx_output_type(ptr: u64) -> Output {
         output_type(ptr)
+    }
+    fn get_tx_output_amount(index: u64) -> u64 {
+        output_amount(index)
     }
 }
