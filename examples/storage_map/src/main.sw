@@ -33,7 +33,6 @@ impl StorageMapExample for Contract {
         storage.map.insert(~Address::from(addr2), 77);
     }
     // ANCHOR_END: storage_map_insert
-
     // ANCHOR: storage_map_get
     #[storage(read, write)]
     fn get_from_storage_map() {

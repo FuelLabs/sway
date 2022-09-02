@@ -27,10 +27,8 @@ impl LiquidityPool for Contract {
         assert(msg_asset_id() == ~ContractId::from(BASE_TOKEN));
         assert(msg_amount() > 0);
 
-
         // Mint two times the amount.
         let amount_to_mint = msg_amount() * 2;
-
 
         // Mint some LP token based upon the amount of the base token.
         mint_to_address(amount_to_mint, recipient);
@@ -40,10 +38,8 @@ impl LiquidityPool for Contract {
         assert(msg_asset_id() == contract_id());
         assert(msg_amount() > 0);
 
-
         // Amount to withdraw.
         let amount_to_transfer = msg_amount() / 2;
-
 
         // Transfer base token to recipient.
         transfer_to_output(amount_to_transfer, ~ContractId::from(BASE_TOKEN), recipient);

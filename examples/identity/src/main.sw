@@ -58,7 +58,6 @@ impl IdentityExample for Contract {
         let amount = 1;
         let token_id = BASE_ASSET_ID;
 
-
         // ANCHOR: different_executions
         match my_identity {
             Identity::Address(identity) => {

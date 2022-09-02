@@ -19,7 +19,6 @@ use std::{
     token::transfer_to_output,
 };
 
-
 // ANCHOR: abi_import
 use wallet_abi::Wallet;
 // ANCHOR_END: abi_import
@@ -28,7 +27,6 @@ const OWNER_ADDRESS: b256 = 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1
 storage {
     balance: u64 = 0,
 }
-
 
 // ANCHOR: abi_impl
 impl Wallet for Contract {

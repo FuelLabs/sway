@@ -15,11 +15,9 @@ use std::{
     storage::StorageMap,
 };
 
-
 ////////////////////////////////////////
 // Event declarations
 ////////////////////////////////////////
-
 // Events allow clients to react to changes in the contract.
 // Unlike Solidity, events are simply structs.
 // Note: Logging of arbitrary stack types is supported, however they cannot yet
@@ -31,7 +29,6 @@ struct Sent {
     amount: u64,
 }
 
-
 ////////////////////////////////////////
 // ABI method declarations
 ////////////////////////////////////////
@@ -42,13 +39,11 @@ abi Token {
     #[storage(read, write)]
     fn mint(receiver: Address, amount: u64);
 
-
     // Sends an amount of an existing token.
     // Can be called from any address.
     #[storage(read, write)]
     fn send(receiver: Address, amount: u64);
 }
-
 
 ////////////////////////////////////////
 // Constants
@@ -56,16 +51,13 @@ abi Token {
 /// Address of contract creator.
 const MINTER: b256 = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
 
-
 ////////////////////////////////////////
 // Contract storage
 ////////////////////////////////////////
-
 // Contract storage persists across transactions.
 storage {
     balances: StorageMap<Address, u64> = StorageMap {},
 }
-
 
 ////////////////////////////////////////
 // ABI definitions
@@ -87,7 +79,6 @@ impl Token for Contract {
             },
         };
 
-
         // Increase the balance of receiver
         storage.balances.insert(receiver, storage.balances.get(receiver) + amount)
     }
@@ -106,12 +97,10 @@ impl Token for Contract {
             },
         };
 
-
         // Reduce the balance of sender
         let sender_amount = storage.balances.get(sender);
         assert(sender_amount > amount);
         storage.balances.insert(sender, sender_amount - amount);
-
 
         // Increase the balance of receiver
         storage.balances.insert(receiver, storage.balances.get(receiver) + amount);

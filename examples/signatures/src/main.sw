@@ -14,10 +14,8 @@ fn main() {
     let lo = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
     let signature: B512 = ~B512::from(hi, lo);
 
-
     // A recovered public key pair.
     let public_key = ec_recover(signature, MSG_HASH);
-
 
     // A recovered Fuel address.
     let result_address: Result<Address, EcRecoverError> = ec_recover_address(signature, MSG_HASH);

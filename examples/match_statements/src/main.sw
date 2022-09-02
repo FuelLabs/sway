@@ -4,7 +4,6 @@ fn foo() {}
     // do something
 fn bar() {}
 
-
     // do something
 enum SomeEnum {
     A: u64,
@@ -14,7 +13,6 @@ enum SomeEnum {
 
 fn main() -> u64 {
     let x = 5;
-
 
     // Match as an expression.
     let a = match 8 {
@@ -32,7 +30,6 @@ fn main() -> u64 {
         },
     };
 
-
     // Match as a statement for control flow.
     match x {
         5 => {
@@ -42,7 +39,6 @@ fn main() -> u64 {
             bar()
         },
     };
-
 
     // Match an enum
     let e = SomeEnum::A(42);
@@ -60,7 +56,6 @@ fn main() -> u64 {
             0
         },
     };
-
 
     // Match as expression used for a return.
     match 42 {

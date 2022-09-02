@@ -16,7 +16,6 @@ storage {
     // ANCHOR: storage_vec_decl
     v: StorageVec<u64> = StorageVec {},
     // ANCHOR_END: storage_vec_decl
-
     // ANCHOR: storage_vec_multiple_types_decl
     row: StorageVec<TableCell> = StorageVec {},
     // ANCHOR_END: storage_vec_multiple_types_decl
@@ -43,7 +42,6 @@ impl StorageVecContract for Contract {
         storage.v.push(8);
     }
     // ANCHOR_END: storage_vec_push
-
     // ANCHOR: storage_vec_get
     #[storage(read)]
     fn read_from_storage_vec() {
@@ -58,7 +56,6 @@ impl StorageVecContract for Contract {
         }
     }
     // ANCHOR_END: storage_vec_get
-
     // ANCHOR: storage_vec_iterate
     #[storage(read)]
     fn iterate_over_a_storage_vec() {
@@ -69,7 +66,6 @@ impl StorageVecContract for Contract {
         }
     }
     // ANCHOR_END: storage_vec_iterate
-
     // ANCHOR: storage_vec_multiple_types_fn
     #[storage(read, write)]
     fn push_to_multiple_types_storage_vec() {

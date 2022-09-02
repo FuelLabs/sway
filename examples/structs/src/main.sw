@@ -10,10 +10,8 @@ fn hardcoded_instantiation() -> Foo {
         baz: false,
     };
 
-
     // Access and write to "baz"
     foo.baz = true;
-
 
     // Return the struct
     foo
@@ -24,17 +22,14 @@ fn variable_instantiation() -> Foo {
     let number = 42;
     let truthness = false;
 
-
     // Instantiate `foo` as `Foo`
     let mut foo = Foo {
         bar: number,
         baz: truthness,
     };
 
-
     // Access and write to "baz"
     foo.baz = true;
-
 
     // Return the struct
     foo
@@ -45,14 +40,11 @@ fn shorthand_instantiation() -> Foo {
     let bar = 42;
     let baz = false;
 
-
     // Instantiate `foo` as `Foo`
     let mut foo = Foo { bar, baz };
 
-
     // Access and write to "baz"
     foo.baz = true;
-
 
     // Return the struct
     foo

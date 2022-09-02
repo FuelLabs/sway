@@ -36,7 +36,6 @@ impl StorageExample for Contract {
         storage.var2.z = true;
     }
     // ANCHOR_END: storage_write
-
     // ANCHOR: storage_read
     #[storage(read)]
     fn get_something() -> (u64, u64, b256, bool) {

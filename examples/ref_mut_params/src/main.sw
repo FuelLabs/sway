@@ -7,14 +7,12 @@ enum Color {
     Blue: (),
 }
 
-
 // ANCHOR: increment
 fn increment(ref mut num: u32) {
     let prev = num;
     num = prev + 1u32;
 }
 // ANCHOR_END: increment
-
 // ANCHOR: tuple_and_enum
 fn swap_tuple(ref mut pair: (u64, u64)) {
     let temp = pair.0;
@@ -26,7 +24,6 @@ fn update_color(ref mut color: Color, new_color: Color) {
     color = new_color;
 }
 // ANCHOR_END: tuple_and_enum
-
 // ANCHOR: move_right
 struct Coordinates {
     x: u64,
@@ -45,7 +42,6 @@ fn main() {
     increment(num);
     assert(num == 1u32); // The function `increment()` modifies `num`
     // ANCHOR_END: call_increment
-
     // ANCHOR: call_tuple_and_enum
     let mut tuple = (42, 24);
     swap_tuple(tuple);
@@ -62,7 +58,6 @@ fn main() {
         }
     }); // The function `update_color()` modifies the color to Blue
     // ANCHOR_END: call_tuple_and_enum
-
     // ANCHOR: call_move_right
     let mut point = Coordinates { x: 1, y: 1 };
     point.move_right(5);
