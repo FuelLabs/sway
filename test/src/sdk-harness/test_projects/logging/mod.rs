@@ -18,7 +18,6 @@ async fn run_valid() {
         gas_price: 0,
         gas_limit: ConsensusParameters::DEFAULT.max_gas_per_tx,
         maturity: 0,
-        byte_price: 0,
         receipts_root: Default::default(),
         script: bin.unwrap(),
         script_data: vec![],

@@ -1,28 +1,44 @@
-[
-  {
-    "inputs": [],
-    "name": "main",
-    "outputs": [
-      {
-        "components": [
-          {
-            "components": null,
-            "name": "field_1",
-            "type": "u64",
-            "typeArguments": null
-          },
-          {
-            "components": null,
-            "name": "field_2",
-            "type": "b256",
-            "typeArguments": null
-          }
-        ],
+{
+  "functions": [
+    {
+      "inputs": [],
+      "name": "main",
+      "output": {
         "name": "",
-        "type": "struct BiggerThanAWord",
+        "type": 1,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  }
-]
+    }
+  ],
+  "types": [
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "field_1",
+          "type": 2,
+          "typeArguments": null
+        },
+        {
+          "name": "field_2",
+          "type": 0,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct BiggerThanAWord",
+      "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 2,
+      "typeParameters": null
+    }
+  ]
+}

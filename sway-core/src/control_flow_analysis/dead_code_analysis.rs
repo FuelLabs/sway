@@ -1,5 +1,6 @@
 use super::*;
 use crate::{
+    declaration_engine::declaration_engine::de_get_storage,
     parse_tree::{CallPath, Visibility},
     semantic_analysis::{
         ast_node::{
@@ -374,8 +375,9 @@ fn connect_declaration(
             connect_impl_trait(trait_name, graph, methods, entry_node, tree_type)?;
             Ok(leaves.to_vec())
         }
-        StorageDeclaration(storage) => {
-            connect_storage_declaration(storage, graph, entry_node, tree_type);
+        StorageDeclaration(decl_id) => {
+            let storage = de_get_storage(decl_id.clone(), &span)?;
+            connect_storage_declaration(&storage, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
         ErrorRecovery | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),

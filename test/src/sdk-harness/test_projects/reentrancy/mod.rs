@@ -1,15 +1,14 @@
 use fuels::prelude::*;
-use fuels::signers::wallet::Wallet;
 use fuels::tx::ContractId;
 
 abigen!(
     AttackerContract,
-    "test_artifacts/reentrancy_attacker_contract/out/debug/reentrancy_attacker_contract-abi.json",
+    "test_artifacts/reentrancy_attacker_contract/out/debug/reentrancy_attacker_contract-flat-abi.json",
 );
 
 abigen!(
     TargetContract,
-    "test_artifacts/reentrancy_target_contract/out/debug/reentrancy_target_contract-abi.json",
+    "test_artifacts/reentrancy_target_contract/out/debug/reentrancy_target_contract-flat-abi.json",
 );
 
 #[tokio::test]
@@ -74,7 +73,7 @@ async fn can_call_guarded_function() {
     assert_eq!(result.value, true)
 }
 
-async fn get_attacker_instance(wallet: Wallet) -> (AttackerContract, ContractId) {
+async fn get_attacker_instance(wallet: WalletUnlocked) -> (AttackerContract, ContractId) {
     let id = Contract::deploy(
         "test_artifacts/reentrancy_attacker_contract/out/debug/reentrancy_attacker_contract.bin",
         &wallet,
@@ -93,7 +92,7 @@ async fn get_attacker_instance(wallet: Wallet) -> (AttackerContract, ContractId)
     (instance, id.into())
 }
 
-async fn get_target_instance(wallet: Wallet) -> (TargetContract, ContractId) {
+async fn get_target_instance(wallet: WalletUnlocked) -> (TargetContract, ContractId) {
     let id = Contract::deploy(
         "test_artifacts/reentrancy_target_contract/out/debug/reentrancy_target_contract.bin",
         &wallet,
