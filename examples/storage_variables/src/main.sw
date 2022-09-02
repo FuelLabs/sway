@@ -1,6 +1,5 @@
 contract;
 
-
 // ANCHOR: storage_declaration
 struct Type1 {
     x: u64,

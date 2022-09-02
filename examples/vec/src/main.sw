@@ -1,6 +1,5 @@
 script;
 
-
 // ANCHOR: vec_import
 use std::vec::Vec;
 // ANCHOR_END: vec_import

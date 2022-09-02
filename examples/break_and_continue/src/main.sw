@@ -1,6 +1,5 @@
 script;
 
-
 // ANCHOR: break_example
 fn break_example() -> u64 {
     let mut counter = 1;
