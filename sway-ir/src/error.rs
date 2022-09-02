@@ -56,6 +56,7 @@ pub enum IrError {
     VerifyUntypedValuePassedToFunction,
     VerifyInvalidGtfIndexType,
     VerifyLogId,
+    VerifyMismatchedLoggedTypes,
 }
 
 impl std::error::Error for IrError {}
@@ -295,6 +296,12 @@ impl fmt::Display for IrError {
             ),
             IrError::VerifyLogId => {
                 write!(f, "Verification failed: log ID must be an integer.")
+            }
+            IrError::VerifyMismatchedLoggedTypes => {
+                write!(
+                    f,
+                    "Verification failed: log type must match the type of the value being logged."
+                )
             }
         }
     }

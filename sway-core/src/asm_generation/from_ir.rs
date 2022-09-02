@@ -589,9 +589,11 @@ impl<'ir> AsmBuilder<'ir> {
                     warnings,
                     errors
                 ),
-                Instruction::Log { log_val, log_id } => {
-                    self.compile_log(instr_val, log_val, log_id)
-                }
+                Instruction::Log {
+                    log_val,
+                    log_ty,
+                    log_id,
+                } => self.compile_log(instr_val, log_val, log_ty, log_id),
                 Instruction::Nop => (),
                 Instruction::Phi(_) => (), // Managing the phi value is done in br and cbr compilation.
                 Instruction::ReadRegister(reg) => self.compile_read_register(instr_val, reg),
@@ -1535,14 +1537,12 @@ impl<'ir> AsmBuilder<'ir> {
         ok((), Vec::new(), Vec::new())
     }
 
-    fn compile_log(&mut self, instr_val: &Value, log_val: &Value, log_id: &Value) {
+    fn compile_log(&mut self, instr_val: &Value, log_val: &Value, log_ty: &Type, log_id: &Value) {
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
         let log_val_reg = self.value_to_register(log_val);
         let log_id_reg = self.value_to_register(log_id);
 
-        let log_val_type = log_val.get_type(self.context).unwrap();
-
-        if log_val_type.is_copy_type() {
+        if log_ty.is_copy_type() {
             self.bytecode.push(Op {
                 owning_span,
                 opcode: Either::Left(VirtualOp::LOG(
@@ -1558,7 +1558,7 @@ impl<'ir> AsmBuilder<'ir> {
             // size into the data section, then add a LW to get it, then add a LOGD which uses
             // it.
             let size_reg = self.reg_seqr.next();
-            let size_in_bytes = ir_type_size_in_bytes(self.context, &log_val_type);
+            let size_in_bytes = ir_type_size_in_bytes(self.context, &log_ty);
             let size_data_id = self
                 .data_section
                 .insert_data_value(&Literal::U64(size_in_bytes));

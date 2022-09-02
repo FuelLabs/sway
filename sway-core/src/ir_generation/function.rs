@@ -617,14 +617,22 @@ impl FnCompiler {
                     &Literal::U64(*arguments[0].return_type as u64),
                 );
 
-                let span_md_idx = md_mgr.span_to_md(context, &span);
+                match log_val.get_stripped_ptr_type(context) {
+                    None => Err(CompileError::Internal(
+                        "Unable to determine type for return statement expression.",
+                        span,
+                    )),
+                    Some(log_ty) => {
+                        let span_md_idx = md_mgr.span_to_md(context, &span);
 
-                // The `log` instruction
-                Ok(self
-                    .current_block
-                    .ins(context)
-                    .log(log_val, log_id)
-                    .add_metadatum(context, span_md_idx))
+                        // The `log` instruction
+                        Ok(self
+                            .current_block
+                            .ins(context)
+                            .log(log_val, log_ty, log_id)
+                            .add_metadatum(context, span_md_idx))
+                    }
+                }
             }
         }
     }
