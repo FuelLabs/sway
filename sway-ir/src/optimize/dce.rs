@@ -81,6 +81,7 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
             } => vec![*aggregate, *value],
             Instruction::IntToPtr(v, _) => vec![*v],
             Instruction::Load(v) => vec![*v],
+            Instruction::Log { log_val, log_id } => vec![*log_val, *log_id],
             Instruction::Nop => vec![],
             Instruction::Phi(ins) => ins.iter().map(|v| v.1).collect(),
             Instruction::ReadRegister(_) => vec![],

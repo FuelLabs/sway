@@ -553,6 +553,9 @@ impl<'ir> AsmBuilder<'ir> {
                     warnings,
                     errors
                 ),
+                Instruction::Log { log_val, log_id } => {
+                    self.compile_log(instr_val, log_val, log_id)
+                }
                 Instruction::Nop => (),
                 Instruction::Phi(_) => (), // Managing the phi value is done in br and cbr compilation.
                 Instruction::ReadRegister(reg) => self.compile_read_register(instr_val, reg),
@@ -1495,6 +1498,8 @@ impl<'ir> AsmBuilder<'ir> {
         self.reg_map.insert(*instr_val, instr_reg);
         ok((), Vec::new(), Vec::new())
     }
+
+    fn compile_log(&mut self, instr_val: &Value, log_val: &Value, log_id: &Value) {}
 
     fn compile_read_register(&mut self, instr_val: &Value, reg: &sway_ir::Register) {
         let instr_reg = self.reg_seqr.next();

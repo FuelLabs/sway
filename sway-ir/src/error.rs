@@ -55,6 +55,7 @@ pub enum IrError {
     VerifyStoreToNonPointer,
     VerifyUntypedValuePassedToFunction,
     VerifyInvalidGtfIndexType,
+    VerifyLogId,
 }
 
 impl std::error::Error for IrError {}
@@ -292,6 +293,9 @@ impl fmt::Display for IrError {
                 f,
                 "Verification failed: An non-integer value has been passed to a 'gtf' instruction."
             ),
+            IrError::VerifyLogId => {
+                write!(f, "Verification failed: log ID must be an integer.")
+            }
         }
     }
 }

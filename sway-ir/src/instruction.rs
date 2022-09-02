@@ -91,6 +91,11 @@ pub enum Instruction {
     IntToPtr(Value, Type),
     /// Read a value from a memory pointer.
     Load(Value),
+    /// Logs a value along with an identifier.
+    Log {
+        log_val: Value,
+        log_id: Value,
+    },
     /// No-op, handy as a placeholder instruction.
     Nop,
     /// Choose a value from a list depending on the preceding block.
@@ -191,6 +196,7 @@ impl Instruction {
                     ins.get_type(context).map(|f| f.strip_ptr_type(context))
                 }
             },
+            Instruction::Log { .. } => Some(Type::Unit),
             Instruction::ReadRegister(_) => Some(Type::Uint(64)),
             Instruction::StateLoadWord(_) => Some(Type::Uint(64)),
             Instruction::Phi(alts) => {
@@ -317,6 +323,10 @@ impl Instruction {
             Instruction::Gtf { index, .. } => replace(index),
             Instruction::IntToPtr(value, _) => replace(value),
             Instruction::Load(_) => (),
+            Instruction::Log { log_val, log_id } => {
+                replace(log_val);
+                replace(log_id);
+            }
             Instruction::Nop => (),
             Instruction::Phi(pairs) => pairs.iter_mut().for_each(|(_, val)| replace(val)),
             Instruction::ReadRegister { .. } => (),
@@ -652,6 +662,12 @@ impl<'a> InstructionInserter<'a> {
             .instructions
             .push(load_val);
         load_val
+    }
+
+    pub fn log(self, log_val: Value, log_id: Value) -> Value {
+        let log_val = Value::new_instruction(self.context, Instruction::Log { log_val, log_id });
+        self.context.blocks[self.block.0].instructions.push(log_val);
+        log_val
     }
 
     pub fn nop(self) -> Value {
