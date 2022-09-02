@@ -41,7 +41,7 @@ pub enum Output {
 
 /// Get the type of an output at `index`.
 pub fn output_type(index: u64) -> Output {
-    let type = __gtf::<u64>(index, GTF_OUTPUT_TYPE);
+    let type = __gtf::<u8>(index, GTF_OUTPUT_TYPE);
     match type {
         0u8 => {
             Output::Coin
@@ -80,14 +80,14 @@ pub fn output_pointer(index: u64) -> u64 {
 
 /// Get the transaction outputs count for either tx type
 /// (transaction-script or transaction-create).
-pub fn output_count() -> u64 {
+pub fn output_count() -> u8 {
     let type = tx_type();
     match type {
         Transaction::Script => {
-            __gtf::<u64>(0, GTF_SCRIPT_OUTPUTS_COUNT)
+            __gtf::<u8>(0, GTF_SCRIPT_OUTPUTS_COUNT)
         },
         Transaction::Create => {
-            __gtf::<u64>(0, GTF_CREATE_OUTPUTS_COUNT)
+            __gtf::<u8>(0, GTF_CREATE_OUTPUTS_COUNT)
         },
     }
 }

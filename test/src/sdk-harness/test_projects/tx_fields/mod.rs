@@ -141,6 +141,50 @@ async fn can_get_witnesses_count() {
 }
 
 #[tokio::test]
+async fn can_get_witness_pointer() {
+    let (contract_instance, _, _) = get_contracts().await;
+
+    let result = contract_instance
+        .get_tx_witness_pointer(0)
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(result.value, 10960);
+}
+
+#[tokio::test]
+async fn can_get_witness_data_length() {
+    let (contract_instance, _, _) = get_contracts().await;
+
+    let result = contract_instance
+        .get_tx_witness_data_length(0)
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(result.value, 64);
+}
+
+#[tokio::test]
+#[ignore]
+async fn can_get_witness_data() {
+    let (contract_instance, _, _) = get_contracts().await;
+
+    let call_handler = contract_instance.get_tx_witness_data(0);
+    let script = call_handler.get_call_execution_script().await.unwrap();
+    let witnesses = script.tx.witnesses();
+
+    let result = contract_instance
+        .get_tx_witness_data(0)
+        .call()
+        .await
+        .unwrap();
+
+    let inner = result.value.bytes;
+
+    // assert_eq!(inner, witnesses[0].into_inner())
+}
+
+#[tokio::test]
 async fn can_get_receipts_root() {
     let (contract_instance, _, _) = get_contracts().await;
     let zero_receipts_root =
@@ -182,19 +226,39 @@ async fn can_get_input_type() {
     assert_eq!(result.value, Input::Coin());
 }
 
-// TODO: Add tests for getting InputMessage owner, type when InputMessages land.
+#[tokio::test]
+async fn can_get_tx_input_amount() {
+    let (contract_instance, _, _) = get_contracts().await;
+    let result = contract_instance.get_tx_input_amount(1).call().await.unwrap();
+
+    assert_eq!(result.value, 1000000000);
+}
+
 #[tokio::test]
 async fn can_get_tx_input_coin_owner() {
     let (contract_instance, _, wallet) = get_contracts().await;
 
     let owner_result = contract_instance
-        // @review "InputNotFound" !
         .get_tx_input_coin_owner(1)
         .call()
         .await
         .unwrap();
 
     assert_eq!(owner_result.value, wallet.address().into());
+}
+
+#[tokio::test]
+#[should_panic(expected = "Revert(0)")]
+async fn can_handle_no_input_predicate_data_pointer() {
+    let (contract_instance, _, _) = get_contracts().await;
+    let call_params = CallParameters::default();
+    let result = contract_instance
+        .get_tx_input_predicate_data_pointer(0)
+        .call_params(call_params)
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(result.value, 7);
 }
 
 #[tokio::test]
@@ -216,6 +280,20 @@ async fn can_get_tx_output_type() {
 }
 
 #[tokio::test]
+async fn can_get_tx_output_amount() {
+    let (contract_instance, _, _) = get_contracts().await;
+    let result = contract_instance.get_tx_output_amount(1).call().await.unwrap();
+    assert_eq!(result.value, 0);
+}
+
+#[tokio::test]
+#[should_panic(expected = "Revert(0)")]
+async fn can_handle_no_tx_output_amount_for_output_contract() {
+    let (contract_instance, _, _) = get_contracts().await;
+    let _result = contract_instance.get_tx_output_amount(0).call().await.unwrap();
+}
+
+#[tokio::test]
 async fn can_get_tx_id() {
     let (contract_instance, _, _) = get_contracts().await;
 
@@ -228,4 +306,12 @@ async fn can_get_tx_id() {
     let byte_array: [u8; 32] = tx_id.into();
 
     assert_eq!(result.value, byte_array);
+}
+
+#[tokio::test]
+async fn can_get_get_tx_script_data_start_pointer() {
+    let (contract_instance, _, _) = get_contracts().await;
+    let result = contract_instance.get_tx_script_data_start_pointer().call().await.unwrap();
+    assert_eq!(result.value, 10376)
+
 }

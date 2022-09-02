@@ -2,6 +2,7 @@
 library tx;
 
 use ::address::Address;
+use ::b512::B512;
 use ::mem::read;
 use ::option::Option;
 use ::revert::revert;
@@ -170,8 +171,8 @@ pub fn tx_witness_data_length(index: u64) -> u64 {
 }
 
 // Get the witness data at `index`.
-pub fn tx_witness_data<T>(index: u64) -> T {
-    read::<T>(__gtf::<u64>(index, GTF_WITNESS_DATA))
+pub fn tx_witness_data(index: u64) -> B512 {
+    read::<B512>(__gtf::<u64>(index, GTF_WITNESS_DATA))
 }
 
 /// Get the transaction receipts root.
