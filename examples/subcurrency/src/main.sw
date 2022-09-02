@@ -1,5 +1,5 @@
-// ANCHOR: body
 contract;
+
 use std::{
     address::Address,
     assert::assert,
@@ -14,6 +14,7 @@ use std::{
     revert::revert,
     storage::StorageMap,
 };
+
 ////////////////////////////////////////
 // Event declarations
 ////////////////////////////////////////
@@ -27,6 +28,7 @@ struct Sent {
     to: Address,
     amount: u64,
 }
+
 ////////////////////////////////////////
 // ABI method declarations
 ////////////////////////////////////////
@@ -36,16 +38,19 @@ abi Token {
     // Can only be called by the contract creator.
     #[storage(read, write)]
     fn mint(receiver: Address, amount: u64);
+
     // Sends an amount of an existing token.
     // Can be called from any address.
     #[storage(read, write)]
     fn send(receiver: Address, amount: u64);
 }
+
 ////////////////////////////////////////
 // Constants
 ////////////////////////////////////////
 /// Address of contract creator.
 const MINTER: b256 = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
+
 ////////////////////////////////////////
 // Contract storage
 ////////////////////////////////////////
@@ -53,6 +58,7 @@ const MINTER: b256 = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7e
 storage {
     balances: StorageMap<Address, u64> = StorageMap {},
 }
+
 ////////////////////////////////////////
 // ABI definitions
 ////////////////////////////////////////
@@ -72,9 +78,11 @@ impl Token for Contract {
                 revert(0);
             },
         };
+
         // Increase the balance of receiver
         storage.balances.insert(receiver, storage.balances.get(receiver) + amount)
     }
+
     #[storage(read, write)]
     fn send(receiver: Address, amount: u64) {
         // Note: The return type of `msg_sender()` can be inferred by the
@@ -88,12 +96,15 @@ impl Token for Contract {
                 revert(0);
             },
         };
+
         // Reduce the balance of sender
         let sender_amount = storage.balances.get(sender);
         assert(sender_amount > amount);
         storage.balances.insert(sender, sender_amount - amount);
+
         // Increase the balance of receiver
         storage.balances.insert(receiver, storage.balances.get(receiver) + amount);
+
         log(Sent {
             from: sender,
             to: receiver,
