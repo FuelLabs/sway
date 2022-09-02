@@ -155,7 +155,7 @@ impl Default for ExprKind {
 
 /// The current shape of the formatter.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
-pub(crate) struct Shape {
+pub struct Shape {
     /// The current number of characters in the given code line.
     pub(crate) width: usize,
     /// The current indentation of code.
