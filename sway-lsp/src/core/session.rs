@@ -20,8 +20,8 @@ use std::{
     sync::{Arc, LockResult, RwLock},
 };
 use sway_core::{CompileAstResult, CompileResult, ParseProgram, TypedProgram, TypedProgramKind};
-use sway_fmt::Formatter;
 use sway_types::{Ident, Spanned};
+use swayfmt::Formatter;
 use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, GotoDefinitionParams, GotoDefinitionResponse, Location, Position,
     Range, SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,

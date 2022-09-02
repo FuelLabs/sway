@@ -13,7 +13,7 @@ members = [
     "scripts/mdbook-forc-documenter",
     "sway-ast",
     "sway-core",
-    "sway-fmt",
+    "swayfmt",
     "sway-ir",
     "sway-lsp",
     "sway-parse",

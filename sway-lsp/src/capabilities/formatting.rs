@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use sway_fmt::Formatter;
+use swayfmt::Formatter;
 use tower_lsp::lsp_types::{Position, Range, TextEdit};
 
 pub fn get_format_text_edits(text: Arc<str>, formatter: &mut Formatter) -> Option<Vec<TextEdit>> {

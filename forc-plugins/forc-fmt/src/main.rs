@@ -14,8 +14,8 @@ use tracing::{error, info};
 
 use forc_util::{find_manifest_dir, init_tracing_subscriber, println_green, println_red};
 use sway_core::BuildConfig;
-use sway_fmt::Formatter;
 use sway_utils::{constants, get_sway_files};
+use swayfmt::Formatter;
 
 #[derive(Debug, Parser)]
 #[clap(

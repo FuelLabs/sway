@@ -1501,8 +1501,8 @@ dependencies = [
  "forc-util",
  "prettydiff 0.5.1",
  "sway-core",
- "sway-fmt",
  "sway-utils",
+ "swayfmt",
  "taplo",
  "tracing",
 ]
@@ -4156,25 +4156,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sway-fmt"
-version = "0.22.1"
-dependencies = [
- "anyhow",
- "forc-util",
- "paste",
- "prettydiff 0.6.1",
- "ropey",
- "serde",
- "serde_ignored",
- "sway-ast",
- "sway-core",
- "sway-parse",
- "sway-types",
- "thiserror",
- "toml",
-]
-
-[[package]]
 name = "sway-ir"
 version = "0.22.1"
 dependencies = [
@@ -4198,9 +4179,9 @@ dependencies = [
  "serde",
  "serde_json",
  "sway-core",
- "sway-fmt",
  "sway-types",
  "sway-utils",
+ "swayfmt",
  "tokio",
  "tower",
  "tower-lsp",
@@ -4236,6 +4217,25 @@ dependencies = [
 [[package]]
 name = "sway-utils"
 version = "0.22.1"
+
+[[package]]
+name = "swayfmt"
+version = "0.22.1"
+dependencies = [
+ "anyhow",
+ "forc-util",
+ "paste",
+ "prettydiff 0.6.1",
+ "ropey",
+ "serde",
+ "serde_ignored",
+ "sway-ast",
+ "sway-core",
+ "sway-parse",
+ "sway-types",
+ "thiserror",
+ "toml",
+]
 
 [[package]]
 name = "syn"

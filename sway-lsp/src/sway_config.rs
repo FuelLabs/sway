@@ -1,5 +1,5 @@
 use serde_json::Value;
-use sway_fmt::{
+use swayfmt::{
     config::{
         manifest::Config,
         user_def::{FieldAlignment, Structures},
