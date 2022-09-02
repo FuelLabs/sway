@@ -201,14 +201,16 @@ impl TypedProgram {
                 }
             }
         };
-        // check if no arguments passed to a `main()` in a `script` or `predicate`.
+        // check if no ref mut arguments passed to a `main()` in a `script` or `predicate`.
         match &typed_program_kind {
             TypedProgramKind::Script { main_function, .. }
             | TypedProgramKind::Predicate { main_function, .. } => {
-                if !main_function.parameters.is_empty() {
-                    errors.push(CompileError::MainArgsNotYetSupported {
-                        span: main_function.span.clone(),
-                    })
+                for param in &main_function.parameters {
+                    if param.is_reference && param.is_mutable {
+                        errors.push(CompileError::RefMutableNotAllowedInMain {
+                            param_name: param.name.clone(),
+                        })
+                    }
                 }
             }
             _ => (),
@@ -335,7 +337,8 @@ impl TypedProgram {
                     logged_types,
                 }
             }
-            TypedProgramKind::Script { main_function, .. } => {
+            TypedProgramKind::Script { main_function, .. }
+            | TypedProgramKind::Predicate { main_function, .. } => {
                 let functions = vec![main_function.generate_json_abi_function(types)];
                 let logged_types = self.generate_json_logged_types(types);
                 JsonABIProgram {
