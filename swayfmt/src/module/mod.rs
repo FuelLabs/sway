@@ -1,6 +1,6 @@
 use crate::{
     formatter::*,
-    utils::map::byte_span::{ByteSpan, LeafSpans},
+    utils::map::byte_span::{self, ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
 use sway_ast::{Module, ModuleKind};
@@ -65,7 +65,8 @@ impl Format for ModuleKind {
 
 impl LeafSpans for Module {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
-        let mut collected_spans = self.kind.leaf_spans();
+        let mut collected_spans = vec![byte_span::STARTING_BYTE_SPAN];
+        collected_spans.append(&mut self.kind.leaf_spans());
         collected_spans.push(ByteSpan::from(self.semicolon_token.span()));
         collected_spans.append(&mut self.dependencies.leaf_spans());
         collected_spans.append(&mut self.items.leaf_spans());
