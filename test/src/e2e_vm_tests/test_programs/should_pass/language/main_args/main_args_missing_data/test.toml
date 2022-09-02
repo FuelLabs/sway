@@ -1,4 +1,0 @@
-category = "run"
-script_data = "0000000000000538" # (1336, ())
-expected_result = { action = "revert", value = 0 }
-validate_abi = true

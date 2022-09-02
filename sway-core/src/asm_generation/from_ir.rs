@@ -18,8 +18,8 @@ use crate::{
         AbstractInstructionSet, DataId, DataSection, SwayAsmSet,
     },
     asm_lang::{
-        virtual_register::*, Label, Op, OrganizationalOp, VirtualImmediate12, VirtualImmediate18,
-        VirtualImmediate24, VirtualOp,
+        virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24,
+        VirtualOp,
     },
     error::*,
     metadata::MetadataManager,
@@ -254,7 +254,7 @@ impl<'ir> AsmBuilder<'ir> {
                 if is_contract_method {
                     self.read_args_value_from_frame(&single_arg_reg);
                 } else {
-                    self.read_args_value_from_script_data(&function, &single_arg_reg);
+                    self.read_args_value_from_script_data(&single_arg_reg);
 
                     if val.get_type(self.context).unwrap().is_copy_type() {
                         self.bytecode.push(Op {
@@ -277,7 +277,7 @@ impl<'ir> AsmBuilder<'ir> {
                 if is_contract_method {
                     self.read_args_value_from_frame(&args_base_reg);
                 } else {
-                    self.read_args_value_from_script_data(&function, &args_base_reg);
+                    self.read_args_value_from_script_data(&args_base_reg);
                 }
 
                 // Successively load each argument. The asm generated depends on the arg type size
@@ -368,63 +368,7 @@ impl<'ir> AsmBuilder<'ir> {
     }
 
     // Read the argument(s) base from the script data.
-    fn read_args_value_from_script_data(&mut self, function: &Function, reg: &VirtualRegister) {
-        // Check if enough data was sent.
-        let data_len_reg = self.reg_seqr.next();
-        self.bytecode.push(Op {
-            opcode: either::Either::Left(VirtualOp::GTF(
-                data_len_reg.clone(),
-                VirtualRegister::Constant(ConstantRegister::Zero),
-                VirtualImmediate12 {
-                    value: GTFArgs::ScriptDataLength as u16,
-                },
-            )),
-            comment: "Get length of script data".into(),
-            owning_span: None,
-        });
-        let expected_data_len = function.args_iter(self.context).fold(0, |acc, arg| {
-            acc + ir_type_size_in_bytes(self.context, &arg.1.get_type(self.context).unwrap())
-        });
-        let expected_data_len_reg = self.reg_seqr.next();
-        self.bytecode.push(Op {
-            opcode: Either::Left(VirtualOp::MOVI(
-                expected_data_len_reg.clone(),
-                VirtualImmediate18 {
-                    value: expected_data_len as u32,
-                },
-            )),
-            comment: "Get expected length".into(),
-            owning_span: None,
-        });
-        let cmp_result_reg = self.reg_seqr.next();
-        self.bytecode.push(Op {
-            opcode: Either::Left(VirtualOp::LT(
-                cmp_result_reg.clone(),
-                data_len_reg,
-                expected_data_len_reg,
-            )),
-            comment: "Compare lengths".into(),
-            owning_span: None,
-        });
-        let label = self.reg_seqr.get_label();
-        self.bytecode.push(Op {
-            opcode: Either::Right(OrganizationalOp::JumpIfNotEq(
-                cmp_result_reg,
-                VirtualRegister::Constant(ConstantRegister::One),
-                label.clone(),
-            )),
-            comment: "Jump past revert if we have enough data".into(),
-            owning_span: None,
-        });
-        self.bytecode.push(Op {
-            opcode: Either::Left(VirtualOp::RVRT(VirtualRegister::Constant(
-                ConstantRegister::Zero,
-            ))),
-            comment: "Revert if not enough data was provided".into(),
-            owning_span: None,
-        });
-        self.bytecode.push(Op::unowned_jump_label(label));
-
+    fn read_args_value_from_script_data(&mut self, reg: &VirtualRegister) {
         self.bytecode.push(Op {
             opcode: either::Either::Left(VirtualOp::GTF(
                 reg.clone(),
