@@ -6,9 +6,9 @@ Forc plugin for interacting with a Fuel node.
 
 To submit the transactions created by `forc deploy` or `forc run`, you need to sign them first (unless you are using a client without utxo validation). To sign a transaction you can use `forc-wallet` CLI. This section is going to walk you through the whole signing process.
 
-To install `forc-wallet` please refer to `forc-wallet`'s [github repo](https://github.com/FuelLabs/forc-wallet).
+To install `forc-wallet` please refer to `forc-wallet`'s [github repo](https://github.com/FuelLabs/forc-wallet#forc-wallet).
 
-1. Construct the transaction by using either `forc deploy` or `forc run`. To do so simply run `forc deploy` or `forc run` with desired parameters. For a list of parameters please refer to [forc-deploy](./forc_deploy) or [forc-run](./forc_run) section of the book. Once you run any of them, you will be asked the address of the wallet you are going to be signing with. After the address is given the transaction will be generated and you will be given a transaction ID. At this point CLI will actively wait for you to insert the signature.
+1. Construct the transaction by using either `forc deploy` or `forc run`. To do so simply run `forc deploy` or `forc run` with your desired parameters. For a list of parameters please refer to [forc-deploy](./forc_deploy) or [forc-run](./forc_run) section of the book. Once you run any of them, you will be asked the address of the wallet you are going to be signing with. After the address is given the transaction will be generated and you will be given a transaction ID. At this point CLI will actively wait for you to insert the signature.
 2. Take the transaction ID generated in the first step and sign it with `forc wallet sign <transaction_id> <account_index>`. This will generate a signature.
 3. Take the signature generated in the second step and provide it to `forc-deploy` (or `forc-run`). Once the signature is provided, the signed transaction will be submitted.
 
@@ -22,7 +22,7 @@ After you have an initialized wallet, you can create an account for it by simply
 
 ## Other useful commands of `forc-wallet`
 
-1. You can see a list of your already created accounts by running `forc wallet list`.
+1. You can see a list of existing accounts by running `forc wallet list`.
 
 2. If you want to retrieve the address for an account by its index you can use `forc wallet account <account_index>`.
 
