@@ -15,7 +15,7 @@ use crate::{
     metadata::MetadataManager,
     parse_tree::{AsmOp, AsmRegister, LazyOp, Literal},
     semantic_analysis::*,
-    type_system::{look_up_type_id, resolve_type, IntegerBits, TypeId, TypeInfo},
+    type_system::{look_up_type_id, resolve_type, TypeId, TypeInfo},
 };
 use sway_ast::intrinsics::Intrinsic;
 use sway_ir::{Context, *};
@@ -578,11 +578,11 @@ impl FnCompiler {
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
                 let val_ty = resolve_type(val_exp.return_type, &span).unwrap();
-                if val_ty != TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) {
+                if val_ty != TypeInfo::RawUntypedPtr {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,
-                        hint: Hint::new("This argument must be u64".to_string()),
+                        hint: Hint::new("This argument must be raw_ptr".to_string()),
                     });
                 }
                 let key_value = self.compile_expression(context, md_mgr, key_exp)?;
