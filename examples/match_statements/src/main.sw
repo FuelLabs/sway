@@ -1,12 +1,10 @@
 script;
 
-fn foo() {
+fn foo() {}
     // do something
-}
-fn bar() {
-    // do something
-}
+fn bar() {}
 
+    // do something
 enum SomeEnum {
     A: u64,
     B: bool,
