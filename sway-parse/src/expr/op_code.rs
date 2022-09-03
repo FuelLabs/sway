@@ -98,12 +98,6 @@ define_op_codes!(
     (Ecr, EcrOpcode, "ecr", (addr, sig, hash)),
     (K256, K256Opcode, "k256", (addr, data, size)),
     (S256, S256Opcode, "s256", (addr, data, size)),
-    (Xil, XilOpcode, "xil", (ret, input)),
-    (Xis, XisOpcode, "xis", (ret, input)),
-    (Xol, XolOpcode, "xol", (ret, output)),
-    (Xos, XosOpcode, "xos", (ret, output)),
-    (Xwl, XwlOpcode, "xwl", (ret, witness)),
-    (Xws, XwsOpcode, "xws", (ret, witness)),
     (Flag, FlagOpcode, "flag", (value)),
     (Gm, GmOpcode, "gm", (ret, op)),
 );

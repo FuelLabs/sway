@@ -121,7 +121,7 @@ pub(crate) fn type_check_method_application(
     let mut self_state_idx = None;
     if ctx.namespace.has_storage_declared() {
         let storage_fields = check!(
-            ctx.namespace.get_storage_field_descriptors(),
+            ctx.namespace.get_storage_field_descriptors(&span),
             return err(warnings, errors),
             warnings,
             errors

@@ -3,7 +3,7 @@ use super::{
     TypedFunctionDeclaration, TypedImplTrait, TypedStorageDeclaration,
 };
 use crate::{
-    declaration_engine::declaration_engine::DeclarationEngine,
+    declaration_engine::declaration_engine::de_get_storage,
     error::*,
     metadata::MetadataManager,
     parse_tree::{ParseProgram, Purity, TreeType},
@@ -12,18 +12,16 @@ use crate::{
         TypeCheckContext, TypedModule,
     },
     type_system::*,
-    types::ToJsonAbi,
 };
 use fuel_tx::StorageSlot;
 use sway_ir::{Context, Module};
-use sway_types::{span::Span, Ident, JsonABI, JsonABIProgram, JsonTypeDeclaration, Spanned};
+use sway_types::{span::Span, Ident, JsonABIProgram, JsonTypeDeclaration, Spanned};
 
 #[derive(Debug)]
 pub struct TypedProgram {
     pub kind: TypedProgramKind,
     pub root: TypedModule,
     pub storage_slots: Vec<StorageSlot>,
-    pub declaration_engine: DeclarationEngine,
 }
 
 impl TypedProgram {
@@ -34,10 +32,9 @@ impl TypedProgram {
     pub fn type_check(
         parsed: &ParseProgram,
         initial_namespace: namespace::Module,
-        mut declaration_engine: DeclarationEngine,
     ) -> CompileResult<Self> {
         let mut namespace = Namespace::init_root(initial_namespace);
-        let ctx = TypeCheckContext::from_root(&mut namespace, &mut declaration_engine);
+        let ctx = TypeCheckContext::from_root(&mut namespace);
         let ParseProgram { root, kind } = parsed;
         let mod_span = root.tree.span.clone();
         let mod_res = TypedModule::type_check(ctx, root);
@@ -47,7 +44,6 @@ impl TypedProgram {
                 kind,
                 root,
                 storage_slots: vec![],
-                declaration_engine,
             })
         })
     }
@@ -139,14 +135,16 @@ impl TypedProgram {
                 .iter()
                 .find(|decl| matches!(decl, TypedDeclaration::StorageDeclaration(_)));
 
-            if let Some(TypedDeclaration::StorageDeclaration(TypedStorageDeclaration {
-                span,
-                ..
-            })) = storage_decl
-            {
+            if let Some(TypedDeclaration::StorageDeclaration(decl_id)) = storage_decl {
+                let TypedStorageDeclaration { span, .. } = check!(
+                    CompileResult::from(de_get_storage(decl_id.clone(), &decl_id.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
                 errors.push(CompileError::StorageDeclarationInNonContract {
                     program_kind: format!("{kind}"),
-                    span: span.clone(),
+                    span,
                 });
             }
         }
@@ -198,14 +196,16 @@ impl TypedProgram {
                 }
             }
         };
-        // check if no arguments passed to a `main()` in a `script` or `predicate`.
+        // check if no ref mut arguments passed to a `main()` in a `script` or `predicate`.
         match &typed_program_kind {
             TypedProgramKind::Script { main_function, .. }
             | TypedProgramKind::Predicate { main_function, .. } => {
-                if !main_function.parameters.is_empty() {
-                    errors.push(CompileError::MainArgsNotYetSupported {
-                        span: main_function.span.clone(),
-                    })
+                for param in &main_function.parameters {
+                    if param.is_reference && param.is_mutable {
+                        errors.push(CompileError::RefMutableNotAllowedInMain {
+                            param_name: param.name.clone(),
+                        })
+                    }
                 }
             }
             _ => (),
@@ -261,7 +261,6 @@ impl TypedProgram {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let declaration_engine = DeclarationEngine::new();
         match &self.kind {
             TypedProgramKind::Contract { declarations, .. } => {
                 let storage_decl = declarations
@@ -270,7 +269,13 @@ impl TypedProgram {
 
                 // Expecting at most a single storage declaration
                 match storage_decl {
-                    Some(TypedDeclaration::StorageDeclaration(decl)) => {
+                    Some(TypedDeclaration::StorageDeclaration(decl_id)) => {
+                        let decl = check!(
+                            CompileResult::from(de_get_storage(decl_id.clone(), &decl_id.span())),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
                         let mut storage_slots = check!(
                             decl.get_initialized_storage_slots(context, md_mgr, module),
                             return err(warnings, errors),
@@ -285,7 +290,6 @@ impl TypedProgram {
                                 kind: self.kind.clone(),
                                 root: self.root.clone(),
                                 storage_slots,
-                                declaration_engine,
                             },
                             warnings,
                             errors,
@@ -296,7 +300,6 @@ impl TypedProgram {
                             kind: self.kind.clone(),
                             root: self.root.clone(),
                             storage_slots: vec![],
-                            declaration_engine,
                         },
                         warnings,
                         errors,
@@ -308,7 +311,6 @@ impl TypedProgram {
                     kind: self.kind.clone(),
                     root: self.root.clone(),
                     storage_slots: vec![],
-                    declaration_engine,
                 },
                 warnings,
                 errors,
@@ -334,23 +336,6 @@ pub enum TypedProgramKind {
         main_function: TypedFunctionDeclaration,
         declarations: Vec<TypedDeclaration>,
     },
-}
-
-impl ToJsonAbi for TypedProgramKind {
-    type Output = JsonABI;
-
-    // TODO: Update this to match behaviour described in the `compile` doc comment above.
-    fn generate_json_abi(&self) -> Self::Output {
-        match self {
-            TypedProgramKind::Contract { abi_entries, .. } => {
-                abi_entries.iter().map(|x| x.generate_json_abi()).collect()
-            }
-            TypedProgramKind::Script { main_function, .. } => {
-                vec![main_function.generate_json_abi()]
-            }
-            _ => vec![],
-        }
-    }
 }
 
 impl TypedProgramKind {
@@ -379,7 +364,8 @@ impl TypedProgramKind {
                     functions: result,
                 }
             }
-            TypedProgramKind::Script { main_function, .. } => {
+            TypedProgramKind::Script { main_function, .. }
+            | TypedProgramKind::Predicate { main_function, .. } => {
                 let result = vec![main_function.generate_json_abi_function(types)];
                 JsonABIProgram {
                     types: types.to_vec(),
