@@ -4,7 +4,7 @@ Firstly, thank you for taking interest in advancing the Sway language formatter!
 
 ## Installation
 
-> **Note:** If you've previously installed `forc-fmt` via `fuelup`, you will need to remove its binary in order to use the binary compiled from source.
+> **Pre-Installation:** If you've previously installed `forc-fmt` via `fuelup`, you will need to remove its binary in order to use the binary compiled from source.
 
 ```sh
 # find fuelup `forc-fmt` binary
