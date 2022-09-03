@@ -11,15 +11,17 @@ In order to see `swayfmt` in action you will need both `swayfmt` and the [`forc-
 ```sh
 # 1. move to your preferred directory
 #    example: cd ~/Code/
+#
 # 2. clone the Sway repo
 git clone https://github.com/FuelLabs/sway.git
+#
 # 3. build from manifest and move the compiled result to your `.cargo/bin` folder
-cargo build --manifest-path ~/sway/forc-plugins/forc-fmt/Cargo.toml mv ~/sway/target/debug/forc-fmt ~/.cargo/bin
+cargo build --manifest-path ~/sway/forc-plugins/forc-fmt/Cargo.toml && mv ~/sway/target/debug/forc-fmt ~/.cargo/bin
 ```
 
 ### Testing
 
-Move to the `src` folder of your project, and execute the binary:
+Move to a folder of your project containing a `Forc.toml`, and execute the binary:
 
 ```sh
 forc-fmt
