@@ -10,7 +10,7 @@ In order to see `swayfmt` in action you will need both `swayfmt` and the [`forc-
 
 ```sh
 # 1. move to your preferred directory
-cd ~/Code/
+#    example: cd ~/Code/
 # 2. clone the Sway repo
 git clone https://github.com/FuelLabs/sway.git
 # 3. build from manifest and move the compiled result to your `.cargo/bin` folder
