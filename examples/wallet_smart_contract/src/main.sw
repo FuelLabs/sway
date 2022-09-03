@@ -1,3 +1,4 @@
+// ANCHOR: full_wallet
 contract;
 
 use std::{
