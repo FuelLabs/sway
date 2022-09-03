@@ -32,6 +32,16 @@ cargo build --manifest-path ~/sway/forc-plugins/forc-fmt/Cargo.toml && mv ~/sway
 
 ### Testing
 
+> **Testing via Fuelup:**
+
+Move to a folder of your project containing a `Forc.toml`, and run the command:
+
+```sh
+forc fmt
+```
+
+> **Testing from source:**
+
 Move to a folder of your project containing a `Forc.toml`, and execute the binary:
 
 ```sh
