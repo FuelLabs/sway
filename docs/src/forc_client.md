@@ -14,7 +14,9 @@ After you have an initialized wallet, you can create an account for it by simply
 
 To submit the transactions created by `forc deploy` or `forc run`, you need to sign them first (unless you are using a client without UTXO validation). To sign a transaction you can use `forc-wallet` CLI. This section is going to walk you through the whole signing process.
 
-> Disabling the UTXO validation, enables to send invalid inputs to emulate different conditions and by default `fuel-core` runs without UTXO validation. This means while your client is running without UTXO validation, you can run unsigned transactions. If you want to run `fuel-core` with UTXO validation, you can pass `--utxo-validation` to `fuel-core run`. If UTXO valdiation is enabled, unsigned transactions will return an error.
+By default `fuel-core` runs without UTXO validation, which means you can run unsigned transactions. This allows you to send invalid inputs to emulate different conditions.
+
+If you want to run `fuel-core` with UTXO validation, you can pass `--utxo-validation` to `fuel-core run`. If UTXO validation is enabled, unsigned transactions will return an error.
 
 To install `forc-wallet` please refer to `forc-wallet`'s [github repo](https://github.com/FuelLabs/forc-wallet#forc-wallet).
 
