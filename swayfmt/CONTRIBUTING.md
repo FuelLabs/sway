@@ -49,7 +49,7 @@ Be sure that your code compiles before executing the command!
 
 **Pull Requests:**
 
-- Each pull request should be linked to its corresponding issue with either a closing or reference keyword.
+- Each [issue should be linked to its corresponding pull request](https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue) with either a closing or reference keyword.
 - If not enough context is provided by an issue please request a more detailed explanation or look to `rustfmt` as a definitive reference.
 - When taking on a task leave a comment so that a member can assign you. This prevents multiple people from taking on the same work.
 - Before committing changes be sure to run `cargo fmt`, `cargo clippy` and `cargo test` to ensure that CI will not fail. These are the most common to fail, however, all checks must pass and have two approving reviews in order to merge into master.
