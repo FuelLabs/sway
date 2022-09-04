@@ -253,7 +253,7 @@ mod ir_builder {
                 }
 
             rule op_log() -> IrAstOperation
-                = "log" _ log_ty:ast_ty() log_val:id() comma() _ log_id:id() {
+                = "log" _ log_ty:ast_ty() log_val:id() comma() log_id:id() {
                     IrAstOperation::Log(log_ty, log_val, log_id)
                 }
 
