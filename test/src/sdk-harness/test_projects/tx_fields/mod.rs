@@ -165,7 +165,6 @@ async fn can_get_witness_data_length() {
 }
 
 #[tokio::test]
-#[ignore]
 async fn can_get_witness_data() {
     let (contract_instance, _, _) = get_contracts().await;
 
@@ -179,9 +178,11 @@ async fn can_get_witness_data() {
         .await
         .unwrap();
 
-    let inner = result.value.bytes;
+    let mut witness_first = witnesses[0].clone().into_inner();
+    let witness_second = witness_first.split_off(32);
 
-    // assert_eq!(inner, witnesses[0].into_inner())
+    assert_eq!(result.value.bytes[0].to_vec(), witness_first);
+    assert_eq!(result.value.bytes[1].to_vec(), witness_second);
 }
 
 #[tokio::test]
