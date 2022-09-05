@@ -329,3 +329,10 @@ async fn can_get_input_message_sender() {
     let result = contract_instance.get_input_message_sender(0).call().await.unwrap();
     assert_eq!(result.value, Address::from(wallet.address()));
 }
+
+#[tokio::test]
+async fn can_get_input_message_recipient() {
+    let (contract_instance, _, wallet) = get_contracts().await;
+    let result = contract_instance.get_input_message_recipient(0).call().await.unwrap();
+    assert_eq!(result.value, Address::from(wallet.address()));
+}
