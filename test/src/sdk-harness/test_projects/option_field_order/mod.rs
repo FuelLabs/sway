@@ -2,7 +2,7 @@ use fuels::prelude::*;
 
 abigen!(
     MyContract,
-    "test_projects/option_field_order/out/debug/option_field_order-flat-abi.json"
+    "test_projects/option_field_order/out/debug/option_field_order-abi.json"
 );
 
 #[tokio::test]
