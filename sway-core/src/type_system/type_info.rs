@@ -361,7 +361,7 @@ impl TypeInfo {
             SelfType => "Self".into(),
             Byte => "byte".into(),
             B256 => "b256".into(),
-            Numeric => "numeric".into(),
+            Numeric => "u64".into(), // u64 is the default
             Contract => "contract".into(),
             ErrorRecovery => "unknown due to error".into(),
             Enum { name, .. } => {

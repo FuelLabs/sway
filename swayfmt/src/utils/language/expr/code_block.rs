@@ -26,7 +26,6 @@ impl Format for CodeBlockContents {
                         final_expr.format(formatted_code, formatter)?;
                     }
                     write!(formatted_code, " ")?;
-                    println!("Code: {}\n", formatted_code);
                 }
                 _ => {
                     writeln!(formatted_code)?;
