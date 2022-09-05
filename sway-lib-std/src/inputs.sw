@@ -211,13 +211,13 @@ pub fn input_message_data_length(index: u64) -> u16 {
 }
 
 /// Get the predicate length of the input message at `index`.
-pub fn input_message_predicate_length(index: u64) -> u64 {
-    __gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE_LENGTH)
+pub fn input_message_predicate_length(index: u64) -> u16 {
+    __gtf::<u16>(index, GTF_INPUT_MESSAGE_PREDICATE_LENGTH)
 }
 
 /// Get the predicate data length of the input message at `index`.
-pub fn input_message_predicate_data_length(index: u64) -> u64 {
-    __gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH)
+pub fn input_message_predicate_data_length(index: u64) -> u16 {
+    __gtf::<u16>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH)
 }
 
 /// Get the data of the input message at `index`.
