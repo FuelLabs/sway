@@ -144,30 +144,30 @@ impl fmt::Display for TypedDeclaration {
     }
 }
 
-impl UnresolvedTypeCheck for TypedDeclaration {
+impl CollectTypesMetadata for TypedDeclaration {
     // this is only run on entry nodes, which must have all well-formed types
-    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+    fn collect_types_metadata(&self) -> Vec<TypeMetadata> {
         use TypedDeclaration::*;
         match self {
             VariableDeclaration(decl) => {
-                let mut body = decl.body.check_for_unresolved_types();
-                body.append(&mut decl.type_ascription.check_for_unresolved_types());
+                let mut body = decl.body.collect_types_metadata();
+                body.append(&mut decl.type_ascription.collect_types_metadata());
                 body
             }
             FunctionDeclaration(decl) => {
-                let mut body: Vec<CompileError> = decl
+                let mut body: Vec<TypeMetadata> = decl
                     .body
                     .contents
                     .iter()
-                    .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                    .flat_map(CollectTypesMetadata::collect_types_metadata)
                     .collect();
-                body.append(&mut decl.return_type.check_for_unresolved_types());
+                body.append(&mut decl.return_type.collect_types_metadata());
                 body.append(
                     &mut decl
                         .type_parameters
                         .iter()
                         .map(|x| &x.type_id)
-                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .flat_map(CollectTypesMetadata::collect_types_metadata)
                         .collect(),
                 );
                 body.append(
@@ -175,13 +175,13 @@ impl UnresolvedTypeCheck for TypedDeclaration {
                         .parameters
                         .iter()
                         .map(|x| &x.type_id)
-                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .flat_map(CollectTypesMetadata::collect_types_metadata)
                         .collect(),
                 );
                 body
             }
             ConstantDeclaration(TypedConstantDeclaration { value, .. }) => {
-                value.check_for_unresolved_types()
+                value.collect_types_metadata()
             }
             ErrorRecovery
             | StorageDeclaration(_)

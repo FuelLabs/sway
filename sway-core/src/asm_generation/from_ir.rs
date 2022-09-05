@@ -589,6 +589,11 @@ impl<'ir> AsmBuilder<'ir> {
                     warnings,
                     errors
                 ),
+                Instruction::Log {
+                    log_val,
+                    log_ty,
+                    log_id,
+                } => self.compile_log(instr_val, log_val, log_ty, log_id),
                 Instruction::Nop => (),
                 Instruction::Phi(_) => (), // Managing the phi value is done in br and cbr compilation.
                 Instruction::ReadRegister(reg) => self.compile_read_register(instr_val, reg),
@@ -1530,6 +1535,50 @@ impl<'ir> AsmBuilder<'ir> {
         }
         self.reg_map.insert(*instr_val, instr_reg);
         ok((), Vec::new(), Vec::new())
+    }
+
+    fn compile_log(&mut self, instr_val: &Value, log_val: &Value, log_ty: &Type, log_id: &Value) {
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+        let log_val_reg = self.value_to_register(log_val);
+        let log_id_reg = self.value_to_register(log_id);
+
+        if log_ty.is_copy_type() {
+            self.bytecode.push(Op {
+                owning_span,
+                opcode: Either::Left(VirtualOp::LOG(
+                    log_val_reg,
+                    log_id_reg,
+                    VirtualRegister::Constant(ConstantRegister::Zero),
+                    VirtualRegister::Constant(ConstantRegister::Zero),
+                )),
+                comment: "".into(),
+            });
+        } else {
+            // If the type not a reference type then we use LOGD to log the data. First put the
+            // size into the data section, then add a LW to get it, then add a LOGD which uses
+            // it.
+            let size_reg = self.reg_seqr.next();
+            let size_in_bytes = ir_type_size_in_bytes(self.context, log_ty);
+            let size_data_id = self
+                .data_section
+                .insert_data_value(&Literal::U64(size_in_bytes));
+
+            self.bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
+                owning_span: owning_span.clone(),
+                comment: "loading size for LOGD".into(),
+            });
+            self.bytecode.push(Op {
+                owning_span,
+                opcode: Either::Left(VirtualOp::LOGD(
+                    VirtualRegister::Constant(ConstantRegister::Zero),
+                    log_id_reg,
+                    log_val_reg,
+                    size_reg,
+                )),
+                comment: "".into(),
+            });
+        }
     }
 
     fn compile_read_register(&mut self, instr_val: &Value, reg: &sway_ir::Register) {
