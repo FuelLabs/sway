@@ -206,8 +206,8 @@ pub fn input_message_witness_index(index: u64) -> u8 {
 }
 
 /// Get the length of the input message at `index`.
-pub fn input_message_data_length(index: u64) -> u64 {
-    __gtf::<u64>(index, GTF_INPUT_MESSAGE_DATA_LENGTH)
+pub fn input_message_data_length(index: u64) -> u16 {
+    __gtf::<u16>(index, GTF_INPUT_MESSAGE_DATA_LENGTH)
 }
 
 /// Get the predicate length of the input message at `index`.
