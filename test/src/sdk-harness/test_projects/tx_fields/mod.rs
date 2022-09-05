@@ -315,3 +315,10 @@ async fn can_get_get_tx_script_data_start_pointer() {
     assert_eq!(result.value, 10376)
 
 }
+
+#[tokio::test]
+async fn can_get_input_message_msg_id() {
+    let (contract_instance, _, _) = get_contracts().await;
+    let result = contract_instance.get_input_message_msg_id(0).call().await.unwrap();
+    assert_eq!(result.value, [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8])
+}
