@@ -4,9 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use sway_core::{
-    compile_ir_to_asm, compile_to_ast, ir_generation::compile_program, namespace, CompileAstResult,
-};
+use sway_core::{compile_ir_to_asm, compile_to_ast, ir_generation::compile_program, namespace};
 
 pub(super) fn run(filter_regex: Option<&regex::Regex>) {
     // Compile core library and reuse it when compiling tests.
@@ -98,23 +96,26 @@ pub(super) fn run(filter_regex: Option<&regex::Regex>) {
                 PathBuf::from("/"),
             );
             let sway_str = String::from_utf8_lossy(&sway_str);
-            let typed_program =
-                match compile_to_ast(Arc::from(sway_str), core_lib.clone(), Some(&bld_cfg)) {
-                    CompileAstResult::Success { typed_program, .. } => typed_program,
-                    CompileAstResult::Failure { errors, .. } => panic!(
-                        "Failed to compile test {}:\n{}",
-                        path.display(),
-                        errors
-                            .iter()
-                            .map(|err| err.to_string())
-                            .collect::<Vec<_>>()
-                            .as_slice()
-                            .join("\n")
-                    ),
-                };
+            let typed_res = compile_to_ast(Arc::from(sway_str), core_lib.clone(), Some(&bld_cfg));
+            if !typed_res.errors.is_empty() {
+                panic!(
+                    "Failed to compile test {}:\n{}",
+                    path.display(),
+                    typed_res
+                        .errors
+                        .iter()
+                        .map(|err| err.to_string())
+                        .collect::<Vec<_>>()
+                        .as_slice()
+                        .join("\n")
+                );
+            }
+            let typed_program = typed_res
+                .value
+                .expect("there were no errors, so there should be a program");
 
             // Compile to IR.
-            let mut ir = compile_program(*typed_program)
+            let mut ir = compile_program(typed_program)
                 .unwrap_or_else(|e| {
                     panic!("Failed to compile test {}:\n{e}", path.display());
                 })
@@ -253,10 +254,15 @@ fn compile_core() -> namespace::Module {
         locked: false,
     };
 
-    match forc::test::forc_check::check(check_cmd)
-        .expect("Failed to compile sway-lib-core for IR tests.")
-    {
-        CompileAstResult::Success { typed_program, .. } => {
+    let res = forc::test::forc_check::check(check_cmd)
+        .expect("Failed to compile sway-lib-core for IR tests.");
+
+    match res.value {
+        Some(_) if !res.errors.is_empty() => {
+            panic!("Failed to compile sway-lib-core for IR tests.")
+        }
+        None => panic!("Failed to compile sway-lib-core for IR tests."),
+        Some(typed_program) => {
             // Create a module for core and copy the compiled modules into it.  Unfortunately we
             // can't get mutable access to move them out so they're cloned.
             let core_module = typed_program.root.namespace.submodules().into_iter().fold(
@@ -272,6 +278,5 @@ fn compile_core() -> namespace::Module {
             std_module.insert_submodule("core".to_owned(), core_module);
             std_module
         }
-        _ => panic!("Failed to compile sway-lib-core for IR tests."),
     }
 }

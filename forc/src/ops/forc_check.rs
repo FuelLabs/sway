@@ -3,7 +3,7 @@ use anyhow::Result;
 use forc_pkg::{self as pkg, ManifestFile};
 use std::path::PathBuf;
 
-pub fn check(command: CheckCommand) -> Result<sway_core::CompileAstResult> {
+pub fn check(command: CheckCommand) -> Result<sway_core::CompileResult<sway_core::TypedProgram>> {
     let CheckCommand {
         path,
         offline_mode: offline,

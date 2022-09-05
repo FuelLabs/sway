@@ -19,7 +19,7 @@ use std::{
     path::PathBuf,
     sync::{Arc, LockResult, RwLock},
 };
-use sway_core::{CompileAstResult, CompileResult, ParseProgram, TypedProgram, TypedProgramKind};
+use sway_core::{CompileResult, ParseProgram, TypedProgram, TypedProgramKind};
 use sway_types::{Ident, Spanned};
 use swayfmt::Formatter;
 use tower_lsp::lsp_types::{
@@ -212,17 +212,13 @@ impl Session {
 
     fn parse_ast_to_typed_tokens(
         &self,
-        ast_res: CompileAstResult,
+        ast_res: CompileResult<TypedProgram>,
     ) -> Result<Vec<Diagnostic>, DocumentError> {
-        match ast_res {
-            CompileAstResult::Failure { warnings, errors } => {
-                let diagnostics = capabilities::diagnostic::get_diagnostics(warnings, errors);
-                Err(DocumentError::FailedToParse(diagnostics))
-            }
-            CompileAstResult::Success {
-                typed_program,
-                warnings,
-            } => {
+        match ast_res.value {
+            None => Err(DocumentError::FailedToParse(
+                capabilities::diagnostic::get_diagnostics(ast_res.warnings, ast_res.errors),
+            )),
+            Some(typed_program) => {
                 if let TypedProgramKind::Script {
                     ref main_function, ..
                 } = typed_program.kind
@@ -233,26 +229,29 @@ impl Session {
                     self.runnables.insert(RunnableType::MainFn, runnable);
                 }
 
-                for node in &typed_program.root.all_nodes {
-                    traverse_typed_tree::traverse_node(node, &self.token_map);
-                }
-
-                for (_, submodule) in &typed_program.root.submodules {
-                    for node in &submodule.module.all_nodes {
-                        traverse_typed_tree::traverse_node(node, &self.token_map);
-                    }
-                }
+                let root_nodes = typed_program.root.all_nodes.iter();
+                let sub_nodes = typed_program
+                    .root
+                    .submodules
+                    .iter()
+                    .flat_map(|(_, submodule)| &submodule.module.all_nodes);
+                root_nodes
+                    .chain(sub_nodes)
+                    .for_each(|node| traverse_typed_tree::traverse_node(node, &self.token_map));
 
                 if let LockResult::Ok(mut program) = self.compiled_program.write() {
-                    program.typed = Some(*typed_program);
+                    program.typed = Some(typed_program);
                 }
 
-                Ok(capabilities::diagnostic::get_diagnostics(warnings, vec![]))
+                Ok(capabilities::diagnostic::get_diagnostics(
+                    ast_res.warnings,
+                    ast_res.errors,
+                ))
             }
         }
     }
 
-    pub fn _test_typed_parse(&mut self, _ast_res: CompileAstResult, uri: &Url) {
+    pub fn _test_typed_parse(&mut self, _ast_res: CompileResult<TypedProgram>, uri: &Url) {
         for item in self.token_map.iter() {
             let ((ident, _span), token) = item.pair();
             utils::debug::debug_print_ident_and_token(ident, token);
