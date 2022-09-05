@@ -1,6 +1,6 @@
 use super::*;
 use std::fmt;
-use sway_types::{JsonTypeApplication, JsonTypeDeclaration, Span, Spanned};
+use sway_types::{JsonTypeApplication, JsonTypeDeclaration, Span};
 
 /// A identifier to uniquely refer to our type terms
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
@@ -31,21 +31,22 @@ impl From<usize> for TypeId {
     }
 }
 
-impl UnresolvedTypeCheck for TypeId {
-    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+impl CollectTypesMetadata for TypeId {
+    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
         use TypeInfo::*;
         let span_override = if let TypeInfo::Ref(_, span) = look_up_type_id_raw(*self) {
             Some(span)
         } else {
             None
         };
-        match look_up_type_id(*self) {
-            UnknownGeneric { name } => vec![CompileError::UnableToInferGeneric {
-                ty: name.as_str().to_string(),
-                span: span_override.unwrap_or_else(|| name.span()),
+        let res = match look_up_type_id(*self) {
+            UnknownGeneric { name } => vec![TypeMetadata::UnresolvedType {
+                name,
+                span_override,
             }],
             _ => vec![],
-        }
+        };
+        ok(res, vec![], vec![])
     }
 }
 

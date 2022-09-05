@@ -64,91 +64,144 @@ impl fmt::Display for TypedExpression {
     }
 }
 
-impl UnresolvedTypeCheck for TypedExpression {
-    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+impl CollectTypesMetadata for TypedExpression {
+    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
         use TypedExpressionVariant::*;
-        let mut res = self.return_type.check_for_unresolved_types();
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut res = check!(
+            self.return_type.collect_types_metadata(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
         match &self.expression {
             FunctionApplication {
                 arguments,
                 function_decl,
                 ..
             } => {
-                res.append(
-                    &mut arguments
-                        .iter()
-                        .map(|x| &x.1)
-                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
-                        .collect::<Vec<_>>(),
-                );
-                res.append(
-                    &mut function_decl
-                        .body
-                        .contents
-                        .iter()
-                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
-                        .collect(),
-                );
+                for arg in arguments.iter() {
+                    res.append(&mut check!(
+                        arg.1.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
+                for content in function_decl.body.contents.iter() {
+                    res.append(&mut check!(
+                        content.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
             }
             Tuple { fields } => {
-                res.append(
-                    &mut fields
-                        .iter()
-                        .flat_map(|x| x.check_for_unresolved_types())
-                        .collect(),
-                );
+                for field in fields.iter() {
+                    res.append(&mut check!(
+                        field.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
             }
             AsmExpression { registers, .. } => {
-                res.append(
-                    &mut registers
-                        .iter()
-                        .filter_map(|x| x.initializer.as_ref())
-                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
-                        .collect::<Vec<_>>(),
-                );
+                for register in registers.iter() {
+                    if let Some(init) = register.initializer.as_ref() {
+                        res.append(&mut check!(
+                            init.collect_types_metadata(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ));
+                    }
+                }
             }
             StructExpression { fields, .. } => {
-                res.append(
-                    &mut fields
-                        .iter()
-                        .flat_map(|x| x.value.check_for_unresolved_types())
-                        .collect(),
-                );
+                for field in fields.iter() {
+                    res.append(&mut check!(
+                        field.value.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
             }
             LazyOperator { lhs, rhs, .. } => {
-                res.append(&mut lhs.check_for_unresolved_types());
-                res.append(&mut rhs.check_for_unresolved_types());
+                res.append(&mut check!(
+                    lhs.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+                res.append(&mut check!(
+                    rhs.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
             }
             Array { contents } => {
-                res.append(
-                    &mut contents
-                        .iter()
-                        .flat_map(|x| x.check_for_unresolved_types())
-                        .collect(),
-                );
+                for content in contents.iter() {
+                    res.append(&mut check!(
+                        content.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
             }
             ArrayIndex { prefix, index } => {
-                res.append(&mut prefix.check_for_unresolved_types());
-                res.append(&mut index.check_for_unresolved_types());
+                res.append(&mut check!(
+                    (**prefix).collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+                res.append(&mut check!(
+                    (**index).collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
             }
             CodeBlock(block) => {
-                res.append(
-                    &mut block
-                        .contents
-                        .iter()
-                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
-                        .collect(),
-                );
+                for content in block.contents.iter() {
+                    res.append(&mut check!(
+                        content.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
             }
             IfExp {
                 condition,
                 then,
                 r#else,
             } => {
-                res.append(&mut condition.check_for_unresolved_types());
-                res.append(&mut then.check_for_unresolved_types());
+                res.append(&mut check!(
+                    condition.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+                res.append(&mut check!(
+                    then.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
                 if let Some(r#else) = r#else {
-                    res.append(&mut r#else.check_for_unresolved_types());
+                    res.append(&mut check!(
+                        r#else.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
                 }
             }
             StructFieldAccess {
@@ -156,16 +209,36 @@ impl UnresolvedTypeCheck for TypedExpression {
                 resolved_type_of_parent,
                 ..
             } => {
-                res.append(&mut prefix.check_for_unresolved_types());
-                res.append(&mut resolved_type_of_parent.check_for_unresolved_types());
+                res.append(&mut check!(
+                    prefix.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+                res.append(&mut check!(
+                    resolved_type_of_parent.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
             }
             TupleElemAccess {
                 prefix,
                 resolved_type_of_parent,
                 ..
             } => {
-                res.append(&mut prefix.check_for_unresolved_types());
-                res.append(&mut resolved_type_of_parent.check_for_unresolved_types());
+                res.append(&mut check!(
+                    prefix.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+                res.append(&mut check!(
+                    resolved_type_of_parent.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
             }
             EnumInstantiation {
                 enum_decl,
@@ -173,45 +246,83 @@ impl UnresolvedTypeCheck for TypedExpression {
                 ..
             } => {
                 if let Some(contents) = contents {
-                    res.append(&mut contents.check_for_unresolved_types().into_iter().collect());
+                    res.append(&mut check!(
+                        contents.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
                 }
-                res.append(
-                    &mut enum_decl
-                        .variants
-                        .iter()
-                        .flat_map(|x| x.type_id.check_for_unresolved_types())
-                        .collect(),
-                );
-                res.append(
-                    &mut enum_decl
-                        .type_parameters
-                        .iter()
-                        .flat_map(|x| x.type_id.check_for_unresolved_types())
-                        .collect(),
-                );
+                for variant in enum_decl.variants.iter() {
+                    res.append(&mut check!(
+                        variant.type_id.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
+                for type_param in enum_decl.type_parameters.iter() {
+                    res.append(&mut check!(
+                        type_param.type_id.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
             }
             AbiCast { address, .. } => {
-                res.append(&mut address.check_for_unresolved_types());
+                res.append(&mut check!(
+                    address.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
             }
             IntrinsicFunction(kind) => {
-                res.append(&mut kind.check_for_unresolved_types());
+                res.append(&mut check!(
+                    kind.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
             }
             EnumTag { exp } => {
-                res.append(&mut exp.check_for_unresolved_types());
+                res.append(&mut check!(
+                    exp.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
             }
             UnsafeDowncast { exp, variant } => {
-                res.append(&mut exp.check_for_unresolved_types());
-                res.append(&mut variant.type_id.check_for_unresolved_types());
+                res.append(&mut check!(
+                    exp.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+                res.append(&mut check!(
+                    variant.type_id.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
             }
             WhileLoop { condition, body } => {
-                res.append(&mut condition.check_for_unresolved_types());
-                res.append(
-                    &mut body
-                        .contents
-                        .iter()
-                        .flat_map(TypedAstNode::check_for_unresolved_types)
-                        .collect(),
-                );
+                res.append(&mut check!(
+                    condition.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+                for content in body.contents.iter() {
+                    res.append(&mut check!(
+                        content.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
             }
             // storage access can never be generic
             // variable expressions don't ever have return types themselves, they're stored in
@@ -224,22 +335,31 @@ impl UnresolvedTypeCheck for TypedExpression {
             | Continue
             | FunctionParameter => {}
             Reassignment(reassignment) => {
-                res.append(&mut reassignment.rhs.check_for_unresolved_types())
+                res.append(&mut check!(
+                    reassignment.rhs.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
             }
-            StorageReassignment(storage_reassignment) => res.extend(
-                storage_reassignment
-                    .fields
-                    .iter()
-                    .flat_map(|x| x.type_id.check_for_unresolved_types())
-                    .chain(
-                        storage_reassignment
-                            .rhs
-                            .check_for_unresolved_types()
-                            .into_iter(),
-                    ),
-            ),
+            StorageReassignment(storage_reassignment) => {
+                for field in storage_reassignment.fields.iter() {
+                    res.append(&mut check!(
+                        field.type_id.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
+                res.append(&mut check!(
+                    storage_reassignment.rhs.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+            }
         }
-        res
+        ok(res, warnings, errors)
     }
 }
 

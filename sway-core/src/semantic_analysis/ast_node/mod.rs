@@ -47,15 +47,15 @@ pub enum TypedAstNodeContent {
     SideEffect,
 }
 
-impl UnresolvedTypeCheck for TypedAstNodeContent {
-    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+impl CollectTypesMetadata for TypedAstNodeContent {
+    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
         use TypedAstNodeContent::*;
         match self {
-            ReturnStatement(stmt) => stmt.expr.check_for_unresolved_types(),
-            Declaration(decl) => decl.check_for_unresolved_types(),
-            Expression(expr) => expr.check_for_unresolved_types(),
-            ImplicitReturnExpression(expr) => expr.check_for_unresolved_types(),
-            SideEffect => vec![],
+            ReturnStatement(stmt) => stmt.expr.collect_types_metadata(),
+            Declaration(decl) => decl.collect_types_metadata(),
+            Expression(expr) => expr.collect_types_metadata(),
+            ImplicitReturnExpression(expr) => expr.collect_types_metadata(),
+            SideEffect => ok(vec![], vec![], vec![]),
         }
     }
 }
@@ -100,9 +100,9 @@ impl CopyTypes for TypedAstNode {
     }
 }
 
-impl UnresolvedTypeCheck for TypedAstNode {
-    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
-        self.content.check_for_unresolved_types()
+impl CollectTypesMetadata for TypedAstNode {
+    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
+        self.content.collect_types_metadata()
     }
 }
 

@@ -141,48 +141,76 @@ impl fmt::Display for TypedDeclaration {
     }
 }
 
-impl UnresolvedTypeCheck for TypedDeclaration {
+impl CollectTypesMetadata for TypedDeclaration {
     // this is only run on entry nodes, which must have all well-formed types
-    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
         use TypedDeclaration::*;
-        match self {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let metadata = match self {
             VariableDeclaration(decl) => {
-                let mut body = decl.body.check_for_unresolved_types();
-                body.append(&mut decl.type_ascription.check_for_unresolved_types());
+                let mut body = check!(
+                    decl.body.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                body.append(&mut check!(
+                    decl.type_ascription.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
                 body
             }
             FunctionDeclaration(decl) => {
-                let mut body: Vec<CompileError> = decl
-                    .body
-                    .contents
-                    .iter()
-                    .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
-                    .collect();
-                body.append(&mut decl.return_type.check_for_unresolved_types());
-                body.append(
-                    &mut decl
-                        .type_parameters
-                        .iter()
-                        .map(|x| &x.type_id)
-                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
-                        .collect(),
-                );
-                body.append(
-                    &mut decl
-                        .parameters
-                        .iter()
-                        .map(|x| &x.type_id)
-                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
-                        .collect(),
-                );
+                let mut body = vec![];
+                for content in decl.body.contents.iter() {
+                    body.append(&mut check!(
+                        content.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
+                body.append(&mut check!(
+                    decl.return_type.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+                for type_param in decl.type_parameters.iter() {
+                    body.append(&mut check!(
+                        type_param.type_id.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
+                for param in decl.parameters.iter() {
+                    body.append(&mut check!(
+                        param.type_id.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
                 body
             }
             ConstantDeclaration(decl_id) => {
                 match de_get_constant(decl_id.clone(), &decl_id.span()) {
                     Ok(TypedConstantDeclaration { value, .. }) => {
-                        value.check_for_unresolved_types()
+                        check!(
+                            value.collect_types_metadata(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        )
                     }
-                    Err(e) => vec![e],
+                    Err(e) => {
+                        errors.push(e);
+                        return err(warnings, errors);
+                    }
                 }
             }
             ErrorRecovery
@@ -193,6 +221,11 @@ impl UnresolvedTypeCheck for TypedDeclaration {
             | ImplTrait { .. }
             | AbiDeclaration(_)
             | GenericTypeForFunctionScope { .. } => vec![],
+        };
+        if errors.is_empty() {
+            ok(metadata, warnings, errors)
+        } else {
+            err(warnings, errors)
         }
     }
 }

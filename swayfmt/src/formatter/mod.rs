@@ -62,6 +62,7 @@ impl Formatter {
         module.format(&mut raw_formatted_code, self)?;
 
         let mut formatted_code = String::from(&raw_formatted_code);
+
         // Add comments
         handle_comments(
             src.clone(),
