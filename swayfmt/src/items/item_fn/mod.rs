@@ -27,9 +27,14 @@ impl Format for ItemFn {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         self.fn_signature.format(formatted_code, formatter)?;
-        Self::open_curly_brace(formatted_code, formatter)?;
-        self.body.get().format(formatted_code, formatter)?;
-        Self::close_curly_brace(formatted_code, formatter)?;
+        let body = self.body.get();
+        if !body.statements.is_empty() || body.final_expr_opt.is_some() {
+            Self::open_curly_brace(formatted_code, formatter)?;
+            self.body.get().format(formatted_code, formatter)?;
+            Self::close_curly_brace(formatted_code, formatter)?;
+        } else {
+            write!(formatted_code, " {{}}")?;
+        }
 
         Ok(())
     }
@@ -74,12 +79,8 @@ impl CurlyBrace for ItemFn {
     ) -> Result<(), FormatterError> {
         // If shape is becoming left-most alligned or - indent just have the defualt shape
         formatter.shape.block_unindent(&formatter.config);
-        write!(
-            line,
-            "{}{}",
-            formatter.shape.indent.to_string(&formatter.config)?,
-            Delimiter::Brace.as_close_char()
-        )?;
+        println!("{:?}", formatter.shape);
+        write!(line, "{}", Delimiter::Brace.as_close_char())?;
 
         Ok(())
     }
