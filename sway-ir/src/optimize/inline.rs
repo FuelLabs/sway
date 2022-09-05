@@ -400,6 +400,13 @@ fn inline_instruction(
                 new_block.ins(context).int_to_ptr(map_value(value), ty)
             }
             Instruction::Load(src_val) => new_block.ins(context).load(map_value(src_val)),
+            Instruction::Log {
+                log_val,
+                log_ty,
+                log_id,
+            } => new_block
+                .ins(context)
+                .log(map_value(log_val), log_ty, map_value(log_id)),
             Instruction::Nop => new_block.ins(context).nop(),
             Instruction::ReadRegister(reg) => new_block.ins(context).read_register(reg),
             // We convert `ret` to `br post_block` and add the returned value as a phi value.
