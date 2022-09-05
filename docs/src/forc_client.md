@@ -63,4 +63,3 @@ Also the default value of the "gas price" parameter is 0 for both `forc-deploy` 
 ```sh
 forc-deploy --url https://node-beta-1.fuel.network/graphql:443 --gas-price 1
 ```
-
