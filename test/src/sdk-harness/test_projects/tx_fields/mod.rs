@@ -378,3 +378,10 @@ async fn can_get_input_message_data() {
     let result = contract_instance.get_input_message_data(0).call().await.unwrap();
     assert_eq!(result.value, 42);
 }
+
+#[tokio::test]
+async fn can_get_input_message_predicate() {
+    let (contract_instance, _, _) = get_contracts().await;
+    let result = contract_instance.get_input_message_predicate(0).call().await.unwrap();
+    assert_eq!(result.value, 42);
+}
