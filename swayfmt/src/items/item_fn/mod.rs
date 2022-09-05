@@ -79,8 +79,12 @@ impl CurlyBrace for ItemFn {
     ) -> Result<(), FormatterError> {
         // If shape is becoming left-most alligned or - indent just have the defualt shape
         formatter.shape.block_unindent(&formatter.config);
-        println!("{:?}", formatter.shape);
-        write!(line, "{}", Delimiter::Brace.as_close_char())?;
+        write!(
+            line,
+            "{}{}",
+            formatter.shape.indent.to_string(&formatter.config)?,
+            Delimiter::Brace.as_close_char()
+        )?;
 
         Ok(())
     }
