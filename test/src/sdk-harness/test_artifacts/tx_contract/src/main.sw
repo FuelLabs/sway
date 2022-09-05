@@ -9,6 +9,7 @@ use std::{
         input_amount,
         input_coin_owner,
         input_count,
+        input_message_data,
         input_message_data_length,
         input_message_msg_id,
         input_message_nonce,
@@ -79,6 +80,7 @@ abi TxContractTest {
     fn get_input_message_data_length(index: u64) -> u16;
     fn get_input_message_predicate_length(index: u64) -> u16;
     fn get_input_message_predicate_data_length(index: u64) -> u16;
+    fn get_input_message_data(index: u64) -> u64;
 
     fn get_tx_output_pointer(index: u64) -> u64;
     fn get_tx_output_type(ptr: u64) -> Output;
@@ -185,6 +187,10 @@ impl TxContractTest for Contract {
     }
     fn get_input_message_predicate_data_length(index: u64) -> u16 {
         input_message_predicate_data_length(index)
+    }
+    // @review return type ! (lib func is generic)
+    fn get_input_message_data(index: u64) -> u64 {
+        input_message_data::<u64>(index)
     }
 
 
