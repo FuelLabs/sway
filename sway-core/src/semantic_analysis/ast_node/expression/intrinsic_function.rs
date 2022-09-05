@@ -52,17 +52,24 @@ impl DeterministicallyAborts for TypedIntrinsicFunctionKind {
     }
 }
 
-impl UnresolvedTypeCheck for TypedIntrinsicFunctionKind {
-    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
-        self.type_arguments
+impl CollectTypesMetadata for TypedIntrinsicFunctionKind {
+    fn collect_types_metadata(&self) -> Vec<TypeMetadata> {
+        let mut types_metadata = self
+            .type_arguments
             .iter()
-            .flat_map(|targ| targ.type_id.check_for_unresolved_types())
+            .flat_map(|targ| targ.type_id.collect_types_metadata())
             .chain(
                 self.arguments
                     .iter()
-                    .flat_map(UnresolvedTypeCheck::check_for_unresolved_types),
+                    .flat_map(CollectTypesMetadata::collect_types_metadata),
             )
-            .collect()
+            .collect::<Vec<_>>();
+
+        if matches!(self.kind, Intrinsic::Log) {
+            types_metadata.push(TypeMetadata::LoggedType(self.arguments[0].return_type));
+        }
+
+        types_metadata
     }
 }
 
@@ -492,6 +499,34 @@ impl TypedIntrinsicFunctionKind {
                     kind,
                     arguments: vec![key_exp, val_exp],
                     type_arguments: type_argument.map_or(vec![], |ta| vec![ta]),
+                    span,
+                };
+                let return_type = insert_type(TypeInfo::Tuple(vec![]));
+                (intrinsic_function, return_type)
+            }
+            Intrinsic::Log => {
+                if arguments.len() != 1 {
+                    errors.push(CompileError::IntrinsicIncorrectNumArgs {
+                        name: kind.to_string(),
+                        expected: 1,
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
+                let ctx = ctx
+                    .by_ref()
+                    .with_help_text("")
+                    .with_type_annotation(insert_type(TypeInfo::Unknown));
+                let exp = check!(
+                    TypedExpression::type_check(ctx, arguments[0].clone()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let intrinsic_function = TypedIntrinsicFunctionKind {
+                    kind,
+                    arguments: vec![exp],
+                    type_arguments: vec![],
                     span,
                 };
                 let return_type = insert_type(TypeInfo::Tuple(vec![]));

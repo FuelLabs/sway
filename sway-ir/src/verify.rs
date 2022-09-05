@@ -182,6 +182,11 @@ impl<'a> InstructionVerifier<'a> {
                     } => self.verify_insert_value(aggregate, ty, value, indices)?,
                     Instruction::IntToPtr(value, ty) => self.verify_int_to_ptr(value, ty)?,
                     Instruction::Load(ptr) => self.verify_load(ptr)?,
+                    Instruction::Log {
+                        log_val,
+                        log_ty,
+                        log_id,
+                    } => self.verify_log(log_val, log_ty, log_id)?,
                     Instruction::Nop => (),
                     Instruction::Phi(pairs) => self.verify_phi(&pairs[..])?,
                     Instruction::ReadRegister(_) => (),
@@ -565,6 +570,17 @@ impl<'a> InstructionVerifier<'a> {
         } else {
             Ok(())
         }
+    }
+    fn verify_log(&self, log_val: &Value, log_ty: &Type, log_id: &Value) -> Result<(), IrError> {
+        if !matches!(log_id.get_type(self.context), Some(Type::Uint(64))) {
+            return Err(IrError::VerifyLogId);
+        }
+
+        if self.opt_ty_not_eq(&log_val.get_stripped_ptr_type(self.context), &Some(*log_ty)) {
+            return Err(IrError::VerifyMismatchedLoggedTypes);
+        }
+
+        Ok(())
     }
 
     fn verify_phi(&self, pairs: &[(Block, Value)]) -> Result<(), IrError> {
