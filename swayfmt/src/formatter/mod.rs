@@ -27,10 +27,6 @@ pub trait Format {
     ) -> Result<(), FormatterError>;
 }
 
-pub trait FormatInner {
-    fn format_inner<F>(&self, f: F);
-}
-
 impl Formatter {
     pub fn from_dir(dir: &Path) -> Result<Self, ConfigError> {
         let config = match Config::from_dir(dir) {
