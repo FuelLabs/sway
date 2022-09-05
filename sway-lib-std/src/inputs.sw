@@ -196,13 +196,13 @@ pub fn input_message_recipient(index: u64) -> Address {
 }
 
 /// Get the nonce of input message at `index`.
-pub fn input_message_nonce(index: u64) -> b256 {
-    __gtf::<b256>(index, GTF_INPUT_MESSAGE_NONCE)
+pub fn input_message_nonce(index: u64) -> u64 {
+    __gtf::<u64>(index, GTF_INPUT_MESSAGE_NONCE)
 }
 
 /// Get the witness index of the input messasge at `index`.
-pub fn input_message_witness_index(index: u64) -> u64 {
-    __gtf::<u64>(index, GTF_INPUT_MESSAGE_WITNESS_INDEX)
+pub fn input_message_witness_index(index: u64) -> u8 {
+    __gtf::<u8>(index, GTF_INPUT_MESSAGE_WITNESS_INDEX)
 }
 
 /// Get the length of the input message at `index`.
