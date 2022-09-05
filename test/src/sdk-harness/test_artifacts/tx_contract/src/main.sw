@@ -10,8 +10,10 @@ use std::{
         input_coin_owner,
         input_count,
         input_message_msg_id,
+        input_message_nonce,
         input_message_recipient,
         input_message_sender,
+        input_message_witness_index,
         input_pointer,
         input_predicate_data_pointer,
         input_type,
@@ -69,6 +71,8 @@ abi TxContractTest {
     fn get_input_message_msg_id(index: u64) -> b256;
     fn get_input_message_sender(index: u64) -> Address;
     fn get_input_message_recipient(index: u64) -> Address;
+    fn get_input_message_nonce(index: u64) -> u64;
+    fn get_input_message_witness_index(index: u64) -> u8;
 
     fn get_tx_output_pointer(index: u64) -> u64;
     fn get_tx_output_type(ptr: u64) -> Output;
@@ -160,6 +164,12 @@ impl TxContractTest for Contract {
     }
     fn get_input_message_recipient(index: u64) -> Address {
         input_message_recipient(index)
+    }
+    fn get_input_message_nonce(index: u64) -> u64 {
+        input_message_nonce(index)
+    }
+    fn get_input_message_witness_index(index: u64) -> u8 {
+        input_message_witness_index(index)
     }
 
 

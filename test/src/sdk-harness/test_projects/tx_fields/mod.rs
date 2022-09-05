@@ -336,3 +336,17 @@ async fn can_get_input_message_recipient() {
     let result = contract_instance.get_input_message_recipient(0).call().await.unwrap();
     assert_eq!(result.value, Address::from(wallet.address()));
 }
+
+#[tokio::test]
+async fn can_get_input_message_nonce() {
+    let (contract_instance, _, _) = get_contracts().await;
+    let result = contract_instance.get_input_message_nonce(0).call().await.unwrap();
+    assert_eq!(result.value, 42);
+}
+
+#[tokio::test]
+async fn can_get_input_message_witness_index() {
+    let (contract_instance, _, _) = get_contracts().await;
+    let result = contract_instance.get_input_message_witness_index(0).call().await.unwrap();
+    assert_eq!(result.value, 42u8);
+}
