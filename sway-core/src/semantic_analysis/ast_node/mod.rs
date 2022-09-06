@@ -13,14 +13,9 @@ pub(crate) use mode::*;
 pub(crate) use return_statement::*;
 
 use crate::{
-    declaration_engine::declaration_engine::{de_insert_enum, de_insert_storage, de_insert_trait},
-    error::*,
-    parse_tree::*,
-    semantic_analysis::*,
-    style::*,
-    type_system::*,
-    types::DeterministicallyAborts,
-    AstNode, AstNodeContent, Ident, ReturnStatement,
+    declaration_engine::declaration_engine::*, error::*, parse_tree::*, semantic_analysis::*,
+    style::*, type_system::*, types::DeterministicallyAborts, AstNode, AstNodeContent, Ident,
+    ReturnStatement,
 };
 
 use sway_types::{span::Span, state::StateIndex, Spanned};
