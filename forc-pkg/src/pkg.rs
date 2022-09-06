@@ -1636,18 +1636,18 @@ pub fn compile(
         sway_build_config(manifest.dir(), &entry_path, build_profile,)?
     );
     let silent_mode = build_profile.silent;
+    let fail = |warnings, errors| {
+        print_on_failure(silent_mode, warnings, errors);
+        bail!("Failed to compile {}", pkg.name);
+    };
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
         "compile to ast",
         compile_ast(manifest, build_profile, namespace,)?
     );
-
     let typed_program = match ast_res.value.as_ref() {
-        None => {
-            print_on_failure(silent_mode, &ast_res.warnings, &ast_res.errors);
-            bail!("Failed to compile {}", pkg.name);
-        }
+        None => return fail(&ast_res.warnings, &ast_res.errors),
         Some(typed_program) => typed_program,
     };
 
@@ -1666,13 +1666,11 @@ pub fn compile(
     match tree_type {
         // If we're compiling a library, we don't need to compile any further.
         // Instead, we update the namespace with the library's top-level module.
+        TreeType::Library { .. } if !ast_res.errors.is_empty() => {
+            return fail(&ast_res.warnings, &ast_res.errors);
+        }
         TreeType::Library { .. } => {
-            if ast_res.errors.is_empty() {
-                print_on_success_library(silent_mode, &pkg.name, &ast_res.warnings);
-            } else {
-                print_on_failure(silent_mode, &ast_res.warnings, &ast_res.errors);
-            }
-
+            print_on_success_library(silent_mode, &pkg.name, &ast_res.warnings);
             let bytecode = vec![];
             let lib_namespace = typed_program.root.namespace.clone();
             let compiled = Compiled {
@@ -1681,45 +1679,37 @@ pub fn compile(
                 bytecode,
                 tree_type,
             };
-            Ok((compiled, Some(lib_namespace.into())))
+            return Ok((compiled, Some(lib_namespace.into())));
         }
-
         // For all other program types, we'll compile the bytecode.
-        TreeType::Contract | TreeType::Predicate | TreeType::Script => {
-            let asm_res = time_expr!(
-                "compile ast to asm",
-                sway_core::ast_to_asm(ast_res, &sway_build_config)
-            );
-            let bc_res = time_expr!(
-                "compile asm to bytecode",
-                sway_core::asm_to_bytecode(asm_res, source_map)
-            );
+        TreeType::Contract | TreeType::Predicate | TreeType::Script => {}
+    }
 
-            match bc_res.value {
-                Some(BytecodeOrLib::Bytecode(bytes)) => {
-                    if bc_res.errors.is_empty() {
-                        print_on_success(silent_mode, &pkg.name, &bc_res.warnings, &tree_type);
-                    } else {
-                        print_on_failure(silent_mode, &bc_res.warnings, &bc_res.errors);
-                    }
-                    let bytecode = bytes;
-                    let compiled = Compiled {
-                        json_abi_program,
-                        storage_slots,
-                        bytecode,
-                        tree_type,
-                    };
-                    Ok((compiled, None))
-                }
-                Some(BytecodeOrLib::Library) => {
-                    unreachable!("compilation of library program types is handled above")
-                }
-                None => {
-                    print_on_failure(silent_mode, &bc_res.warnings, &bc_res.errors);
-                    bail!("Failed to compile {}", pkg.name);
-                }
-            }
+    let asm_res = time_expr!(
+        "compile ast to asm",
+        sway_core::ast_to_asm(ast_res, &sway_build_config)
+    );
+    let bc_res = time_expr!(
+        "compile asm to bytecode",
+        sway_core::asm_to_bytecode(asm_res, source_map)
+    );
+
+    match bc_res.value {
+        Some(BytecodeOrLib::Library) => {
+            unreachable!("compilation of library program types is handled above")
         }
+        Some(BytecodeOrLib::Bytecode(bytes)) if bc_res.errors.is_empty() => {
+            print_on_success(silent_mode, &pkg.name, &bc_res.warnings, &tree_type);
+            let bytecode = bytes;
+            let compiled = Compiled {
+                json_abi_program,
+                storage_slots,
+                bytecode,
+                tree_type,
+            };
+            Ok((compiled, None))
+        }
+        Some(BytecodeOrLib::Bytecode(_)) | None => fail(&bc_res.warnings, &bc_res.errors),
     }
 }
 #[derive(Default)]
