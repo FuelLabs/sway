@@ -155,7 +155,7 @@ Compiled library "core".
 
 ### Deploy the Contract
 
-It's now time to deploy the contract and call it on a Fuel node. We will show how to do this using `forc` from the command line, but you can also do it using the [Rust SDK](https://github.com/FuelLabs/fuels-rs#deploying-a-sway-contract) or the [TypeScript SDK](https://github.com/FuelLabs/fuels-ts/#deploying-contracts)
+It's now time to deploy the contract and call it on a Fuel node. We will show how to do this using `forc` from the command line, but you can also do it using the [Rust SDK](https://fuellabs.github.io/fuels-rs/master/getting-started/contracts.html) or the [TypeScript SDK](https://fuellabs.github.io/fuels-ts/#deploying-contracts)
 
 ### Spin Up a Fuel node
 
