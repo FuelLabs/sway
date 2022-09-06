@@ -93,6 +93,17 @@ impl Formatter {
 
         Ok(formatted_code)
     }
+    pub(crate) fn with_shape<F, O>(&mut self, new_shape: Shape, f: F) -> O
+    where
+        F: FnOnce(&mut Self) -> O,
+    {
+        let prev_shape = self.shape.clone();
+        self.shape = new_shape;
+        let output = f(self);
+        self.shape = prev_shape;
+
+        output // used to extract an output if needed
+    }
 }
 
 #[cfg(test)]

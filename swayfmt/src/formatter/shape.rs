@@ -119,6 +119,12 @@ impl CodeLine {
     pub(crate) fn update_expr_kind(&mut self, expr_kind: ExprKind) {
         self.expr_kind = expr_kind
     }
+    pub(crate) fn new(line_style: LineStyle, expr_kind: ExprKind) -> Self {
+        Self {
+            line_style,
+            expr_kind,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -188,6 +194,26 @@ impl Shape {
     // |<---->|          indent
     //        |<--->|    width
     //
+    /// Create a copy of
+    pub(crate) fn from(
+        shape: &Shape,
+        width: Option<usize>,
+        code_line: Option<CodeLine>,
+        has_where_clause: Option<bool>,
+    ) -> Self {
+        let mut new_shape = *shape;
+        if width.is_some() {
+            new_shape.update_width(width.unwrap_or_default());
+        }
+        if let Some(code_line) = code_line {
+            new_shape.update_line_settings(code_line)
+        }
+        if has_where_clause.is_some() {
+            new_shape.has_where_clause = has_where_clause.unwrap_or_default();
+        }
+
+        new_shape
+    }
     /// A wrapper for `to_width_heuristics()` that also checks if the settings are default.
     pub(crate) fn apply_width_heuristics(&mut self, width_heuristics: WidthHeuristics) {
         if width_heuristics == WidthHeuristics::default() {
