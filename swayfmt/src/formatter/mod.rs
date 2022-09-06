@@ -97,7 +97,7 @@ impl Formatter {
     where
         F: FnOnce(&mut Self) -> O,
     {
-        let prev_shape = self.shape.clone();
+        let prev_shape = self.shape;
         self.shape = new_shape;
         let output = f(self);
         self.shape = prev_shape;
