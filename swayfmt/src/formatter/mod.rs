@@ -89,6 +89,7 @@ impl Formatter {
         if !formatted_code.ends_with('\n') {
             writeln!(formatted_code)?;
         }
+        self.shape.reset_width(); // bandaid shape reset TODO:(#2495)
 
         Ok(formatted_code)
     }
