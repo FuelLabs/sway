@@ -26,13 +26,7 @@ async fn deploy_test_registers_instance() -> TestRegistersContract {
     TestRegistersContractBuilder::new(id.to_string(), wallet).build()
 }
 
-#[tokio::test]
-async fn can_get_overflow() {
-    let instance = deploy_test_registers_instance().await;
-    let result = instance.get_overflow().call().await.unwrap();
-    assert_eq!(result.value, 0);
-}
-
+/*
 #[tokio::test]
 async fn can_get_program_counter() {
     let instance = deploy_test_registers_instance().await;
@@ -69,6 +63,21 @@ async fn can_get_heap_ptr() {
 }
 
 #[tokio::test]
+async fn can_get_instrs_start() {
+    let instance = deploy_test_registers_instance().await;
+    let result = instance.get_instrs_start().call().await.unwrap();
+    assert!(is_within_range(result.value));
+}
+*/
+
+#[tokio::test]
+async fn can_get_overflow() {
+    let instance = deploy_test_registers_instance().await;
+    let result = instance.get_overflow().call().await.unwrap();
+    assert_eq!(result.value, 0);
+}
+
+#[tokio::test]
 async fn can_get_error() {
     let instance = deploy_test_registers_instance().await;
     let result = instance.get_error().call().await.unwrap();
@@ -94,13 +103,6 @@ async fn can_get_balance() {
     let instance = deploy_test_registers_instance().await;
     let result = instance.get_balance().call().await.unwrap();
     assert_eq!(result.value, 0);
-}
-
-#[tokio::test]
-async fn can_get_instrs_start() {
-    let instance = deploy_test_registers_instance().await;
-    let result = instance.get_instrs_start().call().await.unwrap();
-    assert!(is_within_range(result.value));
 }
 
 #[tokio::test]

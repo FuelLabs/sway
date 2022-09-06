@@ -1,4 +1,4 @@
-use fuel_vm::fuel_tx::ConsensusParameters;
+//use fuel_vm::fuel_tx::ConsensusParameters;
 use fuels::prelude::*;
 use fuels::tx::{Bytes32, ContractId};
 use std::str::FromStr;
@@ -155,6 +155,7 @@ async fn can_get_receipts_root() {
     assert_ne!(Bytes32::from(result.value), zero_receipts_root);
 }
 
+/*
 #[tokio::test]
 async fn can_get_script_start_offset() {
     let (contract_instance, _, _) = get_contracts().await;
@@ -169,6 +170,7 @@ async fn can_get_script_start_offset() {
         .unwrap();
     assert_eq!(result.value, script_start_offset as u64);
 }
+*/
 
 #[tokio::test]
 async fn can_get_input_type() {
