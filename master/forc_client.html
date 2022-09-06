@@ -171,6 +171,14 @@
 <pre><code class="language-sh">forc-run --unsigned
 </code></pre>
 </blockquote>
+<h2 id="interacting-with-the-testnet"><a class="header" href="#interacting-with-the-testnet">Interacting with the testnet</a></h2>
+<p>While using <code>forc-deploy</code> or <code>forc-run</code> to interact with the testnet you need to pass the testnet end point with <code>--url</code></p>
+<pre><code class="language-sh">forc-deploy --url https://node-beta-1.fuel.network/graphql:443
+</code></pre>
+<p>Since deploying and running projects on the testnet cost gas, you will need coins to pay for them. You can get some using the <a href="https://faucet-beta-1.fuel.network/">testnet faucet</a>.</p>
+<p>Also the default value of the &quot;gas price&quot; parameter is 0 for both <code>forc-deploy</code> and <code>forc-run</code>. Without changing it you will get an error complaining about gas price being too low. While using testnet you can pass <code>--gas-price 1</code> to overcome this issue. So a complete command for deploying to the testnet would look like:</p>
+<pre><code class="language-sh">forc-deploy --url https://node-beta-1.fuel.network/graphql:443 --gas-price 1
+</code></pre>
 
                     </main>
 
