@@ -6,7 +6,7 @@ use crate::{
     type_system::TypeInfo,
 };
 
-use sway_types::{ident::Ident, span::Span};
+use sway_types::{ident::Ident, span::Span, Spanned};
 
 #[derive(Debug, Clone)]
 pub struct TraitDeclaration {
@@ -20,6 +20,12 @@ pub struct TraitDeclaration {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub(crate) struct Supertrait {
     pub(crate) name: CallPath,
+}
+
+impl Spanned for Supertrait {
+    fn span(&self) -> Span {
+        self.name.span()
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
