@@ -172,7 +172,7 @@ This starts a Fuel node with a volatile database that will be cleared when shut 
 To deploy `counter_contract` on your local Fuel node, open a new terminal tab and run the following command from the root of the `wallet_contract` directory:
 
 ```sh
-forc deploy
+forc deploy --unsigned
 ```
 
 > **Note**
@@ -181,7 +181,7 @@ forc deploy
 This should produce some output in `stdout` that looks like this:
 
 ```console
-$ forc deploy
+$ forc deploy --unsigned
   Compiled library "core".
   Compiled library "std".
   Compiled contract "counter_contract".
