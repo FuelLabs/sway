@@ -639,6 +639,9 @@ impl FnCompiler {
         }
 
         let ret_value = self.compile_expression(context, md_mgr, ast_expr.clone())?;
+        if ret_value.is_diverging(context) {
+            return Ok(ret_value);
+        }
         match ret_value.get_stripped_ptr_type(context) {
             None => Err(CompileError::Internal(
                 "Unable to determine type for return statement expression.",
@@ -959,11 +962,19 @@ impl FnCompiler {
         };
 
         // Now actually call the new function.
-        let args = ast_args
-            .into_iter()
-            .zip(callee.parameters.into_iter())
-            .map(|((_, expr), param)| self.compile_fn_arg(context, md_mgr, &param, expr))
-            .collect::<Result<Vec<Value>, CompileError>>()?;
+        let args = {
+            let mut args = Vec::with_capacity(ast_args.len());
+            for ((_, expr), param) in ast_args.into_iter().zip(callee.parameters.into_iter()) {
+                self.current_fn_param = Some(param);
+                let arg = self.compile_expression(context, md_mgr, expr)?;
+                if arg.is_diverging(context) {
+                    return Ok(arg);
+                }
+                self.current_fn_param = None;
+                args.push(arg);
+            }
+            args
+        };
         let state_idx_md_idx = match self_state_idx {
             Some(self_state_idx) => {
                 md_mgr.storage_key_to_md(context, self_state_idx.to_usize() as u64)
@@ -976,19 +987,6 @@ impl FnCompiler {
             .call(new_callee, &args)
             .add_metadatum(context, span_md_idx)
             .add_metadatum(context, state_idx_md_idx))
-    }
-
-    fn compile_fn_arg(
-        &mut self,
-        context: &mut Context,
-        md_mgr: &mut MetadataManager,
-        fn_param: &TypedFunctionParameter,
-        ast_expr: TypedExpression,
-    ) -> Result<Value, CompileError> {
-        self.current_fn_param = Some(fn_param.clone());
-        let ret = self.compile_expression(context, md_mgr, ast_expr);
-        self.current_fn_param = None;
-        ret
     }
 
     fn compile_if(
@@ -1466,28 +1464,22 @@ impl FnCompiler {
         let aggregate = Aggregate::new_array(context, elem_type, contents.len() as u64);
 
         // Compile each element and insert it immediately.
-        let array_value = Constant::get_undef(context, Type::Array(aggregate))
+        let mut array_value = Constant::get_undef(context, Type::Array(aggregate))
             .add_metadatum(context, span_md_idx);
-        contents
-            .into_iter()
-            .enumerate()
-            .fold(Ok(array_value), |array_value, (idx, elem_expr)| {
-                // Result::flatten() is currently nightly only.
-                match array_value {
-                    Err(_) => array_value,
-                    Ok(array_value) => {
-                        let index_val = Constant::get_uint(context, 64, idx as u64)
-                            .add_metadatum(context, span_md_idx);
-                        self.compile_expression(context, md_mgr, elem_expr)
-                            .map(|elem_value| {
-                                self.current_block
-                                    .ins(context)
-                                    .insert_element(array_value, aggregate, elem_value, index_val)
-                                    .add_metadatum(context, span_md_idx)
-                            })
-                    }
-                }
-            })
+        for (idx, elem_expr) in contents.into_iter().enumerate() {
+            let elem_value = self.compile_expression(context, md_mgr, elem_expr)?;
+            if elem_value.is_diverging(context) {
+                return Ok(elem_value);
+            }
+            let index_val =
+                Constant::get_uint(context, 64, idx as u64).add_metadatum(context, span_md_idx);
+            array_value = self
+                .current_block
+                .ins(context)
+                .insert_element(array_value, aggregate, elem_value, index_val)
+                .add_metadatum(context, span_md_idx);
+        }
+        Ok(array_value)
     }
 
     fn compile_array_index(
@@ -1500,6 +1492,9 @@ impl FnCompiler {
     ) -> Result<Value, CompileError> {
         let array_expr_span = array_expr.span.clone();
         let array_val = self.compile_expression(context, md_mgr, array_expr)?;
+        if array_val.is_diverging(context) {
+            return Ok(array_val);
+        }
         let aggregate = match &context.values[array_val.0].value {
             ValueDatum::Instruction(instruction) => {
                 instruction.get_aggregate(context).ok_or_else(|| {
@@ -1532,6 +1527,9 @@ impl FnCompiler {
         }
 
         let index_val = self.compile_expression(context, md_mgr, index_expr)?;
+        if index_val.is_diverging(context) {
+            return Ok(index_val);
+        }
 
         Ok(self
             .current_block
@@ -1554,17 +1552,18 @@ impl FnCompiler {
 
         // Compile each of the values for field initialisers, calculate their indices and also
         // gather their types with which to make an aggregate.
-        let field_descrs = fields
-            .into_iter()
-            .enumerate()
-            .map(|(insert_idx, struct_field)| {
-                let field_ty = struct_field.value.return_type;
-                self.compile_expression(context, md_mgr, struct_field.value)
-                    .map(|insert_val| ((insert_val, insert_idx as u64), field_ty))
-            })
-            .collect::<Result<Vec<_>, CompileError>>()?;
-        let (inserted_values_indices, field_types): (Vec<(Value, u64)>, Vec<TypeId>) =
-            field_descrs.into_iter().unzip();
+
+        let mut inserted_values_indices = Vec::with_capacity(fields.len());
+        let mut field_types = Vec::with_capacity(fields.len());
+        for (insert_idx, struct_field) in fields.into_iter().enumerate() {
+            let field_ty = struct_field.value.return_type;
+            let insert_val = self.compile_expression(context, md_mgr, struct_field.value)?;
+            if insert_val.is_diverging(context) {
+                return Ok(insert_val);
+            }
+            inserted_values_indices.push((insert_val, insert_idx as u64));
+            field_types.push(field_ty);
+        }
 
         // Start with a constant empty struct and then fill in the values.
         let aggregate = get_aggregate_for_types(context, &field_types)?;
@@ -1707,19 +1706,17 @@ impl FnCompiler {
             // the IR or not... it is a special case for now.
             Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
         } else {
-            let (init_values, init_types): (Vec<Value>, Vec<Type>) = fields
-                .into_iter()
-                .map(|field_expr| {
-                    convert_resolved_typeid_no_span(context, &field_expr.return_type).and_then(
-                        |init_type| {
-                            self.compile_expression(context, md_mgr, field_expr)
-                                .map(|init_value| (init_value, init_type))
-                        },
-                    )
-                })
-                .collect::<Result<Vec<_>, CompileError>>()?
-                .into_iter()
-                .unzip();
+            let mut init_values = Vec::with_capacity(fields.len());
+            let mut init_types = Vec::with_capacity(fields.len());
+            for field_expr in fields {
+                let init_type = convert_resolved_typeid_no_span(context, &field_expr.return_type)?;
+                let init_value = self.compile_expression(context, md_mgr, field_expr)?;
+                if init_value.is_diverging(context) {
+                    return Ok(init_value);
+                }
+                init_values.push(init_value);
+                init_types.push(init_type);
+            }
 
             let aggregate = Aggregate::new_struct(context, init_types);
             let agg_value = Constant::get_undef(context, Type::Struct(aggregate))
