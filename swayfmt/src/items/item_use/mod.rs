@@ -29,7 +29,6 @@ impl Format for ItemUse {
                 &formatter.shape,
                 Some(0), // In some cases we will want to update parts of Shape
                 Some(CodeLine::new(LineStyle::Multiline, ExprKind::Import)),
-                None,
             ),
             |formatter| -> Result<(), FormatterError> {
                 // get the length in chars of the code_line in a single line format,

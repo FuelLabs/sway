@@ -31,7 +31,6 @@ impl Format for ItemFn {
                 &formatter.shape,
                 Some(0), // In some cases we will want to update parts of Shape
                 Some(CodeLine::new(LineStyle::Normal, ExprKind::Function)),
-                None,
             ),
             |formatter| -> Result<(), FormatterError> {
                 self.fn_signature.format(formatted_code, formatter)?;
