@@ -49,12 +49,12 @@ impl TypedCodeBlock {
             .flatten();
         let span = implicit_return_span.unwrap_or_else(|| code_block.whole_block_span.clone());
 
-        let block_type =
-            {
-                // find the implicit return, if any, and use it as the code block's return type.
-                // The fact that there is at most one implicit return is an invariant held by the parser.
-                // If any node diverges then the entire block has unknown type.
-                evaluated_contents.iter().find_map(|node| {
+        // find the implicit return, if any, and use it as the code block's return type.
+        // The fact that there is at most one implicit return is an invariant held by the parser.
+        // If any node diverges then the entire block has unknown type.
+        let block_type = evaluated_contents
+            .iter()
+            .find_map(|node| {
                 if node.deterministically_aborts() {
                     Some(insert_type(TypeInfo::Unknown))
                 } else {
@@ -71,8 +71,7 @@ impl TypedCodeBlock {
                     }
                 }
             })
-            .unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new())))
-            };
+            .unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new())));
 
         let (new_warnings, new_errors) = ctx.unify_with_self(block_type, &span);
         warnings.extend(new_warnings);
