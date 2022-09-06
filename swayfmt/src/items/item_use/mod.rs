@@ -1,6 +1,6 @@
 use crate::{
     formatter::{
-        shape::{ExprKind, LineStyle},
+        shape::{CodeLine, ExprKind, LineStyle, Shape},
         *,
     },
     utils::{
@@ -24,29 +24,35 @@ impl Format for ItemUse {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let prev_state = formatter.shape.code_line;
-        formatter.shape.code_line.update_expr_kind(ExprKind::Import);
+        formatter.with_shape(
+            Shape::from(
+                &formatter.shape,
+                Some(0), // In some cases we will want to update parts of Shape
+                Some(CodeLine::new(LineStyle::Multiline, ExprKind::Import)),
+                None,
+            ),
+            |formatter| -> Result<(), FormatterError> {
+                // get the length in chars of the code_line in a single line format,
+                // this include the path
+                let mut buf = FormattedCode::new();
+                let mut temp_formatter = formatter.clone();
+                temp_formatter
+                    .shape
+                    .code_line
+                    .update_line_style(LineStyle::Normal);
+                format_use_stmt(self, &mut buf, &mut temp_formatter)?;
 
-        // get the length in chars of the code_line in a single line format,
-        // this include the path
-        let mut buf = FormattedCode::new();
-        let mut temp_formatter = formatter.clone();
-        temp_formatter
-            .shape
-            .code_line
-            .update_line_style(LineStyle::Normal);
-        format_use_stmt(self, &mut buf, &mut temp_formatter)?;
+                let expr_width = buf.chars().count() as usize;
+                formatter.shape.add_width(expr_width);
+                formatter
+                    .shape
+                    .get_line_style(None, None, &formatter.config);
 
-        let expr_width = buf.chars().count() as usize;
-        formatter.shape.add_width(expr_width);
-        formatter
-            .shape
-            .get_line_style(None, None, &formatter.config);
+                format_use_stmt(self, formatted_code, formatter)?;
 
-        format_use_stmt(self, formatted_code, formatter)?;
-
-        formatter.shape.sub_width(expr_width);
-        formatter.shape.update_line_settings(prev_state);
+                Ok(())
+            },
+        )?;
 
         Ok(())
     }
