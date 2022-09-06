@@ -1,7 +1,6 @@
 use super::*;
 use crate::{
-    declaration_engine::declaration_engine::de_get_trait,
-    declaration_engine::declaration_engine::{de_get_impl_trait, de_get_storage},
+    declaration_engine::declaration_engine::*,
     parse_tree::{CallPath, Visibility},
     semantic_analysis::{
         ast_node::{

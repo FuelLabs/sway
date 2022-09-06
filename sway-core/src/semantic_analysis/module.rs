@@ -1,8 +1,5 @@
 use crate::{
-    declaration_engine::declaration_engine::{de_get_impl_trait, de_get_trait},
-    error::*,
-    parse_tree::*,
-    semantic_analysis::*,
+    declaration_engine::declaration_engine::*, error::*, parse_tree::*, semantic_analysis::*,
     type_system::*,
 };
 
