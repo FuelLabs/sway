@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    declaration_engine::declaration_engine::{de_get_constant, de_get_trait},
+    declaration_engine::declaration_engine::*,
     error::{err, ok},
     semantic_analysis::{
         Mode, TypeCheckContext, TypedAstNodeContent, TypedConstantDeclaration, TypedExpression,

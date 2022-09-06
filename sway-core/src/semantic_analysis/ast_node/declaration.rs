@@ -17,10 +17,7 @@ pub use storage::*;
 pub use variable::*;
 
 use crate::{
-    declaration_engine::{
-        declaration_engine::{de_get_constant, de_get_storage, de_get_trait},
-        declaration_id::DeclarationId,
-    },
+    declaration_engine::{declaration_engine::*, declaration_id::DeclarationId},
     error::*,
     parse_tree::*,
     semantic_analysis::*,
