@@ -256,7 +256,21 @@ pub fn parsed_to_ast(
     };
 
     // Collect information about the types used in this program
-    let types_metadata = typed_program.collect_types_metadata();
+    let CompileResult {
+        value: types_metadata_result,
+        warnings: new_warnings,
+        errors: new_errors,
+    } = typed_program.collect_types_metadata();
+    warnings.extend(new_warnings);
+    errors.extend(new_errors);
+    let types_metadata = match types_metadata_result {
+        Some(types_metadata) => types_metadata,
+        None => {
+            errors = dedup_unsorted(errors);
+            warnings = dedup_unsorted(warnings);
+            return CompileAstResult::Failure { errors, warnings };
+        }
+    };
 
     // Collect all the types of logged values. These are required when generating the JSON ABI.
     typed_program.logged_types.extend(
