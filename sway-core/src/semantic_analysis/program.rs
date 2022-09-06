@@ -219,17 +219,27 @@ impl TypedProgram {
     }
 
     /// Ensures there are no unresolved types or types awaiting resolution in the AST.
-    pub(crate) fn collect_types_metadata(&mut self) -> Vec<TypeMetadata> {
+    pub(crate) fn collect_types_metadata(&mut self) -> CompileResult<Vec<TypeMetadata>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
         // Get all of the entry points for this tree type. For libraries, that's everything
         // public. For contracts, ABI entries. For scripts and predicates, any function named `main`.
-        match &self.kind {
-            TypedProgramKind::Library { .. } => self
-                .root
-                .all_nodes
-                .iter()
-                .filter(|x| x.is_public())
-                .flat_map(CollectTypesMetadata::collect_types_metadata)
-                .collect(),
+        let metadata = match &self.kind {
+            TypedProgramKind::Library { .. } => {
+                let mut ret = vec![];
+                for node in self.root.all_nodes.iter() {
+                    let public = check!(
+                        node.is_public(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if public {
+                        ret.append(&mut node.collect_types_metadata());
+                    }
+                }
+                ret
+            }
             TypedProgramKind::Script { .. } => self
                 .root
                 .all_nodes
@@ -249,6 +259,11 @@ impl TypedProgram {
                 .map(TypedAstNode::from)
                 .flat_map(|x| x.collect_types_metadata())
                 .collect(),
+        };
+        if errors.is_empty() {
+            ok(metadata, warnings, errors)
+        } else {
+            err(warnings, errors)
         }
     }
 
