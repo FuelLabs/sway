@@ -1,5 +1,8 @@
 use crate::{
-    formatter::{shape::LineStyle, *},
+    formatter::{
+        shape::{CodeLine, ExprKind, LineStyle, Shape},
+        *,
+    },
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
         {Parenthesis, SquareBracket},
@@ -50,29 +53,35 @@ impl Format for AttributeDecl {
                 writeln!(formatted_code, "/// {}", doc_comment.as_str().trim())?;
             }
         } else {
-            let prev_state = formatter.shape.code_line;
-            formatter
-                .shape
-                .code_line
-                .update_line_style(LineStyle::Normal);
-            // `#`
-            write!(formatted_code, "{}", self.hash_token.span().as_str())?;
-            // `[`
-            Self::open_square_bracket(formatted_code, formatter)?;
-            // name e.g. `storage`
-            write!(formatted_code, "{}", attr.name.span().as_str())?;
-            // `(`
-            Self::open_parenthesis(formatted_code, formatter)?;
-            // format and add args e.g. `read, write`
-            if let Some(args) = &attr.args {
-                args.get().format(formatted_code, formatter)?;
-            }
-            // ')'
-            Self::close_parenthesis(formatted_code, formatter)?;
-            // `]\n`
-            Self::close_square_bracket(formatted_code, formatter)?;
-            formatter.shape.update_line_settings(prev_state);
+            formatter.with_shape(
+                Shape::from(
+                    &formatter.shape,
+                    Some(0),
+                    Some(CodeLine::new(LineStyle::Normal, ExprKind::Undetermined)),
+                ),
+                |formatter| -> Result<(), FormatterError> {
+                    // `#`
+                    write!(formatted_code, "{}", self.hash_token.span().as_str())?;
+                    // `[`
+                    Self::open_square_bracket(formatted_code, formatter)?;
+                    // name e.g. `storage`
+                    write!(formatted_code, "{}", attr.name.span().as_str())?;
+                    // `(`
+                    Self::open_parenthesis(formatted_code, formatter)?;
+                    // format and add args e.g. `read, write`
+                    if let Some(args) = &attr.args {
+                        args.get().format(formatted_code, formatter)?;
+                    }
+                    // ')'
+                    Self::close_parenthesis(formatted_code, formatter)?;
+                    // `]\n`
+                    Self::close_square_bracket(formatted_code, formatter)?;
+
+                    Ok(())
+                },
+            )?;
         }
+
         Ok(())
     }
 }
