@@ -58,7 +58,10 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
         TypedDeclaration::FunctionDeclaration(func_decl) => {
             collect_typed_fn_decl(func_decl, tokens);
         }
-        TypedDeclaration::TraitDeclaration(trait_decl) => {
+        TypedDeclaration::TraitDeclaration(decl_id) => {
+            // TODO: do not use unwrap
+            let trait_decl =
+                declaration_engine::de_get_trait(decl_id.clone(), &decl_id.span()).unwrap();
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&trait_decl.name)) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
             }

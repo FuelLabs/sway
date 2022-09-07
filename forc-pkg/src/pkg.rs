@@ -1634,7 +1634,7 @@ pub fn compile(
             let mut types = vec![];
             let json_abi_program = time_expr!(
                 "generate JSON ABI program",
-                typed_program.kind.generate_json_abi_program(&mut types)
+                typed_program.generate_json_abi_program(&mut types)
             );
 
             let storage_slots = typed_program.storage_slots.clone();
@@ -1847,7 +1847,7 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
         .with_extension("bin");
     fs::write(&bin_path, &compiled.bytecode)?;
     if !compiled.json_abi_program.functions.is_empty() {
-        let json_abi_program_stem = format!("{}-flat-abi", manifest.project.name);
+        let json_abi_program_stem = format!("{}-abi", manifest.project.name);
         let json_abi_program_path = output_dir
             .join(&json_abi_program_stem)
             .with_extension("json");
@@ -1914,6 +1914,7 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
     let mut json_abi_program = JsonABIProgram {
         types: vec![],
         functions: vec![],
+        logged_types: vec![],
     };
     let mut storage_slots = vec![];
     let mut bytecode = vec![];
@@ -1942,6 +1943,9 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
         json_abi_program
             .functions
             .extend(compiled.json_abi_program.functions);
+        json_abi_program
+            .logged_types
+            .extend(compiled.json_abi_program.logged_types);
         storage_slots.extend(compiled.storage_slots);
         bytecode = compiled.bytecode;
         tree_type = Some(compiled.tree_type);
@@ -2037,6 +2041,10 @@ fn update_all_types(json_abi_program: &mut JsonABIProgram, old_to_new_id: &HashM
     // Update all `JsonTypeDeclaration`
     for decl in json_abi_program.types.iter_mut() {
         update_json_type_declaration(decl, old_to_new_id);
+    }
+
+    for logged_type in json_abi_program.logged_types.iter_mut() {
+        update_json_type_application(&mut logged_type.logged_type, old_to_new_id);
     }
 }
 

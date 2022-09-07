@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
+    declaration_engine::declaration_engine::de_get_trait,
     error::{err, ok},
     semantic_analysis::{
         Mode, TypeCheckContext, TypedAstNodeContent, TypedExpression, TypedExpressionVariant,
@@ -102,7 +103,13 @@ impl TypedImplTrait {
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(TypedDeclaration::TraitDeclaration(tr)) => {
+            Some(TypedDeclaration::TraitDeclaration(decl_id)) => {
+                let tr = check!(
+                    CompileResult::from(de_get_trait(decl_id, &trait_name.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
                 let functions_buf = check!(
                     type_check_trait_implementation(
                         ctx,

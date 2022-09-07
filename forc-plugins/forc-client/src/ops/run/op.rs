@@ -1,13 +1,17 @@
 use anyhow::{anyhow, bail, Result};
 use forc_pkg::{fuel_core_not_running, BuildOptions, ManifestFile};
+use fuel_crypto::Signature;
 use fuel_gql_client::client::FuelClient;
-use fuel_tx::Transaction;
+use fuel_tx::{AssetId, Output, Transaction, Witness};
+use fuels_core::constants::{BASE_ASSET_ID, DEFAULT_SPENDABLE_COIN_AMOUNT};
+use fuels_signers::{provider::Provider, Wallet};
+use fuels_types::bech32::Bech32Address;
 use futures::TryFutureExt;
-use std::{path::PathBuf, str::FromStr};
+use std::{io::Write, path::PathBuf, str::FromStr};
 use sway_core::TreeType;
 use tracing::info;
 
-use super::{cmd::RunCommand, parameters::TxParameters};
+use crate::ops::{parameters::TxParameters, run::cmd::RunCommand};
 
 pub const NODE_URL: &str = "http://127.0.0.1:4000";
 
@@ -45,9 +49,48 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
 
     let compiled = forc_pkg::build_with_options(build_options)?;
     let contracts = command.contract.unwrap_or_default();
-    let (inputs, outputs) = get_tx_inputs_and_outputs(contracts);
+    let (mut inputs, mut outputs) = get_tx_inputs_and_outputs(contracts);
 
-    let tx = create_tx_with_script_and_data(
+    let node_url = command.node_url.unwrap_or_else(|| match &manifest.network {
+        Some(network) => network.url.to_owned(),
+        None => NODE_URL.to_owned(),
+    });
+
+    if !command.unsigned {
+        // Add input coin and output change to existing inputs and outpus
+
+        // First retrieve the locked wallet
+        let mut wallet_address = String::new();
+        print!(
+            "Please provide the address of the wallet you are going to sign this transaction with:"
+        );
+        std::io::stdout().flush()?;
+        std::io::stdin().read_line(&mut wallet_address)?;
+        let address = Bech32Address::from_str(wallet_address.trim())?;
+        let client = FuelClient::new(&node_url)?;
+        let locked_wallet = Wallet::from_address(address, Some(Provider::new(client)));
+        let coin_witness_index = inputs.len().try_into()?;
+
+        let inputs_to_add = locked_wallet
+            .get_asset_inputs_for_amount(
+                AssetId::default(),
+                DEFAULT_SPENDABLE_COIN_AMOUNT,
+                coin_witness_index,
+            )
+            .await?;
+
+        inputs.extend(inputs_to_add);
+        // Note that the change will be computed by the node.
+        // Here we only have to tell the node who will own the change and its asset ID.
+        // For now we use the BASE_ASSET_ID constant
+        outputs.push(Output::change(
+            locked_wallet.address().into(),
+            0,
+            BASE_ASSET_ID,
+        ))
+    }
+
+    let mut tx = create_tx_with_script_and_data(
         compiled.bytecode,
         script_data,
         inputs,
@@ -55,10 +98,26 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         TxParameters::new(command.gas_limit, command.gas_price),
     );
 
-    let node_url = command.node_url.unwrap_or_else(|| match &manifest.network {
-        Some(network) => network.url.to_owned(),
-        None => NODE_URL.to_owned(),
-    });
+    if !command.unsigned {
+        println!("Tx id to sign {}", tx.id());
+        let mut signature = String::new();
+        print!("Please provide the signature for this transaction:");
+        std::io::stdout().flush()?;
+        std::io::stdin().read_line(&mut signature)?;
+
+        let signature = Signature::from_str(signature.trim())?;
+        let witness = vec![Witness::from(signature.as_ref())];
+
+        let mut witnesses: Vec<Witness> = tx.witnesses().to_vec();
+
+        match witnesses.len() {
+            0 => tx.set_witnesses(witness),
+            _ => {
+                witnesses.extend(witness);
+                tx.set_witnesses(witnesses)
+            }
+        }
+    }
 
     if command.dry_run {
         info!("{:?}", tx);
