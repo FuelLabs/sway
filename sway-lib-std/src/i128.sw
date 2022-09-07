@@ -54,21 +54,21 @@ impl I128 {
 
 impl I128 {
     /// Initializes a new, zeroed I128.
-    pub fn new() -> I128 {
+    pub fn new() -> Self {
         I128 {
             underlying: ~I128::indent(),
         }
     }
 
     /// The smallest value that can be represented by this integer type.
-    pub fn min() -> I128 {
+    pub fn min() -> Self {
         I128 {
             underlying: ~U128::min(),
         }
     }
 
     /// The largest value that can be represented by this type,
-    pub fn max() -> I128 {
+    pub fn max() -> Self {
         I128 {
             underlying: ~U128::max(),
         }
@@ -80,14 +80,14 @@ impl I128 {
     }
 
     /// Helper function to get a negative value of unsigned number
-    pub fn neg_from(value: U128) -> I128 {
+    pub fn neg_from(value: U128) -> Self {
         I128 {
             underlying: ~I128::indent() - value,
         }
     }
 
     /// Helper function to get a positive value from unsigned number
-    fn from_uint(value: U128) -> I128 {
+    fn from_uint(value: U128) -> Self {
         // as the minimal value of I128 is -~I128::indent() (1 << 63) we should add ~I128::indent() (1 << 63) 
         let underlying: U128 = value + ~I128::indent();
         I128 {
