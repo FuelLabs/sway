@@ -88,6 +88,11 @@ pub enum TypeInfo {
         fields: Vec<TyStructField>,
     },
     /// Raw untyped pointers.
+    /// These are represented in memory as u64 but are a different type since pointers only make
+    /// sense in the context they were created in. Users can obtain pointers via standard library
+    /// functions such `alloc` or `stack_ptr`. These functions are implemented using asm blocks
+    /// which can create pointers by (eg.) reading logically-pointer-valued registers, using the
+    /// gtf instruction, or manipulating u64s.
     RawUntypedPtr,
 }
 
